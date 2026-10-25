@@ -1,5 +1,6 @@
 idf_component_register(
     SRCS "../compat/espidf/platform.c"
+         "../compat/espidf/native_timer.c"
          "../src/arch/riscv32/trap_entry.S"
     INCLUDE_DIRS "../include" "../src/arch/riscv32"
     PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm esp_hw_support
@@ -8,12 +9,16 @@ idf_component_register(
 )
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
+    # Only the bring-up resource lease depends on IDF's private channel map.
+    target_include_directories(${COMPONENT_LIB} PRIVATE
+        "$ENV{IDF_PATH}/components/esp_driver_gptimer/src")
     set(NIHOS_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
     set(NIHOS_ZIG "${NIHOS_ROOT}/.tools/zig-0.17.0/zig")
     set(NIHOS_ZIG_SOURCE "${NIHOS_ROOT}/src/platform/espidf_main.zig")
     set(NIHOS_ZIG_NATIVE_TRAP "${NIHOS_ROOT}/src/arch/riscv32/native_trap.zig")
     set(NIHOS_ZIG_CONTEXT "${NIHOS_ROOT}/src/arch/riscv32/context.zig")
     set(NIHOS_ZIG_TRAP "${NIHOS_ROOT}/src/arch/riscv32/trap.zig")
+    set(NIHOS_ZIG_TIMER_GROUP "${NIHOS_ROOT}/src/soc/esp32p4/timer_group.zig")
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
     set(NIHOS_ZIG_SPSC "${NIHOS_ROOT}/src/kernel/spsc_ring.zig")
@@ -42,14 +47,16 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             "-Mroot=${NIHOS_ZIG_SOURCE}"
             "-Mabi=${NIHOS_ZIG_ABI}"
             "-Marena=${NIHOS_ZIG_ARENA}"
+            --dep timer_group
             "-Mnative_trap=${NIHOS_ZIG_NATIVE_TRAP}"
+            "-Mtimer_group=${NIHOS_ZIG_TIMER_GROUP}"
             "-Mspsc_ring=${NIHOS_ZIG_SPSC}"
             "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
             "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
             "-femit-bin=${NIHOS_ZIG_LIBRARY}"
         DEPENDS "${NIHOS_ZIG_SOURCE}" "${NIHOS_ZIG_ABI}"
                 "${NIHOS_ZIG_NATIVE_TRAP}" "${NIHOS_ZIG_CONTEXT}"
-                "${NIHOS_ZIG_TRAP}"
+                "${NIHOS_ZIG_TRAP}" "${NIHOS_ZIG_TIMER_GROUP}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
                 "${NIHOS_ZIG_TICK_COUNTER}"
                 "${NIHOS_ZIG_PATTERN}"

@@ -1,12 +1,13 @@
 //! Temporary native context-switch integration for the ESP-IDF oracle.
 //!
-//! The self-test installs the nihOS vector only while maskable interrupts are
-//! disabled. One `ecall` leaves the ESP-IDF task, runs a Zig function on a
-//! separate stack, and a second `ecall` restores the original context.
+//! One test switches to a separate Zig task stack through synchronous ecall.
+//! Another enables one leased timer interrupt through the same trap entry;
+//! other CPU0 sources remain pending until its bounded window ends.
 
 const std = @import("std");
 const context = @import("context.zig");
 const trap = @import("trap.zig");
+const timer_group = @import("timer_group");
 
 const core_count = 2;
 const interrupt_stack_bytes = 2048;
@@ -18,6 +19,7 @@ const SwitchState = enum(u32) {
     launch,
     running,
     complete,
+    timer,
 };
 
 var interrupt_stacks: [core_count][interrupt_stack_bytes]u8 align(16) = undefined;
@@ -32,6 +34,33 @@ var task_frame: ?*context.IntegerContext = null;
 var task_observation: u32 = 0;
 var bootstrap_stack_min: u32 = 0;
 var bootstrap_stack_max: u32 = 0;
+
+const TimerLease = extern struct {
+    group_address: u32,
+    channel_id: u32,
+    interrupt_id: u32,
+};
+
+pub const TimerReport = struct {
+    ticks: u32,
+    elapsed_us: u64,
+    interrupt_id: u32,
+    raw_mcause: u32,
+};
+
+const timer_period_us: u32 = 1000;
+const timer_target_ticks: u32 = 32;
+const timer_timeout_us: u64 = 100_000;
+var timer_device: ?timer_group.Timer = null;
+var timer_interrupt_id: u32 = 0;
+var native_timer_ticks = std.atomic.Value(u32).init(0);
+var native_timer_cause = std.atomic.Value(u32).init(0);
+var native_timer_elapsed_us: u64 = 0;
+
+extern fn nih_espidf_native_timer_acquire(out: *TimerLease) callconv(.c) i32;
+extern fn nih_espidf_native_timer_release() callconv(.c) i32;
+extern fn nih_riscv_timer_window() callconv(.c) u32;
+extern fn nih_platform_monotonic_us() callconv(.c) u64;
 
 extern fn nih_riscv_exception_roundtrip() callconv(.c) u32;
 extern fn nih_riscv_task_trampoline() callconv(.c) void;
@@ -55,7 +84,7 @@ fn contextTestTask(argument: u32) callconv(.c) void {
     nih_riscv_context_test_yield();
 }
 
-pub fn exerciseContextSwitchRoundTrip() bool {
+fn prepareInterruptStacks() bool {
     for (&interrupt_stacks, 0..) |*stack, core| {
         const bottom = @intFromPtr(stack);
         const top = @intFromPtr(stack) + stack.len;
@@ -64,6 +93,11 @@ pub fn exerciseContextSwitchRoundTrip() bool {
         nih_riscv_interrupt_stack_bottoms[core] = @intCast(bottom);
         nih_riscv_interrupt_stack_tops[core] = @intCast(top);
     }
+    return true;
+}
+
+pub fn exerciseContextSwitchRoundTrip() bool {
+    if (!prepareInterruptStacks()) return false;
 
     const bottom = @intFromPtr(&task_stack);
     const top = @intFromPtr(&task_stack) + task_stack.len;
@@ -102,6 +136,55 @@ pub fn exerciseContextSwitchRoundTrip() bool {
     return returned and complete;
 }
 
+/// IDF leases clocks, a channel and a CPU0 interrupt. nihOS controls the timer
+/// MMIO and handles its non-vectored interrupt on the native trap stack.
+pub fn exerciseNativeTimer() ?TimerReport {
+    if (!prepareInterruptStacks()) return null;
+    var lease = std.mem.zeroes(TimerLease);
+    if (nih_espidf_native_timer_acquire(&lease) != 0) return null;
+    const device = timer_group.Timer.fromGroup(lease.group_address, lease.channel_id);
+    if (device == null or lease.interrupt_id < 16 or lease.interrupt_id >= 48) {
+        _ = nih_espidf_native_timer_release();
+        return null;
+    }
+    timer_device = device;
+    timer_interrupt_id = lease.interrupt_id;
+    native_timer_ticks.store(0, .monotonic);
+    native_timer_cause.store(0, .monotonic);
+    esp_hw_stack_guard_get_bounds(0, &bootstrap_stack_min, &bootstrap_stack_max);
+    const configured = device.?.configure(timer_period_us);
+    switch_state = .timer;
+    const returned = configured and nih_riscv_timer_window() == 1;
+    switch_state = .idle;
+    device.?.stop();
+    var restored_min: u32 = 0;
+    var restored_max: u32 = 0;
+    esp_hw_stack_guard_get_bounds(0, &restored_min, &restored_max);
+    timer_device = null;
+    const released = nih_espidf_native_timer_release() == 0;
+    if (!returned or !released or restored_min != bootstrap_stack_min or
+        restored_max != bootstrap_stack_max) return null;
+    return .{
+        .ticks = native_timer_ticks.load(.monotonic),
+        .elapsed_us = native_timer_elapsed_us,
+        .interrupt_id = lease.interrupt_id,
+        .raw_mcause = native_timer_cause.load(.monotonic),
+    };
+}
+
+export fn nih_riscv_native_timer_run() callconv(.c) u32 {
+    const device = timer_device orelse return 0;
+    const started = nih_platform_monotonic_us();
+    device.start();
+    while (native_timer_ticks.load(.monotonic) < timer_target_ticks) {
+        if (nih_platform_monotonic_us() - started >= timer_timeout_us) break;
+        std.atomic.spinLoopHint();
+    }
+    device.stop();
+    native_timer_elapsed_us = nih_platform_monotonic_us() - started;
+    return if (native_timer_ticks.load(.monotonic) >= timer_target_ticks) 1 else 0;
+}
+
 export fn nih_riscv_trap_dispatch(
     interrupted: *context.IntegerContext,
     raw_mcause: u32,
@@ -109,6 +192,18 @@ export fn nih_riscv_trap_dispatch(
 ) callconv(.c) ?*context.IntegerContext {
     if (hart_id >= core_count) return null;
     const cause = trap.Cause.decode(raw_mcause);
+    if (switch_state == .timer) {
+        if (hart_id != 0 or cause.kind != .interrupt or
+            cause.reason != timer_interrupt_id) return null;
+        const device = timer_device orelse return null;
+        if (!device.acknowledge()) return null;
+        native_timer_cause.store(raw_mcause, .monotonic);
+        _ = native_timer_ticks.fetchAdd(1, .monotonic);
+        nih_riscv_selected_stack_mins[hart_id] = bootstrap_stack_min;
+        nih_riscv_selected_stack_maxs[hart_id] = bootstrap_stack_max;
+        // Asynchronous interrupts resume the interrupted instruction unchanged.
+        return interrupted;
+    }
     if (!cause.isException(.environment_call_from_machine)) return null;
     if (interrupted.mepc > std.math.maxInt(u32) - 4) return null;
     interrupted.mepc += 4;
@@ -130,6 +225,6 @@ export fn nih_riscv_trap_dispatch(
             switch_state = .complete;
             break :next bootstrap_frame;
         },
-        .idle, .complete => null,
+        .idle, .complete, .timer => null,
     };
 }

@@ -17,7 +17,9 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     "$repo_root/src/arch/riscv32/trap.zig"
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/native_trap.o" \
-    "$repo_root/src/arch/riscv32/native_trap.zig"
+    --dep timer_group \
+    "-Mroot=$repo_root/src/arch/riscv32/native_trap.zig" \
+    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \
     -I "$repo_root/src/arch/riscv32" \
     -o "$out_dir/trap_entry.o" \
