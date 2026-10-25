@@ -28,6 +28,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_TASK_RUNTIME "${NIHOS_ROOT}/src/arch/riscv32/task_runtime.zig")
     set(NIHOS_ZIG_TASK_CALLS "${NIHOS_ROOT}/src/arch/riscv32/task_calls.zig")
     set(NIHOS_ZIG_LIFECYCLE "${NIHOS_ROOT}/src/arch/riscv32/lifecycle_test.zig")
+    set(NIHOS_ZIG_IPC_SCENARIO "${NIHOS_ROOT}/src/arch/riscv32/ipc_scenario.zig")
+    set(NIHOS_ZIG_CHANNEL "${NIHOS_ROOT}/src/kernel/spsc_channel.zig")
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
     set(NIHOS_ZIG_SPSC "${NIHOS_ROOT}/src/kernel/spsc_ring.zig")
@@ -60,12 +62,15 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             --dep scheduler
             --dep tick_clock
             --dep task_control
+            --dep spsc_ring
+            --dep spsc_channel
             "-Mnative_trap=${NIHOS_ZIG_NATIVE_TRAP}"
             "-Mtimer_group=${NIHOS_ZIG_TIMER_GROUP}"
             "-Mscheduler=${NIHOS_ZIG_SCHEDULER}"
             "-Mtick_clock=${NIHOS_ZIG_TICK_CLOCK}"
             "-Mtask_control=${NIHOS_ZIG_TASK_CONTROL}"
             "-Mspsc_ring=${NIHOS_ZIG_SPSC}"
+            "-Mspsc_channel=${NIHOS_ZIG_CHANNEL}"
             "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
             "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
             "-femit-bin=${NIHOS_ZIG_LIBRARY}"
@@ -77,6 +82,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
                 "${NIHOS_ZIG_TASK_CONTROL}" "${NIHOS_ZIG_TASK_NUMBERS}"
                 "${NIHOS_ZIG_TASK_RUNTIME}" "${NIHOS_ZIG_TASK_CALLS}"
                 "${NIHOS_ZIG_LIFECYCLE}"
+                "${NIHOS_ZIG_IPC_SCENARIO}" "${NIHOS_ZIG_CHANNEL}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
                 "${NIHOS_ZIG_TICK_COUNTER}"
                 "${NIHOS_ZIG_PATTERN}"

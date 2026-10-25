@@ -577,6 +577,24 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("event_replacement_generation=", events.replacement_generation);
     write("event_stale_handle_rejected=1\r\n");
     write("native_events=ok\r\n");
+    const ipc_tasks = native_trap.exerciseNativeIpc() orelse {
+        write("nihos: native IPC failed\r\n");
+        return;
+    };
+    const ipc = ipc_tasks.ipc orelse return;
+    writeU32("ipc_messages=", ipc.messages);
+    writeU32("ipc_full_rejections=", ipc.full_rejections);
+    writeU32("ipc_readable_waits=", ipc.readable_waits);
+    writeU32("ipc_writable_waits=", ipc.writable_waits);
+    writeU32("ipc_checksum=", ipc.checksum);
+    writeU32("ipc_counters_wrapped=", @intFromBool(ipc.counters_wrapped));
+    writeU32("ipc_syscalls=", ipc_tasks.calls);
+    writeU32("ipc_timer_interrupts=", ipc_tasks.interrupts);
+    writeU64("ipc_idle_runtime_ticks=", ipc_tasks.idle_runtime_ticks);
+    writeU32("ipc_exit_code_0=", @bitCast(ipc_tasks.exits[0]));
+    writeU32("ipc_exit_code_1=", @bitCast(ipc_tasks.exits[1]));
+    writeU32("ipc_reaped=", ipc_tasks.reaped);
+    write("native_ipc=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

@@ -52,3 +52,16 @@ pub fn notify(handle: Handle, bits: u32) i32 {
     const value = nih_riscv_task_call(@backingInt(control.Number.notify), control.encodeHandle(handle), bits);
     return @bitCast(@as(u32, @truncate(value)));
 }
+
+/// Stateless adapter for a channel owned by native tasks on this CPU.
+pub const EventPort = struct {
+    pub const Handle = control.Handle;
+
+    pub fn post(_: *EventPort, target: control.Handle, bits: u32) i32 {
+        return notify(target, bits);
+    }
+
+    pub fn wait(_: *EventPort, mask: u32) EventResult {
+        return waitEvents(mask);
+    }
+};

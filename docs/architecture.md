@@ -163,6 +163,13 @@ handle rejection. This CPU-local primitive does not yet accept CPU1/IPI or
 native device-IRQ completions. Events provide wakeups; message data stays in
 separate queues.
 
+ADR 0011 connects those queues and event bits as blocking SPSC channels.
+The native two-task scenario exchanges 64 ordered request/completion pairs,
+exercises full/empty waiting, and forces RV32 counter wrap at capacity 3.
+Payload progress uses channel waits, with committed data distinguished from
+notification errors. These channels still use CPU0's event owner; cross-core
+blocking, close/cancellation, and permanent service lifetimes remain open.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a

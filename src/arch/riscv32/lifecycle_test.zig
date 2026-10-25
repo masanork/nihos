@@ -1,4 +1,4 @@
-//! End-to-end task lifecycle scenario using the reusable native runtime and
+//! End-to-end lifecycle, event, and IPC scenarios using the native runtime and
 //! task-side ECALL wrappers. The bootstrap is the lowest-priority idle task.
 
 const std = @import("std");
@@ -9,6 +9,7 @@ const control = @import("task_control");
 const scheduler = @import("scheduler");
 const tick_clock = @import("tick_clock");
 const timer_group = @import("timer_group");
+const ipc = @import("ipc_scenario.zig");
 
 const Runtime = runtime_module.Runtime(3, 2);
 const stack_bytes = 4096;
@@ -16,7 +17,7 @@ const period_us = 1000;
 const sleep_ticks = 5;
 const timeout_us = 100_000;
 
-pub const Mode = enum { lifecycle, events };
+pub const Mode = enum { lifecycle, events, ipc };
 
 pub const Report = struct {
     sleep_started: u32,
@@ -33,6 +34,7 @@ pub const Report = struct {
     immediate_events: u32,
     blocked_events: u32,
     delivered_events: u32,
+    ipc: ?ipc.Report = null,
 };
 
 var runtime: Runtime = .{};
@@ -231,6 +233,7 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
     const entries = switch (mode) {
         .lifecycle => [_]*const fn (u32) callconv(.c) i32{ &sleeper, &waker },
         .events => [_]*const fn (u32) callconv(.c) i32{ &eventReceiver, &eventSender },
+        .ipc => [_]*const fn (u32) callconv(.c) i32{ &ipc.client, &ipc.service },
     };
     for (&stacks, entries, 0..) |*stack, entry, index| {
         exited[index].store(0, .monotonic);
@@ -251,6 +254,10 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
             .stack_max = bottom + stack_bytes,
         }) orelse return false;
     }
+    if (mode == .ipc) ipc.prepare(
+        .{ .slot = worker_handles[0].slot, .generation = worker_handles[0].generation },
+        .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
+    );
     return timer.configureOneShot(period_us);
 }
 
@@ -307,7 +314,12 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
     call_count += 1;
     const caller = runtime.policy.current() orelse return null;
     const number = control.Number.decode(frame.a7);
+    const argument = frame.a0;
     const selected = runtime.call(frame, state) orelse return null;
+    if (mode == .ipc and number == .wait_events) {
+        const snapshot = runtime.policy.snapshot(caller) orelse return null;
+        if (snapshot.state == .waiting) ipc.recordBlocked(argument);
+    }
     if (mode == .events and number == .wait_events) {
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
         if (snapshot.state == .waiting) {
@@ -339,8 +351,8 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
 }
 
 pub fn report() ?Report {
-    if (!finished.load(.monotonic) or failed.load(.monotonic) or
-        !terminal_wake_rejected.load(.monotonic)) return null;
+    if (!finished.load(.monotonic) or failed.load(.monotonic)) return null;
+    if (mode != .ipc and !terminal_wake_rejected.load(.monotonic)) return null;
     var result = Report{
         .sleep_started = sleep_started.load(.monotonic),
         .sleep_deadline = sleep_deadline.load(.monotonic),
@@ -358,17 +370,18 @@ pub fn report() ?Report {
         .delivered_events = delivered_events.load(.monotonic),
     };
     const expected_sleep: u32 = if (mode == .lifecycle) sleep_ticks else 2;
-    if (result.sleep_resumed < result.sleep_deadline or
-        result.sleep_deadline != result.sleep_started + expected_sleep) return null;
+    if (mode != .ipc and (result.sleep_resumed < result.sleep_deadline or
+        result.sleep_deadline != result.sleep_started + expected_sleep)) return null;
     switch (mode) {
         .lifecycle => if (result.idle_runtime_ticks < 2 or result.explicit_wakes != 1) return null,
         .events => if (result.immediate_events != 3 or result.blocked_events != 1 or
             result.delivered_events != 1) return null,
+        .ipc => result.ipc = ipc.report() orelse return null,
     }
     const replacement_image = runtime.images[worker_handles[0].slot] orelse return null;
     for (worker_handles, 0..) |handle, index| {
         const image = runtime.images[handle.slot] orelse return null;
-        const address = stack_addresses[index].load(.monotonic);
+        const address = if (mode == .ipc) ipc.stackAddress(index) else stack_addresses[index].load(.monotonic);
         const snapshot = runtime.policy.snapshot(handle) orelse return null;
         if (snapshot.state != .exited or address < image.stack_min or address >= image.stack_max)
             return null;
@@ -376,7 +389,11 @@ pub fn report() ?Report {
         if (!runtime.reap(handle)) return null;
         result.reaped += 1;
     }
-    const expected_exits: [2]i32 = if (mode == .lifecycle) .{ 17, 37 } else .{ 41, 43 };
+    const expected_exits: [2]i32 = switch (mode) {
+        .lifecycle => .{ 17, 37 },
+        .events => .{ 41, 43 },
+        .ipc => .{ 53, 59 },
+    };
     if (!std.mem.eql(i32, &result.exits, &expected_exits)) return null;
     // Reuse a reaped slot without executing it. The stale handle must not
     // affect the new ready task; its context storage belongs to this test.

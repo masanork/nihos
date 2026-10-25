@@ -10,6 +10,7 @@ pub const esp32p4_timer_group = @import("soc/esp32p4/timer_group.zig");
 pub const arena = @import("kernel/arena.zig");
 pub const scheduler = @import("kernel/scheduler.zig");
 pub const spsc_ring = @import("kernel/spsc_ring.zig");
+pub const spsc_channel = @import("kernel/spsc_channel.zig");
 pub const tick_counter = @import("kernel/tick_counter.zig");
 pub const tick_clock = @import("kernel/tick_clock.zig");
 pub const task_control = @import("kernel/task_control.zig");
@@ -23,6 +24,8 @@ test {
     _ = arena;
     _ = scheduler;
     _ = spsc_ring;
+    _ = spsc_channel;
+    _ = @import("kernel/spsc_channel_test.zig");
     _ = tick_counter;
     _ = tick_clock;
     _ = task_control;
