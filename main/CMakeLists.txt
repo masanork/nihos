@@ -32,6 +32,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_IPC_SCENARIO "${NIHOS_ROOT}/src/arch/riscv32/ipc_scenario.zig")
     set(NIHOS_ZIG_REMOTE_SCENARIO "${NIHOS_ROOT}/src/arch/riscv32/remote_scenario.zig")
     set(NIHOS_ZIG_DUPLEX_SCENARIO "${NIHOS_ROOT}/src/arch/riscv32/duplex_scenario.zig")
+    set(NIHOS_ZIG_CPU1_TASKS "${NIHOS_ROOT}/src/arch/riscv32/cpu1_tasks.zig")
     set(NIHOS_ZIG_REMOTE_EVENTS "${NIHOS_ROOT}/src/kernel/remote_events.zig")
     set(NIHOS_ZIG_SOFTWARE_IPI "${NIHOS_ROOT}/src/soc/esp32p4/software_ipi.zig")
     set(NIHOS_ZIG_CHANNEL "${NIHOS_ROOT}/src/kernel/spsc_channel.zig")
@@ -98,6 +99,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
                 "${NIHOS_ZIG_IPC_SCENARIO}" "${NIHOS_ZIG_CHANNEL}"
                 "${NIHOS_ZIG_REMOTE_SCENARIO}" "${NIHOS_ZIG_REMOTE_EVENTS}"
                 "${NIHOS_ZIG_DUPLEX_SCENARIO}"
+                "${NIHOS_ZIG_CPU1_TASKS}"
                 "${NIHOS_ZIG_SOFTWARE_IPI}"
                 "${NIHOS_ZIG_PARK}" "${NIHOS_ZIG_IDLE}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"

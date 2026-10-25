@@ -41,6 +41,7 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
         const Self = @This();
         pub const Policy = scheduler.Scheduler(capacity, priority_levels);
         policy: Policy = .{},
+        call_options: task_control.Options = .{},
         images: [capacity]?Image = @splat(null),
 
         pub fn add(self: *Self, priority: u8, image: Image) ?scheduler.TaskHandle {
@@ -76,7 +77,7 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
             // ECALL is always 32 bits, including when C is enabled. A sleeping
             // caller resumes after the syscall with its saved scalar reply.
             frame.mepc += 4;
-            const reply = task_control.dispatchWithPayload(&self.policy, frame.a7, frame.a0, frame.a1);
+            const reply = task_control.dispatchWithOptions(&self.policy, frame.a7, frame.a0, frame.a1, self.call_options);
             frame.a0 = reply.low;
             frame.a1 = reply.high;
             if (reply.reschedule) return self.select();

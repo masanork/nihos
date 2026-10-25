@@ -186,6 +186,15 @@ registered waits, stop-by-IPI, and restoration of both cores, followed by a
 normal IDF IPC callback on CPU1. This removes payload polling from that
 scenario; CPU1 still starts through IDF and has no native task scheduler.
 
+ADR 0014 adds a separate CPU1 runtime using the same frame and task-call
+implementation. Two integer tasks run on distinct native stacks; the IPI tail
+delivers events and selects tasks while the service computes replies in task
+context. Its idle bootstrap still parks with WFI. Each inbox binds handles to
+its destination owner, and CPU1 reaps its own completions before publishing
+the final report. CPU1 has no periodic timer yet, so sleep explicitly returns
+not-supported and its tick count remains zero. CPU0 remains timer-preemptive;
+native CPU1 selection uses IPIs and cooperative calls.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a

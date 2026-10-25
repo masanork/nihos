@@ -234,6 +234,10 @@ pub fn exerciseNativeDuplexEvents() ?lifecycle.Report {
     return exerciseLifecycle(.duplex);
 }
 
+pub fn exerciseNativeCpu1Tasks() ?lifecycle.Report {
+    return exerciseLifecycle(.cpu1_tasks);
+}
+
 fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
     var borrowed = false;
@@ -242,7 +246,7 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         if (borrowed) _ = nih_espidf_native_ipi_release();
     }
     var doorbell: ?Doorbell = null;
-    if (mode == .remote or mode == .duplex) {
+    if (mode == .remote or mode == .duplex or mode == .cpu1_tasks) {
         var lease = std.mem.zeroes(IpiLease);
         if (nih_espidf_native_ipi_acquire(&lease) != 0) {
             _ = finishTimer(false);
@@ -270,8 +274,8 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         borrowed = false;
         if (!released) return null;
     }
-    if (!restored or ((mode == .remote or mode == .duplex) and !remote.verifyHostScheduler()) or
-        (mode == .duplex and !duplex.verifyHostScheduler())) return null;
+    if (!restored or ((mode == .remote or mode == .duplex or mode == .cpu1_tasks) and !remote.verifyHostScheduler()) or
+        ((mode == .duplex or mode == .cpu1_tasks) and !duplex.verifyHostScheduler())) return null;
     return lifecycle.report();
 }
 
@@ -340,8 +344,14 @@ export fn nih_riscv_trap_dispatch(
     const return_state = context.ReturnState{ .mstatus = raw_mstatus, .mcause = raw_mcause };
     nih_riscv_selected_return_states[hart_id] = return_state;
     nih_riscv_selected_floating_states[hart_id] = nih_riscv_current_floating_states[hart_id];
-    if (hart_id == 1 and cause.kind == .interrupt) {
-        const selected = duplex.onServiceIpi(interrupted, return_state, cause.reason) orelse return null;
+    if (hart_id == 1) {
+        const selection = if (cause.kind == .interrupt)
+            duplex.onServiceIpi(interrupted, return_state, cause.reason)
+        else if (cause.isException(.environment_call_from_machine))
+            duplex.onServiceCall(interrupted, return_state)
+        else
+            null;
+        const selected = selection orelse return null;
         nih_riscv_selected_stack_mins[1] = selected.stack_min;
         nih_riscv_selected_stack_maxs[1] = selected.stack_max;
         nih_riscv_selected_return_states[1] = selected.state;
