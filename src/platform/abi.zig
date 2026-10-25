@@ -46,6 +46,7 @@ pub const MemoryKind = struct {
 pub const MemoryFlags = struct {
     pub const writable: u32 = 1 << 0;
     pub const cacheable: u32 = 1 << 1;
+    pub const dma_data: u32 = 1 << 2;
 };
 
 pub const MemoryRegion = extern struct {
@@ -56,6 +57,14 @@ pub const MemoryRegion = extern struct {
     cache_line_bytes: u32,
 };
 
+pub const DmaCopy = extern struct {
+    source_address: u32,
+    destination_address: u32,
+    length: u32,
+    flags: u32,
+    elapsed_us: u32,
+};
+
 test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 24), @sizeOf(BootInfo));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(BootInfo));
@@ -63,4 +72,6 @@ test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 4), @alignOf(DmaRange));
     try std.testing.expectEqual(@as(usize, 20), @sizeOf(MemoryRegion));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(MemoryRegion));
+    try std.testing.expectEqual(@as(usize, 20), @sizeOf(DmaCopy));
+    try std.testing.expectEqual(@as(usize, 4), @alignOf(DmaCopy));
 }

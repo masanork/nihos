@@ -1,13 +1,18 @@
 #include "nihos/platform_abi.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
+#include "esp_async_memcpy.h"
 #include "esp_chip_info.h"
 #include "esp_cache.h"
 #include "esp_err.h"
 #include "esp_flash.h"
 #include "esp_heap_caps.h"
 #include "esp_rom_uart.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "sdkconfig.h"
 
 #define NIH_INTERNAL_ARENA_BYTES (UINT32_C(64) * UINT32_C(1024))
@@ -15,6 +20,8 @@
 
 static void *s_internal_arena;
 static void *s_psram_arena;
+static async_memcpy_handle_t s_dma;
+static SemaphoreHandle_t s_dma_done;
 
 extern void nihos_zig_main(const struct nih_boot_info *info);
 
@@ -63,18 +70,18 @@ int32_t nih_platform_memory_region(uint32_t kind,
     void **storage;
     uint32_t length;
     uint32_t caps;
-    uint32_t flags = NIH_MEMORY_WRITABLE;
+    uint32_t flags =
+        NIH_MEMORY_WRITABLE | NIH_MEMORY_CACHEABLE | NIH_MEMORY_DMA_DATA;
     switch (kind) {
         case NIH_MEMORY_INTERNAL:
             storage = &s_internal_arena;
             length = NIH_INTERNAL_ARENA_BYTES;
-            caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+            caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT;
             break;
         case NIH_MEMORY_PSRAM:
             storage = &s_psram_arena;
             length = NIH_PSRAM_ARENA_BYTES;
-            caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
-            flags |= NIH_MEMORY_CACHEABLE;
+            caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA | MALLOC_CAP_8BIT;
             break;
         default:
             return NIH_STATUS_UNSUPPORTED;
@@ -124,6 +131,68 @@ int32_t nih_platform_cache_sync(const struct nih_dma_range *range) {
                            flags) == ESP_OK
                ? NIH_STATUS_OK
                : NIH_STATUS_INVALID_ARGUMENT;
+}
+
+static bool dma_copy_done(async_memcpy_handle_t handle,
+                          async_memcpy_event_t *event,
+                          void *argument) {
+    (void)handle;
+    (void)event;
+    BaseType_t task_woken = pdFALSE;
+    xSemaphoreGiveFromISR((SemaphoreHandle_t)argument, &task_woken);
+    return task_woken == pdTRUE;
+}
+
+static int32_t ensure_dma(void) {
+    if (s_dma != NULL) {
+        return NIH_STATUS_OK;
+    }
+
+    s_dma_done = xSemaphoreCreateBinary();
+    if (s_dma_done == NULL) {
+        return NIH_STATUS_NO_MEMORY;
+    }
+
+    const async_memcpy_config_t config = {
+        .backlog = 1,
+        .dma_burst_size = 64,
+        .flags = 0,
+    };
+    if (esp_async_memcpy_install_gdma_axi(&config, &s_dma) != ESP_OK) {
+        vSemaphoreDelete(s_dma_done);
+        s_dma_done = NULL;
+        return NIH_STATUS_IO;
+    }
+    return NIH_STATUS_OK;
+}
+
+int32_t nih_platform_dma_copy(struct nih_dma_copy *copy) {
+    if (copy == NULL || copy->source_address == 0 ||
+        copy->destination_address == 0 || copy->length == 0 ||
+        copy->flags != 0) {
+        return NIH_STATUS_INVALID_ARGUMENT;
+    }
+
+    int32_t status = ensure_dma();
+    if (status != NIH_STATUS_OK) {
+        return status;
+    }
+
+    int64_t started_us = esp_timer_get_time();
+    if (esp_async_memcpy(s_dma,
+                         (void *)(uintptr_t)copy->destination_address,
+                         (void *)(uintptr_t)copy->source_address, copy->length,
+                         dma_copy_done, s_dma_done) != ESP_OK) {
+        return NIH_STATUS_IO;
+    }
+    if (xSemaphoreTake(s_dma_done, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        return NIH_STATUS_IO;
+    }
+
+    int64_t elapsed_us = esp_timer_get_time() - started_us;
+    copy->elapsed_us =
+        elapsed_us > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed_us;
+    return NIH_STATUS_OK;
 }
 
 void app_main(void) {

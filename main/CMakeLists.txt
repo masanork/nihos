@@ -1,7 +1,8 @@
 idf_component_register(
     SRCS "../compat/espidf/platform.c"
     INCLUDE_DIRS "../include"
-    PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm
+    PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm esp_hw_support
+                  esp_timer
 )
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
