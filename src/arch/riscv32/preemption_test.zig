@@ -17,13 +17,7 @@ const timeout_us = 100_000;
 
 pub const Mode = enum { integer, floating };
 
-pub const Selection = struct {
-    frame: *context.IntegerContext,
-    state: context.ReturnState,
-    stack_min: u32,
-    stack_max: u32,
-    floating_context: u32 = 0,
-};
+pub const Selection = context.TaskContext;
 
 pub const Report = struct {
     elapsed_ticks: u64,

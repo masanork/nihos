@@ -20,12 +20,15 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     --dep timer_group \
     --dep scheduler \
     --dep tick_clock \
+    --dep task_control \
     "-Mroot=$repo_root/src/arch/riscv32/native_trap.zig" \
     "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
     "-Mscheduler=$repo_root/src/kernel/scheduler.zig" \
-    "-Mtick_clock=$repo_root/src/kernel/tick_clock.zig"
+    "-Mtick_clock=$repo_root/src/kernel/tick_clock.zig" \
+    "-Mtask_control=$repo_root/src/kernel/task_control.zig"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \
     -I "$repo_root/src/arch/riscv32" \
+    -I "$repo_root/src/kernel" \
     -o "$out_dir/trap_entry.o" \
     "$repo_root/src/arch/riscv32/trap_entry.S"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \

@@ -147,6 +147,13 @@ across native timer preemption in ESP-EMU. The physical IDF FP bank is also
 restored before the bounded window ends. Lazy ownership, native CPU1 FP
 switching, and physical qualification remain separate gates.
 
+ADR 0009 connects live ECALLs to scheduler policy through a reusable RV32
+runtime. Sleep and block preserve a resumable reply, returning from a task
+creates an explicit terminal completion, and only reaping permits slot reuse.
+Generation exhaustion retires slots instead of reviving stale references.
+The emulator scenario includes an idle bootstrap interval while both workers
+sleep. Cross-core lifecycle ownership and application isolation remain open.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a
