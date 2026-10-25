@@ -6,7 +6,7 @@ build_dir="$repo_root/build/native-emulator"
 rm -f "$build_dir/smoke-report.json"
 sh "$repo_root/tools/build-native.sh" emulator
 emulator=$(sh "$repo_root/tools/bootstrap-esp-emu.sh")
-marker=NIHOS_NATIVE_SOAK_PASS
+marker=NIHOS_NATIVE_IPI_IDLE_PASS
 if ! "$emulator" --chip esp32p4 --firmware "$build_dir/nihos-native-flash.bin" \
     --elf "$build_dir/nihos-native.elf" --psram-size 0 --timeout 60s \
     --exit-on "$marker" > "$build_dir/emulator.log" 2>&1; then

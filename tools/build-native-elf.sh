@@ -24,6 +24,7 @@ mkdir -p "$build_dir"
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
     --dep scheduler --dep task_control --dep tick_clock --dep timer_group \
+    --dep remote_events --dep spsc_ring --dep software_ipi --dep park \
     -Mnative_tasks="$repo_root/src/arch/riscv32/native_tasks.zig" \
     -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
     -Mscheduler="$repo_root/src/kernel/scheduler.zig" \
@@ -31,4 +32,12 @@ mkdir -p "$build_dir"
     -Mtask_control="$repo_root/src/kernel/task_control.zig" \
     -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
     -Mtick_clock="$repo_root/src/kernel/tick_clock.zig" \
+    -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
+    -Mremote_events="$repo_root/src/kernel/remote_events.zig" \
+    -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
+    -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
+    -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
+    -Msoftware_ipi="$repo_root/src/soc/esp32p4/software_ipi.zig" \
+    -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
+    -Mpark="$repo_root/src/kernel/park.zig" \
     -femit-bin="$build_dir/nihos-native.elf"

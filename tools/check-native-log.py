@@ -45,6 +45,28 @@ def check(log):
         owners[hart].append(values)
     if any(len(records) != 3 for records in owners):
         raise ValueError("missing per-hart task checkpoints")
+    names = ("sent", "received", "ipis", "delivered", "woken", "rejected",
+             "from_idle", "entries", "returns", "pending_before_wfi", "timer_start", "timer_end", "queued")
+    pattern = r"NIHOS_NATIVE_IPI hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in names)
+    ipi_owners = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in ipi_owners:
+            raise ValueError("invalid/duplicate IPI owner")
+        record = dict(zip(names, values))
+        if (any(record[name] != 64 for name in ("sent", "received", "delivered", "woken")) or
+                record["ipis"] < 64 or record["from_idle"] < 64 or
+                record["returns"] < 64 or record["entries"] < record["returns"] or
+                record["pending_before_wfi"] != 1 or
+                record["rejected"] != 0 or record["queued"] != 0):
+            raise ValueError("incomplete IPI delivery/idle wake")
+        if record["timer_start"] != record["timer_end"]:
+            raise ValueError("periodic timer used during IPI-only idle")
+        ipi_owners[hart] = record
+    if (set(ipi_owners) != {0, 1} or
+            "NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none" not in log):
+        raise ValueError("missing native IPI/idle evidence")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator",
             "rounds": samples[-1][0], "samples": len(samples),
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
@@ -53,7 +75,8 @@ def check(log):
                        "timer_captures": values[-1][2:4], "switches": values[-1][4],
                        "calls": values[-1][5], "reaped": values[-1][6],
                        "sleeps": values[-1][7], "elapsed_ticks": values[-1][8]}
-                      for hart, values in enumerate(owners)]}
+                      for hart, values in enumerate(owners)],
+            "ipi_idle": [{"hart": hart, **ipi_owners[hart]} for hart in (0, 1)]}
 
 
 def main():
@@ -64,7 +87,7 @@ def main():
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
-    print("Native smoke passed: 300 rounds, both harts preempting tasks and completing lifecycle")
+    print("Native smoke passed: 300 rounds, task lifecycle, and 64 IPI-only idle exchanges")
 
 
 if __name__ == "__main__":
