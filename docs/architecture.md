@@ -119,8 +119,10 @@ task handles. A saturating atomic counter hands periodic interrupt ticks to
 safe scheduler context, and the ESP-IDF oracle has delivered those interrupts
 through the stable ABI in ESP-EMU and on a physical Tab5. A Zig Timer Group
 driver now delivers asynchronous interrupts through nihOS's own trap entry in
-ESP-EMU, using the bounded resource lease in ADR 0006. Native physical timer
-qualification, syscall transitions, and physical preemption remain open;
+ESP-EMU, using the bounded resource lease in ADR 0006. ADR 0007 extends this
+with free-running elapsed-time accounting and timer-driven selection of two
+integer-only tasks on separate stacks. Native physical timer qualification,
+syscall transitions, and physical preemption remain open;
 FreeRTOS is still the scheduler executing the bootstrap firmware.
 
 The first native-port contract is now fixed and host-tested: a 128-byte RV32

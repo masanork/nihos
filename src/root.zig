@@ -11,6 +11,7 @@ pub const arena = @import("kernel/arena.zig");
 pub const scheduler = @import("kernel/scheduler.zig");
 pub const spsc_ring = @import("kernel/spsc_ring.zig");
 pub const tick_counter = @import("kernel/tick_counter.zig");
+pub const tick_clock = @import("kernel/tick_clock.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
@@ -22,6 +23,7 @@ test {
     _ = scheduler;
     _ = spsc_ring;
     _ = tick_counter;
+    _ = tick_clock;
     _ = test_pattern;
     _ = platform_abi;
 }

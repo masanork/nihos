@@ -13,6 +13,23 @@ pub const exception_context_size: u32 = 148;
 pub const exception_storage_size: u32 = 160;
 pub const floating_context_size: u32 = 132;
 
+/// Per-task CSR state for mret, separate from the stable integer-frame ABI.
+/// CLIC mcause includes the previous interrupt level and must follow the
+/// selected task rather than the task that happened to enter the trap.
+pub const ReturnState = extern struct {
+    mstatus: u32,
+    mcause: u32,
+
+    pub fn integerOnly(self: ReturnState) ReturnState {
+        const interrupt_enable: u32 = 1 << 3;
+        const floating_state: u32 = 3 << 13;
+        return .{
+            .mstatus = self.mstatus & ~(interrupt_enable | floating_state),
+            .mcause = self.mcause,
+        };
+    }
+};
+
 /// One machine word for `mepc`, followed by the 31 non-zero RV32 integer
 /// registers in architectural ABI order. Assembly may address this structure
 /// directly, so field order and offsets are part of the native port ABI.
@@ -109,6 +126,8 @@ pub fn initialize(frame: *IntegerContext, task: InitialTask) void {
 }
 
 comptime {
+    if (@sizeOf(ReturnState) != 8 or @offsetOf(ReturnState, "mcause") != 4)
+        @compileError("RV32 return-state assembly layout changed");
     if (@sizeOf(IntegerContext) != integer_context_size)
         @compileError("RV32 integer context must be 128 bytes");
     if (@alignOf(IntegerContext) != @alignOf(u32))
@@ -131,6 +150,13 @@ comptime {
     {
         @compileError("RV32 floating-point context offsets changed");
     }
+}
+
+test "integer task return preserves CLIC metadata and mret interrupt state" {
+    const incoming = ReturnState{ .mstatus = 0x7888, .mcause = 0xb835_0014 };
+    const outgoing = incoming.integerOnly();
+    try std.testing.expectEqual(@as(u32, 0x1880), outgoing.mstatus);
+    try std.testing.expectEqual(incoming.mcause, outgoing.mcause);
 }
 
 test "initial task frame is bounded and follows the trampoline ABI" {
