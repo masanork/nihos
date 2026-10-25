@@ -9,6 +9,7 @@ const tick_clock = @import("tick_clock");
 const timer_group = @import("timer_group");
 pub const ipi = @import("native_ipi.zig");
 pub const floating = @import("native_floating.zig");
+pub const memory = @import("native_memory");
 
 const Runtime = runtime_module.Runtime(4, 2);
 const stack_bytes = 4096;
@@ -88,6 +89,7 @@ fn busy(argument: u32) callconv(.c) i32 {
         if (ipi.requested()) return @intCast(100 + argument);
         for (0..8) |index| if (checked[index] != signature) nih_native_task_failed();
         floating.check(hart, worker);
+        memory.probe(argument);
         _ = @atomicRmw(u32, &reports[hart].progress[worker], .Add, 1, .release);
         // No ECALL, yield, sleep, or function with a scheduling side effect.
     }
@@ -127,6 +129,7 @@ fn compiledStop() callconv(.c) u32 {
 }
 
 fn compiledProgress(argument: u32) callconv(.c) void {
+    memory.probe(argument);
     _ = @atomicRmw(u32, &reports[argument / 4].progress[argument % 4], .Add, 1, .release);
 }
 

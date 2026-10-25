@@ -49,7 +49,7 @@ fi
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     --dep scheduler --dep task_control --dep tick_clock --dep timer_group \
-    --dep remote_events --dep spsc_ring --dep software_ipi --dep park --dep native_options --dep fp_vectors \
+    --dep remote_events --dep spsc_ring --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
     -Mnative_tasks="$repo_root/src/arch/riscv32/native_tasks.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mscheduler="$repo_root/src/kernel/scheduler.zig" \
@@ -68,4 +68,8 @@ fi
     -Mnative_options="$build_dir/native_options.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfp_vectors="$repo_root/src/kernel/fp_vectors.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    --dep core_arena -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mcore_arena="$repo_root/src/kernel/core_arena.zig" \
     -femit-bin="$build_dir/nihos-native.elf"

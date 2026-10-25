@@ -105,6 +105,27 @@ def check(log, expected_mode=None):
     if (set(fp_owners) != {0, 1} or
             "NIHOS_NATIVE_FP_PASS floating=" + modes[0] not in log):
         raise ValueError("missing final FP evidence")
+    memory_names = ("start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed")
+    pattern = r"NIHOS_NATIVE_MEMORY hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in memory_names)
+    memory_owners = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in memory_owners:
+            raise ValueError("invalid/duplicate memory owner")
+        record = dict(zip(memory_names, values))
+        if (not 0x4ff00000 <= record["start"] < record["end"] <= 0x4ff20000 or
+                record["start"] % 64 or record["end"] % 64 or
+                record["capacity"] != record["end"] - record["start"] - 128 or
+                record["used"] != 448 or record["used"] + record["free"] != record["capacity"] or
+                min(record["checks0"], record["checks1"]) < 4 or
+                record["rejected"] != 3 or record["confirmed"] != 1):
+            raise ValueError("incomplete memory ownership/guard accounting")
+        memory_owners[hart] = record
+    if set(memory_owners) != {0, 1}:
+        raise ValueError("missing per-hart memory evidence")
+    if memory_owners[0]["end"] > memory_owners[1]["start"]:
+        raise ValueError("overlapping memory owners")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples),
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
@@ -115,7 +136,8 @@ def check(log, expected_mode=None):
                        "sleeps": values[-1][7], "elapsed_ticks": values[-1][8]}
                       for hart, values in enumerate(owners)],
             "ipi_idle": [{"hart": hart, **ipi_owners[hart]} for hart in (0, 1)],
-            "floating": [{"hart": hart, **fp_owners[hart]} for hart in (0, 1)]}
+            "floating": [{"hart": hart, **fp_owners[hart]} for hart in (0, 1)],
+            "memory": [{"hart": hart, **memory_owners[hart]} for hart in (0, 1)]}
 
 
 def main():
@@ -126,7 +148,7 @@ def main():
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
-    print("Native smoke passed (" + report["mode"] + "): 300 rounds, lifecycle, IPI/idle and FP accounting")
+    print("Native smoke passed (" + report["mode"] + "): 300 rounds, lifecycle, IPI/idle, FP and owned SRAM")
 
 
 if __name__ == "__main__":

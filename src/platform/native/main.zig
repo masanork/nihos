@@ -271,11 +271,13 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     nih_rom_set_cpu1_entry(0);
     interruptGuard(1).* = @splat(0x6e69_6972);
     asm volatile ("ecall" ::: .{ .memory = true });
+    if (!tasks.memory.begin()) fail("CPU1 memory begin");
     prepareTasks(1);
     enableTimer(1);
     while (true) {
         if (tasks.ipi.done()) {
             tasks.floating.quiesce(1);
+            if (!tasks.memory.finish()) fail("CPU1 memory finish");
             while (true) asm volatile ("wfi");
         }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
@@ -295,6 +297,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     asm volatile ("ecall" ::: .{ .memory = true });
     if (exceptions[0] != 1) fail("CPU0 exception return");
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
     prepareTasks(0);
     startCpu1();
@@ -343,18 +346,33 @@ export fn nih_native_main() callconv(.c) noreturn {
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
                 tasks.floating.quiesce(0);
+                if (!tasks.memory.finish()) fail("CPU0 memory finish");
                 const started = cycle();
-                while (tasks.floating.report(1).confirmed != 1) {
-                    if (cycle() -% started > 100_000_000) fail("CPU1 FP finish timeout");
+                while (tasks.floating.report(1).confirmed != 1 or tasks.memory.report(1).confirmed != 1) {
+                    if (cycle() -% started > 100_000_000) fail("CPU1 final publication timeout");
                 }
                 ipiReport(0);
                 ipiReport(1);
                 print("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none\n");
                 floatingReport(0);
                 floatingReport(1);
+                memoryReport(0);
+                memoryReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
         }
     }
+}
+
+fn memoryReport(hart: u32) void {
+    const report = tasks.memory.report(hart);
+    if (report.confirmed != 1) fail("memory publication");
+    print("NIHOS_NATIVE_MEMORY hart=");
+    hex(hart);
+    inline for (.{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(report, field));
+    }
+    print("\n");
 }
