@@ -2,7 +2,8 @@ idf_component_register(
     SRCS "../compat/espidf/platform.c"
     INCLUDE_DIRS "../include"
     PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm esp_hw_support
-                  esp_timer esp_lcd esp_lcd_touch m5stack_tab5_noglib
+                  esp_timer esp_driver_gptimer esp_lcd esp_lcd_touch
+                  m5stack_tab5_noglib
 )
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
@@ -12,6 +13,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
     set(NIHOS_ZIG_SPSC "${NIHOS_ROOT}/src/kernel/spsc_ring.zig")
+    set(NIHOS_ZIG_TICK_COUNTER "${NIHOS_ROOT}/src/kernel/tick_counter.zig")
     set(NIHOS_ZIG_PATTERN "${NIHOS_ROOT}/src/graphics/test_pattern.zig")
     set(NIHOS_ZIG_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/libnihos_zig.a")
 
@@ -30,15 +32,18 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             --dep abi
             --dep arena
             --dep spsc_ring
+            --dep tick_counter
             --dep test_pattern
             "-Mroot=${NIHOS_ZIG_SOURCE}"
             "-Mabi=${NIHOS_ZIG_ABI}"
             "-Marena=${NIHOS_ZIG_ARENA}"
             "-Mspsc_ring=${NIHOS_ZIG_SPSC}"
+            "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
             "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
             "-femit-bin=${NIHOS_ZIG_LIBRARY}"
         DEPENDS "${NIHOS_ZIG_SOURCE}" "${NIHOS_ZIG_ABI}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
+                "${NIHOS_ZIG_TICK_COUNTER}"
                 "${NIHOS_ZIG_PATTERN}"
         COMMENT "Building the freestanding nihOS Zig entry"
         VERBATIM

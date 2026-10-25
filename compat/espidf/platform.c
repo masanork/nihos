@@ -7,6 +7,7 @@
 
 #include "bsp/display.h"
 #include "bsp/touch.h"
+#include "driver/gptimer.h"
 #include "esp_async_memcpy.h"
 #include "esp_attr.h"
 #include "esp_chip_info.h"
@@ -44,6 +45,14 @@ static volatile uint32_t s_display_vsync_count;
 static bool s_display_backlight_enabled;
 static esp_lcd_touch_handle_t s_touch;
 static uint32_t s_touch_sequence;
+static gptimer_handle_t s_tick_timer;
+
+struct timer_launch {
+    nih_timer_tick_fn entry;
+    void *argument;
+};
+
+static struct timer_launch s_timer_launch;
 
 struct cpu_launch {
     nih_cpu_entry_fn entry;
@@ -494,6 +503,81 @@ int32_t nih_platform_cpu_start(uint32_t cpu_id,
         atomic_store_explicit(&launch->busy, false, memory_order_release);
         return NIH_STATUS_NO_MEMORY;
     }
+    return NIH_STATUS_OK;
+}
+
+static bool IRAM_ATTR timer_alarm(gptimer_handle_t timer,
+                                  const gptimer_alarm_event_data_t *event,
+                                  void *argument) {
+    (void)timer;
+    (void)event;
+    struct timer_launch *launch = (struct timer_launch *)argument;
+    launch->entry(launch->argument);
+    return false;
+}
+
+int32_t nih_platform_timer_start(uint32_t period_us,
+                                 nih_timer_tick_fn entry,
+                                 void *argument) {
+    if (entry == NULL || period_us < 100 || period_us > 1000000) {
+        return NIH_STATUS_INVALID_ARGUMENT;
+    }
+    if (s_tick_timer != NULL) {
+        return NIH_STATUS_BUSY;
+    }
+
+    const gptimer_config_t timer_config = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 1000000,
+    };
+    if (gptimer_new_timer(&timer_config, &s_tick_timer) != ESP_OK) {
+        s_tick_timer = NULL;
+        return NIH_STATUS_NO_MEMORY;
+    }
+
+    s_timer_launch = (struct timer_launch){
+        .entry = entry,
+        .argument = argument,
+    };
+    const gptimer_event_callbacks_t callbacks = {
+        .on_alarm = timer_alarm,
+    };
+    const gptimer_alarm_config_t alarm = {
+        .alarm_count = period_us,
+        .reload_count = 0,
+        .flags.auto_reload_on_alarm = true,
+    };
+    if (gptimer_register_event_callbacks(s_tick_timer, &callbacks,
+                                         &s_timer_launch) != ESP_OK ||
+        gptimer_set_alarm_action(s_tick_timer, &alarm) != ESP_OK ||
+        gptimer_enable(s_tick_timer) != ESP_OK) {
+        (void)gptimer_del_timer(s_tick_timer);
+        s_tick_timer = NULL;
+        s_timer_launch = (struct timer_launch){0};
+        return NIH_STATUS_IO;
+    }
+    if (gptimer_start(s_tick_timer) != ESP_OK) {
+        (void)gptimer_disable(s_tick_timer);
+        (void)gptimer_del_timer(s_tick_timer);
+        s_tick_timer = NULL;
+        s_timer_launch = (struct timer_launch){0};
+        return NIH_STATUS_IO;
+    }
+    return NIH_STATUS_OK;
+}
+
+int32_t nih_platform_timer_stop(void) {
+    if (s_tick_timer == NULL) {
+        return NIH_STATUS_UNSUPPORTED;
+    }
+    gptimer_handle_t timer = s_tick_timer;
+    if (gptimer_stop(timer) != ESP_OK || gptimer_disable(timer) != ESP_OK ||
+        gptimer_del_timer(timer) != ESP_OK) {
+        return NIH_STATUS_IO;
+    }
+    s_tick_timer = NULL;
+    s_timer_launch = (struct timer_launch){0};
     return NIH_STATUS_OK;
 }
 

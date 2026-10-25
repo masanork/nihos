@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-pub const version: u32 = 4;
+pub const version: u32 = 5;
 
 pub const Status = struct {
     pub const ok: i32 = 0;
