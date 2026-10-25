@@ -53,7 +53,6 @@ boundary and modifications.
 
 ## License
 
-A project-wide source license has not been selected yet. Until a `LICENSE`
-file is added, no permission to copy, modify, or redistribute the repository's
-contents is granted. Third-party components, if introduced, will retain their
-own licenses and notices.
+Original nihos code and documentation are available under the
+[MIT License](LICENSE) unless otherwise noted. Third-party components, if
+introduced, will retain their own licenses and notices.
