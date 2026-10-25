@@ -64,28 +64,58 @@ nih_riscv_trap_entry:
     csrr t0, mepc
     sw t0, NIH_CTX_MEPC(sp)
 
-    /* Callee-saved registers carry return-state CSRs across dispatch. */
+    /* Callee-saved registers carry trap state across guard and dispatch calls. */
     csrr s10, mcause
     csrr s11, mstatus
-    mv a0, sp
-    mv a1, s10
-    csrr a2, mhartid
+    mv s9, sp
+    csrr s8, mhartid
 
     /* Dispatch on a bounded, private stack for this hart. */
     li t0, 2
-    bgeu a2, t0, .Linvalid_context
+    bgeu s8, t0, .Linvalid_context
     la t0, nih_riscv_interrupt_stack_tops
-    slli t1, a2, 2
+    slli t1, s8, 2
     add t0, t0, t1
     lw t0, 0(t0)
     beqz t0, .Linvalid_context
     andi t1, t0, 15
     bnez t1, .Linvalid_context
-    mv sp, t0
+    mv s7, t0
+#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
+    call esp_hw_stack_guard_monitor_stop
+    la a0, nih_riscv_interrupt_stack_bottoms
+    slli t1, s8, 2
+    add a0, a0, t1
+    lw a0, 0(a0)
+    mv a1, s7
+    call esp_hw_stack_guard_set_bounds
+#endif
+    mv sp, s7
+#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
+    call esp_hw_stack_guard_monitor_start
+#endif
+    mv a0, s9
+    mv a1, s10
+    mv a2, s8
     call nih_riscv_trap_dispatch
     beqz a0, .Linvalid_context
 
-    mv sp, a0
+    mv s9, a0
+#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
+    call esp_hw_stack_guard_monitor_stop
+    slli t1, s8, 2
+    la a0, nih_riscv_selected_stack_mins
+    add a0, a0, t1
+    lw a0, 0(a0)
+    la a1, nih_riscv_selected_stack_maxs
+    add a1, a1, t1
+    lw a1, 0(a1)
+    call esp_hw_stack_guard_set_bounds
+#endif
+    mv sp, s9
+#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
+    call esp_hw_stack_guard_monitor_start
+#endif
     csrw mcause, s10
     csrw mstatus, s11
     lw t0, NIH_CTX_MEPC(sp)
@@ -135,9 +165,8 @@ nih_riscv_trap_entry:
     .type nih_riscv_exception_roundtrip, @function
 nih_riscv_exception_roundtrip:
     /*
-     * Preserve ESP-IDF's vector and stack-guard state. MIE is cleared before
-     * either changes, so no maskable interrupt can enter through the
-     * temporary vector or observe a disabled stack monitor.
+     * Preserve ESP-IDF's vector state. MIE is cleared before mtvec changes,
+     * so no maskable interrupt can enter through the temporary vector.
      */
     addi sp, sp, -16
     sw ra, 12(sp)
@@ -146,18 +175,12 @@ nih_riscv_exception_roundtrip:
     csrr s0, mstatus
     sw s0, 0(sp)
     csrci mstatus, 8
-#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
-    call esp_hw_stack_guard_monitor_stop
-#endif
     csrr s1, mtvec
     la t2, nih_riscv_trap_entry
     ori t2, t2, 3
     csrw mtvec, t2
     ecall
     csrw mtvec, s1
-#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
-    call esp_hw_stack_guard_monitor_start
-#endif
     lw t0, 0(sp)
     lw s1, 4(sp)
     lw s0, 8(sp)
