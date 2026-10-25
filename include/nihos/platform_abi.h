@@ -21,8 +21,8 @@ struct nih_boot_info {
     uint32_t abi_version;
     uint32_t chip_revision;
     uint32_t cpu_count;
-    uint32_t internal_ram_bytes;
-    uint32_t psram_bytes;
+    uint32_t internal_heap_bytes;
+    uint32_t psram_heap_bytes;
     uint32_t flash_bytes;
 };
 
@@ -42,6 +42,7 @@ struct nih_dma_range {
 typedef void (*nih_cpu_entry_fn)(void *argument);
 
 int32_t nih_platform_boot_info(struct nih_boot_info *out);
+int32_t nih_platform_console_write(const uint8_t *data, uint32_t length);
 int32_t nih_platform_cache_sync(const struct nih_dma_range *range);
 int32_t nih_platform_cpu_start(uint32_t cpu_id,
                                nih_cpu_entry_fn entry,
