@@ -213,6 +213,14 @@ ACK now establishes that fixture lifetime. See the
 This does not establish CPU1 FP ownership, permanent native boot, or loaded
 game/audio timing.
 
+ADR 0016 extends opt-in eager floating contexts to the CPU1 runtime. Its
+floating service/observer mode preserves the raw IDF bootstrap bank even
+with FS off, verifies each task's full register bank and rounding state, and
+counts timer, IPI, and ECALL transfers. The integer modes retain null FP
+contexts and require zero bank copies. CPU0 remains an integer client in
+this scenario; simultaneous FP workloads on both cores remain a separate
+qualification.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a

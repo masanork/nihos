@@ -1,8 +1,9 @@
 /*
- * RV32F context transfers and a non-returning preemption probe.
+ * RV32F context transfers and task-context probes.
  * Context ABI: a0 points to 32 raw f-register words followed by fcsr.
  * Restore deliberately replaces every FP register; only assembly calls it.
  */
+#include "task_call_numbers.inc"
     .section .iram1.nih_riscv_fpu, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_save
@@ -107,6 +108,154 @@ nih_riscv_fpu_snapshot:
     csrw mstatus, t0
     ret
     .size nih_riscv_fpu_snapshot, .-nih_riscv_fpu_snapshot
+
+    /*
+     * Check the active bank against FloatingProbe without changing any FP
+     * state or callee-saved integer registers. Layout: pattern, expected
+     * fcsr, iterations, failed, stack_address.
+     */
+    .balign 4
+    .global nih_riscv_fpu_task_check
+    .type nih_riscv_fpu_task_check, @function
+nih_riscv_fpu_task_check:
+    lw t2, 0(a0)
+.macro NIH_CHECK_FREG reg, index
+    fmv.x.w t0, \reg
+    addi t1, t2, \index
+    bne t0, t1, .Ltask_check_failed
+.endm
+    NIH_CHECK_FREG f0, 0
+    NIH_CHECK_FREG f1, 1
+    NIH_CHECK_FREG f2, 2
+    NIH_CHECK_FREG f3, 3
+    NIH_CHECK_FREG f4, 4
+    NIH_CHECK_FREG f5, 5
+    NIH_CHECK_FREG f6, 6
+    NIH_CHECK_FREG f7, 7
+    NIH_CHECK_FREG f8, 8
+    NIH_CHECK_FREG f9, 9
+    NIH_CHECK_FREG f10, 10
+    NIH_CHECK_FREG f11, 11
+    NIH_CHECK_FREG f12, 12
+    NIH_CHECK_FREG f13, 13
+    NIH_CHECK_FREG f14, 14
+    NIH_CHECK_FREG f15, 15
+    NIH_CHECK_FREG f16, 16
+    NIH_CHECK_FREG f17, 17
+    NIH_CHECK_FREG f18, 18
+    NIH_CHECK_FREG f19, 19
+    NIH_CHECK_FREG f20, 20
+    NIH_CHECK_FREG f21, 21
+    NIH_CHECK_FREG f22, 22
+    NIH_CHECK_FREG f23, 23
+    NIH_CHECK_FREG f24, 24
+    NIH_CHECK_FREG f25, 25
+    NIH_CHECK_FREG f26, 26
+    NIH_CHECK_FREG f27, 27
+    NIH_CHECK_FREG f28, 28
+    NIH_CHECK_FREG f29, 29
+    NIH_CHECK_FREG f30, 30
+.purgem NIH_CHECK_FREG
+    fmv.x.w t0, f31
+    li t1, 0x00800000
+    add t1, t2, t1
+    bne t0, t1, .Ltask_check_failed
+    csrr t0, fcsr
+    lw t1, 4(a0)
+    bne t0, t1, .Ltask_check_failed
+    lw t0, 8(a0)
+    addi t0, t0, 1
+    sw t0, 8(a0)
+    li a0, 1
+    ret
+.Ltask_check_failed:
+    li t0, 1
+    sw t0, 12(a0)
+    li a0, 0
+    ret
+    .size nih_riscv_fpu_task_check, .-nih_riscv_fpu_task_check
+
+    /*
+     * C ABI: (FloatingProbe *probe, int (*entry)(u32), u32 argument).
+     * This task entry owns the entire FP bank and is never called as a normal
+     * returning C function. Its callback must be explicitly integer-only;
+     * the task's bank remains live across callback ECALLs and preemption.
+     */
+    .balign 4
+    .global nih_riscv_fpu_task_probe
+    .type nih_riscv_fpu_task_probe, @function
+nih_riscv_fpu_task_probe:
+    addi sp, sp, -32
+    sw s0, 0(sp)
+    sw s1, 4(sp)
+    sw s2, 8(sp)
+    sw s3, 12(sp)
+    sw s4, 16(sp)
+    sw s5, 20(sp)
+    sw ra, 24(sp)
+    mv s0, a0
+    mv s1, a1
+    mv s2, a2
+    lw s3, 0(s0)
+    lw s4, 4(s0)
+
+    /* Match the CPU0 probe: unique raw words plus inexact f31 arithmetic. */
+    andi t0, s4, -32
+    csrw fcsr, t0
+.macro NIH_SEED_FREG reg, index
+    addi t0, s3, \index
+    fmv.w.x \reg, t0
+.endm
+    NIH_SEED_FREG f0, 0
+    NIH_SEED_FREG f1, 1
+    NIH_SEED_FREG f2, 2
+    NIH_SEED_FREG f3, 3
+    NIH_SEED_FREG f4, 4
+    NIH_SEED_FREG f5, 5
+    NIH_SEED_FREG f6, 6
+    NIH_SEED_FREG f7, 7
+    NIH_SEED_FREG f8, 8
+    NIH_SEED_FREG f9, 9
+    NIH_SEED_FREG f10, 10
+    NIH_SEED_FREG f11, 11
+    NIH_SEED_FREG f12, 12
+    NIH_SEED_FREG f13, 13
+    NIH_SEED_FREG f14, 14
+    NIH_SEED_FREG f15, 15
+    NIH_SEED_FREG f16, 16
+    NIH_SEED_FREG f17, 17
+    NIH_SEED_FREG f18, 18
+    NIH_SEED_FREG f19, 19
+    NIH_SEED_FREG f20, 20
+    NIH_SEED_FREG f21, 21
+    NIH_SEED_FREG f22, 22
+    NIH_SEED_FREG f23, 23
+    NIH_SEED_FREG f24, 24
+    NIH_SEED_FREG f25, 25
+    NIH_SEED_FREG f26, 26
+    NIH_SEED_FREG f27, 27
+    NIH_SEED_FREG f28, 28
+    NIH_SEED_FREG f29, 29
+    NIH_SEED_FREG f30, 30
+.purgem NIH_SEED_FREG
+    fadd.s f31, f0, f1, dyn
+
+    mv a0, s2
+    jalr ra, s1, 0
+    mv s5, a0
+    mv a0, s0
+    call nih_riscv_fpu_task_check
+    bnez a0, .Ltask_probe_exit
+    li a0, -193
+    j .Ltask_probe_ecall_exit
+.Ltask_probe_exit:
+    mv a0, s5
+.Ltask_probe_ecall_exit:
+    li a7, NIH_TASK_EXIT
+    li a1, 0
+    ecall
+    j .Ltask_probe_ecall_exit
+    .size nih_riscv_fpu_task_probe, .-nih_riscv_fpu_task_probe
 
     /*
      * Raw task-test ABI, never returns. a0 points to FloatingProbe:

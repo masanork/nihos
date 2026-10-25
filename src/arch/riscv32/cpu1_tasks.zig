@@ -17,12 +17,14 @@ const stack_bytes = 4096;
 const period_us: u32 = 1000;
 const delayed_first_us: u64 = 3500;
 const probe_sleep_ticks: u32 = 5;
+pub const Mode = enum { integer, floating };
 pub const Hooks = struct { work: *const fn () bool };
 pub const Report = struct {
     syscalls: u32,
     selections: u32,
     switches: u32,
     ipi_task_captures: u32,
+    ipi_interrupts: u32,
     observer_rounds: u32,
     delivered: u32,
     rejected: u32,
@@ -38,6 +40,15 @@ pub const Report = struct {
     sleep_resumed: u64,
     probe_iterations: u32,
     probe_timer_wake: bool,
+    floating_saves: u32,
+    floating_restores: u32,
+    floating_checks: [2]u32,
+    floating_timer_captures: [2]u32,
+    floating_ipi_captures: [2]u32,
+    floating_calls: [2]u32,
+    floating_boundary_restored: bool,
+    floating_initial_fs: u32,
+    floating_final_fs: u32,
 };
 
 var runtime: Runtime = .{};
@@ -70,6 +81,29 @@ var sleep_resumed: u64 = 0;
 var probe_complete = std.atomic.Value(bool).init(false);
 var probe_iterations = std.atomic.Value(u32).init(0);
 var probe_timer_wake = false;
+var mode: Mode = .integer;
+var bootstrap_floating = std.mem.zeroes(context.FloatingContext);
+var floating_states: [2]context.FloatingContext = @splat(std.mem.zeroes(context.FloatingContext));
+var floating_probes: [2]context.FloatingProbe = @splat(.{ .pattern = 0, .expected_fcsr = 0 });
+var boundary_before = std.mem.zeroes(context.FloatingContext);
+var boundary_after = std.mem.zeroes(context.FloatingContext);
+var boundary_fs: u32 = 0;
+var boundary_final_fs: u32 = 0;
+var boundary_restored = false;
+var ipi_interrupts: u32 = 0;
+var floating_timer_captures: [2]u32 = @splat(0);
+var floating_ipi_captures: [2]u32 = @splat(0);
+var floating_calls: [2]u32 = @splat(0);
+var floating_ipi_ready = std.atomic.Value(bool).init(false);
+var floating_ipi_seen = std.atomic.Value(bool).init(false);
+
+extern var nih_riscv_current_floating_states: [2]u32;
+extern var nih_riscv_selected_floating_states: [2]u32;
+extern var nih_riscv_floating_saves: [2]u32;
+extern var nih_riscv_floating_restores: [2]u32;
+extern fn nih_riscv_fpu_snapshot(out: *context.FloatingContext) callconv(.c) void;
+extern fn nih_riscv_fpu_task_probe(probe: *context.FloatingProbe, entry: *const fn (u32) callconv(.c) i32, argument: u32) callconv(.c) noreturn;
+extern fn nih_riscv_fpu_task_check(probe: *context.FloatingProbe) callconv(.c) u32;
 
 extern fn nih_platform_cpu_id() callconv(.c) u32;
 extern fn nih_platform_monotonic_us() callconv(.c) u64;
@@ -79,11 +113,18 @@ fn fail(code: i32) noreturn {
     calls.exit(code);
 }
 
-fn wait(mask: u32) u32 {
-    return switch (calls.waitEvents(mask)) {
+fn checkFloating(index: usize) void {
+    if (mode == .floating and nih_riscv_fpu_task_check(&floating_probes[index]) != 1) fail(-194);
+}
+
+fn wait(index: usize, mask: u32) u32 {
+    checkFloating(index);
+    const bits = switch (calls.waitEvents(mask)) {
         .received => |bits| bits,
         .failed => fail(-180),
     };
+    checkFloating(index);
+    return bits;
 }
 
 fn check(canary: *volatile [4]u32, expected: u32) void {
@@ -96,23 +137,27 @@ fn service(_: u32) callconv(.c) i32 {
     addresses[0].store(@intCast(@intFromPtr(&canary)), .monotonic);
     const me = calls.current() orelse fail(-182);
     if (nih_platform_cpu_id() != 1 or control.encodeHandle(me) != control.encodeHandle(handles[0])) fail(-183);
+    checkFloating(0);
     if (device != null) {
         if (!probe_complete.load(.acquire)) {
             if (calls.sleep(probe_sleep_ticks) != calls.Status.ok) fail(-184);
             sleep_resumed = calls.nowTicks();
+            checkFloating(0);
             if (sleep_resumed < sleep_deadline or probe_iterations.load(.monotonic) == 0) fail(-192);
             check(checked, 0x6331_7376);
             probe_complete.store(true, .release);
         }
     } else if (calls.sleep(1) != calls.Status.not_supported) fail(-184);
     while (true) {
-        if (wait(request_bit | stop_bit) & stop_bit != 0) break;
+        if (wait(0, request_bit | stop_bit) & stop_bit != 0) break;
         const peer = calls.Handle{ .slot = handles[1].slot, .generation = handles[1].generation };
         if (calls.notify(peer, observer_bit) != calls.Status.ok) fail(-185);
-        if (wait(acknowledgement_bit | stop_bit) & stop_bit != 0) break;
+        checkFloating(0);
+        if (wait(0, acknowledgement_bit | stop_bit) & stop_bit != 0) break;
         if (!(hooks orelse fail(-186)).work()) fail(-187);
         check(checked, 0x6331_7376);
         if (calls.yieldNow() != calls.Status.ok) fail(-188);
+        checkFloating(0);
     }
     check(checked, 0x6331_7376);
     return 83;
@@ -124,30 +169,48 @@ fn observer(_: u32) callconv(.c) i32 {
     addresses[1].store(@intCast(@intFromPtr(&canary)), .monotonic);
     const me = calls.current() orelse fail(-189);
     if (nih_platform_cpu_id() != 1 or control.encodeHandle(me) != control.encodeHandle(handles[1])) fail(-190);
+    checkFloating(1);
     if (device != null) {
         // No ECALL, yield, or clock query in this loop. Only CPU1 timer
         // preemption can make the sleeping service run at its deadline.
         var count: u32 = 0;
-        while (!probe_complete.load(.acquire)) {
+        floating_ipi_ready.store(mode == .floating, .release);
+        while (!probe_complete.load(.acquire) or (mode == .floating and !floating_ipi_seen.load(.acquire))) {
             count +%= 1;
             probe_iterations.store(count, .monotonic);
-            if (count & 255 == 0) check(checked, 0x6331_6f62);
+            if (count & 255 == 0) {
+                check(checked, 0x6331_6f62);
+                checkFloating(1);
+            }
         }
         check(checked, 0x6331_6f62);
     }
     while (true) {
-        if (wait(observer_bit | stop_bit) & stop_bit != 0) break;
+        if (wait(1, observer_bit | stop_bit) & stop_bit != 0) break;
         _ = observer_rounds.fetchAdd(1, .monotonic);
         const peer = calls.Handle{ .slot = handles[0].slot, .generation = handles[0].generation };
         if (calls.notify(peer, acknowledgement_bit) != calls.Status.ok) fail(-191);
+        checkFloating(1);
         check(checked, 0x6331_6f62);
     }
     check(checked, 0x6331_6f62);
     return 89;
 }
 
+fn floatingService(argument: u32) callconv(.c) i32 {
+    nih_riscv_fpu_task_probe(&floating_probes[0], &service, argument);
+}
+
+fn floatingObserver(argument: u32) callconv(.c) i32 {
+    nih_riscv_fpu_task_probe(&floating_probes[1], &observer, argument);
+}
+
+pub fn floatingProbeReady() bool {
+    return floating_ipi_ready.load(.acquire);
+}
+
 /// Called on CPU1, before installing its native vector or publishing ready.
-pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, callbacks: Hooks, timer: ?timer_group.Timer) bool {
+pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, callbacks: Hooks, timer: ?timer_group.Timer, selected_mode: Mode) bool {
     runtime = .{ .call_options = .{ .sleep_enabled = timer != null } };
     hooks = callbacks;
     launched = false;
@@ -163,6 +226,17 @@ pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, ca
     exited = @splat(false);
     final_report = null;
     device = timer;
+    mode = selected_mode;
+    if (mode == .floating and timer == null) return false;
+    floating_timer_captures = @splat(0);
+    floating_ipi_captures = @splat(0);
+    floating_calls = @splat(0);
+    ipi_interrupts = 0;
+    boundary_restored = false;
+    boundary_fs = 0;
+    boundary_final_fs = 0;
+    floating_ipi_ready.store(false, .monotonic);
+    floating_ipi_seen.store(false, .monotonic);
     clock = tick_clock.TickClock.init(period_us).?;
     timer_interrupts = 0;
     timer_task_captures = 0;
@@ -173,11 +247,19 @@ pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, ca
     probe_complete.store(false, .monotonic);
     probe_iterations.store(0, .monotonic);
     probe_timer_wake = false;
-    bootstrap = runtime.add(1, .{ .stack_min = minimum, .stack_max = maximum }) orelse return false;
+    bootstrap = runtime.add(1, .{ .stack_min = minimum, .stack_max = maximum, .floating_context = if (mode == .floating) @intCast(@intFromPtr(&bootstrap_floating)) else 0 }) orelse return false;
     last_slot = bootstrap.slot;
     _ = runtime.policy.schedule() orelse return false;
-    const entries = [_]*const fn (u32) callconv(.c) i32{ &service, &observer };
+    const entries = if (mode == .floating)
+        [_]*const fn (u32) callconv(.c) i32{ &floatingService, &floatingObserver }
+    else
+        [_]*const fn (u32) callconv(.c) i32{ &service, &observer };
     for (&stacks, entries, 0..) |*stack, entry, index| {
+        floating_states[index] = std.mem.zeroes(context.FloatingContext);
+        floating_probes[index] = .{
+            .pattern = 0x3fa0_0000 + @as(u32, @intCast(index)) * 0x1000,
+            .expected_fcsr = 1 + @as(u32, @intCast(index)) * 32,
+        };
         addresses[index].store(0, .monotonic);
         const bottom: u32 = @intCast(@intFromPtr(stack));
         const address = context.initialTaskFrameAddress(bottom, stack_bytes) orelse return false;
@@ -189,9 +271,52 @@ pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, ca
             .global_pointer = gp,
             .thread_pointer = tp,
         });
-        handles[index] = runtime.add(0, .{ .frame = frame, .stack_min = bottom, .stack_max = bottom + stack_bytes }) orelse return false;
+        handles[index] = runtime.add(0, .{
+            .frame = frame,
+            .stack_min = bottom,
+            .stack_max = bottom + stack_bytes,
+            .floating_context = if (mode == .floating) @intCast(@intFromPtr(&floating_states[index])) else 0,
+        }) orelse return false;
     }
     return if (timer) |value| value.configureOneShot(period_us) else true;
+}
+
+/// MIE is clear and all other CPU1 sources are masked. Preserve the IDF lazy
+/// owner's physical bank even if its FS status is Off; do not edit its TCB.
+pub fn beginWindow() void {
+    nih_riscv_floating_saves[1] = 0;
+    nih_riscv_floating_restores[1] = 0;
+    nih_riscv_current_floating_states[1] = if (mode == .floating) @intCast(@intFromPtr(&bootstrap_floating)) else 0;
+    nih_riscv_selected_floating_states[1] = nih_riscv_current_floating_states[1];
+    if (mode == .floating) {
+        boundary_fs = asm volatile ("csrr %[value], mstatus"
+            : [value] "=r" (-> u32),
+        ) & 0x6000;
+        nih_riscv_fpu_snapshot(&boundary_before);
+    }
+}
+
+/// Runs on the restored bootstrap with MIE clear, before returning to IDF's
+/// vector. A normal final selection must already have restored its FP bank.
+pub fn finishWindow() bool {
+    stopTimer();
+    const saves = nih_riscv_floating_saves[1];
+    const restores = nih_riscv_floating_restores[1];
+    if (mode == .floating) {
+        const after_fs = asm volatile ("csrr %[value], mstatus"
+            : [value] "=r" (-> u32),
+        ) & 0x6000;
+        boundary_final_fs = after_fs;
+        nih_riscv_fpu_snapshot(&boundary_after);
+        boundary_restored = nih_riscv_current_floating_states[1] == @intFromPtr(&bootstrap_floating) and
+            after_fs == boundary_fs and std.mem.eql(u8, std.mem.asBytes(&boundary_before), std.mem.asBytes(&boundary_after)) and
+            saves == restores and saves == calls_count + timer_interrupts + ipi_interrupts;
+    } else {
+        boundary_restored = saves == 0 and restores == 0 and nih_riscv_current_floating_states[1] == 0;
+    }
+    nih_riscv_current_floating_states[1] = 0;
+    nih_riscv_selected_floating_states[1] = 0;
+    return boundary_restored;
 }
 
 /// Runs after vector installation with MIE clear. The initial 1ms alarm is
@@ -233,13 +358,17 @@ fn refreshClock() bool {
 
 fn seed(state: context.ReturnState) void {
     if (!launched) {
-        for (handles) |handle| runtime.images[handle.slot].?.state = state.integerOnly();
+        for (handles) |handle| runtime.images[handle.slot].?.state = if (mode == .floating) state.floatingReady() else state.integerOnly();
         launched = true;
     }
 }
 
 pub fn onTimer(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
     if (!runtime.capture(frame, state)) return null;
+    const current = runtime.policy.current() orelse return null;
+    if (mode == .floating) for (handles, 0..) |handle, index| {
+        if (current.slot == handle.slot) floating_timer_captures[index] += 1;
+    };
     if ((runtime.policy.current() orelse return null).slot != bootstrap.slot) timer_task_captures += 1;
     if (!(device orelse return null).clearPending()) return null;
     timer_interrupts += 1;
@@ -274,6 +403,14 @@ fn selected(value: context.TaskContext) ?context.TaskContext {
 
 pub fn onIpi(frame: *context.IntegerContext, state: context.ReturnState, inbox: anytype, doorbell: anytype, stopping: bool) ?context.TaskContext {
     if (!runtime.capture(frame, state)) return null;
+    ipi_interrupts += 1;
+    const current = runtime.policy.current() orelse return null;
+    if (mode == .floating) for (handles, 0..) |handle, index| {
+        if (current.slot == handle.slot) {
+            floating_ipi_captures[index] += 1;
+            if (index == 1 and floating_ipi_ready.load(.acquire)) floating_ipi_seen.store(true, .release);
+        }
+    };
     if ((runtime.policy.current() orelse return null).slot != bootstrap.slot) ipi_task_captures += 1;
     seed(state);
     const drained = inbox.drain(&runtime.policy, 4, doorbell);
@@ -283,6 +420,7 @@ pub fn onIpi(frame: *context.IntegerContext, state: context.ReturnState, inbox: 
         // Release this fixture's non-yielding gate even on a failed timer,
         // and don't depend on that failed clock to wake an aborted sleeper.
         probe_complete.store(true, .release);
+        floating_ipi_seen.store(true, .release);
         for (handles) |handle| {
             _ = runtime.policy.notify(handle, stop_bit);
             _ = runtime.policy.wake(handle);
@@ -294,6 +432,9 @@ pub fn onIpi(frame: *context.IntegerContext, state: context.ReturnState, inbox: 
 pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
     calls_count += 1;
     const caller = runtime.policy.current() orelse return null;
+    if (mode == .floating) for (handles, 0..) |handle, index| {
+        if (caller.slot == handle.slot) floating_calls[index] += 1;
+    };
     const number = control.Number.decode(frame.a7);
     const selection = runtime.call(frame, state) orelse return null;
     if (number == .sleep and device != null and caller.slot == handles[0].slot) {
@@ -316,7 +457,13 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
 /// On CPU1 after its native vector has returned to IDF; no native task can
 /// still own these stacks. CPU0 may read the result only after joining.
 pub fn finalize() bool {
-    if (!finished.load(.acquire) or failed.load(.acquire)) return false;
+    if (!finished.load(.acquire) or failed.load(.acquire) or !boundary_restored) return false;
+    if (mode == .floating) {
+        if (floating_timer_captures[1] == 0 or floating_ipi_captures[1] == 0) return false;
+        for (floating_probes, floating_calls) |probe, count| {
+            if (probe.failed != 0 or probe.iterations == 0 or count == 0) return false;
+        }
+    }
     var total_runtime = (runtime.policy.snapshot(bootstrap) orelse return false).runtime_ticks;
     for (handles) |handle| total_runtime = std.math.add(u64, total_runtime, (runtime.policy.snapshot(handle) orelse return false).runtime_ticks) catch return false;
     if (total_runtime != runtime.policy.now()) return false;
@@ -343,6 +490,7 @@ pub fn finalize() bool {
         .selections = selections,
         .switches = switches,
         .ipi_task_captures = ipi_task_captures,
+        .ipi_interrupts = ipi_interrupts,
         .observer_rounds = observer_rounds.load(.monotonic),
         .delivered = delivered,
         .rejected = rejected,
@@ -358,6 +506,15 @@ pub fn finalize() bool {
         .sleep_resumed = sleep_resumed,
         .probe_iterations = probe_iterations.load(.monotonic),
         .probe_timer_wake = probe_timer_wake,
+        .floating_saves = nih_riscv_floating_saves[1],
+        .floating_restores = nih_riscv_floating_restores[1],
+        .floating_checks = .{ floating_probes[0].iterations, floating_probes[1].iterations },
+        .floating_timer_captures = floating_timer_captures,
+        .floating_ipi_captures = floating_ipi_captures,
+        .floating_calls = floating_calls,
+        .floating_boundary_restored = boundary_restored,
+        .floating_initial_fs = boundary_fs >> 13,
+        .floating_final_fs = boundary_final_fs >> 13,
     };
     return true;
 }

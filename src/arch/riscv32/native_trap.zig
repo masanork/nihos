@@ -242,6 +242,10 @@ pub fn exerciseNativeCpu1Preemption() ?lifecycle.Report {
     return exerciseLifecycle(.cpu1_preemption);
 }
 
+pub fn exerciseNativeCpu1Floating() ?lifecycle.Report {
+    return exerciseLifecycle(.cpu1_floating);
+}
+
 fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
     var borrowed = false;
@@ -250,7 +254,7 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         if (borrowed) _ = nih_espidf_native_ipi_release();
     }
     var doorbell: ?Doorbell = null;
-    if (mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption) {
+    if (mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) {
         var lease = std.mem.zeroes(IpiLease);
         if (nih_espidf_native_ipi_acquire(&lease) != 0) {
             _ = finishTimer(false);
@@ -278,8 +282,8 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         borrowed = false;
         if (!released) return null;
     }
-    if (!restored or ((mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption) and !remote.verifyHostScheduler()) or
-        ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption) and !duplex.verifyHostScheduler())) return null;
+    if (!restored or ((mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) and !remote.verifyHostScheduler()) or
+        ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) and !duplex.verifyHostScheduler())) return null;
     return lifecycle.report();
 }
 
@@ -359,7 +363,7 @@ export fn nih_riscv_trap_dispatch(
         nih_riscv_selected_stack_mins[1] = selected.stack_min;
         nih_riscv_selected_stack_maxs[1] = selected.stack_max;
         nih_riscv_selected_return_states[1] = selected.state.returningFrom(return_state);
-        nih_riscv_selected_floating_states[1] = 0;
+        nih_riscv_selected_floating_states[1] = selected.floating_context;
         return selected.frame;
     }
     if (switch_state == .lifecycle) {
