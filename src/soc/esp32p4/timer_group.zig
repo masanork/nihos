@@ -114,6 +114,13 @@ pub const Timer = struct {
         self.channel.config = self.channel.config & ~(counter_enable | alarm_enable);
         self.interrupt_clear.* = self.event_mask;
     }
+
+    /// Keep the free-running counter available for elapsed-time accounting,
+    /// but remove this channel's alarm as a source of wakeups.
+    pub fn disarm(self: Timer) void {
+        self.channel.config = self.channel.config & ~alarm_enable;
+        self.interrupt_clear.* = self.event_mask;
+    }
 };
 
 comptime {
@@ -173,6 +180,10 @@ test "periodic timer preserves its divider and acknowledges only its own event" 
     clear = 0;
     try std.testing.expect(!timer.acknowledge());
     try std.testing.expectEqual(@as(u32, 0), clear);
+    channel.config |= alarm_enable;
+    timer.disarm();
+    try std.testing.expectEqual(divider | count_up | auto_reload | counter_enable, channel.config);
+    try std.testing.expectEqual(@as(u32, 0b10), clear);
     timer.stop();
     try std.testing.expectEqual(@as(u32, 0b10), clear);
     try std.testing.expectEqual(divider | count_up | auto_reload, channel.config);

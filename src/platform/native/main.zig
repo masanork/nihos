@@ -113,6 +113,9 @@ fn enableTimer(hart: u32) void {
     for (0..136) |source| reg(matrix + source * 4).* = 0;
     reg(matrix + (46 + hart) * 4).* = 16;
     reg(0x20801040).* = (0x3f << 24) | (1 << 8);
+    tasks.ipi.bell(hart).acknowledge();
+    reg(matrix + (79 + hart) * 4).* = 17;
+    reg(0x20801044).* = (0x3f << 24) | (1 << 8);
     timer(hart).start();
     asm volatile ("fence rw, rw" ::: .{ .memory = true });
     asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
@@ -128,7 +131,10 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         else if (cause & 0x8000_0fff == 0x8000_0010 and timer(hart).clearPending()) timer_path: {
             _ = @atomicRmw(u32, &ticks[hart], .Add, 1, .release);
             break :timer_path tasks.onTimer(hart, frame, state, timer(hart));
-        } else null;
+        } else if (cause & 0x8000_0fff == 0x8000_0011)
+            tasks.onIpi(hart, frame, state, timer(hart))
+        else
+            null;
         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
         nih_native_return_states[hart] = next.state.integerOnly().returningFrom(state);
         return next.frame;
@@ -211,6 +217,23 @@ fn taskReport(hart: u32) void {
     print("\n");
 }
 
+fn ipiReport(hart: u32) void {
+    const report = tasks.ipi.report(hart);
+    if (!report.finished or report.sent != 64 or report.received != 64 or
+        report.delivered != 64 or report.woken != 64 or report.rejected != 0 or
+        report.from_idle < 64 or report.entries < 64 or report.returns < 64 or
+        report.pending_before_wfi != 1 or
+        report.timer_start != report.timer_end or report.queued != 0)
+        fail("IPI/idle proof");
+    print("NIHOS_NATIVE_IPI hart=");
+    hex(hart);
+    inline for (.{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "timer_start", "timer_end", "queued" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(report, field));
+    }
+    print("\n");
+}
+
 export fn nih_native_cpu1_main() callconv(.c) noreturn {
     nih_rom_set_cpu1_entry(0);
     interruptGuard(1).* = @splat(0x6e69_6972);
@@ -218,7 +241,9 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     prepareTasks(1);
     enableTimer(1);
     while (true) {
+        if (tasks.ipi.done()) while (true) asm volatile ("wfi");
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
+        tasks.idleOnce(1);
     }
 }
 
@@ -275,7 +300,15 @@ export fn nih_native_main() callconv(.c) noreturn {
                 previous_ticks[hart] = count;
             }
             print("NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none\n");
-            if (rounds == 300) print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
+            if (rounds == 300) {
+                print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
+                tasks.ipi.request();
+                while (!tasks.ipi.done()) tasks.idleOnce(0);
+                ipiReport(0);
+                ipiReport(1);
+                print("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none\n");
+                while (true) asm volatile ("wfi");
+            }
         }
     }
 }

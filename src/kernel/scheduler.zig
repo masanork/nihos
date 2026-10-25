@@ -85,6 +85,16 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             return true;
         }
 
+        /// Owner-only. A priority change takes effect at the next decision;
+        /// it neither wakes a blocked task nor changes the current selection.
+        pub fn setPriority(self: *Self, handle: TaskHandle, priority: u8) bool {
+            if (priority >= priority_levels) return false;
+            const slot = self.resolve(handle) orelse return false;
+            if (self.tasks[slot].state == .exited) return false;
+            self.tasks[slot].priority = priority;
+            return true;
+        }
+
         /// Exit keeps a completion record until the owner explicitly reaps
         /// the task. A terminated task cannot be woken or selected again.
         pub fn exitCurrent(self: *Self, code: i32) ?TaskHandle {
@@ -387,6 +397,25 @@ test "same-priority tasks run round robin" {
     try std.testing.expectEqual(third, scheduler.schedule().?);
     try std.testing.expectEqual(@as(u64, 3), scheduler.snapshot(first).?.runtime_ticks);
     try std.testing.expectEqual(@as(u64, 2), scheduler.snapshot(second).?.runtime_ticks);
+}
+
+test "priority changes preserve waits and current selection and reject stale or exited tasks" {
+    var policy = Scheduler(2, 2){};
+    const first = policy.add(0).?;
+    const second = policy.add(0).?;
+    try std.testing.expectEqual(first, policy.schedule().?);
+    try std.testing.expect(policy.setPriority(first, 1));
+    try std.testing.expectEqual(first, policy.current().?);
+    try std.testing.expectEqual(second, policy.schedule().?);
+    try std.testing.expect(policy.block(first));
+    try std.testing.expect(policy.setPriority(first, 0));
+    try std.testing.expectEqual(TaskState.blocked, policy.snapshot(first).?.state);
+    _ = policy.exitCurrent(0).?;
+    try std.testing.expect(!policy.setPriority(second, 0));
+    try std.testing.expect(!policy.setPriority(first, 2));
+    try std.testing.expect(policy.remove(first));
+    _ = policy.add(1).?;
+    try std.testing.expect(!policy.setPriority(first, 0));
 }
 
 test "higher-priority ready task preempts on the next decision" {

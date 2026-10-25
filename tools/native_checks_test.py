@@ -23,6 +23,13 @@ def complete_log():
                                  hart, count * 1000, count * 2, count * 6))
             lines.append("NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none")
     lines.append("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none")
+    for hart in range(2):
+        lines.append("NIHOS_NATIVE_IPI hart={0:08x} sent=00000040 received=00000040 "
+                     "ipis=00000041 delivered=00000040 woken=00000040 rejected=00000000 "
+                     "from_idle=00000040 entries=00000041 returns=00000041 "
+                     "pending_before_wfi=00000001 "
+                     "timer_start=00000708 timer_end=00000708 queued=00000000".format(hart))
+    lines.append("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none")
     return "\n".join(lines)
 
 
@@ -75,6 +82,31 @@ class NativeLogTests(unittest.TestCase):
         for field in ("reaped", "sleeps"):
             with self.subTest(field=field), self.assertRaisesRegex(ValueError, "lifecycle"):
                 MODULE.check(complete_log().replace(field + "=00000002", field + "=00000001"))
+
+    def test_scheduler_only_run_does_not_qualify_ipi(self):
+        log = "\n".join(line for line in complete_log().splitlines() if "NIHOS_NATIVE_IPI" not in line)
+        with self.assertRaisesRegex(ValueError, "IPI/idle evidence"):
+            MODULE.check(log)
+
+    def test_timer_fallback_does_not_qualify_idle_wake(self):
+        with self.assertRaisesRegex(ValueError, "periodic timer"):
+            MODULE.check(complete_log().replace("timer_end=00000708", "timer_end=00000709"))
+
+    def test_missing_idle_wake_or_delivery_is_rejected(self):
+        for field in ("sent", "received", "delivered", "woken", "from_idle", "returns"):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "IPI delivery/idle"):
+                MODULE.check(complete_log().replace(field + "=00000040", field + "=00000001")
+                             .replace(field + "=00000041", field + "=00000001"))
+
+    def test_duplicate_ipi_owner_and_undrained_inbox_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, "duplicate IPI"):
+            MODULE.check(complete_log().replace("NIHOS_NATIVE_IPI hart=00000001", "NIHOS_NATIVE_IPI hart=00000000"))
+        with self.assertRaisesRegex(ValueError, "IPI delivery/idle"):
+            MODULE.check(complete_log().replace("queued=00000000", "queued=00000001"))
+
+    def test_missing_pending_before_wfi_probe_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "IPI delivery/idle"):
+            MODULE.check(complete_log().replace("pending_before_wfi=00000001", "pending_before_wfi=00000000"))
 
 
 if __name__ == "__main__":

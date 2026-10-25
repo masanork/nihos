@@ -49,6 +49,8 @@ nih_native_cpu1_start:
     j .Lhalt
 
 .Lsetup_vector:
+    /* Pinned P4 MEXSTATUS.WFFEN: use interrupt wait, not event wait. */
+    csrci 0x7e1, 16
     la t0, nih_native_trap
     ori t0, t0, 3
     csrw mtvec, t0
