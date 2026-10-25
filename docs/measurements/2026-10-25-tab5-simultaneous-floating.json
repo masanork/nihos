@@ -1,0 +1,511 @@
+{
+  "date": "2026-10-25",
+  "firmware_commit": "52432446eacff75240e94419b75a6b182d0ae64c",
+  "board": "M5Stack Tab5 / ESP32-P4 revision 1.3",
+  "esp_idf": "v5.4.4",
+  "reset_method": "USB Serial/JTAG RTS reset; no power removal",
+  "application_bytes": 435328,
+  "application_sha256": "666d28d17fba463befdabbf9e8fdb1bb11613f9c2203badda4b8f75487f8a114",
+  "emulator": {
+    "version": "ESP-EMU v0.50.0 / ESP32-P4 revision-3 profile",
+    "core_smoke_passed": true,
+    "owners": [
+      {
+        "cpu": 0,
+        "workers": [
+          {
+            "worker": 0,
+            "checks": 99,
+            "timer_captures": 0,
+            "ipi_captures": 0,
+            "task_calls": 98
+          },
+          {
+            "worker": 1,
+            "checks": 26322,
+            "timer_captures": 8,
+            "ipi_captures": 0,
+            "task_calls": 3
+          }
+        ],
+        "saves": 205,
+        "restores": 205,
+        "syscalls": 101,
+        "timer_interrupts": 40,
+        "ipi_interrupts": 64,
+        "initial_fs": 0,
+        "final_fs": 0,
+        "boundary_restored": 1,
+        "elapsed_ticks": 40,
+        "runtime_ticks": 40,
+        "reaped": 2
+      },
+      {
+        "cpu": 1,
+        "workers": [
+          {
+            "worker": 0,
+            "checks": 389,
+            "timer_captures": 0,
+            "ipi_captures": 1,
+            "task_calls": 261
+          },
+          {
+            "worker": 1,
+            "checks": 524,
+            "timer_captures": 9,
+            "ipi_captures": 4,
+            "task_calls": 131
+          }
+        ],
+        "saves": 501,
+        "restores": 501,
+        "syscalls": 392,
+        "timer_interrupts": 41,
+        "ipi_interrupts": 68,
+        "initial_fs": 0,
+        "final_fs": 0,
+        "boundary_restored": 1,
+        "elapsed_ticks": 43,
+        "runtime_ticks": 43,
+        "reaped": 2
+      }
+    ],
+    "overlap": {
+      "started_tick": 1,
+      "ended_tick": 9,
+      "cpu0_checks": 26316,
+      "cpu1_checks": 286,
+      "cpu0_timer_captures": 8,
+      "cpu1_timer_captures": 8,
+      "peer_acknowledged": 1
+    },
+    "messages": 64,
+    "validated_payloads": 64,
+    "both_hosts_restored": 1,
+    "initial_idf_timer_elapsed_us": 128048,
+    "restored_idf_timer_elapsed_us": 128042,
+    "integer_cpu1_fp_copies": {
+      "cpu1_task_fpu_saves": 0,
+      "cpu1_task_fpu_restores": 0,
+      "cpu1_timed_fpu_saves": 0,
+      "cpu1_timed_fpu_restores": 0
+    },
+    "standalone_cpu1_fp": {
+      "cpu1_fp_saves": 496,
+      "cpu1_fp_restores": 496,
+      "cpu1_fp_boundary_restored": 1
+    },
+    "native_smp_fpu_preemption_passed": true
+  },
+  "boots": [
+    {
+      "boot": 1,
+      "passed": true,
+      "raw_log_sha256": "38349274f35bccee48f69f02c854e1b6db66973d412848fcd087db418a9aecf2",
+      "invariants": {
+        "timer_interrupts": true,
+        "timer_captured_task": true,
+        "caught_up": true,
+        "accounting": true,
+        "accepted_deadline": true,
+        "resumed_at_or_after_deadline": true,
+        "non_yield_progress": true,
+        "timer_woke_sleeper": true,
+        "messages": true,
+        "reaped": true,
+        "hosts_restored": true,
+        "floating_fields_present": true,
+        "fp_all_traps": true,
+        "fp_host_bank_and_fs": true,
+        "fp_tick_accounting": true,
+        "fp_sleep_deadline": true,
+        "fp_timer_wake": true,
+        "fp_messages": true,
+        "fp_completed_and_restored": true,
+        "integer_zero_fp_copies": true,
+        "fp_both_workers_checked": true,
+        "fp_observer_captured_by_timer_and_ipi": true,
+        "smp_two_owners": true,
+        "smp_cpu0_fields": true,
+        "smp_cpu0_traps": true,
+        "smp_cpu0_bank_fs": true,
+        "smp_cpu0_runtime": true,
+        "smp_cpu0_workers": true,
+        "smp_cpu0_reaped": true,
+        "smp_cpu1_fields": true,
+        "smp_cpu1_traps": true,
+        "smp_cpu1_bank_fs": true,
+        "smp_cpu1_runtime": true,
+        "smp_cpu1_workers": true,
+        "smp_cpu1_reaped": true,
+        "smp_overlap_fields": true,
+        "smp_overlap_ticks": true,
+        "smp_overlap_checks": true,
+        "smp_overlap_timers": true,
+        "smp_overlap_ack": true,
+        "smp_messages_and_restore": true
+      },
+      "owners": [
+        {
+          "cpu": 0,
+          "workers": [
+            {
+              "worker": 0,
+              "checks": 99,
+              "timer_captures": 0,
+              "ipi_captures": 0,
+              "task_calls": 98
+            },
+            {
+              "worker": 1,
+              "checks": 16188,
+              "timer_captures": 8,
+              "ipi_captures": 0,
+              "task_calls": 3
+            }
+          ],
+          "saves": 205,
+          "restores": 205,
+          "syscalls": 101,
+          "timer_interrupts": 40,
+          "ipi_interrupts": 64,
+          "initial_fs": 0,
+          "final_fs": 0,
+          "boundary_restored": 1,
+          "elapsed_ticks": 40,
+          "runtime_ticks": 40,
+          "reaped": 2
+        },
+        {
+          "cpu": 1,
+          "workers": [
+            {
+              "worker": 0,
+              "checks": 389,
+              "timer_captures": 0,
+              "ipi_captures": 1,
+              "task_calls": 261
+            },
+            {
+              "worker": 1,
+              "checks": 380,
+              "timer_captures": 9,
+              "ipi_captures": 3,
+              "task_calls": 131
+            }
+          ],
+          "saves": 501,
+          "restores": 501,
+          "syscalls": 392,
+          "timer_interrupts": 41,
+          "ipi_interrupts": 68,
+          "initial_fs": 0,
+          "final_fs": 0,
+          "boundary_restored": 1,
+          "elapsed_ticks": 43,
+          "runtime_ticks": 43,
+          "reaped": 2
+        }
+      ],
+      "overlap": {
+        "started_tick": 1,
+        "ended_tick": 9,
+        "cpu0_checks": 16182,
+        "cpu1_checks": 159,
+        "cpu0_timer_captures": 8,
+        "cpu1_timer_captures": 8,
+        "peer_acknowledged": 1
+      },
+      "messages": 64,
+      "validated_payloads": 64,
+      "both_hosts_restored": 1,
+      "initial_idf_timer_elapsed_us": 128249,
+      "restored_idf_timer_elapsed_us": 128086,
+      "integer_cpu1_fp_copies": {
+        "cpu1_task_fpu_saves": 0,
+        "cpu1_task_fpu_restores": 0,
+        "cpu1_timed_fpu_saves": 0,
+        "cpu1_timed_fpu_restores": 0
+      },
+      "standalone_cpu1_fp": {
+        "cpu1_fp_saves": 496,
+        "cpu1_fp_restores": 496,
+        "cpu1_fp_boundary_restored": 1
+      },
+      "native_smp_fpu_preemption_passed": true
+    },
+    {
+      "boot": 2,
+      "passed": true,
+      "raw_log_sha256": "8551f32ff5b94d1b31e3c69cd9d7fd6a7f71d9a1d031cc09010f3088d0f67121",
+      "invariants": {
+        "timer_interrupts": true,
+        "timer_captured_task": true,
+        "caught_up": true,
+        "accounting": true,
+        "accepted_deadline": true,
+        "resumed_at_or_after_deadline": true,
+        "non_yield_progress": true,
+        "timer_woke_sleeper": true,
+        "messages": true,
+        "reaped": true,
+        "hosts_restored": true,
+        "floating_fields_present": true,
+        "fp_all_traps": true,
+        "fp_host_bank_and_fs": true,
+        "fp_tick_accounting": true,
+        "fp_sleep_deadline": true,
+        "fp_timer_wake": true,
+        "fp_messages": true,
+        "fp_completed_and_restored": true,
+        "integer_zero_fp_copies": true,
+        "fp_both_workers_checked": true,
+        "fp_observer_captured_by_timer_and_ipi": true,
+        "smp_two_owners": true,
+        "smp_cpu0_fields": true,
+        "smp_cpu0_traps": true,
+        "smp_cpu0_bank_fs": true,
+        "smp_cpu0_runtime": true,
+        "smp_cpu0_workers": true,
+        "smp_cpu0_reaped": true,
+        "smp_cpu1_fields": true,
+        "smp_cpu1_traps": true,
+        "smp_cpu1_bank_fs": true,
+        "smp_cpu1_runtime": true,
+        "smp_cpu1_workers": true,
+        "smp_cpu1_reaped": true,
+        "smp_overlap_fields": true,
+        "smp_overlap_ticks": true,
+        "smp_overlap_checks": true,
+        "smp_overlap_timers": true,
+        "smp_overlap_ack": true,
+        "smp_messages_and_restore": true
+      },
+      "owners": [
+        {
+          "cpu": 0,
+          "workers": [
+            {
+              "worker": 0,
+              "checks": 99,
+              "timer_captures": 0,
+              "ipi_captures": 0,
+              "task_calls": 98
+            },
+            {
+              "worker": 1,
+              "checks": 16195,
+              "timer_captures": 8,
+              "ipi_captures": 0,
+              "task_calls": 3
+            }
+          ],
+          "saves": 205,
+          "restores": 205,
+          "syscalls": 101,
+          "timer_interrupts": 40,
+          "ipi_interrupts": 64,
+          "initial_fs": 0,
+          "final_fs": 0,
+          "boundary_restored": 1,
+          "elapsed_ticks": 40,
+          "runtime_ticks": 40,
+          "reaped": 2
+        },
+        {
+          "cpu": 1,
+          "workers": [
+            {
+              "worker": 0,
+              "checks": 389,
+              "timer_captures": 0,
+              "ipi_captures": 1,
+              "task_calls": 261
+            },
+            {
+              "worker": 1,
+              "checks": 380,
+              "timer_captures": 9,
+              "ipi_captures": 3,
+              "task_calls": 131
+            }
+          ],
+          "saves": 501,
+          "restores": 501,
+          "syscalls": 392,
+          "timer_interrupts": 41,
+          "ipi_interrupts": 68,
+          "initial_fs": 0,
+          "final_fs": 0,
+          "boundary_restored": 1,
+          "elapsed_ticks": 43,
+          "runtime_ticks": 43,
+          "reaped": 2
+        }
+      ],
+      "overlap": {
+        "started_tick": 1,
+        "ended_tick": 9,
+        "cpu0_checks": 16189,
+        "cpu1_checks": 159,
+        "cpu0_timer_captures": 8,
+        "cpu1_timer_captures": 8,
+        "peer_acknowledged": 1
+      },
+      "messages": 64,
+      "validated_payloads": 64,
+      "both_hosts_restored": 1,
+      "initial_idf_timer_elapsed_us": 128251,
+      "restored_idf_timer_elapsed_us": 128086,
+      "integer_cpu1_fp_copies": {
+        "cpu1_task_fpu_saves": 0,
+        "cpu1_task_fpu_restores": 0,
+        "cpu1_timed_fpu_saves": 0,
+        "cpu1_timed_fpu_restores": 0
+      },
+      "standalone_cpu1_fp": {
+        "cpu1_fp_saves": 496,
+        "cpu1_fp_restores": 496,
+        "cpu1_fp_boundary_restored": 1
+      },
+      "native_smp_fpu_preemption_passed": true
+    },
+    {
+      "boot": 3,
+      "passed": true,
+      "raw_log_sha256": "77651ddd6c79ccf194474091c9dc7128e50a29bf0f3f1fc02b41afbdc3c916cb",
+      "invariants": {
+        "timer_interrupts": true,
+        "timer_captured_task": true,
+        "caught_up": true,
+        "accounting": true,
+        "accepted_deadline": true,
+        "resumed_at_or_after_deadline": true,
+        "non_yield_progress": true,
+        "timer_woke_sleeper": true,
+        "messages": true,
+        "reaped": true,
+        "hosts_restored": true,
+        "floating_fields_present": true,
+        "fp_all_traps": true,
+        "fp_host_bank_and_fs": true,
+        "fp_tick_accounting": true,
+        "fp_sleep_deadline": true,
+        "fp_timer_wake": true,
+        "fp_messages": true,
+        "fp_completed_and_restored": true,
+        "integer_zero_fp_copies": true,
+        "fp_both_workers_checked": true,
+        "fp_observer_captured_by_timer_and_ipi": true,
+        "smp_two_owners": true,
+        "smp_cpu0_fields": true,
+        "smp_cpu0_traps": true,
+        "smp_cpu0_bank_fs": true,
+        "smp_cpu0_runtime": true,
+        "smp_cpu0_workers": true,
+        "smp_cpu0_reaped": true,
+        "smp_cpu1_fields": true,
+        "smp_cpu1_traps": true,
+        "smp_cpu1_bank_fs": true,
+        "smp_cpu1_runtime": true,
+        "smp_cpu1_workers": true,
+        "smp_cpu1_reaped": true,
+        "smp_overlap_fields": true,
+        "smp_overlap_ticks": true,
+        "smp_overlap_checks": true,
+        "smp_overlap_timers": true,
+        "smp_overlap_ack": true,
+        "smp_messages_and_restore": true
+      },
+      "owners": [
+        {
+          "cpu": 0,
+          "workers": [
+            {
+              "worker": 0,
+              "checks": 99,
+              "timer_captures": 0,
+              "ipi_captures": 0,
+              "task_calls": 98
+            },
+            {
+              "worker": 1,
+              "checks": 16279,
+              "timer_captures": 8,
+              "ipi_captures": 0,
+              "task_calls": 3
+            }
+          ],
+          "saves": 205,
+          "restores": 205,
+          "syscalls": 101,
+          "timer_interrupts": 40,
+          "ipi_interrupts": 64,
+          "initial_fs": 0,
+          "final_fs": 0,
+          "boundary_restored": 1,
+          "elapsed_ticks": 40,
+          "runtime_ticks": 40,
+          "reaped": 2
+        },
+        {
+          "cpu": 1,
+          "workers": [
+            {
+              "worker": 0,
+              "checks": 389,
+              "timer_captures": 0,
+              "ipi_captures": 1,
+              "task_calls": 261
+            },
+            {
+              "worker": 1,
+              "checks": 380,
+              "timer_captures": 9,
+              "ipi_captures": 3,
+              "task_calls": 131
+            }
+          ],
+          "saves": 501,
+          "restores": 501,
+          "syscalls": 392,
+          "timer_interrupts": 41,
+          "ipi_interrupts": 68,
+          "initial_fs": 0,
+          "final_fs": 0,
+          "boundary_restored": 1,
+          "elapsed_ticks": 43,
+          "runtime_ticks": 43,
+          "reaped": 2
+        }
+      ],
+      "overlap": {
+        "started_tick": 1,
+        "ended_tick": 9,
+        "cpu0_checks": 16273,
+        "cpu1_checks": 159,
+        "cpu0_timer_captures": 8,
+        "cpu1_timer_captures": 8,
+        "peer_acknowledged": 1
+      },
+      "messages": 64,
+      "validated_payloads": 64,
+      "both_hosts_restored": 1,
+      "initial_idf_timer_elapsed_us": 128249,
+      "restored_idf_timer_elapsed_us": 128086,
+      "integer_cpu1_fp_copies": {
+        "cpu1_task_fpu_saves": 0,
+        "cpu1_task_fpu_restores": 0,
+        "cpu1_timed_fpu_saves": 0,
+        "cpu1_timed_fpu_restores": 0
+      },
+      "standalone_cpu1_fp": {
+        "cpu1_fp_saves": 496,
+        "cpu1_fp_restores": 496,
+        "cpu1_fp_boundary_restored": 1
+      },
+      "native_smp_fpu_preemption_passed": true
+    }
+  ]
+}

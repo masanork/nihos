@@ -128,6 +128,8 @@ The emulator and three physical CPU1 FP runs are recorded in
 An explicit overlap handshake for simultaneous FP owners on both cores is
 defined in
 [`docs/adr/0017-simultaneous-floating-owners.md`](docs/adr/0017-simultaneous-floating-owners.md).
+Its emulator and three physical overlap results are recorded in
+[`docs/measurements/2026-10-25-tab5-simultaneous-floating.md`](docs/measurements/2026-10-25-tab5-simultaneous-floating.md).
 
 ## Bootstrap checks
 
