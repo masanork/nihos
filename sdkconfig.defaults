@@ -1,0 +1,20 @@
+# Hardware facts taken from the pinned MIT-licensed M5Tab5-UserDemo revision
+# recorded in provenance.toml. Keep this file limited to board-level settings.
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_CACHE_L2_CACHE_256KB=y
+CONFIG_CACHE_L2_CACHE_LINE_128B=y
+
+# Exercise both ESP32-P4 cores in the bring-up backend. nihOS does not yet own
+# scheduling at this stage.
+# CONFIG_FREERTOS_UNICORE is not set
+
+# Keep the initial boot image and logs small and deterministic.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y

@@ -13,8 +13,8 @@ name = "ESP-IDF"
 url = "https://github.com/espressif/esp-idf"
 revision = "v5.4.4"
 license = "Apache-2.0 with component-specific third-party licenses"
-status = "planned-dependency"
-use = "ESP32-P4 boot, linker scripts, register definitions, ROM and low-level support"
+status = "build-and-firmware-dependency"
+use = "ESP32-P4 boot, FreeRTOS SMP bring-up, linker scripts, register definitions, ROM and low-level support"
 
 [[source]]
 name = "M5Tab5-UserDemo"

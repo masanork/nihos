@@ -7,7 +7,9 @@ M5Stack Tab5 and its ESP32-P4. It is intended to explore a readable Zig-first
 system that uses the hardware well without hiding the important mechanisms
 behind a large framework.
 
-The project is at the design and bootstrap stage. It does not boot yet.
+The project is at the design and hardware-bootstrap stage. Its first
+ESP-IDF-hosted Zig entry boots on a physical Tab5; nihOS does not yet own the
+scheduler, display, or device drivers.
 
 ## Name
 
@@ -62,6 +64,18 @@ and establishes a repeatable comparison harness before target-specific code is
 introduced. The first host baseline is recorded in
 [`docs/measurements/2026-10-25-language-probe-host.md`](docs/measurements/2026-10-25-language-probe-host.md).
 No hosted CI workflow is enabled.
+
+Build the first ESP32-P4 firmware using the pinned ESP-IDF v5.4.4 setup:
+
+```sh
+sh tools/build-espidf.sh
+```
+
+This firmware currently lets ESP-IDF perform boot and FreeRTOS SMP startup,
+then crosses the handwritten C ABI into Zig and prints the detected chip,
+heap, PSRAM, and Flash information. It is a bring-up backend, not yet the
+native nihOS scheduler. The first physical-device result is recorded in
+[`docs/measurements/2026-10-25-espidf-zig-bootstrap.md`](docs/measurements/2026-10-25-espidf-zig-bootstrap.md).
 
 ## Project boundary
 

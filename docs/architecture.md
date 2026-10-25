@@ -79,3 +79,8 @@ The platform boundary models resources, not generic convenience calls.
 
 Every stage records whether evidence is host-only, ESP-IDF-hosted, native
 firmware, or physical Tab5 behavior.
+
+The first two stages are complete as of 2026-10-25. Stage 2 is physical Tab5
+evidence, but remains ESP-IDF-hosted: ESP-IDF and FreeRTOS still own boot,
+interrupt setup, and scheduling before control crosses the platform ABI into
+Zig.

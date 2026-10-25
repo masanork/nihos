@@ -19,8 +19,8 @@ pub const BootInfo = extern struct {
     abi_version: u32,
     chip_revision: u32,
     cpu_count: u32,
-    internal_ram_bytes: u32,
-    psram_bytes: u32,
+    internal_heap_bytes: u32,
+    psram_heap_bytes: u32,
     flash_bytes: u32,
 };
 

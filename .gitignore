@@ -12,6 +12,8 @@ target/
 # Local build and editor state
 build/
 compile_commands.json
+sdkconfig
+sdkconfig.old
 *.swp
 *.swo
 *~
