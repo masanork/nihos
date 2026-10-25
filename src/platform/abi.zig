@@ -13,6 +13,7 @@ pub const Status = struct {
     pub const unsupported: i32 = -2;
     pub const busy: i32 = -3;
     pub const io: i32 = -4;
+    pub const no_memory: i32 = -5;
 };
 
 pub const BootInfo = extern struct {
@@ -37,9 +38,29 @@ pub const DmaDirection = struct {
     pub const bidirectional: u32 = 3;
 };
 
+pub const MemoryKind = struct {
+    pub const internal: u32 = 1;
+    pub const psram: u32 = 2;
+};
+
+pub const MemoryFlags = struct {
+    pub const writable: u32 = 1 << 0;
+    pub const cacheable: u32 = 1 << 1;
+};
+
+pub const MemoryRegion = extern struct {
+    kind: u32,
+    flags: u32,
+    address: u32,
+    length: u32,
+    cache_line_bytes: u32,
+};
+
 test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 24), @sizeOf(BootInfo));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(BootInfo));
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(DmaRange));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(DmaRange));
+    try std.testing.expectEqual(@as(usize, 20), @sizeOf(MemoryRegion));
+    try std.testing.expectEqual(@as(usize, 4), @alignOf(MemoryRegion));
 }

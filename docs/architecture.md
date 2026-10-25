@@ -83,4 +83,6 @@ firmware, or physical Tab5 behavior.
 The first two stages are complete as of 2026-10-25. Stage 2 is physical Tab5
 evidence, but remains ESP-IDF-hosted: ESP-IDF and FreeRTOS still own boot,
 interrupt setup, and scheduling before control crosses the platform ABI into
-Zig.
+Zig. Stage 3 is in progress: bounded Zig arenas have been exercised in both
+internal RAM and PSRAM, and aligned PSRAM cache writeback/invalidation works.
+No real peripheral DMA transfer has been measured yet.
