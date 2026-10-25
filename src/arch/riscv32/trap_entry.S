@@ -1,9 +1,9 @@
 /*
  * Native RV32 trap entry and bounded context-switch test helpers.
  *
- * The ESP-IDF bring-up image installs this entry only around a synchronous
- * self-test. Interrupts remain disabled while the dispatcher runs; permanent
- * vector ownership, asynchronous preemption, and nesting come later.
+ * The ESP-IDF bring-up image installs this entry around bounded exception
+ * and timer tests. Interrupts remain disabled while the dispatcher runs;
+ * permanent vector ownership, task preemption, and nesting come later.
  */
 
 #include "context_offsets.inc"
@@ -191,6 +191,40 @@ nih_riscv_exception_roundtrip:
     ret
 
     .size nih_riscv_exception_roundtrip, .-nih_riscv_exception_roundtrip
+
+    .balign 4
+    .global nih_riscv_timer_window
+    .type nih_riscv_timer_window, @function
+nih_riscv_timer_window:
+    /* The C lease masks all other external CPU0 lines and saves threshold. */
+    addi sp, sp, -32
+    sw ra, 28(sp)
+    sw s1, 24(sp)
+    csrr t0, mstatus
+    sw t0, 0(sp)
+    csrci mstatus, 8
+    call nih_espidf_native_timer_enter
+    csrr s1, mtvec
+    la t0, nih_riscv_trap_entry
+    ori t0, t0, 3
+    csrw mtvec, t0
+    csrsi mstatus, 8
+    call nih_riscv_native_timer_run
+    sw a0, 4(sp)
+    csrci mstatus, 8
+    /* Complete timer stop/W1C writes before restoring the IDF vector. */
+    fence iorw, iorw
+    csrw mtvec, s1
+    call nih_espidf_native_timer_leave
+    lw t0, 4(sp)
+    and a0, a0, t0
+    lw t0, 0(sp)
+    lw s1, 24(sp)
+    lw ra, 28(sp)
+    addi sp, sp, 32
+    csrw mstatus, t0
+    ret
+    .size nih_riscv_timer_window, .-nih_riscv_timer_window
 
     .balign 4
     .global nih_riscv_task_trampoline

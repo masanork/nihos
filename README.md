@@ -62,6 +62,9 @@ Its first separate-stack execution result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-context-switch.md`](docs/measurements/2026-10-25-esp-emu-context-switch.md),
 and the physical ESP32-P4 result is in
 [`docs/measurements/2026-10-25-tab5-context-switch.md`](docs/measurements/2026-10-25-tab5-context-switch.md).
+The first Zig Timer Group driver and native asynchronous interrupt window
+are described in
+[`docs/adr/0006-bounded-native-timer.md`](docs/adr/0006-bounded-native-timer.md).
 
 ## Bootstrap checks
 

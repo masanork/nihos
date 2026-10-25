@@ -500,6 +500,25 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         return;
     }
     write("native_context_switch=ok\r\n");
+    for (0..2) |run| {
+        const native_timer = native_trap.exerciseNativeTimer() orelse {
+            write("nihos: native timer failed\r\n");
+            return;
+        };
+        writeU32("native_timer_run=", @intCast(run + 1));
+        writeU32("native_timer_ticks=", native_timer.ticks);
+        writeU64("native_timer_elapsed_us=", native_timer.elapsed_us);
+        writeU32("native_timer_interrupt_id=", native_timer.interrupt_id);
+        writeU32("native_timer_mcause=", native_timer.raw_mcause);
+    }
+    // Reusing the IDF timer after both native leases checks cleanup and that
+    // the restored IDF vector/threshold/interrupt mask delivers callbacks.
+    if (!exerciseTimer()) {
+        write("nihos: timer restoration failed\r\n");
+        return;
+    }
+    write("timer_restoration=ok\r\n");
+    write("native_timer=ok\r\n");
     write("nihos: core smoke complete\r\n");
 
     if (!exerciseDma()) {

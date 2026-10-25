@@ -63,6 +63,8 @@ that stack. On return it also verifies that the original FreeRTOS task bounds
 were restored. Arbitrary Zig task and dispatcher code now runs with hardware
 stack monitoring active.
 
-Next, connect the scheduler to a native timer source. Normal CLIC ownership,
+The bounded Timer Group test in ADR 0006 now delivers native asynchronous
+interrupts through this entry in ESP-EMU. Next, connect task selection and
+elapsed-time accounting to that source. Normal CLIC ownership,
 nested interrupts, FPU save/restore, CPU1 switching, and physical preemption
 remain later gates.
