@@ -17,6 +17,7 @@ pub const park = @import("kernel/park.zig");
 pub const tick_counter = @import("kernel/tick_counter.zig");
 pub const tick_clock = @import("kernel/tick_clock.zig");
 pub const task_control = @import("kernel/task_control.zig");
+pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
@@ -36,6 +37,7 @@ test {
     _ = tick_counter;
     _ = tick_clock;
     _ = task_control;
+    _ = fp_vectors;
     _ = @import("kernel/task_control_test.zig");
     _ = test_pattern;
     _ = platform_abi;

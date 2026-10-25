@@ -15,6 +15,8 @@ Native inbox/IPI ownership and WFI qualification are described in
 [ADR 0020](adr/0020-native-ipi-and-interrupt-wait.md).
 Opt-in FP ownership and its integer regression mode are described in
 [ADR 0021](adr/0021-native-opt-in-floating-contexts.md).
+Compiler-generated Zig/C single-precision tasks and the ILP32F boundary are
+covered by [ADR 0022](adr/0022-compiled-fp-and-c-boundary.md).
 
 ## Build and emulated execution
 
@@ -25,6 +27,7 @@ ESP-EMU 0.50.0 are checksum-verified by the existing bootstrap scripts.
 ```sh
 sh tools/run-native-smoke.sh
 sh tools/run-native-smoke.sh floating
+sh tools/run-native-smoke.sh compiled
 ```
 
 This builds only the stock loader and partition table with IDF. Zig links
@@ -40,6 +43,12 @@ integer mode requires zero FP trap copies. Floating mode adds opted-in banks
 and validates f0..f31/fcsr across timer preemption, task calls and a running
 task's self-IPI. Each task starts with a checked zero bank, and all FP banks
 are retired before the integer bootstraps confirm final FS=Off.
+
+Compiled-mode outputs use `build/native-emulator-compiled/`. This mode uses
+ILP32F for scalar float arguments/results and C-to-Zig callbacks, checks
+calculation bits against an integer oracle, and requires timer captures of
+the generated task code. The direct two-float structure ABI did not agree
+in this pinned toolchain; this fixture uses a pointer adapter in C instead.
 
 The report also requires three task checkpoints per hart: both busy tasks
 must keep progressing under timer preemption, and both lifecycle generations
@@ -60,21 +69,24 @@ To compile/link only the application, without an IDF installation:
 sh tools/build-native-elf.sh emulator
 sh tools/build-native-elf.sh device
 sh tools/build-native-elf.sh emulator build/native-emulator-floating floating
+sh tools/build-native-elf.sh emulator build/native-emulator-compiled compiled
 ```
 
-Normal architecture CI links both modes for both profiles through this same
-script. The FP helper assembly uses F instructions with the app's scalar
-ILP32 ABI; the kernel remains integer-only. Compiler-generated FP tasks and
-floating-point C function ABIs have not yet been qualified.
+Normal architecture CI links and instruction-audits all three modes for both
+profiles through this script. Compiled mode uses ILP32F; the other modes use
+ILP32. Kernel FP instructions are rejected even in compiled mode. The tested
+scalar/callback and pointer interfaces are qualified in the emulator;
+arbitrary aggregates, varargs and f64 interfaces are not covered.
 
-The manual **Native boot** GitHub Actions workflow runs both modes, builds
-both physical images, and retains the artifacts. It does not flash hardware.
+The manual **Native boot** workflow runs all three modes, builds the three
+physical images, and retains the artifacts. It does not flash hardware.
 
 ## Physical image
 
 ```sh
 sh tools/build-native.sh device
 sh tools/build-native.sh device floating
+sh tools/build-native.sh device compiled
 ```
 
 The image is built for P4 rev1/2 CLIC threshold semantics. The emulator image
@@ -92,11 +104,12 @@ In this fixture the console is the output; display, touch and external RAM
 are not initialized. Migration and a general tickless deadline policy are
 not yet connected to this permanent native runtime.
 
-The smoke has eighteen validator regression tests, including frozen
+The smoke has twenty validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
-IPI/pending-before-WFI evidence, FP accounting and wrong build mode:
+IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
+generated-code preemption. Three more tests check instruction classification:
 
 ```sh
-python3 tools/native_checks_test.py
+python3 -m unittest discover -s tools -p 'native*_test.py'
 ```

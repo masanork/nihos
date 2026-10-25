@@ -11,7 +11,8 @@ SPEC.loader.exec_module(MODULE)
 
 def complete_log(mode="integer"):
     lines = ["NIHOS_NATIVE_BOOT backend=zig-sram rtos=none",
-             "NIHOS_NATIVE_MODE floating=" + ("1" if mode == "floating" else "0"),
+             "NIHOS_NATIVE_MODE floating=" + ("0" if mode == "integer" else "1"),
+             "NIHOS_NATIVE_COMPILER enabled=" + ("1" if mode == "compiled" else "0"),
              "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned"]
     for count in [1] + list(range(10, 301, 10)):
         lines.append("NIHOS_NATIVE_HEARTBEAT round={0:08x} cpu0={1:08x} cpu1={1:08x} "
@@ -32,11 +33,11 @@ def complete_log(mode="integer"):
                      "timer_start=00000708 timer_end=00000708 queued=00000000".format(hart))
     lines.append("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none")
     for hart in range(2):
-        values = ([1000, 1000, 100, 600, 79, 1, 680, 680, 5, 1] if mode == "floating" else [0] * 9 + [1])
-        names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "confirmed")
+        values = ([1000, 1000, 100, 600, 79, 1, 680, 680, 5, 600 if mode == "compiled" else 0, 1] if mode != "integer" else [0] * 10 + [1])
+        names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed")
         lines.append("NIHOS_NATIVE_FP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
-    lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("1" if mode == "floating" else "0"))
+    lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
@@ -133,6 +134,17 @@ class NativeLogTests(unittest.TestCase):
             MODULE.check(complete_log().replace("NIHOS_NATIVE_FP_PASS", "INCOMPLETE"))
         with self.assertRaisesRegex(ValueError, "IPI delivery/idle"):
             MODULE.check(complete_log().replace("self_ipi=00000001", "self_ipi=00000000"))
+
+    def test_compiled_mode_requires_pc_captures_and_mode_identity(self):
+        self.assertEqual(MODULE.check(complete_log("compiled"), "compiled")["mode"], "compiled")
+        with self.assertRaisesRegex(ValueError, "compiler-generated task preemption"):
+            MODULE.check(complete_log("compiled").replace("app_timer=00000258", "app_timer=00000000"))
+        with self.assertRaisesRegex(ValueError, "requested build"):
+            MODULE.check(complete_log("floating"), "compiled")
+
+    def test_failed_compiled_calculation_cannot_pass_existing_markers(self):
+        with self.assertRaisesRegex(ValueError, "failure/trap"):
+            MODULE.check(complete_log("compiled") + "\nNIHOS_NATIVE_FAIL compiled FP invariant")
 
 
 if __name__ == "__main__":

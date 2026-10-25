@@ -164,6 +164,17 @@ export fn nih_native_task_failed() callconv(.c) noreturn {
     fail("task invariant");
 }
 
+export fn nih_fp_native_mismatch(code: u32, actual: u32, expected: u32) callconv(.c) noreturn {
+    print("NIHOS_NATIVE_FP_MISMATCH code=");
+    hex(code);
+    print(" actual=");
+    hex(actual);
+    print(" expected=");
+    hex(expected);
+    print("\n");
+    fail("compiled FP invariant");
+}
+
 fn prepareTasks(hart: u32) void {
     const gp = asm volatile ("mv %[result], gp"
         : [result] "=r" (-> u32),
@@ -244,11 +255,12 @@ fn floatingReport(hart: u32) void {
         if (report.initial != 5 or report.saves == 0 or report.checks0 < 4 or report.checks1 < 4 or
             report.checks2 < 4 or report.timer < 8 or report.calls < 12 or report.ipi < 1)
             fail("FP execution evidence");
+        if (tasks.floating.compiled and report.app_timer < 4) fail("compiled FP preemption");
     } else if (report.initial != 0 or report.saves != 0 or report.restores != 0 or report.timer != 0 or report.calls != 0 or report.ipi != 0)
         fail("integer FP overhead");
     print("NIHOS_NATIVE_FP hart=");
     hex(hart);
-    inline for (.{ "checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "confirmed" }) |field| {
+    inline for (.{ "checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed" }) |field| {
         print(" " ++ field ++ "=");
         hex(@field(report, field));
     }
@@ -276,6 +288,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     interruptGuard(0).* = @splat(0x6e69_6972);
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
+    print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
         fail("CRT data/BSS");

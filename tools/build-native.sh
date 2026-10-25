@@ -6,15 +6,15 @@ profile=${1:-device}
 case "$profile" in
     device) revision=100; max_revision=299 ;;
     emulator) revision=300; max_revision=399 ;;
-    *) echo "usage: $0 [device|emulator] [integer|floating]" >&2; exit 1 ;;
+    *) echo "usage: $0 [device|emulator] [integer|floating|compiled]" >&2; exit 1 ;;
 esac
 build_dir="$repo_root/build/native-$profile"
 boot_dir="$build_dir/loader"
 mode=${2:-integer}
 case "$mode" in
     integer) ;;
-    floating) build_dir="$build_dir-floating" ;;
-    *) echo "mode must be integer or floating" >&2; exit 1 ;;
+    floating|compiled) build_dir="$build_dir-$mode" ;;
+    *) echo "mode must be integer, floating or compiled" >&2; exit 1 ;;
 esac
 idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
 if [ ! -f "$idf_path/export.sh" ]; then

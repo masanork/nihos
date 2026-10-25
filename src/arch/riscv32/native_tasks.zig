@@ -111,15 +111,40 @@ fn lifecycle(argument: u32) callconv(.c) i32 {
 }
 
 fn floatingBusy(argument: u32) callconv(.c) i32 {
-    floating.enter(argument / 4, argument % 4, &busy, argument);
+    floating.enter(argument / 4, argument % 4, if (floating.compiled) &floating.app.busy else &busy, argument);
 }
 
 fn floatingLifecycle(argument: u32) callconv(.c) i32 {
-    floating.enter(argument / 4, 2, &lifecycle, argument);
+    floating.enter(argument / 4, 2, if (floating.compiled) &floating.app.lifecycle else &lifecycle, argument);
 }
 
 fn floatingProtocol(hart: u32) callconv(.c) i32 {
-    floating.enter(hart, 2, &ipi.run, hart);
+    floating.enter(hart, 2, if (floating.compiled) &floating.app.protocol else &ipi.run, hart);
+}
+
+fn compiledStop() callconv(.c) u32 {
+    return @intFromBool(ipi.requested());
+}
+
+fn compiledProgress(argument: u32) callconv(.c) void {
+    _ = @atomicRmw(u32, &reports[argument / 4].progress[argument % 4], .Add, 1, .release);
+}
+
+fn compiledSlept(hart: u32) callconv(.c) void {
+    _ = @atomicRmw(u32, &reports[hart].sleeps, .Add, 1, .release);
+}
+
+fn compiledProtocol(hart: u32) callconv(.c) i32 {
+    return ipi.run(hart);
+}
+
+comptime {
+    if (floating.compiled) {
+        @export(&compiledStop, .{ .name = "nih_fp_native_stop" });
+        @export(&compiledProgress, .{ .name = "nih_fp_native_progress" });
+        @export(&compiledSlept, .{ .name = "nih_fp_native_slept" });
+        @export(&compiledProtocol, .{ .name = "nih_fp_native_protocol" });
+    }
 }
 
 fn onTaskStack(hart: u32, index: u32, address: u32, bytes: u32) bool {
@@ -278,7 +303,7 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
-    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer);
+    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer, frame.mepc);
     for (owner.workers, 0..) |handle, index| {
         if (current.slot == handle.slot) owner.captures[index] +%= 1;
     }
@@ -291,7 +316,7 @@ pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnSt
     if (!guardsValid(hart) or !refresh(hart, device)) return null;
     owner.calls +%= 1;
     const current = owner.runtime.policy.current() orelse return null;
-    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .calls);
+    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .calls, frame.mepc);
     const selected = owner.runtime.call(frame, state) orelse return null;
     if (!maintain(hart, device)) return null;
     return publish(hart, if (alarmsDisarmed(owner)) owner.runtime.select() orelse return null else selected);
@@ -301,7 +326,7 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
     const owner = &owners[hart];
     if (!alarmsDisarmed(owner) or !guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
-    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .ipi);
+    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .ipi, frame.mepc);
     ipi.drain(hart, &owner.runtime.policy, current.slot == owner.bootstrap.slot);
     return publish(hart, owner.runtime.select() orelse return null);
 }

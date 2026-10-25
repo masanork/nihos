@@ -27,7 +27,7 @@ jobs:
           version: v5.4.4
 
       - name: Check smoke log validator regressions
-        run: python3 tools/native_checks_test.py
+        run: python3 -m unittest discover -s tools -p 'native*_test.py'
 
       - name: Integer native boot without external RAM
         run: sh tools/run-native-smoke.sh
@@ -35,10 +35,14 @@ jobs:
       - name: Floating native boot without external RAM
         run: sh tools/run-native-smoke.sh floating
 
+      - name: Compiled Zig and C ILP32F tasks without external RAM
+        run: sh tools/run-native-smoke.sh compiled
+
       - name: Build physical Tab5 revision 1.x image
         run: |
           sh tools/build-native.sh device
           sh tools/build-native.sh device floating
+          sh tools/build-native.sh device compiled
 
       - name: Retain native evidence
         if: always()

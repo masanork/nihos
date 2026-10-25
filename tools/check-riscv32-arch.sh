@@ -2,6 +2,7 @@
 set -eu
 
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+python3 "$repo_root/tools/native_image_test.py"
 zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 out_dir=$(mktemp -d "${TMPDIR:-/tmp}/nihos-riscv32-check.XXXXXX")
 trap 'rm -rf "$out_dir"' EXIT HUP INT TERM
@@ -46,9 +47,13 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     -o "$out_dir/fpu.o" \
     "$repo_root/src/arch/riscv32/fpu.S"
 
-sh "$repo_root/tools/build-native-elf.sh" device "$out_dir/native-device"
-sh "$repo_root/tools/build-native-elf.sh" emulator "$out_dir/native-emulator"
-sh "$repo_root/tools/build-native-elf.sh" device "$out_dir/native-device-floating" floating
-sh "$repo_root/tools/build-native-elf.sh" emulator "$out_dir/native-emulator-floating" floating
+for profile in device emulator; do
+    for mode in integer floating compiled; do
+        native_dir="$out_dir/native-$profile-$mode"
+        sh "$repo_root/tools/build-native-elf.sh" "$profile" "$native_dir" "$mode"
+        python3 "$repo_root/tools/check-native-image.py" "$native_dir/nihos-native.elf" \
+            --elf-only "$native_dir/code-audit.json" "$mode"
+    done
+done
 
-echo "RV32 architecture contract and four native ELF links: ok"
+echo "RV32 architecture contract and six audited native ELF links: ok"
