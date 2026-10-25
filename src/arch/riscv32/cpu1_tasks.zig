@@ -18,7 +18,10 @@ const period_us: u32 = 1000;
 const delayed_first_us: u64 = 3500;
 const probe_sleep_ticks: u32 = 5;
 pub const Mode = enum { integer, floating };
-pub const Hooks = struct { work: *const fn () bool };
+pub const Hooks = struct {
+    work: *const fn () bool,
+    hold_probe: ?*const fn () bool = null,
+};
 pub const Report = struct {
     syscalls: u32,
     selections: u32,
@@ -96,6 +99,8 @@ var floating_ipi_captures: [2]u32 = @splat(0);
 var floating_calls: [2]u32 = @splat(0);
 var floating_ipi_ready = std.atomic.Value(bool).init(false);
 var floating_ipi_seen = std.atomic.Value(bool).init(false);
+var observer_floating_checks = std.atomic.Value(u32).init(0);
+var observer_timer_captures = std.atomic.Value(u32).init(0);
 
 extern var nih_riscv_current_floating_states: [2]u32;
 extern var nih_riscv_selected_floating_states: [2]u32;
@@ -114,7 +119,10 @@ fn fail(code: i32) noreturn {
 }
 
 fn checkFloating(index: usize) void {
-    if (mode == .floating and nih_riscv_fpu_task_check(&floating_probes[index]) != 1) fail(-194);
+    if (mode == .floating) {
+        if (nih_riscv_fpu_task_check(&floating_probes[index]) != 1) fail(-194);
+        if (index == 1) observer_floating_checks.store(floating_probes[index].iterations, .release);
+    }
 }
 
 fn wait(index: usize, mask: u32) u32 {
@@ -175,7 +183,9 @@ fn observer(_: u32) callconv(.c) i32 {
         // preemption can make the sleeping service run at its deadline.
         var count: u32 = 0;
         floating_ipi_ready.store(mode == .floating, .release);
-        while (!probe_complete.load(.acquire) or (mode == .floating and !floating_ipi_seen.load(.acquire))) {
+        while (true) {
+            const hold = if (hooks.?.hold_probe) |callback| callback() else false;
+            if (probe_complete.load(.acquire) and (mode != .floating or floating_ipi_seen.load(.acquire)) and !hold) break;
             count +%= 1;
             probe_iterations.store(count, .monotonic);
             if (count & 255 == 0) {
@@ -209,6 +219,15 @@ pub fn floatingProbeReady() bool {
     return floating_ipi_ready.load(.acquire);
 }
 
+/// Only these published words may be sampled by another core during a probe.
+pub fn observerFloatingChecks() u32 {
+    return observer_floating_checks.load(.acquire);
+}
+
+pub fn observerTimerCaptures() u32 {
+    return observer_timer_captures.load(.acquire);
+}
+
 /// Called on CPU1, before installing its native vector or publishing ready.
 pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, callbacks: Hooks, timer: ?timer_group.Timer, selected_mode: Mode) bool {
     runtime = .{ .call_options = .{ .sleep_enabled = timer != null } };
@@ -237,6 +256,8 @@ pub fn prepare(minimum: u32, maximum: u32, gp: u32, tp: u32, trampoline: u32, ca
     boundary_final_fs = 0;
     floating_ipi_ready.store(false, .monotonic);
     floating_ipi_seen.store(false, .monotonic);
+    observer_floating_checks.store(0, .monotonic);
+    observer_timer_captures.store(0, .monotonic);
     clock = tick_clock.TickClock.init(period_us).?;
     timer_interrupts = 0;
     timer_task_captures = 0;
@@ -309,6 +330,7 @@ pub fn finishWindow() bool {
         boundary_final_fs = after_fs;
         nih_riscv_fpu_snapshot(&boundary_after);
         boundary_restored = nih_riscv_current_floating_states[1] == @intFromPtr(&bootstrap_floating) and
+            nih_riscv_selected_floating_states[1] == @intFromPtr(&bootstrap_floating) and
             after_fs == boundary_fs and std.mem.eql(u8, std.mem.asBytes(&boundary_before), std.mem.asBytes(&boundary_after)) and
             saves == restores and saves == calls_count + timer_interrupts + ipi_interrupts;
     } else {
@@ -367,7 +389,10 @@ pub fn onTimer(frame: *context.IntegerContext, state: context.ReturnState) ?cont
     if (!runtime.capture(frame, state)) return null;
     const current = runtime.policy.current() orelse return null;
     if (mode == .floating) for (handles, 0..) |handle, index| {
-        if (current.slot == handle.slot) floating_timer_captures[index] += 1;
+        if (current.slot == handle.slot) {
+            floating_timer_captures[index] += 1;
+            if (index == 1) _ = observer_timer_captures.fetchAdd(1, .release);
+        }
     };
     if ((runtime.policy.current() orelse return null).slot != bootstrap.slot) timer_task_captures += 1;
     if (!(device orelse return null).clearPending()) return null;

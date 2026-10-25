@@ -125,6 +125,9 @@ defined in
 [`docs/adr/0016-cpu1-floating-contexts.md`](docs/adr/0016-cpu1-floating-contexts.md).
 The emulator and three physical CPU1 FP runs are recorded in
 [`docs/measurements/2026-10-25-tab5-cpu1-floating.md`](docs/measurements/2026-10-25-tab5-cpu1-floating.md).
+An explicit overlap handshake for simultaneous FP owners on both cores is
+defined in
+[`docs/adr/0017-simultaneous-floating-owners.md`](docs/adr/0017-simultaneous-floating-owners.md).
 
 ## Bootstrap checks
 

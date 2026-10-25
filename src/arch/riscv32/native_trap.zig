@@ -246,6 +246,10 @@ pub fn exerciseNativeCpu1Floating() ?lifecycle.Report {
     return exerciseLifecycle(.cpu1_floating);
 }
 
+pub fn exerciseNativeSmpFloating() ?lifecycle.Report {
+    return exerciseLifecycle(.smp_floating);
+}
+
 fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
     var borrowed = false;
@@ -254,7 +258,7 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         if (borrowed) _ = nih_espidf_native_ipi_release();
     }
     var doorbell: ?Doorbell = null;
-    if (mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) {
+    if (mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating or mode == .smp_floating) {
         var lease = std.mem.zeroes(IpiLease);
         if (nih_espidf_native_ipi_acquire(&lease) != 0) {
             _ = finishTimer(false);
@@ -282,8 +286,8 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         borrowed = false;
         if (!released) return null;
     }
-    if (!restored or ((mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) and !remote.verifyHostScheduler()) or
-        ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) and !duplex.verifyHostScheduler())) return null;
+    if (!restored or ((mode == .remote or mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating or mode == .smp_floating) and !remote.verifyHostScheduler()) or
+        ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating or mode == .smp_floating) and !duplex.verifyHostScheduler())) return null;
     return lifecycle.report();
 }
 
@@ -314,13 +318,17 @@ fn exercisePreemption(mode: preemption.Mode) ?preemption.Report {
 }
 
 export fn nih_riscv_native_timer_prepare() callconv(.c) u32 {
-    if (switch_state == .lifecycle) return if (lifecycle.startMasked()) 1 else 0;
+    if (switch_state == .lifecycle) {
+        lifecycle.beginWindow();
+        return if (lifecycle.startMasked()) 1 else 0;
+    }
     if (switch_state == .preemption and preemption_mode == .floating)
         nih_riscv_fpu_snapshot(&boundary_before);
     return if (switch_state != .preemption or preemption.startMasked()) 1 else 0;
 }
 
 export fn nih_riscv_native_timer_finish() callconv(.c) u32 {
+    if (switch_state == .lifecycle) return if (lifecycle.finishWindow()) 1 else 0;
     if (switch_state != .preemption or preemption_mode != .floating) return 1;
     nih_riscv_fpu_snapshot(&boundary_after);
     return if (std.mem.eql(u8, std.mem.asBytes(&boundary_before), std.mem.asBytes(&boundary_after))) 1 else 0;

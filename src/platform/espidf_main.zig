@@ -719,6 +719,46 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("cpu1_fp_cpu0_timer_interrupts=", cpu1_floating.interrupts);
     write("cpu1_fp_both_hosts_restored=1\r\n");
     write("native_cpu1_fpu_preemption=ok\r\n");
+    const smp_floating = native_trap.exerciseNativeSmpFloating() orelse {
+        write("nihos: simultaneous SMP floating preemption failed\r\n");
+        return;
+    };
+    const smp_exchange = smp_floating.duplex orelse return;
+    const smp0 = smp_floating.floating orelse return;
+    const smp1 = smp_exchange.tasks orelse return;
+    const overlap = smp_exchange.overlap orelse return;
+    for (0..2) |cpu| {
+        writeU32("smp_fp_cpu=", @intCast(cpu));
+        writeU32("smp_fp_saves=", if (cpu == 0) smp0.saves else smp1.floating_saves);
+        writeU32("smp_fp_restores=", if (cpu == 0) smp0.restores else smp1.floating_restores);
+        writeU32("smp_fp_syscalls=", if (cpu == 0) smp_floating.calls else smp1.syscalls);
+        writeU32("smp_fp_timer_interrupts=", if (cpu == 0) smp_floating.interrupts else smp1.timer_interrupts);
+        writeU32("smp_fp_ipi_interrupts=", if (cpu == 0) smp0.ipi_interrupts else smp1.ipi_interrupts);
+        writeU32("smp_fp_initial_fs=", if (cpu == 0) smp0.initial_fs else smp1.floating_initial_fs);
+        writeU32("smp_fp_final_fs=", if (cpu == 0) smp0.final_fs else smp1.floating_final_fs);
+        writeU32("smp_fp_boundary_restored=", @intFromBool(if (cpu == 0) smp0.boundary_restored else smp1.floating_boundary_restored));
+        writeU64("smp_fp_elapsed_ticks=", if (cpu == 0) smp0.elapsed_ticks else smp1.elapsed_ticks);
+        writeU64("smp_fp_runtime_ticks=", if (cpu == 0) smp0.runtime_ticks else smp1.runtime_ticks);
+        writeU32("smp_fp_reaped=", if (cpu == 0) smp_floating.reaped else smp1.reaped);
+        for (0..2) |index| {
+            writeU32("smp_fp_worker=", @intCast(index));
+            writeU32("smp_fp_checks=", if (cpu == 0) smp_exchange.floating_checks[index] else smp1.floating_checks[index]);
+            writeU32("smp_fp_timer_captures=", if (cpu == 0) smp0.timer_captures[index] else smp1.floating_timer_captures[index]);
+            writeU32("smp_fp_ipi_captures=", if (cpu == 0) smp0.ipi_captures[index] else smp1.floating_ipi_captures[index]);
+            writeU32("smp_fp_task_calls=", if (cpu == 0) smp0.calls[index] else smp1.floating_calls[index]);
+        }
+    }
+    writeU32("smp_overlap_started_tick=", overlap.started_tick);
+    writeU32("smp_overlap_ended_tick=", overlap.ended_tick);
+    writeU32("smp_overlap_cpu0_checks=", overlap.cpu0_checks);
+    writeU32("smp_overlap_cpu1_checks=", overlap.cpu1_checks);
+    writeU32("smp_overlap_cpu0_timer_captures=", overlap.cpu0_timer_captures);
+    writeU32("smp_overlap_cpu1_timer_captures=", overlap.cpu1_timer_captures);
+    writeU32("smp_overlap_peer_acknowledged=", @intFromBool(overlap.peer_acknowledged));
+    writeU32("smp_fp_messages=", smp_exchange.messages);
+    writeU32("smp_fp_payloads=", smp_exchange.task_payloads);
+    write("smp_fp_both_hosts_restored=1\r\n");
+    write("native_smp_fpu_preemption=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {
