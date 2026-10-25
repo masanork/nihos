@@ -2,7 +2,7 @@ idf_component_register(
     SRCS "../compat/espidf/platform.c"
     INCLUDE_DIRS "../include"
     PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm esp_hw_support
-                  esp_timer
+                  esp_timer esp_lcd m5stack_tab5_noglib
 )
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
@@ -11,6 +11,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_SOURCE "${NIHOS_ROOT}/src/platform/espidf_main.zig")
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
+    set(NIHOS_ZIG_PATTERN "${NIHOS_ROOT}/src/graphics/test_pattern.zig")
     set(NIHOS_ZIG_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/libnihos_zig.a")
 
     if(NOT EXISTS "${NIHOS_ZIG}")
@@ -27,12 +28,14 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             -fstrip
             --dep abi
             --dep arena
+            --dep test_pattern
             "-Mroot=${NIHOS_ZIG_SOURCE}"
             "-Mabi=${NIHOS_ZIG_ABI}"
             "-Marena=${NIHOS_ZIG_ARENA}"
+            "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
             "-femit-bin=${NIHOS_ZIG_LIBRARY}"
         DEPENDS "${NIHOS_ZIG_SOURCE}" "${NIHOS_ZIG_ABI}"
-                "${NIHOS_ZIG_ARENA}"
+                "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_PATTERN}"
         COMMENT "Building the freestanding nihOS Zig entry"
         VERBATIM
     )

@@ -6,6 +6,7 @@
 const std = @import("std");
 const abi = @import("abi");
 const arena_module = @import("arena");
+const test_pattern = @import("test_pattern");
 
 pub const panic = std.debug.no_panic;
 
@@ -13,6 +14,9 @@ extern fn nih_platform_console_write(data: [*]const u8, length: u32) i32;
 extern fn nih_platform_memory_region(kind: u32, out: *abi.MemoryRegion) i32;
 extern fn nih_platform_cache_sync(range: *const abi.DmaRange) i32;
 extern fn nih_platform_dma_copy(copy: *abi.DmaCopy) i32;
+extern fn nih_platform_display_init(out: *abi.DisplayInfo) i32;
+extern fn nih_platform_display_present(present: *abi.DisplayPresent) i32;
+extern fn nih_platform_display_wait_vsync(vsync: *abi.DisplayVsync) i32;
 
 fn write(bytes: []const u8) void {
     if (bytes.len == 0) return;
@@ -139,6 +143,68 @@ fn exerciseDma() bool {
     return true;
 }
 
+fn exerciseDisplay() bool {
+    var info: abi.DisplayInfo = undefined;
+    if (nih_platform_display_init(&info) != abi.Status.ok) return false;
+    if (info.width == 0 or info.height == 0 or
+        info.stride_bytes != info.width * 2 or
+        info.pixel_format != abi.DisplayPixelFormat.rgb565_le or
+        info.framebuffer_address == 0 or
+        info.framebuffer_bytes < info.stride_bytes * info.height or
+        (info.framebuffer_flags & abi.DisplayFrameFlags.writable) == 0 or
+        (info.framebuffer_flags & abi.DisplayFrameFlags.scanout) == 0)
+    {
+        return false;
+    }
+
+    // SAFETY: display_init lends this fixed-size writable scanout buffer until
+    // shutdown. The Zig side never retains a view beyond that platform lease.
+    const base: [*]u8 = @ptrFromInt(info.framebuffer_address);
+    const framebuffer = base[0..@intCast(info.framebuffer_bytes)];
+    if (!test_pattern.paintRgb565Le(
+        framebuffer,
+        @intCast(info.width),
+        @intCast(info.height),
+        @intCast(info.stride_bytes),
+    )) return false;
+
+    var present = abi.DisplayPresent{
+        .framebuffer_address = info.framebuffer_address,
+        .framebuffer_bytes = info.framebuffer_bytes,
+        .flags = 0,
+        .elapsed_us = 0,
+        .vsync_count = 0,
+    };
+    if (nih_platform_display_present(&present) != abi.Status.ok) return false;
+
+    const samples: u32 = 60;
+    var total_us: u64 = 0;
+    var last_count = present.vsync_count;
+    for (0..samples) |_| {
+        var vsync = abi.DisplayVsync{
+            .timeout_ms = 100,
+            .flags = 0,
+            .elapsed_us = 0,
+            .vsync_count = 0,
+        };
+        if (nih_platform_display_wait_vsync(&vsync) != abi.Status.ok)
+            return false;
+        if (vsync.vsync_count == last_count) return false;
+        last_count = vsync.vsync_count;
+        total_us += vsync.elapsed_us;
+    }
+
+    writeU32("display_width=", info.width);
+    writeU32("display_height=", info.height);
+    writeU32("display_stride_bytes=", info.stride_bytes);
+    writeU32("display_framebuffer_bytes=", info.framebuffer_bytes);
+    writeU32("display_present_us=", present.elapsed_us);
+    writeU32("display_vsync_samples=", samples);
+    writeU64("display_vsync_elapsed_us=", total_us);
+    writeU64("display_refresh_millihz=", (@as(u64, samples) * 1_000_000_000) / total_us);
+    return true;
+}
+
 fn exerciseMemory(kind: u32) bool {
     var region: abi.MemoryRegion = undefined;
     if (nih_platform_memory_region(kind, &region) != abi.Status.ok) return false;
@@ -216,5 +282,12 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         return;
     }
     write("axi_gdma_copy=ok\r\n");
+
+    if (!exerciseDisplay()) {
+        write("nihos: display scanout or vsync failed\r\n");
+        return;
+    }
+    write("display_scanout=ok\r\n");
+    write("display_vsync=ok\r\n");
     write("nihos: bootstrap complete\r\n");
 }

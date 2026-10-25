@@ -7,9 +7,10 @@ M5Stack Tab5 and its ESP32-P4. It is intended to explore a readable Zig-first
 system that uses the hardware well without hiding the important mechanisms
 behind a large framework.
 
-The project is at the design and hardware-bootstrap stage. Its first
-ESP-IDF-hosted Zig entry boots on a physical Tab5; nihOS does not yet own the
-scheduler, display, or device drivers.
+The project is at the design and hardware-bootstrap stage. Its
+ESP-IDF-hosted Zig entry boots on a physical Tab5 and now writes the MIPI-DSI
+scanout framebuffer directly and synchronizes to display refresh. nihOS does
+not yet own the scheduler or native device drivers.
 
 ## Name
 
@@ -75,10 +76,14 @@ This firmware currently lets ESP-IDF perform boot and FreeRTOS SMP startup,
 then crosses the handwritten C ABI into Zig and prints the detected chip,
 heap, PSRAM, and Flash information. Zig then owns bounded internal-RAM and
 PSRAM arenas, exercises the platform cache-sync contract, and verifies
-memory-to-memory AXI-GDMA across internal RAM and PSRAM. It is a bring-up
-backend, not yet the native nihOS scheduler. The physical-device result is
-recorded in
-[`docs/measurements/2026-10-25-espidf-zig-bootstrap.md`](docs/measurements/2026-10-25-espidf-zig-bootstrap.md).
+memory-to-memory AXI-GDMA across internal RAM and PSRAM. It then paints a
+bounded RGB565 test pattern from Zig into the display driver's scanout buffer
+without an intermediate full-frame copy and measures physical refresh events.
+It is a bring-up backend, not yet the native nihOS scheduler. The
+physical-device results are recorded in
+[`docs/measurements/2026-10-25-espidf-zig-bootstrap.md`](docs/measurements/2026-10-25-espidf-zig-bootstrap.md)
+and
+[`docs/measurements/2026-10-25-tab5-display-scanout.md`](docs/measurements/2026-10-25-tab5-display-scanout.md).
 
 ## Project boundary
 

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define NIH_PLATFORM_ABI_VERSION UINT32_C(1)
+#define NIH_PLATFORM_ABI_VERSION UINT32_C(2)
 
 enum {
     NIH_STATUS_OK = 0,
@@ -67,6 +67,41 @@ struct nih_dma_copy {
     uint32_t elapsed_us;
 };
 
+enum nih_display_pixel_format {
+    NIH_DISPLAY_RGB565_LE = 1,
+};
+
+enum {
+    NIH_DISPLAY_FRAME_WRITABLE = UINT32_C(1) << 0,
+    NIH_DISPLAY_FRAME_CACHEABLE = UINT32_C(1) << 1,
+    NIH_DISPLAY_FRAME_SCANOUT = UINT32_C(1) << 2,
+};
+
+struct nih_display_info {
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride_bytes;
+    uint32_t pixel_format;
+    uint32_t framebuffer_address;
+    uint32_t framebuffer_bytes;
+    uint32_t framebuffer_flags;
+};
+
+struct nih_display_present {
+    uint32_t framebuffer_address;
+    uint32_t framebuffer_bytes;
+    uint32_t flags;
+    uint32_t elapsed_us;
+    uint32_t vsync_count;
+};
+
+struct nih_display_vsync {
+    uint32_t timeout_ms;
+    uint32_t flags;
+    uint32_t elapsed_us;
+    uint32_t vsync_count;
+};
+
 typedef void (*nih_cpu_entry_fn)(void *argument);
 
 int32_t nih_platform_boot_info(struct nih_boot_info *out);
@@ -78,6 +113,12 @@ int32_t nih_platform_memory_region(uint32_t kind,
 int32_t nih_platform_cache_sync(const struct nih_dma_range *range);
 /* Performs one synchronous memory-to-memory DMA transaction. */
 int32_t nih_platform_dma_copy(struct nih_dma_copy *copy);
+/* Initializes scanout with its backlight off and lends its framebuffer. */
+int32_t nih_platform_display_init(struct nih_display_info *out);
+/* Makes direct framebuffer writes visible, then waits for the next refresh. */
+int32_t nih_platform_display_present(struct nih_display_present *present);
+/* Waits for one physical refresh without modifying the framebuffer. */
+int32_t nih_platform_display_wait_vsync(struct nih_display_vsync *vsync);
 int32_t nih_platform_cpu_start(uint32_t cpu_id,
                                nih_cpu_entry_fn entry,
                                void *argument);

@@ -25,6 +25,14 @@ status = "reference-only"
 use = "Tab5 pin map, power sequence, display, touch, audio, camera and SD bring-up"
 
 [[source]]
+name = "Espressif M5Stack Tab5 BSP (no graphical library)"
+url = "https://components.espressif.com/components/espressif/m5stack_tab5_noglib"
+revision = "1.3.2"
+license = "Apache-2.0 with separately licensed dependencies"
+status = "build-and-firmware-dependency"
+use = "Pinned ESP-IDF bring-up oracle for Tab5 power, panel detection and MIPI-DSI"
+
+[[source]]
 name = "M5Unified"
 url = "https://github.com/m5stack/M5Unified"
 revision = "368ad60807161625aa65baad37a4a3af2a7eccea"

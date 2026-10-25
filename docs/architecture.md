@@ -80,10 +80,17 @@ The platform boundary models resources, not generic convenience calls.
 Every stage records whether evidence is host-only, ESP-IDF-hosted, native
 firmware, or physical Tab5 behavior.
 
-The first two stages are complete as of 2026-10-25. Stage 2 is physical Tab5
-evidence, but remains ESP-IDF-hosted: ESP-IDF and FreeRTOS still own boot,
+The first four stages are complete as of 2026-10-25. Stage 2 is physical
+Tab5 evidence, but remains ESP-IDF-hosted: ESP-IDF and FreeRTOS still own boot,
 interrupt setup, and scheduling before control crosses the platform ABI into
 Zig. Stage 3 is complete at bring-up depth: bounded Zig arenas work in both
 internal RAM and PSRAM, aligned cache ownership transitions work, and real
-AXI-GDMA copies have been verified across all four internal/PSRAM paths. This
-does not yet qualify a display peripheral path; stage 4 is next.
+AXI-GDMA copies have been verified across all four internal/PSRAM paths.
+
+Stage 4 is complete at initial display depth. The pinned official NoGLIB BSP
+detects and initializes the panel, but the platform ABI exposes only fixed
+display facts, one writable RGB565 scanout lease, present, and vsync. Zig
+paints the scanout buffer directly, so there is no second full-screen buffer
+or copy. A physical Tab5 delivered repeatable refresh callbacks at about
+65.47 Hz. Double buffering, tear-free swaps, visible-pattern confirmation,
+and touch input remain open; touch is the next peripheral checkpoint.
