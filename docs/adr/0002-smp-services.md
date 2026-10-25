@@ -61,7 +61,8 @@ SMP alone does not make them faster or safer.
 ## Staged validation
 
 1. Host-test bounded SPSC ordering, overflow, and wraparound.
-2. Bring up native CPU1, inter-processor wakeup, and cache/atomic rules without
+2. Use the ESP-IDF backend as an oracle for physical cross-core ordering and
+   RISC-V atomics, then bring up native CPU1 and inter-processor wakeup without
    SQLite.
 3. Measure request/completion latency, cancellation, and queue saturation.
 4. Add a single-owner storage service and cross-core Flash pause/resume.
@@ -70,6 +71,14 @@ SMP alone does not make them faster or safer.
    latency, storage throughput, and interference with a frame workload.
 7. Expose permissioned application APIs only after recovery and cancellation
    behavior is qualified on hardware.
+
+The first half of stage 2 now has physical evidence: the same Zig ring used by
+the host test completed 100,000 ordered CPU0-to-CPU1 request/completion pairs
+on a Tab5. FreeRTOS supplied task creation and affinity, and both sides used
+busy polling, so this result qualifies the shared-memory transport but not the
+future native scheduler, IPI wakeup, cancellation, or service latency under
+load. See
+[`../measurements/2026-10-25-espidf-smp-mailbox.md`](../measurements/2026-10-25-espidf-smp-mailbox.md).
 
 ## Consequences
 

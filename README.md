@@ -49,6 +49,9 @@ service is recorded in
 [`docs/adr/0002-smp-services.md`](docs/adr/0002-smp-services.md).
 Its first host-only transport result is recorded in
 [`docs/measurements/2026-10-25-spsc-ring-host.md`](docs/measurements/2026-10-25-spsc-ring-host.md).
+The first physical CPU0/CPU1 transport result, still using FreeRTOS only to
+start and place the tasks, is recorded in
+[`docs/measurements/2026-10-25-espidf-smp-mailbox.md`](docs/measurements/2026-10-25-espidf-smp-mailbox.md).
 
 ## Bootstrap checks
 

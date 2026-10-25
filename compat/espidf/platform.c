@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdatomic.h>
 #include <string.h>
 
 #include "bsp/display.h"
@@ -19,6 +20,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "sdkconfig.h"
 
 #define NIH_INTERNAL_ARENA_BYTES (UINT32_C(64) * UINT32_C(1024))
@@ -42,6 +44,14 @@ static volatile uint32_t s_display_vsync_count;
 static bool s_display_backlight_enabled;
 static esp_lcd_touch_handle_t s_touch;
 static uint32_t s_touch_sequence;
+
+struct cpu_launch {
+    nih_cpu_entry_fn entry;
+    void *argument;
+    atomic_bool busy;
+};
+
+static struct cpu_launch s_cpu_launches[configNUMBER_OF_CORES];
 
 extern void nihos_zig_main(const struct nih_boot_info *info);
 
@@ -439,6 +449,50 @@ int32_t nih_platform_touch_sample(struct nih_touch_sample *out) {
             .y = points[index].y,
             .strength = points[index].strength,
         };
+    }
+    return NIH_STATUS_OK;
+}
+
+uint32_t nih_platform_cpu_id(void) {
+    return (uint32_t)xPortGetCoreID();
+}
+
+uint64_t nih_platform_monotonic_us(void) {
+    return (uint64_t)esp_timer_get_time();
+}
+
+static void cpu_entry_trampoline(void *argument) {
+    struct cpu_launch *launch = (struct cpu_launch *)argument;
+    nih_cpu_entry_fn entry = launch->entry;
+    void *entry_argument = launch->argument;
+
+    entry(entry_argument);
+    atomic_store_explicit(&launch->busy, false, memory_order_release);
+    vTaskDelete(NULL);
+}
+
+int32_t nih_platform_cpu_start(uint32_t cpu_id,
+                               nih_cpu_entry_fn entry,
+                               void *argument) {
+    if (cpu_id >= configNUMBER_OF_CORES || entry == NULL) {
+        return NIH_STATUS_INVALID_ARGUMENT;
+    }
+
+    struct cpu_launch *launch = &s_cpu_launches[cpu_id];
+    bool expected = false;
+    if (!atomic_compare_exchange_strong_explicit(
+            &launch->busy, &expected, true, memory_order_acquire,
+            memory_order_relaxed)) {
+        return NIH_STATUS_BUSY;
+    }
+
+    launch->entry = entry;
+    launch->argument = argument;
+    if (xTaskCreatePinnedToCore(cpu_entry_trampoline, "nih-cpu", 4096,
+                                launch, tskIDLE_PRIORITY + 2, NULL,
+                                (BaseType_t)cpu_id) != pdPASS) {
+        atomic_store_explicit(&launch->busy, false, memory_order_release);
+        return NIH_STATUS_NO_MEMORY;
     }
     return NIH_STATUS_OK;
 }

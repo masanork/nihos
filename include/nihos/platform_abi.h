@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define NIH_PLATFORM_ABI_VERSION UINT32_C(3)
+#define NIH_PLATFORM_ABI_VERSION UINT32_C(4)
 
 enum {
     NIH_STATUS_OK = 0,
@@ -147,6 +147,11 @@ int32_t nih_platform_display_wait_vsync(struct nih_display_vsync *vsync);
 int32_t nih_platform_touch_init(struct nih_touch_info *out);
 /* Polls one bounded snapshot; point_count may be zero. */
 int32_t nih_platform_touch_sample(struct nih_touch_sample *out);
+/* Returns the hardware core running the caller. */
+uint32_t nih_platform_cpu_id(void);
+/* Returns a monotonic microsecond counter for measurement, not wall time. */
+uint64_t nih_platform_monotonic_us(void);
+/* Starts one short-lived entry on the selected hardware core. */
 int32_t nih_platform_cpu_start(uint32_t cpu_id,
                                nih_cpu_entry_fn entry,
                                void *argument);
