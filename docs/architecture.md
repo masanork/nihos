@@ -227,6 +227,13 @@ bank/FS state; integer CPU1 scenarios performed zero FP bank copies. The
 [CPU1 floating measurement](measurements/2026-10-25-tab5-cpu1-floating.md)
 records per-trap and per-task counts and their qualification limits.
 
+ADR 0017 adds a separate simultaneous FP fixture. Both observers hold distinct
+register signatures inside a shared, acknowledged interval; published atomic
+counters require progress and timer captures from each core before release.
+CPU0 also retains its own IDF bootstrap bank through this mode, and each
+owner checks its independent trap/runtime accounting before reaping. This
+does not add migration or change the integer and CPU1-only regression modes.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a

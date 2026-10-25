@@ -19,11 +19,25 @@ const messages: u32 = 64;
 const response_bit: u32 = 1;
 const finished_bit: u32 = 2;
 const timeout_us: u64 = 300_000;
-pub const Execution = enum { interrupt_echo, task_service, preemptive_tasks, floating_tasks };
+pub const Execution = enum { interrupt_echo, task_service, preemptive_tasks, floating_tasks, smp_floating };
 
 fn timed() bool {
-    return execution == .preemptive_tasks or execution == .floating_tasks;
+    return execution == .preemptive_tasks or floating();
 }
+
+fn floating() bool {
+    return execution == .floating_tasks or execution == .smp_floating;
+}
+
+pub const Overlap = struct {
+    started_tick: u32,
+    ended_tick: u32,
+    cpu0_checks: u32,
+    cpu1_checks: u32,
+    cpu0_timer_captures: u32,
+    cpu1_timer_captures: u32,
+    peer_acknowledged: bool,
+};
 
 pub const Report = struct {
     messages: u32,
@@ -38,6 +52,8 @@ pub const Report = struct {
     checksum: u32,
     task_payloads: u32,
     tasks: ?cpu1_tasks.Report = null,
+    floating_checks: [2]u32 = @splat(0),
+    overlap: ?Overlap = null,
 };
 
 var requests = Ring.init();
@@ -78,6 +94,16 @@ var service_timer_interrupt_id: u32 = 0;
 // CPU0's serialized trap tail owns this accounting.
 var cpu0_interrupts: u32 = 0;
 var drained: remote.DrainReport = .{};
+var floating_probes: [2]context.FloatingProbe = @splat(.{ .pattern = 0, .expected_fcsr = 0 });
+var overlap_active = std.atomic.Value(bool).init(false);
+var overlap_release = std.atomic.Value(bool).init(false);
+var overlap_peer_ack = std.atomic.Value(bool).init(false);
+var overlap_cpu0_timers = std.atomic.Value(u32).init(0);
+var overlap_cpu0_tick = std.atomic.Value(u32).init(0);
+var overlap_report: ?Overlap = null;
+
+extern fn nih_riscv_fpu_task_probe(probe: *context.FloatingProbe, entry: *const fn (u32) callconv(.c) i32, argument: u32) callconv(.c) noreturn;
+extern fn nih_riscv_fpu_task_check(probe: *context.FloatingProbe) callconv(.c) u32;
 
 extern fn nih_platform_monotonic_us() callconv(.c) u64;
 extern fn nih_platform_cpu_id() callconv(.c) u32;
@@ -100,7 +126,86 @@ fn payload(sequence: u32) u32 {
 
 fn abortTask(code: i32) noreturn {
     failed.store(true, .release);
+    overlap_release.store(true, .release);
     calls.exit(code);
+}
+
+fn checkFloating(index: usize) void {
+    if (execution == .smp_floating and nih_riscv_fpu_task_check(&floating_probes[index]) != 1) abortTask(-195);
+}
+
+fn checkFloatingIdentity(index: usize) void {
+    if (execution != .smp_floating) return;
+    const current = calls.current() orelse abortTask(-197);
+    if (nih_platform_cpu_id() != 0 or current.slot != handles[index].slot or
+        current.generation != handles[index].generation) abortTask(-198);
+    checkFloating(index);
+}
+
+fn holdFloatingOverlap() bool {
+    const hold = !overlap_release.load(.acquire);
+    if (hold and overlap_active.load(.acquire)) overlap_peer_ack.store(true, .release);
+    return hold;
+}
+
+/// Every CPU0 clock refresh publishes its owner tick; only the timer tail
+/// counts observer captures. Tasks never sample mutable scheduler policy.
+pub fn noteCpu0Tick(now: u64) void {
+    const tick = std.math.cast(u32, now) orelse {
+        failed.store(true, .release);
+        return;
+    };
+    overlap_cpu0_tick.store(tick, .release);
+}
+
+pub fn noteCpu0Timer(slot: u16, now: u64) void {
+    noteCpu0Tick(now);
+    if (overlap_active.load(.acquire) and slot == handles[1].slot)
+        _ = overlap_cpu0_timers.fetchAdd(1, .release);
+}
+
+fn overlapWatchdog(started: u64) void {
+    if (nih_platform_monotonic_us() - started >= 50_000) abortTask(-196);
+}
+
+fn runFloatingOverlap() void {
+    const started = nih_platform_monotonic_us();
+    checkFloating(1);
+    overlap_active.store(true, .release);
+    var iterations: u32 = 0;
+    while (!overlap_peer_ack.load(.acquire)) {
+        checkFloating(1);
+        iterations +%= 1;
+        if (iterations & 255 == 0) overlapWatchdog(started);
+    }
+    const start_tick = overlap_cpu0_tick.load(.acquire);
+    const local_checks = floating_probes[1].iterations;
+    const peer_checks = cpu1_tasks.observerFloatingChecks();
+    const local_timers = overlap_cpu0_timers.load(.acquire);
+    const peer_timers = cpu1_tasks.observerTimerCaptures();
+    // No ECALL or voluntary yield in this interval. CPU1 cannot leave its
+    // FP loop until we publish release, including while its service wakes.
+    while (overlap_cpu0_tick.load(.acquire) - start_tick < 8 or
+        overlap_cpu0_timers.load(.acquire) - local_timers < 8 or
+        cpu1_tasks.observerFloatingChecks() <= peer_checks or
+        cpu1_tasks.observerTimerCaptures() <= peer_timers)
+    {
+        checkFloating(1);
+        iterations +%= 1;
+        if (iterations & 255 == 0) overlapWatchdog(started);
+    }
+    checkFloating(1);
+    overlap_report = .{
+        .started_tick = start_tick,
+        .ended_tick = overlap_cpu0_tick.load(.acquire),
+        .cpu0_checks = floating_probes[1].iterations - local_checks,
+        .cpu1_checks = cpu1_tasks.observerFloatingChecks() - peer_checks,
+        .cpu0_timer_captures = overlap_cpu0_timers.load(.acquire) - local_timers,
+        .cpu1_timer_captures = cpu1_tasks.observerTimerCaptures() - peer_timers,
+        .peer_acknowledged = overlap_peer_ack.load(.acquire),
+    };
+    overlap_active.store(false, .release);
+    overlap_release.store(true, .release);
 }
 
 fn post(handle: calls.Handle, bits: u32) bool {
@@ -216,9 +321,9 @@ fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
         nih_riscv_read_gp(),
         nih_riscv_read_tp(),
         @intCast(@intFromPtr(&nih_riscv_task_trampoline)),
-        .{ .work = &processRequests },
+        .{ .work = &processRequests, .hold_probe = if (execution == .smp_floating) &holdFloatingOverlap else null },
         service_timer,
-        if (execution == .floating_tasks) .floating else .integer,
+        if (floating()) .floating else .integer,
     )) {
         if (service_timer) |timer| timer.stop();
         if (timer_leased) _ = nih_espidf_native_service_timer_release();
@@ -302,6 +407,8 @@ pub fn client(_: u32) callconv(.c) i32 {
     var canary: [4]u32 = @splat(0x6470_636c);
     const checked: *volatile [4]u32 = &canary;
     stack_addresses[0].store(@intCast(@intFromPtr(&canary)), .monotonic);
+    checkFloatingIdentity(0);
+    checkFloating(0);
     var hash: u32 = 0;
     for (0..messages) |index| {
         const sequence: u32 = @intCast(index);
@@ -311,11 +418,13 @@ pub fn client(_: u32) callconv(.c) i32 {
             if (!notifyWorker(false)) abortTask(-170);
             // Exercise a reply posted before WAIT, including while sleeping.
             if (calls.sleep(1) != calls.Status.ok) abortTask(-161);
+            checkFloating(0);
         }
         switch (calls.waitEvents(response_bit)) {
             .received => |bits| if (bits != response_bit) abortTask(-162),
             .failed => abortTask(-163),
         }
+        checkFloating(0);
         const response = responses.tryPop() orelse abortTask(-164);
         if (response.sequence != sequence or response.payload != payload(sequence) ^ 0xa5a5_5a5a) abortTask(-165);
         hash +%= response.payload;
@@ -330,12 +439,24 @@ pub fn observer(_: u32) callconv(.c) i32 {
     var canary: [4]u32 = @splat(0x6470_6f62);
     const checked: *volatile [4]u32 = &canary;
     stack_addresses[1].store(@intCast(@intFromPtr(&canary)), .monotonic);
+    checkFloatingIdentity(1);
+    checkFloating(1);
+    if (execution == .smp_floating) runFloatingOverlap();
     switch (calls.waitEvents(finished_bit)) {
         .received => |bits| if (bits != finished_bit) abortTask(-167),
         .failed => abortTask(-168),
     }
+    checkFloating(1);
     for (0..4) |slot| if (checked[slot] != 0x6470_6f62) abortTask(-169);
     return 79;
+}
+
+pub fn floatingClient(argument: u32) callconv(.c) i32 {
+    nih_riscv_fpu_task_probe(&floating_probes[0], &client, argument);
+}
+
+pub fn floatingObserver(argument: u32) callconv(.c) i32 {
+    nih_riscv_fpu_task_probe(&floating_probes[1], &observer, argument);
 }
 
 pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, device: Doorbell, selected_execution: Execution) bool {
@@ -345,6 +466,16 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
     inbox = .{};
     worker_inbox = .{};
     execution = selected_execution;
+    overlap_active.store(false, .monotonic);
+    overlap_release.store(false, .monotonic);
+    overlap_peer_ack.store(false, .monotonic);
+    overlap_cpu0_timers.store(0, .monotonic);
+    overlap_cpu0_tick.store(0, .monotonic);
+    overlap_report = null;
+    for (&floating_probes, 0..) |*probe, index| probe.* = .{
+        .pattern = 0x3fc0_0000 + @as(u32, @intCast(index)) * 0x1000,
+        .expected_fcsr = 33 - @as(u32, @intCast(index)) * 32,
+    };
     to_cpu0 = device;
     to_cpu1 = null;
     handles = .{ client_handle, observer_handle };
@@ -388,7 +519,7 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
 pub fn start() void {
     active.store(true, .release);
     nih_espidf_native_service_probe_yield();
-    if (execution == .floating_tasks) {
+    if (floating()) {
         // Keep the FP observer executing until a native IPI has captured it.
         // Readiness is published before its no-ECALL loop; CPU1's timer can
         // still wake the sleeping service while CPU0 waits here with MIE off.
@@ -423,6 +554,7 @@ pub fn onIpi(policy: anytype) void {
 }
 
 pub fn stopAndJoin() bool {
+    overlap_release.store(true, .release);
     stopping.store(true, .release);
     const before = nih_platform_monotonic_us();
     var kicked = false;
@@ -458,6 +590,12 @@ pub fn report() ?Report {
     if (checksum.load(.monotonic) != expected) return null;
     const tasks = if (execution != .interrupt_echo) cpu1_tasks.report() orelse return null else null;
     if (tasks) |value| if (task_payloads != messages or value.observer_rounds < messages or value.rejected != 1) return null;
+    if (execution == .smp_floating) {
+        const overlap = overlap_report orelse return null;
+        if (!overlap.peer_acknowledged or overlap.ended_tick - overlap.started_tick < 8 or
+            overlap.cpu0_checks == 0 or overlap.cpu1_checks == 0 or overlap.cpu0_timer_captures < 8 or overlap.cpu1_timer_captures == 0) return null;
+        for (floating_probes) |probe| if (probe.failed != 0 or probe.iterations == 0) return null;
+    }
     return .{
         .messages = messages,
         .registered_waits = waits,
@@ -471,5 +609,7 @@ pub fn report() ?Report {
         .checksum = expected,
         .task_payloads = task_payloads,
         .tasks = tasks,
+        .floating_checks = .{ floating_probes[0].iterations, floating_probes[1].iterations },
+        .overlap = overlap_report,
     };
 }

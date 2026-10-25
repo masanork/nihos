@@ -20,7 +20,21 @@ const period_us = 1000;
 const sleep_ticks = 5;
 const timeout_us = 100_000;
 
-pub const Mode = enum { lifecycle, events, ipc, remote, duplex, cpu1_tasks, cpu1_preemption, cpu1_floating };
+pub const Mode = enum { lifecycle, events, ipc, remote, duplex, cpu1_tasks, cpu1_preemption, cpu1_floating, smp_floating };
+
+pub const FloatingReport = struct {
+    saves: u32,
+    restores: u32,
+    ipi_interrupts: u32,
+    timer_captures: [2]u32,
+    ipi_captures: [2]u32,
+    calls: [2]u32,
+    initial_fs: u32,
+    final_fs: u32,
+    boundary_restored: bool,
+    elapsed_ticks: u64,
+    runtime_ticks: u64,
+};
 
 pub const Report = struct {
     sleep_started: u32,
@@ -40,6 +54,7 @@ pub const Report = struct {
     ipc: ?ipc.Report = null,
     remote: ?remote.Report = null,
     duplex: ?duplex.Report = null,
+    floating: ?FloatingReport = null,
 };
 
 var runtime: Runtime = .{};
@@ -68,6 +83,23 @@ var immediate_events: u32 = 0;
 var blocked_events: u32 = 0;
 var delivered_events = std.atomic.Value(u32).init(0);
 var posted_events = std.atomic.Value(bool).init(false);
+var bootstrap_floating: context.FloatingContext align(16) = std.mem.zeroes(context.FloatingContext);
+var floating_states: [2]context.FloatingContext align(16) = @splat(std.mem.zeroes(context.FloatingContext));
+var boundary_before: context.FloatingContext align(16) = std.mem.zeroes(context.FloatingContext);
+var boundary_after: context.FloatingContext align(16) = std.mem.zeroes(context.FloatingContext);
+var floating_timer_captures: [2]u32 = @splat(0);
+var floating_ipi_captures: [2]u32 = @splat(0);
+var floating_call_captures: [2]u32 = @splat(0);
+var floating_ipi_interrupts: u32 = 0;
+var floating_initial_fs: u32 = 0;
+var floating_final_fs: u32 = 0;
+var floating_boundary_restored = false;
+
+extern var nih_riscv_current_floating_states: [2]u32;
+extern var nih_riscv_selected_floating_states: [2]u32;
+extern var nih_riscv_floating_saves: [2]u32;
+extern var nih_riscv_floating_restores: [2]u32;
+extern fn nih_riscv_fpu_snapshot(out: *context.FloatingContext) callconv(.c) void;
 
 extern fn nih_platform_monotonic_us() callconv(.c) u64;
 
@@ -219,6 +251,13 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
     launched = false;
     call_count = 0;
     interrupt_count = 0;
+    floating_timer_captures = @splat(0);
+    floating_ipi_captures = @splat(0);
+    floating_call_captures = @splat(0);
+    floating_ipi_interrupts = 0;
+    floating_initial_fs = 0;
+    floating_final_fs = 0;
+    floating_boundary_restored = false;
     finished.store(false, .monotonic);
     failed.store(false, .monotonic);
     stage.store(0, .monotonic);
@@ -240,6 +279,7 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
         .events => [_]*const fn (u32) callconv(.c) i32{ &eventReceiver, &eventSender },
         .ipc => [_]*const fn (u32) callconv(.c) i32{ &ipc.client, &ipc.service },
         .remote => [_]*const fn (u32) callconv(.c) i32{ &remote.client, &remote.observer },
+        .smp_floating => [_]*const fn (u32) callconv(.c) i32{ &duplex.floatingClient, &duplex.floatingObserver },
         .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating => [_]*const fn (u32) callconv(.c) i32{ &duplex.client, &duplex.observer },
     };
     for (&stacks, entries, 0..) |*stack, entry, index| {
@@ -259,6 +299,10 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
             .frame = frame,
             .stack_min = bottom,
             .stack_max = bottom + stack_bytes,
+            .floating_context = if (mode == .smp_floating)
+                @intCast(@intFromPtr(&floating_states[index]))
+            else
+                0,
         }) orelse return false;
     }
     if (mode == .ipc) ipc.prepare(
@@ -270,7 +314,7 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
         .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
         ipi orelse return false,
     )) return false;
-    if ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) and !duplex.prepare(
+    if ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating or mode == .smp_floating) and !duplex.prepare(
         .{ .slot = worker_handles[0].slot, .generation = worker_handles[0].generation },
         .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
         ipi orelse return false,
@@ -278,17 +322,73 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
             .cpu1_tasks => .task_service,
             .cpu1_preemption => .preemptive_tasks,
             .cpu1_floating => .floating_tasks,
+            .smp_floating => .smp_floating,
             else => .interrupt_echo,
         },
     )) return false;
+    if (mode == .smp_floating) {
+        runtime.images[bootstrap_handle.slot].?.floating_context = @intCast(@intFromPtr(&bootstrap_floating));
+        for (worker_handles, 0..) |handle, index| {
+            floating_states[index] = std.mem.zeroes(context.FloatingContext);
+            runtime.images[handle.slot].?.floating_context = @intCast(@intFromPtr(&floating_states[index]));
+            runtime.images[handle.slot].?.state = .{ .mstatus = 0, .mcause = 0 };
+        }
+    }
     return timer.configureOneShot(period_us);
+}
+
+/// Called on CPU0 with MIE clear after installing the native vector and before
+/// starting the timer. The bootstrap bank protects IDF's physical lazy owner.
+pub fn beginWindow() void {
+    nih_riscv_floating_saves[0] = 0;
+    nih_riscv_floating_restores[0] = 0;
+    const bank: u32 = if (mode == .smp_floating)
+        @intCast(@intFromPtr(&bootstrap_floating))
+    else
+        0;
+    nih_riscv_current_floating_states[0] = bank;
+    nih_riscv_selected_floating_states[0] = bank;
+    if (mode == .smp_floating) {
+        const status = asm volatile ("csrr %[value], mstatus"
+            : [value] "=r" (-> u32),
+        );
+        floating_initial_fs = (status >> 13) & 3;
+        nih_riscv_fpu_snapshot(&boundary_before);
+    }
+}
+
+/// Called on the restored bootstrap with MIE clear. Validate before clearing
+/// per-hart FP ownership so no task bank can escape the native boundary.
+pub fn finishWindow() bool {
+    (device orelse return false).stop();
+    const saves = nih_riscv_floating_saves[0];
+    const restores = nih_riscv_floating_restores[0];
+    if (mode == .smp_floating) {
+        const status = asm volatile ("csrr %[value], mstatus"
+            : [value] "=r" (-> u32),
+        );
+        floating_final_fs = (status >> 13) & 3;
+        nih_riscv_fpu_snapshot(&boundary_after);
+        const bank: u32 = @intCast(@intFromPtr(&bootstrap_floating));
+        floating_boundary_restored = nih_riscv_current_floating_states[0] == bank and
+            nih_riscv_selected_floating_states[0] == bank and
+            floating_final_fs == floating_initial_fs and
+            std.mem.eql(u8, std.mem.asBytes(&boundary_before), std.mem.asBytes(&boundary_after)) and
+            saves == restores and saves == call_count + interrupt_count + floating_ipi_interrupts;
+    } else {
+        floating_boundary_restored = saves == 0 and restores == 0 and
+            nih_riscv_current_floating_states[0] == 0 and nih_riscv_selected_floating_states[0] == 0;
+    }
+    nih_riscv_current_floating_states[0] = 0;
+    nih_riscv_selected_floating_states[0] = 0;
+    return floating_boundary_restored;
 }
 
 pub fn startMasked() bool {
     started_us = nih_platform_monotonic_us();
     (device orelse return false).start();
     if (mode == .remote) remote.start();
-    if (mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) duplex.start();
+    if (mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating or mode == .smp_floating) duplex.start();
     return true;
 }
 
@@ -305,7 +405,7 @@ pub fn run() bool {
 pub fn joinRemote() bool {
     return switch (mode) {
         .remote => remote.stopAndJoin(),
-        .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating => duplex.stopAndJoin(),
+        .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating, .smp_floating => duplex.stopAndJoin(),
         else => true,
     };
 }
@@ -316,6 +416,7 @@ fn refreshClock() bool {
         const now = timer.counter() orelse return false;
         const advance = clock.observe(now) orelse return false;
         if (!runtime.policy.elapse(advance.elapsed_ticks)) return false;
+        if (mode == .smp_floating) duplex.noteCpu0Tick(runtime.policy.now());
         if (!timer.armAt(advance.next_deadline)) return false;
         const after = timer.counter() orelse return false;
         if (after < advance.next_deadline) return true;
@@ -334,21 +435,36 @@ fn checkedSelection(selected: context.TaskContext) ?context.TaskContext {
 
 pub fn onTimer(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
     if (!runtime.capture(frame, state)) return null;
+    const current = runtime.policy.current() orelse return null;
+    if (mode == .smp_floating) {
+        for (worker_handles, 0..) |handle, index| {
+            if (current.slot == handle.slot) floating_timer_captures[index] += 1;
+        }
+    }
     if (!(device orelse return null).clearPending() or !refreshClock()) return null;
     interrupt_count += 1;
+    if (mode == .smp_floating) duplex.noteCpu0Timer(current.slot, runtime.policy.now());
     seedIntegerState(state);
     return checkedSelection(runtime.select() orelse return null);
 }
 
 fn seedIntegerState(state: context.ReturnState) void {
     if (!launched) {
-        for (worker_handles) |handle| runtime.images[handle.slot].?.state = state.integerOnly();
+        for (worker_handles) |handle| runtime.images[handle.slot].?.state =
+            if (mode == .smp_floating) state.floatingReady() else state.integerOnly();
         launched = true;
     }
 }
 
 pub fn onIpi(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
-    if ((mode != .remote and mode != .duplex and mode != .cpu1_tasks and mode != .cpu1_preemption and mode != .cpu1_floating) or !runtime.capture(frame, state)) return null;
+    if ((mode != .remote and mode != .duplex and mode != .cpu1_tasks and mode != .cpu1_preemption and mode != .cpu1_floating and mode != .smp_floating) or !runtime.capture(frame, state)) return null;
+    if (mode == .smp_floating) {
+        floating_ipi_interrupts += 1;
+        const current = runtime.policy.current() orelse return null;
+        for (worker_handles, 0..) |handle, index| {
+            if (current.slot == handle.slot) floating_ipi_captures[index] += 1;
+        }
+    }
     if (mode == .remote) remote.onIpi(&runtime.policy) else duplex.onIpi(&runtime.policy);
     if (!refreshClock()) return null;
     seedIntegerState(state);
@@ -359,6 +475,9 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
     if (!refreshClock()) return null;
     call_count += 1;
     const caller = runtime.policy.current() orelse return null;
+    if (mode == .smp_floating) for (worker_handles, 0..) |handle, index| {
+        if (caller.slot == handle.slot) floating_call_captures[index] += 1;
+    };
     const number = control.Number.decode(frame.a7);
     const argument = frame.a0;
     const selected = runtime.call(frame, state) orelse return null;
@@ -366,7 +485,7 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
         if (snapshot.state == .waiting) remote.recordBlocked(caller.slot, argument);
     }
-    if ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating) and number == .wait_events) {
+    if ((mode == .duplex or mode == .cpu1_tasks or mode == .cpu1_preemption or mode == .cpu1_floating or mode == .smp_floating) and number == .wait_events) {
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
         if (snapshot.state == .waiting) duplex.recordBlocked(caller.slot, argument);
     }
@@ -406,6 +525,7 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
 
 pub fn report() ?Report {
     if (!finished.load(.monotonic) or failed.load(.monotonic)) return null;
+    if (mode == .smp_floating and !floating_boundary_restored) return null;
     if ((mode == .lifecycle or mode == .events) and !terminal_wake_rejected.load(.monotonic)) return null;
     var result = Report{
         .sleep_started = sleep_started.load(.monotonic),
@@ -423,6 +543,32 @@ pub fn report() ?Report {
         .blocked_events = blocked_events,
         .delivered_events = delivered_events.load(.monotonic),
     };
+    if (mode == .smp_floating) {
+        var runtime_ticks = result.idle_runtime_ticks;
+        for (worker_handles) |handle| {
+            runtime_ticks = std.math.add(u64, runtime_ticks, (runtime.policy.snapshot(handle) orelse return null).runtime_ticks) catch return null;
+        }
+        if (runtime_ticks != runtime.policy.now() or clock.accounted_ticks != runtime.policy.now() or
+            nih_riscv_current_floating_states[0] == @as(u32, @intCast(@intFromPtr(&floating_states[0]))) or
+            nih_riscv_current_floating_states[0] == @as(u32, @intCast(@intFromPtr(&floating_states[1]))) or
+            nih_riscv_selected_floating_states[0] == @as(u32, @intCast(@intFromPtr(&floating_states[0]))) or
+            nih_riscv_selected_floating_states[0] == @as(u32, @intCast(@intFromPtr(&floating_states[1])))) return null;
+        result.floating = .{
+            .saves = nih_riscv_floating_saves[0],
+            .restores = nih_riscv_floating_restores[0],
+            .ipi_interrupts = floating_ipi_interrupts,
+            .timer_captures = floating_timer_captures,
+            .ipi_captures = floating_ipi_captures,
+            .calls = floating_call_captures,
+            .initial_fs = floating_initial_fs,
+            .final_fs = floating_final_fs,
+            .boundary_restored = floating_boundary_restored,
+            .elapsed_ticks = clock.accounted_ticks,
+            .runtime_ticks = runtime_ticks,
+        };
+    } else if (nih_riscv_floating_saves[0] != 0 or nih_riscv_floating_restores[0] != 0) {
+        return null;
+    }
     const expected_sleep: u32 = if (mode == .lifecycle) sleep_ticks else 2;
     if ((mode == .lifecycle or mode == .events) and (result.sleep_resumed < result.sleep_deadline or
         result.sleep_deadline != result.sleep_started + expected_sleep)) return null;
@@ -432,7 +578,7 @@ pub fn report() ?Report {
             result.delivered_events != 1) return null,
         .ipc => result.ipc = ipc.report() orelse return null,
         .remote => result.remote = remote.report() orelse return null,
-        .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating => result.duplex = duplex.report() orelse return null,
+        .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating, .smp_floating => result.duplex = duplex.report() orelse return null,
     }
     const replacement_image = runtime.images[worker_handles[0].slot] orelse return null;
     for (worker_handles, 0..) |handle, index| {
@@ -440,7 +586,7 @@ pub fn report() ?Report {
         const address = switch (mode) {
             .ipc => ipc.stackAddress(index),
             .remote => remote.stackAddress(index),
-            .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating => duplex.stackAddress(index),
+            .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating, .smp_floating => duplex.stackAddress(index),
             else => stack_addresses[index].load(.monotonic),
         };
         const snapshot = runtime.policy.snapshot(handle) orelse return null;
@@ -455,7 +601,7 @@ pub fn report() ?Report {
         .events => .{ 41, 43 },
         .ipc => .{ 53, 59 },
         .remote => .{ 67, 71 },
-        .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating => .{ 73, 79 },
+        .duplex, .cpu1_tasks, .cpu1_preemption, .cpu1_floating, .smp_floating => .{ 73, 79 },
     };
     if (!std.mem.eql(i32, &result.exits, &expected_exits)) return null;
     // Reuse a reaped slot without executing it. The stale handle must not
