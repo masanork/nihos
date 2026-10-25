@@ -85,6 +85,8 @@ The first live sleep/block/wake/exit result is recorded in
 Latched event notifications, masked waits, and deferred task replies are
 defined in
 [`docs/adr/0010-latched-task-events.md`](docs/adr/0010-latched-task-events.md).
+Their first native ECALL and timer execution result is recorded in
+[`docs/measurements/2026-10-25-esp-emu-task-events.md`](docs/measurements/2026-10-25-esp-emu-task-events.md).
 
 ## Bootstrap checks
 
