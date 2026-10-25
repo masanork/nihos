@@ -12,6 +12,7 @@ const request_readable: u32 = 1;
 const request_writable: u32 = 2;
 const response_readable: u32 = 4;
 const response_writable: u32 = 8;
+const completion_ack: u32 = 16;
 
 pub const Report = struct {
     messages: u32,
@@ -93,6 +94,9 @@ pub fn client(_: u32) callconv(.c) i32 {
     }
     checksum.store(hash, .monotonic);
     checked_messages.store(messages, .monotonic);
+    // The final pop must still be able to notify a live response producer.
+    // Release its endpoint only after every value and space notice passed.
+    if (calls.notify(responses.producer, completion_ack) != calls.Status.ok) fail(-149);
     return 53;
 }
 
@@ -112,6 +116,11 @@ pub fn service(_: u32) callconv(.c) i32 {
         });
         checkCanary(checked, 0x6970_7376);
     }
+    switch (calls.waitEvents(completion_ack)) {
+        .received => |bits| if (bits != completion_ack) fail(-150),
+        .failed => fail(-151),
+    }
+    checkCanary(checked, 0x6970_7376);
     return 59;
 }
 
