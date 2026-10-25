@@ -114,6 +114,9 @@ recorded in
 CPU1 timer ownership, deadline wakeup, and non-yielding-task preemption are
 defined in
 [`docs/adr/0015-cpu1-timer-and-preemption.md`](docs/adr/0015-cpu1-timer-and-preemption.md).
+Their first delayed-tick, deadline-wakeup, and dual-timer result is recorded
+in
+[`docs/measurements/2026-10-25-esp-emu-cpu1-preemption.md`](docs/measurements/2026-10-25-esp-emu-cpu1-preemption.md).
 
 ## Bootstrap checks
 
