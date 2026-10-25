@@ -519,6 +519,7 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("preemption_interrupts=", preempted.interrupts);
     writeU64("preemption_caught_up_ticks=", preempted.caught_up_ticks);
     writeU64("preemption_elapsed_us=", preempted.elapsed_us);
+    writeU64("preemption_bootstrap_runtime_ticks=", preempted.bootstrap_runtime_ticks);
     for (0..2) |worker| {
         writeU32("preemption_worker=", @intCast(worker));
         writeU32("preemption_iterations=", preempted.worker_iterations[worker]);

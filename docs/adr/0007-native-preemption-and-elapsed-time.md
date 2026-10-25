@@ -41,10 +41,13 @@ Workers retain and check stack canaries across preemptions. Progress must be
 nonzero, each worker must have been selected at least twice, and each reported
 stack address must belong to its own stack. If timer delivery disappears,
 bounded counter checks in the workers trigger an emergency ecall back to the
-bootstrap after 100 ms; that path fails the test rather than counting as a
+bootstrap after 100 ms; an independent IDF SYSTIMER read supplies this test
+watchdog so a stalled Timer Group cannot stall the recovery check. That
+path fails the test rather than counting as a
 voluntary yield. Initial worker CSR state comes from the first real interrupt,
 with floating-point access disabled. Normal worker execution stays entirely
-in integer Zig code and never calls FreeRTOS services.
+in integer Zig code and never calls FreeRTOS services. Accounted bootstrap
+and worker runtime ticks must sum to total elapsed scheduler ticks.
 
 ## Ownership and qualification
 

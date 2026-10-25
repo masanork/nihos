@@ -27,6 +27,7 @@ pub const Report = struct {
     interrupts: u32,
     caught_up_ticks: u64,
     elapsed_us: u64,
+    bootstrap_runtime_ticks: u64,
     worker_iterations: [worker_count]u32,
     worker_selections: [worker_count]u32,
     worker_runtime_ticks: [worker_count]u64,
@@ -51,8 +52,16 @@ var iterations: [worker_count]std.atomic.Value(u32) = @splat(.init(0));
 var stack_addresses: [worker_count]std.atomic.Value(u32) = @splat(.init(0));
 var finished = std.atomic.Value(bool).init(false);
 var failed = std.atomic.Value(bool).init(false);
+var budget_started_us: u64 = 0;
 
 extern fn nih_riscv_context_test_yield() callconv(.c) noreturn;
+extern fn nih_platform_monotonic_us() callconv(.c) u64;
+
+fn budgetExpired() bool {
+    // The host's independent SYSTIMER oracle is only a test watchdog. Actual
+    // scheduler time and deadlines always come from the native Timer Group.
+    return nih_platform_monotonic_us() - budget_started_us >= timeout_us;
+}
 
 fn worker(argument: u32) callconv(.c) noreturn {
     if (argument >= worker_count) {
@@ -73,11 +82,7 @@ fn worker(argument: u32) callconv(.c) noreturn {
         // Recover to the bootstrap even if future timer interrupts disappear.
         // Normal execution never issues ecall or voluntarily yields.
         if (count & 255 == 0) {
-            const now = (device orelse unreachable).counter() orelse {
-                failed.store(true, .monotonic);
-                nih_riscv_context_test_yield();
-            };
-            if (now >= timeout_us or failed.load(.monotonic)) {
+            if (budgetExpired() or failed.load(.monotonic)) {
                 failed.store(true, .monotonic);
                 nih_riscv_context_test_yield();
             }
@@ -137,10 +142,11 @@ pub fn prepare(
 /// so the target test must account for several ticks in one interrupt.
 pub fn startMasked() bool {
     const timer = device orelse return false;
+    budget_started_us = nih_platform_monotonic_us();
     timer.start();
     while (true) {
         const now = timer.counter() orelse return false;
-        if (now >= timeout_us) return false;
+        if (budgetExpired()) return false;
         if (now >= delayed_first_us) return true;
         std.atomic.spinLoopHint();
     }
@@ -149,8 +155,7 @@ pub fn startMasked() bool {
 pub fn run() bool {
     const timer = device orelse return false;
     while (!finished.load(.monotonic)) {
-        const now = timer.counter() orelse break;
-        if (now >= timeout_us) break;
+        if (budgetExpired()) break;
         std.atomic.spinLoopHint();
     }
     timer.stop();
@@ -238,10 +243,12 @@ pub fn report() ?Report {
         .interrupts = interrupts,
         .caught_up_ticks = caught_up_ticks,
         .elapsed_us = elapsed,
+        .bootstrap_runtime_ticks = (policy.snapshot(bootstrap_handle) orelse return null).runtime_ticks,
         .worker_iterations = @splat(0),
         .worker_selections = selections_per_worker,
         .worker_runtime_ticks = @splat(0),
     };
+    var total_runtime = result.bootstrap_runtime_ticks;
     for (worker_handles, 0..) |handle, index| {
         const selected = selections[handle.slot] orelse return null;
         const address = stack_addresses[index].load(.monotonic);
@@ -250,6 +257,8 @@ pub fn report() ?Report {
             count == 0 or selections_per_worker[index] < 2) return null;
         result.worker_iterations[index] = count;
         result.worker_runtime_ticks[index] = (policy.snapshot(handle) orelse return null).runtime_ticks;
+        total_runtime = std.math.add(u64, total_runtime, result.worker_runtime_ticks[index]) catch return null;
     }
+    if (total_runtime != result.elapsed_ticks) return null;
     return result;
 }
