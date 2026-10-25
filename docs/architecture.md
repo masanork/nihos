@@ -47,6 +47,11 @@ The native backend uses the Espressif boot path and licensed low-level support
 but owns scheduling, interrupts, resources, and services. Kernel code must not
 know which backend provided the platform ABI.
 
+ESP-EMU is a test environment for target binaries, not a third backend. The
+same ESP-IDF-hosted Zig code can run there with a revision-3 target profile,
+but emulator-only device models must not leak into the platform ABI or native
+drivers.
+
 ## Hardware contracts
 
 The platform boundary models resources, not generic convenience calls.
@@ -84,7 +89,10 @@ The platform boundary models resources, not generic convenience calls.
 8. Audio, SD assets, C6 networking, and performance applications.
 
 Every stage records whether evidence is host-only, ESP-IDF-hosted, native
-firmware, or physical Tab5 behavior.
+firmware, emulator-executed, or physical Tab5 behavior. Emulator execution can
+gate boot, traps, SMP ordering, and later scheduler/system-call scenarios. It
+cannot qualify board power sequencing, peripheral compatibility, display or
+audio quality, storage durability, or real-time performance.
 
 The first four stages are complete as of 2026-10-25. Stage 2 is physical
 Tab5 evidence, but remains ESP-IDF-hosted: ESP-IDF and FreeRTOS still own boot,

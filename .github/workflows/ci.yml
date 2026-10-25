@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Host quality gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Static analysis
+        run: sh tools/run-static-analysis.sh
+
+      - name: Zig tests (Debug)
+        run: .tools/zig-0.17.0/zig build test
+
+      - name: Zig tests (ReleaseSafe)
+        run: .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
+
+      - name: C, Zig, and Rust ABI probe
+        run: sh tools/run-language-probe.sh
