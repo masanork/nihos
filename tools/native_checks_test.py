@@ -20,6 +20,12 @@ def complete_log(mode="integer", psram_size="0"):
     lines.append("NIHOS_NATIVE_PSRAM status={:08x} configuration={:08x} identity={:08x} "
                  "bytes={:08x} transactions=00000004 mapped=00000000 allocatable=00000000".format(
                      int(size != 0), 0x0d00 if size else 0, 0xc8 | density if size else 0, size))
+    lines.append("NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 "
+                 "dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001")
+    addresses = size.bit_length() - 1 if size else 0
+    values = [1, 0x28, 0x40, 0x0b, addresses, 2, addresses * 2, addresses * 2, 13 + addresses * 4] if size else [0] * 8 + [4]
+    names = ("status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions")
+    lines.append("NIHOS_NATIVE_PSRAM_IO" + "".join(" {}={:08x}".format(name, value) for name, value in zip(names, values)))
     for count in [1] + list(range(10, 301, 10)):
         lines.append("NIHOS_NATIVE_HEARTBEAT round={0:08x} cpu0={1:08x} cpu1={1:08x} "
                      "ticks0={2:08x} ticks1={2:08x}".format(count, count * 100, count * 4))
@@ -53,6 +59,41 @@ def complete_log(mode="integer", psram_size="0"):
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_missing_or_duplicate_supply_or_data_evidence_is_rejected(self):
+        log = complete_log()
+        for marker in ("NIHOS_NATIVE_PSRAM_SUPPLY", "NIHOS_NATIVE_PSRAM_IO"):
+            line = next(line for line in log.splitlines() if line.startswith(marker))
+            for changed in (log.replace(line, ""), log + "\n" + line):
+                with self.subTest(marker=marker), self.assertRaisesRegex(ValueError, "PSRAM .* evidence"):
+                    MODULE.check(changed)
+
+    def test_failed_or_inconsistent_supply_programming_is_rejected(self):
+        for old, new in (("programmed=00000001", "programmed=00000000"),
+                         ("settled=00000001", "settled=00000000"),
+                         ("control=00000180", "control=00004180"),
+                         ("analog=66800000", "analog=00000000"),
+                         ("dref=00000006", "dref=00000007")):
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "supply programming"):
+                MODULE.check(complete_log().replace(old, new))
+
+    def test_complete_calibration_fields_are_accepted(self):
+        log = complete_log().replace("calibrated=00000000", "calibrated=00000001")
+        log = log.replace("dref=00000006 mul=00000005", "dref=00000009 mul=00000003").replace("analog=66800000", "analog=95800000")
+        self.assertEqual(MODULE.check(log)["psram_supply"]["calibrated"], 1)
+
+    def test_detected_capacity_requires_complete_mode_and_data_checks(self):
+        log = complete_log(psram_size="32M")
+        for old, new in (("mr0=00000028", "mr0=00000024"), ("mr4=00000040", "mr4=00000000"),
+                         ("mr8=0000000b", "mr8=0000004b"), ("addresses=00000019", "addresses=00000001"),
+                         ("passes=00000002", "passes=00000001"), ("reads=00000032", "reads=00000031"),
+                         ("writes=00000032", "writes=00000031"), ("transactions=00000071", "transactions=00000070")):
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "data/mode qualification"):
+                MODULE.check(log.replace(old, new), "integer", 32 << 20)
+
+    def test_absent_die_must_skip_mode_and_data_commands(self):
+        with self.assertRaisesRegex(ValueError, "absent PSRAM received"):
+            MODULE.check(complete_log().replace("writes=00000000", "writes=00000001"))
+
     def test_all_detected_psram_sizes_require_the_requested_capacity(self):
         for size, amount in (("4M", 4), ("8M", 8), ("16M", 16), ("32M", 32), ("64M", 64)):
             with self.subTest(size=size):

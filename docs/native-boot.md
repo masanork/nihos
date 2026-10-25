@@ -21,6 +21,8 @@ Owner-local SRAM allocation and its PSRAM boundary are described in
 [ADR 0023](adr/0023-owner-local-native-sram.md).
 Read-only native PSRAM command discovery is described in
 [ADR 0024](adr/0024-bounded-native-psram-discovery.md).
+Supply startup and command-data qualification are described in
+[ADR 0025](adr/0025-native-psram-supply-and-command-data.md).
 
 ## Build and emulated execution
 
@@ -33,6 +35,7 @@ sh tools/run-native-smoke.sh
 sh tools/run-native-smoke.sh floating
 sh tools/run-native-smoke.sh compiled
 sh tools/run-native-smoke.sh integer 32M
+sh tools/run-native-smoke.sh compiled 32M
 ```
 
 This builds only the stock loader and partition table with IDF. Zig links
@@ -82,9 +85,19 @@ heap. No external memory is registered.
 Before CPU1 release, Zig now reads the PSRAM identity through MSPI3 with
 bounded polling and a repeated-read check. `NIHOS_NATIVE_PSRAM` reports the
 mode-register capacity while requiring zero mapped/allocatable bytes. This
-is an emulated command fixture; native supply startup, device programming,
-timing calibration and CPU memory access remain unqualified. The only ROM
+is an emulated command fixture. The only ROM
 calls remain console output and CPU1 entry publication.
+
+The native path now programs and reads back LDO channel 2 for 1.8 V, using
+complete factory trim fields when present and nominal settings otherwise.
+It leases CPU0's stopped timer for a bounded 1 ms boot settling wait and
+returns it with a reset scheduler deadline. A detected die receives verified
+x8/fixed-latency mode settings, followed by two complementary write/read
+passes over 22–26 address-derived samples spanning its address lines and
+final word. `NIHOS_NATIVE_PSRAM_SUPPLY` and `NIHOS_NATIVE_PSRAM_IO` report
+these results. An absent die receives no mode or data writes. All CPU
+access still uses internal SRAM; physical voltage/timing, high-speed tuning,
+MMU/cache and DMA remain unqualified.
 
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
 `64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
@@ -107,7 +120,8 @@ scalar/callback and pointer interfaces are qualified in the emulator;
 arbitrary aggregates, varargs and f64 interfaces are not covered.
 
 The manual **Native boot** workflow runs all three modes without a die and
-the five populated sizes in integer mode, builds the three physical images,
+the five populated sizes in integer mode plus compiled FP with 32 MiB,
+builds the three physical images,
 and retains the artifacts. It does not flash hardware.
 
 ## Physical image
@@ -133,11 +147,12 @@ In this fixture the console is the output; display, touch and CPU-accessible
 external RAM are not initialized. Migration and a general tickless deadline policy are
 not yet connected to this permanent native runtime.
 
-The smoke has twenty-nine validator regression tests, including frozen
+The smoke has thirty-four validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
-generated-code preemption, SRAM ownership/accounting and PSRAM discovery.
+generated-code preemption, SRAM ownership/accounting, PSRAM discovery,
+supply programming and command-data accounting.
 Four more tests
 check instruction classification and the linker heap boundary:
 

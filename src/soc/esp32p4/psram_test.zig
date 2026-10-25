@@ -112,3 +112,158 @@ test "late completion cannot be counted as successful discovery" {
     try std.testing.expectEqual(@as(u32, 0), result.bytes);
     try std.testing.expectEqual(@as(u32, 0), controller.transactions);
 }
+
+const Device = struct {
+    words: [64]u32 = @splat(0),
+    modes: [16]u8 = .{ 0, 0x0d, 0xcf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    memory: [26]Cell = @splat(.{}),
+    pending: u32 = 0,
+    alias_mask: u32 = 0xffff_ffff,
+    drop_modes: bool = false,
+    corrupt_data: bool = false,
+    stall_data_write: bool = false,
+    data_reads: u32 = 0,
+    data_writes: u32 = 0,
+    valid_phases: bool = true,
+
+    const Cell = struct { address: u32 = 0, value: u32 = 0, occupied: bool = false };
+
+    pub fn read(self: *Device, offset: usize) u32 {
+        if (offset == regs.command and self.pending != 0) {
+            if (!(self.stall_data_write and self.opcode() == 0x8080)) {
+                self.pending -= 1;
+                if (self.pending == 0) {
+                    self.complete();
+                    self.words[regs.command / 4] &= ~regs.start;
+                }
+            }
+        }
+        return self.words[offset / 4];
+    }
+
+    pub fn write(self: *Device, offset: usize, value: u32) void {
+        self.words[offset / 4] = value;
+        if (offset == regs.command and value & regs.start != 0) self.pending = 2;
+    }
+
+    fn opcode(self: *const Device) u16 {
+        return @truncate(self.words[regs.user2 / 4]);
+    }
+
+    fn cell(self: *Device, address: u32) *Cell {
+        for (&self.memory) |*entry| if (entry.occupied and entry.address == address) return entry;
+        for (&self.memory) |*entry| {
+            if (!entry.occupied) {
+                entry.* = .{ .address = address, .occupied = true };
+                return entry;
+            }
+        }
+        unreachable;
+    }
+
+    fn complete(self: *Device) void {
+        const operation = self.opcode();
+        const writing = operation == 0xc0c0 or operation == 0x8080;
+        const mode = operation == 0x4040 or operation == 0xc0c0;
+        const dummy: u32 = if (operation == 0xc0c0) 0 else if (operation == 0) 18 else 8;
+        const address = self.words[regs.address / 4];
+        const count: u32 = if (mode) (if (operation == 0x4040 and address == 8) 8 else 16) else 32;
+        const expected_user: u32 = 0xc0000000 | (if (dummy == 0) @as(u32, 0) else 1 << 29) |
+            (if (writing) @as(u32, 1 << 27) else 1 << 28);
+        self.valid_phases = self.valid_phases and
+            self.words[regs.user2 / 4] >> 28 == 15 and
+            self.words[regs.user1 / 4] >> 26 == 31 and
+            self.words[regs.user1 / 4] & 63 == (if (dummy == 0) 0 else dummy - 1) and
+            self.words[regs.user / 4] == expected_user and
+            self.words[regs.control / 4] == 0x274 and self.words[regs.ddr / 4] == 0x21 and
+            self.words[regs.misc / 4] & 3 == 1 and
+            self.words[regs.mosi_length / 4] == (if (writing) count - 1 else 0) and
+            self.words[regs.miso_length / 4] == (if (writing) 0 else count - 1);
+        if (operation == 0x4040) {
+            const index: usize = @intCast(address);
+            self.words[regs.fifo / 4] = @as(u32, self.modes[index]) |
+                (if (count == 16) @as(u32, self.modes[index + 1]) << 8 else 0);
+        } else if (operation == 0xc0c0) {
+            if (!self.drop_modes) self.modes[@intCast(address)] = @truncate(self.words[regs.fifo / 4]);
+        } else if (operation == 0x8080) {
+            self.cell(address & self.alias_mask).value = self.words[regs.fifo / 4];
+            self.data_writes += 1;
+        } else if (operation == 0) {
+            self.words[regs.fifo / 4] = self.cell(address & self.alias_mask).value ^ @as(u32, @intFromBool(self.corrupt_data));
+            self.data_reads += 1;
+        } else unreachable;
+    }
+};
+
+test "mode readback and both full-address-set data passes complete" {
+    var device = Device{};
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discover();
+    const result = try controller.exercise(found);
+    try std.testing.expectEqual(@as(u32, 25), result.addresses);
+    try std.testing.expectEqual(@as(u32, 2), result.passes);
+    try std.testing.expectEqual(@as(u32, 50), device.data_writes);
+    try std.testing.expectEqual(@as(u32, 50), device.data_reads);
+    try std.testing.expectEqual(@as(u32, 113), controller.transactions);
+    try std.testing.expectEqual(@as(u32, 0x28), result.mr0);
+    try std.testing.expectEqual(@as(u32, 0x40), result.mr4);
+    try std.testing.expectEqual(@as(u32, 0x0b), result.mr8);
+    try std.testing.expect(device.valid_phases);
+}
+
+test "each sampled address-line alias is detected before capacity can be used again" {
+    for (2..25) |bit| {
+        var device = Device{ .alias_mask = ~(@as(u32, 1) << @as(u5, @intCast(bit))) };
+        var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+        const found = controller.discover();
+        try std.testing.expectError(error.DataMismatch, controller.exercise(found));
+        try std.testing.expectEqual(@as(u32, 0), controller.capacity);
+        try std.testing.expectError(error.Faulted, controller.readWord(0));
+    }
+}
+
+test "lost mode writes prevent all data commands" {
+    var device = Device{ .drop_modes = true };
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discover();
+    try std.testing.expectError(error.ModeMismatch, controller.configure(found));
+    try std.testing.expectError(error.Unqualified, controller.writeWord(0, 1));
+    try std.testing.expectEqual(@as(u32, 0), device.data_writes);
+}
+
+test "a timed out data write poisons further reads and writes" {
+    var device = Device{ .stall_data_write = true };
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discover();
+    _ = try controller.configure(found);
+    try std.testing.expectError(error.Timeout, controller.writeWord(0, 1));
+    try std.testing.expectError(error.Faulted, controller.readWord(0));
+    try std.testing.expectError(error.Faulted, controller.writeWord(4, 2));
+    try std.testing.expectEqual(@as(u32, 0), device.data_writes);
+}
+
+test "data access requires verified identity and respects the final word boundary" {
+    var device = Device{};
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    try std.testing.expectError(error.Unqualified, controller.readWord(0));
+    var found = controller.discover();
+    found.bytes *= 2;
+    try std.testing.expectError(error.Unqualified, controller.configure(found));
+    found.bytes /= 2;
+    _ = try controller.configure(found);
+    const before = controller.transactions;
+    try std.testing.expectError(error.OutOfRange, controller.readWord(found.bytes));
+    try std.testing.expectError(error.OutOfRange, controller.writeWord(found.bytes - 2, 1));
+    try std.testing.expectError(error.OutOfRange, controller.readWord(0xffff_fffc));
+    try std.testing.expectEqual(before, controller.transactions);
+    try controller.writeWord(found.bytes - 4, 0x12345678);
+    try std.testing.expectEqual(@as(u32, 0x12345678), try controller.readWord(found.bytes - 4));
+}
+
+test "data corruption revokes the command capacity" {
+    var device = Device{ .corrupt_data = true };
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discover();
+    try std.testing.expectError(error.DataMismatch, controller.exercise(found));
+    try std.testing.expectEqual(@as(u32, 0), controller.capacity);
+}
