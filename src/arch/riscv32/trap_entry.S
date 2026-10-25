@@ -1,15 +1,17 @@
 /*
- * Compile-checked native RV32 trap-entry prototype.
+ * Native RV32 trap entry and bounded context-switch test helpers.
  *
- * This object is deliberately not linked into the ESP-IDF bring-up image and
- * no code installs it in mtvec yet. Interrupts remain disabled while the
- * dispatcher runs; per-core interrupt stacks and nesting come later.
+ * The ESP-IDF bring-up image installs this entry only around a synchronous
+ * self-test. Interrupts remain disabled while the dispatcher runs; permanent
+ * vector ownership, asynchronous preemption, and nesting come later.
  */
 
 #include "context_offsets.inc"
 
-    .section .text.nih_riscv_trap_entry, "ax", @progbits
-    .balign 4
+    /* Keep the temporary vector in IRAM and out of flash/MMU aliasing. */
+    .section .iram1.nih_riscv_trap_entry, "ax", @progbits
+    /* ESP32-P4 CLIC ignores the low six mtvec address bits. */
+    .balign 64
     .global nih_riscv_trap_entry
     .type nih_riscv_trap_entry, @function
 
@@ -65,6 +67,18 @@ nih_riscv_trap_entry:
     mv a0, sp
     mv a1, s10
     csrr a2, mhartid
+
+    /* Dispatch on a bounded, private stack for this hart. */
+    li t0, 2
+    bgeu a2, t0, .Linvalid_context
+    la t0, nih_riscv_interrupt_stack_tops
+    slli t1, a2, 2
+    add t0, t0, t1
+    lw t0, 0(t0)
+    beqz t0, .Linvalid_context
+    andi t1, t0, 15
+    bnez t1, .Linvalid_context
+    mv sp, t0
     call nih_riscv_trap_dispatch
     beqz a0, .Linvalid_context
 
@@ -112,3 +126,65 @@ nih_riscv_trap_entry:
     j .Linvalid_context
 
     .size nih_riscv_trap_entry, .-nih_riscv_trap_entry
+
+    .balign 4
+    .global nih_riscv_exception_roundtrip
+    .type nih_riscv_exception_roundtrip, @function
+nih_riscv_exception_roundtrip:
+    /*
+     * Save ESP-IDF's vector state in temporaries. The trap frame preserves
+     * those temporaries across ecall. MIE is cleared before mtvec changes, so
+     * no maskable interrupt can enter through the temporary vector.
+     */
+    csrr t0, mstatus
+    csrci mstatus, 8
+    csrr t1, mtvec
+    la t2, nih_riscv_trap_entry
+    ori t2, t2, 3
+    csrw mtvec, t2
+    ecall
+    csrw mtvec, t1
+    csrw mstatus, t0
+    li a0, 1
+    ret
+
+    .size nih_riscv_exception_roundtrip, .-nih_riscv_exception_roundtrip
+
+    .balign 4
+    .global nih_riscv_task_trampoline
+    .type nih_riscv_task_trampoline, @function
+nih_riscv_task_trampoline:
+    /* Initial context supplies task entry in a0 and argument in a1. */
+    mv t0, a0
+    mv a0, a1
+    jalr t0
+    /* Returning from a task is a kernel event, not an invalid return address. */
+    ecall
+    j .Linvalid_context
+
+    .size nih_riscv_task_trampoline, .-nih_riscv_task_trampoline
+
+    .balign 4
+    .global nih_riscv_context_test_yield
+    .type nih_riscv_context_test_yield, @function
+nih_riscv_context_test_yield:
+    ecall
+    j .Linvalid_context
+
+    .size nih_riscv_context_test_yield, .-nih_riscv_context_test_yield
+
+    .balign 4
+    .global nih_riscv_read_gp
+    .type nih_riscv_read_gp, @function
+nih_riscv_read_gp:
+    mv a0, gp
+    ret
+    .size nih_riscv_read_gp, .-nih_riscv_read_gp
+
+    .balign 4
+    .global nih_riscv_read_tp
+    .type nih_riscv_read_tp, @function
+nih_riscv_read_tp:
+    mv a0, tp
+    ret
+    .size nih_riscv_read_tp, .-nih_riscv_read_tp

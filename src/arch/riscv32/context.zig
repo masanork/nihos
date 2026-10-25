@@ -86,16 +86,26 @@ pub fn initialFrameAddress(stack_base: u32, stack_size: u32) ?u32 {
     return frame;
 }
 
+/// Returns the 16-byte-aligned 128-byte switch frame at the top of a task
+/// stack. Restoring this frame leaves `sp` at the aligned stack top.
+pub fn initialTaskFrameAddress(stack_base: u32, stack_size: u32) ?u32 {
+    const top = std.math.add(u32, stack_base, stack_size) catch return null;
+    if (top < integer_context_size) return null;
+    const frame = (top - integer_context_size) & ~(stack_alignment - 1);
+    if (frame < stack_base) return null;
+    return frame;
+}
+
 /// Constructs the register image restored before a task first executes.
 /// `trampoline` receives `entry` in a0 and `argument` in a1; it owns task
 /// return handling, so an arbitrary task function never returns into a trap.
-pub fn initialize(frame: *ExceptionContext, task: InitialTask) void {
-    frame.* = std.mem.zeroes(ExceptionContext);
-    frame.integer.mepc = task.trampoline;
-    frame.integer.gp = task.global_pointer;
-    frame.integer.tp = task.thread_pointer;
-    frame.integer.a0 = task.entry;
-    frame.integer.a1 = task.argument;
+pub fn initialize(frame: *IntegerContext, task: InitialTask) void {
+    frame.* = std.mem.zeroes(IntegerContext);
+    frame.mepc = task.trampoline;
+    frame.gp = task.global_pointer;
+    frame.tp = task.thread_pointer;
+    frame.a0 = task.entry;
+    frame.a1 = task.argument;
 }
 
 comptime {
@@ -124,7 +134,7 @@ comptime {
 }
 
 test "initial task frame is bounded and follows the trampoline ABI" {
-    var frame: ExceptionContext = undefined;
+    var frame: IntegerContext = undefined;
     initialize(&frame, .{
         .entry = 0x4200_1000,
         .argument = 0x4ff0_2000,
@@ -133,13 +143,12 @@ test "initial task frame is bounded and follows the trampoline ABI" {
         .thread_pointer = 0x4ff0_3000,
     });
 
-    try std.testing.expectEqual(@as(u32, 0x4200_0100), frame.integer.mepc);
-    try std.testing.expectEqual(@as(u32, 0x4200_1000), frame.integer.a0);
-    try std.testing.expectEqual(@as(u32, 0x4ff0_2000), frame.integer.a1);
-    try std.testing.expectEqual(@as(u32, 0x4ff0_0000), frame.integer.gp);
-    try std.testing.expectEqual(@as(u32, 0x4ff0_3000), frame.integer.tp);
-    try std.testing.expectEqual(@as(u32, 0), frame.integer.ra);
-    try std.testing.expectEqual(@as(u32, 0), frame.mcause);
+    try std.testing.expectEqual(@as(u32, 0x4200_0100), frame.mepc);
+    try std.testing.expectEqual(@as(u32, 0x4200_1000), frame.a0);
+    try std.testing.expectEqual(@as(u32, 0x4ff0_2000), frame.a1);
+    try std.testing.expectEqual(@as(u32, 0x4ff0_0000), frame.gp);
+    try std.testing.expectEqual(@as(u32, 0x4ff0_3000), frame.tp);
+    try std.testing.expectEqual(@as(u32, 0), frame.ra);
 }
 
 test "initial frame placement preserves alignment and rejects bad ranges" {
@@ -149,4 +158,9 @@ test "initial frame placement preserves alignment and rejects bad ranges" {
     );
     try std.testing.expect(initialFrameAddress(0xffff_ff80, 0x100) == null);
     try std.testing.expect(initialFrameAddress(0x2000_0000, 64) == null);
+    try std.testing.expectEqual(
+        @as(?u32, 0x2000_0f80),
+        initialTaskFrameAddress(0x2000_0003, 0x1000),
+    );
+    try std.testing.expect(initialTaskFrameAddress(0x2000_0000, 64) == null);
 }
