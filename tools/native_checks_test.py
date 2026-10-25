@@ -37,11 +37,42 @@ def complete_log(mode="integer"):
         names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed")
         lines.append("NIHOS_NATIVE_FP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
+        start = 0x4ff18000 + hart * 0x4000
+        lines.append("NIHOS_NATIVE_MEMORY hart={:08x} start={:08x} end={:08x} "
+                     "capacity=00003f80 used=000001c0 free=00003dc0 "
+                     "checks0=00000004 checks1=00000004 rejected=00000003 confirmed=00000001".format(
+                         hart, start, start + 0x4000))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_missing_or_duplicate_memory_owner_is_rejected(self):
+        log = complete_log()
+        with self.assertRaisesRegex(ValueError, "per-hart memory"):
+            MODULE.check("\n".join(line for line in log.splitlines() if "NIHOS_NATIVE_MEMORY" not in line))
+        with self.assertRaisesRegex(ValueError, "duplicate memory"):
+            MODULE.check(log.replace("NIHOS_NATIVE_MEMORY hart=00000001", "NIHOS_NATIVE_MEMORY hart=00000000"))
+
+    def test_incomplete_memory_guard_or_allocator_evidence_is_rejected(self):
+        for field, old, new in (("used", "000001c0", "000001c1"), ("free", "00003dc0", "00003dc1"),
+                                ("checks0", "00000004", "00000000"), ("rejected", "00000003", "00000002"),
+                                ("confirmed", "00000001", "00000000")):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "memory ownership"):
+                MODULE.check("\n".join(line.replace(field + "=" + old, field + "=" + new)
+                                       if line.startswith("NIHOS_NATIVE_MEMORY") else line
+                                       for line in complete_log().splitlines()))
+
+    def test_external_or_unaligned_memory_cannot_qualify_sram(self):
+        for address in ("48018000", "4ff18001"):
+            with self.subTest(address=address), self.assertRaisesRegex(ValueError, "memory ownership"):
+                MODULE.check(complete_log().replace("start=4ff18000", "start=" + address))
+
+    def test_overlapping_memory_owners_are_rejected(self):
+        log = complete_log().replace("start=4ff1c000 end=4ff20000", "start=4ff18000 end=4ff1c000")
+        with self.assertRaisesRegex(ValueError, "overlapping memory"):
+            MODULE.check(log)
+
     def test_complete_continuous_run(self):
         report = MODULE.check(complete_log())
         self.assertEqual(report["rounds"], 300)

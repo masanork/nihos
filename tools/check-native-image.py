@@ -31,6 +31,22 @@ def is_fp_instruction(word, width):
         opcode == 0x73 and ((word >> 12) & 7) != 0 and (word >> 20) in (1, 2, 3))
 
 
+def audit_heap_layout(symbols, allocated):
+    start, end = symbols["__heap_start"], symbols["__heap_end"]
+    require(SRAM_LOW <= symbols["__irq_stack1_top"] <= start < end == SRAM_HIGH and
+            start % 64 == 0 and end % 64 == 0 and end - start >= 16384,
+            "invalid native heap boundary")
+    heap = [section for section in allocated if section["name"] == ".heap"]
+    require(len(heap) == 1 and int(heap[0]["address"], 16) == start and
+            heap[0]["bytes"] == end - start, "heap section differs from symbols")
+    for section in allocated:
+        address = int(section["address"], 16)
+        if section["name"] != ".heap" and SRAM_LOW <= address < SRAM_HIGH:
+            require(address + section["bytes"] <= start, "static section overlaps native heap")
+    return {"start": hex(start), "end": hex(end), "bytes": end - start,
+            "owner_count": 2, "granule_bytes": 64, "external_bytes": 0}
+
+
 def audit(elf, image, mode=None):
     require(elf[:7] == b"\x7fELF\x01\x01\x01", "expected ELF32 little endian")
     header = struct.unpack_from("<HHIIIIIHHHHHH", elf, 16)
@@ -57,6 +73,8 @@ def audit(elf, image, mode=None):
         name_id, section_type, flags, address, offset, size, link, _, _, stride = section
         name = string(names, name_id)
         if flags & 2 and size:  # SHF_ALLOC
+            if name == ".heap":
+                require(section_type == 8 and flags & 7 == 3, "heap must be writable NOBITS")
             in_sram = SRAM_LOW <= address and address + size <= SRAM_HIGH
             if not in_sram:
                 require(FLASH_SECTIONS.get(name) == (address, size),
@@ -123,10 +141,11 @@ def audit(elf, image, mode=None):
             symbols["__stack1_top"] <= symbols["__irq_stack0_bottom"] and
             symbols["__irq_stack0_top"] <= symbols["__irq_stack1_bottom"] and
             symbols["__irq_stack1_top"] <= SRAM_HIGH, "stack layout overflow")
+    heap = audit_heap_layout(symbols, allocated)
     report = {"schema": 1, "backend": "native-sram", "rtos_linked": False,
               "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]), "fp_instructions": fp_counts,
               "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
-              "sram_reserved_bytes": symbols["__irq_stack1_top"] - SRAM_LOW,
+              "sram_reserved_bytes": symbols["__heap_start"] - SRAM_LOW, "heap": heap,
               "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
     if image is None:
         return report

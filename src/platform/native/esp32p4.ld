@@ -37,9 +37,15 @@ SECTIONS
         __irq_stack0_bottom = .; . += 8192; __irq_stack0_top = .;
         __irq_stack1_bottom = .; . += 8192; __irq_stack1_top = .;
     } > ram
+    .heap (NOLOAD) : ALIGN(64) {
+        __heap_start = .;
+        . = ORIGIN(ram) + LENGTH(ram);
+        __heap_end = .;
+    } > ram
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
     ASSERT(__irq_stack1_top <= ORIGIN(ram) + LENGTH(ram), "native SRAM overflow")
+    ASSERT(__heap_end - __heap_start >= 16384, "native SRAM heap below 16 KiB")
 }
 /* ROM ABI, not linked ESP-IDF implementations. */
 PROVIDE(nih_rom_putc = 0x4fc00054);

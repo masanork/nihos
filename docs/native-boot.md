@@ -17,6 +17,8 @@ Opt-in FP ownership and its integer regression mode are described in
 [ADR 0021](adr/0021-native-opt-in-floating-contexts.md).
 Compiler-generated Zig/C single-precision tasks and the ILP32F boundary are
 covered by [ADR 0022](adr/0022-compiled-fp-and-c-boundary.md).
+Owner-local SRAM allocation and its PSRAM boundary are described in
+[ADR 0023](adr/0023-owner-local-native-sram.md).
 
 ## Build and emulated execution
 
@@ -63,6 +65,17 @@ during the IPI interval. One arrival per hart is deliberately made pending
 before WFI with MIE clear. The earlier soak marker alone cannot pass this
 workflow. These observations do not measure physical power savings.
 
+The linker now assigns the unused SRAM tail to a NOBITS `.heap` section.
+CPU0 splits it into two guarded arenas before releasing CPU1. Native
+allocation selects the current hart's arena and masks local interrupts only
+for the cursor update. It has no shared lock, fallback, free or reset.
+Each bootstrap and both preemptible workers allocate aligned buffers;
+the final `NIHOS_NATIVE_MEMORY` records check patterns, guards, disjoint
+bounds and exact capacity accounting after the IPI fixture. The reports
+add a `memory` array, and the image audit distinguishes static reservation
+from the runtime heap span. These are boot arenas, not a general reusable
+heap. No external memory is registered.
+
 To compile/link only the application, without an IDF installation:
 
 ```sh
@@ -104,11 +117,12 @@ In this fixture the console is the output; display, touch and external RAM
 are not initialized. Migration and a general tickless deadline policy are
 not yet connected to this permanent native runtime.
 
-The smoke has twenty validator regression tests, including frozen
+The smoke has twenty-four validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
-generated-code preemption. Three more tests check instruction classification:
+generated-code preemption and SRAM ownership/accounting. Four more tests
+check instruction classification and the linker heap boundary:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'
