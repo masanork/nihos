@@ -24,6 +24,8 @@ pub fn SpscRing(comptime T: type, comptime capacity: usize) type {
             return .{
                 .write_index = .init(0),
                 .read_index = .init(0),
+                // SAFETY: tryPop observes a slot only after the producer has
+                // initialized it and published write_index with release.
                 .slots = undefined,
             };
         }

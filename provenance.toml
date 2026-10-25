@@ -17,6 +17,22 @@ status = "build-and-firmware-dependency"
 use = "ESP32-P4 boot, FreeRTOS SMP bring-up, linker scripts, register definitions, ROM and low-level support"
 
 [[source]]
+name = "ZLint"
+url = "https://github.com/DonIsaac/zlint"
+revision = "v0.10.0"
+license = "MIT"
+status = "build-tool"
+use = "Pinned semantic static analyzer for Zig sources; downloaded binary checksum is verified"
+
+[[source]]
+name = "ESP-EMU"
+url = "https://github.com/espressif/esp-emulator"
+revision = "v0.50.0"
+license = "Apache-2.0"
+status = "test-tool"
+use = "Pinned ESP32-P4 emulator for target boot and SMP smoke tests; downloaded archive checksum is verified"
+
+[[source]]
 name = "M5Tab5-UserDemo"
 url = "https://github.com/m5stack/M5Tab5-UserDemo"
 revision = "b4e356bc491ca070d54004718dad789c07d5fc93"

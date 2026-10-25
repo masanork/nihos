@@ -52,6 +52,8 @@ Its first host-only transport result is recorded in
 The first physical CPU0/CPU1 transport result, still using FreeRTOS only to
 start and place the tasks, is recorded in
 [`docs/measurements/2026-10-25-espidf-smp-mailbox.md`](docs/measurements/2026-10-25-espidf-smp-mailbox.md).
+The static-analysis and emulator policy is recorded in
+[`docs/adr/0003-quality-and-emulation.md`](docs/adr/0003-quality-and-emulation.md).
 
 ## Bootstrap checks
 
@@ -65,6 +67,7 @@ Run the host-side Zig tests and the same ABI probe implemented in C, Zig, and
 Rust:
 
 ```sh
+sh tools/run-static-analysis.sh
 .tools/zig-0.17.0/zig build test
 sh tools/run-language-probe.sh
 ```
@@ -73,7 +76,25 @@ The probe is not a Tab5 performance result. It verifies the language boundary
 and establishes a repeatable comparison harness before target-specific code is
 introduced. The first host baseline is recorded in
 [`docs/measurements/2026-10-25-language-probe-host.md`](docs/measurements/2026-10-25-language-probe-host.md).
-No hosted CI workflow is enabled.
+
+The fast hosted CI gate runs formatting, ZLint, ShellCheck, Debug and
+ReleaseSafe Zig tests, and the three-language ABI probe. ZLint is pinned and
+checksum-verified by `tools/bootstrap-zlint.sh`; its selected semantic rules
+are warnings-as-errors. This gate requires no target hardware.
+
+Run the ESP32-P4 core smoke under the pinned official Espressif emulator with:
+
+```sh
+sh tools/run-esp-emu-smoke.sh
+```
+
+This builds a separate revision-3 ESP32-P4 image, boots both emulated cores,
+and checks the 100,000-message SMP mailbox. The corresponding hosted workflow
+is manual while the native timer and scheduler are still being built. An
+emulator pass is target-execution evidence, but it is not evidence for Tab5
+power, DMA, display, touch, audio, SD, timing, or physical-device reliability.
+The initial result is recorded in
+[`docs/measurements/2026-10-25-esp-emu-core-smoke.md`](docs/measurements/2026-10-25-esp-emu-core-smoke.md).
 
 Build the first ESP32-P4 firmware using the pinned ESP-IDF v5.4.4 setup:
 
@@ -113,8 +134,9 @@ be copied into the repository.
 ## Repository policy
 
 - The repository is public from its first commit.
-- No hosted CI workflow is enabled yet. Checks will be added only when they
-  provide useful signal for the implementation that exists.
+- The fast host CI gate runs on every pull request and push to `main`.
+- The ESP32-P4 emulator smoke is manually dispatched until it becomes a
+  stable, useful gate for the native kernel rather than ESP-IDF bring-up.
 - Hardware claims require measurements on a physical Tab5; host builds and
   simulators will be reported separately.
 

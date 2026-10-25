@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "must-return-ref": "error",
+    "no-unresolved": "error",
+    "returned-stack-reference": "error",
+    "suppressed-errors": "warn",
+    "unsafe-undefined": "error"
+  }
+}

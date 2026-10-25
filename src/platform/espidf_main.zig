@@ -39,6 +39,8 @@ const MailboxContext = struct {
     worker_cpu: std.atomic.Value(u32),
 };
 
+// SAFETY: CPU0 fully initializes this context before cpu_start publishes its
+// address to CPU1, and the boot self-test starts only one worker at a time.
 var mailbox_context: MailboxContext = undefined;
 const mailbox_messages: u32 = 100_000;
 const mailbox_transform: u32 = 0xa5a5_5a5a;
@@ -203,7 +205,10 @@ fn runDmaPath(label: []const u8, source: []u8, destination: []u8) bool {
 }
 
 fn exerciseDma() bool {
+    // SAFETY: Successful platform calls initialize the complete out values;
+    // the function returns without inspecting them on any error.
     var internal_region: abi.MemoryRegion = undefined;
+    // SAFETY: Same out-parameter contract as internal_region above.
     var psram_region: abi.MemoryRegion = undefined;
     if (nih_platform_memory_region(abi.MemoryKind.internal, &internal_region) !=
         abi.Status.ok or
@@ -252,6 +257,8 @@ fn exerciseDma() bool {
 }
 
 fn exerciseDisplay() bool {
+    // SAFETY: display_init initializes the complete value on success, and the
+    // error path returns before any field is inspected.
     var info: abi.DisplayInfo = undefined;
     if (nih_platform_display_init(&info) != abi.Status.ok) return false;
     if (info.width == 0 or info.height == 0 or
@@ -309,11 +316,14 @@ fn exerciseDisplay() bool {
     writeU32("display_present_us=", present.elapsed_us);
     writeU32("display_vsync_samples=", samples);
     writeU64("display_vsync_elapsed_us=", total_us);
+    if (total_us == 0) return false;
     writeU64("display_refresh_millihz=", (@as(u64, samples) * 1_000_000_000) / total_us);
     return true;
 }
 
 fn exerciseTouch() bool {
+    // SAFETY: touch_init initializes the complete value on success, and the
+    // error path returns before any field is inspected.
     var info: abi.TouchInfo = undefined;
     if (nih_platform_touch_init(&info) != abi.Status.ok) return false;
     if (info.width == 0 or info.height == 0 or
@@ -326,6 +336,8 @@ fn exerciseTouch() bool {
     var points_observed: u32 = 0;
     var last_sequence: u32 = 0;
     for (0..samples) |_| {
+        // SAFETY: touch_sample initializes the complete value on success, and
+        // the error path returns before any field is inspected.
         var sample: abi.TouchSample = undefined;
         if (nih_platform_touch_sample(&sample) != abi.Status.ok) return false;
         if (sample.point_count > abi.touch_max_points or
@@ -358,6 +370,8 @@ fn exerciseTouch() bool {
 }
 
 fn exerciseMemory(kind: u32) bool {
+    // SAFETY: memory_region initializes the complete value on success, and
+    // the error path returns before any field is inspected.
     var region: abi.MemoryRegion = undefined;
     if (nih_platform_memory_region(kind, &region) != abi.Status.ok) return false;
     if (region.kind != kind or region.length == 0 or
@@ -429,17 +443,18 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     write("psram_allocator=ok\r\n");
     write("psram_cache_sync=ok\r\n");
 
-    if (!exerciseDma()) {
-        write("nihos: AXI-GDMA copy failed\r\n");
-        return;
-    }
-    write("axi_gdma_copy=ok\r\n");
-
     if (!exerciseSmpMailbox(info.cpu_count)) {
         write("nihos: SMP mailbox failed\r\n");
         return;
     }
     write("smp_mailbox=ok\r\n");
+    write("nihos: core smoke complete\r\n");
+
+    if (!exerciseDma()) {
+        write("nihos: AXI-GDMA copy failed\r\n");
+        return;
+    }
+    write("axi_gdma_copy=ok\r\n");
 
     if (!exerciseDisplay()) {
         write("nihos: display scanout or vsync failed\r\n");
