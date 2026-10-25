@@ -203,6 +203,16 @@ missed-tick accounting, and summed task/idle runtime must equal elapsed ticks.
 CPU1 clock updates occur only in its timer tail; its phase is independent of
 CPU0. Both timer/IPI leases restore IDF before the host callback probes run.
 
+Physical revision-1.3 testing now covers CPU0 integer/FP preemption and CPU1
+integer timer preemption through three complete bootstrap runs. It exposed
+two corrections: `mret` must unwind the active trap's complete `mcause` while
+restoring selected-task status, and the bounded IPC response producer must
+remain alive through final consumption and its space notice. A completion
+ACK now establishes that fixture lifetime. See the
+[physical SMP preemption record](measurements/2026-10-25-tab5-native-smp-preemption.md).
+This does not establish CPU1 FP ownership, permanent native boot, or loaded
+game/audio timing.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a

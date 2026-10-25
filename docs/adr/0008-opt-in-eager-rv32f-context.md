@@ -14,16 +14,18 @@ state. This gives a visible baseline before measuring lazy save/restore.
 Save the outgoing physical FP bank before calling any C/Zig dispatcher or
 stack-guard helper. Keep FS off during kernel dispatch and guard operations,
 then restore the selected bank after the last C/Zig call and apply the
-selected task's original `mstatus`/CLIC return state. No FP instructions are
-allowed in the dispatcher. Cross-core FP ownership and first-use allocation
-are separate future policies.
+selected task's `mstatus`. The active trap's complete `mcause` is used for the
+return so `mret` unwinds CLIC priority even when switching to a task last
+captured at an ECALL. No FP instructions are allowed in the dispatcher.
+Cross-core FP ownership and first-use allocation are separate future policies.
 
 ## ESP-IDF boundary
 
 The physical bank may belong to an IDF lazy owner even when the bootstrap's
 FS is off. The floating test therefore opts the bootstrap into raw bank
 preservation regardless of its incoming FS value. Temporary FS access permits
-the transfer; the original return CSR state is restored before `mret`.
+the transfer; selected task status and active-trap cause metadata are restored
+before `mret`.
 
 Take a raw bank snapshot after masking other CPU0 sources, and compare all
 132 bytes again before restoring the host's interrupt state. Both snapshots
