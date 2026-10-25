@@ -4,8 +4,10 @@
 //! kernel imports only the stable platform ABI, never ESP-IDF headers.
 
 pub const version = "0.0.0";
+pub const arena = @import("kernel/arena.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
+    _ = arena;
     _ = platform_abi;
 }
