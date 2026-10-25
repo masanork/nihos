@@ -19,6 +19,8 @@ Compiler-generated Zig/C single-precision tasks and the ILP32F boundary are
 covered by [ADR 0022](adr/0022-compiled-fp-and-c-boundary.md).
 Owner-local SRAM allocation and its PSRAM boundary are described in
 [ADR 0023](adr/0023-owner-local-native-sram.md).
+Read-only native PSRAM command discovery is described in
+[ADR 0024](adr/0024-bounded-native-psram-discovery.md).
 
 ## Build and emulated execution
 
@@ -30,6 +32,7 @@ ESP-EMU 0.50.0 are checksum-verified by the existing bootstrap scripts.
 sh tools/run-native-smoke.sh
 sh tools/run-native-smoke.sh floating
 sh tools/run-native-smoke.sh compiled
+sh tools/run-native-smoke.sh integer 32M
 ```
 
 This builds only the stock loader and partition table with IDF. Zig links
@@ -76,6 +79,18 @@ add a `memory` array, and the image audit distinguishes static reservation
 from the runtime heap span. These are boot arenas, not a general reusable
 heap. No external memory is registered.
 
+Before CPU1 release, Zig now reads the PSRAM identity through MSPI3 with
+bounded polling and a repeated-read check. `NIHOS_NATIVE_PSRAM` reports the
+mode-register capacity while requiring zero mapped/allocatable bytes. This
+is an emulated command fixture; native supply startup, device programming,
+timing calibration and CPU memory access remain unqualified. The only ROM
+calls remain console output and CPU1 entry publication.
+
+The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
+`64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
+build directory. The validator requires the requested size to match the
+decoded identity, then requires the complete existing 300-round run.
+
 To compile/link only the application, without an IDF installation:
 
 ```sh
@@ -91,8 +106,9 @@ ILP32. Kernel FP instructions are rejected even in compiled mode. The tested
 scalar/callback and pointer interfaces are qualified in the emulator;
 arbitrary aggregates, varargs and f64 interfaces are not covered.
 
-The manual **Native boot** workflow runs all three modes, builds the three
-physical images, and retains the artifacts. It does not flash hardware.
+The manual **Native boot** workflow runs all three modes without a die and
+the five populated sizes in integer mode, builds the three physical images,
+and retains the artifacts. It does not flash hardware.
 
 ## Physical image
 
@@ -113,15 +129,16 @@ profile share the stock loader build; build those images sequentially.
 
 Physical qualification is pending while emulator development continues.
 Do not interpret a successful device-profile build as a physical boot result.
-In this fixture the console is the output; display, touch and external RAM
-are not initialized. Migration and a general tickless deadline policy are
+In this fixture the console is the output; display, touch and CPU-accessible
+external RAM are not initialized. Migration and a general tickless deadline policy are
 not yet connected to this permanent native runtime.
 
-The smoke has twenty-four validator regression tests, including frozen
+The smoke has twenty-nine validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
-generated-code preemption and SRAM ownership/accounting. Four more tests
+generated-code preemption, SRAM ownership/accounting and PSRAM discovery.
+Four more tests
 check instruction classification and the linker heap boundary:
 
 ```sh
