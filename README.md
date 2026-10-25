@@ -11,9 +11,10 @@ The project is at the design and hardware-bootstrap stage. Its
 ESP-IDF-hosted Zig entry boots on a physical Tab5 and now writes the MIPI-DSI
 scanout framebuffer directly and synchronizes to display refresh. nihOS does
 not yet own the permanent scheduler or native device drivers. Bounded native
-CPU0 windows now exercise preemption, task calls, and event waits while
-restoring the ESP-IDF host afterward. A bounded touch ABI can
-also initialize and poll the panel-matched controller.
+execution exercises CPU0 task preemption and event waits, plus a CPU1 service
+that wakes by IPI and parks with WFI. Each window restores the ESP-IDF host
+afterward. A bounded touch ABI can also initialize and poll the panel-matched
+controller.
 
 ## Name
 
@@ -98,6 +99,9 @@ defined in
 [`docs/adr/0012-owner-inbox-and-borrowed-ipi.md`](docs/adr/0012-owner-inbox-and-borrowed-ipi.md).
 The first remote-wait and IDF-restoration result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-owner-ipi.md`](docs/measurements/2026-10-25-esp-emu-owner-ipi.md).
+Reverse wakeup, CPU1's WFI service, and restoration of both hosts are defined
+in
+[`docs/adr/0013-duplex-ipi-and-wfi-service.md`](docs/adr/0013-duplex-ipi-and-wfi-service.md).
 
 ## Bootstrap checks
 

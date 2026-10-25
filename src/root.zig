@@ -13,6 +13,7 @@ pub const scheduler = @import("kernel/scheduler.zig");
 pub const spsc_ring = @import("kernel/spsc_ring.zig");
 pub const spsc_channel = @import("kernel/spsc_channel.zig");
 pub const remote_events = @import("kernel/remote_events.zig");
+pub const park = @import("kernel/park.zig");
 pub const tick_counter = @import("kernel/tick_counter.zig");
 pub const tick_clock = @import("kernel/tick_clock.zig");
 pub const task_control = @import("kernel/task_control.zig");
@@ -31,6 +32,7 @@ test {
     _ = @import("kernel/spsc_channel_test.zig");
     _ = remote_events;
     _ = @import("kernel/remote_events_test.zig");
+    _ = park;
     _ = tick_counter;
     _ = tick_clock;
     _ = task_control;

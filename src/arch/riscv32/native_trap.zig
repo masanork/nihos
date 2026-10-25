@@ -11,6 +11,7 @@ const timer_group = @import("timer_group");
 const preemption = @import("preemption_test.zig");
 const lifecycle = @import("lifecycle_test.zig");
 const remote = @import("remote_scenario.zig");
+const duplex = @import("duplex_scenario.zig");
 const Doorbell = @import("software_ipi").Doorbell;
 
 const core_count = 2;
@@ -229,6 +230,10 @@ pub fn exerciseNativeRemoteEvents() ?lifecycle.Report {
     return exerciseLifecycle(.remote);
 }
 
+pub fn exerciseNativeDuplexEvents() ?lifecycle.Report {
+    return exerciseLifecycle(.duplex);
+}
+
 fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
     var borrowed = false;
@@ -237,7 +242,7 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
         if (borrowed) _ = nih_espidf_native_ipi_release();
     }
     var doorbell: ?Doorbell = null;
-    if (mode == .remote) {
+    if (mode == .remote or mode == .duplex) {
         var lease = std.mem.zeroes(IpiLease);
         if (nih_espidf_native_ipi_acquire(&lease) != 0) {
             _ = finishTimer(false);
@@ -258,16 +263,16 @@ fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const prepared = lifecycle.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline, mode, doorbell);
     switch_state = .lifecycle;
     const returned = prepared and nih_riscv_timer_window() == 1;
-    const joined = if (mode == .remote) remote.stopAndJoin() else true;
-    const report = if (returned) lifecycle.report() else null;
+    const joined = lifecycle.joinRemote();
     const restored = finishTimer(returned and joined);
     if (borrowed) {
         const released = nih_espidf_native_ipi_release() == 0;
         borrowed = false;
         if (!released) return null;
     }
-    if (!restored or (mode == .remote and !remote.verifyHostScheduler())) return null;
-    return report;
+    if (!restored or ((mode == .remote or mode == .duplex) and !remote.verifyHostScheduler()) or
+        (mode == .duplex and !duplex.verifyHostScheduler())) return null;
+    return lifecycle.report();
 }
 
 fn exercisePreemption(mode: preemption.Mode) ?preemption.Report {
@@ -335,6 +340,14 @@ export fn nih_riscv_trap_dispatch(
     const return_state = context.ReturnState{ .mstatus = raw_mstatus, .mcause = raw_mcause };
     nih_riscv_selected_return_states[hart_id] = return_state;
     nih_riscv_selected_floating_states[hart_id] = nih_riscv_current_floating_states[hart_id];
+    if (hart_id == 1 and cause.kind == .interrupt) {
+        const selected = duplex.onServiceIpi(interrupted, return_state, cause.reason) orelse return null;
+        nih_riscv_selected_stack_mins[1] = selected.stack_min;
+        nih_riscv_selected_stack_maxs[1] = selected.stack_max;
+        nih_riscv_selected_return_states[1] = selected.state;
+        nih_riscv_selected_floating_states[1] = 0;
+        return selected.frame;
+    }
     if (switch_state == .lifecycle) {
         if (hart_id != 0) return null;
         const selection = if (cause.kind == .interrupt and cause.reason == timer_interrupt_id)

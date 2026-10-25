@@ -287,6 +287,44 @@ nih_riscv_timer_window:
     .size nih_riscv_timer_window, .-nih_riscv_timer_window
 
     .balign 4
+    .global nih_riscv_service_window
+    .type nih_riscv_service_window, @function
+nih_riscv_service_window:
+    /* CPU1's IDF stack is the foreground/idle stack; the shared trap entry
+     * switches to that hart's private interrupt stack for service work. */
+    addi sp, sp, -32
+    sw ra, 28(sp)
+    sw s1, 24(sp)
+    csrr t0, mstatus
+    sw t0, 0(sp)
+    csrci mstatus, 8
+    call nih_espidf_native_service_enter
+    csrr s1, mtvec
+    la t0, nih_riscv_trap_entry
+    ori t0, t0, 3
+    csrw mtvec, t0
+    call nih_riscv_native_service_prepare
+    sw a0, 4(sp)
+    beqz a0, .Lservice_window_restore
+    csrsi mstatus, 8
+    call nih_riscv_native_service_run
+    sw a0, 4(sp)
+    csrci mstatus, 8
+.Lservice_window_restore:
+    fence iorw, iorw
+    csrw mtvec, s1
+    call nih_espidf_native_service_leave
+    lw t0, 4(sp)
+    and a0, a0, t0
+    lw t0, 0(sp)
+    lw s1, 24(sp)
+    lw ra, 28(sp)
+    addi sp, sp, 32
+    csrw mstatus, t0
+    ret
+    .size nih_riscv_service_window, .-nih_riscv_service_window
+
+    .balign 4
     .global nih_riscv_task_trampoline
     .type nih_riscv_task_trampoline, @function
 nih_riscv_task_trampoline:

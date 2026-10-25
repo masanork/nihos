@@ -159,9 +159,9 @@ consumption and wait registration share one serialized kernel operation;
 matching notification makes the task ready and delivers its saved reply
 before resuming. The emulator exercises preposted/coalesced events,
 nonmatching notifications, blocked delivery, bit 31, and terminal/stale
-handle rejection. This CPU-local primitive does not yet accept CPU1/IPI or
-native device-IRQ completions. Events provide wakeups; message data stays in
-separate queues.
+handle rejection. This first scenario is CPU-local; ADR 0012 adds the owner
+path for CPU1 notifications. Native device-IRQ integration remains open.
+Events provide wakeups; message data stays in separate queues.
 
 ADR 0011 connects those queues and event bits as blocking SPSC channels.
 The native two-task scenario exchanges 64 ordered request/completion pairs,
@@ -176,13 +176,20 @@ the borrowed CPU0 IPI. The native trap alone drains the inbox and wakes tasks.
 The bounded adapter preserves IDF's reason bits and reasserts its line after
 restoring the original vector/mask/threshold. A native scenario verifies 64
 registered client waits, stale-target rejection, producer quiescence, and
-subsequent execution of an IDF CPU0 task. CPU1 still uses IDF task placement
-and polling; native CPU1 scheduling and bidirectional blocking remain open.
+subsequent execution of an IDF CPU0 task. That first scenario uses IDF task
+placement and polling on CPU1; ADR 0013 extends the reverse direction below.
+
+ADR 0013 adds a bounded native CPU1 echo service and reverse IPI delivery.
+Its foreground uses a masked exit-check/WFI sequence, and its native tail
+processes a fixed request budget. A duplex scenario exercises preposted and
+registered waits, stop-by-IPI, and restoration of both cores, followed by a
+normal IDF IPC callback on CPU1. This removes payload polling from that
+scenario; CPU1 still starts through IDF and has no native task scheduler.
 
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a
 physical Tab5. This validates the current RISC-V atomic and coherent-memory
 assumptions under FreeRTOS task placement. It does not complete stage 6:
-native CPU1 startup, reverse IPI wakeup, full scheduler integration, cancellation, and
+native CPU1 boot, permanent IPI ownership, full scheduler integration, cancellation, and
 frame-load interference remain open.

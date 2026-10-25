@@ -11,6 +11,7 @@ const tick_clock = @import("tick_clock");
 const timer_group = @import("timer_group");
 const ipc = @import("ipc_scenario.zig");
 const remote = @import("remote_scenario.zig");
+const duplex = @import("duplex_scenario.zig");
 const Doorbell = @import("software_ipi").Doorbell;
 
 const Runtime = runtime_module.Runtime(3, 2);
@@ -19,7 +20,7 @@ const period_us = 1000;
 const sleep_ticks = 5;
 const timeout_us = 100_000;
 
-pub const Mode = enum { lifecycle, events, ipc, remote };
+pub const Mode = enum { lifecycle, events, ipc, remote, duplex };
 
 pub const Report = struct {
     sleep_started: u32,
@@ -38,6 +39,7 @@ pub const Report = struct {
     delivered_events: u32,
     ipc: ?ipc.Report = null,
     remote: ?remote.Report = null,
+    duplex: ?duplex.Report = null,
 };
 
 var runtime: Runtime = .{};
@@ -238,6 +240,7 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
         .events => [_]*const fn (u32) callconv(.c) i32{ &eventReceiver, &eventSender },
         .ipc => [_]*const fn (u32) callconv(.c) i32{ &ipc.client, &ipc.service },
         .remote => [_]*const fn (u32) callconv(.c) i32{ &remote.client, &remote.observer },
+        .duplex => [_]*const fn (u32) callconv(.c) i32{ &duplex.client, &duplex.observer },
     };
     for (&stacks, entries, 0..) |*stack, entry, index| {
         exited[index].store(0, .monotonic);
@@ -267,6 +270,11 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
         .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
         ipi orelse return false,
     )) return false;
+    if (mode == .duplex and !duplex.prepare(
+        .{ .slot = worker_handles[0].slot, .generation = worker_handles[0].generation },
+        .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
+        ipi orelse return false,
+    )) return false;
     return timer.configureOneShot(period_us);
 }
 
@@ -274,6 +282,7 @@ pub fn startMasked() bool {
     started_us = nih_platform_monotonic_us();
     (device orelse return false).start();
     if (mode == .remote) remote.start();
+    if (mode == .duplex) duplex.start();
     return true;
 }
 
@@ -282,9 +291,17 @@ pub fn run() bool {
         if (expired()) break;
         std.atomic.spinLoopHint();
     }
-    const joined = if (mode == .remote) remote.stopAndJoin() else true;
+    const joined = joinRemote();
     (device orelse return false).stop();
     return joined and finished.load(.monotonic) and !failed.load(.monotonic);
+}
+
+pub fn joinRemote() bool {
+    return switch (mode) {
+        .remote => remote.stopAndJoin(),
+        .duplex => duplex.stopAndJoin(),
+        else => true,
+    };
 }
 
 fn refreshClock() bool {
@@ -325,8 +342,8 @@ fn seedIntegerState(state: context.ReturnState) void {
 }
 
 pub fn onIpi(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
-    if (mode != .remote or !runtime.capture(frame, state)) return null;
-    remote.onIpi(&runtime.policy);
+    if ((mode != .remote and mode != .duplex) or !runtime.capture(frame, state)) return null;
+    if (mode == .remote) remote.onIpi(&runtime.policy) else duplex.onIpi(&runtime.policy);
     if (!refreshClock()) return null;
     seedIntegerState(state);
     return checkedSelection(runtime.select() orelse return null);
@@ -342,6 +359,10 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
     if (mode == .remote and number == .wait_events) {
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
         if (snapshot.state == .waiting) remote.recordBlocked(caller.slot, argument);
+    }
+    if (mode == .duplex and number == .wait_events) {
+        const snapshot = runtime.policy.snapshot(caller) orelse return null;
+        if (snapshot.state == .waiting) duplex.recordBlocked(caller.slot, argument);
     }
     if (mode == .ipc and number == .wait_events) {
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
@@ -405,6 +426,7 @@ pub fn report() ?Report {
             result.delivered_events != 1) return null,
         .ipc => result.ipc = ipc.report() orelse return null,
         .remote => result.remote = remote.report() orelse return null,
+        .duplex => result.duplex = duplex.report() orelse return null,
     }
     const replacement_image = runtime.images[worker_handles[0].slot] orelse return null;
     for (worker_handles, 0..) |handle, index| {
@@ -412,6 +434,7 @@ pub fn report() ?Report {
         const address = switch (mode) {
             .ipc => ipc.stackAddress(index),
             .remote => remote.stackAddress(index),
+            .duplex => duplex.stackAddress(index),
             else => stack_addresses[index].load(.monotonic),
         };
         const snapshot = runtime.policy.snapshot(handle) orelse return null;
@@ -426,6 +449,7 @@ pub fn report() ?Report {
         .events => .{ 41, 43 },
         .ipc => .{ 53, 59 },
         .remote => .{ 67, 71 },
+        .duplex => .{ 73, 79 },
     };
     if (!std.mem.eql(i32, &result.exits, &expected_exits)) return null;
     // Reuse a reaped slot without executing it. The stale handle must not
