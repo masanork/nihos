@@ -648,6 +648,8 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("cpu1_task_selections=", core1.selections);
     writeU32("cpu1_task_switches=", core1.switches);
     writeU32("cpu1_task_ipi_captures=", core1.ipi_task_captures);
+    writeU32("cpu1_task_fpu_saves=", core1.floating_saves);
+    writeU32("cpu1_task_fpu_restores=", core1.floating_restores);
     writeU32("cpu1_task_events_delivered=", core1.delivered);
     writeU32("cpu1_task_stale_rejected=", core1.rejected);
     writeU32("cpu1_task_reaped=", core1.reaped);
@@ -679,8 +681,44 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("cpu1_timed_switches=", timed.switches);
     writeU32("cpu1_timed_reaped=", timed.reaped);
     writeU32("cpu1_timed_cpu0_timer_interrupts=", cpu1_preempted.interrupts);
+    writeU32("cpu1_timed_fpu_saves=", timed.floating_saves);
+    writeU32("cpu1_timed_fpu_restores=", timed.floating_restores);
     write("cpu1_timed_both_hosts_restored=1\r\n");
     write("native_cpu1_timer_preemption=ok\r\n");
+    const cpu1_floating = native_trap.exerciseNativeCpu1Floating() orelse {
+        write("nihos: CPU1 floating preemption failed\r\n");
+        return;
+    };
+    const floating_exchange = cpu1_floating.duplex orelse return;
+    const fp1 = floating_exchange.tasks orelse return;
+    writeU32("cpu1_fp_saves=", fp1.floating_saves);
+    writeU32("cpu1_fp_restores=", fp1.floating_restores);
+    writeU32("cpu1_fp_syscalls=", fp1.syscalls);
+    writeU32("cpu1_fp_timer_interrupts=", fp1.timer_interrupts);
+    writeU32("cpu1_fp_ipi_interrupts=", fp1.ipi_interrupts);
+    for (0..2) |index| {
+        writeU32("cpu1_fp_worker=", @intCast(index));
+        writeU32("cpu1_fp_checks=", fp1.floating_checks[index]);
+        writeU32("cpu1_fp_timer_captures=", fp1.floating_timer_captures[index]);
+        writeU32("cpu1_fp_ipi_captures=", fp1.floating_ipi_captures[index]);
+        writeU32("cpu1_fp_calls=", fp1.floating_calls[index]);
+    }
+    writeU32("cpu1_fp_initial_fs=", fp1.floating_initial_fs);
+    writeU32("cpu1_fp_final_fs=", fp1.floating_final_fs);
+    writeU32("cpu1_fp_boundary_restored=", @intFromBool(fp1.floating_boundary_restored));
+    writeU64("cpu1_fp_elapsed_ticks=", fp1.elapsed_ticks);
+    writeU64("cpu1_fp_runtime_ticks=", fp1.runtime_ticks);
+    writeU64("cpu1_fp_sleep_started=", fp1.sleep_started);
+    writeU64("cpu1_fp_sleep_deadline=", fp1.sleep_deadline);
+    writeU64("cpu1_fp_sleep_resumed=", fp1.sleep_resumed);
+    writeU32("cpu1_fp_timer_wake=", @intFromBool(fp1.probe_timer_wake));
+    writeU32("cpu1_fp_messages=", floating_exchange.messages);
+    writeU32("cpu1_fp_payloads=", floating_exchange.task_payloads);
+    writeU32("cpu1_fp_switches=", fp1.switches);
+    writeU32("cpu1_fp_reaped=", fp1.reaped);
+    writeU32("cpu1_fp_cpu0_timer_interrupts=", cpu1_floating.interrupts);
+    write("cpu1_fp_both_hosts_restored=1\r\n");
+    write("native_cpu1_fpu_preemption=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

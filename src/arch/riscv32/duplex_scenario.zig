@@ -19,7 +19,11 @@ const messages: u32 = 64;
 const response_bit: u32 = 1;
 const finished_bit: u32 = 2;
 const timeout_us: u64 = 300_000;
-pub const Execution = enum { interrupt_echo, task_service, preemptive_tasks };
+pub const Execution = enum { interrupt_echo, task_service, preemptive_tasks, floating_tasks };
+
+fn timed() bool {
+    return execution == .preemptive_tasks or execution == .floating_tasks;
+}
 
 pub const Report = struct {
     messages: u32,
@@ -187,7 +191,7 @@ fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
         return;
     }
     var timer_leased = false;
-    if (execution == .preemptive_tasks) {
+    if (timed()) {
         var timer_lease = std.mem.zeroes(TimerLease);
         if (nih_espidf_native_service_timer_acquire(&timer_lease) != calls.Status.ok) {
             _ = nih_espidf_native_service_release();
@@ -214,6 +218,7 @@ fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
         @intCast(@intFromPtr(&nih_riscv_task_trampoline)),
         .{ .work = &processRequests },
         service_timer,
+        if (execution == .floating_tasks) .floating else .integer,
     )) {
         if (service_timer) |timer| timer.stop();
         if (timer_leased) _ = nih_espidf_native_service_timer_release();
@@ -237,16 +242,17 @@ fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
 }
 
 export fn nih_riscv_native_service_prepare() callconv(.c) u32 {
-    const timer_ready = if (execution == .preemptive_tasks and !stopping.load(.acquire)) cpu1_tasks.startTimer() else true;
+    if (execution != .interrupt_echo) cpu1_tasks.beginWindow();
+    const timer_ready = if (timed() and !stopping.load(.acquire)) cpu1_tasks.startTimer() else true;
     if (!timer_ready) failed.store(true, .release);
     native_active.store(true, .release);
     ready.store(true, .release); // Publish the route only after mtvec changes.
     return if (stopping.load(.acquire) or !timer_ready) 0 else 1;
 }
 
-export fn nih_riscv_native_service_finish() callconv(.c) void {
+export fn nih_riscv_native_service_finish() callconv(.c) u32 {
     // Also runs if prepare started the counter and then declined entry.
-    if (execution == .preemptive_tasks) cpu1_tasks.stopTimer();
+    return if (execution == .interrupt_echo or cpu1_tasks.finishWindow()) 1 else 0;
 }
 
 export fn nih_riscv_native_service_run() callconv(.c) u32 {
@@ -255,13 +261,13 @@ export fn nih_riscv_native_service_run() callconv(.c) u32 {
     while (!exit.load(.acquire)) {
         if (park.once(exit, &interrupts)) service_parks += 1;
     }
-    if (execution == .preemptive_tasks) cpu1_tasks.stopTimer();
+    if (timed()) cpu1_tasks.stopTimer();
     return if (!failed.load(.acquire)) 1 else 0;
 }
 
 pub fn onServiceIpi(frame: *context.IntegerContext, state: context.ReturnState, reason: u12) ?context.TaskContext {
     if (!native_active.load(.acquire)) return null;
-    if (execution == .preemptive_tasks and reason == service_timer_interrupt_id)
+    if (timed() and reason == service_timer_interrupt_id)
         return cpu1_tasks.onTimer(frame, state);
     if (reason != service_interrupt_id) return null;
     if (execution != .interrupt_echo) {
@@ -382,6 +388,19 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
 pub fn start() void {
     active.store(true, .release);
     nih_espidf_native_service_probe_yield();
+    if (execution == .floating_tasks) {
+        // Keep the FP observer executing until a native IPI has captured it.
+        // Readiness is published before its no-ECALL loop; CPU1's timer can
+        // still wake the sleeping service while CPU0 waits here with MIE off.
+        const started = nih_platform_monotonic_us();
+        while (!cpu1_tasks.floatingProbeReady()) {
+            if (nih_platform_monotonic_us() - started >= 50_000) {
+                failed.store(true, .release);
+                break;
+            }
+            std.atomic.spinLoopHint();
+        }
+    }
     if (execution != .interrupt_echo) _ = notifyWorker(true);
     _ = notifyWorker(false);
 }

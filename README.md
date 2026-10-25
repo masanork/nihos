@@ -120,6 +120,9 @@ in
 Three physical Tab5 boots, including the CLIC return and IPC endpoint-lifetime
 corrections found on silicon, are recorded in
 [`docs/measurements/2026-10-25-tab5-native-smp-preemption.md`](docs/measurements/2026-10-25-tab5-native-smp-preemption.md).
+Opt-in CPU1 floating contexts and preservation of IDF's raw FP bank are
+defined in
+[`docs/adr/0016-cpu1-floating-contexts.md`](docs/adr/0016-cpu1-floating-contexts.md).
 
 ## Bootstrap checks
 

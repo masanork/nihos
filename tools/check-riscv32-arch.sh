@@ -42,6 +42,7 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     -o "$out_dir/trap_entry.o" \
     "$repo_root/src/arch/riscv32/trap_entry.S"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \
+    -I "$repo_root/src/kernel" \
     -o "$out_dir/fpu.o" \
     "$repo_root/src/arch/riscv32/fpu.S"
 
