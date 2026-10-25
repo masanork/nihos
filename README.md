@@ -87,6 +87,9 @@ defined in
 [`docs/adr/0010-latched-task-events.md`](docs/adr/0010-latched-task-events.md).
 Their first native ECALL and timer execution result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-task-events.md`](docs/measurements/2026-10-25-esp-emu-task-events.md).
+Bounded request/completion channels and notification commit semantics are
+defined in
+[`docs/adr/0011-event-driven-spsc-channels.md`](docs/adr/0011-event-driven-spsc-channels.md).
 
 ## Bootstrap checks
 

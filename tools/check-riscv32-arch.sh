@@ -21,11 +21,15 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     --dep scheduler \
     --dep tick_clock \
     --dep task_control \
+    --dep spsc_ring \
+    --dep spsc_channel \
     "-Mroot=$repo_root/src/arch/riscv32/native_trap.zig" \
     "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
     "-Mscheduler=$repo_root/src/kernel/scheduler.zig" \
     "-Mtick_clock=$repo_root/src/kernel/tick_clock.zig" \
-    "-Mtask_control=$repo_root/src/kernel/task_control.zig"
+    "-Mtask_control=$repo_root/src/kernel/task_control.zig" \
+    "-Mspsc_ring=$repo_root/src/kernel/spsc_ring.zig" \
+    "-Mspsc_channel=$repo_root/src/kernel/spsc_channel.zig"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \
     -I "$repo_root/src/arch/riscv32" \
     -I "$repo_root/src/kernel" \

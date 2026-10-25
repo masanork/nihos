@@ -214,6 +214,10 @@ pub fn exerciseNativeEvents() ?lifecycle.Report {
     return exerciseLifecycle(.events);
 }
 
+pub fn exerciseNativeIpc() ?lifecycle.Report {
+    return exerciseLifecycle(.ipc);
+}
+
 fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
     const trampoline = address32(&nih_riscv_task_trampoline) orelse {
