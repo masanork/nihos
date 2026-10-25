@@ -45,6 +45,11 @@ side-by-side traces and early bring-up failures easier to compare.
 
 ## Next native step
 
-Generate or check assembly constants from these Zig offsets, add a minimal
-trap entry that switches to a per-core interrupt stack, and run a non-FPU task
-through save/select/restore in ESP-EMU before enabling physical preemption.
+A compile-checked but unlinked assembly prototype now saves the 128-byte
+integer frame, preserves CLIC return state across a C-ABI dispatcher, accepts
+the selected frame, and restores it. It deliberately leaves interrupts
+disabled and stops safely if the dispatcher returns null.
+
+Next, switch to a per-core interrupt stack, implement the Zig dispatcher and
+task trampoline, then run one non-FPU task through save/select/restore in
+ESP-EMU before installing the vector or enabling physical preemption.

@@ -15,5 +15,9 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/trap.o" \
     "$repo_root/src/arch/riscv32/trap.zig"
+"$zig" cc -c -target "$target" -mcpu="$cpu" \
+    -I "$repo_root/src/arch/riscv32" \
+    -o "$out_dir/trap_entry.o" \
+    "$repo_root/src/arch/riscv32/trap_entry.S"
 
 echo "RV32 architecture contract compile: ok"
