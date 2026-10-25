@@ -32,7 +32,10 @@ backend                backend
   removable-media backend for SD.
 
 Directories are introduced only when their first tested implementation is
-added. The current `src/platform` module establishes the ABI layout first.
+added. The current `src/platform` module establishes the ABI layout first. A
+bounded SPSC transport in `src/kernel` is the first common primitive for
+cross-core system services; wakeup, cancellation, and scheduler policy remain
+separate from the ring.
 
 ## Two backends
 
@@ -65,6 +68,9 @@ The platform boundary models resources, not generic convenience calls.
   justify it.
 - M5FS implementation: not imported. Its atomic-replace and fault-test
   requirements are retained as specifications.
+- SQLite: a future single-owner `sqld` system service over the nihOS storage
+  service, not a library entered concurrently by arbitrary applications. SMP
+  placement is a scheduler decision rather than a permanent CPU1 assignment.
 
 ## Bring-up order
 

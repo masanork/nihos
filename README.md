@@ -44,6 +44,11 @@ The language decision and its validation gates are recorded in
 [`docs/adr/0001-zig-first.md`](docs/adr/0001-zig-first.md). The initial system
 layers and hardware boundary are described in
 [`docs/architecture.md`](docs/architecture.md).
+The shared SMP service model for graphics, audio, storage, and a future SQLite
+service is recorded in
+[`docs/adr/0002-smp-services.md`](docs/adr/0002-smp-services.md).
+Its first host-only transport result is recorded in
+[`docs/measurements/2026-10-25-spsc-ring-host.md`](docs/measurements/2026-10-25-spsc-ring-host.md).
 
 ## Bootstrap checks
 
