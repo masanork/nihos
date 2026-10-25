@@ -122,8 +122,8 @@ driver now delivers asynchronous interrupts through nihOS's own trap entry in
 ESP-EMU, using the bounded resource lease in ADR 0006. ADR 0007 extends this
 with free-running elapsed-time accounting and timer-driven selection of two
 integer-only tasks on separate stacks. Native physical timer qualification,
-syscall transitions, and physical preemption remain open;
-FreeRTOS is still the scheduler executing the bootstrap firmware.
+syscall transitions, and physical preemption remain open. FreeRTOS hosts the
+bootstrap outside these bounded native execution windows.
 
 The first native-port contract is now fixed and host-tested: a 128-byte RV32
 integer switch frame, a 160-byte aligned exception-frame reservation, separate
@@ -132,8 +132,9 @@ layout milestone. A matching save/dispatch/restore path now uses private
 per-core interrupt stacks and a Zig dispatcher. ESP-EMU and a physical
 revision-1.3 Tab5 have completed a controlled switch from the ESP-IDF
 bootstrap stack to a separate Zig task stack and back. The nihOS vector is
-installed only around synchronous `ecall` operations with maskable interrupts
-disabled; normal CLIC and timer ownership remain with ESP-IDF. The physical
+installed for bounded synchronous `ecall` and asynchronous timer windows;
+normal CLIC and timer ownership outside those windows remain with ESP-IDF.
+Physical evidence currently covers the synchronous round trip. The physical
 test also established that native switching must coordinate the P4 hardware
 stack bounds. The trap path now stops monitoring only across the actual stack
 change, installs the interrupt-stack or selected-task bounds, and resumes
