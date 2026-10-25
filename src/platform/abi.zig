@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-pub const version: u32 = 1;
+pub const version: u32 = 2;
 
 pub const Status = struct {
     pub const ok: i32 = 0;
@@ -65,6 +65,41 @@ pub const DmaCopy = extern struct {
     elapsed_us: u32,
 };
 
+pub const DisplayPixelFormat = struct {
+    pub const rgb565_le: u32 = 1;
+};
+
+pub const DisplayFrameFlags = struct {
+    pub const writable: u32 = 1 << 0;
+    pub const cacheable: u32 = 1 << 1;
+    pub const scanout: u32 = 1 << 2;
+};
+
+pub const DisplayInfo = extern struct {
+    width: u32,
+    height: u32,
+    stride_bytes: u32,
+    pixel_format: u32,
+    framebuffer_address: u32,
+    framebuffer_bytes: u32,
+    framebuffer_flags: u32,
+};
+
+pub const DisplayPresent = extern struct {
+    framebuffer_address: u32,
+    framebuffer_bytes: u32,
+    flags: u32,
+    elapsed_us: u32,
+    vsync_count: u32,
+};
+
+pub const DisplayVsync = extern struct {
+    timeout_ms: u32,
+    flags: u32,
+    elapsed_us: u32,
+    vsync_count: u32,
+};
+
 test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 24), @sizeOf(BootInfo));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(BootInfo));
@@ -74,4 +109,8 @@ test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 4), @alignOf(MemoryRegion));
     try std.testing.expectEqual(@as(usize, 20), @sizeOf(DmaCopy));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(DmaCopy));
+    try std.testing.expectEqual(@as(usize, 28), @sizeOf(DisplayInfo));
+    try std.testing.expectEqual(@as(usize, 4), @alignOf(DisplayInfo));
+    try std.testing.expectEqual(@as(usize, 20), @sizeOf(DisplayPresent));
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(DisplayVsync));
 }

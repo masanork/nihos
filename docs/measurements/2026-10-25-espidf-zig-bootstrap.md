@@ -93,6 +93,7 @@ sha256: 138032f70f24da232aa0efbbb3c039e03c34156f857d14243f46a8abfe7df754
 ## Remaining gates
 
 - add reusable allocation classes beyond the monotonic boot arenas;
-- bring up display scanout and vsync;
+- extend the completed display scanout checkpoint with touch and tear-free
+  buffer swaps (see `2026-10-25-tab5-display-scanout.md`);
 - replace FreeRTOS scheduling with the native nihOS path before making native
   kernel or SMP claims.

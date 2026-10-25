@@ -5,9 +5,11 @@
 
 pub const version = "0.0.0";
 pub const arena = @import("kernel/arena.zig");
+pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
     _ = arena;
+    _ = test_pattern;
     _ = platform_abi;
 }
