@@ -123,6 +123,8 @@ corrections found on silicon, are recorded in
 Opt-in CPU1 floating contexts and preservation of IDF's raw FP bank are
 defined in
 [`docs/adr/0016-cpu1-floating-contexts.md`](docs/adr/0016-cpu1-floating-contexts.md).
+The emulator and three physical CPU1 FP runs are recorded in
+[`docs/measurements/2026-10-25-tab5-cpu1-floating.md`](docs/measurements/2026-10-25-tab5-cpu1-floating.md).
 
 ## Bootstrap checks
 

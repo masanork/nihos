@@ -60,8 +60,9 @@ step.
 - The integer frame and stable platform ABI remain unchanged.
 - Eager transfer makes debugging straightforward but is not a physical
   performance result. Benchmark before choosing dirty-only or lazy transfer.
-- General task lifecycle, nested traps, native CPU1 FP ownership, cache-off
-  execution, and physical P4 qualification remain open.
+- ADR 0016 extends the same eager mechanism to CPU1, including physical-bank
+  preservation at the IDF boundary. Nested traps, migration, cache-off
+  execution, and loaded application performance remain separate work.
 
 ## Primary references
 

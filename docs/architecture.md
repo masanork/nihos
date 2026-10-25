@@ -210,8 +210,8 @@ restoring selected-task status, and the bounded IPC response producer must
 remain alive through final consumption and its space notice. A completion
 ACK now establishes that fixture lifetime. See the
 [physical SMP preemption record](measurements/2026-10-25-tab5-native-smp-preemption.md).
-This does not establish CPU1 FP ownership, permanent native boot, or loaded
-game/audio timing.
+That first physical result predates the CPU1 FP extension below. Permanent
+native boot and loaded game/audio timing remain separate work.
 
 ADR 0016 extends opt-in eager floating contexts to the CPU1 runtime. Its
 floating service/observer mode preserves the raw IDF bootstrap bank even
@@ -220,6 +220,12 @@ counts timer, IPI, and ECALL transfers. The integer modes retain null FP
 contexts and require zero bank copies. CPU0 remains an integer client in
 this scenario; simultaneous FP workloads on both cores remain a separate
 qualification.
+
+The CPU1 FP implementation has passed ESP-EMU and three complete physical
+Tab5 boots. Each run verified both task banks and IDF's original physical
+bank/FS state; integer CPU1 scenarios performed zero FP bank copies. The
+[CPU1 floating measurement](measurements/2026-10-25-tab5-cpu1-floating.md)
+records per-trap and per-task counts and their qualification limits.
 
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
