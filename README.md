@@ -96,6 +96,8 @@ non-power-of-two counter-wrap correction, is recorded in
 CPU1-to-CPU0 owner notifications and bounded borrowing of IDF's IPI line are
 defined in
 [`docs/adr/0012-owner-inbox-and-borrowed-ipi.md`](docs/adr/0012-owner-inbox-and-borrowed-ipi.md).
+The first remote-wait and IDF-restoration result is recorded in
+[`docs/measurements/2026-10-25-esp-emu-owner-ipi.md`](docs/measurements/2026-10-25-esp-emu-owner-ipi.md).
 
 ## Bootstrap checks
 
