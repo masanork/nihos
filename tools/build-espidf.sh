@@ -10,6 +10,8 @@ fi
 
 if [ -n "${NIHOS_IDF_PATH:-}" ]; then
     idf_path=$NIHOS_IDF_PATH
+elif [ -n "${IDF_PATH:-}" ]; then
+    idf_path=$IDF_PATH
 elif [ -d "${HOME}/esp32/esp-idf-v5.4.4" ]; then
     idf_path="${HOME}/esp32/esp-idf-v5.4.4"
 elif [ -d "${HOME}/esp/esp-idf" ]; then
@@ -24,8 +26,10 @@ if [ ! -f "$idf_path/export.sh" ]; then
     exit 1
 fi
 
-# shellcheck disable=SC1091
-. "$idf_path/export.sh" >/dev/null 2>&1
+if ! command -v idf.py >/dev/null 2>&1; then
+    # shellcheck disable=SC1091
+    . "$idf_path/export.sh" >/dev/null
+fi
 
 mkdir -p "$build_dir"
 cd "$repo_root"
