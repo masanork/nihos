@@ -136,7 +136,9 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         else
             null;
         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
-        nih_native_return_states[hart] = next.state.integerOnly().returningFrom(state);
+        tasks.floating.selectBank(hart, next.floating_context);
+        const next_state = if (next.floating_context == 0) next.state.integerOnly() else next.state.floatingReady();
+        nih_native_return_states[hart] = next_state.returningFrom(state);
         return next.frame;
     }
     nih_native_return_states[hart] = state;
@@ -185,7 +187,7 @@ fn interruptStackValid(hart: u32) bool {
         : [result] "=r" (-> u32),
     );
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
-    return status & 8 == 0 and sp >= @intFromPtr(guard) + 16 and sp < top;
+    return status & (8 | 0x6000) == 0 and sp >= @intFromPtr(guard) + 16 and sp < top;
 }
 
 fn taskReport(hart: u32) void {
@@ -222,12 +224,31 @@ fn ipiReport(hart: u32) void {
     if (!report.finished or report.sent != 64 or report.received != 64 or
         report.delivered != 64 or report.woken != 64 or report.rejected != 0 or
         report.from_idle < 64 or report.entries < 64 or report.returns < 64 or
-        report.pending_before_wfi != 1 or
+        report.pending_before_wfi != 1 or report.self_ipi != 1 or
         report.timer_start != report.timer_end or report.queued != 0)
         fail("IPI/idle proof");
     print("NIHOS_NATIVE_IPI hart=");
     hex(hart);
-    inline for (.{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "timer_start", "timer_end", "queued" }) |field| {
+    inline for (.{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(report, field));
+    }
+    print("\n");
+}
+
+fn floatingReport(hart: u32) void {
+    const report = tasks.floating.report(hart);
+    if (report.confirmed != 1 or report.saves != report.restores or
+        report.saves != report.timer + report.calls + report.ipi) fail("FP quiescence");
+    if (tasks.floating.enabled) {
+        if (report.initial != 5 or report.saves == 0 or report.checks0 < 4 or report.checks1 < 4 or
+            report.checks2 < 4 or report.timer < 8 or report.calls < 12 or report.ipi < 1)
+            fail("FP execution evidence");
+    } else if (report.initial != 0 or report.saves != 0 or report.restores != 0 or report.timer != 0 or report.calls != 0 or report.ipi != 0)
+        fail("integer FP overhead");
+    print("NIHOS_NATIVE_FP hart=");
+    hex(hart);
+    inline for (.{ "checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "confirmed" }) |field| {
         print(" " ++ field ++ "=");
         hex(@field(report, field));
     }
@@ -241,7 +262,10 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     prepareTasks(1);
     enableTimer(1);
     while (true) {
-        if (tasks.ipi.done()) while (true) asm volatile ("wfi");
+        if (tasks.ipi.done()) {
+            tasks.floating.quiesce(1);
+            while (true) asm volatile ("wfi");
+        }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
         tasks.idleOnce(1);
     }
@@ -251,6 +275,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     watchdogOff();
     interruptGuard(0).* = @splat(0x6e69_6972);
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
+    print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
         fail("CRT data/BSS");
@@ -304,9 +329,17 @@ export fn nih_native_main() callconv(.c) noreturn {
                 print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
+                tasks.floating.quiesce(0);
+                const started = cycle();
+                while (tasks.floating.report(1).confirmed != 1) {
+                    if (cycle() -% started > 100_000_000) fail("CPU1 FP finish timeout");
+                }
                 ipiReport(0);
                 ipiReport(1);
                 print("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none\n");
+                floatingReport(0);
+                floatingReport(1);
+                print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
         }

@@ -49,6 +49,8 @@ nih_native_cpu1_start:
     j .Lhalt
 
 .Lsetup_vector:
+    li t0, 0x6000
+    csrc mstatus, t0
     /* Pinned P4 MEXSTATUS.WFFEN: use interrupt wait, not event wait. */
     csrci 0x7e1, 16
     la t0, nih_native_trap
@@ -67,7 +69,7 @@ nih_native_cpu1_start:
     .balign 64
     .global nih_native_trap
 nih_native_trap:
-    /* Same 128-byte integer frame as the hosted scheduler, no FP bank. */
+    /* Stable integer frame; an opted-in FP bank is stored separately. */
     addi sp, sp, -NIH_CTX_SIZE
     sw ra, NIH_CTX_RA(sp)
     sw gp, NIH_CTX_GP(sp)
@@ -104,20 +106,65 @@ nih_native_trap:
     csrr t0, mepc
     sw t0, NIH_CTX_MEPC(sp)
 
-    mv a0, sp
-    csrr a1, mcause
-    csrr a2, mhartid
-    csrr a3, mstatus
+    mv s3, sp
+    csrr s0, mhartid
+    csrr s1, mcause
+    csrr s2, mstatus
     li t0, 2
-    bgeu a2, t0, .Lhalt
+    bgeu s0, t0, .Lhalt
     la t0, .Lirq_tops
-    slli t1, a2, 2
+    slli t1, s0, 2
     add t0, t0, t1
     lw sp, 0(t0)
+#if NIH_NATIVE_FLOATING
+    la t0, nih_native_fp_current
+    add t0, t0, t1
+    lw a0, 0(t0)
+    beqz a0, .Lno_fp_save
+    li t0, 0x6000
+    csrs mstatus, t0
+    call nih_riscv_fpu_save
+    la t0, nih_native_fp_saves
+    slli t1, s0, 2
+    add t0, t0, t1
+    lw t1, 0(t0)
+    addi t1, t1, 1
+    sw t1, 0(t0)
+.Lno_fp_save:
+#endif
+    li t0, 0x6000
+    csrc mstatus, t0
+    mv a0, s3
+    mv a1, s1
+    mv a2, s0
+    mv a3, s2
     /* No nesting: policy/frame mutations run only on this private stack. */
     call nih_native_dispatch
     beqz a0, .Lhalt
-    mv sp, a0
+    mv s3, a0
+#if NIH_NATIVE_FLOATING
+    la t0, nih_native_fp_selected
+    slli t1, s0, 2
+    add t0, t0, t1
+    lw s4, 0(t0)
+    beqz s4, .Lno_fp_restore
+    li t0, 0x6000
+    csrs mstatus, t0
+    mv a0, s4
+    call nih_riscv_fpu_restore
+    la t0, nih_native_fp_restores
+    slli t1, s0, 2
+    add t0, t0, t1
+    lw t1, 0(t0)
+    addi t1, t1, 1
+    sw t1, 0(t0)
+.Lno_fp_restore:
+    la t0, nih_native_fp_current
+    slli t1, s0, 2
+    add t0, t0, t1
+    sw s4, 0(t0)
+#endif
+    mv sp, s3
     csrr t1, mhartid
     slli t1, t1, 3
     la t0, nih_native_return_states

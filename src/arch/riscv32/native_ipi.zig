@@ -9,6 +9,7 @@ const ring = @import("spsc_ring");
 const software_ipi = @import("software_ipi");
 const park = @import("park");
 const idle = @import("idle.zig");
+const floating = @import("native_floating.zig");
 const Inbox = events.Inbox(ring.SpscRing(events.Notification, 8));
 const Atomic = std.atomic.Value(u32);
 extern fn nih_native_task_failed() callconv(.c) noreturn;
@@ -34,6 +35,7 @@ const Counters = struct {
     entries: Atomic = .init(0),
     returns: Atomic = .init(0),
     pending_before_wfi: Atomic = .init(0),
+    self_ipi: Atomic = .init(0),
     timer_start: Atomic = .init(0),
     timer_end: Atomic = .init(0),
 };
@@ -50,6 +52,7 @@ pub const Report = struct {
     entries: u32,
     returns: u32,
     pending_before_wfi: u32,
+    self_ipi: u32,
     timer_start: u32,
     timer_end: u32,
     queued: u32,
@@ -138,6 +141,7 @@ fn send(hart: u32, number: u32) void {
 }
 
 fn receive(hart: u32, number: u32) void {
+    floating.check(hart, 2);
     const result = calls.waitEvents(1);
     switch (result) {
         .received => |bits| if (bits != 1) nih_native_task_failed(),
@@ -147,9 +151,20 @@ fn receive(hart: u32, number: u32) void {
         payload[hart].load(.monotonic) != 0x6e69_0000 ^ number)
         nih_native_task_failed();
     _ = counters[hart].received.fetchAdd(1, .release);
+    floating.check(hart, 2);
 }
 
 pub fn run(hart: u32) callconv(.c) i32 {
+    // Capture a running protocol task as well as the parked integer bootstrap.
+    const before = counters[hart].ipis.load(.acquire);
+    bell(hart).raise();
+    const begin = cycle();
+    while (counters[hart].ipis.load(.acquire) == before) {
+        if (cycle() -% begin > 100_000_000) nih_native_task_failed();
+        std.atomic.spinLoopHint();
+    }
+    floating.check(hart, 2);
+    counters[hart].self_ipi.store(1, .release);
     var previous_idle: u32 = 0;
     for (1..exchanges + 1) |number| {
         if (hart == 0) {
@@ -214,6 +229,7 @@ pub fn report(hart: u32) Report {
         .entries = source.entries.load(.acquire),
         .returns = source.returns.load(.acquire),
         .pending_before_wfi = source.pending_before_wfi.load(.acquire),
+        .self_ipi = source.self_ipi.load(.acquire),
         .timer_start = source.timer_start.load(.acquire),
         .timer_end = source.timer_end.load(.acquire),
         .queued = @intCast(inboxes[hart].ring.countApprox()),

@@ -74,6 +74,13 @@ def audit(elf, image):
     require(symbols.get("nih_native_start") == entry, "wrong native entry")
     for name, address in ROM_SYMBOLS.items():
         require(symbols.get(name) == address, "wrong ROM ABI: " + name)
+    fp_linked = "nih_riscv_fpu_save" in symbols
+    if fp_linked:
+        require(all(name in symbols for name in ("nih_riscv_fpu_restore", "nih_riscv_fpu_snapshot",
+                    "nih_riscv_fpu_task_check", "nih_riscv_fpu_task_probe")), "partial native FP support")
+    require("nih_riscv_fpu_probe_loop" not in symbols and
+            "nih_riscv_preemption_budget_expired" not in symbols, "hosted test watchdog linked")
+    require(header[6] & 0xE == 0, "native application requires full-register ILP32 ABI")
     require(symbols["__stack0_top"] <= symbols["__stack1_bottom"] and
             symbols["__stack1_top"] <= symbols["__irq_stack0_bottom"] and
             symbols["__irq_stack0_top"] <= symbols["__irq_stack1_bottom"] and
@@ -102,6 +109,7 @@ def audit(elf, image):
     require(hashlib.sha256(image[:checksum_end]).digest() == image[checksum_end:],
             "image SHA256 mismatch")
     return {"schema": 1, "backend": "native-sram", "rtos_linked": False,
+            "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]),
             "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
             "image_sha256": hashlib.sha256(image).hexdigest(), "image_bytes": len(image),
             "sram_reserved_bytes": symbols["__irq_stack1_top"] - SRAM_LOW,
@@ -110,10 +118,13 @@ def audit(elf, image):
 
 
 def main():
-    if len(sys.argv) != 4:
-        raise SystemExit("usage: check-native-image.py ELF BIN REPORT.json")
+    if len(sys.argv) not in (4, 5):
+        raise SystemExit("usage: check-native-image.py ELF BIN REPORT.json [integer|floating]")
     try:
         report = audit(Path(sys.argv[1]).read_bytes(), Path(sys.argv[2]).read_bytes())
+        if len(sys.argv) == 5:
+            require(sys.argv[4] in ("integer", "floating"), "invalid FP mode")
+            require(report["fp_assembly_linked"] == (sys.argv[4] == "floating"), "FP assembly differs from requested mode")
     except (ValueError, IndexError, KeyError, struct.error) as error:
         raise SystemExit("Native image audit failed: " + str(error)) from error
     Path(sys.argv[3]).write_text(json.dumps(report, indent=2) + "\n")

@@ -4,7 +4,7 @@
  * Restore deliberately replaces every FP register; only assembly calls it.
  */
 #include "task_call_numbers.inc"
-    .section .iram1.nih_riscv_fpu, "ax", @progbits
+    .section .iram1.nih_riscv_fpu_save, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_save
     .type nih_riscv_fpu_save, @function
@@ -46,6 +46,7 @@ nih_riscv_fpu_save:
     ret
     .size nih_riscv_fpu_save, .-nih_riscv_fpu_save
 
+    .section .iram1.nih_riscv_fpu_restore, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_restore
     .type nih_riscv_fpu_restore, @function
@@ -90,6 +91,7 @@ nih_riscv_fpu_restore:
     /* C-ABI snapshot preserves both the physical bank and original mstatus,
      * including FS=Off. Called inside the interrupt-masked lease boundary.
      */
+    .section .iram1.nih_riscv_fpu_snapshot, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_snapshot
     .type nih_riscv_fpu_snapshot, @function
@@ -114,6 +116,7 @@ nih_riscv_fpu_snapshot:
      * state or callee-saved integer registers. Layout: pattern, expected
      * fcsr, iterations, failed, stack_address.
      */
+    .section .iram1.nih_riscv_fpu_task_check, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_task_check
     .type nih_riscv_fpu_task_check, @function
@@ -181,6 +184,7 @@ nih_riscv_fpu_task_check:
      * returning C function. Its callback must be explicitly integer-only;
      * the task's bank remains live across callback ECALLs and preemption.
      */
+    .section .iram1.nih_riscv_fpu_task_probe, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_task_probe
     .type nih_riscv_fpu_task_probe, @function
@@ -264,6 +268,7 @@ nih_riscv_fpu_task_probe:
      * canaries. The scratch preserves caller-saved FP state around the
      * independent integer-only test-watchdog callback.
      */
+    .section .iram1.nih_riscv_fpu_probe_loop, "ax", @progbits
     .balign 4
     .global nih_riscv_fpu_probe_loop
     .type nih_riscv_fpu_probe_loop, @function

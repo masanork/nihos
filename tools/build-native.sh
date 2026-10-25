@@ -6,10 +6,16 @@ profile=${1:-device}
 case "$profile" in
     device) revision=100; max_revision=299 ;;
     emulator) revision=300; max_revision=399 ;;
-    *) echo "usage: $0 [device|emulator]" >&2; exit 1 ;;
+    *) echo "usage: $0 [device|emulator] [integer|floating]" >&2; exit 1 ;;
 esac
 build_dir="$repo_root/build/native-$profile"
 boot_dir="$build_dir/loader"
+mode=${2:-integer}
+case "$mode" in
+    integer) ;;
+    floating) build_dir="$build_dir-floating" ;;
+    *) echo "mode must be integer or floating" >&2; exit 1 ;;
+esac
 idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
 if [ ! -f "$idf_path/export.sh" ]; then
     echo "ESP-IDF v5.4.4 not found; set NIHOS_IDF_PATH" >&2
@@ -28,7 +34,7 @@ fi
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=$defaults" bootloader partition-table
-sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir"
+sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
 "$python" -m esptool --chip esp32p4 elf2image \
     --flash_mode dio --flash_freq 80m --flash_size 16MB \
     --min-rev-full "$revision" --max-rev-full "$max_revision" --elf-sha256-offset 0xb0 \
@@ -40,4 +46,4 @@ sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir"
     0x8000 "$boot_dir/partition_table/partition-table.bin" \
     0x10000 "$build_dir/nihos-native.bin"
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
-    "$build_dir/nihos-native.bin" "$build_dir/image-audit.json"
+    "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode"

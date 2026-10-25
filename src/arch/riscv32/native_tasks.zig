@@ -8,6 +8,7 @@ const scheduler = @import("scheduler");
 const tick_clock = @import("tick_clock");
 const timer_group = @import("timer_group");
 pub const ipi = @import("native_ipi.zig");
+pub const floating = @import("native_floating.zig");
 
 const Runtime = runtime_module.Runtime(4, 2);
 const stack_bytes = 4096;
@@ -86,6 +87,7 @@ fn busy(argument: u32) callconv(.c) i32 {
     while (true) {
         if (ipi.requested()) return @intCast(100 + argument);
         for (0..8) |index| if (checked[index] != signature) nih_native_task_failed();
+        floating.check(hart, worker);
         _ = @atomicRmw(u32, &reports[hart].progress[worker], .Add, 1, .release);
         // No ECALL, yield, sleep, or function with a scheduling side effect.
     }
@@ -97,12 +99,27 @@ fn lifecycle(argument: u32) callconv(.c) i32 {
     var marker: u32 = argument;
     if (!onTaskStack(hart, 2, @intFromPtr(&marker), @sizeOf(u32))) nih_native_task_failed();
     if (calls.current() == null) nih_native_task_failed();
+    floating.check(hart, 2);
     const before = calls.nowTicks();
     if (calls.sleep(duration) != 0 or calls.nowTicks() - before < duration)
         nih_native_task_failed();
+    floating.check(hart, 2);
     _ = @atomicRmw(u32, &reports[hart].sleeps, .Add, 1, .release);
     if (calls.yieldNow() != 0) nih_native_task_failed();
+    floating.check(hart, 2);
     return @intCast(40 + argument);
+}
+
+fn floatingBusy(argument: u32) callconv(.c) i32 {
+    floating.enter(argument / 4, argument % 4, &busy, argument);
+}
+
+fn floatingLifecycle(argument: u32) callconv(.c) i32 {
+    floating.enter(argument / 4, 2, &lifecycle, argument);
+}
+
+fn floatingProtocol(hart: u32) callconv(.c) i32 {
+    floating.enter(hart, 2, &ipi.run, hart);
 }
 
 fn onTaskStack(hart: u32, index: u32, address: u32, bytes: u32) bool {
@@ -128,20 +145,24 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
     const frame: *context.IntegerContext = @ptrFromInt(address);
     context.initialize(frame, .{
         .entry = switch (kind) {
-            .busy => @intFromPtr(&busy),
-            .initial_lifecycle, .replacement_lifecycle => @intFromPtr(&lifecycle),
-            .ipi_protocol => @intFromPtr(&ipi.run),
+            .busy => if (floating.enabled) @intFromPtr(&floatingBusy) else @intFromPtr(&busy),
+            .initial_lifecycle, .replacement_lifecycle => if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
+            .ipi_protocol => if (floating.enabled) @intFromPtr(&floatingProtocol) else @intFromPtr(&ipi.run),
         },
         .argument = if (kind == .ipi_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
         .trampoline = @intFromPtr(&nih_native_task_trampoline),
         .global_pointer = owner.gp,
     });
-    return owner.runtime.add(0, .{
+    const handle = owner.runtime.add(0, .{
         .frame = frame,
         .state = initial_state,
         .stack_min = bottom + 16,
         .stack_max = bottom + stack_bytes,
-    });
+    }) orelse return null;
+    const bank = floating.prepare(hart, index, handle.generation, handle.slot);
+    owner.runtime.images[handle.slot].?.floating_context = bank;
+    if (bank != 0) owner.runtime.images[handle.slot].?.state = initial_state.floatingReady();
+    return handle;
 }
 
 /// Called on the corresponding bootstrap stack before that hart enables MIE.
@@ -171,7 +192,7 @@ fn maintain(hart: u32, device: timer_group.Timer) bool {
     if (completion.exit_code != expected) return false;
     owner.completed_runtime_ticks += completion.runtime_ticks;
     const old = owner.lifecycle;
-    if (!owner.runtime.reap(old) or owner.runtime.policy.snapshot(old) != null) return false;
+    if (!floating.retire(hart, 2) or !owner.runtime.reap(old) or owner.runtime.policy.snapshot(old) != null) return false;
     // A scalar call using the old generation must fail even after slot reuse.
     owner.reaped += 1;
     owner.phase = if (owner.phase == .initial_lifecycle) .replacement_lifecycle else .preemption;
@@ -193,7 +214,7 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
             if (completion.state != .exited) continue;
             if (completion.exit_code != 100 + hart * 4 + index) return false;
             owner.completed_runtime_ticks += completion.runtime_ticks;
-            if (!owner.runtime.reap(handle)) return false;
+            if (!floating.retire(hart, @intCast(index)) or !owner.runtime.reap(handle)) return false;
             owner.worker_reaped[index] = true;
             owner.reaped += 1;
         }
@@ -209,7 +230,7 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
         if (completion.state == .exited) {
             if (completion.exit_code != 200 + hart) return false;
             owner.completed_runtime_ticks += completion.runtime_ticks;
-            if (!owner.runtime.reap(owner.lifecycle)) return false;
+            if (!floating.retire(hart, 2) or !owner.runtime.reap(owner.lifecycle)) return false;
             owner.reaped += 1;
             owner.phase = .complete;
             ipi.ownerFinished(hart, owner.timer_interrupts);
@@ -220,6 +241,7 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
 
 fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     const owner = &owners[hart];
+    floating.publish(hart);
     var total = owner.completed_runtime_ticks;
     for ([_]scheduler.TaskHandle{ owner.bootstrap, owner.workers[0], owner.workers[1], owner.lifecycle }) |handle| {
         if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
@@ -256,6 +278,7 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer);
     for (owner.workers, 0..) |handle, index| {
         if (current.slot == handle.slot) owner.captures[index] +%= 1;
     }
@@ -267,6 +290,8 @@ pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnSt
     const owner = &owners[hart];
     if (!guardsValid(hart) or !refresh(hart, device)) return null;
     owner.calls +%= 1;
+    const current = owner.runtime.policy.current() orelse return null;
+    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .calls);
     const selected = owner.runtime.call(frame, state) orelse return null;
     if (!maintain(hart, device)) return null;
     return publish(hart, if (alarmsDisarmed(owner)) owner.runtime.select() orelse return null else selected);
@@ -276,6 +301,7 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
     const owner = &owners[hart];
     if (!alarmsDisarmed(owner) or !guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .ipi);
     ipi.drain(hart, &owner.runtime.policy, current.slot == owner.bootstrap.slot);
     return publish(hart, owner.runtime.select() orelse return null);
 }
