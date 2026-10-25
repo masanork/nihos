@@ -12,7 +12,7 @@ ESP-IDF-hosted Zig entry boots on a physical Tab5 and now writes the MIPI-DSI
 scanout framebuffer directly and synchronizes to display refresh. nihOS does
 not yet own the permanent scheduler or native device drivers. Bounded native
 execution exercises CPU0 task preemption and event waits, plus an independent
-CPU1 task runtime that wakes by IPI and parks its idle context with WFI.
+CPU1 task runtime with its own timer, IPI wakeup, and WFI idle context.
 Each window restores the ESP-IDF host afterward. A bounded touch ABI can also
 initialize and poll the panel-matched controller.
 
@@ -111,6 +111,9 @@ work are defined in
 Their first two-task execution, native stack checks, and dual-owner result is
 recorded in
 [`docs/measurements/2026-10-25-esp-emu-cpu1-tasks.md`](docs/measurements/2026-10-25-esp-emu-cpu1-tasks.md).
+CPU1 timer ownership, deadline wakeup, and non-yielding-task preemption are
+defined in
+[`docs/adr/0015-cpu1-timer-and-preemption.md`](docs/adr/0015-cpu1-timer-and-preemption.md).
 
 ## Bootstrap checks
 

@@ -195,6 +195,14 @@ the final report. CPU1 has no periodic timer yet, so sleep explicitly returns
 not-supported and its tick count remains zero. CPU0 remains timer-preemptive;
 native CPU1 selection uses IPIs and cooperative calls.
 
+ADR 0015 adds a separate CPU1 timer lease and timer-owned tick clock while
+retaining that untimed mode. Its native timer preempts a non-yielding peer
+and wakes the sleeping service at its accepted deadline, then the duplex
+protocol completes on both runtimes. The first interrupt is delayed to test
+missed-tick accounting, and summed task/idle runtime must equal elapsed ticks.
+CPU1 clock updates occur only in its timer tail; its phase is independent of
+CPU0. Both timer/IPI leases restore IDF before the host callback probes run.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a
