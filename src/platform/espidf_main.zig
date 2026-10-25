@@ -543,6 +543,24 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     }
     write("fpu_boundary_restore=ok\r\n");
     write("native_fpu_preemption=ok\r\n");
+    const lifecycle = native_trap.exerciseNativeLifecycle() orelse {
+        write("nihos: native lifecycle failed\r\n");
+        return;
+    };
+    writeU32("task_sleep_started=", lifecycle.sleep_started);
+    writeU32("task_sleep_deadline=", lifecycle.sleep_deadline);
+    writeU32("task_sleep_resumed=", lifecycle.sleep_resumed);
+    writeU32("task_explicit_wakes=", lifecycle.explicit_wakes);
+    writeU32("task_exit_code_0=", @bitCast(lifecycle.exits[0]));
+    writeU32("task_exit_code_1=", @bitCast(lifecycle.exits[1]));
+    writeU32("task_syscalls=", lifecycle.calls);
+    writeU32("task_timer_interrupts=", lifecycle.interrupts);
+    writeU64("task_idle_runtime_ticks=", lifecycle.idle_runtime_ticks);
+    writeU32("task_reaped=", lifecycle.reaped);
+    writeU32("task_old_generation=", lifecycle.old_generation);
+    writeU32("task_replacement_generation=", lifecycle.replacement_generation);
+    write("task_stale_handle_rejected=ok\r\n");
+    write("native_lifecycle=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

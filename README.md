@@ -76,6 +76,8 @@ described in
 [`docs/adr/0008-opt-in-eager-rv32f-context.md`](docs/adr/0008-opt-in-eager-rv32f-context.md).
 Its integer/FP separation and host-bank restoration result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-rv32f-preemption.md`](docs/measurements/2026-10-25-esp-emu-rv32f-preemption.md).
+Native task calls, sleep/block/wake, and completion/reaping are defined in
+[`docs/adr/0009-native-task-lifecycle.md`](docs/adr/0009-native-task-lifecycle.md).
 
 ## Bootstrap checks
 

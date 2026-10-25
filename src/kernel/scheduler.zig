@@ -12,6 +12,7 @@ pub const TaskState = enum(u8) {
     running,
     sleeping,
     blocked,
+    exited,
 };
 
 pub const TaskHandle = struct {
@@ -24,6 +25,7 @@ pub const TaskSnapshot = struct {
     priority: u8,
     runtime_ticks: u64,
     wake_tick: u64,
+    exit_code: i32,
 };
 
 pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
@@ -41,6 +43,7 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             generation: u16 = 0,
             runtime_ticks: u64 = 0,
             wake_tick: u64 = 0,
+            exit_code: i32 = 0,
         };
 
         tasks: [capacity]Task = @splat(.{}),
@@ -52,10 +55,11 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             if (priority >= priority_levels) return null;
             for (&self.tasks, 0..) |*task, slot| {
                 if (task.state != .vacant) continue;
+                const generation = nextGeneration(task.generation) orelse continue;
                 task.* = .{
                     .state = .ready,
                     .priority = priority,
-                    .generation = nextGeneration(task.generation),
+                    .generation = generation,
                 };
                 return handleFor(slot, task.generation);
             }
@@ -68,6 +72,19 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             const generation = self.tasks[slot].generation;
             self.tasks[slot] = .{ .generation = generation };
             return true;
+        }
+
+        /// Exit keeps a completion record until the owner explicitly reaps
+        /// the task. A terminated task cannot be woken or selected again.
+        pub fn exitCurrent(self: *Self, code: i32) ?TaskHandle {
+            const slot = self.current_slot orelse return null;
+            const task = &self.tasks[slot];
+            if (task.state != .running) return null;
+            task.state = .exited;
+            task.exit_code = code;
+            task.wake_tick = 0;
+            self.current_slot = null;
+            return handleFor(slot, task.generation);
         }
 
         pub fn block(self: *Self, handle: TaskHandle) bool {
@@ -172,6 +189,7 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
                 .priority = task.priority,
                 .runtime_ticks = task.runtime_ticks,
                 .wake_tick = task.wake_tick,
+                .exit_code = task.exit_code,
             };
         }
 
@@ -188,11 +206,25 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             return .{ .slot = @intCast(slot), .generation = generation };
         }
 
-        fn nextGeneration(previous: u16) u16 {
-            const next = previous +% 1;
-            return if (next == 0) 1 else next;
+        fn nextGeneration(previous: u16) ?u16 {
+            // Retire an exhausted slot rather than wrapping and making an
+            // ancient handle valid again. No extra per-slot state is needed.
+            if (previous == std.math.maxInt(u16)) return null;
+            return previous + 1;
         }
     };
+}
+
+test "generation exhaustion retires a slot without reviving old handles" {
+    var policy = Scheduler(2, 1){};
+    policy.tasks[0].generation = std.math.maxInt(u16) - 1;
+    const last = policy.add(0).?;
+    try std.testing.expectEqual(std.math.maxInt(u16), last.generation);
+    try std.testing.expect(policy.remove(last));
+    const next = policy.add(0).?;
+    try std.testing.expectEqual(@as(u16, 1), next.slot);
+    try std.testing.expect(policy.snapshot(last) == null);
+    try std.testing.expect(!policy.wake(last));
 }
 
 test "same-priority tasks run round robin" {

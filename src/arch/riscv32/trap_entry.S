@@ -7,6 +7,7 @@
  */
 
 #include "context_offsets.inc"
+#include "task_call_numbers.inc"
 #if __has_include("sdkconfig.h")
 #include "sdkconfig.h"
 #endif
@@ -293,7 +294,8 @@ nih_riscv_task_trampoline:
     mv t0, a0
     mv a0, a1
     jalr t0
-    /* Returning from a task is a kernel event, not an invalid return address. */
+    /* A task entry returns its signed exit code in a0. */
+    li a7, NIH_TASK_EXIT
     ecall
     j .Linvalid_context
 
@@ -307,6 +309,26 @@ nih_riscv_context_test_yield:
     j .Linvalid_context
 
     .size nih_riscv_context_test_yield, .-nih_riscv_context_test_yield
+
+    .balign 4
+    .global nih_riscv_task_call
+    .type nih_riscv_task_call, @function
+nih_riscv_task_call:
+    /* C ABI: number in a0, scalar argument in a1; u64 result in a0/a1. */
+    mv a7, a0
+    mv a0, a1
+    ecall
+    ret
+    .size nih_riscv_task_call, .-nih_riscv_task_call
+
+    .balign 4
+    .global nih_riscv_task_exit
+    .type nih_riscv_task_exit, @function
+nih_riscv_task_exit:
+    li a7, NIH_TASK_EXIT
+    ecall
+    j .Linvalid_context
+    .size nih_riscv_task_exit, .-nih_riscv_task_exit
 
     .balign 4
     .global nih_riscv_read_gp

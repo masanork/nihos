@@ -9,6 +9,7 @@ const context = @import("context.zig");
 const trap = @import("trap.zig");
 const timer_group = @import("timer_group");
 const preemption = @import("preemption_test.zig");
+const lifecycle = @import("lifecycle_test.zig");
 
 const core_count = 2;
 const interrupt_stack_bytes = 2048;
@@ -22,6 +23,7 @@ const SwitchState = enum(u32) {
     complete,
     timer,
     preemption,
+    lifecycle,
 };
 
 var interrupt_stacks: [core_count][interrupt_stack_bytes]u8 align(16) = undefined;
@@ -204,6 +206,20 @@ pub fn exerciseNativeFloatingPreemption() ?preemption.Report {
     return exercisePreemption(.floating);
 }
 
+pub fn exerciseNativeLifecycle() ?lifecycle.Report {
+    const device = acquireTimer() orelse return null;
+    const trampoline = address32(&nih_riscv_task_trampoline) orelse {
+        _ = finishTimer(false);
+        return null;
+    };
+    const prepared = lifecycle.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline);
+    switch_state = .lifecycle;
+    const returned = prepared and nih_riscv_timer_window() == 1;
+    const report = if (returned) lifecycle.report() else null;
+    if (!finishTimer(returned)) return null;
+    return report;
+}
+
 fn exercisePreemption(mode: preemption.Mode) ?preemption.Report {
     const device = acquireTimer() orelse return null;
     const trampoline = address32(&nih_riscv_task_trampoline) orelse {
@@ -231,6 +247,7 @@ fn exercisePreemption(mode: preemption.Mode) ?preemption.Report {
 }
 
 export fn nih_riscv_native_timer_prepare() callconv(.c) u32 {
+    if (switch_state == .lifecycle) return if (lifecycle.startMasked()) 1 else 0;
     if (switch_state == .preemption and preemption_mode == .floating)
         nih_riscv_fpu_snapshot(&boundary_before);
     return if (switch_state != .preemption or preemption.startMasked()) 1 else 0;
@@ -243,6 +260,7 @@ export fn nih_riscv_native_timer_finish() callconv(.c) u32 {
 }
 
 export fn nih_riscv_native_timer_run() callconv(.c) u32 {
+    if (switch_state == .lifecycle) return if (lifecycle.run()) 1 else 0;
     if (switch_state == .preemption) return if (preemption.run()) 1 else 0;
     const device = timer_device orelse return 0;
     const started = nih_platform_monotonic_us();
@@ -267,6 +285,21 @@ export fn nih_riscv_trap_dispatch(
     const return_state = context.ReturnState{ .mstatus = raw_mstatus, .mcause = raw_mcause };
     nih_riscv_selected_return_states[hart_id] = return_state;
     nih_riscv_selected_floating_states[hart_id] = nih_riscv_current_floating_states[hart_id];
+    if (switch_state == .lifecycle) {
+        if (hart_id != 0) return null;
+        const selection = if (cause.kind == .interrupt and cause.reason == timer_interrupt_id)
+            lifecycle.onTimer(interrupted, return_state)
+        else if (cause.isException(.environment_call_from_machine))
+            lifecycle.onCall(interrupted, return_state)
+        else
+            null;
+        const selected = selection orelse return null;
+        nih_riscv_selected_stack_mins[hart_id] = selected.stack_min;
+        nih_riscv_selected_stack_maxs[hart_id] = selected.stack_max;
+        nih_riscv_selected_return_states[hart_id] = selected.state;
+        nih_riscv_selected_floating_states[hart_id] = selected.floating_context;
+        return selected.frame;
+    }
     if (switch_state == .preemption) {
         if (hart_id != 0) return null;
         const selection = if (cause.kind == .interrupt and cause.reason == timer_interrupt_id)
@@ -315,6 +348,6 @@ export fn nih_riscv_trap_dispatch(
             switch_state = .complete;
             break :next bootstrap_frame;
         },
-        .idle, .complete, .timer, .preemption => null,
+        .idle, .complete, .timer, .preemption, .lifecycle => null,
     };
 }

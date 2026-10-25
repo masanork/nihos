@@ -102,6 +102,16 @@ pub const FloatingProbe = extern struct {
     stack_address: u32 = 0,
 };
 
+/// A fully captured task that the trap epilogue may resume. Runtime policy
+/// owns its lifetime; assembly sees only the chosen integer-frame pointer.
+pub const TaskContext = struct {
+    frame: *IntegerContext,
+    state: ReturnState,
+    stack_min: u32,
+    stack_max: u32,
+    floating_context: u32 = 0,
+};
+
 pub const InitialTask = struct {
     entry: u32,
     argument: u32,

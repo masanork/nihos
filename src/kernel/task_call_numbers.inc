@@ -1,0 +1,8 @@
+/* Native task-call ABI. Verified against task_control.zig at compile time. */
+.equ NIH_TASK_YIELD, 0x4e490000
+.equ NIH_TASK_SLEEP, 0x4e490001
+.equ NIH_TASK_WAKE, 0x4e490002
+.equ NIH_TASK_EXIT, 0x4e490003
+.equ NIH_TASK_CURRENT, 0x4e490004
+.equ NIH_TASK_TICKS, 0x4e490005
+.equ NIH_TASK_BLOCK, 0x4e490006

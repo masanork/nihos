@@ -3,7 +3,7 @@ idf_component_register(
          "../compat/espidf/native_timer.c"
          "../src/arch/riscv32/trap_entry.S"
          "../src/arch/riscv32/fpu.S"
-    INCLUDE_DIRS "../include" "../src/arch/riscv32"
+    INCLUDE_DIRS "../include" "../src/arch/riscv32" "../src/kernel"
     PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm esp_hw_support
                   esp_timer esp_driver_gptimer esp_lcd esp_lcd_touch
                   m5stack_tab5_noglib
@@ -23,6 +23,11 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_PREEMPTION "${NIHOS_ROOT}/src/arch/riscv32/preemption_test.zig")
     set(NIHOS_ZIG_SCHEDULER "${NIHOS_ROOT}/src/kernel/scheduler.zig")
     set(NIHOS_ZIG_TICK_CLOCK "${NIHOS_ROOT}/src/kernel/tick_clock.zig")
+    set(NIHOS_ZIG_TASK_CONTROL "${NIHOS_ROOT}/src/kernel/task_control.zig")
+    set(NIHOS_ZIG_TASK_NUMBERS "${NIHOS_ROOT}/src/kernel/task_call_numbers.inc")
+    set(NIHOS_ZIG_TASK_RUNTIME "${NIHOS_ROOT}/src/arch/riscv32/task_runtime.zig")
+    set(NIHOS_ZIG_TASK_CALLS "${NIHOS_ROOT}/src/arch/riscv32/task_calls.zig")
+    set(NIHOS_ZIG_LIFECYCLE "${NIHOS_ROOT}/src/arch/riscv32/lifecycle_test.zig")
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
     set(NIHOS_ZIG_SPSC "${NIHOS_ROOT}/src/kernel/spsc_ring.zig")
@@ -54,10 +59,12 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             --dep timer_group
             --dep scheduler
             --dep tick_clock
+            --dep task_control
             "-Mnative_trap=${NIHOS_ZIG_NATIVE_TRAP}"
             "-Mtimer_group=${NIHOS_ZIG_TIMER_GROUP}"
             "-Mscheduler=${NIHOS_ZIG_SCHEDULER}"
             "-Mtick_clock=${NIHOS_ZIG_TICK_CLOCK}"
+            "-Mtask_control=${NIHOS_ZIG_TASK_CONTROL}"
             "-Mspsc_ring=${NIHOS_ZIG_SPSC}"
             "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
             "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
@@ -67,6 +74,9 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
                 "${NIHOS_ZIG_TRAP}" "${NIHOS_ZIG_TIMER_GROUP}"
                 "${NIHOS_ZIG_PREEMPTION}" "${NIHOS_ZIG_SCHEDULER}"
                 "${NIHOS_ZIG_TICK_CLOCK}"
+                "${NIHOS_ZIG_TASK_CONTROL}" "${NIHOS_ZIG_TASK_NUMBERS}"
+                "${NIHOS_ZIG_TASK_RUNTIME}" "${NIHOS_ZIG_TASK_CALLS}"
+                "${NIHOS_ZIG_LIFECYCLE}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
                 "${NIHOS_ZIG_TICK_COUNTER}"
                 "${NIHOS_ZIG_PATTERN}"
