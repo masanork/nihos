@@ -9,11 +9,17 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-def complete_log(mode="integer"):
+def complete_log(mode="integer", psram_size="0"):
     lines = ["NIHOS_NATIVE_BOOT backend=zig-sram rtos=none",
              "NIHOS_NATIVE_MODE floating=" + ("0" if mode == "integer" else "1"),
              "NIHOS_NATIVE_COMPILER enabled=" + ("1" if mode == "compiled" else "0"),
              "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned"]
+    sizes = {"0": (0, 0), "4M": (4 << 20, 1), "8M": (8 << 20, 3),
+             "16M": (16 << 20, 5), "32M": (32 << 20, 7), "64M": (64 << 20, 6)}
+    size, density = sizes[psram_size]
+    lines.append("NIHOS_NATIVE_PSRAM status={:08x} configuration={:08x} identity={:08x} "
+                 "bytes={:08x} transactions=00000004 mapped=00000000 allocatable=00000000".format(
+                     int(size != 0), 0x0d00 if size else 0, 0xc8 | density if size else 0, size))
     for count in [1] + list(range(10, 301, 10)):
         lines.append("NIHOS_NATIVE_HEARTBEAT round={0:08x} cpu0={1:08x} cpu1={1:08x} "
                      "ticks0={2:08x} ticks1={2:08x}".format(count, count * 100, count * 4))
@@ -47,6 +53,42 @@ def complete_log(mode="integer"):
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_all_detected_psram_sizes_require_the_requested_capacity(self):
+        for size, amount in (("4M", 4), ("8M", 8), ("16M", 16), ("32M", 32), ("64M", 64)):
+            with self.subTest(size=size):
+                report = MODULE.check(complete_log(psram_size=size), "integer", amount << 20)
+                self.assertEqual(report["psram"]["bytes"], amount << 20)
+                self.assertEqual(report["psram"]["mapped"], 0)
+
+    def test_missing_or_duplicate_psram_discovery_is_rejected(self):
+        log = complete_log()
+        line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_PSRAM"))
+        for changed in (log.replace(line, ""), log + "\n" + line):
+            with self.assertRaisesRegex(ValueError, "PSRAM discovery"):
+                MODULE.check(changed)
+
+    def test_discovery_timeout_wrong_size_and_premature_exposure_are_rejected(self):
+        log = complete_log(psram_size="32M")
+        with self.assertRaisesRegex(ValueError, "PSRAM discovery"):
+            MODULE.check(log, "integer", 64 << 20)
+        for old, new in (("status=00000001", "status=00000003"),
+                         ("transactions=00000004", "transactions=00000002"),
+                         ("mapped=00000000", "mapped=02000000"),
+                         ("allocatable=00000000", "allocatable=02000000")):
+            with self.subTest(field=old), self.assertRaisesRegex(ValueError, "PSRAM discovery"):
+                MODULE.check(log.replace(old, new), "integer", 32 << 20)
+
+    def test_psram_capacity_must_agree_with_vendor_good_die_and_density(self):
+        for old, new in (("configuration=00000d00", "configuration=00001000"),
+                         ("identity=000000cf", "identity=0000000f"),
+                         ("identity=000000cf", "identity=000000cd")):
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "PSRAM identity"):
+                MODULE.check(complete_log(psram_size="32M").replace(old, new), "integer", 32 << 20)
+
+    def test_absent_die_cannot_carry_an_old_identity(self):
+        with self.assertRaisesRegex(ValueError, "absent PSRAM"):
+            MODULE.check(complete_log().replace("identity=00000000", "identity=000000cf"))
+
     def test_missing_or_duplicate_memory_owner_is_rejected(self):
         log = complete_log()
         with self.assertRaisesRegex(ValueError, "per-hart memory"):

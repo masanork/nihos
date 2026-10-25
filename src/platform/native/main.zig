@@ -2,6 +2,7 @@
 const std = @import("std");
 const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
+const native_psram = @import("psram.zig");
 pub const panic = std.debug.no_panic;
 
 extern fn nih_rom_putc(u8) callconv(.c) i32;
@@ -298,6 +299,18 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (exceptions[0] != 1) fail("CPU0 exception return");
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
+    const external = native_psram.discover();
+    print("NIHOS_NATIVE_PSRAM status=");
+    hex(@backingInt(external.discovery.status));
+    print(" configuration=");
+    hex(external.discovery.configuration);
+    print(" identity=");
+    hex(external.discovery.identity);
+    print(" bytes=");
+    hex(external.discovery.bytes);
+    print(" transactions=");
+    hex(external.transactions);
+    print(" mapped=00000000 allocatable=00000000\n");
     prepareTimers();
     prepareTasks(0);
     startCpu1();

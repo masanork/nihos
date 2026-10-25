@@ -6,7 +6,11 @@ import re
 import sys
 
 
-def check(log, expected_mode=None):
+PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
+               "32M": 32 << 20, "64M": 64 << 20}
+
+
+def check(log, expected_mode=None, expected_psram_bytes=0):
     log = log.replace("\\r", "").replace("\r", "")
     if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
         raise ValueError("missing boot or unexpected reboot")
@@ -25,6 +29,25 @@ def check(log, expected_mode=None):
         raise ValueError("native mode differs from requested build")
     if "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned" not in log:
         raise ValueError("missing CRT/exception pass")
+    psram_names = ("status", "configuration", "identity", "bytes", "transactions", "mapped", "allocatable")
+    pattern = "NIHOS_NATIVE_PSRAM" + "".join(" " + name + r"=([0-9a-f]{8})" for name in psram_names)
+    discovered = re.findall(pattern, log)
+    if len(discovered) != 1:
+        raise ValueError("missing/duplicate PSRAM discovery")
+    psram = dict(zip(psram_names, (int(value, 16) for value in discovered[0])))
+    if (psram["status"] not in (0, 1) or psram["bytes"] != expected_psram_bytes or
+            psram["transactions"] != 4 or psram["mapped"] != 0 or psram["allocatable"] != 0 or
+            psram["configuration"] > 0xffff or psram["identity"] > 0xffff):
+        raise ValueError("incomplete PSRAM discovery or premature memory exposure")
+    if psram["status"] == 0:
+        if psram["bytes"] != 0 or (psram["configuration"], psram["identity"]) not in ((0, 0), (0xffff, 0xffff)):
+            raise ValueError("invalid absent PSRAM evidence")
+    else:
+        density_bytes = {1: 4 << 20, 3: 8 << 20, 5: 16 << 20, 7: 32 << 20, 6: 64 << 20}
+        if (((psram["configuration"] >> 8) & 31) not in (0x0d, 0x1a) or
+                ((psram["identity"] >> 5) & 7) != 6 or
+                density_bytes.get(psram["identity"] & 7, 0) != psram["bytes"] or psram["bytes"] == 0):
+            raise ValueError("invalid detected PSRAM identity/capacity")
     pattern = (r"NIHOS_NATIVE_HEARTBEAT round=([0-9a-f]{8}) cpu0=([0-9a-f]{8}) "
                r"cpu1=([0-9a-f]{8}) ticks0=([0-9a-f]{8}) ticks1=([0-9a-f]{8})")
     samples = [tuple(int(value, 16) for value in match)
@@ -127,7 +150,7 @@ def check(log, expected_mode=None):
     if memory_owners[0]["end"] > memory_owners[1]["start"]:
         raise ValueError("overlapping memory owners")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
-            "rounds": samples[-1][0], "samples": len(samples),
+            "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
             "cpu0_interrupts": samples[-1][3], "cpu1_interrupts": samples[-1][4],
             "tasks": [{"hart": hart, "progress": values[-1][:2],
@@ -141,10 +164,13 @@ def check(log, expected_mode=None):
 
 
 def main():
-    if len(sys.argv) not in (3, 4):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled]")
+    if len(sys.argv) not in (3, 4, 5):
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled] [0|4M|8M|16M|32M|64M]")
     try:
-        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) == 4 else None)
+        size = sys.argv[4] if len(sys.argv) == 5 else "0"
+        if size not in PSRAM_SIZES:
+            raise ValueError("invalid expected PSRAM size")
+        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None, PSRAM_SIZES[size])
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
