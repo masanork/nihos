@@ -9,3 +9,4 @@ cd "$repo_root"
 "$zig" fmt --check build.zig src
 "$zlint" --config zlint.json --deny-warnings src build.zig
 shellcheck tools/*.sh
+sh "$repo_root/tools/check-riscv32-arch.sh"

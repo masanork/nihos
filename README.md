@@ -56,6 +56,8 @@ The static-analysis and emulator policy is recorded in
 [`docs/adr/0003-quality-and-emulation.md`](docs/adr/0003-quality-and-emulation.md).
 The timer-interrupt and scheduler boundary is recorded in
 [`docs/adr/0004-timer-and-scheduler-boundary.md`](docs/adr/0004-timer-and-scheduler-boundary.md).
+The native RV32 context and CLIC trap contract is recorded in
+[`docs/adr/0005-riscv-context-and-trap-contract.md`](docs/adr/0005-riscv-context-and-trap-contract.md).
 
 ## Bootstrap checks
 
@@ -73,6 +75,9 @@ sh tools/run-static-analysis.sh
 .tools/zig-0.17.0/zig build test
 sh tools/run-language-probe.sh
 ```
+
+Static analysis also compile-checks the architecture contract for the pinned
+RV32IMAF target, so a host ABI success cannot hide a target layout/type error.
 
 The probe is not a Tab5 performance result. It verifies the language boundary
 and establishes a repeatable comparison harness before target-specific code is
@@ -101,6 +106,8 @@ The first scheduler-policy and periodic-interrupt results are recorded in
 [`docs/measurements/2026-10-25-scheduler-policy-host.md`](docs/measurements/2026-10-25-scheduler-policy-host.md)
 and
 [`docs/measurements/2026-10-25-esp-emu-periodic-timer.md`](docs/measurements/2026-10-25-esp-emu-periodic-timer.md).
+The corresponding ESP-IDF-hosted physical timer result is recorded in
+[`docs/measurements/2026-10-25-tab5-periodic-timer.md`](docs/measurements/2026-10-25-tab5-periodic-timer.md).
 
 Build the first ESP32-P4 firmware using the pinned ESP-IDF v5.4.4 setup:
 
