@@ -45,11 +45,16 @@ side-by-side traces and early bring-up failures easier to compare.
 
 ## Next native step
 
-A compile-checked but unlinked assembly prototype now saves the 128-byte
-integer frame, preserves CLIC return state across a C-ABI dispatcher, accepts
-the selected frame, and restores it. It deliberately leaves interrupts
-disabled and stops safely if the dispatcher returns null.
+The assembly path now saves the 128-byte integer frame, changes to a private
+per-core interrupt stack, preserves CLIC return state across a C-ABI Zig
+dispatcher, and restores the selected frame. It stops safely if the dispatcher
+returns null. A task trampoline defines both first entry and task return.
 
-Next, switch to a per-core interrupt stack, implement the Zig dispatcher and
-task trampoline, then run one non-FPU task through save/select/restore in
-ESP-EMU before installing the vector or enabling physical preemption.
+ESP-EMU has run a bounded bootstrap-to-task-to-bootstrap switch on separate
+stacks. The test temporarily installs the vector only for two synchronous
+machine-mode `ecall` operations with maskable interrupts disabled, then
+restores ESP-IDF's vector and interrupt state.
+
+Next, qualify the controlled switch on physical silicon, then connect the
+scheduler to a native timer source. Normal CLIC ownership, nested interrupts,
+FPU save/restore, and physical preemption remain later gates.

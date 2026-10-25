@@ -6,6 +6,7 @@
 const std = @import("std");
 const abi = @import("abi");
 const arena_module = @import("arena");
+const native_trap = @import("native_trap");
 const spsc_ring = @import("spsc_ring");
 const test_pattern = @import("test_pattern");
 const tick_counter = @import("tick_counter");
@@ -493,6 +494,12 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         return;
     }
     write("periodic_timer=ok\r\n");
+
+    if (!native_trap.exerciseContextSwitchRoundTrip()) {
+        write("nihos: native context switch failed\r\n");
+        return;
+    }
+    write("native_context_switch=ok\r\n");
     write("nihos: core smoke complete\r\n");
 
     if (!exerciseDma()) {

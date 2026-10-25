@@ -58,6 +58,8 @@ The timer-interrupt and scheduler boundary is recorded in
 [`docs/adr/0004-timer-and-scheduler-boundary.md`](docs/adr/0004-timer-and-scheduler-boundary.md).
 The native RV32 context and CLIC trap contract is recorded in
 [`docs/adr/0005-riscv-context-and-trap-contract.md`](docs/adr/0005-riscv-context-and-trap-contract.md).
+Its first separate-stack execution result is recorded in
+[`docs/measurements/2026-10-25-esp-emu-context-switch.md`](docs/measurements/2026-10-25-esp-emu-context-switch.md).
 
 ## Bootstrap checks
 
