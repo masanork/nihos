@@ -88,11 +88,15 @@ CPU lines and IDF's retained IPI reasons remain untouched.
 
 ## Boundaries
 
-CPU1 tasks remain integer-only. FP contexts, permanent timer/IPI ownership,
+Tasks in this scenario remain integer-only. FP contexts, permanent timer/IPI ownership,
 migration, general cancellation, dynamic stacks, shared global time, buffer
 leases, and cross-core Flash pause/resume remain separate contracts. The
 test retains a CPU0 watchdog deadline and performs no cache-off operation.
 Physical timing and frame/audio interference require hardware qualification.
+
+ADR 0016 adds a separate floating-task mode while retaining this integer
+scenario as a zero-FP-copy regression. Its qualification is recorded in the
+[CPU1 floating measurement](../measurements/2026-10-25-tab5-cpu1-floating.md).
 
 ## Primary references
 
