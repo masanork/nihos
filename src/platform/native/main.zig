@@ -28,14 +28,14 @@ fn reg(address: usize) *volatile u32 {
     return @ptrFromInt(address);
 }
 
-fn print(message: []const u8) void {
+noinline fn print(message: []const u8) void {
     for (message) |byte| {
         if (byte == '\n') _ = nih_rom_putc('\r');
         _ = nih_rom_putc(byte);
     }
 }
 
-fn hex(value: u32) void {
+noinline fn hex(value: u32) void {
     const digits = "0123456789abcdef";
     var shift: u5 = 28;
     while (true) {
@@ -287,6 +287,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
     native_psram.memory.peer();
+    if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     prepareTasks(1);
     enableTimer(1);
     while (true) {
@@ -358,6 +359,12 @@ export fn nih_native_main() callconv(.c) noreturn {
         hex(@field(external_smp, field));
     }
     print("\n");
+    if (external_smp.status == 1 and !tasks.memory.prepareExternal(
+        native_psram.memory.heap_start,
+        external.mapping.bytes - native_psram.memory.reserved_bytes,
+    )) fail("external memory prepare");
+    if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
+    native_psram.memory.releasePeer();
     enableTimer(0);
     var previous: u32 = 0;
     var rounds: u32 = 0;
@@ -415,6 +422,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                 floatingReport(1);
                 memoryReport(0);
                 memoryReport(1);
+                externalMemoryReport(0);
+                externalMemoryReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
@@ -426,6 +435,17 @@ fn memoryReport(hart: u32) void {
     const report = tasks.memory.report(hart);
     if (report.confirmed != 1) fail("memory publication");
     print("NIHOS_NATIVE_MEMORY hart=");
+    hex(hart);
+    inline for (.{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(report, field));
+    }
+    print("\n");
+}
+
+fn externalMemoryReport(hart: u32) void {
+    const report = tasks.memory.externalReport(hart);
+    print("NIHOS_NATIVE_EXTERNAL hart=");
     hex(hart);
     inline for (.{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }) |field| {
         print(" " ++ field ++ "=");

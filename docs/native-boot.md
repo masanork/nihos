@@ -25,6 +25,8 @@ Supply startup and command-data qualification are described in
 [ADR 0025](adr/0025-native-psram-supply-and-command-data.md).
 Reserved CPU mappings and cross-core PSRAM handoff are described in
 [ADR 0026](adr/0026-native-psram-mapping-and-cache-handoff.md).
+Full-capacity mapping and owner-local external boot allocation are described
+in [ADR 0027](adr/0027-native-external-boot-arenas.md).
 
 ## Build and emulated execution
 
@@ -82,12 +84,15 @@ the final `NIHOS_NATIVE_MEMORY` records check patterns, guards, disjoint
 bounds and exact capacity accounting after the IPI fixture. The reports
 add a `memory` array, and the image audit distinguishes static reservation
 from the runtime heap span. These are boot arenas, not a general reusable
-heap. No external memory is registered.
+heap. The same domain implementation now manages a separate PSRAM tail;
+`alloc` and `allocExternal` choose explicit memory domains with no fallback.
 
 Before CPU1 release, Zig now reads the PSRAM identity through MSPI3 with
 bounded polling and a repeated-read check. `NIHOS_NATIVE_PSRAM` reports the
-mode-register capacity. A populated device now has 192 KiB of reserved
-CPU test windows and zero allocatable external bytes. This is an emulated
+mode-register capacity. A populated device now maps its full detected capacity,
+with 192 KiB reserved for CPU/command tests. The discovery record still shows
+zero allocatable bytes because external registration occurs after the
+cross-core boot checks. This is an emulated
 qualification fixture. Its ROM boundary includes four explicit cache
 functions alongside the earlier console output and CPU1 entry functions.
 
@@ -99,7 +104,7 @@ x8/fixed-latency mode settings, followed by two complementary write/read
 passes over 22–26 address-derived samples spanning its address lines and
 final word. `NIHOS_NATIVE_PSRAM_SUPPLY` and `NIHOS_NATIVE_PSRAM_IO` report
 these results. An absent die receives no mode or data writes. All CPU
-stacks and general allocation still use internal SRAM.
+stacks and allocator metadata still use internal SRAM.
 
 CPU0 maps the first, middle and final physical pages into three consecutive
 64 KiB windows, verifies CPU/command visibility with writeback/invalidation,
@@ -109,6 +114,23 @@ of CPU1's last reply. `NIHOS_NATIVE_PSRAM_MAP` and `NIHOS_NATIVE_PSRAM_SMP`
 report these gates. ROM cache operations follow the vendor API; their internal
 wait time is not bounded by nihOS. Physical voltage/timing, coherency,
 high-speed tuning and DMA remain unqualified.
+
+The first three virtual pages still refer to physical first/middle/final
+pages. The displaced physical pages 1 and 2 occupy the middle/final virtual
+slots, so every physical page appears exactly once. All 1,024 PTEs are read
+back, with entries beyond capacity invalidated. CPU1 waits after its final
+external boot access while CPU0 completes command checks and registers two
+guarded, disjoint external arenas. Only then are workers released.
+
+Each owner allocates a 64-byte bootstrap buffer and two 65,728-byte worker
+buffers from PSRAM, crossing page boundaries under timer preemption. Every
+byte and both guards are checked after task retirement. The final
+`NIHOS_NATIVE_EXTERNAL` records and `external_memory` report array require
+exact bounds/accounting; `external_allocatable_bytes` is total registered
+capacity after guards, including bytes already consumed by the fixture.
+The absent-die case rejects external allocation and reports zero records.
+These remain monotonic boot arenas without `free`, unsuitable as a direct
+SQLite/C `malloc` replacement. Sparse tests do not qualify all memory cells.
 
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
 `64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
@@ -134,6 +156,8 @@ The manual **Native boot** workflow runs all three modes without a die and
 the five populated sizes in integer mode plus compiled FP with 32 MiB,
 builds the three physical images,
 and retains the artifacts. It does not flash hardware.
+Manual runs queue behind an active run on the same branch so a later
+request does not cancel the preceding commit's qualification.
 
 ## Physical image
 
@@ -155,17 +179,18 @@ profile share the stock loader build; build those images sequentially.
 Physical qualification is pending while emulator development continues.
 Do not interpret a successful device-profile build as a physical boot result.
 In this fixture the console is the output; display and touch are not
-initialized. CPU-accessible external RAM is limited to the reserved test
-windows. Migration and a general tickless deadline policy are not yet
+initialized. CPU-accessible external RAM uses conservative x8 timing.
+Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has thirty-nine validator regression tests, including frozen
+The smoke has forty-four validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
 generated-code preemption, SRAM ownership/accounting, PSRAM discovery,
 supply programming, command-data accounting, MMU/cache bridges and cross-core
-PSRAM handoff. Four more tests check instruction classification and the
+PSRAM handoff, external arena bounds and absent-die allocation rejection.
+Four more tests check instruction classification and the
 linker heap boundary:
 
 ```sh

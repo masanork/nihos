@@ -19,14 +19,14 @@ def complete_log(mode="integer", psram_size="0"):
     size, density = sizes[psram_size]
     lines.append("NIHOS_NATIVE_PSRAM status={:08x} configuration={:08x} identity={:08x} "
                  "bytes={:08x} transactions=00000004 mapped={:08x} allocatable=00000000".format(
-                     int(size != 0), 0x0d00 if size else 0, 0xc8 | density if size else 0, size, 3 * 65536 if size else 0))
+                     int(size != 0), 0x0d00 if size else 0, 0xc8 | density if size else 0, size, size))
     lines.append("NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 "
                  "dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001")
     addresses = size.bit_length() - 1 if size else 0
     values = [1, 0x28, 0x40, 0x0b, addresses, 2, addresses * 2, addresses * 2, 13 + addresses * 4] if size else [0] * 8 + [4]
     names = ("status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions")
     lines.append("NIHOS_NATIVE_PSRAM_IO" + "".join(" {}={:08x}".format(name, value) for name, value in zip(names, values)))
-    values = [1, 0, 64, 0, 0, 0, 3 * 65536, 1024, 36, 36, 72, 5] if size else [0] * 12
+    values = [1, 0, 64, 0, 0, 0, size, 1024, 36, 36, 72, 5] if size else [0] * 12
     names = ("status", "failure", "line_bytes", "last_address", "last_actual", "last_expected", "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs")
     lines.append("NIHOS_NATIVE_PSRAM_MAP" + "".join(" {}={:08x}".format(name, value) for name, value in zip(names, values)))
     values = [1, 64, 3072, 3072, 48, 1] if size else [0] * 6
@@ -60,11 +60,63 @@ def complete_log(mode="integer", psram_size="0"):
                      "capacity=00003f80 used=000001c0 free=00003dc0 "
                      "checks0=00000004 checks1=00000004 rejected=00000003 confirmed=00000001".format(
                          hart, start, start + 0x4000))
+        stride = (size - 3 * 65536) // 2 if size else 0
+        start = 0x48030000 + hart * stride
+        values = [start, start + stride, stride - 128, 131520, stride - 128 - 131520, 4, 4, 3, 1] if size else [0] * 9
+        names = ("start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed")
+        lines.append("NIHOS_NATIVE_EXTERNAL hart={:08x}".format(hart) + "".join(
+            " {}={:08x}".format(name, value) for name, value in zip(names, values)))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_missing_or_duplicate_external_owner_is_rejected(self):
+        for size in ("0", "32M"):
+            log = complete_log(psram_size=size)
+            line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_EXTERNAL"))
+            for changed in (log.replace(line, ""), log + "\n" + line):
+                with self.subTest(size=size), self.assertRaisesRegex(ValueError, "external memory"):
+                    MODULE.check(changed, "integer", 0 if size == "0" else 32 << 20)
+
+    def test_external_owners_must_exclude_reserved_pages_and_cover_the_tail(self):
+        log = complete_log(psram_size="32M")
+        for old, new in (("start=48030000", "start=48020000"),
+                         ("end=49018000", "end=4a010000"),
+                         ("start=49018000", "start=48030000"),
+                         ("end=4a000000", "end=4c000000")):
+            changed = "\n".join(line.replace(old, new) if line.startswith("NIHOS_NATIVE_EXTERNAL") else line
+                                for line in log.splitlines())
+            self.assertNotEqual(log, changed)
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "external ownership"):
+                MODULE.check(changed, "integer", 32 << 20)
+
+    def test_external_accounting_guards_and_worker_access_are_required(self):
+        log = complete_log(psram_size="32M")
+        for old, new in (("used=000201c0", "used=000001c0"), ("checks0=00000004", "checks0=00000000"),
+                         ("checks1=00000004", "checks1=00000003"), ("rejected=00000003", "rejected=00000002"),
+                         ("confirmed=00000001", "confirmed=00000000"), ("capacity=00fe7f80", "capacity=00fe8000")):
+            changed = "\n".join(line.replace(old, new) if line.startswith("NIHOS_NATIVE_EXTERNAL") else line
+                                for line in log.splitlines())
+            self.assertNotEqual(log, changed)
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "external ownership"):
+                MODULE.check(changed, "integer", 32 << 20)
+
+    def test_absent_die_cannot_publish_external_capacity_or_allocation(self):
+        log = complete_log()
+        for field in ("start", "capacity", "used", "confirmed"):
+            changed = "\n".join(line.replace(field + "=00000000", field + "=00000001")
+                                if line.startswith("NIHOS_NATIVE_EXTERNAL") else line for line in log.splitlines())
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "without a mapped die"):
+                MODULE.check(changed)
+
+    def test_reserved_windows_alone_cannot_qualify_full_mapping(self):
+        log = complete_log(psram_size="32M")
+        changed = "\n".join(line.replace("bytes=02000000", "bytes=00030000")
+                            if line.startswith("NIHOS_NATIVE_PSRAM_MAP") else line for line in log.splitlines())
+        with self.assertRaisesRegex(ValueError, "mapping/cache"):
+            MODULE.check(changed, "integer", 32 << 20)
+
     def test_missing_or_duplicate_mapping_or_psram_smp_is_rejected(self):
         log = complete_log(psram_size="32M")
         for marker in ("NIHOS_NATIVE_PSRAM_MAP", "NIHOS_NATIVE_PSRAM_SMP"):
@@ -94,7 +146,7 @@ class NativeLogTests(unittest.TestCase):
 
     def test_known_capacity_without_the_reserved_mapping_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "PSRAM discovery"):
-            MODULE.check(complete_log(psram_size="32M").replace("mapped=00030000", "mapped=00000000"), "integer", 32 << 20)
+            MODULE.check(complete_log(psram_size="32M").replace("mapped=02000000", "mapped=00000000"), "integer", 32 << 20)
 
     def test_absent_die_cannot_report_mapped_or_cross_core_access(self):
         for marker in ("NIHOS_NATIVE_PSRAM_MAP", "NIHOS_NATIVE_PSRAM_SMP"):
@@ -143,7 +195,8 @@ class NativeLogTests(unittest.TestCase):
             with self.subTest(size=size):
                 report = MODULE.check(complete_log(psram_size=size), "integer", amount << 20)
                 self.assertEqual(report["psram"]["bytes"], amount << 20)
-                self.assertEqual(report["psram"]["mapped"], 3 * 65536)
+                self.assertEqual(report["psram"]["mapped"], amount << 20)
+                self.assertEqual(report["external_allocatable_bytes"], (amount << 20) - 3 * 65536 - 256)
 
     def test_missing_or_duplicate_psram_discovery_is_rejected(self):
         log = complete_log()
@@ -158,7 +211,7 @@ class NativeLogTests(unittest.TestCase):
             MODULE.check(log, "integer", 64 << 20)
         for old, new in (("status=00000001", "status=00000003"),
                          ("transactions=00000004", "transactions=00000002"),
-                         ("mapped=00030000", "mapped=02000000"),
+                         ("mapped=02000000", "mapped=00030000"),
                          ("allocatable=00000000", "allocatable=02000000")):
             with self.subTest(field=old), self.assertRaisesRegex(ValueError, "PSRAM discovery"):
                 MODULE.check(log.replace(old, new), "integer", 32 << 20)

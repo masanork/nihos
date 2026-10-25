@@ -36,7 +36,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         raise ValueError("missing/duplicate PSRAM discovery")
     psram = dict(zip(psram_names, (int(value, 16) for value in discovered[0])))
     if (psram["status"] not in (0, 1) or psram["bytes"] != expected_psram_bytes or
-            psram["transactions"] != 4 or psram["mapped"] != (0 if expected_psram_bytes == 0 else 3 * 65536) or psram["allocatable"] != 0 or
+            psram["transactions"] != 4 or psram["mapped"] != expected_psram_bytes or psram["allocatable"] != 0 or
             psram["configuration"] > 0xffff or psram["identity"] > 0xffff):
         raise ValueError("incomplete PSRAM discovery or premature memory exposure")
     if psram["status"] == 0:
@@ -84,7 +84,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
     if len(matches) != 1:
         raise ValueError("missing/duplicate PSRAM mapping evidence")
     mapped = dict(zip(mapping_names, (int(value, 16) for value in matches[0])))
-    expected_mapping = [1, 0, 64, 0, 0, 0, 3 * 65536, 1024, 36, 36, 72, 5] if psram["status"] else [0] * 12
+    expected_mapping = [1, 0, 64, 0, 0, 0, expected_psram_bytes, 1024, 36, 36, 72, 5] if psram["status"] else [0] * 12
     if list(mapped.values()) != expected_mapping:
         raise ValueError("incomplete PSRAM nonidentity mapping/cache evidence")
     smp_names = ("status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs")
@@ -196,6 +196,28 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         raise ValueError("missing per-hart memory evidence")
     if memory_owners[0]["end"] > memory_owners[1]["start"]:
         raise ValueError("overlapping memory owners")
+    pattern = r"NIHOS_NATIVE_EXTERNAL hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in memory_names)
+    external_owners = {}
+    stride = (expected_psram_bytes - 3 * 65536) // 2 if psram["status"] else 0
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in external_owners:
+            raise ValueError("invalid/duplicate external memory owner")
+        record = dict(zip(memory_names, values))
+        if not psram["status"]:
+            if any(values):
+                raise ValueError("external allocation without a mapped die")
+        elif (record["start"] != 0x48030000 + hart * stride or
+              record["end"] != 0x48030000 + (hart + 1) * stride or
+              record["capacity"] != stride - 128 or record["used"] != 131520 or
+              record["free"] != record["capacity"] - record["used"] or
+              min(record["checks0"], record["checks1"]) < 4 or
+              record["rejected"] != 3 or record["confirmed"] != 1):
+            raise ValueError("incomplete external ownership/guard accounting")
+        external_owners[hart] = record
+    if set(external_owners) != {0, 1}:
+        raise ValueError("missing per-hart external memory evidence")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
@@ -209,7 +231,9 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
                       for hart, values in enumerate(owners)],
             "ipi_idle": [{"hart": hart, **ipi_owners[hart]} for hart in (0, 1)],
             "floating": [{"hart": hart, **fp_owners[hart]} for hart in (0, 1)],
-            "memory": [{"hart": hart, **memory_owners[hart]} for hart in (0, 1)]}
+            "memory": [{"hart": hart, **memory_owners[hart]} for hart in (0, 1)],
+            "external_memory": [{"hart": hart, **external_owners[hart]} for hart in (0, 1)],
+            "external_allocatable_bytes": sum(owner["capacity"] for owner in external_owners.values())}
 
 
 def main():
@@ -223,7 +247,7 @@ def main():
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
-    print("Native smoke passed (" + report["mode"] + "): 300 rounds, lifecycle, IPI/idle, FP and owned SRAM")
+    print("Native smoke passed (" + report["mode"] + "): 300 rounds, lifecycle, IPI/idle, FP and owned memory")
 
 
 if __name__ == "__main__":
