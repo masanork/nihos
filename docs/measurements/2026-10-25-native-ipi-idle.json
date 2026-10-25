@@ -1,0 +1,276 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "firmware_commit": "4a65e636ce247fcded7395c21ae6303af113779c",
+  "status": "emulator-qualified; physical-deferred",
+  "tools": {
+    "zig": "0.17.0",
+    "esp_idf_loader": "v5.4.4",
+    "esp_emu": "v0.50.0"
+  },
+  "emulator": {
+    "chip": "esp32p4 revision-3 ROM",
+    "psram_bytes": 0,
+    "result": {
+      "schema": 1,
+      "backend": "native-sram",
+      "evidence": "emulator",
+      "rounds": 300,
+      "samples": 31,
+      "cpu0_progress": 103462009,
+      "cpu1_progress": 66004869,
+      "cpu0_interrupts": 900,
+      "cpu1_interrupts": 899,
+      "tasks": [
+        {
+          "hart": 0,
+          "progress": [
+            14272290,
+            14272249
+          ],
+          "timer_captures": [
+            300,
+            300
+          ],
+          "switches": 906,
+          "calls": 12,
+          "reaped": 2,
+          "sleeps": 2,
+          "elapsed_ticks": 900
+        },
+        {
+          "hart": 1,
+          "progress": [
+            14272222,
+            14271640
+          ],
+          "timer_captures": [
+            300,
+            299
+          ],
+          "switches": 905,
+          "calls": 12,
+          "reaped": 2,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        }
+      ],
+      "ipi_idle": [
+        {
+          "hart": 0,
+          "sent": 64,
+          "received": 64,
+          "ipis": 65,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 64,
+          "entries": 64,
+          "returns": 64,
+          "pending_before_wfi": 1,
+          "timer_start": 901,
+          "timer_end": 901,
+          "queued": 0
+        },
+        {
+          "hart": 1,
+          "sent": 64,
+          "received": 64,
+          "ipis": 64,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 64,
+          "entries": 65,
+          "returns": 65,
+          "pending_before_wfi": 1,
+          "timer_start": 901,
+          "timer_end": 901,
+          "queued": 0
+        }
+      ]
+    },
+    "log_sha256": "b74cc4901e33b36c3751209802b50bcf73f1f3b66e60386c40e25a9c54e78f35"
+  },
+  "profiles": {
+    "device": {
+      "schema": 1,
+      "backend": "native-sram",
+      "rtos_linked": false,
+      "entry": "0x4ff00000",
+      "elf_sha256": "7fa62fe017e48ccaea90ed859ae1ccc23fe0e533d8f888c5f6adca360ca437ac",
+      "image_sha256": "ae8649eec6835dc3eaf0296c03ad891286f7af2dc055e392c7224571dd1aa79c",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 83712,
+      "rom_symbols": {
+        "nih_rom_putc": "0x4fc00054",
+        "nih_rom_set_cpu1_entry": "0x4fc000a8"
+      },
+      "sections": [
+        {
+          "name": ".flash.appdesc",
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "name": ".flash.rodata",
+          "address": "0x40010020",
+          "bytes": 4
+        },
+        {
+          "name": ".text",
+          "address": "0x4ff00000",
+          "bytes": 24030
+        },
+        {
+          "name": ".rodata",
+          "address": "0x4ff05de0",
+          "bytes": 390
+        },
+        {
+          "name": ".data",
+          "address": "0x4ff05f70",
+          "bytes": 792
+        },
+        {
+          "name": ".bss",
+          "address": "0x4ff06300",
+          "bytes": 25600
+        },
+        {
+          "name": ".stacks",
+          "address": "0x4ff0c700",
+          "bytes": 32768
+        }
+      ],
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 24424
+        },
+        {
+          "address": "0x4ff05f70",
+          "bytes": 792
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 4
+        }
+      ],
+      "merged_flash_bytes": 131152,
+      "merged_flash_sha256": "a4e5f970fd15da018deb2360875e2f44eb5bbc99d4b11a1dee44f2cd783c0451"
+    },
+    "emulator": {
+      "schema": 1,
+      "backend": "native-sram",
+      "rtos_linked": false,
+      "entry": "0x4ff00000",
+      "elf_sha256": "b2179e7b5263accb85a5afe6be1a6c8eacf5ccb2d29ca2ec482611bf124944f2",
+      "image_sha256": "ccad76f75f8d061a36572ea2020896b11c3cbb502917e729a3d6e3f1966886fd",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 83712,
+      "rom_symbols": {
+        "nih_rom_putc": "0x4fc00054",
+        "nih_rom_set_cpu1_entry": "0x4fc000a8"
+      },
+      "sections": [
+        {
+          "name": ".flash.appdesc",
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "name": ".flash.rodata",
+          "address": "0x40010020",
+          "bytes": 4
+        },
+        {
+          "name": ".text",
+          "address": "0x4ff00000",
+          "bytes": 24030
+        },
+        {
+          "name": ".rodata",
+          "address": "0x4ff05de0",
+          "bytes": 390
+        },
+        {
+          "name": ".data",
+          "address": "0x4ff05f70",
+          "bytes": 792
+        },
+        {
+          "name": ".bss",
+          "address": "0x4ff06300",
+          "bytes": 25600
+        },
+        {
+          "name": ".stacks",
+          "address": "0x4ff0c700",
+          "bytes": 32768
+        }
+      ],
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 24424
+        },
+        {
+          "address": "0x4ff05f70",
+          "bytes": 792
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 4
+        }
+      ],
+      "merged_flash_bytes": 131152,
+      "merged_flash_sha256": "fd434f29d5fa376644a7066550526828fe9bc4a82c41c11e112500b27e103b86"
+    }
+  },
+  "checks": {
+    "host_Debug_tests": 52,
+    "host_ReleaseSafe_tests": 52,
+    "log_validator_tests": 15,
+    "zlint": "34 files, zero errors and warnings",
+    "shellcheck": "passed",
+    "rv32": "hosted contracts and both final native ELF profiles linked",
+    "image_audits": "both profiles passed",
+    "pending_before_wfi": "one forced pending level with MIE clear on each hart"
+  },
+  "ownership": {
+    "matrix_sources": [
+      79,
+      80
+    ],
+    "clic_input": 17,
+    "doorbells": [
+      "0x500e5010",
+      "0x500e5014"
+    ],
+    "inbox_capacity": 8,
+    "irq_drain_budget": 4,
+    "producer": "one peer protocol task per inbox",
+    "consumer": "owner IRQ stack only",
+    "completion": "shared atomic fetch-or mask with persistent all-done flag"
+  },
+  "physical": {
+    "tested": false,
+    "reason": "explicitly deferred while native wiring proceeds"
+  },
+  "limitations": [
+    "no physical or power qualification",
+    "not an exhaustive race test",
+    "one outstanding message per direction, not a native saturation test",
+    "not a general tickless deadline policy",
+    "native FP/migration/PSRAM/display/protection domains remain unconnected"
+  ]
+}
