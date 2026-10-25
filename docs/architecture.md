@@ -121,8 +121,8 @@ through the stable ABI in ESP-EMU and on a physical Tab5. A Zig Timer Group
 driver now delivers asynchronous interrupts through nihOS's own trap entry in
 ESP-EMU, using the bounded resource lease in ADR 0006. ADR 0007 extends this
 with free-running elapsed-time accounting and timer-driven selection of two
-integer-only tasks on separate stacks. Native physical timer qualification,
-syscall transitions, and physical preemption remain open. FreeRTOS hosts the
+integer-only tasks on separate stacks. Native physical timer qualification
+and physical preemption remain open. FreeRTOS hosts the
 bootstrap outside these bounded native execution windows.
 
 The first native-port contract is now fixed and host-tested: a 128-byte RV32
@@ -153,6 +153,15 @@ creates an explicit terminal completion, and only reaping permits slot reuse.
 Generation exhaustion retires slots instead of reviving stale references.
 The emulator scenario includes an idle bootstrap interval while both workers
 sleep. Cross-core lifecycle ownership and application isolation remain open.
+
+ADR 0010 adds masked event waits and latched notifications. Pending-bit
+consumption and wait registration share one serialized kernel operation;
+matching notification makes the task ready and delivers its saved reply
+before resuming. The emulator exercises preposted/coalesced events,
+nonmatching notifications, blocked delivery, bit 31, and terminal/stale
+handle rejection. This CPU-local primitive does not yet accept CPU1/IPI or
+native device-IRQ completions. Events provide wakeups; message data stays in
+separate queues.
 
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
