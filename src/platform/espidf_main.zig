@@ -8,6 +8,7 @@ const abi = @import("abi");
 const arena_module = @import("arena");
 const spsc_ring = @import("spsc_ring");
 const test_pattern = @import("test_pattern");
+const tick_counter = @import("tick_counter");
 
 pub const panic = std.debug.no_panic;
 
@@ -27,6 +28,12 @@ extern fn nih_platform_cpu_start(
     entry: *const fn (?*anyopaque) callconv(.c) void,
     argument: ?*anyopaque,
 ) i32;
+extern fn nih_platform_timer_start(
+    period_us: u32,
+    entry: *const fn (?*anyopaque) callconv(.c) void,
+    argument: ?*anyopaque,
+) i32;
+extern fn nih_platform_timer_stop() i32;
 
 const MailboxMessage = struct {
     sequence: u32,
@@ -44,6 +51,7 @@ const MailboxContext = struct {
 var mailbox_context: MailboxContext = undefined;
 const mailbox_messages: u32 = 100_000;
 const mailbox_transform: u32 = 0xa5a5_5a5a;
+var timer_ticks: tick_counter.TickCounter = .{};
 
 fn write(bytes: []const u8) void {
     if (bytes.len == 0) return;
@@ -77,6 +85,37 @@ fn writeU32(label: []const u8, value: u32) void {
 
 fn mailboxPayload(sequence: u32) u32 {
     return sequence *% 2_654_435_761;
+}
+
+fn timerTick(_: ?*anyopaque) callconv(.c) void {
+    _ = timer_ticks.noteInterrupt();
+}
+
+fn exerciseTimer() bool {
+    const period_us: u32 = 1000;
+    const target_ticks: u32 = 128;
+    const timeout_us: u64 = 1_000_000;
+    timer_ticks.reset();
+
+    const started_us = nih_platform_monotonic_us();
+    if (nih_platform_timer_start(period_us, &timerTick, null) != abi.Status.ok)
+        return false;
+    while (timer_ticks.pending() < target_ticks) {
+        if (nih_platform_monotonic_us() - started_us >= timeout_us) {
+            _ = nih_platform_timer_stop();
+            return false;
+        }
+        std.atomic.spinLoopHint();
+    }
+    if (nih_platform_timer_stop() != abi.Status.ok) return false;
+
+    const elapsed_us = nih_platform_monotonic_us() - started_us;
+    const observed_ticks = timer_ticks.takePending();
+    if (elapsed_us == 0 or observed_ticks < target_ticks) return false;
+    writeU32("timer_period_us=", period_us);
+    writeU32("timer_ticks=", observed_ticks);
+    writeU64("timer_elapsed_us=", elapsed_us);
+    return true;
 }
 
 fn mailboxWorker(argument: ?*anyopaque) callconv(.c) void {
@@ -448,6 +487,12 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         return;
     }
     write("smp_mailbox=ok\r\n");
+
+    if (!exerciseTimer()) {
+        write("nihos: periodic timer failed\r\n");
+        return;
+    }
+    write("periodic_timer=ok\r\n");
     write("nihos: core smoke complete\r\n");
 
     if (!exerciseDma()) {

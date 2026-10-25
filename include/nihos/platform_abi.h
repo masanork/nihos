@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define NIH_PLATFORM_ABI_VERSION UINT32_C(4)
+#define NIH_PLATFORM_ABI_VERSION UINT32_C(5)
 
 enum {
     NIH_STATUS_OK = 0,
@@ -127,6 +127,7 @@ struct nih_touch_sample {
 };
 
 typedef void (*nih_cpu_entry_fn)(void *argument);
+typedef void (*nih_timer_tick_fn)(void *argument);
 
 int32_t nih_platform_boot_info(struct nih_boot_info *out);
 int32_t nih_platform_console_write(const uint8_t *data, uint32_t length);
@@ -155,6 +156,12 @@ uint64_t nih_platform_monotonic_us(void);
 int32_t nih_platform_cpu_start(uint32_t cpu_id,
                                nih_cpu_entry_fn entry,
                                void *argument);
+/* Starts the single bootstrap periodic timer; callback runs in ISR context. */
+int32_t nih_platform_timer_start(uint32_t period_us,
+                                 nih_timer_tick_fn entry,
+                                 void *argument);
+/* Stops and releases the bootstrap periodic timer. */
+int32_t nih_platform_timer_stop(void);
 int32_t nih_platform_flash_guard_enter(void);
 void nih_platform_flash_guard_leave(void);
 

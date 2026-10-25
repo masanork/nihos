@@ -110,7 +110,16 @@ or copy. A physical Tab5 delivered repeatable refresh callbacks at about
 returns bounded five-point snapshots; repeated idle reads succeed on the
 physical device. Double buffering, tear-free swaps, visible-pattern
 confirmation, and an actual pressed-coordinate trace remain open. Timer and
-single-core scheduler work is the next architecture checkpoint.
+single-core scheduler work is the current architecture checkpoint.
+
+Stage 5 is now complete only at policy-and-oracle depth. An allocation-free
+Zig scheduler implements fixed-priority selection, round-robin fairness within
+a priority, sleep/wake, blocking, bounded capacity, and generation-checked
+task handles. A saturating atomic counter hands periodic interrupt ticks to
+safe scheduler context, and the ESP-IDF oracle has delivered those interrupts
+through the stable ABI in ESP-EMU. RISC-V trap entry, saved context and stacks,
+native timer programming, syscall transitions, and physical preemption remain
+open; FreeRTOS is still the scheduler executing the bootstrap firmware.
 
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged

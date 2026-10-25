@@ -44,7 +44,8 @@ idf.py -B "$build_dir" \
     -D "SDKCONFIG=$build_dir/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.emulator.defaults" \
     build
-idf.py -B "$build_dir" \
-    -D "SDKCONFIG=$build_dir/sdkconfig" \
-    -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.emulator.defaults" \
-    merge-bin -o "$build_dir/nihos-flash.bin"
+(
+    cd "$build_dir"
+    esptool.py --chip esp32p4 merge_bin \
+        -o "$build_dir/nihos-flash.bin" -f raw @flash_args
+)

@@ -54,6 +54,8 @@ start and place the tasks, is recorded in
 [`docs/measurements/2026-10-25-espidf-smp-mailbox.md`](docs/measurements/2026-10-25-espidf-smp-mailbox.md).
 The static-analysis and emulator policy is recorded in
 [`docs/adr/0003-quality-and-emulation.md`](docs/adr/0003-quality-and-emulation.md).
+The timer-interrupt and scheduler boundary is recorded in
+[`docs/adr/0004-timer-and-scheduler-boundary.md`](docs/adr/0004-timer-and-scheduler-boundary.md).
 
 ## Bootstrap checks
 
@@ -95,6 +97,10 @@ emulator pass is target-execution evidence, but it is not evidence for Tab5
 power, DMA, display, touch, audio, SD, timing, or physical-device reliability.
 The initial result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-core-smoke.md`](docs/measurements/2026-10-25-esp-emu-core-smoke.md).
+The first scheduler-policy and periodic-interrupt results are recorded in
+[`docs/measurements/2026-10-25-scheduler-policy-host.md`](docs/measurements/2026-10-25-scheduler-policy-host.md)
+and
+[`docs/measurements/2026-10-25-esp-emu-periodic-timer.md`](docs/measurements/2026-10-25-esp-emu-periodic-timer.md).
 
 Build the first ESP32-P4 firmware using the pinned ESP-IDF v5.4.4 setup:
 
