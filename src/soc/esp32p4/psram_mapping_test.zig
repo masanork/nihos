@@ -18,6 +18,7 @@ const Model = struct {
     ignore_invalidate: bool = false,
     identity_cpu: bool = false,
     command_fault: bool = false,
+    capacity: u32 = 32 * 1024 * 1024,
 
     const Cell = struct { address: u32 = 0, value: u32 = 0, occupied: bool = false };
     const Cached = struct { address: u32 = 0, value: u32 = 0, occupied: bool = false, valid: bool = false, dirty: bool = false };
@@ -43,7 +44,7 @@ const Model = struct {
         self.cache_enabled = true;
     }
     pub fn sync(self: *Model, operation: mapping.Operation, address: u32, length: u32) bool {
-        std.debug.assert(self.cache_enabled and mapping.validSyncRange(address, length));
+        std.debug.assert(self.cache_enabled and mapping.validSyncRange(address, length, self.capacity));
         self.cache_calls += 1;
         if (self.reject_sync) return false;
         for (&self.cached) |*entry| {
@@ -128,7 +129,10 @@ test "only MMU1 is changed and nonidentity pages survive both cache directions" 
     var commands = Commands{ .owner = &model };
     try mapper.map(commands.capacity);
     try std.testing.expectEqualSlices(u32, &.{ 0xc00, 0xd00, 0xdff }, model.table[0..3]);
-    for (model.table[3..]) |entry| try std.testing.expectEqual(@as(u32, 0), entry);
+    for (model.table, 0..) |entry, index| try std.testing.expectEqual(
+        if (mapping.physicalPage(commands.capacity, @intCast(index))) |page| 0xc00 | page else 0,
+        entry,
+    );
     try std.testing.expectEqual(@as(u32, 1024), mapper.entries_checked);
     const result = try mapper.exercise(&commands, CPU{ .owner = &model });
     try std.testing.expectEqualDeep(mapping.Exercise{ .cpu_checks = 36, .command_checks = 36, .transactions = 72 }, result);
@@ -169,6 +173,15 @@ test "dropped PTE write closes the AXI port and poisons reuse" {
     for (model.table) |entry| try std.testing.expectEqual(@as(u32, 0), entry);
     try std.testing.expect(model.registers[0x3c / 4] & 0x80000001 == 0x80000000);
     try std.testing.expectError(error.Faulted, mapper.map(32 * 1024 * 1024));
+}
+
+test "failure in the allocator tail revokes the entire mapping" {
+    var model = Model{ .drop_entry = 511 };
+    var mapper = mapping.Mapper(*Model){ .io = &model };
+    try std.testing.expectError(error.Readback, mapper.map(model.capacity));
+    try std.testing.expectEqual(@as(u32, 0xc02), mapper.last_expected);
+    try std.testing.expectEqual(@as(u32, 0), mapper.bytes);
+    for (model.table) |entry| try std.testing.expectEqual(@as(u32, 0), entry);
 }
 
 test "ROM operation rejection revokes mapping instead of exposing a partial span" {

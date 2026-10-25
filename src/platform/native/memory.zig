@@ -1,5 +1,5 @@
-//! Native SRAM ownership. Only the current hart can access its allocator.
-//! No external RAM, fallback allocator, free or reset is available here.
+//! Owner-local boot arenas in internal SRAM and initialized PSRAM.
+//! Descriptors stay internal; allocation never falls back, frees or resets.
 const std = @import("std");
 const core_arena = @import("core_arena");
 const CoreArena = core_arena.CoreArena;
@@ -28,9 +28,105 @@ pub const Report = struct {
     confirmed: u32 = 0,
 };
 
-var owners: [2]Owner = undefined;
-var prepared: u32 = 0;
-var reports: [2]Report = .{ .{}, .{} };
+const Domain = struct {
+    owners: [2]Owner,
+    prepared: u32 = 0,
+    reports: [2]Report = .{ .{}, .{} },
+    buffer_bytes: usize,
+
+    noinline fn prepare(self: *Domain, start: usize, length: usize) bool {
+        if (currentHart() != 0 or @atomicLoad(u32, &self.prepared, .acquire) != 0) return false;
+        const memory: [*]u8 = @ptrFromInt(start);
+        const parts = CoreArena.partition(memory[0..length]) orelse return false;
+        for (&self.owners, parts) |*owner, part| owner.* = .{ .pool = part };
+        @atomicStore(u32, &self.prepared, 1, .release);
+        return true;
+    }
+
+    /// Only the cursor update masks local interrupts. No cross-core lock.
+    noinline fn alloc(self: *Domain, length: usize, alignment: usize) ?[]u8 {
+        const hart = currentHart();
+        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1) return null;
+        const status = asm volatile ("csrrci %[result], mstatus, 8"
+            : [result] "=r" (-> u32),
+            :
+            : .{ .memory = true });
+        defer {
+            if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+        }
+        return self.owners[hart].pool.alloc(hart, length, alignment);
+    }
+
+    noinline fn begin(self: *Domain) bool {
+        const hart = currentHart();
+        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1 or interruptEnable() != 0) return false;
+        const owner = &self.owners[hart];
+        if (owner.bootstrap != null) return false;
+        const before = owner.pool.remaining();
+        if (self.alloc(0, 1) != null or self.alloc(8, 3) != null or
+            self.alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
+        owner.rejected = 3;
+        owner.bootstrap = self.alloc(64, 64) orelse return false;
+        if (interruptEnable() != 0) return false;
+        fill(owner.bootstrap.?, hart, 2);
+        return true;
+    }
+
+    noinline fn probe(self: *Domain, argument: u32) void {
+        const hart = currentHart();
+        const worker = argument % 4;
+        if (hart >= 2 or argument / 4 != hart or worker >= 2) nih_native_task_failed();
+        const owner = &self.owners[hart];
+        if (owner.buffers[worker] == null) {
+            if (interruptEnable() != 8) nih_native_task_failed();
+            const bytes = self.alloc(self.buffer_bytes, 64) orelse nih_native_task_failed();
+            if (interruptEnable() != 8) nih_native_task_failed();
+            fill(bytes, hart, worker);
+            owner.buffers[worker] = bytes;
+        }
+        const buffer = owner.buffers[worker].?;
+        const bytes: [*]const volatile u8 = buffer.ptr;
+        const position = owner.checks[worker] % buffer.len;
+        for ([_]usize{ 0, position, buffer.len - 1 }) |index| {
+            if (bytes[index] != pattern(hart, worker, index)) nih_native_task_failed();
+        }
+        owner.checks[worker] +%= 1;
+    }
+
+    noinline fn finish(self: *Domain) bool {
+        const hart = currentHart();
+        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1) return false;
+        const owner = &self.owners[hart];
+        if (!owner.pool.guardsValid() or owner.rejected != 3 or
+            !valid(owner.bootstrap orelse return false, hart, 2)) return false;
+        for (owner.buffers, 0..) |buffer, worker| {
+            if (owner.checks[worker] < 4 or !valid(buffer orelse return false, hart, @intCast(worker))) return false;
+        }
+        const capacity = owner.pool.arena.memory.len;
+        self.reports[hart] = .{
+            .start = @intFromPtr(owner.pool.memory.ptr),
+            .end = @intFromPtr(owner.pool.memory.ptr) + owner.pool.memory.len,
+            .capacity = capacity,
+            .used = capacity - owner.pool.remaining(),
+            .free = owner.pool.remaining(),
+            .checks0 = owner.checks[0],
+            .checks1 = owner.checks[1],
+            .rejected = owner.rejected,
+        };
+        @atomicStore(u32, &self.reports[hart].confirmed, 1, .release);
+        return true;
+    }
+
+    fn report(self: *const Domain, hart: u32) Report {
+        if (@atomicLoad(u32, &self.reports[hart].confirmed, .acquire) != 1) return .{};
+        return self.reports[hart];
+    }
+};
+
+// SAFETY: CPU0 initializes every owner before release-publishing prepared.
+var internal = Domain{ .owners = undefined, .buffer_bytes = 192 };
+// SAFETY: The same prepared gate excludes access until PSRAM registration.
+var external = Domain{ .owners = undefined, .buffer_bytes = 65536 + 192 };
 
 fn currentHart() u32 {
     return asm volatile ("csrr %[result], mhartid"
@@ -44,112 +140,69 @@ fn interruptEnable() u32 {
     ) & 8;
 }
 
-/// Called once on CPU0, before CPU1 release and before either timer starts.
 pub fn prepare() bool {
-    if (currentHart() != 0 or @atomicLoad(u32, &prepared, .acquire) != 0) return false;
     const start = @intFromPtr(&__heap_start);
     const end = @intFromPtr(&__heap_end);
-    if (start >= end) return false;
-    const memory: [*]u8 = @ptrFromInt(start);
-    const parts = CoreArena.partition(memory[0 .. end - start]) orelse return false;
-    for (&owners, parts) |*owner, part| owner.* = .{ .pool = part };
-    @atomicStore(u32, &prepared, 1, .release);
-    return true;
+    return start < end and internal.prepare(start, end - start);
 }
 
-/// The local interrupt mask serializes preemptible tasks on this hart.
-/// Never expose another hart's mutable cursor, or hold a cross-core lock.
+/// Only a mapped, checked PSRAM tail may be transferred here by CPU0.
+/// CPU1 stays in the external boot rendezvous until this completes.
+pub fn prepareExternal(start: u32, length: u32) bool {
+    if (start != 0x4803_0000 or length < 4 * 1024 * 1024 - 3 * 65536 or
+        length > 64 * 1024 * 1024 - 3 * 65536) return false;
+    const capacity = length + 3 * 65536;
+    if (capacity & (capacity - 1) != 0) return false;
+    return external.prepare(start, length);
+}
+
 pub fn alloc(length: usize, alignment: usize) ?[]u8 {
-    const hart = currentHart();
-    if (hart >= 2 or @atomicLoad(u32, &prepared, .acquire) != 1) return null;
-    const status = asm volatile ("csrrci %[result], mstatus, 8"
-        : [result] "=r" (-> u32),
-        :
-        : .{ .memory = true });
-    defer {
-        if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
-    }
-    return owners[hart].pool.alloc(hart, length, alignment);
+    return internal.alloc(length, alignment);
+}
+
+/// Normal cached CPU memory only; this API makes no DMA or isolation promise.
+pub fn allocExternal(length: usize, alignment: usize) ?[]u8 {
+    return external.alloc(length, alignment);
 }
 
 pub fn begin() bool {
-    const hart = currentHart();
-    if (hart >= 2 or @atomicLoad(u32, &prepared, .acquire) != 1 or interruptEnable() != 0) return false;
-    const owner = &owners[hart];
-    if (owner.bootstrap != null) return false;
-    const before = owner.pool.remaining();
-    if (alloc(0, 1) != null or alloc(8, 3) != null or
-        alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
-    owner.rejected = 3;
-    owner.bootstrap = alloc(64, 64) orelse return false;
-    if (interruptEnable() != 0) return false;
-    fill(owner.bootstrap.?, hart, 2);
-    return true;
+    return internal.begin();
+}
+
+pub fn beginExternal() bool {
+    if (@atomicLoad(u32, &external.prepared, .acquire) == 0) return allocExternal(64, 64) == null;
+    return external.begin();
 }
 
 fn pattern(hart: u32, worker: u32, index: usize) u8 {
-    return @as(u8, @truncate(index *% 37)) ^ @as(u8, @intCast(0x40 + hart * 4 + worker));
+    return @as(u8, @truncate(index *% 37 ^ (index >> 8) ^ (index >> 16))) ^ @as(u8, @intCast(0x40 + hart * 4 + worker));
 }
 
-fn fill(bytes: []u8, hart: u32, worker: u32) void {
+noinline fn fill(bytes: []u8, hart: u32, worker: u32) void {
     for (bytes, 0..) |*byte, index| byte.* = pattern(hart, worker, index);
 }
 
-/// Invoked by both preemptible workers, including compiled FP callbacks.
-pub fn probe(argument: u32) void {
-    const hart = currentHart();
-    const worker = argument % 4;
-    if (hart >= 2 or argument / 4 != hart or worker >= 2) nih_native_task_failed();
-    const owner = &owners[hart];
-    if (owner.buffers[worker] == null) {
-        if (interruptEnable() != 8) nih_native_task_failed();
-        const bytes = alloc(192, 64) orelse nih_native_task_failed();
-        if (interruptEnable() != 8) nih_native_task_failed();
-        fill(bytes, hart, worker);
-        owner.buffers[worker] = bytes;
-    }
-    const buffer = owner.buffers[worker].?;
-    const bytes: [*]const volatile u8 = buffer.ptr;
-    const position = owner.checks[worker] % buffer.len;
-    for ([_]usize{ 0, position, buffer.len - 1 }) |index| {
-        if (bytes[index] != pattern(hart, worker, index)) nih_native_task_failed();
-    }
-    owner.checks[worker] +%= 1;
+pub noinline fn probe(argument: u32) void {
+    internal.probe(argument);
+    if (@atomicLoad(u32, &external.prepared, .acquire) == 1) external.probe(argument);
 }
 
-fn valid(bytes: []const u8, hart: u32, worker: u32) bool {
+noinline fn valid(bytes: []const u8, hart: u32, worker: u32) bool {
     const checked: [*]const volatile u8 = bytes.ptr;
     for (0..bytes.len) |index| if (checked[index] != pattern(hart, worker, index)) return false;
     return @intFromPtr(bytes.ptr) % 64 == 0;
 }
 
-/// Workers have exited and been reaped before the IPI protocol completes.
-pub fn finish() bool {
-    const hart = currentHart();
-    if (hart >= 2 or @atomicLoad(u32, &prepared, .acquire) != 1) return false;
-    const owner = &owners[hart];
-    if (!owner.pool.guardsValid() or owner.rejected != 3 or
-        !valid(owner.bootstrap orelse return false, hart, 2)) return false;
-    for (owner.buffers, 0..) |buffer, worker| {
-        if (owner.checks[worker] < 4 or !valid(buffer orelse return false, hart, @intCast(worker))) return false;
-    }
-    const capacity = owner.pool.arena.memory.len;
-    reports[hart] = .{
-        .start = @intFromPtr(owner.pool.memory.ptr),
-        .end = @intFromPtr(owner.pool.memory.ptr) + owner.pool.memory.len,
-        .capacity = capacity,
-        .used = capacity - owner.pool.remaining(),
-        .free = owner.pool.remaining(),
-        .checks0 = owner.checks[0],
-        .checks1 = owner.checks[1],
-        .rejected = owner.rejected,
-    };
-    @atomicStore(u32, &reports[hart].confirmed, 1, .release);
-    return true;
+pub noinline fn finish() bool {
+    // Internal completion is the final publication observed by CPU0. It must
+    // also cover the slower, full-buffer external verification and report.
+    return (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and internal.finish();
 }
 
-/// A release/acquire publication; mutable allocator state never crosses harts.
 pub fn report(hart: u32) Report {
-    if (@atomicLoad(u32, &reports[hart].confirmed, .acquire) != 1) return .{};
-    return reports[hart];
+    return internal.report(hart);
+}
+
+pub fn externalReport(hart: u32) Report {
+    return external.report(hart);
 }

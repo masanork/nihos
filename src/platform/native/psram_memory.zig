@@ -53,6 +53,15 @@ var request: u32 = 0;
 var acknowledgement: u32 = 0;
 var peer_done: u32 = 0;
 var peer_checks: u32 = 0;
+var peer_released: u32 = 0;
+
+pub const heap_start = mapping.virtual_base + mapping.reserved_bytes;
+pub const reserved_bytes = mapping.reserved_bytes;
+
+/// Only CPU0, after command checks and external arena registration.
+pub fn releasePeer() void {
+    @atomicStore(u32, &peer_released, 1, .release);
+}
 
 pub const Report = struct {
     status: u32 = 0,
@@ -129,7 +138,7 @@ pub fn prepare(controller: anytype) Report {
         return report;
     };
     report.status = 1;
-    report.bytes = mapping.mapped_bytes;
+    report.bytes = mapper.bytes;
     report.cpu_checks = result.cpu_checks;
     report.command_checks = result.command_checks;
     report.transactions = result.transactions;
@@ -172,6 +181,8 @@ pub fn peer() void {
         @atomicStore(u32, &acknowledgement, @intCast(round), .release);
     }
     @atomicStore(u32, &peer_done, 1, .release);
+    // The arena guards/metadata must be ready before any worker can allocate.
+    waitFor(&peer_released, 1);
 }
 
 pub fn exchange(controller: anytype) SmpReport {
@@ -198,7 +209,7 @@ pub fn exchange(controller: anytype) SmpReport {
     waitFor(&peer_done, 1);
     report.peer_checks = peer_checks;
     const sync_before = mapper.syncs;
-    mapper.sync(.writeback, mapping.virtual_base, mapping.mapped_bytes) catch nih_native_task_failed();
+    mapper.sync(.writeback, mapping.virtual_base, mapping.reserved_bytes) catch nih_native_task_failed();
     for (0..mapping.window_count) |window| {
         const physical = mapping.physicalPage(controller.capacity, @intCast(window)).? * mapping.page_bytes;
         for (0..16) |index| {

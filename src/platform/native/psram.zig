@@ -1,4 +1,4 @@
-//! CPU0-only supply startup and command-data qualification. No CPU mappings.
+//! CPU0-only supply, command-data and full-capacity CPU mapping startup.
 const psram = @import("psram");
 const supply = @import("psram_supply");
 const timer_group = @import("timer_group");
