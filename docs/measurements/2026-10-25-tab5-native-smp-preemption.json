@@ -26,9 +26,12 @@
         "hosts_restored": true
       },
       "metrics": {
-        "timer_period_us": 1000,
-        "timer_ticks": 128,
-        "timer_elapsed_us": 128085,
+        "initial_periodic_timer_period_us": 1000,
+        "initial_periodic_timer_ticks": 128,
+        "initial_periodic_timer_elapsed_us": 128248,
+        "restored_idf_timer_period_us": 1000,
+        "restored_idf_timer_ticks": 128,
+        "restored_idf_timer_elapsed_us": 128085,
         "preemption_interrupts": 30,
         "fpu_preemption_interrupts": 30,
         "fpu_preemption_saves": 30,
@@ -127,9 +130,12 @@
         "hosts_restored": true
       },
       "metrics": {
-        "timer_period_us": 1000,
-        "timer_ticks": 128,
-        "timer_elapsed_us": 128086,
+        "initial_periodic_timer_period_us": 1000,
+        "initial_periodic_timer_ticks": 128,
+        "initial_periodic_timer_elapsed_us": 128251,
+        "restored_idf_timer_period_us": 1000,
+        "restored_idf_timer_ticks": 128,
+        "restored_idf_timer_elapsed_us": 128086,
         "preemption_interrupts": 30,
         "fpu_preemption_interrupts": 30,
         "fpu_preemption_saves": 30,
@@ -228,9 +234,12 @@
         "hosts_restored": true
       },
       "metrics": {
-        "timer_period_us": 1000,
-        "timer_ticks": 128,
-        "timer_elapsed_us": 128086,
+        "initial_periodic_timer_period_us": 1000,
+        "initial_periodic_timer_ticks": 128,
+        "initial_periodic_timer_elapsed_us": 128251,
+        "restored_idf_timer_period_us": 1000,
+        "restored_idf_timer_ticks": 128,
+        "restored_idf_timer_elapsed_us": 128086,
         "preemption_interrupts": 30,
         "fpu_preemption_interrupts": 30,
         "fpu_preemption_saves": 30,
