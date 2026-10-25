@@ -299,7 +299,9 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (exceptions[0] != 1) fail("CPU0 exception return");
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
-    const external = native_psram.discover();
+    prepareTimers();
+    const external = native_psram.probe(timer(0));
+    if (!timer(0).configureOneShot(tasks.period_us)) fail("PSRAM boot timer return");
     print("NIHOS_NATIVE_PSRAM status=");
     hex(@backingInt(external.discovery.status));
     print(" configuration=");
@@ -311,7 +313,20 @@ export fn nih_native_main() callconv(.c) noreturn {
     print(" transactions=");
     hex(external.transactions);
     print(" mapped=00000000 allocatable=00000000\n");
-    prepareTimers();
+    print("NIHOS_NATIVE_PSRAM_SUPPLY");
+    inline for (.{ "programmed", "calibrated", "dref", "mul", "control", "analog", "settled" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(external.supply, field));
+    }
+    print("\nNIHOS_NATIVE_PSRAM_IO status=");
+    hex(external.io_status);
+    inline for (.{ "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(external.exercise, field));
+    }
+    print(" transactions=");
+    hex(external.total_transactions);
+    print("\n");
     prepareTasks(0);
     startCpu1();
     enableTimer(0);

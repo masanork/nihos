@@ -1,5 +1,7 @@
-//! CPU0-only command discovery. No MMU mappings or external allocations.
+//! CPU0-only supply startup and command-data qualification. No CPU mappings.
 const psram = @import("psram");
+const supply = @import("psram_supply");
+const timer_group = @import("timer_group");
 
 fn reg(address: usize) *volatile u32 {
     return @ptrFromInt(address);
@@ -17,10 +19,59 @@ const Bus = struct {
 
 pub const Report = struct {
     discovery: psram.Discovery,
-    transactions: u32,
+    transactions: u32 = 0,
+    total_transactions: u32 = 0,
+    supply: SupplyReport = .{},
+    io_status: u32 = 0,
+    exercise: psram.Exercise = .{},
 };
 
-pub fn discover() Report {
+pub const SupplyReport = struct {
+    programmed: u32 = 0,
+    calibrated: u32 = 0,
+    dref: u32 = 0,
+    mul: u32 = 0,
+    control: u32 = 0,
+    analog: u32 = 0,
+    settled: u32 = 0,
+};
+
+const SupplyBus = struct {
+    pub fn read(_: SupplyBus, offset: usize) u32 {
+        return reg(0x50115000 + offset).*;
+    }
+    pub fn write(_: SupplyBus, offset: usize, value: u32) void {
+        reg(0x50115000 + offset).* = value;
+        asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+    }
+};
+
+fn settle(clock: timer_group.Timer) bool {
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    const start = clock.counter() orelse return false;
+    for (0..100_000) |_| {
+        const now = clock.counter() orelse return false;
+        if (now - start >= 1000) return true;
+    }
+    return false;
+}
+
+/// Temporarily leases the stopped CPU0 1 MHz timer. Caller reconfigures it
+/// before scheduler startup. The 1 ms wait is a boot policy, not power-good.
+pub fn probe(clock: timer_group.Timer) Report {
+    var report = Report{ .discovery = .{ .status = .timeout } };
+    const selected = supply.setting(reg(0x5012d04c).*, reg(0x5012d050).*);
+    report.supply.calibrated = @intFromBool(selected.calibrated);
+    report.supply.dref = selected.dref;
+    report.supply.mul = selected.mul;
+    report.supply.programmed = @intFromBool(supply.program(SupplyBus{}, selected));
+    report.supply.control = SupplyBus.read(.{}, supply.control_offset) & supply.control_mask;
+    report.supply.analog = SupplyBus.read(.{}, supply.analog_offset) & supply.analog_mask;
+    if (report.supply.programmed != 1) return report;
+    report.supply.settled = @intFromBool(settle(clock));
+    if (report.supply.settled != 1) return report;
     // All native code/data is in internal SRAM. No peer or cache user may
     // access PSRAM during this one-time controller reset and setup.
     reg(0x500e6014).* |= 1 << 31; // PSRAM system clock.
@@ -44,5 +95,16 @@ pub fn discover() Report {
     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
     var controller = psram.Controller(Bus){ .io = .{}, .poll_limit = 100_000 };
     const result = controller.discover();
-    return .{ .discovery = result, .transactions = controller.transactions };
+    report.discovery = result;
+    report.transactions = controller.transactions;
+    if (result.status == .detected) {
+        report.io_status = 2;
+        report.exercise = controller.exercise(result) catch {
+            report.total_transactions = controller.transactions;
+            return report;
+        };
+        report.io_status = 1;
+    }
+    report.total_transactions = controller.transactions;
+    return report;
 }

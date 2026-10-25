@@ -9,6 +9,7 @@ pub const riscv32_trap = @import("arch/riscv32/trap.zig");
 pub const esp32p4_timer_group = @import("soc/esp32p4/timer_group.zig");
 pub const esp32p4_software_ipi = @import("soc/esp32p4/software_ipi.zig");
 pub const esp32p4_psram = @import("soc/esp32p4/psram.zig");
+pub const esp32p4_psram_supply = @import("soc/esp32p4/psram_supply.zig");
 pub const arena = @import("kernel/arena.zig");
 pub const core_arena = @import("kernel/core_arena.zig");
 pub const scheduler = @import("kernel/scheduler.zig");
@@ -29,6 +30,7 @@ test {
     _ = esp32p4_timer_group;
     _ = esp32p4_software_ipi;
     _ = esp32p4_psram;
+    _ = esp32p4_psram_supply;
     _ = @import("soc/esp32p4/psram_test.zig");
     _ = arena;
     _ = core_arena;

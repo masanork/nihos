@@ -48,6 +48,35 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
                 ((psram["identity"] >> 5) & 7) != 6 or
                 density_bytes.get(psram["identity"] & 7, 0) != psram["bytes"] or psram["bytes"] == 0):
             raise ValueError("invalid detected PSRAM identity/capacity")
+    supply_names = ("programmed", "calibrated", "dref", "mul", "control", "analog", "settled")
+    pattern = "NIHOS_NATIVE_PSRAM_SUPPLY" + "".join(" " + name + r"=([0-9a-f]{8})" for name in supply_names)
+    matches = re.findall(pattern, log)
+    if len(matches) != 1:
+        raise ValueError("missing/duplicate PSRAM supply evidence")
+    supply = dict(zip(supply_names, (int(value, 16) for value in matches[0])))
+    if (supply["programmed"] != 1 or supply["settled"] != 1 or supply["calibrated"] not in (0, 1) or
+            not 1 <= supply["dref"] <= 15 or not 1 <= supply["mul"] <= 7 or supply["control"] != 0x180 or
+            supply["analog"] != (supply["dref"] << 28) | (supply["mul"] << 23) | (1 << 26) or
+            (supply["calibrated"] == 0 and (supply["dref"], supply["mul"]) != (6, 5))):
+        raise ValueError("incomplete PSRAM supply programming/readback")
+    io_names = ("status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions")
+    pattern = "NIHOS_NATIVE_PSRAM_IO" + "".join(" " + name + r"=([0-9a-f]{8})" for name in io_names)
+    matches = re.findall(pattern, log)
+    if len(matches) != 1:
+        raise ValueError("missing/duplicate PSRAM data evidence")
+    psram_io = dict(zip(io_names, (int(value, 16) for value in matches[0])))
+    if psram["status"] == 0:
+        if any(psram_io[name] != 0 for name in io_names[:-1]) or psram_io["transactions"] != 4:
+            raise ValueError("absent PSRAM received data/mode writes")
+    else:
+        addresses = psram["bytes"].bit_length() - 1
+        if (psram_io["status"] != 1 or psram_io["addresses"] != addresses or psram_io["passes"] != 2 or
+                psram_io["reads"] != 2 * addresses or psram_io["writes"] != 2 * addresses or
+                psram_io["transactions"] != 13 + 4 * addresses or
+                any(psram_io[name] > 255 for name in ("mr0", "mr4", "mr8")) or
+                psram_io["mr0"] & 63 != 0x28 or psram_io["mr4"] & 0xe0 != 0x40 or
+                psram_io["mr8"] & 0x4f != 0x0b):
+            raise ValueError("incomplete PSRAM data/mode qualification")
     pattern = (r"NIHOS_NATIVE_HEARTBEAT round=([0-9a-f]{8}) cpu0=([0-9a-f]{8}) "
                r"cpu1=([0-9a-f]{8}) ticks0=([0-9a-f]{8}) ticks1=([0-9a-f]{8})")
     samples = [tuple(int(value, 16) for value in match)
@@ -151,6 +180,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         raise ValueError("overlapping memory owners")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
+            "psram_supply": supply, "psram_io": psram_io,
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
             "cpu0_interrupts": samples[-1][3], "cpu1_interrupts": samples[-1][4],
             "tasks": [{"hart": hart, "progress": values[-1][:2],

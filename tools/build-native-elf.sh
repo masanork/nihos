@@ -44,7 +44,7 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep timer_group --dep native_tasks --dep psram -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep timer_group --dep native_tasks --dep psram --dep psram_supply -Mroot="$repo_root/src/platform/native/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -74,4 +74,6 @@ fi
     -Mcore_arena="$repo_root/src/kernel/core_arena.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mpsram="$repo_root/src/soc/esp32p4/psram.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mpsram_supply="$repo_root/src/soc/esp32p4/psram_supply.zig" \
     -femit-bin="$build_dir/nihos-native.elf"
