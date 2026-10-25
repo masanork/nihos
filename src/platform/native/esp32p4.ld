@@ -15,6 +15,11 @@ SECTIONS
      * Neither contains executable native code or runtime data. */
     .flash.rodata : { LONG(0x4e494853) } > compatibility
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
+    .fp_app : ALIGN(16) {
+        __fp_app_start = .;
+        *(.fp_app .fp_app.*)
+        __fp_app_end = .;
+    } > ram
     .rodata : ALIGN(16) { *(.rodata .rodata.* .srodata .srodata.*) } > ram
     .data : ALIGN(16) {
         __global_pointer$ = . + 0x800;

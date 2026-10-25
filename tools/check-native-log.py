@@ -16,6 +16,11 @@ def check(log, expected_mode=None):
     if len(modes) != 1:
         raise ValueError("missing/duplicate native mode")
     mode = "floating" if modes[0] == "1" else "integer"
+    compiled_modes = re.findall(r"NIHOS_NATIVE_COMPILER enabled=([01])", log)
+    if len(compiled_modes) != 1 or (compiled_modes[0] == "1" and mode != "floating"):
+        raise ValueError("missing/incompatible compiler FP mode")
+    if compiled_modes[0] == "1":
+        mode = "compiled"
     if expected_mode is not None and mode != expected_mode:
         raise ValueError("native mode differs from requested build")
     if "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned" not in log:
@@ -74,7 +79,7 @@ def check(log, expected_mode=None):
     if (set(ipi_owners) != {0, 1} or
             "NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none" not in log):
         raise ValueError("missing native IPI/idle evidence")
-    fp_names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "confirmed")
+    fp_names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed")
     pattern = r"NIHOS_NATIVE_FP hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in fp_names)
     fp_owners = {}
@@ -92,6 +97,10 @@ def check(log, expected_mode=None):
         elif (record["initial"] != 5 or min(record["checks0"], record["checks1"], record["checks2"]) < 4 or
                 record["timer"] < 8 or record["calls"] < 12 or record["ipi"] < 1):
             raise ValueError("missing FP task/trap coverage")
+        if mode == "compiled" and record["app_timer"] < 4:
+            raise ValueError("missing compiler-generated task preemption")
+        if mode != "compiled" and record["app_timer"] != 0:
+            raise ValueError("unexpected compiler-generated task evidence")
         fp_owners[hart] = record
     if (set(fp_owners) != {0, 1} or
             "NIHOS_NATIVE_FP_PASS floating=" + modes[0] not in log):
@@ -111,7 +120,7 @@ def check(log, expected_mode=None):
 
 def main():
     if len(sys.argv) not in (3, 4):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating]")
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled]")
     try:
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) == 4 else None)
     except ValueError as error:

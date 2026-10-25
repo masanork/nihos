@@ -23,7 +23,15 @@ def require(condition, reason):
         raise ValueError(reason)
 
 
-def audit(elf, image):
+def is_fp_instruction(word, width):
+    if width == 2:
+        return (word & 3) in (0, 2) and (word >> 13) in (1, 3, 5, 7)
+    opcode = word & 0x7f
+    return opcode in (0x07, 0x27, 0x43, 0x47, 0x4b, 0x4f, 0x53) or (
+        opcode == 0x73 and ((word >> 12) & 7) != 0 and (word >> 20) in (1, 2, 3))
+
+
+def audit(elf, image, mode=None):
     require(elf[:7] == b"\x7fELF\x01\x01\x01", "expected ELF32 little endian")
     header = struct.unpack_from("<HHIIIIIHHHHHH", elf, 16)
     kind, machine, _, entry, _, shoff, _, _, _, _, shsize, shnum, shstr = header
@@ -42,6 +50,8 @@ def audit(elf, image):
 
     allocated = []
     symbols = {}
+    functions = []
+    executable = []
     flash_found = set()
     for section in sections:
         name_id, section_type, flags, address, offset, size, link, _, _, stride = section
@@ -54,12 +64,14 @@ def audit(elf, image):
                 require(flags & (1 | 4) == 0, "writable/executable flash metadata")
                 flash_found.add(name)
             allocated.append({"name": name, "address": hex(address), "bytes": size})
+            if flags & 4:
+                executable.append((name, address, elf[offset:offset + size]))
         if section_type == 2:  # SHT_SYMTAB
             require(stride == 16 and link < shnum, "invalid symbol table")
             table = sections[link]
             symnames = elf[table[4]:table[4] + table[5]]
             for pos in range(offset, offset + size, stride):
-                name_id, value, _, info, _, index = struct.unpack_from("<IIIBBH", elf, pos)
+                name_id, value, symbol_size, info, _, index = struct.unpack_from("<IIIBBH", elf, pos)
                 if not name_id:
                     continue
                 symbol = string(symnames, name_id)
@@ -69,6 +81,7 @@ def audit(elf, image):
                 if info & 15 == 2:  # STT_FUNC
                     require(SRAM_LOW <= value < SRAM_HIGH or ROM_SYMBOLS.get(symbol) == value,
                             "function outside SRAM: " + symbol)
+                    functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
     require(flash_found == set(FLASH_SECTIONS), "missing compatibility metadata")
     require(symbols.get("nih_native_start") == entry, "wrong native entry")
@@ -76,15 +89,47 @@ def audit(elf, image):
         require(symbols.get(name) == address, "wrong ROM ABI: " + name)
     fp_linked = "nih_riscv_fpu_save" in symbols
     if fp_linked:
-        require(all(name in symbols for name in ("nih_riscv_fpu_restore", "nih_riscv_fpu_snapshot",
-                    "nih_riscv_fpu_task_check", "nih_riscv_fpu_task_probe")), "partial native FP support")
+        required = ["nih_riscv_fpu_restore", "nih_riscv_fpu_snapshot"]
+        if mode != "compiled":
+            required += ["nih_riscv_fpu_task_check", "nih_riscv_fpu_task_probe"]
+        require(all(name in symbols for name in required), "partial native FP support")
     require("nih_riscv_fpu_probe_loop" not in symbols and
             "nih_riscv_preemption_budget_expired" not in symbols, "hosted test watchdog linked")
-    require(header[6] & 0xE == 0, "native application requires full-register ILP32 ABI")
+    expected_abi = 2 if mode == "compiled" else 0
+    require(header[6] & 0xE == expected_abi, "native FP ABI differs from requested mode")
+    fp_counts = {"app": 0, "c": 0, "zig": 0, "transfer_helpers": 0}
+    helpers = {"nih_riscv_fpu_save", "nih_riscv_fpu_restore", "nih_riscv_fpu_snapshot",
+               "nih_riscv_fpu_task_check", "nih_riscv_fpu_task_probe"}
+    for name, address, data in executable:
+        position = 0
+        while position + 2 <= len(data):
+            half = struct.unpack_from("<H", data, position)[0]
+            width = 2 if half & 3 != 3 else 4
+            require(position + width <= len(data), "truncated executable instruction")
+            word = half if width == 2 else struct.unpack_from("<I", data, position)[0]
+            if is_fp_instruction(word, width):
+                pc = address + position
+                owners = [symbol for symbol, low, high in functions if low <= pc < high]
+                if any(owner in helpers for owner in owners):
+                    fp_counts["transfer_helpers"] += 1
+                else:
+                    require(mode == "compiled" and name == ".fp_app", "FP instruction outside approved task/helper code")
+                    fp_counts["app"] += 1
+                    fp_counts["c" if any(owner.startswith("nih_fp_c_") for owner in owners) else "zig"] += 1
+            position += width
+    if mode == "compiled":
+        require(fp_linked and fp_counts["c"] > 0 and fp_counts["zig"] > 0, "missing compiled C/Zig FP instructions")
     require(symbols["__stack0_top"] <= symbols["__stack1_bottom"] and
             symbols["__stack1_top"] <= symbols["__irq_stack0_bottom"] and
             symbols["__irq_stack0_top"] <= symbols["__irq_stack1_bottom"] and
             symbols["__irq_stack1_top"] <= SRAM_HIGH, "stack layout overflow")
+    report = {"schema": 1, "backend": "native-sram", "rtos_linked": False,
+              "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]), "fp_instructions": fp_counts,
+              "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
+              "sram_reserved_bytes": symbols["__irq_stack1_top"] - SRAM_LOW,
+              "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
+    if image is None:
+        return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
             "image entry differs from ELF")
     position = 24
@@ -108,23 +153,19 @@ def audit(elf, image):
     require(image[23] == 1 and len(image) == checksum_end + 32, "missing image SHA256")
     require(hashlib.sha256(image[:checksum_end]).digest() == image[checksum_end:],
             "image SHA256 mismatch")
-    return {"schema": 1, "backend": "native-sram", "rtos_linked": False,
-            "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]),
-            "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
-            "image_sha256": hashlib.sha256(image).hexdigest(), "image_bytes": len(image),
-            "sram_reserved_bytes": symbols["__irq_stack1_top"] - SRAM_LOW,
-            "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()},
-            "sections": allocated, "image_segments": image_segments}
+    report.update(image_sha256=hashlib.sha256(image).hexdigest(), image_bytes=len(image), image_segments=image_segments)
+    return report
 
 
 def main():
     if len(sys.argv) not in (4, 5):
-        raise SystemExit("usage: check-native-image.py ELF BIN REPORT.json [integer|floating]")
+        raise SystemExit("usage: check-native-image.py ELF BIN|--elf-only REPORT.json [integer|floating|compiled]")
     try:
-        report = audit(Path(sys.argv[1]).read_bytes(), Path(sys.argv[2]).read_bytes())
+        image = None if sys.argv[2] == "--elf-only" else Path(sys.argv[2]).read_bytes()
+        report = audit(Path(sys.argv[1]).read_bytes(), image, sys.argv[4] if len(sys.argv) == 5 else None)
         if len(sys.argv) == 5:
-            require(sys.argv[4] in ("integer", "floating"), "invalid FP mode")
-            require(report["fp_assembly_linked"] == (sys.argv[4] == "floating"), "FP assembly differs from requested mode")
+            require(sys.argv[4] in ("integer", "floating", "compiled"), "invalid FP mode")
+            require(report["fp_assembly_linked"] == (sys.argv[4] != "integer"), "FP assembly differs from requested mode")
     except (ValueError, IndexError, KeyError, struct.error) as error:
         raise SystemExit("Native image audit failed: " + str(error)) from error
     Path(sys.argv[3]).write_text(json.dumps(report, indent=2) + "\n")

@@ -5,8 +5,8 @@ build_dir="$repo_root/build/native-emulator"
 mode=${1:-integer}
 case "$mode" in
     integer) ;;
-    floating) build_dir="$build_dir-floating" ;;
-    *) echo "usage: $0 [integer|floating]" >&2; exit 1 ;;
+    floating|compiled) build_dir="$build_dir-$mode" ;;
+    *) echo "usage: $0 [integer|floating|compiled]" >&2; exit 1 ;;
 esac
 # A failed rerun must not leave an earlier success report looking current.
 rm -f "$build_dir/smoke-report.json"

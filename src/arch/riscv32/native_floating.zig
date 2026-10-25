@@ -2,6 +2,9 @@
 const std = @import("std");
 const context = @import("context.zig");
 pub const enabled = @import("native_options").floating;
+pub const compiled = @import("native_options").compiled;
+pub const app = @import("compiled_fp.zig");
+const calls = @import("task_calls.zig");
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_riscv_fpu_task_check(*context.FloatingProbe) callconv(.c) u32;
 extern fn nih_riscv_fpu_snapshot(*context.FloatingContext) callconv(.c) void;
@@ -17,6 +20,7 @@ var banks: [bank_count][3]context.FloatingContext = @splat(@splat(.{ .f = @splat
 var probes: [bank_count][3]context.FloatingProbe = @splat(@splat(.{ .pattern = 0, .expected_fcsr = 0 }));
 var active: [bank_count][3]bool = @splat(@splat(false));
 var retired_checks: [bank_count][3]u32 = @splat(@splat(0));
+var starting_checks: [bank_count][3]u32 = @splat(@splat(0));
 
 const Atomic = std.atomic.Value(u32);
 const Published = struct {
@@ -42,6 +46,7 @@ pub const Report = struct {
     restores: u32,
     confirmed: u32,
     initial: u32,
+    app_timer: u32,
 };
 
 pub fn prepare(hart: u32, index: u32, generation: u16, slot: u16) u32 {
@@ -53,6 +58,7 @@ pub fn prepare(hart: u32, index: u32, generation: u16, slot: u16) u32 {
         .expected_fcsr = if ((hart + index + generation) & 1 == 0) 1 else 33,
     };
     active[hart][index] = true;
+    if (compiled) starting_checks[hart][index] = app.count(hart, index);
     return @intFromPtr(&banks[hart][index]);
 }
 
@@ -64,16 +70,24 @@ pub fn enter(hart: u32, index: u32, entry: *const fn (u32) callconv(.c) i32, arg
     if (initial.fcsr != 0) nih_native_task_failed();
     for (initial.f) |word| if (word != 0) nih_native_task_failed();
     _ = published[hart].initial.fetchAdd(1, .release);
+    if (compiled) calls.exit(entry(argument));
     nih_riscv_fpu_task_probe(&probes[hart][index], entry, argument);
 }
 
 pub fn check(hart: u32, index: u32) void {
     if (!enabled) return;
+    if (compiled) return app.checkpoint(hart, index);
     if (nih_riscv_fpu_task_check(&probes[hart][index]) == 0) nih_native_task_failed();
 }
 
 pub fn retire(hart: u32, index: u32) bool {
     if (!enabled) return true;
+    if (compiled) {
+        if (!active[hart][index] or app.count(hart, index) <= starting_checks[hart][index] or
+            banks[hart][index].fcsr != app.expectedStatus(hart, index)) return false;
+        active[hart][index] = false;
+        return true;
+    }
     if (!active[hart][index] or probes[hart][index].iterations == 0 or
         !context.matchesProbe(&banks[hart][index], &probes[hart][index])) return false;
     retired_checks[hart][index] +%= probes[hart][index].iterations;
@@ -81,8 +95,9 @@ pub fn retire(hart: u32, index: u32) bool {
     return true;
 }
 
-pub fn captured(hart: u32, bank: u32, kind: enum { timer, calls, ipi }) void {
+pub fn captured(hart: u32, bank: u32, kind: enum { timer, calls, ipi }, pc: u32) void {
     if (bank == 0) return;
+    if (compiled and kind == .timer) app.captured(hart, pc);
     const counter = switch (kind) {
         .timer => &published[hart].timer,
         .calls => &published[hart].calls,
@@ -97,6 +112,10 @@ pub fn selectBank(hart: u32, bank: u32) void {
 
 pub fn publish(hart: u32) void {
     if (!enabled) return;
+    if (compiled) {
+        for (0..3) |index| published[hart].checks[index].store(app.count(hart, @intCast(index)), .release);
+        return;
+    }
     for (0..3) |index| {
         const probe: *volatile context.FloatingProbe = &probes[hart][index];
         if (probe.failed != 0) nih_native_task_failed();
@@ -137,5 +156,6 @@ pub fn report(hart: u32) Report {
         .restores = source.restores.load(.acquire),
         .confirmed = source.confirmed.load(.acquire),
         .initial = source.initial.load(.acquire),
+        .app_timer = if (compiled) app.timerCaptures(hart) else 0,
     };
 }
