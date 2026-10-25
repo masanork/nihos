@@ -93,6 +93,9 @@ defined in
 The first bounded native request/completion result, including the ring's
 non-power-of-two counter-wrap correction, is recorded in
 [`docs/measurements/2026-10-25-esp-emu-spsc-channels.md`](docs/measurements/2026-10-25-esp-emu-spsc-channels.md).
+CPU1-to-CPU0 owner notifications and bounded borrowing of IDF's IPI line are
+defined in
+[`docs/adr/0012-owner-inbox-and-borrowed-ipi.md`](docs/adr/0012-owner-inbox-and-borrowed-ipi.md).
 
 ## Bootstrap checks
 

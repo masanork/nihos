@@ -10,6 +10,8 @@ const scheduler = @import("scheduler");
 const tick_clock = @import("tick_clock");
 const timer_group = @import("timer_group");
 const ipc = @import("ipc_scenario.zig");
+const remote = @import("remote_scenario.zig");
+const Doorbell = @import("software_ipi").Doorbell;
 
 const Runtime = runtime_module.Runtime(3, 2);
 const stack_bytes = 4096;
@@ -17,7 +19,7 @@ const period_us = 1000;
 const sleep_ticks = 5;
 const timeout_us = 100_000;
 
-pub const Mode = enum { lifecycle, events, ipc };
+pub const Mode = enum { lifecycle, events, ipc, remote };
 
 pub const Report = struct {
     sleep_started: u32,
@@ -35,6 +37,7 @@ pub const Report = struct {
     blocked_events: u32,
     delivered_events: u32,
     ipc: ?ipc.Report = null,
+    remote: ?remote.Report = null,
 };
 
 var runtime: Runtime = .{};
@@ -206,7 +209,7 @@ fn eventSender(_: u32) callconv(.c) i32 {
     return 43;
 }
 
-pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32, tp: u32, trampoline: u32, selected_mode: Mode) bool {
+pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32, tp: u32, trampoline: u32, selected_mode: Mode, ipi: ?Doorbell) bool {
     runtime = .{};
     mode = selected_mode;
     device = timer;
@@ -234,6 +237,7 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
         .lifecycle => [_]*const fn (u32) callconv(.c) i32{ &sleeper, &waker },
         .events => [_]*const fn (u32) callconv(.c) i32{ &eventReceiver, &eventSender },
         .ipc => [_]*const fn (u32) callconv(.c) i32{ &ipc.client, &ipc.service },
+        .remote => [_]*const fn (u32) callconv(.c) i32{ &remote.client, &remote.observer },
     };
     for (&stacks, entries, 0..) |*stack, entry, index| {
         exited[index].store(0, .monotonic);
@@ -258,12 +262,18 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
         .{ .slot = worker_handles[0].slot, .generation = worker_handles[0].generation },
         .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
     );
+    if (mode == .remote and !remote.prepare(
+        .{ .slot = worker_handles[0].slot, .generation = worker_handles[0].generation },
+        .{ .slot = worker_handles[1].slot, .generation = worker_handles[1].generation },
+        ipi orelse return false,
+    )) return false;
     return timer.configureOneShot(period_us);
 }
 
 pub fn startMasked() bool {
     started_us = nih_platform_monotonic_us();
     (device orelse return false).start();
+    if (mode == .remote) remote.start();
     return true;
 }
 
@@ -272,8 +282,9 @@ pub fn run() bool {
         if (expired()) break;
         std.atomic.spinLoopHint();
     }
+    const joined = if (mode == .remote) remote.stopAndJoin() else true;
     (device orelse return false).stop();
-    return finished.load(.monotonic) and !failed.load(.monotonic);
+    return joined and finished.load(.monotonic) and !failed.load(.monotonic);
 }
 
 fn refreshClock() bool {
@@ -302,10 +313,22 @@ pub fn onTimer(frame: *context.IntegerContext, state: context.ReturnState) ?cont
     if (!runtime.capture(frame, state)) return null;
     if (!(device orelse return null).clearPending() or !refreshClock()) return null;
     interrupt_count += 1;
+    seedIntegerState(state);
+    return checkedSelection(runtime.select() orelse return null);
+}
+
+fn seedIntegerState(state: context.ReturnState) void {
     if (!launched) {
         for (worker_handles) |handle| runtime.images[handle.slot].?.state = state.integerOnly();
         launched = true;
     }
+}
+
+pub fn onIpi(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
+    if (mode != .remote or !runtime.capture(frame, state)) return null;
+    remote.onIpi(&runtime.policy);
+    if (!refreshClock()) return null;
+    seedIntegerState(state);
     return checkedSelection(runtime.select() orelse return null);
 }
 
@@ -316,6 +339,10 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
     const number = control.Number.decode(frame.a7);
     const argument = frame.a0;
     const selected = runtime.call(frame, state) orelse return null;
+    if (mode == .remote and number == .wait_events) {
+        const snapshot = runtime.policy.snapshot(caller) orelse return null;
+        if (snapshot.state == .waiting) remote.recordBlocked(caller.slot, argument);
+    }
     if (mode == .ipc and number == .wait_events) {
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
         if (snapshot.state == .waiting) ipc.recordBlocked(argument);
@@ -352,7 +379,7 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
 
 pub fn report() ?Report {
     if (!finished.load(.monotonic) or failed.load(.monotonic)) return null;
-    if (mode != .ipc and !terminal_wake_rejected.load(.monotonic)) return null;
+    if ((mode == .lifecycle or mode == .events) and !terminal_wake_rejected.load(.monotonic)) return null;
     var result = Report{
         .sleep_started = sleep_started.load(.monotonic),
         .sleep_deadline = sleep_deadline.load(.monotonic),
@@ -370,18 +397,23 @@ pub fn report() ?Report {
         .delivered_events = delivered_events.load(.monotonic),
     };
     const expected_sleep: u32 = if (mode == .lifecycle) sleep_ticks else 2;
-    if (mode != .ipc and (result.sleep_resumed < result.sleep_deadline or
+    if ((mode == .lifecycle or mode == .events) and (result.sleep_resumed < result.sleep_deadline or
         result.sleep_deadline != result.sleep_started + expected_sleep)) return null;
     switch (mode) {
         .lifecycle => if (result.idle_runtime_ticks < 2 or result.explicit_wakes != 1) return null,
         .events => if (result.immediate_events != 3 or result.blocked_events != 1 or
             result.delivered_events != 1) return null,
         .ipc => result.ipc = ipc.report() orelse return null,
+        .remote => result.remote = remote.report() orelse return null,
     }
     const replacement_image = runtime.images[worker_handles[0].slot] orelse return null;
     for (worker_handles, 0..) |handle, index| {
         const image = runtime.images[handle.slot] orelse return null;
-        const address = if (mode == .ipc) ipc.stackAddress(index) else stack_addresses[index].load(.monotonic);
+        const address = switch (mode) {
+            .ipc => ipc.stackAddress(index),
+            .remote => remote.stackAddress(index),
+            else => stack_addresses[index].load(.monotonic),
+        };
         const snapshot = runtime.policy.snapshot(handle) orelse return null;
         if (snapshot.state != .exited or address < image.stack_min or address >= image.stack_max)
             return null;
@@ -393,6 +425,7 @@ pub fn report() ?Report {
         .lifecycle => .{ 17, 37 },
         .events => .{ 41, 43 },
         .ipc => .{ 53, 59 },
+        .remote => .{ 67, 71 },
     };
     if (!std.mem.eql(i32, &result.exits, &expected_exits)) return null;
     // Reuse a reaped slot without executing it. The stale handle must not

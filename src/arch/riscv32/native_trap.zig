@@ -10,6 +10,8 @@ const trap = @import("trap.zig");
 const timer_group = @import("timer_group");
 const preemption = @import("preemption_test.zig");
 const lifecycle = @import("lifecycle_test.zig");
+const remote = @import("remote_scenario.zig");
+const Doorbell = @import("software_ipi").Doorbell;
 
 const core_count = 2;
 const interrupt_stack_bytes = 2048;
@@ -55,6 +57,8 @@ const TimerLease = extern struct {
     interrupt_id: u32,
 };
 
+const IpiLease = extern struct { register_address: u32, interrupt_id: u32 };
+
 pub const TimerReport = struct {
     ticks: u32,
     elapsed_us: u64,
@@ -67,12 +71,15 @@ const timer_target_ticks: u32 = 32;
 const timer_timeout_us: u64 = 100_000;
 var timer_device: ?timer_group.Timer = null;
 var timer_interrupt_id: u32 = 0;
+var ipi_interrupt_id: u32 = 0;
 var native_timer_ticks = std.atomic.Value(u32).init(0);
 var native_timer_cause = std.atomic.Value(u32).init(0);
 var native_timer_elapsed_us: u64 = 0;
 
 extern fn nih_espidf_native_timer_acquire(out: *TimerLease) callconv(.c) i32;
 extern fn nih_espidf_native_timer_release() callconv(.c) i32;
+extern fn nih_espidf_native_ipi_acquire(out: *IpiLease) callconv(.c) i32;
+extern fn nih_espidf_native_ipi_release() callconv(.c) i32;
 extern fn nih_riscv_timer_window() callconv(.c) u32;
 extern fn nih_platform_monotonic_us() callconv(.c) u64;
 
@@ -218,17 +225,48 @@ pub fn exerciseNativeIpc() ?lifecycle.Report {
     return exerciseLifecycle(.ipc);
 }
 
+pub fn exerciseNativeRemoteEvents() ?lifecycle.Report {
+    return exerciseLifecycle(.remote);
+}
+
 fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
+    var borrowed = false;
+    defer {
+        ipi_interrupt_id = 0;
+        if (borrowed) _ = nih_espidf_native_ipi_release();
+    }
+    var doorbell: ?Doorbell = null;
+    if (mode == .remote) {
+        var lease = std.mem.zeroes(IpiLease);
+        if (nih_espidf_native_ipi_acquire(&lease) != 0) {
+            _ = finishTimer(false);
+            return null;
+        }
+        borrowed = true;
+        doorbell = Doorbell.fromRegister(lease.register_address);
+        if (doorbell == null or lease.interrupt_id < 16 or lease.interrupt_id >= 48 or lease.interrupt_id == timer_interrupt_id) {
+            _ = finishTimer(false);
+            return null;
+        }
+        ipi_interrupt_id = lease.interrupt_id;
+    }
     const trampoline = address32(&nih_riscv_task_trampoline) orelse {
         _ = finishTimer(false);
         return null;
     };
-    const prepared = lifecycle.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline, mode);
+    const prepared = lifecycle.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline, mode, doorbell);
     switch_state = .lifecycle;
     const returned = prepared and nih_riscv_timer_window() == 1;
+    const joined = if (mode == .remote) remote.stopAndJoin() else true;
     const report = if (returned) lifecycle.report() else null;
-    if (!finishTimer(returned)) return null;
+    const restored = finishTimer(returned and joined);
+    if (borrowed) {
+        const released = nih_espidf_native_ipi_release() == 0;
+        borrowed = false;
+        if (!released) return null;
+    }
+    if (!restored or (mode == .remote and !remote.verifyHostScheduler())) return null;
     return report;
 }
 
@@ -301,6 +339,8 @@ export fn nih_riscv_trap_dispatch(
         if (hart_id != 0) return null;
         const selection = if (cause.kind == .interrupt and cause.reason == timer_interrupt_id)
             lifecycle.onTimer(interrupted, return_state)
+        else if (ipi_interrupt_id != 0 and cause.kind == .interrupt and cause.reason == ipi_interrupt_id)
+            lifecycle.onIpi(interrupted, return_state)
         else if (cause.isException(.environment_call_from_machine))
             lifecycle.onCall(interrupted, return_state)
         else

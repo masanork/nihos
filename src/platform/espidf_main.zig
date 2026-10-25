@@ -595,6 +595,26 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("ipc_exit_code_1=", @bitCast(ipc_tasks.exits[1]));
     writeU32("ipc_reaped=", ipc_tasks.reaped);
     write("native_ipc=ok\r\n");
+    const remote_tasks = native_trap.exerciseNativeRemoteEvents() orelse {
+        write("nihos: native remote events failed\r\n");
+        return;
+    };
+    const remote = remote_tasks.remote orelse return;
+    writeU32("remote_messages=", remote.messages);
+    writeU32("remote_worker_cpu=", remote.worker_cpu);
+    writeU32("remote_registered_waits=", remote.registered_waits);
+    writeU32("remote_ipi_interrupts=", remote.ipi_interrupts);
+    writeU32("remote_delivered=", remote.delivered);
+    writeU32("remote_rejected=", remote.rejected);
+    writeU32("remote_woken=", remote.woken);
+    writeU32("remote_checksum=", remote.checksum);
+    writeU32("remote_syscalls=", remote_tasks.calls);
+    writeU32("remote_timer_interrupts=", remote_tasks.interrupts);
+    writeU32("remote_exit_code_0=", @bitCast(remote_tasks.exits[0]));
+    writeU32("remote_exit_code_1=", @bitCast(remote_tasks.exits[1]));
+    writeU32("remote_reaped=", remote_tasks.reaped);
+    write("remote_host_scheduler_restored=1\r\n");
+    write("native_remote_events=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

@@ -29,6 +29,9 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_TASK_CALLS "${NIHOS_ROOT}/src/arch/riscv32/task_calls.zig")
     set(NIHOS_ZIG_LIFECYCLE "${NIHOS_ROOT}/src/arch/riscv32/lifecycle_test.zig")
     set(NIHOS_ZIG_IPC_SCENARIO "${NIHOS_ROOT}/src/arch/riscv32/ipc_scenario.zig")
+    set(NIHOS_ZIG_REMOTE_SCENARIO "${NIHOS_ROOT}/src/arch/riscv32/remote_scenario.zig")
+    set(NIHOS_ZIG_REMOTE_EVENTS "${NIHOS_ROOT}/src/kernel/remote_events.zig")
+    set(NIHOS_ZIG_SOFTWARE_IPI "${NIHOS_ROOT}/src/soc/esp32p4/software_ipi.zig")
     set(NIHOS_ZIG_CHANNEL "${NIHOS_ROOT}/src/kernel/spsc_channel.zig")
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
@@ -64,6 +67,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             --dep task_control
             --dep spsc_ring
             --dep spsc_channel
+            --dep remote_events
+            --dep software_ipi
             "-Mnative_trap=${NIHOS_ZIG_NATIVE_TRAP}"
             "-Mtimer_group=${NIHOS_ZIG_TIMER_GROUP}"
             "-Mscheduler=${NIHOS_ZIG_SCHEDULER}"
@@ -71,6 +76,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             "-Mtask_control=${NIHOS_ZIG_TASK_CONTROL}"
             "-Mspsc_ring=${NIHOS_ZIG_SPSC}"
             "-Mspsc_channel=${NIHOS_ZIG_CHANNEL}"
+            "-Mremote_events=${NIHOS_ZIG_REMOTE_EVENTS}"
+            "-Msoftware_ipi=${NIHOS_ZIG_SOFTWARE_IPI}"
             "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
             "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
             "-femit-bin=${NIHOS_ZIG_LIBRARY}"
@@ -83,6 +90,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
                 "${NIHOS_ZIG_TASK_RUNTIME}" "${NIHOS_ZIG_TASK_CALLS}"
                 "${NIHOS_ZIG_LIFECYCLE}"
                 "${NIHOS_ZIG_IPC_SCENARIO}" "${NIHOS_ZIG_CHANNEL}"
+                "${NIHOS_ZIG_REMOTE_SCENARIO}" "${NIHOS_ZIG_REMOTE_EVENTS}"
+                "${NIHOS_ZIG_SOFTWARE_IPI}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
                 "${NIHOS_ZIG_TICK_COUNTER}"
                 "${NIHOS_ZIG_PATTERN}"
