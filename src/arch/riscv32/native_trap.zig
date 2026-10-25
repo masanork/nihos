@@ -22,17 +22,27 @@ const SwitchState = enum(u32) {
 
 var interrupt_stacks: [core_count][interrupt_stack_bytes]u8 align(16) = undefined;
 var task_stack: [task_stack_bytes]u8 align(16) = undefined;
+export var nih_riscv_interrupt_stack_bottoms: [core_count]u32 = @splat(0);
 export var nih_riscv_interrupt_stack_tops: [core_count]u32 = @splat(0);
+export var nih_riscv_selected_stack_mins: [core_count]u32 = @splat(0);
+export var nih_riscv_selected_stack_maxs: [core_count]u32 = @splat(0);
 var switch_state: SwitchState = .idle;
 var bootstrap_frame: ?*context.IntegerContext = null;
 var task_frame: ?*context.IntegerContext = null;
 var task_observation: u32 = 0;
+var bootstrap_stack_min: u32 = 0;
+var bootstrap_stack_max: u32 = 0;
 
 extern fn nih_riscv_exception_roundtrip() callconv(.c) u32;
 extern fn nih_riscv_task_trampoline() callconv(.c) void;
 extern fn nih_riscv_context_test_yield() callconv(.c) noreturn;
 extern fn nih_riscv_read_gp() callconv(.c) u32;
 extern fn nih_riscv_read_tp() callconv(.c) u32;
+extern fn esp_hw_stack_guard_get_bounds(
+    core_id: u32,
+    stack_min: *u32,
+    stack_max: *u32,
+) callconv(.c) void;
 
 fn address32(pointer: anytype) ?u32 {
     const address = @intFromPtr(pointer);
@@ -47,13 +57,18 @@ fn contextTestTask(argument: u32) callconv(.c) void {
 
 pub fn exerciseContextSwitchRoundTrip() bool {
     for (&interrupt_stacks, 0..) |*stack, core| {
+        const bottom = @intFromPtr(stack);
         const top = @intFromPtr(stack) + stack.len;
-        if (top > std.math.maxInt(u32)) return false;
+        if (bottom > std.math.maxInt(u32) or top > std.math.maxInt(u32))
+            return false;
+        nih_riscv_interrupt_stack_bottoms[core] = @intCast(bottom);
         nih_riscv_interrupt_stack_tops[core] = @intCast(top);
     }
 
+    const bottom = @intFromPtr(&task_stack);
     const top = @intFromPtr(&task_stack) + task_stack.len;
-    if (top > std.math.maxInt(u32)) return false;
+    if (bottom > std.math.maxInt(u32) or top > std.math.maxInt(u32))
+        return false;
     const frame_address = (top - context.integer_context_size) &
         ~(@as(usize, context.stack_alignment) - 1);
     const initial_frame: *context.IntegerContext = @ptrFromInt(frame_address);
@@ -70,10 +85,17 @@ pub fn exerciseContextSwitchRoundTrip() bool {
     bootstrap_frame = null;
     task_frame = initial_frame;
     task_observation = 0;
+    esp_hw_stack_guard_get_bounds(0, &bootstrap_stack_min, &bootstrap_stack_max);
+    if (bootstrap_stack_min >= bootstrap_stack_max) return false;
     switch_state = .launch;
     const returned = nih_riscv_exception_roundtrip() == 1;
+    var restored_stack_min: u32 = 0;
+    var restored_stack_max: u32 = 0;
+    esp_hw_stack_guard_get_bounds(0, &restored_stack_min, &restored_stack_max);
     const complete = switch_state == .complete and
-        task_observation == test_argument and bootstrap_frame != null;
+        task_observation == test_argument and bootstrap_frame != null and
+        restored_stack_min == bootstrap_stack_min and
+        restored_stack_max == bootstrap_stack_max;
     switch_state = .idle;
     bootstrap_frame = null;
     task_frame = null;
@@ -94,11 +116,17 @@ export fn nih_riscv_trap_dispatch(
     return switch (switch_state) {
         .launch => next: {
             bootstrap_frame = interrupted;
+            nih_riscv_selected_stack_mins[hart_id] =
+                @intCast(@intFromPtr(&task_stack));
+            nih_riscv_selected_stack_maxs[hart_id] =
+                @intCast(@intFromPtr(&task_stack) + task_stack.len);
             switch_state = .running;
             break :next task_frame;
         },
         .running => next: {
             task_frame = interrupted;
+            nih_riscv_selected_stack_mins[hart_id] = bootstrap_stack_min;
+            nih_riscv_selected_stack_maxs[hart_id] = bootstrap_stack_max;
             switch_state = .complete;
             break :next bootstrap_frame;
         },
