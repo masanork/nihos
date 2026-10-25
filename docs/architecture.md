@@ -117,20 +117,22 @@ Zig scheduler implements fixed-priority selection, round-robin fairness within
 a priority, sleep/wake, blocking, bounded capacity, and generation-checked
 task handles. A saturating atomic counter hands periodic interrupt ticks to
 safe scheduler context, and the ESP-IDF oracle has delivered those interrupts
-through the stable ABI in ESP-EMU. RISC-V trap entry, saved context and stacks,
-native timer programming, syscall transitions, and physical preemption remain
-open; FreeRTOS is still the scheduler executing the bootstrap firmware.
+through the stable ABI in ESP-EMU and on a physical Tab5. Native timer
+programming, syscall transitions, and physical preemption remain open;
+FreeRTOS is still the scheduler executing the bootstrap firmware.
 
 The first native-port contract is now fixed and host-tested: a 128-byte RV32
 integer switch frame, a 160-byte aligned exception-frame reservation, separate
 optional RV32F state, and lossless ESP32-P4 CLIC cause decoding. This is a data
 layout milestone. A matching save/dispatch/restore path now uses private
-per-core interrupt stacks and a Zig dispatcher. ESP-EMU has completed a
-controlled switch from the ESP-IDF bootstrap stack to a separate Zig task
-stack and back. The nihOS vector is installed only around synchronous `ecall`
-operations with maskable interrupts disabled; normal CLIC and timer ownership
-remain with ESP-IDF. The ESP-IDF-hosted periodic callback has also passed on a
-physical revision-1.3 Tab5.
+per-core interrupt stacks and a Zig dispatcher. ESP-EMU and a physical
+revision-1.3 Tab5 have completed a controlled switch from the ESP-IDF
+bootstrap stack to a separate Zig task stack and back. The nihOS vector is
+installed only around synchronous `ecall` operations with maskable interrupts
+disabled; normal CLIC and timer ownership remain with ESP-IDF. The physical
+test also established that native switching must coordinate the P4 hardware
+stack bounds: the bounded bootstrap helper may suspend checking, while a real
+scheduler must update bounds for each selected task before it runs.
 
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged

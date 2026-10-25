@@ -50,11 +50,20 @@ per-core interrupt stack, preserves CLIC return state across a C-ABI Zig
 dispatcher, and restores the selected frame. It stops safely if the dispatcher
 returns null. A task trampoline defines both first entry and task return.
 
-ESP-EMU has run a bounded bootstrap-to-task-to-bootstrap switch on separate
-stacks. The test temporarily installs the vector only for two synchronous
-machine-mode `ecall` operations with maskable interrupts disabled, then
-restores ESP-IDF's vector and interrupt state.
+ESP-EMU and a physical revision-1.3 Tab5 have run a bounded
+bootstrap-to-task-to-bootstrap switch on separate stacks. The test temporarily
+installs the vector only for two synchronous machine-mode `ecall` operations
+with maskable interrupts disabled, then restores ESP-IDF's vector and
+interrupt state.
 
-Next, qualify the controlled switch on physical silicon, then connect the
-scheduler to a native timer source. Normal CLIC ownership, nested interrupts,
-FPU save/restore, and physical preemption remain later gates.
+ESP32-P4 hardware stack bounds are independent of `mstatus.MIE`. The bounded
+test therefore stops the ESP-IDF stack monitor before leaving the FreeRTOS
+task stack and restarts it after restoring that stack, but before restoring
+the caller's interrupt state. This is only a bootstrap test technique. A real
+nihOS scheduler must program bounds for the selected task on every switch; it
+must not leave stack checking disabled while arbitrary task code runs.
+
+Next, connect the scheduler to a native timer source and replace the bounded
+test helper with per-task stack-bound updates. Normal CLIC ownership, nested
+interrupts, FPU save/restore, CPU1 switching, and physical preemption remain
+later gates.
