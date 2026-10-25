@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "firmware_commit": "eb1a912caabc7ac54b0f32ab36a0b8aede2078bc",
+  "status": "emulator-qualified; physical-pending",
+  "tools": {
+    "zig": "0.17.0",
+    "esp_idf": "v5.4.4",
+    "esp_emu": "v0.50.0"
+  },
+  "emulator": {
+    "chip": "esp32p4 revision-3 ROM",
+    "psram_bytes": 0,
+    "boot_path": "ROM -> ESP-IDF second-stage loader -> native Zig SRAM entry",
+    "result": {
+      "schema": 1,
+      "backend": "native-sram",
+      "evidence": "emulator",
+      "rounds": 300,
+      "samples": 31,
+      "cpu0_progress": 299967199,
+      "cpu1_progress": 599935883,
+      "cpu0_interrupts": 1200,
+      "cpu1_interrupts": 1200
+    },
+    "log_sha256": "9bd89821c797cc4c8c575108814c007f88e5c56557e018ad807b6f2b9a9e5cf7"
+  },
+  "profiles": {
+    "emulator": {
+      "schema": 1,
+      "backend": "native-sram",
+      "rtos_linked": false,
+      "entry": "0x4ff00000",
+      "elf_sha256": "e22e4ceac5597e80fbfbf5084e86300dbb4eb84231b3090b66d14f9360f82d1b",
+      "image_sha256": "054545f59ca178939bd15a443ac3b79383f1b49edf8f5335261da2a9e667b78c",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 23008,
+      "rom_symbols": {
+        "nih_rom_putc": "0x4fc00054",
+        "nih_rom_set_cpu1_entry": "0x4fc000a8"
+      },
+      "sections": [
+        {
+          "name": ".flash.appdesc",
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "name": ".flash.rodata",
+          "address": "0x40010020",
+          "bytes": 4
+        },
+        {
+          "name": ".text",
+          "address": "0x4ff00000",
+          "bytes": 6338
+        },
+        {
+          "name": ".rodata",
+          "address": "0x4ff018d0",
+          "bytes": 212
+        },
+        {
+          "name": ".data",
+          "address": "0x4ff019b0",
+          "bytes": 4
+        },
+        {
+          "name": ".bss",
+          "address": "0x4ff019c0",
+          "bytes": 32
+        },
+        {
+          "name": ".stacks",
+          "address": "0x4ff019e0",
+          "bytes": 16384
+        }
+      ],
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 6340
+        },
+        {
+          "address": "0x4ff018d0",
+          "bytes": 212
+        },
+        {
+          "address": "0x4ff019b0",
+          "bytes": 4
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 4
+        }
+      ],
+      "merged_flash_sha256": "ebe80c303e9bdf25c5c1a3a8a11147d72b9be0b6ed780ac74fe523a93c262a4b",
+      "merged_flash_bytes": 131152
+    },
+    "device": {
+      "schema": 1,
+      "backend": "native-sram",
+      "rtos_linked": false,
+      "entry": "0x4ff00000",
+      "elf_sha256": "455a4ebe32a3f7891ae74ea363cef779bb121abfeb887761cbe023c85b8c47c6",
+      "image_sha256": "2d77dfba1581d7481f06d0f47f36ec30d5d9a3d53a02cadbd9c0576d2456ecec",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 23008,
+      "rom_symbols": {
+        "nih_rom_putc": "0x4fc00054",
+        "nih_rom_set_cpu1_entry": "0x4fc000a8"
+      },
+      "sections": [
+        {
+          "name": ".flash.appdesc",
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "name": ".flash.rodata",
+          "address": "0x40010020",
+          "bytes": 4
+        },
+        {
+          "name": ".text",
+          "address": "0x4ff00000",
+          "bytes": 6338
+        },
+        {
+          "name": ".rodata",
+          "address": "0x4ff018d0",
+          "bytes": 212
+        },
+        {
+          "name": ".data",
+          "address": "0x4ff019b0",
+          "bytes": 4
+        },
+        {
+          "name": ".bss",
+          "address": "0x4ff019c0",
+          "bytes": 32
+        },
+        {
+          "name": ".stacks",
+          "address": "0x4ff019e0",
+          "bytes": 16384
+        }
+      ],
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 6340
+        },
+        {
+          "address": "0x4ff018d0",
+          "bytes": 212
+        },
+        {
+          "address": "0x4ff019b0",
+          "bytes": 4
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 4
+        }
+      ],
+      "merged_flash_sha256": "b7c416a4a88ac5a67a519ac59512dc83b62267b96e62aea57272259df70da643",
+      "merged_flash_bytes": 131152
+    }
+  },
+  "host_checks": {
+    "Debug": "passed (cached unchanged host kernel tests)",
+    "ReleaseSafe": "passed (cached unchanged host kernel tests)",
+    "ZLint": "32 files, zero warnings/errors",
+    "ShellCheck": "passed",
+    "RV32_contract": "passed",
+    "native_log_regressions": "6 passed"
+  },
+  "image_negative_checks": [
+    {
+      "case": "flash entry",
+      "rejected": true,
+      "reason": "entry outside internal SRAM"
+    },
+    {
+      "case": "bad app descriptor",
+      "rejected": true,
+      "reason": "invalid first app descriptor"
+    },
+    {
+      "case": "wrong ELF digest",
+      "rejected": true,
+      "reason": "ELF digest mismatch"
+    },
+    {
+      "case": "image digest corruption",
+      "rejected": true,
+      "reason": "image SHA256 mismatch"
+    },
+    {
+      "case": "truncated image",
+      "rejected": true,
+      "reason": "missing image SHA256"
+    }
+  ],
+  "physical": {
+    "tested": false,
+    "reason": "shared serial port owned by a concurrent Quake development operation; no device access attempted"
+  }
+}
