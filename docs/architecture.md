@@ -141,6 +141,12 @@ change, installs the interrupt-stack or selected-task bounds, and resumes
 monitoring before running code on that stack. It verifies the original
 FreeRTOS bounds after the controlled round trip.
 
+ADR 0008 adds explicit RV32F contexts on CPU0. Integer workers perform no FP
+context transfers; opted-in workers preserve all 32 registers and `fcsr`
+across native timer preemption in ESP-EMU. The physical IDF FP bank is also
+restored before the bounded window ends. Lazy ownership, native CPU1 FP
+switching, and physical qualification remain separate gates.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a

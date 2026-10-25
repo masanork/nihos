@@ -12,9 +12,9 @@ with `mstatus`, `mtvec`, `mcause`, `mtval`, and `mhartid`, and reserves 160
 bytes to retain 16-byte stack alignment.
 
 Keep RV32F state in a separate 132-byte area containing f0 through f31 and
-`fcsr`. Integer-only tasks need no floating-point allocation or save. A task
-that first executes floating-point code will eventually acquire that area and
-become FPU-affine until the native SMP ownership protocol is implemented.
+`fcsr`. Integer-only tasks skip floating-point transfers. ADR 0008 implements
+explicit opt-in with preallocated state and eager save/restore on CPU0. Lazy
+first-use allocation and native SMP ownership remain future policies.
 
 Decode the ESP32-P4 CLIC `mcause` without destroying its metadata. The low 12
 bits identify the cause, while the interrupt flag, MINHV, previous privilege,
@@ -66,5 +66,5 @@ stack monitoring active.
 The bounded Timer Group test in ADR 0006 now delivers native asynchronous
 interrupts through this entry in ESP-EMU. ADR 0007 now connects task selection
 and elapsed-time accounting and preserves return CSRs per task. Normal CLIC ownership,
-nested interrupts, FPU save/restore, CPU1 switching, and physical preemption
+nested interrupts, native CPU1 FPU ownership/switching, and physical preemption
 remain later gates.

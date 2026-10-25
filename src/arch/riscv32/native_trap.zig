@@ -32,6 +32,14 @@ export var nih_riscv_selected_stack_mins: [core_count]u32 = @splat(0);
 export var nih_riscv_selected_stack_maxs: [core_count]u32 = @splat(0);
 export var nih_riscv_selected_return_states: [core_count]context.ReturnState =
     @splat(.{ .mstatus = 0, .mcause = 0 });
+export var nih_riscv_current_floating_states: [core_count]u32 = @splat(0);
+export var nih_riscv_selected_floating_states: [core_count]u32 = @splat(0);
+export var nih_riscv_floating_saves: [core_count]u32 = @splat(0);
+export var nih_riscv_floating_restores: [core_count]u32 = @splat(0);
+var bootstrap_floating = std.mem.zeroes(context.FloatingContext);
+var boundary_before = std.mem.zeroes(context.FloatingContext);
+var boundary_after = std.mem.zeroes(context.FloatingContext);
+var preemption_mode: preemption.Mode = .integer;
 var switch_state: SwitchState = .idle;
 var bootstrap_frame: ?*context.IntegerContext = null;
 var task_frame: ?*context.IntegerContext = null;
@@ -71,6 +79,7 @@ extern fn nih_riscv_task_trampoline() callconv(.c) void;
 extern fn nih_riscv_context_test_yield() callconv(.c) noreturn;
 extern fn nih_riscv_read_gp() callconv(.c) u32;
 extern fn nih_riscv_read_tp() callconv(.c) u32;
+extern fn nih_riscv_fpu_snapshot(out: *context.FloatingContext) callconv(.c) void;
 extern fn esp_hw_stack_guard_get_bounds(
     core_id: u32,
     stack_min: *u32,
@@ -166,6 +175,8 @@ fn finishTimer(returned: bool) bool {
     var restored_max: u32 = 0;
     esp_hw_stack_guard_get_bounds(0, &restored_min, &restored_max);
     timer_device = null;
+    nih_riscv_current_floating_states[0] = 0;
+    nih_riscv_selected_floating_states[0] = 0;
     const released = nih_espidf_native_timer_release() == 0;
     return returned and released and restored_min == bootstrap_stack_min and
         restored_max == bootstrap_stack_max;
@@ -186,21 +197,49 @@ pub fn exerciseNativeTimer() ?TimerReport {
 }
 
 pub fn exerciseNativePreemption() ?preemption.Report {
+    return exercisePreemption(.integer);
+}
+
+pub fn exerciseNativeFloatingPreemption() ?preemption.Report {
+    return exercisePreemption(.floating);
+}
+
+fn exercisePreemption(mode: preemption.Mode) ?preemption.Report {
     const device = acquireTimer() orelse return null;
     const trampoline = address32(&nih_riscv_task_trampoline) orelse {
         _ = finishTimer(false);
         return null;
     };
-    const prepared = preemption.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline);
+    preemption_mode = mode;
+    nih_riscv_floating_saves[0] = 0;
+    nih_riscv_floating_restores[0] = 0;
+    const floating_address = if (mode == .floating) address32(&bootstrap_floating).? else 0;
+    nih_riscv_current_floating_states[0] = floating_address;
+    const prepared = preemption.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline, mode, floating_address);
     switch_state = .preemption;
     const returned = prepared and nih_riscv_timer_window() == 1;
-    const report = if (returned) preemption.report() else null;
+    var report = if (returned) preemption.report() else null;
+    if (report) |*result| {
+        result.floating_saves = nih_riscv_floating_saves[0];
+        result.floating_restores = nih_riscv_floating_restores[0];
+        const expected = if (mode == .floating) result.interrupts else 0;
+        if (result.floating_saves != expected or result.floating_restores != expected)
+            report = null;
+    }
     if (!finishTimer(returned)) return null;
     return report;
 }
 
 export fn nih_riscv_native_timer_prepare() callconv(.c) u32 {
+    if (switch_state == .preemption and preemption_mode == .floating)
+        nih_riscv_fpu_snapshot(&boundary_before);
     return if (switch_state != .preemption or preemption.startMasked()) 1 else 0;
+}
+
+export fn nih_riscv_native_timer_finish() callconv(.c) u32 {
+    if (switch_state != .preemption or preemption_mode != .floating) return 1;
+    nih_riscv_fpu_snapshot(&boundary_after);
+    return if (std.mem.eql(u8, std.mem.asBytes(&boundary_before), std.mem.asBytes(&boundary_after))) 1 else 0;
 }
 
 export fn nih_riscv_native_timer_run() callconv(.c) u32 {
@@ -227,6 +266,7 @@ export fn nih_riscv_trap_dispatch(
     const cause = trap.Cause.decode(raw_mcause);
     const return_state = context.ReturnState{ .mstatus = raw_mstatus, .mcause = raw_mcause };
     nih_riscv_selected_return_states[hart_id] = return_state;
+    nih_riscv_selected_floating_states[hart_id] = nih_riscv_current_floating_states[hart_id];
     if (switch_state == .preemption) {
         if (hart_id != 0) return null;
         const selection = if (cause.kind == .interrupt and cause.reason == timer_interrupt_id)
@@ -239,6 +279,7 @@ export fn nih_riscv_trap_dispatch(
         nih_riscv_selected_stack_mins[hart_id] = selected.stack_min;
         nih_riscv_selected_stack_maxs[hart_id] = selected.stack_max;
         nih_riscv_selected_return_states[hart_id] = selected.state;
+        nih_riscv_selected_floating_states[hart_id] = selected.floating_context;
         return selected.frame;
     }
     if (switch_state == .timer) {

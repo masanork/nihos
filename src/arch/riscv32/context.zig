@@ -28,6 +28,13 @@ pub const ReturnState = extern struct {
             .mcause = self.mcause,
         };
     }
+
+    pub fn floatingReady(self: ReturnState) ReturnState {
+        const clean_floating_state: u32 = 2 << 13;
+        var state = self.integerOnly();
+        state.mstatus |= clean_floating_state;
+        return state;
+    }
 };
 
 /// One machine word for `mepc`, followed by the 31 non-zero RV32 integer
@@ -83,6 +90,16 @@ pub const ExceptionContext = extern struct {
 pub const FloatingContext = extern struct {
     f: [32]u32,
     fcsr: u32,
+};
+
+/// Raw test-worker ABI consumed by fpu.S. The worker never returns, and its
+/// single-word progress stores are read only after it has been descheduled.
+pub const FloatingProbe = extern struct {
+    pattern: u32,
+    expected_fcsr: u32,
+    iterations: u32 = 0,
+    failed: u32 = 0,
+    stack_address: u32 = 0,
 };
 
 pub const InitialTask = struct {
@@ -150,6 +167,11 @@ comptime {
     {
         @compileError("RV32 floating-point context offsets changed");
     }
+    if (@sizeOf(FloatingProbe) != 20 or
+        @offsetOf(FloatingProbe, "iterations") != 8 or
+        @offsetOf(FloatingProbe, "failed") != 12 or
+        @offsetOf(FloatingProbe, "stack_address") != 16)
+        @compileError("RV32 floating probe assembly layout changed");
 }
 
 test "integer task return preserves CLIC metadata and mret interrupt state" {
@@ -157,6 +179,9 @@ test "integer task return preserves CLIC metadata and mret interrupt state" {
     const outgoing = incoming.integerOnly();
     try std.testing.expectEqual(@as(u32, 0x1880), outgoing.mstatus);
     try std.testing.expectEqual(incoming.mcause, outgoing.mcause);
+    const floating = incoming.floatingReady();
+    try std.testing.expectEqual(@as(u32, 0x5880), floating.mstatus);
+    try std.testing.expectEqual(incoming.mcause, floating.mcause);
 }
 
 test "initial task frame is bounded and follows the trampoline ABI" {

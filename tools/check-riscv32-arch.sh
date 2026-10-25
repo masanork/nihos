@@ -28,5 +28,8 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     -I "$repo_root/src/arch/riscv32" \
     -o "$out_dir/trap_entry.o" \
     "$repo_root/src/arch/riscv32/trap_entry.S"
+"$zig" cc -c -target "$target" -mcpu="$cpu" \
+    -o "$out_dir/fpu.o" \
+    "$repo_root/src/arch/riscv32/fpu.S"
 
 echo "RV32 architecture contract compile: ok"
