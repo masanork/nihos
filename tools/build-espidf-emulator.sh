@@ -26,8 +26,10 @@ if [ ! -f "$idf_path/export.sh" ]; then
     exit 1
 fi
 
-# shellcheck disable=SC1091
-. "$idf_path/export.sh" >/dev/null 2>&1
+if ! command -v idf.py >/dev/null 2>&1; then
+    # shellcheck disable=SC1091
+    . "$idf_path/export.sh" >/dev/null
+fi
 
 mkdir -p "$build_dir"
 cd "$repo_root"
