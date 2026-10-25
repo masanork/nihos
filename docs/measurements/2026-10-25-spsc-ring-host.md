@@ -25,3 +25,9 @@ it does not qualify ESP32-P4 cache coherence, RISC-V atomic code generation,
 inter-processor interrupts, scheduler wakeups, or physical cross-core latency.
 Those remain native SMP hardware gates before the ring carries graphics or
 SQLite service requests.
+
+Later qualification found that the original two-value integer-wrap test was
+insufficient at non-power-of-two capacities. Filling capacity 3 across wrap
+reproduced unread-slot aliasing; the corrected owner-private cursor design
+and stronger host/target tests are recorded in
+[the event-driven channel result](2026-10-25-esp-emu-spsc-channels.md).
