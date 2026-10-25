@@ -658,6 +658,29 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("cpu1_task_checksum=", exchange.checksum);
     write("cpu1_task_both_hosts_restored=1\r\n");
     write("native_cpu1_tasks=ok\r\n");
+    const cpu1_preempted = native_trap.exerciseNativeCpu1Preemption() orelse {
+        write("nihos: CPU1 native timer preemption failed\r\n");
+        return;
+    };
+    const timed_exchange = cpu1_preempted.duplex orelse return;
+    const timed = timed_exchange.tasks orelse return;
+    writeU32("cpu1_timer_interrupts=", timed.timer_interrupts);
+    writeU32("cpu1_timer_task_captures=", timed.timer_task_captures);
+    writeU64("cpu1_timer_caught_up_ticks=", timed.timer_caught_up_ticks);
+    writeU64("cpu1_elapsed_ticks=", timed.elapsed_ticks);
+    writeU64("cpu1_runtime_ticks=", timed.runtime_ticks);
+    writeU64("cpu1_sleep_started=", timed.sleep_started);
+    writeU64("cpu1_sleep_deadline=", timed.sleep_deadline);
+    writeU64("cpu1_sleep_resumed=", timed.sleep_resumed);
+    writeU32("cpu1_non_yield_iterations=", timed.probe_iterations);
+    writeU32("cpu1_probe_timer_wake=", @intFromBool(timed.probe_timer_wake));
+    writeU32("cpu1_timed_messages=", timed_exchange.messages);
+    writeU32("cpu1_timed_payloads=", timed_exchange.task_payloads);
+    writeU32("cpu1_timed_switches=", timed.switches);
+    writeU32("cpu1_timed_reaped=", timed.reaped);
+    writeU32("cpu1_timed_cpu0_timer_interrupts=", cpu1_preempted.interrupts);
+    write("cpu1_timed_both_hosts_restored=1\r\n");
+    write("native_cpu1_timer_preemption=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

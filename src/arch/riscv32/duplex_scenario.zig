@@ -6,6 +6,7 @@ const calls = @import("task_calls.zig");
 const idle = @import("idle.zig");
 const park = @import("park");
 const cpu1_tasks = @import("cpu1_tasks.zig");
+const timer_group = @import("timer_group");
 const rings = @import("spsc_ring");
 const remote = @import("remote_events");
 const Doorbell = @import("software_ipi").Doorbell;
@@ -13,11 +14,12 @@ const Inbox = remote.Inbox(rings.SpscRing(remote.Notification, 4));
 const Message = struct { sequence: u32, payload: u32 };
 const Ring = rings.SpscRing(Message, 3);
 const Lease = extern struct { register_address: u32, interrupt_id: u32 };
+const TimerLease = extern struct { group_address: u32, channel_id: u32, interrupt_id: u32 };
 const messages: u32 = 64;
 const response_bit: u32 = 1;
 const finished_bit: u32 = 2;
 const timeout_us: u64 = 300_000;
-pub const Execution = enum { interrupt_echo, task_service };
+pub const Execution = enum { interrupt_echo, task_service, preemptive_tasks };
 
 pub const Report = struct {
     messages: u32,
@@ -67,6 +69,8 @@ var processed: u32 = 0;
 var service_started = false;
 var pending_request: ?Message = null;
 var task_payloads: u32 = 0;
+var service_timer: ?timer_group.Timer = null;
+var service_timer_interrupt_id: u32 = 0;
 // CPU0's serialized trap tail owns this accounting.
 var cpu0_interrupts: u32 = 0;
 var drained: remote.DrainReport = .{};
@@ -76,6 +80,8 @@ extern fn nih_platform_cpu_id() callconv(.c) u32;
 extern fn nih_platform_cpu_start(cpu: u32, entry: *const fn (?*anyopaque) callconv(.c) void, argument: ?*anyopaque) callconv(.c) i32;
 extern fn nih_espidf_native_service_acquire(out: *Lease) callconv(.c) i32;
 extern fn nih_espidf_native_service_release() callconv(.c) i32;
+extern fn nih_espidf_native_service_timer_acquire(out: *TimerLease) callconv(.c) i32;
+extern fn nih_espidf_native_service_timer_release() callconv(.c) i32;
 extern fn nih_espidf_native_service_probe_yield() callconv(.c) void;
 extern fn nih_espidf_native_service_verify_host() callconv(.c) i32;
 extern fn nih_riscv_service_window() callconv(.c) u32;
@@ -130,7 +136,7 @@ fn processRequests() bool {
         service_started = true;
         if (!post(.{ .slot = handles[0].slot, .generation = handles[0].generation + 1 }, response_bit)) return false;
     }
-    const budget: usize = if (execution == .task_service) 1 else 4;
+    const budget: usize = if (execution != .interrupt_echo) 1 else 4;
     for (0..budget) |_| {
         const request = pending_request orelse requests.tryPop() orelse break;
         if (request.sequence & 1 != 0 and waiting_sequence.load(.acquire) != request.sequence + 1) {
@@ -138,7 +144,7 @@ fn processRequests() bool {
             break;
         }
         pending_request = null;
-        if (execution == .task_service) {
+        if (execution != .interrupt_echo) {
             var marker: u32 = 0;
             const checked: *volatile u32 = &marker;
             checked.* = request.sequence;
@@ -152,7 +158,7 @@ fn processRequests() bool {
         if (processed == messages and !post(handles[1], finished_bit)) return false;
     }
     if (pending_request == null and requests.countApprox() != 0) {
-        if (execution == .task_service) {
+        if (execution != .interrupt_echo) {
             // Several records can share one doorbell. Retain local work when
             // this task's budget ends after remote metadata was consumed.
             if (calls.notify(cpu1_tasks.serviceHandle(), cpu1_tasks.request_bit) != calls.Status.ok) return false;
@@ -180,48 +186,85 @@ fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
         failed.store(true, .release);
         return;
     }
-    if (execution == .task_service and !cpu1_tasks.prepare(
+    var timer_leased = false;
+    if (execution == .preemptive_tasks) {
+        var timer_lease = std.mem.zeroes(TimerLease);
+        if (nih_espidf_native_service_timer_acquire(&timer_lease) != calls.Status.ok) {
+            _ = nih_espidf_native_service_release();
+            failed.store(true, .release);
+            return;
+        }
+        timer_leased = true;
+        service_timer = timer_group.Timer.fromGroup(timer_lease.group_address, timer_lease.channel_id);
+        service_timer_interrupt_id = timer_lease.interrupt_id;
+        if (service_timer == null or timer_lease.interrupt_id < 16 or timer_lease.interrupt_id >= 48 or
+            timer_lease.interrupt_id == service_interrupt_id)
+        {
+            _ = nih_espidf_native_service_timer_release();
+            _ = nih_espidf_native_service_release();
+            failed.store(true, .release);
+            return;
+        }
+    }
+    if (execution != .interrupt_echo and !cpu1_tasks.prepare(
         service_stack_min,
         service_stack_max,
         nih_riscv_read_gp(),
         nih_riscv_read_tp(),
         @intCast(@intFromPtr(&nih_riscv_task_trampoline)),
         .{ .work = &processRequests },
+        service_timer,
     )) {
+        if (service_timer) |timer| timer.stop();
+        if (timer_leased) _ = nih_espidf_native_service_timer_release();
         _ = nih_espidf_native_service_release();
         failed.store(true, .release);
         return;
     }
     const returned = nih_riscv_service_window() == 1;
     native_active.store(false, .release);
+    // Covers a prepare hook that declined entry before service_run could stop.
+    if (service_timer) |timer| timer.stop();
     var minimum: u32 = 0;
     var maximum: u32 = 0;
     esp_hw_stack_guard_get_bounds(1, &minimum, &maximum);
+    const timer_released = if (timer_leased) nih_espidf_native_service_timer_release() == calls.Status.ok else true;
     const released = nih_espidf_native_service_release() == calls.Status.ok;
-    const tasks_finished = if (execution == .task_service) cpu1_tasks.finalize() else true;
-    const restored = returned and released and tasks_finished and minimum == service_stack_min and maximum == service_stack_max;
+    const tasks_finished = if (execution != .interrupt_echo) cpu1_tasks.finalize() else true;
+    const restored = returned and timer_released and released and tasks_finished and minimum == service_stack_min and maximum == service_stack_max;
     worker_restored.store(restored, .release);
     if (!restored) failed.store(true, .release);
 }
 
 export fn nih_riscv_native_service_prepare() callconv(.c) u32 {
+    const timer_ready = if (execution == .preemptive_tasks and !stopping.load(.acquire)) cpu1_tasks.startTimer() else true;
+    if (!timer_ready) failed.store(true, .release);
     native_active.store(true, .release);
     ready.store(true, .release); // Publish the route only after mtvec changes.
-    return if (stopping.load(.acquire)) 0 else 1;
+    return if (stopping.load(.acquire) or !timer_ready) 0 else 1;
+}
+
+export fn nih_riscv_native_service_finish() callconv(.c) void {
+    // Also runs if prepare started the counter and then declined entry.
+    if (execution == .preemptive_tasks) cpu1_tasks.stopTimer();
 }
 
 export fn nih_riscv_native_service_run() callconv(.c) u32 {
     var interrupts = idle.InterruptWait{};
-    const exit = if (execution == .task_service) cpu1_tasks.exitFlag() else &service_exit;
+    const exit = if (execution != .interrupt_echo) cpu1_tasks.exitFlag() else &service_exit;
     while (!exit.load(.acquire)) {
         if (park.once(exit, &interrupts)) service_parks += 1;
     }
+    if (execution == .preemptive_tasks) cpu1_tasks.stopTimer();
     return if (!failed.load(.acquire)) 1 else 0;
 }
 
 pub fn onServiceIpi(frame: *context.IntegerContext, state: context.ReturnState, reason: u12) ?context.TaskContext {
-    if (!native_active.load(.acquire) or reason != service_interrupt_id) return null;
-    if (execution == .task_service) {
+    if (!native_active.load(.acquire)) return null;
+    if (execution == .preemptive_tasks and reason == service_timer_interrupt_id)
+        return cpu1_tasks.onTimer(frame, state);
+    if (reason != service_interrupt_id) return null;
+    if (execution != .interrupt_echo) {
         // The registered runtime image supplies bounds for whichever native
         // task (or idle bootstrap) was interrupted, not just the IDF stack.
         to_cpu1.?.acknowledge();
@@ -245,7 +288,7 @@ pub fn onServiceIpi(frame: *context.IntegerContext, state: context.ReturnState, 
 }
 
 pub fn onServiceCall(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
-    if (!native_active.load(.acquire) or execution != .task_service) return null;
+    if (!native_active.load(.acquire) or execution == .interrupt_echo) return null;
     return cpu1_tasks.onCall(frame, state);
 }
 
@@ -320,6 +363,8 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
     service_started = false;
     pending_request = null;
     task_payloads = 0;
+    service_timer = null;
+    service_timer_interrupt_id = 0;
     cpu0_interrupts = 0;
     drained = .{};
     if (nih_platform_cpu_start(1, &serviceWorker, null) != calls.Status.ok) {
@@ -337,7 +382,7 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
 pub fn start() void {
     active.store(true, .release);
     nih_espidf_native_service_probe_yield();
-    if (execution == .task_service) _ = notifyWorker(true);
+    if (execution != .interrupt_echo) _ = notifyWorker(true);
     _ = notifyWorker(false);
 }
 
@@ -392,7 +437,7 @@ pub fn report() ?Report {
     var expected: u32 = 0;
     for (0..messages) |index| expected +%= payload(@intCast(index)) ^ 0xa5a5_5a5a;
     if (checksum.load(.monotonic) != expected) return null;
-    const tasks = if (execution == .task_service) cpu1_tasks.report() orelse return null else null;
+    const tasks = if (execution != .interrupt_echo) cpu1_tasks.report() orelse return null else null;
     if (tasks) |value| if (task_payloads != messages or value.observer_rounds < messages or value.rejected != 1) return null;
     return .{
         .messages = messages,

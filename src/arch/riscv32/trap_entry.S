@@ -311,6 +311,7 @@ nih_riscv_service_window:
     sw a0, 4(sp)
     csrci mstatus, 8
 .Lservice_window_restore:
+    call nih_riscv_native_service_finish
     fence iorw, iorw
     csrw mtvec, s1
     call nih_espidf_native_service_leave
