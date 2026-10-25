@@ -7,6 +7,9 @@
  */
 
 #include "context_offsets.inc"
+#if __has_include("sdkconfig.h")
+#include "sdkconfig.h"
+#endif
 
     /* Keep the temporary vector in IRAM and out of flash/MMU aliasing. */
     .section .iram1.nih_riscv_trap_entry, "ax", @progbits
@@ -132,18 +135,34 @@ nih_riscv_trap_entry:
     .type nih_riscv_exception_roundtrip, @function
 nih_riscv_exception_roundtrip:
     /*
-     * Save ESP-IDF's vector state in temporaries. The trap frame preserves
-     * those temporaries across ecall. MIE is cleared before mtvec changes, so
-     * no maskable interrupt can enter through the temporary vector.
+     * Preserve ESP-IDF's vector and stack-guard state. MIE is cleared before
+     * either changes, so no maskable interrupt can enter through the
+     * temporary vector or observe a disabled stack monitor.
      */
-    csrr t0, mstatus
+    addi sp, sp, -16
+    sw ra, 12(sp)
+    sw s0, 8(sp)
+    sw s1, 4(sp)
+    csrr s0, mstatus
+    sw s0, 0(sp)
     csrci mstatus, 8
-    csrr t1, mtvec
+#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
+    call esp_hw_stack_guard_monitor_stop
+#endif
+    csrr s1, mtvec
     la t2, nih_riscv_trap_entry
     ori t2, t2, 3
     csrw mtvec, t2
     ecall
-    csrw mtvec, t1
+    csrw mtvec, s1
+#if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
+    call esp_hw_stack_guard_monitor_start
+#endif
+    lw t0, 0(sp)
+    lw s1, 4(sp)
+    lw s0, 8(sp)
+    lw ra, 12(sp)
+    addi sp, sp, 16
     csrw mstatus, t0
     li a0, 1
     ret
