@@ -131,8 +131,10 @@ bootstrap stack to a separate Zig task stack and back. The nihOS vector is
 installed only around synchronous `ecall` operations with maskable interrupts
 disabled; normal CLIC and timer ownership remain with ESP-IDF. The physical
 test also established that native switching must coordinate the P4 hardware
-stack bounds: the bounded bootstrap helper may suspend checking, while a real
-scheduler must update bounds for each selected task before it runs.
+stack bounds. The trap path now stops monitoring only across the actual stack
+change, installs the interrupt-stack or selected-task bounds, and resumes
+monitoring before running code on that stack. It verifies the original
+FreeRTOS bounds after the controlled round trip.
 
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
