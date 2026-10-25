@@ -59,6 +59,10 @@ floating preemption test runs earlier in a separate native window. This
 qualifies per-hart FP context support across separate windows; it does not test
 simultaneous FP workloads on both harts.
 
+ADR 0017 adds a separate overlapping-owner fixture for that next gate while
+retaining this CPU1-only scenario unchanged in purpose. Its results are in
+the [simultaneous FP record](../measurements/2026-10-25-tab5-simultaneous-floating.md).
+
 The floating window also requires save and restore totals to match the number
 of handled CPU1 traps:
 

@@ -234,6 +234,12 @@ CPU0 also retains its own IDF bootstrap bank through this mode, and each
 owner checks its independent trap/runtime accounting before reaping. This
 does not add migration or change the integer and CPU1-only regression modes.
 
+The [simultaneous FP record](measurements/2026-10-25-tab5-simultaneous-floating.md)
+qualifies that interval in ESP-EMU and three physical boots: each core
+recorded eight observer timer captures and advancing FP checks before the
+gate opened. Both IDF banks/FS states and per-owner trap/runtime accounting
+were restored and checked. Loaded graphics/audio behavior remains separate.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a
