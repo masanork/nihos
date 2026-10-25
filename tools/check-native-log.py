@@ -36,7 +36,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         raise ValueError("missing/duplicate PSRAM discovery")
     psram = dict(zip(psram_names, (int(value, 16) for value in discovered[0])))
     if (psram["status"] not in (0, 1) or psram["bytes"] != expected_psram_bytes or
-            psram["transactions"] != 4 or psram["mapped"] != 0 or psram["allocatable"] != 0 or
+            psram["transactions"] != 4 or psram["mapped"] != (0 if expected_psram_bytes == 0 else 3 * 65536) or psram["allocatable"] != 0 or
             psram["configuration"] > 0xffff or psram["identity"] > 0xffff):
         raise ValueError("incomplete PSRAM discovery or premature memory exposure")
     if psram["status"] == 0:
@@ -77,6 +77,24 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
                 psram_io["mr0"] & 63 != 0x28 or psram_io["mr4"] & 0xe0 != 0x40 or
                 psram_io["mr8"] & 0x4f != 0x0b):
             raise ValueError("incomplete PSRAM data/mode qualification")
+    mapping_names = ("status", "failure", "line_bytes", "last_address", "last_actual", "last_expected",
+                     "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs")
+    pattern = "NIHOS_NATIVE_PSRAM_MAP" + "".join(" " + name + r"=([0-9a-f]{8})" for name in mapping_names)
+    matches = re.findall(pattern, log)
+    if len(matches) != 1:
+        raise ValueError("missing/duplicate PSRAM mapping evidence")
+    mapped = dict(zip(mapping_names, (int(value, 16) for value in matches[0])))
+    expected_mapping = [1, 0, 64, 0, 0, 0, 3 * 65536, 1024, 36, 36, 72, 5] if psram["status"] else [0] * 12
+    if list(mapped.values()) != expected_mapping:
+        raise ValueError("incomplete PSRAM nonidentity mapping/cache evidence")
+    smp_names = ("status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs")
+    pattern = "NIHOS_NATIVE_PSRAM_SMP" + "".join(" " + name + r"=([0-9a-f]{8})" for name in smp_names)
+    matches = re.findall(pattern, log)
+    if len(matches) != 1:
+        raise ValueError("missing/duplicate PSRAM SMP evidence")
+    psram_smp = dict(zip(smp_names, (int(value, 16) for value in matches[0])))
+    if list(psram_smp.values()) != ([1, 64, 3072, 3072, 48, 1] if psram["status"] else [0] * 6):
+        raise ValueError("incomplete PSRAM cross-core handoff evidence")
     pattern = (r"NIHOS_NATIVE_HEARTBEAT round=([0-9a-f]{8}) cpu0=([0-9a-f]{8}) "
                r"cpu1=([0-9a-f]{8}) ticks0=([0-9a-f]{8}) ticks1=([0-9a-f]{8})")
     samples = [tuple(int(value, 16) for value in match)
@@ -181,6 +199,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
+            "psram_mapping": mapped, "psram_smp": psram_smp,
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
             "cpu0_interrupts": samples[-1][3], "cpu1_interrupts": samples[-1][4],
             "tasks": [{"hart": hart, "progress": values[-1][:2],

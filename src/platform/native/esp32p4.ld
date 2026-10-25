@@ -50,3 +50,7 @@ SECTIONS
 /* ROM ABI, not linked ESP-IDF implementations. */
 PROVIDE(nih_rom_putc = 0x4fc00054);
 PROVIDE(nih_rom_set_cpu1_entry = 0x4fc000a8);
+PROVIDE(nih_rom_l2_line_size = 0x4fc003cc);
+PROVIDE(nih_rom_l2_enable = 0x4fc00504);
+PROVIDE(nih_rom_cache_invalidate = 0x4fc003e4);
+PROVIDE(nih_rom_cache_writeback = 0x4fc003f4);

@@ -78,7 +78,7 @@ pub fn Controller(comptime IO: type) type {
             return @truncate(try self.transfer(.read_mode, address, 0, 16, 8));
         }
 
-        fn transfer(self: *Self, operation: Operation, address: u32, value: u32, bits: u6, dummy: u6) Error!u32 {
+        noinline fn transfer(self: *Self, operation: Operation, address: u32, value: u32, bits: u6, dummy: u6) Error!u32 {
             if (self.faulted) return error.Faulted;
             if (self.poll_limit == 0) return error.InvalidBudget;
             if (self.io.read(registers.command) & registers.start != 0) return error.Busy;
@@ -138,12 +138,12 @@ pub fn Controller(comptime IO: type) type {
             if (address & 3 != 0 or address > self.capacity - 4) return error.OutOfRange;
         }
 
-        pub fn writeWord(self: *Self, address: u32, value: u32) Error!void {
+        pub noinline fn writeWord(self: *Self, address: u32, value: u32) Error!void {
             try self.checkAddress(address);
             _ = try self.transfer(.write_data, address, value, 32, 8);
         }
 
-        pub fn readWord(self: *Self, address: u32) Error!u32 {
+        pub noinline fn readWord(self: *Self, address: u32) Error!u32 {
             try self.checkAddress(address);
             return self.transfer(.read_data, address, 0, 32, 18);
         }
