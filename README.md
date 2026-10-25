@@ -102,6 +102,9 @@ The first remote-wait and IDF-restoration result is recorded in
 Reverse wakeup, CPU1's WFI service, and restoration of both hosts are defined
 in
 [`docs/adr/0013-duplex-ipi-and-wfi-service.md`](docs/adr/0013-duplex-ipi-and-wfi-service.md).
+The first duplex request/completion, WFI, stop-IPI, and host-restoration result
+is recorded in
+[`docs/measurements/2026-10-25-esp-emu-duplex-wfi.md`](docs/measurements/2026-10-25-esp-emu-duplex-wfi.md).
 
 ## Bootstrap checks
 
