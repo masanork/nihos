@@ -25,7 +25,10 @@ pub const Status = struct {
     pub const invalid_argument: i32 = -2;
     pub const not_found: i32 = -3;
     pub const invalid_state: i32 = -4;
+    pub const not_supported: i32 = -5;
 };
+
+pub const Options = struct { sleep_enabled: bool = true };
 
 pub const Handle = struct { slot: u16, generation: u16 };
 
@@ -61,6 +64,10 @@ pub fn dispatch(policy: anytype, raw_number: u32, argument: u32) Reply {
 }
 
 pub fn dispatchWithPayload(policy: anytype, raw_number: u32, argument: u32, payload: u32) Reply {
+    return dispatchWithOptions(policy, raw_number, argument, payload, .{});
+}
+
+pub fn dispatchWithOptions(policy: anytype, raw_number: u32, argument: u32, payload: u32, options: Options) Reply {
     const number = Number.decode(raw_number) orelse return .status(Status.invalid_call);
     const current = policy.current() orelse return .status(Status.invalid_state);
     if (number != .notify and payload != 0) return .status(Status.invalid_argument);
@@ -70,6 +77,7 @@ pub fn dispatchWithPayload(policy: anytype, raw_number: u32, argument: u32, payl
             return .{ .low = 0, .reschedule = true };
         },
         .sleep => {
+            if (!options.sleep_enabled) return .status(Status.not_supported);
             if (!policy.sleep(current, argument)) return .status(Status.invalid_argument);
             return .{ .low = 0, .reschedule = true };
         },

@@ -5,6 +5,7 @@ const context = @import("context.zig");
 const calls = @import("task_calls.zig");
 const idle = @import("idle.zig");
 const park = @import("park");
+const cpu1_tasks = @import("cpu1_tasks.zig");
 const rings = @import("spsc_ring");
 const remote = @import("remote_events");
 const Doorbell = @import("software_ipi").Doorbell;
@@ -16,6 +17,7 @@ const messages: u32 = 64;
 const response_bit: u32 = 1;
 const finished_bit: u32 = 2;
 const timeout_us: u64 = 300_000;
+pub const Execution = enum { interrupt_echo, task_service };
 
 pub const Report = struct {
     messages: u32,
@@ -28,11 +30,15 @@ pub const Report = struct {
     delivered: u32,
     rejected: u32,
     checksum: u32,
+    task_payloads: u32,
+    tasks: ?cpu1_tasks.Report = null,
 };
 
 var requests = Ring.init();
 var responses = Ring.init();
 var inbox: Inbox = .{};
+var worker_inbox: Inbox = .{};
+var execution: Execution = .interrupt_echo;
 var to_cpu0: ?Doorbell = null;
 var to_cpu1: ?Doorbell = null;
 var handles: [2]calls.Handle = @splat(.{ .slot = 0, .generation = 0 });
@@ -60,6 +66,7 @@ var stop_interrupts: u32 = 0;
 var processed: u32 = 0;
 var service_started = false;
 var pending_request: ?Message = null;
+var task_payloads: u32 = 0;
 // CPU0's serialized trap tail owns this accounting.
 var cpu0_interrupts: u32 = 0;
 var drained: remote.DrainReport = .{};
@@ -72,6 +79,9 @@ extern fn nih_espidf_native_service_release() callconv(.c) i32;
 extern fn nih_espidf_native_service_probe_yield() callconv(.c) void;
 extern fn nih_espidf_native_service_verify_host() callconv(.c) i32;
 extern fn nih_riscv_service_window() callconv(.c) u32;
+extern fn nih_riscv_read_gp() callconv(.c) u32;
+extern fn nih_riscv_read_tp() callconv(.c) u32;
+extern fn nih_riscv_task_trampoline() callconv(.c) void;
 extern fn esp_hw_stack_guard_get_bounds(core: u32, minimum: *u32, maximum: *u32) callconv(.c) void;
 
 fn payload(sequence: u32) u32 {
@@ -95,6 +105,62 @@ fn post(handle: calls.Handle, bits: u32) bool {
     return true;
 }
 
+fn notifyWorker(stale: bool) bool {
+    if (execution == .interrupt_echo) {
+        to_cpu1.?.raise();
+        return true;
+    }
+    // CPU0 is this endpoint's only producer. Mask its local handling across
+    // publication so task-side and trap-tail submissions cannot reenter it.
+    var interrupts = idle.InterruptWait{};
+    const previous = interrupts.mask();
+    defer interrupts.restore(previous);
+    const target = cpu1_tasks.serviceHandle(); // Published by ready's release.
+    const result = worker_inbox.post(.{
+        .slot = target.slot,
+        .generation = target.generation + @as(u16, @intFromBool(stale)),
+        .bits = cpu1_tasks.request_bit,
+    }, to_cpu1.?);
+    if (result != .queued) failed.store(true, .release);
+    return result == .queued;
+}
+
+fn processRequests() bool {
+    if (!service_started) {
+        service_started = true;
+        if (!post(.{ .slot = handles[0].slot, .generation = handles[0].generation + 1 }, response_bit)) return false;
+    }
+    const budget: usize = if (execution == .task_service) 1 else 4;
+    for (0..budget) |_| {
+        const request = pending_request orelse requests.tryPop() orelse break;
+        if (request.sequence & 1 != 0 and waiting_sequence.load(.acquire) != request.sequence + 1) {
+            pending_request = request;
+            break;
+        }
+        pending_request = null;
+        if (execution == .task_service) {
+            var marker: u32 = 0;
+            const checked: *volatile u32 = &marker;
+            checked.* = request.sequence;
+            if (!cpu1_tasks.containsServiceAddress(@intFromPtr(&marker))) return false;
+            task_payloads += 1;
+        }
+        if (request.sequence != processed or request.payload != payload(processed) or
+            !responses.tryPush(.{ .sequence = request.sequence, .payload = request.payload ^ 0xa5a5_5a5a })) return false;
+        if (!post(handles[0], response_bit)) return false;
+        processed += 1;
+        if (processed == messages and !post(handles[1], finished_bit)) return false;
+    }
+    if (pending_request == null and requests.countApprox() != 0) {
+        if (execution == .task_service) {
+            // Several records can share one doorbell. Retain local work when
+            // this task's budget ends after remote metadata was consumed.
+            if (calls.notify(cpu1_tasks.serviceHandle(), cpu1_tasks.request_bit) != calls.Status.ok) return false;
+        } else to_cpu1.?.raise();
+    }
+    return true;
+}
+
 fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
     defer done.store(true, .release);
     if (nih_platform_cpu_id() != 1) {
@@ -114,13 +180,26 @@ fn serviceWorker(_: ?*anyopaque) callconv(.c) void {
         failed.store(true, .release);
         return;
     }
+    if (execution == .task_service and !cpu1_tasks.prepare(
+        service_stack_min,
+        service_stack_max,
+        nih_riscv_read_gp(),
+        nih_riscv_read_tp(),
+        @intCast(@intFromPtr(&nih_riscv_task_trampoline)),
+        .{ .work = &processRequests },
+    )) {
+        _ = nih_espidf_native_service_release();
+        failed.store(true, .release);
+        return;
+    }
     const returned = nih_riscv_service_window() == 1;
     native_active.store(false, .release);
     var minimum: u32 = 0;
     var maximum: u32 = 0;
     esp_hw_stack_guard_get_bounds(1, &minimum, &maximum);
     const released = nih_espidf_native_service_release() == calls.Status.ok;
-    const restored = returned and released and minimum == service_stack_min and maximum == service_stack_max;
+    const tasks_finished = if (execution == .task_service) cpu1_tasks.finalize() else true;
+    const restored = returned and released and tasks_finished and minimum == service_stack_min and maximum == service_stack_max;
     worker_restored.store(restored, .release);
     if (!restored) failed.store(true, .release);
 }
@@ -133,14 +212,24 @@ export fn nih_riscv_native_service_prepare() callconv(.c) u32 {
 
 export fn nih_riscv_native_service_run() callconv(.c) u32 {
     var interrupts = idle.InterruptWait{};
-    while (!service_exit.load(.acquire)) {
-        if (park.once(&service_exit, &interrupts)) service_parks += 1;
+    const exit = if (execution == .task_service) cpu1_tasks.exitFlag() else &service_exit;
+    while (!exit.load(.acquire)) {
+        if (park.once(exit, &interrupts)) service_parks += 1;
     }
     return if (!failed.load(.acquire)) 1 else 0;
 }
 
 pub fn onServiceIpi(frame: *context.IntegerContext, state: context.ReturnState, reason: u12) ?context.TaskContext {
     if (!native_active.load(.acquire) or reason != service_interrupt_id) return null;
+    if (execution == .task_service) {
+        // The registered runtime image supplies bounds for whichever native
+        // task (or idle bootstrap) was interrupted, not just the IDF stack.
+        to_cpu1.?.acknowledge();
+        service_interrupts += 1;
+        const stop_requested = stopping.load(.acquire);
+        if (stop_requested) stop_interrupts += 1;
+        return cpu1_tasks.onIpi(frame, state, &worker_inbox, to_cpu1.?, stop_requested);
+    }
     const address = @intFromPtr(frame);
     if (address & 15 != 0 or address < service_stack_min or address > service_stack_max or
         context.integer_context_size > service_stack_max - address) return null;
@@ -150,28 +239,14 @@ pub fn onServiceIpi(frame: *context.IntegerContext, state: context.ReturnState, 
         stop_interrupts += 1;
         service_exit.store(true, .release);
     } else if (active.load(.acquire)) {
-        if (!service_started) {
-            service_started = true;
-            if (!post(.{ .slot = handles[0].slot, .generation = handles[0].generation + 1 }, response_bit)) return null;
-        }
-        for (0..4) |_| {
-            const request = pending_request orelse requests.tryPop() orelse break;
-            // Hold odd requests until CPU0 registers its wait. A later IPI
-            // from that registration advances this test gate without polling.
-            if (request.sequence & 1 != 0 and waiting_sequence.load(.acquire) != request.sequence + 1) {
-                pending_request = request;
-                break;
-            }
-            pending_request = null;
-            if (request.sequence != processed or request.payload != payload(processed) or
-                !responses.tryPush(.{ .sequence = request.sequence, .payload = request.payload ^ 0xa5a5_5a5a })) return null;
-            if (!post(handles[0], response_bit)) return null;
-            processed += 1;
-            if (processed == messages and !post(handles[1], finished_bit)) return null;
-        }
-        if (pending_request == null and requests.countApprox() != 0) to_cpu1.?.raise();
+        if (!processRequests()) return null;
     }
     return .{ .frame = frame, .state = state, .stack_min = service_stack_min, .stack_max = service_stack_max };
+}
+
+pub fn onServiceCall(frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
+    if (!native_active.load(.acquire) or execution != .task_service) return null;
+    return cpu1_tasks.onCall(frame, state);
 }
 
 pub fn client(_: u32) callconv(.c) i32 {
@@ -184,7 +259,7 @@ pub fn client(_: u32) callconv(.c) i32 {
         if (!requests.tryPush(.{ .sequence = sequence, .payload = payload(sequence) })) abortTask(-160);
         published_sequence.store(sequence + 1, .release);
         if (sequence & 1 == 0) {
-            to_cpu1.?.raise();
+            if (!notifyWorker(false)) abortTask(-170);
             // Exercise a reply posted before WAIT, including while sleeping.
             if (calls.sleep(1) != calls.Status.ok) abortTask(-161);
         }
@@ -214,11 +289,13 @@ pub fn observer(_: u32) callconv(.c) i32 {
     return 79;
 }
 
-pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, device: Doorbell) bool {
+pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, device: Doorbell, selected_execution: Execution) bool {
     if (!done.load(.acquire)) return false;
     requests = Ring.init();
     responses = Ring.init();
     inbox = .{};
+    worker_inbox = .{};
+    execution = selected_execution;
     to_cpu0 = device;
     to_cpu1 = null;
     handles = .{ client_handle, observer_handle };
@@ -242,6 +319,7 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
     processed = 0;
     service_started = false;
     pending_request = null;
+    task_payloads = 0;
     cpu0_interrupts = 0;
     drained = .{};
     if (nih_platform_cpu_start(1, &serviceWorker, null) != calls.Status.ok) {
@@ -259,14 +337,15 @@ pub fn prepare(client_handle: calls.Handle, observer_handle: calls.Handle, devic
 pub fn start() void {
     active.store(true, .release);
     nih_espidf_native_service_probe_yield();
-    to_cpu1.?.raise();
+    if (execution == .task_service) _ = notifyWorker(true);
+    _ = notifyWorker(false);
 }
 
 pub fn recordBlocked(slot: u16, mask: u32) void {
     if (slot == handles[0].slot and mask == response_bit) {
         _ = registered_waits.fetchAdd(1, .monotonic);
         waiting_sequence.store(published_sequence.load(.acquire), .release);
-        to_cpu1.?.raise();
+        _ = notifyWorker(false);
     }
 }
 
@@ -307,11 +386,14 @@ pub fn report() ?Report {
     if (!done.load(.acquire) or !worker_restored.load(.acquire) or failed.load(.acquire) or
         processed != messages or checked_messages.load(.acquire) != messages or waits < messages / 2 or waits >= messages or
         service_parks == 0 or stop_interrupts == 0 or drained.delivered != messages + 1 or drained.rejected != 1 or
-        requests.countApprox() != 0 or responses.countApprox() != 0 or inbox.ring.countApprox() != 0 or pending_request != null)
+        requests.countApprox() != 0 or responses.countApprox() != 0 or inbox.ring.countApprox() != 0 or
+        worker_inbox.ring.countApprox() != 0 or pending_request != null)
         return null;
     var expected: u32 = 0;
     for (0..messages) |index| expected +%= payload(@intCast(index)) ^ 0xa5a5_5a5a;
     if (checksum.load(.monotonic) != expected) return null;
+    const tasks = if (execution == .task_service) cpu1_tasks.report() orelse return null else null;
+    if (tasks) |value| if (task_payloads != messages or value.observer_rounds < messages or value.rejected != 1) return null;
     return .{
         .messages = messages,
         .registered_waits = waits,
@@ -323,5 +405,7 @@ pub fn report() ?Report {
         .delivered = drained.delivered,
         .rejected = drained.rejected,
         .checksum = expected,
+        .task_payloads = task_payloads,
+        .tasks = tasks,
     };
 }

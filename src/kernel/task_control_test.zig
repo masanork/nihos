@@ -90,3 +90,17 @@ test "event calls preserve bit 31 and reject payloads on scalar-only calls" {
     try std.testing.expectEqual(Status.invalid_argument, dispatch(&policy, @backingInt(Number.wait_events), 0).statusCode());
     try std.testing.expectEqual(Status.invalid_argument, dispatch(&policy, @backingInt(Number.notify), encodeHandle(task)).statusCode());
 }
+
+test "an owner without a timer rejects sleep without suspending its caller" {
+    const scheduler = @import("scheduler.zig");
+    var policy = scheduler.Scheduler(2, 2){};
+    const task = policy.add(0).?;
+    _ = policy.add(1).?;
+    _ = policy.schedule().?;
+    const rejected = control.dispatchWithOptions(&policy, @backingInt(Number.sleep), 5, 0, .{ .sleep_enabled = false });
+    try std.testing.expectEqual(Status.not_supported, rejected.statusCode());
+    try std.testing.expect(!rejected.reschedule);
+    try std.testing.expectEqual(task, policy.current().?);
+    try std.testing.expectEqual(scheduler.TaskState.running, policy.snapshot(task).?.state);
+    try std.testing.expectEqual(@as(u64, 0), policy.now());
+}

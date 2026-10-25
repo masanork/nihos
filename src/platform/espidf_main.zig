@@ -635,6 +635,29 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("duplex_reaped=", duplex_tasks.reaped);
     write("duplex_both_hosts_restored=1\r\n");
     write("native_duplex_events=ok\r\n");
+    const core1_tasks = native_trap.exerciseNativeCpu1Tasks() orelse {
+        write("nihos: CPU1 native tasks failed\r\n");
+        return;
+    };
+    const exchange = core1_tasks.duplex orelse return;
+    const core1 = exchange.tasks orelse return;
+    writeU32("cpu1_task_messages=", exchange.messages);
+    writeU32("cpu1_task_payloads=", exchange.task_payloads);
+    writeU32("cpu1_task_observer_rounds=", core1.observer_rounds);
+    writeU32("cpu1_task_syscalls=", core1.syscalls);
+    writeU32("cpu1_task_selections=", core1.selections);
+    writeU32("cpu1_task_switches=", core1.switches);
+    writeU32("cpu1_task_ipi_captures=", core1.ipi_task_captures);
+    writeU32("cpu1_task_events_delivered=", core1.delivered);
+    writeU32("cpu1_task_stale_rejected=", core1.rejected);
+    writeU32("cpu1_task_reaped=", core1.reaped);
+    writeU32("cpu1_task_replacement_generation=", core1.replacement_generation);
+    writeU32("cpu1_task_wfi_entries=", exchange.cpu1_parks);
+    writeU32("cpu1_task_registered_waits=", exchange.registered_waits);
+    writeU32("cpu1_task_preposted_waits=", exchange.preposted_waits);
+    writeU32("cpu1_task_checksum=", exchange.checksum);
+    write("cpu1_task_both_hosts_restored=1\r\n");
+    write("native_cpu1_tasks=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

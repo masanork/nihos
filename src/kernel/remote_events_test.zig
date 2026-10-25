@@ -18,6 +18,36 @@ fn notification(handle: scheduler.TaskHandle, bits: u32) events.Notification {
     return .{ .slot = handle.slot, .generation = handle.generation, .bits = bits };
 }
 
+test "each inbox changes only its owner even when local handle values match" {
+    var first = scheduler.Scheduler(2, 2){};
+    var second = scheduler.Scheduler(2, 2){};
+    const a = first.add(0).?;
+    const b = second.add(0).?;
+    _ = first.add(1).?;
+    _ = second.add(1).?;
+    try std.testing.expectEqual(a, b); // Owner is part of endpoint identity.
+    _ = first.schedule().?;
+    _ = second.schedule().?;
+    _ = first.waitEvents(a, 1).?;
+    _ = second.waitEvents(b, 2).?;
+    _ = first.schedule().?;
+    _ = second.schedule().?;
+    var inbox_a = Inbox{};
+    var inbox_b = Inbox{};
+    var bell_a = Doorbell{ .inbox = &inbox_a };
+    var bell_b = Doorbell{ .inbox = &inbox_b };
+    _ = inbox_a.post(notification(a, 1), &bell_a);
+    _ = inbox_b.post(notification(b, 2), &bell_b);
+    try std.testing.expectEqual(@as(u32, 1), inbox_a.drain(&first, 3, &bell_a).woken);
+    try std.testing.expectEqual(scheduler.TaskState.waiting, second.snapshot(b).?.state);
+    try std.testing.expectEqual(@as(u32, 0), second.snapshot(b).?.pending_events);
+    try std.testing.expectEqual(@as(u32, 1), inbox_b.drain(&second, 3, &bell_b).woken);
+    _ = first.schedule().?;
+    _ = second.schedule().?;
+    try std.testing.expectEqual(@as(?u32, 1), first.takeEventResult(a));
+    try std.testing.expectEqual(@as(?u32, 2), second.takeEventResult(b));
+}
+
 test "remote event publishes before doorbell and full or invalid posts do not ring" {
     var inbox = Inbox{};
     var doorbell = Doorbell{ .inbox = &inbox };
