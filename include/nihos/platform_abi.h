@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define NIH_PLATFORM_ABI_VERSION UINT32_C(2)
+#define NIH_PLATFORM_ABI_VERSION UINT32_C(3)
 
 enum {
     NIH_STATUS_OK = 0,
@@ -102,6 +102,30 @@ struct nih_display_vsync {
     uint32_t vsync_count;
 };
 
+#define NIH_TOUCH_MAX_POINTS UINT32_C(5)
+
+struct nih_touch_info {
+    uint32_t width;
+    uint32_t height;
+    uint32_t max_points;
+    uint32_t flags;
+};
+
+struct nih_touch_point {
+    uint32_t track_id;
+    uint32_t x;
+    uint32_t y;
+    uint32_t strength;
+};
+
+struct nih_touch_sample {
+    uint32_t point_count;
+    uint32_t sequence;
+    uint32_t flags;
+    uint32_t reserved;
+    struct nih_touch_point points[NIH_TOUCH_MAX_POINTS];
+};
+
 typedef void (*nih_cpu_entry_fn)(void *argument);
 
 int32_t nih_platform_boot_info(struct nih_boot_info *out);
@@ -119,6 +143,10 @@ int32_t nih_platform_display_init(struct nih_display_info *out);
 int32_t nih_platform_display_present(struct nih_display_present *present);
 /* Waits for one physical refresh without modifying the framebuffer. */
 int32_t nih_platform_display_wait_vsync(struct nih_display_vsync *vsync);
+/* Initializes the panel-matched touch controller after display init. */
+int32_t nih_platform_touch_init(struct nih_touch_info *out);
+/* Polls one bounded snapshot; point_count may be zero. */
+int32_t nih_platform_touch_sample(struct nih_touch_sample *out);
 int32_t nih_platform_cpu_start(uint32_t cpu_id,
                                nih_cpu_entry_fn entry,
                                void *argument);

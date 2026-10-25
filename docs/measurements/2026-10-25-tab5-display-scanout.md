@@ -72,8 +72,9 @@ separate qualification gate.
 | Pinned BSP dependency present but unused | 263,360 bytes (`0x404c0`) |
 | Direct display scanout linked | 346,112 bytes (`0x54800`) |
 
-The final 1 MiB application partition has 702,464 bytes (67%) free. The ESP-IDF
-size tool attributes 187,518 bytes to Flash text, 83,564 bytes to Flash
+At this display-only checkpoint the 1 MiB application partition had 702,464
+bytes (67%) free. The ESP-IDF size tool attributed 187,518 bytes to Flash text,
+83,564 bytes to Flash
 read-only data, and 81,043 bytes to DIRAM. The broad dependency graph and
 roughly 151 KiB image increase over the AXI-GDMA checkpoint are explicit
 reasons to replace this BSP boundary incrementally after its hardware
@@ -84,7 +85,8 @@ sequences have been characterized.
 - obtain human confirmation of the colour-bar and checker pattern;
 - add a two-buffer experiment and measure swap latency, tearing, and PSRAM
   bandwidth before choosing it for the compositor or Quake;
-- expose touch samples through a bounded event ABI without leaking BSP types;
+- qualify active touch coordinates and orientation (the bounded ABI and idle
+  polling path were added in the following checkpoint);
 - extract only the licensed panel detection, power, timing, and init sequences
   required by the native Zig HAL, then compare size and startup time;
 - measure a real renderer's CPU time and dirty-region cache cost instead of

@@ -12,6 +12,7 @@ CONFIG_CACHE_L2_CACHE_LINE_128B=y
 # optional DMA2D path is only needed when copying from a separate draw buffer.
 CONFIG_BSP_LCD_DPI_BUFFER_NUMS=1
 # CONFIG_BSP_LCD_USE_DMA2D is not set
+CONFIG_ESP_LCD_TOUCH_MAX_POINTS=5
 
 # Exercise both ESP32-P4 cores in the bring-up backend. nihOS does not yet own
 # scheduling at this stage.

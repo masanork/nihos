@@ -10,7 +10,8 @@ behind a large framework.
 The project is at the design and hardware-bootstrap stage. Its
 ESP-IDF-hosted Zig entry boots on a physical Tab5 and now writes the MIPI-DSI
 scanout framebuffer directly and synchronizes to display refresh. nihOS does
-not yet own the scheduler or native device drivers.
+not yet own the scheduler or native device drivers. A bounded touch ABI can
+also initialize and poll the panel-matched controller.
 
 ## Name
 
@@ -84,6 +85,8 @@ physical-device results are recorded in
 [`docs/measurements/2026-10-25-espidf-zig-bootstrap.md`](docs/measurements/2026-10-25-espidf-zig-bootstrap.md)
 and
 [`docs/measurements/2026-10-25-tab5-display-scanout.md`](docs/measurements/2026-10-25-tab5-display-scanout.md).
+The first idle touch-poll result is in
+[`docs/measurements/2026-10-25-tab5-touch-bootstrap.md`](docs/measurements/2026-10-25-tab5-touch-bootstrap.md).
 
 ## Project boundary
 

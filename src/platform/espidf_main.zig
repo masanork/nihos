@@ -17,6 +17,8 @@ extern fn nih_platform_dma_copy(copy: *abi.DmaCopy) i32;
 extern fn nih_platform_display_init(out: *abi.DisplayInfo) i32;
 extern fn nih_platform_display_present(present: *abi.DisplayPresent) i32;
 extern fn nih_platform_display_wait_vsync(vsync: *abi.DisplayVsync) i32;
+extern fn nih_platform_touch_init(out: *abi.TouchInfo) i32;
+extern fn nih_platform_touch_sample(out: *abi.TouchSample) i32;
 
 fn write(bytes: []const u8) void {
     if (bytes.len == 0) return;
@@ -205,6 +207,50 @@ fn exerciseDisplay() bool {
     return true;
 }
 
+fn exerciseTouch() bool {
+    var info: abi.TouchInfo = undefined;
+    if (nih_platform_touch_init(&info) != abi.Status.ok) return false;
+    if (info.width == 0 or info.height == 0 or
+        info.max_points != abi.touch_max_points or info.flags != 0)
+    {
+        return false;
+    }
+
+    const samples: u32 = 8;
+    var points_observed: u32 = 0;
+    var last_sequence: u32 = 0;
+    for (0..samples) |_| {
+        var sample: abi.TouchSample = undefined;
+        if (nih_platform_touch_sample(&sample) != abi.Status.ok) return false;
+        if (sample.point_count > abi.touch_max_points or
+            sample.sequence <= last_sequence or sample.flags != 0)
+        {
+            return false;
+        }
+        last_sequence = sample.sequence;
+        points_observed += sample.point_count;
+        for (sample.points[0..@intCast(sample.point_count)]) |point| {
+            if (point.x >= info.width or point.y >= info.height) return false;
+        }
+
+        var vsync = abi.DisplayVsync{
+            .timeout_ms = 100,
+            .flags = 0,
+            .elapsed_us = 0,
+            .vsync_count = 0,
+        };
+        if (nih_platform_display_wait_vsync(&vsync) != abi.Status.ok)
+            return false;
+    }
+
+    writeU32("touch_width=", info.width);
+    writeU32("touch_height=", info.height);
+    writeU32("touch_max_points=", info.max_points);
+    writeU32("touch_samples=", samples);
+    writeU32("touch_points_observed=", points_observed);
+    return true;
+}
+
 fn exerciseMemory(kind: u32) bool {
     var region: abi.MemoryRegion = undefined;
     if (nih_platform_memory_region(kind, &region) != abi.Status.ok) return false;
@@ -289,5 +335,11 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     }
     write("display_scanout=ok\r\n");
     write("display_vsync=ok\r\n");
+
+    if (!exerciseTouch()) {
+        write("nihos: touch initialization or sampling failed\r\n");
+        return;
+    }
+    write("touch_sampling=ok\r\n");
     write("nihos: bootstrap complete\r\n");
 }
