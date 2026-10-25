@@ -91,6 +91,12 @@ pairs and a four-request window. It seeds both rings just before RV32 counter
 wrap, forces queue-full rejection and space waiting, checks order/payloads,
 checks stack canaries, and completes/reaps both tasks. Its timed service start
 is a test fixture; payload progress uses channel waits rather than polling.
+The response producer waits for a separate completion ACK after its final
+send. The consumer posts that ACK only after all values and space notices
+have passed, keeping both endpoints live through the final queue operation.
+Physical testing exposed the earlier race where the producer could exit
+before the final space notification. This bounded handshake does not add a
+general channel close/cancellation protocol.
 
 The native adapter is CPU0-local. SMP publication still uses release/acquire,
 but CPU1 event delivery requires an owner mailbox and IPI. The existing IDF

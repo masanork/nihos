@@ -37,8 +37,10 @@ the final empty observation raises its own doorbell.
 The trap captures the interrupted CPU0 frame, drains events, accounts for
 elapsed time, and selects a resumable task. Deferred wait replies use the
 existing ADR 0010 path. An IPI may be the first native trap, so initial integer
-return states are seeded from the first timer **or** IPI capture. Timer tails
-and ECALLs do not poll or drain the remote inbox.
+task `mstatus` is seeded from the first timer **or** IPI capture. The complete
+`mcause` used on return belongs to the active trap, not the selected task's
+last capture; `mret` uses it to unwind CLIC priority. Timer tails and ECALLs do
+not poll or drain the remote inbox. See [ADR 0007](0007-native-preemption-and-elapsed-time.md).
 
 ## ESP-IDF resource boundary
 

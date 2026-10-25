@@ -11,7 +11,13 @@
 The exact committed firmware ran two integer-only Zig workers on independent
 4 KiB stacks using timer-driven round-robin selection. Neither worker issued
 a normal yield. Every switch used the native integer-frame save/restore,
-selected-task `mstatus`/CLIC return state, and hardware stack-bound updates.
+selected-task `mstatus`, and hardware stack-bound updates. This exact
+historical emulator run predates the physical-test clarification that `mret`
+must use the active trap's complete `mcause` to unwind CLIC priority when a
+different task is selected. See [ADR 0007](../adr/0007-native-preemption-and-elapsed-time.md)
+and the [physical Tab5 native SMP preemption record](2026-10-25-tab5-native-smp-preemption.md)
+for that correction's hardware qualification; this record's measurements
+remain unchanged.
 
 The test deliberately masked interrupts for the first 3,500 us of a 1,000 us
 absolute-deadline timer. Its first interrupt therefore accounted for three

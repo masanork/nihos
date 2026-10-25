@@ -117,6 +117,9 @@ defined in
 Their first delayed-tick, deadline-wakeup, and dual-timer result is recorded
 in
 [`docs/measurements/2026-10-25-esp-emu-cpu1-preemption.md`](docs/measurements/2026-10-25-esp-emu-cpu1-preemption.md).
+Three physical Tab5 boots, including the CLIC return and IPC endpoint-lifetime
+corrections found on silicon, are recorded in
+[`docs/measurements/2026-10-25-tab5-native-smp-preemption.md`](docs/measurements/2026-10-25-tab5-native-smp-preemption.md).
 
 ## Bootstrap checks
 
