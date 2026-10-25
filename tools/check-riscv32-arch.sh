@@ -25,6 +25,7 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     --dep spsc_channel \
     --dep remote_events \
     --dep software_ipi \
+    --dep park \
     "-Mroot=$repo_root/src/arch/riscv32/native_trap.zig" \
     "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
     "-Mscheduler=$repo_root/src/kernel/scheduler.zig" \
@@ -33,7 +34,8 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     "-Mspsc_ring=$repo_root/src/kernel/spsc_ring.zig" \
     "-Mspsc_channel=$repo_root/src/kernel/spsc_channel.zig" \
     "-Mremote_events=$repo_root/src/kernel/remote_events.zig" \
-    "-Msoftware_ipi=$repo_root/src/soc/esp32p4/software_ipi.zig"
+    "-Msoftware_ipi=$repo_root/src/soc/esp32p4/software_ipi.zig" \
+    "-Mpark=$repo_root/src/kernel/park.zig"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \
     -I "$repo_root/src/arch/riscv32" \
     -I "$repo_root/src/kernel" \

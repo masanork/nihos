@@ -615,6 +615,26 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("remote_reaped=", remote_tasks.reaped);
     write("remote_host_scheduler_restored=1\r\n");
     write("native_remote_events=ok\r\n");
+    const duplex_tasks = native_trap.exerciseNativeDuplexEvents() orelse {
+        write("nihos: native duplex events failed\r\n");
+        return;
+    };
+    const duplex = duplex_tasks.duplex orelse return;
+    writeU32("duplex_messages=", duplex.messages);
+    writeU32("duplex_registered_waits=", duplex.registered_waits);
+    writeU32("duplex_preposted_waits=", duplex.preposted_waits);
+    writeU32("duplex_cpu0_ipi_interrupts=", duplex.cpu0_interrupts);
+    writeU32("duplex_cpu1_ipi_interrupts=", duplex.cpu1_interrupts);
+    writeU32("duplex_cpu1_wfi_entries=", duplex.cpu1_parks);
+    writeU32("duplex_stop_interrupts=", duplex.stop_interrupts);
+    writeU32("duplex_delivered=", duplex.delivered);
+    writeU32("duplex_rejected=", duplex.rejected);
+    writeU32("duplex_checksum=", duplex.checksum);
+    writeU32("duplex_syscalls=", duplex_tasks.calls);
+    writeU32("duplex_timer_interrupts=", duplex_tasks.interrupts);
+    writeU32("duplex_reaped=", duplex_tasks.reaped);
+    write("duplex_both_hosts_restored=1\r\n");
+    write("native_duplex_events=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {
