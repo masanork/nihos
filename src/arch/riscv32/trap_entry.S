@@ -3,7 +3,7 @@
  *
  * The ESP-IDF bring-up image installs this entry around bounded exception
  * and timer tests. Interrupts remain disabled while the dispatcher runs;
- * permanent vector ownership, FPU task switching, and nesting come later.
+ * permanent vector ownership, native SMP FPU ownership, and nesting come later.
  */
 
 #include "context_offsets.inc"
@@ -74,6 +74,27 @@ nih_riscv_trap_entry:
     /* Dispatch on a bounded, private stack for this hart. */
     li t0, 2
     bgeu s8, t0, .Linvalid_context
+    /* Preserve an opted-in task's FP bank before any C or Zig call. The
+     * bootstrap opts in even with FS=Off to protect IDF's lazy physical owner.
+     */
+    la t0, nih_riscv_current_floating_states
+    slli t1, s8, 2
+    add t0, t0, t1
+    lw a0, 0(t0)
+    beqz a0, .Lno_floating_save
+    li t0, 0x6000
+    csrs mstatus, t0
+    call nih_riscv_fpu_save
+    la t0, nih_riscv_floating_saves
+    slli t1, s8, 2
+    add t0, t0, t1
+    lw t1, 0(t0)
+    addi t1, t1, 1
+    sw t1, 0(t0)
+.Lno_floating_save:
+    /* The kernel dispatcher and all guard helpers stay integer-only. */
+    li t0, 0x6000
+    csrc mstatus, t0
     la t0, nih_riscv_interrupt_stack_tops
     slli t1, s8, 2
     add t0, t0, t1
@@ -118,6 +139,27 @@ nih_riscv_trap_entry:
 #if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
     call esp_hw_stack_guard_monitor_start
 #endif
+    /* All C/Zig calls are complete. Restore the chosen bank, then its FS
+     * status below. Integer-only tasks keep a null bank and FS=Off.
+     */
+    la t0, nih_riscv_selected_floating_states
+    slli t1, s8, 2
+    add t0, t0, t1
+    lw a0, 0(t0)
+    la t0, nih_riscv_current_floating_states
+    add t0, t0, t1
+    sw a0, 0(t0)
+    beqz a0, .Lno_floating_restore
+    li t0, 0x6000
+    csrs mstatus, t0
+    call nih_riscv_fpu_restore
+    la t0, nih_riscv_floating_restores
+    slli t1, s8, 2
+    add t0, t0, t1
+    lw t1, 0(t0)
+    addi t1, t1, 1
+    sw t1, 0(t0)
+.Lno_floating_restore:
     /* Restore the selected task's CSR state, not the outgoing task's state. */
     la t0, nih_riscv_selected_return_states
     slli t1, s8, 3
@@ -225,6 +267,10 @@ nih_riscv_timer_window:
     sw a0, 4(sp)
     csrci mstatus, 8
 .Ltimer_window_restore:
+    call nih_riscv_native_timer_finish
+    lw t0, 4(sp)
+    and t0, t0, a0
+    sw t0, 4(sp)
     /* Complete timer stop/W1C writes before restoring the IDF vector. */
     fence iorw, iorw
     csrw mtvec, s1

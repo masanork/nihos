@@ -71,6 +71,9 @@ The free-running clock and timer-driven task-switching contract is in
 [`docs/adr/0007-native-preemption-and-elapsed-time.md`](docs/adr/0007-native-preemption-and-elapsed-time.md).
 The first two-worker preemption and delayed-tick result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-native-preemption.md`](docs/measurements/2026-10-25-esp-emu-native-preemption.md).
+Opt-in RV32F context handling and the full-register preemption probe are
+described in
+[`docs/adr/0008-opt-in-eager-rv32f-context.md`](docs/adr/0008-opt-in-eager-rv32f-context.md).
 
 ## Bootstrap checks
 

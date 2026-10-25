@@ -2,6 +2,7 @@ idf_component_register(
     SRCS "../compat/espidf/platform.c"
          "../compat/espidf/native_timer.c"
          "../src/arch/riscv32/trap_entry.S"
+         "../src/arch/riscv32/fpu.S"
     INCLUDE_DIRS "../include" "../src/arch/riscv32"
     PRIV_REQUIRES esp_system spi_flash heap esp_rom esp_mm esp_hw_support
                   esp_timer esp_driver_gptimer esp_lcd esp_lcd_touch

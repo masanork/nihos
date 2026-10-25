@@ -527,6 +527,22 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         writeU64("preemption_runtime_ticks=", preempted.worker_runtime_ticks[worker]);
     }
     write("native_preemption=ok\r\n");
+    writeU32("integer_preemption_fpu_saves=", preempted.floating_saves);
+    writeU32("integer_preemption_fpu_restores=", preempted.floating_restores);
+    const floating = native_trap.exerciseNativeFloatingPreemption() orelse {
+        write("nihos: floating preemption failed\r\n");
+        return;
+    };
+    writeU64("fpu_preemption_elapsed_ticks=", floating.elapsed_ticks);
+    writeU32("fpu_preemption_interrupts=", floating.interrupts);
+    writeU32("fpu_preemption_saves=", floating.floating_saves);
+    writeU32("fpu_preemption_restores=", floating.floating_restores);
+    for (0..2) |worker| {
+        writeU32("fpu_preemption_worker=", @intCast(worker));
+        writeU32("fpu_register_checks=", floating.floating_checks[worker]);
+    }
+    write("fpu_boundary_restore=ok\r\n");
+    write("native_fpu_preemption=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {
