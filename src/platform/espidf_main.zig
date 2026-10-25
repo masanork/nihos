@@ -511,7 +511,22 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         writeU32("native_timer_interrupt_id=", native_timer.interrupt_id);
         writeU32("native_timer_mcause=", native_timer.raw_mcause);
     }
-    // Reusing the IDF timer after both native leases checks cleanup and that
+    const preempted = native_trap.exerciseNativePreemption() orelse {
+        write("nihos: native preemption failed\r\n");
+        return;
+    };
+    writeU64("preemption_elapsed_ticks=", preempted.elapsed_ticks);
+    writeU32("preemption_interrupts=", preempted.interrupts);
+    writeU64("preemption_caught_up_ticks=", preempted.caught_up_ticks);
+    writeU64("preemption_elapsed_us=", preempted.elapsed_us);
+    for (0..2) |worker| {
+        writeU32("preemption_worker=", @intCast(worker));
+        writeU32("preemption_iterations=", preempted.worker_iterations[worker]);
+        writeU32("preemption_selections=", preempted.worker_selections[worker]);
+        writeU64("preemption_runtime_ticks=", preempted.worker_runtime_ticks[worker]);
+    }
+    write("native_preemption=ok\r\n");
+    // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {
         write("nihos: timer restoration failed\r\n");

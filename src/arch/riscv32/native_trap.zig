@@ -8,6 +8,7 @@ const std = @import("std");
 const context = @import("context.zig");
 const trap = @import("trap.zig");
 const timer_group = @import("timer_group");
+const preemption = @import("preemption_test.zig");
 
 const core_count = 2;
 const interrupt_stack_bytes = 2048;
@@ -20,6 +21,7 @@ const SwitchState = enum(u32) {
     running,
     complete,
     timer,
+    preemption,
 };
 
 var interrupt_stacks: [core_count][interrupt_stack_bytes]u8 align(16) = undefined;
@@ -28,6 +30,8 @@ export var nih_riscv_interrupt_stack_bottoms: [core_count]u32 = @splat(0);
 export var nih_riscv_interrupt_stack_tops: [core_count]u32 = @splat(0);
 export var nih_riscv_selected_stack_mins: [core_count]u32 = @splat(0);
 export var nih_riscv_selected_stack_maxs: [core_count]u32 = @splat(0);
+export var nih_riscv_selected_return_states: [core_count]context.ReturnState =
+    @splat(.{ .mstatus = 0, .mcause = 0 });
 var switch_state: SwitchState = .idle;
 var bootstrap_frame: ?*context.IntegerContext = null;
 var task_frame: ?*context.IntegerContext = null;
@@ -138,7 +142,7 @@ pub fn exerciseContextSwitchRoundTrip() bool {
 
 /// IDF leases clocks, a channel and a CPU0 interrupt. nihOS controls the timer
 /// MMIO and handles its non-vectored interrupt on the native trap stack.
-pub fn exerciseNativeTimer() ?TimerReport {
+fn acquireTimer() ?timer_group.Timer {
     if (!prepareInterruptStacks()) return null;
     var lease = std.mem.zeroes(TimerLease);
     if (nih_espidf_native_timer_acquire(&lease) != 0) return null;
@@ -152,27 +156,55 @@ pub fn exerciseNativeTimer() ?TimerReport {
     native_timer_ticks.store(0, .monotonic);
     native_timer_cause.store(0, .monotonic);
     esp_hw_stack_guard_get_bounds(0, &bootstrap_stack_min, &bootstrap_stack_max);
-    const configured = device.?.configure(timer_period_us);
-    switch_state = .timer;
-    const returned = configured and nih_riscv_timer_window() == 1;
+    return device;
+}
+
+fn finishTimer(returned: bool) bool {
     switch_state = .idle;
-    device.?.stop();
+    (timer_device orelse return false).stop();
     var restored_min: u32 = 0;
     var restored_max: u32 = 0;
     esp_hw_stack_guard_get_bounds(0, &restored_min, &restored_max);
     timer_device = null;
     const released = nih_espidf_native_timer_release() == 0;
-    if (!returned or !released or restored_min != bootstrap_stack_min or
-        restored_max != bootstrap_stack_max) return null;
+    return returned and released and restored_min == bootstrap_stack_min and
+        restored_max == bootstrap_stack_max;
+}
+
+pub fn exerciseNativeTimer() ?TimerReport {
+    const device = acquireTimer() orelse return null;
+    const configured = device.configure(timer_period_us);
+    switch_state = .timer;
+    const returned = configured and nih_riscv_timer_window() == 1;
+    if (!finishTimer(returned)) return null;
     return .{
         .ticks = native_timer_ticks.load(.monotonic),
         .elapsed_us = native_timer_elapsed_us,
-        .interrupt_id = lease.interrupt_id,
+        .interrupt_id = timer_interrupt_id,
         .raw_mcause = native_timer_cause.load(.monotonic),
     };
 }
 
+pub fn exerciseNativePreemption() ?preemption.Report {
+    const device = acquireTimer() orelse return null;
+    const trampoline = address32(&nih_riscv_task_trampoline) orelse {
+        _ = finishTimer(false);
+        return null;
+    };
+    const prepared = preemption.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline);
+    switch_state = .preemption;
+    const returned = prepared and nih_riscv_timer_window() == 1;
+    const report = if (returned) preemption.report() else null;
+    if (!finishTimer(returned)) return null;
+    return report;
+}
+
+export fn nih_riscv_native_timer_prepare() callconv(.c) u32 {
+    return if (switch_state != .preemption or preemption.startMasked()) 1 else 0;
+}
+
 export fn nih_riscv_native_timer_run() callconv(.c) u32 {
+    if (switch_state == .preemption) return if (preemption.run()) 1 else 0;
     const device = timer_device orelse return 0;
     const started = nih_platform_monotonic_us();
     device.start();
@@ -189,9 +221,26 @@ export fn nih_riscv_trap_dispatch(
     interrupted: *context.IntegerContext,
     raw_mcause: u32,
     hart_id: u32,
+    raw_mstatus: u32,
 ) callconv(.c) ?*context.IntegerContext {
     if (hart_id >= core_count) return null;
     const cause = trap.Cause.decode(raw_mcause);
+    const return_state = context.ReturnState{ .mstatus = raw_mstatus, .mcause = raw_mcause };
+    nih_riscv_selected_return_states[hart_id] = return_state;
+    if (switch_state == .preemption) {
+        if (hart_id != 0) return null;
+        const selection = if (cause.kind == .interrupt and cause.reason == timer_interrupt_id)
+            preemption.onTimer(interrupted, return_state)
+        else if (cause.isException(.environment_call_from_machine))
+            preemption.abort(interrupted, return_state)
+        else
+            null;
+        const selected = selection orelse return null;
+        nih_riscv_selected_stack_mins[hart_id] = selected.stack_min;
+        nih_riscv_selected_stack_maxs[hart_id] = selected.stack_max;
+        nih_riscv_selected_return_states[hart_id] = selected.state;
+        return selected.frame;
+    }
     if (switch_state == .timer) {
         if (hart_id != 0 or cause.kind != .interrupt or
             cause.reason != timer_interrupt_id) return null;
@@ -225,6 +274,6 @@ export fn nih_riscv_trap_dispatch(
             switch_state = .complete;
             break :next bootstrap_frame;
         },
-        .idle, .complete, .timer => null,
+        .idle, .complete, .timer, .preemption => null,
     };
 }

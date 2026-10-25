@@ -19,6 +19,9 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_CONTEXT "${NIHOS_ROOT}/src/arch/riscv32/context.zig")
     set(NIHOS_ZIG_TRAP "${NIHOS_ROOT}/src/arch/riscv32/trap.zig")
     set(NIHOS_ZIG_TIMER_GROUP "${NIHOS_ROOT}/src/soc/esp32p4/timer_group.zig")
+    set(NIHOS_ZIG_PREEMPTION "${NIHOS_ROOT}/src/arch/riscv32/preemption_test.zig")
+    set(NIHOS_ZIG_SCHEDULER "${NIHOS_ROOT}/src/kernel/scheduler.zig")
+    set(NIHOS_ZIG_TICK_CLOCK "${NIHOS_ROOT}/src/kernel/tick_clock.zig")
     set(NIHOS_ZIG_ABI "${NIHOS_ROOT}/src/platform/abi.zig")
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
     set(NIHOS_ZIG_SPSC "${NIHOS_ROOT}/src/kernel/spsc_ring.zig")
@@ -48,8 +51,12 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             "-Mabi=${NIHOS_ZIG_ABI}"
             "-Marena=${NIHOS_ZIG_ARENA}"
             --dep timer_group
+            --dep scheduler
+            --dep tick_clock
             "-Mnative_trap=${NIHOS_ZIG_NATIVE_TRAP}"
             "-Mtimer_group=${NIHOS_ZIG_TIMER_GROUP}"
+            "-Mscheduler=${NIHOS_ZIG_SCHEDULER}"
+            "-Mtick_clock=${NIHOS_ZIG_TICK_CLOCK}"
             "-Mspsc_ring=${NIHOS_ZIG_SPSC}"
             "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
             "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
@@ -57,6 +64,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
         DEPENDS "${NIHOS_ZIG_SOURCE}" "${NIHOS_ZIG_ABI}"
                 "${NIHOS_ZIG_NATIVE_TRAP}" "${NIHOS_ZIG_CONTEXT}"
                 "${NIHOS_ZIG_TRAP}" "${NIHOS_ZIG_TIMER_GROUP}"
+                "${NIHOS_ZIG_PREEMPTION}" "${NIHOS_ZIG_SCHEDULER}"
+                "${NIHOS_ZIG_TICK_CLOCK}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
                 "${NIHOS_ZIG_TICK_COUNTER}"
                 "${NIHOS_ZIG_PATTERN}"

@@ -18,8 +18,12 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/native_trap.o" \
     --dep timer_group \
+    --dep scheduler \
+    --dep tick_clock \
     "-Mroot=$repo_root/src/arch/riscv32/native_trap.zig" \
-    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig"
+    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
+    "-Mscheduler=$repo_root/src/kernel/scheduler.zig" \
+    "-Mtick_clock=$repo_root/src/kernel/tick_clock.zig"
 "$zig" cc -c -target "$target" -mcpu="$cpu" \
     -I "$repo_root/src/arch/riscv32" \
     -o "$out_dir/trap_entry.o" \

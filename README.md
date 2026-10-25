@@ -67,6 +67,8 @@ are described in
 [`docs/adr/0006-bounded-native-timer.md`](docs/adr/0006-bounded-native-timer.md).
 The repeated timer/interrupt-restoration result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-native-timer.md`](docs/measurements/2026-10-25-esp-emu-native-timer.md).
+The free-running clock and timer-driven task-switching contract is in
+[`docs/adr/0007-native-preemption-and-elapsed-time.md`](docs/adr/0007-native-preemption-and-elapsed-time.md).
 
 ## Bootstrap checks
 

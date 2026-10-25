@@ -3,7 +3,7 @@
  *
  * The ESP-IDF bring-up image installs this entry around bounded exception
  * and timer tests. Interrupts remain disabled while the dispatcher runs;
- * permanent vector ownership, task preemption, and nesting come later.
+ * permanent vector ownership, FPU task switching, and nesting come later.
  */
 
 #include "context_offsets.inc"
@@ -23,6 +23,7 @@
  *     interrupted: *IntegerContext,
  *     raw_mcause: u32,
  *     hart_id: u32,
+ *     raw_mstatus: u32,
  * ) callconv(.c) ?*IntegerContext;
  */
 nih_riscv_trap_entry:
@@ -97,6 +98,7 @@ nih_riscv_trap_entry:
     mv a0, s9
     mv a1, s10
     mv a2, s8
+    mv a3, s11
     call nih_riscv_trap_dispatch
     beqz a0, .Linvalid_context
 
@@ -116,8 +118,15 @@ nih_riscv_trap_entry:
 #if CONFIG_ESP_SYSTEM_HW_STACK_GUARD
     call esp_hw_stack_guard_monitor_start
 #endif
-    csrw mcause, s10
-    csrw mstatus, s11
+    /* Restore the selected task's CSR state, not the outgoing task's state. */
+    la t0, nih_riscv_selected_return_states
+    slli t1, s8, 3
+    add t0, t0, t1
+    lw t1, 4(t0)
+    csrw mcause, t1
+    lw t1, 0(t0)
+    andi t1, t1, -9
+    csrw mstatus, t1
     lw t0, NIH_CTX_MEPC(sp)
     csrw mepc, t0
 
@@ -208,10 +217,14 @@ nih_riscv_timer_window:
     la t0, nih_riscv_trap_entry
     ori t0, t0, 3
     csrw mtvec, t0
+    call nih_riscv_native_timer_prepare
+    sw a0, 4(sp)
+    beqz a0, .Ltimer_window_restore
     csrsi mstatus, 8
     call nih_riscv_native_timer_run
     sw a0, 4(sp)
     csrci mstatus, 8
+.Ltimer_window_restore:
     /* Complete timer stop/W1C writes before restoring the IDF vector. */
     fence iorw, iorw
     csrw mtvec, s1
