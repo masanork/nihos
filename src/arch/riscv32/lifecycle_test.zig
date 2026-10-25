@@ -16,6 +16,8 @@ const period_us = 1000;
 const sleep_ticks = 5;
 const timeout_us = 100_000;
 
+pub const Mode = enum { lifecycle, events };
+
 pub const Report = struct {
     sleep_started: u32,
     sleep_deadline: u32,
@@ -28,9 +30,13 @@ pub const Report = struct {
     reaped: u32,
     old_generation: u16,
     replacement_generation: u16,
+    immediate_events: u32,
+    blocked_events: u32,
+    delivered_events: u32,
 };
 
 var runtime: Runtime = .{};
+var mode: Mode = .lifecycle;
 var stacks: [2][stack_bytes]u8 align(16) = undefined;
 var bootstrap_handle = scheduler.TaskHandle{ .slot = 0, .generation = 0 };
 var worker_handles: [2]scheduler.TaskHandle = @splat(.{ .slot = 0, .generation = 0 });
@@ -51,6 +57,10 @@ var explicit_wakes = std.atomic.Value(u32).init(0);
 var exited: [2]std.atomic.Value(u32) = @splat(.init(0));
 var stack_addresses: [2]std.atomic.Value(u32) = @splat(.init(0));
 var terminal_wake_rejected = std.atomic.Value(bool).init(false);
+var immediate_events: u32 = 0;
+var blocked_events: u32 = 0;
+var delivered_events = std.atomic.Value(u32).init(0);
+var posted_events = std.atomic.Value(bool).init(false);
 
 extern fn nih_platform_monotonic_us() callconv(.c) u64;
 
@@ -131,8 +141,72 @@ fn waker(_: u32) callconv(.c) i32 {
     return 37;
 }
 
-pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32, tp: u32, trampoline: u32) bool {
+fn receive(mask: u32, expected: u32) void {
+    switch (calls.waitEvents(mask)) {
+        .received => |bits| if (bits != expected) fail(-120),
+        .failed => fail(-121),
+    }
+}
+
+fn eventReceiver(_: u32) callconv(.c) i32 {
+    var canary: [4]u32 = @splat(0x6576_7263);
+    const checked: *volatile [4]u32 = &canary;
+    stack_addresses[0].store(@intCast(@intFromPtr(&canary)), .monotonic);
+    const me = calls.current() orelse fail(-122);
+    if (control.encodeHandle(me) != control.encodeHandle(worker_handles[0])) fail(-123);
+    switch (calls.waitEvents(0)) {
+        .failed => |code| if (code != calls.Status.invalid_argument) fail(-124),
+        .received => fail(-125),
+    }
+    if (calls.notify(me, 0) != calls.Status.invalid_argument) fail(-126);
+    const before = calls.nowTicks();
+    if (calls.sleep(2) != calls.Status.ok) fail(-127);
+    sleep_resumed.store(@intCast(calls.nowTicks()), .monotonic);
+    if (sleep_resumed.load(.monotonic) < before + 2) fail(-128);
+    // Synchronize the duplicate posts even if a timer boundary splits them.
+    while (!posted_events.load(.monotonic)) if (expired()) fail(-129);
+    receive(1, 1);
+    receive(0x8000_0002, 0x8000_0002);
+    // The duplicate bit must have coalesced; this wait must actually block.
+    receive(1, 1);
+    delivered_events.store(1, .monotonic);
+    receive(4, 4); // A nonmatching notification was retained while waiting.
+    checkCanary(checked, 0x6576_7263);
+    return 41;
+}
+
+fn eventSender(_: u32) callconv(.c) i32 {
+    var canary: [4]u32 = @splat(0x6576_736e);
+    const checked: *volatile [4]u32 = &canary;
+    stack_addresses[1].store(@intCast(@intFromPtr(&canary)), .monotonic);
+    const me = calls.current() orelse fail(-130);
+    if (control.encodeHandle(me) != control.encodeHandle(worker_handles[1])) fail(-131);
+    const target = control.Handle{
+        .slot = worker_handles[0].slot,
+        .generation = worker_handles[0].generation,
+    };
+    if (calls.notify(target, 0x8000_0003) != calls.Status.ok or
+        calls.notify(target, 1) != calls.Status.ok) fail(-132);
+    posted_events.store(true, .monotonic);
+    // Observe the serialized policy through a task call rather than sharing
+    // its non-atomic bookkeeping with running task code.
+    while (stage.load(.monotonic) == 0) {
+        if (expired() or calls.sleep(1) != calls.Status.ok) fail(-133);
+    }
+    if (calls.notify(target, 4) != calls.Status.ok or calls.sleep(1) != calls.Status.ok)
+        fail(-134);
+    if (delivered_events.load(.monotonic) != 0) fail(-135);
+    if (calls.notify(target, 1) != calls.Status.ok) fail(-136);
+    while (exited[0].load(.monotonic) == 0) if (expired()) fail(-137);
+    if (calls.notify(target, 1) != calls.Status.invalid_state) fail(-138);
+    terminal_wake_rejected.store(true, .monotonic);
+    checkCanary(checked, 0x6576_736e);
+    return 43;
+}
+
+pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32, tp: u32, trampoline: u32, selected_mode: Mode) bool {
     runtime = .{};
+    mode = selected_mode;
     device = timer;
     clock = tick_clock.TickClock.init(period_us).?;
     launched = false;
@@ -147,10 +221,17 @@ pub fn prepare(timer: timer_group.Timer, stack_min: u32, stack_max: u32, gp: u32
     sleep_resumed.store(0, .monotonic);
     explicit_wakes.store(0, .monotonic);
     terminal_wake_rejected.store(false, .monotonic);
+    immediate_events = 0;
+    blocked_events = 0;
+    delivered_events.store(0, .monotonic);
+    posted_events.store(false, .monotonic);
     bootstrap_handle = runtime.add(1, .{ .stack_min = stack_min, .stack_max = stack_max }) orelse
         return false;
     _ = runtime.policy.schedule() orelse return false;
-    const entries = [_]*const fn (u32) callconv(.c) i32{ &sleeper, &waker };
+    const entries = switch (mode) {
+        .lifecycle => [_]*const fn (u32) callconv(.c) i32{ &sleeper, &waker },
+        .events => [_]*const fn (u32) callconv(.c) i32{ &eventReceiver, &eventSender },
+    };
     for (&stacks, entries, 0..) |*stack, entry, index| {
         exited[index].store(0, .monotonic);
         stack_addresses[index].store(0, .monotonic);
@@ -227,6 +308,15 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
     const caller = runtime.policy.current() orelse return null;
     const number = control.Number.decode(frame.a7);
     const selected = runtime.call(frame, state) orelse return null;
+    if (mode == .events and number == .wait_events) {
+        const snapshot = runtime.policy.snapshot(caller) orelse return null;
+        if (snapshot.state == .waiting) {
+            blocked_events += 1;
+            stage.store(1, .monotonic);
+        } else if (frame.a1 == 0 and frame.a0 != 0) {
+            immediate_events += 1;
+        }
+    }
     if (number == .sleep and caller.slot == worker_handles[0].slot) {
         const snapshot = runtime.policy.snapshot(caller) orelse return null;
         if (snapshot.state == .sleeping) {
@@ -250,7 +340,7 @@ pub fn onCall(frame: *context.IntegerContext, state: context.ReturnState) ?conte
 
 pub fn report() ?Report {
     if (!finished.load(.monotonic) or failed.load(.monotonic) or
-        explicit_wakes.load(.monotonic) != 1 or !terminal_wake_rejected.load(.monotonic)) return null;
+        !terminal_wake_rejected.load(.monotonic)) return null;
     var result = Report{
         .sleep_started = sleep_started.load(.monotonic),
         .sleep_deadline = sleep_deadline.load(.monotonic),
@@ -263,9 +353,18 @@ pub fn report() ?Report {
         .reaped = 0,
         .old_generation = worker_handles[0].generation,
         .replacement_generation = 0,
+        .immediate_events = immediate_events,
+        .blocked_events = blocked_events,
+        .delivered_events = delivered_events.load(.monotonic),
     };
-    if (result.idle_runtime_ticks < 2 or result.sleep_resumed < result.sleep_deadline or
-        result.sleep_deadline != result.sleep_started + sleep_ticks) return null;
+    const expected_sleep: u32 = if (mode == .lifecycle) sleep_ticks else 2;
+    if (result.sleep_resumed < result.sleep_deadline or
+        result.sleep_deadline != result.sleep_started + expected_sleep) return null;
+    switch (mode) {
+        .lifecycle => if (result.idle_runtime_ticks < 2 or result.explicit_wakes != 1) return null,
+        .events => if (result.immediate_events != 3 or result.blocked_events != 1 or
+            result.delivered_events != 1) return null,
+    }
     const replacement_image = runtime.images[worker_handles[0].slot] orelse return null;
     for (worker_handles, 0..) |handle, index| {
         const image = runtime.images[handle.slot] orelse return null;
@@ -277,15 +376,20 @@ pub fn report() ?Report {
         if (!runtime.reap(handle)) return null;
         result.reaped += 1;
     }
-    if (result.exits[0] != 17 or result.exits[1] != 37) return null;
+    const expected_exits: [2]i32 = if (mode == .lifecycle) .{ 17, 37 } else .{ 41, 43 };
+    if (!std.mem.eql(i32, &result.exits, &expected_exits)) return null;
     // Reuse a reaped slot without executing it. The stale handle must not
     // affect the new ready task; its context storage belongs to this test.
     const replacement = runtime.add(0, replacement_image) orelse return null;
     if (replacement.slot != worker_handles[0].slot or
         replacement.generation == worker_handles[0].generation) return null;
-    const stale = control.dispatch(&runtime.policy, @backingInt(control.Number.wake), control.encodeHandle(worker_handles[0]));
+    const stale = if (mode == .lifecycle)
+        control.dispatch(&runtime.policy, @backingInt(control.Number.wake), control.encodeHandle(worker_handles[0]))
+    else
+        control.dispatchWithPayload(&runtime.policy, @backingInt(control.Number.notify), control.encodeHandle(worker_handles[0]), 1);
     if (stale.statusCode() != control.Status.not_found or
-        runtime.policy.snapshot(replacement).?.state != .ready) return null;
+        runtime.policy.snapshot(replacement).?.state != .ready or
+        runtime.policy.snapshot(replacement).?.pending_events != 0) return null;
     result.replacement_generation = replacement.generation;
     return result;
 }

@@ -207,12 +207,20 @@ pub fn exerciseNativeFloatingPreemption() ?preemption.Report {
 }
 
 pub fn exerciseNativeLifecycle() ?lifecycle.Report {
+    return exerciseLifecycle(.lifecycle);
+}
+
+pub fn exerciseNativeEvents() ?lifecycle.Report {
+    return exerciseLifecycle(.events);
+}
+
+fn exerciseLifecycle(mode: lifecycle.Mode) ?lifecycle.Report {
     const device = acquireTimer() orelse return null;
     const trampoline = address32(&nih_riscv_task_trampoline) orelse {
         _ = finishTimer(false);
         return null;
     };
-    const prepared = lifecycle.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline);
+    const prepared = lifecycle.prepare(device, bootstrap_stack_min, bootstrap_stack_max, nih_riscv_read_gp(), nih_riscv_read_tp(), trampoline, mode);
     switch_state = .lifecycle;
     const returned = prepared and nih_riscv_timer_window() == 1;
     const report = if (returned) lifecycle.report() else null;

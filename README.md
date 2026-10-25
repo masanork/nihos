@@ -10,7 +10,9 @@ behind a large framework.
 The project is at the design and hardware-bootstrap stage. Its
 ESP-IDF-hosted Zig entry boots on a physical Tab5 and now writes the MIPI-DSI
 scanout framebuffer directly and synchronizes to display refresh. nihOS does
-not yet own the scheduler or native device drivers. A bounded touch ABI can
+not yet own the permanent scheduler or native device drivers. Bounded native
+CPU0 windows now exercise preemption, task calls, and event waits while
+restoring the ESP-IDF host afterward. A bounded touch ABI can
 also initialize and poll the panel-matched controller.
 
 ## Name
@@ -80,6 +82,9 @@ Native task calls, sleep/block/wake, and completion/reaping are defined in
 [`docs/adr/0009-native-task-lifecycle.md`](docs/adr/0009-native-task-lifecycle.md).
 The first live sleep/block/wake/exit result is recorded in
 [`docs/measurements/2026-10-25-esp-emu-task-lifecycle.md`](docs/measurements/2026-10-25-esp-emu-task-lifecycle.md).
+Latched event notifications, masked waits, and deferred task replies are
+defined in
+[`docs/adr/0010-latched-task-events.md`](docs/adr/0010-latched-task-events.md).
 
 ## Bootstrap checks
 

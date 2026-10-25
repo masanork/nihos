@@ -62,7 +62,12 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
 
         pub fn select(self: *Self) ?context.TaskContext {
             const next = self.policy.schedule() orelse return null;
-            return (self.images[next.slot] orelse return null).selected();
+            const selected = (self.images[next.slot] orelse return null).selected() orelse return null;
+            if (self.policy.takeEventResult(next)) |bits| {
+                selected.frame.a0 = bits;
+                selected.frame.a1 = 0;
+            }
+            return selected;
         }
 
         pub fn call(self: *Self, frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
@@ -71,7 +76,7 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
             // ECALL is always 32 bits, including when C is enabled. A sleeping
             // caller resumes after the syscall with its saved scalar reply.
             frame.mepc += 4;
-            const reply = task_control.dispatch(&self.policy, frame.a7, frame.a0);
+            const reply = task_control.dispatchWithPayload(&self.policy, frame.a7, frame.a0, frame.a1);
             frame.a0 = reply.low;
             frame.a1 = reply.high;
             if (reply.reschedule) return self.select();

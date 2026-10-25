@@ -561,6 +561,22 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("task_replacement_generation=", lifecycle.replacement_generation);
     write("task_stale_handle_rejected=ok\r\n");
     write("native_lifecycle=ok\r\n");
+    const events = native_trap.exerciseNativeEvents() orelse {
+        write("nihos: native events failed\r\n");
+        return;
+    };
+    writeU32("event_immediate_receives=", events.immediate_events);
+    writeU32("event_blocked_waits=", events.blocked_events);
+    writeU32("event_deferred_deliveries=", events.delivered_events);
+    writeU32("event_syscalls=", events.calls);
+    writeU32("event_timer_interrupts=", events.interrupts);
+    writeU64("event_idle_runtime_ticks=", events.idle_runtime_ticks);
+    writeU32("event_exit_code_0=", @bitCast(events.exits[0]));
+    writeU32("event_exit_code_1=", @bitCast(events.exits[1]));
+    writeU32("event_reaped=", events.reaped);
+    writeU32("event_replacement_generation=", events.replacement_generation);
+    write("event_stale_handle_rejected=1\r\n");
+    write("native_events=ok\r\n");
     // Reusing the IDF timer after the native leases checks cleanup and that
     // the restored IDF vector/threshold/interrupt mask delivers callbacks.
     if (!exerciseTimer()) {

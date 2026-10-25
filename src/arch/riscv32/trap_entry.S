@@ -296,6 +296,7 @@ nih_riscv_task_trampoline:
     jalr t0
     /* A task entry returns its signed exit code in a0. */
     li a7, NIH_TASK_EXIT
+    li a1, 0
     ecall
     j .Linvalid_context
 
@@ -314,9 +315,10 @@ nih_riscv_context_test_yield:
     .global nih_riscv_task_call
     .type nih_riscv_task_call, @function
 nih_riscv_task_call:
-    /* C ABI: number in a0, scalar argument in a1; u64 result in a0/a1. */
+    /* C ABI: number/argument/payload in a0/a1/a2; u64 result in a0/a1. */
     mv a7, a0
     mv a0, a1
+    mv a1, a2
     ecall
     ret
     .size nih_riscv_task_call, .-nih_riscv_task_call
@@ -326,6 +328,7 @@ nih_riscv_task_call:
     .type nih_riscv_task_exit, @function
 nih_riscv_task_exit:
     li a7, NIH_TASK_EXIT
+    li a1, 0
     ecall
     j .Linvalid_context
     .size nih_riscv_task_exit, .-nih_riscv_task_exit
