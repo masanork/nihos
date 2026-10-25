@@ -109,6 +109,18 @@ pub const FloatingProbe = extern struct {
     stack_address: u32 = 0,
 };
 
+/// Check the saved bank as well as the live-bank assembly probe. Called only
+/// by the owner after the task has stopped and its final trap saved the bank.
+pub fn matchesProbe(bank: *const FloatingContext, probe: *const FloatingProbe) bool {
+    if (bank.fcsr != probe.expected_fcsr or probe.failed != 0) return false;
+    const sum = std.math.add(u32, probe.pattern, 0x0080_0000) catch return false;
+    for (0..31) |index| {
+        const expected = std.math.add(u32, probe.pattern, @as(u32, @intCast(index))) catch return false;
+        if (bank.f[index] != expected) return false;
+    }
+    return bank.f[31] == sum;
+}
+
 /// A fully captured task that the trap epilogue may resume. Runtime policy
 /// owns its lifetime; assembly sees only the chosen integer-frame pointer.
 pub const TaskContext = struct {
@@ -206,6 +218,26 @@ test "task status follows selection while CLIC cause unwinds the active trap" {
     const from_call = floating.returningFrom(suspended_call);
     try std.testing.expectEqual(floating.mstatus, from_call.mstatus);
     try std.testing.expectEqual(suspended_call.mcause, from_call.mcause);
+}
+
+test "saved FP bank rejects register, flag and sum corruption" {
+    var probe = FloatingProbe{ .pattern = 0x3f80_1000, .expected_fcsr = 33 };
+    var bank: FloatingContext = undefined;
+    for (0..31) |index| bank.f[index] = probe.pattern + @as(u32, @intCast(index));
+    bank.f[31] = probe.pattern + 0x0080_0000;
+    bank.fcsr = 33;
+    try std.testing.expect(matchesProbe(&bank, &probe));
+    bank.f[11] ^= 1;
+    try std.testing.expect(!matchesProbe(&bank, &probe));
+    bank.f[11] ^= 1;
+    bank.fcsr = 1;
+    try std.testing.expect(!matchesProbe(&bank, &probe));
+    bank.fcsr = 33;
+    bank.f[31] ^= 1;
+    try std.testing.expect(!matchesProbe(&bank, &probe));
+    bank.f[31] ^= 1;
+    probe.failed = 1;
+    try std.testing.expect(!matchesProbe(&bank, &probe));
 }
 
 test "initial task frame is bounded and follows the trampoline ABI" {

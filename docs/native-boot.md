@@ -13,6 +13,8 @@ See [ADR 0018](adr/0018-independent-native-boot.md) for boot constraints and
 [ADR 0019](adr/0019-permanent-native-task-owners.md) for the scheduler wiring.
 Native inbox/IPI ownership and WFI qualification are described in
 [ADR 0020](adr/0020-native-ipi-and-interrupt-wait.md).
+Opt-in FP ownership and its integer regression mode are described in
+[ADR 0021](adr/0021-native-opt-in-floating-contexts.md).
 
 ## Build and emulated execution
 
@@ -22,6 +24,7 @@ ESP-EMU 0.50.0 are checksum-verified by the existing bootstrap scripts.
 
 ```sh
 sh tools/run-native-smoke.sh
+sh tools/run-native-smoke.sh floating
 ```
 
 This builds only the stock loader and partition table with IDF. Zig links
@@ -32,15 +35,21 @@ the native app separately, the image audit runs, and ESP-EMU boots with
 - `image-audit.json`: sections, ROM boundary, sizes and artifact digests
 - `emulator.log`, `smoke-report.json`: 300 rounds, task evidence and IPI/idle results
 
+Floating-mode outputs use `build/native-emulator-floating/`. The default
+integer mode requires zero FP trap copies. Floating mode adds opted-in banks
+and validates f0..f31/fcsr across timer preemption, task calls and a running
+task's self-IPI. Each task starts with a checked zero bank, and all FP banks
+are retired before the integer bootstraps confirm final FS=Off.
+
 The report also requires three task checkpoints per hart: both busy tasks
 must keep progressing under timer preemption, and both lifecycle generations
 must finish sleeping, exit and be reaped. Dispatch checks interrupt/task
 stack sentinels, frame bounds, and elapsed-time accounting. These checks do
 not provide memory protection between tasks.
 
-The final marker is `NIHOS_NATIVE_IPI_IDLE_PASS`. Each owner must show 64
+The final marker is `NIHOS_NATIVE_FP_PASS`. Each owner must show 64
 ordered message deliveries, 64 wakes from a registered event wait, at least
-64 IPI captures of the parked bootstrap, and unchanged timer IRQ counts
+64 IPI captures of the parked bootstrap, a running-task self-IPI, and unchanged timer IRQ counts
 during the IPI interval. One arrival per hart is deliberately made pending
 before WFI with MIE clear. The earlier soak marker alone cannot pass this
 workflow. These observations do not measure physical power savings.
@@ -50,17 +59,22 @@ To compile/link only the application, without an IDF installation:
 ```sh
 sh tools/build-native-elf.sh emulator
 sh tools/build-native-elf.sh device
+sh tools/build-native-elf.sh emulator build/native-emulator-floating floating
 ```
 
-Normal architecture CI also links both profiles through this same script.
+Normal architecture CI links both modes for both profiles through this same
+script. The FP helper assembly uses F instructions with the app's scalar
+ILP32 ABI; the kernel remains integer-only. Compiler-generated FP tasks and
+floating-point C function ABIs have not yet been qualified.
 
-The manual **Native boot** GitHub Actions workflow runs this smoke, builds
-the physical profile, and retains the artifacts. It does not flash hardware.
+The manual **Native boot** GitHub Actions workflow runs both modes, builds
+both physical images, and retains the artifacts. It does not flash hardware.
 
 ## Physical image
 
 ```sh
 sh tools/build-native.sh device
+sh tools/build-native.sh device floating
 ```
 
 The image is built for P4 rev1/2 CLIC threshold semantics. The emulator image
@@ -69,16 +83,19 @@ outputs are under `build/native-device/`. The app occupies the factory slot
 at `0x10000`; the merged image includes loader at `0x2000` and partition table
 at `0x8000` and is written at `0x0`.
 
+Floating outputs use `build/native-device-floating/`. Modes of the same
+profile share the stock loader build; build those images sequentially.
+
 Physical qualification is pending while emulator development continues.
 Do not interpret a successful device-profile build as a physical boot result.
 In this fixture the console is the output; display, touch and external RAM
-are not initialized. FP ownership, migration and a general tickless deadline
-policy are not yet connected to this permanent native runtime.
+are not initialized. Migration and a general tickless deadline policy are
+not yet connected to this permanent native runtime.
 
-The smoke has fifteen validator regression tests, including frozen
+The smoke has eighteen validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
-IPI/pending-before-WFI evidence:
+IPI/pending-before-WFI evidence, FP accounting and wrong build mode:
 
 ```sh
 python3 tools/native_checks_test.py

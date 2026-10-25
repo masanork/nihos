@@ -9,8 +9,9 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
-def complete_log():
+def complete_log(mode="integer"):
     lines = ["NIHOS_NATIVE_BOOT backend=zig-sram rtos=none",
+             "NIHOS_NATIVE_MODE floating=" + ("1" if mode == "floating" else "0"),
              "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned"]
     for count in [1] + list(range(10, 301, 10)):
         lines.append("NIHOS_NATIVE_HEARTBEAT round={0:08x} cpu0={1:08x} cpu1={1:08x} "
@@ -27,9 +28,15 @@ def complete_log():
         lines.append("NIHOS_NATIVE_IPI hart={0:08x} sent=00000040 received=00000040 "
                      "ipis=00000041 delivered=00000040 woken=00000040 rejected=00000000 "
                      "from_idle=00000040 entries=00000041 returns=00000041 "
-                     "pending_before_wfi=00000001 "
+                     "pending_before_wfi=00000001 self_ipi=00000001 "
                      "timer_start=00000708 timer_end=00000708 queued=00000000".format(hart))
     lines.append("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none")
+    for hart in range(2):
+        values = ([1000, 1000, 100, 600, 79, 1, 680, 680, 5, 1] if mode == "floating" else [0] * 9 + [1])
+        names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "confirmed")
+        lines.append("NIHOS_NATIVE_FP hart={:08x}".format(hart) + "".join(
+            " {}={:08x}".format(name, value) for name, value in zip(names, values)))
+    lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("1" if mode == "floating" else "0"))
     return "\n".join(lines)
 
 
@@ -107,6 +114,25 @@ class NativeLogTests(unittest.TestCase):
     def test_missing_pending_before_wfi_probe_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "IPI delivery/idle"):
             MODULE.check(complete_log().replace("pending_before_wfi=00000001", "pending_before_wfi=00000000"))
+
+    def test_floating_run_requires_all_trap_sources_and_balanced_copies(self):
+        report = MODULE.check(complete_log("floating"), "floating")
+        self.assertEqual(report["floating"][0]["saves"], 680)
+        for field in ("checks0", "checks1", "checks2", "ipi", "restores", "initial", "confirmed"):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                MODULE.check(re.sub(field + r"=[0-9a-f]{8}", field + "=00000000", complete_log("floating")))
+
+    def test_integer_run_rejects_fp_copies_and_mode_mismatch(self):
+        with self.assertRaisesRegex(ValueError, "overhead"):
+            MODULE.check(complete_log("floating").replace("floating=1", "floating=0"))
+        with self.assertRaisesRegex(ValueError, "requested build"):
+            MODULE.check(complete_log(), "floating")
+
+    def test_missing_final_fp_or_running_task_ipi_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "FP evidence"):
+            MODULE.check(complete_log().replace("NIHOS_NATIVE_FP_PASS", "INCOMPLETE"))
+        with self.assertRaisesRegex(ValueError, "IPI delivery/idle"):
+            MODULE.check(complete_log().replace("self_ipi=00000001", "self_ipi=00000000"))
 
 
 if __name__ == "__main__":

@@ -29,11 +29,16 @@ jobs:
       - name: Check smoke log validator regressions
         run: python3 tools/native_checks_test.py
 
-      - name: Native boot without external RAM
+      - name: Integer native boot without external RAM
         run: sh tools/run-native-smoke.sh
 
+      - name: Floating native boot without external RAM
+        run: sh tools/run-native-smoke.sh floating
+
       - name: Build physical Tab5 revision 1.x image
-        run: sh tools/build-native.sh device
+        run: |
+          sh tools/build-native.sh device
+          sh tools/build-native.sh device floating
 
       - name: Retain native evidence
         if: always()
@@ -45,6 +50,6 @@ jobs:
             build/native-*/nihos-native.elf
             build/native-*/nihos-native.bin
             build/native-*/nihos-native-flash.bin
-            build/native-emulator/emulator.log
-            build/native-emulator/smoke-report.json
+            build/native-emulator*/emulator.log
+            build/native-emulator*/smoke-report.json
           if-no-files-found: warn

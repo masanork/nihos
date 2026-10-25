@@ -48,5 +48,7 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
 
 sh "$repo_root/tools/build-native-elf.sh" device "$out_dir/native-device"
 sh "$repo_root/tools/build-native-elf.sh" emulator "$out_dir/native-emulator"
+sh "$repo_root/tools/build-native-elf.sh" device "$out_dir/native-device-floating" floating
+sh "$repo_root/tools/build-native-elf.sh" emulator "$out_dir/native-emulator-floating" floating
 
-echo "RV32 architecture contract and both native ELF links: ok"
+echo "RV32 architecture contract and four native ELF links: ok"

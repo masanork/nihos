@@ -14,7 +14,7 @@ SECTIONS
     /* The stock P4 second-stage loader requires two mapped segments.
      * Neither contains executable native code or runtime data. */
     .flash.rodata : { LONG(0x4e494853) } > compatibility
-    .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.*) } > ram
+    .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .rodata : ALIGN(16) { *(.rodata .rodata.* .srodata .srodata.*) } > ram
     .data : ALIGN(16) {
         __global_pointer$ = . + 0x800;

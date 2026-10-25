@@ -6,12 +6,18 @@ import re
 import sys
 
 
-def check(log):
+def check(log, expected_mode=None):
     log = log.replace("\\r", "").replace("\r", "")
     if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
         raise ValueError("missing boot or unexpected reboot")
     if "NIHOS_NATIVE_FAIL" in log or "NIHOS_NATIVE_TRAP" in log:
         raise ValueError("native failure/trap")
+    modes = re.findall(r"NIHOS_NATIVE_MODE floating=([01])", log)
+    if len(modes) != 1:
+        raise ValueError("missing/duplicate native mode")
+    mode = "floating" if modes[0] == "1" else "integer"
+    if expected_mode is not None and mode != expected_mode:
+        raise ValueError("native mode differs from requested build")
     if "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned" not in log:
         raise ValueError("missing CRT/exception pass")
     pattern = (r"NIHOS_NATIVE_HEARTBEAT round=([0-9a-f]{8}) cpu0=([0-9a-f]{8}) "
@@ -46,7 +52,7 @@ def check(log):
     if any(len(records) != 3 for records in owners):
         raise ValueError("missing per-hart task checkpoints")
     names = ("sent", "received", "ipis", "delivered", "woken", "rejected",
-             "from_idle", "entries", "returns", "pending_before_wfi", "timer_start", "timer_end", "queued")
+             "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued")
     pattern = r"NIHOS_NATIVE_IPI hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in names)
     ipi_owners = {}
@@ -59,6 +65,7 @@ def check(log):
                 record["ipis"] < 64 or record["from_idle"] < 64 or
                 record["returns"] < 64 or record["entries"] < record["returns"] or
                 record["pending_before_wfi"] != 1 or
+                record["self_ipi"] != 1 or
                 record["rejected"] != 0 or record["queued"] != 0):
             raise ValueError("incomplete IPI delivery/idle wake")
         if record["timer_start"] != record["timer_end"]:
@@ -67,7 +74,29 @@ def check(log):
     if (set(ipi_owners) != {0, 1} or
             "NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none" not in log):
         raise ValueError("missing native IPI/idle evidence")
-    return {"schema": 1, "backend": "native-sram", "evidence": "emulator",
+    fp_names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "confirmed")
+    pattern = r"NIHOS_NATIVE_FP hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in fp_names)
+    fp_owners = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in fp_owners:
+            raise ValueError("invalid/duplicate FP owner")
+        record = dict(zip(fp_names, values))
+        if (record["confirmed"] != 1 or record["saves"] != record["restores"] or
+                record["saves"] != record["timer"] + record["calls"] + record["ipi"]):
+            raise ValueError("FP copy/return accounting mismatch")
+        if mode == "integer":
+            if any(record[name] != 0 for name in fp_names[:-1]):
+                raise ValueError("integer tasks paid FP transfer overhead")
+        elif (record["initial"] != 5 or min(record["checks0"], record["checks1"], record["checks2"]) < 4 or
+                record["timer"] < 8 or record["calls"] < 12 or record["ipi"] < 1):
+            raise ValueError("missing FP task/trap coverage")
+        fp_owners[hart] = record
+    if (set(fp_owners) != {0, 1} or
+            "NIHOS_NATIVE_FP_PASS floating=" + modes[0] not in log):
+        raise ValueError("missing final FP evidence")
+    return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples),
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
             "cpu0_interrupts": samples[-1][3], "cpu1_interrupts": samples[-1][4],
@@ -76,18 +105,19 @@ def check(log):
                        "calls": values[-1][5], "reaped": values[-1][6],
                        "sleeps": values[-1][7], "elapsed_ticks": values[-1][8]}
                       for hart, values in enumerate(owners)],
-            "ipi_idle": [{"hart": hart, **ipi_owners[hart]} for hart in (0, 1)]}
+            "ipi_idle": [{"hart": hart, **ipi_owners[hart]} for hart in (0, 1)],
+            "floating": [{"hart": hart, **fp_owners[hart]} for hart in (0, 1)]}
 
 
 def main():
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json")
+    if len(sys.argv) not in (3, 4):
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating]")
     try:
-        report = check(Path(sys.argv[1]).read_text())
+        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) == 4 else None)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
-    print("Native smoke passed: 300 rounds, task lifecycle, and 64 IPI-only idle exchanges")
+    print("Native smoke passed (" + report["mode"] + "): 300 rounds, lifecycle, IPI/idle and FP accounting")
 
 
 if __name__ == "__main__":
