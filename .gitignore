@@ -1,0 +1,13 @@
+.DS_Store
+
+# Zig
+.zig-cache/
+zig-cache/
+zig-out/
+
+# Local build and editor state
+build/
+compile_commands.json
+*.swp
+*.swo
+*~
