@@ -13,9 +13,9 @@ pub const exception_context_size: u32 = 148;
 pub const exception_storage_size: u32 = 160;
 pub const floating_context_size: u32 = 132;
 
-/// Per-task CSR state for mret, separate from the stable integer-frame ABI.
-/// CLIC mcause includes the previous interrupt level and must follow the
-/// selected task rather than the task that happened to enter the trap.
+/// Captured CSR state, separate from the stable integer-frame ABI. mstatus
+/// follows the selected task; returningFrom supplies the active trap's CLIC
+/// mcause before publication to assembly. Native traps do not nest.
 pub const ReturnState = extern struct {
     mstatus: u32,
     mcause: u32,
@@ -34,6 +34,13 @@ pub const ReturnState = extern struct {
         var state = self.integerOnly();
         state.mstatus |= clean_floating_state;
         return state;
+    }
+
+    /// Unwind the trap being serviced, even when the selected task's last
+    /// capture was an ECALL. Restoring that old exception cause on an IRQ
+    /// return can leave CLIC MIL at the handler's priority on P4 revision 1.
+    pub fn returningFrom(self: ReturnState, active_trap: ReturnState) ReturnState {
+        return .{ .mstatus = self.mstatus, .mcause = active_trap.mcause };
     }
 };
 
@@ -184,7 +191,7 @@ comptime {
         @compileError("RV32 floating probe assembly layout changed");
 }
 
-test "integer task return preserves CLIC metadata and mret interrupt state" {
+test "task status follows selection while CLIC cause unwinds the active trap" {
     const incoming = ReturnState{ .mstatus = 0x7888, .mcause = 0xb835_0014 };
     const outgoing = incoming.integerOnly();
     try std.testing.expectEqual(@as(u32, 0x1880), outgoing.mstatus);
@@ -192,6 +199,13 @@ test "integer task return preserves CLIC metadata and mret interrupt state" {
     const floating = incoming.floatingReady();
     try std.testing.expectEqual(@as(u32, 0x5880), floating.mstatus);
     try std.testing.expectEqual(incoming.mcause, floating.mcause);
+    const suspended_call = ReturnState{ .mstatus = 0x1880, .mcause = 0x3800_000b };
+    const from_irq = suspended_call.returningFrom(incoming);
+    try std.testing.expectEqual(suspended_call.mstatus, from_irq.mstatus);
+    try std.testing.expectEqual(incoming.mcause, from_irq.mcause);
+    const from_call = floating.returningFrom(suspended_call);
+    try std.testing.expectEqual(floating.mstatus, from_call.mstatus);
+    try std.testing.expectEqual(suspended_call.mcause, from_call.mcause);
 }
 
 test "initial task frame is bounded and follows the trampoline ABI" {

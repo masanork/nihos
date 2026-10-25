@@ -161,7 +161,8 @@ nih_riscv_trap_entry:
     addi t1, t1, 1
     sw t1, 0(t0)
 .Lno_floating_restore:
-    /* Restore the selected task's CSR state, not the outgoing task's state. */
+    /* Dispatcher combines the selected task's mstatus with the current
+     * trap's complete mcause so mret unwinds this CLIC entry. */
     la t0, nih_riscv_selected_return_states
     slli t1, s8, 3
     add t0, t0, t1
