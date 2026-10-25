@@ -1,0 +1,65 @@
+schema = 1
+
+[[source]]
+name = "Zig"
+url = "https://ziglang.org/download/"
+revision = "0.17.0"
+license = "MIT"
+status = "build-tool"
+use = "Pinned compiler for nihOS Zig sources; downloaded archive checksum is verified"
+
+[[source]]
+name = "ESP-IDF"
+url = "https://github.com/espressif/esp-idf"
+revision = "v5.4.4"
+license = "Apache-2.0 with component-specific third-party licenses"
+status = "planned-dependency"
+use = "ESP32-P4 boot, linker scripts, register definitions, ROM and low-level support"
+
+[[source]]
+name = "M5Tab5-UserDemo"
+url = "https://github.com/m5stack/M5Tab5-UserDemo"
+revision = "b4e356bc491ca070d54004718dad789c07d5fc93"
+license = "MIT with separately licensed dependencies"
+status = "reference-only"
+use = "Tab5 pin map, power sequence, display, touch, audio, camera and SD bring-up"
+
+[[source]]
+name = "M5Unified"
+url = "https://github.com/m5stack/M5Unified"
+revision = "368ad60807161625aa65baad37a4a3af2a7eccea"
+license = "MIT; requires M5GFX"
+status = "reference-only"
+use = "Bring-up oracle for Tab5 peripherals"
+
+[[source]]
+name = "M5GFX"
+url = "https://github.com/m5stack/M5GFX"
+revision = "65c816a38386062d2c3dc47d41237a9083acbc75"
+license = "MIT with separately licensed fonts, decoders and embedded sources"
+status = "reference-only"
+use = "Display and touch behavior oracle; no bundled assets are imported"
+
+[[source]]
+name = "M5HAL"
+url = "https://github.com/m5stack/M5HAL"
+revision = "c2bfcb2a7534b9af07e199f29d255ef38fb3885c"
+license = "MIT"
+status = "reference-only"
+use = "Future adapter candidate; upstream currently describes it as under development"
+
+[[source]]
+name = "littlefs"
+url = "https://github.com/littlefs-project/littlefs"
+revision = "6cb4e86540eca0d9ba62500a298385c9d863c8be"
+license = "BSD-3-Clause"
+status = "candidate-dependency"
+use = "Internal NOR filesystem after block-device and fault-injection validation"
+
+[[source]]
+name = "MeOS"
+url = "https://github.com/shi3z/MeOS"
+revision = "a6a9f234e509737f9fe84fe13468a8ec78b60fc9"
+license = "No repository-level license verified as of 2026-10-25"
+status = "reference-only-no-copy"
+use = "Behavioral observations and test requirements only; no source import"

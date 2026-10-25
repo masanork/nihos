@@ -4,6 +4,10 @@
 .zig-cache/
 zig-cache/
 zig-out/
+.tools/
+
+# Rust comparison probe
+target/
 
 # Local build and editor state
 build/

@@ -21,9 +21,12 @@ expressive while keeping the machinery visible to the reader.
 
 ## Direction
 
-- Use Zig for the core where it produces clear, inspectable machine code.
+- Use Zig 0.17.0 for the kernel, HAL, and native services.
 - Keep C and assembly boundaries small and explicit where the vendor SDK,
   boot path, or hardware support requires them.
+- Keep the platform boundary as a small handwritten C ABI so that C and Rust
+  comparison implementations remain possible without leaking ESP-IDF types
+  into the kernel.
 - Use both ESP32-P4 cores deliberately, with measured SMP costs and benefits.
 - Prefer low overhead and simple invariants over server-grade security
   machinery, while using static analysis and hardware isolation where useful.
@@ -32,6 +35,33 @@ expressive while keeping the machinery visible to the reader.
 - Keep the source readable enough to serve as an operating-systems text.
 - Choose the flash filesystem from measurements and failure tests rather than
   assuming m5fs, littlefs, or another design in advance.
+
+The language decision and its validation gates are recorded in
+[`docs/adr/0001-zig-first.md`](docs/adr/0001-zig-first.md). The initial system
+layers and hardware boundary are described in
+[`docs/architecture.md`](docs/architecture.md).
+
+## Bootstrap checks
+
+Install the pinned Zig toolchain into the ignored `.tools/` directory:
+
+```sh
+sh tools/bootstrap-zig.sh
+```
+
+Run the host-side Zig tests and the same ABI probe implemented in C, Zig, and
+Rust:
+
+```sh
+.tools/zig-0.17.0/zig build test
+sh tools/run-language-probe.sh
+```
+
+The probe is not a Tab5 performance result. It verifies the language boundary
+and establishes a repeatable comparison harness before target-specific code is
+introduced. The first host baseline is recorded in
+[`docs/measurements/2026-10-25-language-probe-host.md`](docs/measurements/2026-10-25-language-probe-host.md).
+No hosted CI workflow is enabled.
 
 ## Project boundary
 
@@ -42,6 +72,10 @@ No MeOS source code is included in this initial repository. Any future reuse
 of a HAL, driver, or other implementation must first have a verified license
 or explicit permission, preserve attribution, and document the imported
 boundary and modifications.
+
+Sources used as specifications, references, or dependencies are recorded in
+[`provenance.toml`](provenance.toml). A source marked `reference-only` must not
+be copied into the repository.
 
 ## Repository policy
 
