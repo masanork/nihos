@@ -65,6 +65,8 @@ and the physical ESP32-P4 result is in
 The first Zig Timer Group driver and native asynchronous interrupt window
 are described in
 [`docs/adr/0006-bounded-native-timer.md`](docs/adr/0006-bounded-native-timer.md).
+The repeated timer/interrupt-restoration result is recorded in
+[`docs/measurements/2026-10-25-esp-emu-native-timer.md`](docs/measurements/2026-10-25-esp-emu-native-timer.md).
 
 ## Bootstrap checks
 
