@@ -13,6 +13,8 @@ wrappers use one C-ABI assembly gateway. No call accepts a task-supplied
 pointer.
 
 The gateway puts the call number in `a7` and one scalar argument in `a0`.
+ADR 0010 extends this with an `a1` payload for notifications; the calls below
+require that payload to be zero.
 Replies occupy `a0/a1`, matching a C-ABI 64-bit return. Negative status codes
 are sign-extended; successful 32-bit handles have a zero high word, including
 handles whose generation makes bit 31 of the low word nonzero.

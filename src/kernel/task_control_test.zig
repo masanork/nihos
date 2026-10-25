@@ -70,3 +70,23 @@ test "rejected calls retain caller state and tick replies retain all 64 bits" {
     try std.testing.expectEqual(@as(u32, 7), now.low);
     try std.testing.expectEqual(@as(u32, 1), now.high);
 }
+
+test "event calls preserve bit 31 and reject payloads on scalar-only calls" {
+    const scheduler = @import("scheduler.zig");
+    var policy = scheduler.Scheduler(2, 2){};
+    const task = policy.add(0).?;
+    _ = policy.add(1).?;
+    _ = policy.schedule().?;
+    const bad = control.dispatchWithPayload(&policy, @backingInt(Number.sleep), 5, 1);
+    try std.testing.expectEqual(Status.invalid_argument, bad.statusCode());
+    try std.testing.expectEqual(task, policy.current().?);
+    const posted = control.dispatchWithPayload(&policy, @backingInt(Number.notify), encodeHandle(task), 0x8000_0000);
+    try std.testing.expectEqual(Status.ok, posted.statusCode());
+    try std.testing.expect(!posted.reschedule);
+    const received = dispatch(&policy, @backingInt(Number.wait_events), 0x8000_0000);
+    try std.testing.expectEqual(@as(u32, 0x8000_0000), received.low);
+    try std.testing.expectEqual(@as(u32, 0), received.high);
+    try std.testing.expect(!received.reschedule);
+    try std.testing.expectEqual(Status.invalid_argument, dispatch(&policy, @backingInt(Number.wait_events), 0).statusCode());
+    try std.testing.expectEqual(Status.invalid_argument, dispatch(&policy, @backingInt(Number.notify), encodeHandle(task)).statusCode());
+}
