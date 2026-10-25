@@ -54,6 +54,19 @@ generated header had previously compiled those calls out.
 This qualifies a controlled native save/select/restore round trip on CPU0 and
 physical silicon. It is not timer-driven preemption: ESP-IDF still owns boot,
 the normal CLIC vector, timer allocation, FreeRTOS scheduling, and CPU1
-startup. The temporary monitor-off interval is acceptable only for this
-interrupt-masked bootstrap test. Native scheduling requires per-task hardware
-stack bounds, followed by nested-interrupt, FPU, CPU1, and load testing.
+startup. Native scheduling still requires nested-interrupt, FPU, CPU1, and
+load testing.
+
+## Per-stack guard follow-up
+
+Exact firmware commit `5176a55a1cc22341833ca58236e9e7888e6f4133`
+replaced the whole-test monitor suspension with per-stack bounds. Each trap
+now stops monitoring only for the stack-pointer transition, sets bounds for
+the CPU0 interrupt stack or the selected task, and restarts monitoring before
+executing dispatcher or task code. The self-test also fails unless the
+original FreeRTOS bounds are restored after returning.
+
+That exact commit passed the same physical bootstrap sequence. It observed
+128 timer ticks in 128,256 us, completed all DMA paths, measured display
+refresh at 65.467 Hz, completed idle touch sampling, and reached
+`nihos: bootstrap complete` without a stack-protection fault.
