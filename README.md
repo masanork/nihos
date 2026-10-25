@@ -74,7 +74,8 @@ sh tools/build-espidf.sh
 This firmware currently lets ESP-IDF perform boot and FreeRTOS SMP startup,
 then crosses the handwritten C ABI into Zig and prints the detected chip,
 heap, PSRAM, and Flash information. Zig then owns bounded internal-RAM and
-PSRAM arenas and exercises the platform cache-sync contract. It is a bring-up
+PSRAM arenas, exercises the platform cache-sync contract, and verifies
+memory-to-memory AXI-GDMA across internal RAM and PSRAM. It is a bring-up
 backend, not yet the native nihOS scheduler. The physical-device result is
 recorded in
 [`docs/measurements/2026-10-25-espidf-zig-bootstrap.md`](docs/measurements/2026-10-25-espidf-zig-bootstrap.md).

@@ -48,6 +48,7 @@ enum nih_memory_kind {
 enum {
     NIH_MEMORY_WRITABLE = UINT32_C(1) << 0,
     NIH_MEMORY_CACHEABLE = UINT32_C(1) << 1,
+    NIH_MEMORY_DMA_DATA = UINT32_C(1) << 2,
 };
 
 struct nih_memory_region {
@@ -56,6 +57,14 @@ struct nih_memory_region {
     uint32_t address;
     uint32_t length;
     uint32_t cache_line_bytes;
+};
+
+struct nih_dma_copy {
+    uint32_t source_address;
+    uint32_t destination_address;
+    uint32_t length;
+    uint32_t flags;
+    uint32_t elapsed_us;
 };
 
 typedef void (*nih_cpu_entry_fn)(void *argument);
@@ -67,6 +76,8 @@ int32_t nih_platform_memory_region(uint32_t kind,
                                    struct nih_memory_region *out);
 /* Applies the direction-specific cache ownership transition to the range. */
 int32_t nih_platform_cache_sync(const struct nih_dma_range *range);
+/* Performs one synchronous memory-to-memory DMA transaction. */
+int32_t nih_platform_dma_copy(struct nih_dma_copy *copy);
 int32_t nih_platform_cpu_start(uint32_t cpu_id,
                                nih_cpu_entry_fn entry,
                                void *argument);
