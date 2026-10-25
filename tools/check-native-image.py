@@ -13,7 +13,11 @@ import sys
 
 SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF20000
 ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
-               "nih_rom_set_cpu1_entry": 0x4FC000A8}
+               "nih_rom_set_cpu1_entry": 0x4FC000A8,
+               "nih_rom_l2_line_size": 0x4FC003CC,
+               "nih_rom_l2_enable": 0x4FC00504,
+               "nih_rom_cache_invalidate": 0x4FC003E4,
+               "nih_rom_cache_writeback": 0x4FC003F4}
 FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.rodata": (0x40010020, 4)}
 

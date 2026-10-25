@@ -23,6 +23,8 @@ Read-only native PSRAM command discovery is described in
 [ADR 0024](adr/0024-bounded-native-psram-discovery.md).
 Supply startup and command-data qualification are described in
 [ADR 0025](adr/0025-native-psram-supply-and-command-data.md).
+Reserved CPU mappings and cross-core PSRAM handoff are described in
+[ADR 0026](adr/0026-native-psram-mapping-and-cache-handoff.md).
 
 ## Build and emulated execution
 
@@ -84,9 +86,10 @@ heap. No external memory is registered.
 
 Before CPU1 release, Zig now reads the PSRAM identity through MSPI3 with
 bounded polling and a repeated-read check. `NIHOS_NATIVE_PSRAM` reports the
-mode-register capacity while requiring zero mapped/allocatable bytes. This
-is an emulated command fixture. The only ROM
-calls remain console output and CPU1 entry publication.
+mode-register capacity. A populated device now has 192 KiB of reserved
+CPU test windows and zero allocatable external bytes. This is an emulated
+qualification fixture. Its ROM boundary includes four explicit cache
+functions alongside the earlier console output and CPU1 entry functions.
 
 The native path now programs and reads back LDO channel 2 for 1.8 V, using
 complete factory trim fields when present and nominal settings otherwise.
@@ -96,8 +99,16 @@ x8/fixed-latency mode settings, followed by two complementary write/read
 passes over 22–26 address-derived samples spanning its address lines and
 final word. `NIHOS_NATIVE_PSRAM_SUPPLY` and `NIHOS_NATIVE_PSRAM_IO` report
 these results. An absent die receives no mode or data writes. All CPU
-access still uses internal SRAM; physical voltage/timing, high-speed tuning,
-MMU/cache and DMA remain unqualified.
+stacks and general allocation still use internal SRAM.
+
+CPU0 maps the first, middle and final physical pages into three consecutive
+64 KiB windows, verifies CPU/command visibility with writeback/invalidation,
+then releases CPU1. The bootstraps check 64 rounds over PSRAM payloads with
+internal request/acknowledgement words, followed by a physical-command check
+of CPU1's last reply. `NIHOS_NATIVE_PSRAM_MAP` and `NIHOS_NATIVE_PSRAM_SMP`
+report these gates. ROM cache operations follow the vendor API; their internal
+wait time is not bounded by nihOS. Physical voltage/timing, coherency,
+high-speed tuning and DMA remain unqualified.
 
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
 `64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
@@ -143,18 +154,19 @@ profile share the stock loader build; build those images sequentially.
 
 Physical qualification is pending while emulator development continues.
 Do not interpret a successful device-profile build as a physical boot result.
-In this fixture the console is the output; display, touch and CPU-accessible
-external RAM are not initialized. Migration and a general tickless deadline policy are
-not yet connected to this permanent native runtime.
+In this fixture the console is the output; display and touch are not
+initialized. CPU-accessible external RAM is limited to the reserved test
+windows. Migration and a general tickless deadline policy are not yet
+connected to this permanent native runtime.
 
-The smoke has thirty-four validator regression tests, including frozen
+The smoke has thirty-nine validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
 generated-code preemption, SRAM ownership/accounting, PSRAM discovery,
-supply programming and command-data accounting.
-Four more tests
-check instruction classification and the linker heap boundary:
+supply programming, command-data accounting, MMU/cache bridges and cross-core
+PSRAM handoff. Four more tests check instruction classification and the
+linker heap boundary:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

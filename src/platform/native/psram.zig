@@ -2,6 +2,7 @@
 const psram = @import("psram");
 const supply = @import("psram_supply");
 const timer_group = @import("timer_group");
+pub const memory = @import("psram_memory.zig");
 
 fn reg(address: usize) *volatile u32 {
     return @ptrFromInt(address);
@@ -16,6 +17,7 @@ const Bus = struct {
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
     }
 };
+var controller = psram.Controller(Bus){ .io = .{}, .poll_limit = 100_000 };
 
 pub const Report = struct {
     discovery: psram.Discovery,
@@ -24,6 +26,7 @@ pub const Report = struct {
     supply: SupplyReport = .{},
     io_status: u32 = 0,
     exercise: psram.Exercise = .{},
+    mapping: memory.Report = .{},
 };
 
 pub const SupplyReport = struct {
@@ -93,7 +96,7 @@ pub fn probe(clock: timer_group.Timer) Report {
     reg(0x5008e1a0).* = (reg(0x5008e1a0).* & ~mask) | 3 | (3 << 2) | (3 << 7) | (2 << 25);
     reg(0x5008f014).* = (1 << 16) | 1; // XTAL / 2, nominally 20 MHz.
     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
-    var controller = psram.Controller(Bus){ .io = .{}, .poll_limit = 100_000 };
+    controller = .{ .io = .{}, .poll_limit = 100_000 };
     const result = controller.discover();
     report.discovery = result;
     report.transactions = controller.transactions;
@@ -106,5 +109,10 @@ pub fn probe(clock: timer_group.Timer) Report {
         report.io_status = 1;
     }
     report.total_transactions = controller.transactions;
+    if (report.io_status == 1) report.mapping = memory.prepare(&controller);
     return report;
+}
+
+pub fn exchange() memory.SmpReport {
+    return memory.exchange(&controller);
 }

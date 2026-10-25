@@ -165,6 +165,19 @@ export fn nih_native_task_failed() callconv(.c) noreturn {
     fail("task invariant");
 }
 
+export fn nih_native_psram_mismatch(stage: u32, address: u32, actual: u32, expected: u32) callconv(.c) noreturn {
+    print("NIHOS_NATIVE_PSRAM_MISMATCH stage=");
+    hex(stage);
+    print(" address=");
+    hex(address);
+    print(" actual=");
+    hex(actual);
+    print(" expected=");
+    hex(expected);
+    print("\n");
+    fail("PSRAM mapping/data invariant");
+}
+
 export fn nih_fp_native_mismatch(code: u32, actual: u32, expected: u32) callconv(.c) noreturn {
     print("NIHOS_NATIVE_FP_MISMATCH code=");
     hex(code);
@@ -273,6 +286,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     interruptGuard(1).* = @splat(0x6e69_6972);
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
+    native_psram.memory.peer();
     prepareTasks(1);
     enableTimer(1);
     while (true) {
@@ -312,7 +326,9 @@ export fn nih_native_main() callconv(.c) noreturn {
     hex(external.discovery.bytes);
     print(" transactions=");
     hex(external.transactions);
-    print(" mapped=00000000 allocatable=00000000\n");
+    print(" mapped=");
+    hex(external.mapping.bytes);
+    print(" allocatable=00000000\n");
     print("NIHOS_NATIVE_PSRAM_SUPPLY");
     inline for (.{ "programmed", "calibrated", "dref", "mul", "control", "analog", "settled" }) |field| {
         print(" " ++ field ++ "=");
@@ -327,8 +343,21 @@ export fn nih_native_main() callconv(.c) noreturn {
     print(" transactions=");
     hex(external.total_transactions);
     print("\n");
+    print("NIHOS_NATIVE_PSRAM_MAP");
+    inline for (.{ "status", "failure", "line_bytes", "last_address", "last_actual", "last_expected", "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(external.mapping, field));
+    }
+    print("\n");
     prepareTasks(0);
     startCpu1();
+    const external_smp = native_psram.exchange();
+    print("NIHOS_NATIVE_PSRAM_SMP");
+    inline for (.{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(external_smp, field));
+    }
+    print("\n");
     enableTimer(0);
     var previous: u32 = 0;
     var rounds: u32 = 0;
