@@ -90,6 +90,9 @@ Their first native ECALL and timer execution result is recorded in
 Bounded request/completion channels and notification commit semantics are
 defined in
 [`docs/adr/0011-event-driven-spsc-channels.md`](docs/adr/0011-event-driven-spsc-channels.md).
+The first bounded native request/completion result, including the ring's
+non-power-of-two counter-wrap correction, is recorded in
+[`docs/measurements/2026-10-25-esp-emu-spsc-channels.md`](docs/measurements/2026-10-25-esp-emu-spsc-channels.md).
 
 ## Bootstrap checks
 
