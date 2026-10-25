@@ -170,10 +170,19 @@ Payload progress uses channel waits, with committed data distinguished from
 notification errors. These channels still use CPU0's event owner; cross-core
 blocking, close/cancellation, and permanent service lifetimes remain open.
 
+ADR 0012 adds one-way remote event delivery to CPU0's native owner. An IDF
+task on CPU1 publishes responses and fixed notification records, then asserts
+the borrowed CPU0 IPI. The native trap alone drains the inbox and wakes tasks.
+The bounded adapter preserves IDF's reason bits and reasserts its line after
+restoring the original vector/mask/threshold. A native scenario verifies 64
+registered client waits, stale-target rejection, producer quiescence, and
+subsequent execution of an IDF CPU0 task. CPU1 still uses IDF task placement
+and polling; native CPU1 scheduling and bidirectional blocking remain open.
+
 The cross-core ring portion of stage 6 has also been exercised early through
 the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
 100,000 ordered request/completion pairs through the bounded SPSC rings on a
 physical Tab5. This validates the current RISC-V atomic and coherent-memory
 assumptions under FreeRTOS task placement. It does not complete stage 6:
-native CPU1 startup, IPI wakeup, scheduler integration, cancellation, and
+native CPU1 startup, reverse IPI wakeup, full scheduler integration, cancellation, and
 frame-load interference remain open.
