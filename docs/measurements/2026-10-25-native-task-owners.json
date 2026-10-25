@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "firmware_commit": "bfd36392cf725a16546d122789ced654f5214a5f",
+  "status": "emulator-qualified; physical-deferred",
+  "tools": {
+    "zig": "0.17.0",
+    "esp_idf_loader": "v5.4.4",
+    "esp_emu": "v0.50.0"
+  },
+  "emulator": {
+    "chip": "esp32p4 revision-3 ROM",
+    "psram_bytes": 0,
+    "result": {
+      "schema": 1,
+      "backend": "native-sram",
+      "evidence": "emulator",
+      "rounds": 300,
+      "samples": 31,
+      "cpu0_progress": 110183165,
+      "cpu1_progress": 185112469,
+      "cpu0_interrupts": 900,
+      "cpu1_interrupts": 899,
+      "tasks": [
+        {
+          "hart": 0,
+          "progress": [
+            17631151,
+            17631128
+          ],
+          "timer_captures": [
+            300,
+            300
+          ],
+          "switches": 906,
+          "calls": 12,
+          "reaped": 2,
+          "sleeps": 2,
+          "elapsed_ticks": 900
+        },
+        {
+          "hart": 1,
+          "progress": [
+            17631088,
+            17630372
+          ],
+          "timer_captures": [
+            300,
+            299
+          ],
+          "switches": 905,
+          "calls": 12,
+          "reaped": 2,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        }
+      ]
+    },
+    "log_sha256": "d0c54d807b271ce8eeb1f20970d020c23d499a4ccdebbb089274eead1b4b83be"
+  },
+  "profiles": {
+    "device": {
+      "schema": 1,
+      "backend": "native-sram",
+      "rtos_linked": false,
+      "entry": "0x4ff00000",
+      "elf_sha256": "9560ca010f155b0f246f1c11c5749bd135dc88f2865f13fa055c854426fc39d9",
+      "image_sha256": "e2b5d8552d19f44f9d8fa2d67115decb10315e6086f27d305ee8bcb930ed0b44",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 75520,
+      "rom_symbols": {
+        "nih_rom_putc": "0x4fc00054",
+        "nih_rom_set_cpu1_entry": "0x4fc000a8"
+      },
+      "sections": [
+        {
+          "name": ".flash.appdesc",
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "name": ".flash.rodata",
+          "address": "0x40010020",
+          "bytes": 4
+        },
+        {
+          "name": ".text",
+          "address": "0x4ff00000",
+          "bytes": 16892
+        },
+        {
+          "name": ".rodata",
+          "address": "0x4ff04200",
+          "bytes": 375
+        },
+        {
+          "name": ".data",
+          "address": "0x4ff04380",
+          "bytes": 776
+        },
+        {
+          "name": ".bss",
+          "address": "0x4ff04690",
+          "bytes": 24688
+        },
+        {
+          "name": ".stacks",
+          "address": "0x4ff0a700",
+          "bytes": 32768
+        }
+      ],
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 16892
+        },
+        {
+          "address": "0x4ff04200",
+          "bytes": 376
+        },
+        {
+          "address": "0x4ff04380",
+          "bytes": 776
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 4
+        }
+      ],
+      "merged_flash_bytes": 131152,
+      "merged_flash_sha256": "5984ed0c12e78e9532da51bf71a4b32ea18b58f8911ff1c9be722eb6db2b94fd"
+    },
+    "emulator": {
+      "schema": 1,
+      "backend": "native-sram",
+      "rtos_linked": false,
+      "entry": "0x4ff00000",
+      "elf_sha256": "1aee64fadea93df9634fbe5fc3e0bc7726e44a678bb93dab8dd57915f71df884",
+      "image_sha256": "50f41fd386ced5b333e7c87d5a70e1f989840f42be150492ea712c7e25c595f1",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 75520,
+      "rom_symbols": {
+        "nih_rom_putc": "0x4fc00054",
+        "nih_rom_set_cpu1_entry": "0x4fc000a8"
+      },
+      "sections": [
+        {
+          "name": ".flash.appdesc",
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "name": ".flash.rodata",
+          "address": "0x40010020",
+          "bytes": 4
+        },
+        {
+          "name": ".text",
+          "address": "0x4ff00000",
+          "bytes": 16892
+        },
+        {
+          "name": ".rodata",
+          "address": "0x4ff04200",
+          "bytes": 375
+        },
+        {
+          "name": ".data",
+          "address": "0x4ff04380",
+          "bytes": 776
+        },
+        {
+          "name": ".bss",
+          "address": "0x4ff04690",
+          "bytes": 24688
+        },
+        {
+          "name": ".stacks",
+          "address": "0x4ff0a700",
+          "bytes": 32768
+        }
+      ],
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 256
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 16892
+        },
+        {
+          "address": "0x4ff04200",
+          "bytes": 376
+        },
+        {
+          "address": "0x4ff04380",
+          "bytes": 776
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 4
+        }
+      ],
+      "merged_flash_bytes": 131152,
+      "merged_flash_sha256": "d3ba49c5656380381bb29ceb3352aac25fad5c4cf8adbaaa41506dd7c3efbb29"
+    }
+  },
+  "validation": {
+    "host_Debug": "passed (cached unchanged host policy tests)",
+    "host_ReleaseSafe": "passed (cached unchanged host policy tests)",
+    "zlint": "33 files, zero errors and warnings",
+    "shellcheck": "passed",
+    "architecture": "hosted RV32 contracts and final native ELF links for both revision profiles passed",
+    "native_log_tests": 10,
+    "interrupt_stack": "live MIE=0, stack pointer bounds and bottom sentinel checked at dispatch",
+    "task_stacks": "private stack bounds and bottom sentinels checked",
+    "time_accounting": "sum of live and reaped task runtimes equals owner elapsed ticks at each decision"
+  },
+  "physical": {
+    "tested": false,
+    "reason": "user explicitly requested continuing scheduler wiring without awaiting physical qualification"
+  },
+  "limitations": [
+    "owner-local integer tasks only",
+    "no task migration",
+    "native IPI and WFI idle not wired",
+    "native FP ownership not wired",
+    "PSRAM/display not wired",
+    "no protection domains"
+  ],
+  "exploratory_failure": {
+    "kind": "emulator wall-clock timeout",
+    "detail": "45-second run with 4M-cycle progress samples ended before round 300; no pass recorded; final sampling uses 2M cycles and a 60-second wall limit"
+  }
+}
