@@ -1,11 +1,22 @@
 //! Independent native boot experiment: no IDF application or FreeRTOS link.
 const std = @import("std");
 const timer_group = @import("timer_group");
+const tasks = @import("native_tasks");
 pub const panic = std.debug.no_panic;
 
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
 extern fn nih_native_cpu1_start() callconv(.c) void;
+extern var __stack0_bottom: u8;
+extern var __stack0_top: u8;
+extern var __stack1_bottom: u8;
+extern var __stack1_top: u8;
+extern var __irq_stack0_bottom: [4]u32;
+extern var __irq_stack0_top: u8;
+extern var __irq_stack1_bottom: [4]u32;
+extern var __irq_stack1_top: u8;
+
+export var nih_native_return_states: [2]tasks.context.ReturnState = @splat(.{ .mstatus = 0, .mcause = 0 });
 
 var progress = [_]u32{ 0, 0 };
 var exceptions = [_]u32{ 0, 0 };
@@ -87,7 +98,7 @@ fn prepareTimers() void {
     for (0..2) |hart| {
         const channel = timer(@intCast(hart));
         channel.channel.config = 40 << 13;
-        if (!channel.configure(10_000)) fail("timer configuration");
+        if (!channel.configureOneShot(tasks.period_us)) fail("timer configuration");
     }
     reg(0x500c2070).* = 3;
 }
@@ -107,27 +118,104 @@ fn enableTimer(hart: u32) void {
     asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
 }
 
-export fn nih_native_dispatch(cause: u32, pc: u32, hart: u32) callconv(.c) u32 {
+export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
+    if (hart >= 2) fail("invalid hart");
+    if (!interruptStackValid(hart)) fail("interrupt stack/MIE");
+    const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
+    if (tasks.ready(hart)) {
+        const selected = if (cause & 0x8000_0fff == 11)
+            tasks.onCall(hart, frame, state, timer(hart))
+        else if (cause & 0x8000_0fff == 0x8000_0010 and timer(hart).clearPending()) timer_path: {
+            _ = @atomicRmw(u32, &ticks[hart], .Add, 1, .release);
+            break :timer_path tasks.onTimer(hart, frame, state, timer(hart));
+        } else null;
+        const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
+        nih_native_return_states[hart] = next.state.integerOnly().returningFrom(state);
+        return next.frame;
+    }
+    nih_native_return_states[hart] = state;
     if (hart < 2 and cause & 0x8000_0fff == 11) {
         _ = @atomicRmw(u32, &exceptions[hart], .Add, 1, .release);
-        return pc + 4;
+        frame.mepc += 4;
+        return frame;
     }
-    if (hart < 2 and cause & 0x8000_0fff == 0x8000_0010 and timer(hart).acknowledge()) {
-        _ = @atomicRmw(u32, &ticks[hart], .Add, 1, .release);
-        return pc;
-    }
+    trapFailure(frame, cause, hart, "unexpected trap");
+}
+
+fn trapFailure(frame: *const tasks.context.IntegerContext, cause: u32, hart: u32, reason: []const u8) noreturn {
     print("NIHOS_NATIVE_TRAP cause=");
     hex(cause);
     print(" pc=");
-    hex(pc);
+    hex(frame.mepc);
     print(" hart=");
     hex(hart);
-    fail("unexpected trap");
+    fail(reason);
+}
+
+export fn nih_native_task_failed() callconv(.c) noreturn {
+    fail("task invariant");
+}
+
+fn prepareTasks(hart: u32) void {
+    const gp = asm volatile ("mv %[result], gp"
+        : [result] "=r" (-> u32),
+    );
+    const minimum = if (hart == 0) @intFromPtr(&__stack0_bottom) else @intFromPtr(&__stack1_bottom);
+    const maximum = if (hart == 0) @intFromPtr(&__stack0_top) else @intFromPtr(&__stack1_top);
+    if (!tasks.prepare(hart, minimum, maximum, gp)) fail("task prepare");
+}
+
+fn interruptGuard(hart: u32) *volatile [4]u32 {
+    return if (hart == 0) &__irq_stack0_bottom else &__irq_stack1_bottom;
+}
+
+fn interruptStackValid(hart: u32) bool {
+    const guard = interruptGuard(hart);
+    for (0..4) |word| if (guard[word] != 0x6e69_6972) return false;
+    const sp = asm volatile ("mv %[result], sp"
+        : [result] "=r" (-> u32),
+    );
+    const status = asm volatile ("csrr %[result], mstatus"
+        : [result] "=r" (-> u32),
+    );
+    const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
+    return status & 8 == 0 and sp >= @intFromPtr(guard) + 16 and sp < top;
+}
+
+fn taskReport(hart: u32) void {
+    const report = tasks.report(hart);
+    if (report.progress[0] == 0 or report.progress[1] == 0 or
+        report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
+        report.calls < 12 or report.reaped != 2 or report.sleeps != 2)
+        fail("task execution proof");
+    print("NIHOS_NATIVE_TASKS hart=");
+    hex(hart);
+    print(" work0=");
+    hex(report.progress[0]);
+    print(" work1=");
+    hex(report.progress[1]);
+    print(" cap0=");
+    hex(report.captures[0]);
+    print(" cap1=");
+    hex(report.captures[1]);
+    print(" switches=");
+    hex(report.switches);
+    print(" calls=");
+    hex(report.calls);
+    print(" reaped=");
+    hex(report.reaped);
+    print(" sleeps=");
+    hex(report.sleeps);
+    print(" elapsed=");
+    hex(report.ticks);
+    print("\n");
 }
 
 export fn nih_native_cpu1_main() callconv(.c) noreturn {
     nih_rom_set_cpu1_entry(0);
+    interruptGuard(1).* = @splat(0x6e69_6972);
     asm volatile ("ecall" ::: .{ .memory = true });
+    prepareTasks(1);
     enableTimer(1);
     while (true) {
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
@@ -136,6 +224,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
 
 export fn nih_native_main() callconv(.c) noreturn {
     watchdogOff();
+    interruptGuard(0).* = @splat(0x6e69_6972);
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
@@ -144,6 +233,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (exceptions[0] != 1) fail("CPU0 exception return");
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     prepareTimers();
+    prepareTasks(0);
     startCpu1();
     enableTimer(0);
     var previous: u32 = 0;
@@ -154,9 +244,10 @@ export fn nih_native_main() callconv(.c) noreturn {
         _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
         // Cycle intervals are deliberately not advertised as wall time:
         // the retained bootloader owns the initial clock configuration.
-        if (cycle() -% deadline < 4_000_000) continue;
+        if (cycle() -% deadline < 2_000_000) continue;
         deadline = cycle();
-        const current = @atomicLoad(u32, &progress[1], .acquire);
+        const peer = tasks.report(1);
+        const current = @atomicLoad(u32, &progress[1], .acquire) +% peer.progress[0] +% peer.progress[1];
         if (current == previous or @atomicLoad(u32, &exceptions[1], .acquire) != 1)
             fail("CPU1 progress/exception");
         previous = current;
@@ -165,7 +256,8 @@ export fn nih_native_main() callconv(.c) noreturn {
         print("NIHOS_NATIVE_HEARTBEAT round=");
         hex(rounds);
         print(" cpu0=");
-        hex(@atomicLoad(u32, &progress[0], .acquire));
+        const local = tasks.report(0);
+        hex(@atomicLoad(u32, &progress[0], .acquire) +% local.progress[0] +% local.progress[1]);
         print(" cpu1=");
         hex(current);
         print(" ticks0=");
@@ -174,6 +266,8 @@ export fn nih_native_main() callconv(.c) noreturn {
         hex(@atomicLoad(u32, &ticks[1], .acquire));
         print("\n");
         if (rounds % 100 == 0) {
+            taskReport(0);
+            taskReport(1);
             for (0..2) |hart| {
                 const count = @atomicLoad(u32, &ticks[hart], .acquire);
                 if (count -% previous_ticks[hart] == 0 or (rounds == 300 and count < 100))

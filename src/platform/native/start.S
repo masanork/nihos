@@ -1,4 +1,6 @@
 /* No ESP-IDF runtime: own stacks, gp, BSS, vectors and machine entry. */
+#include "context_offsets.inc"
+#include "task_call_numbers.inc"
     .section .flash.appdesc, "a", @progbits
     .long 0xabcd5432, 0, 0, 0
     .asciz "native-boot-1"
@@ -63,52 +65,124 @@ nih_native_cpu1_start:
     .balign 64
     .global nih_native_trap
 nih_native_trap:
-    /* Integer-only kernel, non-nested traps on this hart's private stack. */
-    addi sp, sp, -80
-    sw ra, 0(sp)
-    sw t0, 4(sp)
-    sw t1, 8(sp)
-    sw t2, 12(sp)
-    sw a0, 16(sp)
-    sw a1, 20(sp)
-    sw a2, 24(sp)
-    sw a3, 28(sp)
-    sw a4, 32(sp)
-    sw a5, 36(sp)
-    sw a6, 40(sp)
-    sw a7, 44(sp)
-    sw t3, 48(sp)
-    sw t4, 52(sp)
-    sw t5, 56(sp)
-    sw t6, 60(sp)
-    csrr a0, mcause
-    sw a0, 64(sp)
-    csrr a1, mepc
+    /* Same 128-byte integer frame as the hosted scheduler, no FP bank. */
+    addi sp, sp, -NIH_CTX_SIZE
+    sw ra, NIH_CTX_RA(sp)
+    sw gp, NIH_CTX_GP(sp)
+    sw tp, NIH_CTX_TP(sp)
+    sw t0, NIH_CTX_T0(sp)
+    sw t1, NIH_CTX_T1(sp)
+    sw t2, NIH_CTX_T2(sp)
+    sw s0, NIH_CTX_S0(sp)
+    sw s1, NIH_CTX_S1(sp)
+    sw a0, NIH_CTX_A0(sp)
+    sw a1, NIH_CTX_A1(sp)
+    sw a2, NIH_CTX_A2(sp)
+    sw a3, NIH_CTX_A3(sp)
+    sw a4, NIH_CTX_A4(sp)
+    sw a5, NIH_CTX_A5(sp)
+    sw a6, NIH_CTX_A6(sp)
+    sw a7, NIH_CTX_A7(sp)
+    sw s2, NIH_CTX_S2(sp)
+    sw s3, NIH_CTX_S3(sp)
+    sw s4, NIH_CTX_S4(sp)
+    sw s5, NIH_CTX_S5(sp)
+    sw s6, NIH_CTX_S6(sp)
+    sw s7, NIH_CTX_S7(sp)
+    sw s8, NIH_CTX_S8(sp)
+    sw s9, NIH_CTX_S9(sp)
+    sw s10, NIH_CTX_S10(sp)
+    sw s11, NIH_CTX_S11(sp)
+    sw t3, NIH_CTX_T3(sp)
+    sw t4, NIH_CTX_T4(sp)
+    sw t5, NIH_CTX_T5(sp)
+    sw t6, NIH_CTX_T6(sp)
+    addi t0, sp, NIH_CTX_SIZE
+    sw t0, NIH_CTX_SP(sp)
+    csrr t0, mepc
+    sw t0, NIH_CTX_MEPC(sp)
+
+    mv a0, sp
+    csrr a1, mcause
     csrr a2, mhartid
-    csrr t0, mstatus
-    sw t0, 68(sp)
+    csrr a3, mstatus
+    li t0, 2
+    bgeu a2, t0, .Lhalt
+    la t0, .Lirq_tops
+    slli t1, a2, 2
+    add t0, t0, t1
+    lw sp, 0(t0)
+    /* No nesting: policy/frame mutations run only on this private stack. */
     call nih_native_dispatch
-    csrw mepc, a0
-    /* CLIC mret needs the active trap's mcause as well as mstatus. */
-    lw t0, 64(sp)
-    csrw mcause, t0
-    lw t0, 68(sp)
-    csrw mstatus, t0
-    lw ra, 0(sp)
-    lw t0, 4(sp)
-    lw t1, 8(sp)
-    lw t2, 12(sp)
-    lw a0, 16(sp)
-    lw a1, 20(sp)
-    lw a2, 24(sp)
-    lw a3, 28(sp)
-    lw a4, 32(sp)
-    lw a5, 36(sp)
-    lw a6, 40(sp)
-    lw a7, 44(sp)
-    lw t3, 48(sp)
-    lw t4, 52(sp)
-    lw t5, 56(sp)
-    lw t6, 60(sp)
-    addi sp, sp, 80
+    beqz a0, .Lhalt
+    mv sp, a0
+    csrr t1, mhartid
+    slli t1, t1, 3
+    la t0, nih_native_return_states
+    add t0, t0, t1
+    lw t1, 4(t0)
+    csrw mcause, t1
+    lw t1, 0(t0)
+    andi t1, t1, -9
+    csrw mstatus, t1
+    lw t0, NIH_CTX_MEPC(sp)
+    csrw mepc, t0
+    lw ra, NIH_CTX_RA(sp)
+    lw gp, NIH_CTX_GP(sp)
+    lw tp, NIH_CTX_TP(sp)
+    lw t0, NIH_CTX_T0(sp)
+    lw t1, NIH_CTX_T1(sp)
+    lw t2, NIH_CTX_T2(sp)
+    lw s0, NIH_CTX_S0(sp)
+    lw s1, NIH_CTX_S1(sp)
+    lw a0, NIH_CTX_A0(sp)
+    lw a1, NIH_CTX_A1(sp)
+    lw a2, NIH_CTX_A2(sp)
+    lw a3, NIH_CTX_A3(sp)
+    lw a4, NIH_CTX_A4(sp)
+    lw a5, NIH_CTX_A5(sp)
+    lw a6, NIH_CTX_A6(sp)
+    lw a7, NIH_CTX_A7(sp)
+    lw s2, NIH_CTX_S2(sp)
+    lw s3, NIH_CTX_S3(sp)
+    lw s4, NIH_CTX_S4(sp)
+    lw s5, NIH_CTX_S5(sp)
+    lw s6, NIH_CTX_S6(sp)
+    lw s7, NIH_CTX_S7(sp)
+    lw s8, NIH_CTX_S8(sp)
+    lw s9, NIH_CTX_S9(sp)
+    lw s10, NIH_CTX_S10(sp)
+    lw s11, NIH_CTX_S11(sp)
+    lw t3, NIH_CTX_T3(sp)
+    lw t4, NIH_CTX_T4(sp)
+    lw t5, NIH_CTX_T5(sp)
+    lw t6, NIH_CTX_T6(sp)
+    addi sp, sp, NIH_CTX_SIZE
     mret
+
+    .global nih_native_task_trampoline
+nih_native_task_trampoline:
+    mv t0, a0
+    mv a0, a1
+    jalr t0
+    j nih_riscv_task_exit
+
+    .global nih_riscv_task_call
+nih_riscv_task_call:
+    mv a7, a0
+    mv a0, a1
+    mv a1, a2
+    ecall
+    ret
+
+    .global nih_riscv_task_exit
+nih_riscv_task_exit:
+    li a7, NIH_TASK_EXIT
+    li a1, 0
+    ecall
+    j .Lhalt
+
+    .section .rodata.native_irq_tops, "a", @progbits
+    .balign 4
+.Lirq_tops:
+    .long __irq_stack0_top, __irq_stack1_top

@@ -3,11 +3,12 @@
 This is the first independent native boot fixture. The stock ROM and
 second-stage loader hand off to Zig/assembly code in internal SRAM, with no
 ESP-IDF application runtime or FreeRTOS link. Both harts keep running under
-nihOS-owned trap and timer handling. The existing ESP-IDF display backend is
-still a separate implementation.
+nihOS-owned trap and timer handling. Each now runs the shared task runtime,
+including timer preemption of two busy tasks and sleep/exit/reap/slot reuse.
+The existing ESP-IDF display backend is still a separate implementation.
 
-See [ADR 0018](adr/0018-independent-native-boot.md) for hardware ownership,
-boot format constraints and the path to integrating the existing scheduler.
+See [ADR 0018](adr/0018-independent-native-boot.md) for boot constraints and
+[ADR 0019](adr/0019-permanent-native-task-owners.md) for the scheduler wiring.
 
 ## Build and emulated execution
 
@@ -27,6 +28,21 @@ the native app separately, the image audit runs, and ESP-EMU boots with
 - `image-audit.json`: sections, ROM boundary, sizes and artifact digests
 - `emulator.log`, `smoke-report.json`: 300 rounds and both timer counters
 
+The report also requires three task checkpoints per hart: both busy tasks
+must keep progressing under timer preemption, and both lifecycle generations
+must finish sleeping, exit and be reaped. Dispatch checks interrupt/task
+stack sentinels, frame bounds, and elapsed-time accounting. These checks do
+not provide memory protection between tasks.
+
+To compile/link only the application, without an IDF installation:
+
+```sh
+sh tools/build-native-elf.sh emulator
+sh tools/build-native-elf.sh device
+```
+
+Normal architecture CI also links both profiles through this same script.
+
 The manual **Native boot** GitHub Actions workflow runs this smoke, builds
 the physical profile, and retains the artifacts. It does not flash hardware.
 
@@ -42,13 +58,15 @@ outputs are under `build/native-device/`. The app occupies the factory slot
 at `0x10000`; the merged image includes loader at `0x2000` and partition table
 at `0x8000` and is written at `0x0`.
 
-Physical qualification is pending: the shared Tab5 was occupied by another
-development operation during this milestone. Do not interpret a successful
-device-profile build as a physical boot result. In this fixture the console
-is the output; display, touch and external RAM are not initialized.
+Physical qualification is pending while emulator development continues.
+Do not interpret a successful device-profile build as a physical boot result.
+In this fixture the console is the output; display, touch and external RAM
+are not initialized. IPI, WFI idle and FP ownership are not yet connected to
+this permanent native runtime.
 
-The 300-round smoke has six validator regression tests, including frozen
-hart/timer counters, incomplete execution, a reboot and a later failure:
+The 300-round smoke has ten validator regression tests, including frozen
+hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
+a reboot and a later failure:
 
 ```sh
 python3 tools/native_checks_test.py

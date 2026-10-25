@@ -46,4 +46,7 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     -o "$out_dir/fpu.o" \
     "$repo_root/src/arch/riscv32/fpu.S"
 
-echo "RV32 architecture contract compile: ok"
+sh "$repo_root/tools/build-native-elf.sh" device "$out_dir/native-device"
+sh "$repo_root/tools/build-native-elf.sh" emulator "$out_dir/native-emulator"
+
+echo "RV32 architecture contract and both native ELF links: ok"

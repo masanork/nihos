@@ -1,6 +1,7 @@
 """Regression checks for accepting complete native execution evidence."""
 import importlib.util
 from pathlib import Path
+import re
 import unittest
 
 SPEC = importlib.util.spec_from_file_location("native_log", Path(__file__).with_name("check-native-log.py"))
@@ -15,6 +16,11 @@ def complete_log():
         lines.append("NIHOS_NATIVE_HEARTBEAT round={0:08x} cpu0={1:08x} cpu1={1:08x} "
                      "ticks0={2:08x} ticks1={2:08x}".format(count, count * 100, count * 4))
         if count % 100 == 0:
+            for hart in range(2):
+                lines.append("NIHOS_NATIVE_TASKS hart={0:08x} work0={1:08x} work1={1:08x} "
+                             "cap0={2:08x} cap1={2:08x} switches={3:08x} calls=0000000c "
+                             "reaped=00000002 sleeps=00000002 elapsed={3:08x}".format(
+                                 hart, count * 1000, count * 2, count * 6))
             lines.append("NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none")
     lines.append("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none")
     return "\n".join(lines)
@@ -39,7 +45,6 @@ class NativeLogTests(unittest.TestCase):
         for field in ("cpu1", "ticks1"):
             with self.subTest(field=field), self.assertRaisesRegex(ValueError, "stopped"):
                 log = complete_log()
-                import re
                 log = re.sub(field + r"=[0-9a-f]{8}", field + "=00000001", log)
                 MODULE.check(log)
 
@@ -50,6 +55,26 @@ class NativeLogTests(unittest.TestCase):
     def test_early_end_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "incomplete heartbeat"):
             MODULE.check("\n".join(complete_log().splitlines()[:8]))
+
+    def test_timer_only_smoke_does_not_qualify_scheduler(self):
+        log = "\n".join(line for line in complete_log().splitlines() if "NIHOS_NATIVE_TASKS" not in line)
+        with self.assertRaisesRegex(ValueError, "per-hart task"):
+            MODULE.check(log)
+
+    def test_duplicate_hart_cannot_substitute_for_cpu1(self):
+        log = complete_log().replace("hart=00000001", "hart=00000000")
+        with self.assertRaises(ValueError):
+            MODULE.check(log)
+
+    def test_frozen_busy_task_or_preemption_is_rejected(self):
+        for field in ("work0", "work1", "cap0", "cap1"):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "stopped"):
+                MODULE.check(re.sub(field + r"=[0-9a-f]{8}", field + "=00000004", complete_log()))
+
+    def test_incomplete_lifecycle_reap_or_sleep_is_rejected(self):
+        for field in ("reaped", "sleeps"):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "lifecycle"):
+                MODULE.check(complete_log().replace(field + "=00000002", field + "=00000001"))
 
 
 if __name__ == "__main__":

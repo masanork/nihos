@@ -75,7 +75,9 @@ def audit(elf, image):
     for name, address in ROM_SYMBOLS.items():
         require(symbols.get(name) == address, "wrong ROM ABI: " + name)
     require(symbols["__stack0_top"] <= symbols["__stack1_bottom"] and
-            symbols["__stack1_top"] <= SRAM_HIGH, "stack layout overflow")
+            symbols["__stack1_top"] <= symbols["__irq_stack0_bottom"] and
+            symbols["__irq_stack0_top"] <= symbols["__irq_stack1_bottom"] and
+            symbols["__irq_stack1_top"] <= SRAM_HIGH, "stack layout overflow")
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
             "image entry differs from ELF")
     position = 24
@@ -102,7 +104,7 @@ def audit(elf, image):
     return {"schema": 1, "backend": "native-sram", "rtos_linked": False,
             "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
             "image_sha256": hashlib.sha256(image).hexdigest(), "image_bytes": len(image),
-            "sram_reserved_bytes": symbols["__stack1_top"] - SRAM_LOW,
+            "sram_reserved_bytes": symbols["__irq_stack1_top"] - SRAM_LOW,
             "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()},
             "sections": allocated, "image_segments": image_segments}
 
