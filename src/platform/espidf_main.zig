@@ -6,6 +6,7 @@
 const std = @import("std");
 const abi = @import("abi");
 const arena_module = @import("arena");
+const spsc_ring = @import("spsc_ring");
 const test_pattern = @import("test_pattern");
 
 pub const panic = std.debug.no_panic;
@@ -19,6 +20,28 @@ extern fn nih_platform_display_present(present: *abi.DisplayPresent) i32;
 extern fn nih_platform_display_wait_vsync(vsync: *abi.DisplayVsync) i32;
 extern fn nih_platform_touch_init(out: *abi.TouchInfo) i32;
 extern fn nih_platform_touch_sample(out: *abi.TouchSample) i32;
+extern fn nih_platform_cpu_id() u32;
+extern fn nih_platform_monotonic_us() u64;
+extern fn nih_platform_cpu_start(
+    cpu_id: u32,
+    entry: *const fn (?*anyopaque) callconv(.c) void,
+    argument: ?*anyopaque,
+) i32;
+
+const MailboxMessage = struct {
+    sequence: u32,
+    payload: u32,
+};
+const MailboxRing = spsc_ring.SpscRing(MailboxMessage, 64);
+const MailboxContext = struct {
+    requests: MailboxRing,
+    responses: MailboxRing,
+    worker_cpu: std.atomic.Value(u32),
+};
+
+var mailbox_context: MailboxContext = undefined;
+const mailbox_messages: u32 = 100_000;
+const mailbox_transform: u32 = 0xa5a5_5a5a;
 
 fn write(bytes: []const u8) void {
     if (bytes.len == 0) return;
@@ -48,6 +71,89 @@ fn writeU64(label: []const u8, value: u64) void {
 
 fn writeU32(label: []const u8, value: u32) void {
     writeU64(label, value);
+}
+
+fn mailboxPayload(sequence: u32) u32 {
+    return sequence *% 2_654_435_761;
+}
+
+fn mailboxWorker(argument: ?*anyopaque) callconv(.c) void {
+    const context: *MailboxContext = @ptrCast(@alignCast(argument.?));
+    context.worker_cpu.store(nih_platform_cpu_id(), .release);
+
+    var completed: u32 = 0;
+    while (completed < mailbox_messages) {
+        const request = context.requests.tryPop() orelse {
+            std.atomic.spinLoopHint();
+            continue;
+        };
+        const response = MailboxMessage{
+            .sequence = request.sequence,
+            .payload = request.payload ^ mailbox_transform,
+        };
+        while (!context.responses.tryPush(response))
+            std.atomic.spinLoopHint();
+        completed += 1;
+    }
+}
+
+fn exerciseSmpMailbox(cpu_count: u32) bool {
+    if (cpu_count < 2 or nih_platform_cpu_id() != 0) return false;
+    mailbox_context = .{
+        .requests = MailboxRing.init(),
+        .responses = MailboxRing.init(),
+        .worker_cpu = .init(std.math.maxInt(u32)),
+    };
+
+    const started_us = nih_platform_monotonic_us();
+    if (nih_platform_cpu_start(1, &mailboxWorker, &mailbox_context) !=
+        abi.Status.ok)
+    {
+        return false;
+    }
+
+    var sent: u32 = 0;
+    var received: u32 = 0;
+    var request_full: u64 = 0;
+    var response_empty: u64 = 0;
+    while (received < mailbox_messages) {
+        while (sent < mailbox_messages) {
+            const request = MailboxMessage{
+                .sequence = sent,
+                .payload = mailboxPayload(sent),
+            };
+            if (!mailbox_context.requests.tryPush(request)) {
+                request_full += 1;
+                break;
+            }
+            sent += 1;
+        }
+
+        const response = mailbox_context.responses.tryPop() orelse {
+            response_empty += 1;
+            std.atomic.spinLoopHint();
+            continue;
+        };
+        if (response.sequence != received or
+            response.payload != mailboxPayload(received) ^ mailbox_transform)
+        {
+            return false;
+        }
+        received += 1;
+    }
+
+    const elapsed_us = nih_platform_monotonic_us() - started_us;
+    const worker_cpu = mailbox_context.worker_cpu.load(.acquire);
+    if (worker_cpu != 1 or elapsed_us == 0) return false;
+
+    writeU32("smp_caller_cpu=", nih_platform_cpu_id());
+    writeU32("smp_worker_cpu=", worker_cpu);
+    writeU32("smp_mailbox_messages=", mailbox_messages);
+    writeU64("smp_mailbox_elapsed_us=", elapsed_us);
+    writeU64("smp_mailbox_roundtrips_per_second=", (@as(u64, mailbox_messages) * 1_000_000) / elapsed_us);
+    writeU64("smp_request_full_observations=", request_full);
+    writeU64("smp_response_empty_observations=", response_empty);
+    return true;
 }
 
 fn syncRange(bytes: []u8, direction: u32) bool {
@@ -328,6 +434,12 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         return;
     }
     write("axi_gdma_copy=ok\r\n");
+
+    if (!exerciseSmpMailbox(info.cpu_count)) {
+        write("nihos: SMP mailbox failed\r\n");
+        return;
+    }
+    write("smp_mailbox=ok\r\n");
 
     if (!exerciseDisplay()) {
         write("nihos: display scanout or vsync failed\r\n");

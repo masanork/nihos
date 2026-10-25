@@ -103,3 +103,11 @@ returns bounded five-point snapshots; repeated idle reads succeed on the
 physical device. Double buffering, tear-free swaps, visible-pattern
 confirmation, and an actual pressed-coordinate trace remain open. Timer and
 single-core scheduler work is the next architecture checkpoint.
+
+The cross-core ring portion of stage 6 has also been exercised early through
+the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
+100,000 ordered request/completion pairs through the bounded SPSC rings on a
+physical Tab5. This validates the current RISC-V atomic and coherent-memory
+assumptions under FreeRTOS task placement. It does not complete stage 6:
+native CPU1 startup, IPI wakeup, scheduler integration, cancellation, and
+frame-load interference remain open.
