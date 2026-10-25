@@ -1,0 +1,343 @@
+{
+  "schema": 1,
+  "date": "2026-10-25",
+  "firmware_commit": "3a136330b42e4c1600988a20a808d487a50a46b5",
+  "status": "integer-and-floating-emulator-qualified; physical-deferred",
+  "tools": {
+    "zig": "0.17.0",
+    "esp_idf_loader": "v5.4.4",
+    "esp_emu": "v0.50.0"
+  },
+  "emulator": {
+    "integer": {
+      "chip": "esp32p4 revision-3 ROM",
+      "psram_bytes": 0,
+      "result": {
+        "schema": 1,
+        "backend": "native-sram",
+        "evidence": "emulator",
+        "mode": "integer",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 103458780,
+        "cpu1_progress": 66002850,
+        "cpu0_interrupts": 900,
+        "cpu1_interrupts": 899,
+        "tasks": [
+          {
+            "hart": 0,
+            "progress": [
+              14271835,
+              14271806
+            ],
+            "timer_captures": [
+              300,
+              300
+            ],
+            "switches": 906,
+            "calls": 12,
+            "reaped": 2,
+            "sleeps": 2,
+            "elapsed_ticks": 900
+          },
+          {
+            "hart": 1,
+            "progress": [
+              14271777,
+              14271377
+            ],
+            "timer_captures": [
+              300,
+              299
+            ],
+            "switches": 905,
+            "calls": 12,
+            "reaped": 2,
+            "sleeps": 2,
+            "elapsed_ticks": 899
+          }
+        ],
+        "ipi_idle": [
+          {
+            "hart": 0,
+            "sent": 64,
+            "received": 64,
+            "ipis": 66,
+            "delivered": 64,
+            "woken": 64,
+            "rejected": 0,
+            "from_idle": 64,
+            "entries": 64,
+            "returns": 64,
+            "pending_before_wfi": 1,
+            "self_ipi": 1,
+            "timer_start": 901,
+            "timer_end": 901,
+            "queued": 0
+          },
+          {
+            "hart": 1,
+            "sent": 64,
+            "received": 64,
+            "ipis": 66,
+            "delivered": 64,
+            "woken": 64,
+            "rejected": 0,
+            "from_idle": 65,
+            "entries": 65,
+            "returns": 65,
+            "pending_before_wfi": 1,
+            "self_ipi": 1,
+            "timer_start": 901,
+            "timer_end": 901,
+            "queued": 0
+          }
+        ],
+        "floating": [
+          {
+            "hart": 0,
+            "checks0": 0,
+            "checks1": 0,
+            "checks2": 0,
+            "timer": 0,
+            "calls": 0,
+            "ipi": 0,
+            "saves": 0,
+            "restores": 0,
+            "initial": 0,
+            "confirmed": 1
+          },
+          {
+            "hart": 1,
+            "checks0": 0,
+            "checks1": 0,
+            "checks2": 0,
+            "timer": 0,
+            "calls": 0,
+            "ipi": 0,
+            "saves": 0,
+            "restores": 0,
+            "initial": 0,
+            "confirmed": 1
+          }
+        ]
+      },
+      "log_sha256": "b4c24be414230aacb1558bfd5dbb1218ea2b34043628045c066bc8b8ad43336f"
+    },
+    "floating": {
+      "chip": "esp32p4 revision-3 ROM",
+      "psram_bytes": 0,
+      "result": {
+        "schema": 1,
+        "backend": "native-sram",
+        "evidence": "emulator",
+        "mode": "floating",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 79480588,
+        "cpu1_progress": 42030773,
+        "cpu0_interrupts": 900,
+        "cpu1_interrupts": 899,
+        "tasks": [
+          {
+            "hart": 0,
+            "progress": [
+              2287588,
+              2287466
+            ],
+            "timer_captures": [
+              300,
+              300
+            ],
+            "switches": 906,
+            "calls": 12,
+            "reaped": 2,
+            "sleeps": 2,
+            "elapsed_ticks": 900
+          },
+          {
+            "hart": 1,
+            "progress": [
+              2287579,
+              2287306
+            ],
+            "timer_captures": [
+              300,
+              299
+            ],
+            "switches": 905,
+            "calls": 12,
+            "reaped": 2,
+            "sleeps": 2,
+            "elapsed_ticks": 899
+          }
+        ],
+        "ipi_idle": [
+          {
+            "hart": 0,
+            "sent": 64,
+            "received": 64,
+            "ipis": 66,
+            "delivered": 64,
+            "woken": 64,
+            "rejected": 0,
+            "from_idle": 64,
+            "entries": 64,
+            "returns": 64,
+            "pending_before_wfi": 1,
+            "self_ipi": 1,
+            "timer_start": 901,
+            "timer_end": 901,
+            "queued": 0
+          },
+          {
+            "hart": 1,
+            "sent": 64,
+            "received": 64,
+            "ipis": 66,
+            "delivered": 64,
+            "woken": 64,
+            "rejected": 0,
+            "from_idle": 65,
+            "entries": 65,
+            "returns": 65,
+            "pending_before_wfi": 1,
+            "self_ipi": 1,
+            "timer_start": 901,
+            "timer_end": 901,
+            "queued": 0
+          }
+        ],
+        "floating": [
+          {
+            "hart": 0,
+            "checks0": 2287590,
+            "checks1": 2287468,
+            "checks2": 138,
+            "timer": 600,
+            "calls": 79,
+            "ipi": 2,
+            "saves": 681,
+            "restores": 681,
+            "initial": 5,
+            "confirmed": 1
+          },
+          {
+            "hart": 1,
+            "checks0": 2287581,
+            "checks1": 2287308,
+            "checks2": 138,
+            "timer": 600,
+            "calls": 79,
+            "ipi": 1,
+            "saves": 680,
+            "restores": 680,
+            "initial": 5,
+            "confirmed": 1
+          }
+        ]
+      },
+      "log_sha256": "d383a5f081388ce75a7ca3e28c4da67f49464b4e1d80b610c3de5e722cf889e7"
+    }
+  },
+  "profiles": {
+    "native-device": {
+      "entry": "0x4ff00000",
+      "rtos_linked": false,
+      "fp_assembly_linked": false,
+      "riscv_flags": "0x1",
+      "elf_sha256": "5d35492b84b2978dc05a5b3be77164e499f28d25dc0095c48a206e6d12ef55c3",
+      "image_sha256": "7baeab8cd483bc71f3e5e90ae895eb564ab5f38f04b82303e3982ddd727adae0",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 87296,
+      "text_bytes": 27502,
+      "merged_flash_sha256": "d8747e81d922f70b6015ae9b0f551ae032cf11ecf2860752c372d0d1afe2fa48"
+    },
+    "native-device-floating": {
+      "entry": "0x4ff00000",
+      "rtos_linked": false,
+      "fp_assembly_linked": true,
+      "riscv_flags": "0x1",
+      "elf_sha256": "518a9467cb15508c8f2bf0968c4beba2554ced6f76246ecbf3abc1483b0b0293",
+      "image_sha256": "0119da584f84a54657efd19a70b625f49b997fedde597cbde2cb8e0eff637a56",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 90496,
+      "text_bytes": 29692,
+      "merged_flash_sha256": "2dcd3d7ba326df6b98ff246c5f0b2d77a523b71399e18a2d78ba2b984927cfce"
+    },
+    "native-emulator": {
+      "entry": "0x4ff00000",
+      "rtos_linked": false,
+      "fp_assembly_linked": false,
+      "riscv_flags": "0x1",
+      "elf_sha256": "9c0562a42808bd847be5458deefc3990b70e72db7109776741dc2332c08175e8",
+      "image_sha256": "2f88b11c8ae66e7f21240b4cc297ec4285b09a9d38feeb9a27022587d3aa61b6",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 87296,
+      "text_bytes": 27502,
+      "merged_flash_sha256": "e763c74cd081ca4ad5e8c4200e5c0e10ed2153720b90b1ec41b3199f421deabe"
+    },
+    "native-emulator-floating": {
+      "entry": "0x4ff00000",
+      "rtos_linked": false,
+      "fp_assembly_linked": true,
+      "riscv_flags": "0x1",
+      "elf_sha256": "9da86ac52900dc66334cc32d6893173a827a902a874e469ae666e688b0b36db1",
+      "image_sha256": "5849ae9581ae58249288ac0a91d547a503e91f45efbe523fa968c1136f53a2fa",
+      "image_bytes": 65616,
+      "sram_reserved_bytes": 90496,
+      "text_bytes": 29692,
+      "merged_flash_sha256": "7a69c87bfdd09de84edf5bf6a25badae3d519b552ea68a51dfb520af739f6514"
+    }
+  },
+  "checks": {
+    "host_Debug_tests": 53,
+    "host_ReleaseSafe_tests": 53,
+    "log_validator_tests": 18,
+    "zlint": "35 files, zero errors/warnings",
+    "shellcheck": "passed",
+    "architecture": "hosted contracts and four final native ELF links passed",
+    "image_audits": "four profile/mode images passed",
+    "fp_abi": "ILP32 scalar ABI; F assembly explicitly -mabi=ilp32; kernel Zig modules exclude F"
+  },
+  "negative_image_checks": [
+    {
+      "case": "incompatible FP ABI",
+      "rejected": true,
+      "reason": "native application requires full-register ILP32 ABI"
+    },
+    {
+      "case": "missing FP restore symbol",
+      "rejected": true,
+      "reason": "partial native FP support"
+    },
+    {
+      "case": "integer ELF requested as floating",
+      "rejected": true,
+      "reason": "Native image audit failed: FP assembly differs from requested mode"
+    }
+  ],
+  "hosted_regression": {
+    "result": "passed-local",
+    "marker": "nihos: core smoke complete",
+    "scope": "shared fpu.S function-section split; hosted instructions unchanged",
+    "app_sha256": "d7d1a4bbf2fc7a4bcb476032991f2cdfeac4166d179e07f096b8ecbe825387ff",
+    "log_sha256": "cac5c7ed20f83f7c24280d8950dd338b27eab9ae7a902774da806c1a4a740fc5"
+  },
+  "physical": {
+    "tested": false,
+    "reason": "explicitly deferred while native wiring proceeds"
+  },
+  "limitations": [
+    "raw-register FP task probes with integer-only callbacks",
+    "compiler-generated FP tasks and FP C function ABI not qualified",
+    "no migration or nested traps",
+    "no lazy/dirty-only FP optimization",
+    "no physical, power or Quake throughput qualification",
+    "PSRAM/display/protection domains not wired"
+  ],
+  "build_notes": [
+    "F assembly defaulted to an incompatible ABI during bring-up; explicitly selecting ILP32 resolved the link failure",
+    "parallel physical-mode builds raced on their shared loader configuration; final mode builds were sequential"
+  ]
+}
