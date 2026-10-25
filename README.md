@@ -108,6 +108,9 @@ is recorded in
 Independent CPU1 task execution, owner-local handles, and task-context service
 work are defined in
 [`docs/adr/0014-owner-local-cpu1-tasks.md`](docs/adr/0014-owner-local-cpu1-tasks.md).
+Their first two-task execution, native stack checks, and dual-owner result is
+recorded in
+[`docs/measurements/2026-10-25-esp-emu-cpu1-tasks.md`](docs/measurements/2026-10-25-esp-emu-cpu1-tasks.md).
 
 ## Bootstrap checks
 
