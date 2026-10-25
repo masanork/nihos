@@ -92,5 +92,8 @@ detects and initializes the panel, but the platform ABI exposes only fixed
 display facts, one writable RGB565 scanout lease, present, and vsync. Zig
 paints the scanout buffer directly, so there is no second full-screen buffer
 or copy. A physical Tab5 delivered repeatable refresh callbacks at about
-65.47 Hz. Double buffering, tear-free swaps, visible-pattern confirmation,
-and touch input remain open; touch is the next peripheral checkpoint.
+65.47 Hz. The same ABI now initializes the panel-matched touch controller and
+returns bounded five-point snapshots; repeated idle reads succeed on the
+physical device. Double buffering, tear-free swaps, visible-pattern
+confirmation, and an actual pressed-coordinate trace remain open. Timer and
+single-core scheduler work is the next architecture checkpoint.

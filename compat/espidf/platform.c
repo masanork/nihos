@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "bsp/display.h"
+#include "bsp/touch.h"
 #include "esp_async_memcpy.h"
 #include "esp_attr.h"
 #include "esp_chip_info.h"
@@ -39,6 +40,8 @@ static void *s_display_framebuffer;
 static SemaphoreHandle_t s_display_refresh_done;
 static volatile uint32_t s_display_vsync_count;
 static bool s_display_backlight_enabled;
+static esp_lcd_touch_handle_t s_touch;
+static uint32_t s_touch_sequence;
 
 extern void nihos_zig_main(const struct nih_boot_info *info);
 
@@ -382,6 +385,62 @@ int32_t nih_platform_display_wait_vsync(struct nih_display_vsync *vsync) {
     }
     return wait_display_refresh(vsync->timeout_ms, &vsync->elapsed_us,
                                 &vsync->vsync_count);
+}
+
+int32_t nih_platform_touch_init(struct nih_touch_info *out) {
+    if (out == NULL) {
+        return NIH_STATUS_INVALID_ARGUMENT;
+    }
+    /* ST712x combines display and touch and must see the panel initialized. */
+    if (s_display_panel == NULL) {
+        return NIH_STATUS_BUSY;
+    }
+    if (s_touch == NULL && bsp_touch_new(NULL, &s_touch) != ESP_OK) {
+        s_touch = NULL;
+        return NIH_STATUS_IO;
+    }
+
+    *out = (struct nih_touch_info){
+        .width = NIH_DISPLAY_WIDTH,
+        .height = NIH_DISPLAY_HEIGHT,
+        .max_points = NIH_TOUCH_MAX_POINTS,
+        .flags = 0,
+    };
+    return NIH_STATUS_OK;
+}
+
+int32_t nih_platform_touch_sample(struct nih_touch_sample *out) {
+    if (out == NULL) {
+        return NIH_STATUS_INVALID_ARGUMENT;
+    }
+    if (s_touch == NULL) {
+        return NIH_STATUS_UNSUPPORTED;
+    }
+
+    esp_lcd_touch_point_data_t points[NIH_TOUCH_MAX_POINTS] = {0};
+    uint8_t point_count = 0;
+    if (esp_lcd_touch_read_data(s_touch) != ESP_OK ||
+        esp_lcd_touch_get_data(s_touch, points, &point_count,
+                               (uint8_t)NIH_TOUCH_MAX_POINTS) != ESP_OK ||
+        point_count > NIH_TOUCH_MAX_POINTS) {
+        return NIH_STATUS_IO;
+    }
+
+    *out = (struct nih_touch_sample){
+        .point_count = point_count,
+        .sequence = ++s_touch_sequence,
+        .flags = 0,
+        .reserved = 0,
+    };
+    for (uint8_t index = 0; index < point_count; ++index) {
+        out->points[index] = (struct nih_touch_point){
+            .track_id = points[index].track_id,
+            .x = points[index].x,
+            .y = points[index].y,
+            .strength = points[index].strength,
+        };
+    }
+    return NIH_STATUS_OK;
 }
 
 void app_main(void) {

@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-pub const version: u32 = 2;
+pub const version: u32 = 3;
 
 pub const Status = struct {
     pub const ok: i32 = 0;
@@ -100,6 +100,30 @@ pub const DisplayVsync = extern struct {
     vsync_count: u32,
 };
 
+pub const touch_max_points: u32 = 5;
+
+pub const TouchInfo = extern struct {
+    width: u32,
+    height: u32,
+    max_points: u32,
+    flags: u32,
+};
+
+pub const TouchPoint = extern struct {
+    track_id: u32,
+    x: u32,
+    y: u32,
+    strength: u32,
+};
+
+pub const TouchSample = extern struct {
+    point_count: u32,
+    sequence: u32,
+    flags: u32,
+    reserved: u32,
+    points: [touch_max_points]TouchPoint,
+};
+
 test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 24), @sizeOf(BootInfo));
     try std.testing.expectEqual(@as(usize, 4), @alignOf(BootInfo));
@@ -113,4 +137,7 @@ test "platform ABI has fixed layout" {
     try std.testing.expectEqual(@as(usize, 4), @alignOf(DisplayInfo));
     try std.testing.expectEqual(@as(usize, 20), @sizeOf(DisplayPresent));
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(DisplayVsync));
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(TouchInfo));
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(TouchPoint));
+    try std.testing.expectEqual(@as(usize, 96), @sizeOf(TouchSample));
 }
