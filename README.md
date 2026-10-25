@@ -74,6 +74,8 @@ The first two-worker preemption and delayed-tick result is recorded in
 Opt-in RV32F context handling and the full-register preemption probe are
 described in
 [`docs/adr/0008-opt-in-eager-rv32f-context.md`](docs/adr/0008-opt-in-eager-rv32f-context.md).
+Its integer/FP separation and host-bank restoration result is recorded in
+[`docs/measurements/2026-10-25-esp-emu-rv32f-preemption.md`](docs/measurements/2026-10-25-esp-emu-rv32f-preemption.md).
 
 ## Bootstrap checks
 
