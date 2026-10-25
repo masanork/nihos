@@ -21,8 +21,16 @@ At the outermost native trap tail, with MIE cleared and the private interrupt
 stack active, save the outgoing task's integer frame, `mstatus`, and complete
 CLIC `mcause`; apply elapsed ticks to the fixed-capacity scheduler and select
 one return context. Restore the selected task's hardware stack bounds and
-CSR state before `mret`. The 128-byte integer frame stays unchanged; return
+`mstatus`, but unwind the active trap using its complete `mcause` before
+`mret`. Native traps do not nest. The 128-byte integer frame stays unchanged; return
 state is an independently checked 8-byte structure.
+
+Physical revision-1 testing found that restoring an older ECALL capture's
+`mcause` on a timer return could leave CLIC MIL at the handler priority,
+masking subsequent timer delivery despite MIE being enabled. The return
+builder now combines task-local status with trap-local cause metadata, as
+the pinned IDF interrupt epilogue does after an RTOS task switch. It does not
+change task critical-section policy or establish nested-trap support.
 
 ## Bounded integration test
 

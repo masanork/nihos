@@ -65,6 +65,8 @@ stack monitoring active.
 
 The bounded Timer Group test in ADR 0006 now delivers native asynchronous
 interrupts through this entry in ESP-EMU. ADR 0007 now connects task selection
-and elapsed-time accounting and preserves return CSRs per task. Normal CLIC ownership,
+and elapsed-time accounting. Task status follows selection while the active
+trap's cause metadata unwinds CLIC, as clarified after physical testing in
+ADR 0007. Normal CLIC ownership,
 nested interrupts, native CPU1 FPU ownership/switching, and physical preemption
 remain later gates.

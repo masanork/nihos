@@ -358,7 +358,7 @@ export fn nih_riscv_trap_dispatch(
         const selected = selection orelse return null;
         nih_riscv_selected_stack_mins[1] = selected.stack_min;
         nih_riscv_selected_stack_maxs[1] = selected.stack_max;
-        nih_riscv_selected_return_states[1] = selected.state;
+        nih_riscv_selected_return_states[1] = selected.state.returningFrom(return_state);
         nih_riscv_selected_floating_states[1] = 0;
         return selected.frame;
     }
@@ -375,7 +375,7 @@ export fn nih_riscv_trap_dispatch(
         const selected = selection orelse return null;
         nih_riscv_selected_stack_mins[hart_id] = selected.stack_min;
         nih_riscv_selected_stack_maxs[hart_id] = selected.stack_max;
-        nih_riscv_selected_return_states[hart_id] = selected.state;
+        nih_riscv_selected_return_states[hart_id] = selected.state.returningFrom(return_state);
         nih_riscv_selected_floating_states[hart_id] = selected.floating_context;
         return selected.frame;
     }
@@ -390,7 +390,7 @@ export fn nih_riscv_trap_dispatch(
         const selected = selection orelse return null;
         nih_riscv_selected_stack_mins[hart_id] = selected.stack_min;
         nih_riscv_selected_stack_maxs[hart_id] = selected.stack_max;
-        nih_riscv_selected_return_states[hart_id] = selected.state;
+        nih_riscv_selected_return_states[hart_id] = selected.state.returningFrom(return_state);
         nih_riscv_selected_floating_states[hart_id] = selected.floating_context;
         return selected.frame;
     }
