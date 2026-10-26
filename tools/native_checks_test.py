@@ -17,6 +17,8 @@ def complete_log(mode="integer", psram_size="0"):
     sizes = {"0": (0, 0), "4M": (4 << 20, 1), "8M": (8 << 20, 3),
              "16M": (16 << 20, 5), "32M": (32 << 20, 7), "64M": (64 << 20, 6)}
     size, density = sizes[psram_size]
+    lines.append("NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001120 probe=40000140 mapping={:08x} completed=00000001".format(
+        0x40000940 if size else 0))
     lines.append("NIHOS_NATIVE_PSRAM status={:08x} configuration={:08x} identity={:08x} "
                  "bytes={:08x} transactions=00000004 mapped={:08x} allocatable=00000000".format(
                      int(size != 0), 0x0d00 if size else 0, 0xc8 | density if size else 0, size, size))
@@ -86,7 +88,43 @@ def complete_log(mode="integer", psram_size="0"):
     return "\n".join(lines)
 
 
+def complete_image():
+    return {"elf_sha256": "tested-elf",
+            "flash_records": {"start": "0x40010020", "end": "0x40010820", "bytes": 2048, "fnv1a": 0x12345678},
+            "flash_boot": {"start": "0x40000120", "end": "0x40001120", "functions": {
+                "probe": {"start": "0x40000120", "end": "0x40000920"},
+                "mapping": {"start": "0x40000920", "end": "0x40001120"}}}}
+
+
 class NativeLogTests(unittest.TestCase):
+    def test_flash_boot_execution_cannot_be_missing_or_duplicated(self):
+        log = complete_log()
+        line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_BOOT_CODE"))
+        for changed in (log.replace(line, ""), log + "\n" + line):
+            with self.assertRaisesRegex(ValueError, "Flash boot"):
+                MODULE.check(changed)
+
+    def test_flash_boot_execution_requires_valid_pcs_and_completion(self):
+        for size in ("0", "32M"):
+            log = complete_log(psram_size=size)
+            for old, new in (("start=40000120", "start=4ff00120"), ("end=40001120", "end=40010120"),
+                             ("probe=40000140", "probe=40000141"), ("probe=40000140", "probe=4ff00140"),
+                             ("completed=00000001", "completed=00000000"),
+                             ("mapping=40000940" if size != "0" else "mapping=00000000",
+                              "mapping=00000000" if size != "0" else "mapping=40000940")):
+                changed = log.replace(old, new)
+                with self.subTest(size=size, value=new), self.assertRaisesRegex(ValueError, "Flash boot"):
+                    MODULE.check(changed, "integer", 0 if size == "0" else 32 << 20)
+
+    def test_flash_boot_pcs_must_match_their_audited_function_roles(self):
+        log = complete_log(psram_size="32M")
+        image = complete_image()
+        MODULE.check(log, "integer", 32 << 20, image)
+        for old, new in (("probe=40000140", "probe=40000960"), ("mapping=40000940", "mapping=40000160"),
+                         ("end=40001120", "end=40001122")):
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "audited"):
+                MODULE.check(log.replace(old, new), "integer", 32 << 20, image)
+
     def test_flash_owner_evidence_cannot_be_missing_or_duplicated(self):
         log = complete_log()
         line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_FLASH"))
@@ -112,8 +150,7 @@ class NativeLogTests(unittest.TestCase):
 
     def test_flash_content_is_bound_to_the_audited_image(self):
         log = complete_log()
-        image = {"elf_sha256": "tested-elf", "flash_records": {"start": "0x40010020", "end": "0x40010820",
-                                                             "bytes": 2048, "fnv1a": 0x12345678}}
+        image = complete_image()
         self.assertEqual(MODULE.check(log, image=image)["image_elf_sha256"], "tested-elf")
         for field, wrong in (("start", "0x40010024"), ("end", "0x40010824"), ("bytes", 2049), ("fnv1a", 0)):
             changed = {**image, "flash_records": {**image["flash_records"], field: wrong}}

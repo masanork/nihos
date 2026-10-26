@@ -14,11 +14,17 @@ ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
+    flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
 {
     .flash.appdesc : { KEEP(*(.flash.appdesc)) } > descriptor
+    .flash.boot : {
+        __flash_boot_start = .;
+        *(.flash.text.boot)
+        __flash_boot_end = .;
+    } > flash_boot
     /* The stock P4 loader maps both segments before entering SRAM.
      * Only self-contained normal diagnostic tables use the second page. */
     .flash.rodata : {
@@ -56,6 +62,8 @@ SECTIONS
     } > ram
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
+    ASSERT(SIZEOF(.flash.boot) > 0, "missing Flash boot code")
+    ASSERT(SIZEOF(.flash.boot) <= 65248, "boot code exceeds first Flash page")
     ASSERT(SIZEOF(.flash.rodata) > 0, "missing mapped record tables")
     ASSERT(SIZEOF(.flash.rodata) <= 65504, "record tables exceed one Flash page")
     ASSERT(__irq_stack1_top <= ORIGIN(ram) + LENGTH(ram), "native SRAM overflow")

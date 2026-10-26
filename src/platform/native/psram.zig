@@ -20,6 +20,7 @@ const Bus = struct {
 var controller = psram.Controller(Bus){ .io = .{}, .poll_limit = 100_000 };
 
 pub const Report = struct {
+    execution_pc: u32 = 0,
     discovery: psram.Discovery,
     transactions: u32 = 0,
     total_transactions: u32 = 0,
@@ -63,9 +64,12 @@ fn settle(clock: timer_group.Timer) bool {
 
 /// Temporarily leases the stopped CPU0 1 MHz timer. Caller reconfigures it
 /// before scheduler startup. The 1 ms wait is a boot policy, not power-good.
-pub noinline fn probe(clock: timer_group.Timer) Report {
+pub noinline fn probe(clock: timer_group.Timer) linksection(".flash.text.boot") Report {
     @branchHint(.cold);
     var report = Report{ .discovery = .{ .status = .timeout } };
+    report.execution_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
     const selected = supply.setting(reg(0x5012d04c).*, reg(0x5012d050).*);
     report.supply.calibrated = @intFromBool(selected.calibrated);
     report.supply.dref = selected.dref;
@@ -76,7 +80,7 @@ pub noinline fn probe(clock: timer_group.Timer) Report {
     if (report.supply.programmed != 1) return report;
     report.supply.settled = @intFromBool(settle(clock));
     if (report.supply.settled != 1) return report;
-    // Native code/mutable state stays in SRAM; Flash mappings stay live.
+    // Boot code uses Flash; mutable state and runtime code stay in SRAM.
     // No peer/cache user may access PSRAM during this controller setup.
     reg(0x500e6014).* |= 1 << 31; // PSRAM system clock.
     // Independent PSRAM clock tree: XTAL, core divider 1, clock gates on.

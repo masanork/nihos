@@ -18,6 +18,8 @@ extern var __irq_stack0_bottom: [4]u32;
 extern var __irq_stack0_top: u8;
 extern var __irq_stack1_bottom: [4]u32;
 extern var __irq_stack1_top: u8;
+extern var __flash_boot_start: u8;
+extern var __flash_boot_end: u8;
 
 export var nih_native_return_states: [2]tasks.context.ReturnState = @splat(.{ .mstatus = 0, .mcause = 0 });
 
@@ -309,6 +311,15 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
     const external = native_psram.probe(timer(0));
+    const BootCode = struct { start: u32, end: u32, probe: u32, mapping: u32, completed: u32 };
+    const boot_code = BootCode{
+        .start = @as(u32, @intFromPtr(&__flash_boot_start)),
+        .end = @as(u32, @intFromPtr(&__flash_boot_end)),
+        .probe = external.execution_pc,
+        .mapping = external.mapping.execution_pc,
+        .completed = @as(u32, 1),
+    };
+    logger.record("NIHOS_NATIVE_BOOT_CODE", null, .{ "start", "end", "probe", "mapping", "completed" }, &boot_code);
     if (!timer(0).configureOneShot(tasks.period_us)) fail("PSRAM boot timer return");
     const DiscoveryRecord = struct { status: u32, configuration: u32, identity: u32, bytes: u32, transactions: u32, mapped: u32, allocatable: u32 };
     const discovery = DiscoveryRecord{

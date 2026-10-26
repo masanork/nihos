@@ -76,6 +76,7 @@ pub fn ownerReady(core: u32) void {
 }
 
 pub const Report = struct {
+    execution_pc: u32 = 0,
     status: u32 = 0,
     failure: u32 = 0,
     line_bytes: u32 = 0,
@@ -111,9 +112,12 @@ fn pointer(window: u32, offset: u32) *volatile u32 {
     return @ptrFromInt(mapping.virtual_base + window * mapping.page_bytes + offset);
 }
 
-pub noinline fn prepare(controller: anytype) Report {
+pub noinline fn prepare(controller: anytype) linksection(".flash.text.boot") Report {
     @branchHint(.cold);
     var report = Report{ .status = 2 };
+    report.execution_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
     if (mapping.encrypted(IO.read(.{}, 0x5012d034))) {
         report.failure = 12;
         return report;
