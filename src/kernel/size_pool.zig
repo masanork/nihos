@@ -25,7 +25,7 @@ pub const Config = struct {
 };
 
 /// Trace-informed host SQLite fixture; this is not a general service budget.
-pub const sqlite_probe = Config{ .counts = .{ 24, 12, 16, 12, 40, 4, 8, 12, 8, 1 } };
+pub const sqlite_probe = Config{ .counts = .{ 24, 12, 16, 12, 64, 4, 8, 12, 8, 1 } };
 
 pub fn configuredBytes(config: Config) ?usize {
     var total: usize = 0;
