@@ -39,7 +39,7 @@ jobs:
       - name: Compiled Zig and C ILP32F tasks without external RAM
         run: sh tools/run-native-smoke.sh compiled
 
-      - name: Native full PSRAM mapping and owner-local external arenas
+      - name: Native PSRAM mapping and reusable owner-local heaps
         run: |
           for size in 4M 8M 16M 32M 64M; do
             sh tools/run-native-smoke.sh integer "$size"

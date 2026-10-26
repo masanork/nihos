@@ -27,6 +27,8 @@ Reserved CPU mappings and cross-core PSRAM handoff are described in
 [ADR 0026](adr/0026-native-psram-mapping-and-cache-handoff.md).
 Full-capacity mapping and owner-local external boot allocation are described
 in [ADR 0027](adr/0027-native-external-boot-arenas.md).
+Reusable owner-local PSRAM heaps and their handle API are described in
+[ADR 0028](adr/0028-owner-local-reusable-psram-heap.md).
 
 ## Build and emulated execution
 
@@ -84,8 +86,10 @@ the final `NIHOS_NATIVE_MEMORY` records check patterns, guards, disjoint
 bounds and exact capacity accounting after the IPI fixture. The reports
 add a `memory` array, and the image audit distinguishes static reservation
 from the runtime heap span. These are boot arenas, not a general reusable
-heap. The same domain implementation now manages a separate PSRAM tail;
-`alloc` and `allocExternal` choose explicit memory domains with no fallback.
+heap. The same domain implementation manages a separate PSRAM boot arena;
+most of that backing is now transferred to the reusable external heap.
+`alloc` remains an SRAM boot allocation. `allocExternal` returns a reusable
+handle and `freeExternal` releases it on the allocating hart, without fallback.
 
 Before CPU1 release, Zig now reads the PSRAM identity through MSPI3 with
 bounded polling and a repeated-read check. `NIHOS_NATIVE_PSRAM` reports the
@@ -104,7 +108,8 @@ x8/fixed-latency mode settings, followed by two complementary write/read
 passes over 22–26 address-derived samples spanning its address lines and
 final word. `NIHOS_NATIVE_PSRAM_SUPPLY` and `NIHOS_NATIVE_PSRAM_IO` report
 these results. An absent die receives no mode or data writes. All CPU
-stacks and allocator metadata still use internal SRAM.
+stacks and allocator descriptors still use internal SRAM. The reusable
+heap's tree and allocation headers live in PSRAM.
 
 CPU0 maps the first, middle and final physical pages into three consecutive
 64 KiB windows, verifies CPU/command visibility with writeback/invalidation,
@@ -126,11 +131,27 @@ Each owner allocates a 64-byte bootstrap buffer and two 65,728-byte worker
 buffers from PSRAM, crossing page boundaries under timer preemption. Every
 byte and both guards are checked after task retirement. The final
 `NIHOS_NATIVE_EXTERNAL` records and `external_memory` report array require
-exact bounds/accounting; `external_allocatable_bytes` is total registered
-capacity after guards, including bytes already consumed by the fixture.
+exact bounds/accounting. `external_registered_bytes` describes the original
+guarded arena capacity, all consumed by test buffers and heap backing.
+`external_allocatable_bytes` now describes reusable payload capacity after
+boot buffers, tree metadata and guards have been deducted.
 The absent-die case rejects external allocation and reports zero records.
-These remain monotonic boot arenas without `free`, unsuitable as a direct
-SQLite/C `malloc` replacement. Sparse tests do not qualify all memory cells.
+
+Both owners initialize a buddy heap with 64-byte minimum blocks before
+either scheduler timer starts. `NIHOS_NATIVE_HEAP` and the `heaps` report
+array require variable-size aligned allocation/free churn under preemption,
+13 rejected operations per owner, complete exhaustion and full recovery
+with zero live blocks. Runtime operations visit at most 59 metadata nodes
+plus a fixed guard/header check. The counter does not measure interrupt
+latency. The native wrapper preserves MIE on success and error paths.
+
+Tickets reject stale/double/interior/wrong-size/foreign-owner frees; they
+do not prevent stale payload accesses. Power-of-two rounding and per-owner
+partitioning limit allocation efficiency and maximum block size. The 32 MiB
+layout has an 8 MiB raw maximum buddy per owner, before header/padding.
+Larger Quake hunks need a separate extent plan; SQLite needs a small-object
+layer and an allocator adapter. Service cleanup and cross-core frees are
+not wired. Sparse tests do not qualify all memory cells.
 
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
 `64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
@@ -183,13 +204,15 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has forty-four validator regression tests, including frozen
+The smoke has forty-eight validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
 generated-code preemption, SRAM ownership/accounting, PSRAM discovery,
 supply programming, command-data accounting, MMU/cache bridges and cross-core
 PSRAM handoff, external arena bounds and absent-die allocation rejection.
+Reusable heap records also require bounded walks, exact backing/metadata
+geometry, zero leaks and capacity recovery.
 Four more tests check instruction classification and the
 linker heap boundary:
 

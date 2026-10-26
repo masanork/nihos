@@ -1,8 +1,9 @@
 //! Owner-local boot arenas in internal SRAM and initialized PSRAM.
-//! Descriptors stay internal; allocation never falls back, frees or resets.
+//! Descriptors stay internal; reusable allocations use a separate handle API.
 const std = @import("std");
 const core_arena = @import("core_arena");
 const CoreArena = core_arena.CoreArena;
+pub const reusable = @import("heap.zig");
 
 extern var __heap_start: u8;
 extern var __heap_end: u8;
@@ -160,9 +161,13 @@ pub fn alloc(length: usize, alignment: usize) ?[]u8 {
     return internal.alloc(length, alignment);
 }
 
-/// Normal cached CPU memory only; this API makes no DMA or isolation promise.
-pub fn allocExternal(length: usize, alignment: usize) ?[]u8 {
-    return external.alloc(length, alignment);
+/// Cached CPU memory; owner-local handles, no DMA or isolation promise.
+pub fn allocExternal(length: usize, alignment: usize) reusable.Error!reusable.Allocation {
+    return reusable.alloc(length, alignment);
+}
+
+pub fn freeExternal(allocation: reusable.Allocation) reusable.Error!void {
+    return reusable.free(allocation);
 }
 
 pub fn begin() bool {
@@ -170,8 +175,14 @@ pub fn begin() bool {
 }
 
 pub fn beginExternal() bool {
-    if (@atomicLoad(u32, &external.prepared, .acquire) == 0) return allocExternal(64, 64) == null;
-    return external.begin();
+    if (@atomicLoad(u32, &external.prepared, .acquire) == 0) {
+        if (allocExternal(64, 64)) |_| return false else |err| return err == error.NotReady;
+    }
+    if (!external.begin()) return false;
+    const owner = &external.owners[currentHart()];
+    // Retain the two preemptible boot allocations at the end of the arena.
+    const span = external.alloc(owner.pool.remaining() - 2 * external.buffer_bytes, 64) orelse return false;
+    return reusable.prepare(span);
 }
 
 fn pattern(hart: u32, worker: u32, index: usize) u8 {
@@ -184,7 +195,10 @@ noinline fn fill(bytes: []u8, hart: u32, worker: u32) void {
 
 pub noinline fn probe(argument: u32) void {
     internal.probe(argument);
-    if (@atomicLoad(u32, &external.prepared, .acquire) == 1) external.probe(argument);
+    if (@atomicLoad(u32, &external.prepared, .acquire) == 1) {
+        external.probe(argument);
+        reusable.probe(argument);
+    }
 }
 
 noinline fn valid(bytes: []const u8, hart: u32, worker: u32) bool {
@@ -196,7 +210,7 @@ noinline fn valid(bytes: []const u8, hart: u32, worker: u32) bool {
 pub noinline fn finish() bool {
     // Internal completion is the final publication observed by CPU0. It must
     // also cover the slower, full-buffer external verification and report.
-    return (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and internal.finish();
+    return reusable.finish() and (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and internal.finish();
 }
 
 pub fn report(hart: u32) Report {

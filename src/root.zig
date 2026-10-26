@@ -13,6 +13,7 @@ pub const esp32p4_psram_supply = @import("soc/esp32p4/psram_supply.zig");
 pub const esp32p4_psram_mapping = @import("soc/esp32p4/psram_mapping.zig");
 pub const arena = @import("kernel/arena.zig");
 pub const core_arena = @import("kernel/core_arena.zig");
+pub const buddy_heap = @import("kernel/buddy_heap.zig");
 pub const scheduler = @import("kernel/scheduler.zig");
 pub const spsc_ring = @import("kernel/spsc_ring.zig");
 pub const spsc_channel = @import("kernel/spsc_channel.zig");
@@ -37,6 +38,8 @@ test {
     _ = @import("soc/esp32p4/psram_test.zig");
     _ = arena;
     _ = core_arena;
+    _ = buddy_heap;
+    _ = @import("kernel/buddy_heap_test.zig");
     _ = scheduler;
     _ = spsc_ring;
     _ = spsc_channel;
