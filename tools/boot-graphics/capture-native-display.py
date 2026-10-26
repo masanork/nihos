@@ -6,6 +6,7 @@ Requires ESP-IDF Python (esptool, pyserial). No backup or SD commands.
 """
 import argparse
 import contextlib
+import errno
 import hashlib
 import json
 import shutil
@@ -15,6 +16,21 @@ import time
 import esptool
 from esptool.reset import HardReset
 import serial
+
+
+def acquire_port(port, wait_seconds):
+    deadline = time.monotonic() + wait_seconds
+    waiting = False
+    while True:
+        try:
+            return serial.Serial(port, 115200, timeout=0.1, exclusive=True)
+        except serial.SerialException as error:
+            if error.errno not in (errno.EAGAIN, errno.EWOULDBLOCK) or time.monotonic() >= deadline:
+                raise
+            if not waiting:
+                print('Serial busy; waiting for its owner to release the lease', flush=True)
+                waiting = True
+            time.sleep(min(1, max(0, deadline - time.monotonic())))
 
 
 def main():
@@ -27,7 +43,9 @@ def main():
     parser.add_argument('--partitions', type=Path, required=True)
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--seconds', type=int, default=45)
+    parser.add_argument('--serial-wait', type=int, default=0, help='Seconds to wait for an existing exclusive owner')
     args = parser.parse_args()
+    assert args.serial_wait >= 0
     audit = json.loads(args.audit.read_text())
     assert audit['rtos_linked'] is False and audit['memory']['profile'] == 'device'
     assert hashlib.sha256(args.image.read_bytes()).hexdigest() == audit['image_sha256']
@@ -43,7 +61,7 @@ def main():
         shutil.copy2(args.audit, retained / 'image-audit.json')
     manifest = {address: {'path': str(path.resolve()), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()} for address, path in paths.items()}
     (args.output / 'artifacts.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    with serial.Serial(args.port, 115200, timeout=0.1, exclusive=True) as console:
+    with acquire_port(args.port, args.serial_wait) as console:
         print('Exclusive serial lease acquired', flush=True)
         def tool(action, name):
             with (args.output / name).open('w') as output, contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):

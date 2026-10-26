@@ -40,8 +40,53 @@ def fixed_record(log, marker, names):
     return found[0]
 
 
+def check_fast_psram(log, evidence):
+    if 'NIHOS_NATIVE_PSRAM_TUNING ' not in log:
+        if 'NIHOS_NATIVE_PSRAM_LINK ' in log:
+            raise ValueError('PSRAM200 register report requires tuning evidence')
+        return None
+    if evidence != 'physical-device':
+        raise ValueError('PSRAM200 requires physical-device evidence')
+    pll = fixed_record(log, 'NIHOS_NATIVE_PSRAM_MPLL', ('status', 'mhz', 'reused', 'divider', 'error_code'))
+    tuning = fixed_record(log, 'NIHOS_NATIVE_PSRAM_TUNING',
+                          ('status', 'stage', 'phase_mask', 'phase', 'delay_mask', 'delay', 'repetitions', 'reads', 'writes', 'error_code'))
+    link = fixed_record(log, 'NIHOS_NATIVE_PSRAM_LINK',
+                        ('core', 'bus', 'command', 'sctrl', 'cmd', 'ddr', 'dll_cache', 'dll_command', 'dqs0', 'dqs1'))
+    def window(mask, count):
+        best = (0, 0)
+        run = 0
+        for index in range(count):
+            run = run + 1 if mask & (1 << index) else 0
+            if run > best[1]:
+                best = (index + 1 - run, run)
+        return best
+    phase, phase_length = window(tuning['phase_mask'], 4)
+    delay_start, delay_length = window(tuning['delay_mask'], 31)
+    delay = delay_start + (delay_length - 1) // 2
+    if (pll['status'] != 1 or pll['mhz'] != 400 or pll['reused'] not in (0, 1) or
+            pll['divider'] != 0x99 or pll['error_code'] or
+            tuning['status'] != 1 or tuning['stage'] != 4 or tuning['error_code'] or
+            tuning['phase_mask'] >> 4 or tuning['delay_mask'] >> 31 or
+            not phase_length or delay_length < 2 or tuning['phase'] != phase or tuning['delay'] != delay or
+            tuning['repetitions'] != 100 or tuning['reads'] != 99392 or tuning['writes'] != 32):
+        raise ValueError('incomplete PSRAM200 PLL/tuning qualification')
+    dqs = max(15 - delay, 0)
+    if (link['core'] >> 12 & 3 != 1 or link['core'] >> 16 & 255 != 0 or
+            link['bus'] != 0x10001 or link['command'] != 0x10001 or
+            link['sctrl'] >> 6 & 63 != 25 or link['sctrl'] >> 22 & 63 != 11 or
+            link['cmd'] & (3 << 26) != 3 << 26 or link['ddr'] & 31 != 3 or
+            not link['dll_cache'] & 32 or not link['dll_command'] & 32 or
+            any(value >> 1 & 3 != phase or value >> 7 & 15 != dqs or value >> 17 & 15 != dqs
+                for value in (link['dqs0'], link['dqs1']))):
+        raise ValueError('PSRAM200 register readback does not match selected timing')
+    return {'mpll': pll, 'tuning': tuning, 'link': link}
+
+
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
-          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False):
+          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
+          external_reserved_bytes=3 * 65536):
+    if external_reserved_bytes not in (3 * 65536, 2 << 20):
+        raise ValueError("unknown external reservation")
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     profile = image.get("memory", {}).get("profile") if image is not None else None
@@ -102,6 +147,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             supply["analog"] != (supply["dref"] << 28) | (supply["mul"] << 23) | (1 << 26) or
             (supply["calibrated"] == 0 and (supply["dref"], supply["mul"]) != (6, 5))):
         raise ValueError("incomplete PSRAM supply programming/readback")
+    fast_psram = check_fast_psram(log, evidence)
     io_names = ("status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions")
     pattern = "NIHOS_NATIVE_PSRAM_IO" + "".join(" " + name + r"=([0-9a-f]{8})" for name in io_names)
     matches = re.findall(pattern, log)
@@ -115,10 +161,11 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
         addresses = psram["bytes"].bit_length() - 1
         if (psram_io["status"] != 1 or psram_io["addresses"] != addresses or psram_io["passes"] != 2 or
                 psram_io["reads"] != 2 * addresses or psram_io["writes"] != 2 * addresses or
-                psram_io["transactions"] != 13 + 4 * addresses or
+                psram_io["transactions"] != (4 + 18 + 8 * addresses + 32 + 99392 if fast_psram else 13 + 4 * addresses) or
                 any(psram_io[name] > 255 for name in ("mr0", "mr4", "mr8")) or
-                psram_io["mr0"] & 63 != 0x28 or psram_io["mr4"] & 0xe0 != 0x40 or
-                psram_io["mr8"] & 0x4f != 0x0b):
+                psram_io["mr0"] & 63 != (0x30 if fast_psram else 0x28) or
+                psram_io["mr4"] & 0xe0 != (0x20 if fast_psram else 0x40) or
+                psram_io["mr8"] & 0x4f != (0x4b if fast_psram else 0x0b)):
             raise ValueError("incomplete PSRAM data/mode qualification")
     mapping_names = ("status", "failure", "line_bytes", "last_address", "last_actual", "last_expected",
                      "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs")
@@ -253,7 +300,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     pattern = r"NIHOS_NATIVE_EXTERNAL hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in memory_names)
     external_owners = {}
-    stride = (expected_psram_bytes - 3 * 65536) // 2 if psram["status"] else 0
+    if external_reserved_bytes == 2 << 20:
+        preparation = fixed_record(log, "NIHOS_NATIVE_DISPLAY_PREP", (
+            "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes",
+            "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight"))
+        if (preparation["status"] != 1 or preparation["stage"] != 6 or preparation["error_code"] != 0 or
+                preparation["panel"] not in (1, 2, 3) or preparation["frame_start"] != 0x48030000 or
+                preparation["frame_bytes"] != 720 * 1280 * 2 or preparation["reserve_bytes"] != 0x1d0000 or
+                preparation["scanout"] or preparation["backlight"] or preparation["phy_status"] != 3 or
+                expected_psram_bytes < 4 << 20):
+            raise ValueError("invalid display external reservation")
+    external_start = 0x48000000 + external_reserved_bytes
+    stride = (expected_psram_bytes - external_reserved_bytes) // 2 if psram["status"] else 0
     for match in re.findall(pattern, log):
         hart, *values = [int(value, 16) for value in match]
         if hart >= 2 or hart in external_owners:
@@ -262,8 +320,8 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
         if not psram["status"]:
             if any(values):
                 raise ValueError("external allocation without a mapped die")
-        elif (record["start"] != 0x48030000 + hart * stride or
-              record["end"] != 0x48030000 + (hart + 1) * stride or
+        elif (record["start"] != external_start + hart * stride or
+              record["end"] != external_start + (hart + 1) * stride or
               record["capacity"] != stride - 128 or record["used"] != record["capacity"] or
               record["free"] != 0 or
               min(record["checks0"], record["checks1"]) < 4 or
@@ -506,7 +564,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             "flash_boot": boot, "sqlite": sql_report,
             "stacks": [{"hart": hart, **stacks[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
-            "psram_supply": supply, "psram_io": psram_io,
+            "psram_supply": supply, "psram_io": psram_io, "psram_fast": fast_psram,
             "psram_mapping": mapped, "psram_smp": psram_smp,
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
             "cpu0_interrupts": samples[-1][3], "cpu1_interrupts": samples[-1][4],

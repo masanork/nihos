@@ -1,6 +1,7 @@
 //! Boot-only I2C on GPIO31/32. Exclusive CPU0 ownership before CPU1 release.
 //! Open drain is implemented by driving low or releasing the output driver.
-//! No recovery pulses or peripheral-wide reset: a busy shared bus fails closed.
+//! Ordinary transfers never recover a busy bus. The sole boot owner can
+//! explicitly clear retained SDA-low with at most nine clocks (UM10204 3.1.16).
 const std = @import("std");
 pub const Error = error{ InvalidTransfer, ClockTimeout, BusBusy, AddressNack, ReadAddressNack, Nack, ArbitrationLost, Timer };
 pub const sda = 31;
@@ -11,6 +12,30 @@ pub fn Master(comptime Pins: type) type {
         pins: Pins,
         transactions: u32 = 0,
         const Self = @This();
+
+        /// Only before the first transaction, with exclusive boot ownership.
+        /// No peripheral reset and no driven-high pin; SCL-low is rejected.
+        pub fn clearBootBus(self: *Self) Error!u32 {
+            if (self.transactions != 0) return error.InvalidTransfer;
+            defer {
+                self.pins.release(sda, true);
+                self.pins.release(scl, true);
+            }
+            self.pins.release(sda, true);
+            try self.highClock();
+            if (self.pins.level(sda)) return 0;
+            for (1..10) |pulse| {
+                try self.lowClock();
+                try self.highClock();
+                if (self.pins.level(sda)) {
+                    try self.lowClock();
+                    try self.stop();
+                    if (!self.pins.level(sda)) return error.BusBusy;
+                    return @intCast(pulse);
+                }
+            }
+            return error.BusBusy;
+        }
 
         fn pause(self: *Self) Error!void {
             if (!self.pins.delay(5)) return error.Timer;
@@ -130,6 +155,29 @@ const Model = struct {
         self.sample(!ack);
     }
 };
+
+test "explicit boot clear releases retained SDA with bounded clocks" {
+    var model = Model{};
+    for (0..3) |_| model.sample(false);
+    model.sample(true);
+    model.sample(true);
+    var master = Master(*Model){ .pins = &model };
+    try std.testing.expectEqual(@as(u32, 3), try master.clearBootBus());
+    try std.testing.expectEqual(@as(u32, 0), master.transactions);
+    try std.testing.expectEqualDeep([2]bool{ true, true }, model.released);
+    var stuck = Model{};
+    for (0..10) |_| stuck.sample(false);
+    var blocked = Master(*Model){ .pins = &stuck };
+    try std.testing.expectError(error.BusBusy, blocked.clearBootBus());
+    try std.testing.expectEqual(@as(usize, 10), stuck.next);
+    try std.testing.expectEqualDeep([2]bool{ true, true }, stuck.released);
+    var held_clock = Model{ .clock_stuck = true };
+    var clock = Master(*Model){ .pins = &held_clock };
+    try std.testing.expectError(error.ClockTimeout, clock.clearBootBus());
+    try std.testing.expectEqual(@as(usize, 0), held_clock.next);
+    var owned = Master(*Model){ .pins = &model, .transactions = 1 };
+    try std.testing.expectError(error.InvalidTransfer, owned.clearBootBus());
+}
 
 test "register read preserves repeated START, MSB order, final NACK" {
     var model = Model{};

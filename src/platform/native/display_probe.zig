@@ -4,6 +4,7 @@ const i2c = @import("boot_i2c");
 const boot = @import("boot_graphics");
 const timer_group = @import("timer_group");
 
+extern fn nih_display_i2c_status() callconv(.c) u32;
 extern fn nih_display_pads_init() callconv(.c) void;
 extern fn nih_display_pin_release(u32, bool) callconv(.c) void;
 extern fn nih_display_pin_level(u32) callconv(.c) bool;
@@ -15,6 +16,9 @@ extern fn nih_display_phy_power_off() callconv(.c) void;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 
 pub const Report = struct {
+    initial_pins: u32 = 0,
+    failed_pins: u32 = 0,
+    recovery_pulses: u32 = 0,
     status: u32 = 0,
     stage: u32 = 0,
     error_code: u32 = 0,
@@ -55,14 +59,28 @@ pub fn run(clock: timer_group.Timer, selected: board.Layout) Report {
     defer clock.stop();
     const pins = Pins{ .clock = clock };
     nih_display_pads_init();
+    // Let released open-drain inputs rise before the first idle-bus test.
+    if (!pins.delay(100)) {
+        report.error_code = 8;
+        return report;
+    }
+    report.initial_pins = nih_display_i2c_status();
     var bus = i2c.Master(Pins){ .pins = pins };
     defer {
         nih_display_pin_release(i2c.sda, true);
         nih_display_pin_release(i2c.scl, true);
     }
     report.stage = 1;
+    if (report.initial_pins & 3 != 3) {
+        report.recovery_pulses = bus.clearBootBus() catch |err| {
+            report.error_code = errorCode(err);
+            report.failed_pins = nih_display_i2c_status();
+            return report;
+        };
+    }
     board.prepareBoard(&bus) catch |err| {
         report.error_code = errorCode(err);
+        report.failed_pins = nih_display_i2c_status();
         report.transactions = bus.transactions;
         return report;
     };
@@ -82,7 +100,7 @@ pub fn run(clock: timer_group.Timer, selected: board.Layout) Report {
     // CPU-only image proof, kept separate from DMA/physical scanout evidence.
     const data: [*]u8 = @ptrFromInt(selected.frame_start);
     const frame = data[0..selected.frame_bytes];
-    if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .display)) {
+    if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .display)) {
         report.error_code = 9;
         return report;
     }

@@ -3,8 +3,20 @@
 const std = @import("std");
 const assets = @import("boot/assets.zig");
 
-pub const width = 720;
-pub const height = 1280;
+pub const width: usize = 720;
+pub const height: usize = 1280;
+pub const Layout = assets.Layout;
+pub const landscape_width: usize = 1280;
+pub const landscape_height: usize = 720;
+
+const Point = struct { x: usize, y: usize };
+/// Match the keyboard landscape orientation used by MeOS. Scanout stays 720x1280.
+fn physical(layout: Layout, x: usize, y: usize) Point {
+    return switch (layout) {
+        .portrait => .{ .x = x, .y = y },
+        .landscape => .{ .x = y, .y = landscape_width - 1 - x },
+    };
+}
 pub const Status = enum(u8) { display = 1, memory, cores, input, ready, failed };
 const background = [3]u8{ 17, 17, 17 };
 const paper = [3]u8{ 225, 225, 225 };
@@ -45,15 +57,24 @@ pub fn paintRgb565Le(framebuffer: []u8, surface_width: usize, surface_height: us
 /// The native linker can keep immutable lettering in its existing Flash span.
 /// The section is a compile-time choice; it never accepts runtime mask data.
 pub fn paintPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, false);
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .portrait, false);
 }
 
 /// Recolour only 丹穂 and the marker after the complete first frame exists.
 pub fn recolorPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, true);
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .portrait, true);
 }
 
-fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, recolor_only: bool) bool {
+/// Compose in logical 1280x720 coordinates, then rotate into the panel's buffer.
+/// No second framebuffer, panel command changes, or filesystem access is needed.
+pub fn paintLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, false);
+}
+pub fn recolorLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, true);
+}
+
+fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, layout: Layout, recolor_only: bool) bool {
     const MaskStore = if (section) |name| struct {
         const data linksection(name) = assets.masks.*;
     } else struct {
@@ -74,6 +95,7 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
         }
     };
     for (assets.sprites) |sprite| {
+        if (sprite.layout != layout) continue;
         if (recolor_only and sprite.ink != .dye) continue;
         if (sprite.status != 0 and sprite.status != @backingInt(status)) continue;
         const ink = switch (sprite.ink) {
@@ -89,7 +111,8 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
             if (alpha != 0) {
                 const color = mix(background, ink, alpha);
                 for (pixel..pixel + count) |index| {
-                    put(framebuffer, stride, left + sprite.x + index % sprite.width, top + sprite.y + index / sprite.width, color);
+                    const point = physical(layout, sprite.x + index % sprite.width, sprite.y + index / sprite.width);
+                    put(framebuffer, stride, left + point.x, top + point.y, color);
                 }
             }
             pixel += count;
@@ -98,7 +121,8 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
     // A small state marker, not a fictitious percentage or a looping spinner.
     const marker = if (status == .failed) vermilion else mix(muted, vermilion, progress);
     for (0..6) |y| for (0..6) |x| {
-        put(framebuffer, stride, left + 92 + x, top + 1166 + y, marker);
+        const point = physical(layout, (if (layout == .landscape) @as(usize, 102) else 92) + x, (if (layout == .landscape) @as(usize, 647) else 1166) + y);
+        put(framebuffer, stride, left + point.x, top + point.y, marker);
     };
     return true;
 }
@@ -117,8 +141,8 @@ test "partial recolour matches the full final frame without repainting other let
 
 test "embedded masks are bounded and cover precisely each sprite" {
     for (assets.sprites) |sprite| {
-        try std.testing.expect(sprite.x + sprite.width <= width);
-        try std.testing.expect(sprite.y + sprite.height <= height);
+        try std.testing.expect(sprite.x + sprite.width <= (if (sprite.layout == .landscape) landscape_width else width));
+        try std.testing.expect(sprite.y + sprite.height <= (if (sprite.layout == .landscape) landscape_height else height));
         try std.testing.expect(sprite.offset + sprite.length <= assets.masks.len);
         var decoded: usize = 0;
         for (assets.masks[sprite.offset..][0..sprite.length]) |run| decoded += @as(usize, run & 15) + 1;
@@ -173,4 +197,35 @@ test "only the three 丹穂 pairs and state marker acquire colour" {
         changed += 1;
     };
     try std.testing.expect(changed > 500);
+}
+
+test "keyboard landscape mapping rotates asymmetric corners in the MeOS direction" {
+    try std.testing.expectEqual(Point{ .x = 0, .y = 1279 }, physical(.landscape, 0, 0));
+    try std.testing.expectEqual(Point{ .x = 0, .y = 0 }, physical(.landscape, 1279, 0));
+    try std.testing.expectEqual(Point{ .x = 719, .y = 1279 }, physical(.landscape, 0, 719));
+    try std.testing.expectEqual(Point{ .x = 719, .y = 0 }, physical(.landscape, 1279, 719));
+}
+
+test "landscape partial dye matches full repaint and preserves stride and guards" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const memory = try std.testing.allocator.alloc(u8, size + 32);
+    defer std.testing.allocator.free(memory);
+    @memset(memory, 0xab);
+    const frame = memory[16..][0..size];
+    const final = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(final);
+    @memset(final, 0xab);
+    try std.testing.expect(paintLandscapePlacedRgb565Le(null, frame, width, height, stride, 0, .ready));
+    try std.testing.expect(recolorLandscapePlacedRgb565Le(null, frame, width, height, stride, 255, .ready));
+    try std.testing.expect(paintLandscapePlacedRgb565Le(null, final, width, height, stride, 255, .ready));
+    try std.testing.expectEqualSlices(u8, final, frame);
+    for (memory[0..16]) |byte| try std.testing.expectEqual(@as(u8, 0xab), byte);
+    for (memory[size + 16 ..]) |byte| try std.testing.expectEqual(@as(u8, 0xab), byte);
+    for (0..height) |y| for (frame[y * stride + width * 2 ..][0..8]) |byte| {
+        try std.testing.expectEqual(@as(u8, 0xab), byte);
+    };
+    var small: [32]u8 = @splat(0xab);
+    try std.testing.expect(!paintLandscapePlacedRgb565Le(null, &small, width, height, width * 2, 0, .ready));
+    for (small) |byte| try std.testing.expectEqual(@as(u8, 0xab), byte);
 }

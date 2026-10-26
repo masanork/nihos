@@ -1,0 +1,673 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "base_commit": "10a4cb6",
+  "mode": 5,
+  "optical_evidence": {
+    "observer": "user",
+    "observation": "真っ白になったね",
+    "attempt": 20
+  },
+  "image_audit": {
+    "schema": 1,
+    "backend": "native-sram",
+    "rtos_linked": false,
+    "fp_assembly_linked": false,
+    "riscv_flags": "0x1",
+    "fp_instructions": {
+      "app": 0,
+      "c": 0,
+      "zig": 0,
+      "transfer_helpers": 0
+    },
+    "entry": "0x4ff00000",
+    "elf_sha256": "8446377601fc360ddfbbaa4ebd2b983696c41824fcdab4ac84be122f5ad62892",
+    "memory": {
+      "profile": "device",
+      "origin": "0x4ff00000",
+      "end": "0x4ff28000",
+      "bytes": 163840,
+      "total_bytes": 221184,
+      "regions": [
+        {
+          "name": "resident",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840
+        },
+        {
+          "name": "stacks",
+          "origin": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344
+        }
+      ]
+    },
+    "sram_reserved_bytes": 151424,
+    "primary_static_bytes": 94080,
+    "stacks": {
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "bootstrap_bytes_per_hart": 8192,
+      "irq_bytes_per_hart": 8192,
+      "worker_bytes": 4096,
+      "workers_per_hart": 3,
+      "worker_start": "0x4ff68000"
+    },
+    "heap": {
+      "start": "0x4ff16f80",
+      "end": "0x4ff28000",
+      "bytes": 69760,
+      "owner_count": 2,
+      "granule_bytes": 64,
+      "external_bytes": 0
+    },
+    "flash_boot": {
+      "start": "0x40000120",
+      "end": "0x400011d2",
+      "bytes": 4274,
+      "sha256": "241b9ecba480ab8059fc210c404b95c1cabaf3ab1df663a19ba8c5c11f51fd9b",
+      "functions": {
+        "probe": {
+          "name": "psram.probe",
+          "start": "0x40000120",
+          "end": "0x40000d00"
+        },
+        "mapping": {
+          "name": "psram_memory.prepare__func_69",
+          "start": "0x40000d00",
+          "end": "0x400011d2"
+        }
+      },
+      "image_offset": 288
+    },
+    "flash_records": {
+      "start": "0x40010020",
+      "end": "0x4001845b",
+      "bytes": 33851,
+      "fnv1a": 2193538807,
+      "executable": false,
+      "writable": false,
+      "image_offset": 65568
+    },
+    "rom_symbols": {
+      "nih_rom_putc": "0x4fc00054",
+      "nih_rom_set_cpu1_entry": "0x4fc000a8",
+      "nih_rom_l2_line_size": "0x4fc003cc",
+      "nih_rom_l2_enable": "0x4fc00504",
+      "nih_rom_cache_invalidate": "0x4fc003e4",
+      "nih_rom_cache_writeback": "0x4fc003f4"
+    },
+    "sections": [
+      {
+        "name": ".flash.appdesc",
+        "address": "0x40000020",
+        "bytes": 256
+      },
+      {
+        "name": ".flash.boot",
+        "address": "0x40000120",
+        "bytes": 4274
+      },
+      {
+        "name": ".flash.rodata",
+        "address": "0x40010020",
+        "bytes": 33851
+      },
+      {
+        "name": ".text",
+        "address": "0x4ff00000",
+        "bytes": 84350
+      },
+      {
+        "name": ".rodata",
+        "address": "0x4ff14980",
+        "bytes": 4324
+      },
+      {
+        "name": ".data",
+        "address": "0x4ff15a80",
+        "bytes": 1360
+      },
+      {
+        "name": ".bss",
+        "address": "0x4ff16000",
+        "bytes": 3968
+      },
+      {
+        "name": ".stacks",
+        "address": "0x4ff60000",
+        "bytes": 57344
+      },
+      {
+        "name": ".heap",
+        "address": "0x4ff16f80",
+        "bytes": 69760
+      }
+    ],
+    "image_sha256": "2f55bc320ce73e0f932e70d6e8df9fe0f9a7deb2f3780fc8068d2bb7a70f4ae4",
+    "image_bytes": 128528,
+    "image_segments": [
+      {
+        "address": "0x40000020",
+        "bytes": 4532
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 60988
+      },
+      {
+        "address": "0x40010020",
+        "bytes": 33852
+      },
+      {
+        "address": "0x4ff0ee3c",
+        "bytes": 27688
+      },
+      {
+        "address": "0x4ff15a80",
+        "bytes": 1360
+      }
+    ],
+    "loader": {
+      "elf_sha256": "d607bc7ed6c3c3f94813248ba363d79fd908765c45b09a3f817395dad3be13b7",
+      "allocated": [
+        {
+          "address": "0x4ff2cbd0",
+          "bytes": 12498
+        },
+        {
+          "address": "0x4ff33bd0",
+          "bytes": 272
+        },
+        {
+          "address": "0x4ff33ce0",
+          "bytes": 80
+        },
+        {
+          "address": "0x4ff33d30",
+          "bytes": 12
+        },
+        {
+          "address": "0x4ff33d3c",
+          "bytes": 4536
+        },
+        {
+          "address": "0x4ff2abd0",
+          "bytes": 3010
+        }
+      ],
+      "nearest_higher_address": "0x4ff2abd0",
+      "gap_bytes": 11216,
+      "regions_checked": [
+        {
+          "name": "resident",
+          "gap_below": null,
+          "gap_above": 11216
+        },
+        {
+          "name": "stacks",
+          "gap_below": 176396,
+          "gap_above": null
+        }
+      ]
+    },
+    "loader_config": {
+      "l2_bytes": 131072,
+      "line_bytes": 64,
+      "profile": "device",
+      "stack_source_window": {
+        "origin": "0x4ff40000",
+        "end": "0x4ffa0000"
+      },
+      "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+    }
+  },
+  "artifacts": {
+    "0x2000": {
+      "path": "/Users/masanork/repo/nihos-native-boot-graphics/build/native-scanout-physical/attempt-20-sram-single/installed/bootloader.bin",
+      "sha256": "b5fbaacadc6c2a2ea8bcdb5edefd1745468f255dccc6f95a3c78e0d1d768478d"
+    },
+    "0x8000": {
+      "path": "/Users/masanork/repo/nihos-native-boot-graphics/build/native-scanout-physical/attempt-20-sram-single/installed/partition-table.bin",
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "0x10000": {
+      "path": "/Users/masanork/repo/nihos-native-boot-graphics/build/native-scanout-physical/attempt-20-sram-single/installed/nihos-native.bin",
+      "sha256": "2f55bc320ce73e0f932e70d6e8df9fe0f9a7deb2f3780fc8068d2bb7a70f4ae4"
+    }
+  },
+  "native_and_display_check": {
+    "native": {
+      "schema": 1,
+      "backend": "native-sram",
+      "evidence": "physical-device",
+      "mode": "integer",
+      "storage": null,
+      "storage_stack": null,
+      "qualification": null,
+      "sdmmc": null,
+      "sdmmc_stages": [],
+      "sdmmc_sweeps": [],
+      "image_elf_sha256": "8446377601fc360ddfbbaa4ebd2b983696c41824fcdab4ac84be122f5ad62892",
+      "flash_records": [
+        {
+          "hart": 0,
+          "start": 1073807392,
+          "end": 1073841243,
+          "bytes": 33851,
+          "initial": 2193538807,
+          "final": 2193538807,
+          "checks": 67702,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1073807392,
+          "end": 1073841243,
+          "bytes": 33851,
+          "initial": 2193538807,
+          "final": 2193538807,
+          "checks": 67702,
+          "confirmed": 1
+        }
+      ],
+      "flash_boot": {
+        "start": 1073742112,
+        "end": 1073746386,
+        "probe": 1073742208,
+        "mapping": 1073745182,
+        "completed": 1
+      },
+      "sqlite": null,
+      "stacks": [
+        {
+          "hart": 0,
+          "start": 1341521920,
+          "end": 1341579264,
+          "boot_start": 1341521920,
+          "boot_end": 1341530112,
+          "irq_start": 1341538304,
+          "irq_end": 1341546496,
+          "task_start": 1341554688,
+          "task_end": 1341566976,
+          "boot_frame": 1341528688,
+          "irq_sp": 1341546080,
+          "task0_frame": 1341556528,
+          "task1_frame": 1341560624,
+          "task2_frame": 1341566784,
+          "frames": 1054,
+          "zeroed": 20480,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1341521920,
+          "end": 1341579264,
+          "boot_start": 1341530112,
+          "boot_end": 1341538304,
+          "irq_start": 1341546496,
+          "irq_end": 1341554688,
+          "task_start": 1341566976,
+          "task_end": 1341579264,
+          "boot_frame": 1341537840,
+          "irq_sp": 1341554272,
+          "task0_frame": 1341568816,
+          "task1_frame": 1341572912,
+          "task2_frame": 1341579072,
+          "frames": 1054,
+          "zeroed": 20480,
+          "confirmed": 1
+        }
+      ],
+      "rounds": 300,
+      "samples": 31,
+      "psram": {
+        "status": 1,
+        "configuration": 36136,
+        "identity": 41183,
+        "bytes": 33554432,
+        "transactions": 4,
+        "mapped": 33554432,
+        "allocatable": 0
+      },
+      "psram_supply": {
+        "programmed": 1,
+        "calibrated": 1,
+        "dref": 7,
+        "mul": 5,
+        "control": 384,
+        "analog": 1988100096,
+        "settled": 1
+      },
+      "psram_io": {
+        "status": 1,
+        "mr0": 40,
+        "mr4": 64,
+        "mr8": 11,
+        "addresses": 25,
+        "passes": 2,
+        "reads": 50,
+        "writes": 50,
+        "transactions": 113
+      },
+      "psram_mapping": {
+        "status": 1,
+        "failure": 0,
+        "line_bytes": 64,
+        "last_address": 0,
+        "last_actual": 0,
+        "last_expected": 0,
+        "bytes": 33554432,
+        "entries": 1024,
+        "cpu_checks": 36,
+        "command_checks": 36,
+        "transactions": 72,
+        "syncs": 5
+      },
+      "psram_smp": {
+        "status": 1,
+        "rounds": 64,
+        "owner_checks": 3072,
+        "peer_checks": 3072,
+        "command_checks": 48,
+        "syncs": 1
+      },
+      "cpu0_progress": 2437289,
+      "cpu1_progress": 1426696,
+      "cpu0_interrupts": 899,
+      "cpu1_interrupts": 899,
+      "tasks": [
+        {
+          "hart": 0,
+          "progress": [
+            342528,
+            339712
+          ],
+          "timer_captures": [
+            301,
+            301
+          ],
+          "switches": 910,
+          "calls": 17,
+          "reaped": 3,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        },
+        {
+          "hart": 1,
+          "progress": [
+            342720,
+            339954
+          ],
+          "timer_captures": [
+            301,
+            301
+          ],
+          "switches": 910,
+          "calls": 17,
+          "reaped": 3,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        }
+      ],
+      "ipi_idle": [
+        {
+          "hart": 0,
+          "sent": 64,
+          "received": 64,
+          "ipis": 66,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 64,
+          "entries": 64,
+          "returns": 64,
+          "pending_before_wfi": 1,
+          "self_ipi": 1,
+          "timer_start": 900,
+          "timer_end": 900,
+          "queued": 0
+        },
+        {
+          "hart": 1,
+          "sent": 64,
+          "received": 64,
+          "ipis": 66,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 65,
+          "entries": 65,
+          "returns": 65,
+          "pending_before_wfi": 1,
+          "self_ipi": 1,
+          "timer_start": 900,
+          "timer_end": 900,
+          "queued": 0
+        }
+      ],
+      "floating": [
+        {
+          "hart": 0,
+          "checks0": 0,
+          "checks1": 0,
+          "checks2": 0,
+          "timer": 0,
+          "calls": 0,
+          "ipi": 0,
+          "saves": 0,
+          "restores": 0,
+          "initial": 0,
+          "app_timer": 0,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "checks0": 0,
+          "checks1": 0,
+          "checks2": 0,
+          "timer": 0,
+          "calls": 0,
+          "ipi": 0,
+          "saves": 0,
+          "restores": 0,
+          "initial": 0,
+          "app_timer": 0,
+          "confirmed": 1
+        }
+      ],
+      "memory": [
+        {
+          "hart": 0,
+          "start": 1341222784,
+          "end": 1341257664,
+          "capacity": 34752,
+          "used": 448,
+          "free": 34304,
+          "checks0": 342529,
+          "checks1": 339713,
+          "rejected": 3,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1341257664,
+          "end": 1341292544,
+          "capacity": 34752,
+          "used": 448,
+          "free": 34304,
+          "checks0": 342721,
+          "checks1": 339955,
+          "rejected": 3,
+          "confirmed": 1
+        }
+      ],
+      "external_memory": [
+        {
+          "hart": 0,
+          "start": 1210056704,
+          "end": 1225785344,
+          "capacity": 15728512,
+          "used": 15728512,
+          "free": 0,
+          "checks0": 342529,
+          "checks1": 339713,
+          "rejected": 3,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1225785344,
+          "end": 1241513984,
+          "capacity": 15728512,
+          "used": 15728512,
+          "free": 0,
+          "checks0": 342721,
+          "checks1": 339955,
+          "rejected": 3,
+          "confirmed": 1
+        }
+      ],
+      "heaps": [
+        {
+          "hart": 0,
+          "start": 1210056832,
+          "end": 1225653824,
+          "metadata": 524288,
+          "capacity": 15072576,
+          "free": 15072576,
+          "live": 0,
+          "allocations": 10697,
+          "frees": 10697,
+          "rejected": 13,
+          "checks0": 342529,
+          "checks1": 339713,
+          "levels": 18,
+          "max_steps": 56,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1225785472,
+          "end": 1241382464,
+          "metadata": 524288,
+          "capacity": 15072576,
+          "free": 15072576,
+          "live": 0,
+          "allocations": 10703,
+          "frees": 10703,
+          "rejected": 13,
+          "checks0": 342721,
+          "checks1": 339955,
+          "levels": 18,
+          "max_steps": 56,
+          "confirmed": 1
+        }
+      ],
+      "task_resources": [
+        {
+          "hart": 0,
+          "opened": 7,
+          "closed": 6,
+          "completed": 6,
+          "reclaimed": 10,
+          "reuses": 3,
+          "owned": 0,
+          "pending": 0,
+          "stale": 3,
+          "full": 3,
+          "forced": 1,
+          "pool_objects": 18,
+          "pool_rejected": 6,
+          "slab_objects": 120,
+          "slab_frees": 24,
+          "slab_rejected": 27,
+          "object_moves": 8,
+          "object_inplace": 4,
+          "object_rejected": 8,
+          "object_copy_bytes": 4208,
+          "c_probes": 2
+        },
+        {
+          "hart": 1,
+          "opened": 7,
+          "closed": 6,
+          "completed": 6,
+          "reclaimed": 10,
+          "reuses": 3,
+          "owned": 0,
+          "pending": 0,
+          "stale": 3,
+          "full": 3,
+          "forced": 1,
+          "pool_objects": 18,
+          "pool_rejected": 6,
+          "slab_objects": 120,
+          "slab_frees": 24,
+          "slab_rejected": 27,
+          "object_moves": 8,
+          "object_inplace": 4,
+          "object_rejected": 8,
+          "object_copy_bytes": 4208,
+          "c_probes": 2
+        }
+      ],
+      "external_registered_bytes": 31457024,
+      "external_allocatable_bytes": 30145152
+    },
+    "display": {
+      "status": 1,
+      "stage": 5,
+      "error_code": 0,
+      "panel": 3,
+      "commands": 34,
+      "last_command": 41,
+      "frames": 2,
+      "fault": 0,
+      "event": 0,
+      "backlight": 1,
+      "dpi_mhz": 80,
+      "lane_mbps": 960,
+      "cleanup": 0,
+      "dsi_error0": 0,
+      "dsi_error1": 0,
+      "dma_error": 0,
+      "bridge_error": 0,
+      "start_code": 0,
+      "prime_depth": 775,
+      "bl_latch": 1,
+      "bl_enable": 1,
+      "bl_level": 1,
+      "bl_mux": 6656,
+      "bl_matrix": 1280,
+      "white": 1
+    },
+    "source": {
+      "sram": 1,
+      "source": 1341218880,
+      "dma_source": 1341218880,
+      "dma_control": 1842001,
+      "word": 4294967295
+    },
+    "refresh": {
+      "frames": 32,
+      "fault": 0,
+      "event": 1,
+      "dsi_error0": 0,
+      "dsi_error1": 0,
+      "dma_error": 0,
+      "bridge_error": 0
+    },
+    "mode": 5,
+    "optical_evidence": "not evaluated by this checker"
+  },
+  "raw_log_sha256": "6788558549ad20dc92264889c2628ea137950eb7dd04287b8a822edcfaced250",
+  "limits": [
+    "solid white only",
+    "no PSRAM pixels",
+    "32-frame IRQ checkpoint; not a long soak",
+    "no filesystem coexistence qualification"
+  ]
+}
