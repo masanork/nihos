@@ -146,6 +146,23 @@ pub const View = struct {
         return c;
     }
 
+    /// Derive a live handle only after proving the address is an exact payload
+    /// start in this trusted span. Never dereference caller-provided pointers.
+    pub noinline fn lookup(self: View, address: usize) Error!Allocation {
+        const first = @intFromPtr(self.memory.ptr) + header_bytes + cell_metadata_bytes;
+        if (address < first) return error.InvalidAllocation;
+        const offset = address - first;
+        if (offset % self.stride != 0 or offset / self.stride >= self.count) return error.InvalidAllocation;
+        _ = try self.checkedHeader();
+        const index: u32 = @intCast(offset / self.stride);
+        const c = self.cell(index);
+        const length = c.next & ~allocated;
+        if (c.next & allocated == 0 or length == 0 or length > self.object_bytes or c.ticket == 0) return error.InvalidAllocation;
+        const result = Allocation{ .bytes = self.payload(index)[0..length], .ticket = c.ticket, .epoch = self.epoch, .index = index };
+        _ = try self.liveCell(result);
+        return result;
+    }
+
     pub fn validate(self: View, allocation: Allocation) Error!void {
         _ = try self.checkedHeader();
         _ = try self.liveCell(allocation);

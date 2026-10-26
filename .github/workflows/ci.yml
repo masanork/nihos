@@ -34,3 +34,6 @@ jobs:
 
       - name: C, Zig, and Rust ABI probe
         run: sh tools/run-language-probe.sh
+
+      - name: C allocator and SQLite memory-only host probe
+        run: sh tools/run-sqlite-memory-probe.sh

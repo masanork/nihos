@@ -6,7 +6,7 @@ zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 zlint=$(sh "$repo_root/tools/bootstrap-zlint.sh")
 
 cd "$repo_root"
-"$zig" fmt --check build.zig src
-"$zlint" --config zlint.json --deny-warnings src build.zig
+"$zig" fmt --check build.zig src probes/allocator/host.zig
+"$zlint" --config zlint.json --deny-warnings src build.zig probes/allocator/host.zig
 shellcheck tools/*.sh
 sh "$repo_root/tools/check-riscv32-arch.sh"

@@ -30,12 +30,15 @@ if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
 else
     mv "$build_dir/native_options.next" "$build_dir/native_options.zig"
 fi
-set --
+"$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+    -O2 -std=c11 -Wall -Wextra -Wconversion -Werror -ffreestanding \
+    -I "$repo_root/include" -o "$build_dir/c_allocator.o" "$repo_root/probes/allocator/c_probe.c"
+set -- "$build_dir/c_allocator.o"
 if [ "$mode" != integer ]; then
     "$zig" cc -c -target riscv32-freestanding-none \
         -mcpu=generic_rv32+m+a+c+f+zicsr+zifencei -mabi="$abi" -I "$repo_root/src/kernel" \
         -o "$build_dir/fpu.o" "$repo_root/src/arch/riscv32/fpu.S"
-    set -- "$build_dir/fpu.o"
+    set -- "$@" "$build_dir/fpu.o"
 fi
 if [ "$mode" = compiled ]; then
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \

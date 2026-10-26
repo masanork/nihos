@@ -332,7 +332,7 @@ retain their class; there is no larger-class fallback or automatic growth.
 Each populated hart must report eight moves, four in-place changes, eight
 rejections and 4208 copied bytes. Two additional retained parents are reclaimed
 after checking their final 4 KiB payloads. Absent runs require zero. This is
-a typed Zig API; a C/SQLite allocator remains future work. See
+a typed Zig API; the subsequent C boundary and host-only SQLite probe are described below. See
 [ADR 0036](adr/0036-task-owned-size-class-pools.md) and its
 [source-bound measurement](measurements/2026-10-26-native-size-pools.md).
 
@@ -341,3 +341,29 @@ Run all 84 Python tests with:
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'
 ```
+
+## Task-local C allocation and SQLite host probe
+
+[ADR 0037](adr/0037-task-local-c-allocator.md) adds the bounded, prefixed API
+in `include/nihos_allocator.h`. A task explicitly opens one pool, then allocates,
+resizes, frees and queries capacity through C calls. Memory is eight-byte
+aligned, limited to 4096 bytes per request and owned by the current task.
+Capacity is fully usable and survives a moving resize, including after a
+shrink. Submitted pointers are range/stride checked before metadata access.
+Raw pointers cannot identify stale-address reuse; callers must respect lifetime.
+
+All native profiles now link a C probe. Populated runs require two completed
+C probes per hart, with retained C bytes checked at the same deferred parent
+cleanup as the existing typed objects. Absent runs require zero C probes.
+Copies/initialization remain preemptible; C metadata operations require task
+context with MIE enabled. Closing clears the SRAM binding before reclamation.
+
+`sh tools/run-c-allocator-probe.sh` exercises the C ABI on the host, including
+foreign-task refusal and retirement. `sh tools/run-sqlite-memory-probe.sh`
+fetches and verifies official SQLite 3.54.1, runs a host memory-only database
+through that allocator, injects OOM at each baseline allocation and checks
+retry/recovery. An optional first argument selects the uniform per-class quota
+(default 64). The no-I/O test VFS supplies no persistent storage guarantee.
+SQLite is not linked into native images. Native library placement/C runtime,
+service ownership, bounded RPC, VFS fault tests and physical validation remain
+separate gates. See the [measurement](measurements/2026-10-26-native-c-allocator.md).
