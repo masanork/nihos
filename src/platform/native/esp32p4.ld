@@ -54,6 +54,7 @@ SECTIONS
         *sql_lfs.o(.text .text.*)
         *sql_lfs_util.o(.text .text.*)
         *sql_lfs_reader.o(.text .text.*)
+        *sql_storage_api.o(.text .text.*)
         . = ALIGN(16);
         __flash_sql_text_end = .;
     } > flash_sql
@@ -65,6 +66,7 @@ SECTIONS
         *sql_lfs.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_util.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_reader.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_storage_api.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
 #endif

@@ -9,6 +9,17 @@ import sys
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
+STORAGE_API_FIELDS = ('status', 'opens', 'closes', 'cancelled', 'rejected', 'read_calls', 'workspace_bytes', 'used_bytes', 'cleared')
+
+
+def check_storage_api(record, storage):
+    count = 4 if storage['status'] == 2 else 0
+    reads = 2 * ((storage['file_bytes'] + 511) // 512 + 2) if count else 0
+    if (record['status'] != 1 or record['opens'] != count or record['closes'] != count or
+            record['cancelled'] != count // 2 or record['rejected'] != count * 2 or record['read_calls'] != reads or
+            record['workspace_bytes'] != 8192 or not 0 < record['used_bytes'] <= 8192 or record['cleared'] != 1):
+        raise ValueError('incomplete file API ownership/cleanup qualification')
+    return record
 
 
 def check_storage(record, sectors):
@@ -485,6 +496,8 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             raise ValueError("unexpected SDMMC distributed sweep")
     storage = None
     storage_stack = None
+    storage_api = None
+    storage_workspace = None
     storage_expected = image is not None and image.get('sqlite', {}).get('littlefs') is not None
     if require_storage or storage_expected or 'NIHOS_NATIVE_STORAGE ' in log:
         if evidence != 'physical-device' or sdmmc is None or mode != 'sqlite':
@@ -497,9 +510,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
                 not storage_stack['low'] < storage_stack['painted_to'] < storage_stack['high'] or
                 not storage_stack['high'] - storage_stack['painted_to'] <= storage_stack['used'] < 8176 - 160 or storage_stack['confirmed'] != 1):
             raise ValueError('incomplete littlefs stack qualification')
-    elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
-        raise ValueError('orphan storage stack record')
+        api_version = image.get('sqlite', {}).get('littlefs', {}).get('api_version')
+        if api_version is not None or 'NIHOS_NATIVE_STORAGE_API ' in log:
+            if api_version != 1:
+                raise ValueError('file API log/image differs')
+            storage_api = check_storage_api(fixed_record(log, 'NIHOS_NATIVE_STORAGE_API', STORAGE_API_FIELDS), storage)
+            storage_workspace = fixed_record(log, 'NIHOS_NATIVE_STORAGE_WORKSPACE', ('start', 'bytes', 'cleared'))
+            if storage_workspace != {'start': 0x48001000, 'bytes': 8192, 'cleared': 1} or mapped['status'] != 1:
+                raise ValueError('invalid reserved PSRAM file workspace')
+    elif any(marker in log for marker in ('NIHOS_NATIVE_STORAGE_STACK ', 'NIHOS_NATIVE_STORAGE_API ', 'NIHOS_NATIVE_STORAGE_WORKSPACE ')):
+        raise ValueError('orphan storage record')
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
+            "storage_api": storage_api, "storage_workspace": storage_workspace,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],

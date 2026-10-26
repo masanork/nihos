@@ -304,25 +304,18 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     }
 }
 
-export fn nih_native_main() callconv(.c) noreturn {
-    watchdogOff();
-    if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
-    interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
-    print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
-    print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
-    print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
-    if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
-    if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
-    if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
-    if (progress[0] != 0 or progress[1] != 0 or
-        @as(*volatile u32, &initialized).* != 0x4e494853)
-        fail("CRT data/BSS");
-    asm volatile ("ecall" ::: .{ .memory = true });
-    if (exceptions[0] != 1) fail("CPU0 exception return");
-    print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
-    if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
-    if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
-    prepareTimers();
+noinline fn runSqlProbe() void {
+    if (options.qualification) {
+        const soak = @import("sqlite_probe.zig").soak();
+        logger.record("NIHOS_NATIVE_SQLITE_SOAK", null, .{ "loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed" }, &soak);
+    }
+    const sql = @import("sqlite_probe.zig").run();
+    logger.record("NIHOS_NATIVE_SQLITE", null, .{ "status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie" }, &sql);
+    const classes = @import("sqlite_probe.zig").classPeaks();
+    logger.record("NIHOS_NATIVE_SQLITE_CLASSES", null, .{ "c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096" }, &classes);
+}
+
+noinline fn bootMemory() u32 {
     const external = native_psram.probe(timer(0));
     const BootCode = struct { start: u32, end: u32, probe: u32, mapping: u32, completed: u32 };
     const boot_code = BootCode{
@@ -368,28 +361,58 @@ export fn nih_native_main() callconv(.c) noreturn {
         const sweep = native_psram.memory.fullSweep(external.mapping.bytes);
         logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
     }
-    if (options.sdmmc) {
-        const sd = @import("sdmmc_probe.zig").run(timer(0));
-        logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
-        for (0..sd.stage_count) |phase| {
-            logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
-            if (sd.stages[phase].samples != 0) logger.record("NIHOS_NATIVE_SDMMC_SWEEP", null, .{ "index", "samples", "digest" }, &sd.stages[phase]);
-        }
-        if (options.storage) {
-            logger.record("NIHOS_NATIVE_STORAGE", null, .{ "status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes" }, &sd.storage);
-            logger.record("NIHOS_NATIVE_STORAGE_STACK", null, .{ "low", "high", "painted_to", "used", "confirmed" }, &sd.storage_stack);
-            if ((sd.storage.status != 1 and sd.storage.status != 2) or sd.storage_stack.confirmed != 1) fail("storage probe");
-        }
-        if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
-        if (sd.status != 1) fail("SDMMC probe");
+    if (options.storage and external.mapping.status != 1) fail("storage requires mapped PSRAM");
+    return external.mapping.bytes;
+}
+
+noinline fn runSdProbe(workspace: ?*[8192]u8) void {
+    const sd = @import("sdmmc_probe.zig").run(timer(0), workspace);
+    logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
+    for (0..sd.stage_count) |phase| {
+        logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
+        if (sd.stages[phase].samples != 0) logger.record("NIHOS_NATIVE_SDMMC_SWEEP", null, .{ "index", "samples", "digest" }, &sd.stages[phase]);
     }
+    if (options.storage) {
+        logger.record("NIHOS_NATIVE_STORAGE", null, .{ "status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes" }, &sd.storage);
+        logger.record("NIHOS_NATIVE_STORAGE_STACK", null, .{ "low", "high", "painted_to", "used", "confirmed" }, &sd.storage_stack);
+        logger.record("NIHOS_NATIVE_STORAGE_API", null, .{ "status", "opens", "closes", "cancelled", "rejected", "read_calls", "workspace_bytes", "used_bytes", "cleared" }, &sd.api);
+        const WorkspaceRecord = struct { start: u32, bytes: u32, cleared: u32 };
+        const reservation = WorkspaceRecord{ .start = @intFromPtr(workspace.?), .bytes = 8192, .cleared = sd.api.cleared };
+        logger.record("NIHOS_NATIVE_STORAGE_WORKSPACE", null, .{ "start", "bytes", "cleared" }, &reservation);
+        if ((sd.storage.status != 1 and sd.storage.status != 2) or sd.storage_stack.confirmed != 1 or sd.api.status != 1) fail("storage probe");
+    }
+    if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
+    if (sd.status != 1) fail("SDMMC probe");
+}
+
+export fn nih_native_main() callconv(.c) noreturn {
+    watchdogOff();
+    if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
+    interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
+    print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
+    print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
+    print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
+    if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
+    if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
+    if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
+    if (progress[0] != 0 or progress[1] != 0 or
+        @as(*volatile u32, &initialized).* != 0x4e494853)
+        fail("CRT data/BSS");
+    asm volatile ("ecall" ::: .{ .memory = true });
+    if (exceptions[0] != 1) fail("CPU0 exception return");
+    print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
+    if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
+    prepareTimers();
+    const external_bytes = bootMemory();
+    if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null);
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
     logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
         native_psram.memory.heap_start,
-        external.mapping.bytes - native_psram.memory.reserved_bytes,
+        external_bytes - native_psram.memory.reserved_bytes,
     )) fail("external memory prepare");
     if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
@@ -436,16 +459,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
-                if (options.sqlite) {
-                    if (options.qualification) {
-                        const soak = @import("sqlite_probe.zig").soak();
-                        logger.record("NIHOS_NATIVE_SQLITE_SOAK", null, .{ "loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed" }, &soak);
-                    }
-                    const sql = @import("sqlite_probe.zig").run();
-                    logger.record("NIHOS_NATIVE_SQLITE", null, .{ "status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie" }, &sql);
-                    const classes = @import("sqlite_probe.zig").classPeaks();
-                    logger.record("NIHOS_NATIVE_SQLITE_CLASSES", null, .{ "c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096" }, &classes);
-                }
+                if (options.sqlite) runSqlProbe();
                 tasks.floating.quiesce(0);
                 if (!flash_records.finish(0)) fail("CPU0 Flash records finish");
                 if (!tasks.memory.stacks.finish(0)) fail("CPU0 stack bank finish");
