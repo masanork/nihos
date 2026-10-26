@@ -39,6 +39,17 @@ fn dyeAmount(progress: u8, group: u8) u8 {
 /// Invalid geometry is rejected before the first write. Row padding is kept.
 /// All text is a compile-time mask; no allocator, font engine, I/O, or clock.
 pub fn paintRgb565Le(framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return paintPlacedRgb565Le(null, framebuffer, surface_width, surface_height, stride, progress, status);
+}
+
+/// The native linker can keep immutable lettering in its existing Flash span.
+/// The section is a compile-time choice; it never accepts runtime mask data.
+pub fn paintPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    const MaskStore = if (section) |name| struct {
+        const data linksection(name) = assets.masks.*;
+    } else struct {
+        const data = assets.masks.*;
+    };
     if (surface_width < width or surface_height < height) return false;
     const row_bytes = std.math.mul(usize, surface_width, 2) catch return false;
     const required = std.math.mul(usize, stride, surface_height) catch return false;
@@ -62,7 +73,7 @@ pub fn paintRgb565Le(framebuffer: []u8, surface_width: usize, surface_height: us
             .@"error" => vermilion,
         };
         var pixel: usize = 0;
-        for (assets.masks[sprite.offset..][0..sprite.length]) |run| {
+        for (MaskStore.data[sprite.offset..][0..sprite.length]) |run| {
             const alpha = @as(u8, run >> 4) * 17;
             const count = @as(usize, run & 15) + 1;
             if (alpha != 0) {

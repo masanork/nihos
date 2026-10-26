@@ -30,6 +30,8 @@ pub const task_control = @import("kernel/task_control.zig");
 pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const boot_graphics = @import("graphics/boot_graphics.zig");
+pub const tab5_boot_i2c = @import("board/tab5/boot_i2c.zig");
+pub const tab5_display = @import("board/tab5/display.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
@@ -71,5 +73,20 @@ test {
     _ = @import("kernel/task_control_test.zig");
     _ = test_pattern;
     _ = boot_graphics;
+    _ = tab5_boot_i2c;
+    _ = tab5_display;
     _ = platform_abi;
+}
+
+test "Tab5 scanout reservation uses identity-mapped PSRAM pages" {
+    const std = @import("std");
+    for ([_]u32{ 4, 8, 16, 32, 64 }) |mib| {
+        const capacity = mib * 1024 * 1024;
+        const selected = tab5_display.layout(capacity).?;
+        const first = (selected.frame_start - esp32p4_psram_mapping.virtual_base) / esp32p4_psram_mapping.page_bytes;
+        for (0..tab5_display.reserve_bytes / esp32p4_psram_mapping.page_bytes) |offset| {
+            const page = first + @as(u32, @intCast(offset));
+            try std.testing.expectEqual(page, esp32p4_psram_mapping.physicalPage(capacity, page).?);
+        }
+    }
 }

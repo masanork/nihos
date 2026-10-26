@@ -49,6 +49,8 @@ mapping, access a block device, or change filesystem code. The shared renderer
 can be used once native panel power/reset, scanout, cache coherency, and
 backlight control are implemented. A host image or firmware build does not
 establish physical panel operation or native display readiness.
+The opt-in [native preparation probe](native-display.md) now starts that
+bring-up, while deliberately keeping video and the backlight disabled.
 
 ## Preview and checks
 
