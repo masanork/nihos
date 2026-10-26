@@ -286,6 +286,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     interruptGuard(1).* = @splat(tasks.memory.stacks.layout.irq_guard);
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
+    if (options.high_sram) tasks.memory.high.peer();
     native_psram.memory.peer();
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     native_psram.memory.ownerReady(1);
@@ -423,10 +424,12 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
     const external_bytes = bootMemory();
+    if (options.high_sram and !tasks.memory.high.init(external_bytes)) fail("high SRAM initialization");
     if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null);
     if (options.storage_service) storage_runtime.init();
     prepareTasks(0);
     startCpu1();
+    if (options.high_sram) tasks.memory.high.ownerExchange();
     const external_smp = native_psram.exchange();
     logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
@@ -491,6 +494,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                 const started = cycle();
                 while (tasks.floating.report(1).confirmed != 1 or tasks.memory.report(1).confirmed != 1) {
                     if (cycle() -% started > 100_000_000) fail("CPU1 final publication timeout");
+                }
+                if (options.high_sram) {
+                    const high = tasks.memory.high.result();
+                    logger.record("NIHOS_NATIVE_HIGH_SRAM", null, .{ "status", "bytes", "passes", "reads", "writes", "peer_reads", "peer_writes", "owner_reads", "heap_bytes", "free_bytes", "guards", "rejected", "checks0", "checks1", "checks2", "checks3", "recovered" }, &high);
+                    const vm = tasks.memory.high.vmResult();
+                    logger.record("NIHOS_NATIVE_PAGE_LEASE", null, .{ "status", "start", "bytes", "requested4", "charged4", "requested8", "charged8", "reads", "writes", "boundary_ok", "recovered" }, &vm);
                 }
                 ipiReport(0);
                 ipiReport(1);

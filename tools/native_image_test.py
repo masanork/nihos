@@ -10,6 +10,38 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_high_banks_reject_loadable_executable_shifted_and_emulator_layouts(self):
+        for name, (low, high) in MODULE.HIGH_BANKS.items():
+            MODULE.audit_high_section(name, 8, 3, low, high-low, 'device')
+            for kind, flags, address, size, profile in ((1,3,low,high-low,'device'),
+                    (8,7,low,high-low,'device'), (8,2,low,high-low,'device'),
+                    (8,3,low+4096,high-low,'device'), (8,3,low,high-low-4096,'device'),
+                    (8,3,low,high-low,'emulator')):
+                with self.subTest(name=name, profile=profile, flags=flags), self.assertRaises(ValueError):
+                    MODULE.audit_high_section(name,kind,flags,address,size,profile)
+
+    def test_high_bank_pair_and_linker_symbols_are_required_together(self):
+        symbols = {}
+        sections = []
+        for name,(low,high) in MODULE.HIGH_BANKS.items():
+            symbols['__'+name[1:]+'_start'] = low
+            symbols['__'+name[1:]+'_end'] = high
+            sections.append({'name':name,'address':hex(low),'bytes':high-low})
+        self.assertEqual(MODULE.audit_high_layout(symbols,sections)['heap_bytes'],208*1024)
+        for bad in ([],sections[:1],sections+sections):
+            with self.assertRaises(ValueError): MODULE.audit_high_layout(symbols,bad)
+        for key in symbols:
+            with self.assertRaises(ValueError): MODULE.audit_high_layout({**symbols,key:0},sections)
+
+    def test_loader_collision_checks_include_both_high_banks(self):
+        report = {'memory':{'origin':'0x4ff00000','end':'0x4ff28000','regions':[
+            {'name':name,'origin':hex(low),'end':hex(high)} for name,(low,high) in MODULE.HIGH_BANKS.items()]}}
+        for low,high in MODULE.HIGH_BANKS.values():
+            for address in (low-4,low,high-4):
+                for kind in (1,8):
+                    with self.subTest(address=hex(address),kind=kind),self.assertRaises(ValueError):
+                        MODULE.audit_loader(report,loader_elf([(kind,2,address,16)]))
+
     def test_stack_symbols_array_and_section_have_exact_reservations(self):
         base = 0x4ff60000
         symbols = {"__stacks_start": base, "__stacks_end": base + 57344,

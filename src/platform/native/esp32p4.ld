@@ -15,6 +15,10 @@ ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
+#if NIH_NATIVE_HIGH_SRAM
+    high_a (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
+    high_b (rw) : ORIGIN = 0x4ff6e000, LENGTH = 200K
+#endif
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
 #if NIH_NATIVE_SQLITE
@@ -104,6 +108,14 @@ SECTIONS
         __task_stacks_end = .;
         __stacks_end = .;
     } > stack_ram
+#if NIH_NATIVE_HIGH_SRAM
+    .high_sram_a (NOLOAD) : {
+        __high_sram_a_start = .; . += LENGTH(high_a); __high_sram_a_end = .;
+    } > high_a
+    .high_sram_b (NOLOAD) : {
+        __high_sram_b_start = .; . += LENGTH(high_b); __high_sram_b_end = .;
+    } > high_b
+#endif
     .heap (NOLOAD) : ALIGN(64) {
         __heap_start = .;
         . = ORIGIN(ram) + LENGTH(ram);

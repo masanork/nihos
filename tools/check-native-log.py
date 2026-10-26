@@ -54,6 +54,30 @@ def fixed_record(log, marker, names):
     return found[0]
 
 
+HIGH_FIELDS = ('status', 'bytes', 'passes', 'reads', 'writes', 'peer_reads', 'peer_writes', 'owner_reads', 'heap_bytes', 'free_bytes', 'guards', 'rejected', 'checks0', 'checks1', 'checks2', 'checks3', 'recovered')
+PAGE_FIELDS = ('status', 'start', 'bytes', 'requested4', 'charged4', 'requested8', 'charged8', 'reads', 'writes', 'boundary_ok', 'recovered')
+
+
+def check_high(log, image, evidence):
+    metadata = (image or {}).get('high_sram')
+    if metadata is None:
+        if 'NIHOS_NATIVE_HIGH_SRAM' in log or 'NIHOS_NATIVE_PAGE_LEASE' in log:
+            raise ValueError('high SRAM evidence without image reservation')
+        return None, None
+    if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
+        raise ValueError('high SRAM requires bound physical device evidence')
+    high = fixed_record(log, 'NIHOS_NATIVE_HIGH_SRAM', HIGH_FIELDS)
+    page = fixed_record(log, 'NIHOS_NATIVE_PAGE_LEASE', PAGE_FIELDS)
+    expected = (1, metadata['tested_bytes'], 2, 167936, 167936, 83968, 83968, 83968,
+                metadata['heap_bytes'], metadata['heap_bytes'], metadata['guard_bytes'], 3)
+    if tuple(high[key] for key in HIGH_FIELDS[:12]) != expected or high['recovered'] != 1 or any(high[key] < 4 for key in HIGH_FIELDS[12:16]):
+        raise ValueError('incomplete high SRAM read/write, lease or guard qualification')
+    if tuple(page.values()) != (1, int(metadata['temporary_psram']['start'], 16), metadata['temporary_psram']['bytes'],
+                                 4 << 20, 4 << 20, 8 << 20, 8 << 20, 3145728, 3145728, 1, 1):
+        raise ValueError('incomplete exact-size PSRAM lease qualification')
+    return high, page
+
+
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False):
     if evidence not in ("emulator", "physical-device"):
@@ -563,7 +587,9 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
                 not 0 < service['owner_stack'] < 3920 or not 0 < service['client_stack'] < 3920 or
                 service['peer_polls'] == 0 or service['elapsed_us'] == 0):
             raise ValueError('incomplete storage task/IPC/EXIT cleanup qualification')
+    high_sram, page_lease = check_high(log, image, evidence)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
+            "high_sram": high_sram, "page_lease": page_lease,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,

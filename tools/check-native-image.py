@@ -16,6 +16,8 @@ SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF28000
 SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
                  "emulator": (0x4FF20000, 0x4FF48000, 1)}
 STACK_LOW, STACK_HIGH = 0x4FF60000, 0x4FF6E000
+HIGH_BANKS = {".high_sram_a": (0x4ff40000, 0x4ff60000),
+              ".high_sram_b": (0x4ff6e000, 0x4ffa0000)}
 ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_set_cpu1_entry": 0x4FC000A8,
                "nih_rom_l2_line_size": 0x4FC003CC,
@@ -132,6 +134,29 @@ def audit_stack_section(kind, flags, address, size):
             "stacks must be the fixed writable non-executable NOBITS bank")
 
 
+def audit_high_section(name, kind, flags, address, size, profile):
+    low, high = HIGH_BANKS[name]
+    require(profile == "device" and kind == 8 and flags == 3 and
+            address == low and size == high - low,
+            "high SRAM must be a fixed device-only writable non-executable NOBITS bank")
+
+
+def audit_high_layout(symbols, allocated):
+    found = [row for row in allocated if row["name"] in HIGH_BANKS]
+    if not found:
+        require(not any(name.startswith("__high_sram_") for name in symbols), "orphan high SRAM symbols")
+        return None
+    require(len(found) == 2 and {row["name"] for row in found} == set(HIGH_BANKS), "missing/duplicate high SRAM bank")
+    for name, (low, high) in HIGH_BANKS.items():
+        prefix = "__" + name[1:]
+        require(symbols.get(prefix + "_start") == low and symbols.get(prefix + "_end") == high,
+                "high SRAM symbols differ from fixed banks")
+    return {"version": 1, "tested_bytes": 328 * 1024, "heap_bytes": 208 * 1024,
+            "guard_bytes": 16 * 1024, "dma_reserve_bytes": 32 * 1024,
+            "future_stack_reserve_bytes": 72 * 1024, "page_bytes": 4096,
+            "temporary_psram": {"start": "0x48030000", "bytes": 8 * 1024 * 1024}}
+
+
 def audit_stack_layout(symbols, sizes, allocated):
     expected = {"__stacks_start": STACK_LOW, "__stack0_bottom": STACK_LOW,
                 "__stack0_top": STACK_LOW + 8192, "__stack1_bottom": STACK_LOW + 8192,
@@ -219,8 +244,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
             in_stacks = name == ".stacks"
             if in_stacks:
                 audit_stack_section(section_type, flags, address, size)
+            in_high = name in HIGH_BANKS
+            if in_high:
+                audit_high_section(name, section_type, flags, address, size, profile)
             in_sram = low <= address and address + size <= high
-            if not in_sram and not in_stacks:
+            if not in_sram and not in_stacks and not in_high:
                 audit_flash_section(name, section_type, flags, address, size, allow_sql)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
@@ -357,6 +385,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         require(fp_linked and fp_counts["c"] > 0 and fp_counts["zig"] > 0, "missing compiled C/Zig FP instructions")
     stacks = audit_stack_layout(symbols, symbol_sizes, allocated)
     heap = audit_heap_layout(symbols, allocated, low, high)
+    high_sram = audit_high_layout(symbols, allocated)
     report = {"schema": 1, "backend": "native-sram", "rtos_linked": False,
               "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]), "fp_instructions": fp_counts,
               "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
@@ -372,6 +401,12 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                                 "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
                                 "executable": False, "writable": False},
               "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
+    if high_sram is not None:
+        report["high_sram"] = high_sram
+        report["memory"]["total_bytes"] += high_sram["tested_bytes"]
+        report["memory"]["regions"].extend(
+            {"name": name[1:], "origin": hex(start), "end": hex(stop), "bytes": stop - start}
+            for name, (start, stop) in HIGH_BANKS.items())
     if allow_sql:
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
