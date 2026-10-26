@@ -173,5 +173,34 @@ class NativeMatrixConsoleTests(unittest.TestCase):
             self.assertIn(old,MATRIX_LOG)
             with self.subTest(old=old),self.assertRaises(ValueError):self.check(MATRIX_LOG.replace(old,new))
 
+CPU_LOG = (ROOT / 'docs/measurements/2026-10-27-native-cpu360.log').read_text()
+CPU_IMAGE = json.loads((ROOT / 'docs/measurements/2026-10-27-native-cpu360.json').read_text())['image_audit']
+
+class NativeCpuClockTests(unittest.TestCase):
+    def check(self, log=CPU_LOG):
+        return DISPLAY.check(log,CPU_IMAGE,2,80,require_console=True,require_live_controls=True)
+
+    def test_explicit_native_clock_and_psram200_qualification(self):
+        report = self.check()
+        self.assertEqual(report['native']['cpu_clock']['rom_mhz'],360)
+        self.assertEqual(report['native']['cpu_clock']['mem_mhz'],180)
+        self.assertEqual(report['live']['render']['cpu_mhz'],360)
+        self.assertEqual(report['native']['psram_fast']['mpll']['mhz'],400)
+
+    def test_missing_clock_bad_readback_wrong_pc_and_late_change_are_rejected(self):
+        line = next(line for line in CPU_LOG.splitlines() if line.startswith('NIHOS_NATIVE_CPU_CLOCK '))
+        changes = [CPU_LOG.replace(line,''),CPU_LOG.replace(line+'\n','')+line+'\n']
+        for old,new in (('after_mhz=00000167','after_mhz=0000005a'),('rom_mhz=00000168','rom_mhz=0000005a'),
+                        ('ctrl1=00000001','ctrl1=00000000'),('pc=400011ca','pc=4ff011ca'),
+                        ('cpu_mhz=00000168','cpu_mhz=0000005a')):
+            self.assertIn(old,CPU_LOG)
+            changes.append(CPU_LOG.replace(old,new))
+        for log in changes:
+            with self.subTest(),self.assertRaises(ValueError):self.check(log)
+
+    def test_failed_revision_guard_is_not_a_qualified_boot(self):
+        log = (ROOT / 'docs/measurements/2026-10-27-native-cpu360-guard-failed.log').read_text()
+        with self.assertRaises(ValueError):self.check(log)
+
 if __name__ == '__main__':
     unittest.main()

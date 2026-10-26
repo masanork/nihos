@@ -15,6 +15,14 @@
 #include "soc/lp_clkrst_reg.h"
 #include "soc/hp_sys_clkrst_reg.h"
 #include "soc/lpperi_struct.h"
+#include "soc/regi2c_cpll.h"
+#include "soc/efuse_reg.h"
+_Static_assert(EFUSE_RD_MAC_SYS_2_REG == 0x5012d04c, "native CPU revision guard");
+_Static_assert(HP_SYS_CLKRST_ROOT_CLK_CTRL0_REG == 0x500e6004, "native CPU divider");
+_Static_assert(HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUM_S == 5, "native CPU divider shift");
+_Static_assert(HP_SYS_CLKRST_REG_SOC_CLK_DIV_UPDATE == (1u << 4), "native clock handshake");
+_Static_assert(LP_CLKRST_HP_ROOT_CLK_SRC_SEL_M == 3, "native CPU clock mux");
+_Static_assert(I2C_CPLL == 0x67 && I2C_CPLL_OC_DIV_7_0 == 3 && I2C_CPLL_OC_REF_DIV == 2, "native CPLL readback");
 _Static_assert(DR_REG_USB_SERIAL_JTAG_BASE == 0x500d2000, "diagnostic serial register base");
 _Static_assert(DR_REG_TIMERGROUP1_BASE == 0x500c3000, "diagnostic timer group");
 _Static_assert(HP_SYS_CLKRST_PERI_CLK_CTRL21_REG == 0x500e6098, "diagnostic clock source");

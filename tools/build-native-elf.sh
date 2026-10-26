@@ -10,6 +10,13 @@ case "$profile" in
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 mode=${3:-integer}
+if [ "$profile" = device ]; then default_cpu_mhz=360; else default_cpu_mhz=0; fi
+cpu_mhz=${NIHOS_NATIVE_CPU_MHZ:-$default_cpu_mhz}
+case "$cpu_mhz" in
+    0|360) ;;
+    *) echo "Native rev1/2 supports CPU_MHZ=0 or 360; 400 MHz is not this silicon's standard profile" >&2; exit 1 ;;
+esac
+if [ "$profile" = emulator ] && [ "$cpu_mhz" != 0 ]; then echo "CPU clock initialization requires physical device" >&2; exit 1; fi
 cpu=generic_rv32+m+a+c+zicsr+zifencei
 compiled=false
 sqlite=false
@@ -136,6 +143,7 @@ mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
+printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz" >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -262,10 +270,14 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot -Mroot="$repo_root/src/platform/native/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    --dep cpu_clock --dep timer_group -Mcpu_boot="$repo_root/src/platform/native/cpu_boot.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mcpu_clock="$repo_root/src/soc/esp32p4/cpu_clock.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mtab5_panels="$repo_root/src/board/tab5/panels.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \

@@ -174,6 +174,8 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
                     raise ValueError('inconsistent line-scroll timing')
                 if 'cpu_mhz' in stats and stats['cpu_mhz'] == 0:
                     raise ValueError('missing CPU frequency estimate')
+                if core['cpu_clock'] is not None and ('cpu_mhz' not in stats or abs(stats['cpu_mhz']-core['cpu_clock']['after_mhz']) > 2):
+                    raise ValueError('live CPU clock differs from boot initialization')
                 if console_style['palette'] == 4 and console_style['font'] in (0,3) and stats['steps'] != stats['scrolls']:
                     raise ValueError('Matrix console requires single-pass line advances')
                 live['render'] = stats

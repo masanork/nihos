@@ -8,6 +8,7 @@ const record_log = @import("record_log");
 const text_console = @import("text_console");
 const display_service = @import("display_service");
 const ui = display_service.ui;
+const cpu_boot = @import("cpu_boot");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 
@@ -76,6 +77,18 @@ noinline fn print(message: []const u8) void {
             _ = nih_rom_putc(byte);
         }
     }
+}
+/// Ordinary boot messages share the existing immutable diagnostic Flash span.
+/// Fatal strings/output remain resident so failure reporting keeps its fallback.
+inline fn printBoot(comptime message: []const u8) void {
+    const Store = struct {
+        const data linksection(".flash.rodata.records") = blk: {
+            var bytes: [128]u8 = @splat(0);
+            @memcpy(bytes[0..message.len], message);
+            break :blk bytes;
+        };
+    };
+    print(Store.data[0..message.len]);
 }
 
 const Console = struct {
@@ -404,7 +417,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     stageBegin(.crt);
     if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
     interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
-    print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
+    printBoot("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
     if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
@@ -415,12 +428,13 @@ export fn nih_native_main() callconv(.c) noreturn {
         fail("CRT data/BSS");
     asm volatile ("ecall" ::: .{ .memory = true });
     if (exceptions[0] != 1) fail("CPU0 exception return");
-    print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     stageComplete(.crt);
     stageBegin(.memory);
     if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
+    if (options.cpu_mhz != 0 and !cpu_boot.run(timer(0), &logger)) fail("native CPU clock");
     if (!ui.initializeClock()) fail("diagnostic clock");
     const external = native_psram.probe(timer(0));
     const BootCode = struct { start: u32, end: u32, probe: u32, mapping: u32, completed: u32 };
@@ -573,9 +587,9 @@ export fn nih_native_main() callconv(.c) noreturn {
                     fail("timer progress");
                 previous_ticks[hart] = count;
             }
-            print("NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none\n");
+            printBoot("NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none\n");
             if (rounds == 300) {
-                print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
+                printBoot("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
                 if (options.sqlite) {
@@ -598,7 +612,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 }
                 ipiReport(0);
                 ipiReport(1);
-                print("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none\n");
+                printBoot("NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none\n");
                 floatingReport(0);
                 floatingReport(1);
                 memoryReport(0);
@@ -613,7 +627,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 stackReport(1);
                 flashReport(0);
                 flashReport(1);
-                print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
+                printBoot(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 stageComplete(.cores);
                 if (options.display_scanout) {
                     if (options.console_live) {

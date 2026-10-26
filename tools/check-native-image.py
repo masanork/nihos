@@ -17,6 +17,8 @@ SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
                  "emulator": (0x4FF20000, 0x4FF48000, 1)}
 STACK_LOW, STACK_HIGH = 0x4FF60000, 0x4FF6E000
 ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
+               "nih_rom_get_cpu_ticks": 0x4FC00040,
+               "nih_rom_set_cpu_ticks": 0x4FC00044,
                "nih_rom_set_cpu1_entry": 0x4FC000A8,
                "nih_rom_l2_line_size": 0x4FC003CC,
                "nih_rom_l2_enable": 0x4FC00504,
@@ -61,14 +63,14 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         if sql_span is not None and sql_span[0] <= address < stop <= sql_span[1]:
             require(name in sql_functions, "non-manifest function in SQLite Flash: " + name)
             continue
-        role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
+        role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else "clock" if re.fullmatch(r"cpu_boot\.run__func_[0-9]+", name) else None
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
         require(role not in found, "duplicate Flash boot role")
         found[role] = {"name": name, "start": hex(address), "end": hex(stop)}
-    require(set(found) == {"probe", "mapping"}, "missing approved Flash boot functions")
+    require(set(found) in ({"probe", "mapping"}, {"probe", "mapping", "clock"}), "missing approved Flash boot functions")
     ordered = sorted(found.values(), key=lambda entry: int(entry["start"], 16))
     require(int(ordered[0]["start"], 16) == start and int(ordered[-1]["end"], 16) == end and
-            0 <= int(ordered[1]["start"], 16) - int(ordered[0]["end"], 16) <= 16,
+            all(0 <= int(right["start"],16)-int(left["end"],16) <= 16 for left,right in zip(ordered,ordered[1:])),
             "overlapping/unaccounted Flash boot extent")
     return found
 

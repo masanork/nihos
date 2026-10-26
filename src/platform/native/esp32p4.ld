@@ -119,6 +119,8 @@ SECTIONS
 /* Keep the audited ROM ABI visible even when bounded live-console TX replaces
  * all ROM putc calls in this image. This does not link or execute ROM code. */
 nih_rom_putc = 0x4fc00054;
+nih_rom_get_cpu_ticks = 0x4fc00040;
+nih_rom_set_cpu_ticks = 0x4fc00044;
 PROVIDE(nih_rom_set_cpu1_entry = 0x4fc000a8);
 PROVIDE(nih_rom_l2_line_size = 0x4fc003cc);
 PROVIDE(nih_rom_l2_enable = 0x4fc00504);

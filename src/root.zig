@@ -35,12 +35,14 @@ pub const tab5_boot_i2c = @import("board/tab5/boot_i2c.zig");
 pub const tab5_display = @import("board/tab5/display.zig");
 pub const psram_tuning = @import("soc/esp32p4/psram_tuning.zig");
 pub const psram_mpll = @import("soc/esp32p4/psram_mpll.zig");
+pub const cpu_clock = @import("soc/esp32p4/cpu_clock.zig");
 pub const tab5_panels = @import("board/tab5/panels.zig");
 pub const display_dcs = @import("board/tab5/dcs.zig");
 pub const scanout_state = @import("board/tab5/scanout_state.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
+    _ = cpu_clock;
     _ = block_reader;
     _ = record_log;
     _ = native_stack_layout;
