@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 import struct
+import hashlib
 
 SPEC = importlib.util.spec_from_file_location("native_image", Path(__file__).with_name("check-native-image.py"))
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -10,6 +11,37 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_keypad_pools_are_opt_in_exact_rw_nonexecuting_nobits(self):
+        for name, (address, size) in MODULE.UI_POOLS.items():
+            MODULE.audit_ui_pool(name, 8, 3, address, size, True)
+            for kind, flags, origin, length, allowed in ((1, 3, address, size, True),
+                    (8, 7, address, size, True), (8, 2, address, size, True),
+                    (8, 3, address + 64, size, True), (8, 3, address, size - 64, True),
+                    (8, 3, address, size, False)):
+                with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
+                    MODULE.audit_ui_pool(name, kind, flags, origin, length, allowed)
+
+    def test_keypad_assets_require_readonly_flash_and_matching_manifest(self):
+        for name, address, size in (('.flash.ui', 0x40020000, 128), ('.flash.uipad', 0x4001fff0, 16)):
+            for flags in (2, 50):
+                MODULE.audit_flash_section(name, 1, flags, address, size, allow_ui=True)
+            for kind, flags, allowed in ((8, 2, True), (1, 3, True), (1, 6, True), (1, 2, False)):
+                with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
+                    MODULE.audit_flash_section(name, kind, flags, address, size, allow_ui=allowed)
+        start, data = 0x40020000, bytes(range(128))
+        symbols = {'__keypad_plan_start': start, '__keypad_plan_end': start + 64,
+                   '__keypad_atlas_start': start + 64, '__keypad_atlas_end': start + 128}
+        manifest = {}
+        for role, raw in (('plan', data[:64]), ('atlas', data[64:])):
+            manifest[role + '_bytes'] = 64
+            manifest[role + '_sha256'] = hashlib.sha256(raw).hexdigest()
+        MODULE.audit_ui_assets(start, data, symbols, manifest)
+        for changed in (data[:-1], b'x' + data[1:], data[:64] + b'x' + data[65:]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_ui_assets(start, changed, symbols, manifest)
+        with self.assertRaises(ValueError):
+            MODULE.audit_ui_assets(start, data, {**symbols, '__keypad_atlas_start': start + 65}, manifest)
+
     def test_stack_symbols_array_and_section_have_exact_reservations(self):
         base = 0x4ff60000
         symbols = {"__stacks_start": base, "__stacks_end": base + 57344,

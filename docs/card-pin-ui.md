@@ -20,7 +20,7 @@ open build/card-pin/preview.html
 ホストテストで確認する。RV32の独立オブジェクトへのコンパイルも行うが、
 この画面の実機リンク・スキャンアウトの証拠とは区別する。
 
-固定文字の20マスクは15,785バイトの4-bit RLEで、ヒープやフォント読込は不要。
+操作確認画面と合わせた固定文字の25マスクは26,359バイトの4-bit RLEで、ヒープやフォント読込は不要。
 起動画面と同じNoto Serif CJK JP Regularを使用する。Copyright 2017–2024 Adobe、
 SIL OFL 1.1。[ライセンス](../src/graphics/boot/OFL.txt)と
 [固定フォントの出典](../src/graphics/boot/provenance.toml)を参照。
@@ -33,3 +33,5 @@ SHA-256固定のフォントを指定する。異なるフォントは生成ツ�
 python3 tools/boot-graphics/generate-card-pin.py build/boot-font/NotoSerifCJKjp-Regular.otf
 .tools/zig-0.17.0/zig fmt src/graphics/card_pin_assets.zig
 ```
+
+カードへ送信しない実機テンキーの構成は[操作確認デモ](native-keypad-demo.md)を参照。

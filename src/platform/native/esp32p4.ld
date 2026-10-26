@@ -20,6 +20,11 @@ MEMORY {
 #if NIH_NATIVE_SQLITE
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
+#if NIH_NATIVE_KEYPAD
+    flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
+    keypad_low (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
+    keypad_high (rw) : ORIGIN = 0x4ff70000, LENGTH = 188K
+#endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
@@ -40,6 +45,25 @@ SECTIONS
         *(.flash.rodata.card_pin)
         __flash_records_end = .;
     } > flash_records
+#if NIH_NATIVE_KEYPAD
+    .keypad.low (NOLOAD) : { __keypad_low_start = .; KEEP(*(.keypad.low.anchor)) . = ORIGIN(keypad_low) + LENGTH(keypad_low); __keypad_low_end = .; } > keypad_low
+    .keypad.high (NOLOAD) : { __keypad_high_start = .; KEEP(*(.keypad.high.anchor)) . = ORIGIN(keypad_high) + LENGTH(keypad_high); __keypad_high_end = .; } > keypad_high
+    .flash.uipad : ALIGN(4) {
+        KEEP(*(.flash.keypad.pad))
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.ui : ALIGN(64) {
+        __flash_ui_start = .;
+        __keypad_plan_start = .;
+        *(.flash.keypad.plan)
+        __keypad_plan_end = .;
+        . = ALIGN(64);
+        __keypad_atlas_start = .;
+        *(.flash.keypad.atlas)
+        __keypad_atlas_end = .;
+        __flash_ui_end = .;
+    } > flash_ui
+#endif
 #if NIH_NATIVE_SQLITE
     /* The stock P4 loader accepts exactly two mapped segments. Fill the gap
      * so esptool can merge records + SQLite into its second contiguous span. */

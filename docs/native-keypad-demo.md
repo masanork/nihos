@@ -11,14 +11,21 @@ Digits, erase, cancel and confirmation activate once on explicit release.
 Holds, drags outside a key and multiple simultaneous contacts disarm a press.
 The touch sample's unchanged state never commits an action.
 
-Sparse scanout uses fixed SRAM colours for blank areas and PSRAM only for
-text pixels. The host test replays the same immutable plan for all counts
-0–4 and compares it byte-for-byte with the real renderer. The current plan
-contains 637 64-byte descriptors (40,768 bytes). Each CPU allocates a slab
-from its own arena after qualification; CPU1 publishes its permanent DMA
-lease, then parks. CPU0 never updates CPU1's allocator. Both leases are
-checked against the recorded owner boundaries. The existing 48 KiB heap
-floor and stack reservations are unchanged.
+Sparse scanout uses fixed SRAM colours for blank areas and SRAM for every
+pixel consumed by DMA. Generated immutable lettering (203,144 bytes) is
+stored in read-only, non-executable Flash and copied once at startup.
+The host test replays the baked plan for all counts 0–4 and compares it
+byte-for-byte with the real renderer. The plan contains 637 64-byte DMA
+descriptors (40,768 bytes). Two dedicated RW, non-executable NOBITS pools
+use 0x4ff40000–0x4ff60000 and 0x4ff70000–0x4ff9f000. These are inside the
+pinned SDK's early-silicon high SRAM window, outside the separate stack
+span, ROM reservations and L2 cache. The low pool holds double-buffered
+dynamic textures, descriptors and overflow lettering; the high pool holds
+most immutable lettering. The image auditor rejects other profiles,
+unapproved pools, mutable/executable Flash assets, asset hash changes and
+stale generator inputs. The existing 48 KiB heap floor and stack
+reservations are unchanged. This demo reserves these pools exclusively;
+it does not provide a general-purpose allocator for them.
 
 Only indicator/confirmation textures change during interaction. The CPU
 draws into the inactive small buffer, synchronizes caches with local IRQs

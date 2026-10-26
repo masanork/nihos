@@ -20,6 +20,23 @@ def complete():
 
 
 class KeypadTests(unittest.TestCase):
+    def test_sram_receipt_matches_audited_banks_and_descriptor_bounds(self):
+        lease = {'nodes': 637, 'lease_start': 0x4ff46c80, 'lease_bytes': 637 * 64}
+        font_low = lease['lease_start'] + lease['lease_bytes']
+        storage = {'font_low': font_low, 'font_low_bytes': 0x4ff60000 - font_low, 'pixel_bytes': 216600}
+        audit = {'nodes': 637, 'atlas_bytes': 203144, 'writable': False, 'executable': False,
+                 'pools': [{'name': name, 'origin': hex(start), 'end': hex(end)} for name, start, end in
+                           [('.keypad.low', 0x4ff40000, 0x4ff60000), ('.keypad.high', 0x4ff70000, 0x4ff9f000)]]}
+        CHECK.DISPLAY.check_keypad_storage(lease, storage, audit)
+        for bad_lease, bad_storage, bad_audit in (({**lease, 'nodes': 636}, storage, audit),
+                ({**lease, 'lease_start': 0x4ff60000}, storage, audit),
+                (lease, {**storage, 'font_low': font_low - 64}, audit),
+                (lease, {**storage, 'font_low_bytes': 65536}, audit),
+                (lease, storage, {**audit, 'pools': []}),
+                (lease, storage, {**audit, 'executable': True})):
+            with self.assertRaises(ValueError):
+                CHECK.DISPLAY.check_keypad_storage(bad_lease, bad_storage, bad_audit)
+
     def test_count_transitions_correlate_with_operations(self):
         self.assertEqual(CHECK.check_keypad(complete())['report']['confirms'], 1)
 

@@ -22,6 +22,8 @@ pub const Config = extern struct {
     scratch: u32,
     stride: u32,
     capacity: u32,
+    pixels: u32,
+    pixels_bytes: u32,
 };
 pub const Error = error{ Malformed, Capacity, UnsupportedBase };
 pub const frame_bytes = 720 * 1280 * 2;

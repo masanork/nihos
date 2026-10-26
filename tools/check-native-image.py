@@ -29,8 +29,30 @@ FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
 
 SQL_START, SQL_END = 0x40020000, 0x400C0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
+UI_SECTIONS = {".flash.uipad", ".flash.ui"}
+UI_POOLS = {".keypad.low": (0x4ff40000, 128 * 1024), ".keypad.high": (0x4ff70000, 188 * 1024)}
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False):
+def audit_ui_pool(name, kind, flags, address, size, allowed):
+    require(allowed and kind == 8 and flags == 3 and (address, size) == UI_POOLS.get(name), 'invalid keypad SRAM pool')
+
+
+def audit_ui_assets(start, data, symbols, manifest):
+    for role in ('plan', 'atlas'):
+        first = symbols.get('__keypad_' + role + '_start', 0)
+        last = symbols.get('__keypad_' + role + '_end', 0)
+        require(start <= first < last <= start + len(data) and first % 64 == 0, 'invalid keypad asset extent')
+        raw = data[first - start:last - start]
+        require(len(raw) == manifest[role + '_bytes'] and hashlib.sha256(raw).hexdigest() == manifest[role + '_sha256'], 'keypad asset differs from manifest')
+
+
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False):
+    if name in UI_SECTIONS:
+        require(allow_ui and kind == 1 and flags & 7 == 2 and flags & ~50 == 0, 'unapproved/mutable/executable keypad Flash section')
+        if name == '.flash.uipad':
+            require(0x40010020 < address < SQL_START and address + size == SQL_START, 'invalid keypad Flash padding')
+        else:
+            require(address == SQL_START and 0 < size <= SQL_END - SQL_START, 'invalid keypad read-only extent')
+        return
     if name == ".flash.sqlpad":
         require(allow_sql and kind == 1 and flags == 2 and 0x40010020 < address < SQL_START and address + size == SQL_START,
                 "invalid SQLite Flash padding")
@@ -166,7 +188,7 @@ def decode_stack_sizes(data, functions):
             "recursive_or_Zig_call_graph_bound": False}
 
 
-def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
+def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
     require(high <= STACK_LOW, "stack bank overlaps primary SRAM")
@@ -196,6 +218,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     boot_code = None
     sql_sections = {}
     allow_sql = mode == "sqlite"
+    allow_ui = keypad_manifest is not None
+    require(not allow_ui or (mode == 'integer' and profile == 'device' and not allow_sql and keypad_manifest.get('schema') == 1), 'invalid keypad profile/manifest')
+    ui_sections = {}
+    ui_pools = []
     require(not allow_sql or (sqlite_manifest is not None and sqlite_manifest.get("schema") == 1 and
                              sqlite_manifest.get("allowed_functions")), "missing SQLite object manifest")
     for section in sections:
@@ -208,12 +234,18 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
             if in_stacks:
                 audit_stack_section(section_type, flags, address, size)
             in_sram = low <= address and address + size <= high
-            if not in_sram and not in_stacks:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql)
+            in_ui = name in UI_POOLS
+            if in_ui:
+                audit_ui_pool(name, section_type, flags, address, size, allow_ui)
+                ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
+            if not in_sram and not in_stacks and not in_ui:
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
                 if name in SQL_SECTIONS:
                     sql_sections[name] = (address, elf[offset:offset + size])
+                if name in UI_SECTIONS:
+                    ui_sections[name] = (address, elf[offset:offset + size])
                 if name == ".flash.appdesc":
                     audit_app_descriptor(elf[offset:offset + size])
                 if name == ".flash.rodata":
@@ -241,7 +273,20 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()), "missing mapped Flash sections")
+    ui_report = None
+    ui_payload = None
+    if allow_ui:
+        require(len(ui_pools) == 2, 'missing keypad SRAM pools')
+        pad_start, pad = ui_sections['.flash.uipad']
+        start, data = ui_sections['.flash.ui']
+        require(pad_start == 0x40010020 + ((len(flash_tables) + 3) & ~3) and not any(pad), 'invalid keypad Flash padding bytes')
+        require(symbols.get('__flash_ui_start') == start and symbols.get('__flash_ui_end') == start + len(data), 'invalid keypad Flash symbols')
+        audit_ui_assets(start, data, symbols, keypad_manifest)
+        ui_payload = flash_tables + bytes((-len(flash_tables)) % 4) + pad + data
+        ui_payload += bytes((-len(ui_payload)) % 4)
+        ui_report = {'start': hex(start), 'end': hex(start + len(data)), 'bytes': len(data), 'writable': False, 'executable': False,
+                     'plan_sha256': keypad_manifest['plan_sha256'], 'atlas_sha256': keypad_manifest['atlas_sha256'], 'atlas_bytes': keypad_manifest['atlas_bytes'], 'nodes': keypad_manifest['nodes'], 'pools': ui_pools}
     sql_span = None
     sql_report = None
     if allow_sql:
@@ -345,6 +390,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
         report["sqlite"] = sql_report
+    if allow_ui:
+        report['keypad_storage'] = ui_report
+        report['memory']['regions'].extend(ui_pools)
+        report['memory']['total_bytes'] += sum(pool['bytes'] for pool in ui_pools)
+        report['sram_reserved_bytes'] += sum(pool['bytes'] for pool in ui_pools)
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
@@ -366,7 +416,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
             require(data[256:256 + len(boot_code)] == boot_code, "Flash boot bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
-            mapped_length = len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
+            mapped_length = len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
             require((low <= address and address + length <= high) or
                     (address == FLASH_SECTIONS[".flash.appdesc"][0] and length == first_length) or
                     (address == flash_start and length == mapped_length), "unexpected image load range")
@@ -378,6 +428,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                 if allow_sql:
                     require(data == sql_payload, "merged records/SQLite image bytes differ from ELF")
                     report["sqlite"]["image_offset"] = position + SQL_START - flash_start
+                if allow_ui:
+                    require(data == ui_payload, 'merged keypad image bytes differ from ELF')
+                    report['keypad_storage']['image_offset'] = position + SQL_START - flash_start
                 report["flash_records"]["image_offset"] = position
             image_segments.append({"address": hex(address), "bytes": length})
         position += length
@@ -439,13 +492,18 @@ def audit_loader_config(text, profile):
 
 
 def main():
-    if len(sys.argv) not in (4, 5, 6, 7, 8, 9):
-        raise SystemExit("usage: check-native-image.py ELF BIN|--elf-only REPORT.json [MODE [PROFILE [LOADER.elf [CONFIG.h [SQLITE-MANIFEST.json]]]]]")
+    if len(sys.argv) not in (4, 5, 6, 7, 8, 9, 10):
+        raise SystemExit("usage: check-native-image.py ELF BIN|--elf-only REPORT.json [MODE [PROFILE [LOADER.elf [CONFIG.h [SQLITE-MANIFEST.json|--none [KEYPAD-MANIFEST.json]]]]]]")
     try:
         image = None if sys.argv[2] == "--elf-only" else Path(sys.argv[2]).read_bytes()
         report = audit(Path(sys.argv[1]).read_bytes(), image, sys.argv[4] if len(sys.argv) >= 5 else None,
                        sys.argv[5] if len(sys.argv) >= 6 else "device",
-                       json.loads(Path(sys.argv[8]).read_text()) if len(sys.argv) == 9 else None)
+                       json.loads(Path(sys.argv[8]).read_text()) if len(sys.argv) >= 9 and sys.argv[8] != '--none' else None,
+                       json.loads(Path(sys.argv[9]).read_text()) if len(sys.argv) == 10 else None)
+        if len(sys.argv) == 10:
+            manifest = json.loads(Path(sys.argv[9]).read_text())
+            root = Path(sys.argv[9]).resolve().parents[2]
+            require(all(hashlib.sha256((root / name).read_bytes()).hexdigest() == digest for name, digest in manifest['sources'].items()), 'keypad generated source hashes differ')
         if len(sys.argv) >= 5:
             require(sys.argv[4] in ("integer", "floating", "compiled", "sqlite"), "invalid FP mode")
             require(report["fp_assembly_linked"] == (sys.argv[4] in ("floating", "compiled")), "FP assembly differs from requested mode")
@@ -453,6 +511,9 @@ def main():
             report["loader"] = audit_loader(report, Path(sys.argv[6]).read_bytes())
         if len(sys.argv) >= 8:
             report["loader_config"] = audit_loader_config(Path(sys.argv[7]).read_text(), sys.argv[5])
+            if 'keypad_storage' in report:
+                window = report['loader_config']['stack_source_window']
+                require(all(int(window['origin'], 16) <= int(pool['origin'], 16) < int(pool['end'], 16) <= int(window['end'], 16) for pool in report['keypad_storage']['pools']), 'keypad pool outside source-supported SRAM')
     except (ValueError, IndexError, KeyError, struct.error) as error:
         raise SystemExit("Native image audit failed: " + str(error)) from error
     Path(sys.argv[3]).write_text(json.dumps(report, indent=2) + "\n")
