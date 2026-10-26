@@ -35,6 +35,8 @@ SECTIONS
     .flash.rodata : {
         __flash_records_start = .;
         KEEP(*(.flash.rodata.records))
+        *(.flash.rodata.boot_graphics)
+        *(.flash.rodata.display)
         __flash_records_end = .;
     } > flash_records
 #if NIH_NATIVE_SQLITE

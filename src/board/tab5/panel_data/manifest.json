@@ -1,0 +1,23 @@
+{
+  "ili9881c": {
+    "source": "third_party/tab5-panel-init/disp_init_data.h",
+    "source_sha256": "7571c61a4e80e4e263d1d5e709746d98587b04522fd351c3f86c593393890f69",
+    "commands": 195,
+    "packed_bytes": 982,
+    "packed_sha256": "12be71fded85fb0e2f1ffd93c3669543ff40fa5b0f82f8a7077484fa47fee7c8"
+  },
+  "st7123": {
+    "source": "third_party/tab5-panel-init/disp_init_data_1.h",
+    "source_sha256": "2e1539e77251a99c357b875c4f92ea9da9468f38bdbb09357307bf05dc5ca4dd",
+    "commands": 27,
+    "packed_bytes": 539,
+    "packed_sha256": "40d77dbcf5486a25678ae372b211a52a3079c035b976aae5cff8386e1aceb90f"
+  },
+  "st7121": {
+    "source": "third_party/tab5-panel-init/disp_init_data_st7121.h",
+    "source_sha256": "7b8777fab8953df9d56b0717958542444d8e60513644b66cd78893d55adfd326",
+    "commands": 30,
+    "packed_bytes": 550,
+    "packed_sha256": "4c55e2c115ca0014d36315b22cf7dd35ff6aa82a724c7c623b4e0bfd206dd892"
+  }
+}

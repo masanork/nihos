@@ -143,6 +143,18 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
     if (hart >= 2) fail("invalid hart");
     if (!interruptStackValid(hart, frame)) fail("interrupt stack/MIE");
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
+    if (options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
+        const display = @import("display_runtime.zig");
+        if (!display.active()) fail("unexpected display IRQ");
+        display.onInterrupt();
+        const observed = display.snapshot();
+        if (observed.fault != 0) {
+            logger.record("NIHOS_NATIVE_DISPLAY_IRQ_FAIL", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
+            fail("display refresh");
+        }
+        nih_native_return_states[hart] = state;
+        return frame;
+    }
     if (tasks.ready(hart)) {
         const selected = if (cause & 0x8000_0fff == 11)
             tasks.onCall(hart, frame, state, timer(hart))
@@ -404,13 +416,26 @@ export fn nih_native_main() callconv(.c) noreturn {
         if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
         if (sd.status != 1) fail("SDMMC probe");
     }
+    var external_heap_start = native_psram.memory.heap_start;
+    var display_panel: u32 = 0;
+    var external_heap_bytes = external.mapping.bytes -| native_psram.memory.reserved_bytes;
+    if (options.display) {
+        const selected = @import("tab5_display").layout(external.mapping.bytes) orelse fail("display requires mapped PSRAM");
+        const display = @import("display_probe.zig").run(timer(0), selected);
+        logger.record("NIHOS_NATIVE_DISPLAY_PREP", null, .{ "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight" }, &display);
+        if (!timer(0).configureOneShot(tasks.period_us)) fail("display timer return");
+        if (display.status != 1) fail("display preparation");
+        display_panel = display.panel;
+        external_heap_start = selected.heap_start;
+        external_heap_bytes = selected.heap_bytes;
+    }
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
     logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
-        native_psram.memory.heap_start,
-        external.mapping.bytes - native_psram.memory.reserved_bytes,
+        external_heap_start,
+        external_heap_bytes,
     )) fail("external memory prepare");
     if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
@@ -493,6 +518,26 @@ export fn nih_native_main() callconv(.c) noreturn {
                 flashReport(0);
                 flashReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
+                if (options.display_scanout) {
+                    const display = @import("display_runtime.zig");
+                    // Scheduler qualification has finished. Retire its CPU0
+                    // timer route before borrowing the counter for DCS waits.
+                    reg(0x20801040).* = 0;
+                    reg(0x500d6000 + 46 * 4).* = 0;
+                    timer(0).stop();
+                    asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+                    const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern);
+                    if (screen.status == 1) {
+                        const source = display.irqSource();
+                        if (source >= 136) fail("display IRQ source");
+                        // Dedicated input 18, beside native timer 16 and IPI 17.
+                        reg(0x500d6000 + source * 4).* = 18;
+                        reg(0x20801048).* = (0x3f << 24) | (1 << 8);
+                        asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+                    }
+                    logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
+                    if (screen.status != 1) fail("display scanout startup");
+                }
                 while (true) asm volatile ("wfi");
             }
         }

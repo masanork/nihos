@@ -1,0 +1,80 @@
+# Boot graphics: 素のハードウェアを、色づける。
+
+The first screen is monochrome on an ink-black background. The three `丹穂`
+pairs gradually take on vermilion in reading order, connecting the name
+**nihos / にほす** to the sense of giving colour. Five vertical columns read
+from right to left; the subtitle explicitly says `にほす ─ 色づける`.
+
+The user-supplied inscription is preserved exactly:
+
+> 墨之江之岸野之榛丹丹穂所経迹丹穂葉寐我八丹穂氷而将居
+
+The source is **万葉集 巻十六・3801**, not 古事記. The text and attribution
+can be checked against the [Nara Prefecture Manyo Culture Museum database](https://manyo-hyakka.pref.nara.jp/db/detailLink?cls=db_manyo&pkey=3801).
+This is a visual treatment of the project's naming idea, not a claim that
+every `丹穂` occurrence is the same grammatical form of `にほす`.
+
+## Runtime and integration
+
+`src/graphics/boot_graphics.zig` is a pure, allocation-free RGB565-LE renderer.
+It needs a writable surface of at least 720×1280 and a valid stride. Larger
+surfaces center the inscription; smaller ones are rejected before any write.
+No filesystem, storage device, dynamic font engine, OS clock, or scheduler
+is needed. The [embedded lettering](../src/graphics/boot/README.md) is licensed
+separately from the renderer and adds 28,366 bytes of compressed masks.
+
+The existing **ESP-IDF-hosted** entry now initializes the panel immediately
+after ABI validation and boot-fact logging, before memory and CPU smoke tests.
+It paints before the existing platform present call enables the backlight.
+The existing single scanout buffer is reused, without a second framebuffer.
+The diagnostics test-pattern renderer remains available as a separate module.
+
+Visible stages follow actual calls: `DISPLAY`, `MEMORY`, `CORES`, `INPUT`,
+then `READY` only after touch sampling succeeds. An early return after display
+initialization attempts to leave `FAILED - SEE SERIAL` on screen. A trap or
+hang that never returns leaves the last stage visible; the renderer is not
+an independent watchdog. If panel initialization itself fails, serial is the
+available diagnostic path.
+
+The colour value is aesthetic, not a percentage. Memory completion reveals
+the first pair; CPU checks reveal more colour. Sixteen presents finish the
+fade before input checks, without a timed sleep or minimum splash hold. Those
+presents do add rendering/refresh work. The 60-sample VSYNC measurement stays
+separate from animation so its wait timings are not mixed with rendering.
+The preview's timing and stage transitions are illustrative.
+
+The **independent native boot path remains serial-only**: it has no MIPI-DSI
+panel driver yet. This change does not link ESP-IDF into it, change its PSRAM
+mapping, access a block device, or change filesystem code. The shared renderer
+can be used once native panel power/reset, scanout, cache coherency, and
+backlight control are implemented. A host image or firmware build does not
+establish physical panel operation or native display readiness.
+The opt-in [native preparation probe](native-display.md) now starts that
+bring-up, while deliberately keeping video and the backlight disabled.
+
+## Preview and checks
+
+```sh
+.tools/zig-0.17.0/zig build test
+.tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
+python3 tools/boot-graphics/preview.py
+sh tools/build-espidf.sh
+```
+
+The preview builds the actual Zig renderer as a host library, then exports
+`build/boot-graphics/preview.html` (self-contained replay), `preview.gif`,
+`preview.png` (three stages), and `ready.png`. Python with Pillow is needed
+only for generation/preview. Tests check mask bounds, guard bytes, padded
+strides, rejected overflow, fade order, and that only the intended pairs and
+state marker change colour.
+
+Physical qualification is still required for early panel allocation, native
+timer/interrupt-window coexistence with active scanout, tearing, colour,
+animation latency, and failure visibility. No device flash is part of this
+change; keep any concurrent filesystem device run intact.
+
+Local verification on 2026-10-26: 104/104 host tests pass in both Debug and
+ReleaseSafe; Zig formatting and ZLint pass with zero warnings. The ESP-IDF
+v5.4.4 ESP32-P4 firmware build succeeds (`nihos.bin`: `0x71ce0` bytes), fitting
+the existing 1 MiB application partition. The PNG stages and final portrait
+were visually inspected. These are host/build results, not device results.

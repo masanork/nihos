@@ -19,6 +19,32 @@
     .global nih_native_start
 nih_native_start:
     csrci mstatus, 8
+#if NIH_NATIVE_DISPLAY_SCANOUT
+    /* New boot owns the device, CPU1 is parked, no native services exist.
+     * USB reset can retain a previous scanout DMA. Retire it BEFORE clearing
+     * SRAM or remapping PSRAM; it must not use old descriptors during CRT.
+     * Offsets are statically checked against the vendor LL struct in C. */
+    li t0, 0x500e60c0
+    lw t1, 0(t0)
+    li t2, (1 << 21)
+    or t1, t1, t2
+    sw t1, 0(t0)
+    fence iorw, iorw
+    not t2, t2
+    and t1, t1, t2
+    sw t1, 0(t0)
+    li t0, 0x500e6014
+    lw t1, 0(t0)
+    li t2, ~(1 << 13)
+    and t1, t1, t2
+    sw t1, 0(t0)
+    li t0, 0x500e6018
+    lw t1, 0(t0)
+    li t2, ~(1 << 5)
+    and t1, t1, t2
+    sw t1, 0(t0)
+    fence iorw, iorw
+#endif
     .option push
     .option norelax
     la gp, __global_pointer$

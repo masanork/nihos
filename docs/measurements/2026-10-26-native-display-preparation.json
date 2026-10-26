@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "kind": "host-and-build-only",
+  "physical_device_tested": false,
+  "native_scanout_implemented": false,
+  "native_backlight_on_implemented": false,
+  "base_commit": "95765518ad8a46cbc656368a5d9c8974b77e8937",
+  "source_sha256": {
+    "src/board/tab5/boot_i2c.zig": "fd1d4d379adb64794e4c47e4b488d9284e121fe2d4b0a21da30c0efaffb04ee1",
+    "src/board/tab5/display.zig": "c87d1904da72b3bf7c51cb57856e1048c3b4560398f3a0e390d74fd86d5cb55a",
+    "src/board/tab5/native_pads.c": "da6c52209898244a12962ae28e15c99e479132f5c435343d373bb40aa6e86007",
+    "src/platform/native/display_probe.zig": "a6bff8a108991f6d957bc821b7ddb4148b8d1a2f715b7f9bc7d9483c8103c2c6",
+    "src/platform/native/main.zig": "3fcc55e5da178e73ea7ab25b3bce4ee8b11e1739bb11b94814d3946325299928",
+    "src/platform/native/esp32p4.ld": "432356f38868822b3b8d5c542dadbc4c82675d7dde2bcfd94de52b16f31258ea",
+    "src/graphics/boot_graphics.zig": "1a749d06cd76c864c3e22a8c632bb5697a190272f3a16c73c08f7891d8a63153",
+    "src/graphics/boot/assets.zig": "5a7690bad61b8e53c6d3cec88cc09298f083bffe3c139458d0a97d6ad7788b31",
+    "src/graphics/boot/masks.rle": "d385c53a3779d8c9115190aa7ac4d0ed77318da764bacb32d7ff09d71be49401",
+    "src/root.zig": "d7efe80782fe71dc1b4b55e6880330e76d756b8cc4c4c82a9bb6a80e5f1c3300",
+    "tools/build-native-elf.sh": "5fad1192be9af5dc643a0d7feb40ed67cc47eb181e5d424101b1e8228b089094"
+  },
+  "expected_cpu_image_fnv1a": "0xa3112444",
+  "checks": {
+    "zig_debug_tests": 170,
+    "zig_release_safe_tests": 170,
+    "native_python_tests": 106,
+    "zlint_warnings": 0,
+    "default_native_elf_audits": 6,
+    "native_image_negative_tests": 20,
+    "format": "passed",
+    "shellcheck": "passed",
+    "display_option_rejections": "passed"
+  },
+  "artifacts": [
+    {
+      "name": "display",
+      "label": "display only",
+      "profile": "device",
+      "mode": "integer",
+      "display": true,
+      "sdmmc": false,
+      "elf_sha256": "7f52574d131af409de40b8aa27eb62037690bcb5e9211eb446c9fce158664789",
+      "image_sha256": "09d8425363339afff234d15a322328c57bd06edcc6b1ce95646fa2c7ef9503b3",
+      "image_bytes": 116928,
+      "primary_static_bytes": 85120,
+      "sram_heap_bytes": 78720,
+      "flash_readonly_bytes": 31049,
+      "mask_occurrences_in_flash_readonly_span": 1,
+      "fp_instructions": {
+        "app": 0,
+        "c": 0,
+        "zig": 0,
+        "transfer_helpers": 0
+      },
+      "rtos_linked": false,
+      "audit": "build/native-display-evidence/display-image-audit.json"
+    },
+    {
+      "name": "display-sd",
+      "label": "display + SDMMC",
+      "profile": "device",
+      "mode": "integer",
+      "display": true,
+      "sdmmc": true,
+      "elf_sha256": "3cffb279e4216df3e30f71114628291af56ca3f1cb4dd3490ec71cee9fe5d89c",
+      "image_sha256": "1787fa0d075f98c1acd67c65f502755b31556b65d1ec5100ce7af63df90639c0",
+      "image_bytes": 124880,
+      "primary_static_bytes": 93120,
+      "sram_heap_bytes": 70720,
+      "flash_readonly_bytes": 31573,
+      "mask_occurrences_in_flash_readonly_span": 1,
+      "fp_instructions": {
+        "app": 0,
+        "c": 0,
+        "zig": 0,
+        "transfer_helpers": 0
+      },
+      "rtos_linked": false,
+      "audit": "build/native-display-evidence/display-sd-image-audit.json"
+    }
+  ]
+}
