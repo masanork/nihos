@@ -27,7 +27,7 @@ def check_storage(record, sectors):
 
 def repeated_records(log, marker, names):
     pattern = re.escape(marker) + "".join(" " + name + r"=([0-9a-f]{8})" for name in names)
-    found = re.findall(pattern + r"(?:\n|$)", log)
+    found = [match.groups() for match in re.finditer(pattern + r"(?:\n|$)", log)]
     if len(found) != log.count(marker + " "):
         raise ValueError("missing/duplicate/malformed " + marker)
     return [dict(zip(names, (int(value, 16) for value in row))) for row in found]

@@ -8,17 +8,16 @@ colour target; a frame/timer may smooth movement only towards that target.
 An operation that never returns keeps its current stage visible. Colour is
 not elapsed time, a percentage, or evidence that input/storage is ready.
 
-The first implementation is an **opt-in read-only ASCII boot snapshot**, after
-native memory/SMP/display qualification. It adds a CPU0-owned 2 KiB SRAM byte
-ring, independent stage state, an 80x22 ASCII grid (15x30-pixel cells), and a fixed anti-aliased raster.
-It shares the existing 720x1280 RGB565 buffer in keyboard landscape orientation.
-The snapshot shows last completed/active stages and explicitly unavailable
-storage/input. It is not an interactive shell or a live boot monitor.
-The existing timed inscription remains the default display experiment;
-connecting the milestone colour policy to an earlier display is a next gate.
+The opt-in live implementation starts scanout **after destructive PSRAM
+qualification and before core/heap/scheduler qualification**. Its CPU0-owned
+2 KiB byte journal, independent stage state, and 80x22 ASCII grid share the
+landscape RGB565 buffer with the quiet inscription. Each operation's stage is
+painted before entering it. The earlier final read-only snapshot remains
+available with `NIHOS_NATIVE_CONSOLE_LIVE=0`.
 
 ```sh
-NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_PALETTE=1 \
+NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_LIVE=1 \
+  NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=1 \
   NIHOS_NATIVE_DISPLAY=2 NIHOS_NATIVE_PSRAM_200=1 \
   NIHOS_NATIVE_QUALIFICATION=1 sh tools/build-native.sh device integer
 python3 tools/console/preview.py
@@ -49,75 +48,95 @@ SHA256 hashes and OFL notices are in
 implement or embed the deferred Japanese UD faces.
 
 The console option requires the full PSRAM display mode and remains off by
-default. Its build retains the 48 KiB minimum SRAM heap, the existing image
-regions/ROM allowlist and integer-only audit. The text-console module uses
-ReleaseSmall to fit that existing SRAM budget; all other native modules keep
-ReleaseSafe. Geometry/overflow rejection is explicit before pixel writes, and
-host guard/stride tests also run with ReleaseSmall. The fixed ASCII font and
-raster are independent of OpenType or an SD filesystem. Source provenance is
-in [the font notice](../src/graphics/ascii/README.md).
+default. Live mode requires the console; I2C keyboard and fault injection
+require live mode. The build retains the 48 KiB SRAM heap minimum, existing
+image regions, ROM allowlist and integer-only audit. Kernel, tasks and allocator
+remain ReleaseSafe. Display service, bounded peripheral leaves and graphics use
+ReleaseSmall to fit this budget. Explicit geometry/packet bounds remain, with
+host tests in Debug, ReleaseSafe and ReleaseSmall. No SRAM aperture is widened.
+The audited ROM putc address remains an absolute linker symbol even when live
+mode replaces its calls with bounded Serial/JTAG transmission.
 
-CPU0 appends its diagnostic output while briefly masking local interrupts;
-serial transmission itself is outside that critical section. CPU1 output
-continues directly to serial and does not race the CPU0 journal/model. The
-ring preserves newest bytes and reports loss; stage outcomes are separate and
-cannot be overwritten by a verbose log. Snapshot construction uses the same
-short ownership rule. Rasterization and cache writeback happen outside IRQs.
-The boot/IRQ/task guards are checked again after presentation. A successful
-serial console record proves construction/cache handoff, not optical legibility.
+CPU0 is the sole journal/model writer. In live mode it does not mask interrupts
+while copying logs or constructing the grid. The nonfatal DMA IRQ report is
+deferred to the main loop; CPU1 does not append to this journal. The legacy
+snapshot still masks local interrupts for journal access. Rasterization and framebuffer
+cache writeback run outside IRQs; initialized boot/IRQ guards are checked after
+presentation. The ring retains newest bytes and reports loss; separate stage
+outcomes survive verbose output. A serial record proves cache handoff, with
+optical legibility checked separately.
 
-## Next integration: visible stages while boot runs
+## Visible stages and interrupt ownership
 
-The current native fixture does all PSRAM tuning/full-memory tests before
-panel preparation, and does the SMP/heap/IPI run before video starts. Merely
-painting the final log would not diagnose a stop inside those earlier calls.
-Integration must change the actual initialization order, with separate evidence:
+1. Start the SRAM journal/stage model after CRT. Keep the destructive full
+   PSRAM sweep before live framebuffer use.
+2. Initialize the panel and establish scanout, then initialize input. Optional
+   storage work follows video; this change does not enable storage or touch SD.
+3. Render the cores stage before starting CPU1, external heaps and the
+   scheduler qualification. Preserve the DMA route (CLIC 18) when enabling CPU0
+   timer/IPI routes. Defer IRQ_PASS output so records cannot interleave.
+4. Memory completion permits colour target 85, core completion 170, and
+   console/scanout completion 255. Each new observed frame approaches that
+   target by at most three levels. There is no fixed splash hold or delay in
+   boot to finish the animation. These values are dye levels, not percentages.
+5. A failure latches the failed stage and details view. If display/cache/stack
+   guards are usable, render the final journal and service diagnostics with
+   manual DMA polling; the scheduler is stopped and failed boot cannot resume.
 
-1. Start the bounded SRAM journal/checkpoint model immediately after CRT.
-2. Initialize the minimum memory/panel path and establish working scanout.
-   Render the last completed stage and the next operation **before** entering
-   that operation. Move destructive full-PSRAM tests before framebuffer use,
-   or exclude/reserve live framebuffer pages explicitly. Never sweep live DMA
-   pixels as if they were free memory.
-3. Keep the DMA interrupt routed when CPU0 timer/IPI routes are reconfigured.
-   Do not borrow a timer already driving the scheduler for panel delays.
-4. Drive three dye targets from actual memory, core and console milestones;
-   interpolate between them without delaying startup to meet a splash duration.
-   A final colour target means those named milestones, not that all future
-   devices, filesystems, networking or Japanese input are initialized.
-5. Mirror the same events to serial and the view. Failure requests details;
-   update the screen only if the cache/display path is known usable, retaining
-   direct serial output for failures inside that path.
+Live panel delays and key polling own **TG1.T0**, XTAL40 divided by40 to1MHz,
+without an alarm/IRQ. Scheduler TG0 counters are not borrowed or stopped.
+Before external heap metadata initialization, only the display IRQ may run on
+CPU0. Its handler rearms DMA and never allocates. A separate boot-only allocator
+entry permits that IRQ during the long linear metadata initialization, then
+briefly masks interrupts for the original bootstrap checks. Ordinary allocator
+entry contracts remain unchanged; CPU1 and worker clients are not released
+until initialization completes.
 
-Before display bring-up, an on-screen console is physically unavailable.
-A future SRAM-only framebuffer/scanline fallback needs its own scanout proof;
-font independence alone does not remove dependence on PSRAM, DMA and DSI.
-The new journal is volatile and is not a reset-persistent crash record. A small
-validated RTC/reset-reason checkpoint is a separate future recovery feature.
+Live Serial/JTAG transmission has a bounded wait and drop counter, so an absent
+host reader cannot hold boot/failure display indefinitely. The journal receives
+bytes before transmission. During IRQ-off fatal transmission, its bounded wait
+polls DMA. `UI_IO` reports dropped bytes; complete serial qualification requires
+zero. Framebuffer and post-video PSRAM mapper cache operations run in 1 KiB chunks,
+masking local IRQs only around each ROM command. This prevents the DMA ISR
+from nesting its descriptor cache command inside a main-loop command. No USB
+controller reset or host-controller ownership is introduced.
+
+Display/PSRAM preparation failures still precede usable video. The journal is
+volatile, and an arbitrary deadlock cannot guarantee keyboard service. A future
+SRAM framebuffer or reset-retained crash checkpoint needs separate evidence.
 
 ## Diagnostic keys and recovery semantics
 
-`Esc` should latch detailed output without throwing away the journal or
-necessarily stopping startup. An explicit break request can pause **between**
-operations at a safe checkpoint. Unknown keys should not consume a diagnostic
-hotkey or accidentally execute a command. Do not turn an arbitrary HID report
-into a character before keyboard layout/modifier decoding.
+The standard **Tab5 Keyboard on Ext.Port1 (GPIO0 SDA / GPIO1 SCL, I2C0x6d)**
+provides physical modifier/usage events. Initialization reads firmware/address,
+selects HID mode1 only if necessary and verifies it. It never writes persistent
+address/RGB settings or clears events queued during boot. Polling runs outside
+IRQs, at most four events per10ms; unavailable input does not prevent boot.
 
-The state model implements capability-gated view/break requests, sticky
-failures, and the distinction between a pending pause and a safe checkpoint.
-**No native HID/serial key adapter or shell is wired yet.** The fixture must
-not advertise a functioning Esc key or command prompt until one is installed.
-The other native USB worktree currently supplies a CCID transport experiment,
-not a decoded keyboard path. Reuse enumeration ownership when adding HID;
-do not create a competing host-controller owner.
+| Key | Action |
+| --- | --- |
+| Esc | Show detailed logs; startup continues |
+| Ctrl+L | Return to the inscription |
+| Ctrl+B | Request pause at the next returned stage boundary |
+| Ctrl+R | Resume a deliberately paused boot |
 
-A key request cannot unwind a driver that has not returned. Bounded command
-waits, cancellation points, and a scheduler/interrupt path that still runs are
-necessary. A CPU deadlock with interrupts masked cannot guarantee key response.
-Timeout/failure should preserve stage/error/last logs; a watchdog/reset path
-and post-reset retained checkpoint cover a different class of failures. An
-emergency monitor should initially expose inspection/status/controlled reset,
-with command execution introduced only after normal task/input ownership.
+The existing USB Serial/JTAG diagnostic port accepts the same control bytes.
+ANSI arrow sequences are discarded instead of being mistaken for Esc. A failed
+boot accepts Esc but rejects splash/pause/resume. These controls do not execute
+shell commands or provide text editing, Japanese input or a command prompt.
+
+Input adapters emit shared diagnostic actions. Source IDs/capability bits
+reserve independent identities for serial, standard Tab5 keyboard, USB keyboard
+and Bluetooth keyboard. **USB-A HID and Bluetooth drivers are not implemented.**
+Future USB input must share the host-controller owner with the separate CCID
+work; Bluetooth transport requires its own hardware/service integration. Neither
+transport is a prerequisite for the present standard-keyboard path.
+
+Register protocol reference: [official M5Unit-KEYBOARD implementation](https://github.com/m5stack/M5Unit-KEYBOARD/blob/main/src/unit/unit_Tab5Keyboard.cpp).
+
+A key request cannot unwind an operation that has not returned. A deliberately
+paused safe checkpoint keeps painting and polling; an arbitrary IRQ-off CPU
+lockup needs a separate watchdog/reset recovery path.
 
 ## Japanese fonts: deferred until microSD and filesystem are ready
 

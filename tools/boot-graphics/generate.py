@@ -64,6 +64,7 @@ def main():
     text("BOOT / INPUT", 18, 112, 1160, "muted", status=4)
     text("BOOT / READY", 18, 112, 1160, "muted", status=5)
     text("BOOT / FAILED - SEE SERIAL", 18, 112, 1160, "error", status=6)
+    text("BOOT / STORAGE", 18, 112, 1160, "muted", status=7)
     # Landscape is a new composition, keeping the poem's vertical reading order.
     layout = "landscape"
     text("nihos", 104, 96, 211)
@@ -75,7 +76,7 @@ def main():
             text(character, 40, 1110 - column * 82, 154 + row * 56,
                  "dye" if highlighted else "normal", column - 2 if highlighted else 0)
     text("萬葉集　卷十六・三八〇一", 18, 814, 536, "muted")
-    for state, label in enumerate(("DISPLAY", "MEMORY", "CORES", "INPUT", "READY", "FAILED - SEE SERIAL"), 1):
+    for state, label in enumerate(("DISPLAY", "MEMORY", "CORES", "INPUT", "READY", "FAILED - SEE SERIAL", "STORAGE"), 1):
         text("BOOT / " + label, 18, 122, 641, "error" if state == 6 else "muted", status=state)
     destination = ROOT / "src/graphics/boot"
     (destination / "masks.rle").write_bytes(masks)

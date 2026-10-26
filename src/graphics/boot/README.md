@@ -5,7 +5,7 @@ under the SIL Open Font License 1.1. The copyright notice and full license are
 in [OFL.txt](OFL.txt); font provenance is in [provenance.toml](provenance.toml).
 The masks are fixed lettering, not a general-purpose font subset or font engine.
 
-The firmware embeds 72 sprites sharing masks totalling **37,068 bytes**. Each byte encodes
+The firmware embeds 74 sprites sharing masks totalling **38,085 bytes**. Each byte encodes
 4 bits of coverage and a run of 1–16 pixels. Masks are drawn directly into
 the borrowed RGB565 framebuffer, with no heap allocation or file access.
 The platform's existing scanout allocation remains separate (1,843,200 bytes).
@@ -38,9 +38,10 @@ These old-form glyphs are an explicit visual treatment of the user's supplied
 transcription, not a claim to reproduce a particular manuscript's glyphs.
 The original `寐` and the repeated `丹` are retained. Editions may transcribe
 the latter with an iteration mark; no reading or wording is silently changed.
-Only the three `丹穗` pairs and the state marker gain vermilion. The native
+Only the three `丹穗` pairs and the state marker gain vermilion. The legacy native
 animation holds monochrome for about one second, then fades over about two
-seconds at the 60 Hz target. This is a visual introduction, not boot progress.
+seconds at the 60 Hz target. That legacy mode is a visual introduction. Opt-in live console mode instead
+advances the dye target at memory/core/console milestones, with no fixed hold.
 
 Text reference: [Manyoshu 16-3801](https://manyoshu-japan.com/9777/).
 Font provenance and the OFL apply equally to both sets of masks.

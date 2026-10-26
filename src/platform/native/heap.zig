@@ -679,12 +679,27 @@ fn rejectFree(owner: *Owner, allocation: Allocation, expected: Error) bool {
     return false;
 }
 
-/// Boot-only initialization; the other hart waits before either timer starts.
-pub noinline fn prepare(memory: []u8) bool {
+/// Boot-only initialization; no scheduler timer may dispatch heap clients yet.
+pub fn prepare(memory: []u8) bool {
+    return prepareMode(memory, 0);
+}
+/// A display-only handler may run during linear metadata initialization.
+/// The prepared gate stays closed until the complete Heap value is installed.
+pub fn prepareWithDisplayIrq(memory: []u8) bool {
+    return prepareMode(memory, 8);
+}
+noinline fn prepareMode(memory: []u8, expected_mie: u32) bool {
     const core = hart();
-    if (core >= 2 or interrupts() != 0 or @atomicLoad(u32, &prepared[core], .acquire) != 0) return false;
+    if (core >= 2 or interrupts() != expected_mie or @atomicLoad(u32, &prepared[core], .acquire) != 0) return false;
     owners[core] = .{ .heap = buddy.Heap.init(memory, core) orelse return false };
     @atomicStore(u32, &prepared[core], 1, .release);
+    // Preserve the original IRQ-off bootstrap assertions, but not across the
+    // potentially long, linear Heap.init above. No worker can enter yet.
+    const previous = asm volatile ("csrrci %[previous], mstatus, 8"
+        : [previous] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     const owner = &owners[core];
     for ([_][2]usize{ .{ 0, 1 }, .{ 8, 3 }, .{ std.math.maxInt(usize), 64 } }) |request| {
         if (alloc(request[0], request[1])) |_| return false else |err| {

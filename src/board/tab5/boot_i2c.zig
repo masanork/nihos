@@ -11,6 +11,8 @@ pub fn Master(comptime Pins: type) type {
     return struct {
         pins: Pins,
         transactions: u32 = 0,
+        data_pin: u32 = sda,
+        clock_pin: u32 = scl,
         const Self = @This();
 
         /// Only before the first transaction, with exclusive boot ownership.
@@ -18,19 +20,19 @@ pub fn Master(comptime Pins: type) type {
         pub fn clearBootBus(self: *Self) Error!u32 {
             if (self.transactions != 0) return error.InvalidTransfer;
             defer {
-                self.pins.release(sda, true);
-                self.pins.release(scl, true);
+                self.pins.release(self.data_pin, true);
+                self.pins.release(self.clock_pin, true);
             }
-            self.pins.release(sda, true);
+            self.pins.release(self.data_pin, true);
             try self.highClock();
-            if (self.pins.level(sda)) return 0;
+            if (self.pins.level(self.data_pin)) return 0;
             for (1..10) |pulse| {
                 try self.lowClock();
                 try self.highClock();
-                if (self.pins.level(sda)) {
+                if (self.pins.level(self.data_pin)) {
                     try self.lowClock();
                     try self.stop();
-                    if (!self.pins.level(sda)) return error.BusBusy;
+                    if (!self.pins.level(self.data_pin)) return error.BusBusy;
                     return @intCast(pulse);
                 }
             }
@@ -41,44 +43,44 @@ pub fn Master(comptime Pins: type) type {
             if (!self.pins.delay(5)) return error.Timer;
         }
         fn highClock(self: *Self) Error!void {
-            self.pins.release(scl, true);
+            self.pins.release(self.clock_pin, true);
             for (0..200) |_| {
-                if (self.pins.level(scl)) return self.pause();
+                if (self.pins.level(self.clock_pin)) return self.pause();
                 try self.pause();
             }
             return error.ClockTimeout;
         }
         fn lowClock(self: *Self) Error!void {
-            self.pins.release(scl, false);
+            self.pins.release(self.clock_pin, false);
             try self.pause();
         }
         fn start(self: *Self) Error!void {
-            self.pins.release(sda, true);
+            self.pins.release(self.data_pin, true);
             try self.highClock();
-            if (!self.pins.level(sda)) return error.BusBusy;
-            self.pins.release(sda, false);
+            if (!self.pins.level(self.data_pin)) return error.BusBusy;
+            self.pins.release(self.data_pin, false);
             try self.pause();
             try self.lowClock();
         }
         fn stop(self: *Self) Error!void {
-            self.pins.release(sda, false);
+            self.pins.release(self.data_pin, false);
             try self.pause();
             try self.highClock();
-            self.pins.release(sda, true);
+            self.pins.release(self.data_pin, true);
             try self.pause();
         }
         fn writeBit(self: *Self, bit: bool) Error!void {
-            self.pins.release(sda, bit);
+            self.pins.release(self.data_pin, bit);
             try self.pause();
             try self.highClock();
-            if (bit and !self.pins.level(sda)) return error.ArbitrationLost;
+            if (bit and !self.pins.level(self.data_pin)) return error.ArbitrationLost;
             try self.lowClock();
         }
         fn readBit(self: *Self) Error!bool {
-            self.pins.release(sda, true);
+            self.pins.release(self.data_pin, true);
             try self.pause();
             try self.highClock();
-            const bit = self.pins.level(sda);
+            const bit = self.pins.level(self.data_pin);
             try self.lowClock();
             return bit;
         }
@@ -101,8 +103,8 @@ pub fn Master(comptime Pins: type) type {
             if (address >= 128 or write.len > 64 or read.len > 64 or (write.len == 0 and read.len == 0)) return error.InvalidTransfer;
             errdefer {
                 // Do not issue STOP after arbitration loss: just release both.
-                self.pins.release(scl, true);
-                self.pins.release(sda, true);
+                self.pins.release(self.clock_pin, true);
+                self.pins.release(self.data_pin, true);
             }
             try self.start();
             if (write.len != 0) {

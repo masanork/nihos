@@ -1,16 +1,17 @@
 //! Real checkpoints, independent of animation time and of the text-log ring.
 const std = @import("std");
-pub const Stage = enum(u8) { crt, memory, storage, display_prepare, cores, display_scanout, console };
+pub const Stage = enum(u8) { crt, memory, storage, display_prepare, cores, display_scanout, console, input };
 pub const Outcome = enum(u8) { pending, running, complete, unavailable, failed };
-pub const Key = enum { escape, break_boot, other };
+pub const Key = enum { escape, break_boot, splash, resume_boot, other };
 pub const Model = struct {
-    outcomes: [7]Outcome = @splat(.pending),
+    outcomes: [8]Outcome = @splat(.pending),
     active: ?Stage = null,
     last_complete: ?Stage = null,
     failed: ?Stage = null,
     error_code: u32 = 0,
     failure_latched: bool = false,
     input_available: bool = false,
+    input_sources: u8 = 0,
     details: bool = false,
     pause_requested: bool = false,
     pub noinline fn begin(self: *Model, stage: Stage) bool {
@@ -27,7 +28,8 @@ pub const Model = struct {
         return true;
     }
     pub fn unavailable(self: *Model, stage: Stage) bool {
-        if (self.failure_latched or self.outcomes[@backingInt(stage)] != .pending) return false;
+        if (self.failure_latched or (self.outcomes[@backingInt(stage)] != .pending and self.active != stage)) return false;
+        if (self.active == stage) self.active = null;
         self.outcomes[@backingInt(stage)] = .unavailable;
         return true;
     }
@@ -43,10 +45,26 @@ pub const Model = struct {
     /// It requests a view/pause; it does not execute a shell or unwind a driver.
     pub fn onKey(self: *Model, key: Key) bool {
         if (!self.input_available or key == .other) return false;
-        self.details = true;
-        if (key == .break_boot) self.pause_requested = true;
+        switch (key) {
+            .escape => self.details = true,
+            .break_boot => {
+                if (self.failure_latched or self.outcomes[@backingInt(Stage.console)] == .complete) return false;
+                self.details = true;
+                self.pause_requested = true;
+            },
+            .splash => {
+                if (self.failure_latched) return false;
+                self.details = false;
+            },
+            .resume_boot => {
+                if (self.failure_latched) return false;
+                self.pause_requested = false;
+            },
+            .other => return false,
+        }
         return true;
     }
+
     pub fn atSafeCheckpoint(self: *const Model) bool {
         return self.pause_requested and self.active == null and !self.failure_latched;
     }
@@ -106,4 +124,27 @@ test "failure between operations is sticky without inventing a failed stage" {
     try std.testing.expect(!model.begin(.cores));
     model.fail(8);
     try std.testing.expectEqual(@as(u32, 7), model.error_code);
+}
+
+test "resume releases a deliberate checkpoint but cannot resume a failed boot" {
+    var model = Model{ .input_available = true };
+    try std.testing.expect(model.begin(.cores));
+    try std.testing.expect(model.onKey(.break_boot));
+    try std.testing.expect(!model.atSafeCheckpoint());
+    try std.testing.expect(model.complete(.cores));
+    try std.testing.expect(model.atSafeCheckpoint());
+    try std.testing.expect(model.onKey(.resume_boot));
+    try std.testing.expect(!model.atSafeCheckpoint());
+    try std.testing.expect(model.onKey(.splash));
+    try std.testing.expect(!model.details);
+    try std.testing.expect(model.begin(.console));
+    model.fail(7);
+    for ([_]Key{ .splash, .break_boot, .resume_boot }) |key| try std.testing.expect(!model.onKey(key));
+    try std.testing.expect(model.onKey(.escape));
+    try std.testing.expect(model.details and model.failure_latched);
+    try std.testing.expect(!model.complete(.console));
+    var ready = Model{ .input_available = true };
+    try std.testing.expect(ready.begin(.console) and ready.complete(.console));
+    try std.testing.expect(!ready.onKey(.break_boot));
+    try std.testing.expect(!ready.atSafeCheckpoint());
 }

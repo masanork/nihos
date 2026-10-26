@@ -1,4 +1,4 @@
-"""Validate physical read-only snapshot evidence without claiming keyboard support."""
+"""Validate static/live device records; optical and real keys remain separate."""
 import importlib.util
 import json
 from pathlib import Path
@@ -62,6 +62,61 @@ class NativeCurrentConsoleTests(unittest.TestCase):
             self.assertIn(old, CURRENT_LOG)
             with self.subTest(old=old), self.assertRaises(ValueError):
                 DISPLAY.check(CURRENT_LOG.replace(old, new), CURRENT_IMAGE, 2, 80, require_console=True)
+
+
+LIVE_LOG = (ROOT / 'docs/measurements/2026-10-27-native-console-live.log').read_text()
+LIVE_IMAGE = json.loads((ROOT / 'docs/measurements/2026-10-27-native-console-live.json').read_text())['image_audit']
+
+class NativeLiveConsoleTests(unittest.TestCase):
+    def check(self, log=LIVE_LOG):
+        return DISPLAY.check(log, LIVE_IMAGE, 2, 80, require_console=True, require_live_controls=True)
+
+    def test_live_core_run_and_all_serial_controls(self):
+        live = self.check()['live']
+        self.assertEqual(live['ready']['target'], 255)
+        self.assertGreater(live['resumes'][0]['frames'], live['pauses'][0]['frames'])
+        self.assertFalse(live['keyboard_escape_seen'])
+
+    def test_single_field_records_keep_the_entire_hex_number(self):
+        self.assertEqual(DISPLAY.NATIVE.fixed_record('TEST frames=00000542\n', 'TEST', ('frames',)), {'frames': 0x542})
+        with self.assertRaises(ValueError):
+            self.check(LIVE_LOG.replace('tx_dropped=00000000', 'tx_dropped=00000001'))
+
+    def test_missing_records_or_invented_input_are_rejected(self):
+        for marker in ('NIHOS_NATIVE_UI_START ', 'NIHOS_NATIVE_UI_READY ', 'NIHOS_NATIVE_UI_SETTLED ',
+                       'NIHOS_NATIVE_UI_PAUSE ', 'NIHOS_NATIVE_UI_RESUME ', 'NIHOS_NATIVE_KEYBOARD '):
+            line = next(line for line in LIVE_LOG.splitlines() if line.startswith(marker))
+            with self.subTest(marker=marker), self.assertRaises(ValueError):
+                self.check(LIVE_LOG.replace(line, ''))
+
+    def test_bad_key_source_usage_and_acceptance_are_rejected(self):
+        for old, new in (('usage=0000001b', 'usage=00000029'), ('source=00000001 action=', 'source=00000004 action='),
+                         ('accepted=00000001 view=', 'accepted=00000000 view='), ('clock_hz=000f4240', 'clock_hz=00000000'),
+                         ('target=000000ff', 'target=000000fe'), ('input=00000001', 'input=00000000'),
+                         ('last_stage=00000005', 'last_stage=00000000')):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                self.check(LIVE_LOG.replace(old, new))
+
+    def test_a_late_snapshot_cannot_masquerade_as_live_boot(self):
+        line = next(line for line in LIVE_LOG.splitlines() if line.startswith('NIHOS_NATIVE_UI_START '))
+        with self.assertRaises(ValueError):
+            self.check(LIVE_LOG.replace(line + '\n', '') + line + '\n')
+
+    def test_injected_failure_remains_inspectable_without_resuming(self):
+        log = (ROOT / 'docs/measurements/2026-10-27-native-console-live-fault.log').read_text()
+        self.assertIn('NIHOS_NATIVE_UI_FAILURE visible=1 scheduler=stopped', log)
+        keys = DISPLAY.NATIVE.repeated_records(log, 'NIHOS_NATIVE_DIAGNOSTIC_KEY', DISPLAY.KEY)
+        self.assertEqual([key['action'] for key in keys], [1, 2, 4, 3])
+        self.assertEqual([key['accepted'] for key in keys], [1, 0, 0, 0])
+        self.assertTrue(all(key['view'] == 1 for key in keys))
+        self.assertGreater(keys[-1]['frames'], keys[0]['frames'])
+        with self.assertRaises(ValueError):
+            self.check(log)
+
+    def test_failed_hardware_attempts_cannot_count_as_success(self):
+        for name in ('live-01', 'live-02'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                self.check((ROOT / f'docs/measurements/2026-10-27-native-console-{name}-failed.log').read_text())
 
 if __name__ == '__main__':
     unittest.main()

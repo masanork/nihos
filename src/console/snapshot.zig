@@ -20,7 +20,15 @@ pub noinline fn fill(grid: anytype, model: *const stages.Model, spans: [2][]cons
     grid.write(if (model.last_complete) |stage| @tagName(stage) else "none");
     grid.write("   active: ");
     grid.write(if (model.active) |stage| @tagName(stage) else "none");
-    grid.write(if (model.input_available) "   input: available\n" else "   input: not initialized\n");
+    grid.write("   input: ");
+    grid.write(if (!model.input_available) "not initialized" else switch (model.input_sources) {
+        1 => "serial",
+        2 => "keyboard",
+        3 => "keyboard+serial",
+        else => "available",
+    });
+    if (model.atSafeCheckpoint()) grid.write(" [PAUSED]");
+    grid.write("\n");
     status(grid, model, .crt);
     grid.write("   ");
     status(grid, model, .memory);
@@ -35,6 +43,7 @@ pub noinline fn fill(grid: anytype, model: *const stages.Model, spans: [2][]cons
     grid.write("   ");
     status(grid, model, .display_scanout);
     grid.write("\n");
+    if (model.input_available) grid.write("Esc logs | Ctrl-L splash | Ctrl-B pause | Ctrl-R resume\n");
     grid.write(if (dropped == 0) "\n" else "[older log bytes discarded]\n");
 }
 fn status(grid: anytype, model: *const stages.Model, stage: stages.Stage) void {

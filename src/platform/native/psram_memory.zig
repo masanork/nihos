@@ -19,6 +19,29 @@ const IO = struct {
     }
     pub fn sync(_: IO, operation: mapping.Operation, address: u32, length: u32) bool {
         ioFence();
+        // Live display IRQs also issue ROM cache commands for DMA descriptors.
+        // Serialize each bounded chunk locally; CPU1 never calls this mapper.
+        if (@import("native_options").console_live) {
+            const status = asm volatile ("csrr %[status], mstatus"
+                : [status] "=r" (-> u32),
+            );
+            if (status & 8 != 0) {
+                var offset: u32 = 0;
+                while (offset < length) {
+                    const count = @min(@as(u32, 1024), length - offset);
+                    asm volatile ("csrci mstatus, 8" ::: .{ .memory = true });
+                    const result = switch (operation) {
+                        .invalidate => nih_rom_cache_invalidate((1 << 4) | (1 << 5), address + offset, count),
+                        .writeback => nih_rom_cache_writeback((1 << 4) | (1 << 5), address + offset, count),
+                    };
+                    asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+                    if (result != 0) return false;
+                    offset += count;
+                }
+                ioFence();
+                return true;
+            }
+        }
         // The physical rev1.3 bridge failed with L2 alone: dirty CPU writes
         // to the nonidentity windows were not visible through MSPI3. Include
         // the shared L1 data cache in the ROM's ordered data-cache operation.
