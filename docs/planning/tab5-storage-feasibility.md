@@ -13,7 +13,7 @@ VMs and retained history are optional workloads with their own admission
 budgets. [The unified-store proposal](unified-log-store.md) defines the
 longer-term boundary; this assessment narrows its first delivery scope.
 
-## Memory map and present capacity
+## Memory map and retained baseline
 
 All ranges below are half-open. The device snapshot is ESP32-P4 rev1.3 with
 32 MiB PSRAM and 16 MiB Flash. The retained loader selects a 128 KiB L2 cache.
@@ -31,7 +31,7 @@ Other silicon/cache configurations require separate bounds.
 | `0x48000000..0x48030000` | 192 KiB reserved PSRAM mapping/handoff/workspace windows | Centralize ownership; growing a workspace must not overlap IPC or test words |
 | `0x48030000..0x4a000000` | Registered PSRAM tail | Current two owner heaps expose 32,045,696 B payload in total |
 
-The candidate high RW window is 384 KiB, of which 56 KiB is already the stack
+The baseline candidate high RW window is 384 KiB, of which 56 KiB is already the stack
 bank. The other 328 KiB is source-supported space, not a qualified heap.
 Together with the 160 KiB low region, this gives a 544 KiB planning envelope;
 it does not turn the chip's cache or ROM reservations into normal RAM.
@@ -48,6 +48,35 @@ The [retained evidence summary](tab5-memory-evidence.json) binds these numbers
 to native source `1182a74` and its exact image hashes. That image passed three
 USB RTS boots with SD reads, file reads, cancellation, endpoint replacement
 and in-memory SQLite. These are not writable-store or power-loss results.
+
+### Follow-up qualification, 2026-10-27
+
+Local source `8a66e2689714bc48bac3edcb2df5101094d3f7d1` subsequently passed
+three physical USB RTS boots under one exclusive serial descriptor, with
+loader/table/app verification before and after capture. All 328 KiB passed
+full-word pattern/inverse tests and CPU0/CPU1 exchange. A 208 KiB page pool
+passed full allocation, stale/foreign lease rejection, four-worker use and
+complete recovery. Its four software guard pages consume 16 KiB; the other
+32 KiB and 72 KiB are reserved for future DMA and stack expansion respectively.
+These reservations are not DMA transfers or stack admission implementations.
+
+The qualified image has 112,128 B primary static and 51,712 B low heap.
+Together with the new 212,992 B pool, gross internal heap reservation is
+258.5 KiB. This supports the 256 KiB heap / 128 KiB stack layout arithmetic,
+but the old 16 KiB unassigned margin is now a guard reservation. There is
+no additional 16 KiB free region to spend. Keep the 64 KiB post-startup
+free-heap admission requirement and remeasure resident growth per feature.
+
+The same page allocator also passed exact 4 MiB and 8 MiB PSRAM backing
+charges and full-word reads/writes in a temporary pre-heap window. Normal
+PSRAM buddy heaps and their CPU split remain unchanged; retain their
+conservative VM charge below until production broker integration is qualified.
+The option defaults off and rejects emulator profiles. Existing SD/FS/RPC
+cleanup/rebind and SQLite fixtures passed all three boots and fresh SDK
+reference comparisons. This does not qualify writes, power loss or a full
+development workload. The image and evidence are retained in
+`/Users/masanork/Documents/Codex/2026-10-27/nihos-tab5-high-sram-qualification`;
+these commits remain local and are not merged into upstream main.
 
 ## Standard admission budgets
 
@@ -72,7 +101,7 @@ must not revoke sibling tasks' still-live application resources.
 | Task and IRQ stacks | 128 |
 | Fixed DMA and I/O buffers | 32 |
 | Reusable internal heap | 256 |
-| Unassigned headroom | 16 |
+| Software guard reservation | 16 |
 | Total | 544 |
 
 The stack budget covers two 8 KiB bootstrap tasks, two 8 KiB heavy services,
@@ -83,7 +112,9 @@ default. Exact port measurements may change those reservations. Admission must r
 before creating tasks and retain at least 64 KiB internal free capacity after
 standard services start. Peak usage, largest free block and allocation failures
 must accompany total-free statistics. These are proposed budgets; the current
-56 KiB stack layout and 59,648 B low heap cannot meet them without expansion.
+56 KiB stack layout still needs admission/expansion work. The follow-up's
+208 KiB high page pool establishes capacity without implementing the complete
+application-facing heap or stack policy.
 
 Keep interrupt/ROM-facing state and DMA staging internal. VM heaps, editor
 buffers, filesystem maps/caches and RPC payloads belong in PSRAM when their
@@ -219,8 +250,9 @@ migration protection need a separate reviewed map.
 
 ## Delivery and acceptance
 
-1. Qualify the extra high SRAM against the exact loader/cache configuration;
-   add reusable internal pools and stack admission. Fix large PSRAM allocation
+1. High SRAM cell/SMP/page-pool qualification passed on the exact retained
+   loader/cache configuration. Integrate reusable internal pools with the
+   general memory broker and add stack admission. Fix large PSRAM allocation
    rounding and quota accounting before integrating bigger application heaps.
 2. Bring up ordinary VFS/adapters and development workflows independently of
    the experimental store. Verify app-owned handles, bounded buffers, media
