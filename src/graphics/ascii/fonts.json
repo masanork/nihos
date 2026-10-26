@@ -1,0 +1,22 @@
+{
+  "jetbrains": {
+    "name": "JetBrains Mono Medium",
+    "revision": "19371302b95d218af43299bce79ddbddd0bc364d",
+    "repository": "https://github.com/JetBrains/JetBrainsMono",
+    "path": "fonts/ttf/JetBrainsMono-Medium.ttf",
+    "sha256": "d16e6dc99672734698d629705f617c79f6eb6040f5113efe3a145204dc988109",
+    "pixel_size": 24,
+    "license": "OFL-1.1",
+    "use": "Generation-time input only; printable ASCII masks embedded"
+  },
+  "source_code": {
+    "name": "Source Code Pro Medium",
+    "revision": "803b7e23ec97ae58b6232ea76519a76d428ba268",
+    "repository": "https://github.com/adobe-fonts/source-code-pro",
+    "path": "TTF/SourceCodePro-Medium.ttf",
+    "sha256": "f9dbc746f60c83f5cb1503b19f90729d8195cab6bb67f2b861d4eb257ed86536",
+    "pixel_size": 25,
+    "license": "OFL-1.1",
+    "use": "Generation-time input only; printable ASCII masks embedded"
+  }
+}

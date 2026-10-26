@@ -5,6 +5,7 @@ const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
 const record_log = @import("record_log");
+const text_console = @import("text_console");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 
@@ -33,6 +34,66 @@ var progress = [_]u32{ 0, 0 };
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
 var display_refresh_reported = false;
+const DiagnosticState = if (options.console) struct {
+    var journal = text_console.Journal(2048){};
+    var boot = text_console.boot.Model{};
+} else struct {};
+
+noinline fn stageBegin(stage: text_console.boot.Stage) void {
+    if (options.console and !DiagnosticState.boot.begin(stage)) fail("boot stage begin");
+}
+noinline fn stageComplete(stage: text_console.boot.Stage) void {
+    if (options.console and !DiagnosticState.boot.complete(stage)) fail("boot stage completion");
+}
+fn maskInterrupts() u32 {
+    return asm volatile ("csrrci %[previous], mstatus, 8"
+        : [previous] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+}
+fn restoreInterrupts(previous: u32) void {
+    if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+}
+
+/// Single CPU0 snapshot after native qualification; never called from an IRQ.
+noinline fn showDiagnosticSnapshot() void {
+    if (!options.console) return;
+    stageBegin(.console);
+    var grid = text_console.Grid(text_console.raster.columns, text_console.raster.rows){};
+    // Console model/glyph grid is initialized. Presentation is a separate gate.
+    stageComplete(.console);
+    const previous = maskInterrupts();
+    text_console.snapshot.fill(&grid, &DiagnosticState.boot, DiagnosticState.journal.spans(), DiagnosticState.journal.dropped);
+    restoreInterrupts(previous);
+    const frame: [*]u8 = @ptrFromInt(@import("tab5_display").framebuffer);
+    const bytes = @import("tab5_display").frame_bytes;
+    const palette: text_console.raster.Palette = @fromBackingInt(@intCast(options.console_palette));
+    if (!text_console.raster.paintFace(".flash.rodata.display", @fromBackingInt(options.console_font), frame[0..bytes], 1440, &grid, palette)) fail("console raster");
+    if (nih_rom_cache_writeback((1 << 4) | (1 << 5), @import("tab5_display").framebuffer, bytes) != 0) fail("console cache");
+    if (!tasks.memory.stacks.finish(0)) fail("console stack guards");
+    const report: extern struct { status: u32, columns: u32, rows: u32, log_bytes: u32, dropped_low: u32, input: u32 } = .{
+        .status = 1,
+        .columns = text_console.raster.columns,
+        .rows = text_console.raster.rows,
+        .log_bytes = @intCast(DiagnosticState.journal.length),
+        .dropped_low = @truncate(DiagnosticState.journal.dropped),
+        .input = 0,
+    };
+    logger.record("NIHOS_NATIVE_CONSOLE", null, .{ "status", "columns", "rows", "log_bytes", "dropped_low", "input" }, &report);
+    const selected = text_console.raster.colors(palette);
+    const style: extern struct { cell_width: u32, cell_height: u32, palette: u32, foreground: u32, accent: u32, background: u32, font: u32 } = .{
+        .cell_width = text_console.raster.cell_width,
+        .cell_height = text_console.raster.cell_height,
+        .palette = options.console_palette,
+        .foreground = selected.foreground,
+        .accent = selected.accent,
+        .background = selected.background,
+        .font = options.console_font,
+    };
+    logger.record("NIHOS_NATIVE_CONSOLE_STYLE", null, .{ "cell_width", "cell_height", "palette", "foreground", "accent", "background", "font" }, &style);
+}
+extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
+
 var initialized: u32 = 0x4e494853;
 
 fn reg(address: usize) *volatile u32 {
@@ -40,6 +101,16 @@ fn reg(address: usize) *volatile u32 {
 }
 
 noinline fn print(message: []const u8) void {
+    if (options.console) {
+        const hart = asm volatile ("csrr %[hart], mhartid"
+            : [hart] "=r" (-> u32),
+        );
+        if (hart == 0) {
+            const previous = maskInterrupts();
+            DiagnosticState.journal.append(message);
+            restoreInterrupts(previous);
+        }
+    }
     for (message) |byte| {
         if (byte == '\n') _ = nih_rom_putc('\r');
         _ = nih_rom_putc(byte);
@@ -65,6 +136,12 @@ noinline fn hex(value: u32) void {
 
 fn fail(reason: []const u8) noreturn {
     asm volatile ("csrci mstatus, 8");
+    if (options.console) {
+        const hart = asm volatile ("csrr %[hart], mhartid"
+            : [hart] "=r" (-> u32),
+        );
+        if (hart == 0) DiagnosticState.boot.fail(1);
+    }
     print("NIHOS_NATIVE_FAIL ");
     print(reason);
     print("\n");
@@ -323,6 +400,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
 
 export fn nih_native_main() callconv(.c) noreturn {
     watchdogOff();
+    stageBegin(.crt);
     if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
     interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
@@ -337,6 +415,8 @@ export fn nih_native_main() callconv(.c) noreturn {
     asm volatile ("ecall" ::: .{ .memory = true });
     if (exceptions[0] != 1) fail("CPU0 exception return");
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    stageComplete(.crt);
+    stageBegin(.memory);
     if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
@@ -391,7 +471,10 @@ export fn nih_native_main() callconv(.c) noreturn {
         const sweep = native_psram.memory.fullSweep(external.mapping.bytes);
         logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
     }
+    stageComplete(.memory);
+    if (options.console and !options.sdmmc) _ = DiagnosticState.boot.unavailable(.storage);
     if (options.sdmmc) {
+        stageBegin(.storage);
         const sd = @import("sdmmc_probe.zig").run(timer(0));
         logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
         for (0..sd.stage_count) |phase| {
@@ -405,11 +488,13 @@ export fn nih_native_main() callconv(.c) noreturn {
         }
         if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
         if (sd.status != 1) fail("SDMMC probe");
+        stageComplete(.storage);
     }
     var external_heap_start = native_psram.memory.heap_start;
     var display_panel: u32 = 0;
     var external_heap_bytes = external.mapping.bytes -| native_psram.memory.reserved_bytes;
     if (options.display) {
+        stageBegin(.display_prepare);
         const selected = @import("tab5_display").layout(external.mapping.bytes) orelse fail("display requires mapped PSRAM");
         const display = @import("display_probe.zig").run(timer(0), selected);
         logger.record("NIHOS_NATIVE_DISPLAY_PREP", null, .{ "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight" }, &display);
@@ -419,7 +504,9 @@ export fn nih_native_main() callconv(.c) noreturn {
         display_panel = display.panel;
         external_heap_start = selected.heap_start;
         external_heap_bytes = selected.heap_bytes;
+        stageComplete(.display_prepare);
     }
+    stageBegin(.cores);
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
@@ -509,7 +596,9 @@ export fn nih_native_main() callconv(.c) noreturn {
                 flashReport(0);
                 flashReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
+                stageComplete(.cores);
                 if (options.display_scanout) {
+                    stageBegin(.display_scanout);
                     const display = @import("display_runtime.zig");
                     // Scheduler qualification has finished. Retire its CPU0
                     // timer route before borrowing the counter for DCS waits.
@@ -535,6 +624,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                     if (options.display_sram or options.psram_200) logger.record("NIHOS_NATIVE_DISPLAY_TIMING", null, .{ "pixel_hz", "refresh_millihz", "htotal", "vtotal" }, &rates);
                     logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
                     if (screen.status != 1) fail("display scanout startup");
+                    stageComplete(.display_scanout);
+                    showDiagnosticSnapshot();
                 }
                 while (true) asm volatile ("wfi");
             }
