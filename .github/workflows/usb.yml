@@ -62,10 +62,10 @@ jobs:
           sh tools/check-card-rv32.sh
           python3 -m unittest discover -s tools -p '*test.py'
 
-      - name: Compile disabled, USB-only, JPKI, card and touch images
+      - name: Compile PIN-free probes, keypad and local card-read images
         # Build/image audit only. GitHub runners provide no Tab5/card evidence.
         run: |
-          for feature in disabled usb jpki card touch keypad; do
+          for feature in disabled usb jpki card touch keypad card-read; do
             export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0 NIHOS_NATIVE_TOUCH_CHECK=0
             case "$feature" in
               usb) export NIHOS_NATIVE_USB=1 ;;
@@ -73,6 +73,7 @@ jobs:
               card) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=1 NIHOS_NATIVE_CARD_CHECK=1 ;;
               touch) export NIHOS_NATIVE_DISPLAY=6 NIHOS_NATIVE_TOUCH_CHECK=1 ;;
               keypad) export NIHOS_NATIVE_DISPLAY=8 ;;
+              card-read) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=9 ;;
             esac
             sh tools/build-native.sh device integer
             destination="build/usb-ci/$feature"
