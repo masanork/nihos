@@ -1,14 +1,20 @@
 # Built-in diagnostic console faces
 
-The active console uses printable ASCII U+0020–U+007E baked from a monospace
-outline font at its intended size, with 4-bit coverage and runs of 1–16 pixels.
-The masks are 15x30-pixel cells; no glyph is stretched to change its aspect.
+The default console returns to the initial printable ASCII 8x8 bitmap in
+16x16 cells (78 columns, 43 rows). Option 3 softens only exposed right/bottom
+stroke edges to half coverage, with quarter coverage at their shared corner;
+interior pixels and the original glyph shapes/advance remain unchanged.
+Option 0 reproduces the original solid 2x bitmap. Pale green is independent
+of font choice. Larger outline-derived faces remain optional.
 
 | Native font option | Face | Size | Mask bytes | Offset bytes |
 | --- | --- | ---: | ---: | ---: |
+| 0 | Original VGA bitmap | 8x8 at 2x | 760 | 0 |
+| 3 (default) | Original VGA, lighter edges | 8x8 at 2x | 760 | 0 |
 | 1 | JetBrains Mono Medium | 24 px | 10,761 | 380 |
 | 2 | Source Code Pro Medium | 25 px | 10,597 | 380 |
 
+The large-face masks use 4-bit coverage and runs of 1–16 pixels in 15x30 cells.
 Only the selected face is linked into the existing read-only Flash span. The
 entire source font, an outline parser and FreeType are generation-time inputs,
 not native runtime dependencies. Japanese UD fonts remain deferred to the

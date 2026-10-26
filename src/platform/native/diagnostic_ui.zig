@@ -32,6 +32,26 @@ var keyboard = console.keyboard.Keyboard(@TypeOf(bus)){ .bus = &bus };
 var hardware_ready = false;
 var revision: u32 = 0;
 var shown_revision: u32 = 0;
+const face: console.raster.Face = @fromBackingInt(options.console_font);
+const geometry = console.raster.Layout(face);
+const Text = console.Grid(geometry.columns, geometry.rows);
+const Renderer = console.raster.Renderer(".flash.rodata.display", face);
+// Unused tail of the existing private display reservation, not owner heaps.
+const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
+const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
+var renderer_ready = false;
+var max_scroll_us: u32 = 0;
+var max_copy_us: u32 = 0;
+var max_cache_us: u32 = 0;
+var max_cache_chunk_us: u32 = 0;
+var line_step_us: u32 = 0;
+comptime {
+    if (@sizeOf(Renderer) + @sizeOf(Text) > board.reserve_bytes - board.frame_bytes or @alignOf(Renderer) > 64)
+        @compileError("console renderer exceeds private display tail");
+}
+fn palette() console.raster.Palette {
+    return @fromBackingInt(@intCast(options.console_palette));
+}
 
 fn mask() u32 {
     return asm volatile ("csrrci %[previous], mstatus, 8"
@@ -50,6 +70,7 @@ pub noinline fn append(message: []const u8) void {
     if (hart != 0) return;
     const previous = if (options.console_live) 0 else mask();
     journal.append(message);
+    if (renderer_ready) live_text.write(message);
     @atomicStore(u32, &dirty, 1, .release);
     if (!options.console_live) restore(previous);
 }
@@ -96,6 +117,46 @@ fn present() bool {
     }
     return tasks.memory.stacks.bootGuardsIntact(0);
 }
+fn presentDamage() bool {
+    const damage = renderer.takeDamage();
+    if (damage.empty()) return true;
+    if (damage.left == 0 and damage.top == 0 and damage.right == 1280 and damage.bottom == 720) return present();
+    if (damage.bottom - damage.top >= 256) {
+        const start = ((1280 - damage.right) * 1440 + damage.top * 2) & ~@as(usize, 63);
+        const end = ((1279 - damage.left) * 1440 + damage.bottom * 2 + 63) & ~@as(usize, 63);
+        return flushSpan(start, end);
+    }
+    // Rotation maps each logical rectangle to contiguous physical row spans.
+    // Expand to cache lines without escaping the reserved framebuffer.
+    for (1280 - damage.right..1280 - damage.left) |y| {
+        const offset: usize = (y * 1440 + damage.top * 2) & ~@as(usize, 63);
+        const end = (y * 1440 + damage.bottom * 2 + 63) & ~@as(usize, 63);
+        if (!flushSpan(offset, end)) return false;
+    }
+    return tasks.memory.stacks.bootGuardsIntact(0);
+}
+fn flushSpan(start: usize, end: usize) bool {
+    var offset = start;
+    while (offset < end) {
+        const length = @min(16384, end - offset);
+        const previous = mask();
+        const before = clock.timer().counter() orelse {
+            restore(previous);
+            return false;
+        };
+        const result = nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer + @as(u32, @intCast(offset)), @intCast(length));
+        const after = clock.timer().counter() orelse {
+            restore(previous);
+            return false;
+        };
+        restore(previous);
+        max_cache_chunk_us = @max(max_cache_chunk_us, @as(u32, @intCast(@min(after - before, 0xffff_ffff))));
+        if (result != 0) return false;
+        if (previous & 8 == 0) runtime.onInterrupt();
+        offset += length;
+    }
+    return tasks.memory.stacks.bootGuardsIntact(0);
+}
 fn status() boot.Status {
     if (model.failure_latched) return .failed;
     const stage = model.active orelse model.last_complete orelse return .display;
@@ -109,11 +170,20 @@ fn status() boot.Status {
     };
 }
 noinline fn drawDetails() bool {
-    var grid = console.Grid(console.raster.columns, console.raster.rows){};
+    if (!renderer_ready) {
+        // Avoid a multi-kilobyte default-value constant in scarce SRAM.
+        @memset(@import("std").mem.asBytes(renderer), 0);
+        @memset(@import("std").mem.asBytes(live_text), 0);
+        console.snapshot.fill(live_text, &model, journal.spans(), journal.dropped);
+        renderer_ready = true;
+    }
+    if (!shown_details) renderer.invalidate();
+    // A real stage transition must publish its header before entering work.
+    if (renderer.moving() and !renderer.finish(frame(), 1440, palette())) return false;
     const previous = if (options.console_live) 0 else mask();
-    console.snapshot.fill(&grid, &model, journal.spans(), journal.dropped);
+    console.snapshot.refreshHeader(live_text, &model, journal.dropped);
     if (!options.console_live) restore(previous);
-    return console.raster.paintFace(".flash.rodata.display", @fromBackingInt(options.console_font), frame(), 1440, &grid, @fromBackingInt(@intCast(options.console_palette))) and present();
+    return renderer.submit(frame(), 1440, live_text, palette()) and presentDamage();
 }
 pub noinline fn snapshot() bool {
     if (!options.console) return true;
@@ -124,8 +194,8 @@ pub noinline fn report(log: anytype) void {
     if (!options.console) return;
     const values: extern struct { status: u32, columns: u32, rows: u32, log_bytes: u32, dropped_low: u32, input: u32 } = .{
         .status = 1,
-        .columns = console.raster.columns,
-        .rows = console.raster.rows,
+        .columns = geometry.columns,
+        .rows = geometry.rows,
         .log_bytes = @intCast(journal.length),
         .dropped_low = @truncate(journal.dropped),
         .input = @intFromBool(model.input_available),
@@ -133,8 +203,8 @@ pub noinline fn report(log: anytype) void {
     log.record("NIHOS_NATIVE_CONSOLE", null, .{ "status", "columns", "rows", "log_bytes", "dropped_low", "input" }, &values);
     const selected = console.raster.colors(@fromBackingInt(@intCast(options.console_palette)));
     const style: extern struct { cell_width: u32, cell_height: u32, palette: u32, foreground: u32, accent: u32, background: u32, font: u32 } = .{
-        .cell_width = console.raster.cell_width,
-        .cell_height = console.raster.cell_height,
+        .cell_width = geometry.cell_width,
+        .cell_height = geometry.cell_height,
         .palette = options.console_palette,
         .foreground = selected.foreground,
         .accent = selected.accent,
@@ -219,7 +289,18 @@ pub noinline fn service(log: anytype) bool {
     rendering = true;
     defer rendering = false;
     if (model.details) {
-        if (full or (changed and now - last_render >= 100_000)) {
+        if (renderer_ready and renderer.moving() and new_frame) {
+            const started = clock.timer().counter() orelse return false;
+            if (!renderer.step(frame(), 1440, palette())) return false;
+            const copied = clock.timer().counter() orelse return false;
+            if (!presentDamage()) return false;
+            const ended = clock.timer().counter() orelse return false;
+            max_copy_us = @max(max_copy_us, @as(u32, @intCast(@min(copied - started, 0xffff_ffff))));
+            max_cache_us = @max(max_cache_us, @as(u32, @intCast(@min(ended - copied, 0xffff_ffff))));
+            max_scroll_us = @max(max_scroll_us, @as(u32, @intCast(@min(ended - started, 0xffff_ffff))));
+            if (renderer.distance <= geometry.cell_height * 2) line_step_us = @max(line_step_us, @as(u32, @intCast(@min(ended - started, 0xffff_ffff))));
+        }
+        if (full or (changed and (!renderer_ready or !renderer.moving()) and now - last_render >= 33_333)) {
             if (!drawDetails()) return false;
             last_render = now;
         } else if (changed) @atomicStore(u32, &dirty, 1, .release);
@@ -255,6 +336,7 @@ pub noinline fn checkpoint(log: anytype) bool {
 pub noinline fn failureFrame() bool {
     if (!options.console_live or !clock_ready or !runtime.active() or rendering or runtime.snapshot().fault != 0) return false;
     model.fail(1);
+    if (renderer_ready) renderer.invalidate();
     rendering = true;
     defer rendering = false;
     return drawDetails();
@@ -262,6 +344,10 @@ pub noinline fn failureFrame() bool {
 pub noinline fn liveReport(log: anytype, comptime ready: bool) void {
     const values: extern struct { frames: u32, clock_hz: u32, sources: u32, view: u32, progress: u32, target: u32 } = .{ .frames = runtime.snapshot().frames, .clock_hz = @as(u32, 1_000_000), .sources = @as(u32, model.input_sources), .view = @as(u32, @intFromBool(model.details)), .progress = @as(u32, progress), .target = @as(u32, model.dyeTarget()) };
     if (ready) {
+        if (renderer_ready) {
+            const stats: extern struct { full: u32, partial: u32, scrolls: u32, steps: u32, max_step_us: u32, copy_us: u32, cache_us: u32, cache_chunk_us: u32, line_step_us: u32 } = .{ .full = renderer.full_paints, .partial = renderer.partial_updates, .scrolls = renderer.scrolls, .steps = renderer.steps, .max_step_us = max_scroll_us, .copy_us = max_copy_us, .cache_us = max_cache_us, .cache_chunk_us = max_cache_chunk_us, .line_step_us = line_step_us };
+            log.record("NIHOS_NATIVE_CONSOLE_RENDER", null, .{ "full", "partial", "scrolls", "steps", "max_step_us", "copy_us", "cache_us", "cache_chunk_us", "line_step_us" }, &stats);
+        }
         const io: extern struct { tx_dropped: u32 } = .{ .tx_dropped = nih_diagnostic_serial_dropped() };
         log.record("NIHOS_NATIVE_UI_IO", null, .{"tx_dropped"}, &io);
     }

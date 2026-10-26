@@ -1,7 +1,16 @@
 //! Host bridge for the same grid/raster linked by the native console option.
 const console = @import("text_console");
 export fn nih_console_preview(frame: [*]u8, length: usize, text: [*]const u8, text_length: usize, failed: bool, palette: u32, face: u32) bool {
-    if (face < 1 or face > 2) return false;
+    if (face > 3) return false;
+    return switch (face) {
+        0 => render(.basic, frame, length, text, text_length, failed, palette),
+        1 => render(.jetbrains, frame, length, text, text_length, failed, palette),
+        2 => render(.source_code, frame, length, text, text_length, failed, palette),
+        3 => render(.basic_light, frame, length, text, text_length, failed, palette),
+        else => false,
+    };
+}
+fn render(comptime face: console.raster.Face, frame: [*]u8, length: usize, text: [*]const u8, text_length: usize, failed: bool, palette: u32) bool {
     if (palette > 2) return false;
     var journal = console.Journal(2048){};
     journal.append(text[0..text_length]);
@@ -16,8 +25,8 @@ export fn nih_console_preview(frame: [*]u8, length: usize, text: [*]const u8, te
             if (!model.begin(stage) or !model.complete(stage)) return false;
         }
     }
-    var grid = console.Grid(console.raster.columns, console.raster.rows){};
+    const L = console.raster.Layout(face);
+    var grid = console.Grid(L.columns, L.rows){};
     console.snapshot.fill(&grid, &model, journal.spans(), journal.dropped);
-    if (face == 2) return console.raster.paintFace(null, .source_code, frame[0..length], 1440, &grid, @fromBackingInt(@intCast(palette)));
-    return console.raster.paintFace(null, .jetbrains, frame[0..length], 1440, &grid, @fromBackingInt(@intCast(palette)));
+    return console.raster.paintFace(null, face, frame[0..length], 1440, &grid, @fromBackingInt(@intCast(palette)));
 }

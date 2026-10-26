@@ -118,5 +118,40 @@ class NativeLiveConsoleTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 self.check((ROOT / f'docs/measurements/2026-10-27-native-console-{name}-failed.log').read_text())
 
+SCROLL_LOG = (ROOT / 'docs/measurements/2026-10-27-native-console-scroll.log').read_text()
+SCROLL_IMAGE = json.loads((ROOT / 'docs/measurements/2026-10-27-native-console-scroll.json').read_text())['image_audit']
+
+class NativeScrollConsoleTests(unittest.TestCase):
+    def check(self, log=SCROLL_LOG):
+        return DISPLAY.check(log, SCROLL_IMAGE, 2, 80, require_console=True, require_live_controls=True)
+
+    def test_small_font_and_incremental_scroll_on_device(self):
+        report = self.check()
+        self.assertEqual((report['console']['columns'],report['console']['rows']),(78,43))
+        self.assertEqual(report['console_style']['font'],3)
+        stats = report['live']['render']
+        self.assertEqual(stats['full'],2) # entering details twice before READY
+        self.assertGreater(stats['partial'],stats['full'])
+        self.assertGreater(stats['scrolls'],0)
+        self.assertLessEqual(stats['steps'],stats['scrolls']*4)
+
+    def test_missing_render_geometry_and_unbounded_irq_interval_are_rejected(self):
+        for old,new in (('font=00000003','font=00000001'),('cell_height=00000010','cell_height=0000001e'),
+                        ('partial=00000022','partial=00000000'),('cache_chunk_us=0000001d','cache_chunk_us=00001000'),
+                        ('line_step_us=00024649','line_step_us=ffffffff')):
+            self.assertIn(old,SCROLL_LOG)
+            with self.subTest(old=old), self.assertRaises(ValueError): self.check(SCROLL_LOG.replace(old,new))
+
+    def test_retained_physical_escape_can_open_details_before_ui_start(self):
+        log = (ROOT / 'docs/measurements/2026-10-27-native-console-scroll-profile-01.log').read_text()
+        screen = DISPLAY.NATIVE.fixed_record(log,'NIHOS_NATIVE_DISPLAY_SCANOUT',DISPLAY.SCANOUT)
+        result = DISPLAY.check_live(log,screen,True)
+        self.assertTrue(result['keyboard_escape_seen'])
+        self.assertEqual(result['start']['view'],1)
+
+    def test_startup_details_without_an_input_event_is_rejected(self):
+        line = next(line for line in SCROLL_LOG.splitlines() if line.startswith('NIHOS_NATIVE_UI_START '))
+        with self.assertRaises(ValueError): self.check(SCROLL_LOG.replace(line,line.replace('view=00000000','view=00000001')))
+
 if __name__ == '__main__':
     unittest.main()
