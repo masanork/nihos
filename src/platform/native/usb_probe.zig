@@ -120,16 +120,6 @@ const Bus = struct {
     }
 };
 
-fn enablePower(bus: anytype) !void {
-    // Read-modify-write USB5V_EN only; never reset the shared expander.
-    for ([_]u8{ 0x05, 0x03, 0x07 }) |register| {
-        var value: [1]u8 = .{0};
-        try bus.transfer(0x44, &.{register}, &value);
-        const next = if (register == 0x07) value[0] & @as(u8, 0xf7) else value[0] | @as(u8, 8);
-        try bus.transfer(0x44, &.{ register, next }, &.{});
-    }
-}
-
 fn enumerate(controller: *usb.Controller(Bus), report: *Report) !void {
     report.stage = 2;
     try controller.initialize();
@@ -213,7 +203,7 @@ pub noinline fn run(clock: timer_group.Timer) Report {
     const io = Bus{ .clock = clock };
     nih_usb_i2c_init();
     var bus = i2c.Master(Bus){ .pins = io };
-    enablePower(&bus) catch {
+    i2c.usbPowerCycle(&bus) catch {
         report.error_code = 1;
         return report;
     };

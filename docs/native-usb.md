@@ -11,10 +11,13 @@ NIHOS_NATIVE_USB=1 sh tools/build-native.sh device integer
 The small C boundary in `probes/usb_native/pads.c` uses pinned ESP-IDF v5.4.4
 LL register definitions to set up GPIO31/32 and the UTMI PHY. It makes no SDK
 runtime calls. The USB-A supply is enabled through bit 3 of I2C expander
-`0x44`, preserving other bits. The generic boot I2C module was reused from
+`0x44`, preserving other bits. The current exclusive boot diagnostic commands
+USB5V_EN off for 250 ms, then on with a 100 ms settle, to clear retained reader
+state before initializing the host. The generic boot I2C module was reused from
 the concurrent native-display worktree as a read-only snapshot (SHA-256
 `d4a9af12fdde78b8ddedfc5f9d4620d1092efea602fea01c05b7ab8a6d6fa592`).
-That worktree and its ongoing edits were not changed.
+That worktree and its ongoing edits were not changed. The USB power helper was
+subsequently added locally and tested for preservation of unrelated pins.
 
 `src/soc/esp32p4/usb_host.zig` owns one root port and one polled DWC2
 scatter/gather DMA channel. Transfer storage is fixed internal SRAM: a
