@@ -4,6 +4,7 @@
 [共通broker](2026-10-27-memory-broker.md)をnative schedulerへ接続したopt-in試験。
 実装commit `6712750` の候補で、ホスト検査と実機3回のUSBリセット起動を通した。
 これは既存試験終了後のhandoffの検証である。
+後続の[version 2の実SD読取りと強制終了](2026-10-27-broker-sd-lifetime.md)で借用寿命の検証を進めた。
 
 ## 移譲と配置
 

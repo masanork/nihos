@@ -72,5 +72,9 @@ The [implementation receipt](../measurements/2026-10-27-memory-broker.md)
 separates this policy from the physically qualified legacy heaps. The
 [opt-in native handoff receipt](../measurements/2026-10-27-broker-native-handoff.md)
 qualifies exclusive post-fixture region transfer, normal task EXIT, pin completion
-and slot generation reuse on Tab5. Boot-time replacement, forced owner teardown,
-real DMA and C ABI integration remain separate qualification gates.
+and slot generation reuse on Tab5. The [SD lifetime receipt](../measurements/2026-10-27-broker-sd-lifetime.md)
+adds forced termination of a waiting client between CMD17 launch and software
+completion, pinned SRAM-staging-to-PSRAM delivery, reply discard and clock
+reacquisition/release. It does not assert that hardware was still transferring
+at task stop. Boot-time replacement, multi-task owner teardown, direct PSRAM
+DMA, controller abort/error recovery and C ABI integration remain separate gates.
