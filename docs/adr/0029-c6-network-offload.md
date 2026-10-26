@@ -1,6 +1,6 @@
 # ADR 0029: Offload TCP/IP and the BLE host to the C6 over SDIO
 
-- Status: accepted direction; host primitives implemented; firmware and hardware qualification pending
+- Status: accepted direction; controller host-tested and C6 firmware built; hardware qualification pending
 - Date: 2026-10-27
 
 ## Decision
@@ -78,9 +78,12 @@ gate, independent of the SDIO driver, ESP-IDF and kernel scheduling.
 
 The command gate permits one pending request, checks absolute monotonic
 deadlines at completion as well as polling, and rejects stale epoch/serial
-tokens without wrapping. It is a primitive, not a complete AT controller:
-command encoding, phase dispatch, terminal-error cleanup, resets, handle
-tables, backpressure and SDIO integration remain to be implemented.
+tokens without wrapping. `at_controller.zig` now adds profile negotiation,
+typed command encoding, partial TX, send-prompt/final-response phases,
+terminal-error cleanup and failure/reset handling. It stages read bytes until
+the terminal OK so interleaved BLE notices cannot overwrite a read completion.
+Handle tables, native service/queue wiring, backpressure and the SDIO adapter
+remain to be implemented. See the [adapter contract](../../src/net/README.md).
 
 TCP passive receive limits P4 buffering but does not bound C6 allocations or
 make UDP lossless. BLE notifications need queue budgets and explicit overflow
@@ -91,12 +94,16 @@ control/notification capacity available while a data consumer is slow.
 
 The first [host and RV32 compile results](../measurements/2026-10-27-c6-at-host.md)
 are recorded separately from the remaining firmware and physical gates.
+The [controller and C6 build result](../measurements/2026-10-27-c6-at-controller-build.md)
+records the next milestone without claiming device execution.
 
 1. Host decoder/gate tests, then a compile-only RV32 probe. This qualifies
    neither SDIO transport nor the running network service.
 2. Build a C6 SDIO image using the pinned upstream SDK and resolved config.
    Confirm Wi-Fi, TCP/IP and BLE are enabled together. Stock C6 defaults use
    NimBLE; dedicated BLE HID AT commands are unavailable on this target.
+   This compile gate now passes using `ports/esp32c6-at`, with upstream SDK
+   patches verified in the actual source and the binary hashes retained.
 3. Establish C6 flashing/recovery access, identify the actual module/flash,
    preserve the existing C6 image and NVS, and separately record the P4 image
    and OTA slot. Flashing or restoring the P4 does not restore the C6.

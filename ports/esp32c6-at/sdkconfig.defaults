@@ -1,0 +1,18 @@
+# External defaults appended to the pinned upstream ESP32-C6 module defaults.
+# This is the C6 firmware profile; never apply it to the P4 application.
+CONFIG_AT_BASE_ON_SDIO=y
+# CONFIG_AT_BASE_ON_UART is not set
+CONFIG_AT_SDIO_BLOCK_SIZE=512
+CONFIG_AT_ENABLE=y
+CONFIG_AT_WIFI_COMMAND_SUPPORT=y
+CONFIG_AT_NET_COMMAND_SUPPORT=y
+CONFIG_AT_BLE_COMMAND_SUPPORT=y
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
+
+# Keep the first image focused on the socket and BLE client experiment.
+# CONFIG_AT_MQTT_COMMAND_SUPPORT is not set
+# CONFIG_AT_HTTP_COMMAND_SUPPORT is not set
+# CONFIG_AT_OTA_SUPPORT is not set
+# CONFIG_AT_BLUFI_COMMAND_SUPPORT is not set

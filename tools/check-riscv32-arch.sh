@@ -11,9 +11,9 @@ target=riscv32-freestanding-none
 cpu=generic_rv32+m+a+c+f+zicsr+zifencei
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
-    -femit-bin="$out_dir/c6-at.o" --dep esp_at \
+    -femit-bin="$out_dir/c6-at.o" --dep at_controller \
     "-Mroot=$repo_root/tools/probes/c6-at.zig" \
-    "-Mesp_at=$repo_root/src/net/esp_at.zig"
+    "-Mat_controller=$repo_root/src/net/at_controller.zig"
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/context.o" \
