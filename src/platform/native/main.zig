@@ -546,11 +546,13 @@ export fn nih_native_main() callconv(.c) noreturn {
                     timer(0).stop();
                     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
                     if (options.card_read) @import("card_read.zig").prepare(timer(0), display_panel) catch |err| {
+                        if (options.card_photo) CardReadLog.photoPreflight();
                         print("NIHOS_NATIVE_CARD_READ_PREP_FAIL ");
                         print(@errorName(err));
                         print("\n");
                         fail("card read preparation; no PIN sent");
                     };
+                    if (options.card_photo) CardReadLog.photoPreflight();
                     const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern, options.display_sram);
                     if (screen.status == 1) {
                         const source = display.irqSource();
@@ -644,6 +646,13 @@ fn stackReport(hart: u32) void {
 }
 
 const CardReadLog = struct {
+    pub fn photoPreflight() void {
+        logger.record("NIHOS_NATIVE_PHOTO_PREFLIGHT", null, .{ "selftest", "error_code", "stack_used", "arena_bytes", "surface_sw", "surface_counter" }, &@import("photo_runtime.zig").report);
+    }
+    pub fn startTouch(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_READ_START_TOUCH", null, .{ "photo_enabled", "preflight_cut" }, report);
+    }
+
     pub fn refresh(_: CardReadLog, report: *const @import("display_runtime.zig").Report) void {
         TouchLog.refresh(.{}, report);
     }
@@ -651,9 +660,12 @@ const CardReadLog = struct {
         logger.record("NIHOS_NATIVE_CARD_READ_READY", null, .{ "remaining_before", "verifies", "preflight_cut" }, report);
     }
     pub fn result(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        if (options.card_photo) logger.record("NIHOS_NATIVE_PHOTO_RESULT", null, .{ "photo_enabled", "surface_verifies", "photo_decoded", "photo_error" }, report);
         logger.record("NIHOS_NATIVE_CARD_READ_RESULT", null, .{ "status", "fault", "remaining_before", "remaining_after", "verifies", "cleanup", "vbus_off", "attributes", "preflight_cut" }, report);
     }
     pub fn finish(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_OVERVIEW", null, .{ "shown", "truncated", "missing_glyphs", "photo_enabled", "photo_decoded" }, report);
+        if (options.card_photo) logger.record("NIHOS_NATIVE_PHOTO_CLEANUP", null, .{ "decoded", "stack_used", "erased" }, &@import("photo_runtime.zig").report);
         logger.record("NIHOS_NATIVE_CARD_READ_DONE", null, .{ "status", "fault", "remaining_before", "remaining_after", "verifies", "cleanup", "vbus_off", "attributes", "preflight_cut", "shown", "missing_glyphs", "erased" }, report);
     }
 };

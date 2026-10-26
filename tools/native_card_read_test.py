@@ -9,6 +9,22 @@ def complete():
     fields=(1,0,3,255,1,2,1,15,1)
     return record('NIHOS_NATIVE_CARD_READ_READY',('remaining_before','verifies','preflight_cut'),(3,0,1))+record('NIHOS_NATIVE_CARD_READ_RESULT',CHECK.FIELDS,fields)+record('NIHOS_NATIVE_CARD_READ_DONE',CHECK.DONE,fields+(15,0,1))
 class ReadTests(unittest.TestCase):
+    def test_photo_requires_preflight_independent_budget_decode_and_erasure(self):
+        log = record('NIHOS_NATIVE_PHOTO_PREFLIGHT', ('selftest','error_code','stack_used','arena_bytes','surface_sw','surface_counter'), (1,0,3000,4194176,0x63c3,3))
+        log += record('NIHOS_NATIVE_CARD_READ_START_TOUCH', ('photo_enabled','preflight_cut'), (1,1))
+        base = complete()
+        ready_end = base.index('\n') + 1
+        log += base[:ready_end]
+        log += record('NIHOS_NATIVE_PHOTO_RESULT', ('photo_enabled','surface_verifies','photo_decoded','photo_error'), (1,1,1,0))
+        result_end = base.index('\n', ready_end) + 1
+        log += base[ready_end:result_end]
+        log += record('NIHOS_NATIVE_CARD_OVERVIEW', ('shown','truncated','missing_glyphs','photo_enabled','photo_decoded'), (15,0,0,1,1))
+        log += record('NIHOS_NATIVE_PHOTO_CLEANUP', ('decoded','stack_used','erased'), (1,3200,1)) + base[result_end:]
+        self.assertEqual(CHECK.check_read(log, True)['photo']['result']['surface_verifies'],1)
+        for old,new in [('selftest=00000001','selftest=00000000'),('surface_verifies=00000001','surface_verifies=00000002'),('truncated=00000000','truncated=00000001'),('photo_decoded=00000001','photo_decoded=00000000'),('stack_used=00000c80','stack_used=00003000'),('erased=00000001','erased=00000000')]:
+            with self.subTest(old=old),self.assertRaises(ValueError):CHECK.check_read(log.replace(old,new), True)
+        with self.assertRaises(ValueError):CHECK.check_read(complete(), True)
+
     def test_authenticated_preparation_does_not_masquerade_as_boot_usb_probe(self):
         image = {'keypad_storage': {'ui_mode':'runtime', 'font_bytes':408096},
                  'card_text': {'writable':False,'executable':True}}

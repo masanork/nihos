@@ -73,6 +73,8 @@ display_tile=false
 display_tile_cpp=0
 keypad_demo=false
 card_read=false
+card_photo=false
+photo_cpp=0
 card_read_cpp=0
 keypad_cpp=0
 display_boot_cpp=0
@@ -84,9 +86,10 @@ case "$display" in
     4) display=true; display_scanout=true; display_white=true; display_pattern=true ;;
     5) display=true; display_scanout=true; display_white=true; display_sram=true ;;
     6) display=true; display_scanout=true; display_sram=true; display_tile=true; display_tile_cpp=1 ;;
+    10) display=true; display_scanout=true; display_sram=true; card_read=true; card_photo=true; photo_cpp=1; card_read_cpp=1; keypad_cpp=1 ;;
     9) display=true; display_scanout=true; display_sram=true; card_read=true; card_read_cpp=1; keypad_cpp=1 ;;
     8) display=true; display_scanout=true; display_sram=true; keypad_demo=true; keypad_cpp=1 ;;
-    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6, 8 or 9" >&2; exit 1 ;;
+    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6, 8, 9 or 10" >&2; exit 1 ;;
 esac
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
@@ -137,13 +140,13 @@ fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
-"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const usb = %s;\npub const jpki = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$usb" "$jpki" "$display" "$display_scanout" "$display_white" "$display_pattern" > "$build_dir/native_options.next"
 {
     printf 'pub const card_check = %s;\n' "$card_check"
     printf 'pub const touch_check = %s;\n' "$touch_check"
-    printf 'pub const keypad_demo = %s;\npub const card_read = %s;\n' "$keypad_demo" "$card_read"
+    printf 'pub const keypad_demo = %s;\npub const card_read = %s;\npub const card_photo = %s;\n' "$keypad_demo" "$card_read" "$card_photo"
     printf 'pub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = false;\n' "$display_sram" "$display_tile"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
@@ -176,7 +179,7 @@ if [ "$display" = true ]; then
     set -- "$@" "$build_dir/display_pads.o"
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
             -I "$repo_root/build/native-$profile/loader/config" \
@@ -226,6 +229,12 @@ if [ "$usb" = true ]; then
         -I "$idf_path/components/esp_rom/esp32p4" \
         -o "$build_dir/usb_pads.o" "$repo_root/probes/usb_native/pads.c"
     set -- "$@" "$build_dir/usb_pads.o"
+fi
+if [ "$card_photo" = true ]; then
+    sh "$repo_root/tools/build-photo-codec.sh" "$build_dir" rv32
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        "$repo_root/probes/photo/stack.S" -o "$build_dir/photo_stack.o"
+    set -- "$@" "$build_dir"/photo_*.o
 fi
 if [ "$floating" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none \
@@ -285,7 +294,7 @@ if [ "$sqlite" = true ]; then
     fi
 fi
 "$zig" build-exe -target riscv32-freestanding-none \
-    -mcpu="$cpu" -O safe -fllvm -fno-strip \
+    -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" --gc-sections \
@@ -360,3 +369,5 @@ fi
     -Mpsram_mapping="$repo_root/src/soc/esp32p4/psram_mapping.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -femit-bin="$build_dir/nihos-native.elf"
+
+if [ "$card_photo" = true ]; then python3 "$repo_root/tools/native-photo-manifest.py" "$build_dir"; fi

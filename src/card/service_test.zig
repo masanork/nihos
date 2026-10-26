@@ -478,3 +478,84 @@ test "wide native touch routes one release to real PIN entry and cancel wipes it
     try zero(&entry.pin);
     try testing.expect(service.prompt() == null);
 }
+
+fn photoReady(service: *card.Service, output: []u8) !void {
+    try service.startPortrait(output);
+    _ = try reply(service, &.{ 0x3b, 0x80 });
+    _ = try reply(service, &.{ 0x90, 0 });
+    _ = try reply(service, &.{ 0x90, 0 });
+    _ = try reply(service, &.{ 0x63, 0xc3 });
+    try submitted(service, "1234");
+    _ = try reply(service, &.{ 0x90, 0 });
+    _ = try reply(service, &.{ 0x90, 0 });
+    _ = try reply(service, input.fixture ++ "\x90\x00");
+    _ = try reply(service, &.{ 0x90, 0 });
+    _ = try reply(service, "\x01\x0c123456789018\x90\x00");
+    _ = try reply(service, &.{ 0x90, 0 });
+    _ = try reply(service, &.{ 0x90, 0 });
+}
+test "photo is opt-in, uses one rechecked surface credential and remains private until cleanup" {
+    var buffer: [32768]u8 = undefined;
+    var service = card.Service{};
+    try photoReady(&service, &buffer);
+    try testing.expectEqual(card.State.surface_retries, service.state);
+    _ = try reply(&service, &.{ 0x63, 0xc3 });
+    _ = try reply(&service, &.{ 0x63, 0xc3 });
+    try zero(&service.number);
+    const verify = (try service.take()).?;
+    try testing.expectEqualSlices(u8, "123456789018", verify.bytes[5..]);
+    try service.complete(verify.token, &.{ 0x90, 0 });
+    _ = try reply(&service, &.{ 0x90, 0 });
+    _ = try reply(&service, "\xff\x20\x13\xdf\x27\x10\xff\x4f0123456789abcd\x90\x00");
+    try testing.expect(service.result() == null and service.portrait() == null);
+    _ = try reply(&service, &.{});
+    try testing.expectEqual(@as(usize, 16), service.portrait().?.len);
+    try service.dismiss();
+    try zero(&buffer);
+    try zero(&service.number);
+    try zero(&service.command);
+}
+test "surface last attempt, changed counter and failed VERIFY never repeat or publish attributes" {
+    for ([_][]const u8{ &.{ 0x63, 0xc1 }, &.{ 0x63, 0xc0 }, &.{ 0x63, 0xc2 }, &.{ 0x90, 0 } }) |second| {
+        var buffer: [32768]u8 = undefined;
+        var service = card.Service{};
+        try photoReady(&service, &buffer);
+        _ = try reply(&service, &.{ 0x63, 0xc3 });
+        _ = try reply(&service, second);
+        try testing.expectEqual(card.State.power_off, service.state);
+        try testing.expect(service.result() == null and service.portrait() == null);
+        try zero(&buffer);
+        try zero(&service.number);
+        try zero(&service.command);
+    }
+}
+test "surface probe uses no credentials and uncertain photo VERIFY erases all borrowed buffers" {
+    var probe = card.Service{};
+    try probe.startSurfaceProbe();
+    for ([_][]const u8{ &.{ 0x3b, 0x80 }, &.{ 0x90, 0 }, &.{ 0x90, 0 }, &.{ 0x63, 0xc3 } }) |response| {
+        const action = (try probe.take()).?;
+        try testing.expect(action.bytes.len != 9 and action.bytes.len != 17);
+        try probe.complete(action.token, response);
+    }
+    try testing.expectEqual(card.State.power_off, probe.state);
+    try testing.expect(probe.prompt() == null and probe.result() == null);
+    for (0..3) |failure| {
+        var buffer: [32768]u8 = undefined;
+        var service = card.Service{};
+        try photoReady(&service, &buffer);
+        _ = try reply(&service, &.{ 0x63, 0xc3 });
+        _ = try reply(&service, &.{ 0x63, 0xc3 });
+        const action = (try service.take()).?;
+        try testing.expectEqual(@as(usize, 17), action.bytes.len);
+        if (failure == 0) service.disconnected() else if (failure == 1) {
+            service.cancel();
+            // The transport still owns the borrowed command until retirement.
+            try testing.expectEqualStrings("123456789018", action.bytes[5..]);
+            try service.failed(action.token);
+        } else try service.complete(action.token, &.{ 0x6f, 0 });
+        try testing.expect(service.result() == null and service.portrait() == null);
+        try zero(&service.number);
+        try zero(&service.command);
+        try zero(&buffer);
+    }
+}

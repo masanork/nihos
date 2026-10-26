@@ -29,6 +29,7 @@ FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
 
 SQL_START, SQL_END = 0x40020000, 0x400C0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
+PHOTO_SECTIONS = {".flash.photo", ".flash.photo.rodata"}
 UI_SECTIONS = {".flash.uipad", ".flash.ui"}
 UI_POOLS = {".keypad.low": (0x4ff40000, 128 * 1024), ".keypad.high": (0x4ff70000, 188 * 1024)}
 
@@ -45,7 +46,10 @@ def audit_ui_assets(start, data, symbols, manifest):
         require(len(raw) == manifest[role + '_bytes'] and hashlib.sha256(raw).hexdigest() == manifest[role + '_sha256'], 'keypad asset differs from manifest')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False):
+    if name in PHOTO_SECTIONS:
+        require(allow_photo and kind == 1 and (flags == 6 if name == '.flash.photo' else flags & 7 == 2 and flags & ~50 == 0) and SQL_START <= address < address + size <= SQL_END, 'invalid photo codec Flash extent/permissions')
+        return
     if name == '.flash.card':
         require(allow_ui and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000, 'invalid card foreground Flash code')
         return
@@ -75,7 +79,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=()):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=()):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
@@ -88,6 +92,10 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if card_span is not None and card_span[0] <= address < stop <= card_span[1]:
             require(any(name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in card_functions), 'unapproved card foreground function: ' + name)
+            continue
+        if photo_span is not None and photo_span[0] <= address < stop <= photo_span[1]:
+            software = (name.startswith(('compiler_rt.addf3.', 'compiler_rt.mulf3.', 'compiler_rt.divf3.', 'compiler_rt.divsf3.', 'compiler_rt.divdf3.', 'compiler_rt.comparef.', 'compiler_rt.float_from_int.', 'compiler_rt.int_from_float.', 'compiler_rt.extendf.', 'compiler_rt.truncf.')) or re.fullmatch(r'__(?:(?:add|sub|mul|div|cmp|eq|ne|ge|gt|le|lt|unord)(?:sf|df)2?3?|float(?:un)?(?:si|di)(?:sf|df)|fix(?:uns)?(?:sf|df)(?:si|di)|extendsfdf2|truncdfsf2)',name))
+            require(name in photo_functions or name.startswith('card.surface.Parser') or name == 'photo_runtime.execute' or software, 'unapproved photo codec function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
@@ -225,9 +233,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     sql_sections = {}
     allow_sql = mode == "sqlite"
     allow_ui = keypad_manifest is not None
+    allow_photo = allow_ui and keypad_manifest.get("codec") is not None
     require(not allow_ui or (mode == 'integer' and profile == 'device' and not allow_sql and keypad_manifest.get('schema') == 1), 'invalid keypad profile/manifest')
     card_code = b""
     card_start = None
+    photo_sections = {}
     ui_sections = {}
     ui_pools = []
     require(not allow_sql or (sqlite_manifest is not None and sqlite_manifest.get("schema") == 1 and
@@ -247,11 +257,13 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
                 ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
             if not in_sram and not in_stacks and not in_ui:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
                 if name == '.flash.card':
                     card_start, card_code = address, elf[offset:offset + size]
+                if name in PHOTO_SECTIONS:
+                    photo_sections[name] = (address, elf[offset:offset + size])
                 if name in SQL_SECTIONS:
                     sql_sections[name] = (address, elf[offset:offset + size])
                 if name in UI_SECTIONS:
@@ -283,7 +295,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()), "missing mapped Flash sections")
     ui_report = None
     ui_payload = None
     if allow_ui:
@@ -298,6 +310,28 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         ui_report = {'start': hex(start), 'end': hex(start + len(data)), 'bytes': len(data), 'writable': False, 'executable': False,
                      'ui_mode': keypad_manifest.get('ui_mode', 'baked'), 'pools': ui_pools}
         ui_report.update({key: value for key, value in keypad_manifest.items() if key in ('font_sha256', 'font_bytes', 'plan_sha256', 'atlas_sha256', 'atlas_bytes', 'nodes')})
+    photo_span = None
+    photo_report = None
+    if allow_photo:
+        codec = keypad_manifest['codec']
+        require(codec['name'] == 'OpenJPEG' and codec['version'] == '2.5.4' and codec['decode_only'] is True and codec['io'] is False and codec['threads'] is False and codec['htj2k'] is False, 'unsupported photo codec profile')
+        require(codec['archive_sha256'] == 'a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a' and codec['workspace_bytes'] == 4*1024*1024-128 and codec['stack_low'] == '0x4ff68000' and codec['stack_high'] == '0x4ff6b000', 'unapproved photo quota/stack/source')
+        require(codec['allowed_functions'] == sorted(set().union(*(set(obj['functions']) for obj in codec['objects'].values()))), 'photo function manifest differs from objects')
+        code_start, code = photo_sections['.flash.photo']; ro_start, ro = photo_sections['.flash.photo.rodata']
+        require(code_start == start + len(data) and ro_start == code_start + len(code) and ro_start + len(ro) <= SQL_END, 'photo sections must be contiguous with read-only UI data')
+        require(all(symbols.get(name) == address for name,address in {'__photo_text_start':code_start,'__photo_text_end':ro_start,'__photo_rodata_start':ro_start,'__photo_rodata_end':ro_start+len(ro)}.items()), 'invalid photo section symbols')
+        first,last = symbols['__photo_fixture_start'],symbols['__photo_fixture_end']
+        require(ro_start <= first < last <= ro_start + len(ro) and hashlib.sha256(ro[first-ro_start:last-ro_start]).hexdigest() == codec['fixture_sha256'], 'synthetic photo fixture mismatch')
+        forbidden = {'fopen','fclose','fread','fwrite','fprintf','printf','snprintf','vsnprintf','getenv','opj_create_compress','opj_encode','opj_start_compress','opj_pi_initialise_encode','opj_tcd_rateallocate'}
+        require(not forbidden.intersection(symbols), 'I/O/encoding API linked in photo decoder')
+        photo_span = (code_start,ro_start)
+        ui_payload += code + ro
+        ui_payload += bytes((-len(ui_payload))%4)
+        photo_report = {'name':codec['name'],'version':codec['version'],'decode_only':True,'text_start':hex(code_start),'text_end':hex(ro_start),'rodata_start':hex(ro_start),'rodata_end':hex(ro_start+len(ro)),'text_bytes':len(code),'rodata_bytes':len(ro),'text_sha256':hashlib.sha256(code).hexdigest(),'rodata_sha256':hashlib.sha256(ro).hexdigest(),'workspace_bytes':codec['workspace_bytes'],'stack_low':codec['stack_low'],'stack_high':codec['stack_high']}
+        sizes = [elf[section[4]:section[4]+section[5]] for section in sections if string(names,section[0]) == '.stack_sizes']
+        require(len(sizes)==1, 'missing photo C stack metadata')
+        photo_report['static_c_stack'] = decode_stack_sizes(sizes[0],functions)
+        require(photo_report['static_c_stack']['maximum_reported_frame_bytes'] <= 8192, 'photo C frame exceeds isolated stack margin')
     sql_span = None
     sql_report = None
     if allow_sql:
@@ -342,10 +376,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     card_span = None if card_start is None else (card_start, card_start + len(card_code))
     if card_span:
         require(card_start == (boot_end + 15) & ~15 and symbols.get('__flash_card_start') == card_start and symbols.get('__flash_card_end') == card_span[1], 'invalid card foreground symbols')
-        require(keypad_manifest.get('allowed_functions') == ['card_read.prepare', 'card_read.run', 'keypad_display.prepare', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start'], 'unapproved foreground manifest')
+        require(keypad_manifest.get('allowed_functions') == (['card_read.prepare', 'card_read.run', 'keypad_display.prepare', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start'] + (['photo_runtime.prepare','photo_runtime.decode','photo_runtime.close'] if allow_photo else [])), 'unapproved foreground manifest')
         for prefix in keypad_manifest['allowed_functions']:
             require(sum(1 for name, address, stop in functions if card_span[0] <= address < stop <= card_span[1] and (name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name))) == 1, 'missing/duplicate card foreground entry: ' + prefix)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else ())
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, keypad_manifest['codec']['allowed_functions'] if allow_photo else ())
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -412,6 +446,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report['memory']['regions'].extend(ui_pools)
         report['memory']['total_bytes'] += sum(pool['bytes'] for pool in ui_pools)
         report['sram_reserved_bytes'] += sum(pool['bytes'] for pool in ui_pools)
+    if photo_report is not None:
+        report["photo_codec"] = photo_report
     if card_span:
         report['card_text'] = {'start': hex(card_start), 'end': hex(card_span[1]), 'bytes': len(card_code), 'sha256': hashlib.sha256(card_code).hexdigest(), 'writable': False, 'executable': True}
     if image is None:
@@ -525,6 +561,8 @@ def main():
         if len(sys.argv) == 10:
             manifest = json.loads(Path(sys.argv[9]).read_text())
             root = Path(sys.argv[9]).resolve().parents[2]
+            if 'codec' in manifest:
+                require(all(hashlib.sha256((Path(sys.argv[9]).parent/name).read_bytes()).hexdigest()==obj['sha256'] for name,obj in manifest['codec']['objects'].items()), 'photo object differs from manifest')
             require(all(hashlib.sha256((root / name).read_bytes()).hexdigest() == digest for name, digest in manifest['sources'].items()), 'keypad generated source hashes differ')
         if len(sys.argv) >= 5:
             require(sys.argv[4] in ("integer", "floating", "compiled", "sqlite"), "invalid FP mode")

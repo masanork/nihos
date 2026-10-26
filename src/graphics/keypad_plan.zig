@@ -70,13 +70,17 @@ fn same(bytes: []const u8, color: u16) bool {
 }
 pub fn build(frame: []const u8, output: []Segment) Error![]Segment {
     if (frame.len != frame_bytes) return error.Malformed;
-    return buildMode(frame, output, true);
+    return buildMode(frame, output, true, false);
 }
 pub fn buildStatic(frame: []const u8, output: []Segment) Error![]Segment {
     if (frame.len != frame_bytes) return error.Malformed;
-    return buildMode(frame, output, false);
+    return buildMode(frame, output, false, false);
 }
-fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool) Error![]Segment {
+pub fn buildOverview(frame: []const u8, output: []Segment) Error![]Segment {
+    if (frame.len != frame_bytes) return error.Malformed;
+    return buildMode(frame, output, false, true);
+}
+fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool, comptime split: bool) Error![]Segment {
     var builder = Builder{ .output = output };
     const label = screen.submitRect();
     const dots = screen.dots_rect;
@@ -91,17 +95,20 @@ fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool) Error
             try builder.add(if (rect.y == dots.y) .dots else .label, (y - rect.y) * rect.width * 2, rect.width / 4);
             try builder.add(kind, 0, (720 - rect.x - rect.width) / 4);
         } else {
-            var left: usize = 0;
-            while (left < 180 and same(row[left * 8 ..][0..8], base)) : (left += 1) {}
-            if (left == 180) {
-                try builder.add(kind, 0, 180);
-                continue;
+            const ranges = if (split and y >= 192 and y < 448) &[_][2]usize{ .{ 0, 114 }, .{ 114, 180 } } else &[_][2]usize{.{ 0, 180 }};
+            for (ranges) |range| {
+                var left: usize = range[0];
+                while (left < range[1] and same(row[left * 8 ..][0..8], base)) : (left += 1) {}
+                if (left == range[1]) {
+                    try builder.add(kind, 0, range[1] - range[0]);
+                    continue;
+                }
+                var right: usize = range[1];
+                while (right > left and same(row[(right - 1) * 8 ..][0..8], base)) : (right -= 1) {}
+                try builder.add(kind, 0, left - range[0]);
+                try builder.add(.pixels, y * 1440 + left * 8, right - left);
+                try builder.add(kind, 0, range[1] - right);
             }
-            var right: usize = 180;
-            while (right > left and same(row[(right - 1) * 8 ..][0..8], base)) : (right -= 1) {}
-            try builder.add(kind, 0, left);
-            try builder.add(.pixels, y * 1440 + left * 8, right - left);
-            try builder.add(kind, 0, 180 - right);
         }
     }
     if (builder.words != frame_words) return error.Malformed;

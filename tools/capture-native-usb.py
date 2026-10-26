@@ -54,6 +54,7 @@ def main():
             raw = bytearray()
             completed = None
             announced_touch = False
+            announced_preview = False
             raw_path = args.output / f"boot-{run}.raw.log"
             log_path = args.output / f"boot-{run}.log"
             report_path = args.output / f"boot-{run}.json"
@@ -70,6 +71,9 @@ def main():
                         output.write(chunk)
                         output.flush()
                     start_marker = b"NIHOS_NATIVE_CARD_READ_READY " if args.card_read else b"NIHOS_NATIVE_KEYPAD_START " if args.keypad else b"NIHOS_NATIVE_TOUCH_START "
+                    if args.card_read and not announced_preview and b"NIHOS_NATIVE_CARD_READ_START_TOUCH " in raw:
+                        print("Synthetic overview ready; tap and release once to open the local PIN screen", flush=True)
+                        announced_preview = True
                     if (args.touch or args.keypad or args.card_read) and not announced_touch and start_marker in raw:
                         print("Input Support PIN screen ready; one local submission only" if args.card_read else "Keypad demonstration active; no card/PIN transmission" if args.keypad else "Touch input active: tap the four quadrants and lift your finger; no PIN input", flush=True)
                         announced_touch = True
