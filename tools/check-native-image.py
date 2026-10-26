@@ -22,7 +22,7 @@ BROKER_CONFIG = (2, 0x4ff73000, 16384, 0x4ff1c000, 0x4ff28000, 0x4ff77000, 0x4ff
                  0x48200000, 0x4a000000, 65536, 8912896, 0x48008000, 32768)
 BROKER_HOOKS_V1 = ('nih_broker_peer_quiet', 'nih_broker_quiet', 'nih_broker_ready', 'nih_broker_register',
                 'nih_broker_task_exited', 'nih_broker_pending', 'nih_broker_cleanup_ready', 'nih_broker_round', 'nih_broker_reaped')
-BROKER_HOOKS = BROKER_HOOKS_V1 + ('nih_broker_cancel_requested', 'nih_broker_io_issued')
+BROKER_HOOKS = BROKER_HOOKS_V1 + ('nih_broker_cancel_requested',)
 
 
 def audit_broker(config, symbols, low, high, heap_start, profile):
@@ -435,6 +435,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     if broker_manifest is not None:
         require(high_sram is not None and broker_manifest.get('version') in (1, 2), 'broker requires audited high SRAM')
         require({'nih_broker_runtime_init', 'nih_broker_runtime_poll', 'nih_broker_runtime_finish', 'nih_broker_task_entry'}.issubset(sql_funcs), 'missing broker Flash runtime')
+        if broker_manifest['version'] == 2:
+            require('nih_broker_io_issued' in sql_funcs, 'missing broker ordinary-context IO gate')
         address = symbols['nih_broker_config']
         offset = address - int(sql_report['rodata_start'], 16)
         sql_data = sql_sections['.flash.sqlrodata'][1]

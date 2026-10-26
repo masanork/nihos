@@ -31,7 +31,7 @@ extern fn nih_broker_task_exited(u32) callconv(.c) void;
 extern fn nih_broker_cleanup_ready() callconv(.c) u32;
 extern fn nih_broker_round() callconv(.c) u32;
 extern fn nih_broker_reaped() callconv(.c) void;
-extern fn nih_broker_cancel_requested() callconv(.c) u32;
+extern fn nih_broker_cancel_requested(u32) callconv(.c) u32;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
 const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete };
@@ -444,9 +444,9 @@ pub fn service(hart: u32) bool {
     if (options.broker and owner.phase == .broker_service and nih_broker_pending() != 0) {
         _ = owner.runtime.policy.notify(owner.lifecycle, 1);
     }
-    if (options.broker and hart == 1 and owner.phase == .broker_service and nih_broker_cancel_requested() == 1) {
+    if (options.broker and hart == 1 and owner.phase == .broker_service) {
         const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
-        if (snapshot.state == .waiting) {
+        if (nih_broker_cancel_requested(@intFromEnum(snapshot.state)) == 1 and snapshot.state == .waiting) {
             if (!owner.runtime.policy.terminate(owner.lifecycle, -97)) nih_native_task_failed();
             if (!memory.reusable.closeTask(hart, key(owner.lifecycle))) nih_native_task_failed();
             memory.reusable.terminatedTask(hart);
