@@ -42,6 +42,24 @@ class NativeInstructionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.audit_ui_assets(start, data, {**symbols, '__keypad_atlas_start': start + 65}, manifest)
 
+    def test_card_foreground_is_opt_in_rx_and_has_only_named_functions(self):
+        MODULE.audit_flash_section('.flash.card', 1, 6, 0x40002000, 128, allow_ui=True)
+        for kind, flags, allowed in ((1, 6, False), (1, 7, True), (1, 2, True), (8, 6, True)):
+            with self.assertRaises(ValueError):
+                MODULE.audit_flash_section('.flash.card', kind, flags, 0x40002000, 128, allow_ui=allowed)
+        functions = [('psram.probe', 0x40000120, 0x40000920),
+                     ('psram_memory.prepare__func_1', 0x40000920, 0x40001120),
+                     ('card_read.run__func_2', 0x40002000, 0x40002080)]
+        MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                                    card_span=(0x40002000, 0x40002080), card_functions=('card_read.run',))
+        for changed in (functions[:-1] + [('unexpected', 0x40002000, 0x40002080)],
+                        functions[:-1] + [('card_read.run__func_2', 0x40002000, 0x40002084)]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_boot_functions(changed, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                                            card_span=(0x40002000, 0x40002080), card_functions=('card_read.run',))
+        with self.assertRaises(ValueError):
+            MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000)
+
     def test_stack_symbols_array_and_section_have_exact_reservations(self):
         base = 0x4ff60000
         symbols = {"__stacks_start": base, "__stacks_end": base + 57344,

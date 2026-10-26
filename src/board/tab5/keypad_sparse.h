@@ -20,6 +20,7 @@ static uint32_t ui_dots[16], ui_labels[64], ui_submits[68];
 static uint32_t ui_dot_count, ui_label_count, ui_submit_count;
 static volatile uint32_t ui_active, ui_pending, ui_active_count, ui_pending_count;
 static bool ui_enabled;
+static bool ui_runtime;
 
 static bool ui_sram(uint32_t start, uint32_t bytes) {
     return !(start & 63) && bytes && !(bytes & 63) && start >= 0x4ff40000 &&
@@ -31,22 +32,25 @@ static dw_gdma_link_list_item_t *ui_node(uint32_t index) {
     return (dw_gdma_link_list_item_t *)(uintptr_t)(start + offset * 64);
 }
 bool nih_display_keypad_configure(const nih_ui_config *config) {
+    const bool runtime = NIH_NATIVE_CARD_READ && config && config->pixels == 0x48030000 && config->pixels_bytes == 720 * 1280 * 2 &&
+                         config->plan == 0x481f2000 && config->count <= (0x48200000 - 0x481f2000) / 16;
     if (dma_owned || !config || config->count == 0 || config->count > config->capacity ||
         config->count > 1024 || config->scratch != 0x4ff40000 ||
         config->stride > (0x4ff60000 - config->scratch) / 2 || !config->stride ||
-        config->plan < 0x40020000 || config->plan >= 0x400c0000 ||
+        (!runtime && (config->plan < 0x40020000 || config->plan >= 0x400c0000 ||
         config->count > (0x400c0000 - config->plan) / 16 || (config->plan & 63) ||
         config->pixels < 0x40020000 || config->pixels >= 0x400c0000 ||
-        config->pixels_bytes > 0x400c0000 - config->pixels || (config->pixels & 63) ||
+        config->pixels_bytes > 0x400c0000 - config->pixels || (config->pixels & 63))) ||
         config->peer_start != 0 || config->peer_bytes != 0 ||
         config->dots_width != 272 || config->dots_height != 16 || config->dots_x != 216 || config->dots_y != 390 ||
         config->label_width == 0 || config->label_width > 720 || (config->label_width & 3) ||
-        config->label_height == 0 || config->label_height > 64 ||
+        config->label_height > 64 ||
         config->label_x > 720 - config->label_width || config->label_y > 1280 - config->label_height ||
         config->paper > 65535 || config->keys > 65535 || config->accent > 65535) return false;
     const uint32_t bytes = 272 * 16 * 2 + config->label_width * config->label_height * 2;
     if (bytes > config->stride) return false;
     ui = *config;
+    ui_runtime = runtime;
     ui_active = ui_pending = ui_active_count = ui_pending_count = 0;
     return true;
 }
@@ -91,7 +95,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
         uint32_t source = ui_source(span.kind, span.offset, 0, 0);
         if (span.kind == 3) {
             const uint32_t length = span.words * 8;
-            if (span.offset != atlas_offset) return -7;
+            if (!ui_runtime && span.offset != atlas_offset) return -7;
             atlas_offset += length;
             uint32_t *cursor = length <= 0x4ff9f000 - upper ? &upper : &lower;
             const uint32_t limit_end = cursor == &upper ? 0x4ff9f000 : 0x4ff60000;
@@ -119,7 +123,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
             ui_labels[ui_label_count++] = i;
         }
     }
-    if (total != 230400 || atlas_offset != ui.pixels_bytes || ui_dot_count != 16 || ui_label_count != ui.label_height) return -7;
+    if (total != 230400 || (!ui_runtime && atlas_offset != ui.pixels_bytes) || (ui.label_height && ui_dot_count != 16) || ui_label_count != ui.label_height) return -7;
     if (nih_rom_cache_writeback(1u << 4, 0x4ff70000, upper - 0x4ff70000) ||
         (lower > local + bytes && nih_rom_cache_writeback(1u << 4, local + bytes, lower - local - bytes))) return -5;
     active_nodes = ui_node(0); node_count = ui.count; source_address = (uint32_t)(uintptr_t)&ui_palette[0];

@@ -136,7 +136,13 @@ pub const Entry = struct {
     /// Every sample, including zero-contact releases, must be delivered.
     /// Multiple contacts, movement off a key, and screen changes disarm it.
     pub fn touch(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16) void {
+        self.deliver(service, contacts, x, y, hit);
+    }
+    pub fn touchWide(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16) void {
+        self.deliver(service, contacts, x, y, demoHit);
+    }
+    fn deliver(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16, comptime locate: fn (u16, u16) ?Key) void {
         self.sync(service);
-        if (self.contact.sample(self.session != null, contacts, x, y, hit)) |key| self.activate(service, key);
+        if (self.contact.sample(self.session != null, contacts, x, y, locate)) |key| self.activate(service, key);
     }
 };

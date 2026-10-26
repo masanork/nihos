@@ -133,7 +133,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     report.stage = 3;
     const base: [*]u8 = @ptrFromInt(board.framebuffer);
     const frame = base[0..board.frame_bytes];
-    if (options.keypad_demo) {
+    if ((options.keypad_demo or options.card_read)) {
         const prepared = try @import("keypad_display.zig").prepare(clock, frame);
         report.lease_start = prepared.local_start;
         report.lease_bytes = prepared.local_bytes;
@@ -149,7 +149,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         report.lease_bytes = lease.len;
         if (options.display_scene and !nih_display_scene_refresh(board.framebuffer)) return error.Cache;
     }
-    const source_kind: u32 = if (options.keypad_demo) 4 else if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
+    const source_kind: u32 = if ((options.keypad_demo or options.card_read)) 4 else if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
     const start_code = nih_display_scanout_begin(board.framebuffer, &selected, source_kind, report.lease_start, report.lease_bytes);
     report.start_code = @bitCast(start_code);
     report.prime_depth = nih_display_diagnostic(4);
@@ -163,7 +163,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         report.dpi_mhz = if (panel == 1) 60 else 80;
     }
     if (options.display_scene) for (0..24) |_| try waitFrame(pins, state.frames);
-    if (!white and !options.keypad_demo and (!options.display_tile or options.display_scene)) for (1..17) |step| {
+    if (!white and !(options.keypad_demo or options.card_read) and (!options.display_tile or options.display_scene)) for (1..17) |step| {
         try waitFrame(pins, state.frames);
         if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, @intCast(step * 255 / 16), .ready)) return error.Image;
         if (options.display_scene) {
@@ -180,7 +180,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     report.bl_mux = nih_display_diagnostic(8);
     report.bl_matrix = nih_display_diagnostic(9);
     report.white = @intFromBool(white);
-    report.sram = if (options.keypad_demo) 5 else if (options.display_scene) 2 else @intFromBool(sram);
+    report.sram = if ((options.keypad_demo or options.card_read)) 5 else if (options.display_scene) 2 else @intFromBool(sram);
     report.source = nih_display_diagnostic(10);
     report.dma_source = nih_display_diagnostic(11);
     report.dma_control = nih_display_diagnostic(12);
@@ -190,7 +190,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
 }
 
 /// Caller routes CLIC18 only after success. No framebuffer or DMA reuse on error.
-pub fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) Report {
+pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) linksection(if (options.card_read) ".flash.text.card" else ".text") Report {
     if (attempted) return .{ .error_code = 8 };
     attempted = true;
     var report = Report{};
@@ -225,4 +225,38 @@ pub fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, s
         return report;
     };
     return report;
+}
+
+/// Foreground-only scene replacement. Retire DMA before clearing any retained
+/// result pixels, then rebuild under masked local IRQs. No personal framebuffer
+/// is modified while the display DMA borrows it.
+pub fn replace(clock: timer_group.Timer, panel: u32) Report {
+    const previous = asm volatile ("csrrci %[value],mstatus,8"
+        : [value] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    running = false;
+    if (!nih_display_scanout_stop()) return .{ .error_code = 9 };
+    nih_display_phy_stop();
+    if (!wipePools()) return .{ .error_code = 6 };
+    state = .{};
+    last_event = 0;
+    attempted = false;
+    return start(clock, panel, false, false, true);
+}
+fn wipePools() bool {
+    const std = @import("std");
+    for ([_][2]usize{ .{ 0x4ff40000, 0x20000 }, .{ 0x4ff70000, 0x2f000 } }) |span| {
+        std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(span[0]))[0..span[1]]);
+        if (nih_rom_cache_writeback(1 << 4, @intCast(span[0]), @intCast(span[1])) != 0) return false;
+    }
+    return true;
+}
+pub fn emergency() bool {
+    running = false;
+    const clean = nih_display_scanout_stop() and wipePools();
+    const std = @import("std");
+    std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(board.framebuffer))[0..board.frame_bytes]);
+    return nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) == 0 and clean;
 }

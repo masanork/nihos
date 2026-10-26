@@ -35,6 +35,13 @@ SECTIONS
         *(.flash.text.boot)
         __flash_boot_end = .;
     } > flash_boot
+#if NIH_NATIVE_CARD_READ
+    .flash.card : ALIGN(16) {
+        __flash_card_start = .;
+        *(.flash.text.card)
+        __flash_card_end = .;
+    } > flash_boot
+#endif
     /* The stock P4 loader maps both segments before entering SRAM.
      * Only self-contained normal diagnostic tables use the second page. */
     .flash.rodata : {
@@ -61,6 +68,10 @@ SECTIONS
         __keypad_atlas_start = .;
         *(.flash.keypad.atlas)
         __keypad_atlas_end = .;
+        . = ALIGN(64);
+        __keypad_font_start = .;
+        *(.flash.keypad.font)
+        __keypad_font_end = .;
         __flash_ui_end = .;
     } > flash_ui
 #endif

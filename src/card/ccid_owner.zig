@@ -13,6 +13,15 @@ pub const Owner = struct {
     /// subsequent calls until the board owner explicitly reinitializes it.
     /// This call may block; run it on the card owner, never the UI/IRQ path.
     pub fn step(self: *Owner, service: *card.Service, link: anytype) !bool {
+        return self.dispatch(service, link, false);
+    }
+    /// Explicit board contract: powerCut must confirm VBUS-off, physical USB
+    /// disconnect, and DMA retirement/erasure. A CCID acknowledgement alone
+    /// never satisfies this fallback. Ordinary step keeps its strict policy.
+    pub inline fn stepWithPowerCut(self: *Owner, service: *card.Service, link: anytype) !bool {
+        return self.dispatch(service, link, true);
+    }
+    inline fn dispatch(self: *Owner, service: *card.Service, link: anytype, comptime cut: bool) !bool {
         const action = (try service.take()) orelse return false;
         var send: [512]u8 = @splat(0);
         var receive: [512]u8 = @splat(0);
@@ -29,7 +38,14 @@ pub const Owner = struct {
             try failAndScrub(service, action.token, link);
             return true;
         };
-        const payload = exchange(link, frame, &receive, if (action.kind == .power_off) 0x81 else 0x80, sequence, action.kind) catch {
+        const payload = exchange(link, frame, &receive, if (action.kind == .power_off) 0x81 else 0x80, sequence, action.kind) catch fallback: {
+            if (cut and action.kind == .power_off) {
+                link.powerCut() catch {
+                    try failAndScrub(service, action.token, link);
+                    return true;
+                };
+                break :fallback &.{};
+            }
             try failAndScrub(service, action.token, link);
             return true;
         };
@@ -50,7 +66,7 @@ fn failAndScrub(service: *card.Service, token: u32, link: anytype) !void {
     try service.failed(token);
 }
 
-fn exchange(link: anytype, send: []const u8, receive: []u8, expected: u8, sequence: u8, kind: card.Kind) ![]const u8 {
+inline fn exchange(link: anytype, send: []const u8, receive: []u8, expected: u8, sequence: u8, kind: card.Kind) ![]const u8 {
     if (try link.send(send) != send.len) return error.Transfer;
     // Time extensions cause receive-only polls. Never retransmit an APDU.
     for (0..4) |_| {

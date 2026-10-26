@@ -125,3 +125,22 @@ RV32IMACのオブジェクトへコンパイルする。Linkの外部関数は�
 PINのない操作確認を先に行い、正しいPINを一度だけ入力してEF0002読取、
 電源OFF、画面終了時の消去を実機で確認する。誤PINを実カードで試して
 テストする必要はない。現時点ではこの変更による実カードへのPIN送信はない。
+
+## 本体で一度だけ読むモード
+
+`NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=9 sh tools/build-native.sh device integer`
+は[本体読取モード](native-card-read.md)を作る。従来のPINなし `Device.open` と
+`Owner.step` は従来どおりPIN送信を拒否し、activeのPowerOffも成功と扱わない。
+新しい `Device.openAuthenticated` はこの専用モードだけが使い、APDUの許可リストと
+一度限りのVERIFY予算を持つ。ユーザーの本体「確認」操作の後だけServiceがPINを渡す。
+
+専用所有者の `stepWithPowerCut` は、CCID非活性化を確認できなければLinkの
+`powerCut` を呼ぶ。これはDMA停止・消去、USB-A給電制御のOFF読返し、
+PHYを止める前のUSBポートでの実切断確認を全て完了しないと成功できない。
+この代替経路は別の明示的APIで、通常の `step` の判定を緩めない。
+読取モードはSony 054c:0dc9を確認し、最初にPINなしで同じ代替終了を実行する。
+それが失敗すればPIN画面を有効化しない。VBUS電圧やRF停止の実測とは区別する。
+
+認証済みの結果も、Deviceの最終終了と給電OFF読返しが成功するまで画面へ渡さない。
+氏名等は本体画面だけに表示する。UARTは状態・回数・フィールド存在のビットマスクのみで、
+キー、座標、PIN、APDU内容、属性値は記録しない。実機で確認した範囲は測定記録に分ける。

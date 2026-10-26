@@ -65,6 +65,9 @@ noinline fn hex(value: u32) void {
 
 fn fail(reason: []const u8) noreturn {
     asm volatile ("csrci mstatus, 8");
+    if (options.card_read and @import("card_read.zig").armed) {
+        if (!@import("card_read.zig").emergency()) print("NIHOS_NATIVE_CARD_ERASE_FAIL\n");
+    }
     print("NIHOS_NATIVE_FAIL ");
     print(reason);
     print("\n");
@@ -153,7 +156,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
             logger.record("NIHOS_NATIVE_DISPLAY_IRQ_FAIL", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
             fail("display refresh");
         }
-        if (observed.frames >= 32 and !display_refresh_reported and !options.touch_check and !options.keypad_demo) {
+        if (observed.frames >= 32 and !display_refresh_reported and !options.touch_check and !options.keypad_demo and !options.card_read) {
             display_refresh_reported = true;
             logger.record("NIHOS_NATIVE_DISPLAY_IRQ_PASS", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
         }
@@ -387,7 +390,7 @@ export fn nih_native_main() callconv(.c) noreturn {
         const sweep = native_psram.memory.fullSweep(external.mapping.bytes);
         logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
     }
-    if (options.usb) {
+    if (options.usb and !options.card_read) {
         const usb_probe = @import("usb_probe.zig");
         const usb_report = usb_probe.run(timer(0));
         logger.record("NIHOS_NATIVE_USB", null, .{ "status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped" }, &usb_report);
@@ -542,6 +545,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                     reg(0x500d6000 + 46 * 4).* = 0;
                     timer(0).stop();
                     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+                    if (options.card_read) @import("card_read.zig").prepare(timer(0), display_panel) catch |err| {
+                        print("NIHOS_NATIVE_CARD_READ_PREP_FAIL ");
+                        print(@errorName(err));
+                        print("\n");
+                        fail("card read preparation; no PIN sent");
+                    };
                     const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern, options.display_sram);
                     if (screen.status == 1) {
                         const source = display.irqSource();
@@ -554,8 +563,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
                     logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
                     logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
-                    if (options.keypad_demo) logger.record("NIHOS_NATIVE_KEYPAD_STORAGE", null, .{ "font_low", "font_low_bytes", "pixel_bytes" }, &screen);
-                    if (screen.status != 1) fail("display scanout startup");
+                    if (options.keypad_demo or options.card_read) logger.record("NIHOS_NATIVE_KEYPAD_STORAGE", null, .{ "font_low", "font_low_bytes", "pixel_bytes" }, &screen);
+                    if (screen.status != 1) {
+                        if (options.card_read) @import("card_read.zig").abort();
+                        fail("display scanout startup");
+                    }
+                    if (options.card_read) @import("card_read.zig").run(timer(0), display_panel, CardReadLog{});
                     if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                     if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                 }
@@ -629,3 +642,18 @@ fn stackReport(hart: u32) void {
     const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
     logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
 }
+
+const CardReadLog = struct {
+    pub fn refresh(_: CardReadLog, report: *const @import("display_runtime.zig").Report) void {
+        TouchLog.refresh(.{}, report);
+    }
+    pub fn ready(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_READ_READY", null, .{ "remaining_before", "verifies", "preflight_cut" }, report);
+    }
+    pub fn result(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_READ_RESULT", null, .{ "status", "fault", "remaining_before", "remaining_after", "verifies", "cleanup", "vbus_off", "attributes", "preflight_cut" }, report);
+    }
+    pub fn finish(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_READ_DONE", null, .{ "status", "fault", "remaining_before", "remaining_after", "verifies", "cleanup", "vbus_off", "attributes", "preflight_cut", "shown", "missing_glyphs", "erased" }, report);
+    }
+};
