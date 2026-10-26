@@ -215,8 +215,9 @@ pub const CommandGate = struct {
     synchronized: bool = false,
     pending: ?Pending = null,
 
-    /// Only after a fresh link and successful profile negotiation, never merely
-    /// because a delayed OK or a ready banner arrived. Also recreate Decoder.
+    /// Only after a fresh link, never merely because a delayed OK or a ready
+    /// banner arrived. Recreate Decoder; the controller must finish profile
+    /// negotiation before admitting application requests.
     pub fn establish(self: *CommandGate) GateError!void {
         if (self.synchronized or self.pending != null) return error.Busy;
         if (self.epoch == std.math.maxInt(u64)) return error.Exhausted;

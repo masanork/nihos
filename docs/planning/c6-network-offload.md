@@ -6,11 +6,13 @@ P4はnihos、C6はESP-IDF上の通信ファームとし、まずESP-AT＋SDIOを
 
 ## 現在の到達点
 
-- 実装済み：P4向け受信デコーダ、単一コマンドのdeadlineとepoch管理。
+- 実装済み：P4向け受信デコーダ、AT制御本体、型付きコマンド生成、分割TX、
+  単一コマンドのdeadlineとepoch管理、初期交渉と切断復旧の状態管理。
+- C6用SDIO＋Wi-Fi＋NimBLEファームのビルドが通過。上流SDK修正の実体も確認。
 - ホスト試験対象：改行・NUL・偽のOKを含むTCP/BLE混在データ、容量超過、
   不正ヘッダ、途中切断、遅延応答、古いtokenの拒否。
-- 未実装：SDIOドライバ、ATコントローラ、socket/BLEリソース表、アプリ接続。
-- 未検証：C6用ファームのビルドと書き込み、Tab5上の通信、同時動作、性能。
+- 未実装：P4側SDIOドライバ、socket/BLEリソース表、nativeサービスとアプリ接続。
+- 未検証：C6用ファームの書き込み・起動、Tab5上の通信、同時動作、性能。
 
 ## C6用候補
 
@@ -20,8 +22,9 @@ C6用`IDF_VERSION`はESP-IDF
 `8ad0d3d8f2faab752635bee36070313c47c07a13`を指定している。
 P4用のSDKを流用しない。これは最新版という主張や本番採用ではない。
 
-上流の`./build.py menuconfig`でATの通信方式をSDIOへ変更する。
-確認する設定は以下。これは設定要件であり、ビルド済みsdkconfigではない。
+[C6ビルド手順](../../ports/esp32c6-at/README.md)に従い、専用の上流checkoutへ
+設定overlayを適用する。ビルド結果は`build/c6-at/receipt.json`に記録する。
+以下の設定は生成されたsdkconfigでも確認済み。
 
 ```text
 CONFIG_IDF_TARGET_ESP32C6=y
@@ -46,6 +49,8 @@ HIDプロファイル処理を追加する。今回はGATT通知の同時受信�
 各binのSHA-256、ビルドログ、`AT+GMR`全文をまとめる。上流のAT coreや
 無線ライブラリにはバイナリ依存もあるため、ファーム配布時は依存別のライセンスと
 noticeを確認する。この変更では上流ソースやバイナリをnihosへ取り込まない。
+ビルド成果物はignoredの`build/`に保存する。上流source/SDKも別checkoutとし、
+上流が適用するSDK修正を記録する。[検証記録](../measurements/2026-10-27-c6-at-controller-build.md)参照。
 
 ## 書き込み前に成立させる復旧経路
 
@@ -129,6 +134,7 @@ sh tools/run-static-analysis.sh
 ```
 
 RV32確認は`tools/probes/c6-at.zig`からデコーダとgateを実際にcodegenする。
+AT制御本体と型付きコマンド生成も同じprobeでcodegenする。
 P4ファームへのリンク、SDIO接続、C6との通信を確認するものではない。
 
 ATの逐次実行や機能上限が測定要件に合わなければ、nihos側のアプリAPIを保ち、

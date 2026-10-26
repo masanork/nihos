@@ -68,9 +68,10 @@ The platform boundary models resources, not generic convenience calls.
 
 The C6 is the proposed owner of Wi-Fi, TCP/IP and the BLE host, exposed to
 the native P4 through ESP-AT over SDIO. ADR 0029 defines the service boundary,
-bounded receive profile and physical qualification gates. Only the host-side
-decoder and command gate are implemented; the SDIO driver and running
-network service are not yet present. See
+bounded receive profile and physical qualification gates. The decoder,
+transaction controller and typed command encoder are host-tested; the separate
+C6 SDIO firmware has been built. The native SDIO driver and running network
+service are not yet present. See
 [`ADR 0029`](adr/0029-c6-network-offload.md).
 
 ## Storage direction
