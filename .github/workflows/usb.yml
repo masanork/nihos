@@ -1,0 +1,92 @@
+name: Native USB and PIN-free JPKI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/usb.yml'
+      - 'src/**'
+      - 'build.zig'
+      - 'provenance.toml'
+      - 'probes/usb*/**'
+      - 'tools/build-native*.sh'
+      - 'tools/run-static-analysis.sh'
+      - 'tools/check-native*.py'
+      - 'tools/native*_test.py'
+      - 'ports/esp32p4-native/**'
+  pull_request:
+    paths:
+      - '.github/workflows/usb.yml'
+      - 'src/**'
+      - 'build.zig'
+      - 'provenance.toml'
+      - 'probes/usb*/**'
+      - 'tools/build-native*.sh'
+      - 'tools/run-static-analysis.sh'
+      - 'tools/check-native*.py'
+      - 'tools/native*_test.py'
+      - 'ports/esp32p4-native/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: usb-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-usb:
+    name: Host checks and three device build configurations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install ESP-IDF 5.4.4 headers and bootloader tools
+        uses: espressif/install-esp-idf-action@8fc05d1470d5591417e7a3707a1f2bec178db4ae
+        with:
+          version: v5.4.4
+
+      - name: Static analysis and default RV32 links
+        run: sh tools/run-static-analysis.sh
+
+      - name: Host models and evidence checker regressions
+        run: |
+          .tools/zig-0.17.0/zig build test
+          .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
+          python3 -m unittest discover -s tools -p '*test.py'
+
+      - name: Compile disabled, USB-only and PIN-free JPKI images
+        # Build/image audit only. GitHub runners provide no Tab5/card evidence.
+        run: |
+          for feature in disabled usb jpki; do
+            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0
+            case "$feature" in
+              usb) export NIHOS_NATIVE_USB=1 ;;
+              jpki) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_JPKI=1 ;;
+            esac
+            sh tools/build-native.sh device integer
+            destination="build/usb-ci/$feature"
+            mkdir -p "$destination"
+            cp build/native-device/nihos-native.elf \
+               build/native-device/nihos-native.bin \
+               build/native-device/image-audit.json \
+               build/native-device/native_options.zig \
+               build/native-device/native-layout.ld \
+               build/native-device/loader/bootloader/bootloader.bin \
+               build/native-device/loader/bootloader/bootloader.elf \
+               build/native-device/loader/config/sdkconfig.h \
+               build/native-device/loader/partition_table/partition-table.bin \
+               "$destination/"
+          done
+
+      - name: Retain source-bound compile evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: native-usb-device-builds
+          path: build/usb-ci/
+          if-no-files-found: warn
