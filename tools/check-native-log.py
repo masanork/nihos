@@ -118,7 +118,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
             raise ValueError("invalid task owner")
         work0, work1, cap0, cap1, switches, calls, reaped, sleeps, elapsed = values
         if (min(work0, work1) == 0 or min(cap0, cap1) < 4 or switches < 8 or
-                calls < 12 or reaped != 2 or sleeps != 2 or elapsed == 0):
+                calls < 12 or reaped != 3 or sleeps != 2 or elapsed == 0):
             raise ValueError("incomplete task lifecycle/preemption")
         if owners[hart] and any(values[index] <= owners[hart][-1][index]
                                 for index in (0, 1, 2, 3, 4, 8)):
@@ -247,6 +247,20 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         heaps[hart] = record
     if set(heaps) != {0, 1}:
         raise ValueError("missing per-hart reusable heap evidence")
+    resource_names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced")
+    pattern = r"NIHOS_NATIVE_RESOURCES hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in resource_names)
+    resources = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in resources:
+            raise ValueError("invalid/duplicate task resource owner")
+        expected = [7, 6, 6, 8 if psram["status"] else 0, 3, 0, 0, 3, 3 if psram["status"] else 0, 1]
+        if values != expected:
+            raise ValueError("incomplete deferred task resource cleanup")
+        resources[hart] = dict(zip(resource_names, values))
+    if set(resources) != {0, 1}:
+        raise ValueError("missing per-hart task resource evidence")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
@@ -263,6 +277,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
             "memory": [{"hart": hart, **memory_owners[hart]} for hart in (0, 1)],
             "external_memory": [{"hart": hart, **external_owners[hart]} for hart in (0, 1)],
             "heaps": [{"hart": hart, **heaps[hart]} for hart in (0, 1)],
+            "task_resources": [{"hart": hart, **resources[hart]} for hart in (0, 1)],
             "external_registered_bytes": sum(owner["capacity"] for owner in external_owners.values()),
             "external_allocatable_bytes": sum(heap["capacity"] for heap in heaps.values())}
 

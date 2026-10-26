@@ -69,11 +69,13 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfp_vectors="$repo_root/src/kernel/fp_vectors.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep core_arena --dep buddy_heap -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
+    --dep core_arena --dep buddy_heap --dep task_resources -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mcore_arena="$repo_root/src/kernel/core_arena.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mbuddy_heap="$repo_root/src/kernel/buddy_heap.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mtask_resources="$repo_root/src/kernel/task_resources.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mpsram="$repo_root/src/soc/esp32p4/psram.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

@@ -111,6 +111,22 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             return handleFor(slot, task.generation);
         }
 
+        /// Owner-only termination. Completion is retained for deferred cleanup
+        /// and reaping; callers must stop the task before reclaiming resources.
+        pub fn terminate(self: *Self, handle: TaskHandle, code: i32) bool {
+            const slot = self.resolve(handle) orelse return false;
+            const task = &self.tasks[slot];
+            if (task.state == .exited) return false;
+            task.state = .exited;
+            task.exit_code = code;
+            task.wake_tick = 0;
+            task.pending_events = 0;
+            task.wait_mask = 0;
+            task.event_result = 0;
+            if (self.current_slot == slot) self.current_slot = null;
+            return true;
+        }
+
         pub fn block(self: *Self, handle: TaskHandle) bool {
             const slot = self.resolve(handle) orelse return false;
             switch (self.tasks[slot].state) {

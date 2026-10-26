@@ -29,6 +29,8 @@ Full-capacity mapping and owner-local external boot allocation are described
 in [ADR 0027](adr/0027-native-external-boot-arenas.md).
 Reusable owner-local PSRAM heaps and their handle API are described in
 [ADR 0028](adr/0028-owner-local-reusable-psram-heap.md).
+Task-bound allocations, termination and deferred cleanup are described in
+[ADR 0029](adr/0029-deferred-native-task-resource-cleanup.md).
 
 ## Build and emulated execution
 
@@ -66,7 +68,9 @@ in this pinned toolchain; this fixture uses a pointer adapter in C instead.
 
 The report also requires three task checkpoints per hart: both busy tasks
 must keep progressing under timer preemption, and both lifecycle generations
-must finish sleeping, exit and be reaped. Dispatch checks interrupt/task
+must finish sleeping, exit and be reaped. A third generation deliberately
+blocks with allocations and is terminated by its owner bootstrap. Its
+completion remains retained until cleanup and reaping finish. Dispatch checks interrupt/task
 stack sentinels, frame bounds, and elapsed-time accounting. These checks do
 not provide memory protection between tasks.
 
@@ -89,7 +93,10 @@ from the runtime heap span. These are boot arenas, not a general reusable
 heap. The same domain implementation manages a separate PSRAM boot arena;
 most of that backing is now transferred to the reusable external heap.
 `alloc` remains an SRAM boot allocation. `allocExternal` returns a reusable
-handle and `freeExternal` releases it on the allocating hart, without fallback.
+handle tied to the current task, and `freeExternal` checks both task generation
+and hart ownership. There is no fallback. The qualification runtime has a
+fixed quota of two outstanding handles per task; a full ledger fails before
+calling the heap. Services needing many objects need a scoped arena/pool.
 
 Before CPU1 release, Zig now reads the PSRAM identity through MSPI3 with
 bounded polling and a repeated-read check. `NIHOS_NATIVE_PSRAM` reports the
@@ -150,8 +157,25 @@ do not prevent stale payload accesses. Power-of-two rounding and per-owner
 partitioning limit allocation efficiency and maximum block size. The 32 MiB
 layout has an 8 MiB raw maximum buddy per owner, before header/padding.
 Larger Quake hunks need a separate extent plan; SQLite needs a small-object
-layer and an allocator adapter. Service cleanup and cross-core frees are
-not wired. Sparse tests do not qualify all memory cells.
+layer and an allocator adapter. Cross-core frees are not wired. Sparse tests
+do not qualify all memory cells.
+
+Every native EXIT closes the current task's fixed SRAM resource ledger.
+The bootstrap termination path also closes its target after stopping it.
+Closing performs no heap access. The bootstrap drains at most one retained
+allocation per service pass, preserving MIE around the bounded release.
+Task stack/FP retirement and slot reuse wait until the ledger is empty and
+marked cleaned. Pending cleanup prevents WFI; completing a close yields to
+the scheduler even when periodic alarms are disarmed.
+
+`NIHOS_NATIVE_RESOURCES` and the `task_resources` array require seven opened
+generations per hart (including the retained bootstrap), six closed/cleaned
+tasks, three slot reuses, three stale-generation rejections and one forced
+termination. A populated run reclaims eight intentionally retained handles
+per hart, with no owned or pending resources at the end. An absent run still
+checks the lifecycle and empty-ledger protocol but must claim zero frees.
+Ordinary worker churn now uses the same task-bound allocation API; the final
+heap check no longer frees forgotten worker buffers on their behalf.
 
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
 `64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
@@ -204,7 +228,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has forty-eight validator regression tests, including frozen
+The smoke has fifty-two validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
@@ -213,6 +237,8 @@ supply programming, command-data accounting, MMU/cache bridges and cross-core
 PSRAM handoff, external arena bounds and absent-die allocation rejection.
 Reusable heap records also require bounded walks, exact backing/metadata
 geometry, zero leaks and capacity recovery.
+Task resource records require cleanup completion, generation reuse and
+actual forced termination, including the no-PSRAM path.
 Four more tests check instruction classification and the
 linker heap boundary:
 

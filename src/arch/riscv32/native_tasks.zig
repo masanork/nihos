@@ -18,8 +18,8 @@ const initial_state = context.ReturnState{ .mstatus = 0x1880, .mcause = 0 };
 extern fn nih_native_task_trampoline() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
-const Phase = enum { initial_lifecycle, replacement_lifecycle, preemption, ipi_protocol, complete };
-const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, ipi_protocol };
+const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete };
+const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol };
 
 const Owner = struct {
     runtime: Runtime = .{},
@@ -102,6 +102,7 @@ fn lifecycle(argument: u32) callconv(.c) i32 {
     if (!onTaskStack(hart, 2, @intFromPtr(&marker), @sizeOf(u32))) nih_native_task_failed();
     if (calls.current() == null) nih_native_task_failed();
     floating.check(hart, 2);
+    memory.reusable.lifecycleProbe();
     const before = calls.nowTicks();
     if (calls.sleep(duration) != 0 or calls.nowTicks() - before < duration)
         nih_native_task_failed();
@@ -124,6 +125,14 @@ fn floatingProtocol(hart: u32) callconv(.c) i32 {
     floating.enter(hart, 2, if (floating.compiled) &floating.app.protocol else &ipi.run, hart);
 }
 
+fn forced(argument: u32) callconv(.c) i32 {
+    var marker = argument;
+    if (!onTaskStack(argument / 4, 2, @intFromPtr(&marker), @sizeOf(u32))) nih_native_task_failed();
+    memory.reusable.lifecycleProbe();
+    _ = calls.block();
+    nih_native_task_failed(); // A terminated task must never resume.
+}
+
 fn compiledStop() callconv(.c) u32 {
     return @intFromBool(ipi.requested());
 }
@@ -141,12 +150,17 @@ fn compiledProtocol(hart: u32) callconv(.c) i32 {
     return ipi.run(hart);
 }
 
+fn compiledResources() callconv(.c) void {
+    memory.reusable.lifecycleProbe();
+}
+
 comptime {
     if (floating.compiled) {
         @export(&compiledStop, .{ .name = "nih_fp_native_stop" });
         @export(&compiledProgress, .{ .name = "nih_fp_native_progress" });
         @export(&compiledSlept, .{ .name = "nih_fp_native_slept" });
         @export(&compiledProtocol, .{ .name = "nih_fp_native_protocol" });
+        @export(&compiledResources, .{ .name = "nih_fp_native_resources" });
     }
 }
 
@@ -176,6 +190,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
             .busy => if (floating.enabled) @intFromPtr(&floatingBusy) else @intFromPtr(&busy),
             .initial_lifecycle, .replacement_lifecycle => if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
             .ipi_protocol => if (floating.enabled) @intFromPtr(&floatingProtocol) else @intFromPtr(&ipi.run),
+            .forced_lifecycle => @intFromPtr(&forced),
         },
         .argument = if (kind == .ipi_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
         .trampoline = @intFromPtr(&nih_native_task_trampoline),
@@ -187,7 +202,8 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
         .stack_min = bottom + 16,
         .stack_max = bottom + stack_bytes,
     }) orelse return null;
-    const bank = floating.prepare(hart, index, handle.generation, handle.slot);
+    if (!memory.reusable.openTask(hart, .{ .slot = handle.slot, .generation = handle.generation })) return null;
+    const bank = if (kind == .forced_lifecycle) 0 else floating.prepare(hart, index, handle.generation, handle.slot);
     owner.runtime.images[handle.slot].?.floating_context = bank;
     if (bank != 0) owner.runtime.images[handle.slot].?.state = initial_state.floatingReady();
     return handle;
@@ -198,6 +214,8 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     const owner = &owners[hart];
     owner.gp = gp;
     owner.bootstrap = owner.runtime.add(0, .{ .stack_min = stack_min, .stack_max = stack_max }) orelse return false;
+    if (!memory.reusable.openTask(hart, key(owner.bootstrap))) return false;
+    memory.reusable.selectTask(hart, key(owner.bootstrap));
     _ = owner.runtime.policy.schedule() orelse return false;
     owner.last_slot = owner.bootstrap.slot;
     for (0..2) |index| owner.workers[index] = add(hart, @intCast(index), .busy) orelse return false;
@@ -212,20 +230,26 @@ pub fn ready(hart: u32) bool {
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {
     const owner = &owners[hart];
-    if (owner.phase != .initial_lifecycle and owner.phase != .replacement_lifecycle)
+    if (owner.phase != .initial_lifecycle and owner.phase != .replacement_lifecycle and owner.phase != .forced_lifecycle)
         return maintainProtocol(hart, device);
     const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
     if (completion.state != .exited) return true;
-    const expected: i32 = @intCast(42 + hart * 4 + @intFromBool(owner.phase == .replacement_lifecycle));
+    const expected: i32 = if (owner.phase == .forced_lifecycle) -99 else @intCast(42 + hart * 4 + @intFromBool(owner.phase == .replacement_lifecycle));
     if (completion.exit_code != expected) return false;
+    if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle))) return true;
     owner.completed_runtime_ticks += completion.runtime_ticks;
     const old = owner.lifecycle;
-    if (!floating.retire(hart, 2) or !owner.runtime.reap(old) or owner.runtime.policy.snapshot(old) != null) return false;
+    if ((owner.phase != .forced_lifecycle and !floating.retire(hart, 2)) or
+        !owner.runtime.reap(old) or owner.runtime.policy.snapshot(old) != null) return false;
     // A scalar call using the old generation must fail even after slot reuse.
     owner.reaped += 1;
-    owner.phase = if (owner.phase == .initial_lifecycle) .replacement_lifecycle else .preemption;
-    if (owner.phase == .replacement_lifecycle) {
-        owner.lifecycle = add(hart, 2, .replacement_lifecycle) orelse return false;
+    owner.phase = switch (owner.phase) {
+        .initial_lifecycle => .replacement_lifecycle,
+        .replacement_lifecycle => .forced_lifecycle,
+        else => .preemption,
+    };
+    if (owner.phase == .replacement_lifecycle or owner.phase == .forced_lifecycle) {
+        owner.lifecycle = add(hart, 2, if (owner.phase == .replacement_lifecycle) .replacement_lifecycle else .forced_lifecycle) orelse return false;
         if (owner.lifecycle.slot != old.slot or owner.lifecycle.generation == old.generation)
             return false;
     }
@@ -241,6 +265,7 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
             const completion = owner.runtime.policy.snapshot(handle) orelse return false;
             if (completion.state != .exited) continue;
             if (completion.exit_code != 100 + hart * 4 + index) return false;
+            if (!memory.reusable.taskCleaned(hart, key(handle))) continue;
             owner.completed_runtime_ticks += completion.runtime_ticks;
             if (!floating.retire(hart, @intCast(index)) or !owner.runtime.reap(handle)) return false;
             owner.worker_reaped[index] = true;
@@ -257,6 +282,7 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
         const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
         if (completion.state == .exited) {
             if (completion.exit_code != 200 + hart) return false;
+            if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle))) return true;
             owner.completed_runtime_ticks += completion.runtime_ticks;
             if (!floating.retire(hart, 2) or !owner.runtime.reap(owner.lifecycle)) return false;
             owner.reaped += 1;
@@ -276,6 +302,7 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     }
     if (total != owner.runtime.policy.now()) nih_native_task_failed();
     const current = owner.runtime.policy.current() orelse nih_native_task_failed();
+    memory.reusable.selectTask(hart, key(current));
     if (current.slot != owner.last_slot) owner.switches +%= 1;
     owner.last_slot = current.slot;
     store(&reports[hart].captures[0], owner.captures[0]);
@@ -321,6 +348,10 @@ pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnSt
     const current = owner.runtime.policy.current() orelse return null;
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .calls, frame.mepc);
     const selected = owner.runtime.call(frame, state) orelse return null;
+    // Closing is common to every native EXIT caller, independent of fixture
+    // kind. It only marks the internal ledger; bootstrap performs the frees.
+    if ((owner.runtime.policy.snapshot(current) orelse return null).state == .exited and
+        !memory.reusable.closeTask(hart, key(current))) return null;
     if (!maintain(hart, device)) return null;
     return publish(hart, if (alarmsDisarmed(owner)) owner.runtime.select() orelse return null else selected);
 }
@@ -336,5 +367,35 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
 
 /// Bootstrap can park only after becoming the lower-priority idle context.
 pub fn idleOnce(hart: u32) void {
+    if (service(hart)) return;
     if (ipi.active(hart)) ipi.idleOnce(hart);
+}
+
+fn key(handle: scheduler.TaskHandle) memory.reusable.Key {
+    return .{ .slot = handle.slot, .generation = handle.generation };
+}
+
+/// Called only by the running bootstrap. No PSRAM access occurs on IRQ stacks.
+pub fn service(hart: u32) bool {
+    const owner = &owners[hart];
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    var terminated = false;
+    if (owner.phase == .forced_lifecycle) {
+        const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
+        if (snapshot.state == .blocked) {
+            if (!owner.runtime.policy.terminate(owner.lifecycle, -99)) nih_native_task_failed();
+            if (!memory.reusable.closeTask(hart, key(owner.lifecycle))) nih_native_task_failed();
+            memory.reusable.terminatedTask(hart);
+            terminated = true;
+        }
+    }
+    if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const cleaned = memory.reusable.cleanupOne();
+    if (cleaned == .complete or terminated) {
+        if (calls.yieldNow() != 0) nih_native_task_failed();
+    }
+    return cleaned != .none or terminated;
 }
