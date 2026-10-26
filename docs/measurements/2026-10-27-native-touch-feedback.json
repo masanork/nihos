@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "scope": "PIN-free native touch to SRAM-background colour feedback",
+  "source": {
+    "commit": "817702a3552a80fc69135d363ce855d3703f1c41",
+    "files": {
+      "src/platform/native/main.zig": "ee9ff4b2809cb27740e7cf4af4f6f75ee9f6e22d00fcaa3c1b93481772e5e849",
+      "src/platform/native/touch_probe.zig": "4a8d95cd9fa2a37fa9a408b8a094d3f06174b59a4496ea2741017cee154ca7cd",
+      "src/platform/native/display_runtime.zig": "8d30c9d842dada3cb8746bda443e048079709a723ee4b8456b7587edc2041775",
+      "src/board/tab5/native_scanout.c": "972485d46f50b643c670b9080f1bb925afa31e2a67001da3043f6566f1fedb49",
+      "src/board/tab5/touch.zig": "b6a55bf18d465db46a002d3bb494be37fbdfc55f0fd4d6052d8c0749c299da88",
+      "src/board/tab5/touch_feedback.zig": "13b76794b976ea7bb96e8e8380796e6a83f78a71377a1c79a95384a83115fcef",
+      "src/board/tab5/boot_i2c.zig": "39df9927030833b90378e25fc30f907582c76895226193ac049e05c2dd38797a",
+      "tools/build-native-elf.sh": "aa60d23ae8e17d3d23c535d44e7e2e235f2be67c768a5211aae42bf5e80f9505"
+    }
+  },
+  "image_bytes": 133568,
+  "image_sha256": "d1527ff2f34f0d8a089ec3d2b6a9545d6410380c9b6831fc7e95615aeb8cb1a1",
+  "elf_sha256": "96f75603e8a78ad89d0c8d366e0ce198a1ca7ab8c804f470d084ae293158eaa7",
+  "hardware": {
+    "board": "M5Stack Tab5",
+    "soc": "ESP32-P4 rev1.3",
+    "panel": "ST7121"
+  },
+  "capture": {
+    "runs": 1,
+    "jpki": false,
+    "card": false,
+    "touch": true,
+    "exclusive_descriptor_held": true,
+    "installed": true,
+    "postverify": true
+  },
+  "pin_input_enabled": false,
+  "card_transport_enabled": false,
+  "optical_evidence": {
+    "observer": "user",
+    "quote": "ちゃんと色が出るね",
+    "scope": "visible colours; no claim of a full PIN screen"
+  },
+  "display": {
+    "display": {
+      "status": 1,
+      "stage": 5,
+      "error_code": 0,
+      "panel": 3,
+      "commands": 34,
+      "last_command": 41,
+      "frames": 2,
+      "fault": 0,
+      "event": 0,
+      "backlight": 1,
+      "dpi_mhz": 80,
+      "lane_mbps": 960,
+      "cleanup": 0,
+      "dsi_error0": 0,
+      "dsi_error1": 0,
+      "dma_error": 0,
+      "bridge_error": 0,
+      "start_code": 0,
+      "prime_depth": 773,
+      "bl_latch": 1,
+      "bl_enable": 1,
+      "bl_level": 1,
+      "bl_mux": 6656,
+      "bl_matrix": 1280,
+      "white": 0
+    },
+    "source": {
+      "sram": 1,
+      "source": 1341233728,
+      "dma_source": 1341233728,
+      "dma_control": 1842001,
+      "word": 276959362
+    },
+    "refresh": {
+      "frames": 33,
+      "fault": 0,
+      "event": 1,
+      "dsi_error0": 0,
+      "dsi_error1": 0,
+      "dma_error": 0,
+      "bridge_error": 0
+    },
+    "mode": 6,
+    "lease": {
+      "lease_start": 1341238144,
+      "lease_bytes": 5184,
+      "nodes": 81
+    },
+    "optical_evidence": "not evaluated by this checker"
+  },
+  "touch": {
+    "report": {
+      "status": 1,
+      "pin_enabled": 0,
+      "width": 720,
+      "height": 1280,
+      "slots": 10,
+      "samples": 2190,
+      "contacts": 15,
+      "max_contacts": 1,
+      "quadrants": 15,
+      "explicit_releases": 4,
+      "inferred_releases": 0,
+      "updates": 9,
+      "errors": 0,
+      "vbus_off": 1,
+      "frames": 3134
+    },
+    "events": [
+      {
+        "contacts": 1,
+        "x": 650,
+        "y": 97,
+        "color": 2016,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 0,
+        "x": 0,
+        "y": 0,
+        "color": 4226,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 1,
+        "x": 646,
+        "y": 1129,
+        "color": 65504,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 0,
+        "x": 0,
+        "y": 0,
+        "color": 4226,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 1,
+        "x": 89,
+        "y": 1195,
+        "color": 31,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 0,
+        "x": 0,
+        "y": 0,
+        "color": 4226,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 1,
+        "x": 42,
+        "y": 68,
+        "color": 63488,
+        "inferred_release": 0
+      },
+      {
+        "contacts": 0,
+        "x": 0,
+        "y": 0,
+        "color": 4226,
+        "inferred_release": 0
+      }
+    ],
+    "contacts_required": true,
+    "optical_evidence": "not evaluated by this checker",
+    "release_note": "Sitronix idle inference belongs only to this PIN-free experiment"
+  },
+  "native_core_checker_passed": true,
+  "raw_log_sha256": "798779d5b74158773cbf8267c7ffdd94842ce1e68cce221ddf9f1378dda62dc1",
+  "public_log": {
+    "path": "2026-10-27-native-touch-feedback.log",
+    "sha256": "d32ed19464ede4bfc045b5a027dcf6ab4fb1025280683c80598128602ea09d4b",
+    "format": "CRLF normalized to LF"
+  },
+  "limits": [
+    "no authenticated card read or PIN input",
+    "no multi-touch physical qualification",
+    "SRAM logo and fixed background only; no full PIN-screen scanout",
+    "finite checkpoint, not a long soak"
+  ],
+  "retained_evidence": "~/Documents/Codex/2026-10-27/nihos-native-touch-feedback"
+}
