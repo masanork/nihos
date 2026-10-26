@@ -383,13 +383,24 @@ export fn nih_native_main() callconv(.c) noreturn {
         if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
         if (sd.status != 1) fail("SDMMC probe");
     }
+    var external_heap_start = native_psram.memory.heap_start;
+    var external_heap_bytes = external.mapping.bytes -| native_psram.memory.reserved_bytes;
+    if (options.display) {
+        const selected = @import("tab5_display").layout(external.mapping.bytes) orelse fail("display requires mapped PSRAM");
+        const display = @import("display_probe.zig").run(timer(0), selected);
+        logger.record("NIHOS_NATIVE_DISPLAY_PREP", null, .{ "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight" }, &display);
+        if (!timer(0).configureOneShot(tasks.period_us)) fail("display timer return");
+        if (display.status != 1) fail("display preparation");
+        external_heap_start = selected.heap_start;
+        external_heap_bytes = selected.heap_bytes;
+    }
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
     logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
-        native_psram.memory.heap_start,
-        external.mapping.bytes - native_psram.memory.reserved_bytes,
+        external_heap_start,
+        external_heap_bytes,
     )) fail("external memory prepare");
     if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
