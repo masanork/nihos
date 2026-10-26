@@ -2,7 +2,7 @@
 //! Open drain is implemented by driving low or releasing the output driver.
 //! No recovery pulses or peripheral-wide reset: a busy shared bus fails closed.
 const std = @import("std");
-pub const Error = error{ InvalidTransfer, ClockTimeout, BusBusy, AddressNack, Nack, ArbitrationLost, Timer };
+pub const Error = error{ InvalidTransfer, ClockTimeout, BusBusy, AddressNack, ReadAddressNack, Nack, ArbitrationLost, Timer };
 pub const sda = 31;
 pub const scl = 32;
 
@@ -131,7 +131,10 @@ pub fn Master(comptime Pins: type) type {
                 if (read.len != 0) try self.start();
             }
             if (read.len != 0) {
-                self.writeByte((address << 1) | 1) catch |err| return if (err == error.Nack) error.AddressNack else err;
+                self.writeByte((address << 1) | 1) catch |err| return if (err == error.Nack)
+                    (if (write.len == 0) error.AddressNack else error.ReadAddressNack)
+                else
+                    err;
                 for (read, 0..) |*byte, index| byte.* = try self.readByte(index + 1 == read.len);
             }
             try self.stop();
@@ -232,4 +235,13 @@ test "data NACK differs from absent address and timer failure aborts" {
     var broken = Master(*Model){ .pins = &stopped };
     try std.testing.expectError(error.Timer, broken.transfer(0x43, &.{3}, &.{}));
     try std.testing.expectEqualDeep([2]bool{ true, true }, stopped.released);
+    var read_nack = Model{};
+    read_nack.sample(true);
+    read_nack.write(0x86, true);
+    read_nack.write(0x03, true);
+    read_nack.sample(true);
+    read_nack.write(0x87, false);
+    var reader = Master(*Model){ .pins = &read_nack };
+    var output: [1]u8 = .{0};
+    try std.testing.expectError(error.ReadAddressNack, reader.transfer(0x43, &.{3}, &output));
 }

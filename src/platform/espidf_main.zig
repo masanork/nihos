@@ -8,7 +8,7 @@ const abi = @import("abi");
 const arena_module = @import("arena");
 const native_trap = @import("native_trap");
 const spsc_ring = @import("spsc_ring");
-const test_pattern = @import("test_pattern");
+const boot_graphics = @import("boot_graphics");
 const tick_counter = @import("tick_counter");
 
 pub const panic = std.debug.no_panic;
@@ -296,11 +296,34 @@ fn exerciseDma() bool {
     return true;
 }
 
-fn exerciseDisplay() bool {
+const BootScreen = struct {
+    info: abi.DisplayInfo,
+    progress: u8 = 0,
+    last_present_us: u32 = 0,
+
+    fn show(self: *BootScreen, progress: u8, status: boot_graphics.Status) bool {
+        self.progress = progress;
+        // SAFETY: display_init lends the writable scanout buffer until shutdown.
+        const base: [*]u8 = @ptrFromInt(self.info.framebuffer_address);
+        if (!boot_graphics.paintRgb565Le(base[0..@intCast(self.info.framebuffer_bytes)], self.info.width, self.info.height, self.info.stride_bytes, progress, status)) return false;
+        var present = abi.DisplayPresent{
+            .framebuffer_address = self.info.framebuffer_address,
+            .framebuffer_bytes = self.info.framebuffer_bytes,
+            .flags = 0,
+            .elapsed_us = 0,
+            .vsync_count = 0,
+        };
+        if (nih_platform_display_present(&present) != abi.Status.ok) return false;
+        self.last_present_us = present.elapsed_us;
+        return true;
+    }
+};
+
+fn beginBootScreen() ?BootScreen {
     // SAFETY: display_init initializes the complete value on success, and the
     // error path returns before any field is inspected.
     var info: abi.DisplayInfo = undefined;
-    if (nih_platform_display_init(&info) != abi.Status.ok) return false;
+    if (nih_platform_display_init(&info) != abi.Status.ok) return null;
     if (info.width == 0 or info.height == 0 or
         info.stride_bytes != info.width * 2 or
         info.pixel_format != abi.DisplayPixelFormat.rgb565_le or
@@ -309,32 +332,20 @@ fn exerciseDisplay() bool {
         (info.framebuffer_flags & abi.DisplayFrameFlags.writable) == 0 or
         (info.framebuffer_flags & abi.DisplayFrameFlags.scanout) == 0)
     {
-        return false;
+        return null;
     }
 
-    // SAFETY: display_init lends this fixed-size writable scanout buffer until
-    // shutdown. The Zig side never retains a view beyond that platform lease.
-    const base: [*]u8 = @ptrFromInt(info.framebuffer_address);
-    const framebuffer = base[0..@intCast(info.framebuffer_bytes)];
-    if (!test_pattern.paintRgb565Le(
-        framebuffer,
-        @intCast(info.width),
-        @intCast(info.height),
-        @intCast(info.stride_bytes),
-    )) return false;
+    var screen = BootScreen{ .info = info };
+    if (!screen.show(0, .display)) return null;
+    return screen;
+}
 
-    var present = abi.DisplayPresent{
-        .framebuffer_address = info.framebuffer_address,
-        .framebuffer_bytes = info.framebuffer_bytes,
-        .flags = 0,
-        .elapsed_us = 0,
-        .vsync_count = 0,
-    };
-    if (nih_platform_display_present(&present) != abi.Status.ok) return false;
+fn exerciseDisplay(screen: *BootScreen) bool {
+    const info = screen.info;
 
     const samples: u32 = 60;
     var total_us: u64 = 0;
-    var last_count = present.vsync_count;
+    var last_count: u32 = 0;
     for (0..samples) |_| {
         var vsync = abi.DisplayVsync{
             .timeout_ms = 100,
@@ -353,11 +364,17 @@ fn exerciseDisplay() bool {
     writeU32("display_height=", info.height);
     writeU32("display_stride_bytes=", info.stride_bytes);
     writeU32("display_framebuffer_bytes=", info.framebuffer_bytes);
-    writeU32("display_present_us=", present.elapsed_us);
+    writeU32("display_present_us=", screen.last_present_us);
     writeU32("display_vsync_samples=", samples);
     writeU64("display_vsync_elapsed_us=", total_us);
     if (total_us == 0) return false;
     writeU64("display_refresh_millihz=", (@as(u64, samples) * 1_000_000_000) / total_us);
+    // Colour the final two pairs during real presents, with no sleep or hold.
+    // Keep this out of the unchanged VSYNC-only measurement above.
+    for (0..16) |step| {
+        const progress: u8 = @intCast(128 + step * 127 / 15);
+        if (!screen.show(progress, .input)) return false;
+    }
     return true;
 }
 
@@ -470,6 +487,20 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     writeU32("psram_heap_bytes=", info.psram_heap_bytes);
     writeU32("flash_bytes=", info.flash_bytes);
 
+    var screen = beginBootScreen() orelse {
+        write("nihos: boot graphics initialization failed\r\n");
+        return;
+    };
+    var boot_complete = false;
+    defer {
+        // Every later early return leaves a visible failure instead of READY.
+        if (!boot_complete) {
+            if (!screen.show(screen.progress, .failed))
+                write("nihos: boot graphics failure status unavailable\r\n");
+        }
+    }
+    if (!screen.show(0, .memory)) return;
+
     if (!exerciseMemory(abi.MemoryKind.internal)) {
         write("nihos: internal arena failed\r\n");
         return;
@@ -482,6 +513,7 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     }
     write("psram_allocator=ok\r\n");
     write("psram_cache_sync=ok\r\n");
+    if (!screen.show(64, .cores)) return;
 
     if (!exerciseSmpMailbox(info.cpu_count)) {
         write("nihos: SMP mailbox failed\r\n");
@@ -768,6 +800,7 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     write("timer_restoration=ok\r\n");
     write("native_timer=ok\r\n");
     write("nihos: core smoke complete\r\n");
+    if (!screen.show(128, .cores)) return;
 
     if (!exerciseDma()) {
         write("nihos: AXI-GDMA copy failed\r\n");
@@ -775,7 +808,7 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
     }
     write("axi_gdma_copy=ok\r\n");
 
-    if (!exerciseDisplay()) {
+    if (!exerciseDisplay(&screen)) {
         write("nihos: display scanout or vsync failed\r\n");
         return;
     }
@@ -787,5 +820,7 @@ export fn nihos_zig_main(info: *const abi.BootInfo) void {
         return;
     }
     write("touch_sampling=ok\r\n");
+    if (!screen.show(255, .ready)) return;
+    boot_complete = true;
     write("nihos: bootstrap complete\r\n");
 }
