@@ -24,6 +24,11 @@ pub const Report = struct {
     releases: u32 = 0,
     contacts: u32 = 0,
     max_contacts: u32 = 0,
+    last_type: u32 = 0,
+    last_flags: u32 = 0,
+    last_error: u32 = 0,
+    last_parameter: u32 = 0,
+    last_bytes: u32 = 0,
 };
 
 pub fn run(clock: timer.Timer, panel: u32) Report {
@@ -44,6 +49,11 @@ fn checkCard(clock: timer.Timer, report: *Report) void {
     var device = usb.Device.open(clock, &enumeration) catch return;
     report.usb = 1;
     defer {
+        report.last_type = device.last_header[0];
+        report.last_flags = device.last_header[7];
+        report.last_error = device.last_header[8];
+        report.last_parameter = device.last_header[9];
+        report.last_bytes = device.last_header[1];
         if (device.close()) |_| {
             report.dma_erased = 1;
         } else |_| {

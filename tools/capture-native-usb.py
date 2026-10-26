@@ -33,6 +33,7 @@ def main():
     checker = Path(__file__).with_name("check-native-log.py")
     completion = args.output / "exclusive-complete.json"
     completion.unlink(missing_ok=True)
+    failures = []
     installation = None
     if args.install:
         try:
@@ -74,12 +75,16 @@ def main():
                 log_path.write_bytes(raw)
                 raise SystemExit("Missing ROM boot banner; inspect " + str(raw_path))
             log_path.write_bytes(raw[start:])
-            subprocess.run([sys.executable, str(checker), str(log_path), str(report_path),
-                            "integer", "32M", str(args.image_audit), "physical-device", "usb,card" if args.card else "usb,jpki" if args.jpki else "usb"], check=True)
-            print(f"Native USB boot {run}: passed ({log_path})", flush=True)
+            checked = subprocess.run([sys.executable, str(checker), str(log_path), str(report_path),
+                                      "integer", "32M", str(args.image_audit), "physical-device", "usb,card" if args.card else "usb,jpki" if args.jpki else "usb"])
+            if checked.returncode:
+                failures.append(run)
+            print(f"Native USB boot {run}: {'failed' if checked.returncode else 'passed'} ({log_path})", flush=True)
 
         if installation:
             tool(console, args.output / "verify-after.log", "verify_flash", installation)
+        if failures:
+            raise SystemExit(f"Qualification failed on boots {failures}; evidence retained, no completion marker")
         completion.write_text(json.dumps({
             "runs": args.runs, "jpki": args.jpki, "card": args.card, "exclusive_descriptor_held": True,
             "installed": bool(installation), "postverify": bool(installation),

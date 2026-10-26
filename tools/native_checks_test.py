@@ -794,7 +794,7 @@ class NativeJPKITests(unittest.TestCase):
 class NativeCardTests(unittest.TestCase):
     @staticmethod
     def card_log():
-        values = (1, 3, 1, 1, 3, 1, 1, 1, 0, 1, 720, 1280, 10, 64, 64, 60, 4, 2)
+        values = (1, 3, 1, 1, 3, 1, 1, 1, 0, 1, 720, 1280, 10, 64, 64, 60, 4, 2, 0x81, 1, 0, 0, 0)
         return 'NIHOS_NATIVE_FP_PASS floating=0\nNIHOS_NATIVE_CARD_CHECK_START pin_enabled=0\nNIHOS_NATIVE_CARD_CHECK' + ''.join(
             ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.CARD_FIELDS, values)) + '\n'
 

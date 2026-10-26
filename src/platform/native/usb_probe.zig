@@ -247,6 +247,7 @@ pub const Device = struct {
     controller: usb.Controller(Bus),
     pipes: Pipes,
     alive: bool = true,
+    last_header: [10]u8 = @splat(0),
 
     pub fn open(clock: timer_group.Timer, report: *Report) !Device {
         const io = Bus{ .clock = clock };
@@ -281,7 +282,10 @@ pub const Device = struct {
     }
     pub fn receive(self: *Device, bytes: []u8) !usize {
         if (!self.alive) return error.Poisoned;
-        return self.controller.stage(&self.pipes.input, true, false, bytes);
+        const length = try self.controller.stage(&self.pipes.input, true, false, bytes);
+        // CCID header only: no APDU payload, PIN, certificate or attributes.
+        if (length >= 10) @memcpy(&self.last_header, bytes[0..10]);
+        return length;
     }
     pub fn scrub(self: *Device) !void {
         self.controller.retire() catch |err| {
