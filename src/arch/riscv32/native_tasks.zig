@@ -420,7 +420,8 @@ pub fn service(hart: u32) bool {
     }
     if (options.storage_service and hart == 1 and owner.phase == .storage_service and nih_storage_cancel_requested() == 1) {
         const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
-        if (snapshot.state == .blocked) {
+        // waitEvents parks in .waiting; .blocked belongs to the scalar block call.
+        if (snapshot.state == .waiting) {
             if (!owner.runtime.policy.terminate(owner.lifecycle, -98)) nih_native_task_failed();
             if (!memory.reusable.closeTask(hart, key(owner.lifecycle))) nih_native_task_failed();
             memory.reusable.terminatedTask(hart);

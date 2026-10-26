@@ -104,3 +104,23 @@ test "an owner without a timer rejects sleep without suspending its caller" {
     try std.testing.expectEqual(scheduler.TaskState.running, policy.snapshot(task).?.state);
     try std.testing.expectEqual(@as(u64, 0), policy.now());
 }
+
+test "event-waiting client can be terminated without consuming pending IPC" {
+    const scheduler = @import("scheduler.zig");
+    var policy = scheduler.Scheduler(2, 2){};
+    const client = policy.add(0).?;
+    const bootstrap = policy.add(1).?;
+    try std.testing.expectEqual(client, policy.schedule().?);
+    const waiting = dispatch(&policy, @backingInt(Number.wait_events), 1);
+    try std.testing.expect(waiting.reschedule);
+    try std.testing.expectEqual(scheduler.TaskState.waiting, policy.snapshot(client).?.state);
+    try std.testing.expectEqual(bootstrap, policy.schedule().?);
+    try std.testing.expect(policy.terminate(client, -98));
+    try std.testing.expectEqual(@as(i32, -98), policy.snapshot(client).?.exit_code);
+    try std.testing.expectEqual(@as(?bool, null), policy.notify(client, 1));
+    try std.testing.expectEqual(bootstrap, policy.schedule().?);
+    try std.testing.expect(policy.remove(client));
+    const replacement = policy.add(0).?;
+    try std.testing.expect(client.generation != replacement.generation);
+    try std.testing.expectEqual(@as(?bool, null), policy.notify(client, 1));
+}
