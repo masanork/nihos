@@ -80,11 +80,46 @@ def complete_log(mode="integer", psram_size="0"):
         values = [7, 6, 6, 8 if size else 0, 3, 0, 0, 3, 3 if size else 0, 1, 18 if size else 0, 6 if size else 0]
         lines.append("NIHOS_NATIVE_RESOURCES hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
+        lines.append("NIHOS_NATIVE_FLASH hart={:08x} start=40010020 end=40010820 bytes=00000800 "
+                     "initial=12345678 final=12345678 checks=00001000 confirmed=00000001".format(hart))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_flash_owner_evidence_cannot_be_missing_or_duplicated(self):
+        log = complete_log()
+        line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_FLASH"))
+        for changed in (log.replace(line, ""), log + "\n" + line):
+            with self.assertRaisesRegex(ValueError, "Flash"):
+                MODULE.check(changed)
+
+    def test_flash_ranges_checksums_and_completion_are_required(self):
+        log = complete_log()
+        for old, new in (("start=40010020", "start=48010020"), ("end=40010820", "end=40010824"),
+                         ("bytes=00000800", "bytes=00010000"), ("final=12345678", "final=12345679"),
+                         ("checks=00001000", "checks=00000800"), ("confirmed=00000001", "confirmed=00000000")):
+            changed = "\n".join(line.replace(old, new) if line.startswith("NIHOS_NATIVE_FLASH") else line
+                                for line in log.splitlines())
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "Flash"):
+                MODULE.check(changed)
+
+    def test_both_harts_must_read_the_same_flash_content(self):
+        log = complete_log()
+        line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_FLASH"))
+        with self.assertRaisesRegex(ValueError, "inconsistent"):
+            MODULE.check(log.replace(line, line.replace("12345678", "87654321")))
+
+    def test_flash_content_is_bound_to_the_audited_image(self):
+        log = complete_log()
+        image = {"elf_sha256": "tested-elf", "flash_records": {"start": "0x40010020", "end": "0x40010820",
+                                                             "bytes": 2048, "fnv1a": 0x12345678}}
+        self.assertEqual(MODULE.check(log, image=image)["image_elf_sha256"], "tested-elf")
+        for field, wrong in (("start", "0x40010024"), ("end", "0x40010824"), ("bytes", 2049), ("fnv1a", 0)):
+            changed = {**image, "flash_records": {**image["flash_records"], field: wrong}}
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "audited image"):
+                MODULE.check(log, image=changed)
+
     def test_missing_or_duplicate_resource_owner_is_rejected(self):
         for size in ("0", "32M"):
             log = complete_log(psram_size=size)

@@ -14,14 +14,18 @@ ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
-    compatibility (r) : ORIGIN = 0x40010020, LENGTH = 4
+    flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
 {
     .flash.appdesc : { KEEP(*(.flash.appdesc)) } > descriptor
-    /* The stock P4 second-stage loader requires two mapped segments.
-     * Neither contains executable native code or runtime data. */
-    .flash.rodata : { LONG(0x4e494853) } > compatibility
+    /* The stock P4 loader maps both segments before entering SRAM.
+     * Only self-contained normal diagnostic tables use the second page. */
+    .flash.rodata : {
+        __flash_records_start = .;
+        KEEP(*(.flash.rodata.records))
+        __flash_records_end = .;
+    } > flash_records
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {
         __fp_app_start = .;
@@ -52,6 +56,8 @@ SECTIONS
     } > ram
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
+    ASSERT(SIZEOF(.flash.rodata) > 0, "missing mapped record tables")
+    ASSERT(SIZEOF(.flash.rodata) <= 65504, "record tables exceed one Flash page")
     ASSERT(__irq_stack1_top <= ORIGIN(ram) + LENGTH(ram), "native SRAM overflow")
     ASSERT(__heap_end - __heap_start >= 49152, "native SRAM heap below 48 KiB")
 }

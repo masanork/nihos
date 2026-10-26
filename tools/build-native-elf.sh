@@ -24,7 +24,12 @@ if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\n' "$floating" "$compiled" > "$build_dir/native_options.zig"
+printf 'pub const floating = %s;\npub const compiled = %s;\n' "$floating" "$compiled" > "$build_dir/native_options.next"
+if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
+    rm "$build_dir/native_options.next"
+else
+    mv "$build_dir/native_options.next" "$build_dir/native_options.zig"
+fi
 set --
 if [ "$mode" != integer ]; then
     "$zig" cc -c -target riscv32-freestanding-none \

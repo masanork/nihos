@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Audit the native ELF/image boundary without requiring a target toolchain.
 
-Require SRAM code/data, just two read-only flash compatibility sections,
+Require SRAM code/mutable data, two bounded read-only Flash sections,
 known ROM calls, no unresolved symbols, and a source-bound image descriptor.
 This is a structural check, not a proof of memory safety or isolation.
 """
@@ -22,7 +22,28 @@ ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_cache_invalidate": 0x4FC003E4,
                "nih_rom_cache_writeback": 0x4FC003F4}
 FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
-                  ".flash.rodata": (0x40010020, 4)}
+                  ".flash.rodata": (0x40010020, None)}
+
+
+def audit_flash_section(name, kind, flags, address, size):
+    expected = FLASH_SECTIONS.get(name)
+    require(expected is not None and address == expected[0], "unexpected non-SRAM section: " + name)
+    require(kind == 1 and flags == 2, "Flash tables must be read-only PROGBITS")
+    require(size == expected[1] if expected[1] is not None else 0 < size <= 65504,
+            "invalid Flash section size")
+
+
+def audit_app_descriptor(data):
+    require(len(data) == 256 and struct.unpack_from("<I", data)[0] == 0xABCD5432,
+            "invalid app descriptor")
+    require(data[180] == 16, "app descriptor must select 64 KiB MMU pages")
+
+
+def fnv1a(data):
+    value = 2166136261
+    for byte in data:
+        value = ((value ^ byte) * 16777619) & 0xffffffff
+    return value
 
 
 def require(condition, reason):
@@ -78,6 +99,7 @@ def audit(elf, image, mode=None, profile="device"):
     functions = []
     executable = []
     flash_found = set()
+    flash_tables = None
     for section in sections:
         name_id, section_type, flags, address, offset, size, link, _, _, stride = section
         name = string(names, name_id)
@@ -86,10 +108,14 @@ def audit(elf, image, mode=None, profile="device"):
                 require(section_type == 8 and flags & 7 == 3, "heap must be writable NOBITS")
             in_sram = low <= address and address + size <= high
             if not in_sram:
-                require(FLASH_SECTIONS.get(name) == (address, size),
-                        "unexpected non-SRAM section: " + name)
-                require(flags & (1 | 4) == 0, "writable/executable flash metadata")
+                audit_flash_section(name, section_type, flags, address, size)
+                require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name == ".flash.appdesc":
+                    audit_app_descriptor(elf[offset:offset + size])
+                if name == ".flash.rodata":
+                    flash_tables = elf[offset:offset + size]
+                    require(len(flash_tables) == size, "truncated Flash tables")
             allocated.append({"name": name, "address": hex(address), "bytes": size})
             if flags & 4:
                 executable.append((name, address, elf[offset:offset + size]))
@@ -110,7 +136,11 @@ def audit(elf, image, mode=None, profile="device"):
                             "function outside SRAM: " + symbol)
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
-    require(flash_found == set(FLASH_SECTIONS), "missing compatibility metadata")
+    require(flash_found == set(FLASH_SECTIONS), "missing mapped Flash sections")
+    flash_start = FLASH_SECTIONS[".flash.rodata"][0]
+    require(symbols.get("__flash_records_start") == flash_start and
+            symbols.get("__flash_records_end") == flash_start + len(flash_tables),
+            "Flash record symbols differ from section")
     require(symbols.get("nih_native_start") == entry, "wrong native entry")
     require(symbols.get("__native_profile") == revision, "ELF profile differs from requested layout")
     for name, address in ROM_SYMBOLS.items():
@@ -157,6 +187,9 @@ def audit(elf, image, mode=None, profile="device"):
               "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
               "memory": {"profile": profile, "origin": hex(low), "end": hex(high), "bytes": high - low},
               "sram_reserved_bytes": symbols["__heap_start"] - low, "heap": heap,
+              "flash_records": {"start": hex(flash_start), "end": hex(flash_start + len(flash_tables)),
+                                "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
+                                "executable": False, "writable": False},
               "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
     if image is None:
         return report
@@ -164,20 +197,30 @@ def audit(elf, image, mode=None, profile="device"):
             "image entry differs from ELF")
     position = 24
     image_segments = []
+    mapped = []
     for index in range(image[1]):
         address, length = struct.unpack_from("<II", image, position)
         position += 8
         data = image[position:position + length]
         require(len(data) == length, "truncated image segment")
         if index == 0:
-            require((address, length) == FLASH_SECTIONS[".flash.appdesc"] and
-                    struct.unpack_from("<I", data)[0] == 0xABCD5432, "invalid first app descriptor")
+            require((address, length) == FLASH_SECTIONS[".flash.appdesc"], "invalid first app descriptor")
+            audit_app_descriptor(data)
             require(data[144:176] == hashlib.sha256(elf).digest(), "ELF digest mismatch")
         if address:
             require((low <= address and address + length <= high) or
-                    (address, length) in FLASH_SECTIONS.values(), "unexpected image load range")
+                    (address, length) == FLASH_SECTIONS[".flash.appdesc"] or
+                    (address == flash_start and length == ((len(flash_tables) + 3) & ~3)),
+                    "unexpected image load range")
+            if address in (FLASH_SECTIONS[".flash.appdesc"][0], flash_start):
+                require(address % 65536 == position % 65536, "Flash image/MMU offset mismatch")
+                mapped.append(address)
+            if address == flash_start:
+                require(data[:len(flash_tables)] == flash_tables, "mapped Flash bytes differ from ELF")
+                report["flash_records"]["image_offset"] = position
             image_segments.append({"address": hex(address), "bytes": length})
         position += length
+    require(mapped == [FLASH_SECTIONS[".flash.appdesc"][0], flash_start], "missing/duplicate mapped image sections")
     # ESP image checksum sits at the end of the next 16-byte block.
     checksum_end = (position + 16) & ~15
     require(image[23] == 1 and len(image) == checksum_end + 32, "missing image SHA256")
@@ -235,7 +278,7 @@ def main():
     except (ValueError, IndexError, KeyError, struct.error) as error:
         raise SystemExit("Native image audit failed: " + str(error)) from error
     Path(sys.argv[3]).write_text(json.dumps(report, indent=2) + "\n")
-    print("Native image audit passed: SRAM only, known ROM ABI, no RTOS symbols")
+    print("Native image audit passed: SRAM code, read-only Flash tables, known ROM ABI, no RTOS symbols")
 
 
 if __name__ == "__main__":

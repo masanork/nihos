@@ -10,6 +10,32 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_descriptor_must_select_the_audited_mmu_page_size(self):
+        data = bytearray(256)
+        struct.pack_into("<I", data, 0, 0xABCD5432)
+        data[180] = 16
+        MODULE.audit_app_descriptor(data)
+        for changed in (data[:255], b"bad!" + data[4:], data[:180] + b"\x0f" + data[181:]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_app_descriptor(changed)
+
+    def test_flash_tables_are_bounded_read_only_progbits(self):
+        MODULE.audit_flash_section(".flash.appdesc", 1, 2, 0x40000020, 256)
+        for size in (1, 1986, 65504):
+            MODULE.audit_flash_section(".flash.rodata", 1, 2, 0x40010020, size)
+        for kind, flags, address, size in ((8, 2, 0x40010020, 64), (1, 3, 0x40010020, 64),
+                                            (1, 6, 0x40010020, 64), (1, 2, 0x40010024, 64),
+                                            (1, 2, 0x40010020, 0), (1, 2, 0x40010020, 65505)):
+            with self.subTest(kind=kind, flags=flags, size=size), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(".flash.rodata", kind, flags, address, size)
+        with self.assertRaises(ValueError):
+            MODULE.audit_flash_section(".flash.text", 1, 2, 0x40010020, 64)
+
+    def test_flash_checksum_uses_known_fnv1a_vectors(self):
+        for data, checksum in ((b"", 0x811c9dc5), (b"a", 0xe40c292c), (b"foobar", 0xbf9cf968)):
+            with self.subTest(data=data):
+                self.assertEqual(MODULE.fnv1a(data), checksum)
+
     def test_heap_is_the_unloaded_tail_after_stacks(self):
         for low, high, _ in MODULE.SRAM_PROFILES.values():
             start = high - 65536
