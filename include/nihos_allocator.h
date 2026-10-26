@@ -16,7 +16,7 @@
  * Runtime-scoped ownership stamp, valid even before opening a C pool. */
 uint32_t nih_task_identity(void);
 int nih_task_allocator_open(size_t count);
-/* Profile 1: trace-informed SQLite HOST fixture; other IDs are rejected. */
+/* Profile 1: trace-informed SQLite qualification fixture; other IDs are rejected. */
 int nih_task_allocator_open_profile(uint32_t profile);
 int nih_task_allocator_close(void);
 void *nih_task_malloc(size_t bytes);

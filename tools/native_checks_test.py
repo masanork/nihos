@@ -111,7 +111,68 @@ def complete_image():
                 "mapping": {"start": "0x40000920", "end": "0x40001120"}}}}
 
 
+def sqlite_log(psram_size="32M"):
+    log = complete_log("integer", psram_size)
+    log = log.replace("NIHOS_NATIVE_COMPILER enabled=0", "NIHOS_NATIVE_COMPILER enabled=0\nNIHOS_NATIVE_SQLITE_MODE enabled=1")
+    populated = psram_size != "0"
+    ordinary = MODULE.check(complete_log("integer", psram_size), "integer", MODULE.PSRAM_SIZES[psram_size])
+    free = ordinary["heaps"][0]["free"]
+    names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
+    values = [int(populated), 1 if populated else 0, 2 if populated else 0, 26 if populated else 0,
+              0x40020020 if populated else 0, 0x40020000, 0x40021000, 0x40021000, 0x40022000,
+              free if populated else 0, free if populated else 0, 0x4ff60010 if populated else 0,
+              0x4ff62000 if populated else 0, 0x4ff61c00 if populated else 0, 6472 if populated else 0, 8 if populated else 0]
+    line = "NIHOS_NATIVE_SQLITE" + "".join(" {}={:08x}".format(n, v) for n,v in zip(names,values))
+    class_names = ("c8","c16","c32","c64","c128","c256","c512","c1024","c2048","c4096")
+    peaks = [20,10,22,23,16,3,6,8,3,0] if populated else [0]*10
+    classes = "NIHOS_NATIVE_SQLITE_CLASSES" + "".join(" {}={:08x}".format(n,v) for n,v in zip(class_names,peaks))
+    return log + "\n" + line + "\n" + classes
+
+
+class NativeSQLiteLogTests(unittest.TestCase):
+    def test_complete_populated_and_absent_sqlite_runs(self):
+        for size in ("0", "4M", "32M"):
+            report = MODULE.check(sqlite_log(size), "sqlite", MODULE.PSRAM_SIZES[size])
+            self.assertEqual(report["sqlite"]["queries"], 0 if size=="0" else 26)
+
+    def test_missing_or_incomplete_sqlite_runtime_and_stack_evidence_fails(self):
+        log = sqlite_log()
+        for old, new in (("queries=0000001a", "queries=00000019"), ("owner=00000001", "owner=00000002"),
+                         ("mie=00000008", "mie=00000000"), ("observed_used=00001948", "observed_used=00001fff")):
+            with self.subTest(old=old), self.assertRaisesRegex(ValueError, "SQLite"):
+                MODULE.check(log.replace(old,new), "sqlite",32<<20)
+        line=next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_SQLITE "))
+        for changed in (log.replace(line,""),log+"\n"+line,log+"\nNIHOS_NATIVE_SQLITE malformed"):
+            with self.assertRaisesRegex(ValueError,"SQLite"):
+                MODULE.check(changed,"sqlite",32<<20)
+
+    def test_allocation_trace_and_mode_are_required(self):
+        log=sqlite_log()
+        for old,new in (("c64=00000017","c64=00000001"),("c32=00000016","c32=00000080"),
+                        ("NIHOS_NATIVE_SQLITE_MODE enabled=1","")):
+            with self.subTest(old=old),self.assertRaises(ValueError):
+                MODULE.check(log.replace(old,new),"sqlite",32<<20)
+        with self.assertRaisesRegex(ValueError,"unexpected SQLite"):
+            MODULE.check(complete_log()+"\nNIHOS_NATIVE_SQLITE_CLASSES malformed")
+
+
 class NativeLogTests(unittest.TestCase):
+    def test_physical_evidence_requires_explicit_source_and_device_profile(self):
+        image = {**complete_image(), "memory": {"profile": "device"}}
+        report = MODULE.check(complete_log(), image=image, evidence="physical-device")
+        self.assertEqual(report["evidence"], "physical-device")
+        with self.assertRaisesRegex(ValueError, "explicit physical"):
+            MODULE.check(complete_log(), image=image)
+
+    def test_physical_evidence_rejects_emulator_and_missing_image_binding(self):
+        for image in (None, complete_image(), {**complete_image(), "memory": {"profile": "emulator"}}):
+            with self.subTest(image=image), self.assertRaisesRegex(ValueError, "device-profile"):
+                MODULE.check(complete_log(), image=image, evidence="physical-device")
+
+    def test_unknown_evidence_source_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "evidence source"):
+            MODULE.check(complete_log(), evidence="assumed-device")
+
     def test_stack_owners_cannot_be_missing_or_duplicated(self):
         log = complete_log()
         line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_STACKS"))

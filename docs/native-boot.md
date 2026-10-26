@@ -60,6 +60,7 @@ sh tools/run-native-smoke.sh floating
 sh tools/run-native-smoke.sh compiled
 sh tools/run-native-smoke.sh integer 32M
 sh tools/run-native-smoke.sh compiled 32M
+sh tools/run-native-smoke.sh sqlite 4M
 ```
 
 This builds only the stock loader and partition table with IDF. Zig links
@@ -336,7 +337,7 @@ a typed Zig API; the subsequent C boundary and host-only SQLite probe are descri
 [ADR 0036](adr/0036-task-owned-size-class-pools.md) and its
 [source-bound measurement](measurements/2026-10-26-native-size-pools.md).
 
-Run all 84 Python tests with:
+Run all 93 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'
@@ -364,15 +365,16 @@ fetches and verifies official SQLite 3.54.1, runs a host memory-only database
 through that allocator, injects OOM at each baseline allocation and checks
 retry/recovery. An optional first argument selects the uniform per-class quota
 (default 64). The no-I/O test VFS supplies no persistent storage guarantee.
-SQLite is not linked into native images. Native library placement/C runtime,
-service ownership, bounded RPC, VFS fault tests and physical validation remain
-separate gates. See the [measurement](measurements/2026-10-26-native-c-allocator.md).
+Ordinary native modes do not link SQLite. The opt-in native fixture below adds
+library placement and execution; service ownership, bounded RPC, VFS fault
+tests and physical validation remain separate gates. See the
+[measurement](measurements/2026-10-26-native-c-allocator.md).
 
 The subsequent [configured quota](adr/0038-configured-size-class-quotas.md) and
 [C identity](adr/0039-runtime-c-task-identity.md) stages add an experimental
 64 KiB SQLite profile and a runtime-scoped owner stamp. Profile 1 now uses
-`24,12,16,12,64,4,8,12,8,1` cells for the ten classes; its requested parent is
-50,640 bytes. It is a bounded fixture policy, not a production SQL budget.
+`24,12,64,64,64,4,8,12,8,1` cells for the ten classes; its requested parent is
+57,104 bytes. It is a bounded fixture policy, not a production SQL budget.
 `nih_task_identity()` includes hart, slot and generation and returns zero for
 unavailable/inactive or interrupt-disabled contexts.
 
@@ -381,6 +383,33 @@ adds a host-qualified entry guard, finite scalar queries, progress budget and
 atomic token cancellation. Its 321-point OOM/retry sweep and a real pthread
 cancel test run through `tools/run-sqlite-memory-probe.sh`, alongside the original
 308-point sweep. A normal build without injection hooks is also exercised.
-Native images contain no SQLite; firmware still exercises only the C allocator
-and identity boundary. [Aggregate measurements](measurements/2026-10-26-sqlite-owner-session.md)
+That stage exercised only the C allocator and identity boundary in firmware.
+Its [aggregate measurements](measurements/2026-10-26-sqlite-owner-session.md)
 separate host, emulator and unperformed physical qualification.
+
+## Opt-in native SQLite execution
+
+`sh tools/build-native.sh device sqlite` builds a physical revision-1/2 image;
+`sh tools/run-native-smoke.sh sqlite SIZE` executes the emulator profile.
+SQLite, the session wrapper and the no-I/O VFS use a source/object-bound Flash
+allowlist. Their code and constants join the diagnostic table in the stock
+loader's second mapped segment. Kernel, interrupts, allocators, C string
+helpers, compiler runtime and all mutable state remain in internal SRAM.
+The SQL mode retains the integer ILP32 ABI and software REAL arithmetic.
+
+After the full SMP/timer and IPI fixtures, CPU0's bootstrap opens and closes
+two in-memory sessions and checks 26 scalar/DDL/transaction queries. Timers
+are disarmed and the peer is quiescent during SQL; MIE stays enabled. This
+does not yet place SQLite in a scheduled service or qualify interrupted SQL.
+With no PSRAM the fixture reports a skipped SQL phase and still requires the
+ordinary kernel gates. Populated cases check complete parent-heap recovery,
+the executed open-function PC, allocation-class peaks and the bootstrap's
+stack overwrite observation. The fixed workload observed 6,472 bytes in its
+8 KiB reservation; this is not a general SQL stack limit.
+
+[ADR 0042](adr/0042-native-sqlite-flash-execution.md) and its
+[measurement](measurements/2026-10-26-native-sqlite.md) record the loader's
+two-mapping restriction, quota failures and exact artifacts. Physical Tab5
+qualification is required before publication; ordinary and Native CI remain
+separate checks after publication. No device write or new CI was performed
+for this local stage.

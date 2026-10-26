@@ -172,6 +172,37 @@ class NativeInstructionTests(unittest.TestCase):
             self.assertFalse(MODULE.is_fp_instruction(instruction, 2))
 
 
+class SQLiteBoundaryTests(unittest.TestCase):
+    def test_flash_sql_requires_opt_in_and_no_writable_or_outside_sections(self):
+        MODULE.audit_flash_section(".flash.sqltext", 1, 6, 0x40020000, 64, True)
+        MODULE.audit_flash_section(".flash.sqlrodata", 1, 50, 0x40020100, 64, True)
+        for name, flags, address, enabled in ((".flash.sqltext", 6, 0x40020000, False),
+                (".flash.sqltext", 7, 0x40020000, True), (".flash.sqlrodata", 3, 0x40020100, True),
+                (".flash.sqltext", 6, 0x400c0000, True)):
+            with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(name, 1, flags, address, 64, enabled)
+
+    def test_sql_manifest_cannot_silently_admit_a_resident_function(self):
+        funcs = [("psram.probe", 0x40000120, 0x40000140),
+                 ("psram_memory.prepare__func_1", 0x40000140, 0x40000160),
+                 ("heap.allocTask", 0x40020000, 0x40020020)]
+        with self.assertRaisesRegex(ValueError, "non-manifest"):
+            MODULE.audit_boot_functions(funcs, 0x40000120, 0x40000160, 0x4ff20000, 0x4ff48000,
+                                        (0x40020000, 0x40020100), ["sqlite3_open"])
+        funcs[-1] = ("sqlite3_open", 0x40020000, 0x40020020)
+        result = MODULE.audit_boot_functions(funcs, 0x40000120, 0x40000160, 0x4ff20000, 0x4ff48000,
+                                            (0x40020000, 0x40020100), ["sqlite3_open"])
+        self.assertEqual(set(result), {"probe", "mapping"})
+
+    def test_c_static_stack_metadata_has_bounded_checked_records(self):
+        funcs = [("sqlite3_open", 0x40020000, 0x40020020)]
+        result = MODULE.decode_stack_sizes(struct.pack("<I", 0x40020000) + bytes([0x80, 0x06]), funcs)
+        self.assertEqual(result["maximum_reported_frame_bytes"], 768)
+        for data in (b"x", struct.pack("<I", 0x40020000) + b"\x80", struct.pack("<I", 0x40020020) + b"\0"):
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                MODULE.decode_stack_sizes(data, funcs)
+
+
 def loader_elf(sections):
     elf = bytearray(52 + 40 * len(sections))
     elf[:7] = b"\x7fELF\x01\x01\x01"
