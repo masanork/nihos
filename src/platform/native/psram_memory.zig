@@ -111,7 +111,8 @@ fn pointer(window: u32, offset: u32) *volatile u32 {
     return @ptrFromInt(mapping.virtual_base + window * mapping.page_bytes + offset);
 }
 
-pub fn prepare(controller: anytype) Report {
+pub noinline fn prepare(controller: anytype) Report {
+    @branchHint(.cold);
     var report = Report{ .status = 2 };
     if (mapping.encrypted(IO.read(.{}, 0x5012d034))) {
         report.failure = 12;

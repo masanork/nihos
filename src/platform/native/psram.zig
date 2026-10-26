@@ -63,7 +63,8 @@ fn settle(clock: timer_group.Timer) bool {
 
 /// Temporarily leases the stopped CPU0 1 MHz timer. Caller reconfigures it
 /// before scheduler startup. The 1 ms wait is a boot policy, not power-good.
-pub fn probe(clock: timer_group.Timer) Report {
+pub noinline fn probe(clock: timer_group.Timer) Report {
+    @branchHint(.cold);
     var report = Report{ .discovery = .{ .status = .timeout } };
     const selected = supply.setting(reg(0x5012d04c).*, reg(0x5012d050).*);
     report.supply.calibrated = @intFromBool(selected.calibrated);

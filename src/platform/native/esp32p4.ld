@@ -1,10 +1,18 @@
-/* Internal SRAM only. Keep clear of the bootloader and CPU1 ROM stack.
- * Layout reference: ESP-IDF v5.4.4 ESP32-P4 memory.ld / bootloader.ld.
+/* Preprocessed by build-native-elf.sh. ESP-IDF v5.4.4 memory.ld.in uses
+ * a low bank on rev1/2 and skips the first 128 KiB cache bank on rev3.
+ * Keep the entire 160 KiB region below live loader/ROM allocations.
  */
+#if NIH_NATIVE_REV3
+__native_profile = 1;
+#define NIH_SRAM_ORIGIN 0x4ff20000
+#else
+__native_profile = 0;
+#define NIH_SRAM_ORIGIN 0x4ff00000
+#endif
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
-    ram (rwx) : ORIGIN = 0x4ff00000, LENGTH = 128K
+    ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     compatibility (r) : ORIGIN = 0x40010020, LENGTH = 4
 }
@@ -45,7 +53,7 @@ SECTIONS
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
     ASSERT(__irq_stack1_top <= ORIGIN(ram) + LENGTH(ram), "native SRAM overflow")
-    ASSERT(__heap_end - __heap_start >= 16384, "native SRAM heap below 16 KiB")
+    ASSERT(__heap_end - __heap_start >= 49152, "native SRAM heap below 48 KiB")
 }
 /* ROM ABI, not linked ESP-IDF implementations. */
 PROVIDE(nih_rom_putc = 0x4fc00054);

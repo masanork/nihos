@@ -31,6 +31,8 @@ Reusable owner-local PSRAM heaps and their handle API are described in
 [ADR 0028](adr/0028-owner-local-reusable-psram-heap.md).
 Task-bound allocations, termination and deferred cleanup are described in
 [ADR 0029](adr/0029-deferred-native-task-resource-cleanup.md).
+Revision-aware resident regions, the 48 KiB heap budget and shared record
+output are described in [ADR 0030](adr/0030-revision-aware-native-sram-budget.md).
 
 ## Build and emulated execution
 
@@ -82,6 +84,10 @@ before WFI with MIE clear. The earlier soak marker alone cannot pass this
 workflow. These observations do not measure physical power savings.
 
 The linker now assigns the unused SRAM tail to a NOBITS `.heap` section.
+The resident region is 160 KiB: `0x4ff00000..0x4ff28000` for the physical
+rev1/2 profile, and `0x4ff20000..0x4ff48000` for the rev3 emulator profile.
+The latter skips the pinned 128 KiB cache prefix. The linker and image audit
+require at least 48 KiB of internal heap; all stack reservations are retained.
 CPU0 splits it into two guarded arenas before releasing CPU1. Native
 allocation selects the current hart's arena and masks local interrupts only
 for the cursor update. It has no shared lock, fallback, free or reset.
@@ -201,6 +207,9 @@ The manual **Native boot** workflow runs all three modes without a die and
 the five populated sizes in integer mode plus compiled FP with 32 MiB,
 builds the three physical images,
 and retains the artifacts. It does not flash hardware.
+Full builds also require disjoint live loader allocations and verify the
+loader's 128 KiB L2 / 64-byte-line configuration and revision selection.
+Each image audit records the region, loader digest and allocation gap.
 Manual runs queue behind an active run on the same branch so a later
 request does not cancel the preceding commit's qualification.
 
@@ -228,7 +237,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has fifty-two validator regression tests, including frozen
+The smoke has fifty-two log validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
@@ -239,8 +248,12 @@ Reusable heap records also require bounded walks, exact backing/metadata
 geometry, zero leaks and capacity recovery.
 Task resource records require cleanup completion, generation reuse and
 actual forced termination, including the no-PSRAM path.
-Four more tests check instruction classification and the
-linker heap boundary:
+Eight more tests check instructions, heap/loader boundaries and loader cache
+configuration. One compiler test checks five invalid diagnostic schemas.
+Normal report output uses a shared, allocation-free typed record writer;
+two host tests cover ordering/full values and actual struct offsets.
+
+Run all 61 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

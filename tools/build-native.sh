@@ -46,4 +46,5 @@ sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
     0x8000 "$boot_dir/partition_table/partition-table.bin" \
     0x10000 "$build_dir/nihos-native.bin"
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
-    "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode"
+    "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
+    "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h"
