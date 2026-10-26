@@ -135,3 +135,30 @@ Application SHA256:
 `510d9f756adc46c04ca9db5fb7435cd2177bb59bd31a6af451f1f48151f19f86`
 ELF SHA256:
 `ae0582722360f60e4e31bb82228268920944f1bba66aa1d1f30f034f1311d98a`
+
+## Resume 9: combined real-card display confirmed
+
+The user reported 「ぶじ表示できたね」 after the resumed run. The same exact
+708700c application was restored from retained installation artifacts after
+identifying and fully verifying the intervening console-scroll-03 image
+(ELF c6b81967...). One exclusive serial lease covers restore, verification
+and capture; no other serial owner was interrupted.
+
+Retained RESULT metadata: status 1, fault 0, all four attributes mask 15,
+Input Support VERIFY budget 1, Surface VERIFY budget 1, photo decoded 1,
+photo error 0, terminal power-cut cleanup 2 and VBUS OFF 1. Phase reports
+status word 9000, no failed state and no timeout. This confirms successful
+one-shot card read/photo decode in this physical run; the user's observation
+separately confirms the combined visible result. No card values, individual
+number, PIN or portrait were logged or exported.
+
+This checkpoint occurs while the result remains visible. Final on-screen
+clear, retained pixel/workspace erasure and the capture's post-verification
+receipt remain pending the user's tap or the result timeout. Do not treat
+this interim record as the final DONE/erasure receipt. Artifacts are retained
+under `card-overview-708700c-resume-9` in the private evidence directory.
+
+The preceding attempt 7 had instead expired at the initial start-touch gate:
+zero VERIFY, counter 3 unchanged, cleanup and erasure passed. Resume 8 found
+an intervening console image and stopped on comparison mismatch before any
+card operation; resume 9 explicitly restored the retained reader image.
