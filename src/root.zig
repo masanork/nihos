@@ -29,6 +29,7 @@ pub const tick_clock = @import("kernel/tick_clock.zig");
 pub const task_control = @import("kernel/task_control.zig");
 pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
+pub const boot_graphics = @import("graphics/boot_graphics.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
@@ -69,5 +70,6 @@ test {
     _ = fp_vectors;
     _ = @import("kernel/task_control_test.zig");
     _ = test_pattern;
+    _ = boot_graphics;
     _ = platform_abi;
 }
