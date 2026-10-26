@@ -10,12 +10,12 @@ import subprocess
 import sys
 import time
 
-import serial
-import esptool
-from esptool.reset import HardReset
 
 
 def main():
+    import serial
+    from esptool.reset import HardReset
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("port")
     parser.add_argument("output", type=Path)
@@ -28,26 +28,14 @@ def main():
         parser.error("runs must be 1..10")
     args.output.mkdir(parents=True, exist_ok=True)
     checker = Path(__file__).with_name("check-native-log.py")
+    completion = args.output / "exclusive-complete.json"
+    completion.unlink(missing_ok=True)
     installation = None
     if args.install:
-        audit = json.loads(args.image_audit.read_text())
-        paths = {
-            "0x2000": args.install / "loader/bootloader/bootloader.bin",
-            "0x8000": args.install / "loader/partition_table/partition-table.bin",
-            "0x10000": args.install / "nihos-native.bin",
-        }
-        if audit.get("rtos_linked") is not False or audit.get("memory", {}).get("profile") != "device":
-            parser.error("installation requires an audited native device image")
-        if hashlib.sha256(paths["0x10000"].read_bytes()).hexdigest() != audit.get("image_sha256"):
-            parser.error("installation image differs from the supplied audit")
-        retained = args.output / "installed"
-        retained.mkdir(exist_ok=True)
-        installation = {}
-        for address, source in paths.items():
-            destination = retained / source.name
-            shutil.copy2(source, destination)
-            installation[address] = destination
-        shutil.copy2(args.image_audit, retained / "image-audit.json")
+        try:
+            installation, args.image_audit = snapshot_install(args.install, args.image_audit, args.output)
+        except (ValueError, FileExistsError) as error:
+            parser.error(str(error))
     with serial.Serial(args.port, 115200, timeout=0.15, exclusive=True) as console:
         print("Exclusive serial lease acquired for the full qualification", flush=True)
         if installation:
@@ -88,14 +76,41 @@ def main():
 
         if installation:
             tool(console, args.output / "verify-after.log", "verify_flash", installation)
-        (args.output / "exclusive-complete.json").write_text(json.dumps({
+        completion.write_text(json.dumps({
             "runs": args.runs, "jpki": args.jpki, "exclusive_descriptor_held": True,
             "installed": bool(installation), "postverify": bool(installation),
         }, indent=2) + "\n")
         print("Qualification complete; releasing serial lease", flush=True)
 
 
+
+def snapshot_install(build, audit_path, output):
+    audit_bytes = audit_path.read_bytes()
+    audit = json.loads(audit_bytes)
+    if audit.get("rtos_linked") is not False or audit.get("memory", {}).get("profile") != "device":
+        raise ValueError("installation requires an audited native device image")
+    retained = output / "installed"
+    retained.mkdir()  # A fresh output preserves previous evidence on rerun.
+    paths = {
+        "0x2000": build / "loader/bootloader/bootloader.bin",
+        "0x8000": build / "loader/partition_table/partition-table.bin",
+        "0x10000": build / "nihos-native.bin",
+    }
+    installation = {}
+    for address, source in paths.items():
+        destination = retained / source.name
+        shutil.copy2(source, destination)
+        installation[address] = destination
+    if hashlib.sha256(installation["0x10000"].read_bytes()).hexdigest() != audit.get("image_sha256"):
+        raise ValueError("retained installation image differs from the supplied audit")
+    frozen_audit = retained / "image-audit.json"
+    frozen_audit.write_bytes(audit_bytes)
+    return installation, frozen_audit
+
+
 def tool(console, log, action, paths):
+    import esptool
+
     with log.open("w") as output, contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
         device = esptool.detect_chip(port=console, baud=115200)
         arguments = ["--chip", "esp32p4", "--baud", "460800", "--after", "hard_reset", action]

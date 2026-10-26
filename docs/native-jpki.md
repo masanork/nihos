@@ -46,7 +46,7 @@ this is a small independent Zig implementation of its wire sequence.
 The fixed 512-byte CCID buffers validate message type, declared size, slot,
 sequence, card/command status, and at most four time-extension responses.
 Certificate parsing consumes a bounded DER prefix, including the optional
-version wrapper, and accepts only a positive, minimally encoded serial number
+version wrapper, and accepts only a non-negative, minimally encoded serial number
 of at most 20 bytes. It does not read the entire certificate or claim to
 validate its signature, issuer, validity period or authenticity.
 
@@ -82,6 +82,10 @@ three before capture, retains one exclusive serial descriptor across all
 boots, then verifies all three again before releasing it. Without `--install`,
 the tool only captures the already installed image. It never terminates another
 port owner or releases another task's reservation.
+Installation requires a fresh output directory. Both the app and its image
+audit are retained before serial use; capture validates against that frozen
+audit even if the original build directory is rebuilt concurrently. An earlier
+completion marker is retired before a new attempt.
 
 References: [CCID 1.1](https://www.usb.org/sites/default/files/DWG_Smart-Card_CCID_Rev110.pdf),
 [civ JPKI source](https://github.com/masanork/civ/blob/54a843e656513930df60bbc20d752ff3289e7078/src/jpki.rs).
