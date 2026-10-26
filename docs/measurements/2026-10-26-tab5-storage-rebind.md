@@ -117,3 +117,5 @@ paintによる固定fixtureの観測値であり、一般pathの最大stack保�
 [画像・全ログ・SDK比較・audit・source patch・license・SHA256 manifest](/Users/masanork/Documents/Codex/2026-10-26/nihos-tab5-storage-rebind-qualification)。
 終了時点でこの最終画像を書込み・照合した。ポート解放後の他セッションによる変更は追跡していない。
 mainの並行作業は変更していない。
+
+続報: [boot SD codeのFlash配置と内部SRAM回復](2026-10-27-tab5-storage-sram-layout.md)。
