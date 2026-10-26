@@ -527,7 +527,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
                     print("NIHOS_NATIVE_CARD_CHECK_START pin_enabled=0\n");
                     const readiness = @import("card_probe.zig").run(timer(0), display_panel);
-                    logger.record("NIHOS_NATIVE_CARD_CHECK", null, .{ "status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts" }, &readiness);
+                    logger.record("NIHOS_NATIVE_CARD_CHECK", null, .{ "status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts", "last_type", "last_flags", "last_error", "last_parameter", "last_bytes" }, &readiness);
                 }
                 if (options.display_scanout) {
                     const display = @import("display_runtime.zig");
