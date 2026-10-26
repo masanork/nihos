@@ -24,10 +24,17 @@ extern fn nih_storage_task_exited(u32, u32) callconv(.c) void;
 extern fn nih_storage_cancel_requested() callconv(.c) u32;
 extern fn nih_storage_cleanup_ready() callconv(.c) u32;
 extern fn nih_storage_retired(u32) callconv(.c) void;
+extern fn nih_broker_task_entry(u32) callconv(.c) i32;
+extern fn nih_broker_register(u32, u32, u32) callconv(.c) void;
+extern fn nih_broker_pending() callconv(.c) u32;
+extern fn nih_broker_task_exited(u32) callconv(.c) void;
+extern fn nih_broker_cleanup_ready() callconv(.c) u32;
+extern fn nih_broker_round() callconv(.c) u32;
+extern fn nih_broker_reaped() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
-const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete };
-const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol };
+const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete };
+const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol };
 
 const Owner = struct {
     runtime: Runtime = .{},
@@ -200,8 +207,9 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
             .ipi_protocol => if (floating.enabled) @intFromPtr(&floatingProtocol) else @intFromPtr(&ipi.run),
             .forced_lifecycle => @intFromPtr(&forced),
             .storage_protocol => if (options.storage_service) @intFromPtr(&nih_storage_task_entry) else 0,
+            .broker_protocol => if (options.broker) @intFromPtr(&nih_broker_task_entry) else 0,
         },
-        .argument = if (kind == .ipi_protocol or kind == .storage_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
+        .argument = if (kind == .ipi_protocol or kind == .storage_protocol or kind == .broker_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
         .trampoline = @intFromPtr(&nih_native_task_trampoline),
         .global_pointer = owner.gp,
     });
@@ -239,6 +247,20 @@ pub fn ready(hart: u32) bool {
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {
     const owner = &owners[hart];
+    if (options.broker and owner.phase == .broker_complete) return true;
+    if (options.broker and owner.phase == .broker_service) {
+        const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
+        if (completion.state != .exited) return true;
+        const round = nih_broker_round();
+        if (completion.exit_code != 400 + round) return false;
+        if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle)) or nih_broker_cleanup_ready() != round) return true;
+        owner.completed_runtime_ticks += completion.runtime_ticks;
+        if (!owner.runtime.reap(owner.lifecycle)) return false;
+        nih_broker_reaped();
+        if (round == 1) return admitBroker(hart);
+        owner.phase = .broker_complete;
+        return true;
+    }
     if (options.storage_service and owner.phase == .storage_service) {
         const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
         if (completion.state != .exited) return true;
@@ -345,7 +367,7 @@ fn refresh(hart: u32, device: timer_group.Timer) bool {
 }
 
 fn alarmsDisarmed(owner: *const Owner) bool {
-    return owner.phase == .ipi_protocol or owner.phase == .complete or owner.phase == .storage_service or owner.phase == .storage_complete;
+    return owner.phase == .ipi_protocol or owner.phase == .complete or owner.phase == .storage_service or owner.phase == .storage_complete or owner.phase == .broker_service or owner.phase == .broker_complete;
 }
 
 /// Only called from the permanent interrupt dispatcher, never a task stack.
@@ -376,6 +398,8 @@ pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnSt
         !memory.reusable.closeTask(hart, key(current))) return null;
     if (options.storage_service and owner.phase == .storage_service and (owner.runtime.policy.snapshot(current) orelse return null).state == .exited)
         nih_storage_task_exited(hart, control.encodeHandle(current));
+    if (options.broker and owner.phase == .broker_service and (owner.runtime.policy.snapshot(current) orelse return null).state == .exited)
+        nih_broker_task_exited(control.encodeHandle(current));
     if (!maintain(hart, device)) return null;
     return publish(hart, if (alarmsDisarmed(owner)) owner.runtime.select() orelse return null else selected);
 }
@@ -385,7 +409,11 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
     if (!alarmsDisarmed(owner) or !guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .ipi, frame.mepc);
-    if (options.storage_service and (owner.phase == .storage_service or owner.phase == .storage_complete)) {
+    if (options.broker and (owner.phase == .broker_service or owner.phase == .broker_complete)) {
+        ipi.bell(hart).acknowledge();
+        if (owner.phase == .broker_service and nih_broker_pending() != 0) _ = owner.runtime.policy.notify(owner.lifecycle, 1);
+        if (!maintain(hart, device)) return null;
+    } else if (options.storage_service and (owner.phase == .storage_service or owner.phase == .storage_complete)) {
         ipi.bell(hart).acknowledge();
         if (nih_storage_pending(hart) != 0) _ = owner.runtime.policy.notify(owner.lifecycle, 1);
         if (!maintain(hart, device)) return null;
@@ -411,6 +439,9 @@ pub fn service(hart: u32) bool {
         :
         : .{ .memory = true });
     var terminated = false;
+    if (options.broker and owner.phase == .broker_service and nih_broker_pending() != 0) {
+        _ = owner.runtime.policy.notify(owner.lifecycle, 1);
+    }
     if (owner.phase == .forced_lifecycle) {
         const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
         if (snapshot.state == .blocked) {
@@ -459,5 +490,24 @@ noinline fn admitStorage(hart: u32) bool {
     owner.phase = .storage_service;
     const bottom = @intFromPtr(&stacks[hart][2]);
     nih_storage_register(hart, control.encodeHandle(owner.lifecycle), bottom + 16, bottom + stack_bytes);
+    return true;
+}
+
+pub fn startBroker(hart: u32) bool {
+    if (!options.broker or hart != 1) return false;
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    if (owners[hart].phase != .complete and owners[hart].phase != .storage_complete) return false;
+    return admitBroker(hart);
+}
+noinline fn admitBroker(hart: u32) bool {
+    const owner = &owners[hart];
+    owner.lifecycle = add(hart, 2, .broker_protocol) orelse return false;
+    owner.phase = .broker_service;
+    const bottom = @intFromPtr(&stacks[hart][2]);
+    nih_broker_register(control.encodeHandle(owner.lifecycle), bottom + 16, bottom + stack_bytes);
     return true;
 }

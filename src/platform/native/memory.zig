@@ -224,3 +224,24 @@ pub fn report(hart: u32) Report {
 pub fn externalReport(hart: u32) Report {
     return external.report(hart);
 }
+
+/// Called by CPU0 only after an explicit CPU1 quiescence acknowledgement.
+/// State 2 is terminal: old allocators cannot prepare or allocate again.
+pub fn retireForBroker() bool {
+    if (!options.high_sram or currentHart() != 0 or interruptEnable() != 8) return false;
+    if (@intFromPtr(&__heap_start) > 0x4ff1c000 or @intFromPtr(&__heap_end) != 0x4ff28000) return false;
+    if (@atomicLoad(u32, &internal.prepared, .acquire) != 1 or
+        @atomicLoad(u32, &external.prepared, .acquire) != 1 or !reusable.canRetire() or !high.canRetire()) return false;
+    for (0..2) |core| {
+        if (@atomicLoad(u32, &internal.reports[core].confirmed, .acquire) != 1 or
+            @atomicLoad(u32, &external.reports[core].confirmed, .acquire) != 1) return false;
+    }
+    @atomicStore(u32, &internal.prepared, 2, .release);
+    @atomicStore(u32, &external.prepared, 2, .release);
+    reusable.retire();
+    high.retire();
+    if (alloc(8, 8) != null or prepareExternal(0x48030000, 0x1fd0000)) return false;
+    if (allocExternal(8, 8)) |_| return false else |err| if (err != error.NotReady) return false;
+    if (reusable.openPool(4096, 64)) |_| return false else |err| if (err != error.NotReady) return false;
+    return true;
+}

@@ -2,6 +2,7 @@
 const std = @import("std");
 const options = @import("native_options");
 const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
+const broker_runtime = if (options.broker) @import("broker_abi.zig") else struct {};
 const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
@@ -300,6 +301,15 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
+            if (options.broker) {
+                broker_runtime.peerQuiet();
+                while (!broker_runtime.ready()) asm volatile ("nop");
+                if (!tasks.startBroker(1)) fail("broker task admission");
+                while (!broker_runtime.done()) {
+                    _ = tasks.service(1);
+                    if (tasks.calls.yieldNow() != 0) fail("broker peer yield");
+                }
+            }
             while (true) asm volatile ("wfi");
         }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
@@ -424,6 +434,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
     const external_bytes = bootMemory();
+    if (options.broker and external_bytes != 32 * 1024 * 1024) fail("broker PSRAM geometry");
     if (options.high_sram and !tasks.memory.high.init(external_bytes)) fail("high SRAM initialization");
     if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null);
     if (options.storage_service) storage_runtime.init();
@@ -518,6 +529,23 @@ export fn nih_native_main() callconv(.c) noreturn {
                 stackReport(1);
                 flashReport(0);
                 flashReport(1);
+                if (options.broker) {
+                    const waited = cycle();
+                    while (!broker_runtime.quiet()) {
+                        if (cycle() -% waited > 1_000_000_000) fail("broker peer quiescence");
+                    }
+                    if (!tasks.memory.retireForBroker()) fail("broker heap retirement");
+                    broker_runtime.init();
+                    const began = cycle();
+                    while (!broker_runtime.done()) {
+                        _ = tasks.service(0);
+                        broker_runtime.poll();
+                        if (tasks.calls.yieldNow() != 0) fail("broker owner yield");
+                        if (cycle() -% began > 2_000_000_000) fail("broker cleanup timeout");
+                    }
+                    const b = broker_runtime.finish();
+                    logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack" }, &b);
+                }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }

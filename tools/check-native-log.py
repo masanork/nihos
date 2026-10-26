@@ -56,6 +56,35 @@ def fixed_record(log, marker, names):
 
 HIGH_FIELDS = ('status', 'bytes', 'passes', 'reads', 'writes', 'peer_reads', 'peer_writes', 'owner_reads', 'heap_bytes', 'free_bytes', 'guards', 'rejected', 'checks0', 'checks1', 'checks2', 'checks3', 'recovered')
 PAGE_FIELDS = ('status', 'start', 'bytes', 'requested4', 'charged4', 'requested8', 'charged8', 'reads', 'writes', 'boundary_ok', 'recovered')
+BROKER_FIELDS = ('status','old_api_denied','metadata','internal_bytes','internal_free','external_bytes','external_free',
+                 'internal_floor','external_floor','requested4','charged4','requested8','charged8','client','replacement',
+                 'requests','responses','rejected','exits','reaped','pin_waited','borrow_completed','stale_identity',
+                 'stale_lease','guards','recovered','client_stack')
+
+
+def check_broker(log, image, evidence):
+    config = (image or {}).get('broker')
+    if config is None:
+        if 'NIHOS_NATIVE_BROKER' in log:
+            raise ValueError('broker record without image configuration')
+        return None
+    if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
+        raise ValueError('broker handoff requires bound physical device evidence')
+    record = fixed_record(log, 'NIHOS_NATIVE_BROKER', BROKER_FIELDS)
+    expected = {'status':1,'old_api_denied':4,'metadata':config['metadata_bytes'],
+                'internal_bytes':config['internal_bytes'],'internal_free':config['internal_bytes'],
+                'external_bytes':config['external_bytes'],'external_free':config['external_bytes'],
+                'internal_floor':config['internal_floor'],'external_floor':config['external_floor'],
+                'requested4':4<<20,'charged4':4<<20,'requested8':8<<20,'charged8':8<<20,
+                'requests':9,'responses':9,'rejected':5,'exits':2,'reaped':2,'pin_waited':2,'borrow_completed':2,
+                'stale_identity':2,'stale_lease':1,'guards':16384,'recovered':1}
+    if any(record[key] != value for key,value in expected.items()):
+        raise ValueError('incomplete broker retirement, lease or recovery qualification')
+    first,second = record['client'],record['replacement']
+    if (first & 65535 == 0 or first >> 16 == 0 or first & 65535 != second & 65535 or
+            second >> 16 != (first >> 16) + 1 or not 0 < record['client_stack'] < 3920):
+        raise ValueError('broker client generation/reap/stack mismatch')
+    return record
 
 
 def check_high(log, image, evidence):
@@ -80,6 +109,8 @@ def check_high(log, image, evidence):
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False):
+    if (image or {}).get('broker') is not None and expected_psram_bytes != 32 << 20:
+        raise ValueError('broker handoff requires exactly 32 MiB PSRAM')
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     service_metadata = image.get('sqlite', {}).get('littlefs', {}).get('service') if image is not None else None
@@ -588,8 +619,10 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
                 service['peer_polls'] == 0 or service['elapsed_us'] == 0):
             raise ValueError('incomplete storage task/IPC/EXIT cleanup qualification')
     high_sram, page_lease = check_high(log, image, evidence)
+    broker = check_broker(log, image, evidence)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "high_sram": high_sram, "page_lease": page_lease,
+            "broker": broker,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,

@@ -42,6 +42,8 @@ def main(directory, source, littlefs=None):
             objects[name] = {'sha256': sha(directory / name), 'functions': functions(directory / name)}
     if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text():
         objects['sql_storage_runtime.o'] = {'sha256': sha(directory / 'sql_storage_runtime.o'), 'functions': functions(directory / 'sql_storage_runtime.o')}
+    if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
+        objects['sql_broker_runtime.o'] = {'sha256': sha(directory / 'sql_broker_runtime.o'), 'functions': functions(directory / 'sql_broker_runtime.o')}
     profile_path = Path(__file__).resolve().parents[1] / 'src/kernel/size_pool.zig'
     matches = re.findall(r'sqlite_probe = Config\{ \.counts = \.\{([^}]+)\}', profile_path.read_text())
     if len(matches) != 1:
@@ -53,6 +55,11 @@ def main(directory, source, littlefs=None):
               'purpose': 'explicit native SQLite Flash function allowlist; not attestation',
               'objects': objects, 'sqlite_source_sha256': sha(source / 'sqlite3.c'),
               'allowed_functions': sorted(set().union(*(set(item['functions']) for item in objects.values())))}
+    if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
+        root = Path(__file__).resolve().parents[1]
+        result['broker'] = {'version': 1, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),
+                            'runtime_sha256': sha(root / 'src/platform/native/broker_runtime.zig'),
+                            'core_sha256': sha(root / 'src/kernel/memory_broker.zig')}
     if littlefs is not None:
         result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
                              'read_only': True, 'no_malloc': True, 'api_version': 1, 'workspace_bytes': 8192,
