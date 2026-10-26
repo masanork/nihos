@@ -53,7 +53,17 @@ if [ "$storage" = true ] && { [ "$sdmmc" != true ] || [ "$sqlite" != true ]; }; 
     echo "Storage probe requires SDMMC=1 and sqlite mode (shared audited Flash span)" >&2
     exit 1
 fi
+high_sram=${NIHOS_NATIVE_HIGH_SRAM:-0}
+case "$high_sram" in
+    0) high_sram=false; high_cpp=0 ;;
+    1) high_sram=true; high_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_HIGH_SRAM must be 0 or 1" >&2; exit 1 ;;
+esac
 storage_service=${NIHOS_NATIVE_STORAGE_SERVICE:-0}
+if [ "$high_sram" = true ] && [ "$profile" != device ]; then
+    echo "High SRAM qualification requires the device memory profile" >&2
+    exit 1
+fi
 case "$storage_service" in
     0) storage_service=false ;;
     1) storage_service=true ;;
@@ -66,9 +76,9 @@ fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
-"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -214,7 +224,9 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfp_vectors="$repo_root/src/kernel/fp_vectors.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep core_arena --dep buddy_heap --dep task_resources -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
+    --dep core_arena --dep buddy_heap --dep task_resources --dep native_options --dep page_pool -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mpage_pool="$repo_root/src/kernel/page_pool.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mcore_arena="$repo_root/src/kernel/core_arena.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

@@ -4,6 +4,8 @@ const std = @import("std");
 const core_arena = @import("core_arena");
 const CoreArena = core_arena.CoreArena;
 pub const reusable = @import("heap.zig");
+const options = @import("native_options");
+pub const high = if (options.high_sram) @import("high_sram.zig") else struct {};
 pub const stacks = @import("stacks.zig");
 
 extern var __heap_start: u8;
@@ -196,6 +198,7 @@ noinline fn fill(bytes: []u8, hart: u32, worker: u32) void {
 
 pub noinline fn probe(argument: u32) void {
     internal.probe(argument);
+    if (options.high_sram) high.probe(argument);
     if (@atomicLoad(u32, &external.prepared, .acquire) == 1) {
         external.probe(argument);
         reusable.probe(argument);
@@ -211,7 +214,7 @@ noinline fn valid(bytes: []const u8, hart: u32, worker: u32) bool {
 pub noinline fn finish() bool {
     // Internal completion is the final publication observed by CPU0. It must
     // also cover the slower, full-buffer external verification and report.
-    return reusable.finish() and (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and internal.finish();
+    return reusable.finish() and (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and (!options.high_sram or high.finish(currentHart())) and internal.finish();
 }
 
 pub fn report(hart: u32) Report {
