@@ -5,8 +5,8 @@ The default console returns to the initial printable ASCII 8x8 bitmap in
 stroke edges to half coverage, with quarter coverage at their shared corner;
 interior pixels and the original glyph shapes/advance remain unchanged.
 Option 0 reproduces the original solid 2x bitmap. Colour is independent
-of font choice; palette 3 now uses a stronger green after the pale trial
-looked too white on the device. Larger outline-derived faces remain optional.
+of font choice; palette4 now uses vivid Matrix green (RGB5650x07e8). The darker muted
+palette3 and earlier pale palette1 remain available. Larger outline-derived faces remain optional.
 
 | Native font option | Face | Size | Mask bytes | Offset bytes |
 | --- | --- | ---: | ---: | ---: |

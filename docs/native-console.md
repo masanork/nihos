@@ -17,16 +17,16 @@ available with `NIHOS_NATIVE_CONSOLE_LIVE=0`.
 
 ```sh
 NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_LIVE=1 \
-  NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=3 \
+  NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=4 \
   NIHOS_NATIVE_DISPLAY=2 NIHOS_NATIVE_PSRAM_200=1 \
   NIHOS_NATIVE_QUALIFICATION=1 sh tools/build-native.sh device integer
 python3 tools/console/preview.py
 python3 tools/console/preview.py --failed
-# Palette: 0 = neutral, 1 = pale green, 2 = blue, 3 = stronger green (default)
-# NIHOS_NATIVE_CONSOLE_PALETTE=3 reduces the white component of the green.
+# Palette: 0 = neutral, 1 = pale green, 2 = blue, 3 = stronger green, 4 = Matrix green (default)
+# NIHOS_NATIVE_CONSOLE_PALETTE=4 selects vivid green, RGB5650x07e8.
 # NIHOS_NATIVE_CONSOLE_FONT=3 (default): original small bitmap, lighter edges.
 # 0: original solid bitmap; 1: JetBrains; 2: Source Code Pro.
-python3 tools/console/preview.py --palette forest
+python3 tools/console/preview.py --palette matrix
 python3 tools/console/preview.py --palette blue
 python3 tools/console/preview.py --palette green --font source-code
 ```
@@ -34,9 +34,9 @@ python3 tools/console/preview.py --palette green --font source-code
 The current default returns to the first small **8x8 VGA bitmap in 16x16 cells**:
 78 columns and 43 rows, with16-pixel margins. Option3 retains the exact bitmap
 and cell advance, reducing coverage on exposed right/bottom stroke edges.
-Option0 is the initial solid bitmap. The user found pale green too white;
-the current palette 3 uses RGB565 foreground 0x5dcf and heading 0x4d6d, reducing
-red/blue relative to green. Palette1 retains the previous 0xa5f5 trial.
+Option0 is the initial solid bitmap. Palette4 is now the default: vivid
+Matrix-style green, RGB565 foreground0x07e8 and heading0x05a6. Palette3 retains
+the darker muted0x5dcf trial and palette1 the earlier pale0xa5f5 trial.
 The previous JetBrains Mono Medium 24 px and Source Code Pro Medium 25 px faces
 remain optional, at 80x22 in 15x30 cells.
 
@@ -47,12 +47,15 @@ serial evidence, but is not replayed to reconstruct every update. Its byte-ring
 wrap can no longer move all existing glyph positions.
 
 For the small bitmap, the raster updates changed cells, and scrolls by copying existing body pixels
-upward over at most four observed-frame updates. Only the incoming strip and
+upward in a single pass on the next observed frame. Only the incoming strip and
 the former cursor row are rasterized. The header and margins stay fixed. Logs
 arriving during motion collect in a separate target grid. A real stage change
-finishes pending motion before updating its header. Full painting is reserved
+finishes a pending update before publishing its header. Full painting is reserved
 for entering the console from the inscription and fatal-frame recovery.
-The optional large faces update changed cells without pixel interpolation.
+The optional large faces update changed cells. Four-step interpolation was
+removed because it copied/flushed the body four times per line advance,
+increasing queue latency under boot load. New logs coalesce in the pending
+grid while an update is being processed.
 Damage rectangles also bound cache writeback; the whole buffer is not cleared
 on ordinary updates. This uses the existing front buffer, so scanout tearing
 still needs direct observation; this is not a double-buffered presentation.
@@ -61,7 +64,10 @@ Renderer state and three grids fit in the unused 56 KiB tail of the existing
 private display reservation, starting at 0x481f2000. Owner heaps and the2MiB
 external reservation are unchanged. No general heap, SD or filesystem is used.
 `CONSOLE_RENDER` records full/partial updates, scrolls/steps and the largest
-observed scroll+cache interval in microseconds.
+observed scroll+cache interval in microseconds. `cpu_mhz` estimates CPU
+frequency from cycle-counter delta against the dedicated XTAL timer during a
+scroll interval; this includes preemption and does not measure active task CPU
+time. It does not change clocks.
 
 Only printable ASCII masks are generated on the host; the full font file and
 font engine are not linked. The selected face alone occupies immutable Flash:

@@ -153,5 +153,25 @@ class NativeScrollConsoleTests(unittest.TestCase):
         line = next(line for line in SCROLL_LOG.splitlines() if line.startswith('NIHOS_NATIVE_UI_START '))
         with self.assertRaises(ValueError): self.check(SCROLL_LOG.replace(line,line.replace('view=00000000','view=00000001')))
 
+MATRIX_LOG = (ROOT / 'docs/measurements/2026-10-27-native-console-matrix.log').read_text()
+MATRIX_IMAGE = json.loads((ROOT / 'docs/measurements/2026-10-27-native-console-matrix.json').read_text())['image_audit']
+
+class NativeMatrixConsoleTests(unittest.TestCase):
+    def check(self, log=MATRIX_LOG):
+        return DISPLAY.check(log,MATRIX_IMAGE,2,80,require_console=True,require_live_controls=True)
+
+    def test_single_pass_matrix_device_run_and_cpu_estimate(self):
+        report = self.check()
+        self.assertEqual(report['console_style']['foreground'],0x07e8)
+        stats = report['live']['render']
+        self.assertEqual(stats['scrolls'],stats['steps'])
+        self.assertEqual(stats['cpu_mhz'],90)
+
+    def test_old_animation_count_wrong_colour_and_zero_clock_are_rejected(self):
+        for old,new in (('steps=00000020','steps=00000080'),('foreground=000007e8','foreground=00005dcf'),
+                        ('cpu_mhz=0000005a','cpu_mhz=00000000')):
+            self.assertIn(old,MATRIX_LOG)
+            with self.subTest(old=old),self.assertRaises(ValueError):self.check(MATRIX_LOG.replace(old,new))
+
 if __name__ == '__main__':
     unittest.main()
