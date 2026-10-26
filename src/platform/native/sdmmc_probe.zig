@@ -2,6 +2,49 @@
 const sd = @import("sdmmc");
 const timer_group = @import("timer_group");
 const options = @import("native_options");
+const block = @import("block_reader");
+pub const StorageReport = extern struct {
+    status: u32 = 0,
+    error_code: u32 = 0,
+    passes: u32 = 0,
+    block_size: u32 = 0,
+    block_count: u32 = 0,
+    entries: u32 = 0,
+    files: u32 = 0,
+    directories: u32 = 0,
+    directory_digest: u32 = 0,
+    file_bytes: u32 = 0,
+    file_crc: u32 = 0,
+    file_name_digest: u32 = 0,
+    reads: u32 = 0,
+    denied_writes: u32 = 0,
+};
+extern fn nih_storage_probe(u32, *StorageReport) callconv(.c) void;
+extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
+extern var __stack0_bottom: u8;
+extern var __stack0_top: u8;
+pub const StorageStack = struct { low: u32 = 0, high: u32 = 0, painted_to: u32 = 0, used: u32 = 0, confirmed: u32 = 0 };
+noinline fn runStorage(sectors: u32, report: *StorageReport, stack: *StorageStack) void {
+    stack.low = @intFromPtr(&__stack0_bottom) + 16;
+    stack.high = @intFromPtr(&__stack0_top);
+    stack.painted_to = nih_sqlite_stack_paint(stack.low);
+    if (stack.painted_to <= stack.low or stack.painted_to >= stack.high) return;
+    nih_storage_probe(sectors, report);
+    var first = stack.low;
+    while (first < stack.painted_to) : (first += 4) {
+        if (@as(*const volatile u32, @ptrFromInt(first)).* != 0x5a7ec319) break;
+    }
+    stack.used = stack.high - first;
+    if (first > stack.low + 160) stack.confirmed = 1;
+}
+var active_controller: ?*sd.Controller(Bus) = null;
+pub export fn nih_storage_read(lba: u32, destination: *block.Sector) callconv(.c) i32 {
+    if (!options.storage) return -1;
+    const controller = active_controller orelse return -1;
+    const device = block.Reader(sd.Controller(Bus)).init(controller, controller.sectors) catch return -1;
+    device.read(lba, destination) catch return -1;
+    return 0;
+}
 extern fn nih_sdmmc_power_off() callconv(.c) void;
 extern fn nih_sdmmc_power_on() callconv(.c) void;
 extern fn nih_sdmmc_clock_init() callconv(.c) void;
@@ -12,7 +55,7 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
-pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}) };
+pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{} };
 var last_error: u32 = 0;
 const Bus = struct {
     clock: timer_group.Timer,
@@ -116,6 +159,14 @@ pub noinline fn run(clock: timer_group.Timer) Report {
         if (phase == 0) baseline_digest = digest else if (digest != baseline_digest) return failure(report, &controller);
         report.stages[phase] = .{ .index = @intCast(phase), .bus_bits = controller.bus_bits, .clock_khz = controller.clock_khz, .scr_widths = controller.scr_widths, .host_width = controller.host_width, .divider = controller.divider, .reads = 8 + sample_count, .crc0 = checks[0], .crc1 = checks[1], .crc_middle = checks[2], .crc_last = checks[3], .samples = sample_count, .digest = digest };
         report.stage_count += 1;
+    }
+    if (options.storage) {
+        // The opt-in raw littlefs fixture only accepts a full-card
+        // volume smaller than 2 TiB; the generic block reader supports 2 TiB.
+        if (controller.sectors > 0xffff_ffff) return failure(report, &controller);
+        active_controller = &controller;
+        runStorage(@intCast(controller.sectors), &report.storage, &report.storage_stack);
+        active_controller = null;
     }
     report.crc0 = checks[0];
     report.crc1 = checks[1];

@@ -34,9 +34,12 @@ def functions(path):
     return sorted(result)
 
 
-def main(directory, source):
+def main(directory, source, littlefs=None):
     objects = {name: {'sha256': sha(directory / name), 'functions': functions(directory / name)}
                for name in ('sql_sqlite3.o', 'sql_session.o', 'sql_vfs.o')}
+    if littlefs is not None:
+        for name in ('sql_lfs.o', 'sql_lfs_util.o', 'sql_lfs_reader.o'):
+            objects[name] = {'sha256': sha(directory / name), 'functions': functions(directory / name)}
     profile_path = Path(__file__).resolve().parents[1] / 'src/kernel/size_pool.zig'
     matches = re.findall(r'sqlite_probe = Config\{ \.counts = \.\{([^}]+)\}', profile_path.read_text())
     if len(matches) != 1:
@@ -48,6 +51,12 @@ def main(directory, source):
               'purpose': 'explicit native SQLite Flash function allowlist; not attestation',
               'objects': objects, 'sqlite_source_sha256': sha(source / 'sqlite3.c'),
               'allowed_functions': sorted(set().union(*(set(item['functions']) for item in objects.values())))}
+    if littlefs is not None:
+        result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
+                             'read_only': True, 'no_malloc': True,
+                             'shared_span': 'SQLite mapped code and rodata',
+                             'sources': {name: sha(littlefs / name) for name in ('lfs.c', 'lfs.h', 'lfs_util.c', 'lfs_util.h', 'LICENSE.md')},
+                             'adapter_sha256': sha(Path(__file__).resolve().parents[1] / 'probes/storage/littlefs_ro.c')}
     (directory / 'sqlite-manifest.json').write_text(json.dumps(result, indent=2) + '\n')
 
 

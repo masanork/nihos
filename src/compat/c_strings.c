@@ -21,6 +21,11 @@ int NIH_C_NAME(strncmp)(const char *left, const char *right, size_t length) {
     }
     return 0;
 }
+char *NIH_C_NAME(strcpy)(char *destination, const char *source) {
+    char *start = destination;
+    do { *destination++ = *source; } while (*source++);
+    return start;
+}
 char *NIH_C_NAME(strchr)(const char *text, int byte) {
     const unsigned char match = (unsigned char)byte;
     for (;;) {

@@ -10,6 +10,14 @@
 #include "hal/ldo_ll.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#ifdef NIHOS_ORACLE_STORAGE
+#include "nihos_storage_probe.h"
+static sdmmc_card_t *storage_card;
+int nih_storage_read(uint32_t lba, void *sector) {
+    if (!storage_card || lba >= storage_card->csd.capacity) return -1;
+    return sdmmc_read_sectors(storage_card, sector, lba, 1) == ESP_OK ? 0 : -1;
+}
+#endif
 
 static uint8_t buffer[512] __attribute__((aligned(64)));
 static uint32_t crc32(const uint8_t *p) {
@@ -53,6 +61,11 @@ void app_main(void) {
             ESP_ERROR_CHECK(sdmmc_read_sectors(&card, buffer, lbas[i], 1));
             printf("NIHOS_SDMMC_IDF_ORACLE_READ pass=%u lba=%08lx crc=%08lx tail=%02x%02x\n",
                    pass, (unsigned long)lbas[i], (unsigned long)crc32(buffer), buffer[510], buffer[511]);
+            if (pass == 0 && i == 0) {
+                printf("NIHOS_SDMMC_IDF_ORACLE_HEADER first64=");
+                for (unsigned j = 0; j < 64; ++j) printf("%02x", buffer[j]);
+                printf("\n");
+            }
         }
     }
     if (NIHOS_ORACLE_SAMPLES) {
@@ -68,5 +81,16 @@ void app_main(void) {
         }
         printf("NIHOS_SDMMC_IDF_ORACLE_SWEEP samples=%u digest=%08lx\n", NIHOS_ORACLE_SAMPLES, (unsigned long)digest);
     }
+#ifdef NIHOS_ORACLE_STORAGE
+    storage_card = &card;
+    nih_storage_report storage;
+    nih_storage_probe(card.csd.capacity, &storage);
+    printf("NIHOS_STORAGE_IDF");
+    const char *names[] = {"status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes"};
+    const uint32_t *values = (const uint32_t *)&storage;
+    for (unsigned i = 0; i < sizeof(names)/sizeof(names[0]); ++i) printf(" %s=%08lx", names[i], (unsigned long)values[i]);
+    printf("\n");
+    storage_card = NULL;
+#endif
     printf("NIHOS_SDMMC_IDF_ORACLE_PASS reads=%u writes=0\n", 8u + NIHOS_ORACLE_SAMPLES);
 }
