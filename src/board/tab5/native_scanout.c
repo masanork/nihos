@@ -6,11 +6,13 @@
 #include "hal/gpio_ll.h"
 #include "hal/mipi_dsi_ll.h"
 #include "hal/dw_gdma_ll.h"
+#include "soc/ext_mem_defs.h"
 #include "hal/clk_gate_ll.h"
 #include "soc/interrupts.h"
 
 __asm__(".global DW_GDMA\n.set DW_GDMA,0x50081000\n");
 extern int32_t nih_rom_cache_writeback(uint32_t, uint32_t, uint32_t);
+extern int32_t nih_rom_cache_invalidate(uint32_t, uint32_t, uint32_t);
 typedef struct { uint32_t lane_mbps, dpi_mhz, hbp, hsw, hfp, vbp, vsw, vfp; } nih_dpi_timing;
 _Static_assert(sizeof(nih_dpi_timing) == 32, "DPI timing ABI");
 _Static_assert(offsetof(hp_sys_clkrst_dev_t, hp_rst_en0) == 0xc0, "boot DMA reset offset");
@@ -172,14 +174,12 @@ static bool restart_dma(void) {
 #endif
     for (uint32_t i = 0; i < node_count; ++i)
         dw_gdma_ll_lli_set_block_markers(ui_enabled ? ui_node(i) : &active_nodes[i], false, i + 1 == node_count, true);
-    if (ui_enabled) {
-        uint32_t first = node_count < ui_split ? node_count : ui_split;
-        if (nih_rom_cache_writeback(1u << 4, ui_local, first * 64)) return false;
-        if (node_count > first && nih_rom_cache_writeback(1u << 4, ui.peer_start, (node_count - first) * 64)) return false;
-    } else if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
+    /* UI LLIs are CPU/device shared writeback state. They are accessed only
+     * through the non-cached alias after the initial cache handoff. */
+    if (!ui_enabled && nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
     __asm__ volatile("fence iorw,iorw" ::: "memory");
     dw_gdma_ll_channel_set_link_list_master_port(&DW_GDMA, 0, DW_GDMA_LL_MASTER_PORT_MEMORY);
-    dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, (uint32_t)(uintptr_t)active_nodes);
+    dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, ui_enabled ? ui_local : (uint32_t)(uintptr_t)active_nodes);
     dw_gdma_ll_channel_enable(&DW_GDMA, 0, true);
     return true;
 }

@@ -20,6 +20,10 @@ var erased = false;
 pub var armed = false;
 var abort_fault: u32 = 0;
 var dma_erased = false;
+pub const Diagnostic = struct { state: u32, verifies: u32, surface_verifies: u32, outstanding: u32, remaining: u32, fault: u32 };
+pub fn diagnostic() Diagnostic {
+    return .{ .state = @backingInt(service.state), .verifies = if (device) |link| link.policy.verifies else 0, .surface_verifies = if (device) |link| link.policy.surface_verifies else 0, .outstanding = @intFromBool(service.outstanding != null), .remaining = service.remaining orelse 255, .fault = @backingInt(service.fault) };
+}
 pub const Report = struct {
     status: u32 = 2,
     fault: u32 = 0,
@@ -142,6 +146,40 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
     const initial = display.snapshot();
     log.refresh(&initial);
     if (options.card_photo) {
+        // Exercise every indicator/confirmation swap with synthetic counts,
+        // while touch/PIN submission is disabled. No Service.submit call.
+        renderer.static_frame = false;
+        renderer.overview_frame = false;
+        renderer.demo_frame = true;
+        redraw(clock, panel) catch {
+            emergencyHalt();
+        };
+        const smoke_start = display.snapshot().frames;
+        for (0..12) |_| for (0..5) |count| {
+            const until = (clock.counter() orelse 0) + 500_000;
+            while (true) {
+                renderer.update(@intCast(count)) catch |err| {
+                    if (err != error.Busy or (clock.counter() orelse until) >= until) emergencyHalt();
+                    if (!bus.pins.delay(1000)) emergencyHalt();
+                    continue;
+                };
+                break;
+            }
+            const target = display.snapshot().frames + 8;
+            while (renderer.shown() != count or display.snapshot().frames < target) {
+                if ((clock.counter() orelse until) >= until or !bus.pins.delay(1000)) emergencyHalt();
+            }
+        };
+        log.displayTest(display.snapshot().frames - smoke_start);
+        renderer.demo_frame = false;
+        card.ResultScreen.preview(".flash.keypad.font", frame(), photo.pixels()) catch {
+            emergencyHalt();
+        };
+        renderer.static_frame = true;
+        renderer.overview_frame = true;
+        redraw(clock, panel) catch {
+            emergencyHalt();
+        };
         log.startTouch(&report);
         var start_contact = card.Contact{};
         const start_until = (clock.counter() orelse 0) + 180_000_000;

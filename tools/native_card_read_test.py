@@ -21,6 +21,12 @@ class ReadTests(unittest.TestCase):
         log += record('NIHOS_NATIVE_CARD_OVERVIEW', ('shown','truncated','missing_glyphs','photo_enabled','photo_decoded'), (15,0,0,1,1))
         log += record('NIHOS_NATIVE_PHOTO_CLEANUP', ('decoded','stack_used','erased'), (1,3200,1)) + base[result_end:]
         self.assertEqual(CHECK.check_read(log, True)['photo']['result']['surface_verifies'],1)
+        smoke = record('NIHOS_NATIVE_CARD_DISPLAY_TEST', ('frames','verifies'), (480,0))
+        smoke += record('NIHOS_NATIVE_CARD_COUNTERS', ('input_remaining','surface_remaining','verifies','surface_verifies'), (3,3,0,0))
+        tested = log.replace('NIHOS_NATIVE_CARD_READ_START_TOUCH ', smoke + 'NIHOS_NATIVE_CARD_READ_START_TOUCH ')
+        self.assertEqual(CHECK.check_read(tested,True)['photo']['display_test']['frames'],480)
+        for old,new in [('frames=000001e0','frames=000001df'),('input_remaining=00000003','input_remaining=00000002'),('surface_remaining=00000003','surface_remaining=00000002')]:
+            with self.subTest(old=old),self.assertRaises(ValueError):CHECK.check_read(tested.replace(old,new),True)
         for old,new in [('selftest=00000001','selftest=00000000'),('surface_verifies=00000001','surface_verifies=00000002'),('truncated=00000000','truncated=00000001'),('photo_decoded=00000001','photo_decoded=00000000'),('stack_used=00000c80','stack_used=00003000'),('erased=00000001','erased=00000000')]:
             with self.subTest(old=old),self.assertRaises(ValueError):CHECK.check_read(log.replace(old,new), True)
         with self.assertRaises(ValueError):CHECK.check_read(complete(), True)

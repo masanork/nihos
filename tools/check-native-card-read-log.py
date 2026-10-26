@@ -52,6 +52,14 @@ def check_read(log, photo_required=False):
         positions = [log.index('NIHOS_NATIVE_' + tag + ' ') for tag in tags]
         if positions != sorted(positions): raise ValueError('photo lifecycle out of order')
         result['photo'] = {'preflight':pre, 'result':photo, 'cleanup':clear}
+        if 'NIHOS_NATIVE_CARD_DISPLAY_TEST ' in log or 'NIHOS_NATIVE_CARD_COUNTERS ' in log:
+            smoke = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CARD_DISPLAY_TEST', ('frames','verifies'))
+            counters = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CARD_COUNTERS', ('input_remaining','surface_remaining','verifies','surface_verifies'))
+            if (smoke['frames'] < 480 or smoke['verifies'] or counters['verifies'] or counters['surface_verifies'] or
+                    counters['input_remaining'] != ready['remaining_before'] or counters['surface_remaining'] != pre['surface_counter'] or
+                    not log.index('NIHOS_NATIVE_CARD_DISPLAY_TEST ') < log.index('NIHOS_NATIVE_CARD_COUNTERS ') < log.index('NIHOS_NATIVE_CARD_READ_START_TOUCH ')):
+                raise ValueError('unsafe display selftest / PIN-free counter checkpoint')
+            result['photo'].update(display_test=smoke, counters=counters)
     return result
 def main():
     parser=argparse.ArgumentParser(description=__doc__)

@@ -98,8 +98,10 @@ def main():
                 failures.append(run)
             print(f"Native USB boot {run}: {'failed' if checked.returncode else 'passed'} ({log_path})", flush=True)
 
-        if installation:
+        if installation and not (args.card_read and failures):
             tool(console, args.output / "verify-after.log", "verify_flash", installation)
+        elif installation:
+            print("Authenticated run failed; keeping the faulted device state without an automatic post-verification reset", flush=True)
         if failures:
             raise SystemExit(f"Qualification failed on boots {failures}; evidence retained, no completion marker")
         completion.write_text(json.dumps({
