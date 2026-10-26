@@ -65,6 +65,8 @@ pub fn Controller(comptime IO: type) type {
         commands: u32 = 0,
         rca: u32 = 0,
         sectors: u64 = 0,
+        faulted: bool = false,
+        cleanup_failed: bool = false,
         const Self = @This();
 
         fn pollClear(self: *Self, offset: usize, bits: u32) Error!void {
@@ -100,6 +102,7 @@ pub fn Controller(comptime IO: type) type {
         pub fn command(self: *Self, index: u6, argument: u32) Error![4]u32 {
             // Reject before any register access, including status/FIFO resets.
             if (!allowed(index)) return error.InvalidCommand;
+            if (self.faulted) return error.Controller;
             self.last_command = index;
             try self.pollClear(regs.command, start);
             try self.pollClear(regs.status, 1 << 9);
@@ -167,6 +170,7 @@ pub fn Controller(comptime IO: type) type {
 
         pub fn readSector(self: *Self, lba: u32, buffer: *[512]u8) Error!void {
             if (self.rca == 0 or lba >= self.sectors) return error.InvalidAddress;
+            if (self.faulted) return error.Controller;
             self.words_read = 0;
             self.io.write(regs.ctrl, self.io.read(regs.ctrl) | 6);
             try self.pollClear(regs.ctrl, 6);
@@ -182,7 +186,12 @@ pub fn Controller(comptime IO: type) type {
             self.io.write(regs.ctrl, self.io.read(regs.ctrl) | (1 << 25) | (1 << 5));
             self.io.write(regs.dma_mode, 0x82);
             self.io.write(regs.demand, 1);
-            errdefer self.stopDma() catch {};
+            errdefer {
+                self.faulted = true;
+                self.stopDma() catch {
+                    self.cleanup_failed = true;
+                };
+            }
             _ = try self.r1(17, lba);
             for (0..self.poll_limit) |_| {
                 const interrupts = self.io.read(regs.interrupts);
