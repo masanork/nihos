@@ -64,6 +64,15 @@ The platform boundary models resources, not generic convenience calls.
 - Flash writes require an explicit guard that prevents unsafe execution or
   PSRAM access on the other core.
 
+## Connectivity direction
+
+The C6 is the proposed owner of Wi-Fi, TCP/IP and the BLE host, exposed to
+the native P4 through ESP-AT over SDIO. ADR 0029 defines the service boundary,
+bounded receive profile and physical qualification gates. Only the host-side
+decoder and command gate are implemented; the SDIO driver and running
+network service are not yet present. See
+[`ADR 0029`](adr/0029-c6-network-offload.md).
+
 ## Storage direction
 
 - Internal NOR configuration and small writable state: littlefs core with a

@@ -40,6 +40,7 @@ pub const tab5_panels = @import("board/tab5/panels.zig");
 pub const display_dcs = @import("board/tab5/dcs.zig");
 pub const scanout_state = @import("board/tab5/scanout_state.zig");
 pub const platform_abi = @import("platform/abi.zig");
+pub const esp_at = @import("net/esp_at.zig");
 
 test {
     _ = cpu_clock;
@@ -91,6 +92,8 @@ test {
     _ = psram_mpll;
     _ = psram_tuning;
     _ = platform_abi;
+    _ = esp_at;
+    _ = @import("net/esp_at_test.zig");
 }
 
 test "Tab5 scanout reservation uses identity-mapped PSRAM pages" {
