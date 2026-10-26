@@ -50,7 +50,7 @@ const CPU = struct {
     }
 };
 
-var mapper = mapping.Mapper(IO){ .io = .{} };
+var mapper = mapping.Mapper(IO){ .io = .{}, .fast200 = @import("native_options").psram_200 };
 var enabled: u32 = 0;
 var request: u32 = 0;
 var acknowledgement: u32 = 0;

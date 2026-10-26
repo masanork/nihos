@@ -9,6 +9,51 @@ pub fn timing(panel: u32) ?Timing {
         else => null,
     };
 }
+
+/// Keep the qualified 80 MHz pixel clock and vendor horizontal porches.
+/// Add vertical blanking for approximately 60 complete frames per second.
+pub fn sixtyHertz(panel: u32) ?Timing {
+    if (panel != 2 and panel != 3) return null;
+    var result = timing(panel).?;
+    result.dpi_mhz = 80;
+    const horizontal = 720 + result.hbp + result.hsw + result.hfp;
+    const vertical = (80_000_000 + horizontal * 30) / (horizontal * 60);
+    result.vfp = vertical - 1280 - result.vbp - result.vsw;
+    return result;
+}
+
+/// 65 selects the vendor porch comparison (~65.45 Hz), not a rated maximum.
+pub fn refreshProfile(panel: u32, target_hz: u32) ?Timing {
+    if (target_hz == 60) return sixtyHertz(panel);
+    if (target_hz != 65 or (panel != 2 and panel != 3)) return null;
+    var result = timing(panel).?;
+    result.dpi_mhz = 80;
+    return result;
+}
+
+pub fn refreshMilliHz(selected: Timing) u32 {
+    const pixels = @as(u64, 720 + selected.hbp + selected.hsw + selected.hfp) *
+        (1280 + selected.vbp + selected.vsw + selected.vfp);
+    return @intCast(@as(u64, selected.dpi_mhz) * 1_000_000_000 / pixels);
+}
+
+test "60 Hz target keeps 80 MHz pixel clock and changes vertical blanking" {
+    const original = timing(3).?;
+    var nominal = original;
+    nominal.dpi_mhz = 80;
+    try std.testing.expectEqual(@as(u32, 65_453), refreshMilliHz(nominal));
+    const selected = sixtyHertz(3).?;
+    try std.testing.expectEqual(@as(u32, 80), selected.dpi_mhz);
+    try std.testing.expectEqual(@as(u32, 339), selected.vfp);
+    try std.testing.expectEqual(@as(u32, 59_982), refreshMilliHz(selected));
+    try std.testing.expectEqual(original.hfp, selected.hfp);
+    try std.testing.expectEqual(original.hbp, selected.hbp);
+    try std.testing.expectEqual(original.hsw, selected.hsw);
+    try std.testing.expectEqual(@as(u32, 59_982), refreshMilliHz(sixtyHertz(2).?));
+    try std.testing.expect(sixtyHertz(1) == null);
+    try std.testing.expectEqual(@as(u32, 65_453), refreshMilliHz(refreshProfile(3, 65).?));
+    try std.testing.expect(refreshProfile(3, 61) == null);
+}
 pub fn table(comptime section: ?[]const u8, panel: u32) ?[]const u8 {
     const Store = if (section) |name| struct {
         const ili linksection(name) = @embedFile("panel_data/ili9881c.bin").*;

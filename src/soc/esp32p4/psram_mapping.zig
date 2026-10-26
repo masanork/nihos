@@ -40,6 +40,7 @@ pub fn validSyncRange(address: u32, length: u32, capacity: u32) bool {
 pub fn Mapper(comptime IO: type) type {
     return struct {
         io: IO,
+        fast200: bool = false,
         ready: bool = false,
         faulted: bool = false,
         entries_checked: u32 = 0,
@@ -90,15 +91,17 @@ pub fn Mapper(comptime IO: type) type {
             self.bytes = capacity;
             self.io.enableCache();
             // x8 DDR, fixed read/write latency 2, 32-bit addresses, XTAL/2.
-            const sctrl: u32 = 1 | (1 << 3) | (1 << 4) | (1 << 5) | (17 << 6) |
-                (31 << 14) | (1 << 20) | (1 << 21) | (7 << 22);
+            const read_dummy: u32 = if (self.fast200) 25 else 17;
+            const write_dummy: u32 = if (self.fast200) 11 else 7;
+            const sctrl: u32 = 1 | (1 << 3) | (1 << 4) | (1 << 5) | (read_dummy << 6) |
+                (31 << 14) | (1 << 20) | (1 << 21) | (write_dummy << 22);
             self.io.write(mspi + 0x40, sctrl);
             const command_mask: u32 = (7 << 10) | (15 << 14) | (63 << 18) | (3 << 26);
-            self.io.write(mspi + 0x44, (self.io.read(mspi + 0x44) & ~command_mask) | (63 << 18));
+            self.io.write(mspi + 0x44, (self.io.read(mspi + 0x44) & ~command_mask) | (63 << 18) | (if (self.fast200) @as(u32, 3 << 26) else @as(u32, 0)));
             self.io.write(mspi + 0x48, 15 << 28);
             self.io.write(mspi + 0x4c, (15 << 28) | 0x8080);
             self.io.write(mspi + 0x50, (1 << 16) | 1);
-            self.io.write(mspi + 0xd8, (self.io.read(mspi + 0xd8) & ~@as(u32, 31)) | 1);
+            self.io.write(mspi + 0xd8, (self.io.read(mspi + 0xd8) & ~@as(u32, 31)) | (if (self.fast200) @as(u32, 3) else @as(u32, 1)));
             self.io.write(mspi + 0x0c, self.io.read(mspi + 0x0c) | (3 << 25));
             try self.check(mspi + 0x40, sctrl, 0xffff_ffff);
             try self.check(mspi + 0x48, 15 << 28, 0xffff_ffff);

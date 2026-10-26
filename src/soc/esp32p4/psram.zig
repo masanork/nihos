@@ -27,6 +27,15 @@ pub const Discovery = struct {
     identity: u16 = 0,
     bytes: u32 = 0,
 };
+pub const Profile = enum { safe20x8, fast200x16 };
+pub const Timing = struct { mr0: u8, mr4: u8, mr8: u8, mode_dummy: u6, read_dummy: u6, write_dummy: u6 };
+pub fn timing(profile: Profile) Timing {
+    return switch (profile) {
+        .safe20x8 => .{ .mr0 = 0x28, .mr4 = 0x40, .mr8 = 0x0b, .mode_dummy = 8, .read_dummy = 18, .write_dummy = 8 },
+        .fast200x16 => .{ .mr0 = 0x30, .mr4 = 0x20, .mr8 = 0x4b, .mode_dummy = 12, .read_dummy = 26, .write_dummy = 12 },
+    };
+}
+
 pub const Modes = struct { mr0: u32, mr4: u32, mr8: u32 };
 pub const Exercise = struct {
     mr0: u32 = 0,
@@ -70,6 +79,8 @@ pub fn Controller(comptime IO: type) type {
         faulted: bool = false,
         transactions: u32 = 0,
         capacity: u32 = 0,
+        profile: Profile = .safe20x8,
+        mode_dummy: u6 = 8,
 
         const Self = @This();
         pub const Error = error{ Busy, Timeout, Faulted, InvalidRegister, InvalidBudget, Unqualified, OutOfRange, ModeMismatch, DataMismatch };
@@ -77,7 +88,7 @@ pub fn Controller(comptime IO: type) type {
 
         pub fn readPair(self: *Self, address: u32) Error!u16 {
             if (address != 0 and address != 2 and address != 4) return error.InvalidRegister;
-            return @truncate(try self.transfer(.read_mode, address, 0, 16, 8));
+            return @truncate(try self.transfer(.read_mode, address, 0, 16, self.mode_dummy));
         }
 
         noinline fn transfer(self: *Self, operation: Operation, address: u32, value: u32, bits: u6, dummy: u6) Error!u32 {
@@ -118,21 +129,28 @@ pub fn Controller(comptime IO: type) type {
         /// Initial data tests use x8, fixed read latency 2/write latency 2.
         /// MMU/AXI x16 operation and high-speed tuning are separate stages.
         pub fn configure(self: *Self, found: Discovery) Error!Modes {
+            return self.configureProfile(found, .safe20x8);
+        }
+
+        pub fn configureProfile(self: *Self, found: Discovery, profile: Profile) Error!Modes {
             self.capacity = 0;
             const checked = decode(found.configuration, found.identity);
             if (found.status != .detected or checked.status != .detected or found.bytes != checked.bytes)
                 return error.Unqualified;
             const mr4 = try self.readPair(4);
-            const mr8 = try self.transfer(.read_mode, 8, 0, 8, 8);
-            const desired0 = (found.configuration & 0xffc0) | 0x28;
-            const desired4 = (mr4 & 0xff1f) | 0x40;
-            const desired8 = (mr8 & 0xb0) | 0x0b;
+            const mr8 = try self.transfer(.read_mode, 8, 0, 8, self.mode_dummy);
+            const selected = timing(profile);
+            const desired0 = (found.configuration & 0xffc0) | selected.mr0;
+            const desired4 = (mr4 & 0xff1f) | selected.mr4;
+            const desired8 = (mr8 & 0xb0) | selected.mr8;
             _ = try self.transfer(.write_mode, 0, desired0, 16, 0);
+            self.mode_dummy = selected.mode_dummy;
+            self.profile = profile;
             _ = try self.transfer(.write_mode, 4, desired4, 16, 0);
             _ = try self.transfer(.write_mode, 8, desired8, 16, 0);
             if ((try self.readPair(0)) != desired0 or
                 (try self.readPair(4)) & 0xff != desired4 & 0xff or
-                (try self.transfer(.read_mode, 8, 0, 8, 8)) & 0xff != desired8 or
+                (try self.transfer(.read_mode, 8, 0, 8, self.mode_dummy)) & 0xff != desired8 or
                 (try self.readPair(2)) != found.identity) return error.ModeMismatch;
             self.capacity = found.bytes;
             return .{ .mr0 = desired0 & 0xff, .mr4 = desired4 & 0xff, .mr8 = desired8 };
@@ -146,18 +164,22 @@ pub fn Controller(comptime IO: type) type {
 
         pub noinline fn writeWord(self: *Self, address: u32, value: u32) Error!void {
             try self.checkAddress(address);
-            _ = try self.transfer(.write_data, address, value, 32, 8);
+            _ = try self.transfer(.write_data, address, value, 32, timing(self.profile).write_dummy);
         }
 
         pub noinline fn readWord(self: *Self, address: u32) Error!u32 {
             try self.checkAddress(address);
-            return self.transfer(.read_data, address, 0, 32, 18);
+            return self.transfer(.read_data, address, 0, 32, timing(self.profile).read_dummy);
         }
 
         /// Destructive boot qualification, before any external memory users.
         /// Write all sampled addresses first, then verify, to catch aliasing.
         pub fn exercise(self: *Self, found: Discovery) Error!Exercise {
             const modes = try self.configure(found);
+            return self.exerciseData(modes);
+        }
+
+        pub fn exerciseData(self: *Self, modes: Modes) Error!Exercise {
             var addresses: [26]u32 = undefined;
             addresses[0] = 0;
             var length: usize = 1;
@@ -183,6 +205,18 @@ pub fn Controller(comptime IO: type) type {
                 }
             }
             return .{ .mr0 = modes.mr0, .mr4 = modes.mr4, .mr8 = modes.mr8, .addresses = @intCast(length), .passes = 2, .reads = @intCast(length * 2), .writes = @intCast(length * 2) };
+        }
+
+        /// Accept a retained fast-mode device only after repeated identity
+        /// reads succeed with its documented mode-register latency.
+        pub fn discoverRetained(self: *Self) Discovery {
+            const first = self.discover();
+            if (first.status != .unsupported or self.faulted or self.mode_dummy != 8) return first;
+            self.mode_dummy = 12;
+            const second = self.discover();
+            if (second.status == .detected) return second;
+            self.mode_dummy = 8;
+            return first;
         }
 
         pub fn discover(self: *Self) Discovery {

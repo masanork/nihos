@@ -150,6 +150,7 @@ const Device = struct {
     data_reads: u32 = 0,
     data_writes: u32 = 0,
     valid_phases: bool = true,
+    enforce_mode_dummy: bool = false,
 
     const Cell = struct { address: u32 = 0, value: u32 = 0, occupied: bool = false };
 
@@ -190,8 +191,13 @@ const Device = struct {
         const operation = self.opcode();
         const writing = operation == 0xc0c0 or operation == 0x8080;
         const mode = operation == 0x4040 or operation == 0xc0c0;
-        const dummy: u32 = if (operation == 0xc0c0) 0 else if (operation == 0) 18 else 8;
+        const fast = self.modes[0] & 0x1c == 0x10;
+        const dummy: u32 = if (operation == 0xc0c0) 0 else if (operation == 0) (if (fast) 26 else 18) else (if (fast) 12 else 8);
         const address = self.words[regs.address / 4];
+        if (self.enforce_mode_dummy and operation == 0x4040 and self.words[regs.user1 / 4] & 63 != dummy - 1) {
+            self.words[regs.fifo / 4] = 0xa5a5a5a5;
+            return;
+        }
         const count: u32 = if (mode) (if (operation == 0x4040 and address == 8) 8 else 16) else 32;
         const expected_user: u32 = 0xc0000000 | (if (dummy == 0) @as(u32, 0) else 1 << 29) |
             (if (writing) @as(u32, 1 << 27) else 1 << 28);
@@ -291,4 +297,35 @@ test "data corruption revokes the command capacity" {
     const found = controller.discover();
     try std.testing.expectError(error.DataMismatch, controller.exercise(found));
     try std.testing.expectEqual(@as(u32, 0), controller.capacity);
+}
+
+test "200 MHz mode transition updates mode latency before data qualification" {
+    var device = Device{};
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discover();
+    const modes = try controller.configureProfile(found, .fast200x16);
+    try std.testing.expectEqualDeep(psram.Modes{ .mr0 = 0x30, .mr4 = 0x20, .mr8 = 0x4b }, modes);
+    try controller.writeWord(0, 0x5a6b7c8d);
+    try std.testing.expectEqual(@as(u32, 0x5a6b7c8d), try controller.readWord(0));
+    try std.testing.expect(device.valid_phases);
+    _ = try controller.configureProfile(found, .safe20x8);
+    try controller.writeWord(0, 0xa55aff00);
+    try std.testing.expectEqual(@as(u32, 0xa55aff00), try controller.readWord(0));
+    try std.testing.expect(device.valid_phases);
+}
+
+test "retained 200 MHz mode can be identified and returned to conservative boot mode" {
+    var device = Device{ .enforce_mode_dummy = true };
+    device.modes[0] = 0x30;
+    device.modes[4] = 0x20;
+    device.modes[8] = 0x4b;
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discoverRetained();
+    try std.testing.expectEqual(psram.Status.detected, found.status);
+    try std.testing.expectEqual(@as(u32, 8), controller.transactions);
+    const modes = try controller.configure(found);
+    try std.testing.expectEqualDeep(psram.Modes{ .mr0 = 0x28, .mr4 = 0x40, .mr8 = 0x0b }, modes);
+    try controller.writeWord(0, 0x7fff8000);
+    try std.testing.expectEqual(@as(u32, 0x7fff8000), try controller.readWord(0));
+    try std.testing.expect(device.valid_phases);
 }

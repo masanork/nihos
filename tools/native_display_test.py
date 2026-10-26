@@ -1,0 +1,105 @@
+"""Reject partial or misleading display evidence using a physical SRAM fixture."""
+import importlib.util
+import json
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location('display_log', ROOT / 'tools/check-native-display-log.py')
+DISPLAY = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(DISPLAY)
+LOG = (ROOT / 'docs/measurements/2026-10-26-native-sram-scanout.log').read_text()
+IMAGE = json.loads((ROOT / 'docs/measurements/2026-10-26-native-sram-scanout.json').read_text())['image_audit']
+
+
+class NativeDisplayEvidenceTests(unittest.TestCase):
+    def check(self, log=LOG, image=IMAGE):
+        return DISPLAY.check(log, image, 5, 80)
+
+    def test_physical_fixture_with_exact_reservation_and_refresh(self):
+        report = self.check()
+        self.assertEqual(report['refresh']['frames'], 32)
+        self.assertEqual(report['native']['external_memory'][0]['start'], 0x48200000)
+        self.assertEqual(report['optical_evidence'], 'not evaluated by this checker')
+
+    def test_default_and_unknown_reservations_do_not_accept_display_heap(self):
+        for reserved in (3 * 65536, 0, 0x200040, 1 << 20):
+            with self.subTest(reserved=reserved), self.assertRaises(ValueError):
+                DISPLAY.NATIVE.check(LOG, 'integer', 32 << 20, IMAGE, 'physical-device', external_reserved_bytes=reserved)
+
+    def test_display_reservation_requires_matching_preparation(self):
+        for old, new in (('reserve_bytes=001d0000', 'reserve_bytes=001c0000'),
+                         ('frame_bytes=001c2000', 'frame_bytes=001c1fff'),
+                         ('frame_start=48030000', 'frame_start=48200000')):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                self.check(LOG.replace(old, new))
+
+    def test_missing_duplicate_and_malformed_irq_reports_fail(self):
+        line = next(line for line in LOG.splitlines() if line.startswith('NIHOS_NATIVE_DISPLAY_IRQ_PASS '))
+        for changed in (LOG.replace(line, ''), LOG + line + '\n', LOG.replace(line, 'NIHOS_NATIVE_DISPLAY_IRQ_PASS malformed')):
+            with self.subTest(changed=changed[-100:]), self.assertRaises(ValueError):
+                self.check(changed)
+
+    def test_late_fault_and_partial_startup_are_rejected(self):
+        for old, new in (('frames=00000020', 'frames=0000001f'), ('fault=00000000', 'fault=00000001'),
+                         ('commands=00000022', 'commands=00000021'), ('dpi_mhz=00000050', 'dpi_mhz=0000000a'),
+                         ('backlight=00000001', 'backlight=00000000')):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                self.check(LOG.replace(old, new))
+        with self.assertRaises(ValueError):
+            self.check(LOG + 'NIHOS_NATIVE_DISPLAY_IRQ_FAIL\n')
+
+    def test_wrong_source_and_nonfixed_dma_are_rejected(self):
+        for old, new in (('sram=00000001', 'sram=00000000'), ('word=ffffffff', 'word=00000000'),
+                         ('dma_control=001c1b51', 'dma_control=001c1b41'),
+                         ('source=4ff16040', 'source=48030000')):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                self.check(LOG.replace(old, new))
+
+    def test_reboot_and_emulator_audit_do_not_qualify_physical_display(self):
+        with self.assertRaises(ValueError):
+            self.check(LOG + 'NIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n')
+        with self.assertRaises(ValueError):
+            self.check(image={**IMAGE, 'memory': {**IMAGE['memory'], 'profile': 'emulator'}})
+
+
+FAST_LOG = (ROOT / 'docs/measurements/2026-10-27-native-landscape.log').read_text()
+FAST_IMAGE = json.loads((ROOT / 'docs/measurements/2026-10-27-native-landscape.json').read_text())['image_audit']
+
+
+class NativeFastDisplayEvidenceTests(unittest.TestCase):
+    def check(self, log=FAST_LOG):
+        return DISPLAY.check(log, FAST_IMAGE, 2, 80)
+
+    def test_real_200mhz_landscape_fixture(self):
+        result = self.check()
+        self.assertEqual(result['native']['psram_fast']['mpll']['mhz'], 400)
+        self.assertEqual(result['layout']['logical_width'], 1280)
+        self.assertEqual(result['timing']['refresh_millihz'], 59982)
+        self.assertEqual(result['optical_evidence'], 'not evaluated by this checker')
+
+    def test_missing_or_duplicate_timing_evidence(self):
+        for marker in ('PSRAM_TUNING', 'PSRAM_MPLL', 'PSRAM_LINK', 'DISPLAY_TIMING', 'PSRAM_SWEEP'):
+            line = next(line for line in FAST_LOG.splitlines() if line.startswith('NIHOS_NATIVE_' + marker + ' '))
+            for changed in (FAST_LOG.replace(line, ''), FAST_LOG + line + '\n'):
+                with self.subTest(marker=marker), self.assertRaises(ValueError):
+                    self.check(changed)
+
+    def test_incomplete_calibration_wrong_clock_and_wrong_geometry(self):
+        for old, new in (('mhz=00000190', 'mhz=000000f0'), ('divider=00000099', 'divider=00000098'),
+                         ('reused=00000001', 'reused=00000002'), ('delay=00000011', 'delay=00000012'),
+                         ('phase_mask=0000000f', 'phase_mask=00000000'), ('delay_mask=3fffffc0', 'delay_mask=00020000'),
+                         ('repetitions=00000064', 'repetitions=00000063'), ('reads=00018440', 'reads=0001843f'),
+                         ('bus=00010001', 'bus=00020002'), ('command=00010001', 'command=00130013'),
+                         ('mr8=0000004b', 'mr8=0000000b'), ('ddr=00003023', 'ddr=00003021'),
+                         ('dll_cache=00000021', 'dll_cache=00000001'), ('dqs0=00010001', 'dqs0=00010003'),
+                         ('refresh_millihz=0000ea4e', 'refresh_millihz=0000ffff'),
+                         ('vtotal=0000067f', 'vtotal=0000067e'), ('rotation=00000001', 'rotation=00000003'),
+                         ('transactions=0001853e', 'transactions=00000071')):
+            self.assertIn(old, FAST_LOG)
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                self.check(FAST_LOG.replace(old, new))
+
+
+if __name__ == '__main__':
+    unittest.main()

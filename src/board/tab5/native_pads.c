@@ -1,7 +1,8 @@
 /* Native boot-only Tab5 display pad/PHY shim. No linked ESP-IDF driver.
  * Register layouts/sequences: ESP-IDF v5.4.4, Apache-2.0.
  * Wiring: official Tab5 NoGLIB BSP 1.3.2, Apache-2.0.
- * No SD pins, VO2/PSRAM, VO4/SD, interrupt routing, or global PLL retuning. */
+ * Display helpers leave SD pins, VO2/PSRAM and VO4/SD untouched.
+ * The separate opt-in PSRAM helpers run exclusively before cache/SMP setup. */
 #include <stddef.h>
 #include "hal/gpio_ll.h"
 #define efuse_hal_blk_version nih_display_efuse_block_version
@@ -9,6 +10,15 @@
 #undef efuse_hal_blk_version
 #include "hal/mipi_dsi_ll.h"
 #include "soc/gpio_sig_map.h"
+#include "soc/i2c_ana_mst_reg.h"
+#include "soc/lp_clkrst_reg.h"
+#include "soc/hp_sys_clkrst_reg.h"
+#include "soc/lpperi_struct.h"
+_Static_assert(PMU_RF_PWC_REG == 0x5011515c, "MPLL power register");
+_Static_assert(PMU_MSPI_PHY_XPD == (1u << 24), "MPLL power bit");
+_Static_assert(LP_CLKRST_HP_CLK_CTRL_REG == 0x50111040, "MPLL clock register");
+_Static_assert(HP_SYS_CLKRST_ANA_PLL_CTRL0_REG == 0x500e60bc, "MPLL calibration register");
+_Static_assert(I2C_ANA_MST_I2C0_CTRL_REG == 0x50124000, "MPLL analog bus register");
 
 #if !NIH_NATIVE_SDMMC_PADS
 __asm__(".global GPIO\n.set GPIO,0x500e0000\n"
@@ -36,7 +46,9 @@ void nih_display_pads_init(void) {
     gpio_ll_input_enable(&GPIO, 22);
     gpio_ll_output_enable(&GPIO, 22);
     for (unsigned pin = 31; pin <= 32; ++pin) {
-        IO_MUX.gpio[pin].mcu_sel = 1;
+        // Release first: a retained output must not pulse SDA low while
+        // changing the mux and preparing the low latch for open drain.
+        gpio_ll_output_disable(&GPIO, pin);
         GPIO.func_out_sel_cfg[pin].out_sel = SIG_GPIO_OUT_IDX;
         GPIO.func_out_sel_cfg[pin].oen_sel = 1;
         GPIO.func_out_sel_cfg[pin].out_inv_sel = 0;
@@ -46,6 +58,7 @@ void nih_display_pads_init(void) {
         gpio_ll_input_enable(&GPIO, pin);
         gpio_ll_pullup_en(&GPIO, pin);
         gpio_ll_pulldown_dis(&GPIO, pin);
+        IO_MUX.gpio[pin].mcu_sel = 1;
     }
 }
 
@@ -56,6 +69,13 @@ void nih_display_pin_release(uint32_t pin, bool release) {
 }
 bool nih_display_pin_level(uint32_t pin) {
     return (pin == 31 || pin == 32) && gpio_ll_get_level(&GPIO, pin);
+}
+
+uint32_t nih_display_i2c_status(void) {
+    return (gpio_ll_get_level(&GPIO, 31) ? 1u : 0u) |
+           (gpio_ll_get_level(&GPIO, 32) ? 2u : 0u) |
+           (((GPIO.enable.val >> 31) & 1u) << 8) |
+           ((GPIO.enable1.val & 1u) << 9);
 }
 
 uint32_t nih_display_phy_power(void) {
@@ -130,4 +150,35 @@ void nih_display_phy_stop(void) {
     mipi_dsi_ll_enable_phy_config_clock(0, false);
     mipi_dsi_ll_enable_bus_clock(0, false);
     nih_display_phy_power_off();
+}
+
+/* PSRAM200 bring-up helpers: caller owns both controllers before CPU1 release. */
+#include "hal/psram_ctrlr_ll.h"
+#include "hal/mspi_timing_tuning_ll.h"
+__asm__(".global SPIMEM2\n.set SPIMEM2,0x5008e000\n"
+        ".global SPIMEM3\n.set SPIMEM3,0x5008f000\n"
+        ".global MSPI_IOMUX\n.set MSPI_IOMUX,0x500e1200\n");
+void nih_psram_fast_clock(uint32_t divider) {
+    const int __DECLARE_RCC_ATOMIC_ENV = 0;
+    (void)__DECLARE_RCC_ATOMIC_ENV;
+    psram_ctrlr_ll_select_clk_source(2, PSRAM_CLK_SRC_MPLL);
+    psram_ctrlr_ll_set_core_clock_div(2, 1);
+    psram_ctrlr_ll_set_bus_clock(2, divider);
+    psram_ctrlr_ll_set_bus_clock(3, divider);
+}
+void nih_psram_fast_phase(uint32_t phase) {
+    mspi_timing_ll_set_dqs_phase(MSPI_LL_DQS_ID_0, phase);
+    mspi_timing_ll_set_dqs_phase(MSPI_LL_DQS_ID_1, phase);
+}
+void nih_psram_fast_delay(uint32_t index) {
+    const uint8_t dqs = index < 15 ? (uint8_t)(15 - index) : 0;
+    const uint8_t data = index > 15 ? (uint8_t)(index - 15) : 0;
+    for (uint32_t pin = 0; pin < MSPI_LL_PIN_MAX; ++pin)
+        mspi_timing_ll_set_delayline(pin, pin == MSPI_LL_PIN_DQS0 || pin == MSPI_LL_PIN_DQS1 ? dqs : data);
+}
+void nih_psram_fast_setup(void) {
+    psram_ctrlr_ll_enable_dll(2, true);
+    psram_ctrlr_ll_enable_dll(3, true);
+    psram_ctrlr_ll_enable_hex_data_line_mode(2, true);
+    psram_ctrlr_ll_enable_variable_dummy(3, false);
 }

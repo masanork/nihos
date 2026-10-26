@@ -32,6 +32,7 @@ export var nih_native_return_states: [2]tasks.context.ReturnState = @splat(.{ .m
 var progress = [_]u32{ 0, 0 };
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
+var display_refresh_reported = false;
 var initialized: u32 = 0x4e494853;
 
 fn reg(address: usize) *volatile u32 {
@@ -151,6 +152,10 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         if (observed.fault != 0) {
             logger.record("NIHOS_NATIVE_DISPLAY_IRQ_FAIL", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
             fail("display refresh");
+        }
+        if (observed.frames >= 32 and !display_refresh_reported) {
+            display_refresh_reported = true;
+            logger.record("NIHOS_NATIVE_DISPLAY_IRQ_PASS", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
         }
         nih_native_return_states[hart] = state;
         return frame;
@@ -357,6 +362,12 @@ export fn nih_native_main() callconv(.c) noreturn {
         .allocatable = 0,
     };
     logger.record("NIHOS_NATIVE_PSRAM", null, .{ "status", "configuration", "identity", "bytes", "transactions", "mapped", "allocatable" }, &discovery);
+    if (options.psram_200) {
+        const link = .{ .core = reg(0x500e6030).*, .bus = reg(0x5008e050).*, .command = reg(0x5008f014).*, .sctrl = reg(0x5008e040).*, .cmd = reg(0x5008e044).*, .ddr = reg(0x5008e0d8).*, .dll_cache = reg(0x5008e190).*, .dll_command = reg(0x5008e180).*, .dqs0 = reg(0x500e123c).*, .dqs1 = reg(0x500e1268).* };
+        logger.record("NIHOS_NATIVE_PSRAM_LINK", null, .{ "core", "bus", "command", "sctrl", "cmd", "ddr", "dll_cache", "dll_command", "dqs0", "dqs1" }, &link);
+    }
+    if (options.psram_200) logger.record("NIHOS_NATIVE_PSRAM_TUNING", null, .{ "status", "stage", "phase_mask", "phase", "delay_mask", "delay", "repetitions", "reads", "writes", "error_code" }, &external.tuning);
+    if (options.psram_mpll) logger.record("NIHOS_NATIVE_PSRAM_MPLL", null, .{ "status", "mhz", "reused", "divider", "error_code" }, &external.mpll);
     logger.record("NIHOS_NATIVE_PSRAM_SUPPLY", null, .{ "programmed", "calibrated", "dref", "mul", "control", "analog", "settled" }, &external.supply);
     const IoRecord = struct { status: u32, mr0: u32, mr4: u32, mr8: u32, addresses: u32, passes: u32, reads: u32, writes: u32, transactions: u32 };
     const io = IoRecord{
@@ -402,6 +413,7 @@ export fn nih_native_main() callconv(.c) noreturn {
         const selected = @import("tab5_display").layout(external.mapping.bytes) orelse fail("display requires mapped PSRAM");
         const display = @import("display_probe.zig").run(timer(0), selected);
         logger.record("NIHOS_NATIVE_DISPLAY_PREP", null, .{ "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight" }, &display);
+        logger.record("NIHOS_NATIVE_DISPLAY_PINS", null, .{ "initial_pins", "failed_pins", "recovery_pulses" }, &display);
         if (!timer(0).configureOneShot(tasks.period_us)) fail("display timer return");
         if (display.status != 1) fail("display preparation");
         display_panel = display.panel;
@@ -505,7 +517,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     reg(0x500d6000 + 46 * 4).* = 0;
                     timer(0).stop();
                     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
-                    const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern);
+                    const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern, options.display_sram);
                     if (screen.status == 1) {
                         const source = display.irqSource();
                         if (source >= 136) fail("display IRQ source");
@@ -515,6 +527,13 @@ export fn nih_native_main() callconv(.c) noreturn {
                         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
                     }
                     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
+                    logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
+                    const composition: extern struct { logical_width: u32, logical_height: u32, rotation: u32 } = .{ .logical_width = if (options.display_tile) @as(u32, 720) else 1280, .logical_height = if (options.display_tile) @as(u32, 1280) else 720, .rotation = if (options.display_tile) @as(u32, 0) else 1 };
+                    logger.record("NIHOS_NATIVE_DISPLAY_LAYOUT", null, .{ "logical_width", "logical_height", "rotation" }, &composition);
+                    const selected = @import("tab5_panels").refreshProfile(display_panel, options.display_hz) orelse fail("display timing");
+                    const rates = .{ .pixel_hz = selected.dpi_mhz * 1_000_000, .refresh_millihz = @import("tab5_panels").refreshMilliHz(selected), .htotal = 720 + selected.hbp + selected.hsw + selected.hfp, .vtotal = 1280 + selected.vbp + selected.vsw + selected.vfp };
+                    if (options.display_sram or options.psram_200) logger.record("NIHOS_NATIVE_DISPLAY_TIMING", null, .{ "pixel_hz", "refresh_millihz", "htotal", "vtotal" }, &rates);
+                    logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
                     if (screen.status != 1) fail("display scanout startup");
                 }
                 while (true) asm volatile ("wfi");

@@ -32,6 +32,8 @@ pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const boot_graphics = @import("graphics/boot_graphics.zig");
 pub const tab5_boot_i2c = @import("board/tab5/boot_i2c.zig");
 pub const tab5_display = @import("board/tab5/display.zig");
+pub const psram_tuning = @import("soc/esp32p4/psram_tuning.zig");
+pub const psram_mpll = @import("soc/esp32p4/psram_mpll.zig");
 pub const tab5_panels = @import("board/tab5/panels.zig");
 pub const display_dcs = @import("board/tab5/dcs.zig");
 pub const scanout_state = @import("board/tab5/scanout_state.zig");
@@ -82,6 +84,8 @@ test {
     _ = display_dcs;
     _ = scanout_state;
     _ = @import("platform/native/external_layout.zig");
+    _ = psram_mpll;
+    _ = psram_tuning;
     _ = platform_abi;
 }
 
