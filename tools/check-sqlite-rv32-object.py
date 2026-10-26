@@ -7,18 +7,18 @@ import struct
 import sys
 
 
-def inspect(path):
+def inspect(path, expected_type=1):
     data = Path(path).read_bytes()
     if data[:6] != b'\x7fELF\x01\x01':
         raise ValueError('expected little-endian ELF32')
     header = struct.unpack_from('<HHIIIIIHHHHHH', data, 16)
-    if header[0] != 1 or header[1] != 243:
-        raise ValueError('expected relocatable RISC-V object')
+    if header[0] != expected_type or header[1] != 243:
+        raise ValueError('unexpected RISC-V ELF type')
     sections = [struct.unpack_from('<10I', data, header[5] + i * header[10]) for i in range(header[11])]
     table = sections[header[12]]
     names = data[table[4]:table[4] + table[5]]
     sections_named = [(names[s[0]:names.index(0, s[0])].decode(), s) for s in sections]
-    defined, undefined, fingerprint = set(), set(), None
+    defined, local_defined, undefined, fingerprint = set(), set(), set(), None
     for section in sections:
         if section[1] != 2:
             continue
@@ -26,23 +26,26 @@ def inspect(path):
         strings = data[table[4]:table[4] + table[5]]
         for offset in range(section[4], section[4] + section[5], section[9]):
             index, value, size, info, _, target = struct.unpack_from('<IIIBBH', data, offset)
-            if not index or not info >> 4:
+            if not index:
                 continue
             name = strings[index:strings.index(0, index)].decode()
-            if target == 0:
-                undefined.add(name)
-            else:
-                defined.add(name)
+            if info >> 4:
+                if target == 0:
+                    undefined.add(name)
+                else:
+                    defined.add(name)
+            elif target != 0:
+                local_defined.add(name)
             if name == 'nih_sqlite_rv32_abi':
-                location = sections[target][4] + value
+                location = sections[target][4] + value - sections[target][3]
                 fingerprint = list(struct.unpack_from('<' + 'I' * (size // 4), data, location))
     return {'path': str(path), 'sha256': hashlib.sha256(data).hexdigest(),
-            'elf_flags': header[6], 'float_abi_bits': header[6] & 6,
+            'elf_type': header[0], 'entry': header[3], 'elf_flags': header[6], 'float_abi_bits': header[6] & 6,
             'executable_section_bytes': sum(s[5] for s in sections if s[2] & 4),
             'read_only_allocated_bytes': sum(s[5] for s in sections if s[2] & 2 and not s[2] & 5),
             'writable_allocated_bytes': sum(s[5] for s in sections if s[2] & 3 == 3),
             'sections': [{'name': name, 'bytes': s[5], 'flags': s[2], 'type': s[1]} for name, s in sections_named if s[2] & 2],
-            'defined_symbols': sorted(defined), 'undefined_symbols': sorted(undefined), 'abi_fingerprint': fingerprint}
+            'defined_symbols': sorted(defined), 'local_defined_symbols': sorted(local_defined), 'undefined_symbols': sorted(undefined), 'abi_fingerprint': fingerprint}
 
 
 def record(directory):

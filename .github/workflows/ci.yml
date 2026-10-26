@@ -39,3 +39,9 @@ jobs:
         run: |
           sh tools/run-sqlite-memory-probe.sh
           build/sqlite/memory-probe profile
+
+      - name: Minimal C runtime differential checks
+        run: sh tools/run-c-runtime-test.sh
+
+      - name: RV32 SQLite standalone link (synthetic map only)
+        run: sh tools/probe-sqlite-rv32-link.sh
