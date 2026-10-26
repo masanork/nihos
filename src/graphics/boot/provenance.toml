@@ -1,0 +1,12 @@
+schema = 1
+
+[[source]]
+name = "Noto Serif CJK JP Regular"
+url = "https://github.com/notofonts/noto-cjk"
+revision = "f8d157532fbfaeda587e826d4cd5b21a49186f7c"
+path = "Serif/OTF/Japanese/NotoSerifCJKjp-Regular.otf"
+sha256 = "d9854c7a8ef170b5a7932558856fd64eb8de0b007cd823fed6f9f514ad2803d3"
+license = "OFL-1.1"
+license_file = "OFL.txt"
+status = "generated-firmware-lettering"
+use = "Fixed 4-bit coverage masks for the boot inscription; full font not shipped"
