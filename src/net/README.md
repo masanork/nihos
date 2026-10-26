@@ -7,6 +7,11 @@ owns one command slot, copied TX buffers, a staged socket read and profile
 negotiation. It is single-owner code without allocation, OS calls or a device
 driver. It is not yet a native `netd` service or a socket-handle table.
 
+`c6_sdio.zig` now supplies the C6 FIFO/counter/credit layer. A native slot-1
+driver and a separate [boot fixture](../../probes/c6-sdio/README.md) connect it
+to the controller. That path is host-tested and image-built; it has no physical
+SDIO qualification or permanent IRQ/service integration yet.
+
 ## Adapter contract
 
 1. Reset/recover the physical link, flush all old RX bytes and wait for the

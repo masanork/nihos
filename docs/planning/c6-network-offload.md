@@ -9,9 +9,11 @@ P4はnihos、C6はESP-IDF上の通信ファームとし、まずESP-AT＋SDIOを
 - 実装済み：P4向け受信デコーダ、AT制御本体、型付きコマンド生成、分割TX、
   単一コマンドのdeadlineとepoch管理、初期交渉と切断復旧の状態管理。
 - C6用SDIO＋Wi-Fi＋NimBLEファームのビルドが通過。上流SDK修正の実体も確認。
+- P4側native SDIO boot driver、C6のFIFO/credit管理、専用CPU0プローブを実装・ビルド。
+  [手順と制約](../../probes/c6-sdio/README.md)を参照。実機での通信は未確認。
 - ホスト試験対象：改行・NUL・偽のOKを含むTCP/BLE混在データ、容量超過、
   不正ヘッダ、途中切断、遅延応答、古いtokenの拒否。
-- 未実装：P4側SDIOドライバ、socket/BLEリソース表、nativeサービスとアプリ接続。
+- 未実装：IRQ駆動SDIOサービス、microSDとの共有調停、socket/BLEリソース表、アプリ接続。
 - 未検証：C6用ファームの書き込み・起動、Tab5上の通信、同時動作、性能。
 
 ## C6用候補
@@ -135,6 +137,7 @@ sh tools/run-static-analysis.sh
 
 RV32確認は`tools/probes/c6-at.zig`からデコーダとgateを実際にcodegenする。
 AT制御本体と型付きコマンド生成も同じprobeでcodegenする。
+SDIO boot driverとATをつなぐ経路は`tools/probes/c6-sdio.zig`でもcodegenする。
 P4ファームへのリンク、SDIO接続、C6との通信を確認するものではない。
 
 ATの逐次実行や機能上限が測定要件に合わなければ、nihos側のアプリAPIを保ち、
