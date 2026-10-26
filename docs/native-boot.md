@@ -41,6 +41,8 @@ Read-only loader-mapped diagnostic tables are described in
 [ADR 0032](adr/0032-loader-mapped-read-only-record-tables.md).
 Whitelisted CPU0 boot-code placement and executed-PC evidence are described in
 [ADR 0033](adr/0033-whitelisted-flash-boot-code.md).
+Task-owned fixed-size cell allocation/reuse is described in
+[ADR 0034](adr/0034-task-owned-fixed-size-slabs.md).
 
 ## Build and emulated execution
 
@@ -259,7 +261,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has sixty log validator regression tests, including frozen
+The smoke has sixty-one log validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
@@ -297,7 +299,16 @@ existing integer/FP instruction boundaries to the moved code. The functions
 run before CPU1 release and scheduler timers; general service code and
 cache-off execution are not qualified by this placement.
 
-Run all 75 Python tests with:
+Task-owned slabs now provide individually reusable fixed-size cells under
+one parent resource. Initialization is two-phase with interrupts enabled;
+cell operations update bounded parent metadata under the owner mask. Parent
+epochs and child tickets reject stale frees across cell and parent reuse.
+Populated resource reports additionally require 120 slab allocations, 24
+cell frees and 27 rejections per hart; absent runs require zero. Normal and
+forced task cleanup reclaim live/pending/poisoned slabs as one parent without
+walking their children. This is not a variable-size or SQLite C allocator.
+
+Run all 76 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

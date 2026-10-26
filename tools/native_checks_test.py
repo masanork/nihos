@@ -78,8 +78,9 @@ def complete_log(mode="integer", psram_size="0"):
         names = ("start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed")
         lines.append("NIHOS_NATIVE_HEAP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
-        names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected")
-        values = [7, 6, 6, 8 if size else 0, 3, 0, 0, 3, 3 if size else 0, 1, 18 if size else 0, 6 if size else 0]
+        names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected")
+        values = [7, 6, 6, 8 if size else 0, 3, 0, 0, 3, 3 if size else 0, 1, 18 if size else 0, 6 if size else 0,
+                  120 if size else 0, 24 if size else 0, 27 if size else 0]
         lines.append("NIHOS_NATIVE_RESOURCES hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
         lines.append("NIHOS_NATIVE_FLASH hart={:08x} start=40010020 end=40010820 bytes=00000800 "
@@ -97,6 +98,15 @@ def complete_image():
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_slab_reuse_and_rejection_evidence_is_required(self):
+        for size, expected in (("0", (0, 0, 0)), ("32M", (120, 24, 27))):
+            log = complete_log(psram_size=size)
+            for field, old in zip(("slab_objects", "slab_frees", "slab_rejected"), expected):
+                token = " {}={:08x}".format(field, old)
+                for value in ("", " {}={:08x}".format(field, old + 1)):
+                    with self.subTest(size=size, field=field), self.assertRaisesRegex(ValueError, "resource"):
+                        MODULE.check(log.replace(token, value), "integer", 0 if size == "0" else 32 << 20)
+
     def test_flash_boot_execution_cannot_be_missing_or_duplicated(self):
         log = complete_log()
         line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_BOOT_CODE"))

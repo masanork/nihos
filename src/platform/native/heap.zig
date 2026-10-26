@@ -6,7 +6,9 @@ pub const Key = task_resources.Key;
 const Ledger = task_resources.Resources(buddy, 4, 2);
 pub const Allocation = buddy.Allocation;
 pub const Pool = Ledger.Pool;
-pub const Error = Ledger.Error || error{NotReady};
+pub const Slab = Ledger.Slab;
+pub const Cell = task_resources.slab.Allocation;
+pub const Error = Ledger.Error || error{ NotReady, InterruptsDisabled };
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
 const Owner = struct {
@@ -45,6 +47,9 @@ const Resources = struct {
     forced: u32 = 0,
     pool_objects: u32 = 0,
     pool_rejected: u32 = 0,
+    slab_objects: u32 = 0,
+    slab_frees: u32 = 0,
+    slab_rejected: u32 = 0,
 };
 var resources: [2]Resources = .{ .{}, .{} };
 pub const ResourceReport = struct {
@@ -60,6 +65,9 @@ pub const ResourceReport = struct {
     forced: u32 = 0,
     pool_objects: u32 = 0,
     pool_rejected: u32 = 0,
+    slab_objects: u32 = 0,
+    slab_frees: u32 = 0,
+    slab_rejected: u32 = 0,
 };
 
 /// Trap-side operations touch only the fixed internal ledger, never PSRAM.
@@ -141,6 +149,105 @@ pub noinline fn closePool(pool: Pool) Error!void {
     return resources[core].ledger.closePool(&owners[core].heap, core, resources[core].current, pool);
 }
 
+/// Parent registration and publication are bounded masked operations;
+/// linear cell initialization runs between them with interrupts enabled.
+pub noinline fn openSlab(object_bytes: usize, count: usize) Error!Slab {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    if (interrupts() == 0) return error.InterruptsDisabled;
+    const pending = blk: {
+        const status = mask();
+        defer restore(status);
+        const state = &resources[core];
+        const lease = try state.ledger.reserveSlab(&owners[core].heap, core, state.current, object_bytes, count);
+        const view = state.ledger.prepareSlab(core, state.current, lease) catch |err| {
+            try closeSlab(lease);
+            return err;
+        };
+        break :blk .{ .lease = lease, .view = view };
+    };
+    pending.view.initialize();
+    const status = mask();
+    defer restore(status);
+    resources[core].ledger.publishSlab(core, resources[core].current, pending.lease) catch |err| {
+        try closeSlab(pending.lease);
+        return err;
+    };
+    return pending.lease;
+}
+
+pub noinline fn allocSlab(lease: Slab) Error!Cell {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.allocSlab(core, resources[core].current, lease);
+}
+
+pub noinline fn freeSlab(lease: Slab, cell: Cell) Error!void {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.freeSlab(core, resources[core].current, lease, cell);
+}
+
+pub noinline fn closeSlab(lease: Slab) Error!void {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.closeSlab(&owners[core].heap, core, resources[core].current, lease);
+}
+
+noinline fn fillSlabCell(bytes: []u8, expected: u8) void {
+    @memset(bytes, expected);
+}
+
+noinline fn validSlabCell(bytes: []u8, expected: u8) bool {
+    const source: [*]const volatile u8 = bytes.ptr;
+    for (0..bytes.len) |index| if (source[index] != expected) return false;
+    return true;
+}
+
+noinline fn slabProbe(lease: Slab) Cell {
+    const core = hart();
+    // SAFETY: The tested prefix is filled before reads; replacements stay inside it.
+    var cells: [16]Cell = undefined;
+    const metadata = task_resources.slab;
+    if (lease.allocation.bytes.len < metadata.header_bytes + 8 * (metadata.cell_metadata_bytes + 32)) nih_native_task_failed();
+    const count = @min(cells.len, (lease.allocation.bytes.len - metadata.header_bytes) / (metadata.cell_metadata_bytes + 32));
+    const copy = lease;
+    for (cells[0..count], 0..) |*cell, index| {
+        cell.* = allocSlab(copy) catch nih_native_task_failed();
+        if (cell.index != index or cell.bytes.len != 32 or interrupts() != 8) nih_native_task_failed();
+    }
+    if (allocSlab(lease)) |_| nih_native_task_failed() else |err| {
+        if (err != error.OutOfMemory or interrupts() != 8) nih_native_task_failed();
+        resources[core].slab_rejected += 1;
+    }
+    const stale = cells[0];
+    for (0..4) |index| freeSlab(lease, cells[index * 2]) catch nih_native_task_failed();
+    if (freeSlab(lease, stale)) |_| nih_native_task_failed() else |err| {
+        if (err != error.InvalidAllocation or interrupts() != 8) nih_native_task_failed();
+        resources[core].slab_rejected += 1;
+    }
+    for (0..4) |_| {
+        const cell = allocSlab(lease) catch nih_native_task_failed();
+        if (cell.index >= count or interrupts() != 8) nih_native_task_failed();
+        cells[cell.index] = cell;
+    }
+    if (freeSlab(lease, stale)) |_| nih_native_task_failed() else |err| {
+        if (err != error.InvalidAllocation or interrupts() != 8) nih_native_task_failed();
+        resources[core].slab_rejected += 1;
+    }
+    for (cells[0..count], 0..) |cell, index| fillSlabCell(cell.bytes, @intCast(0x40 + index));
+    for (cells[0..count], 0..) |cell, index| if (!validSlabCell(cell.bytes, @intCast(0x40 + index))) nih_native_task_failed();
+    resources[core].slab_objects += @intCast(count + 4);
+    resources[core].slab_frees += 4;
+    return cells[0];
+}
+
 noinline fn poolProbe(pool: Pool) void {
     const copy = pool;
     const first = allocPool(pool, 7, 1) catch nih_native_task_failed();
@@ -159,16 +266,35 @@ noinline fn poolProbe(pool: Pool) void {
     resources[hart()].pool_objects += 3;
 }
 
-/// Fixture tasks deliberately retain a pool and a raw parent at exit/termination.
+/// Fixture tasks retain a monotonic pool and a slab at exit/termination.
 pub noinline fn lifecycleProbe() void {
     const core = hart();
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return;
+    const disabled = mask();
+    const refused = openSlab(32, 16);
+    restore(disabled);
+    if (refused) |_| nih_native_task_failed() else |err| {
+        if (err != error.InterruptsDisabled or interrupts() != 8) nih_native_task_failed();
+        resources[core].slab_rejected += 1;
+    }
     const a = openPool(256, 64) catch nih_native_task_failed();
     poolProbe(a);
-    _ = allocTask(192, 64) catch nih_native_task_failed();
+    const slab = openSlab(32, 16) catch nih_native_task_failed();
+    const old_cell = slabProbe(slab);
     if (allocTask(8, 8)) |_| nih_native_task_failed() else |err| {
         if (err != error.Full or interrupts() != 8) nih_native_task_failed();
         resources[core].full += 1; // Only the serialized lifecycle task writes.
+    }
+    closeSlab(slab) catch nih_native_task_failed();
+    const next_slab = openSlab(32, 16) catch nih_native_task_failed();
+    if (allocSlab(slab)) |_| nih_native_task_failed() else |err| {
+        if (err != error.InvalidAllocation or interrupts() != 8) nih_native_task_failed();
+        resources[core].slab_rejected += 1;
+    }
+    _ = slabProbe(next_slab);
+    if (freeSlab(next_slab, old_cell)) |_| nih_native_task_failed() else |err| {
+        if (err != error.InvalidAllocation or interrupts() != 8) nih_native_task_failed();
+        resources[core].slab_rejected += 1;
     }
     if (allocPool(a, 256, 1)) |_| nih_native_task_failed() else |err| {
         if (err != error.OutOfMemory or interrupts() != 8) nih_native_task_failed();
@@ -213,7 +339,7 @@ pub noinline fn cleanupOne() enum { none, progress, complete } {
 
 pub fn resourceReport(core: u32) ResourceReport {
     const ledger = &resources[core].ledger;
-    return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected };
+    return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected, .slab_objects = resources[core].slab_objects, .slab_frees = resources[core].slab_frees, .slab_rejected = resources[core].slab_rejected };
 }
 
 fn hart() u32 {
