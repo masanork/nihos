@@ -151,10 +151,7 @@ pub fn prepare() bool {
 /// Only a mapped, checked PSRAM tail may be transferred here by CPU0.
 /// CPU1 stays in the external boot rendezvous until this completes.
 pub fn prepareExternal(start: u32, length: u32) bool {
-    if (start != 0x4803_0000 or length < 4 * 1024 * 1024 - 3 * 65536 or
-        length > 64 * 1024 * 1024 - 3 * 65536) return false;
-    const capacity = length + 3 * 65536;
-    if (capacity & (capacity - 1) != 0) return false;
+    if (!@import("external_layout.zig").valid(start, length)) return false;
     return external.prepare(start, length);
 }
 

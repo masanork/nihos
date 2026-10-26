@@ -1,107 +1,104 @@
 # Native Tab5 display bring-up
 
-This is an opt-in **preparation probe**, not a working native display backend.
-It runs under the independent SRAM application, without ESP-IDF application
-code or FreeRTOS, before CPU1 release. The native default remains unchanged.
-The BSP/LL sources used as references are recorded in
-[board provenance](../src/board/tab5/provenance.toml).
+This opt-in backend runs under the independent SRAM application, with no
+ESP-IDF application runtime or FreeRTOS. The physical ST7121 panel has shown
+native internal vertical colour bars. **PSRAM-rendered lettering is still not
+visibly working.** The default native application does not enable display.
+See the [physical checkpoint](measurements/2026-10-26-native-display-scanout.md)
+for the evidence and failed attempts; the earlier preparation-only report is
+historical.
 
-## Implemented boundary
-
-1. Force GPIO22 backlight low, and acquire GPIO31/32 as boot-only open-drain
-   I2C pins. Clock stretching, idle-bus checking, address/data NACK distinction,
-   arbitration loss, repeated START and final read NACK are bounded. A busy
-   bus is rejected without recovery pulses or peripheral-wide resets.
-2. Verify the PI4IOE5V6408 identity and update only LCD_EN/TOUCH_EN bits.
-   Read-modify-write and readback preserve all unrelated camera/speaker/power
-   bits. The shared expander is not reset. Power-up waits 500 ms as in BSP 1.3.2.
-3. Select ST7121 from touch firmware 1, ST7123 from firmware 3, or ILI9881C
-   from a GT911 product ID. Only an address NACK at 0x55 permits the GT911
-   fallback; unknown firmware, command NACK, or a broken bus cannot select a
-   different panel. The panel remains uninitialized at the DCS level.
-4. Draw the existing boot inscription into reserved PSRAM and write back L2.
-   The FNV-1a checksum is CPU image evidence, not DMA or panel evidence.
-   Immutable lettering is placed in the existing read-only second mapped
-   Flash span, avoiding a 28 KiB charge to the owner-local SRAM heaps.
-5. Configure only VO3 for the MIPI PHY's 2.5 V reference setting, using the
-   vendor integer eFuse-calibration calculation. Configure the dedicated
-   two-lane DSI PHY for 1 Gbit/s from the retained 20 MHz source on rev1/2.
-   Poll PLL lock and both stopped lanes with a 50 ms deadline. Register/lock
-   evidence does not measure voltage or qualify link timing.
-6. Shut down the PHY and its dedicated clocks/VO3 again. Release both I2C
-   outputs and stop the temporarily borrowed CPU0 timer. The caller restores
-   its scheduler timer configuration before releasing CPU1.
-
-No DCS vendor command table, DPI video timing, bridge/GDMA scanout, DMA refresh
-handler, or backlight-on path is implemented. **Even a successful preparation
-probe leaves the screen dark.** The report always has `scanout=0 backlight=0`.
-Do not interpret `status=1` as visible boot graphics or native display readiness.
-
-## PSRAM ownership
-
-The existing first three 64 KiB virtual pages are nonidentity mapping tests.
-The framebuffer is instead reserved at **0x48030000** for 1,843,200 bytes,
-inside a page-aligned **1,900,544-byte** reservation. The two external owner
-heaps begin at **0x48200000**, splitting the remaining capacity through the
-existing allocator setup. The opt-in probe does not hand out this reservation
-to tasks, including when the probe fails before allocator registration.
-
-Every reserved page is identity-mapped on the supported 4/8/16/32/64 MiB
-capacities. The PSRAM tail is deliberately not used because the current mapper
-swaps it with physical page 2. Tests check actual `physicalPage()` results,
-not just address arithmetic. The default, without this option, reserves no
-framebuffer and retains the original owner heap range.
-
-There are no SD/block/filesystem calls in the display modules. VO2/PSRAM and
-VO4/SD settings and SD pins are not written by the display pad/PHY shim.
-SDMMC compatibility below is a compile/link result, not a concurrent bandwidth
-or physical coexistence result.
-
-## Build and report
+## Build modes
 
 ```sh
-NIHOS_NATIVE_DISPLAY=1 sh tools/build-native.sh device integer
-# Compile/link coexistence, without running or writing an SD card:
-NIHOS_NATIVE_DISPLAY=1 NIHOS_NATIVE_SDMMC=1 sh tools/build-native.sh device integer
+NIHOS_NATIVE_DISPLAY=1 sh tools/build-native.sh device integer # preparation only
+NIHOS_NATIVE_DISPLAY=2 sh tools/build-native.sh device integer # experimental lettering
+NIHOS_NATIVE_DISPLAY=3 sh tools/build-native.sh device integer # experimental white framebuffer
+NIHOS_NATIVE_DISPLAY=4 sh tools/build-native.sh device integer # internal colour-bar diagnostic
 ```
 
-The option is rejected for the emulator profile: ESP-EMU does not qualify the
-physical Tab5 panel, expander or PHY. ESP-IDF v5.4.4 headers are required for
-the opt-in C pad/PHY shim; the default native ELF can still build without them.
-All higher-level I2C and board logic stays in host-testable Zig.
+Mode 4 is the known visible milestone. It initializes the same board and panel,
+primes the bridge at 10 MHz, then uses the DSI host's internal pattern generator
+at 80 MHz for ST7121/ST7123 (60 MHz for ILI9881C), with external bridge output
+disabled. Internal pixels bypass framebuffer delivery. Its `frames` field
+counts DMA completions during startup, not visible pattern frames or sustained
+refresh interrupts. Neither a successful report nor GPIO22 high proves that
+PSRAM pixels are displayed. Modes 2/3 are bring-up experiments: the physical
+10 MHz white test had backlight but a black panel, despite DMA completions.
+20 MHz exhausted the bridge FIFO. Timing/PSRAM bandwidth remains unresolved;
+bandwidth alone has not been established as the cause of the black image.
 
-The source-bound native image audit is still required and is not relaxed.
-Runtime code/mutable data remain in SRAM, with no RTOS/SDK driver symbols and
-no floating-point instructions in the integer profile. The immutable mask
-bytes share the existing second read-only mapped segment; no additional Flash
-mapping or partition is introduced.
+The options are rejected for the emulator. Pinned ESP-IDF v5.4.4 headers are
+needed for the C LL shim; no SDK allocator, display driver or RTOS is linked.
+The unchanged native image audit enforces SRAM runtime, approved immutable
+Flash tables, known ROM calls, and zero floating-point instructions in integer
+mode. Default native ELF builds do not require the display headers.
 
-`NIHOS_NATIVE_DISPLAY_PREP` contains:
+## Board, command and scanout ownership
 
-| Field | Meaning |
-| --- | --- |
-| `status` | 1 = preparation complete; 2 = failed |
-| `stage` | 1 expander; 2 touch/panel ID; 3 CPU image/cache; 4 PHY supply; 5 PHY lock/lanes; 6 prepared |
-| `panel` | 1 ILI9881C; 2 ST7123; 3 ST7121 |
-| `transactions` | Completed I2C transfers |
-| `frame_start`, `frame_bytes`, `reserve_bytes` | Private scanout reservation |
-| `checksum` | CPU-rendered image FNV-1a, before cache handoff |
-| `phy_trim` | Desired DREF in bits 7:0, MUL in bits 15:8 |
-| `phy_status` | Bit 0 PLL locked; bit 1 both lanes stopped; sampled before shutdown |
-| `scanout`, `backlight` | Always zero for this preparation milestone |
-| `error_code` | 1 initial address NACK, 2 data NACK, 3 clock timeout, 4 busy bus, 5 arbitration loss, 6 expander ID, 7 unsupported panel, 8 timer, 9 image geometry, 10 cache handoff, 11 PHY deadline, 12 expander readback, 13 other, 14 repeated-START read-address NACK |
+- Boot-only GPIO31/32 open-drain I2C verifies the expander identity, preserves
+  unrelated pins, and modifies only LCD_EN/TOUCH_EN. There is no expander reset.
+  Firmware 1 at touch address 0x55 selects ST7121; firmware 3 selects ST7123.
+  Only an address NACK permits the GT911/ILI9881C fallback.
+- VO3 provides the PHY reference setting. ST7121 uses an achievable 960 Mbit/s
+  lane PLL setting; other supported tables use 1000 Mbit/s. Register/PLL lock
+  evidence is distinct from a measured supply voltage or link qualification.
+- Bounded DCS writes use licensed vendor tables and exact packet lengths.
+  Write acknowledgements and BTA are disabled: the initial acknowledged
+  attempts produced LP1 contention. DCS read responses remain unqualified.
+- DW-GDMA channel 0 owns one SRAM descriptor and a private RGB565 framebuffer.
+  Startup waits for FIFO priming and two complete DMA blocks before permitting
+  GPIO22 high. Errors latch the output dark. Stop polls are bounded, retaining
+  the private reservation if DMA cannot be stopped.
+- After native task/memory/IPI checks, CPU0 retires timer input 16 before using
+  its counter for display delays, then routes DW-GDMA to dedicated CLIC input
+  18. The handler rearms the descriptor; long-running interrupt refresh has
+  not yet been qualified. USB warm reset retires retained DMA before clearing
+  SRAM or remapping PSRAM.
 
-Local host/build checks are recorded in the accompanying
-[measurement note](measurements/2026-10-26-native-display-preparation.md).
-No device was flashed or reset for this change: the separate filesystem
-qualification work retains ownership of its physical-device session.
+This fixture starts display after scheduler qualification has quiesced the
+workload. It does not establish concurrent display/task/storage operation.
 
-## Next gate
+## Memory and filesystem boundary
 
-First capture a physical preparation report with the device idle and its
-source/firmware identity recorded. Then implement the selected panel's
-licensed DCS initialization table, DPI timings and bridge/GDMA ownership.
-Enable the backlight only after a complete, cache-synchronized frame is being
-scanned out. Keep frame/underrun polling or interrupts separate from the
-existing timer/IPI scheduler lines, and qualify coexistence before claiming
-visible native boot graphics. Animation follows the first stable frame.
+The first three 64 KiB PSRAM pages remain nonidentity mapper tests. RGB565 pixels
+begin at **0x48030000**, using 1,843,200 bytes inside a 1,900,544-byte aligned
+scanout reservation. External owner heaps begin at **0x48200000** and split the
+remaining capacity. Validation accepts only the complete existing default
+range or this exact display-reserved range. The reservation remains private
+on failure. Host tests check identity mappings and non-overlap on 4–64 MiB.
+
+Framebuffer handoff writes back both L1 and L2 data caches. SRAM descriptor
+handoff writes back L1. Immutable glyph masks and packed panel commands share
+the existing second read-only Flash span; no executable Flash permission or
+new mapped span is introduced. Live PSRAM clock changes that stalled the
+qualification sweep were removed from this checkpoint.
+
+Display modules make no SD/block/filesystem calls and do not change VO2/PSRAM,
+VO4/SD or SD pins. No SD writes or backups were performed. Separate worktrees
+preserve the parallel filesystem changes. A display + SDMMC compile/link is
+not physical coexistence evidence.
+
+## Reports and reproduction
+
+`NIHOS_NATIVE_DISPLAY_PREP` reports panel identity, image/cache checksum, PHY
+lock/stopped lanes, reservation and error stage. Preparation always reports
+`scanout=0 backlight=0` because it shuts the PHY down afterwards.
+
+`NIHOS_NATIVE_DISPLAY_SCANOUT` reports startup status/stage/error, panel,
+completed command count, last opcode, DMA frames, requested backlight, selected
+DPI/lane rates, FIFO priming, raw DSI/DMA/bridge errors, cleanup result, and GPIO22
+latch/enable/input/mux diagnostics. The ST7121 successful diagnostic sends 34
+commands. A failure after startup emits `NIHOS_NATIVE_DISPLAY_IRQ_FAIL` and
+`NIHOS_NATIVE_FAIL`. Optical evidence must be recorded separately.
+
+`tools/boot-graphics/capture-native-display.py` requires ESP-IDF Python,
+`--image`, `--audit`, `--loader` and `--partitions`. Without `--install` it
+resets/captures only; with it, the helper installs explicit Flash offsets
+0x2000/0x8000/0x10000, retains artifacts and hashes, verifies twice, then captures
+the final boot under one exclusive serial lease. It never backs up Flash or
+accesses SD. Do not run it while another physical-device session owns the port.
+
+Next gate: qualify normal-timing framebuffer delivery without destabilizing
+native PSRAM, then show the Manyoshu inscription and its three vermilion
+「丹穂」 pairs. Internal bars do not close that gate.

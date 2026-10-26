@@ -45,6 +45,15 @@ pub fn paintRgb565Le(framebuffer: []u8, surface_width: usize, surface_height: us
 /// The native linker can keep immutable lettering in its existing Flash span.
 /// The section is a compile-time choice; it never accepts runtime mask data.
 pub fn paintPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, false);
+}
+
+/// Recolour only 丹穂 and the marker after the complete first frame exists.
+pub fn recolorPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, true);
+}
+
+fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, recolor_only: bool) bool {
     const MaskStore = if (section) |name| struct {
         const data linksection(name) = assets.masks.*;
     } else struct {
@@ -57,14 +66,15 @@ pub fn paintPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, sur
     const left = (surface_width - width) / 2;
     const top = (surface_height - height) / 2;
     const bg = rgb565(background);
-    for (0..surface_height) |y| {
+    if (!recolor_only) for (0..surface_height) |y| {
         const row = framebuffer[y * stride ..][0..row_bytes];
         for (0..surface_width) |x| {
             row[x * 2] = @truncate(bg);
             row[x * 2 + 1] = @truncate(bg >> 8);
         }
-    }
+    };
     for (assets.sprites) |sprite| {
+        if (recolor_only and sprite.ink != .dye) continue;
         if (sprite.status != 0 and sprite.status != @backingInt(status)) continue;
         const ink = switch (sprite.ink) {
             .normal => paper,
@@ -91,6 +101,18 @@ pub fn paintPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, sur
         put(framebuffer, stride, left + 92 + x, top + 1166 + y, marker);
     };
     return true;
+}
+
+test "partial recolour matches the full final frame without repainting other lettering" {
+    const size = width * height * 2;
+    const partial = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(partial);
+    const final = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(final);
+    try std.testing.expect(paintRgb565Le(partial, width, height, width * 2, 0, .ready));
+    try std.testing.expect(recolorPlacedRgb565Le(null, partial, width, height, width * 2, 255, .ready));
+    try std.testing.expect(paintRgb565Le(final, width, height, width * 2, 255, .ready));
+    try std.testing.expectEqualSlices(u8, final, partial);
 }
 
 test "embedded masks are bounded and cover precisely each sprite" {
