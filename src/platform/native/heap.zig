@@ -636,6 +636,24 @@ pub fn resourceReport(core: u32) ResourceReport {
     return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected, .slab_objects = resources[core].slab_objects, .slab_frees = resources[core].slab_frees, .slab_rejected = resources[core].slab_rejected, .object_moves = resources[core].object_moves, .object_inplace = resources[core].object_inplace, .object_rejected = resources[core].object_rejected, .object_copy_bytes = resources[core].object_copy_bytes, .c_probes = resources[core].c_probes };
 }
 
+/// CPU0 only, after both bootstraps published completion and CPU1 parked.
+/// All validation precedes revocation; no payload is touched by retirement.
+pub fn canRetire() bool {
+    for (0..2) |core| {
+        if (@atomicLoad(u32, &prepared[core], .acquire) != 1 or
+            @atomicLoad(u32, &reports[core].confirmed, .acquire) != 1 or
+            resources[core].ledger.owned() != 0 or resources[core].ledger.pending() != null or
+            owners[core].heap.live != 0 or owners[core].heap.free_bytes != owners[core].heap.payload.len) return false;
+    }
+    return true;
+}
+pub fn retire() void {
+    for (0..2) |core| {
+        resources[core].c_pools = @splat(null);
+        @atomicStore(u32, &prepared[core], 2, .release);
+    }
+}
+
 fn hart() u32 {
     return asm volatile ("csrr %[result], mhartid"
         : [result] "=r" (-> u32),

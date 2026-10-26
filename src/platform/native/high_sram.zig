@@ -68,6 +68,7 @@ fn spinUntil(value: *A, expected: u32) void {
     }
 }
 pub noinline fn init(psram_bytes: u32) bool {
+    if (phase.load(.acquire) != 0) return false;
     if (psram_bytes < 16 * 1024 * 1024) return false;
     for (0..2) |pass| {
         for (layout.tested) |span| writeSpan(span.start, span.end, @intCast(pass));
@@ -184,4 +185,10 @@ pub fn result() Report {
 }
 pub fn vmResult() VmReport {
     return vm_report;
+}
+pub fn canRetire() bool {
+    return phase.load(.acquire) == 3 and completed.load(.acquire) == 3 and report.status == 1 and pool.remaining() == layout.heap_bytes;
+}
+pub fn retire() void {
+    phase.store(4, .release);
 }

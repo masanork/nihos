@@ -60,6 +60,16 @@ case "$high_sram" in
     *) echo "NIHOS_NATIVE_HIGH_SRAM must be 0 or 1" >&2; exit 1 ;;
 esac
 storage_service=${NIHOS_NATIVE_STORAGE_SERVICE:-0}
+broker=${NIHOS_NATIVE_MEMORY_BROKER:-0}
+case "$broker" in
+    0) broker=false ;;
+    1) broker=true ;;
+    *) echo "NIHOS_NATIVE_MEMORY_BROKER must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$broker" = true ] && { [ "$high_sram" != true ] || [ "$profile" != device ] || [ "$sqlite" != true ]; }; then
+    echo "Memory broker handoff requires device, sqlite and HIGH_SRAM=1" >&2
+    exit 1
+fi
 if [ "$high_sram" = true ] && [ "$profile" != device ]; then
     echo "High SRAM qualification requires the device memory profile" >&2
     exit 1
@@ -78,7 +88,7 @@ if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\npub const broker = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" "$broker" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -88,6 +98,23 @@ fi
     -O2 -std=c11 -Wall -Wextra -Wconversion -Werror -ffreestanding \
     -I "$repo_root/include" -o "$build_dir/c_allocator.o" "$repo_root/probes/allocator/c_probe.c"
 set -- "$build_dir/c_allocator.o"
+if [ "$broker" = true ]; then
+    python3 "$repo_root/tools/generate_memory_profile.py" --check
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
+        -fno-stack-check -fno-stack-protector -fno-unwind-tables \
+        --dep development_memory --dep task_calls --dep spsc_ring \
+        -Mroot="$repo_root/src/platform/native/broker_runtime.zig" \
+        -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+        -Mdevelopment_memory="$repo_root/src/kernel/development_memory.zig" \
+        -target riscv32-freestanding-none -mcpu="$cpu" -O safe --dep task_control \
+        -Mtask_calls="$repo_root/src/arch/riscv32/task_calls.zig" \
+        -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+        -Mtask_control="$repo_root/src/kernel/task_control.zig" \
+        -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+        -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
+        -femit-bin="$build_dir/sql_broker_runtime.o"
+    set -- "$@" "$build_dir/sql_broker_runtime.o"
+fi
 if [ "$sdmmc" = true ]; then
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
     register_version=hw_ver1

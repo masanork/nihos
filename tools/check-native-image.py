@@ -18,6 +18,23 @@ SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
 STACK_LOW, STACK_HIGH = 0x4FF60000, 0x4FF6E000
 HIGH_BANKS = {".high_sram_a": (0x4ff40000, 0x4ff60000),
               ".high_sram_b": (0x4ff6e000, 0x4ffa0000)}
+BROKER_CONFIG = (1, 0x4ff73000, 16384, 0x4ff1c000, 0x4ff28000, 0x4ff77000, 0x4ff9f000,
+                 0x48200000, 0x4a000000, 65536, 8912896, 0x48008000, 32768)
+BROKER_HOOKS = ('nih_broker_peer_quiet', 'nih_broker_quiet', 'nih_broker_ready', 'nih_broker_register',
+                'nih_broker_task_exited', 'nih_broker_pending', 'nih_broker_cleanup_ready', 'nih_broker_round', 'nih_broker_reaped')
+
+
+def audit_broker(config, symbols, low, high, heap_start, profile):
+    require(profile == 'device' and len(config) == 56, 'invalid broker device/configuration')
+    values = struct.unpack('<14I', config)
+    require(values[:13] == BROKER_CONFIG and 0 < values[13] <= values[2], 'broker ranges/reserves differ from approved layout')
+    require(heap_start <= values[3], 'broker low heap overlaps resident state')
+    for name in BROKER_HOOKS:
+        require(low <= symbols.get(name, 0) < high, 'broker IRQ hook outside resident SRAM: ' + name)
+    return {'version': 1, 'metadata_start': hex(values[1]), 'metadata_reserve': values[2], 'metadata_bytes': values[13],
+            'internal_bytes': values[4] - values[3] + values[6] - values[5], 'internal_floor': values[9],
+            'external_start': hex(values[7]), 'external_bytes': values[8] - values[7], 'external_floor': values[10],
+            'ipc_start': hex(values[11]), 'ipc_bytes': values[12], 'resident_hooks': list(BROKER_HOOKS)}
 ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_set_cpu1_entry": 0x4FC000A8,
                "nih_rom_l2_line_size": 0x4FC003CC,
@@ -411,6 +428,17 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
         report["sqlite"] = sql_report
+    broker_manifest = sqlite_manifest.get('broker') if allow_sql else None
+    require(('nih_broker_config' in symbols) == (broker_manifest is not None), 'broker configuration/manifest mismatch')
+    if broker_manifest is not None:
+        require(high_sram is not None and broker_manifest.get('version') == 1, 'broker requires audited high SRAM')
+        require({'nih_broker_runtime_init', 'nih_broker_runtime_poll', 'nih_broker_runtime_finish', 'nih_broker_task_entry'}.issubset(sql_funcs), 'missing broker Flash runtime')
+        address = symbols['nih_broker_config']
+        offset = address - int(sql_report['rodata_start'], 16)
+        sql_data = sql_sections['.flash.sqlrodata'][1]
+        require(0 <= offset <= len(sql_data) - 56 and symbol_sizes.get('nih_broker_config') == 56, 'broker config outside immutable SQL rodata')
+        report['broker'] = {**audit_broker(sql_data[offset:offset+56], symbols, low, high, symbols['__heap_start'], profile),
+                            'source': broker_manifest}
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
