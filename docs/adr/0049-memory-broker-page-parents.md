@@ -1,6 +1,6 @@
 # 0049 Memory broker page parents and admission
 
-Status: accepted kernel contract; host execution and RV32 compilation first.
+Status: accepted kernel contract; host, RV32 compile, and opt-in native handoff qualified.
 Date: 2026-10-27.
 
 ## Ownership and admission
@@ -69,6 +69,8 @@ current request is 4 MiB; quota savings are a future profile change, not an
 automatic cross-group loan.
 
 The [implementation receipt](../measurements/2026-10-27-memory-broker.md)
-separates this policy from the physically qualified legacy heaps. Platform
-handoff, real application teardown, DMA and C ABI integration remain separate
-qualification gates.
+separates this policy from the physically qualified legacy heaps. The
+[opt-in native handoff receipt](../measurements/2026-10-27-broker-native-handoff.md)
+qualifies exclusive post-fixture region transfer, normal task EXIT, pin completion
+and slot generation reuse on Tab5. Boot-time replacement, forced owner teardown,
+real DMA and C ABI integration remain separate qualification gates.

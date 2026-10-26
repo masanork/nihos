@@ -2,7 +2,8 @@
 
 2026-10-27。`codex/tab5-memory-broker`。
 [共通broker](2026-10-27-memory-broker.md)をnative schedulerへ接続したopt-in試験。
-現時点ではホスト検査と実機候補の配置監査まで合格。実機結果は後続の記録で区別する。
+実装commit `6712750` の候補で、ホスト検査と実機3回のUSBリセット起動を通した。
+これは既存試験終了後のhandoffの検証である。
 
 ## 移譲と配置
 
@@ -56,3 +57,33 @@ sh tools/build-native.sh device sqlite
 `NIHOS_NATIVE_MEMORY_BROKER=0`が既定値。device／sqlite／HIGH_SRAM以外の組合せは拒否する。
 既存試験後の実験的移譲であり、起動時からの全面置換、16 task化、強制killと実DMA abort、
 Wi-Fi／BLE／IME／SQL／GCの同時負荷は未実施。今回の正常EXITと模擬借用完了とは分けて検証する。
+
+## 実機結果
+
+Tab5 ESP32-P4 rev1.3、Flash 16 MiB、PSRAM 32 MiB、MAC `e8:f6:0a:e2:e8:9c`。
+他のserial利用者がいないことを確認してexclusive FDを取得し、同じFDを保持したまま
+partition tableの事前照合、ESP-IDF参照の実行、候補書込み、全3起動、試験後のFlash照合を行った。
+書込みはloader `0x2000` とapp `0x10000` のみ。partition table `0x8000` は変更せず、前後とも一致した。
+loader SHA-256は `5f1565c93f3bea4fe29cd9f26f4e66343e4fdd26cea31bb6ec9a5966a84f1355`。
+
+3回とも約45.6秒で試験とPASS後10秒の監視を完了した。全回で次を確認した。
+
+- 旧API拒否4経路、VM 4／8 MiBの要求量と課金量の一致。
+- client identity `0x00050001` → `0x00060001`。slot 1を世代5→6で再利用。
+- RPC 9要求／9応答、拒否5件。実EXIT 2回、reap 2回。
+- pinによる回収待ち2回と、borrower完了2回。古いidentity拒否2件、古いlease拒否1件。
+- 内部212,992 B／外部31,457,280 Bを全量回収。16,384 Bのguard維持。
+- client stackのpaint観測400 B。callee／IRQを含む一般的な最大stack保証ではない。
+
+既存の300 round SMP、64 IPI、SDMMC 1-bit 400 kHz → 4-bit 400 kHz → 4-bit 20 MHz、
+各transportの1,024箇所の分散読取り、storageの強制終了・再bind、SQLite 2 session／26 statementも合格した。
+SD全3transportの分散digestは `0x524262a3`。新しく実行したESP-IDF参照と、各起動のSD／file API結果を比較し、
+計6件の比較が一致した。storageの強制終了は既存経路の回帰試験であり、新brokerの強制終了試験とは区別する。
+
+試験前後ともloader／partition table／appのFlash照合に合格した。
+全回ともUSB RTSによるresetで電源を保持しており、OFF→ON試験ではない。
+完了後にserial FDを解放した。インストール済み内容はこの時点の記録である。
+
+[構造化結果](2026-10-27-broker-native-handoff.json)にhash、各回の計数、比較結果と残るgateを記録した。
+[source・候補image・生ログ・照合結果のarchive](/Users/masanork/Documents/Codex/2026-10-27/nihos-tab5-broker-handoff-qualification)
+には全ファイルのSHA-256一覧を付け、保存直後に全件を再照合した。

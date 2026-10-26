@@ -2,7 +2,8 @@
 
 2026-10-27。`codex/tab5-memory-broker`。設計は[ADR 0049](../adr/0049-memory-broker-page-parents.md)。
 かな漢字入力・通信を含む予算を、実際のpage-parent割当てに適用するkernel部品を実装した。
-ホストで実行し、RV32向けにcompileした段階で、native起動経路への接続・実機検証は次のgateとする。
+この記録はホスト実行とRV32 compileの段階を記述する。後続のnative接続と実機結果は
+[排他的handoffの記録](2026-10-27-broker-native-handoff.md)へ分けた。
 
 ## 実装した契約
 
