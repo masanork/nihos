@@ -45,6 +45,7 @@ var max_copy_us: u32 = 0;
 var max_cache_us: u32 = 0;
 var max_cache_chunk_us: u32 = 0;
 var line_step_us: u32 = 0;
+var cpu_mhz: u32 = 0;
 comptime {
     if (@sizeOf(Renderer) + @sizeOf(Text) > board.reserve_bytes - board.frame_bytes or @alignOf(Renderer) > 64)
         @compileError("console renderer exceeds private display tail");
@@ -291,10 +292,17 @@ pub noinline fn service(log: anytype) bool {
     if (model.details) {
         if (renderer_ready and renderer.moving() and new_frame) {
             const started = clock.timer().counter() orelse return false;
+            const cycles = asm volatile ("csrr %[value], mcycle"
+                : [value] "=r" (-> u32),
+            );
             if (!renderer.step(frame(), 1440, palette())) return false;
             const copied = clock.timer().counter() orelse return false;
             if (!presentDamage()) return false;
             const ended = clock.timer().counter() orelse return false;
+            const cycles_end = asm volatile ("csrr %[value], mcycle"
+                : [value] "=r" (-> u32),
+            );
+            cpu_mhz = (cycles_end -% cycles) / @max(@as(u32, @intCast(@min(ended - started, 0xffff_ffff))), 1);
             max_copy_us = @max(max_copy_us, @as(u32, @intCast(@min(copied - started, 0xffff_ffff))));
             max_cache_us = @max(max_cache_us, @as(u32, @intCast(@min(ended - copied, 0xffff_ffff))));
             max_scroll_us = @max(max_scroll_us, @as(u32, @intCast(@min(ended - started, 0xffff_ffff))));
@@ -345,8 +353,8 @@ pub noinline fn liveReport(log: anytype, comptime ready: bool) void {
     const values: extern struct { frames: u32, clock_hz: u32, sources: u32, view: u32, progress: u32, target: u32 } = .{ .frames = runtime.snapshot().frames, .clock_hz = @as(u32, 1_000_000), .sources = @as(u32, model.input_sources), .view = @as(u32, @intFromBool(model.details)), .progress = @as(u32, progress), .target = @as(u32, model.dyeTarget()) };
     if (ready) {
         if (renderer_ready) {
-            const stats: extern struct { full: u32, partial: u32, scrolls: u32, steps: u32, max_step_us: u32, copy_us: u32, cache_us: u32, cache_chunk_us: u32, line_step_us: u32 } = .{ .full = renderer.full_paints, .partial = renderer.partial_updates, .scrolls = renderer.scrolls, .steps = renderer.steps, .max_step_us = max_scroll_us, .copy_us = max_copy_us, .cache_us = max_cache_us, .cache_chunk_us = max_cache_chunk_us, .line_step_us = line_step_us };
-            log.record("NIHOS_NATIVE_CONSOLE_RENDER", null, .{ "full", "partial", "scrolls", "steps", "max_step_us", "copy_us", "cache_us", "cache_chunk_us", "line_step_us" }, &stats);
+            const stats: extern struct { full: u32, partial: u32, scrolls: u32, steps: u32, max_step_us: u32, copy_us: u32, cache_us: u32, cache_chunk_us: u32, line_step_us: u32, cpu_mhz: u32 } = .{ .full = renderer.full_paints, .partial = renderer.partial_updates, .scrolls = renderer.scrolls, .steps = renderer.steps, .max_step_us = max_scroll_us, .copy_us = max_copy_us, .cache_us = max_cache_us, .cache_chunk_us = max_cache_chunk_us, .line_step_us = line_step_us, .cpu_mhz = cpu_mhz };
+            log.record("NIHOS_NATIVE_CONSOLE_RENDER", null, .{ "full", "partial", "scrolls", "steps", "max_step_us", "copy_us", "cache_us", "cache_chunk_us", "line_step_us", "cpu_mhz" }, &stats);
         }
         const io: extern struct { tx_dropped: u32 } = .{ .tx_dropped = nih_diagnostic_serial_dropped() };
         log.record("NIHOS_NATIVE_UI_IO", null, .{"tx_dropped"}, &io);

@@ -20,7 +20,7 @@ pub const cell_width = Layout(default_face).cell_width;
 pub const cell_height = Layout(default_face).cell_height;
 pub const columns = Layout(default_face).columns;
 pub const rows = Layout(default_face).rows;
-pub const Palette = enum(u32) { neutral, green, blue, forest };
+pub const Palette = enum(u32) { neutral, green, blue, forest, matrix };
 pub const Colors = struct { foreground: u16, accent: u16, background: u16 = 0x1082 };
 pub fn colors(palette: Palette) Colors {
     return .{ .foreground = switch (palette) {
@@ -28,7 +28,12 @@ pub fn colors(palette: Palette) Colors {
         .green => 0xa5f5,
         .blue => 0xadd9,
         .forest => 0x5dcf,
-    }, .accent = if (palette == .forest) 0x4d6d else 0x85b5 };
+        .matrix => 0x07e8,
+    }, .accent = switch (palette) {
+        .forest => 0x4d6d,
+        .matrix => 0x05a6,
+        else => 0x85b5,
+    } };
 }
 pub const Damage = struct {
     left: usize = 1280,
@@ -183,7 +188,9 @@ pub fn Renderer(comptime section: ?[]const u8, comptime face: Face) type {
             if (shift != 0) {
                 self.distance = shift * L.cell_height;
                 self.advanced = 0;
-                self.quantum = (self.distance + 3) / 4;
+                // Complete a line advance in one copy/presentation. Four
+                // interpolated copies magnified latency under boot load.
+                self.quantum = self.distance;
                 self.scrolls +|= 1;
             } else self.shown = next.*;
             return true;
@@ -248,7 +255,7 @@ fn pixel(frame: []u8, stride: usize, x: usize, y: usize, color: u16) void {
     frame[offset + 1] = @truncate(color >> 8);
 }
 
-test "incremental cells and four-frame scroll equal a fresh raster, with fixed header and guards" {
+test "incremental cells and single-pass scroll equal a fresh raster, with fixed header and guards" {
     inline for (.{ Face.basic, Face.basic_light, Face.jetbrains, Face.source_code }) |face| {
         const L = Layout(face);
         const stride = width * 2 + 8;
@@ -282,7 +289,7 @@ test "incremental cells and four-frame scroll equal a fresh raster, with fixed h
                 try std.testing.expect(!renderer.submit(frame, stride, &pending, .green));
                 try std.testing.expect(renderer.step(frame, stride, .green));
                 steps += 1;
-                try std.testing.expect(steps <= 4);
+                try std.testing.expectEqual(@as(usize, 1), steps);
                 const damage = renderer.takeDamage();
                 try std.testing.expect(damage.top >= L.margin_y + 7 * L.cell_height);
             }
