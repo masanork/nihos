@@ -1,4 +1,4 @@
-name: Native USB and PIN-free JPKI
+name: Native USB and card service
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
       - 'probes/usb*/**'
       - 'tools/build-native*.sh'
       - 'tools/run-static-analysis.sh'
+      - 'tools/check-card-rv32.sh'
       - 'tools/check-native*.py'
       - 'tools/native*_test.py'
       - 'ports/esp32p4-native/**'
@@ -22,6 +23,7 @@ on:
       - 'probes/usb*/**'
       - 'tools/build-native*.sh'
       - 'tools/run-static-analysis.sh'
+      - 'tools/check-card-rv32.sh'
       - 'tools/check-native*.py'
       - 'tools/native*_test.py'
       - 'ports/esp32p4-native/**'
@@ -57,6 +59,7 @@ jobs:
         run: |
           .tools/zig-0.17.0/zig build test
           .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
+          sh tools/check-card-rv32.sh
           python3 -m unittest discover -s tools -p '*test.py'
 
       - name: Compile disabled, USB-only and PIN-free JPKI images

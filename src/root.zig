@@ -5,6 +5,10 @@
 
 pub const ccid = @import("usb/ccid.zig");
 pub const jpki = @import("usb/jpki.zig");
+pub const card_input_support = @import("card/input_support.zig");
+pub const card_service = @import("card/service.zig");
+pub const card_pin_entry = @import("card/pin_entry.zig");
+pub const card_ccid_owner = @import("card/ccid_owner.zig");
 pub const usb_host = @import("soc/esp32p4/usb_host.zig");
 pub const usb_descriptors = @import("usb/descriptors.zig");
 pub const boot_i2c = @import("board/tab5/boot_i2c.zig");
@@ -39,6 +43,11 @@ pub const platform_abi = @import("platform/abi.zig");
 test {
     _ = ccid;
     _ = jpki;
+    _ = card_input_support;
+    _ = card_service;
+    _ = card_pin_entry;
+    _ = card_ccid_owner;
+    _ = @import("card/service_test.zig");
     _ = usb_host;
     _ = usb_descriptors;
     _ = boot_i2c;

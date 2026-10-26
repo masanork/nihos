@@ -91,3 +91,9 @@ References: [CCID 1.1](https://www.usb.org/sites/default/files/DWG_Smart-Card_CC
 [civ JPKI source](https://github.com/masanork/civ/blob/54a843e656513930df60bbc20d752ff3289e7078/src/jpki.rs).
 Sony's distributed CCID source and third-party Port-400 implementations were
 consulted during investigation; none is linked or copied into this firmware.
+
+## 次の機能拡張
+
+共通サービス、本体PIN入力モデル、券面事項入力補助APの独立実装は
+[card-service.md](card-service.md) を参照。表示・タッチ・常駐USBへの
+結合前であり、このPINなし起動診断とは別の実装である。
