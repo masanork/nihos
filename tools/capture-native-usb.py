@@ -22,8 +22,11 @@ def main():
     parser.add_argument("image_audit", type=Path)
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--jpki", action="store_true", help="require PIN-free JPKI serial and unchanged retries")
+    parser.add_argument("--card", action="store_true", help="require PIN-free Input Support and touch readiness")
     parser.add_argument("--install", type=Path, help="explicitly install a native build directory before qualification")
     args = parser.parse_args()
+    if args.card and args.jpki:
+        parser.error("--card and --jpki are separate qualification modes")
     if not 1 <= args.runs <= 10:
         parser.error("runs must be 1..10")
     args.output.mkdir(parents=True, exist_ok=True)
@@ -59,7 +62,8 @@ def main():
                         raw.extend(chunk)
                         output.write(chunk)
                         output.flush()
-                    if (b"NIHOS_NATIVE_FP_PASS" in raw or b"NIHOS_NATIVE_FAIL" in raw) and completed is None:
+                    marker = b"NIHOS_NATIVE_CARD_CHECK " if args.card else b"NIHOS_NATIVE_FP_PASS"
+                    if (marker in raw or b"NIHOS_NATIVE_FAIL" in raw) and completed is None:
                         completed = time.monotonic()
                     if completed is not None and time.monotonic() - completed >= 1:
                         break
@@ -71,13 +75,13 @@ def main():
                 raise SystemExit("Missing ROM boot banner; inspect " + str(raw_path))
             log_path.write_bytes(raw[start:])
             subprocess.run([sys.executable, str(checker), str(log_path), str(report_path),
-                            "integer", "32M", str(args.image_audit), "physical-device", "usb,jpki" if args.jpki else "usb"], check=True)
+                            "integer", "32M", str(args.image_audit), "physical-device", "usb,card" if args.card else "usb,jpki" if args.jpki else "usb"], check=True)
             print(f"Native USB boot {run}: passed ({log_path})", flush=True)
 
         if installation:
             tool(console, args.output / "verify-after.log", "verify_flash", installation)
         completion.write_text(json.dumps({
-            "runs": args.runs, "jpki": args.jpki, "exclusive_descriptor_held": True,
+            "runs": args.runs, "jpki": args.jpki, "card": args.card, "exclusive_descriptor_held": True,
             "installed": bool(installation), "postverify": bool(installation),
         }, indent=2) + "\n")
         print("Qualification complete; releasing serial lease", flush=True)

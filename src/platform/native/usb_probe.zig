@@ -1,5 +1,6 @@
 //! Opt-in boot probe: exclusive CPU0, bounded polled USB / PIN-free JPKI.
 const options = @import("native_options");
+const std = @import("std");
 const ccid = @import("ccid");
 const jpki = @import("jpki");
 const usb = @import("usb_host");
@@ -120,7 +121,8 @@ const Bus = struct {
     }
 };
 
-fn enumerate(controller: *usb.Controller(Bus), report: *Report) !void {
+const Pipes = struct { input: usb.Pipe, output: usb.Pipe };
+fn enumerate(controller: *usb.Controller(Bus), report: *Report, retained: ?*?Pipes) !void {
     report.stage = 2;
     try controller.initialize();
     report.speed = controller.speed;
@@ -160,7 +162,7 @@ fn enumerate(controller: *usb.Controller(Bus), report: *Report) !void {
     report.stage = 6;
     _ = try controller.control(&control, usb.setup(0, 9, selected.value, 0, 0), &.{});
     if (!selected.ccid) return;
-    if (!controller.io.delay(if (options.jpki) 2_000_000 else 20_000)) return error.Timeout;
+    if (!controller.io.delay(if (options.jpki or retained != null) 2_000_000 else 20_000)) return error.Timeout;
     var input = usb.Pipe{ .address = 1, .endpoint = @truncate(selected.bulk_in), .packet = selected.in_packet, .kind = 2 };
     var output = usb.Pipe{ .address = 1, .endpoint = @truncate(selected.bulk_out), .packet = selected.out_packet, .kind = 2 };
     report.stage = 7;
@@ -173,6 +175,10 @@ fn enumerate(controller: *usb.Controller(Bus), report: *Report) !void {
         report.slot_queries += 1;
     }
     report.stage = 8;
+    if (retained) |target| {
+        target.* = .{ .input = input, .output = output };
+        return;
+    }
     if (options.jpki) {
         // Keep the baseline USB receipt independent from the card diagnostic.
         report.transfers = controller.transfers;
@@ -210,7 +216,7 @@ pub noinline fn run(clock: timer_group.Timer) Report {
     nih_usb_phy_init();
     report.core_id = io.read(usb.regs.identity);
     var controller = usb.Controller(Bus){ .io = io };
-    enumerate(&controller, &report) catch |err| {
+    enumerate(&controller, &report, null) catch |err| {
         report.error_code = switch (err) {
             error.Timeout => 2,
             error.Disconnected => 3,
@@ -234,3 +240,75 @@ pub noinline fn run(clock: timer_group.Timer) Report {
     if (report.error_code == 0) report.status = 1;
     return report;
 }
+
+/// CPU0 owns this link, its timer and the shared DMA slots until close().
+/// Open does enumeration/slot status only; it never runs the boot JPKI probe.
+pub const Device = struct {
+    controller: usb.Controller(Bus),
+    pipes: Pipes,
+    alive: bool = true,
+
+    pub fn open(clock: timer_group.Timer, report: *Report) !Device {
+        const io = Bus{ .clock = clock };
+        nih_usb_i2c_init();
+        var bus = i2c.Master(Bus){ .pins = io };
+        try i2c.usbPowerCycle(&bus);
+        nih_usb_phy_init();
+        errdefer {
+            nih_usb_phy_stop();
+            // Engine reset has relinquished all DMA ownership.
+            std.crypto.secureZero(u8, &dma_data);
+            std.crypto.secureZero(u32, &dma_qtd);
+        }
+        var controller = usb.Controller(Bus){ .io = io };
+        var pipes: ?Pipes = null;
+        try enumerate(&controller, report, &pipes);
+        if (pipes == null) return error.Unsupported;
+        report.status = 1;
+        report.core_id = io.read(usb.regs.identity);
+        report.transfers = controller.transfers;
+        return .{ .controller = controller, .pipes = pipes.? };
+    }
+    pub fn send(self: *Device, bytes: []const u8) !usize {
+        if (!self.alive) return error.Poisoned;
+        // Readiness link deliberately cannot submit a PIN. Authenticated UI
+        // activation is a later gate, independent of Service's host model.
+        if (bytes.len < 10 or (bytes[0] != 0x62 and bytes[0] != 0x63 and bytes[0] != 0x6f)) return error.Denied;
+        if (bytes[0] == 0x6f and bytes.len > 14 and bytes[11] == 0x20) return error.Denied;
+        // OUT preparation copies bytes to the private DMA slot, never writes
+        // into the caller's source. IN uses the separate receive entry point.
+        return self.controller.stage(&self.pipes.output, false, false, @constCast(bytes));
+    }
+    pub fn receive(self: *Device, bytes: []u8) !usize {
+        if (!self.alive) return error.Poisoned;
+        return self.controller.stage(&self.pipes.input, true, false, bytes);
+    }
+    pub fn scrub(self: *Device) !void {
+        self.controller.retire() catch |err| {
+            self.alive = false;
+            nih_usb_phy_stop();
+            self.erase() catch return error.Cache;
+            return err;
+        };
+        self.erase() catch |err| {
+            self.alive = false;
+            nih_usb_phy_stop();
+            return err;
+        };
+    }
+    fn erase(_: *Device) !void {
+        std.crypto.secureZero(u8, &dma_data);
+        std.crypto.secureZero(u32, &dma_qtd);
+        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&dma_data), 512) != 0 or
+            nih_rom_cache_writeback(1 << 4, @intFromPtr(&dma_qtd), 64) != 0) return error.Cache;
+        asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+    }
+    pub fn connected(self: *Device) bool {
+        return self.alive and self.controller.io.read(usb.regs.port) & 1 != 0;
+    }
+    pub fn close(self: *Device) !void {
+        nih_usb_phy_stop();
+        self.alive = false;
+        try self.erase();
+    }
+};

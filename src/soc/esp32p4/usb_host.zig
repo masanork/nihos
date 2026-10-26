@@ -102,6 +102,12 @@ pub fn Controller(comptime Io: type) type {
                 self.poisoned = true;
             };
         }
+        /// Return only with channel ownership retired, or poison the device.
+        /// Caller must reset hardware before clearing DMA memory on Poisoned.
+        pub fn retire(self: *Self) Error!void {
+            if (self.io.read(regs.channel) & (1 << 31) != 0) self.halt();
+            if (self.poisoned) return error.Poisoned;
+        }
         pub fn stage(self: *Self, pipe: *Pipe, input: bool, is_setup: bool, bytes: []u8) Error!usize {
             if (self.poisoned) return error.Poisoned;
             if (bytes.len > 512 or pipe.packet == 0 or pipe.packet > 512) return error.InvalidTransfer;

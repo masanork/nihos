@@ -3,12 +3,13 @@
 //! Hardware-specific code will live below `arch`, `soc`, and `board`. The
 //! kernel imports only the stable platform ABI, never ESP-IDF headers.
 
-pub const ccid = @import("usb/ccid.zig");
+pub const ccid = @import("ccid");
 pub const jpki = @import("usb/jpki.zig");
 pub const card_input_support = @import("card/input_support.zig");
 pub const card_service = @import("card/service.zig");
 pub const card_pin_entry = @import("card/pin_entry.zig");
 pub const card_ccid_owner = @import("card/ccid_owner.zig");
+pub const tab5_touch = @import("board/tab5/touch.zig");
 pub const usb_host = @import("soc/esp32p4/usb_host.zig");
 pub const usb_descriptors = @import("usb/descriptors.zig");
 pub const boot_i2c = @import("board/tab5/boot_i2c.zig");
@@ -53,6 +54,7 @@ test {
     _ = card_service;
     _ = card_pin_entry;
     _ = card_ccid_owner;
+    _ = tab5_touch;
     _ = @import("card/service_test.zig");
     _ = usb_host;
     _ = usb_descriptors;

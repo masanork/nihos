@@ -82,6 +82,16 @@ if [ "$display" = true ] && [ "$profile" != device ]; then
     echo "Native display preparation requires the physical-device profile" >&2
     exit 1
 fi
+card_check=${NIHOS_NATIVE_CARD_CHECK:-0}
+case "$card_check" in
+    0) card_check=false ;;
+    1) card_check=true ;;
+    *) echo "NIHOS_NATIVE_CARD_CHECK must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$card_check" = true ] && { [ "$usb" != true ] || [ "$display" != true ] || [ "$display_scanout" = true ]; }; then
+    echo "Card readiness check requires USB=1 and DISPLAY=1 (preparation only)" >&2
+    exit 1
+fi
 case "$storage" in
     0) storage=false ;;
     1) storage=true ;;
@@ -97,6 +107,7 @@ mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const usb = %s;\npub const jpki = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$usb" "$jpki" "$display" "$display_scanout" "$display_white" "$display_pattern" > "$build_dir/native_options.next"
+printf 'pub const card_check = %s;\n' "$card_check" >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -243,9 +254,11 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep usb_host --dep usb_descriptors --dep boot_i2c --dep ccid --dep jpki --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep usb_host --dep usb_descriptors --dep boot_i2c --dep ccid --dep jpki --dep card --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state -Mroot="$repo_root/src/platform/native/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mccid="$repo_root/src/usb/ccid.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    --dep ccid -Mcard="$repo_root/src/card.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mjpki="$repo_root/src/usb/jpki.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

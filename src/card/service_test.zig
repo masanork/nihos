@@ -3,7 +3,7 @@ const card = @import("service.zig");
 const input = @import("input_support.zig");
 const ui = @import("pin_entry.zig");
 const ccid_owner = @import("ccid_owner.zig");
-const ccid = @import("../usb/ccid.zig");
+const ccid = @import("ccid");
 const testing = std.testing;
 
 fn reply(service: *card.Service, bytes: []const u8) !card.Action {
@@ -350,7 +350,7 @@ const Wire = struct {
         bytes[7] = if (extending) 0x80 else if (self.absent) 2 else if (self.sent[0] == 0x63) 1 else 0;
         return frame.len - @as(usize, @intFromBool(self.truncated));
     }
-    pub fn scrub(self: *Wire) void {
+    pub fn scrub(self: *Wire) !void {
         std.crypto.secureZero(u8, &self.sent);
         self.scrubs += 1;
     }

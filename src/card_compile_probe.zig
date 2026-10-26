@@ -16,7 +16,7 @@ const Link = struct {
     pub fn receive(_: Link, bytes: []u8) !usize {
         return card_probe_receive(bytes.ptr, bytes.len);
     }
-    pub fn scrub(_: Link) void {
+    pub fn scrub(_: Link) !void {
         card_probe_scrub();
     }
 };

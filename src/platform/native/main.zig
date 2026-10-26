@@ -518,6 +518,17 @@ export fn nih_native_main() callconv(.c) noreturn {
                 flashReport(0);
                 flashReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
+                if (options.card_check) {
+                    // Scheduler/CPU1 are quiescent. CPU0 owns both the touch
+                    // I2C bus and USB; no UI or card PIN submission is enabled.
+                    reg(0x20801040).* = 0;
+                    reg(0x500d6000 + 46 * 4).* = 0;
+                    timer(0).stop();
+                    asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+                    print("NIHOS_NATIVE_CARD_CHECK_START pin_enabled=0\n");
+                    const readiness = @import("card_probe.zig").run(timer(0), display_panel);
+                    logger.record("NIHOS_NATIVE_CARD_CHECK", null, .{ "status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts" }, &readiness);
+                }
                 if (options.display_scanout) {
                     const display = @import("display_runtime.zig");
                     // Scheduler qualification has finished. Retire its CPU0
