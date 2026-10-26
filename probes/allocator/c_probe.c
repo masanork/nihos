@@ -6,6 +6,8 @@
 unsigned char *nih_c_allocator_probe(void);
 unsigned char *nih_c_allocator_probe(void) {
     unsigned char local = 0;
+    const uint32_t identity = nih_task_identity();
+    if (!identity || !(identity & 0xffff)) return NULL;
     if (nih_task_malloc(1) || nih_task_capacity(&local) || nih_task_free(&local) != -1) return NULL;
     if (nih_task_allocator_open_profile(0) != -1 || nih_task_allocator_open_profile(UINT32_MAX) != -1) return NULL;
     if (nih_task_allocator_open_profile(1) != 0 || nih_task_allocator_close() != 0) return NULL;
@@ -33,6 +35,7 @@ unsigned char *nih_c_allocator_probe(void) {
     if (nih_task_roundup(0) || nih_task_roundup(4097) || nih_task_roundup(13) != 16) return NULL;
     if (nih_task_allocator_close() != 0 || nih_task_allocator_close() != -1 || nih_task_malloc(1)) return NULL;
     if (nih_task_allocator_open(2) != 0) return NULL;
+    if (nih_task_identity() != identity) return NULL;
     p = nih_task_realloc(NULL, 8);
     if (!p) return NULL;
     for (size_t i = 0; i < 8; ++i) p[i] = 0x39;

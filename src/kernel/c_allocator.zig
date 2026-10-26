@@ -2,6 +2,10 @@
 //! Backend methods authenticate the current task before touching pool memory.
 pub fn Adapter(comptime Backend: type) type {
     return struct {
+        pub fn identity() callconv(.c) u32 {
+            return Backend.identity() catch 0;
+        }
+
         pub fn open(count: usize) callconv(.c) c_int {
             Backend.open(count) catch return -1;
             return 0;
@@ -57,6 +61,7 @@ pub fn Adapter(comptime Backend: type) type {
         }
 
         pub fn exportSymbols() void {
+            @export(&identity, .{ .name = "nih_task_identity" });
             @export(&open, .{ .name = "nih_task_allocator_open" });
             @export(&openProfile, .{ .name = "nih_task_allocator_open_profile" });
             @export(&close, .{ .name = "nih_task_allocator_close" });

@@ -337,6 +337,13 @@ const CBackend = struct {
         return lease;
     }
 
+    pub fn identity() Error!u32 {
+        const core = try check();
+        const state = &resources[core];
+        if (!state.ledger.active(state.current)) return error.Inactive;
+        return task_resources.identity(core, state.current);
+    }
+
     pub fn open(count: usize) Error!void {
         return openConfigured(task_resources.size_pool.Config.uniform(count) orelse return error.InvalidRequest);
     }
@@ -420,8 +427,9 @@ noinline fn objectsProbe(worker: u32) ObjectState {
     const c_refused = C.malloc(8);
     const c_invalid_size = C.capacity(@ptrCast(c_retained));
     const c_invalid_free = C.free(@ptrCast(c_retained));
+    const c_invalid_identity = C.identity();
     restore(masked);
-    if (c_refused != null or c_invalid_size != 0 or c_invalid_free != -1 or interrupts() != 8) nih_native_task_failed();
+    if (c_refused != null or c_invalid_size != 0 or c_invalid_free != -1 or c_invalid_identity != 0 or interrupts() != 8) nih_native_task_failed();
     const first = allocObject(lease, 13) catch nih_native_task_failed();
     fillSlabCell(first.cell.bytes, 0x73);
     const disabled = mask();

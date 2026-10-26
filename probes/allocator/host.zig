@@ -10,11 +10,19 @@ var heap: buddy.Heap = undefined;
 var table: Table = .{};
 var bindings: [2]?Table.Objects = .{ null, null };
 var generations: [2]u16 = .{ 1, 1 };
-var slot: u16 = 0;
+threadlocal var slot: u16 = 0;
 var initialized = false;
 
 fn key() resources.Key {
     return .{ .slot = slot, .generation = generations[slot] };
+}
+
+fn ensure() void {
+    if (initialized) return;
+    heap = buddy.Heap.init(&memory, 0).?;
+    _ = table.open(.{ .slot = 0, .generation = 1 });
+    _ = table.open(.{ .slot = 1, .generation = 1 });
+    initialized = true;
 }
 
 const Backend = struct {
@@ -23,17 +31,18 @@ const Backend = struct {
         return bindings[slot] orelse error.NotReady;
     }
 
+    pub fn identity() !u32 {
+        ensure();
+        if (!table.active(key())) return error.Inactive;
+        return resources.identity(0, key());
+    }
+
     pub fn open(count: usize) !void {
         return openConfigured(resources.size_pool.Config.uniform(count) orelse return error.InvalidRequest);
     }
 
     pub fn openConfigured(config: resources.size_pool.Config) !void {
-        if (!initialized) {
-            heap = buddy.Heap.init(&memory, 0).?;
-            _ = table.open(.{ .slot = 0, .generation = 1 });
-            _ = table.open(.{ .slot = 1, .generation = 1 });
-            initialized = true;
-        }
+        ensure();
         if (bindings[slot] != null) return error.Full;
         const lease = try table.reserveConfiguredObjects(&heap, 0, key(), config);
         errdefer table.closeObjects(&heap, 0, key(), lease) catch @panic("host allocator rollback failed");

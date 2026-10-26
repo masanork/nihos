@@ -1,6 +1,13 @@
 //! Fixed per-task allocation ledger. Caller serializes one owner CPU.
 //! Closing only touches ledger state; drainOne performs deferred heap work.
 pub const Key = struct { slot: u16, generation: u16 };
+/// Runtime-scoped C identity; zero is never a live task. This is an ownership
+/// check, not a capability or a persistent identifier. Native migration is off.
+pub fn identity(owner: u32, key: Key) u32 {
+    if (owner >= 256 or key.slot >= 256 or key.generation == 0) return 0;
+    return (owner << 24) | (@as(u32, key.slot) << 16) | key.generation;
+}
+
 pub const slab = @import("slab.zig");
 pub const c_allocator = @import("c_allocator.zig");
 pub const size_pool = @import("size_pool.zig");

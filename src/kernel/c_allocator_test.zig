@@ -74,3 +74,15 @@ test "lookup metadata fault poisons the class but outer task recovery does not i
     try std.testing.expect(try table.drainOne(&heap, 0, key));
     try std.testing.expectEqual(heap.payload.len, heap.free_bytes);
 }
+
+test "C identities distinguish owner slot and generation without truncation or zero aliases" {
+    try std.testing.expectEqual(@as(u32, 0), resources.identity(0, .{ .slot = 0, .generation = 0 }));
+    try std.testing.expectEqual(@as(u32, 0), resources.identity(256, key));
+    try std.testing.expectEqual(@as(u32, 0), resources.identity(0, .{ .slot = 256, .generation = 1 }));
+    try std.testing.expectEqual(@as(u32, 0xffffffff), resources.identity(255, .{ .slot = 255, .generation = 65535 }));
+    const first = resources.identity(0, key);
+    try std.testing.expect(first != 0);
+    try std.testing.expect(first != resources.identity(1, key));
+    try std.testing.expect(first != resources.identity(0, .{ .slot = 1, .generation = 1 }));
+    try std.testing.expect(first != resources.identity(0, .{ .slot = 0, .generation = 2 }));
+}
