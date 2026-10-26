@@ -1,17 +1,20 @@
-# Native local Input Support read
+# Native local card overview
 
-This opt-in mode reads EF0002 (name, address, birth date and gender). It does
-not read the My Number EF, face image or signature AP, and it does not perform
-issuer-signature verification. The result screen states that qualification.
+DISPLAY=9 reads Input Support EF0002 (name, address, birth date and gender).
+DISPLAY=10 additionally reads the Surface AP portrait and displays it beside
+the four fields in one overview. Neither mode performs issuer-signature
+verification; the result screen states that qualification. DISPLAY=9 never
+reads the My Number EF. DISPLAY=10 uses that EF only as a transient Surface AP
+credential; the number is never displayed, logged or retained.
 
 ```sh
-NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=9 sh tools/build-native.sh device integer
+NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=10 sh tools/build-native.sh device integer
 python tools/capture-native-usb.py PORT OUTPUT build/native-device/image-audit.json \
   --install build/native-device --card-read --runs 1
 ```
 
 The existing count-only DISPLAY=8 demonstration remains separate and rejects
-USB/JPKI. DISPLAY=9 requires USB=1 and rejects JPKI, CARD_CHECK, SDMMC, storage,
+USB/JPKI. DISPLAY=9 and DISPLAY=10 require USB=1 and rejects JPKI, CARD_CHECK, SDMMC, storage,
 non-device profiles and non-integer modes. All PIN-free boot probes retain
 their existing whitelist and cannot submit a PIN.
 
@@ -50,9 +53,10 @@ Results use a generated 16x16, two-times-scaled bitmap font from the pinned
 Noto Serif CJK JP Regular (Copyright 2017-2024 Adobe, SIL OFL 1.1; see
 [src license](../src/graphics/boot/OFL.txt)). Latin and JIS X 0213 single-codepoint
 coverage totals 11,336 glyphs / 408,096 bytes. Unsupported characters show a
-square and increment a metadata-only missing-glyph counter. Each page shows
-at most 84 characters; tap to continue long fields, then name/address/date/
-gender in order. The last tap or a 180-second page timeout clears attributes,
+square and increment a metadata-only missing-glyph counter. One screen shows all four fields, wrapping the address over six rows and
+placing a 192x256 portrait at the upper right. Extremely long fields show an
+explicit ellipsis and a truncation receipt; missing glyphs remain counted.
+A tap or a 180-second result timeout clears attributes,
 staging pixels and retained scanout pixels. There is no automatic new card job.
 
 UART records only lifecycle status, counters, cleanup mode and field-presence/
@@ -62,9 +66,38 @@ only. No network or persistent result storage is used by the firmware.
 Capture post-verification resets the board; reusing the image can offer a new
 PIN-free prompt, but no PIN survives reset and no submission is automatic.
 
-Host replay tests cover dense Japanese pages and actual PIN-screen layouts
+Host replay tests cover dense Japanese overview screens and actual PIN-screen layouts
 against the SRAM capacity and renderer output. Host models cover failures,
 uncertain VERIFY, changed/last retry counts, cancellation, bounded reads,
 CCID extension polls, strict cleanup, explicit power-cut fallback and PIN
 buffer erasure. Native results and the user's optical confirmation must be
 recorded separately from these host/build checks.
+
+DISPLAY=10 first decodes an embedded synthetic image and checks every RGB565
+pixel by a fixed reference checksum, then probes the Surface AP retry count
+without a credential. Any failed preflight stops before offering PIN entry.
+The initial display is explicitly labelled synthetic data; tap/release opens
+the actual PIN screen. This gesture cannot become a PIN key.
+
+After the single successful Input Support PIN, EF0001 supplies the 12-digit
+Surface credential. The owner rechecks the Surface retry count, rejects
+last-attempt/blocked/changed counters, and submits that credential at most
+once, with a separate final-wire budget. Unknown outcomes are terminal.
+DF27 is parsed only inside bounded Surface data; no Surface credential is
+needed if the AP already reports authenticated before a known counter.
+
+The opt-in codec is pinned OpenJPEG 2.5.4, BSD-2-Clause, restricted to decoding
+JP2/J2K (no HTJ2K). Its private task-owned PSRAM lease is 4 MiB minus 128 bytes,
+including 32 KiB encoded data, 96x128 RGB565 pixels and a bounded allocation
+arena. It has no file, network, diagnostic or thread I/O. Dimensions are
+limited to 512x640, one/three components, up to 8-bit precision. Aspect ratio
+is preserved with paper-coloured padding. CPU0 borrows only its quiescent
+12 KiB worker-stack span; guard/high-water metadata and full workspace
+erasure are required. The image audit binds source/object hashes, Flash
+functions/sections, static C frames and the existing 48 KiB SRAM heap floor.
+This is a bounded prototype, not general JPEG2000 security qualification.
+
+Run `sh tools/check-photo-codec.sh` for synthetic reference, truncation, quota
+and guard checks under ASan/UBSan. `probes/photo/README.md` records the codec
+profile and provenance. Actual card/photo rendering and optical confirmation
+remain physical-device evidence, separate from these build and host tests.

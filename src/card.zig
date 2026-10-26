@@ -12,3 +12,5 @@ pub const ResultScreen = @import("graphics/card_read_result.zig");
 pub const WirePolicy = @import("card/wire_policy.zig").Policy;
 pub const Contact = @import("card/pin_entry.zig").Contact;
 pub const Key = @import("card/pin_entry.zig").Key;
+pub const Surface = @import("card/surface.zig");
+pub const PhotoFixture = @import("graphics/photo_fixture.zig");

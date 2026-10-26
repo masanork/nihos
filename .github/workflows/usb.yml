@@ -8,6 +8,9 @@ on:
       - 'build.zig'
       - 'provenance.toml'
       - 'probes/usb*/**'
+      - 'probes/photo/**'
+      - 'tools/*photo*'
+      - 'tools/bootstrap-openjpeg.sh'
       - 'tools/build-native*.sh'
       - 'tools/run-static-analysis.sh'
       - 'tools/check-card-rv32.sh'
@@ -21,6 +24,9 @@ on:
       - 'build.zig'
       - 'provenance.toml'
       - 'probes/usb*/**'
+      - 'probes/photo/**'
+      - 'tools/*photo*'
+      - 'tools/bootstrap-openjpeg.sh'
       - 'tools/build-native*.sh'
       - 'tools/run-static-analysis.sh'
       - 'tools/check-card-rv32.sh'
@@ -38,7 +44,7 @@ concurrency:
 
 jobs:
   native-usb:
-    name: Host checks and six device build configurations
+    name: Host checks and device build configurations
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -62,10 +68,13 @@ jobs:
           sh tools/check-card-rv32.sh
           python3 -m unittest discover -s tools -p '*test.py'
 
+      - name: Bounded image decoder with sanitizers
+        run: sh tools/check-photo-codec.sh
+
       - name: Compile PIN-free probes, keypad and local card-read images
         # Build/image audit only. GitHub runners provide no Tab5/card evidence.
         run: |
-          for feature in disabled usb jpki card touch keypad card-read; do
+          for feature in disabled usb jpki card touch keypad card-read card-photo; do
             export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0 NIHOS_NATIVE_TOUCH_CHECK=0
             case "$feature" in
               usb) export NIHOS_NATIVE_USB=1 ;;
@@ -74,6 +83,7 @@ jobs:
               touch) export NIHOS_NATIVE_DISPLAY=6 NIHOS_NATIVE_TOUCH_CHECK=1 ;;
               keypad) export NIHOS_NATIVE_DISPLAY=8 ;;
               card-read) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=9 ;;
+              card-photo) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=10 ;;
             esac
             sh tools/build-native.sh device integer
             destination="build/usb-ci/$feature"

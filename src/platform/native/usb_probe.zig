@@ -278,6 +278,7 @@ pub const Device = struct {
         if (!options.card_read) return error.Denied;
         var device = try open(clock, report);
         device.authenticated = true;
+        device.policy.photo_enabled = options.card_photo;
         return device;
     }
     pub noinline fn send(self: *Device, bytes: []const u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !usize {

@@ -35,7 +35,7 @@ bool nih_display_keypad_configure(const nih_ui_config *config) {
     const bool runtime = NIH_NATIVE_CARD_READ && config && config->pixels == 0x48030000 && config->pixels_bytes == 720 * 1280 * 2 &&
                          config->plan == 0x481f2000 && config->count <= (0x48200000 - 0x481f2000) / 16;
     if (dma_owned || !config || config->count == 0 || config->count > config->capacity ||
-        config->count > 1024 || config->scratch != 0x4ff40000 ||
+        config->count > (NIH_NATIVE_CARD_READ ? 1280u : 1024u) || config->scratch != 0x4ff40000 ||
         config->stride > (0x4ff60000 - config->scratch) / 2 || !config->stride ||
         (!runtime && (config->plan < 0x40020000 || config->plan >= 0x400c0000 ||
         config->count > (0x400c0000 - config->plan) / 16 || (config->plan & 63) ||
@@ -77,6 +77,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
     uint32_t upper = 0x4ff70000;
     uint32_t lower = local + bytes;
     uint32_t atlas_offset = 0;
+    uint32_t previous_sources[2] = {0}, previous_targets[2] = {0}, previous_lengths[2] = {0};
     for (uint32_t i = 0; i < ui.count; ++i) {
         const nih_ui_span span = plan[i];
         if (span.reserved || !span.words || span.words > 230400 - total || (span.offset & 7)) return -7;
@@ -97,13 +98,26 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
             const uint32_t length = span.words * 8;
             if (!ui_runtime && span.offset != atlas_offset) return -7;
             atlas_offset += length;
-            uint32_t *cursor = length <= 0x4ff9f000 - upper ? &upper : &lower;
-            const uint32_t limit_end = cursor == &upper ? 0x4ff9f000 : 0x4ff60000;
-            if (*cursor > limit_end || length > limit_end - *cursor) return -7;
-            uint64_t *dst = (uint64_t *)(uintptr_t)*cursor;
+            const uint32_t group = ui_runtime && (span.offset % 1440 >= 912) && span.offset / 1440 >= 192 && span.offset / 1440 < 448;
+            uint32_t *previous_source = &previous_sources[group], *previous_target = &previous_targets[group], *previous_length = &previous_lengths[group];
             const uint64_t *src = (const uint64_t *)(uintptr_t)source;
-            for (uint32_t n = 0; n < span.words; ++n) dst[n] = src[n];
-            source = *cursor; *cursor += length;
+            bool repeated = ui_runtime && length == *previous_length;
+            const uint64_t *previous = (const uint64_t *)(uintptr_t)*previous_source;
+            for (uint32_t n = 0; repeated && n < span.words; ++n) if (src[n] != previous[n]) repeated = false;
+            if (repeated) {
+                *previous_source = source;
+                source = *previous_target;
+            } else {
+                *previous_source = source;
+                *previous_length = length;
+                uint32_t *cursor = length <= 0x4ff9f000 - upper ? &upper : &lower;
+                const uint32_t limit_end = cursor == &upper ? 0x4ff9f000 : 0x4ff60000;
+                if (*cursor > limit_end || length > limit_end - *cursor) return -7;
+                uint64_t *dst = (uint64_t *)(uintptr_t)*cursor;
+                for (uint32_t n = 0; n < span.words; ++n) dst[n] = src[n];
+                source = *cursor; *cursor += length;
+                *previous_target = source;
+            }
         }
         dw_gdma_ll_lli_set_src_addr(node, source);
         dw_gdma_ll_lli_set_src_master_port(node, source);

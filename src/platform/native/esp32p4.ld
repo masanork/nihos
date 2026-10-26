@@ -72,8 +72,31 @@ SECTIONS
         __keypad_font_start = .;
         *(.flash.keypad.font)
         __keypad_font_end = .;
+#if NIH_NATIVE_PHOTO
+        . = ALIGN(64);
+#endif
         __flash_ui_end = .;
     } > flash_ui
+#if NIH_NATIVE_PHOTO
+    .flash.photo : ALIGN(64) {
+        __photo_text_start = .;
+        *photo_*.o(.text .text.*)
+        *(.flash.photo)
+        *(.text.compiler_rt.addf3.* .text.compiler_rt.mulf3.* .text.compiler_rt.divf3.* .text.compiler_rt.divsf3.* .text.compiler_rt.divdf3.* .text.compiler_rt.comparef.* .text.compiler_rt.float_from_int.* .text.compiler_rt.int_from_float.* .text.compiler_rt.extendf.* .text.compiler_rt.truncf.*)
+        . = ALIGN(64);
+        __photo_text_end = .;
+    } > flash_ui
+    .flash.photo.rodata : ALIGN(64) {
+        __photo_rodata_start = .;
+        *photo_*.o(.rodata .rodata.* .srodata .srodata.*)
+        . = ALIGN(64);
+        __photo_fixture_start = .;
+        *(.flash.photo.fixture)
+        __photo_fixture_end = .;
+        __photo_rodata_end = .;
+    } > flash_ui
+    .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
+#endif
 #endif
 #if NIH_NATIVE_SQLITE
     /* The stock P4 loader accepts exactly two mapped segments. Fill the gap

@@ -28,3 +28,9 @@ export fn nih_card_result_preview(bytes: [*]u8, length: usize, field: u8) bool {
     _ = result.result(null, bytes[0..length], .{ .name = "テスト 太郎", .address = "東京都千代田区テスト一丁目二番三号", .birth_date = "19900101", .gender = "1" }, &pager) catch return false;
     return true;
 }
+
+export fn nih_card_overview_preview(bytes: [*]u8, length: usize) bool {
+    const result = @import("graphics/card_read_result.zig");
+    _ = result.overview(null, bytes[0..length], .{ .name = "テスト 太郎", .address = "東京都千代田区テスト一丁目二番三号", .birth_date = "19900101", .gender = "1" }, @import("graphics/photo_fixture.zig").pixels) catch return false;
+    return true;
+}

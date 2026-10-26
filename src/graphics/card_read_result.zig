@@ -27,19 +27,34 @@ fn glyph(comptime section: ?[]const u8, value: u21) ?[]const u8 {
 const Canvas = struct {
     frame: []u8,
     fn character(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize) bool {
+        return self.sized(section, value, x, y, 32);
+    }
+    fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
         const selected = glyph(section, value);
         const bits = selected orelse glyph(section, 0x25a1).?;
-        for (0..16) |row| for (0..16) |column| {
-            if (bits[row * 2 + column / 8] & (@as(u8, 128) >> @as(u3, @intCast(column % 8))) == 0) continue;
-            for (0..2) |dy| for (0..2) |dx| {
-                const left = x + column * 2 + dx;
-                const top = y + row * 2 + dy;
-                if (left >= 720 or top >= 1280) continue;
-                const offset = (top * 720 + left) * 2;
-                std.mem.writeInt(u16, self.frame[offset..][0..2], 0x2125, .little);
-            };
+        for (0..size) |row| for (0..size) |column| {
+            const original_y = row * 16 / size;
+            const original_x = column * 16 / size;
+            if (bits[original_y * 2 + original_x / 8] & (@as(u8, 128) >> @as(u3, @intCast(original_x % 8))) == 0) continue;
+            if (x + column >= 720 or y + row >= 1280) continue;
+            const offset = ((y + row) * 720 + x + column) * 2;
+            std.mem.writeInt(u16, self.frame[offset..][0..2], 0x2125, .little);
         };
         return selected != null;
+    }
+    inline fn wrapped(self: Canvas, comptime section: ?[]const u8, value: []const u8, x: usize, y: usize, size: usize, columns: usize, lines: usize) !Paint {
+        var iterator = (try std.unicode.Utf8View.init(value)).iterator();
+        var report = Paint{};
+        while (iterator.nextCodepoint()) |item| {
+            if (report.shown == columns * lines) {
+                report.truncated = true;
+                break;
+            }
+            if (!self.sized(section, item, x + report.shown % columns * size, y + report.shown / columns * (size + 8), size)) report.missing += 1;
+            report.shown += 1;
+        }
+        if (report.truncated) _ = self.sized(section, 0x2026, x + (columns - 1) * size, y + (lines - 1) * (size + 8), size);
+        return report;
     }
     fn text(self: Canvas, comptime section: ?[]const u8, value: []const u8, x: usize, y: usize) void {
         var iterator = (std.unicode.Utf8View.init(value) catch return).iterator();
@@ -60,7 +75,7 @@ pub const Pager = struct {
         return self.field < 4;
     }
 };
-pub const Paint = struct { missing: u32 = 0, shown: u32 = 0 };
+pub const Paint = struct { missing: u32 = 0, shown: u32 = 0, truncated: bool = false };
 pub fn result(comptime section: ?[]const u8, frame: []u8, attributes: input.Attributes, pager: *Pager) !Paint {
     if (frame.len != 720 * 1280 * 2 or pager.field >= 4) return error.Invalid;
     for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
@@ -83,6 +98,55 @@ pub fn result(comptime section: ?[]const u8, frame: []u8, attributes: input.Attr
     pager.more = pager.next_offset < value.len;
     canvas.text(section, if (pager.more) "タップで続きを表示" else if (pager.field == 3) "タップで閉じて消去" else "タップで次の項目", 24, 850);
     return report;
+}
+pub const portrait_width = 96;
+pub const portrait_height = 128;
+pub const portrait_bytes = portrait_width * portrait_height * 2;
+/// All four fields and portrait on one screen; unusually long fields are
+/// explicitly marked with an ellipsis and reported as truncated.
+pub inline fn overview(comptime section: ?[]const u8, frame: []u8, attributes: input.Attributes, portrait: ?[]const u8) !Paint {
+    if (frame.len != 720 * 1280 * 2 or (portrait != null and portrait.?.len != portrait_bytes)) return error.Invalid;
+    for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    const canvas = Canvas{ .frame = frame };
+    _ = try canvas.wrapped(section, "マイナンバーカード", 24, 64, 24, 28, 1);
+    _ = try canvas.wrapped(section, "読取結果・署名検証は未実施", 24, 104, 16, 42, 1);
+    const labels = [_][]const u8{ "氏名", "生年月日", "性別（記録値）", "住所" };
+    const positions = [_]usize{ 164, 324, 416, 528 };
+    for (labels, positions) |label, y| _ = try canvas.wrapped(section, label, 24, y, 16, 28, 1);
+    var report = Paint{ .shown = 15 };
+    const values = [_][]const u8{ attributes.name, attributes.birth_date, attributes.gender, attributes.address };
+    const ys = [_]usize{ 192, 352, 444, 560 };
+    const sizes = [_]usize{ 32, 32, 24, 24 };
+    const columns = [_]usize{ 13, 13, 18, 28 };
+    const rows = [_]usize{ 2, 1, 1, 6 };
+    for (values, ys, sizes, columns, rows) |value, y, size, count, lines| {
+        const part = try canvas.wrapped(section, value, 24, y, size, count, lines);
+        report.missing += part.missing;
+        report.truncated = report.truncated or part.truncated;
+    }
+    if (portrait) |pixels| {
+        for (0..portrait_height * 2) |y| for (0..portrait_width * 2) |x| {
+            const source = ((y / 2) * portrait_width + x / 2) * 2;
+            const target = ((192 + y) * 720 + 480 + x) * 2;
+            frame[target] = pixels[source];
+            frame[target + 1] = pixels[source + 1];
+        };
+    } else _ = try canvas.wrapped(section, "顔写真なし", 480, 280, 16, 12, 2);
+    _ = try canvas.wrapped(section, if (report.truncated) "長い項目は省略しています" else "タップで閉じて消去", 24, 1120, 16, 42, 1);
+    return report;
+}
+pub inline fn preview(comptime section: ?[]const u8, frame: []u8, portrait: []const u8) !void {
+    var name: [26 * 3]u8 = undefined;
+    var address: [168 * 3]u8 = undefined;
+    for (0..26) |i| @memcpy(name[i * 3 ..][0..3], "例");
+    for (0..168) |i| @memcpy(address[i * 3 ..][0..3], "試");
+    _ = try overview(section, frame, .{ .name = &name, .address = &address, .birth_date = "00000000", .gender = "0" }, portrait);
+    for (0..150 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    for (1080 * 720..1200 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    const canvas = Canvas{ .frame = frame };
+    _ = try canvas.wrapped(section, "表示の動作確認", 24, 64, 24, 28, 1);
+    _ = try canvas.wrapped(section, "テスト画像・架空データ", 24, 104, 16, 42, 1);
+    _ = try canvas.wrapped(section, "タップしてPIN入力へ", 24, 1120, 16, 42, 1);
 }
 pub fn message(comptime section: ?[]const u8, frame: []u8, success: bool) void {
     for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
@@ -149,4 +213,35 @@ test "dense result pages and the real PIN view fit dedicated SRAM with exact rep
         try std.testing.expectEqual(frame.len, offset);
         try std.testing.expectEqualSlices(u8, frame, replay);
     }
+}
+
+test "one-screen worst-case fields and synthetic portrait fit SRAM with repeated-row reuse" {
+    const sparse = @import("keypad_plan.zig");
+    const frame = try std.testing.allocator.alloc(u8, sparse.frame_bytes);
+    defer std.testing.allocator.free(frame);
+    var name: [26 * 3]u8 = undefined;
+    var address: [168 * 3]u8 = undefined;
+    for (0..26) |i| @memcpy(name[i * 3 ..][0..3], "東");
+    for (0..168) |i| @memcpy(address[i * 3 ..][0..3], "都");
+    var portrait: [portrait_bytes]u8 = undefined;
+    for (0..portrait_height) |y| for (0..portrait_width) |x| {
+        std.mem.writeInt(u16, portrait[(y * portrait_width + x) * 2 ..][0..2], @intCast((x * 317 + y * 113) & 65535), .little);
+    };
+    const painted = try overview(null, frame, .{ .name = &name, .address = &address, .birth_date = "19900101", .gender = "1" }, &portrait);
+    try std.testing.expect(!painted.truncated and painted.missing == 0 and painted.shown == 15);
+    var spans: [1600]sparse.Segment = undefined;
+    const plan = try sparse.buildOverview(frame, &spans);
+    var lower: usize = 2 * sparse.textureStride() + plan.len * 64;
+    var upper: usize = 0;
+    var previous: [2][]const u8 = .{ &.{}, &.{} };
+    for (plan) |span| if (span.kind == .pixels) {
+        const pixels = frame[span.offset..][0 .. span.words * 8];
+        const group: usize = if (span.offset % 1440 >= 912 and span.offset / 1440 >= 192 and span.offset / 1440 < 448) 1 else 0;
+        if (!std.mem.eql(u8, previous[group], pixels)) {
+            if (pixels.len <= 188 * 1024 - upper) upper += pixels.len else lower += pixels.len;
+        }
+        previous[group] = pixels;
+    };
+    try std.testing.expect(plan.len <= 1280);
+    try std.testing.expect(lower <= 128 * 1024);
 }

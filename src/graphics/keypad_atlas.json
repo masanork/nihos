@@ -10,8 +10,8 @@
     "src/graphics/card_pin.zig": "dec3297f5315a0ed067653d1c7960f20fa0e5c38240fdfe2ef0ba6d0a5f74662",
     "src/graphics/card_pin.rle": "55c7d6d438067c8cdb935d1142d331455fdb813b1be143a1e9b02392a6484340",
     "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
-    "src/graphics/keypad_plan.zig": "832dcbd1afbab3198772310ed7a2d93f44a4cde63ecb5f5cd2307fcdb27d873b",
-    "src/card_pin_preview.zig": "1108bb449497e151be831a10f7795ad97ec62106f66a73c1378a2963215fa3c2",
+    "src/graphics/keypad_plan.zig": "705807426ad678d78fcd120c4556a80d81654886c85d624e76c400265fa0e856",
+    "src/card_pin_preview.zig": "70097056c8ba0106185424cd4e80f2d5accf88316ac250ffae4d2b955712491a",
     "tools/boot-graphics/generate-keypad-atlas.py": "d367b701e7d673975b2228a477f74594c7fa6d7484cde5680ec4864adca3576e"
   }
 }
