@@ -67,7 +67,7 @@ fn spinUntil(value: *A, expected: u32) void {
         check(now -% began < 1_000_000_000);
     }
 }
-pub noinline fn init(psram_bytes: u32) bool {
+pub noinline fn init(psram_bytes: u32) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") bool {
     if (phase.load(.acquire) != 0) return false;
     if (psram_bytes < 16 * 1024 * 1024) return false;
     for (0..2) |pass| {
@@ -99,7 +99,7 @@ pub noinline fn init(psram_bytes: u32) bool {
     phase.store(1, .release);
     return true;
 }
-noinline fn vmProbe() void {
+noinline fn vmProbe() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     const start = vm_report.start;
     const before = word(start - 4).*;
     const after = word(start + vm_report.bytes).*;
@@ -134,7 +134,7 @@ pub noinline fn peer() void {
     phase.store(2, .release);
     spinUntil(&phase, 3);
 }
-pub noinline fn ownerExchange() void {
+pub noinline fn ownerExchange() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     spinUntil(&phase, 2);
     for (layout.tested) |span| verifySpan(span.start, span.end, 0);
     report.peer_reads = layout.tested_bytes / 4;
@@ -158,7 +158,7 @@ pub fn probe(argument: u32) void {
     bytes[position] = value;
     counters[index] +%= 1;
 }
-pub noinline fn finish(hart: u32) bool {
+pub noinline fn finish(hart: u32) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") bool {
     for (0..2) |worker| {
         const index = hart * 2 + worker;
         if (counters[index] < 4) return false;

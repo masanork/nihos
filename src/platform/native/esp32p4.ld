@@ -65,6 +65,10 @@ SECTIONS
         *sql_storage_runtime.o(.text .text.*)
         *sql_broker_runtime.o(.text .text.*)
         *(.flash.text.storage)
+        . = ALIGN(4);
+        __flash_cold_start = .;
+        *(.flash.text.cold)
+        __flash_cold_end = .;
         . = ALIGN(128);
         __flash_sql_text_end = .;
     } > flash_sql

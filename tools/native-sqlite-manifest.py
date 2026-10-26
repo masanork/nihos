@@ -61,6 +61,18 @@ def main(directory, source, littlefs=None):
                             'runtime_sha256': sha(root / 'src/platform/native/broker_runtime.zig'),
                             'core_sha256': sha(root / 'src/kernel/memory_broker.zig'),
                             'sd_adapter_sha256': sha(root / 'src/platform/native/sdmmc_probe.zig')}
+    if 'pub const cold_flash = true;' in (directory / 'native_options.zig').read_text():
+        root = Path(__file__).resolve().parents[1]
+        policy_path = Path(__file__).with_name('native-cold-policy.json')
+        cold = json.loads(policy_path.read_text())
+        result['cold_flash'] = {
+            'version': cold['version'], 'functions': sorted(cold['functions']),
+            'resident': cold['resident'], 'baseline_bytes': cold['baseline_bytes'],
+            'resident_limit': cold['resident_limit'],
+            'sources': {path: sha(root / path) for path in sorted(set(cold['functions'].values()))},
+            'policy_sha256': sha(policy_path),
+        }
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | set(cold['functions']))
     if littlefs is not None:
         result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
                              'read_only': True, 'no_malloc': True, 'api_version': 1, 'workspace_bytes': 8192,

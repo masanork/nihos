@@ -106,6 +106,50 @@ def audit_sdmmc_resident(symbols, sizes, low, high):
                 sizes.get(name) == size and symbols[name] % 64 == 0, "SD DMA buffer outside aligned internal SRAM")
 
 
+def audit_cold_flash(manifest, symbols, functions, low, high, heap_start, sql_span, profile, broker):
+    start, end = symbols.get('__flash_cold_start'), symbols.get('__flash_cold_end')
+    require((start is None) == (end is None), 'partial cold Flash linker extent')
+    if manifest is None:
+        require(start is None or start == end, 'cold Flash code without approved manifest')
+        return None
+    require(isinstance(manifest, dict), 'invalid cold Flash manifest')
+    policy_path = Path(__file__).with_name('native-cold-policy.json')
+    policy = json.loads(policy_path.read_text())
+    require(profile == 'device' and broker is not None and broker.get('version') == 2,
+            'cold Flash placement requires device broker version 2')
+    require(manifest.get('version') == policy['version'] and
+            manifest.get('functions') == sorted(policy['functions']) and
+            manifest.get('resident') == policy['resident'] and
+            manifest.get('baseline_bytes') == policy['baseline_bytes'] and
+            manifest.get('resident_limit') == policy['resident_limit'] and
+            manifest.get('policy_sha256') == hashlib.sha256(policy_path.read_bytes()).hexdigest(),
+            'cold Flash manifest differs from explicit placement policy')
+    sources = manifest.get('sources', {})
+    require(isinstance(sources, dict) and set(sources) == set(policy['functions'].values()) and
+            all(isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value) for value in sources.values()),
+            'missing cold Flash source provenance')
+    require(start is not None and sql_span is not None and sql_span[0] <= start < end <= sql_span[1],
+            'cold Flash extent outside mapped code')
+    rows = sorted((address, stop, name) for name, address, stop in functions if start <= address < end)
+    require(len(rows) == len(policy['functions']) and {row[2] for row in rows} == set(policy['functions']),
+            'cold Flash extent has missing, duplicate or unapproved functions')
+    require(rows[0][0] == start and rows[-1][1] == end and
+            all(address < stop <= end for address, stop, _ in rows) and
+            all(0 <= right[0] - left[1] <= 4 for left, right in zip(rows, rows[1:])),
+            'overlapping or unaccounted cold Flash extent')
+    for name in policy['resident']:
+        require(low <= symbols.get(name, 0) < min(heap_start, high), 'critical callback left resident SRAM: ' + name)
+    resident_bytes = heap_start - low
+    require(0 < resident_bytes <= policy['resident_limit'], 'cold Flash resident headroom below 8 KiB')
+    return {'version': policy['version'], 'start': hex(start), 'end': hex(end), 'bytes': end - start,
+            'functions': {name: {'start': hex(address), 'bytes': stop - address} for address, stop, name in rows},
+            'resident': {name: hex(symbols[name]) for name in policy['resident']},
+            'baseline_primary_bytes': policy['baseline_bytes'], 'primary_bytes': resident_bytes,
+            'recovered_bytes': policy['baseline_bytes'] - resident_bytes,
+            'old_heap_bytes': high - heap_start, 'source': manifest,
+            'irq_call_graph_proven': False}
+
+
 def audit_app_descriptor(data):
     require(len(data) == 256 and struct.unpack_from("<I", data)[0] == 0xABCD5432,
             "invalid app descriptor")
@@ -444,6 +488,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         require(struct.unpack_from('<I', sql_data, offset)[0] == broker_manifest['version'], 'broker config/manifest version mismatch')
         report['broker'] = {**audit_broker(sql_data[offset:offset+56], symbols, low, high, symbols['__heap_start'], profile),
                             'source': broker_manifest}
+    cold = audit_cold_flash(sqlite_manifest.get('cold_flash') if allow_sql else None, symbols, functions,
+                            low, high, symbols['__heap_start'], sql_span, profile, report.get('broker'))
+    if cold is not None:
+        report['cold_flash'] = cold
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
