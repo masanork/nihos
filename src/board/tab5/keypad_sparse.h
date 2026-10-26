@@ -26,10 +26,13 @@ static bool ui_sram(uint32_t start, uint32_t bytes) {
     return !(start & 63) && bytes && !(bytes & 63) && start >= 0x4ff40000 &&
            start < 0x4ff60000 && bytes <= 0x4ff60000 - start;
 }
-static dw_gdma_link_list_item_t *ui_node(uint32_t index) {
+static uint32_t ui_node_address(uint32_t index) {
     uint32_t start = index < ui_split ? ui_local : ui.peer_start;
     uint32_t offset = index < ui_split ? index : index - ui_split;
-    return (dw_gdma_link_list_item_t *)(uintptr_t)(start + offset * 64);
+    return start + offset * 64;
+}
+static dw_gdma_link_list_item_t *ui_node(uint32_t index) {
+    return (dw_gdma_link_list_item_t *)((uintptr_t)ui_node_address(index) + SOC_NON_CACHEABLE_OFFSET);
 }
 bool nih_display_keypad_configure(const nih_ui_config *config) {
     const bool runtime = NIH_NATIVE_CARD_READ && config && config->pixels == 0x48030000 && config->pixels_bytes == 720 * 1280 * 2 &&
@@ -68,6 +71,10 @@ static uint32_t ui_source(uint32_t kind, uint32_t offset, uint32_t buffer, uint3
 static int32_t ui_build(uint32_t local, uint32_t bytes) {
     if (!ui_sram(local, bytes) || local < ui.scratch + 2 * ui.stride || ui.count > bytes / 64) return -7;
     ui_local = local; ui_local_bytes = bytes; ui_split = bytes / 64;
+    /* Match IDF's DW-GDMA ownership handoff: flush/invalidate once, then
+     * never mix cached CPU LLI stores with the device's valid-bit writeback. */
+    if (nih_rom_cache_writeback(1u << 4, local, bytes) ||
+        nih_rom_cache_invalidate(1u << 4, local, bytes)) return -5;
     ui_dot_count = ui_label_count = ui_submit_count = 0;
     const uint32_t colors[3] = { ui.paper, ui.keys, ui.accent };
     for (uint32_t i = 0; i < 3; ++i) ui_palette[i] = (uint64_t)colors[i] * UINT64_C(0x0001000100010001);
@@ -125,7 +132,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
         dw_gdma_ll_lli_set_src_burst_items(node, span.kind < 3 ? DW_GDMA_BURST_ITEMS_1 : DW_GDMA_BURST_ITEMS_512);
         dw_gdma_ll_lli_set_src_burst_len(node, span.kind < 3 ? 1 : 16);
         dw_gdma_ll_lli_set_trans_block_size(node, span.words);
-        dw_gdma_ll_lli_set_next_item_addr(node, i + 1 == ui.count ? 0 : (uint32_t)(uintptr_t)ui_node(i + 1));
+        dw_gdma_ll_lli_set_next_item_addr(node, i + 1 == ui.count ? 0 : ui_node_address(i + 1));
         if (span.kind == 2) {
             if (ui_submit_count == 68) return -7;
             ui_submits[ui_submit_count++] = i;

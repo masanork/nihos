@@ -66,6 +66,8 @@ noinline fn hex(value: u32) void {
 fn fail(reason: []const u8) noreturn {
     asm volatile ("csrci mstatus, 8");
     if (options.card_read and @import("card_read.zig").armed) {
+        const diagnostic = @import("card_read.zig").diagnostic();
+        logger.record("NIHOS_NATIVE_CARD_ABORT", null, .{ "state", "verifies", "surface_verifies", "outstanding", "remaining", "fault" }, &diagnostic);
         if (!@import("card_read.zig").emergency()) print("NIHOS_NATIVE_CARD_ERASE_FAIL\n");
     }
     print("NIHOS_NATIVE_FAIL ");
@@ -646,10 +648,17 @@ fn stackReport(hart: u32) void {
 }
 
 const CardReadLog = struct {
+    pub fn displayTest(_: CardReadLog, frames: u32) void {
+        const report: struct { frames: u32, verifies: u32 } = .{ .frames = frames, .verifies = @import("card_read.zig").diagnostic().verifies };
+        logger.record("NIHOS_NATIVE_CARD_DISPLAY_TEST", null, .{ "frames", "verifies" }, &report);
+    }
     pub fn photoPreflight() void {
         logger.record("NIHOS_NATIVE_PHOTO_PREFLIGHT", null, .{ "selftest", "error_code", "stack_used", "arena_bytes", "surface_sw", "surface_counter" }, &@import("photo_runtime.zig").report);
     }
     pub fn startTouch(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        const diagnostic = @import("card_read.zig").diagnostic();
+        const counters: struct { input_remaining: u32, surface_remaining: u32, verifies: u32, surface_verifies: u32 } = .{ .input_remaining = report.remaining_before, .surface_remaining = @import("photo_runtime.zig").report.surface_counter, .verifies = diagnostic.verifies, .surface_verifies = diagnostic.surface_verifies };
+        logger.record("NIHOS_NATIVE_CARD_COUNTERS", null, .{ "input_remaining", "surface_remaining", "verifies", "surface_verifies" }, &counters);
         logger.record("NIHOS_NATIVE_CARD_READ_START_TOUCH", null, .{ "photo_enabled", "preflight_cut" }, report);
     }
 

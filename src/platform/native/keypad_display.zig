@@ -6,6 +6,7 @@ const options = @import("native_options");
 pub var read_remaining: ?u8 = null;
 pub var static_frame = false;
 pub var overview_frame = false;
+pub var demo_frame = false;
 extern fn nih_display_keypad_configure(*const plan.Config) callconv(.c) bool;
 extern fn nih_display_keypad_buffer() callconv(.c) u32;
 extern fn nih_display_keypad_publish(u32, u32) callconv(.c) bool;
@@ -31,7 +32,10 @@ pub noinline fn prepare(clock: timer.Timer, frame: []u8) linksection(if (options
     if (!static_frame and (!paintTextures(0, 0) or !paintTextures(1, 0))) return error.Image;
     const atlas = card.KeypadAtlas.Store(".flash.keypad");
     const spans = if (options.card_read) runtime: {
-        if (!static_frame and !card.PinScreen.paintRead(".flash.rodata.card_pin", frame, 1440, .{ .active = true, .masked_digits = 0, .remaining = read_remaining, .can_submit = false })) return error.Image;
+        if (!static_frame) {
+            const painted = if (demo_frame) card.PinScreen.paintDemo(".flash.rodata.card_pin", frame, 1440, view(0)) else card.PinScreen.paintRead(".flash.rodata.card_pin", frame, 1440, .{ .active = true, .masked_digits = 0, .remaining = read_remaining, .can_submit = false });
+            if (!painted) return error.Image;
+        }
         const out = @as([*]plan.Segment, @ptrFromInt(plan.scratch_start))[0..plan.planCapacity()];
         break :runtime if (overview_frame) try plan.buildOverview(frame, out) else if (static_frame) try plan.buildStatic(frame, out) else try plan.build(frame, out);
     } else card.KeypadAtlas.segments(".flash.keypad");

@@ -17,8 +17,8 @@
   ],
   "sources": {
     "tools/boot-graphics/generate-card-read-font.py": "819eed64b2f3694a94f63f2f9a8d1d2a22ef879c3d4907623c6c99d0b57fb3f1",
-    "src/platform/native/card_read.zig": "bd3600afdb3b465cc282d5c4ae32adfdab73bf5d3aca0c1e93c244de8af4ef91",
-    "src/platform/native/keypad_display.zig": "4eb5c0e7d38b5fd7724c2553630069e0b9cbf2de089d78b375ab8ff8c01da1f9",
+    "src/platform/native/card_read.zig": "9338cdbacc8a26517e4fc718d2a6b53e2062fd21796be157194591064c9146eb",
+    "src/platform/native/keypad_display.zig": "f60163ffbc0cf92a5b2fea2cbb0a3eaf62428abcb8b7231df355f178f78d0c7b",
     "src/platform/native/usb_probe.zig": "049bddfb7d0a84df9b50a7426910b847ddd687e7844e16c2a82f0fbf14c4efb8",
     "src/platform/native/display_runtime.zig": "1ff5555b6e817f2028ba87200f05e436f275cf80b8109a4de373607cdfa3f50f"
   }
