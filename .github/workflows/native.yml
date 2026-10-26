@@ -59,6 +59,9 @@ jobs:
           name: native-boot-evidence
           path: |
             build/native-*/image-audit.json
+            build/native-*/native-layout.ld
+            build/native-*/loader/bootloader/bootloader.elf
+            build/native-*/loader/config/sdkconfig.h
             build/native-*/nihos-native.elf
             build/native-*/nihos-native.bin
             build/native-*/nihos-native-flash.bin

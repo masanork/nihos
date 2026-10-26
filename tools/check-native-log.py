@@ -184,7 +184,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         if hart >= 2 or hart in memory_owners:
             raise ValueError("invalid/duplicate memory owner")
         record = dict(zip(memory_names, values))
-        if (not 0x4ff00000 <= record["start"] < record["end"] <= 0x4ff20000 or
+        if (not 0x4ff20000 <= record["start"] < record["end"] <= 0x4ff48000 or
                 record["start"] % 64 or record["end"] % 64 or
                 record["capacity"] != record["end"] - record["start"] - 128 or
                 record["used"] != 448 or record["used"] + record["free"] != record["capacity"] or

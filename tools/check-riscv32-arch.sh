@@ -52,7 +52,7 @@ for profile in device emulator; do
         native_dir="$out_dir/native-$profile-$mode"
         sh "$repo_root/tools/build-native-elf.sh" "$profile" "$native_dir" "$mode"
         python3 "$repo_root/tools/check-native-image.py" "$native_dir/nihos-native.elf" \
-            --elf-only "$native_dir/code-audit.json" "$mode"
+            --elf-only "$native_dir/code-audit.json" "$mode" "$profile"
     done
 done
 

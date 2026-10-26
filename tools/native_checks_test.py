@@ -55,7 +55,7 @@ def complete_log(mode="integer", psram_size="0"):
         names = ("checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed")
         lines.append("NIHOS_NATIVE_FP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
-        start = 0x4ff18000 + hart * 0x4000
+        start = 0x4ff40000 + hart * 0x4000
         lines.append("NIHOS_NATIVE_MEMORY hart={:08x} start={:08x} end={:08x} "
                      "capacity=00003f80 used=000001c0 free=00003dc0 "
                      "checks0=00000004 checks1=00000004 rejected=00000003 confirmed=00000001".format(
@@ -318,12 +318,12 @@ class NativeLogTests(unittest.TestCase):
                                        for line in complete_log().splitlines()))
 
     def test_external_or_unaligned_memory_cannot_qualify_sram(self):
-        for address in ("48018000", "4ff18001"):
+        for address in ("48018000", "4ff40001", "4ff18000"):
             with self.subTest(address=address), self.assertRaisesRegex(ValueError, "memory ownership"):
-                MODULE.check(complete_log().replace("start=4ff18000", "start=" + address))
+                MODULE.check(complete_log().replace("start=4ff40000", "start=" + address))
 
     def test_overlapping_memory_owners_are_rejected(self):
-        log = complete_log().replace("start=4ff1c000 end=4ff20000", "start=4ff18000 end=4ff1c000")
+        log = complete_log().replace("start=4ff44000 end=4ff48000", "start=4ff40000 end=4ff44000")
         with self.assertRaisesRegex(ValueError, "overlapping memory"):
             MODULE.check(log)
 

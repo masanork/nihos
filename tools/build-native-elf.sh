@@ -22,6 +22,8 @@ esac
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
+"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" \
+    "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\n' "$floating" "$compiled" > "$build_dir/native_options.zig"
 set --
 if [ "$mode" != integer ]; then
@@ -39,12 +41,14 @@ fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
-    -fentry=nih_native_start -T "$repo_root/src/platform/native/esp32p4.ld" \
+    -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mrecord_log="$repo_root/src/diagnostics/record.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

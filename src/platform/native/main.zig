@@ -3,6 +3,7 @@ const std = @import("std");
 const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
+const record_log = @import("record_log");
 pub const panic = std.debug.no_panic;
 
 extern fn nih_rom_putc(u8) callconv(.c) i32;
@@ -34,6 +35,13 @@ noinline fn print(message: []const u8) void {
         _ = nih_rom_putc(byte);
     }
 }
+
+const Console = struct {
+    pub fn write(_: Console, message: []const u8) void {
+        print(message);
+    }
+};
+var logger = record_log.Writer(Console){ .sink = .{} };
 
 noinline fn hex(value: u32) void {
     const digits = "0123456789abcdef";
@@ -221,27 +229,18 @@ fn taskReport(hart: u32) void {
         report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
         report.calls < 12 or report.reaped != 3 or report.sleeps != 2)
         fail("task execution proof");
-    print("NIHOS_NATIVE_TASKS hart=");
-    hex(hart);
-    print(" work0=");
-    hex(report.progress[0]);
-    print(" work1=");
-    hex(report.progress[1]);
-    print(" cap0=");
-    hex(report.captures[0]);
-    print(" cap1=");
-    hex(report.captures[1]);
-    print(" switches=");
-    hex(report.switches);
-    print(" calls=");
-    hex(report.calls);
-    print(" reaped=");
-    hex(report.reaped);
-    print(" sleeps=");
-    hex(report.sleeps);
-    print(" elapsed=");
-    hex(report.ticks);
-    print("\n");
+    const fields = .{
+        .work0 = report.progress[0],
+        .work1 = report.progress[1],
+        .cap0 = report.captures[0],
+        .cap1 = report.captures[1],
+        .switches = report.switches,
+        .calls = report.calls,
+        .reaped = report.reaped,
+        .sleeps = report.sleeps,
+        .elapsed = report.ticks,
+    };
+    logger.record("NIHOS_NATIVE_TASKS", hart, .{ "work0", "work1", "cap0", "cap1", "switches", "calls", "reaped", "sleeps", "elapsed" }, &fields);
 }
 
 fn ipiReport(hart: u32) void {
@@ -252,13 +251,7 @@ fn ipiReport(hart: u32) void {
         report.pending_before_wfi != 1 or report.self_ipi != 1 or
         report.timer_start != report.timer_end or report.queued != 0)
         fail("IPI/idle proof");
-    print("NIHOS_NATIVE_IPI hart=");
-    hex(hart);
-    inline for (.{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(report, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_IPI", hart, .{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued" }, &report);
 }
 
 fn floatingReport(hart: u32) void {
@@ -272,13 +265,7 @@ fn floatingReport(hart: u32) void {
         if (tasks.floating.compiled and report.app_timer < 4) fail("compiled FP preemption");
     } else if (report.initial != 0 or report.saves != 0 or report.restores != 0 or report.timer != 0 or report.calls != 0 or report.ipi != 0)
         fail("integer FP overhead");
-    print("NIHOS_NATIVE_FP hart=");
-    hex(hart);
-    inline for (.{ "checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(report, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_FP", hart, .{ "checks0", "checks1", "checks2", "timer", "calls", "ipi", "saves", "restores", "initial", "app_timer", "confirmed" }, &report);
 }
 
 export fn nih_native_cpu1_main() callconv(.c) noreturn {
@@ -319,48 +306,36 @@ export fn nih_native_main() callconv(.c) noreturn {
     prepareTimers();
     const external = native_psram.probe(timer(0));
     if (!timer(0).configureOneShot(tasks.period_us)) fail("PSRAM boot timer return");
-    print("NIHOS_NATIVE_PSRAM status=");
-    hex(@backingInt(external.discovery.status));
-    print(" configuration=");
-    hex(external.discovery.configuration);
-    print(" identity=");
-    hex(external.discovery.identity);
-    print(" bytes=");
-    hex(external.discovery.bytes);
-    print(" transactions=");
-    hex(external.transactions);
-    print(" mapped=");
-    hex(external.mapping.bytes);
-    print(" allocatable=00000000\n");
-    print("NIHOS_NATIVE_PSRAM_SUPPLY");
-    inline for (.{ "programmed", "calibrated", "dref", "mul", "control", "analog", "settled" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(external.supply, field));
-    }
-    print("\nNIHOS_NATIVE_PSRAM_IO status=");
-    hex(external.io_status);
-    inline for (.{ "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(external.exercise, field));
-    }
-    print(" transactions=");
-    hex(external.total_transactions);
-    print("\n");
-    print("NIHOS_NATIVE_PSRAM_MAP");
-    inline for (.{ "status", "failure", "line_bytes", "last_address", "last_actual", "last_expected", "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(external.mapping, field));
-    }
-    print("\n");
+    const DiscoveryRecord = struct { status: u32, configuration: u32, identity: u32, bytes: u32, transactions: u32, mapped: u32, allocatable: u32 };
+    const discovery = DiscoveryRecord{
+        .status = @backingInt(external.discovery.status),
+        .configuration = external.discovery.configuration,
+        .identity = external.discovery.identity,
+        .bytes = external.discovery.bytes,
+        .transactions = external.transactions,
+        .mapped = external.mapping.bytes,
+        .allocatable = 0,
+    };
+    logger.record("NIHOS_NATIVE_PSRAM", null, .{ "status", "configuration", "identity", "bytes", "transactions", "mapped", "allocatable" }, &discovery);
+    logger.record("NIHOS_NATIVE_PSRAM_SUPPLY", null, .{ "programmed", "calibrated", "dref", "mul", "control", "analog", "settled" }, &external.supply);
+    const IoRecord = struct { status: u32, mr0: u32, mr4: u32, mr8: u32, addresses: u32, passes: u32, reads: u32, writes: u32, transactions: u32 };
+    const io = IoRecord{
+        .status = external.io_status,
+        .mr0 = external.exercise.mr0,
+        .mr4 = external.exercise.mr4,
+        .mr8 = external.exercise.mr8,
+        .addresses = external.exercise.addresses,
+        .passes = external.exercise.passes,
+        .reads = external.exercise.reads,
+        .writes = external.exercise.writes,
+        .transactions = external.total_transactions,
+    };
+    logger.record("NIHOS_NATIVE_PSRAM_IO", null, .{ "status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions" }, &io);
+    logger.record("NIHOS_NATIVE_PSRAM_MAP", null, .{ "status", "failure", "line_bytes", "last_address", "last_actual", "last_expected", "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs" }, &external.mapping);
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
-    print("NIHOS_NATIVE_PSRAM_SMP");
-    inline for (.{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(external_smp, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
         native_psram.memory.heap_start,
         external.mapping.bytes - native_psram.memory.reserved_bytes,
@@ -387,18 +362,15 @@ export fn nih_native_main() callconv(.c) noreturn {
         previous = current;
         rounds +%= 1;
         if (rounds != 1 and rounds % 10 != 0) continue;
-        print("NIHOS_NATIVE_HEARTBEAT round=");
-        hex(rounds);
-        print(" cpu0=");
         const local = tasks.report(0);
-        hex(@atomicLoad(u32, &progress[0], .acquire) +% local.progress[0] +% local.progress[1]);
-        print(" cpu1=");
-        hex(current);
-        print(" ticks0=");
-        hex(@atomicLoad(u32, &ticks[0], .acquire));
-        print(" ticks1=");
-        hex(@atomicLoad(u32, &ticks[1], .acquire));
-        print("\n");
+        const heartbeat = .{
+            .round = rounds,
+            .cpu0 = @atomicLoad(u32, &progress[0], .acquire) +% local.progress[0] +% local.progress[1],
+            .cpu1 = current,
+            .ticks0 = @atomicLoad(u32, &ticks[0], .acquire),
+            .ticks1 = @atomicLoad(u32, &ticks[1], .acquire),
+        };
+        logger.record("NIHOS_NATIVE_HEARTBEAT", null, .{ "round", "cpu0", "cpu1", "ticks0", "ticks1" }, &heartbeat);
         if (rounds % 100 == 0) {
             taskReport(0);
             taskReport(1);
@@ -442,44 +414,20 @@ export fn nih_native_main() callconv(.c) noreturn {
 fn memoryReport(hart: u32) void {
     const report = tasks.memory.report(hart);
     if (report.confirmed != 1) fail("memory publication");
-    print("NIHOS_NATIVE_MEMORY hart=");
-    hex(hart);
-    inline for (.{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(report, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_MEMORY", hart, .{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }, &report);
 }
 
 fn externalMemoryReport(hart: u32) void {
     const report = tasks.memory.externalReport(hart);
-    print("NIHOS_NATIVE_EXTERNAL hart=");
-    hex(hart);
-    inline for (.{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(report, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_EXTERNAL", hart, .{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }, &report);
 }
 
 fn heapReport(hart: u32) void {
     const report = tasks.memory.reusable.report(hart);
-    print("NIHOS_NATIVE_HEAP hart=");
-    hex(hart);
-    inline for (.{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(report, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_HEAP", hart, .{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }, &report);
 }
 
 fn resourceReport(hart: u32) void {
     const report = tasks.memory.reusable.resourceReport(hart);
-    print("NIHOS_NATIVE_RESOURCES hart=");
-    hex(hart);
-    inline for (.{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced" }) |field| {
-        print(" " ++ field ++ "=");
-        hex(@field(report, field));
-    }
-    print("\n");
+    logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced" }, &report);
 }
