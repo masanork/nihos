@@ -80,6 +80,43 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(functions=values), self.assertRaises(ValueError):
                 check(values)
 
+    def test_sd_boot_move_requires_one_exact_named_extent_and_no_hidden_code(self):
+        base = [("psram.probe", 0x40000120, 0x40000920),
+                ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
+        moved = ("sdmmc_probe.run", 0x40001120, 0x40003920)
+        def check(functions, span=(0x40001120, 0x40003920)):
+            return MODULE.audit_boot_functions(functions, 0x40000120, 0x40003920,
+                                                0x4ff20000, 0x4ff48000, sdmmc_span=span)
+        self.assertEqual(check(base + [moved])["sdmmc"]["start"], "0x40001120")
+        for values, span in [(base + [moved], None), (base, (0x40001120, 0x40003920)),
+                             (base + [moved], (0x40001122, 0x40003920)),
+                             (base + [moved, ("hidden_irq", 0x40001130, 0x40001140)], (0x40001120, 0x40003920)),
+                             (base + [moved, moved], (0x40001120, 0x40003920)),
+                             (base + [("sdmmc_probe.run", 0x40001140, 0x40003920)], (0x40001140, 0x40003920))]:
+            with self.subTest(functions=values, span=span), self.assertRaises(ValueError):
+                check(values, span)
+
+    def test_sd_runtime_callbacks_and_dma_buffers_remain_internal_and_aligned(self):
+        low, high = 0x4ff00000, 0x4ff28000
+        symbols = {"nih_storage_read":low + 128, "nih_storage_controller_begin":low + 256,
+                   "nih_storage_controller_end":low + 384,
+                   "sdmmc_probe.dma_data":low + 512, "sdmmc_probe.dma_descriptor":low + 1024}
+        sizes = {"sdmmc_probe.dma_data":512,"sdmmc_probe.dma_descriptor":64}
+        MODULE.audit_sdmmc_resident(symbols, sizes, low, high)
+        for name in symbols:
+            for address in (0x40001120,0x48004000,high):
+                with self.subTest(name=name,address=address),self.assertRaises(ValueError):
+                    MODULE.audit_sdmmc_resident({**symbols,name:address},sizes,low,high)
+        for name in sizes:
+            for address in (low + 1, high - 64):
+                if address == high - 64 and sizes[name] == 64:continue
+                with self.subTest(name=name,address=address),self.assertRaises(ValueError):
+                    MODULE.audit_sdmmc_resident({**symbols,name:address},sizes,low,high)
+            with self.subTest(name=name),self.assertRaises(ValueError):
+                MODULE.audit_sdmmc_resident(symbols,{**sizes,name:sizes[name]+4},low,high)
+            changed=symbols.copy();del changed[name]
+            with self.assertRaises(ValueError):MODULE.audit_sdmmc_resident(changed,sizes,low,high)
+
     def test_descriptor_must_select_the_audited_mmu_page_size(self):
         data = bytearray(256)
         struct.pack_into("<I", data, 0, 0xABCD5432)

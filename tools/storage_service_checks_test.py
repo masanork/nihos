@@ -82,3 +82,23 @@ class StorageRebindChecks(unittest.TestCase):
                 NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
         with self.assertRaises(ValueError):
             NATIVE.check(log.replace('stale=00000005','stale=00000004'),'sqlite',32<<20,image,'physical-device')
+
+
+class SdBootPlacementChecks(unittest.TestCase):
+    def test_sd_flash_pc_requires_matching_image_extent_completion_and_unique_record(self):
+        log,image=fixture()
+        image['flash_boot']['end']='0x40003920'
+        image['flash_boot']['functions']['sdmmc']={'name':'sdmmc_probe.run','start':'0x40001120','end':'0x40003920'}
+        log=log.replace('NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001120', 'NIHOS_NATIVE_BOOT_CODE start=40000120 end=40003920')
+        fields={'start':0x40001120,'end':0x40003920,'pc':0x40001124,'completed':1}
+        marker=BASE.BASE.line('NIHOS_NATIVE_SDMMC_CODE',fields)
+        log+='\n'+marker
+        self.assertEqual(NATIVE.check(log,'sqlite',32<<20,image,'physical-device')['sdmmc_code']['pc'],0x40001124)
+        for key,value in [('start',0x40001122),('end',0x40003922),('pc',0x4ff00000),('pc',0x40001125),('completed',0)]:
+            changed=log.replace(marker,BASE.BASE.line('NIHOS_NATIVE_SDMMC_CODE',{**fields,key:value}))
+            with self.subTest(key=key,value=value),self.assertRaises(ValueError):
+                NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
+        for changed in [log.replace(marker,''),log+'\n'+marker]:
+            with self.assertRaises(ValueError):NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
+        del image['flash_boot']['functions']['sdmmc']
+        with self.assertRaises(ValueError):NATIVE.check(log,'sqlite',32<<20,image,'physical-device')

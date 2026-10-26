@@ -410,6 +410,16 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             function = expected["functions"][role]
             if not int(function["start"], 16) <= boot[role] < int(function["end"], 16):
                 raise ValueError("Flash boot PC outside audited function")
+    sdmmc_code = None
+    sd_boot = image.get("flash_boot", {}).get("functions", {}).get("sdmmc") if image is not None else None
+    if sd_boot is not None or "NIHOS_NATIVE_SDMMC_CODE " in log:
+        if sd_boot is None or evidence != "physical-device" or "NIHOS_NATIVE_SDMMC_MODE enabled=1" not in log:
+            raise ValueError("SD boot execution requires bound physical image")
+        sdmmc_code = fixed_record(log, "NIHOS_NATIVE_SDMMC_CODE", ("start", "end", "pc", "completed"))
+        if (sdmmc_code["start"] != int(sd_boot["start"], 16) or sdmmc_code["end"] != int(sd_boot["end"], 16) or
+                not sdmmc_code["start"] <= sdmmc_code["pc"] < sdmmc_code["end"] or
+                sdmmc_code["pc"] % 2 != 0 or sdmmc_code["completed"] != 1):
+            raise ValueError("SD boot PC/extent/completion differs from image")
     sql_report = None
     sql_names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
     sql_records = re.findall("NIHOS_NATIVE_SQLITE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in sql_names), log)
@@ -558,7 +568,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
-            "flash_boot": boot, "sqlite": sql_report,
+            "flash_boot": boot, "sdmmc_code": sdmmc_code, "sqlite": sql_report,
             "stacks": [{"hart": hart, **stacks[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,

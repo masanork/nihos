@@ -50,7 +50,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False):
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=()):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), sdmmc_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
@@ -62,15 +62,27 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             require(name in sql_functions, "non-manifest function in SQLite Flash: " + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
+        if sdmmc_span is not None and name == "sdmmc_probe.run":
+            require((address, stop) == sdmmc_span, "SDMMC boot function differs from linker extent")
+            role = "sdmmc"
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
         require(role not in found, "duplicate Flash boot role")
         found[role] = {"name": name, "start": hex(address), "end": hex(stop)}
-    require(set(found) == {"probe", "mapping"}, "missing approved Flash boot functions")
+    require(set(found) == {"probe", "mapping"} | ({"sdmmc"} if sdmmc_span is not None else set()), "missing approved Flash boot functions")
     ordered = sorted(found.values(), key=lambda entry: int(entry["start"], 16))
     require(int(ordered[0]["start"], 16) == start and int(ordered[-1]["end"], 16) == end and
-            0 <= int(ordered[1]["start"], 16) - int(ordered[0]["end"], 16) <= 16,
+            all(0 <= int(right["start"], 16) - int(left["end"], 16) <= 16 for left, right in zip(ordered, ordered[1:])),
             "overlapping/unaccounted Flash boot extent")
     return found
+
+
+def audit_sdmmc_resident(symbols, sizes, low, high):
+    for resident in ("nih_storage_read", "nih_storage_controller_begin", "nih_storage_controller_end"):
+        if resident in symbols:
+            require(low <= symbols[resident] < high, "SD runtime controller callback left SRAM: " + resident)
+    for name, size in (("sdmmc_probe.dma_data", 512), ("sdmmc_probe.dma_descriptor", 64)):
+        require(name in symbols and low <= symbols[name] < symbols[name] + size <= high and
+                sizes.get(name) == size and symbols[name] % 64 == 0, "SD DMA buffer outside aligned internal SRAM")
 
 
 def audit_app_descriptor(data):
@@ -295,7 +307,14 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         hooks = ('nih_storage_cancel_requested',) if service.get('version') in (2, 3) else ()
         for hook in hooks + ('nih_storage_register', 'nih_storage_pending', 'nih_storage_task_exited', 'nih_storage_cleanup_ready', 'nih_storage_retired'):
             require(hook in symbols and low <= symbols[hook] < high, 'storage IRQ hook outside internal SRAM')
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql)
+    sd_boot = (symbols.get("__flash_sdmmc_boot_start", 0), symbols.get("__flash_sdmmc_boot_end", 0))
+    require(("__flash_sdmmc_boot_start" in symbols) == ("__flash_sdmmc_boot_end" in symbols), "partial SDMMC boot extent")
+    if sd_boot[0] != sd_boot[1]:
+        require(boot_start <= sd_boot[0] < sd_boot[1] == boot_end, "invalid SDMMC boot extent")
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql,
+                                          sd_boot if sd_boot[0] != sd_boot[1] else None)
+    if sd_boot[0] != sd_boot[1]:
+        audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
