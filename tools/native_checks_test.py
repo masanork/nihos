@@ -794,7 +794,7 @@ class NativeJPKITests(unittest.TestCase):
 class NativeCardTests(unittest.TestCase):
     @staticmethod
     def card_log():
-        values = (1, 3, 1, 1, 3, 1, 1, 1, 0, 1, 720, 1280, 10, 64, 64, 60, 4, 2, 0x81, 1, 0, 0, 0)
+        values = (1, 3, 1, 1, 3, 1, 1, 1, 0, 1, 720, 1280, 10, 64, 64, 60, 4, 2, 0x81, 1, 0, 0, 0, 1)
         return 'NIHOS_NATIVE_FP_PASS floating=0\nNIHOS_NATIVE_CARD_CHECK_START pin_enabled=0\nNIHOS_NATIVE_CARD_CHECK' + ''.join(
             ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.CARD_FIELDS, values)) + '\n'
 
@@ -803,10 +803,14 @@ class NativeCardTests(unittest.TestCase):
         self.assertEqual(MODULE.check_card(log)['remaining'], 3)
         for key, value in [('remaining', 255), ('card_fault', 6), ('poweroff', 0), ('dma_erased', 0),
                            ('pin_data_sent', 1), ('touch', 0), ('width', 1280), ('slots', 11),
-                           ('samples', 63), ('fresh', 65), ('releases', 59), ('max_contacts', 0)]:
+                           ('samples', 63), ('fresh', 65), ('releases', 59), ('max_contacts', 0), ('vbus_off', 0)]:
             changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
             with self.subTest(key=key), self.assertRaises(ValueError):
                 MODULE.check_card(changed)
+        fallback = log.replace('poweroff=00000001', 'poweroff=00000002').replace('last_flags=00000001', 'last_flags=00000000')
+        self.assertEqual(MODULE.check_card(fallback)['poweroff'], 2)
+        with self.assertRaises(ValueError):
+            MODULE.check_card(fallback.replace('vbus_off=00000001', 'vbus_off=00000000'))
         for changed in [log + log, log[:-4], log.replace('pin_enabled=0', 'pin_enabled=1'),
                         log.replace('NIHOS_NATIVE_FP_PASS floating=0\n', '')]:
             with self.assertRaises(ValueError):

@@ -314,5 +314,7 @@ pub const Device = struct {
         nih_usb_phy_stop();
         self.alive = false;
         try self.erase();
+        var bus = i2c.Master(Bus){ .pins = self.controller.io };
+        try i2c.usbPowerOff(&bus);
     }
 };

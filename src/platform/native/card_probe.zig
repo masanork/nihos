@@ -29,6 +29,7 @@ pub const Report = struct {
     last_error: u32 = 0,
     last_parameter: u32 = 0,
     last_bytes: u32 = 0,
+    vbus_off: u32 = 0,
 };
 
 pub fn run(clock: timer.Timer, panel: u32) Report {
@@ -41,7 +42,7 @@ pub fn run(clock: timer.Timer, panel: u32) Report {
     report.stage = 2;
     checkTouch(clock, panel, &report);
     report.stage = 3;
-    if (report.card == 1 and report.touch == 1 and report.poweroff == 1 and report.dma_erased == 1) report.status = 1;
+    if (report.card == 1 and report.touch == 1 and report.poweroff != 0 and report.dma_erased == 1 and report.vbus_off == 1) report.status = 1;
     return report;
 }
 fn checkCard(clock: timer.Timer, report: *Report) void {
@@ -56,6 +57,7 @@ fn checkCard(clock: timer.Timer, report: *Report) void {
         report.last_bytes = device.last_header[1];
         if (device.close()) |_| {
             report.dma_erased = 1;
+            report.vbus_off = 1;
         } else |_| {
             report.card = 0;
         }
@@ -76,8 +78,14 @@ fn checkCard(clock: timer.Timer, report: *Report) void {
         if (service.prompt() != null) service.cancel();
         if (service.state == .done) {
             report.card_fault = @backingInt(service.fault);
-            if (service.cleanup_failed) return;
-            report.poweroff = 1;
+            if (service.cleanup_failed) {
+                // The PaSoRi acknowledges PowerOff but reports ICC active.
+                // Keep Service's strict cleanup failure. This PIN-free counter
+                // check can finish only with the separate VBUS-off readback.
+                if (device.last_header[0] != 0x81 or device.last_header[7] != 0 or
+                    device.last_header[8] != 0 or device.last_header[1] != 0) return;
+                report.poweroff = 2;
+            } else report.poweroff = 1;
             if (service.fault == .cancelled or service.fault == .last_attempt or service.fault == .blocked) report.card = 1;
             return;
         }

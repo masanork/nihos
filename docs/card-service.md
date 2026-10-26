@@ -96,6 +96,14 @@ CPU0/CPU1の既存検証が終わってから、CPU0がタイマ・I2C・USBを�
 接触報告が0ならI2C読取だけの証拠であり、指操作の確認にはならない。
 `capture-native-usb.py --card` は、この完了報告まで待ち、厳密な検査器に渡す。
 
+RC-S300実機はPowerOffに成功を返してもICC状態をactiveのまま報告した。
+共通サービスはこの応答を非活性化成功とは扱わない。接続確認モードは
+USB-A給電をOFFにし、エキスパンダの出力ラッチ・方向・高インピーダンス設定を
+読み返して終了する。`poweroff=1` はCCID非活性確認、`poweroff=2` は
+CCIDでは確認できず給電OFFに切り替えたことを示し、両者を区別する。
+`vbus_off=1` は制御レジスタのOFF確認で、VBUS電圧の実測ではない。
+この代替終了を、共通サービスの認証済み属性の公開条件には使用していない。
+
 ```sh
 .tools/zig-0.17.0/zig build test
 .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe

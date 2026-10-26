@@ -333,6 +333,7 @@ const Wire = struct {
     truncated: bool = false,
     short_send: bool = false,
     fail_receive: bool = false,
+    fail_scrub: bool = false,
     absent: bool = false,
     payload: []const u8 = &.{ 0x90, 0 },
     pub fn send(self: *Wire, bytes: []const u8) !usize {
@@ -353,6 +354,7 @@ const Wire = struct {
     pub fn scrub(self: *Wire) !void {
         std.crypto.secureZero(u8, &self.sent);
         self.scrubs += 1;
+        if (self.fail_scrub) return error.Scrub;
     }
 };
 test "CCID extensions only poll IN, with exactly one PIN send and DMA scrubbing" {
@@ -368,6 +370,19 @@ test "CCID extensions only poll IN, with exactly one PIN send and DMA scrubbing"
     try testing.expectEqual(card.State.select_attributes, service.state);
     try zero(&wire.sent);
     try zero(&service.command);
+}
+test "DMA-copy cleanup failure cannot publish a successful VERIFY result" {
+    var service = card.Service{};
+    try ready(&service, 3);
+    try submitted(&service, "1234");
+    var owner = ccid_owner.Owner{};
+    var wire = Wire{ .fail_scrub = true };
+    try testing.expectError(error.Scrub, owner.step(&service, &wire));
+    try testing.expectEqual(card.State.power_off, service.state);
+    try testing.expectEqual(card.Fault.pin_outcome_unknown, service.fault);
+    try testing.expect(service.remaining == null);
+    try zero(&service.command);
+    try testing.expectEqual(@as(u32, 1), wire.sends);
 }
 
 test "CCID frame and transport faults cannot resend a dispatched VERIFY" {
