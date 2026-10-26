@@ -4,6 +4,7 @@ const std = @import("std");
 pub const Operation = enum(u32) { list = 1, stat = 2, open = 3, read = 4, close = 5 };
 pub const Request = extern struct {
     sequence: u32 = 0,
+    epoch: u32 = 0,
     operation: u32 = 0,
     handle: u32 = 0,
     offset: u32 = 0,
@@ -13,6 +14,7 @@ pub const Request = extern struct {
 };
 pub const Response = extern struct {
     sequence: u32 = 0,
+    epoch: u32 = 0,
     status: i32 = 0,
     handle: u32 = 0,
     kind: u32 = 0,
@@ -31,8 +33,10 @@ pub fn Owner(comptime Backend: type) type {
     return struct {
         backend: Backend,
         client: u32,
+        epoch: u32 = 1,
         next_sequence: u32 = 1,
         alive: bool = true,
+        rebind_ready: bool = false,
         processed: u32 = 0,
         rejected: u32 = 0,
         discarded_requests: u32 = 0,
@@ -40,8 +44,13 @@ pub fn Owner(comptime Backend: type) type {
         const Self = @This();
 
         pub noinline fn dispatch(self: *Self, request: Request) Response {
-            var response = Response{ .sequence = request.sequence, .status = -22 };
+            var response = Response{ .sequence = request.sequence, .epoch = self.epoch, .status = -22 };
             if (!self.alive or self.client == 0) {
+                response.status = -13;
+                return response;
+            }
+            if (request.epoch == 0 or request.epoch != self.epoch) {
+                self.rejected += 1;
                 response.status = -13;
                 return response;
             }
@@ -93,6 +102,20 @@ pub fn Owner(comptime Backend: type) type {
             return true;
         }
 
+        /// Reopen only after stopped-client cleanup and queue drain. Keep the
+        /// backend workspace/token counter alive: tokens must not alias across
+        /// bindings. Epoch zero/wrap is never admitted, even after rebind.
+        pub noinline fn rebind(self: *Self, client: u32, queues: anytype) bool {
+            if (self.alive or !self.rebind_ready or client == 0 or client == self.client or self.epoch == std.math.maxInt(u32) or
+                queues.requests.countApprox() != 0 or queues.responses.countApprox() != 0) return false;
+            self.client = client;
+            self.epoch += 1;
+            self.next_sequence = 1;
+            self.alive = true;
+            self.rebind_ready = false;
+            return true;
+        }
+
         /// Owner-task context only. IRQ merely publishes the exit tombstone.
         pub noinline fn clientExited(self: *Self, queues: anytype) i32 {
             // The scheduler must publish the tombstone only after the client
@@ -103,9 +126,15 @@ pub fn Owner(comptime Backend: type) type {
             if (!self.alive) return 0;
             self.alive = false;
             const code = self.backend.release(self.client);
+            self.rebind_ready = code == 0;
             while (queues.requests.tryPop() != null) self.discarded_requests += 1;
             while (queues.responses.tryPop() != null) self.discarded_responses += 1;
             return code;
         }
     };
+}
+
+/// Sequence alone is insufficient after an endpoint restarts at sequence 1.
+pub fn responseMatches(response: *const Response, epoch: u32, sequence: u32) bool {
+    return epoch != 0 and sequence != 0 and response.epoch == epoch and response.sequence == sequence;
 }

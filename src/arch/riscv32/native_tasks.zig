@@ -242,10 +242,12 @@ fn maintain(hart: u32, device: timer_group.Timer) bool {
     if (options.storage_service and owner.phase == .storage_service) {
         const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
         if (completion.state != .exited) return true;
-        if (completion.exit_code != (if (hart == 1) @as(i32, -98) else 300)) return false;
-        if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle)) or nih_storage_cleanup_ready() != 1) return true;
+        const restart = hart == 1 and completion.exit_code == -98;
+        if (!restart and completion.exit_code != 300 + hart) return false;
+        if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle)) or nih_storage_cleanup_ready() != (if (restart) @as(u32, 1) else 2)) return true;
         owner.completed_runtime_ticks += completion.runtime_ticks;
         if (!owner.runtime.reap(owner.lifecycle)) return false;
+        if (restart) return admitStorage(hart);
         owner.phase = .storage_complete;
         nih_storage_retired(hart);
         return true;
@@ -448,6 +450,11 @@ pub fn startStorage(hart: u32) bool {
     defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     const owner = &owners[hart];
     if (owner.phase != .complete) return false;
+    return admitStorage(hart);
+}
+
+noinline fn admitStorage(hart: u32) bool {
+    const owner = &owners[hart];
     owner.lifecycle = add(hart, 2, .storage_protocol) orelse return false;
     owner.phase = .storage_service;
     const bottom = @intFromPtr(&stacks[hart][2]);

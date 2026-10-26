@@ -22,6 +22,15 @@ pub const Report = extern struct {
     inflight_completed: u32 = 0,
     discarded_requests: u32 = 0,
     discarded_responses: u32 = 0,
+    rebound: u32 = 0,
+    replacement_owner: u32 = 0,
+    old_epoch_rejected: u32 = 0,
+    old_reply_rejected: u32 = 0,
+    old_handle_rejected: u32 = 0,
+    old_exit_rejected: u32 = 0,
+    replacement_exit: u32 = 0,
+    replacement_bytes: u32 = 0,
+    replacement_crc: u32 = 0,
 };
 extern fn nih_storage_runtime_init() callconv(.c) void;
 extern fn nih_storage_runtime_poll(u32) callconv(.c) void;
