@@ -16,3 +16,6 @@ export fn nih_keypad_demo_plan(bytes: [*]const u8, length: usize) usize {
     var spans: [2048]plan.Segment = undefined;
     return (plan.build(bytes[0..length], &spans) catch return 0).len;
 }
+export fn nih_keypad_copy_plan(bytes: [*]const u8, length: usize, out: [*]@import("graphics/keypad_plan.zig").Segment, capacity: usize) usize {
+    return (@import("graphics/keypad_plan.zig").build(bytes[0..length], out[0..capacity]) catch return 0).len;
+}

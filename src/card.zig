@@ -7,3 +7,4 @@ pub const TouchFeedback = @import("board/tab5/touch_feedback.zig");
 pub const KeypadDemo = @import("card/keypad_demo.zig");
 pub const PinScreen = @import("graphics/card_pin.zig");
 pub const KeypadPlan = @import("graphics/keypad_plan.zig");
+pub const KeypadAtlas = @import("graphics/keypad_atlas.zig");

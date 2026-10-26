@@ -314,7 +314,6 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
-            if (options.keypad_demo) @import("keypad_lease.zig").publishPeer();
             while (true) asm volatile ("wfi");
         }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
@@ -555,7 +554,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
                     logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
                     logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
-                    if (options.keypad_demo) logger.record("NIHOS_NATIVE_KEYPAD_LEASE", null, .{ "peer_start", "peer_bytes", "pixel_bytes" }, &screen);
+                    if (options.keypad_demo) logger.record("NIHOS_NATIVE_KEYPAD_STORAGE", null, .{ "font_low", "font_low_bytes", "pixel_bytes" }, &screen);
                     if (screen.status != 1) fail("display scanout startup");
                     if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                     if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});

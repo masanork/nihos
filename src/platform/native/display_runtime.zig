@@ -44,7 +44,7 @@ pub fn onInterrupt() void {
     state.observe(event & 1 != 0, event & 10, event & 4 != 0);
     nih_display_backlight(state.backlight);
 }
-pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0, peer_start: u32 = 0, peer_bytes: u32 = 0, pixel_bytes: u32 = 0 };
+pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0, font_low: u32 = 0, font_low_bytes: u32 = 0, pixel_bytes: u32 = 0 };
 pub fn snapshot() Report {
     const live: *const volatile Scanout = &state;
     const event: *const volatile u32 = &last_event;
@@ -135,10 +135,10 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     const frame = base[0..board.frame_bytes];
     if (options.keypad_demo) {
         const prepared = try @import("keypad_display.zig").prepare(clock, frame);
-        report.lease_start = prepared.local.start;
-        report.lease_bytes = prepared.local.bytes;
-        report.peer_start = prepared.peer.start;
-        report.peer_bytes = prepared.peer.bytes;
+        report.lease_start = prepared.local_start;
+        report.lease_bytes = prepared.local_bytes;
+        report.font_low = prepared.font_low;
+        report.font_low_bytes = prepared.font_low_bytes;
         report.pixel_bytes = prepared.pixel_bytes;
     } else if (white) @memset(frame, 0xff) else if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) return error.Image;
     if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
@@ -180,7 +180,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     report.bl_mux = nih_display_diagnostic(8);
     report.bl_matrix = nih_display_diagnostic(9);
     report.white = @intFromBool(white);
-    report.sram = if (options.keypad_demo) 3 else if (options.display_scene) 2 else @intFromBool(sram);
+    report.sram = if (options.keypad_demo) 5 else if (options.display_scene) 2 else @intFromBool(sram);
     report.source = nih_display_diagnostic(10);
     report.dma_source = nih_display_diagnostic(11);
     report.dma_control = nih_display_diagnostic(12);

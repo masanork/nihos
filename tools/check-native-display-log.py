@@ -16,6 +16,21 @@ SOURCE = ('sram', 'source', 'dma_source', 'dma_control', 'word')
 REFRESH = ('frames', 'fault', 'event', 'dsi_error0', 'dsi_error1', 'dma_error', 'bridge_error')
 
 
+def check_keypad_storage(lease, storage, audit):
+    pools = {pool['name']: (int(pool['origin'], 16), int(pool['end'], 16)) for pool in audit.get('pools', [])}
+    if (pools != {'.keypad.low': (0x4ff40000, 0x4ff60000), '.keypad.high': (0x4ff70000, 0x4ff9f000)} or
+            audit.get('writable') is not False or audit.get('executable') is not False):
+        raise ValueError('missing audited keypad SRAM pools')
+    if (not 1 <= lease['nodes'] <= 1024 or lease['nodes'] != audit.get('nodes') or
+            lease['lease_bytes'] != lease['nodes'] * 64 or lease['lease_start'] % 64 or
+            not 0x4ff40000 < lease['lease_start'] < storage['font_low'] <= 0x4ff60000 or
+            storage['font_low'] != lease['lease_start'] + lease['lease_bytes'] or
+            storage['font_low_bytes'] != 0x4ff60000 - storage['font_low'] or
+            not audit.get('atlas_bytes', 0) <= storage['pixel_bytes'] < 720 * 1280 * 2 or
+            storage['pixel_bytes'] % 8):
+        raise ValueError('invalid SRAM sparse keypad plan')
+
+
 def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
     if mode not in (2, 3, 4, 5, 6, 7, 8) or expected_dpi not in (10, 60, 80):
         raise ValueError('unknown display mode/timing')
@@ -35,7 +50,7 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
                                          'dma_error', 'bridge_error', 'start_code')) or
             any(screen[name] != 1 for name in ('bl_latch', 'bl_enable', 'bl_level'))):
         raise ValueError('incomplete display startup')
-    if source['sram'] != (3 if mode == 8 else 2 if mode == 7 else int(mode in (5, 6))):
+    if source['sram'] != (5 if mode == 8 else 2 if mode == 7 else int(mode in (5, 6))):
         raise ValueError('unexpected display source')
     if mode in (5, 6, 7, 8):
         if (not 0x4ff00000 <= source['source'] < 0x4ff28000 or
@@ -56,16 +71,10 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
             raise ValueError('display descriptor lease crosses owner bounds')
     if mode == 8:
         lease = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_LEASE', ('lease_start', 'lease_bytes', 'nodes'))
-        peer = NATIVE.fixed_record(log, 'NIHOS_NATIVE_KEYPAD_LEASE', ('peer_start', 'peer_bytes', 'pixel_bytes'))
-        for owner, start, length in [(core['memory'][0], lease['lease_start'], lease['lease_bytes']),
-                                     (core['memory'][1], peer['peer_start'], peer['peer_bytes'])]:
-            if (start % 64 or length % 64 or length == 0 or start < owner['start'] + owner['used'] or
-                    start + length > owner['end'] - 64):
-                raise ValueError('keypad descriptor lease crosses an owner boundary')
-        if (not 1 <= lease['nodes'] <= 1024 or lease['nodes'] * 64 > lease['lease_bytes'] + peer['peer_bytes'] or
-                not 0 < peer['pixel_bytes'] < 720 * 1280 * 2 or peer['pixel_bytes'] % 8):
-            raise ValueError('invalid sparse keypad plan')
-        lease['peer'] = peer
+        storage = NATIVE.fixed_record(log, 'NIHOS_NATIVE_KEYPAD_STORAGE', ('font_low', 'font_low_bytes', 'pixel_bytes'))
+        audit = image.get('keypad_storage', {})
+        check_keypad_storage(lease, storage, audit)
+        lease['storage'] = storage
     refresh = None
     if mode != 4:
         refresh = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_IRQ_PASS', REFRESH)
