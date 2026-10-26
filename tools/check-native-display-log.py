@@ -27,7 +27,7 @@ def check_live(log, screen, exercise=False):
             start['sources'] not in (1, 3) or ready['sources'] not in (1, 3) or
             keyboard['sources'] != start['sources'] or ready['sources'] & ~start['sources'] or
             not screen['frames'] <= start['frames'] < ready['frames'] or
-            start['view'] != 0 or ready['view'] not in (0, 1) or
+            start['view'] not in (0, 1) or ready['view'] not in (0, 1) or
             not 0 <= start['progress'] <= start['target'] == 85 or
             not 0 <= ready['progress'] <= ready['target'] == 255 or io['tx_dropped']):
         raise ValueError('incomplete live UI/clock/input evidence')
@@ -42,6 +42,11 @@ def check_live(log, screen, exercise=False):
     if [log.index(marker) for marker in order] != sorted(log.index(marker) for marker in order):
         raise ValueError('live display was not active during core qualification')
     keys = NATIVE.repeated_records(log, 'NIHOS_NATIVE_DIAGNOSTIC_KEY', KEY)
+    if start['view'] == 1:
+        before_start = log[:log.index('NIHOS_NATIVE_UI_START ')]
+        early = NATIVE.repeated_records(before_start,'NIHOS_NATIVE_DIAGNOSTIC_KEY',KEY)
+        if not any(key['source'] == 2 and key['action'] in (1,3) and key['accepted'] == 1 for key in early):
+            raise ValueError('startup details require a retained physical key event')
     previous = screen['frames']
     for sequence, key in enumerate(keys, 1):
         if (key['sequence'] != sequence or key['source'] not in (1, 2) or key['action'] not in (1, 2, 3, 4) or
@@ -143,19 +148,32 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
                 console['log_bytes'] != 2048 or console['input'] not in (0, 1) or
                 log.index('NIHOS_NATIVE_CONSOLE ') < log.index('NIHOS_NATIVE_DISPLAY_SCANOUT ')):
             raise ValueError('incomplete read-only native console snapshot')
-        if console['rows'] == 22:
+        if console['rows'] == 22 or 'NIHOS_NATIVE_CONSOLE_STYLE ' in log:
             console_style = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CONSOLE_STYLE', ('cell_width', 'cell_height', 'palette', 'foreground', 'accent', 'background', 'font'))
-            if (console_style['cell_width'] != 15 or console_style['cell_height'] != 30 or console_style['font'] not in (1, 2) or
+            geometry = {0: (78,43,16,16), 1: (80,22,15,30), 2: (80,22,15,30), 3: (78,43,16,16)}
+            if ((console['columns'], console['rows'], console_style['cell_width'], console_style['cell_height']) != geometry.get(console_style['font']) or
                     console_style['palette'] not in (0, 1, 2) or
                     console_style['foreground'] != {0: 0xe71c, 1: 0xa5f5, 2: 0xadd9}.get(console_style['palette']) or
                     console_style['accent'] != 0x85b5 or console_style['background'] != 0x1082):
                 raise ValueError('console style/geometry does not match the raster')
-        elif 'NIHOS_NATIVE_CONSOLE_STYLE ' in log:
-            raise ValueError('unexpected style on historical square console raster')
         if console['input'] == 1:
-            if console['rows'] != 22:
-                raise ValueError('live input requires the current raster')
+            if console_style is None:
+                raise ValueError('live input requires style readback')
             live = check_live(log, screen, require_live_controls)
+            if 'NIHOS_NATIVE_CONSOLE_RENDER ' in log:
+                fields = ('full','partial','scrolls','steps','max_step_us')
+                if ' cache_chunk_us=' in log: fields += ('copy_us','cache_us','cache_chunk_us')
+                if ' line_step_us=' in log: fields += ('line_step_us',)
+                stats = NATIVE.fixed_record(log,'NIHOS_NATIVE_CONSOLE_RENDER',fields)
+                if not stats['full'] or not stats['partial'] or stats['steps'] < stats['scrolls'] or stats['steps'] and not stats['max_step_us']:
+                    raise ValueError('incomplete incremental rendering evidence')
+                if 'cache_chunk_us' in stats and (not 0 < stats['cache_chunk_us'] <= 1000 or stats['max_step_us'] < max(stats['copy_us'],stats['cache_us'])):
+                    raise ValueError('unbounded cache IRQ window or inconsistent timing')
+                if 'line_step_us' in stats and stats['line_step_us'] > stats['max_step_us']:
+                    raise ValueError('inconsistent line-scroll timing')
+                live['render'] = stats
+            if require_live_controls and console_style['font'] in (0,3) and ('render' not in live or not live['render']['scrolls']):
+                raise ValueError('missing pixel-scroll evidence')
     elif 'NIHOS_NATIVE_CONSOLE_STYLE ' in log:
         raise ValueError('orphan console style record')
     if live is None and (require_live_controls or 'NIHOS_NATIVE_UI_' in log or 'NIHOS_NATIVE_KEYBOARD ' in log or 'NIHOS_NATIVE_DIAGNOSTIC_KEY ' in log):

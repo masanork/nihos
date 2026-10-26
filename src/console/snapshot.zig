@@ -7,8 +7,20 @@ pub noinline fn fill(grid: anytype, model: *const stages.Model, spans: [2][]cons
     grid.x = 0;
     grid.y = 0;
     grid.wrap_pending = false;
+    _ = grid.setScrollTop(header_rows);
     for (0..header_rows) |_| grid.write("\n");
     for (spans) |part| grid.write(part);
+    refreshHeader(grid, model, dropped);
+}
+pub noinline fn refreshHeader(grid: anytype, model: *const stages.Model, dropped: u64) void {
+    const x = grid.x;
+    const y = grid.y;
+    const wrap = grid.wrap_pending;
+    defer {
+        grid.x = x;
+        grid.y = y;
+        grid.wrap_pending = wrap;
+    }
     // Scroll only affects the body; restore the fixed header afterwards.
     @memset(grid.cells[0 .. @TypeOf(grid.*).width * header_rows], ' ');
     grid.x = 0;
@@ -70,4 +82,19 @@ test "fixed stage header and last log survive scrolling independently" {
     try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "cores: failed") != null);
     try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "UNIQUE TAIL") != null);
     try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "input: not initialized") != null);
+}
+
+test "refreshing boot state preserves the append cursor and visible log history" {
+    const std = @import("std");
+    var grid = @import("ascii.zig").Grid(78, 16){};
+    var model = stages.Model{};
+    fill(&grid, &model, .{ "retained line\npartial", "" }, 0);
+    const old = grid;
+    try std.testing.expect(model.begin(.cores));
+    refreshHeader(&grid, &model, 7);
+    try std.testing.expectEqualSlices(u8, old.cells[header_rows * 78 ..], grid.cells[header_rows * 78 ..]);
+    try std.testing.expectEqual(old.x, grid.x);
+    try std.testing.expectEqual(old.y, grid.y);
+    grid.write(" tail\n");
+    try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "partial tail") != null);
 }

@@ -86,10 +86,10 @@ case "$display" in
     7) display=true; display_scanout=true; display_sram=true; display_tile=true; display_scene=true ;;
     *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6 or 7" >&2; exit 1 ;;
 esac
-console_font=${NIHOS_NATIVE_CONSOLE_FONT:-1}
+console_font=${NIHOS_NATIVE_CONSOLE_FONT:-3}
 case "$console_font" in
-    1|2) ;;
-    *) echo "NIHOS_NATIVE_CONSOLE_FONT must be 1 or 2" >&2; exit 1 ;;
+    0|1|2|3) ;;
+    *) echo "NIHOS_NATIVE_CONSOLE_FONT must be 0, 1, 2 or 3" >&2; exit 1 ;;
 esac
 console_palette=${NIHOS_NATIVE_CONSOLE_PALETTE:-0}
 case "$console_palette" in

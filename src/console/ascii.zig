@@ -10,6 +10,13 @@ pub fn Grid(comptime columns: usize, comptime rows: usize) type {
         x: usize = 0,
         y: usize = 0,
         wrap_pending: bool = false,
+        scroll_top: usize = 0,
+        scrolls: usize = 0,
+        pub fn setScrollTop(self: *Self, top: usize) bool {
+            if (top >= rows) return false;
+            self.scroll_top = top;
+            return true;
+        }
         fn newline(self: *Self) void {
             self.x = 0;
             self.wrap_pending = false;
@@ -17,8 +24,9 @@ pub fn Grid(comptime columns: usize, comptime rows: usize) type {
                 self.y += 1;
                 return;
             }
-            std.mem.copyForwards(u8, self.cells[0 .. columns * (rows - 1)], self.cells[columns..]);
+            std.mem.copyForwards(u8, self.cells[self.scroll_top * columns .. columns * (rows - 1)], self.cells[(self.scroll_top + 1) * columns ..]);
             @memset(self.cells[columns * (rows - 1) ..], ' ');
+            self.scrolls +|= 1;
         }
         fn glyph(self: *Self, byte: u8) void {
             if (self.wrap_pending) self.newline();
@@ -61,4 +69,15 @@ test "scrolling, backspace, and controls cannot escape the fixed grid" {
     try std.testing.expectEqualStrings("EFGHiK  ", &grid.cells);
     grid.write("\r\t\xff\x1b");
     try std.testing.expectEqualStrings("    ??  ", &grid.cells);
+}
+
+test "a scrolling body preserves its header and counts pixel-scroll deltas" {
+    var grid = Grid(4, 4){};
+    grid.write("HEAD\n");
+    try std.testing.expect(grid.setScrollTop(1));
+    grid.write("one\ntwo\nthree\n");
+    try std.testing.expectEqualStrings("HEADthree       ", &grid.cells);
+    try std.testing.expectEqual(@as(usize, 2), grid.scrolls);
+    try std.testing.expect(!grid.setScrollTop(4));
+    try std.testing.expectEqual(@as(usize, 1), grid.scroll_top);
 }

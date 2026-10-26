@@ -10,7 +10,7 @@ not elapsed time, a percentage, or evidence that input/storage is ready.
 
 The opt-in live implementation starts scanout **after destructive PSRAM
 qualification and before core/heap/scheduler qualification**. Its CPU0-owned
-2 KiB byte journal, independent stage state, and 80x22 ASCII grid share the
+2 KiB byte journal, independent stage state, and fixed ASCII grid share the
 landscape RGB565 buffer with the quiet inscription. Each operation's stage is
 painted before entering it. The earlier final read-only snapshot remains
 available with `NIHOS_NATIVE_CONSOLE_LIVE=0`.
@@ -24,23 +24,46 @@ python3 tools/console/preview.py
 python3 tools/console/preview.py --failed
 # Palette: 0 = neutral body + muted teal heading, 1 = green, 2 = blue
 # NIHOS_NATIVE_CONSOLE_PALETTE=1 selects pale green.
-# NIHOS_NATIVE_CONSOLE_FONT=1 selects JetBrains, 2 selects Source Code Pro.
+# NIHOS_NATIVE_CONSOLE_FONT=3 (default): original small bitmap, lighter edges.
+# 0: original solid bitmap; 1: JetBrains; 2: Source Code Pro.
 python3 tools/console/preview.py --palette green
 python3 tools/console/preview.py --palette blue
 python3 tools/console/preview.py --palette green --font source-code
 ```
 
-The user found the first square VGA raster readable but too wide, and asked
-for a different face at a larger size rather than stretched pixels. The current
-candidates are **JetBrains Mono Medium at 24 px** and **Source Code Pro Medium at
-25 px**, rasterized directly into 15x30 cells. Both keep exactly 80 columns
-within 1280 pixels, with 40-pixel side margins. A compact seven-row header leaves
-15 rows for the log. The user selected a pale green trial; the first row is
-muted teal. Text labels carry status independently of colour.
+The current default returns to the first small **8x8 VGA bitmap in 16x16 cells**:
+78 columns and 43 rows, with16-pixel margins. Option3 retains the exact bitmap
+and cell advance, reducing coverage on exposed right/bottom stroke edges.
+Option0 is the initial solid bitmap. Pale green palette1 remains selected.
+The previous JetBrains Mono Medium 24 px and Source Code Pro Medium 25 px faces
+remain optional, at 80x22 in 15x30 cells.
+
+During a console view, boot output appends directly to a retained body grid.
+The fixed header is refreshed separately without changing the output cursor.
+The2 KiB byte journal remains independent; it seeds the first view and retains
+serial evidence, but is not replayed to reconstruct every update. Its byte-ring
+wrap can no longer move all existing glyph positions.
+
+For the small bitmap, the raster updates changed cells, and scrolls by copying existing body pixels
+upward over at most four observed-frame updates. Only the incoming strip and
+the former cursor row are rasterized. The header and margins stay fixed. Logs
+arriving during motion collect in a separate target grid. A real stage change
+finishes pending motion before updating its header. Full painting is reserved
+for entering the console from the inscription and fatal-frame recovery.
+The optional large faces update changed cells without pixel interpolation.
+Damage rectangles also bound cache writeback; the whole buffer is not cleared
+on ordinary updates. This uses the existing front buffer, so scanout tearing
+still needs direct observation; this is not a double-buffered presentation.
+
+Renderer state and three grids fit in the unused 56 KiB tail of the existing
+private display reservation, starting at 0x481f2000. Owner heaps and the2MiB
+external reservation are unchanged. No general heap, SD or filesystem is used.
+`CONSOLE_RENDER` records full/partial updates, scrolls/steps and the largest
+observed scroll+cache interval in microseconds.
 
 Only printable ASCII masks are generated on the host; the full font file and
 font engine are not linked. The selected face alone occupies immutable Flash:
-10,761 bytes of JetBrains Mono coverage plus 380 bytes of glyph offsets, or
+760 bytes for the bitmap, or10,761 bytes of JetBrains Mono coverage plus 380 bytes of glyph offsets, or
 10,597 bytes of Source Code Pro coverage plus offsets. Native builds do not
 require Pillow, font files or a filesystem. The source fonts, exact revisions,
 SHA256 hashes and OFL notices are in
@@ -96,8 +119,10 @@ Live Serial/JTAG transmission has a bounded wait and drop counter, so an absent
 host reader cannot hold boot/failure display indefinitely. The journal receives
 bytes before transmission. During IRQ-off fatal transmission, its bounded wait
 polls DMA. `UI_IO` reports dropped bytes; complete serial qualification requires
-zero. Framebuffer and post-video PSRAM mapper cache operations run in 1 KiB chunks,
-masking local IRQs only around each ROM command. This prevents the DMA ISR
+zero. Framebuffer presentation uses bounded 16 KiB cache chunks (the initial full
+view and post-video mapper keep 1 KiB chunks), masking local IRQs around each
+ROM command. Tall dirty rectangles coalesce adjacent physical rows to reduce
+ROM-command overhead; narrow updates keep individual physical row spans. This prevents the DMA ISR
 from nesting its descriptor cache command inside a main-loop command. No USB
 controller reset or host-controller ownership is introduced.
 
