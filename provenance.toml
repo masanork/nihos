@@ -9,6 +9,14 @@ status = "reference-only"
 use = "User-provided JPKI AID/EF identifiers, PIN-free retry query and public authentication-certificate read sequence; no Rust library linked"
 
 [[source]]
+name = "TLA+ tools / TLC"
+url = "https://github.com/tlaplus/tlaplus"
+revision = "v1.7.4"
+license = "MIT"
+status = "test-tool"
+use = "Optional formal scheduler MVP; pinned jar SHA-256 is verified on download and cache hits"
+
+[[source]]
 name = "Zig"
 url = "https://ziglang.org/download/"
 revision = "0.17.0"
