@@ -19,9 +19,12 @@ const IO = struct {
     }
     pub fn sync(_: IO, operation: mapping.Operation, address: u32, length: u32) bool {
         ioFence();
+        // The physical rev1.3 bridge failed with L2 alone: dirty CPU writes
+        // to the nonidentity windows were not visible through MSPI3. Include
+        // the shared L1 data cache in the ROM's ordered data-cache operation.
         const result = switch (operation) {
-            .invalidate => nih_rom_cache_invalidate(1 << 5, address, length),
-            .writeback => nih_rom_cache_writeback(1 << 5, address, length),
+            .invalidate => nih_rom_cache_invalidate((1 << 4) | (1 << 5), address, length),
+            .writeback => nih_rom_cache_writeback((1 << 4) | (1 << 5), address, length),
         };
         ioFence();
         return result == 0;

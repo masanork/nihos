@@ -13,9 +13,11 @@ pub const registers = struct {
     pub const mosi_length = 0x24;
     pub const miso_length = 0x28;
     pub const misc = 0x34;
+    pub const cache_control = 0x3c;
     pub const fifo = 0x58;
     pub const ddr = 0xd4;
     pub const start: u32 = 1 << 18;
+    pub const four_byte_address: u32 = 1 << 1;
 };
 
 pub const Status = enum(u32) { absent, detected, unsupported, timeout, unstable };
@@ -93,6 +95,10 @@ pub fn Controller(comptime IO: type) type {
             self.io.write(registers.user1, (31 << 26) | (if (dummy != 0) @as(u32, dummy - 1) else 0));
             self.io.write(registers.user2, (15 << 28) | @as(u32, @backingInt(operation)));
             self.io.write(registers.address, address);
+            // USER1's 32-bit length is not sufficient on physical P4. Match
+            // ROM spi_cmd_config's separate CACHE_USR_ADDR_4BYTE gate, keeping
+            // the rest of this MSPI3 register intact.
+            self.io.write(registers.cache_control, self.io.read(registers.cache_control) | registers.four_byte_address);
             self.io.write(registers.miso_length, if (writing) 0 else bits - 1);
             self.io.write(registers.mosi_length, if (writing) bits - 1 else 0);
             // A command that silently leaves the FIFO untouched must never

@@ -191,12 +191,16 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     pattern = r"NIHOS_NATIVE_MEMORY hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in memory_names)
     memory_owners = {}
+    # Rev1/2 silicon uses the lower SRAM bank. The emulator profile skips
+    # its cache bank; never apply that emulated lower bound to physical logs.
+    memory_low, memory_high = ((0x4ff00000, 0x4ff28000) if profile == "device"
+                               else (0x4ff20000, 0x4ff48000))
     for match in re.findall(pattern, log):
         hart, *values = [int(value, 16) for value in match]
         if hart >= 2 or hart in memory_owners:
             raise ValueError("invalid/duplicate memory owner")
         record = dict(zip(memory_names, values))
-        if (not 0x4ff20000 <= record["start"] < record["end"] <= 0x4ff48000 or
+        if (not memory_low <= record["start"] < record["end"] <= memory_high or
                 record["start"] % 64 or record["end"] % 64 or
                 record["capacity"] != record["end"] - record["start"] - 128 or
                 record["used"] != 448 or record["used"] + record["free"] != record["capacity"] or
