@@ -89,6 +89,16 @@ class NativeInstructionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 MODULE.audit_app_descriptor(changed)
 
+    def test_clock_boot_role_is_narrow_and_contiguous(self):
+        functions = [("cpu_boot.run__func_1",0x40000120,0x40000320),
+                     ("psram.probe",0x40000320,0x40000920),
+                     ("psram_memory.prepare__func_43",0x40000920,0x40001120)]
+        def check(values): return MODULE.audit_boot_functions(values,0x40000120,0x40001120,0x4ff00000,0x4ff28000)
+        self.assertEqual(set(check(functions)),{"clock","probe","mapping"})
+        for name in ("cpu_boot.unexpected__func_1","cpu_boot.run_forever"):
+            with self.subTest(name=name),self.assertRaises(ValueError):check([(name,*functions[0][1:]),*functions[1:]])
+        with self.assertRaises(ValueError):check([functions[0],("psram.probe",0x40000340,0x40000920),functions[2]])
+
     def test_flash_tables_are_bounded_read_only_progbits(self):
         MODULE.audit_flash_section(".flash.appdesc", 1, 2, 0x40000020, 256)
         for size in (1, 1986, 65504):

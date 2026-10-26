@@ -61,7 +61,7 @@ on ordinary updates. This uses the existing front buffer, so scanout tearing
 still needs direct observation; this is not a double-buffered presentation.
 
 Renderer state and three grids fit in the unused 56 KiB tail of the existing
-private display reservation, starting at 0x481f2000. Owner heaps and the2MiB
+private display reservation, starting at 0x481f2000. Owner heaps and the 2 MiB
 external reservation are unchanged. No general heap, SD or filesystem is used.
 `CONSOLE_RENDER` records full/partial updates, scrolls/steps and the largest
 observed scroll+cache interval in microseconds. `cpu_mhz` estimates CPU
@@ -99,6 +99,22 @@ optical legibility checked separately.
 
 ## Visible stages and interrupt ownership
 
+Native device builds now initialize CPU 360 MHz explicitly before PSRAM startup;
+the retained loader's 90 MHz setting is no longer the application's operating
+clock. MEM/SYS run at 180 MHz and APB at 90 MHz. PSRAM uses its separate MPLL400/2
+clock at 200 MHz x16 DDR; this is independent of the CPU clock and the panel's
+calculated59.982 Hz timing. The measured handoff and remaining limits are in
+[the CPU360 device record](measurements/2026-10-27-native-cpu360.md).
+
+The target is 360 MHz for the physical rev1.3 unit. Its manufacturer's normal
+profile is 360 MHz CPU /200 MHz PSRAM;400 MHz belongs to the newer silicon profile.
+`NIHOS_NATIVE_CPU_MHZ=0` retains loader clocks for comparison; the emulator
+defaults to 0 and does not touch these physical registers.400 MHz is rejected
+for this rev1/2 build. Clock transition code runs only at boot, on CPU0 with
+IRQs masked and before CPU1/cache-mapping users. It reuses the existing CPLL,
+uses bounded divider handshakes, updates the fixed ROM timing calibration, and
+emits independent divider/timer readbacks.
+
 1. Start the SRAM journal/stage model after CRT. Keep the destructive full
    PSRAM sweep before live framebuffer use.
 2. Initialize the panel and establish scanout, then initialize input. Optional
@@ -114,7 +130,7 @@ optical legibility checked separately.
    guards are usable, render the final journal and service diagnostics with
    manual DMA polling; the scheduler is stopped and failed boot cannot resume.
 
-Live panel delays and key polling own **TG1.T0**, XTAL40 divided by40 to1MHz,
+Live panel delays and key polling own **TG1.T0**, XTAL40 divided by40 to 1 MHz,
 without an alarm/IRQ. Scheduler TG0 counters are not borrowed or stopped.
 Before external heap metadata initialization, only the display IRQ may run on
 CPU0. Its handler rearms DMA and never allocates. A separate boot-only allocator
@@ -144,7 +160,7 @@ The standard **Tab5 Keyboard on Ext.Port1 (GPIO0 SDA / GPIO1 SCL, I2C0x6d)**
 provides physical modifier/usage events. Initialization reads firmware/address,
 selects HID mode1 only if necessary and verifies it. It never writes persistent
 address/RGB settings or clears events queued during boot. Polling runs outside
-IRQs, at most four events per10ms; unavailable input does not prevent boot.
+IRQs, at most four events per 10 ms; unavailable input does not prevent boot.
 
 | Key | Action |
 | --- | --- |

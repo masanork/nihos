@@ -447,6 +447,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             function = expected["functions"][role]
             if not int(function["start"], 16) <= boot[role] < int(function["end"], 16):
                 raise ValueError("Flash boot PC outside audited function")
+    cpu_clock = None
+    clock_function = image.get('flash_boot',{}).get('functions',{}).get('clock') if image else None
+    if clock_function is not None or 'NIHOS_NATIVE_CPU_CLOCK ' in log:
+        cpu_clock = fixed_record(log,'NIHOS_NATIVE_CPU_CLOCK',('status','error_code','pc','source','cpll_mhz','before_mhz','after_mhz','mem_mhz','apb_mhz','ctrl0','ctrl1','ctrl2','rom_mhz'))
+        c = cpu_clock
+        if (clock_function is None or evidence != 'physical-device' or c['status'] != 1 or c['error_code'] or c['source'] != 1 or
+                c['cpll_mhz'] != 360 or c['rom_mhz'] != 360 or c['mem_mhz'] != 180 or c['apb_mhz'] != 90 or
+                not 358 <= c['after_mhz'] <= 362 or not any(abs(c['before_mhz']-mhz) <= 2 for mhz in (90,180,360)) or
+                c['ctrl0'] & 0x1ffffff0 or c['ctrl1'] != 1 or c['ctrl2'] & 0x00ffffff != 0x10000 or
+                not int(clock_function['start'],16) <= c['pc'] < int(clock_function['end'],16) or c['pc']%2 or
+                log.index('NIHOS_NATIVE_CPU_CLOCK ') > log.index('NIHOS_NATIVE_PSRAM ')):
+            raise ValueError('incomplete native CPU clock initialization')
     sql_report = None
     sql_names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
     sql_records = re.findall("NIHOS_NATIVE_SQLITE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in sql_names), log)
@@ -561,7 +573,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
-            "flash_boot": boot, "sqlite": sql_report,
+            "flash_boot": boot, "cpu_clock": cpu_clock, "sqlite": sql_report,
             "stacks": [{"hart": hart, **stacks[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io, "psram_fast": fast_psram,
