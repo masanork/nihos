@@ -44,3 +44,7 @@ python tools/capture-native-usb.py PORT OUTPUT build/native-device/image-audit.j
 このキャプチャは固定イメージ、排他的シリアル、前後のFlash照合、
 既存ネイティブ検証、表示IRQとタッチのログを同じ接続で確認する。
 最終照合後に再起動するため、確認後も同じタッチ試験が動く。
+
+[2026-10-27の実機記録](measurements/2026-10-27-native-touch-feedback.md)では、
+4象限すべてと4回の明示的な離指を受信し、ユーザーが色の可視表示を確認した。
+推定離指は使われていない。全画面PIN表示と認証読取は別の段階である。
