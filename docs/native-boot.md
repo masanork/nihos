@@ -367,3 +367,20 @@ retry/recovery. An optional first argument selects the uniform per-class quota
 SQLite is not linked into native images. Native library placement/C runtime,
 service ownership, bounded RPC, VFS fault tests and physical validation remain
 separate gates. See the [measurement](measurements/2026-10-26-native-c-allocator.md).
+
+The subsequent [configured quota](adr/0038-configured-size-class-quotas.md) and
+[C identity](adr/0039-runtime-c-task-identity.md) stages add an experimental
+64 KiB SQLite profile and a runtime-scoped owner stamp. Profile 1 now uses
+`24,12,16,12,64,4,8,12,8,1` cells for the ten classes; its requested parent is
+50,640 bytes. It is a bounded fixture policy, not a production SQL budget.
+`nih_task_identity()` includes hart, slot and generation and returns zero for
+unavailable/inactive or interrupt-disabled contexts.
+
+The [single-owner session prototype](adr/0040-bounded-single-owner-sqlite-session.md)
+adds a host-qualified entry guard, finite scalar queries, progress budget and
+atomic token cancellation. Its 321-point OOM/retry sweep and a real pthread
+cancel test run through `tools/run-sqlite-memory-probe.sh`, alongside the original
+308-point sweep. A normal build without injection hooks is also exercised.
+Native images contain no SQLite; firmware still exercises only the C allocator
+and identity boundary. [Aggregate measurements](measurements/2026-10-26-sqlite-owner-session.md)
+separate host, emulator and unperformed physical qualification.

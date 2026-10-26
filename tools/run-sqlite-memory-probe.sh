@@ -34,6 +34,16 @@ sh tools/run-c-allocator-probe.sh
     "$out_dir/sqlite-amalgamation-3540100/sqlite3.c" -o "$out_dir/sqlite3.o"
 "$zig" cc -O2 -g -std=c11 -Wall -Wextra -Wconversion -Werror \
     -I include -I "$out_dir/sqlite-amalgamation-3540100" \
-    probes/sqlite/memory_probe.c "$out_dir/sqlite3.o" \
+    probes/sqlite/memory_probe.c probes/sqlite/noio_vfs.c "$out_dir/sqlite3.o" \
     build/c-allocator/allocator.o -o "$out_dir/memory-probe"
 "$out_dir/memory-probe" "${1:-64}"
+"$zig" cc -O2 -g -pthread -std=c11 -Wall -Wextra -Wconversion -Werror \
+    -DNIH_SQLITE_TESTING -I include -I "$out_dir/sqlite-amalgamation-3540100" \
+    src/services/sqlite_session.c probes/sqlite/session_probe.c probes/sqlite/noio_vfs.c \
+    "$out_dir/sqlite3.o" build/c-allocator/allocator.o -o "$out_dir/session-probe"
+"$out_dir/session-probe"
+"$zig" cc -O2 -g -pthread -std=c11 -Wall -Wextra -Wconversion -Werror \
+    -I include -I "$out_dir/sqlite-amalgamation-3540100" \
+    src/services/sqlite_session.c probes/sqlite/production_probe.c probes/sqlite/noio_vfs.c \
+    "$out_dir/sqlite3.o" build/c-allocator/allocator.o -o "$out_dir/session-normal-probe"
+"$out_dir/session-normal-probe"
