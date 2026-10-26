@@ -490,7 +490,7 @@ fn photoReady(service: *card.Service, output: []u8) !void {
     _ = try reply(service, &.{ 0x90, 0 });
     _ = try reply(service, input.fixture ++ "\x90\x00");
     _ = try reply(service, &.{ 0x90, 0 });
-    _ = try reply(service, "\x01\x0c123456789018\x90\x00");
+    _ = try reply(service, "\xff\x10\x0c123456789018\xff\xff\x90\x00");
     _ = try reply(service, &.{ 0x90, 0 });
     _ = try reply(service, &.{ 0x90, 0 });
 }
@@ -557,5 +557,35 @@ test "surface probe uses no credentials and uncertain photo VERIFY erases all bo
         try zero(&service.number);
         try zero(&service.command);
         try zero(&buffer);
+    }
+}
+
+test "photo parsing failure preserves only validated attributes after proved cleanup" {
+    for (0..3) |ending| {
+        var buffer: [32768]u8 = undefined;
+        var service = card.Service{};
+        try photoReady(&service, &buffer);
+        _ = try reply(&service, &.{ 0x63, 0xc3 });
+        _ = try reply(&service, &.{ 0x63, 0xc3 });
+        _ = try reply(&service, &.{ 0x90, 0 });
+        _ = try reply(&service, &.{ 0x90, 0 });
+        _ = try reply(&service, "invalid-photo\x90\x00");
+        try testing.expectEqual(card.State.read_photo, service.fault_state);
+        try testing.expect(service.attributesResult() == null);
+        try zero(&buffer);
+        if (ending == 0) _ = try reply(&service, &.{}) else if (ending == 1) {
+            const action = (try service.take()).?;
+            try service.failed(action.token);
+        } else service.disconnected();
+        try testing.expect(service.result() == null and service.portrait() == null);
+        if (ending == 0) {
+            try testing.expectEqualStrings("Test", service.attributesResult().?.name);
+            service.cancel();
+            try testing.expect(service.attributesResult() == null);
+        } else {
+            try testing.expect(service.attributesResult() == null);
+        }
+        try service.dismiss();
+        try zero(&service.attributes);
     }
 }

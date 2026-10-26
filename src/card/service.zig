@@ -14,6 +14,8 @@ pub const Service = struct {
     state: State = .idle,
     fault: Fault = .none,
     cleanup_failed: bool = false,
+    fault_state: State = .idle,
+    attributes_ready: bool = false,
     remaining: ?u8 = null,
     last_sw: u16 = 0,
     session: u32 = 0,
@@ -81,21 +83,26 @@ pub const Service = struct {
         @memcpy(&self.pending_pin, pin);
         self.state = .confirm_retries;
     }
-    fn stop(self: *Service, fault: Fault) void {
+    noinline fn stop(self: *Service, fault: Fault) void {
         self.fault = fault;
+        self.fault_state = self.state;
         if (fault == .pin_outcome_unknown) {
             self.remaining = null;
             self.surface_remaining = null;
         }
         wipe(&self.pending_pin);
-        wipe(&self.attributes);
+        if (self.photo_buffer == null or !self.attributes_ready or fault == .cancelled) {
+            wipe(&self.attributes);
+            self.length = 0;
+            self.attributes_ready = false;
+        }
         self.wipePhoto();
-        self.length = 0;
         self.state = .power_off;
     }
     /// If DMA is in flight, its borrowed command stays valid until completion.
     /// Cancellation cannot promise to retract an already dispatched VERIFY.
     pub fn cancel(self: *Service) void {
+        self.attributes_ready = false;
         if (self.state == .idle or self.state == .done) {
             wipe(&self.attributes);
             self.wipePhoto();
@@ -115,6 +122,8 @@ pub const Service = struct {
     }
     /// Transport must first halt DMA / release the Action on disconnect.
     pub fn disconnected(self: *Service) void {
+        self.attributes_ready = false;
+        self.fault_state = self.state;
         wipe(&self.command);
         wipe(&self.pending_pin);
         wipe(&self.attributes);
@@ -169,10 +178,11 @@ pub const Service = struct {
     }
     /// Call only after the transport has stopped accessing command bytes.
     /// Failure after VERIFY dispatch is terminal and explicitly uncertain.
-    pub fn failed(self: *Service, token: u32) Error!void {
+    pub noinline fn failed(self: *Service, token: u32) Error!void {
         try self.release(token);
         if (self.state == .power_off) {
             self.cleanup_failed = true;
+            self.attributes_ready = false;
             wipe(&self.attributes);
             self.wipePhoto();
             self.length = 0;
@@ -235,6 +245,7 @@ pub const Service = struct {
                 self.length += body.len;
                 if (sw != 0x9000 or body.len < 256) {
                     _ = input.parse(self.attributes[0..self.length]) catch return self.stop(.malformed);
+                    self.attributes_ready = true;
                     self.state = if (self.photo_buffer != null) .select_number else .power_off;
                 }
             },
@@ -349,7 +360,13 @@ pub const Service = struct {
         } else self.fault = .pin_outcome_unknown;
     }
     pub fn result(self: *const Service) ?input.Attributes {
-        if (self.state != .done or self.fault != .none or self.cleanup_failed) return null;
+        if (self.fault != .none) return null;
+        return self.attributesResult();
+    }
+    /// Independently validated four fields survive a later photo-AP failure,
+    /// but never failed cleanup, disconnect, cancellation or an incomplete read.
+    pub fn attributesResult(self: *const Service) ?input.Attributes {
+        if (self.state != .done or !self.attributes_ready or self.cleanup_failed) return null;
         return input.parse(self.attributes[0..self.length]) catch null;
     }
     pub fn portrait(self: *const Service) ?[]const u8 {

@@ -672,6 +672,9 @@ const CardReadLog = struct {
         if (options.card_photo) logger.record("NIHOS_NATIVE_PHOTO_RESULT", null, .{ "photo_enabled", "surface_verifies", "photo_decoded", "photo_error" }, report);
         logger.record("NIHOS_NATIVE_CARD_READ_RESULT", null, .{ "status", "fault", "remaining_before", "remaining_after", "verifies", "cleanup", "vbus_off", "attributes", "preflight_cut" }, report);
     }
+    pub fn phase(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_READ_PHASE", null, .{ "failed_state", "card_sw", "timeout", "verifies", "surface_verifies" }, report);
+    }
     pub fn finish(_: CardReadLog, report: *const @import("card_read.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_OVERVIEW", null, .{ "shown", "truncated", "missing_glyphs", "photo_enabled", "photo_decoded" }, report);
         if (options.card_photo) logger.record("NIHOS_NATIVE_PHOTO_CLEANUP", null, .{ "decoded", "stack_used", "erased" }, &@import("photo_runtime.zig").report);

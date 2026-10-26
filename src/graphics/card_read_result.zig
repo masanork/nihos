@@ -1,4 +1,4 @@
-//! Ephemeral, paginated card results. No strings leave the device.
+//! Ephemeral card overview and legacy page renderer. No strings leave the device.
 const std = @import("std");
 const screen = @import("card_pin.zig");
 const input = @import("../card/input_support.zig");
@@ -131,7 +131,7 @@ pub inline fn overview(comptime section: ?[]const u8, frame: []u8, attributes: i
             frame[target] = pixels[source];
             frame[target + 1] = pixels[source + 1];
         };
-    } else _ = try canvas.wrapped(section, "顔写真なし", 480, 280, 16, 12, 2);
+    } else _ = try canvas.wrapped(section, "顔写真 未表示", 480, 280, 16, 12, 2);
     _ = try canvas.wrapped(section, if (report.truncated) "長い項目は省略しています" else "タップで閉じて消去", 24, 1120, 16, 42, 1);
     return report;
 }
@@ -149,10 +149,38 @@ pub inline fn preview(comptime section: ?[]const u8, frame: []u8, portrait: []co
     _ = try canvas.wrapped(section, "タップしてPIN入力へ", 24, 1120, 16, 42, 1);
 }
 pub fn message(comptime section: ?[]const u8, frame: []u8, success: bool) void {
+    endMessage(section, frame, if (success) .cleared else .cancelled);
+}
+pub const End = enum { cleared, cancelled, timeout, wrong_pin, blocked, last_attempt, counter_changed, transport, unknown, malformed, photo_failed, cleanup_failed };
+const EndLabels = struct {
+    const text = "読取結果を消去しました\x00" ++ "読み取りを中止しました\x00" ++
+        "待ち時間を過ぎたため中止しました\x00" ++ "暗証番号が一致しませんでした\x00" ++
+        "暗証番号がロックされています\x00" ++ "残り回数が少ないため中止しました\x00" ++
+        "残り回数が変わったため中止しました\x00" ++ "カードとの通信が途切れました\x00" ++
+        "暗証番号の送信結果を確認できません\x00" ++ "カードデータを解析できませんでした\x00" ++
+        "４情報を表示しました・顔写真は未表示\x00" ++ "後片付けを確認できませんでした\x00" ++
+        "再試行は自動では行いません\x00" ++ "再入力せず状態を確認してください\x00";
+    const placement = if (@import("builtin").os.tag == .freestanding) ".flash.rodata.card_pin" else if (@import("builtin").os.tag == .macos) "__TEXT,__const" else ".rodata";
+    const data: [text.len]u8 align(4) linksection(placement) = text.*;
+    inline fn get(index: usize) []const u8 {
+        const live: [*]const volatile u8 = @ptrCast(&data);
+        var offset: usize = 0;
+        for (0..index) |_| {
+            while (live[offset] != 0) : (offset += 1) {}
+            offset += 1;
+        }
+        var end = offset;
+        while (live[end] != 0) : (end += 1) {}
+        return data[offset..end];
+    }
+};
+pub inline fn endMessage(comptime section: ?[]const u8, frame: []u8, reason: End) void {
     for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
     const canvas = Canvas{ .frame = frame };
-    canvas.text(section, if (success) "読取結果を消去しました" else "読取を終了しました", 24, 300);
-    canvas.text(section, "再試行は自動では行いません", 24, 400);
+    const title = EndLabels.get(@backingInt(reason));
+    _ = canvas.wrapped(section, title, 24, 300, 24, 28, 2) catch return;
+    _ = canvas.wrapped(section, EndLabels.get(12), 24, 400, 24, 28, 2) catch return;
+    if (reason == .unknown) _ = canvas.wrapped(section, EndLabels.get(13), 24, 480, 24, 28, 2) catch return;
 }
 test "result pages retain UTF8 boundaries and show Japanese without leaving values in metadata" {
     const frame = try std.testing.allocator.alloc(u8, 720 * 1280 * 2);
