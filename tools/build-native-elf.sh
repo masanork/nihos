@@ -102,7 +102,7 @@ if [ "$broker" = true ]; then
     python3 "$repo_root/tools/generate_memory_profile.py" --check
     "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
         -fno-stack-check -fno-stack-protector -fno-unwind-tables \
-        --dep development_memory --dep task_calls --dep spsc_ring \
+        --dep development_memory --dep task_calls --dep spsc_ring --dep timer_group \
         -Mroot="$repo_root/src/platform/native/broker_runtime.zig" \
         -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
         -Mdevelopment_memory="$repo_root/src/kernel/development_memory.zig" \
@@ -112,6 +112,8 @@ if [ "$broker" = true ]; then
         -Mtask_control="$repo_root/src/kernel/task_control.zig" \
         -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
         -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
+        -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+        -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
         -femit-bin="$build_dir/sql_broker_runtime.o"
     set -- "$@" "$build_dir/sql_broker_runtime.o"
 fi

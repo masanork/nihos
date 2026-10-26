@@ -61,7 +61,7 @@ BROKER_FIELDS_V1 = ('status','old_api_denied','metadata','internal_bytes','inter
                  'requests','responses','rejected','exits','reaped','pin_waited','borrow_completed','stale_identity',
                  'stale_lease','guards','recovered','client_stack')
 BROKER_IO_FIELDS = ('forced_client','after_forced','forced_exit','io_issued','io_completed','io_bytes','io_crc',
-                    'expected_crc','pinned_after_kill','completion_after_exit','discarded_responses')
+                    'expected_crc','pinned_after_kill','completion_after_exit','discarded_responses','io_clock_acquired','io_clock_released')
 BROKER_FIELDS = BROKER_FIELDS_V1 + BROKER_IO_FIELDS
 
 
@@ -92,7 +92,7 @@ def check_broker(log, image, evidence):
         expected.update({'requests':16,'responses':15,'rejected':8,'exits':4,'reaped':4,'pin_waited':4,
                          'borrow_completed':4,'stale_identity':3,'stale_lease':2,'forced_exit':1,
                          'io_issued':1,'io_completed':1,'io_bytes':512,'io_crc':sd['crc0'],'expected_crc':sd['crc0'],
-                         'pinned_after_kill':1,'completion_after_exit':1,'discarded_responses':1})
+                         'pinned_after_kill':1,'completion_after_exit':1,'discarded_responses':1,'io_clock_acquired':1,'io_clock_released':1})
         ids = [record[key] for key in ('client','replacement','forced_client','after_forced')]
         if any(b & 65535 != a & 65535 or b >> 16 != (a >> 16) + 1 for a,b in zip(ids, ids[1:])):
             raise ValueError('broker forced exit generation/rebind mismatch')

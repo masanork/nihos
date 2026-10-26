@@ -38,6 +38,8 @@ pub const Report = extern struct {
     pinned_after_kill: u32 = 0,
     completion_after_exit: u32 = 0,
     discarded_responses: u32 = 0,
+    io_clock_acquired: u32 = 0,
+    io_clock_released: u32 = 0,
 };
 extern fn nih_broker_peer_quiet() callconv(.c) void;
 extern fn nih_broker_ready() callconv(.c) u32;
