@@ -9,6 +9,27 @@ import sys
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
+USB_FIELDS = ("status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped")
+
+
+def check_usb(log):
+    if log.count("NIHOS_NATIVE_USB_MODE enabled=1") != 1:
+        raise ValueError("missing/duplicate native USB mode")
+    record = fixed_record(log, "NIHOS_NATIVE_USB", USB_FIELDS)
+    if (record['status'] != 1 or record['stage'] != 8 or record['error_code'] != 0 or
+            record['core_id'] not in (0x4f54400a, 0x4f54430a) or
+            record['port'] & 0x15 != 5 or record['speed'] not in (0, 1) or
+            not 0 < record['vid'] <= 0xffff or not 0 < record['pid'] <= 0xffff or
+            not 9 <= record['config_bytes'] <= 512 or not 0 < record['interfaces'] <= 255 or
+            record['ccid'] != 1 or not 0x81 <= record['bulk_in'] <= 0x8f or
+            not 1 <= record['bulk_out'] <= 15 or
+            record['interrupt_in'] not in (0, *range(0x81, 0x90)) or
+            not 10 <= record['max_message'] <= 4096 or record['transfers'] != 22 or
+            record['slot_queries'] != 3 or record['card_state'] not in (0, 1, 2) or
+            record['last_irq'] & 3 != 3 or record['last_irq'] & 0x190c != 0 or
+            record['last_descriptor'] & 0xb0000000 != 0 or record['dma_stopped'] != 1):
+        raise ValueError("incomplete native USB/CCID qualification")
+    return record
 
 
 def check_storage(record, sectors):
@@ -41,7 +62,8 @@ def fixed_record(log, marker, names):
 
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
-          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False):
+          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
+          require_usb=False):
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     profile = image.get("memory", {}).get("profile") if image is not None else None
@@ -499,7 +521,13 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             raise ValueError('incomplete littlefs stack qualification')
     elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
         raise ValueError('orphan storage stack record')
+    usb = None
+    if require_usb or 'NIHOS_NATIVE_USB ' in log or 'NIHOS_NATIVE_USB_MODE' in log:
+        if evidence != 'physical-device':
+            raise ValueError('native USB requires physical-device evidence')
+        usb = check_usb(log)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
+            "usb": usb,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
@@ -527,18 +555,19 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
 
 def main():
     if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|comma-separated requirements]")
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|usb|comma-separated requirements]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
         image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
         extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
-        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage"}:
+        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage", "usb"}:
             raise ValueError("invalid required extra evidence")
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
                        PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
-                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra, "storage" in extra)
+                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra, "storage" in extra,
+                       "usb" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
