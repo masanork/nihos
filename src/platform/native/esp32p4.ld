@@ -55,10 +55,12 @@ SECTIONS
         *sql_lfs_util.o(.text .text.*)
         *sql_lfs_reader.o(.text .text.*)
         *sql_storage_api.o(.text .text.*)
-        . = ALIGN(16);
+        *sql_storage_runtime.o(.text .text.*)
+        *(.flash.text.storage)
+        . = ALIGN(128);
         __flash_sql_text_end = .;
     } > flash_sql
-    .flash.sqlrodata : ALIGN(16) {
+    .flash.sqlrodata : ALIGN(128) {
         __flash_sql_rodata_start = .;
         *sql_sqlite3.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_session.o(.rodata .rodata.* .srodata .srodata.*)
@@ -67,6 +69,7 @@ SECTIONS
         *sql_lfs_util.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_reader.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_storage_api.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_storage_runtime.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
 #endif

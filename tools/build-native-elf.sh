@@ -53,12 +53,22 @@ if [ "$storage" = true ] && { [ "$sdmmc" != true ] || [ "$sqlite" != true ]; }; 
     echo "Storage probe requires SDMMC=1 and sqlite mode (shared audited Flash span)" >&2
     exit 1
 fi
+storage_service=${NIHOS_NATIVE_STORAGE_SERVICE:-0}
+case "$storage_service" in
+    0) storage_service=false ;;
+    1) storage_service=true ;;
+    *) echo "NIHOS_NATIVE_STORAGE_SERVICE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$storage_service" = true ] && { [ "$storage" != true ] || [ "$sdmmc_profile" != 2 ]; }; then
+    echo "Storage service requires STORAGE=1, SDMMC=1, profile=2 and sqlite mode" >&2
+    exit 1
+fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -140,6 +150,24 @@ if [ "$sqlite" = true ]; then
                 "$source" -o "$build_dir/sql_$name.o"
             set -- "$@" "$build_dir/sql_$name.o"
         done
+        if [ "$storage_service" = true ]; then
+            "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
+                -fno-stack-check -fno-stack-protector -fno-unwind-tables \
+                --dep task_calls --dep timer_group --dep storage_rpc --dep spsc_ring \
+                -Mroot="$repo_root/src/platform/native/storage_runtime.zig" \
+                -target riscv32-freestanding-none -mcpu="$cpu" -O safe --dep task_control \
+                -Mtask_calls="$repo_root/src/arch/riscv32/task_calls.zig" \
+                -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+                -Mtask_control="$repo_root/src/kernel/task_control.zig" \
+                -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+                -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
+                -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+                -Mstorage_rpc="$repo_root/src/kernel/storage_rpc.zig" \
+                -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+                -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
+                -femit-bin="$build_dir/sql_storage_runtime.o"
+            set -- "$@" "$build_dir/sql_storage_runtime.o"
+        fi
         python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir" "$littlefs_source"
     else
         python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir"
@@ -153,7 +181,9 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mstorage_rpc="$repo_root/src/kernel/storage_rpc.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mblock_reader="$repo_root/src/storage/block.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

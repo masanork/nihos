@@ -5,6 +5,7 @@
 
 pub const version = "0.0.0";
 pub const block_reader = @import("storage/block.zig");
+pub const storage_rpc = @import("kernel/storage_rpc.zig");
 pub const record_log = @import("diagnostics/record.zig");
 pub const native_stack_layout = @import("platform/native/stack_layout.zig");
 pub const riscv32_context = @import("arch/riscv32/context.zig");
@@ -33,6 +34,8 @@ pub const platform_abi = @import("platform/abi.zig");
 
 test {
     _ = block_reader;
+    _ = storage_rpc;
+    _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;
     _ = native_stack_layout;
     _ = riscv32_context;

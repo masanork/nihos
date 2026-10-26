@@ -2,7 +2,8 @@
 //! Each hart mutates only its own Owner on its private IRQ stack with MIE=0.
 pub const context = @import("context.zig");
 const runtime_module = @import("task_runtime.zig");
-const calls = @import("task_calls.zig");
+pub const calls = @import("task_calls.zig");
+const options = @import("native_options");
 const control = @import("task_control");
 const scheduler = @import("scheduler");
 const tick_clock = @import("tick_clock");
@@ -16,10 +17,16 @@ const stack_bytes = 4096;
 pub const period_us = 10_000;
 const initial_state = context.ReturnState{ .mstatus = 0x1880, .mcause = 0 };
 extern fn nih_native_task_trampoline() callconv(.c) void;
+extern fn nih_storage_task_entry(u32) callconv(.c) i32;
+extern fn nih_storage_register(u32, u32, u32, u32) callconv(.c) void;
+extern fn nih_storage_pending(u32) callconv(.c) u32;
+extern fn nih_storage_task_exited(u32, u32) callconv(.c) void;
+extern fn nih_storage_cleanup_ready() callconv(.c) u32;
+extern fn nih_storage_retired(u32) callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
-const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete };
-const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol };
+const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete };
+const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol };
 
 const Owner = struct {
     runtime: Runtime = .{},
@@ -191,8 +198,9 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
             .initial_lifecycle, .replacement_lifecycle => if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
             .ipi_protocol => if (floating.enabled) @intFromPtr(&floatingProtocol) else @intFromPtr(&ipi.run),
             .forced_lifecycle => @intFromPtr(&forced),
+            .storage_protocol => if (options.storage_service) @intFromPtr(&nih_storage_task_entry) else 0,
         },
-        .argument = if (kind == .ipi_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
+        .argument = if (kind == .ipi_protocol or kind == .storage_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
         .trampoline = @intFromPtr(&nih_native_task_trampoline),
         .global_pointer = owner.gp,
     });
@@ -203,7 +211,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
         .stack_max = bottom + stack_bytes,
     }) orelse return null;
     if (!memory.reusable.openTask(hart, .{ .slot = handle.slot, .generation = handle.generation })) return null;
-    const bank = if (kind == .forced_lifecycle) 0 else floating.prepare(hart, index, handle.generation, handle.slot);
+    const bank = if (kind == .forced_lifecycle or kind == .storage_protocol) 0 else floating.prepare(hart, index, handle.generation, handle.slot);
     owner.runtime.images[handle.slot].?.floating_context = bank;
     if (bank != 0) owner.runtime.images[handle.slot].?.state = initial_state.floatingReady();
     return handle;
@@ -230,6 +238,17 @@ pub fn ready(hart: u32) bool {
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {
     const owner = &owners[hart];
+    if (options.storage_service and owner.phase == .storage_service) {
+        const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
+        if (completion.state != .exited) return true;
+        if (completion.exit_code != 300 + hart) return false;
+        if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle)) or nih_storage_cleanup_ready() != 1) return true;
+        owner.completed_runtime_ticks += completion.runtime_ticks;
+        if (!owner.runtime.reap(owner.lifecycle)) return false;
+        owner.phase = .storage_complete;
+        nih_storage_retired(hart);
+        return true;
+    }
     if (owner.phase != .initial_lifecycle and owner.phase != .replacement_lifecycle and owner.phase != .forced_lifecycle)
         return maintainProtocol(hart, device);
     const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
@@ -323,7 +342,7 @@ fn refresh(hart: u32, device: timer_group.Timer) bool {
 }
 
 fn alarmsDisarmed(owner: *const Owner) bool {
-    return owner.phase == .ipi_protocol or owner.phase == .complete;
+    return owner.phase == .ipi_protocol or owner.phase == .complete or owner.phase == .storage_service or owner.phase == .storage_complete;
 }
 
 /// Only called from the permanent interrupt dispatcher, never a task stack.
@@ -352,6 +371,8 @@ pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnSt
     // kind. It only marks the internal ledger; bootstrap performs the frees.
     if ((owner.runtime.policy.snapshot(current) orelse return null).state == .exited and
         !memory.reusable.closeTask(hart, key(current))) return null;
+    if (options.storage_service and owner.phase == .storage_service and (owner.runtime.policy.snapshot(current) orelse return null).state == .exited)
+        nih_storage_task_exited(hart, control.encodeHandle(current));
     if (!maintain(hart, device)) return null;
     return publish(hart, if (alarmsDisarmed(owner)) owner.runtime.select() orelse return null else selected);
 }
@@ -361,7 +382,11 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
     if (!alarmsDisarmed(owner) or !guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .ipi, frame.mepc);
-    ipi.drain(hart, &owner.runtime.policy, current.slot == owner.bootstrap.slot);
+    if (options.storage_service and (owner.phase == .storage_service or owner.phase == .storage_complete)) {
+        ipi.bell(hart).acknowledge();
+        if (nih_storage_pending(hart) != 0) _ = owner.runtime.policy.notify(owner.lifecycle, 1);
+        if (!maintain(hart, device)) return null;
+    } else ipi.drain(hart, &owner.runtime.policy, current.slot == owner.bootstrap.slot);
     return publish(hart, owner.runtime.select() orelse return null);
 }
 
@@ -398,4 +423,22 @@ pub fn service(hart: u32) bool {
         if (calls.yieldNow() != 0) nih_native_task_failed();
     }
     return cleaned != .none or terminated;
+}
+
+/// Reuses the retired lifecycle stack after both ordinary IPI protocols end.
+/// One new file owner/client task per hart; no task stack is reused while live.
+pub fn startStorage(hart: u32) bool {
+    if (!options.storage_service) return false;
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const owner = &owners[hart];
+    if (owner.phase != .complete) return false;
+    owner.lifecycle = add(hart, 2, .storage_protocol) orelse return false;
+    owner.phase = .storage_service;
+    const bottom = @intFromPtr(&stacks[hart][2]);
+    nih_storage_register(hart, control.encodeHandle(owner.lifecycle), bottom + 16, bottom + stack_bytes);
+    return true;
 }
