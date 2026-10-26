@@ -45,6 +45,7 @@ static uint32_t prime_depth;
 static uint32_t source_address;
 static bool pattern_active;
 #define DMA_ERRORS 0x07ffffe0u
+#include "keypad_sparse.h"
 
 /* PIN-free touch experiment. Only the fixed SRAM background is changed;
  * descriptors and the logo source remain owned by the existing scanout. */
@@ -137,7 +138,7 @@ uint32_t nih_display_diagnostic(uint32_t field) {
         case 10: return source_address;
         case 11: return DW_GDMA.ch[0].sar0.sar0;
         case 12: return descriptor.ctrl_lo.val;
-        case 13: return (uint32_t)solid_word;
+        case 13: return ui_enabled ? (uint32_t)ui_palette[0] : (uint32_t)solid_word;
         case 14: return node_count;
         default: return 0; }
 }
@@ -161,6 +162,7 @@ bool nih_display_scene_refresh(uint32_t address) {
 }
 
 static bool restart_dma(void) {
+    if (ui_enabled) ui_activate();
 #if NIH_NATIVE_DISPLAY_TILE && NIH_NATIVE_DISPLAY_SCENE
     if (scene_enabled && scene_active != scene_pending) {
         scene_active = scene_pending;
@@ -169,8 +171,12 @@ static bool restart_dma(void) {
     }
 #endif
     for (uint32_t i = 0; i < node_count; ++i)
-        dw_gdma_ll_lli_set_block_markers(&active_nodes[i], false, i + 1 == node_count, true);
-    if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
+        dw_gdma_ll_lli_set_block_markers(ui_enabled ? ui_node(i) : &active_nodes[i], false, i + 1 == node_count, true);
+    if (ui_enabled) {
+        uint32_t first = node_count < ui_split ? node_count : ui_split;
+        if (nih_rom_cache_writeback(1u << 4, ui_local, first * 64)) return false;
+        if (node_count > first && nih_rom_cache_writeback(1u << 4, ui.peer_start, (node_count - first) * 64)) return false;
+    } else if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
     __asm__ volatile("fence iorw,iorw" ::: "memory");
     dw_gdma_ll_channel_set_link_list_master_port(&DW_GDMA, 0, DW_GDMA_LL_MASTER_PORT_MEMORY);
     dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, (uint32_t)(uintptr_t)active_nodes);
@@ -228,6 +234,10 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uin
     dw_gdma_ll_lli_set_trans_block_size(&descriptor, 720 * 1280 * 2 / 8);
     dw_gdma_ll_lli_set_link_list_master_port(&descriptor, DW_GDMA_LL_MASTER_PORT_MEMORY);
     dw_gdma_ll_lli_set_next_item_addr(&descriptor, 0);
+    if (sram_solid == 4) {
+        const int32_t result = ui_build(lease, lease_bytes);
+        if (result) return result;
+    }
 #if NIH_NATIVE_DISPLAY_TILE
     if (sram_solid >= 2) {
         const bool scene = NIH_NATIVE_DISPLAY_SCENE && sram_solid == 3;

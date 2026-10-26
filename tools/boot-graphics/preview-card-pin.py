@@ -14,20 +14,28 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=ROOT / "build/card-pin")
+    parser.add_argument("--demo", action="store_true", help="preview the native count-only keypad demonstration")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     library = args.out.resolve() / ("preview.dylib" if sys.platform == "darwin" else "preview.so")
     subprocess.run([str(ROOT / ".tools/zig-0.17.0/zig"), "build-lib", "-dynamic", "-OReleaseSafe",
                     str(ROOT / "src/card_pin_preview.zig"), f"-femit-bin={library}"], check=True)
-    paint = ctypes.CDLL(str(library)).nih_card_pin_preview
+    loaded = ctypes.CDLL(str(library))
+    paint = loaded.nih_keypad_demo_preview if args.demo else loaded.nih_card_pin_preview
     paint.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, ctypes.c_ubyte, ctypes.c_bool]
     paint.restype = ctypes.c_bool
     pixels = (ctypes.c_ubyte * (720 * 1280 * 2))()
+    plan = loaded.nih_keypad_demo_plan
+    plan.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t]
+    plan.restype = ctypes.c_size_t
     images = []
     for index in range(6):
         active = index < 5
         count = index if active else 0
         assert paint(pixels, len(pixels), count, active)
+        if args.demo and index == 0:
+            nodes = plan(pixels, len(pixels))
+            print(f"sparse plan: {nodes} descriptors, {nodes * 64} SRAM bytes")
         image = Image.frombytes("RGB", (720, 1280), bytes(pixels), "raw", "BGR;16")
         path = args.out / f"{'pin-' + str(count) if active else 'disabled'}.png"
         image.save(path)

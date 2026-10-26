@@ -36,18 +36,54 @@ pub fn hit(x: u16, y: u16) ?Key {
     for (std.enums.values(Key)) |key| if (bounds(key).contains(x, y)) return key;
     return null;
 }
+/// Full-width rows used by the sparse native keypad demonstration.
+pub fn demoBounds(key: Key) Rect {
+    var rect = bounds(key);
+    if (key == .submit) {
+        rect.x = 0;
+        rect.width = 720;
+    } else {
+        rect.x = (rect.x - 84) / 192 * 240;
+        rect.width = 240;
+    }
+    return rect;
+}
+pub fn demoHit(x: u16, y: u16) ?Key {
+    for (std.enums.values(Key)) |key| if (demoBounds(key).contains(x, y)) return key;
+    return null;
+}
+pub const Contact = struct {
+    held: bool = false,
+    armed: ?Key = null,
+    pub fn disarm(self: *Contact) void {
+        self.armed = null;
+    }
+    pub fn sample(self: *Contact, enabled: bool, contacts: u8, x: u16, y: u16, comptime locate: fn (u16, u16) ?Key) ?Key {
+        if (contacts == 0) {
+            const selected = if (self.held and enabled) self.armed else null;
+            self.held = false;
+            self.armed = null;
+            return selected;
+        }
+        const selected = if (contacts == 1 and enabled) locate(x, y) else null;
+        if (!self.held) {
+            self.held = true;
+            self.armed = selected;
+        } else if (self.armed != selected) self.armed = null;
+        return null;
+    }
+};
 pub const View = struct { active: bool, masked_digits: u8, remaining: ?u8, can_submit: bool };
 pub const Entry = struct {
     session: ?u32 = null,
     pin: [4]u8 = @splat(0),
     length: u8 = 0,
-    held: bool = false,
-    armed: ?Key = null,
+    contact: Contact = .{},
 
     pub fn clear(self: *Entry) void {
         std.crypto.secureZero(u8, &self.pin);
         self.length = 0;
-        self.armed = null;
+        self.contact.disarm();
         // held remains latched until release: a new screen must not consume
         // a contact which began on the previous screen.
     }
@@ -101,18 +137,6 @@ pub const Entry = struct {
     /// Multiple contacts, movement off a key, and screen changes disarm it.
     pub fn touch(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16) void {
         self.sync(service);
-        if (contacts == 0) {
-            const key = self.armed;
-            const was_held = self.held;
-            self.held = false;
-            self.armed = null;
-            if (was_held and self.session != null) if (key) |selected| self.activate(service, selected);
-            return;
-        }
-        const selected = if (contacts == 1 and self.session != null) hit(x, y) else null;
-        if (!self.held) {
-            self.held = true;
-            self.armed = selected;
-        } else if (self.armed != selected) self.armed = null;
+        if (self.contact.sample(self.session != null, contacts, x, y, hit)) |key| self.activate(service, key);
     }
 };

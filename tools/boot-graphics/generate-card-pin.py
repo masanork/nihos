@@ -11,7 +11,9 @@ LABELS = [("title", "券面事項入力補助", 36), ("instruction", "入力補�
           ("privacy", "暗証番号は保存しません", 22), ("remaining", "残り", 24),
           ("times", "回", 24), ("unknown", "不明", 24),
           ("disabled", "入力は無効です", 24), ("cancel", "中止", 30),
-          ("erase", "消す", 30), ("submit", "読み取る", 34)]
+          ("erase", "消す", 30), ("submit", "読み取る", 34),
+          ("demo_title", "テンキー操作の確認", 36), ("demo_instruction", "任意の数字を4つ押してください", 24),
+          ("demo_privacy", "カードには送信しません", 22), ("demo_hint", "削除・中止も確認できます", 22), ("demo_submit", "確認", 34)]
 
 
 def main():

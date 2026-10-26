@@ -4,3 +4,6 @@ pub const Owner = @import("card/ccid_owner.zig").Owner;
 pub const Entry = @import("card/pin_entry.zig").Entry;
 pub const Touch = @import("board/tab5/touch.zig");
 pub const TouchFeedback = @import("board/tab5/touch_feedback.zig");
+pub const KeypadDemo = @import("card/keypad_demo.zig");
+pub const PinScreen = @import("graphics/card_pin.zig");
+pub const KeypadPlan = @import("graphics/keypad_plan.zig");

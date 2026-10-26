@@ -24,10 +24,11 @@ def main():
     parser.add_argument("--jpki", action="store_true", help="require PIN-free JPKI serial and unchanged retries")
     parser.add_argument("--card", action="store_true", help="require PIN-free Input Support and touch readiness")
     parser.add_argument("--touch", action="store_true", help="require native display and four-quadrant touch feedback, with no USB card operations")
+    parser.add_argument("--keypad", action="store_true", help="require count-only keypad erase/cancel/confirm and rendered states, without card communication")
     parser.add_argument("--install", type=Path, help="explicitly install a native build directory before qualification")
     args = parser.parse_args()
-    if sum((args.card, args.jpki, args.touch)) > 1:
-        parser.error("--card, --jpki and --touch are separate qualification modes")
+    if sum((args.card, args.jpki, args.touch, args.keypad)) > 1:
+        parser.error("--card, --jpki, --touch and --keypad are separate qualification modes")
     if not 1 <= args.runs <= 10:
         parser.error("runs must be 1..10")
     args.output.mkdir(parents=True, exist_ok=True)
@@ -58,17 +59,18 @@ def main():
                 console.dtr = False
                 console.reset_input_buffer()
                 HardReset(console, uses_usb=True)()
-                deadline = time.monotonic() + (160 if args.touch else 45)
+                deadline = time.monotonic() + (180 if args.keypad else 160 if args.touch else 45)
                 while time.monotonic() < deadline:
                     chunk = console.read(max(1, console.in_waiting))
                     if chunk:
                         raw.extend(chunk)
                         output.write(chunk)
                         output.flush()
-                    if args.touch and not announced_touch and b"NIHOS_NATIVE_TOUCH_START " in raw:
-                        print("Touch input active: tap the four quadrants and lift your finger; no PIN input", flush=True)
+                    start_marker = b"NIHOS_NATIVE_KEYPAD_START " if args.keypad else b"NIHOS_NATIVE_TOUCH_START "
+                    if (args.touch or args.keypad) and not announced_touch and start_marker in raw:
+                        print("Keypad demonstration active; no card/PIN transmission" if args.keypad else "Touch input active: tap the four quadrants and lift your finger; no PIN input", flush=True)
                         announced_touch = True
-                    marker = b"NIHOS_NATIVE_TOUCH_CHECK " if args.touch else b"NIHOS_NATIVE_CARD_CHECK " if args.card else b"NIHOS_NATIVE_FP_PASS"
+                    marker = b"NIHOS_NATIVE_KEYPAD_CHECK " if args.keypad else b"NIHOS_NATIVE_TOUCH_CHECK " if args.touch else b"NIHOS_NATIVE_CARD_CHECK " if args.card else b"NIHOS_NATIVE_FP_PASS"
                     if (marker in raw or b"NIHOS_NATIVE_FAIL" in raw) and completed is None:
                         completed = time.monotonic()
                     if completed is not None and time.monotonic() - completed >= 1:
@@ -80,7 +82,8 @@ def main():
                 log_path.write_bytes(raw)
                 raise SystemExit("Missing ROM boot banner; inspect " + str(raw_path))
             log_path.write_bytes(raw[start:])
-            command = ([sys.executable, str(checker.with_name("check-native-touch-log.py")), str(log_path), str(args.image_audit), str(report_path)] if args.touch else
+            command = ([sys.executable, str(checker.with_name("check-native-keypad-log.py")), str(log_path), str(args.image_audit), str(report_path)] if args.keypad else
+                       [sys.executable, str(checker.with_name("check-native-touch-log.py")), str(log_path), str(args.image_audit), str(report_path)] if args.touch else
                        [sys.executable, str(checker), str(log_path), str(report_path), "integer", "32M", str(args.image_audit), "physical-device", "usb,card" if args.card else "usb,jpki" if args.jpki else "usb"])
             checked = subprocess.run(command)
             if checked.returncode:
@@ -92,7 +95,7 @@ def main():
         if failures:
             raise SystemExit(f"Qualification failed on boots {failures}; evidence retained, no completion marker")
         completion.write_text(json.dumps({
-            "runs": args.runs, "jpki": args.jpki, "card": args.card, "touch": args.touch, "exclusive_descriptor_held": True,
+            "runs": args.runs, "jpki": args.jpki, "card": args.card, "touch": args.touch, "keypad": args.keypad, "exclusive_descriptor_held": True,
             "installed": bool(installation), "postverify": bool(installation),
         }, indent=2) + "\n")
         print("Qualification complete; releasing serial lease", flush=True)

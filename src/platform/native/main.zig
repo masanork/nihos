@@ -153,7 +153,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
             logger.record("NIHOS_NATIVE_DISPLAY_IRQ_FAIL", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
             fail("display refresh");
         }
-        if (observed.frames >= 32 and !display_refresh_reported and !options.touch_check) {
+        if (observed.frames >= 32 and !display_refresh_reported and !options.touch_check and !options.keypad_demo) {
             display_refresh_reported = true;
             logger.record("NIHOS_NATIVE_DISPLAY_IRQ_PASS", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
         }
@@ -314,6 +314,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
+            if (options.keypad_demo) @import("keypad_lease.zig").publishPeer();
             while (true) asm volatile ("wfi");
         }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
@@ -554,8 +555,10 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
                     logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
                     logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
+                    if (options.keypad_demo) logger.record("NIHOS_NATIVE_KEYPAD_LEASE", null, .{ "peer_start", "peer_bytes", "pixel_bytes" }, &screen);
                     if (screen.status != 1) fail("display scanout startup");
                     if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
+                    if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                 }
                 while (true) asm volatile ("wfi");
             }
@@ -578,6 +581,21 @@ const TouchLog = struct {
     }
     pub fn finish(_: TouchLog, report: *const @import("touch_probe.zig").Report) void {
         logger.record("NIHOS_NATIVE_TOUCH_CHECK", null, .{ "status", "pin_enabled", "width", "height", "slots", "samples", "contacts", "max_contacts", "quadrants", "explicit_releases", "inferred_releases", "updates", "errors", "vbus_off", "frames" }, report);
+    }
+};
+
+const KeypadLog = struct {
+    pub fn refresh(_: KeypadLog, report: *const @import("display_runtime.zig").Report) void {
+        TouchLog.refresh(.{}, report);
+    }
+    pub fn start(_: KeypadLog, report: *const @import("keypad_probe.zig").Report) void {
+        logger.record("NIHOS_NATIVE_KEYPAD_START", null, .{ "pin_enabled", "vbus_off" }, report);
+    }
+    pub fn event(_: KeypadLog, report: *const @import("keypad_probe.zig").Event) void {
+        logger.record("NIHOS_NATIVE_KEYPAD_EVENT", null, .{ "effect", "count" }, report);
+    }
+    pub fn finish(_: KeypadLog, report: *const @import("keypad_probe.zig").Report) void {
+        logger.record("NIHOS_NATIVE_KEYPAD_CHECK", null, .{ "status", "pin_enabled", "vbus_off", "samples", "increments", "erases", "cancels", "confirms", "full", "updates", "retries", "shown_mask", "errors", "frames" }, report);
     }
 };
 
