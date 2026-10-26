@@ -4,6 +4,18 @@
 P4はnihos、C6はESP-IDF上の通信ファームとし、まずESP-AT＋SDIOを使う。
 本体からWi-Fiで通信できることを目指し、PCは開発・測定時に使う。
 
+### 実機工程の修正
+
+通常のWi-Fi利用に外付けUSB–TTLは不要。内蔵C6の既存ESP-HostedへP4から
+内部SDIOで接続できる。ESP-ATへの置換条件を、AP接続・IP取得全般の必須条件と
+したのは誤りだった。次の実機工程は、既存C6を書き換えないSDIO/Hostedの識別・
+version queryから行う。factory HostedでAP/IPを確認する場合、DHCPはP4側で処理し、
+C6側TCP/IPオフロードの成功とは分けて記録する。最終的なC6オフロード方針は保持する。
+
+ESP-Hostedには内部transport経由のC6 OTAがあるため、外部UARTだけを更新手段と
+決めない。実際のC6版・RPC対応・partition適合を確認する。
+[調査記録](../measurements/2026-10-27-c6-wifi-preflight.md#内蔵接続と更新経路の再確認)参照。
+
 ## 現在の到達点
 
 - 実装済み：P4向け受信デコーダ、AT制御本体、型付きコマンド生成、分割TX、
@@ -57,11 +69,12 @@ noticeを確認する。この変更では上流ソースやバイナリをnihos
 ビルド成果物はignoredの`build/`に保存する。上流source/SDKも別checkoutとし、
 上流が適用するSDK修正を記録する。[検証記録](../measurements/2026-10-27-c6-at-controller-build.md)参照。
 
-## 書き込み前に成立させる復旧経路
+## C6を書き換える場合の復旧経路
 
 1. Tab5の識別、P4の実行中ファームとOTA slot、serial portの所有者を記録する。
-2. C6のdownload端子へアクセスできること、実際のchip/flash容量を確認する。
-   P4のUSB端子がC6の書き込み口として使えるとは仮定しない。
+2. 既存ESP-Hostedのversionと内部SDIO OTAの対応を調べ、実際のchip/flash、
+   partitionと候補imageの適合を確認する。download端子は直接書き込み・復旧用の
+   別経路であり、通常利用の前提ではない。P4 USBが直接C6 ROMへ繋がるとは仮定しない。
 3. C6の既存flashをNVSも含めて保存し、読み直したhashが一致することを確認する。
    復旧するimage・offset・tool/versionを記録する。backupには認証情報が含まれ得る
    ためgitへ入れない。公式工場ファームも復旧候補として確保する。

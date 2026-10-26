@@ -44,6 +44,14 @@ radio. Do not run it on the ESP-Hosted factory firmware: Ethernet/HCI/Hosted
 messages are a different protocol. The physical C6 download/recovery wiring
 and flash identity have not yet been confirmed in this work.
 
+These are prerequisites for this **AT-specific fixture**, not for normal Tab5
+Wi-Fi use. Stock C6 ESP-Hosted is accessible over internal SDIO without an
+external UART. Identify that peer before choosing an update path; ESP-Hosted
+also supports transport OTA on compatible firmware. The current AT image does
+not fit the 1.5 MiB OTA slots in the official reference factory image, so it
+cannot be sent as-is through that path. See the
+[revised preflight](../../docs/measurements/2026-10-27-c6-wifi-preflight.md#内蔵接続と更新経路の再確認).
+
 The bootloader must supply the clock tree assumed by the existing native
 backend. The probe sets up a private 1 MHz TG0 timer, disables watchdogs for
 this bounded fixture and does not enable IRQs or release CPU1. There is no

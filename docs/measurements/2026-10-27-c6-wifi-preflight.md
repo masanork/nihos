@@ -56,3 +56,41 @@ C6の専用download接続、実際のC6 chip/flash、既存image/NVSのbackup・
 次の実機工程はC6ポートの識別とbackup → matching AT firmware → P4既存layout/OTAを
 保存した試験イメージ起動 → `NIHOS_C6_WIFI_PASS ip=...`取得。C6は工場状態では
 ESP-Hostedのため、ATプローブだけをP4へ書き込んでも通信できない。
+
+## 内蔵接続と更新経路の再確認
+
+上記は**ESP-ATへ置換する試験**の準備であり、通常のWi-Fi利用に外部UARTが
+必要という意味ではない。ユーザーの指摘を受けて修正する。
+[Tab5公式pinmap](https://docs.m5stack.com/en/core/Tab5)はP4–C6間のSDIOと
+reset配線を示す。MeOSの現行`drivers/wifi/wifi_tab5.c`も、既存C6のESP-Hostedに
+SDIO/RPCで指示し、DHCPをP4で処理している。コードは参照のみでコピーしていない。
+
+[Espressifのtransport OTA例](https://github.com/espressif/esp-hosted-mcu/blob/v2.13.1/examples/host_performs_slave_ota/README.md)
+では、既存SDIO/SPI/UART transportを使い、追加配線なしでslaveを更新する。
+同tag `common/proto/esp_hosted_rpc.proto`にはOTABegin/Write/EndのRPCがある。
+これは搭載C6がそのRPCを実装している証拠ではないので、まずversionと既存protocolを
+内部SDIO経由で確認する。OTA Begin自体が消去を始めるため、対応調査目的で送らない。
+
+ローカルにあるM5Stack公式UserDemoの参照C6イメージ
+`ESP32C6-WiFi-SDIO-Interface-V1.4.1-96bea3a_0x0.bin`のpartition tableを
+ESP-IDF v5.4.4のparserで調べた。**実機からのreadbackではない**。
+参照image SHA-256:
+`1173bf86ab86c8dbd3f9863d10b15c2e46f57000b2b77c803e2b79bd0a3fa38e`。
+
+```text
+nvs       0x009000  16 KiB
+otadata   0x00d000   8 KiB
+phy_init  0x00f000   4 KiB
+ota_0     0x010000   1536 KiB
+ota_1     0x190000   1536 KiB
+```
+
+現在のESP-AT appは1,691,616 bytesで、この参照OTA slot（1,572,864 bytes）より
+118,752 bytes大きい。AT独自のNVS/partition構成も異なる。現在の候補をそのまま
+内部OTAへ流すことはできない。OTA移行には既存layout/NVSに適合する小型候補と
+復旧設計が必要。通常のAP接続試験をその移行完了待ちにする理由はない。
+
+実機工程を「既存C6を書き換えずにnative SDIO/Hosted識別・version query」へ戻す。
+AP/IPをfactory Hostedで確認する場合、P4 DHCPの証拠として記録し、最終目標の
+C6 TCP/IPオフロードとは区別する。最後のUSB再列挙ではEspressifポートが消え、
+Bluetooth/debug-consoleの2ポートのみとなった。この時点では実機操作を追加していない。
