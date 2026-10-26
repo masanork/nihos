@@ -15,6 +15,12 @@ compiled=false
 sqlite=false
 sqlite_cpp=0
 abi=ilp32
+qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
+case "$qualification" in
+    0) qualification=false ;;
+    1) qualification=true ;;
+    *) echo "NIHOS_NATIVE_QUALIFICATION must be 0 or 1" >&2; exit 1 ;;
+esac
 case "$mode" in
     integer) floating=false; fp_asm=0 ;;
     sqlite) floating=false; fp_asm=0; sqlite=true; sqlite_cpp=1 ;;
@@ -22,12 +28,18 @@ case "$mode" in
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
     *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
+sdmmc=${NIHOS_NATIVE_SDMMC:-0}
+case "$sdmmc" in
+    0) sdmmc=false ;;
+    1) sdmmc=true ;;
+    *) echo "NIHOS_NATIVE_SDMMC must be 0 or 1" >&2; exit 1 ;;
+esac
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\n' "$floating" "$compiled" "$sqlite" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -37,6 +49,25 @@ fi
     -O2 -std=c11 -Wall -Wextra -Wconversion -Werror -ffreestanding \
     -I "$repo_root/include" -o "$build_dir/c_allocator.o" "$repo_root/probes/allocator/c_probe.c"
 set -- "$build_dir/c_allocator.o"
+if [ "$sdmmc" = true ]; then
+    idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
+    register_version=hw_ver1
+    if [ "$profile" = emulator ]; then register_version=hw_ver3; fi
+    headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
+        -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
+        -isystem "$headers/riscv-linux-any" \
+        -I "$repo_root/build/native-$profile/loader/config" \
+        -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+        -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+        -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/$register_version" \
+        -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+        -I "$idf_path/components/esp_rom/include" -I "$idf_path/components/esp_rom/esp32p4/include" \
+        -I "$idf_path/components/esp_rom/esp32p4" \
+        -o "$build_dir/sdmmc_pads.o" "$repo_root/probes/sdmmc/pads.c"
+    set -- "$@" "$build_dir/sdmmc_pads.o"
+fi
 if [ "$floating" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none \
         -mcpu=generic_rv32+m+a+c+f+zicsr+zifencei -mabi="$abi" -I "$repo_root/src/kernel" \
@@ -84,7 +115,9 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Msdmmc="$repo_root/src/soc/esp32p4/sdmmc.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mrecord_log="$repo_root/src/diagnostics/record.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

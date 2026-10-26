@@ -10,7 +10,16 @@ PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 
 
-def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator"):
+def fixed_record(log, marker, names):
+    pattern = re.escape(marker) + "".join(" " + name + r"=([0-9a-f]{8})" for name in names)
+    found = re.findall(pattern + r"(?:\n|$)", log)
+    if len(found) != 1 or log.count(marker + " ") != 1:
+        raise ValueError("missing/duplicate/malformed " + marker)
+    return dict(zip(names, (int(value, 16) for value in found[0])))
+
+
+def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
+          require_qualification=False, require_sdmmc=False):
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     profile = image.get("memory", {}).get("profile") if image is not None else None
@@ -399,7 +408,36 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
                     raise ValueError("SQLite execution PC outside actual open function")
     elif "NIHOS_NATIVE_SQLITE" in log:
         raise ValueError("unexpected SQLite evidence in ordinary build")
+    qualification = None
+    qualification_marker = "NIHOS_NATIVE_QUALIFICATION enabled=1"
+    if require_qualification or "NIHOS_NATIVE_QUALIFICATION" in log:
+        if log.count(qualification_marker) != 1 or expected_psram_bytes == 0:
+            raise ValueError("missing/invalid qualification mode")
+        sweep = fixed_record(log, "NIHOS_NATIVE_PSRAM_SWEEP", ("bytes", "passes", "reads", "writes", "syncs", "confirmed"))
+        if list(sweep.values()) != [expected_psram_bytes, 2, expected_psram_bytes // 2, expected_psram_bytes // 2, 4, 1]:
+            raise ValueError("incomplete full PSRAM sweep")
+        qualification = {"psram_sweep": sweep}
+        if mode == "sqlite":
+            soak = fixed_record(log, "NIHOS_NATIVE_SQLITE_SOAK", ("loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed"))
+            if (soak["loops"] != 1000 or soak["sessions"] != 2000 or soak["queries"] != 26000 or
+                    soak["heap_before"] != soak["heap_after"] or soak["heap_before"] != sql_report["heap_before"] or
+                    not 0 < soak["max_stack"] <= 8000 or soak["confirmed"] != 1):
+                raise ValueError("incomplete SQLite soak")
+            qualification["sqlite_soak"] = soak
+    elif "NIHOS_NATIVE_PSRAM_SWEEP" in log or "NIHOS_NATIVE_SQLITE_SOAK" in log:
+        raise ValueError("qualification records without mode")
+    sdmmc = None
+    if require_sdmmc or "NIHOS_NATIVE_SDMMC" in log:
+        if log.count("NIHOS_NATIVE_SDMMC_MODE enabled=1") != 1:
+            raise ValueError("missing/invalid SDMMC mode")
+        sdmmc = fixed_record(log, "NIHOS_NATIVE_SDMMC", ("status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma"))
+        sectors = sdmmc["sectors_low"] + (sdmmc["sectors_high"] << 32)
+        if (sdmmc["status"] != 1 or sdmmc["stage"] != 4 or not 1024 <= sectors <= 1 << 32 or
+                sdmmc["reads"] != 8 or sdmmc["writes"] != 0 or sdmmc["bus_bits"] != 1 or
+                sdmmc["clock_khz"] != 400 or sdmmc["error_code"] != 0 or sdmmc["commands"] < 16 or sdmmc["data_words"] != 128 or sdmmc["dma"] != 1):
+            raise ValueError("incomplete read-only SDMMC probe")
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode,
+            "qualification": qualification, "sdmmc": sdmmc,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
             "flash_boot": boot, "sqlite": sql_report,
@@ -425,15 +463,19 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
 
 
 def main():
-    if len(sys.argv) not in (3, 4, 5, 6, 7):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device]")
+    if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|qualification,sdmmc]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
         image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
+        extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
+        if not extra <= {"qualification", "sdmmc"}:
+            raise ValueError("invalid required extra evidence")
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
-                       PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) == 7 else "emulator")
+                       PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
+                       "qualification" in extra, "sdmmc" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")
