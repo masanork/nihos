@@ -312,6 +312,8 @@ export fn nih_native_main() callconv(.c) noreturn {
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
     if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
+    if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
+    if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
         fail("CRT data/BSS");
@@ -361,6 +363,17 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (external.discovery.status != .absent and
         (external.discovery.status != .detected or external.io_status != 1 or external.mapping.status != 1))
         fail("PSRAM qualification");
+    if (options.qualification) {
+        if (external.mapping.status != 1) fail("qualification requires PSRAM");
+        const sweep = native_psram.memory.fullSweep(external.mapping.bytes);
+        logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
+    }
+    if (options.sdmmc) {
+        const sd = @import("sdmmc_probe.zig").run(timer(0));
+        logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
+        if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
+        if (sd.status != 1) fail("SDMMC probe");
+    }
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
@@ -415,6 +428,10 @@ export fn nih_native_main() callconv(.c) noreturn {
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
                 if (options.sqlite) {
+                    if (options.qualification) {
+                        const soak = @import("sqlite_probe.zig").soak();
+                        logger.record("NIHOS_NATIVE_SQLITE_SOAK", null, .{ "loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed" }, &soak);
+                    }
                     const sql = @import("sqlite_probe.zig").run();
                     logger.record("NIHOS_NATIVE_SQLITE", null, .{ "status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie" }, &sql);
                     const classes = @import("sqlite_probe.zig").classPeaks();

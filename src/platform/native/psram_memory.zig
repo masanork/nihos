@@ -62,6 +62,32 @@ var owners_ready: u32 = 0;
 pub const heap_start = mapping.virtual_base + mapping.reserved_bytes;
 pub const reserved_bytes = mapping.reserved_bytes;
 
+pub const SweepReport = struct { bytes: u32, passes: u32, reads: u32, writes: u32, syncs: u32, confirmed: u32 };
+
+/// Opt-in destructive boot test, before CPU1 release or external allocation.
+/// Every mapped CPU word is written and checked through both polarities.
+pub fn fullSweep(capacity: u32) SweepReport {
+    if (capacity < 4 << 20 or capacity > 64 << 20 or capacity & (capacity - 1) != 0)
+        nih_native_task_failed();
+    const words: [*]volatile u32 = @ptrFromInt(mapping.virtual_base);
+    const count = capacity / 4;
+    for (0..2) |pass| {
+        for (0..count) |index| {
+            const value = 0xa55a_7e31 ^ (mapping.virtual_base + @as(u32, @intCast(index * 4)));
+            words[index] = if (pass == 0) value else ~value;
+        }
+        if (!IO.sync(.{}, .writeback, mapping.virtual_base, capacity) or
+            !IO.sync(.{}, .invalidate, mapping.virtual_base, capacity)) nih_native_task_failed();
+        for (0..count) |index| {
+            const value = 0xa55a_7e31 ^ (mapping.virtual_base + @as(u32, @intCast(index * 4)));
+            const expected = if (pass == 0) value else ~value;
+            const actual = words[index];
+            if (actual != expected) nih_native_psram_mismatch(6, mapping.virtual_base + @as(u32, @intCast(index * 4)), actual, expected);
+        }
+    }
+    return .{ .bytes = capacity, .passes = 2, .reads = count * 2, .writes = count * 2, .syncs = 4, .confirmed = 1 };
+}
+
 /// Only CPU0, after command checks and external arena registration.
 pub fn releasePeer() void {
     @atomicStore(u32, &peer_released, 1, .release);

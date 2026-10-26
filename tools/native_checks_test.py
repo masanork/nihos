@@ -656,5 +656,63 @@ class NativeLogTests(unittest.TestCase):
             MODULE.check(complete_log("compiled") + "\nNIHOS_NATIVE_FAIL compiled FP invariant")
 
 
+class HardwareQualificationTests(unittest.TestCase):
+    @staticmethod
+    def record(marker, **fields):
+        return marker + "".join(f" {key}={value:08x}" for key, value in fields.items())
+
+    def qualification_log(self):
+        log = sqlite_log()
+        free = MODULE.check(log, "sqlite", 32 << 20)["sqlite"]["heap_before"]
+        sweep = self.record("NIHOS_NATIVE_PSRAM_SWEEP", bytes=32 << 20, passes=2,
+                            reads=16 << 20, writes=16 << 20, syncs=4, confirmed=1)
+        soak = self.record("NIHOS_NATIVE_SQLITE_SOAK", loops=1000, sessions=2000, queries=26000,
+                           heap_before=free, heap_after=free, max_stack=6520, confirmed=1)
+        return log + "\nNIHOS_NATIVE_QUALIFICATION enabled=1\n" + sweep + "\n" + soak
+
+    def test_full_sweep_and_all_sql_sessions_are_required(self):
+        report = MODULE.check(self.qualification_log(), "sqlite", 32 << 20, require_qualification=True)
+        self.assertEqual(report["qualification"]["sqlite_soak"]["queries"], 26000)
+        with self.assertRaisesRegex(ValueError, "qualification mode"):
+            MODULE.check(sqlite_log(), "sqlite", 32 << 20, require_qualification=True)
+
+    def test_partial_sweep_and_sql_soak_are_rejected(self):
+        log = self.qualification_log()
+        for old, new in (("reads=01000000", "reads=00000000"),
+                         ("sessions=000007d0", "sessions=00000002"),
+                         ("queries=00006590", "queries=0000001a"),
+                         ("max_stack=00001978", "max_stack=00002000"),
+                         ("NIHOS_NATIVE_SQLITE_SOAK", "MISSING_SQLITE_SOAK")):
+            with self.subTest(field=old), self.assertRaises(ValueError):
+                MODULE.check(log.replace(old, new), "sqlite", 32 << 20, require_qualification=True)
+
+    def test_orphan_duplicate_and_malformed_qualification_records_fail(self):
+        log = self.qualification_log()
+        for changed in (log.replace("NIHOS_NATIVE_QUALIFICATION enabled=1\n", ""),
+                        log + "\nNIHOS_NATIVE_PSRAM_SWEEP malformed", log + "\nNIHOS_NATIVE_QUALIFICATION enabled=1"):
+            with self.assertRaises(ValueError):
+                MODULE.check(changed, "sqlite", 32 << 20)
+
+    def sdmmc_log(self):
+        record = self.record("NIHOS_NATIVE_SDMMC", status=1, stage=4, command=0, interrupts=0,
+                             response=0, commands=20, sectors_low=0x1d70000, sectors_high=0,
+                             reads=8, crc0=1, crc1=2, crc_middle=3, crc_last=4,
+                             bus_bits=1, clock_khz=400, writes=0, error_code=0, host_status=0, data_words=128, dma=1)
+        return complete_log(psram_size="32M") + "\nNIHOS_NATIVE_SDMMC_MODE enabled=1\n" + record
+
+    def test_read_only_sdmmc_evidence_can_be_required_explicitly(self):
+        report = MODULE.check(self.sdmmc_log(), "integer", 32 << 20, require_sdmmc=True)
+        self.assertEqual(report["sdmmc"]["reads"], 8)
+        with self.assertRaisesRegex(ValueError, "SDMMC mode"):
+            MODULE.check(complete_log(), require_sdmmc=True)
+
+    def test_sdmmc_writes_short_reads_and_incompatible_modes_fail(self):
+        for old, new in (("reads=00000008", "reads=00000001"), ("writes=00000000", "writes=00000001"),
+                         ("bus_bits=00000001", "bus_bits=00000004"), ("data_words=00000080", "data_words=0000007f"),
+                         ("error_code=00000000", "error_code=00000001"), ("sectors_low=01d70000", "sectors_low=00000000")):
+            with self.subTest(field=old), self.assertRaises(ValueError):
+                MODULE.check(self.sdmmc_log().replace(old, new), "integer", 32 << 20, require_sdmmc=True)
+
+
 if __name__ == "__main__":
     unittest.main()

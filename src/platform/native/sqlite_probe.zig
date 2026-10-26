@@ -138,3 +138,23 @@ pub fn classPeaks() ClassReport {
     const values = @as(*volatile [10]u32, &nih_sqlite_native_peak).*;
     return .{ .c8 = values[0], .c16 = values[1], .c32 = values[2], .c64 = values[3], .c128 = values[4], .c256 = values[5], .c512 = values[6], .c1024 = values[7], .c2048 = values[8], .c4096 = values[9] };
 }
+
+pub const SoakReport = struct { loops: u32, sessions: u32, queries: u32, heap_before: u32, heap_after: u32, max_stack: u32, confirmed: u32 };
+
+pub fn soak() SoakReport {
+    const before = memory.reusable.availableBytes() orelse fail(0x300, 0);
+    var report = SoakReport{ .loops = 0, .sessions = 0, .queries = 0, .heap_before = @intCast(before), .heap_after = 0, .max_stack = 0, .confirmed = 0 };
+    for (0..1000) |_| {
+        const batch = run();
+        if (batch.status != 1 or batch.sessions != 2 or batch.queries != 26 or
+            batch.heap_before != before or batch.heap_after != before) fail(0x301, 0);
+        report.loops += 1;
+        report.sessions += batch.sessions;
+        report.queries += batch.queries;
+        report.max_stack = @max(report.max_stack, batch.observed_used);
+    }
+    report.heap_after = @intCast(memory.reusable.availableBytes().?);
+    if (report.heap_before != report.heap_after) fail(0x302, 0);
+    report.confirmed = 1;
+    return report;
+}
