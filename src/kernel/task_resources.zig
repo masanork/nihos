@@ -2,6 +2,7 @@
 //! Closing only touches ledger state; drainOne performs deferred heap work.
 pub const Key = struct { slot: u16, generation: u16 };
 pub const slab = @import("slab.zig");
+pub const c_allocator = @import("c_allocator.zig");
 pub const size_pool = @import("size_pool.zig");
 
 pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limit: usize) type {
@@ -228,6 +229,10 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
 
         pub fn allocObject(self: *Self, caller: u32, key: Key, lease: Objects, length: usize) Error!size_pool.Allocation {
             return (try self.objectsView(caller, key, lease)).alloc(length);
+        }
+
+        pub fn objectFromPointer(self: *Self, caller: u32, key: Key, lease: Objects, address: usize) Error!size_pool.Allocation {
+            return (try self.objectsView(caller, key, lease)).lookup(address);
         }
 
         pub fn freeObject(self: *Self, caller: u32, key: Key, lease: Objects, allocation: size_pool.Allocation) Error!void {

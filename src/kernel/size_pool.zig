@@ -62,6 +62,21 @@ pub const View = struct {
         return .{ .cell = try (try self.classView(index)).allocSized(length), .class = index };
     }
 
+    /// At most ten trusted class ranges; foreign pointers are never read.
+    pub noinline fn lookup(self: View, address: usize) Error!Allocation {
+        const base = @intFromPtr(self.memory.ptr);
+        if (address < base or address - base >= self.memory.len) return error.InvalidAllocation;
+        for (0..classes.len) |index| {
+            const view = try self.classView(@intCast(index));
+            const start = @intFromPtr(view.memory.ptr);
+            if (address >= start and address - start < view.memory.len) return .{
+                .cell = try view.lookup(address),
+                .class = @intCast(index),
+            };
+        }
+        return error.InvalidAllocation;
+    }
+
     pub fn validate(self: View, allocation: Allocation) Error!void {
         try (try self.classView(allocation.class)).validate(allocation.cell);
     }

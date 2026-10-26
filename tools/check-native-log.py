@@ -254,7 +254,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         heaps[hart] = record
     if set(heaps) != {0, 1}:
         raise ValueError("missing per-hart reusable heap evidence")
-    resource_names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes")
+    resource_names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes", "c_probes")
     pattern = r"NIHOS_NATIVE_RESOURCES hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in resource_names)
     resources = {}
@@ -266,7 +266,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
                     18 if psram["status"] else 0, 6 if psram["status"] else 0,
                     120 if psram["status"] else 0, 24 if psram["status"] else 0, 27 if psram["status"] else 0,
                     8 if psram["status"] else 0, 4 if psram["status"] else 0,
-                    8 if psram["status"] else 0, 4208 if psram["status"] else 0]
+                    8 if psram["status"] else 0, 4208 if psram["status"] else 0, 2 if psram["status"] else 0]
         if values != expected:
             raise ValueError("incomplete deferred task resource cleanup")
         resources[hart] = dict(zip(resource_names, values))
