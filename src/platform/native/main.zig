@@ -32,6 +32,7 @@ export var nih_native_return_states: [2]tasks.context.ReturnState = @splat(.{ .m
 var progress = [_]u32{ 0, 0 };
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
+var display_refresh_reported = false;
 var initialized: u32 = 0x4e494853;
 
 fn reg(address: usize) *volatile u32 {
@@ -151,6 +152,10 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         if (observed.fault != 0) {
             logger.record("NIHOS_NATIVE_DISPLAY_IRQ_FAIL", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
             fail("display refresh");
+        }
+        if (observed.frames >= 32 and !display_refresh_reported and !options.touch_check) {
+            display_refresh_reported = true;
+            logger.record("NIHOS_NATIVE_DISPLAY_IRQ_PASS", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &observed);
         }
         nih_native_return_states[hart] = state;
         return frame;
@@ -537,7 +542,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     reg(0x500d6000 + 46 * 4).* = 0;
                     timer(0).stop();
                     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
-                    const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern);
+                    const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern, options.display_sram);
                     if (screen.status == 1) {
                         const source = display.irqSource();
                         if (source >= 136) fail("display IRQ source");
@@ -547,13 +552,34 @@ export fn nih_native_main() callconv(.c) noreturn {
                         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
                     }
                     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
+                    logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
+                    logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
                     if (screen.status != 1) fail("display scanout startup");
+                    if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                 }
                 while (true) asm volatile ("wfi");
             }
         }
     }
 }
+
+const TouchLog = struct {
+    pub fn refresh(_: TouchLog, report: *const @import("display_runtime.zig").Report) void {
+        if (report.frames >= 32 and !display_refresh_reported) {
+            display_refresh_reported = true;
+            logger.record("NIHOS_NATIVE_DISPLAY_IRQ_PASS", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, report);
+        }
+    }
+    pub fn start(_: TouchLog, report: *const @import("touch_probe.zig").Report) void {
+        logger.record("NIHOS_NATIVE_TOUCH_START", null, .{ "pin_enabled", "width", "height", "slots", "vbus_off" }, report);
+    }
+    pub fn event(_: TouchLog, report: *const @import("touch_probe.zig").Event) void {
+        logger.record("NIHOS_NATIVE_TOUCH_EVENT", null, .{ "contacts", "x", "y", "color", "inferred_release" }, report);
+    }
+    pub fn finish(_: TouchLog, report: *const @import("touch_probe.zig").Report) void {
+        logger.record("NIHOS_NATIVE_TOUCH_CHECK", null, .{ "status", "pin_enabled", "width", "height", "slots", "samples", "contacts", "max_contacts", "quadrants", "explicit_releases", "inferred_releases", "updates", "errors", "vbus_off", "frames" }, report);
+    }
+};
 
 fn memoryReport(hart: u32) void {
     const report = tasks.memory.report(hart);

@@ -1,0 +1,11 @@
+{
+  "source_worktree": "/Users/masanork/repo/nihos-native-boot-graphics",
+  "base_commit": "10a4cb654adec49525da3cef5cf065aaea6b376a",
+  "uncommitted_snapshot": true,
+  "captured_at": "2026-10-27T00:15:54.954664+09:00",
+  "files": {
+    "src/board/tab5/native_scanout.c": "adb6d2eede6b75001f2ebc80a3a8fc495968cb1c0a61529062d94e6a2e72f50f",
+    "src/platform/native/display_runtime.zig": "8b26d32c2c741c628e09d70dc6e5c83c4bfdef60d06fc7503c2f05257abcebf5"
+  },
+  "scope": "display dependency snapshot for PIN-free touch-feedback integration; scene mode is not enabled"
+}

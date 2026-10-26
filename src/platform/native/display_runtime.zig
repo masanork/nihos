@@ -1,6 +1,7 @@
 //! Opt-in first-frame experiment after native memory/IPI qualification.
 //! CPU0 CLIC18 refreshes one descriptor; CPU1 never touches the framebuffer.
 const board = @import("tab5_display");
+const options = @import("native_options");
 const panels = @import("tab5_panels");
 const dcs = @import("display_dcs");
 const Scanout = @import("scanout_state").State;
@@ -16,7 +17,8 @@ extern fn nih_display_command_setup() callconv(.c) void;
 extern fn nih_display_command_status() callconv(.c) u32;
 extern fn nih_display_command_payload(u32) callconv(.c) void;
 extern fn nih_display_command_header(u32, u32, u32) callconv(.c) void;
-extern fn nih_display_scanout_begin(u32, *const panels.Timing) callconv(.c) i32;
+extern fn nih_display_scanout_begin(u32, *const panels.Timing, u32, u32, u32) callconv(.c) i32;
+extern fn nih_display_scene_refresh(u32) callconv(.c) bool;
 extern fn nih_display_scanout_poll() callconv(.c) u32;
 extern fn nih_display_scanout_stop() callconv(.c) bool;
 extern fn nih_display_backlight(bool) callconv(.c) void;
@@ -42,9 +44,11 @@ pub fn onInterrupt() void {
     state.observe(event & 1 != 0, event & 10, event & 4 != 0);
     nih_display_backlight(state.backlight);
 }
-pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0 };
+pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0 };
 pub fn snapshot() Report {
-    return .{ .status = if (running and state.fault == 0) 1 else 2, .frames = state.frames, .fault = state.fault, .event = last_event, .backlight = @intFromBool(state.backlight), .dsi_error0 = nih_display_diagnostic(0), .dsi_error1 = nih_display_diagnostic(1), .dma_error = nih_display_diagnostic(2), .bridge_error = nih_display_diagnostic(3) };
+    const live: *const volatile Scanout = &state;
+    const event: *const volatile u32 = &last_event;
+    return .{ .status = if (running and live.fault == 0) 1 else 2, .frames = live.frames, .fault = live.fault, .event = event.*, .backlight = @intFromBool(live.backlight), .dsi_error0 = nih_display_diagnostic(0), .dsi_error1 = nih_display_diagnostic(1), .dma_error = nih_display_diagnostic(2), .bridge_error = nih_display_diagnostic(3) };
 }
 
 const Sender = struct {
@@ -84,9 +88,9 @@ fn waitFrame(pins: Pins, previous: u32) !void {
     }
     return error.Timeout;
 }
-fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, report: *Report, powered: *bool, phy_started: *bool) !void {
+fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool, report: *Report, powered: *bool, phy_started: *bool) !void {
     var selected = panels.timing(panel) orelse return error.Panel;
-    if (pattern) selected.dpi_mhz = 10;
+    if (sram) selected.dpi_mhz = if (panel == 1) 60 else 80;
     report.panel = panel;
     report.dpi_mhz = selected.dpi_mhz;
     report.lane_mbps = selected.lane_mbps;
@@ -131,7 +135,15 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     const frame = base[0..board.frame_bytes];
     if (white) @memset(frame, 0xff) else if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) return error.Image;
     if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
-    const start_code = nih_display_scanout_begin(board.framebuffer, &selected);
+    if (options.display_tile) {
+        const rows: usize = if (options.display_scene) 40 + 112 + 14 + 10 else 40;
+        const lease = @import("native_tasks").memory.alloc((1 + 2 * rows) * 64, 64) orelse return error.Image;
+        report.lease_start = @intFromPtr(lease.ptr);
+        report.lease_bytes = lease.len;
+        if (options.display_scene and !nih_display_scene_refresh(board.framebuffer)) return error.Cache;
+    }
+    const source_kind: u32 = if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
+    const start_code = nih_display_scanout_begin(board.framebuffer, &selected, source_kind, report.lease_start, report.lease_bytes);
     report.start_code = @bitCast(start_code);
     report.prime_depth = nih_display_diagnostic(4);
     if (start_code != 0) return error.Scanout;
@@ -143,10 +155,14 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         nih_display_pattern_enable(&selected);
         report.dpi_mhz = if (panel == 1) 60 else 80;
     }
-    if (!white) for (1..17) |step| {
+    if (options.display_scene) for (0..24) |_| try waitFrame(pins, state.frames);
+    if (!white and (!options.display_tile or options.display_scene)) for (1..17) |step| {
         try waitFrame(pins, state.frames);
         if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, @intCast(step * 255 / 16), .ready)) return error.Image;
-        if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
+        if (options.display_scene) {
+            if (!nih_display_scene_refresh(board.framebuffer)) return error.Cache;
+            for (0..3) |_| try waitFrame(pins, state.frames);
+        } else if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
     };
     report.stage = 5;
     report.frames = state.frames;
@@ -157,11 +173,17 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     report.bl_mux = nih_display_diagnostic(8);
     report.bl_matrix = nih_display_diagnostic(9);
     report.white = @intFromBool(white);
+    report.sram = if (options.display_scene) 2 else @intFromBool(sram);
+    report.source = nih_display_diagnostic(10);
+    report.dma_source = nih_display_diagnostic(11);
+    report.dma_control = nih_display_diagnostic(12);
+    report.word = nih_display_diagnostic(13);
+    report.nodes = nih_display_diagnostic(14);
     report.status = 1;
 }
 
 /// Caller routes CLIC18 only after success. No framebuffer or DMA reuse on error.
-pub fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool) Report {
+pub fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) Report {
     if (attempted) return .{ .error_code = 8 };
     attempted = true;
     var report = Report{};
@@ -170,7 +192,7 @@ pub fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool) R
     clock.start();
     clock.disarm();
     defer clock.stop();
-    initialize(clock, panel, white, pattern, &report, &powered, &phy_started) catch |err| {
+    initialize(clock, panel, white, pattern, sram, &report, &powered, &phy_started) catch |err| {
         report.error_code = switch (err) {
             error.Timer => 1,
             error.Timeout => 2,

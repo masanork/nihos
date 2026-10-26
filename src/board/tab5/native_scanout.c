@@ -17,13 +17,50 @@ _Static_assert(offsetof(hp_sys_clkrst_dev_t, hp_rst_en0) == 0xc0, "boot DMA rese
 _Static_assert(offsetof(hp_sys_clkrst_dev_t, soc_clk_ctrl0) == 0x14, "boot DMA CPU clock offset");
 _Static_assert(offsetof(hp_sys_clkrst_dev_t, soc_clk_ctrl1) == 0x18, "boot DMA system clock offset");
 static dw_gdma_link_list_item_t descriptor;
+static uint64_t solid_word __attribute__((aligned(64)));
+#ifndef NIH_NATIVE_DISPLAY_SCENE
+#define NIH_NATIVE_DISPLAY_SCENE 0
+#endif
+#if NIH_NATIVE_DISPLAY_TILE
+#define TILE_W 128u
+#define TILE_H 40u
+#define POEM_H 112u
+#define SCENE_ROWS (TILE_H + POEM_H + 14u + 10u)
+#define SCRATCH_BASE 0x481f2000u
+#define SCRATCH_BYTES (TILE_W * POEM_H * 2u)
+_Static_assert(SCRATCH_BASE + 2u * SCRATCH_BYTES == 0x48200000u, "private double buffer must end before owner heaps");
+static uint16_t title_tile[TILE_H][TILE_W] __attribute__((aligned(64)));
+static uint16_t caption_tile[14][TILE_W] __attribute__((aligned(64)));
+static uint16_t tagline_tile[10][TILE_W] __attribute__((aligned(64)));
+static uint32_t scene_active, scene_pending;
+static bool scene_enabled;
+#endif
+static dw_gdma_link_list_item_t *active_nodes = &descriptor;
+static uint32_t node_count = 1;
 static bool dma_owned;
 static uint32_t completions;
 static uint32_t fault;
 static uint32_t dsi_error0, dsi_error1, dma_error, bridge_error;
 static uint32_t prime_depth;
+static uint32_t source_address;
 static bool pattern_active;
 #define DMA_ERRORS 0x07ffffe0u
+
+/* PIN-free touch experiment. Only the fixed SRAM background is changed;
+ * descriptors and the logo source remain owned by the existing scanout. */
+bool nih_display_touch_feedback(uint32_t color) {
+    if (color > UINT16_MAX || !dma_owned || pattern_active ||
+        source_address != (uint32_t)(uintptr_t)&solid_word) return false;
+    const uint64_t repeated = (uint64_t)color * UINT64_C(0x0001000100010001);
+    uint32_t previous_mstatus;
+    /* CLIC18 uses the same ROM cache ABI; do not nest cache transactions. */
+    __asm__ volatile("csrrc %0,mstatus,%1" : "=r"(previous_mstatus) : "r"(8u) : "memory");
+    solid_word = repeated;
+    const bool copied = nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)&solid_word, sizeof(solid_word)) == 0;
+    __asm__ volatile("fence iorw,iorw" ::: "memory");
+    if (previous_mstatus & 8u) __asm__ volatile("csrsi mstatus,8" ::: "memory");
+    return copied;
+}
 
 void nih_display_command_setup(void) {
     mipi_dsi_phy_ll_set_switch_time(&MIPI_DSI_HOST, 50, 104, 46, 128);
@@ -97,24 +134,61 @@ uint32_t nih_display_diagnostic(uint32_t field) {
         case 7: return gpio_ll_get_level(&GPIO, 22);
         case 8: return IO_MUX.gpio[22].val;
         case 9: return GPIO.func_out_sel_cfg[22].val;
+        case 10: return source_address;
+        case 11: return DW_GDMA.ch[0].sar0.sar0;
+        case 12: return descriptor.ctrl_lo.val;
+        case 13: return (uint32_t)solid_word;
+        case 14: return node_count;
         default: return 0; }
 }
 
+bool nih_display_scene_refresh(uint32_t address) {
+#if NIH_NATIVE_DISPLAY_TILE && NIH_NATIVE_DISPLAY_SCENE
+    if (address != 0x48030000 || (scene_enabled && scene_pending != scene_active)) return false;
+    const uint32_t next = scene_enabled ? 1u - scene_active : 0;
+    const uint16_t *frame = (const uint16_t *)(uintptr_t)address;
+    uint16_t *output = (uint16_t *)(uintptr_t)(SCRATCH_BASE + next * SCRATCH_BYTES);
+    for (uint32_t y = 0; y < POEM_H; ++y)
+        for (uint32_t x = 0; x < TILE_W; ++x)
+            output[y * TILE_W + x] = frame[(452 + y * 376 / POEM_H) * 720 + 164 + x * 404 / TILE_W];
+    if (nih_rom_cache_writeback((1u << 4) | (1u << 5), (uint32_t)(uintptr_t)output, SCRATCH_BYTES)) return false;
+    scene_pending = next;
+    return true;
+#else
+    (void)address;
+    return false;
+#endif
+}
+
 static bool restart_dma(void) {
-    dw_gdma_ll_lli_set_block_markers(&descriptor, false, true, true);
-    if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)&descriptor, sizeof(descriptor))) return false;
+#if NIH_NATIVE_DISPLAY_TILE && NIH_NATIVE_DISPLAY_SCENE
+    if (scene_enabled && scene_active != scene_pending) {
+        scene_active = scene_pending;
+        for (uint32_t y = 0; y < POEM_H; ++y)
+            dw_gdma_ll_lli_set_src_addr(&active_nodes[1 + 2 * TILE_H + 2 * y], SCRATCH_BASE + scene_active * SCRATCH_BYTES + y * TILE_W * 2);
+    }
+#endif
+    for (uint32_t i = 0; i < node_count; ++i)
+        dw_gdma_ll_lli_set_block_markers(&active_nodes[i], false, i + 1 == node_count, true);
+    if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
     __asm__ volatile("fence iorw,iorw" ::: "memory");
     dw_gdma_ll_channel_set_link_list_master_port(&DW_GDMA, 0, DW_GDMA_LL_MASTER_PORT_MEMORY);
-    dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, (uint32_t)(uintptr_t)&descriptor);
+    dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, (uint32_t)(uintptr_t)active_nodes);
     dw_gdma_ll_channel_enable(&DW_GDMA, 0, true);
     return true;
 }
 
-int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t) {
+int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uint32_t sram_solid, uint32_t lease, uint32_t lease_bytes) {
     const int __DECLARE_RCC_ATOMIC_ENV = 0;
     (void)__DECLARE_RCC_ATOMIC_ENV;
-    if (dma_owned || address != 0x48030000 || (t->dpi_mhz != 10 && t->dpi_mhz != 20 && t->dpi_mhz != 40) ||
+    if (dma_owned || address != 0x48030000 || (t->dpi_mhz != 10 && t->dpi_mhz != 20 && t->dpi_mhz != 40 && t->dpi_mhz != 60 && t->dpi_mhz != 80) ||
         (t->lane_mbps != 1000 && t->lane_mbps != 960)) return -1;
+    if (sram_solid) {
+        solid_word = sram_solid >= 2 ? UINT64_C(0x1082108210821082) : UINT64_MAX;
+        if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)&solid_word, sizeof(solid_word))) return -5;
+        address = (uint32_t)(uintptr_t)&solid_word;
+    }
+    source_address = address;
     /* Do not reset or appropriate an already clocked DMA domain. */
     if (dw_gdma_ll_is_bus_clock_enabled(0)) return -2;
     dw_gdma_ll_enable_bus_clock(0, true);
@@ -145,18 +219,87 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t) {
     dw_gdma_ll_lli_set_dst_master_port(&descriptor, MIPI_DSI_BRG_MEM_BASE);
     dw_gdma_ll_lli_set_src_trans_width(&descriptor, DW_GDMA_TRANS_WIDTH_64);
     dw_gdma_ll_lli_set_dst_trans_width(&descriptor, DW_GDMA_TRANS_WIDTH_64);
-    dw_gdma_ll_lli_set_src_burst_mode(&descriptor, DW_GDMA_BURST_MODE_INCREMENT);
+    dw_gdma_ll_lli_set_src_burst_mode(&descriptor, sram_solid ? DW_GDMA_BURST_MODE_FIXED : DW_GDMA_BURST_MODE_INCREMENT);
     dw_gdma_ll_lli_set_dst_burst_mode(&descriptor, DW_GDMA_BURST_MODE_FIXED);
-    dw_gdma_ll_lli_set_src_burst_items(&descriptor, DW_GDMA_BURST_ITEMS_512);
+    dw_gdma_ll_lli_set_src_burst_items(&descriptor, sram_solid ? DW_GDMA_BURST_ITEMS_1 : DW_GDMA_BURST_ITEMS_512);
     dw_gdma_ll_lli_set_dst_burst_items(&descriptor, DW_GDMA_BURST_ITEMS_256);
-    dw_gdma_ll_lli_set_src_burst_len(&descriptor, 16);
+    dw_gdma_ll_lli_set_src_burst_len(&descriptor, sram_solid ? 1 : 16);
     dw_gdma_ll_lli_set_dst_burst_len(&descriptor, 16);
     dw_gdma_ll_lli_set_trans_block_size(&descriptor, 720 * 1280 * 2 / 8);
     dw_gdma_ll_lli_set_link_list_master_port(&descriptor, DW_GDMA_LL_MASTER_PORT_MEMORY);
     dw_gdma_ll_lli_set_next_item_addr(&descriptor, 0);
-    /* Low-bandwidth first-frame experiment. No global PLL changes. */
-    mipi_dsi_ll_set_dpi_clock_source(0, MIPI_DSI_DPI_CLK_SRC_XTAL);
-    mipi_dsi_ll_set_dpi_clock_div(0, 40 / t->dpi_mhz);
+#if NIH_NATIVE_DISPLAY_TILE
+    if (sram_solid >= 2) {
+        const bool scene = NIH_NATIVE_DISPLAY_SCENE && sram_solid == 3;
+        const uint32_t rows = scene ? SCENE_ROWS : TILE_H;
+        const uint32_t nodes = 1 + 2 * rows;
+        if ((lease & 63) || lease < 0x4ff00000 || lease_bytes != nodes * 64 ||
+            lease_bytes > 0x4ff28000 - lease || lease >= 0x4ff28000) return -6;
+        dw_gdma_link_list_item_t *list = (dw_gdma_link_list_item_t *)(uintptr_t)lease;
+        const uint16_t *frame = (const uint16_t *)(uintptr_t)0x48030000;
+        for (uint32_t y = 0; y < TILE_H; ++y)
+            for (uint32_t x = 0; x < TILE_W; ++x)
+                title_tile[y][x] = frame[(170 + y * 87 / TILE_H) * 720 + 86 + x * 284 / TILE_W];
+        if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)title_tile, sizeof(title_tile))) return -5;
+        if (scene) {
+            for (uint32_t y = 0; y < 14; ++y)
+                for (uint32_t x = 0; x < TILE_W; ++x)
+                    caption_tile[y][x] = frame[(910 + y * 20 / 14) * 720 + 238 + x * 240 / TILE_W];
+            for (uint32_t y = 0; y < 10; ++y)
+                for (uint32_t x = 0; x < TILE_W; ++x)
+                    tagline_tile[y][x] = frame[(1038 + y * 26 / 10) * 720 + 92 + x * 390 / TILE_W];
+            if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)caption_tile, sizeof(caption_tile)) ||
+                nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)tagline_tile, sizeof(tagline_tile))) return -5;
+        }
+        const uint32_t heights[4] = {TILE_H, POEM_H, 14, 10};
+        const uint32_t starts[4] = {200, 400, 560, 640};
+        const uint32_t sources[4] = {(uint32_t)(uintptr_t)title_tile, SCRATCH_BASE,
+            (uint32_t)(uintptr_t)caption_tile, (uint32_t)(uintptr_t)tagline_tile};
+        const uint32_t left = (720 - TILE_W) / 2;
+        uint32_t index = 0;
+        uint32_t total = 720 * starts[0] + left;
+        for (uint32_t i = 0; i < nodes; ++i) list[i] = descriptor;
+        dw_gdma_ll_lli_set_trans_block_size(&list[index++], total / 4);
+        const uint32_t regions = scene ? 4 : 1;
+        for (uint32_t region = 0; region < regions; ++region) {
+            for (uint32_t y = 0; y < heights[region]; ++y) {
+                dw_gdma_ll_lli_set_src_addr(&list[index], sources[region] + y * TILE_W * 2);
+                dw_gdma_ll_lli_set_src_burst_mode(&list[index], DW_GDMA_BURST_MODE_INCREMENT);
+                if (scene && region == 1) {
+                    dw_gdma_ll_lli_set_src_burst_items(&list[index], DW_GDMA_BURST_ITEMS_512);
+                    dw_gdma_ll_lli_set_src_burst_len(&list[index], 32);
+                }
+                dw_gdma_ll_lli_set_trans_block_size(&list[index++], TILE_W / 4);
+                total += TILE_W;
+                uint32_t gap = 720 - TILE_W;
+                if (y + 1 == heights[region]) {
+                    if (region + 1 < regions) gap += 720 * (starts[region + 1] - starts[region] - heights[region]);
+                    else gap = 720 - left - TILE_W + 720 * (1280 - starts[region] - heights[region]);
+                }
+                dw_gdma_ll_lli_set_trans_block_size(&list[index++], gap / 4);
+                total += gap;
+            }
+        }
+        if (index != nodes || total != 720 * 1280) return -6;
+        for (uint32_t i = 0; i < nodes; ++i)
+            dw_gdma_ll_lli_set_next_item_addr(&list[i], i + 1 == nodes ? 0 : (uint32_t)(uintptr_t)&list[i + 1]);
+        active_nodes = list;
+        node_count = nodes;
+        scene_enabled = scene;
+    }
+#else
+    (void)lease; (void)lease_bytes;
+#endif
+    /* First-frame experiments. No global PLL changes. */
+    if (t->dpi_mhz > 40) {
+        clk_gate_ll_ref_240m_clk_en(true);
+        mipi_dsi_ll_set_dpi_clock_source(0, MIPI_DSI_DPI_CLK_SRC_PLL_F240M);
+        mipi_dsi_ll_set_dpi_clock_div(0, 240 / t->dpi_mhz);
+    } else {
+        mipi_dsi_ll_set_dpi_clock_source(0, MIPI_DSI_DPI_CLK_SRC_XTAL);
+        mipi_dsi_ll_set_dpi_clock_div(0, 40 / t->dpi_mhz);
+    }
+    mipi_dsi_host_ll_dpi_set_pattern_type(&MIPI_DSI_HOST, MIPI_DSI_PATTERN_NONE);
     mipi_dsi_ll_enable_dpi_clock(0, true);
     mipi_dsi_host_ll_dpi_set_vcid(&MIPI_DSI_HOST, 0);
     mipi_dsi_host_ll_dpi_set_color_coding(&MIPI_DSI_HOST, LCD_COLOR_FMT_RGB565, 0);
