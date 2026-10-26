@@ -7,6 +7,12 @@ pub fn Adapter(comptime Backend: type) type {
             return 0;
         }
 
+        pub fn openProfile(profile: u32) callconv(.c) c_int {
+            if (profile != 1) return -1;
+            Backend.openConfigured(@import("size_pool.zig").sqlite_probe) catch return -1;
+            return 0;
+        }
+
         pub fn close() callconv(.c) c_int {
             Backend.close() catch return -1;
             return 0;
@@ -52,6 +58,7 @@ pub fn Adapter(comptime Backend: type) type {
 
         pub fn exportSymbols() void {
             @export(&open, .{ .name = "nih_task_allocator_open" });
+            @export(&openProfile, .{ .name = "nih_task_allocator_open_profile" });
             @export(&close, .{ .name = "nih_task_allocator_close" });
             @export(&malloc, .{ .name = "nih_task_malloc" });
             @export(&free, .{ .name = "nih_task_free" });

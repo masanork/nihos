@@ -224,6 +224,10 @@ pub noinline fn closeSlab(lease: Slab) Error!void {
 /// Ten classes share one tracked parent. Header initialization is linear in
 /// count; registration and the fixed ten-header publication are masked.
 pub noinline fn openObjects(count: usize) Error!Objects {
+    return openConfiguredObjects(task_resources.size_pool.Config.uniform(count) orelse return error.InvalidRequest);
+}
+
+pub noinline fn openConfiguredObjects(config: task_resources.size_pool.Config) Error!Objects {
     const core = hart();
     if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
     if (interrupts() == 0) return error.InterruptsDisabled;
@@ -231,7 +235,7 @@ pub noinline fn openObjects(count: usize) Error!Objects {
         const status = mask();
         defer restore(status);
         const state = &resources[core];
-        const lease = try state.ledger.reserveObjects(&owners[core].heap, core, state.current, count);
+        const lease = try state.ledger.reserveConfiguredObjects(&owners[core].heap, core, state.current, config);
         const view = state.ledger.prepareObjects(core, state.current, lease) catch |err| {
             try closeObjects(lease);
             return err;
@@ -334,12 +338,16 @@ const CBackend = struct {
     }
 
     pub fn open(count: usize) Error!void {
+        return openConfigured(task_resources.size_pool.Config.uniform(count) orelse return error.InvalidRequest);
+    }
+
+    pub fn openConfigured(config: task_resources.size_pool.Config) Error!void {
         const core = try check();
         const state = &resources[core];
         const key = state.current;
         if (key.slot >= state.c_pools.len or !state.ledger.active(key)) return error.Inactive;
         if (state.c_pools[key.slot] != null) return error.Full;
-        const lease = try openObjects(count);
+        const lease = try openConfiguredObjects(config);
         const status = mask();
         defer restore(status);
         state.c_pools[key.slot] = lease;

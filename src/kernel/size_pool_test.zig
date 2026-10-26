@@ -196,3 +196,49 @@ test "stale moving plans cannot affect a new task generation at the same address
     try table.closeObjects(&heap, 0, next_key, next);
     try equal(heap.payload.len, heap.free_bytes);
 }
+
+test "sparse quotas omit disabled classes and preserve source on unavailable resize" {
+    const config = pool.Config{ .counts = .{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 1 } };
+    try expect(pool.configuredBytes(.{ .counts = @splat(0) }) == null);
+    var memory: [pool.configuredBytes(config).?]u8 align(8) = undefined;
+    const view = pool.View.fromConfigured(&memory, config, 9).?;
+    try view.initialize();
+    try view.ready();
+    try fails(error.OutOfMemory, view.alloc(8));
+    const small = try view.alloc(13);
+    @memset(small.cell.bytes, 0x57);
+    try fails(error.OutOfMemory, view.alloc(16));
+    try fails(error.OutOfMemory, view.beginResize(small, 512));
+    for (small.cell.bytes) |byte| try equal(@as(u8, 0x57), byte);
+    const large = try view.alloc(4096);
+    try equal(large.cell.ticket, (try view.lookup(@intFromPtr(large.cell.bytes.ptr))).cell.ticket);
+    try view.free(large);
+    const plan = (try view.beginResize(small, 4096)).move;
+    @memcpy(plan.next.cell.bytes[0..small.cell.bytes.len], small.cell.bytes);
+    const moved = try view.commit(plan);
+    try equal(@as(usize, 4096), try view.capacity(moved));
+    for (moved.cell.bytes[0..13]) |byte| try equal(@as(u8, 0x57), byte);
+    try view.free(moved);
+}
+
+test "configured quotas are copied into owner ledger and pending sparse parents remain reclaimable" {
+    var memory: [262144]u8 align(64) = undefined;
+    var heap = buddy.Heap.init(&memory, 0).?;
+    var table = Table{};
+    const key = resources.Key{ .slot = 0, .generation = 1 };
+    try expect(table.open(key));
+    var config = pool.Config{ .counts = .{ 0, 2, 0, 0, 0, 0, 0, 0, 0, 1 } };
+    const lease = try table.reserveConfiguredObjects(&heap, 0, key, config);
+    config.counts = @splat(0);
+    try (try table.prepareObjects(0, key, lease)).initialize();
+    try table.publishObjects(0, key, lease);
+    _ = try table.allocObject(0, key, lease, 16);
+    _ = try table.allocObject(0, key, lease, 16);
+    try fails(error.OutOfMemory, table.allocObject(0, key, lease, 16));
+    try fails(error.OutOfMemory, table.allocObject(0, key, lease, 8));
+    _ = try table.reserveConfiguredObjects(&heap, 0, key, pool.sqlite_probe);
+    try expect(table.close(key));
+    try expect(!try table.drainOne(&heap, 0, key));
+    try expect(try table.drainOne(&heap, 0, key));
+    try equal(heap.payload.len, heap.free_bytes);
+}
