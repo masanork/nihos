@@ -17,16 +17,16 @@ available with `NIHOS_NATIVE_CONSOLE_LIVE=0`.
 
 ```sh
 NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_LIVE=1 \
-  NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=1 \
+  NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=3 \
   NIHOS_NATIVE_DISPLAY=2 NIHOS_NATIVE_PSRAM_200=1 \
   NIHOS_NATIVE_QUALIFICATION=1 sh tools/build-native.sh device integer
 python3 tools/console/preview.py
 python3 tools/console/preview.py --failed
-# Palette: 0 = neutral body + muted teal heading, 1 = green, 2 = blue
-# NIHOS_NATIVE_CONSOLE_PALETTE=1 selects pale green.
+# Palette: 0 = neutral, 1 = pale green, 2 = blue, 3 = stronger green (default)
+# NIHOS_NATIVE_CONSOLE_PALETTE=3 reduces the white component of the green.
 # NIHOS_NATIVE_CONSOLE_FONT=3 (default): original small bitmap, lighter edges.
 # 0: original solid bitmap; 1: JetBrains; 2: Source Code Pro.
-python3 tools/console/preview.py --palette green
+python3 tools/console/preview.py --palette forest
 python3 tools/console/preview.py --palette blue
 python3 tools/console/preview.py --palette green --font source-code
 ```
@@ -34,7 +34,9 @@ python3 tools/console/preview.py --palette green --font source-code
 The current default returns to the first small **8x8 VGA bitmap in 16x16 cells**:
 78 columns and 43 rows, with16-pixel margins. Option3 retains the exact bitmap
 and cell advance, reducing coverage on exposed right/bottom stroke edges.
-Option0 is the initial solid bitmap. Pale green palette1 remains selected.
+Option0 is the initial solid bitmap. The user found pale green too white;
+the current palette 3 uses RGB565 foreground 0x5dcf and heading 0x4d6d, reducing
+red/blue relative to green. Palette1 retains the previous 0xa5f5 trial.
 The previous JetBrains Mono Medium 24 px and Source Code Pro Medium 25 px faces
 remain optional, at 80x22 in 15x30 cells.
 

@@ -11,7 +11,7 @@ export fn nih_console_preview(frame: [*]u8, length: usize, text: [*]const u8, te
     };
 }
 fn render(comptime face: console.raster.Face, frame: [*]u8, length: usize, text: [*]const u8, text_length: usize, failed: bool, palette: u32) bool {
-    if (palette > 2) return false;
+    if (palette > 3) return false;
     var journal = console.Journal(2048){};
     journal.append(text[0..text_length]);
     var model = console.boot.Model{};

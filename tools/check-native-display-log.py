@@ -152,9 +152,9 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
             console_style = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CONSOLE_STYLE', ('cell_width', 'cell_height', 'palette', 'foreground', 'accent', 'background', 'font'))
             geometry = {0: (78,43,16,16), 1: (80,22,15,30), 2: (80,22,15,30), 3: (78,43,16,16)}
             if ((console['columns'], console['rows'], console_style['cell_width'], console_style['cell_height']) != geometry.get(console_style['font']) or
-                    console_style['palette'] not in (0, 1, 2) or
-                    console_style['foreground'] != {0: 0xe71c, 1: 0xa5f5, 2: 0xadd9}.get(console_style['palette']) or
-                    console_style['accent'] != 0x85b5 or console_style['background'] != 0x1082):
+                    console_style['palette'] not in (0, 1, 2, 3) or
+                    console_style['foreground'] != {0: 0xe71c, 1: 0xa5f5, 2: 0xadd9, 3: 0x5dcf}.get(console_style['palette']) or
+                    console_style['accent'] != (0x4d6d if console_style['palette'] == 3 else 0x85b5) or console_style['background'] != 0x1082):
                 raise ValueError('console style/geometry does not match the raster')
         if console['input'] == 1:
             if console_style is None:

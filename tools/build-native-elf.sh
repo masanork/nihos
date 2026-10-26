@@ -91,10 +91,10 @@ case "$console_font" in
     0|1|2|3) ;;
     *) echo "NIHOS_NATIVE_CONSOLE_FONT must be 0, 1, 2 or 3" >&2; exit 1 ;;
 esac
-console_palette=${NIHOS_NATIVE_CONSOLE_PALETTE:-0}
+console_palette=${NIHOS_NATIVE_CONSOLE_PALETTE:-3}
 case "$console_palette" in
-    0|1|2) ;;
-    *) echo "NIHOS_NATIVE_CONSOLE_PALETTE must be 0, 1 or 2" >&2; exit 1 ;;
+    0|1|2|3) ;;
+    *) echo "NIHOS_NATIVE_CONSOLE_PALETTE must be 0, 1, 2 or 3" >&2; exit 1 ;;
 esac
 console=${NIHOS_NATIVE_CONSOLE:-0}
 case "$console" in

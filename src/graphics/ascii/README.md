@@ -4,8 +4,9 @@ The default console returns to the initial printable ASCII 8x8 bitmap in
 16x16 cells (78 columns, 43 rows). Option 3 softens only exposed right/bottom
 stroke edges to half coverage, with quarter coverage at their shared corner;
 interior pixels and the original glyph shapes/advance remain unchanged.
-Option 0 reproduces the original solid 2x bitmap. Pale green is independent
-of font choice. Larger outline-derived faces remain optional.
+Option 0 reproduces the original solid 2x bitmap. Colour is independent
+of font choice; palette 3 now uses a stronger green after the pale trial
+looked too white on the device. Larger outline-derived faces remain optional.
 
 | Native font option | Face | Size | Mask bytes | Offset bytes |
 | --- | --- | ---: | ---: | ---: |

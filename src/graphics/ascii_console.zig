@@ -20,14 +20,15 @@ pub const cell_width = Layout(default_face).cell_width;
 pub const cell_height = Layout(default_face).cell_height;
 pub const columns = Layout(default_face).columns;
 pub const rows = Layout(default_face).rows;
-pub const Palette = enum(u32) { neutral, green, blue };
+pub const Palette = enum(u32) { neutral, green, blue, forest };
 pub const Colors = struct { foreground: u16, accent: u16, background: u16 = 0x1082 };
 pub fn colors(palette: Palette) Colors {
     return .{ .foreground = switch (palette) {
         .neutral => 0xe71c,
         .green => 0xa5f5,
         .blue => 0xadd9,
-    }, .accent = 0x85b5 };
+        .forest => 0x5dcf,
+    }, .accent = if (palette == .forest) 0x4d6d else 0x85b5 };
 }
 pub const Damage = struct {
     left: usize = 1280,
