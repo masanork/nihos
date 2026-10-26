@@ -162,3 +162,15 @@ The preceding attempt 7 had instead expired at the initial start-touch gate:
 zero VERIFY, counter 3 unchanged, cleanup and erasure passed. Resume 8 found
 an intervening console image and stopped on comparison mismatch before any
 card operation; resume 9 explicitly restored the retained reader image.
+
+### Final receipt for resume 9
+
+DONE subsequently passed: status 1, fault 0, shown mask 15, truncated 0,
+missing glyphs 0, photo decoded 1, erased 1. Private photo workspace erasure
+was 1 and decode stack high-water remained 1112 bytes. Both credential budgets
+were exactly 1; no automatic credential retry occurred. The full native/core,
+display, one-shot card/photo and erasure checker passed. Post-run full Flash
+verification matched all three retained binaries and the exclusive lease was
+released. The earlier pending-clear checkpoint is superseded by this receipt.
+The capture's post-verification hard reset is recorded separately from read
+success; no credential survives or is automatically submitted after reboot.
