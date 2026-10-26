@@ -17,7 +17,7 @@ fn physical(layout: Layout, x: usize, y: usize) Point {
         .landscape => .{ .x = y, .y = landscape_width - 1 - x },
     };
 }
-pub const Status = enum(u8) { display = 1, memory, cores, input, ready, failed };
+pub const Status = enum(u8) { display = 1, memory, cores, input, ready, failed, storage };
 const background = [3]u8{ 17, 17, 17 };
 const paper = [3]u8{ 225, 225, 225 };
 const muted = [3]u8{ 132, 132, 132 };

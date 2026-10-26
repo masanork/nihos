@@ -69,6 +69,15 @@ pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
     return owners[core].samples.observe(core, frame, saved_sp, irq_sp);
 }
 
+/// Renderer may run before worker qualification; validate only live boot/IRQ guards.
+pub fn bootGuardsIntact(core: u32) bool {
+    if (core >= 2 or owners[core].initialized != 1 or !linked()) return false;
+    for (guard(core)) |word| if (word != layout.boot_guard) return false;
+    const irq_guard: *volatile [4]u32 = @ptrFromInt(layout.interrupt(core).?.start);
+    for (irq_guard) |word| if (word != layout.irq_guard) return false;
+    return true;
+}
+
 pub noinline fn finish(core: u32) bool {
     if (core >= 2) return false;
     const status = asm volatile ("csrrci %[result], mstatus, 8"

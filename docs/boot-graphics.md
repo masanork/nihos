@@ -46,10 +46,12 @@ The preview's timing and stage transitions are illustrative.
 The **independent native path** now has its own opt-in DSI/PSRAM scanout;
 see [native display evidence](native-display.md). Its default graphic experiment
 still runs after native qualification with an aesthetic hold/fade. The optional
-[ASCII diagnostic snapshot](native-console.md) records actual boot stages and
-serial output independently; earlier stage-driven video and input adapters are
-separate next steps. Do not infer native boot order from the hosted sequence
-above.
+[native console](native-console.md) can instead start video before core
+qualification, drive colour from actual milestones, and switch to logs through
+the standard I2C keyboard or diagnostic serial controls. Its
+[device records](measurements/2026-10-27-native-console-live.md) distinguish
+normal boot, injected failure, serial controls and pending optical/physical-key
+confirmation. Do not infer native boot order from the hosted sequence above.
 
 ## Preview and checks
 
@@ -67,10 +69,9 @@ only for generation/preview. Tests check mask bounds, guard bytes, padded
 strides, rejected overflow, fade order, and that only the intended pairs and
 state marker change colour.
 
-Physical qualification is still required for early panel allocation, native
-timer/interrupt-window coexistence with active scanout, tearing, colour,
-animation latency, and failure visibility. No device flash is part of this
-change; keep any concurrent filesystem device run intact.
+The original hosted-only verification below predates native scanout work.
+Current native qualification and its remaining optical gates are linked above;
+tearing, colour and perceived animation latency require direct observation.
 
 Local verification on 2026-10-26: 104/104 host tests pass in both Debug and
 ReleaseSafe; Zig formatting and ZLint pass with zero warnings. The ESP-IDF

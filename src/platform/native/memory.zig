@@ -59,9 +59,9 @@ const Domain = struct {
         return self.owners[hart].pool.alloc(hart, length, alignment);
     }
 
-    noinline fn begin(self: *Domain) bool {
+    noinline fn begin(self: *Domain, expected_mie: u32) bool {
         const hart = currentHart();
-        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1 or interruptEnable() != 0) return false;
+        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1 or interruptEnable() != expected_mie) return false;
         const owner = &self.owners[hart];
         if (owner.bootstrap != null) return false;
         const before = owner.pool.remaining();
@@ -69,7 +69,7 @@ const Domain = struct {
             self.alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
         owner.rejected = 3;
         owner.bootstrap = self.alloc(64, 64) orelse return false;
-        if (interruptEnable() != 0) return false;
+        if (interruptEnable() != expected_mie) return false;
         fill(owner.bootstrap.?, hart, 2);
         return true;
     }
@@ -169,18 +169,27 @@ pub fn freeExternal(allocation: reusable.Allocation) reusable.Error!void {
 }
 
 pub fn begin() bool {
-    return internal.begin();
+    return internal.begin(0);
 }
 
 pub fn beginExternal() bool {
+    return beginExternalMode(0);
+}
+/// Exclusive boot owner only: CPU0 scheduler/IPI routes must still be disabled.
+/// The sole enabled handler rearms display DMA and cannot allocate.
+pub fn beginExternalWithDisplayIrq() bool {
+    if (currentHart() != 0) return false;
+    return beginExternalMode(8);
+}
+fn beginExternalMode(expected_mie: u32) bool {
     if (@atomicLoad(u32, &external.prepared, .acquire) == 0) {
         if (allocExternal(64, 64)) |_| return false else |err| return err == error.NotReady;
     }
-    if (!external.begin()) return false;
+    if (!external.begin(expected_mie)) return false;
     const owner = &external.owners[currentHart()];
     // Retain the two preemptible boot allocations at the end of the arena.
     const span = external.alloc(owner.pool.remaining() - 2 * external.buffer_bytes, 64) orelse return false;
-    return reusable.prepare(span);
+    return if (expected_mie == 8) reusable.prepareWithDisplayIrq(span) else reusable.prepare(span);
 }
 
 fn pattern(hart: u32, worker: u32, index: usize) u8 {

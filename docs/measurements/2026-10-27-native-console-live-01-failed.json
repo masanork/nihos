@@ -1,0 +1,234 @@
+{
+  "image_audit": {
+    "schema": 1,
+    "backend": "native-sram",
+    "rtos_linked": false,
+    "fp_assembly_linked": false,
+    "riscv_flags": "0x1",
+    "fp_instructions": {
+      "app": 0,
+      "c": 0,
+      "zig": 0,
+      "transfer_helpers": 0
+    },
+    "entry": "0x4ff00000",
+    "elf_sha256": "d046b866f6c5847990e0aae071da1aecb373db362861aa34d0f5b01892379b15",
+    "memory": {
+      "profile": "device",
+      "origin": "0x4ff00000",
+      "end": "0x4ff28000",
+      "bytes": 163840,
+      "total_bytes": 221184,
+      "regions": [
+        {
+          "name": "resident",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840
+        },
+        {
+          "name": "stacks",
+          "origin": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344
+        }
+      ]
+    },
+    "sram_reserved_bytes": 170048,
+    "primary_static_bytes": 112704,
+    "stacks": {
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "bootstrap_bytes_per_hart": 8192,
+      "irq_bytes_per_hart": 8192,
+      "worker_bytes": 4096,
+      "workers_per_hart": 3,
+      "worker_start": "0x4ff68000"
+    },
+    "heap": {
+      "start": "0x4ff1b840",
+      "end": "0x4ff28000",
+      "bytes": 51136,
+      "owner_count": 2,
+      "granule_bytes": 64,
+      "external_bytes": 0
+    },
+    "flash_boot": {
+      "start": "0x40000120",
+      "end": "0x4000118e",
+      "bytes": 4206,
+      "sha256": "1a210a0672d8bfe924d183345cf40409f042268c7b616a6aa9011192f7864333",
+      "functions": {
+        "probe": {
+          "name": "psram.probe",
+          "start": "0x40000120",
+          "end": "0x40000cc2"
+        },
+        "mapping": {
+          "name": "psram_memory.prepare__func_123",
+          "start": "0x40000cc2",
+          "end": "0x4000118e"
+        }
+      },
+      "image_offset": 288
+    },
+    "flash_records": {
+      "start": "0x40010020",
+      "end": "0x4001da5e",
+      "bytes": 55870,
+      "fnv1a": 3663955277,
+      "executable": false,
+      "writable": false,
+      "image_offset": 65568
+    },
+    "rom_symbols": {
+      "nih_rom_putc": "0x4fc00054",
+      "nih_rom_set_cpu1_entry": "0x4fc000a8",
+      "nih_rom_l2_line_size": "0x4fc003cc",
+      "nih_rom_l2_enable": "0x4fc00504",
+      "nih_rom_cache_invalidate": "0x4fc003e4",
+      "nih_rom_cache_writeback": "0x4fc003f4"
+    },
+    "sections": [
+      {
+        "name": ".flash.appdesc",
+        "address": "0x40000020",
+        "bytes": 256
+      },
+      {
+        "name": ".flash.boot",
+        "address": "0x40000120",
+        "bytes": 4206
+      },
+      {
+        "name": ".flash.rodata",
+        "address": "0x40010020",
+        "bytes": 55870
+      },
+      {
+        "name": ".text",
+        "address": "0x4ff00000",
+        "bytes": 97168
+      },
+      {
+        "name": ".rodata",
+        "address": "0x4ff17b90",
+        "bytes": 7832
+      },
+      {
+        "name": ".data",
+        "address": "0x4ff19a40",
+        "bytes": 1424
+      },
+      {
+        "name": ".bss",
+        "address": "0x4ff1a000",
+        "bytes": 6208
+      },
+      {
+        "name": ".stacks",
+        "address": "0x4ff60000",
+        "bytes": 57344
+      },
+      {
+        "name": ".heap",
+        "address": "0x4ff1b840",
+        "bytes": 51136
+      }
+    ],
+    "image_sha256": "db25d3c2dc289484e57b78dcf9ca9c7754e74ee65a31f950693c547d69e6e3c4",
+    "image_bytes": 166864,
+    "image_segments": [
+      {
+        "address": "0x40000020",
+        "bytes": 4464
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 61056
+      },
+      {
+        "address": "0x40010020",
+        "bytes": 55872
+      },
+      {
+        "address": "0x4ff0ee80",
+        "bytes": 43944
+      },
+      {
+        "address": "0x4ff19a40",
+        "bytes": 1424
+      }
+    ],
+    "loader": {
+      "elf_sha256": "3da57cc281815b529e544fe8e38d213f494c4fb568353bfcb18288c5bc970149",
+      "allocated": [
+        {
+          "address": "0x4ff2cbd0",
+          "bytes": 12498
+        },
+        {
+          "address": "0x4ff33bd0",
+          "bytes": 272
+        },
+        {
+          "address": "0x4ff33ce0",
+          "bytes": 80
+        },
+        {
+          "address": "0x4ff33d30",
+          "bytes": 12
+        },
+        {
+          "address": "0x4ff33d3c",
+          "bytes": 4536
+        },
+        {
+          "address": "0x4ff2abd0",
+          "bytes": 3010
+        }
+      ],
+      "nearest_higher_address": "0x4ff2abd0",
+      "gap_bytes": 11216,
+      "regions_checked": [
+        {
+          "name": "resident",
+          "gap_below": null,
+          "gap_above": 11216
+        },
+        {
+          "name": "stacks",
+          "gap_below": 176396,
+          "gap_above": null
+        }
+      ]
+    },
+    "loader_config": {
+      "l2_bytes": 131072,
+      "line_bytes": 64,
+      "profile": "device",
+      "stack_source_window": {
+        "origin": "0x4ff40000",
+        "end": "0x4ffa0000"
+      },
+      "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+    }
+  },
+  "artifacts": {
+    "0x2000": {
+      "path": "/Users/masanork/repo/nihos-native-console/build/physical/live-01/installed/bootloader.bin",
+      "sha256": "4e462fe0f0d248db9447521f124b4b506da88ec14271688a07d53b762461eca3"
+    },
+    "0x8000": {
+      "path": "/Users/masanork/repo/nihos-native-console/build/physical/live-01/installed/partition-table.bin",
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "0x10000": {
+      "path": "/Users/masanork/repo/nihos-native-console/build/physical/live-01/installed/nihos-native.bin",
+      "sha256": "db25d3c2dc289484e57b78dcf9ca9c7754e74ee65a31f950693c547d69e6e3c4"
+    }
+  },
+  "result": "failed attempt; not normal qualification",
+  "raw_log_sha256": "6fbe1387ce1172b5303d3b33d06607226b74b29720bba2d884374b5cbb200754"
+}

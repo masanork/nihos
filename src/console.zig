@@ -1,4 +1,6 @@
 //! Diagnostic console foundation. Font files and Unicode composition are optional services.
+pub const keys = @import("console/diagnostic_keys.zig");
+pub const keyboard = @import("board/tab5/keyboard.zig");
 pub const Journal = @import("diagnostics/boot_journal.zig").Journal;
 pub const boot = @import("diagnostics/boot_state.zig");
 pub const Grid = @import("console/ascii.zig").Grid;
@@ -10,4 +12,6 @@ test {
     _ = @import("console/ascii.zig");
     _ = raster;
     _ = snapshot;
+    _ = keys;
+    _ = keyboard;
 }

@@ -5,6 +5,7 @@
  * The separate opt-in PSRAM helpers run exclusively before cache/SMP setup. */
 #include <stddef.h>
 #include "hal/gpio_ll.h"
+#include "hal/usb_serial_jtag_ll.h"
 #define efuse_hal_blk_version nih_display_efuse_block_version
 #include "hal/ldo_ll.h"
 #undef efuse_hal_blk_version
@@ -14,6 +15,10 @@
 #include "soc/lp_clkrst_reg.h"
 #include "soc/hp_sys_clkrst_reg.h"
 #include "soc/lpperi_struct.h"
+_Static_assert(DR_REG_USB_SERIAL_JTAG_BASE == 0x500d2000, "diagnostic serial register base");
+_Static_assert(DR_REG_TIMERGROUP1_BASE == 0x500c3000, "diagnostic timer group");
+_Static_assert(HP_SYS_CLKRST_PERI_CLK_CTRL21_REG == 0x500e6098, "diagnostic clock source");
+_Static_assert(HP_SYS_CLKRST_REG_TIMERGRP1_T0_SRC_SEL_S == 20, "diagnostic clock selector");
 _Static_assert(PMU_RF_PWC_REG == 0x5011515c, "MPLL power register");
 _Static_assert(PMU_MSPI_PHY_XPD == (1u << 24), "MPLL power bit");
 _Static_assert(LP_CLKRST_HP_CLK_CTRL_REG == 0x50111040, "MPLL clock register");
@@ -62,13 +67,55 @@ void nih_display_pads_init(void) {
     }
 }
 
+void nih_keyboard_pads_init(void) {
+    for (unsigned pin = 0; pin <= 1; ++pin) {
+        gpio_ll_output_disable(&GPIO, pin);
+        GPIO.func_out_sel_cfg[pin].out_sel = SIG_GPIO_OUT_IDX;
+        GPIO.func_out_sel_cfg[pin].oen_sel = 1;
+        GPIO.func_out_sel_cfg[pin].out_inv_sel = 0;
+        GPIO.func_out_sel_cfg[pin].oen_inv_sel = 0;
+        gpio_ll_set_level(&GPIO, pin, 0);
+        gpio_ll_input_enable(&GPIO, pin);
+        gpio_ll_pullup_en(&GPIO, pin);
+        gpio_ll_pulldown_dis(&GPIO, pin);
+        IO_MUX.gpio[pin].mcu_sel = 1;
+    }
+}
+/* Existing ROM/loader USB Serial/JTAG configuration; no reset, TX or IRQ change. */
+int32_t nih_diagnostic_serial_read(void) {
+    uint8_t byte;
+    return usb_serial_jtag_ll_read_rxfifo(&byte, 1) == 1 ? byte : -1;
+}
+static bool diagnostic_tx_stalled;
+static uint32_t diagnostic_tx_dropped;
+extern void nih_diagnostic_serial_idle(void);
+void nih_diagnostic_serial_write(uint8_t byte) {
+    if (diagnostic_tx_stalled && !usb_serial_jtag_ll_txfifo_writable()) {
+        if (diagnostic_tx_dropped != UINT32_MAX) ++diagnostic_tx_dropped;
+        return;
+    }
+    for (uint32_t spins = 0; !usb_serial_jtag_ll_txfifo_writable(); ++spins) {
+        if ((spins & 255u) == 0) nih_diagnostic_serial_idle();
+        if (spins == 199999u) {
+            diagnostic_tx_stalled = true;
+            if (diagnostic_tx_dropped != UINT32_MAX) ++diagnostic_tx_dropped;
+            return;
+        }
+    }
+    diagnostic_tx_stalled = false;
+    usb_serial_jtag_ll_write_txfifo(&byte, 1);
+    if (byte == '\n') usb_serial_jtag_ll_txfifo_flush();
+}
+uint32_t nih_diagnostic_serial_dropped(void) { return diagnostic_tx_dropped; }
+__asm__(".global USB_SERIAL_JTAG\n.set USB_SERIAL_JTAG,0x500d2000\n");
+
 void nih_display_pin_release(uint32_t pin, bool release) {
-    if (pin != 31 && pin != 32) return;
+    if (pin != 0 && pin != 1 && pin != 31 && pin != 32) return;
     if (release) gpio_ll_output_disable(&GPIO, pin);
     else gpio_ll_output_enable(&GPIO, pin);
 }
 bool nih_display_pin_level(uint32_t pin) {
-    return (pin == 31 || pin == 32) && gpio_ll_get_level(&GPIO, pin);
+    return (pin == 0 || pin == 1 || pin == 31 || pin == 32) && gpio_ll_get_level(&GPIO, pin);
 }
 
 uint32_t nih_display_i2c_status(void) {

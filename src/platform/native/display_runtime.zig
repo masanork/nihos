@@ -46,6 +46,11 @@ pub fn onInterrupt() void {
 }
 pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0 };
 pub fn snapshot() Report {
+    const previous = asm volatile ("csrrci %[previous], mstatus, 8"
+        : [previous] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     return .{ .status = if (running and state.fault == 0) 1 else 2, .frames = state.frames, .fault = state.fault, .event = last_event, .backlight = @intFromBool(state.backlight), .dsi_error0 = nih_display_diagnostic(0), .dsi_error1 = nih_display_diagnostic(1), .dma_error = nih_display_diagnostic(2), .bridge_error = nih_display_diagnostic(3) };
 }
 
@@ -133,7 +138,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     const frame = base[0..board.frame_bytes];
     const paint = if (options.display_tile) boot.paintPlacedRgb565Le else boot.paintLandscapePlacedRgb565Le;
     const recolor = if (options.display_tile) boot.recolorPlacedRgb565Le else boot.recolorLandscapePlacedRgb565Le;
-    if (white) @memset(frame, 0xff) else if (!paint(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) return error.Image;
+    if (white) @memset(frame, 0xff) else if (!paint(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, if (options.console_live) .display else .ready)) return error.Image;
     if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
     if (options.display_tile) {
         const rows: usize = if (options.display_scene) 40 + 112 + 14 + 10 else 40;
@@ -155,8 +160,8 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         nih_display_pattern_enable(&selected);
         report.dpi_mhz = if (panel == 1) 60 else 80;
     }
-    if (!white and (!options.display_tile or options.display_scene)) for (0..60) |_| try waitFrame(pins, state.frames);
-    if (!white and (!options.display_tile or options.display_scene)) for (1..33) |step| {
+    if (!options.console_live and !white and (!options.display_tile or options.display_scene)) for (0..60) |_| try waitFrame(pins, state.frames);
+    if (!options.console_live and !white and (!options.display_tile or options.display_scene)) for (1..33) |step| {
         try waitFrame(pins, state.frames);
         if (!recolor(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, @intCast(step * 255 / 32), .ready)) return error.Image;
         if (options.display_scene) {
@@ -186,15 +191,17 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
 }
 
 /// Caller routes CLIC18 only after success. No framebuffer or DMA reuse on error.
-pub fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) Report {
+pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) Report {
     if (attempted) return .{ .error_code = 8 };
     attempted = true;
     var report = Report{};
     var powered = false;
     var phy_started = false;
-    clock.start();
-    clock.disarm();
-    defer clock.stop();
+    if (!options.console_live) {
+        clock.start();
+        clock.disarm();
+    }
+    defer if (!options.console_live) clock.stop();
     initialize(clock, panel, white, pattern, sram, &report, &powered, &phy_started) catch |err| {
         report.error_code = switch (err) {
             error.Timer => 1,
