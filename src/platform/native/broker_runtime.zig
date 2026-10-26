@@ -61,6 +61,12 @@ fn fail(step: u8) noreturn {
     _ = nih_rom_putc('\n');
     nih_native_task_failed();
 }
+fn stage(value: u8) void {
+    for ("NIHOS_BROKER_STAGE ") |byte| _ = nih_rom_putc(byte);
+    _ = nih_rom_putc('0' + value / 10);
+    _ = nih_rom_putc('0' + value % 10);
+    _ = nih_rom_putc('\n');
+}
 fn check(ok: bool, step: u8) void {
     if (!ok) fail(step);
 }
@@ -125,6 +131,7 @@ pub export fn nih_broker_io_issued() linksection(".iram1.broker_hooks") callconv
 }
 
 pub export fn nih_broker_runtime_init(old_api_denied: u32, expected_crc: u32) callconv(.c) void {
+    stage(10);
     check(peer_quiet.load(.acquire) == 1 and old_api_denied == 4, 1);
     state().* = .{};
     for (guards) |g| @memset(bytes(g[0], g[1]), 0x96);
@@ -159,6 +166,7 @@ pub export fn nih_broker_runtime_init(old_api_denied: u32, expected_crc: u32) ca
     }
     manager().beginClose(vm) catch fail(9);
     check((manager().reclaimOne(vm) catch fail(9)) == .complete, 9);
+    stage(11);
     enabled.store(1, .release);
 }
 
@@ -214,7 +222,9 @@ fn dispatch(request: Request) ?Response {
             io_armed.store(1, .release);
             // No reply is published. The gate kills the blocked client after
             // CMD17 launch; the driver must finish copying before we unpin.
+            stage(40);
             check(nih_broker_sd_read(@ptrCast(s.borrow.?.bytes.ptr)) == 0, 43);
+            stage(41);
             check(io_armed.load(.acquire) == 2 and io_after_exit.load(.acquire) == 1 and
                 exited.load(.acquire) == s.bound_identity, 44);
             if (manager().free(owner, s.lease.?)) |_| fail(45) else |err| check(err == error.Busy, 45);
@@ -241,6 +251,7 @@ pub export fn nih_broker_runtime_poll() callconv(.c) void {
     const s = state();
     const current = identity.load(.acquire);
     if (current != 0 and current != s.bound_identity) {
+        stage(@intCast(20 + iteration.load(.acquire)));
         check(s.owner == null and s.lease == null and s.borrow == null, 16);
         s.owner = manager().open(.ime, .{ .internal = 8192, .external = 2097152 }) catch fail(17);
         const control = manager().alloc(s.owner.?, .internal, 8192, 64) catch fail(39);
@@ -263,6 +274,7 @@ pub export fn nih_broker_runtime_poll() callconv(.c) void {
     if (s.owner == null) return;
     if (exited.load(.acquire) == current) {
         if (!s.closed) {
+            stage(@intCast(30 + iteration.load(.acquire)));
             // The task is stopped and cannot modify its stack. Measure before
             // publishing cleanup, which permits the scheduler to reuse it.
             var low = stack_low;
@@ -363,6 +375,7 @@ pub export fn nih_broker_runtime_done() callconv(.c) u32 {
     return @intFromBool(reaped.load(.acquire) == 4);
 }
 pub export fn nih_broker_runtime_finish(out: *abi.Report) callconv(.c) void {
+    stage(50);
     const s = state();
     check(reaped.load(.acquire) == 4 and s.owner == null and s.lease == null and s.borrow == null and s.requests.countApprox() == 0 and s.responses.countApprox() == 0, 35);
     for (s.network_lease.?.bytes) |byte| check(byte == 0x59, 41);
