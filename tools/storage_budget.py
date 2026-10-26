@@ -15,7 +15,7 @@ def assess():
         'task_and_irq_stacks': 128 * KIB,
         'fixed_dma_and_io': 32 * KIB,
         'reusable_internal_heap': 256 * KIB,
-        'unassigned_headroom': 16 * KIB,
+        'software_guard_reserve': 16 * KIB,
     }
     psram = {
         'boot_allocator_metadata_and_guards': 2 * MIB,
@@ -62,7 +62,11 @@ def assess():
                             'io_chunk_bytes': 4096, 'stack_budget_bytes': 128 * KIB,
                             'vm_stack_initial_bytes': 16 * KIB, 'network_tls_stack_initial_bytes': 24 * KIB},
         'sram_budget_bytes': sram, 'sram_total_bytes': sum(sram.values()),
-        'high_sram_additional_bytes_requiring_qualification': 328 * KIB,
+        'high_sram_additional_bytes': 328 * KIB,
+        'high_sram_qualification': {'source_commit': '8a66e2689714bc48bac3edcb2df5101094d3f7d1',
+                                    'physical_usb_rts_runs': 3, 'tested_bytes': 328 * KIB,
+                                    'page_pool_bytes': 208 * KIB,
+                                    'general_heap_and_stack_admission_integrated': False},
         'psram_peak_envelope_bytes': psram, 'psram_total_bytes': sum(psram.values()),
         'store_budget_bytes': store, 'store_total_bytes': sum(store.values()),
         'flat_map_assumptions': {'chunk_bytes': chunk_bytes, 'entry_bytes': entry_bytes,
@@ -90,7 +94,8 @@ def assess():
             'Header/alignment rounding must be charged for every real parent allocation.',
             'A resident transaction window is not a cap on a SQLite transaction or blob size.',
             'Checkpoint, recovery and GC must fit at peak overlap, not only steady state.',
-            'High SRAM registration, reusable internal pools and expanded task stacks remain qualification gates.',
+            'High SRAM cell/SMP/page-pool tests passed on the retained device image; general broker and expanded stack admission remain gates.',
+            'The previous 16 KiB internal headroom is now reserved for software guards, not free capacity.',
         ],
     }
     return result
