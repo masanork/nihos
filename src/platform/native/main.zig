@@ -476,7 +476,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 if (options.storage_service) {
                     runStorageTasks(0);
                     const report = storage_runtime.finish();
-                    logger.record("NIHOS_NATIVE_STORAGE_SERVICE", null, .{ "status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared", "forced_exit", "inflight_completed", "discarded_requests", "discarded_responses" }, &report);
+                    logger.record("NIHOS_NATIVE_STORAGE_SERVICE", null, .{ "status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared", "forced_exit", "inflight_completed", "discarded_requests", "discarded_responses", "rebound", "replacement_owner", "old_epoch_rejected", "old_reply_rejected", "old_handle_rejected", "old_exit_rejected", "replacement_exit", "replacement_bytes", "replacement_crc" }, &report);
                 }
                 if (options.sqlite) runSqlProbe();
                 tasks.floating.quiesce(0);

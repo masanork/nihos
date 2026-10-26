@@ -290,9 +290,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     allowed_sql = list(sqlite_manifest["allowed_functions"]) if allow_sql else []
     service = sqlite_manifest.get('littlefs', {}).get('service') if allow_sql else None
     if service is not None:
-        require(service.get('version') in (1, 2) and service.get('ipc_start') == '0x48004000' and service.get('ipc_bytes') == 8192 and service.get('clock_group') == 1 and service.get('clock_channel') == 0, 'invalid storage service manifest')
+        require(service.get('version') in (1, 2, 3) and service.get('ipc_start') == '0x48004000' and service.get('ipc_bytes') == 8192 and service.get('clock_group') == 1 and service.get('clock_channel') == 0, 'invalid storage service manifest')
         require({'nih_storage_task_entry', 'nih_storage_runtime_init', 'nih_storage_runtime_finish'}.issubset(sql_funcs), 'missing storage service functions')
-        hooks = ('nih_storage_cancel_requested',) if service.get('version') == 2 else ()
+        hooks = ('nih_storage_cancel_requested',) if service.get('version') in (2, 3) else ()
         for hook in hooks + ('nih_storage_register', 'nih_storage_pending', 'nih_storage_task_exited', 'nih_storage_cleanup_ready', 'nih_storage_retired'):
             require(hook in symbols and low <= symbols[hook] < high, 'storage IRQ hook outside internal SRAM')
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql)

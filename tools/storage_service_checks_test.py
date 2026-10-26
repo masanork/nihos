@@ -58,3 +58,27 @@ class StorageCancellationChecks(unittest.TestCase):
                 NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
         with self.assertRaises(ValueError):
             NATIVE.check(log.replace('forced=00000002','forced=00000001'),'sqlite',32<<20,image,'physical-device')
+
+
+class StorageRebindChecks(unittest.TestCase):
+    def test_replacement_requires_generation_stale_rejections_second_read_and_second_task_ledger(self):
+        log,image=fixture()
+        image['sqlite']['littlefs']['service']['version']=3
+        fields={**record(),'requests':62,'responses':63,'rejected':8,'forced_exit':1,'inflight_completed':1,'discarded_requests':2,'discarded_responses':2,
+                'rebound':1,'replacement_owner':0x01010004,'old_epoch_rejected':1,'old_reply_rejected':1,'old_handle_rejected':2,'old_exit_rejected':1,'replacement_exit':1,'replacement_bytes':10752,'replacement_crc':0x883551bf}
+        log=log.replace(BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',record()),BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',fields))
+        changes=[('opened=00000008','opened=00000009'),('closed=00000007','closed=00000008'),('completed=00000007','completed=00000008'),
+                 ('reuses=00000004','reuses=00000005'),('stale=00000004','stale=00000005'),('forced=00000001','forced=00000002')]
+        lines=log.splitlines()
+        for i,line in enumerate(lines):
+            if line.startswith('NIHOS_NATIVE_RESOURCES hart=00000001'):
+                for old,new in changes:line=line.replace(old,new)
+                lines[i]=line
+        log='\n'.join(lines)
+        self.assertEqual(NATIVE.check(log,'sqlite',32<<20,image,'physical-device')['storage_service']['replacement_owner'],0x01010004)
+        for key in NATIVE.REBIND_FIELDS:
+            changed=log.replace(BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',fields),BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',{**fields,key:0}))
+            with self.subTest(key=key),self.assertRaises(ValueError):
+                NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
+        with self.assertRaises(ValueError):
+            NATIVE.check(log.replace('stale=00000005','stale=00000004'),'sqlite',32<<20,image,'physical-device')

@@ -48,6 +48,10 @@ const State = struct {
     client_response: rpc.Response = .{},
     client_path: [256]u8 = @splat(0),
     next_sequence: u32 = 3,
+    client_epoch: u32 = 1,
+    old_kernel_handle: u32 = 0,
+    old_file_handle: u32 = 0,
+    path_length: u32 = 0,
 };
 comptime {
     if (@sizeOf(State) > 8192) @compileError("storage IPC reservation too small");
@@ -95,6 +99,16 @@ pub export fn nih_storage_runtime_init() callconv(.c) void {
 // Called with MIE clear: no PSRAM, no backend calls, no allocation.
 pub export fn nih_storage_register(hart: u32, handle: u32, low: u32, high: u32) linksection(".iram1.storage_hooks") callconv(.c) void {
     bounds[hart] = .{ .low = low, .high = high };
+    if (hart == 1 and handles[1].load(.acquire) != 0) {
+        // Both client execution and its first cleanup are complete. The owner
+        // waits for the new identity; reset only resident handshake flags here.
+        identities[1].store(0, .release);
+        owner_ready.store(0, .release);
+        exited.store(0, .release);
+        cancel_mode.store(0, .release);
+        cancel_requested.store(0, .release);
+        cleanup.store(0, .release);
+    }
     handles[hart].store(handle, .release);
     if (flags[hart].load(.acquire) != 0) signal(hart);
     signal(hart ^ 1);
@@ -218,6 +232,29 @@ noinline fn serve() linksection(".flash.text.storage") i32 {
     if (server.dispatch(.{ .sequence = 1, .operation = 4 }).status != -13) fail(9, -1);
     state().report.stale_rejected = 1;
     if (state().queues.requests.countApprox() != 0 or state().queues.responses.countApprox() != 0) fail(10, -1);
+    // Keep the mount and monotonically increasing file tokens through the
+    // endpoint restart. Ack lets CPU1 reap the stopped task and reuse its slot.
+    cleanup.store(1, .release);
+    signal(1);
+    while (identities[1].load(.acquire) == 0 or identities[1].load(.acquire) == server.client) wait();
+    if (!server.rebind(identities[1].load(.acquire), &state().queues)) fail(40, -1);
+    state().report.rebound = 1;
+    state().report.replacement_owner = server.client;
+    // Deliberately inject an old-epoch reply with the matching sequence to
+    // prove that the replacement does not accept it as its first response.
+    if (!state().queues.responses.tryPush(.{ .epoch = 1, .sequence = 1, .status = -9 })) fail(41, -1);
+    owner_ready.store(1, .release);
+    signal(1);
+    while (exited.load(.acquire) == 0) {
+        if (server.step(&state().queues)) {
+            signal(1);
+            continue;
+        }
+        wait();
+    }
+    if (server.clientExited(&state().queues) != 0 or state().queues.requests.countApprox() != 0 or
+        state().queues.responses.countApprox() != 0 or server.discarded_requests != 2 or server.discarded_responses != 2) fail(42, -1);
+    state().report.replacement_exit = 1;
     state().report.requests = server.processed;
     state().report.rejected = server.rejected;
     if (nih_ro_destroy(session) != 0) fail(11, -1);
@@ -228,15 +265,19 @@ noinline fn serve() linksection(".flash.text.storage") i32 {
     state().report.elapsed_us = @intCast((clock().counter() orelse fail(13, -1)) - began);
     state().report.peer_polls = polls[1].load(.acquire) -% peer_before;
     state().report.owner_stack = measure(0, painted);
-    cleanup.store(1, .release);
+    cleanup.store(2, .release);
     signal(1);
     return 300;
 }
 noinline fn receive() linksection(".flash.text.storage") *const rpc.Response {
     while (true) {
         if (state().queues.responses.tryPop()) |response| {
-            state().client_response = response;
             signal(0);
+            if (response.epoch != state().client_epoch) {
+                state().report.old_reply_rejected += 1;
+                continue;
+            }
+            state().client_response = response;
             state().report.responses += 1;
             return &state().client_response;
         }
@@ -248,6 +289,7 @@ noinline fn pushRequest() bool {
 }
 noinline fn exchange(operation: u32, handle: u32, offset: u32, length: u32, path_length: u32) linksection(".flash.text.storage") *const rpc.Response {
     const request = &state().client_request;
+    request.epoch = state().client_epoch;
     request.sequence = state().next_sequence;
     state().next_sequence += 1;
     request.operation = operation;
@@ -259,12 +301,14 @@ noinline fn exchange(operation: u32, handle: u32, offset: u32, length: u32, path
     if (!pushRequest()) fail(14, -1);
     signal(0);
     const response = receive();
-    if (response.sequence != request.sequence) fail(15, -1);
+    if (!rpc.responseMatches(response, request.epoch, request.sequence)) fail(15, -1);
     return response;
 }
 noinline fn client() linksection(".flash.text.storage") i32 {
     const painted = nih_sqlite_stack_paint(bounds[1].low);
     while (owner_ready.load(.acquire) == 0) wait();
+    state().client_request.epoch = 1;
+    state().old_kernel_handle = handles[1].load(.acquire);
     for (1..3) |number| {
         state().client_request.sequence = @intCast(number);
         state().client_request.operation = 1;
@@ -315,6 +359,8 @@ noinline fn client() linksection(".flash.text.storage") i32 {
     const abandoned = exchange(3, 0, 0, 0, n);
     if (abandoned.status != 0 or abandoned.handle == handle) fail(28, abandoned.status);
     const abandoned_handle = abandoned.handle;
+    state().old_file_handle = abandoned_handle;
+    state().path_length = n;
     if (exchange(5, handle, 0, 0, 0).status != -9) fail(29, -1);
     state().report.bytes = offset;
     state().report.crc = ~crc;
@@ -322,7 +368,7 @@ noinline fn client() linksection(".flash.text.storage") i32 {
     // backend call. Once it is suspended, fill the request ring behind it.
     cancel_mode.store(1, .release);
     for (0..2) |index| {
-        state().client_request = .{ .sequence = state().next_sequence, .operation = 4, .handle = abandoned_handle, .offset = @intCast(index), .length = if (index == 0) 1 else 512 };
+        state().client_request = .{ .epoch = 1, .sequence = state().next_sequence, .operation = 4, .handle = abandoned_handle, .offset = @intCast(index), .length = if (index == 0) 1 else 512 };
         state().next_sequence += 1;
         if (!pushRequest()) fail(37, -1);
     }
@@ -340,6 +386,43 @@ noinline fn client() linksection(".flash.text.storage") i32 {
     // may execute once cancellation has been acknowledged by the scheduler.
     while (true) wait();
 }
+noinline fn replacement() linksection(".flash.text.storage") i32 {
+    const painted = nih_sqlite_stack_paint(bounds[1].low);
+    while (owner_ready.load(.acquire) == 0) wait();
+    nih_storage_task_exited(1, state().old_kernel_handle);
+    if (exited.load(.acquire) != 0) fail(43, -1);
+    state().report.old_exit_rejected = 1;
+    state().client_epoch = 2;
+    state().client_request = .{ .epoch = 1, .sequence = 1, .operation = 4, .handle = state().old_file_handle, .length = 1 };
+    if (!pushRequest()) fail(44, -1);
+    signal(0);
+    const stale = receive();
+    if (!rpc.responseMatches(stale, 2, 1) or stale.status != -13) fail(45, stale.status);
+    state().report.old_epoch_rejected = 1;
+    state().next_sequence = 1;
+    if (exchange(4, state().old_file_handle, 0, 1, 0).status != -9) fail(46, -1);
+    state().report.old_handle_rejected = 1;
+    const opened = exchange(3, 0, 0, 0, state().path_length);
+    if (opened.status != 0 or opened.handle == state().old_file_handle) fail(47, opened.status);
+    const handle = opened.handle;
+    if (exchange(4, state().old_file_handle, 0, 1, 0).status != -9) fail(48, -1);
+    state().report.old_handle_rejected += 1;
+    var offset: u32 = 0;
+    var crc: u32 = 0xffff_ffff;
+    while (offset < state().report.bytes) {
+        const row = exchange(4, handle, offset, @min(512, state().report.bytes - offset), 0);
+        if (row.status <= 0 or row.length != @as(u32, @intCast(row.status)) or row.length > state().report.bytes - offset) fail(49, row.status);
+        for (row.data[0..row.length]) |byte| {
+            crc ^= byte;
+            for (0..8) |_| crc = (crc >> 1) ^ (if (crc & 1 != 0) @as(u32, 0xedb88320) else 0);
+        }
+        offset += row.length;
+    }
+    state().report.replacement_bytes = offset;
+    state().report.replacement_crc = ~crc;
+    state().report.client_stack = @max(state().report.client_stack, measure(1, painted));
+    return 301; // Leave the new file open to qualify a second owner release.
+}
 pub export fn nih_storage_task_entry(hart: u32) linksection(".flash.text.storage") callconv(.c) i32 {
     const current = calls.current() orelse fail(30, -1);
     if ((@as(u32, current.generation) << 16 | current.slot) != handles[hart].load(.acquire)) fail(31, -1);
@@ -347,10 +430,10 @@ pub export fn nih_storage_task_entry(hart: u32) linksection(".flash.text.storage
     if (identity == 0) fail(32, -1);
     identities[hart].store(identity, .release);
     signal(hart ^ 1);
-    return if (hart == 0) serve() else client();
+    return if (hart == 0) serve() else if (state().old_kernel_handle != 0) replacement() else client();
 }
 pub export fn nih_storage_runtime_finish(result: *Report) callconv(.c) void {
-    if (!finished() or cleanup.load(.acquire) != 1 or polls[1].load(.acquire) == 0) fail(33, -1);
+    if (!finished() or cleanup.load(.acquire) != 2 or polls[1].load(.acquire) == 0) fail(33, -1);
     var report = state().report;
     const bytes: *volatile [8192]u8 = @ptrFromInt(0x48004000);
     for (bytes) |*byte| byte.* = 0;

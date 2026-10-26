@@ -64,7 +64,7 @@ def main(directory, source, littlefs=None):
                              'api_internal_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_internal.h')}
     if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text():
         root = Path(__file__).resolve().parents[1]
-        result['littlefs']['service'] = {'version': 2, 'ipc_start': '0x48004000', 'ipc_bytes': 8192,
+        result['littlefs']['service'] = {'version': 3, 'ipc_start': '0x48004000', 'ipc_bytes': 8192,
                                         'clock_group': 1, 'clock_channel': 0,
                                         'runtime_sha256': sha(root / 'src/platform/native/storage_runtime.zig'),
                                         'protocol_sha256': sha(root / 'src/kernel/storage_rpc.zig')}
