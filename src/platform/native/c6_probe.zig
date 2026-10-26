@@ -5,6 +5,9 @@ const sd = @import("sdio");
 const pipe = @import("c6_sdio");
 const control = @import("at_controller");
 const timers = @import("timer_group");
+const wifi = control.wifi;
+pub const WifiJoin = wifi.Join;
+var station: ?wifi.Probe = null;
 extern fn nih_c6_pads_init() callconv(.c) void;
 extern fn nih_c6_reset(u32) callconv(.c) void;
 extern fn nih_c6_fourbit_pins() callconv(.c) void;
@@ -96,6 +99,14 @@ pub const Report = struct {
     notices: u32 = 0,
     clock_khz: u32 = 0,
     bus_bits: u32 = 0,
+    wifi_step: u32 = 0,
+    dhcp: u32 = 0,
+    wifi_state: u32 = 0,
+    ip: u32 = 0,
+    gateway: u32 = 0,
+    netmask: u32 = 0,
+    connected_events: u32 = 0,
+    got_ip_events: u32 = 0,
 };
 
 fn snapshot(report: Report) Report {
@@ -110,6 +121,16 @@ fn snapshot(report: Report) Report {
     result.ocr = host.ocr;
     result.clock_khz = if (host.prepared) 400 else 0;
     result.bus_bits = if (!host.prepared) 0 else if (host.four_bit) 4 else 1;
+    if (station) |value| {
+        result.wifi_step = @backingInt(value.step) + 1;
+        result.dhcp = value.dhcp orelse 0;
+        result.wifi_state = value.state orelse 0;
+        result.ip = value.ip orelse 0;
+        result.gateway = value.gateway orelse 0;
+        result.netmask = value.netmask orelse 0;
+        result.connected_events = value.connected_events;
+        result.got_ip_events = value.got_ip_events;
+    }
     return result;
 }
 
@@ -117,6 +138,7 @@ fn notice(report: *Report, item: control.Notice) !void {
     switch (item) {
         .profile_ready => report.profile += 1,
         .line => |line| {
+            if (station) |*value| try value.line(line);
             if (std.mem.startsWith(u8, line, "AT version:")) report.version_lines += 1;
             if (std.mem.startsWith(u8, line, "+SYSRAM:")) {
                 var fields = std.mem.splitScalar(u8, line[8..], ',');
@@ -130,9 +152,9 @@ fn notice(report: *Report, item: control.Notice) !void {
     }
 }
 
-fn pump(clock: timers.Timer, report: *Report, wait_profile: bool) !void {
+fn pump(clock: timers.Timer, report: *Report, wait_profile: bool, budget: u64) !void {
     const started = clock.counter() orelse return error.Clock;
-    for (0..200_000) |_| {
+    for (0..1_000_000) |_| {
         const count = try stream.receive(&rx);
         report.rx +|= @intCast(count);
         for (rx[0..count]) |byte| {
@@ -140,7 +162,8 @@ fn pump(clock: timers.Timer, report: *Report, wait_profile: bool) !void {
             if (try owner.push(byte, now)) |item| try notice(report, item);
         }
         const now = clock.counter() orelse return error.Clock;
-        if (clock_failed or now < started or now - started > 15_000_000) return error.Clock;
+        if (clock_failed or now < started) return error.Clock;
+        if (now - started > budget) return error.Timeout;
         const bytes = try owner.tx(now);
         if (bytes.len != 0) {
             const sent = try stream.send(bytes);
@@ -161,7 +184,7 @@ fn pump(clock: timers.Timer, report: *Report, wait_profile: bool) !void {
     return error.Timeout;
 }
 
-fn exercise(clock: timers.Timer, report: *Report) !void {
+fn exercise(clock: timers.Timer, report: *Report, join: ?WifiJoin) !void {
     report.stage = 1;
     nih_c6_pads_init();
     host.io.delay(20_000);
@@ -195,29 +218,42 @@ fn exercise(clock: timers.Timer, report: *Report) !void {
     if (!settled) return error.Timeout;
     report.stage = 6;
     try owner.recover(clock.counter() orelse return error.Clock, 1_000_000);
-    try pump(clock, report, true);
+    try pump(clock, report, true, 15_000_000);
     report.stage = 7;
     var now = clock.counter() orelse return error.Clock;
     _ = try owner.submit(.version, now, now + 1_000_000);
-    try pump(clock, report, false);
+    try pump(clock, report, false, 1_000_000);
     now = clock.counter() orelse return error.Clock;
     _ = try owner.submit(.memory, now, now + 1_000_000);
-    try pump(clock, report, false);
+    try pump(clock, report, false, 1_000_000);
     if (report.profile != 1 or report.version_lines < 2 or report.heap_lines != 1) return error.MissingEvidence;
+    if (join) |credentials| {
+        report.stage = 9;
+        station = .{};
+        while (station.?.step != .done) {
+            const command = try station.?.command(credentials);
+            const timeout: u64 = if (station.?.step == .join) 30_000_000 else 2_000_000;
+            now = clock.counter() orelse return error.Clock;
+            _ = try owner.submit(command, now, now + timeout);
+            try pump(clock, report, false, timeout);
+            try station.?.complete();
+        }
+    }
     report.status = 1;
-    report.stage = 8;
+    report.stage = if (join != null) 10 else 8;
 }
 
-pub fn run(clock: timers.Timer) Report {
+pub fn run(clock: timers.Timer, join: ?WifiJoin) Report {
     host = .{ .io = .{ .clock = clock } };
     stream = .{ .host = &host };
     owner = .{};
+    station = null;
     clock_failed = false;
     clock.start();
     clock.disarm();
     defer clock.stop();
     var report: Report = .{};
-    exercise(clock, &report) catch |err| {
+    exercise(clock, &report, join) catch |err| {
         report.error_code = @intFromError(err);
         owner.transportFailed();
         stream.invalidate();

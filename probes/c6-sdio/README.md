@@ -60,7 +60,7 @@ prototype must not be attached to a running storage service.
 4. Drain the fresh peer's startup bytes until a bounded quiet interval without
    discarding the cumulative FIFO accounting state.
 5. Run all ten AT profile commands, query version again, then query SYSRAM.
-   TCP/AP/BLE peer connections are deliberately outside this first fixture.
+   The default build stops here. The opt-in Wi-Fi build continues as below.
 6. Print one `NIHOS_NATIVE_C6` record and an explicit AT pass/fail marker.
    A trap prints a separate fatal record. All paths then halt CPU0.
 
@@ -69,6 +69,41 @@ two version replies, one valid heap reply and no cleanup failure. A marker
 or an image audit alone is insufficient. No physical output is recorded yet.
 The ROM-address line identifies linked ABI addresses; it does not claim that
 every listed ROM function was executed.
+
+## AP connection and DHCP check
+
+The opt-in build enables station DHCP, queries it back, joins the AP, queries
+`CWSTATE` and then `CIPSTA`. Only successful AT completions advance the check.
+State 2, station DHCP enabled, and a nonzero unicast IPv4 address with a valid
+contiguous mask and same-subnet gateway are required. Disconnect, reset, timeout,
+duplicate/malformed fields or a terminal ERROR fail the run. `WIFI GOT IP` alone
+does not pass. These AT replies are firmware-reported configuration evidence;
+the fixture does not capture the DHCP exchange or test Internet reachability.
+
+Create a local JSON file with mode 0600. Use either
+`{"ssid":"YOUR_2_4_GHZ_AP","password":"YOUR_PASSWORD"}` or `{"saved":true}`.
+The latter reconnects the last **ESP-AT** configuration with bare `CWJAP`.
+It does not migrate credentials from factory ESP-Hosted firmware. A fresh AT
+flash must use explicit credentials unless its NVS is already provisioned.
+
+```sh
+chmod 600 /absolute/path/to/private-wifi.json
+NIHOS_C6_WIFI_CONFIG=/absolute/path/to/private-wifi.json sh tools/build-c6-sdio-probe.sh
+```
+
+The generated module, image and receipt go into the private, ignored directory
+`build/c6-wifi-probe/`. Credentials are embedded in this image: keep all its
+artifacts local. The generator rejects public-readable config files and control
+bytes, and never prints credentials. `SYSSTORE=0` keeps the test join volatile.
+Keep using the already backed-up C6 AT candidate described above.
+
+The join deadline is 30 seconds; each following query has a two-second deadline.
+Success requires status 1/stage 10 and a complete `NIHOS_C6_WIFI_PASS` record with
+decimal `ip`, `gateway` and `netmask`. On failure, `wifi_step` is 1-based:
+enable DHCP, query DHCP, join, query station state, query addresses, done.
+Report IP fields use network-order hexadecimal integers. All runs halt after
+the result. The Wi-Fi image has been built and audited; no physical AP/IP pass
+is recorded yet. See the [current preflight](../../docs/measurements/2026-10-27-c6-wifi-preflight.md).
 
 ## DMA and stream contracts
 

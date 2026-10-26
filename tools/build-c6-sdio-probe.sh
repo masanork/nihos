@@ -3,6 +3,11 @@
 set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 build_dir="$repo_root/build/c6-sdio-probe"
+if [ -n "${NIHOS_C6_WIFI_CONFIG:-}" ]; then
+    # Private credentials and images never share the public AT-only directory.
+    umask 077
+    build_dir="$repo_root/build/c6-wifi-probe"
+fi
 c6_sdk=${NIHOS_IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}
 if [ ! -f "$c6_sdk/export.sh" ] ||
    [ "$(git -C "$c6_sdk" rev-parse HEAD)" != "$(git -C "$c6_sdk" rev-parse 'v5.4.4^{commit}')" ] ||
@@ -16,6 +21,7 @@ zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 . "$c6_sdk/export.sh" >/dev/null
 python=${NIHOS_IDF_PYTHON:-python}
 mkdir -p "$build_dir"
+"$python" "$repo_root/tools/c6-wifi-config.py" "$build_dir/wifi-config.zig" "${NIHOS_C6_WIFI_CONFIG:-}"
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$build_dir/loader" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$build_dir/loader/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=$repo_root/ports/esp32p4-native/sdkconfig.defaults" bootloader partition-table \
@@ -37,7 +43,9 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
     -fentry=nih_native_start -T "$repo_root/src/platform/native/esp32p4.ld" --gc-sections \
     "$repo_root/probes/c6-sdio/start.S" "$build_dir/pads.o" \
-    --dep c6_probe --dep timer_group -Mroot="$repo_root/probes/c6-sdio/main.zig" \
+    --dep c6_probe --dep timer_group --dep wifi_config -Mroot="$repo_root/probes/c6-sdio/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mwifi_config="$build_dir/wifi-config.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     --dep sdio --dep c6_sdio --dep at_controller --dep timer_group -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -65,6 +73,7 @@ names = [
     'src/soc/esp32p4/sdio.zig', 'src/soc/esp32p4/timer_group.zig',
     'src/net/c6_sdio.zig', 'src/net/esp_at.zig', 'src/net/at_commands.zig',
     'src/net/at_controller.zig', 'tools/build-c6-sdio-probe.sh',
+    'src/net/wifi_station.zig', 'tools/c6-wifi-config.py',
     'tools/check-c6-sdio-image.py', 'tools/check-native-image.py',
 ]
 def sha(path):
@@ -82,6 +91,8 @@ report = {
         'loader/bootloader/bootloader.bin', 'loader/partition_table/partition-table.bin',
     ]},
     'peer_assumptions': {'receive_buffer_bytes': 512, 'receive_buffers': 10, 'fresh_reset_required': True},
+    'wifi_enabled': dest.name == 'c6-wifi-probe',
+    'private_artifacts': dest.name == 'c6-wifi-probe',
 }
 (dest / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
 print('P4 C6 fixture source/artifact receipt:', dest / 'receipt.json')
