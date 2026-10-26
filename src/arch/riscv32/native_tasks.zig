@@ -31,6 +31,7 @@ extern fn nih_broker_task_exited(u32) callconv(.c) void;
 extern fn nih_broker_cleanup_ready() callconv(.c) u32;
 extern fn nih_broker_round() callconv(.c) u32;
 extern fn nih_broker_reaped() callconv(.c) void;
+extern fn nih_broker_cancel_requested() callconv(.c) u32;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
 const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete };
@@ -252,12 +253,13 @@ fn maintain(hart: u32, device: timer_group.Timer) bool {
         const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
         if (completion.state != .exited) return true;
         const round = nih_broker_round();
-        if (completion.exit_code != 400 + round) return false;
+        const expected: i32 = if (round == 3) -97 else @intCast(400 + round);
+        if (completion.exit_code != expected) return false;
         if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle)) or nih_broker_cleanup_ready() != round) return true;
         owner.completed_runtime_ticks += completion.runtime_ticks;
         if (!owner.runtime.reap(owner.lifecycle)) return false;
         nih_broker_reaped();
-        if (round == 1) return admitBroker(hart);
+        if (round < 4) return admitBroker(hart);
         owner.phase = .broker_complete;
         return true;
     }
@@ -441,6 +443,16 @@ pub fn service(hart: u32) bool {
     var terminated = false;
     if (options.broker and owner.phase == .broker_service and nih_broker_pending() != 0) {
         _ = owner.runtime.policy.notify(owner.lifecycle, 1);
+    }
+    if (options.broker and hart == 1 and owner.phase == .broker_service and nih_broker_cancel_requested() == 1) {
+        const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
+        if (snapshot.state == .waiting) {
+            if (!owner.runtime.policy.terminate(owner.lifecycle, -97)) nih_native_task_failed();
+            if (!memory.reusable.closeTask(hart, key(owner.lifecycle))) nih_native_task_failed();
+            memory.reusable.terminatedTask(hart);
+            nih_broker_task_exited(control.encodeHandle(owner.lifecycle));
+            terminated = true;
+        }
     }
     if (owner.phase == .forced_lifecycle) {
         const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
