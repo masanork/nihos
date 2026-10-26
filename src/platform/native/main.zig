@@ -1,6 +1,7 @@
 //! Independent native boot experiment: no IDF application or FreeRTOS link.
 const std = @import("std");
 const options = @import("native_options");
+const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
 const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
@@ -293,6 +294,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     while (true) {
         _ = tasks.service(1);
         if (tasks.ipi.done()) {
+            if (options.storage_service) runStorageTasks(1);
             tasks.floating.quiesce(1);
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
@@ -301,6 +303,17 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
         }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
         tasks.idleOnce(1);
+    }
+}
+
+noinline fn runStorageTasks(hart: u32) void {
+    if (!tasks.startStorage(hart)) fail("storage task admission");
+    const began = cycle();
+    while (!storage_runtime.finished()) {
+        _ = tasks.service(hart);
+        storage_runtime.poll(hart);
+        if (tasks.calls.yieldNow() != 0) fail("storage bootstrap yield");
+        if (cycle() -% began > 1_000_000_000) fail("storage task timeout");
     }
 }
 
@@ -406,6 +419,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     prepareTimers();
     const external_bytes = bootMemory();
     if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null);
+    if (options.storage_service) storage_runtime.init();
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
@@ -459,6 +473,11 @@ export fn nih_native_main() callconv(.c) noreturn {
                 print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
+                if (options.storage_service) {
+                    runStorageTasks(0);
+                    const report = storage_runtime.finish();
+                    logger.record("NIHOS_NATIVE_STORAGE_SERVICE", null, .{ "status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared" }, &report);
+                }
                 if (options.sqlite) runSqlProbe();
                 tasks.floating.quiesce(0);
                 if (!flash_records.finish(0)) fail("CPU0 Flash records finish");

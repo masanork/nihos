@@ -12,6 +12,7 @@
 typedef struct nih_ro nih_ro;
 typedef int (*nih_ro_sector_read)(void *context, uint32_t lba, void *sector);
 typedef struct { uint32_t type, size; } nih_ro_info;
+typedef struct { uint32_t type, size; char name[256]; } nih_ro_entry;
 enum { NIH_RO_INVAL=-22, NIH_RO_IO=-5, NIH_RO_BUSY=-16, NIH_RO_BADF=-9,
        NIH_RO_OWNER=-13, NIH_RO_NODEV=-19, NIH_RO_LIMIT=-27 };
 /* Init requires an unused/quiesced workspace. No outstanding session/token
@@ -19,6 +20,9 @@ enum { NIH_RO_INVAL=-22, NIH_RO_IO=-5, NIH_RO_BUSY=-16, NIH_RO_BADF=-9,
 nih_ro *nih_ro_init(void *workspace, uint32_t bytes, nih_ro_sector_read read, void *context);
 int nih_ro_mount(nih_ro *session, uint32_t sectors);
 int nih_ro_stat(nih_ro *session, const char *path, uint32_t length, nih_ro_info *info);
+/* Root enumeration, excluding dot entries, at most 128 entries. Returns 1
+ * for an entry, 0 at end, or a negative error. Caller serializes with file IO. */
+int nih_ro_list_root(nih_ro *session, uint32_t index, nih_ro_entry *entry);
 int nih_ro_open(nih_ro *session, uint32_t owner, const char *path, uint32_t length, uint32_t *handle);
 /* Returns bytes read (0 at EOF), or a negative error. Offsets beyond EOF and
  * lengths above READ_MAX fail. IO/metadata errors poison the mounted session:

@@ -30,6 +30,10 @@ int main(int argc,char **argv) {
     CHECK(nih_ro_open(s,7,"/hello.bin",10,&h)==NIH_RO_NODEV);
     CHECK(!nih_ro_mount(s,64)); CHECK(nih_ro_mount(s,64)==NIH_RO_BUSY);
     CHECK(!nih_ro_stat(s,"/hello.bin",10,&info) && info.type==1 && info.size==1300);
+    nih_ro_entry entry;
+    for (uint32_t i=0;i<3;++i) CHECK(nih_ro_list_root(s,i,&entry)==1 && entry.name[0]);
+    CHECK(nih_ro_list_root(s,3,&entry)==0);
+    CHECK(nih_ro_list_root(s,128,&entry)==NIH_RO_INVAL);
     const char *invalid[]={"hello.bin","//hello.bin","/../hello.bin","/./hello.bin","/hello.bin/","/dir//file"};
     uint32_t before=calls;
     for (unsigned i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i)

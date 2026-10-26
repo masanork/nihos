@@ -40,6 +40,8 @@ def main(directory, source, littlefs=None):
     if littlefs is not None:
         for name in ('sql_lfs.o', 'sql_lfs_util.o', 'sql_lfs_reader.o', 'sql_storage_api.o'):
             objects[name] = {'sha256': sha(directory / name), 'functions': functions(directory / name)}
+    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text():
+        objects['sql_storage_runtime.o'] = {'sha256': sha(directory / 'sql_storage_runtime.o'), 'functions': functions(directory / 'sql_storage_runtime.o')}
     profile_path = Path(__file__).resolve().parents[1] / 'src/kernel/size_pool.zig'
     matches = re.findall(r'sqlite_probe = Config\{ \.counts = \.\{([^}]+)\}', profile_path.read_text())
     if len(matches) != 1:
@@ -60,6 +62,12 @@ def main(directory, source, littlefs=None):
                              'api_source_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_littlefs.c'),
                              'api_header_sha256': sha(Path(__file__).resolve().parents[1] / 'include/nihos_storage.h'),
                              'api_internal_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_internal.h')}
+    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text():
+        root = Path(__file__).resolve().parents[1]
+        result['littlefs']['service'] = {'version': 1, 'ipc_start': '0x48004000', 'ipc_bytes': 8192,
+                                        'clock_group': 1, 'clock_channel': 0,
+                                        'runtime_sha256': sha(root / 'src/platform/native/storage_runtime.zig'),
+                                        'protocol_sha256': sha(root / 'src/kernel/storage_rpc.zig')}
     (directory / 'sqlite-manifest.json').write_text(json.dumps(result, indent=2) + '\n')
 
 

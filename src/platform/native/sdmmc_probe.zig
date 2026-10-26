@@ -58,6 +58,10 @@ var dma_descriptor: [16]u32 align(64) = @splat(0);
 pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
 pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{}, api: ApiReport = .{} };
 var last_error: u32 = 0;
+// SAFETY: run fully initializes the controller; runtimeBegin requires the
+// ready flag set only after all SD boot checks succeed.
+var runtime_controller: sd.Controller(Bus) = undefined;
+var runtime_ready = false;
 const Bus = struct {
     clock: timer_group.Timer,
     pub fn read(_: Bus, offset: usize) u32 {
@@ -108,7 +112,9 @@ pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) Report {
     clock.start();
     clock.disarm();
     defer clock.stop();
-    var controller = sd.Controller(Bus){ .io = .{ .clock = clock } };
+    var local_controller = sd.Controller(Bus){ .io = .{ .clock = clock } };
+    const controller = if (options.storage_service) &runtime_controller else &local_controller;
+    controller.* = .{ .io = .{ .clock = clock } };
     nih_sdmmc_power_off();
     controller.io.delay(250_000);
     nih_sdmmc_power_on();
@@ -116,9 +122,9 @@ pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) Report {
     nih_sdmmc_clock_init();
     controller.io.delay(20);
     report.stage = 1;
-    controller.prepare() catch return failure(report, &controller);
+    controller.prepare() catch return failure(report, controller);
     report.stage = 2;
-    controller.identify() catch return failure(report, &controller);
+    controller.identify() catch return failure(report, controller);
     report.sectors_low = @truncate(controller.sectors);
     report.sectors_high = @intCast(controller.sectors >> 32);
     const lbas = [_]u32{ 0, 1, @intCast(controller.sectors / 2), @intCast(controller.sectors - 1) };
@@ -130,20 +136,20 @@ pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) Report {
         report.stage = 3 + @as(u32, @intCast(phase));
         if (phase == 1) controller.switchFourBit() catch |err| {
             last_error = errorCode(err);
-            return failure(report, &controller);
+            return failure(report, controller);
         };
         if (phase == 2) controller.switch20MHz() catch |err| {
             last_error = errorCode(err);
-            return failure(report, &controller);
+            return failure(report, controller);
         };
         for (0..2) |pass| {
             for (lbas, 0..) |lba, index| {
                 controller.readSector(lba, &buffer) catch |err| {
                     last_error = errorCode(err);
-                    return failure(report, &controller);
+                    return failure(report, controller);
                 };
                 const checksum = sd.crc32(&buffer);
-                if (phase == 0 and pass == 0) checks[index] = checksum else if (checks[index] != checksum) return failure(report, &controller);
+                if (phase == 0 and pass == 0) checks[index] = checksum else if (checks[index] != checksum) return failure(report, controller);
                 report.reads += 1;
             }
         }
@@ -152,27 +158,28 @@ pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) Report {
             const lba = sd.sampleLba(@intCast(sample), sample_count, controller.sectors).?;
             controller.readSector(lba, &buffer) catch |err| {
                 last_error = errorCode(err);
-                return failure(report, &controller);
+                return failure(report, controller);
             };
             digest = sd.foldSample(digest, lba, sd.crc32(&buffer));
             report.reads += 1;
         }
-        if (phase == 0) baseline_digest = digest else if (digest != baseline_digest) return failure(report, &controller);
+        if (phase == 0) baseline_digest = digest else if (digest != baseline_digest) return failure(report, controller);
         report.stages[phase] = .{ .index = @intCast(phase), .bus_bits = controller.bus_bits, .clock_khz = controller.clock_khz, .scr_widths = controller.scr_widths, .host_width = controller.host_width, .divider = controller.divider, .reads = 8 + sample_count, .crc0 = checks[0], .crc1 = checks[1], .crc_middle = checks[2], .crc_last = checks[3], .samples = sample_count, .digest = digest };
         report.stage_count += 1;
     }
     if (options.storage) {
         // The opt-in raw littlefs fixture only accepts a full-card
         // volume smaller than 2 TiB; the generic block reader supports 2 TiB.
-        if (controller.sectors > 0xffff_ffff) return failure(report, &controller);
-        active_controller = &controller;
-        runStorage(workspace orelse return failure(report, &controller), @intCast(controller.sectors), &report.storage, &report.api, &report.storage_stack);
+        if (controller.sectors > 0xffff_ffff) return failure(report, controller);
+        active_controller = controller;
+        runStorage(workspace orelse return failure(report, controller), @intCast(controller.sectors), &report.storage, &report.api, &report.storage_stack);
         active_controller = null;
     }
     report.crc0 = checks[0];
     report.crc1 = checks[1];
     report.crc_middle = checks[2];
     report.crc_last = checks[3];
+    if (options.storage_service) runtime_ready = true;
     report.status = 1;
     report.bus_bits = controller.bus_bits;
     report.clock_khz = controller.clock_khz;
@@ -209,4 +216,23 @@ fn failure(previous: Report, controller: anytype) Report {
     report.host_status = controller.last_status;
     report.data_words = controller.words_read;
     return report;
+}
+
+pub fn runtimeBegin(clock: timer_group.Timer) ?u32 {
+    if (!options.storage_service or !runtime_ready or runtime_controller.faulted or runtime_controller.sectors > 0xffff_ffff) return null;
+    runtime_controller.io.clock = clock;
+    active_controller = &runtime_controller;
+    return @intCast(runtime_controller.sectors);
+}
+pub fn runtimeEnd() void {
+    runtime_ready = false;
+    active_controller = null;
+}
+
+pub export fn nih_storage_controller_begin() callconv(.c) u32 {
+    if (!options.storage_service) return 0;
+    return runtimeBegin(timer_group.Timer.fromGroup(0x500c3000, 0).?) orelse 0;
+}
+pub export fn nih_storage_controller_end() callconv(.c) void {
+    runtimeEnd();
 }

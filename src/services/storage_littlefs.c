@@ -101,6 +101,24 @@ int nih_ro_open(nih_ro *s,uint32_t owner,const char *path,uint32_t n,uint32_t *h
     s->file_size=(uint32_t)size; *handle=s->handle;
     return 0;
 }
+int nih_ro_list_root(nih_ro *s,uint32_t index,nih_ro_entry *entry) {
+    if (!entry || index>=128u) return NIH_RO_INVAL;
+    int err=begin(s); if (err) return err;
+    err=lfs_dir_open(&s->fs,&s->directory,"/"); if (err) return result(s,err);
+    uint32_t found=0;
+    for (;;) {
+        err=lfs_dir_read(&s->fs,&s->directory,&s->info);
+        if (err<=0) break;
+        if (!strcmp(s->info.name,".") || !strcmp(s->info.name,"..")) continue;
+        if (found++==index) {
+            memset(entry,0,sizeof(*entry)); entry->type=s->info.type; entry->size=s->info.size;
+            memcpy(entry->name,s->info.name,strlen(s->info.name)+1); break;
+        }
+    }
+    int close_err=lfs_dir_close(&s->fs,&s->directory);
+    if (err>=0 && close_err) err=close_err;
+    return result(s,err);
+}
 static int owned(nih_ro *s,uint32_t owner,uint32_t handle) {
     if (!s || !s->mounted) return NIH_RO_NODEV;
     if (!s->opened || !handle || handle!=s->handle) return NIH_RO_BADF;

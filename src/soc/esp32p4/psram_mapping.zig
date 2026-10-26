@@ -13,9 +13,13 @@ pub const line_bytes: u32 = 64;
 // or the general heap; disjoint from mapping samples and SMP handoff words.
 pub const storage_workspace_start: u32 = virtual_base + 4096;
 pub const storage_workspace_bytes: u32 = 8192;
+pub const storage_ipc_start: u32 = virtual_base + 0x4000;
+pub const storage_ipc_bytes: u32 = 8192;
 test "storage workspace is outside PSRAM samples and peer handoff" {
     try std.testing.expect(storage_workspace_start >= virtual_base + 0x140);
     try std.testing.expect(storage_workspace_start + storage_workspace_bytes <= virtual_base + page_bytes);
+    try std.testing.expect(storage_ipc_start >= storage_workspace_start + storage_workspace_bytes);
+    try std.testing.expect(storage_ipc_start + storage_ipc_bytes < virtual_base + 65532 - 64);
     for (samples) |offset| try std.testing.expect(offset + 4 <= storage_workspace_start - virtual_base or offset >= storage_workspace_start - virtual_base + storage_workspace_bytes);
 }
 pub const mspi: u32 = 0x5008_e000;
