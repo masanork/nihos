@@ -35,6 +35,8 @@ pub fn Owner(comptime Backend: type) type {
         alive: bool = true,
         processed: u32 = 0,
         rejected: u32 = 0,
+        discarded_requests: u32 = 0,
+        discarded_responses: u32 = 0,
         const Self = @This();
 
         pub noinline fn dispatch(self: *Self, request: Request) Response {
@@ -92,10 +94,18 @@ pub fn Owner(comptime Backend: type) type {
         }
 
         /// Owner-task context only. IRQ merely publishes the exit tombstone.
-        pub fn clientExited(self: *Self) i32 {
+        pub noinline fn clientExited(self: *Self, queues: anytype) i32 {
+            // The scheduler must publish the tombstone only after the client
+            // is stopped. The owner has finished its current dispatch before
+            // entering here. It can now take over the reply-consumer cursor;
+            // neither peer can concurrently publish or consume a message.
+
             if (!self.alive) return 0;
             self.alive = false;
-            return self.backend.release(self.client);
+            const code = self.backend.release(self.client);
+            while (queues.requests.tryPop() != null) self.discarded_requests += 1;
+            while (queues.responses.tryPop() != null) self.discarded_responses += 1;
+            return code;
         }
     };
 }

@@ -38,3 +38,23 @@ class StorageServiceChecks(unittest.TestCase):
                         log+'\n'+BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',record())]:
             with self.assertRaises(ValueError):
                 NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
+
+
+class StorageCancellationChecks(unittest.TestCase):
+    def test_forced_exit_requires_drained_queues_and_completed_inflight_read(self):
+        log,image=fixture()
+        image['sqlite']['littlefs']['service']['version']=2
+        old=BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',record())
+        fields={**record(),'requests':38,'forced_exit':1,'inflight_completed':1,'discarded_requests':2,'discarded_responses':2}
+        log=log.replace(old,BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',fields))
+        # Only CPU1's second forced termination changes the ledger.
+        lines=log.splitlines()
+        lines=[line.replace('forced=00000001','forced=00000002') if line.startswith('NIHOS_NATIVE_RESOURCES hart=00000001') else line for line in lines]
+        log='\n'.join(lines)
+        self.assertEqual(NATIVE.check(log,'sqlite',32<<20,image,'physical-device')['storage_service']['discarded_requests'],2)
+        for key in NATIVE.CANCEL_FIELDS:
+            changed=log.replace(BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',fields),BASE.BASE.line('NIHOS_NATIVE_STORAGE_SERVICE',{**fields,key:0}))
+            with self.subTest(key=key),self.assertRaises(ValueError):
+                NATIVE.check(changed,'sqlite',32<<20,image,'physical-device')
+        with self.assertRaises(ValueError):
+            NATIVE.check(log.replace('forced=00000002','forced=00000001'),'sqlite',32<<20,image,'physical-device')

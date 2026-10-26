@@ -35,6 +35,9 @@ var cleanup = A.init(0);
 var retired = A.init(0);
 var batch_ready = A.init(0);
 var owner_ready = A.init(0);
+var cancel_mode = A.init(0);
+var inflight = A.init(0);
+var cancel_requested = A.init(0);
 var polls: [2]A = @splat(.init(0));
 var bounds: [2]struct { low: u32 = 0, high: u32 = 0 } = @splat(.{});
 pub const Report = @import("storage_service_abi.zig").Report;
@@ -105,6 +108,9 @@ pub export fn nih_storage_task_exited(hart: u32, handle: u32) linksection(".iram
         signal(0);
     }
 }
+pub export fn nih_storage_cancel_requested() linksection(".iram1.storage_hooks") callconv(.c) u32 {
+    return cancel_requested.load(.acquire);
+}
 pub export fn nih_storage_cleanup_ready() linksection(".iram1.storage_hooks") callconv(.c) u32 {
     return cleanup.load(.acquire);
 }
@@ -154,7 +160,17 @@ const Backend = struct {
         return nih_ro_open(self.session, owner, path.ptr, @intCast(path.len), handle);
     }
     pub fn read(self: *@This(), owner: u32, handle: u32, offset: u32, data: []u8) i32 {
-        return nih_ro_read_at(self.session, owner, handle, offset, data.ptr, @intCast(data.len));
+        const code = nih_ro_read_at(self.session, owner, handle, offset, data.ptr, @intCast(data.len));
+        // Qualification barrier AFTER synchronous block/DMA completion. Do
+        // not abort a controller transaction or release its workspace in IRQ.
+        if (cancel_mode.load(.acquire) == 1 and offset == 1) {
+            if (code != 512) fail(36, code);
+            inflight.store(1, .release);
+            signal(1);
+            while (exited.load(.acquire) == 0) wait();
+            state().report.inflight_completed = 1;
+        }
+        return code;
     }
     pub fn close(self: *@This(), owner: u32, handle: u32) i32 {
         return nih_ro_close(self.session, owner, handle);
@@ -194,8 +210,11 @@ noinline fn serve() linksection(".flash.text.storage") i32 {
         wait();
     }
     state().report.exit_seen = 1;
-    if (server.clientExited() != 0) fail(8, -1);
+    if (server.clientExited(&state().queues) != 0) fail(8, -1);
     state().report.released = 1;
+    state().report.discarded_requests = server.discarded_requests;
+    state().report.discarded_responses = server.discarded_responses;
+    state().report.forced_exit = cancel_requested.load(.acquire);
     if (server.dispatch(.{ .sequence = 1, .operation = 4 }).status != -13) fail(9, -1);
     state().report.stale_rejected = 1;
     if (state().queues.requests.countApprox() != 0 or state().queues.responses.countApprox() != 0) fail(10, -1);
@@ -295,11 +314,31 @@ noinline fn client() linksection(".flash.text.storage") i32 {
     if (exchange(4, handle, 0, 1, 0).status != -9) fail(27, -1);
     const abandoned = exchange(3, 0, 0, 0, n);
     if (abandoned.status != 0 or abandoned.handle == handle) fail(28, abandoned.status);
+    const abandoned_handle = abandoned.handle;
     if (exchange(5, handle, 0, 0, 0).status != -9) fail(29, -1);
     state().report.bytes = offset;
     state().report.crc = ~crc;
+    // Leave a completed reply unread, then suspend the next read inside its
+    // backend call. Once it is suspended, fill the request ring behind it.
+    cancel_mode.store(1, .release);
+    for (0..2) |index| {
+        state().client_request = .{ .sequence = state().next_sequence, .operation = 4, .handle = abandoned_handle, .offset = @intCast(index), .length = if (index == 0) 1 else 512 };
+        state().next_sequence += 1;
+        if (!pushRequest()) fail(37, -1);
+    }
+    signal(0);
+    while (inflight.load(.acquire) == 0) wait();
+    if (state().queues.responses.countApprox() != 1) fail(38, -1);
+    for (0..2) |_| {
+        state().client_request.sequence = state().next_sequence;
+        state().next_sequence += 1;
+        if (!pushRequest()) fail(39, -1);
+    }
     state().report.client_stack = measure(1, painted);
-    return 301;
+    cancel_requested.store(1, .release);
+    // Bootstrap terminates this blocked task. No instruction after the wait
+    // may execute once cancellation has been acknowledged by the scheduler.
+    while (true) wait();
 }
 pub export fn nih_storage_task_entry(hart: u32) linksection(".flash.text.storage") callconv(.c) i32 {
     const current = calls.current() orelse fail(30, -1);

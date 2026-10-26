@@ -18,6 +18,10 @@ pub const Report = extern struct {
     clock_ok: u32 = 0,
     fs_cleared: u32 = 0,
     ipc_cleared: u32 = 0,
+    forced_exit: u32 = 0,
+    inflight_completed: u32 = 0,
+    discarded_requests: u32 = 0,
+    discarded_responses: u32 = 0,
 };
 extern fn nih_storage_runtime_init() callconv(.c) void;
 extern fn nih_storage_runtime_poll(u32) callconv(.c) void;
