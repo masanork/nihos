@@ -2,6 +2,9 @@
 const card = @import("card");
 const timer = @import("timer_group");
 const plan = card.KeypadPlan;
+const options = @import("native_options");
+pub var read_remaining: ?u8 = null;
+pub var static_frame = false;
 extern fn nih_display_keypad_configure(*const plan.Config) callconv(.c) bool;
 extern fn nih_display_keypad_buffer() callconv(.c) u32;
 extern fn nih_display_keypad_publish(u32, u32) callconv(.c) bool;
@@ -18,23 +21,26 @@ fn bytes(address: usize, length: usize) []u8 {
 fn view(count: u8) @import("card").KeypadDemo.View {
     return .{ .active = true, .masked_digits = count, .remaining = null, .can_submit = count == 4 };
 }
-fn paintTextures(index: u32, count: u8) bool {
+noinline fn paintTextures(index: u32, count: u8) linksection(if (options.card_read) ".flash.text.card" else ".text") bool {
     const base = low_start + index * plan.textureStride();
     return card.PinScreen.paintDynamic(".flash.rodata.card_pin", bytes(base, plan.dots_bytes), bytes(base + plan.dots_bytes, plan.labelBytes()), view(count));
 }
-pub fn prepare(clock: timer.Timer, frame: []u8) !Prepared {
-    _ = frame;
+pub noinline fn prepare(clock: timer.Timer, frame: []u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !Prepared {
     _ = clock;
-    if (!paintTextures(0, 0) or !paintTextures(1, 0)) return error.Image;
+    if (!static_frame and (!paintTextures(0, 0) or !paintTextures(1, 0))) return error.Image;
     const atlas = card.KeypadAtlas.Store(".flash.keypad");
-    const spans = card.KeypadAtlas.segments(".flash.keypad");
+    const spans = if (options.card_read) runtime: {
+        if (!static_frame and !card.PinScreen.paintRead(".flash.rodata.card_pin", frame, 1440, .{ .active = true, .masked_digits = 0, .remaining = read_remaining, .can_submit = false })) return error.Image;
+        const out = @as([*]plan.Segment, @ptrFromInt(plan.scratch_start))[0..plan.planCapacity()];
+        break :runtime if (static_frame) try plan.buildStatic(frame, out) else try plan.build(frame, out);
+    } else card.KeypadAtlas.segments(".flash.keypad");
     const descriptor_start = low_start + 2 * plan.textureStride();
     const descriptor_bytes = spans.len * 64;
     if (descriptor_bytes > low_end - descriptor_start) return error.Lease;
     const dots = card.PinScreen.dots_rect;
     const label = card.PinScreen.submitRect();
     const config = plan.Config{
-        .plan = @intFromPtr(&atlas.spans),
+        .plan = if (options.card_read) plan.scratch_start else @intFromPtr(&atlas.spans),
         .count = @intCast(spans.len),
         .peer_start = 0,
         .peer_bytes = 0,
@@ -45,15 +51,15 @@ pub fn prepare(clock: timer.Timer, frame: []u8) !Prepared {
         .label_x = label.x,
         .label_y = label.y,
         .label_width = label.width,
-        .label_height = label.height,
+        .label_height = if (static_frame) 0 else label.height,
         .paper = card.PinScreen.paper_color,
         .keys = card.PinScreen.key_color,
         .accent = card.PinScreen.accent_color,
         .scratch = low_start,
         .stride = @intCast(plan.textureStride()),
         .capacity = @intCast(plan.planCapacity()),
-        .pixels = @intFromPtr(&atlas.pixels),
-        .pixels_bytes = atlas.pixels.len,
+        .pixels = if (options.card_read) 0x48030000 else @intFromPtr(&atlas.pixels),
+        .pixels_bytes = if (options.card_read) frame.len else atlas.pixels.len,
     };
     if (!nih_display_keypad_configure(&config)) return error.Plan;
     if (nih_rom_cache_writeback(1 << 4, low_start, @intCast(2 * plan.textureStride())) != 0) return error.Cache;

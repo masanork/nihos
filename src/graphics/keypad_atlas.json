@@ -7,11 +7,11 @@
   "nodes": 637,
   "frame_words": 230400,
   "sources": {
-    "src/graphics/card_pin.zig": "f42428e8b0d7788d13a980ac626d19f072b6353dcc2ada9981614409fc88f863",
+    "src/graphics/card_pin.zig": "dec3297f5315a0ed067653d1c7960f20fa0e5c38240fdfe2ef0ba6d0a5f74662",
     "src/graphics/card_pin.rle": "55c7d6d438067c8cdb935d1142d331455fdb813b1be143a1e9b02392a6484340",
     "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
-    "src/graphics/keypad_plan.zig": "765e1c4aedca58ad7dcafb5db6d8fa347ebb1ce028cc99435655fb8304fdfc56",
-    "src/card_pin_preview.zig": "b16a7597f49f4fbe24798caed8dad2946adcd75c03f09efd5bbec920a986a6b5",
+    "src/graphics/keypad_plan.zig": "832dcbd1afbab3198772310ed7a2d93f44a4cde63ecb5f5cd2307fcdb27d873b",
+    "src/card_pin_preview.zig": "1108bb449497e151be831a10f7795ad97ec62106f66a73c1378a2963215fa3c2",
     "tools/boot-graphics/generate-keypad-atlas.py": "d367b701e7d673975b2228a477f74594c7fa6d7484cde5680ec4864adca3576e"
   }
 }

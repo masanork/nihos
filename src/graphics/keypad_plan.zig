@@ -70,6 +70,13 @@ fn same(bytes: []const u8, color: u16) bool {
 }
 pub fn build(frame: []const u8, output: []Segment) Error![]Segment {
     if (frame.len != frame_bytes) return error.Malformed;
+    return buildMode(frame, output, true);
+}
+pub fn buildStatic(frame: []const u8, output: []Segment) Error![]Segment {
+    if (frame.len != frame_bytes) return error.Malformed;
+    return buildMode(frame, output, false);
+}
+fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool) Error![]Segment {
     var builder = Builder{ .output = output };
     const label = screen.submitRect();
     const dots = screen.dots_rect;
@@ -77,8 +84,8 @@ pub fn build(frame: []const u8, output: []Segment) Error![]Segment {
         const row = frame[y * 1440 ..][0..1440];
         const base = pixel(row[0..2]);
         if (!same(row[0..8], base)) return error.UnsupportedBase;
-        const kind: Kind = if (y >= 1100 and y < 1212) .submit else if (base == screen.paper_color) .paper else if (base == screen.key_color) .keys else return error.UnsupportedBase;
-        const forced = if (y >= dots.y and y < dots.y + dots.height) dots else if (y >= label.y and y < label.y + label.height) label else null;
+        const kind: Kind = if (dynamic and y >= 1100 and y < 1212) .submit else if (base == screen.paper_color) .paper else if (base == screen.key_color) .keys else return error.UnsupportedBase;
+        const forced = if (!dynamic) null else if (y >= dots.y and y < dots.y + dots.height) dots else if (y >= label.y and y < label.y + label.height) label else null;
         if (forced) |rect| {
             try builder.add(kind, 0, rect.x / 4);
             try builder.add(if (rect.y == dots.y) .dots else .label, (y - rect.y) * rect.width * 2, rect.width / 4);

@@ -243,16 +243,20 @@ pub noinline fn run(clock: timer_group.Timer) Report {
 
 /// CPU0 owns this link, its timer and the shared DMA slots until close().
 /// Open does enumeration/slot status only; it never runs the boot JPKI probe.
+const DevicePins = if (options.card_read) @import("display_probe.zig").Pins else Bus;
 pub const Device = struct {
     controller: usb.Controller(Bus),
     pipes: Pipes,
     alive: bool = true,
+    cut_verified: bool = false,
+    authenticated: bool = false,
+    policy: @import("card").WirePolicy = .{},
     last_header: [10]u8 = @splat(0),
 
     pub fn open(clock: timer_group.Timer, report: *Report) !Device {
         const io = Bus{ .clock = clock };
         nih_usb_i2c_init();
-        var bus = i2c.Master(Bus){ .pins = io };
+        var bus = i2c.Master(DevicePins){ .pins = .{ .clock = clock } };
         try i2c.usbPowerCycle(&bus);
         nih_usb_phy_init();
         errdefer {
@@ -270,12 +274,20 @@ pub const Device = struct {
         report.transfers = controller.transfers;
         return .{ .controller = controller, .pipes = pipes.? };
     }
-    pub fn send(self: *Device, bytes: []const u8) !usize {
+    pub fn openAuthenticated(clock: timer_group.Timer, report: *Report) !Device {
+        if (!options.card_read) return error.Denied;
+        var device = try open(clock, report);
+        device.authenticated = true;
+        return device;
+    }
+    pub noinline fn send(self: *Device, bytes: []const u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !usize {
         if (!self.alive) return error.Poisoned;
         // Readiness link deliberately cannot submit a PIN. Authenticated UI
         // activation is a later gate, independent of Service's host model.
         if (bytes.len < 10 or (bytes[0] != 0x62 and bytes[0] != 0x63 and bytes[0] != 0x6f)) return error.Denied;
-        if (bytes[0] == 0x6f and bytes.len > 14 and bytes[11] == 0x20) return error.Denied;
+        if (self.authenticated) {
+            if (!self.policy.allow(bytes)) return error.Denied;
+        } else if (bytes[0] == 0x6f and bytes.len > 14 and bytes[11] == 0x20) return error.Denied;
         // OUT preparation copies bytes to the private DMA slot, never writes
         // into the caller's source. IN uses the separate receive entry point.
         return self.controller.stage(&self.pipes.output, false, false, @constCast(bytes));
@@ -287,7 +299,8 @@ pub const Device = struct {
         if (length >= 10) @memcpy(&self.last_header, bytes[0..10]);
         return length;
     }
-    pub fn scrub(self: *Device) !void {
+    pub noinline fn scrub(self: *Device) linksection(if (options.card_read) ".flash.text.card" else ".text") !void {
+        if (self.cut_verified) return;
         self.controller.retire() catch |err| {
             self.alive = false;
             nih_usb_phy_stop();
@@ -310,11 +323,37 @@ pub const Device = struct {
     pub fn connected(self: *Device) bool {
         return self.alive and self.controller.io.read(usb.regs.port) & 1 != 0;
     }
+    pub noinline fn powerCut(self: *Device) linksection(if (options.card_read) ".flash.text.card" else ".text") !void {
+        if (self.cut_verified) return;
+        // Confirm physical USB detach with the host/PHY still running. Reading
+        // a reset/clock-gated host register would not prove reader power loss.
+        try self.controller.retire();
+        try self.erase();
+        var bus = i2c.Master(DevicePins){ .pins = .{ .clock = self.controller.io.clock } };
+        try i2c.usbPowerOff(&bus);
+        for (0..1000) |_| {
+            if (self.controller.io.read(usb.regs.port) & 1 == 0) {
+                nih_usb_phy_stop();
+                self.alive = false;
+                try self.erase();
+                self.cut_verified = true;
+                return;
+            }
+            if (!self.controller.io.delay(1000)) return error.Timeout;
+        }
+        return error.Timeout;
+    }
+    pub fn emergency(self: *Device) bool {
+        nih_usb_phy_stop();
+        self.alive = false;
+        self.erase() catch return false;
+        return true;
+    }
     pub fn close(self: *Device) !void {
         nih_usb_phy_stop();
         self.alive = false;
         try self.erase();
-        var bus = i2c.Master(Bus){ .pins = self.controller.io };
+        var bus = i2c.Master(DevicePins){ .pins = .{ .clock = self.controller.io.clock } };
         try i2c.usbPowerOff(&bus);
     }
 };

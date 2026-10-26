@@ -335,6 +335,9 @@ const Wire = struct {
     fail_receive: bool = false,
     fail_scrub: bool = false,
     absent: bool = false,
+    active_poweroff: bool = false,
+    fail_cut: bool = false,
+    cuts: u32 = 0,
     payload: []const u8 = &.{ 0x90, 0 },
     pub fn send(self: *Wire, bytes: []const u8) !usize {
         @memcpy(self.sent[0..bytes.len], bytes);
@@ -348,8 +351,12 @@ const Wire = struct {
         const extending = self.receives <= self.extensions;
         const sequence = self.sent[6] +% @as(u8, @intFromBool(self.bad_sequence));
         const frame = try ccid.request(bytes, if (self.sent[0] == 0x63) 0x81 else 0x80, sequence, if (extending) &.{} else self.payload);
-        bytes[7] = if (extending) 0x80 else if (self.absent) 2 else if (self.sent[0] == 0x63) 1 else 0;
+        bytes[7] = if (extending) 0x80 else if (self.absent) 2 else if (self.sent[0] == 0x63 and !self.active_poweroff) 1 else 0;
         return frame.len - @as(usize, @intFromBool(self.truncated));
+    }
+    pub fn powerCut(self: *Wire) !void {
+        self.cuts += 1;
+        if (self.fail_cut) return error.Cut;
     }
     pub fn scrub(self: *Wire) !void {
         std.crypto.secureZero(u8, &self.sent);
@@ -434,4 +441,40 @@ test "CCID owner powers on, completes the job and requires inactive power-off st
             try zero(&service.attributes);
         } else try testing.expectEqualStrings("Test", service.result().?.name);
     }
+}
+
+test "active PowerOff cannot publish attributes without explicit successful board power cut" {
+    for (0..3) |policy| {
+        var service = card.Service{};
+        try ready(&service, 3);
+        try submitted(&service, "1234");
+        _ = try reply(&service, &.{ 0x90, 0 });
+        _ = try reply(&service, &.{ 0x90, 0 });
+        _ = try reply(&service, input.fixture ++ "\x90\x00");
+        try testing.expect(service.result() == null);
+        var owner = ccid_owner.Owner{};
+        var wire = Wire{ .active_poweroff = true, .payload = &.{}, .fail_cut = policy == 2 };
+        if (policy == 0) _ = try owner.step(&service, &wire) else _ = try owner.stepWithPowerCut(&service, &wire);
+        try testing.expectEqual(@as(u32, if (policy == 0) 0 else 1), wire.cuts);
+        try testing.expectEqual(policy == 1, service.result() != null);
+        try testing.expectEqual(policy != 1, service.cleanup_failed);
+        if (policy != 1) try zero(&service.attributes);
+    }
+}
+
+test "wide native touch routes one release to real PIN entry and cancel wipes it" {
+    const pin = @import("pin_entry.zig");
+    var service = card.Service{};
+    try ready(&service, 3);
+    var entry = pin.Entry{};
+    entry.touchWide(&service, 1, 10, 540);
+    try testing.expectEqual(@as(u8, 0), entry.length);
+    entry.touchWide(&service, 0, 0, 0);
+    try testing.expectEqual(@as(u8, 1), entry.length);
+    entry.touchWide(&service, 0, 0, 0);
+    try testing.expectEqual(@as(u8, 1), entry.length);
+    entry.touchWide(&service, 1, 10, 960);
+    entry.touchWide(&service, 0, 0, 0);
+    try zero(&entry.pin);
+    try testing.expect(service.prompt() == null);
 }

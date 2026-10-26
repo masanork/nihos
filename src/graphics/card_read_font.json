@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "ui_mode": "runtime",
+  "font_bytes": 408096,
+  "font_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54",
+  "font_source_sha256": "d9854c7a8ef170b5a7932558856fd64eb8de0b007cd823fed6f9f514ad2803d3",
+  "glyphs": 11336,
+  "allowed_functions": [
+    "card_read.prepare",
+    "card_read.run",
+    "keypad_display.prepare",
+    "keypad_display.paintTextures",
+    "usb_probe.Device.send",
+    "usb_probe.Device.scrub",
+    "usb_probe.Device.powerCut",
+    "display_runtime.start"
+  ],
+  "sources": {
+    "tools/boot-graphics/generate-card-read-font.py": "819eed64b2f3694a94f63f2f9a8d1d2a22ef879c3d4907623c6c99d0b57fb3f1",
+    "src/platform/native/card_read.zig": "da3917e32a2fcb480eeb635a9ced43026922dc648b068635aed863904e9274b5",
+    "src/platform/native/keypad_display.zig": "4418ef6d1dacf87ed63369edb3874ad85f5275e5411fc944a2a92da066c23eb9",
+    "src/platform/native/usb_probe.zig": "11e3ff0cbb09bb4d5376168095185003f9dd75d2be56057c9c30a1fa735bf537",
+    "src/platform/native/display_runtime.zig": "1ff5555b6e817f2028ba87200f05e436f275cf80b8109a4de373607cdfa3f50f"
+  }
+}

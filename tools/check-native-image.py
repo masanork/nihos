@@ -37,7 +37,7 @@ def audit_ui_pool(name, kind, flags, address, size, allowed):
 
 
 def audit_ui_assets(start, data, symbols, manifest):
-    for role in ('plan', 'atlas'):
+    for role in (('font',) if manifest.get('ui_mode') == 'runtime' else ('plan', 'atlas')):
         first = symbols.get('__keypad_' + role + '_start', 0)
         last = symbols.get('__keypad_' + role + '_end', 0)
         require(start <= first < last <= start + len(data) and first % 64 == 0, 'invalid keypad asset extent')
@@ -46,6 +46,9 @@ def audit_ui_assets(start, data, symbols, manifest):
 
 
 def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False):
+    if name == '.flash.card':
+        require(allow_ui and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000, 'invalid card foreground Flash code')
+        return
     if name in UI_SECTIONS:
         require(allow_ui and kind == 1 and flags & 7 == 2 and flags & ~50 == 0, 'unapproved/mutable/executable keypad Flash section')
         if name == '.flash.uipad':
@@ -72,7 +75,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=()):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=()):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
@@ -82,6 +85,9 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if sql_span is not None and sql_span[0] <= address < stop <= sql_span[1]:
             require(name in sql_functions, "non-manifest function in SQLite Flash: " + name)
+            continue
+        if card_span is not None and card_span[0] <= address < stop <= card_span[1]:
+            require(any(name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in card_functions), 'unapproved card foreground function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
@@ -220,6 +226,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     allow_sql = mode == "sqlite"
     allow_ui = keypad_manifest is not None
     require(not allow_ui or (mode == 'integer' and profile == 'device' and not allow_sql and keypad_manifest.get('schema') == 1), 'invalid keypad profile/manifest')
+    card_code = b""
+    card_start = None
     ui_sections = {}
     ui_pools = []
     require(not allow_sql or (sqlite_manifest is not None and sqlite_manifest.get("schema") == 1 and
@@ -242,6 +250,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name == '.flash.card':
+                    card_start, card_code = address, elf[offset:offset + size]
                 if name in SQL_SECTIONS:
                     sql_sections[name] = (address, elf[offset:offset + size])
                 if name in UI_SECTIONS:
@@ -273,7 +283,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()), "missing mapped Flash sections")
     ui_report = None
     ui_payload = None
     if allow_ui:
@@ -286,7 +296,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         ui_payload = flash_tables + bytes((-len(flash_tables)) % 4) + pad + data
         ui_payload += bytes((-len(ui_payload)) % 4)
         ui_report = {'start': hex(start), 'end': hex(start + len(data)), 'bytes': len(data), 'writable': False, 'executable': False,
-                     'plan_sha256': keypad_manifest['plan_sha256'], 'atlas_sha256': keypad_manifest['atlas_sha256'], 'atlas_bytes': keypad_manifest['atlas_bytes'], 'nodes': keypad_manifest['nodes'], 'pools': ui_pools}
+                     'ui_mode': keypad_manifest.get('ui_mode', 'baked'), 'pools': ui_pools}
+        ui_report.update({key: value for key, value in keypad_manifest.items() if key in ('font_sha256', 'font_bytes', 'plan_sha256', 'atlas_sha256', 'atlas_bytes', 'nodes')})
     sql_span = None
     sql_report = None
     if allow_sql:
@@ -328,7 +339,13 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     boot_end = boot_start + len(boot_code)
     require(symbols.get("__flash_boot_start") == boot_start and symbols.get("__flash_boot_end") == boot_end,
             "Flash boot symbols differ from section")
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest["allowed_functions"] if allow_sql else ())
+    card_span = None if card_start is None else (card_start, card_start + len(card_code))
+    if card_span:
+        require(card_start == (boot_end + 15) & ~15 and symbols.get('__flash_card_start') == card_start and symbols.get('__flash_card_end') == card_span[1], 'invalid card foreground symbols')
+        require(keypad_manifest.get('allowed_functions') == ['card_read.prepare', 'card_read.run', 'keypad_display.prepare', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start'], 'unapproved foreground manifest')
+        for prefix in keypad_manifest['allowed_functions']:
+            require(sum(1 for name, address, stop in functions if card_span[0] <= address < stop <= card_span[1] and (name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name))) == 1, 'missing/duplicate card foreground entry: ' + prefix)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else ())
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -395,6 +412,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report['memory']['regions'].extend(ui_pools)
         report['memory']['total_bytes'] += sum(pool['bytes'] for pool in ui_pools)
         report['sram_reserved_bytes'] += sum(pool['bytes'] for pool in ui_pools)
+    if card_span:
+        report['card_text'] = {'start': hex(card_start), 'end': hex(card_span[1]), 'bytes': len(card_code), 'sha256': hashlib.sha256(card_code).hexdigest(), 'writable': False, 'executable': True}
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
@@ -402,7 +421,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     position = 24
     image_segments = []
     mapped = []
-    first_length = 256 + ((len(boot_code) + 3) & ~3)
+    first_payload = boot_code
+    if card_span:
+        first_payload += bytes(card_start - boot_end) + card_code
+    first_length = 256 + ((len(first_payload) + 3) & ~3)
     for index in range(image[1]):
         address, length = struct.unpack_from("<II", image, position)
         position += 8
@@ -413,7 +435,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     "invalid first descriptor/boot-code segment")
             audit_app_descriptor(data[:256])
             require(data[144:176] == hashlib.sha256(elf).digest(), "ELF digest mismatch")
-            require(data[256:256 + len(boot_code)] == boot_code, "Flash boot bytes differ from ELF")
+            require(data[256:256 + len(first_payload)] == first_payload, "Flash boot/card bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
             mapped_length = len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3

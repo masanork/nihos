@@ -86,10 +86,13 @@ pub fn submitRect() input.Rect {
     return .{ .x = left & ~@as(u16, 3), .y = 1100 + (112 - g.height) / 2, .width = ((left + g.width + 3) & ~@as(u16, 3)) - (left & ~@as(u16, 3)), .height = g.height };
 }
 pub fn paint(bytes: []u8, stride: usize, view: input.View) bool {
-    return paintInternal(null, false, bytes, stride, view);
+    return paintInternal(null, false, false, bytes, stride, view);
 }
 pub fn paintDemo(comptime section: ?[]const u8, bytes: []u8, stride: usize, view: input.View) bool {
-    return paintInternal(section, true, bytes, stride, view);
+    return paintInternal(section, true, false, bytes, stride, view);
+}
+pub fn paintRead(comptime section: ?[]const u8, bytes: []u8, stride: usize, view: input.View) bool {
+    return paintInternal(section, true, true, bytes, stride, view);
 }
 pub fn paintDynamic(comptime section: ?[]const u8, dots: []u8, label: []u8, view: input.View) bool {
     const rect = submitRect();
@@ -109,16 +112,20 @@ pub fn paintDynamic(comptime section: ?[]const u8, dots: []u8, label: []u8, view
     label_canvas.label(input.demoBounds(.submit), .demo_submit, ink, paper);
     return true;
 }
-fn paintInternal(comptime section: ?[]const u8, comptime demo: bool, bytes: []u8, stride: usize, view: input.View) bool {
+fn paintInternal(comptime section: ?[]const u8, comptime demo: bool, comptime reading: bool, bytes: []u8, stride: usize, view: input.View) bool {
     if (stride < width * 2 or stride > std.math.maxInt(usize) / height or bytes.len < stride * height or
         view.masked_digits > 4 or (view.can_submit and (!view.active or view.masked_digits != 4))) return false;
     const canvas = Canvas(section){ .bytes = bytes, .stride = stride };
     canvas.fill(.{ .x = 0, .y = 0, .width = width, .height = height }, background);
-    canvas.text(if (demo) .demo_title else .title, 84, 106, foreground, background);
-    canvas.text(if (demo) .demo_instruction else .instruction, 84, 190, foreground, background);
-    canvas.text(if (demo) .demo_privacy else .privacy, 84, 245, muted, background);
+    canvas.text(if (demo and !reading) .demo_title else .title, 84, 106, foreground, background);
+    canvas.text(if (demo and !reading) .demo_instruction else .instruction, 84, 190, foreground, background);
+    canvas.text(if (demo and !reading) .demo_privacy else .privacy, 84, 245, muted, background);
     if (demo) {
-        canvas.text(.demo_hint, 84, 300, muted, background);
+        if (reading) {
+            canvas.text(.remaining, 84, 300, muted, background);
+            canvas.text(if (view.remaining) |count| digit(count) else .unknown, 154, 286, foreground, background);
+            canvas.text(.times, 222, 300, muted, background);
+        } else canvas.text(.demo_hint, 84, 300, muted, background);
         for (0..4) |index| {
             const left: u16 = @intCast(218 + index * 84);
             canvas.fill(.{ .x = left, .y = 390, .width = 16, .height = 16 }, foreground);
