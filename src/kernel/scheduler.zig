@@ -59,7 +59,9 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
 
         tasks: [capacity]Task = @splat(.{}),
         current_slot: ?usize = null,
-        last_selected: usize = capacity - 1,
+        // A higher-priority selection must not restart a lower priority's
+        // round-robin order. Each priority retains its own cursor.
+        last_selected: [priority_levels]usize = @splat(capacity - 1),
         now_tick: u64 = 0,
 
         pub fn add(self: *Self, priority: u8) ?TaskHandle {
@@ -249,12 +251,12 @@ pub fn Scheduler(comptime capacity: usize, comptime priority_levels: u8) type {
             const priority = best_priority orelse return null;
 
             for (1..capacity + 1) |offset| {
-                const slot = (self.last_selected + offset) % capacity;
+                const slot = (self.last_selected[priority] + offset) % capacity;
                 const task = &self.tasks[slot];
                 if (task.state != .ready or task.priority != priority) continue;
                 task.state = .running;
                 self.current_slot = slot;
-                self.last_selected = slot;
+                self.last_selected[priority] = slot;
                 return handleFor(slot, task.generation);
             }
             unreachable;
@@ -413,6 +415,19 @@ test "same-priority tasks run round robin" {
     try std.testing.expectEqual(third, scheduler.schedule().?);
     try std.testing.expectEqual(@as(u64, 3), scheduler.snapshot(first).?.runtime_ticks);
     try std.testing.expectEqual(@as(u64, 2), scheduler.snapshot(second).?.runtime_ticks);
+}
+
+test "repeated high-priority wakes preserve round robin among lower peers" {
+    var policy = Scheduler(4, 2){};
+    const high = policy.add(0).?;
+    const lows = [_]TaskHandle{ policy.add(1).?, policy.add(1).?, policy.add(1).? };
+    try std.testing.expect(policy.block(high));
+    for (0..3 * lows.len) |index| {
+        try std.testing.expectEqual(lows[index % lows.len], policy.schedule().?);
+        try std.testing.expect(policy.wake(high));
+        try std.testing.expectEqual(high, policy.schedule().?);
+        try std.testing.expect(policy.block(high));
+    }
 }
 
 test "priority changes preserve waits and current selection and reject stale or exited tasks" {

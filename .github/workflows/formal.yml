@@ -1,0 +1,45 @@
+name: Formal scheduler verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scheduler:
+    name: TLA+ scheduler and Zig replay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Select preinstalled Java 21
+        run: |
+          test -x "$JAVA_HOME_21_X64/bin/java"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+
+      - name: Check graph bridge regressions
+        run: python3 -m unittest discover -s tools -p 'formal_mvp_test.py'
+
+      - name: Check TLA+ models and replay Zig implementations
+        run: python3 tools/run-formal-mvp.py
+
+      - name: Retain formal verification evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: formal-scheduler-evidence
+          path: build/formal-mvp/run-*/
+          if-no-files-found: warn
+          retention-days: 14
