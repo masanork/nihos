@@ -44,6 +44,7 @@ test {
     _ = buddy_heap;
     _ = task_resources;
     _ = @import("kernel/task_resources_test.zig");
+    _ = @import("kernel/task_pools_test.zig");
     _ = @import("kernel/buddy_heap_test.zig");
     _ = scheduler;
     _ = spsc_ring;

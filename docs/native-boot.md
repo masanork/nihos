@@ -183,6 +183,18 @@ checks the lifecycle and empty-ledger protocol but must claim zero frees.
 Ordinary worker churn now uses the same task-bound allocation API; the final
 heap check no longer frees forgotten worker buffers on their behalf.
 
+Task-owned monotonic pools now group small objects under one tracked parent
+using `memory.reusable.openPool`, `allocPool` and `closePool`. The canonical
+cursor stays in SRAM, so copied handles share one position; each child request
+validates the current task and live parent ticket without touching the buddy
+tree or PSRAM. Explicit close invalidates all handle copies. Task close rejects
+new child requests immediately and the existing deferred cleanup releases the
+parent without traversing its children. Populated runs additionally require
+18 child allocations and six pool rejections per hart; absent runs require
+zero. Returned pointers require caller-controlled lifetimes. There is no child
+free/reset/realloc or SQLite allocator adapter yet. See
+[ADR 0031](adr/0031-task-owned-monotonic-pools.md).
+
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
 `64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
 build directory. The validator requires the requested size to match the
@@ -237,7 +249,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has fifty-two log validator regression tests, including frozen
+The smoke has fifty-three log validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing

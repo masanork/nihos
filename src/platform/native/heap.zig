@@ -5,6 +5,7 @@ const task_resources = @import("task_resources");
 pub const Key = task_resources.Key;
 const Ledger = task_resources.Resources(buddy, 4, 2);
 pub const Allocation = buddy.Allocation;
+pub const Pool = Ledger.Pool;
 pub const Error = Ledger.Error || error{NotReady};
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
@@ -42,6 +43,8 @@ const Resources = struct {
     stale: u32 = 0,
     full: u32 = 0,
     forced: u32 = 0,
+    pool_objects: u32 = 0,
+    pool_rejected: u32 = 0,
 };
 var resources: [2]Resources = .{ .{}, .{} };
 pub const ResourceReport = struct {
@@ -55,6 +58,8 @@ pub const ResourceReport = struct {
     stale: u32 = 0,
     full: u32 = 0,
     forced: u32 = 0,
+    pool_objects: u32 = 0,
+    pool_rejected: u32 = 0,
 };
 
 /// Trap-side operations touch only the fixed internal ledger, never PSRAM.
@@ -112,18 +117,70 @@ pub noinline fn freeTask(allocation: Allocation) Error!void {
     return resources[core].ledger.free(&owners[core].heap, core, resources[core].current, allocation);
 }
 
-/// Fixture tasks deliberately retain two allocations at exit/termination.
+pub noinline fn openPool(length: usize, alignment: usize) Error!Pool {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.openPool(&owners[core].heap, core, resources[core].current, length, alignment);
+}
+
+pub noinline fn allocPool(pool: Pool, length: usize, alignment: usize) Error![]u8 {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.allocPool(core, resources[core].current, pool, length, alignment);
+}
+
+pub noinline fn closePool(pool: Pool) Error!void {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.closePool(&owners[core].heap, core, resources[core].current, pool);
+}
+
+noinline fn poolProbe(pool: Pool) void {
+    const copy = pool;
+    const first = allocPool(pool, 7, 1) catch nih_native_task_failed();
+    const second = allocPool(copy, 33, 32) catch nih_native_task_failed();
+    const third = allocPool(pool, 11, 8) catch nih_native_task_failed();
+    if (interrupts() != 8 or @intFromPtr(second.ptr) % 32 != 0 or @intFromPtr(third.ptr) % 8 != 0 or
+        @intFromPtr(first.ptr) + first.len > @intFromPtr(second.ptr) or
+        @intFromPtr(second.ptr) + second.len > @intFromPtr(third.ptr)) nih_native_task_failed();
+    @memset(first, 0x15);
+    @memset(second, 0x26);
+    @memset(third, 0x37);
+    for ([_][]u8{ first, second, third }, [_]u8{ 0x15, 0x26, 0x37 }) |child, expected| {
+        const bytes: [*]const volatile u8 = child.ptr;
+        for (0..child.len) |index| if (bytes[index] != expected) nih_native_task_failed();
+    }
+    resources[hart()].pool_objects += 3;
+}
+
+/// Fixture tasks deliberately retain a pool and a raw parent at exit/termination.
 pub noinline fn lifecycleProbe() void {
     const core = hart();
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return;
-    const a = allocTask(96, 64) catch nih_native_task_failed();
+    const a = openPool(256, 64) catch nih_native_task_failed();
+    poolProbe(a);
     _ = allocTask(192, 64) catch nih_native_task_failed();
     if (allocTask(8, 8)) |_| nih_native_task_failed() else |err| {
         if (err != error.Full or interrupts() != 8) nih_native_task_failed();
         resources[core].full += 1; // Only the serialized lifecycle task writes.
     }
-    freeTask(a) catch nih_native_task_failed();
-    _ = allocTask(128, 64) catch nih_native_task_failed();
+    if (allocPool(a, 256, 1)) |_| nih_native_task_failed() else |err| {
+        if (err != error.OutOfMemory or interrupts() != 8) nih_native_task_failed();
+        resources[core].pool_rejected += 1;
+    }
+    closePool(a) catch nih_native_task_failed();
+    const replacement = openPool(256, 64) catch nih_native_task_failed();
+    if (allocPool(a, 1, 1)) |_| nih_native_task_failed() else |err| {
+        if (err != error.InvalidAllocation or interrupts() != 8) nih_native_task_failed();
+        resources[core].pool_rejected += 1;
+    }
+    poolProbe(replacement);
 }
 
 /// Bootstrap-only. At most one handle is released per call; a completed
@@ -156,7 +213,7 @@ pub noinline fn cleanupOne() enum { none, progress, complete } {
 
 pub fn resourceReport(core: u32) ResourceReport {
     const ledger = &resources[core].ledger;
-    return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced };
+    return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected };
 }
 
 fn hart() u32 {

@@ -76,8 +76,8 @@ def complete_log(mode="integer", psram_size="0"):
         names = ("start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed")
         lines.append("NIHOS_NATIVE_HEAP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
-        names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced")
-        values = [7, 6, 6, 8 if size else 0, 3, 0, 0, 3, 3 if size else 0, 1]
+        names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected")
+        values = [7, 6, 6, 8 if size else 0, 3, 0, 0, 3, 3 if size else 0, 1, 18 if size else 0, 6 if size else 0]
         lines.append("NIHOS_NATIVE_RESOURCES hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
@@ -107,6 +107,16 @@ class NativeLogTests(unittest.TestCase):
                         if line.startswith("NIHOS_NATIVE_RESOURCES") else line for line in complete_log().splitlines())
         with self.assertRaisesRegex(ValueError, "deferred task resource"):
             MODULE.check(log)
+
+    def test_pool_object_and_rejection_evidence_is_required(self):
+        for size, objects, rejected in (("0", 0, 0), ("32M", 18, 6)):
+            log = complete_log(psram_size=size)
+            for field, old in (("pool_objects", objects), ("pool_rejected", rejected)):
+                for new in (None, old + 1):
+                    token = " {}={:08x}".format(field, old)
+                    changed = log.replace(token, "" if new is None else " {}={:08x}".format(field, new))
+                    with self.subTest(size=size, field=field, new=new), self.assertRaisesRegex(ValueError, "resource"):
+                        MODULE.check(changed, "integer", 0 if size == "0" else 32 << 20)
 
     def test_two_normal_reaps_cannot_substitute_for_forced_termination(self):
         with self.assertRaisesRegex(ValueError, "lifecycle"):
