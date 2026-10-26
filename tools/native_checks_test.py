@@ -713,6 +713,35 @@ class HardwareQualificationTests(unittest.TestCase):
             with self.subTest(field=old), self.assertRaises(ValueError):
                 MODULE.check(self.sdmmc_log().replace(old, new), "integer", 32 << 20, require_sdmmc=True)
 
+    def fast_log(self):
+        log = self.sdmmc_log().replace("commands=00000014", "commands=00000c27")
+        log = log.replace("reads=00000008", "reads=00000c18").replace("bus_bits=00000001", "bus_bits=00000004")
+        log = log.replace("clock_khz=00000190", "clock_khz=00004e20")
+        for i, (bits, khz, host, div) in enumerate(((1, 400, 0, 50), (4, 400, 1, 50), (4, 20000, 1, 1))):
+            log += "\n" + self.record("NIHOS_NATIVE_SDMMC_STAGE", index=i, bus_bits=bits, clock_khz=khz,
+                                      scr_widths=5 if i else 0, host_width=host, divider=div, reads=1032,
+                                      crc0=1, crc1=2, crc_middle=3, crc_last=4)
+            log += "\n" + self.record("NIHOS_NATIVE_SDMMC_SWEEP", index=i, samples=1024, digest=0x12345678)
+        return log
+
+    def test_fast_sdmmc_requires_all_transitions_and_distributed_checks(self):
+        report = MODULE.check(self.fast_log(), "integer", 32 << 20, require_sdmmc_fast=True)
+        self.assertEqual(len(report["sdmmc_stages"]), 3)
+        self.assertEqual(report["sdmmc"]["reads"], 3096)
+        with self.assertRaisesRegex(ValueError, "profile missing"):
+            MODULE.check(self.sdmmc_log(), "integer", 32 << 20, require_sdmmc_fast=True)
+
+    def test_fast_sdmmc_cannot_skip_scr_readbacks_stages_or_sample_comparison(self):
+        for old, new in (("scr_widths=00000005", "scr_widths=00000001"),
+                         ("host_width=00000001", "host_width=00000000"),
+                         ("divider=00000001", "divider=00000032"),
+                         ("reads=00000c18", "reads=00000018"),
+                         ("NIHOS_NATIVE_SDMMC_STAGE index=00000002", "MISSING_STAGE index=00000002"),
+                         ("NIHOS_NATIVE_SDMMC_SWEEP index=00000002 samples=00000400 digest=12345678",
+                          "NIHOS_NATIVE_SDMMC_SWEEP index=00000002 samples=00000400 digest=12345679")):
+            with self.subTest(field=old), self.assertRaises(ValueError):
+                MODULE.check(self.fast_log().replace(old, new), "integer", 32 << 20, require_sdmmc_fast=True)
+
 
 if __name__ == "__main__":
     unittest.main()
