@@ -19,17 +19,18 @@ pub const StorageReport = extern struct {
     reads: u32 = 0,
     denied_writes: u32 = 0,
 };
-extern fn nih_storage_probe(u32, *StorageReport) callconv(.c) void;
+pub const ApiReport = extern struct { status: u32 = 0, opens: u32 = 0, closes: u32 = 0, cancelled: u32 = 0, rejected: u32 = 0, read_calls: u32 = 0, workspace_bytes: u32 = 0, used_bytes: u32 = 0, cleared: u32 = 0 };
+extern fn nih_storage_probe(*[8192]u8, u32, u32, *StorageReport, *ApiReport) callconv(.c) void;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
 extern var __stack0_bottom: u8;
 extern var __stack0_top: u8;
 pub const StorageStack = struct { low: u32 = 0, high: u32 = 0, painted_to: u32 = 0, used: u32 = 0, confirmed: u32 = 0 };
-noinline fn runStorage(sectors: u32, report: *StorageReport, stack: *StorageStack) void {
+noinline fn runStorage(workspace: *[8192]u8, sectors: u32, report: *StorageReport, api: *ApiReport, stack: *StorageStack) void {
     stack.low = @intFromPtr(&__stack0_bottom) + 16;
     stack.high = @intFromPtr(&__stack0_top);
     stack.painted_to = nih_sqlite_stack_paint(stack.low);
     if (stack.painted_to <= stack.low or stack.painted_to >= stack.high) return;
-    nih_storage_probe(sectors, report);
+    nih_storage_probe(workspace, 8192, sectors, report, api);
     var first = stack.low;
     while (first < stack.painted_to) : (first += 4) {
         if (@as(*const volatile u32, @ptrFromInt(first)).* != 0x5a7ec319) break;
@@ -55,7 +56,7 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
-pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{} };
+pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{}, api: ApiReport = .{} };
 var last_error: u32 = 0;
 const Bus = struct {
     clock: timer_group.Timer,
@@ -102,7 +103,7 @@ const Bus = struct {
 
 // Keep the temporary sector buffer out of the permanent bootstrap frame so
 // its reservation is returned before SQLite uses the same stack.
-pub noinline fn run(clock: timer_group.Timer) Report {
+pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) Report {
     var report = Report{};
     clock.start();
     clock.disarm();
@@ -165,7 +166,7 @@ pub noinline fn run(clock: timer_group.Timer) Report {
         // volume smaller than 2 TiB; the generic block reader supports 2 TiB.
         if (controller.sectors > 0xffff_ffff) return failure(report, &controller);
         active_controller = &controller;
-        runStorage(@intCast(controller.sectors), &report.storage, &report.storage_stack);
+        runStorage(workspace orelse return failure(report, &controller), @intCast(controller.sectors), &report.storage, &report.api, &report.storage_stack);
         active_controller = null;
     }
     report.crc0 = checks[0];

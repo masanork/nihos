@@ -272,6 +272,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
             require({'lfs_mount', 'lfs_unmount', 'lfs_dir_read', 'lfs_file_read', 'nih_storage_probe'}.issubset(sql_funcs), 'missing littlefs reader functions')
             require(not {'lfs_format', 'lfs_file_write', 'lfs_remove', 'lfs_mkdir', 'lfs_rename', 'lfs_file_truncate'}.intersection(symbols), 'littlefs write API linked')
             sql_report['littlefs'] = lfs
+            if 'api_version' in lfs:
+                require(lfs['api_version'] == 1 and lfs.get('workspace_bytes') == 8192, 'invalid file API workspace profile')
+                require({'nih_ro_init', 'nih_ro_mount', 'nih_ro_stat', 'nih_ro_open', 'nih_ro_read_at', 'nih_ro_close',
+                         'nih_ro_release_owner', 'nih_ro_unmount', 'nih_ro_destroy'}.issubset(sql_funcs), 'missing read-only file API functions')
         stack_data = [elf[section[4]:section[4] + section[5]] for section in sections
                       if string(names, section[0]) == ".stack_sizes"]
         require(len(stack_data) == 1, "missing/duplicate C stack metadata")

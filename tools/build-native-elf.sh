@@ -127,14 +127,15 @@ if [ "$sqlite" = true ]; then
     littlefs_source=
     if [ "$storage" = true ]; then
         littlefs_source=$(sh "$repo_root/tools/bootstrap-littlefs.sh")
-        for name in lfs lfs_util lfs_reader; do
+        for name in lfs lfs_util lfs_reader storage_api; do
             source="$littlefs_source/$name.c"
             if [ "$name" = lfs_reader ]; then source="$repo_root/probes/storage/littlefs_ro.c"; fi
+            if [ "$name" = storage_api ]; then source="$repo_root/src/services/storage_littlefs.c"; fi
             "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
                 -Oz -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
                 -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fstack-size-section \
                 -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
-                -isystem "$headers/riscv-linux-any" -I "$littlefs_source" -I "$repo_root/include" \
+                -isystem "$headers/riscv-linux-any" -I "$littlefs_source" -I "$repo_root/include" -I "$repo_root/src/services" \
                 -DLFS_READONLY -DLFS_NO_MALLOC -DLFS_NO_ASSERT -DLFS_NO_DEBUG -DLFS_NO_WARN -DLFS_NO_ERROR \
                 "$source" -o "$build_dir/sql_$name.o"
             set -- "$@" "$build_dir/sql_$name.o"
