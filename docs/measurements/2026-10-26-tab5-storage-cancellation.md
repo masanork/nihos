@@ -106,3 +106,5 @@ paintによる固定fixtureの観測値で、一般pathの最大stack保証で�
 [画像・全ログ・初版失敗・比較・audit・source patch・license・SHA256 manifest](/Users/masanork/Documents/Codex/2026-10-26/nihos-tab5-storage-cancellation-qualification)。
 終了時点でこの最終画像を書込み・照合した。ポート解放後の他セッションによる変更は追跡していない。
 mainの並行作業は変更していない。
+
+続報: [endpoint世代切替とreplacement client](2026-10-26-tab5-storage-rebind.md)。
