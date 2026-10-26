@@ -10,6 +10,27 @@ PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
 USB_FIELDS = ("status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped")
+JPKI_FIELDS = ("status", "stage", "error_code", "power_status", "power_error", "atr_bytes", "card_state", "apdu_count", "rejected", "pin_data_sent", "auth_before", "auth_after", "last_sw", "serial_bytes", "poweroff")
+
+
+def check_jpki(log):
+    if log.count('NIHOS_NATIVE_JPKI_MODE pin_input=disabled') != 1:
+        raise ValueError('missing/duplicate PIN-free JPKI mode')
+    record = fixed_record(log, 'NIHOS_NATIVE_JPKI', JPKI_FIELDS)
+    if (record['status'] != 1 or record['stage'] != 6 or record['error_code'] != 0 or
+            record['power_status'] != 0 or record['power_error'] != 0 or
+            not 2 <= record['atr_bytes'] <= 33 or record['card_state'] != 0 or
+            record['apdu_count'] != 7 or record['rejected'] != 0 or record['pin_data_sent'] != 0 or
+            not 1 <= record['auth_before'] <= 3 or record['auth_before'] != record['auth_after'] or
+            record['last_sw'] != 0x63c0 + record['auth_before'] or
+            not 1 <= record['serial_bytes'] <= 20 or record['poweroff'] != 1):
+        raise ValueError('incomplete PIN-free JPKI read or changed retry count')
+    serials = re.findall(r'^NIHOS_NATIVE_JPKI_SERIAL hex=([0-9a-f]+)$', log, re.M)
+    if len(serials) != 1 or log.count('NIHOS_NATIVE_JPKI_SERIAL') != 1 or len(serials[0]) != record['serial_bytes'] * 2:
+        raise ValueError('missing/duplicate/malformed JPKI certificate serial')
+    # The private raw log contains the requested serial. The public summary
+    # records only its length, not the value or the certificate prefix.
+    return record
 
 
 def check_usb(log):
@@ -63,7 +84,7 @@ def fixed_record(log, marker, names):
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
-          require_usb=False):
+          require_usb=False, require_jpki=False):
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     profile = image.get("memory", {}).get("profile") if image is not None else None
@@ -522,12 +543,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
         raise ValueError('orphan storage stack record')
     usb = None
-    if require_usb or 'NIHOS_NATIVE_USB ' in log or 'NIHOS_NATIVE_USB_MODE' in log:
+    if require_usb or require_jpki or 'NIHOS_NATIVE_USB ' in log or 'NIHOS_NATIVE_USB_MODE' in log:
         if evidence != 'physical-device':
             raise ValueError('native USB requires physical-device evidence')
         usb = check_usb(log)
+    jpki = None
+    if require_jpki or 'NIHOS_NATIVE_JPKI_MODE' in log or 'NIHOS_NATIVE_JPKI ' in log:
+        if evidence != 'physical-device' or usb is None:
+            raise ValueError('PIN-free JPKI requires physical USB evidence')
+        jpki = check_jpki(log)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "usb": usb,
+            "jpki": jpki,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
@@ -555,19 +582,19 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
 
 def main():
     if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|usb|comma-separated requirements]")
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|usb|jpki|comma-separated requirements]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
         image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
         extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
-        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage", "usb"}:
+        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage", "usb", "jpki"}:
             raise ValueError("invalid required extra evidence")
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
                        PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
                        "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra, "storage" in extra,
-                       "usb" in extra)
+                       "usb" in extra, "jpki" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

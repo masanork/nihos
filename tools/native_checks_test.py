@@ -770,5 +770,26 @@ class NativeUSBTests(unittest.TestCase):
             MODULE.check(complete_log() + self.usb_log(), require_usb=True)
 
 
+class NativeJPKITests(unittest.TestCase):
+    @staticmethod
+    def jpki_log():
+        values = (1, 6, 0, 0, 0, 13, 0, 7, 0, 0, 3, 3, 0x63c3, 2, 1)
+        return 'NIHOS_NATIVE_JPKI_MODE pin_input=disabled\nNIHOS_NATIVE_JPKI' + ''.join(
+            ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.JPKI_FIELDS, values)) + '\nNIHOS_NATIVE_JPKI_SERIAL hex=8123\n'
+
+    def test_jpki_counter_change_pin_data_and_incomplete_receipts_are_rejected(self):
+        log = self.jpki_log()
+        self.assertEqual(MODULE.check_jpki(log)['auth_after'], 3)
+        for key, value in [('auth_after', 2), ('auth_before', 0), ('auth_before', 255),
+                           ('pin_data_sent', 1), ('apdu_count', 6), ('poweroff', 0),
+                           ('serial_bytes', 3), ('rejected', 1), ('last_sw', 0x9000)]:
+            changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_jpki(changed)
+        for changed in [log + log, log[:-4], log.replace('hex=8123', 'hex=nothex')]:
+            with self.assertRaises(ValueError):
+                MODULE.check_jpki(changed)
+
+
 if __name__ == "__main__":
     unittest.main()

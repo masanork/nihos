@@ -1,6 +1,14 @@
 schema = 1
 
 [[source]]
+name = "civ JPKI wire sequence"
+url = "https://github.com/masanork/civ"
+revision = "54a843e656513930df60bbc20d752ff3289e7078"
+license = "MIT OR Apache-2.0"
+status = "reference-only"
+use = "User-provided JPKI AID/EF identifiers, PIN-free retry query and public authentication-certificate read sequence; no Rust library linked"
+
+[[source]]
 name = "Zig"
 url = "https://ziglang.org/download/"
 revision = "0.17.0"
