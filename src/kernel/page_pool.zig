@@ -100,6 +100,21 @@ pub fn Pool(comptime page_bytes: usize, comptime max_pages: usize, comptime max_
         pub fn remaining(self: *const Self) u32 {
             return @intCast(self.free_pages * page_bytes);
         }
+        pub fn largestFree(self: *const Self) u32 {
+            var base: u32 = 0;
+            var largest: u32 = 0;
+            for (self.regions) |maybe| {
+                const memory = maybe orelse break;
+                const count: u32 = @intCast(memory.len / page_bytes);
+                var run: u32 = 0;
+                for (base..base + count) |page| {
+                    run = if (self.used(page)) 0 else run + 1;
+                    largest = @max(largest, run);
+                }
+                base += count;
+            }
+            return @intCast(largest * page_bytes);
+        }
     };
 }
 

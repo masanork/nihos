@@ -4,6 +4,7 @@ import json
 import unittest
 
 import storage_budget as budget
+import generate_memory_profile
 
 
 class DevelopmentBudgetTests(unittest.TestCase):
@@ -21,6 +22,9 @@ class DevelopmentBudgetTests(unittest.TestCase):
         self.assertEqual(result['psram_peak_envelope_bytes']['unassigned_headroom'], 17 * budget.MIB // 2)
         self.assertEqual(result['wal_candidates']['soft_logical_bytes'], 4218912)
         self.assertEqual(result['wal_candidates']['quota_logical_bytes'], 16875552)
+
+    def test_compiled_broker_policy_cannot_drift_from_the_json_budget(self):
+        self.assertEqual(generate_memory_profile.render(), generate_memory_profile.OUTPUT.read_text())
 
     def test_positive_headroom_does_not_hide_parent_overcommit(self):
         for key in ('sram_budget_bytes', 'psram_peak_envelope_bytes'):

@@ -131,6 +131,13 @@ require more, revise admission or reduce another envelope rather than borrowing
 the mandatory free reserve. The candidate addresses and parent/child budgets
 are in the [development profile](tab5-development-profile.json).
 
+The [broker implementation](../adr/0049-memory-broker-page-parents.md) consumes
+the 16 KiB allocator allowance as metadata backing outside registered payload.
+Consequently its internal registration is 208 KiB (48 KiB low + 160 KiB high),
+with 144 KiB service ceilings and the same 64 KiB free floor. The gross heap
+envelope stays 224 KiB. `tools/generate_memory_profile.py` generates the target
+policy and checks it against the JSON; platform heap handoff is a later gate.
+
 Keep interrupt/ROM-facing state and DMA staging internal. VM heaps, editor
 buffers, filesystem maps/caches and RPC payloads belong in PSRAM when their
 access paths permit it. Cache-sensitive operations need an explicit internal
