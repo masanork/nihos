@@ -8,6 +8,8 @@ including timer preemption of two busy tasks and sleep/exit/reap/slot reuse.
 After that fixture, both owners exchange 64 event notifications in each
 direction while using WFI with periodic alarms disarmed.
 The existing ESP-IDF display backend is still a separate implementation.
+Two CPU0-only PSRAM boot functions now execute from the retained Flash mapping;
+the ongoing kernel/task runtime remains resident.
 
 See [ADR 0018](adr/0018-independent-native-boot.md) for boot constraints and
 [ADR 0019](adr/0019-permanent-native-task-owners.md) for the scheduler wiring.
@@ -37,6 +39,8 @@ Task-owned monotonic pools are described in
 [ADR 0031](adr/0031-task-owned-monotonic-pools.md).
 Read-only loader-mapped diagnostic tables are described in
 [ADR 0032](adr/0032-loader-mapped-read-only-record-tables.md).
+Whitelisted CPU0 boot-code placement and executed-PC evidence are described in
+[ADR 0033](adr/0033-whitelisted-flash-boot-code.md).
 
 ## Build and emulated execution
 
@@ -255,7 +259,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has fifty-seven log validator regression tests, including frozen
+The smoke has sixty log validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
@@ -266,7 +270,7 @@ Reusable heap records also require bounded walks, exact backing/metadata
 geometry, zero leaks and capacity recovery.
 Task resource records require cleanup completion, generation reuse and
 actual forced termination, including the no-PSRAM path.
-Eleven more tests check instructions, heap/loader boundaries, loader cache
+Thirteen more tests check instructions, heap/loader boundaries, loader cache
 configuration and bounded read-only Flash sections/checksums. Two compiler
 tests check six invalid diagnostic schema classes, including oversized text.
 Normal report output uses a shared, allocation-free typed record writer;
@@ -274,7 +278,7 @@ four host tests cover ordering/full values, actual struct offsets,
 self-contained relative tables and empty schemas.
 
 Normal record tables now use the loader's second Flash mapping instead of
-SRAM. Code, mutable state, ordinary constants and direct trap/error output
+SRAM. Runtime code, mutable state, ordinary constants and direct trap/error output
 remain resident. `NIHOS_NATIVE_FLASH` requires full-table initial/final reads
 from both harts, with addresses and checksums matching the audited ELF.
 Smoke reports retain that image's ELF digest. The second Flash section is
@@ -283,7 +287,17 @@ or cache-off protocol is implemented; normal logging requires the retained
 Flash mapping and cache. All previous resource, scheduler and memory gates
 remain required.
 
-Run all 70 Python tests with:
+The first Flash mapping now contains the descriptor followed by two approved
+CPU0 boot functions: PSRAM discovery/setup and mapping preparation. The image
+still has exactly two external mapped segments. `NIHOS_NATIVE_BOOT_CODE`
+requires a completed probe PC and, with a populated die, a mapping PC within
+their individual ELF-audited function ranges. No-die runs require a zero
+mapping PC. The ELF audit rejects any other Flash function and applies the
+existing integer/FP instruction boundaries to the moved code. The functions
+run before CPU1 release and scheduler timers; general service code and
+cache-off execution are not qualified by this placement.
+
+Run all 75 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

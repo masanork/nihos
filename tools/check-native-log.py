@@ -284,9 +284,32 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         flash[hart] = record
     if set(flash) != {0, 1} or flash[0] != flash[1]:
         raise ValueError("missing/inconsistent per-hart Flash table evidence")
+    boot_names = ("start", "end", "probe", "mapping", "completed")
+    pattern = "NIHOS_NATIVE_BOOT_CODE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in boot_names)
+    matches = re.findall(pattern, log)
+    if len(matches) != 1:
+        raise ValueError("missing/duplicate Flash boot execution")
+    boot = dict(zip(boot_names, (int(value, 16) for value in matches[0])))
+    if (boot["start"] != 0x40000120 or not boot["start"] < boot["end"] <= 0x40010000 or
+            not boot["start"] <= boot["probe"] < boot["end"] or boot["probe"] % 2 != 0 or boot["completed"] != 1 or
+            (psram["status"] == 0 and boot["mapping"] != 0) or
+            (psram["status"] != 0 and (not boot["start"] <= boot["mapping"] < boot["end"] or
+                                      boot["mapping"] % 2 != 0 or boot["mapping"] == boot["probe"]))):
+        raise ValueError("incomplete Flash boot execution")
+    if image is not None:
+        expected = image["flash_boot"]
+        if boot["start"] != int(expected["start"], 16) or boot["end"] != int(expected["end"], 16):
+            raise ValueError("Flash boot extent differs from audited image")
+        for role in ("probe", "mapping"):
+            if role == "mapping" and psram["status"] == 0:
+                continue
+            function = expected["functions"][role]
+            if not int(function["start"], 16) <= boot[role] < int(function["end"], 16):
+                raise ValueError("Flash boot PC outside audited function")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
+            "flash_boot": boot,
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
             "psram_mapping": mapped, "psram_smp": psram_smp,

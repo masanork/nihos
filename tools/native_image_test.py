@@ -10,6 +10,31 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_flash_boot_code_requires_execute_read_permissions_and_one_page(self):
+        MODULE.audit_flash_section(".flash.boot", 1, 6, 0x40000120, 65248)
+        for kind, flags, address, size in ((8, 6, 0x40000120, 64), (1, 2, 0x40000120, 64),
+                                            (1, 7, 0x40000120, 64), (1, 6, 0x40000124, 64),
+                                            (1, 6, 0x40000120, 0), (1, 6, 0x40000120, 65249)):
+            with self.subTest(kind=kind, flags=flags, size=size), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(".flash.boot", kind, flags, address, size)
+
+    def test_only_two_named_boot_functions_may_leave_sram(self):
+        functions = [("resident", 0x4ff20000, 0x4ff20100), ("nih_rom_putc", 0x4fc00054, 0x4fc00058),
+                     ("psram.probe", 0x40000120, 0x40000920),
+                     ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
+        def check(values):
+            return MODULE.audit_boot_functions(values, 0x40000120, 0x40001120, 0x4ff20000, 0x4ff48000)
+        self.assertEqual(set(check(functions)), {"probe", "mapping"})
+        cases = [functions[:3], functions + [("unexpected", 0x40000140, 0x40000180)],
+                 functions + [("psram_memory.prepare__func_44", 0x40000920, 0x40001120)],
+                 functions[:2] + [("psram.probe", 0x40000120, 0x40000922), functions[3]],
+                 functions[:2] + [("psram.probe", 0x40000122, 0x40000920), functions[3]],
+                 functions[:2] + [("psram.probe", 0x40000120, 0x40010002), functions[3]],
+                 functions + [("oversized_resident", 0x4ff47ffe, 0x4ff48002)]]
+        for values in cases:
+            with self.subTest(functions=values), self.assertRaises(ValueError):
+                check(values)
+
     def test_descriptor_must_select_the_audited_mmu_page_size(self):
         data = bytearray(256)
         struct.pack_into("<I", data, 0, 0xABCD5432)
