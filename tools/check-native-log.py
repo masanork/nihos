@@ -9,6 +9,7 @@ import sys
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
+CANCEL_FIELDS = ("forced_exit", "inflight_completed", "discarded_requests", "discarded_responses")
 SERVICE_FIELDS = ("status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared")
 STORAGE_API_FIELDS = ('status', 'opens', 'closes', 'cancelled', 'rejected', 'read_calls', 'workspace_bytes', 'used_bytes', 'cleared')
 
@@ -56,7 +57,9 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False):
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
-    service_expected = image is not None and image.get('sqlite', {}).get('littlefs', {}).get('service') is not None
+    service_metadata = image.get('sqlite', {}).get('littlefs', {}).get('service') if image is not None else None
+    service_expected = service_metadata is not None
+    cancel_expected = service_expected and service_metadata.get('version') == 2
     profile = image.get("memory", {}).get("profile") if image is not None else None
     if evidence == "physical-device" and profile != "device":
         raise ValueError("physical evidence requires a device-profile image audit")
@@ -329,6 +332,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
                     8 if psram["status"] else 0, 4208 if psram["status"] else 0, 2 if psram["status"] else 0]
         if service_expected:
             for index in (0, 1, 2, 4, 7): expected[index] += 1
+            if cancel_expected and hart == 1: expected[9] += 1
         if values != expected:
             raise ValueError("incomplete deferred task resource cleanup")
         resources[hart] = dict(zip(resource_names, values))
@@ -528,10 +532,14 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if service_expected or 'NIHOS_NATIVE_STORAGE_SERVICE ' in log:
         if not service_expected or storage is None or evidence != 'physical-device':
             raise ValueError('storage service requires a bound physical image')
-        service = fixed_record(log, 'NIHOS_NATIVE_STORAGE_SERVICE', SERVICE_FIELDS)
+        if service_metadata.get('version') not in (1, 2):
+            raise ValueError('unknown storage service version')
+        service = fixed_record(log, 'NIHOS_NATIVE_STORAGE_SERVICE', SERVICE_FIELDS + (CANCEL_FIELDS if cancel_expected else ()))
+        if cancel_expected and any(service[key] != value for key, value in zip(CANCEL_FIELDS, (1, 1, 2, 2))):
+            raise ValueError('incomplete forced storage cancellation/drain')
         replies = storage['entries'] + 13 + (storage['file_bytes'] + 511) // 512
         if (any(service[key] != 1 for key in ('status','queue_full','exit_seen','released','stale_rejected','clock_ok','fs_cleared','ipc_cleared')) or
-                storage['status'] != 2 or service['responses'] != replies or service['requests'] != replies - 2 or service['rejected'] != 5 or
+                storage['status'] != 2 or service['responses'] != replies or service['requests'] != replies - (0 if cancel_expected else 2) or service['rejected'] != 5 or
                 service['bytes'] != storage['file_bytes'] or service['crc'] != storage['file_crc'] or
                 service['owner'] >> 24 != 1 or service['owner'] & 0xffff == 0 or
                 not 0 < service['owner_stack'] < 3920 or not 0 < service['client_stack'] < 3920 or

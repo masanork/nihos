@@ -21,6 +21,7 @@ extern fn nih_storage_task_entry(u32) callconv(.c) i32;
 extern fn nih_storage_register(u32, u32, u32, u32) callconv(.c) void;
 extern fn nih_storage_pending(u32) callconv(.c) u32;
 extern fn nih_storage_task_exited(u32, u32) callconv(.c) void;
+extern fn nih_storage_cancel_requested() callconv(.c) u32;
 extern fn nih_storage_cleanup_ready() callconv(.c) u32;
 extern fn nih_storage_retired(u32) callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
@@ -241,7 +242,7 @@ fn maintain(hart: u32, device: timer_group.Timer) bool {
     if (options.storage_service and owner.phase == .storage_service) {
         const completion = owner.runtime.policy.snapshot(owner.lifecycle) orelse return false;
         if (completion.state != .exited) return true;
-        if (completion.exit_code != 300 + hart) return false;
+        if (completion.exit_code != (if (hart == 1) @as(i32, -98) else 300)) return false;
         if (!memory.reusable.taskCleaned(hart, key(owner.lifecycle)) or nih_storage_cleanup_ready() != 1) return true;
         owner.completed_runtime_ticks += completion.runtime_ticks;
         if (!owner.runtime.reap(owner.lifecycle)) return false;
@@ -414,6 +415,16 @@ pub fn service(hart: u32) bool {
             if (!owner.runtime.policy.terminate(owner.lifecycle, -99)) nih_native_task_failed();
             if (!memory.reusable.closeTask(hart, key(owner.lifecycle))) nih_native_task_failed();
             memory.reusable.terminatedTask(hart);
+            terminated = true;
+        }
+    }
+    if (options.storage_service and hart == 1 and owner.phase == .storage_service and nih_storage_cancel_requested() == 1) {
+        const snapshot = owner.runtime.policy.snapshot(owner.lifecycle) orelse nih_native_task_failed();
+        if (snapshot.state == .blocked) {
+            if (!owner.runtime.policy.terminate(owner.lifecycle, -98)) nih_native_task_failed();
+            if (!memory.reusable.closeTask(hart, key(owner.lifecycle))) nih_native_task_failed();
+            memory.reusable.terminatedTask(hart);
+            nih_storage_task_exited(hart, control.encodeHandle(owner.lifecycle));
             terminated = true;
         }
     }
