@@ -208,7 +208,7 @@ def main():
     require(mutant.read_text() != source, "Mutation did not change source")
     summary = {
         "scope": "finite deterministic repeated-high-wakeup scenario; host replay",
-        "platform": platform.platform(), "scheduler_sha256": sha256(SCHEDULER),
+        "platform": platform.platform(), "scheduler_sha256": sha256(candidate),
         "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "model_sha256": sha256(MODEL), "bridge_sha256": sha256(Path(__file__)),
         "harness_sha256": sha256(ROOT / "formal/scheduler/replay.zig"),

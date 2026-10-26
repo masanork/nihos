@@ -19,6 +19,11 @@ upstream v1.7.4 jar and checks its SHA-256 on downloads and cache hits. The jar
 and all generated artifacts stay in ignored .tools/ and build/ directories.
 The experiment does not change source files or require device access.
 
+The Formal scheduler verification workflow runs this command and the bridge
+regressions for pull requests and pushes to main. It retains the run directory
+as the formal-scheduler-evidence artifact for 14 days, including failed runs.
+The replay harness is also included in the existing static-analysis gate.
+
 The command exits successfully only when all six model runs have their
 expected outcome, all matching implementation replays pass, and all three
 wrong-implementation replays fail with an observable model mismatch.

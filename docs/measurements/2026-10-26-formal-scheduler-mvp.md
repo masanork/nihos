@@ -97,7 +97,8 @@ Validation completed:
 
 The candidate changes cursor storage from one usize to priority_levels usizes.
 Native compilation is verified; runtime memory/timing measurements are not.
-The original worktree and scheduler remain unchanged. Nothing is merged.
+At the time of the initial measurement, the original worktree and scheduler
+remained unchanged, and the candidate had not been merged.
 
 ## Interpretation and next experiment
 
