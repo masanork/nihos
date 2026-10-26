@@ -1,0 +1,26 @@
+{
+  "name": "nihos-book",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "check": "node scripts/prepare.mjs",
+    "build": "npm run check && vivliostyle build -c vivliostyle.config.cjs",
+    "build:web": "npm run check && vivliostyle build -c vivliostyle.config.cjs -o output/web --format webpub",
+    "preview": "npm run check && vivliostyle preview -c vivliostyle.config.cjs"
+  },
+  "devDependencies": {
+    "@vivliostyle/cli": "11.4.0",
+    "@vivliostyle/theme-techbook": "3.0.0"
+  },
+  "overrides": {
+    "dompurify": "3.4.17",
+    "prismjs": "1.30.0",
+    "trim": "0.0.3",
+    "uuid": "11.1.1",
+    "valibot": "1.4.2",
+    "vite": "8.1.6",
+    "zod": "4.6.6"
+  }
+}
