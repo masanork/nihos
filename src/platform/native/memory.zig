@@ -4,6 +4,7 @@ const std = @import("std");
 const core_arena = @import("core_arena");
 const CoreArena = core_arena.CoreArena;
 pub const reusable = @import("heap.zig");
+pub const stacks = @import("stacks.zig");
 
 extern var __heap_start: u8;
 extern var __heap_end: u8;

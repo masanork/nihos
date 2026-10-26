@@ -51,7 +51,7 @@ pub const Report = struct {
 };
 
 var owners: [2]Owner = .{ .{}, .{} };
-var stacks: [2][3][stack_bytes]u8 align(16) = undefined;
+var stacks: [2][3][stack_bytes]u8 align(16) linksection(".native.task_stacks") = undefined;
 var reports: [2]Report = .{ .{}, .{} };
 
 fn load(value: *const u32) u32 {
@@ -172,7 +172,7 @@ fn onTaskStack(hart: u32, index: u32, address: u32, bytes: u32) bool {
 fn guardsValid(hart: u32) bool {
     for (&stacks[hart]) |*stack| {
         const guard: *volatile [4]u32 = @ptrCast(stack);
-        for (0..4) |word| if (guard[word] != 0x6e69_7374) return false;
+        for (0..4) |word| if (guard[word] != memory.stacks.layout.worker_guard) return false;
     }
     return true;
 }
@@ -182,7 +182,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
     const stack = &stacks[hart][index];
     const bottom = @intFromPtr(stack);
     const guard: *[4]u32 = @ptrCast(stack);
-    guard.* = @splat(0x6e69_7374);
+    guard.* = @splat(memory.stacks.layout.worker_guard);
     const address = context.initialTaskFrameAddress(bottom, stack_bytes) orelse return null;
     const frame: *context.IntegerContext = @ptrFromInt(address);
     context.initialize(frame, .{

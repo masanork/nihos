@@ -7,6 +7,11 @@ const record_log = @import("record_log");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 
+comptime {
+    if (@sizeOf(tasks.context.IntegerContext) != tasks.memory.stacks.layout.frame_bytes)
+        @compileError("stack observations must use the native integer frame ABI");
+}
+
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
 extern fn nih_native_cpu1_start() callconv(.c) void;
@@ -135,7 +140,7 @@ fn enableTimer(hart: u32) void {
 
 export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
     if (hart >= 2) fail("invalid hart");
-    if (!interruptStackValid(hart)) fail("interrupt stack/MIE");
+    if (!interruptStackValid(hart, frame)) fail("interrupt stack/MIE");
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
     if (tasks.ready(hart)) {
         const selected = if (cause & 0x8000_0fff == 11)
@@ -204,7 +209,7 @@ fn prepareTasks(hart: u32) void {
     const gp = asm volatile ("mv %[result], gp"
         : [result] "=r" (-> u32),
     );
-    const minimum = if (hart == 0) @intFromPtr(&__stack0_bottom) else @intFromPtr(&__stack1_bottom);
+    const minimum = (if (hart == 0) @intFromPtr(&__stack0_bottom) else @intFromPtr(&__stack1_bottom)) + 16;
     const maximum = if (hart == 0) @intFromPtr(&__stack0_top) else @intFromPtr(&__stack1_top);
     if (!tasks.prepare(hart, minimum, maximum, gp)) fail("task prepare");
 }
@@ -213,9 +218,9 @@ fn interruptGuard(hart: u32) *volatile [4]u32 {
     return if (hart == 0) &__irq_stack0_bottom else &__irq_stack1_bottom;
 }
 
-fn interruptStackValid(hart: u32) bool {
+fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bool {
     const guard = interruptGuard(hart);
-    for (0..4) |word| if (guard[word] != 0x6e69_6972) return false;
+    for (0..4) |word| if (guard[word] != tasks.memory.stacks.layout.irq_guard) return false;
     const sp = asm volatile ("mv %[result], sp"
         : [result] "=r" (-> u32),
     );
@@ -223,7 +228,8 @@ fn interruptStackValid(hart: u32) bool {
         : [result] "=r" (-> u32),
     );
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
-    return status & (8 | 0x6000) == 0 and sp >= @intFromPtr(guard) + 16 and sp < top;
+    return status & (8 | 0x6000) == 0 and sp >= @intFromPtr(guard) + 16 and sp < top and
+        tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
 fn taskReport(hart: u32) void {
@@ -273,8 +279,9 @@ fn floatingReport(hart: u32) void {
 
 export fn nih_native_cpu1_main() callconv(.c) noreturn {
     nih_rom_set_cpu1_entry(0);
+    if (!tasks.memory.stacks.begin(1)) fail("CPU1 stack bank begin");
     if (!flash_records.begin(1)) fail("CPU1 Flash records begin");
-    interruptGuard(1).* = @splat(0x6e69_6972);
+    interruptGuard(1).* = @splat(tasks.memory.stacks.layout.irq_guard);
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
     native_psram.memory.peer();
@@ -287,6 +294,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
         if (tasks.ipi.done()) {
             tasks.floating.quiesce(1);
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
+            if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
             while (true) asm volatile ("wfi");
         }
@@ -297,7 +305,8 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
 
 export fn nih_native_main() callconv(.c) noreturn {
     watchdogOff();
-    interruptGuard(0).* = @splat(0x6e69_6972);
+    if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
+    interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
@@ -402,6 +411,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
                 tasks.floating.quiesce(0);
                 if (!flash_records.finish(0)) fail("CPU0 Flash records finish");
+                if (!tasks.memory.stacks.finish(0)) fail("CPU0 stack bank finish");
                 if (!tasks.memory.finish()) fail("CPU0 memory finish");
                 const started = cycle();
                 while (tasks.floating.report(1).confirmed != 1 or tasks.memory.report(1).confirmed != 1) {
@@ -420,6 +430,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                 heapReport(1);
                 resourceReport(0);
                 resourceReport(1);
+                stackReport(0);
+                stackReport(1);
                 flashReport(0);
                 flashReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
@@ -454,4 +466,9 @@ fn flashReport(hart: u32) void {
     const report = flash_records.report(hart);
     if (report.confirmed != 1) fail("Flash record publication");
     logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
+}
+
+fn stackReport(hart: u32) void {
+    const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
+    logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
 }

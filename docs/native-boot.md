@@ -43,6 +43,8 @@ Whitelisted CPU0 boot-code placement and executed-PC evidence are described in
 [ADR 0033](adr/0033-whitelisted-flash-boot-code.md).
 Task-owned fixed-size cell allocation/reuse is described in
 [ADR 0034](adr/0034-task-owned-fixed-size-slabs.md).
+Separate source-supported internal SRAM for stacks is described in
+[ADR 0035](adr/0035-separate-internal-sram-stack-region.md).
 
 ## Build and emulated execution
 
@@ -94,10 +96,11 @@ before WFI with MIE clear. The earlier soak marker alone cannot pass this
 workflow. These observations do not measure physical power savings.
 
 The linker now assigns the unused SRAM tail to a NOBITS `.heap` section.
-The resident region is 160 KiB: `0x4ff00000..0x4ff28000` for the physical
+The primary resident region is 160 KiB: `0x4ff00000..0x4ff28000` for the physical
 rev1/2 profile, and `0x4ff20000..0x4ff48000` for the rev3 emulator profile.
 The latter skips the pinned 128 KiB cache prefix. The linker and image audit
 require at least 48 KiB of internal heap; all stack reservations are retained.
+Stacks now occupy the separate 56 KiB region described in ADR 0035 below.
 CPU0 splits it into two guarded arenas before releasing CPU1. Native
 allocation selects the current hart's arena and masks local interrupts only
 for the cursor update. It has no shared lock, fallback, free or reset.
@@ -261,7 +264,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has sixty-one log validator regression tests, including frozen
+The smoke has sixty-four log validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
@@ -272,7 +275,7 @@ Reusable heap records also require bounded walks, exact backing/metadata
 geometry, zero leaks and capacity recovery.
 Task resource records require cleanup completion, generation reuse and
 actual forced termination, including the no-PSRAM path.
-Thirteen more tests check instructions, heap/loader boundaries, loader cache
+Seventeen more tests check instructions, heap/loader boundaries, loader cache
 configuration and bounded read-only Flash sections/checksums. Two compiler
 tests check six invalid diagnostic schema classes, including oversized text.
 Normal report output uses a shared, allocation-free typed record writer;
@@ -308,7 +311,18 @@ cell frees and 27 rejections per hart; absent runs require zero. Normal and
 forced task cleanup reclaim live/pending/poisoned slabs as one parent without
 walking their children. This is not a variable-size or SQLite C allocator.
 
-Run all 76 Python tests with:
+The stack reservations now use a separate 56 KiB internal-SRAM span at
+`0x4ff60000..0x4ff6e000`. Primary SRAM bounds, cache geometry and the 48 KiB
+heap gate remain. All four 8 KiB and six 4 KiB reservations are retained;
+bootstrap stacks now also reserve their first 16 bytes as guards. Assembly
+zeroes the full NOBITS span before selecting a native stack. Each hart checks
+20 KiB of IRQ/task memory before use. `NIHOS_NATIVE_STACKS` requires exact
+extents, owned frame/SP samples, initial zero checks and final completion.
+Both full SRAM spans are checked against actual loader allocations. Sampled
+frame minima are not complete peak-stack measurements. Total reserved SRAM
+is 216 KiB; reports distinguish total static use from primary static use.
+
+Run all 83 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

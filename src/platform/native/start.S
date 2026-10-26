@@ -23,6 +23,16 @@ nih_native_start:
     .option norelax
     la gp, __global_pointer$
     .option pop
+    /* No C frame exists yet. Clear the separate NOLOAD stack span before
+     * selecting our own stack; CPU1 is still parked in ROM. */
+    la t0, __stacks_start
+    la t1, __stacks_end
+.Lzero_stacks:
+    bgeu t0, t1, .Lstacks_ready
+    sw zero, 0(t0)
+    addi t0, t0, 4
+    j .Lzero_stacks
+.Lstacks_ready:
     la sp, __stack0_top
     la t0, __bss_start
     la t1, __bss_end

@@ -196,6 +196,13 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         raise ValueError("missing per-hart memory evidence")
     if memory_owners[0]["end"] > memory_owners[1]["start"]:
         raise ValueError("overlapping memory owners")
+    if image is not None:
+        heap = image["heap"]
+        start = int(heap["start"], 16)
+        stride = heap["bytes"] // 2 // 64 * 64
+        if any(record["start"] != start + hart * stride or record["end"] != start + (hart + 1) * stride
+               for hart, record in memory_owners.items()):
+            raise ValueError("memory owners differ from audited heap")
     pattern = r"NIHOS_NATIVE_EXTERNAL hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in memory_names)
     external_owners = {}
@@ -285,6 +292,32 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         flash[hart] = record
     if set(flash) != {0, 1} or flash[0] != flash[1]:
         raise ValueError("missing/inconsistent per-hart Flash table evidence")
+    stack_names = ("start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end",
+                   "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed")
+    pattern = r"NIHOS_NATIVE_STACKS hart=([0-9a-f]{8})" + "".join(" " + name + r"=([0-9a-f]{8})" for name in stack_names)
+    stacks = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in stacks:
+            raise ValueError("invalid/duplicate stack owner")
+        record = dict(zip(stack_names, values))
+        base = 0x4ff60000
+        expected = {"start": base, "end": 0x4ff6e000, "boot_start": base + hart * 8192, "boot_end": base + (hart + 1) * 8192,
+                    "irq_start": base + 16384 + hart * 8192, "irq_end": base + 16384 + (hart + 1) * 8192,
+                    "task_start": base + 32768 + hart * 12288, "task_end": base + 32768 + (hart + 1) * 12288}
+        if any(record[name] != value for name, value in expected.items()) or record["zeroed"] != 20480 or record["confirmed"] != 1 or record["frames"] < 4:
+            raise ValueError("incomplete stack bank layout/initialization evidence")
+        for field, low, high, width in [("boot_frame", record["boot_start"], record["boot_end"], 128),
+                                        ("irq_sp", record["irq_start"], record["irq_end"], 1)] + [
+                ("task{}_frame".format(index), record["task_start"] + index * 4096, record["task_start"] + (index + 1) * 4096, 128)
+                for index in range(3)]:
+            if record[field] % 16 or not low + 16 <= record[field] <= high - width:
+                raise ValueError("stack sample outside owned stack")
+        if image is not None and (record["start"] != int(image["stacks"]["start"], 16) or record["end"] != int(image["stacks"]["end"], 16)):
+            raise ValueError("stack bank differs from audited image")
+        stacks[hart] = record
+    if set(stacks) != {0, 1}:
+        raise ValueError("missing per-hart stack evidence")
     boot_names = ("start", "end", "probe", "mapping", "completed")
     pattern = "NIHOS_NATIVE_BOOT_CODE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in boot_names)
     matches = re.findall(pattern, log)
@@ -311,6 +344,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
             "flash_boot": boot,
+            "stacks": [{"hart": hart, **stacks[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
             "psram_mapping": mapped, "psram_smp": psram_smp,

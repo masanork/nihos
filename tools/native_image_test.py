@@ -10,6 +10,51 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_stack_symbols_array_and_section_have_exact_reservations(self):
+        base = 0x4ff60000
+        symbols = {"__stacks_start": base, "__stacks_end": base + 57344,
+                   "__task_stacks_start": base + 32768, "__task_stacks_end": base + 57344,
+                   "native_tasks.stacks": base + 32768}
+        for prefix, offset in (("stack0", 0), ("stack1", 8192), ("irq_stack0", 16384), ("irq_stack1", 24576)):
+            symbols["__" + prefix + "_bottom"] = base + offset
+            symbols["__" + prefix + "_top"] = base + offset + 8192
+        sizes = {"native_tasks.stacks": 24576}
+        sections = [{"name": ".stacks", "address": hex(base), "bytes": 57344}]
+        self.assertEqual(MODULE.audit_stack_layout(symbols, sizes, sections)["bytes"], 57344)
+        for name in symbols:
+            with self.subTest(symbol=name), self.assertRaisesRegex(ValueError, "stack"):
+                MODULE.audit_stack_layout({**symbols, name: symbols[name] + 16}, sizes, sections)
+        with self.assertRaisesRegex(ValueError, "array"):
+            MODULE.audit_stack_layout(symbols, {"native_tasks.stacks": 16384}, sections)
+        for bad in ([], sections + sections, [{**sections[0], "bytes": 57328}]):
+            with self.assertRaisesRegex(ValueError, "stack"):
+                MODULE.audit_stack_layout(symbols, sizes, bad)
+
+    def test_stack_bank_is_non_executable_unloaded_and_bounded(self):
+        MODULE.audit_stack_section(8, 3, 0x4ff60000, 57344)
+        for values in ((1, 3, 0x4ff60000, 57344), (8, 7, 0x4ff60000, 57344),
+                       (8, 2, 0x4ff60000, 57344), (8, 3, 0x4ff60010, 57344), (8, 3, 0x4ff60000, 32768)):
+            with self.subTest(values=values), self.assertRaisesRegex(ValueError, "stack"):
+                MODULE.audit_stack_section(*values)
+
+    def test_loader_audits_both_regions_while_allowing_the_reserved_hole(self):
+        report = {"memory": {"origin": "0x4ff00000", "end": "0x4ff28000", "regions": [
+            {"name": "resident", "origin": "0x4ff00000", "end": "0x4ff28000"},
+            {"name": "stacks", "origin": "0x4ff60000", "end": "0x4ff6e000"}]}}
+        result = MODULE.audit_loader(report, loader_elf([(1, 2, 0x4ff2abd0, 8192)]))
+        self.assertEqual([gap["name"] for gap in result["regions_checked"]], ["resident", "stacks"])
+        self.assertIsNone(result["regions_checked"][1]["gap_above"])
+        self.assertGreater(result["regions_checked"][1]["gap_below"], 0)
+
+    def test_loader_collisions_with_stack_bank_include_both_edges_and_nobits(self):
+        report = {"memory": {"origin": "0x4ff20000", "end": "0x4ff48000", "regions": [
+            {"name": "resident", "origin": "0x4ff20000", "end": "0x4ff48000"},
+            {"name": "stacks", "origin": "0x4ff60000", "end": "0x4ff6e000"}]}}
+        for kind in (1, 8):
+            for address in (0x4ff5fffc, 0x4ff68000, 0x4ff6dffc):
+                with self.subTest(kind=kind, address=hex(address)), self.assertRaisesRegex(ValueError, "stacks"):
+                    MODULE.audit_loader(report, loader_elf([(1, 2, 0x4ffac2c0, 64), (kind, 2, address, 16)]))
+
     def test_flash_boot_code_requires_execute_read_permissions_and_one_page(self):
         MODULE.audit_flash_section(".flash.boot", 1, 6, 0x40000120, 65248)
         for kind, flags, address, size in ((8, 6, 0x40000120, 64), (1, 2, 0x40000120, 64),
@@ -61,11 +106,11 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(data=data):
                 self.assertEqual(MODULE.fnv1a(data), checksum)
 
-    def test_heap_is_the_unloaded_tail_after_stacks(self):
+    def test_heap_is_the_unloaded_tail_after_primary_bss(self):
         for low, high, _ in MODULE.SRAM_PROFILES.values():
             start = high - 65536
-            symbols = {"__irq_stack1_top": start - 16, "__heap_start": start, "__heap_end": high}
-            sections = [{"name": ".stacks", "address": hex(start - 32768 - 16), "bytes": 32768},
+            symbols = {"__bss_end": start - 16, "__heap_start": start, "__heap_end": high}
+            sections = [{"name": ".bss", "address": hex(start - 32768 - 16), "bytes": 32768},
                         {"name": ".heap", "address": hex(start), "bytes": 65536}]
             self.assertEqual(MODULE.audit_heap_layout(symbols, sections, low, high)["bytes"], 65536)
             for field, value in (("__heap_start", start - 4096), ("__heap_start", start + 1),
