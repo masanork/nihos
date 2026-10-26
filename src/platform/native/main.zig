@@ -545,7 +545,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (cycle() -% began > 2_000_000_000) fail("broker cleanup timeout");
                     }
                     const b = broker_runtime.finish();
-                    logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses" }, &b);
+                    logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses", "io_clock_acquired", "io_clock_released" }, &b);
                 }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");

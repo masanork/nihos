@@ -4,12 +4,14 @@ const dev = @import("development_memory");
 const api = dev.api;
 const calls = @import("task_calls");
 const ring = @import("spsc_ring");
+const timer_group = @import("timer_group");
 const abi = @import("broker_abi.zig");
 pub const panic = std.debug.no_panic;
 const A = std.atomic.Value(u32);
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_broker_sd_read(*[512]u8) callconv(.c) i32;
+extern fn nih_storage_clock_start() callconv(.c) u32;
 var peer_quiet = A.init(0);
 var enabled = A.init(0);
 var identity = A.init(0);
@@ -228,8 +230,16 @@ fn dispatch(request: Request) ?Response {
             io_armed.store(1, .release);
             // No reply is published. The gate kills the blocked client after
             // CMD17 launch; the driver must finish copying before we unpin.
+            const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
+            check(clock.channel.config & (timer_group.counter_enable | timer_group.alarm_enable) == 0, 51);
+            check(nih_storage_clock_start() == 1 and clock.channel.config >> 13 & 0xffff == 40 and
+                clock.channel.config & timer_group.counter_enable != 0 and clock.counter() != null, 52);
+            s.report.io_clock_acquired = 1;
             stage(40);
             check(nih_broker_sd_read(@ptrCast(s.borrow.?.bytes.ptr)) == 0, 43);
+            clock.stop();
+            check(clock.channel.config & (timer_group.counter_enable | timer_group.alarm_enable) == 0, 53);
+            s.report.io_clock_released = 1;
             stage(41);
             check(io_armed.load(.acquire) == 2 and io_after_exit.load(.acquire) == 1 and
                 exited.load(.acquire) == s.bound_identity, 44);

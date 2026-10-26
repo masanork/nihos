@@ -12,7 +12,7 @@ def fixture():
                        'internal_floor':64*1024,'external_floor':17*(1<<19)}
     values = [1,4,12912,208*1024,208*1024,30<<20,30<<20,64*1024,17*(1<<19),
               4<<20,4<<20,8<<20,8<<20,0x50001,0x60001,16,15,8,4,4,4,4,3,2,16384,1,1600,
-              0x70001,0x80001,1,1,1,512,0,0,1,1,1]
+              0x70001,0x80001,1,1,1,512,0,0,1,1,1,1,1]
     sd=NATIVE.fixed_record(log,'NIHOS_NATIVE_SDMMC',NATIVE.SDMMC_FIELDS)
     values[33]=values[34]=sd['crc0']
     record = HIGH.line('NIHOS_NATIVE_BROKER',NATIVE.BROKER_FIELDS,values)
