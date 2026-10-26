@@ -3,10 +3,8 @@ const std = @import("std");
 const card = @import("card");
 const memory = @import("native_tasks").memory;
 const heap = memory.reusable;
-const key = heap.Key{ .slot = 0, .generation = 0x7fff };
 const bytes = 4 * 1024 * 1024 - 128;
 var lease: ?heap.Allocation = null;
-var active = false;
 pub const Report = struct { selftest: u32 = 0, decoded: u32 = 0, error_code: u32 = 0, stack_used: u32 = 0, arena_bytes: u32 = 0, surface_sw: u32 = 0, surface_counter: u32 = 255, erased: u32 = 0 };
 pub var report = Report{};
 extern fn nih_photo_call([*]const u8, usize, [*]u8, usize, [*]u8, usize) callconv(.c) c_int;
@@ -40,9 +38,9 @@ noinline fn execute(encoded: []const u8) linksection(".flash.photo") bool {
     return status == 0 and intact;
 }
 pub noinline fn prepare() linksection(".flash.text.card") !void {
-    if (!heap.openTask(0, key)) return error.PhotoOwner;
-    active = true;
-    heap.selectTask(0, key);
+    // CPU0 is still the live bootstrap task after scheduler qualification.
+    // Register the lease with that existing owner; never forge a generation
+    // or close its task ledger while the foreground is running.
     errdefer {
         if (!close()) report.error_code = 10;
     }
@@ -72,10 +70,6 @@ pub noinline fn close() linksection(".flash.text.card") bool {
             clean = false;
         };
         lease = null;
-    }
-    if (active) {
-        if (!heap.closeTask(0, key)) clean = false;
-        active = false;
     }
     report.erased = @intFromBool(clean);
     return clean;
