@@ -54,6 +54,7 @@ var acknowledgement: u32 = 0;
 var peer_done: u32 = 0;
 var peer_checks: u32 = 0;
 var peer_released: u32 = 0;
+var owners_ready: u32 = 0;
 
 pub const heap_start = mapping.virtual_base + mapping.reserved_bytes;
 pub const reserved_bytes = mapping.reserved_bytes;
@@ -61,6 +62,17 @@ pub const reserved_bytes = mapping.reserved_bytes;
 /// Only CPU0, after command checks and external arena registration.
 pub fn releasePeer() void {
     @atomicStore(u32, &peer_released, 1, .release);
+}
+
+/// Metadata initialization is linear at boot. Neither timer may begin while
+/// its peer is still initializing a potentially large external heap.
+pub fn ownerReady(core: u32) void {
+    if (@atomicLoad(u32, &enabled, .acquire) != 1) return;
+    _ = @atomicRmw(u32, &owners_ready, .Or, @as(u32, 1) << @as(u5, @intCast(core)), .release);
+    const start = cycle();
+    while (@atomicLoad(u32, &owners_ready, .acquire) != 3) {
+        if (cycle() -% start > 1_000_000_000) nih_native_task_failed();
+    }
 }
 
 pub const Report = struct {
@@ -147,10 +159,10 @@ pub fn prepare(controller: anytype) Report {
     return report;
 }
 
-fn waitFor(word: *const u32, value: u32) void {
+fn waitFor(word: *const u32, value: u32, budget: u32) void {
     const start = cycle();
     while (@atomicLoad(u32, word, .acquire) != value) {
-        if (cycle() -% start > 100_000_000) nih_native_task_failed();
+        if (cycle() -% start > budget) nih_native_task_failed();
     }
 }
 
@@ -167,7 +179,7 @@ fn message(round: u32, window: u32, index: u32) u32 {
 pub fn peer() void {
     if (@atomicLoad(u32, &enabled, .acquire) != 1) return;
     for (1..65) |round| {
-        waitFor(&request, @intCast(round));
+        waitFor(&request, @intCast(round), 100_000_000);
         for (0..mapping.window_count) |window| {
             for (0..16) |index| {
                 const expected = message(@intCast(round), @intCast(window), @intCast(index));
@@ -182,7 +194,7 @@ pub fn peer() void {
     }
     @atomicStore(u32, &peer_done, 1, .release);
     // The arena guards/metadata must be ready before any worker can allocate.
-    waitFor(&peer_released, 1);
+    waitFor(&peer_released, 1, 1_000_000_000);
 }
 
 pub fn exchange(controller: anytype) SmpReport {
@@ -195,7 +207,7 @@ pub fn exchange(controller: anytype) SmpReport {
         }
         fence();
         @atomicStore(u32, &request, @intCast(round), .release);
-        waitFor(&acknowledgement, @intCast(round));
+        waitFor(&acknowledgement, @intCast(round), 100_000_000);
         for (0..mapping.window_count) |window| {
             for (0..16) |index| {
                 const expected = ~message(@intCast(round), @intCast(window), @intCast(index));
@@ -206,7 +218,7 @@ pub fn exchange(controller: anytype) SmpReport {
         }
         report.rounds += 1;
     }
-    waitFor(&peer_done, 1);
+    waitFor(&peer_done, 1, 100_000_000);
     report.peer_checks = peer_checks;
     const sync_before = mapper.syncs;
     mapper.sync(.writeback, mapping.virtual_base, mapping.reserved_bytes) catch nih_native_task_failed();

@@ -62,15 +62,57 @@ def complete_log(mode="integer", psram_size="0"):
                          hart, start, start + 0x4000))
         stride = (size - 3 * 65536) // 2 if size else 0
         start = 0x48030000 + hart * stride
-        values = [start, start + stride, stride - 128, 131520, stride - 128 - 131520, 4, 4, 3, 1] if size else [0] * 9
+        values = [start, start + stride, stride - 128, stride - 128, 0, 4, 4, 3, 1] if size else [0] * 9
         names = ("start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed")
         lines.append("NIHOS_NATIVE_EXTERNAL hart={:08x}".format(hart) + "".join(
+            " {}={:08x}".format(name, value) for name, value in zip(names, values)))
+        heap_start = start + 128
+        heap_end = start + stride - 64 - 2 * 65728
+        units = (heap_end - heap_start - 128) // 64 if size else 0
+        levels = (units - 1).bit_length() if size else 0
+        metadata = max(64, 2 * (1 << levels))
+        capacity = heap_end - heap_start - metadata - 128
+        values = [heap_start, heap_end, metadata, capacity, capacity, 0, 100, 100, 13, 4, 4, levels, 3 * levels + 2, 1] if size else [0] * 14
+        names = ("start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed")
+        lines.append("NIHOS_NATIVE_HEAP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_missing_or_duplicate_reusable_heap_owner_is_rejected(self):
+        for size in ("0", "32M"):
+            log = complete_log(psram_size=size)
+            line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_HEAP"))
+            for changed in (log.replace(line, ""), log + "\n" + line):
+                with self.subTest(size=size), self.assertRaisesRegex(ValueError, "reusable heap"):
+                    MODULE.check(changed, "integer", 0 if size == "0" else 32 << 20)
+
+    def test_reusable_heap_requires_recovery_and_a_bounded_walk(self):
+        log = complete_log(psram_size="32M")
+        for old, new in (("live=00000000", "live=00000001"), ("frees=00000064", "frees=00000063"),
+                         ("allocations=00000064", "allocations=00000001"), ("rejected=0000000d", "rejected=0000000c"),
+                         ("max_steps=00000038", "max_steps=00000039"), ("checks0=00000004", "checks0=00000000"),
+                         ("confirmed=00000001", "confirmed=00000000"), ("metadata=00080000", "metadata=00000000")):
+            changed = "\n".join(line.replace(old, new) if line.startswith("NIHOS_NATIVE_HEAP") else line for line in log.splitlines())
+            self.assertNotEqual(log, changed)
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "heap recovery/bounds"):
+                MODULE.check(changed, "integer", 32 << 20)
+
+    def test_reusable_heap_must_stay_inside_its_reserved_backing(self):
+        log = complete_log(psram_size="32M")
+        changed = "\n".join(line.replace("start=48030080", "start=48030000")
+                            if line.startswith("NIHOS_NATIVE_HEAP") else line for line in log.splitlines())
+        with self.assertRaisesRegex(ValueError, "heap recovery/bounds"):
+            MODULE.check(changed, "integer", 32 << 20)
+
+    def test_absent_die_cannot_publish_a_reusable_heap(self):
+        log = "\n".join(line.replace("capacity=00000000", "capacity=00000001")
+                        if line.startswith("NIHOS_NATIVE_HEAP") else line for line in complete_log().splitlines())
+        with self.assertRaisesRegex(ValueError, "heap without mapped PSRAM"):
+            MODULE.check(log)
+
     def test_missing_or_duplicate_external_owner_is_rejected(self):
         for size in ("0", "32M"):
             log = complete_log(psram_size=size)
@@ -93,7 +135,7 @@ class NativeLogTests(unittest.TestCase):
 
     def test_external_accounting_guards_and_worker_access_are_required(self):
         log = complete_log(psram_size="32M")
-        for old, new in (("used=000201c0", "used=000001c0"), ("checks0=00000004", "checks0=00000000"),
+        for old, new in (("used=00fe7f80", "used=000001c0"), ("checks0=00000004", "checks0=00000000"),
                          ("checks1=00000004", "checks1=00000003"), ("rejected=00000003", "rejected=00000002"),
                          ("confirmed=00000001", "confirmed=00000000"), ("capacity=00fe7f80", "capacity=00fe8000")):
             changed = "\n".join(line.replace(old, new) if line.startswith("NIHOS_NATIVE_EXTERNAL") else line
@@ -196,7 +238,8 @@ class NativeLogTests(unittest.TestCase):
                 report = MODULE.check(complete_log(psram_size=size), "integer", amount << 20)
                 self.assertEqual(report["psram"]["bytes"], amount << 20)
                 self.assertEqual(report["psram"]["mapped"], amount << 20)
-                self.assertEqual(report["external_allocatable_bytes"], (amount << 20) - 3 * 65536 - 256)
+                self.assertEqual(report["external_registered_bytes"], (amount << 20) - 3 * 65536 - 256)
+                self.assertGreater(report["external_allocatable_bytes"], 0)
 
     def test_missing_or_duplicate_psram_discovery_is_rejected(self):
         log = complete_log()

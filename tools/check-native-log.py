@@ -210,14 +210,43 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
                 raise ValueError("external allocation without a mapped die")
         elif (record["start"] != 0x48030000 + hart * stride or
               record["end"] != 0x48030000 + (hart + 1) * stride or
-              record["capacity"] != stride - 128 or record["used"] != 131520 or
-              record["free"] != record["capacity"] - record["used"] or
+              record["capacity"] != stride - 128 or record["used"] != record["capacity"] or
+              record["free"] != 0 or
               min(record["checks0"], record["checks1"]) < 4 or
               record["rejected"] != 3 or record["confirmed"] != 1):
             raise ValueError("incomplete external ownership/guard accounting")
         external_owners[hart] = record
     if set(external_owners) != {0, 1}:
         raise ValueError("missing per-hart external memory evidence")
+    heap_names = ("start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected",
+                  "checks0", "checks1", "levels", "max_steps", "confirmed")
+    pattern = r"NIHOS_NATIVE_HEAP hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in heap_names)
+    heaps = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in heaps:
+            raise ValueError("invalid/duplicate reusable heap owner")
+        record = dict(zip(heap_names, values))
+        if not psram["status"]:
+            if any(values):
+                raise ValueError("reusable heap without mapped PSRAM")
+        else:
+            start = external_owners[hart]["start"] + 128
+            end = external_owners[hart]["end"] - 64 - 2 * 65728
+            units = (end - start - 128) // 64
+            levels = (units - 1).bit_length()
+            metadata = max(64, 2 * (1 << levels))
+            capacity = end - start - metadata - 128
+            if (record["start"] != start or record["end"] != end or
+                    record["metadata"] != metadata or record["capacity"] != capacity or record["free"] != capacity or
+                    record["live"] != 0 or record["allocations"] < 8 or record["allocations"] != record["frees"] or
+                    record["rejected"] != 13 or min(record["checks0"], record["checks1"]) < 4 or
+                    record["levels"] != levels or record["max_steps"] != 3 * levels + 2 or record["confirmed"] != 1):
+                raise ValueError("incomplete reusable heap recovery/bounds evidence")
+        heaps[hart] = record
+    if set(heaps) != {0, 1}:
+        raise ValueError("missing per-hart reusable heap evidence")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
@@ -233,7 +262,9 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
             "floating": [{"hart": hart, **fp_owners[hart]} for hart in (0, 1)],
             "memory": [{"hart": hart, **memory_owners[hart]} for hart in (0, 1)],
             "external_memory": [{"hart": hart, **external_owners[hart]} for hart in (0, 1)],
-            "external_allocatable_bytes": sum(owner["capacity"] for owner in external_owners.values())}
+            "heaps": [{"hart": hart, **heaps[hart]} for hart in (0, 1)],
+            "external_registered_bytes": sum(owner["capacity"] for owner in external_owners.values()),
+            "external_allocatable_bytes": sum(heap["capacity"] for heap in heaps.values())}
 
 
 def main():

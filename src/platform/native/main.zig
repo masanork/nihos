@@ -288,6 +288,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
     native_psram.memory.peer();
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
+    native_psram.memory.ownerReady(1);
     prepareTasks(1);
     enableTimer(1);
     while (true) {
@@ -365,6 +366,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     )) fail("external memory prepare");
     if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
+    native_psram.memory.ownerReady(0);
     enableTimer(0);
     var previous: u32 = 0;
     var rounds: u32 = 0;
@@ -424,6 +426,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                 memoryReport(1);
                 externalMemoryReport(0);
                 externalMemoryReport(1);
+                heapReport(0);
+                heapReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
@@ -448,6 +452,17 @@ fn externalMemoryReport(hart: u32) void {
     print("NIHOS_NATIVE_EXTERNAL hart=");
     hex(hart);
     inline for (.{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(report, field));
+    }
+    print("\n");
+}
+
+fn heapReport(hart: u32) void {
+    const report = tasks.memory.reusable.report(hart);
+    print("NIHOS_NATIVE_HEAP hart=");
+    hex(hart);
+    inline for (.{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }) |field| {
         print(" " ++ field ++ "=");
         hex(@field(report, field));
     }
