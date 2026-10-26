@@ -28,8 +28,10 @@ The probe debounces and resets the root port, reads the initial/device/config
 descriptors, assigns address 1, and sets the first configuration. For a
 single-slot CCID interface (`0b/00/00`) it sends three
 `PC_to_RDR_GetSlotStatus` requests with successive sequence numbers and checks
-the matching `RDR_to_PC_SlotStatus` responses. No card power-on, activation,
+the matching `RDR_to_PC_SlotStatus` responses. In this default USB mode no card power-on, activation,
 APDU, PIN, authentication, or persistent-storage request is sent.
+The separate `NIHOS_NATIVE_JPKI=1` option enables the bounded PIN-free
+[JPKI serial/retry diagnostic](native-jpki.md).
 
 Port detection is limited to one second; transfer stages to 500 ms; channel
 halt to 50 ms. A failed halt poisons the controller to prevent DMA-buffer

@@ -38,6 +38,16 @@ if [ "$usb" = true ] && [ "$profile" != device ]; then
     echo "Native USB probe currently supports the rev1/2 device profile only" >&2
     exit 1
 fi
+jpki=${NIHOS_NATIVE_JPKI:-0}
+case "$jpki" in
+    0) jpki=false ;;
+    1) jpki=true ;;
+    *) echo "NIHOS_NATIVE_JPKI must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$jpki" = true ] && [ "$usb" != true ]; then
+    echo "PIN-free JPKI requires NIHOS_NATIVE_USB=1" >&2
+    exit 1
+fi
 sdmmc=${NIHOS_NATIVE_SDMMC:-0}
 case "$sdmmc" in
     0) sdmmc=false ;;
@@ -68,7 +78,7 @@ if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const usb = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$usb" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const usb = %s;\npub const jpki = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$usb" "$jpki" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -182,7 +192,11 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep usb_host --dep usb_descriptors --dep boot_i2c -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep usb_host --dep usb_descriptors --dep boot_i2c --dep ccid --dep jpki -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mccid="$repo_root/src/usb/ccid.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mjpki="$repo_root/src/usb/jpki.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Musb_host="$repo_root/src/soc/esp32p4/usb_host.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

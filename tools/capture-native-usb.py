@@ -16,6 +16,7 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("image_audit", type=Path)
     parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--jpki", action="store_true", help="require PIN-free JPKI serial and unchanged retries")
     args = parser.parse_args()
     if not 1 <= args.runs <= 10:
         parser.error("runs must be 1..10")
@@ -51,7 +52,7 @@ def main():
             raise SystemExit("Missing ROM boot banner; inspect " + str(raw_path))
         log_path.write_bytes(raw[start:])
         subprocess.run([sys.executable, str(checker), str(log_path), str(report_path),
-                        "integer", "32M", str(args.image_audit), "physical-device", "usb"], check=True)
+                        "integer", "32M", str(args.image_audit), "physical-device", "usb,jpki" if args.jpki else "usb"], check=True)
         print(f"Native USB boot {run}: passed ({log_path})", flush=True)
 
 

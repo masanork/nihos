@@ -1,4 +1,7 @@
-//! Opt-in boot probe: exclusive CPU0, bounded polled USB, no card activation.
+//! Opt-in boot probe: exclusive CPU0, bounded polled USB / PIN-free JPKI.
+const options = @import("native_options");
+const ccid = @import("ccid");
+const jpki = @import("jpki");
 const usb = @import("usb_host");
 const descriptors = @import("usb_descriptors");
 const i2c = @import("boot_i2c");
@@ -12,6 +15,36 @@ extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_qtd: [16]u32 align(512) = @splat(0);
+pub var card_report = jpki.Report{};
+const Session = struct {
+    controller: *usb.Controller(Bus),
+    input: *usb.Pipe,
+    output: *usb.Pipe,
+    sequence: u8 = 3,
+    pub fn exchange(self: *@This(), kind: u8, payload: []const u8, expected: u8, response_buffer: []u8) !ccid.Response {
+        if (!jpki.ccidAllowed(kind, payload)) return error.Denied;
+        var send: [512]u8 = @splat(0);
+        const sequence = self.sequence;
+        self.sequence +%= 1;
+        const frame = try ccid.request(&send, kind, sequence, payload);
+        if (try self.controller.stage(self.output, false, false, frame) != frame.len) return error.Transfer;
+        for (0..4) |_| {
+            const length = try self.controller.stage(self.input, true, false, response_buffer);
+            const response = try ccid.response(response_buffer[0..length], expected, sequence);
+            if (response.status != 2) return response;
+        }
+        return error.ExtensionLimit;
+    }
+    pub fn apdu(self: *@This(), command: []const u8, response_buffer: []u8) ![]const u8 {
+        if (!jpki.allowed(command)) {
+            card_report.rejected += 1;
+            return error.Denied;
+        }
+        const response = try self.exchange(0x6f, command, 0x80, response_buffer);
+        if (response.status != 0 or response.state != 0) return error.Failed;
+        return response.payload;
+    }
+};
 
 pub const Report = struct {
     status: u32 = 0,
@@ -137,7 +170,7 @@ fn enumerate(controller: *usb.Controller(Bus), report: *Report) !void {
     report.stage = 6;
     _ = try controller.control(&control, usb.setup(0, 9, selected.value, 0, 0), &.{});
     if (!selected.ccid) return;
-    if (!controller.io.delay(20_000)) return error.Timeout;
+    if (!controller.io.delay(if (options.jpki) 2_000_000 else 20_000)) return error.Timeout;
     var input = usb.Pipe{ .address = 1, .endpoint = @truncate(selected.bulk_in), .packet = selected.in_packet, .kind = 2 };
     var output = usb.Pipe{ .address = 1, .endpoint = @truncate(selected.bulk_out), .packet = selected.out_packet, .kind = 2 };
     report.stage = 7;
@@ -150,6 +183,26 @@ fn enumerate(controller: *usb.Controller(Bus), report: *Report) !void {
         report.slot_queries += 1;
     }
     report.stage = 8;
+    if (options.jpki) {
+        // Keep the baseline USB receipt independent from the card diagnostic.
+        report.transfers = controller.transfers;
+        report.last_irq = controller.last_irq;
+        report.last_descriptor = controller.last_descriptor;
+        card_report.status = 2;
+        var session = Session{ .controller = controller, .input = &input, .output = &output };
+        jpki.probe(&session, &card_report) catch |err| {
+            card_report.error_code = switch (err) {
+                error.Timeout => 1,
+                error.Status => 2,
+                error.Failed => 3,
+                error.Malformed => 4,
+                error.CounterChanged => 5,
+                error.Blocked => 6,
+                error.Denied => 7,
+                else => 8,
+            };
+        };
+    }
 }
 
 pub noinline fn run(clock: timer_group.Timer) Report {
@@ -179,9 +232,11 @@ pub noinline fn run(clock: timer_group.Timer) Report {
             else => 9,
         };
     };
-    report.transfers = controller.transfers;
-    report.last_irq = controller.last_irq;
-    report.last_descriptor = controller.last_descriptor;
+    if (!options.jpki or report.transfers == 0) {
+        report.transfers = controller.transfers;
+        report.last_irq = controller.last_irq;
+        report.last_descriptor = controller.last_descriptor;
+    }
     report.port = io.read(usb.regs.port);
     // Always stop/reset DMA, including timeout or a poisoned channel.
     nih_usb_phy_stop();

@@ -315,6 +315,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
     if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
     if (options.usb) print("NIHOS_NATIVE_USB_MODE enabled=1\n");
+    if (options.jpki) print("NIHOS_NATIVE_JPKI_MODE pin_input=disabled\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
         fail("CRT data/BSS");
@@ -370,8 +371,22 @@ export fn nih_native_main() callconv(.c) noreturn {
         logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
     }
     if (options.usb) {
-        const usb_report = @import("usb_probe.zig").run(timer(0));
+        const usb_probe = @import("usb_probe.zig");
+        const usb_report = usb_probe.run(timer(0));
         logger.record("NIHOS_NATIVE_USB", null, .{ "status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped" }, &usb_report);
+        if (options.jpki) {
+            const card = &usb_probe.card_report;
+            logger.record("NIHOS_NATIVE_JPKI", null, .{ "status", "stage", "error_code", "power_status", "power_error", "atr_bytes", "card_state", "apdu_count", "rejected", "pin_data_sent", "auth_before", "auth_after", "last_sw", "serial_bytes", "poweroff" }, card);
+            if (card.serial_bytes != 0) {
+                print("NIHOS_NATIVE_JPKI_SERIAL hex=");
+                const digits = "0123456789abcdef";
+                for (card.serial[0..card.serial_bytes]) |byte| {
+                    _ = nih_rom_putc(digits[byte >> 4]);
+                    _ = nih_rom_putc(digits[byte & 15]);
+                }
+                print("\n");
+            }
+        }
         if (!timer(0).configureOneShot(tasks.period_us)) fail("USB timer return");
     }
     if (options.sdmmc) {
