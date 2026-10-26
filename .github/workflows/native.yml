@@ -69,4 +69,9 @@ jobs:
             build/native-emulator*/smoke-report.json
             build/native-emulator*/psram-*/emulator.log
             build/native-emulator*/psram-*/smoke-report.json
+            build/native-emulator*/psram-*/image-audit.json
+            build/native-emulator*/psram-*/native-layout.ld
+            build/native-emulator*/psram-*/nihos-native.elf
+            build/native-emulator*/psram-*/nihos-native.bin
+            build/native-emulator*/psram-*/nihos-native-flash.bin
           if-no-files-found: warn

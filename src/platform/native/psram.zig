@@ -76,8 +76,8 @@ pub noinline fn probe(clock: timer_group.Timer) Report {
     if (report.supply.programmed != 1) return report;
     report.supply.settled = @intFromBool(settle(clock));
     if (report.supply.settled != 1) return report;
-    // All native code/data is in internal SRAM. No peer or cache user may
-    // access PSRAM during this one-time controller reset and setup.
+    // Native code/mutable state stays in SRAM; Flash mappings stay live.
+    // No peer/cache user may access PSRAM during this controller setup.
     reg(0x500e6014).* |= 1 << 31; // PSRAM system clock.
     // Independent PSRAM clock tree: XTAL, core divider 1, clock gates on.
     // Deliberately no MPLL retuning/high-speed timing calibration here.

@@ -33,6 +33,10 @@ Task-bound allocations, termination and deferred cleanup are described in
 [ADR 0029](adr/0029-deferred-native-task-resource-cleanup.md).
 Revision-aware resident regions, the 48 KiB heap budget and shared record
 output are described in [ADR 0030](adr/0030-revision-aware-native-sram-budget.md).
+Task-owned monotonic pools are described in
+[ADR 0031](adr/0031-task-owned-monotonic-pools.md).
+Read-only loader-mapped diagnostic tables are described in
+[ADR 0032](adr/0032-loader-mapped-read-only-record-tables.md).
 
 ## Build and emulated execution
 
@@ -196,8 +200,10 @@ free/reset/realloc or SQLite allocator adapter yet. See
 [ADR 0031](adr/0031-task-owned-monotonic-pools.md).
 
 The optional second smoke argument selects `0`, `4M`, `8M`, `16M`, `32M` or
-`64M`. Nonzero results are written under `psram-SIZE/` inside that mode's
-build directory. The validator requires the requested size to match the
+`64M`. All results, including absent PSRAM (`psram-0/`), are written under
+`psram-SIZE/` inside that mode's build directory. Each case retains its exact
+ELF, app/merged images, layout and audit, and executes that retained image;
+later per-mode rebuilds cannot replace its evidence. The validator requires the requested size to match the
 decoded identity, then requires the complete existing 300-round run.
 
 To compile/link only the application, without an IDF installation:
@@ -249,7 +255,7 @@ initialized. CPU-accessible external RAM uses conservative x8 timing.
 Migration and a general tickless deadline policy are not yet
 connected to this permanent native runtime.
 
-The smoke has fifty-three log validator regression tests, including frozen
+The smoke has fifty-seven log validator regression tests, including frozen
 hart/timer/task counters, missing scheduler evidence, incomplete lifecycle,
 a reboot, a later failure, timer fallback during IPI-only idle and incomplete
 IPI/pending-before-WFI evidence, FP accounting, wrong build mode and missing
@@ -260,12 +266,24 @@ Reusable heap records also require bounded walks, exact backing/metadata
 geometry, zero leaks and capacity recovery.
 Task resource records require cleanup completion, generation reuse and
 actual forced termination, including the no-PSRAM path.
-Eight more tests check instructions, heap/loader boundaries and loader cache
-configuration. One compiler test checks five invalid diagnostic schemas.
+Eleven more tests check instructions, heap/loader boundaries, loader cache
+configuration and bounded read-only Flash sections/checksums. Two compiler
+tests check six invalid diagnostic schema classes, including oversized text.
 Normal report output uses a shared, allocation-free typed record writer;
-two host tests cover ordering/full values and actual struct offsets.
+four host tests cover ordering/full values, actual struct offsets,
+self-contained relative tables and empty schemas.
 
-Run all 61 Python tests with:
+Normal record tables now use the loader's second Flash mapping instead of
+SRAM. Code, mutable state, ordinary constants and direct trap/error output
+remain resident. `NIHOS_NATIVE_FLASH` requires full-table initial/final reads
+from both harts, with addresses and checksums matching the audited ELF.
+Smoke reports retain that image's ELF digest. The second Flash section is
+read-only, non-executable and restricted to one 64 KiB page. No Flash write
+or cache-off protocol is implemented; normal logging requires the retained
+Flash mapping and cache. All previous resource, scheduler and memory gates
+remain required.
+
+Run all 70 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

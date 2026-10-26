@@ -10,7 +10,7 @@ PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 
 
-def check(log, expected_mode=None, expected_psram_bytes=0):
+def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
     log = log.replace("\\r", "").replace("\r", "")
     if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
         raise ValueError("missing boot or unexpected reboot")
@@ -262,7 +262,31 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         resources[hart] = dict(zip(resource_names, values))
     if set(resources) != {0, 1}:
         raise ValueError("missing per-hart task resource evidence")
+    flash_names = ("start", "end", "bytes", "initial", "final", "checks", "confirmed")
+    pattern = r"NIHOS_NATIVE_FLASH hart=([0-9a-f]{8})" + "".join(
+        " " + name + r"=([0-9a-f]{8})" for name in flash_names)
+    flash = {}
+    for match in re.findall(pattern, log):
+        hart, *values = [int(value, 16) for value in match]
+        if hart >= 2 or hart in flash:
+            raise ValueError("invalid/duplicate Flash table owner")
+        record = dict(zip(flash_names, values))
+        if (record["start"] != 0x40010020 or not 0 < record["bytes"] <= 65504 or
+                record["end"] != record["start"] + record["bytes"] or
+                record["initial"] != record["final"] or record["checks"] != 2 * record["bytes"] or
+                record["confirmed"] != 1):
+            raise ValueError("incomplete mapped Flash table evidence")
+        if image is not None:
+            expected = image["flash_records"]
+            if (record["start"] != int(expected["start"], 16) or record["end"] != int(expected["end"], 16) or
+                    record["bytes"] != expected["bytes"] or record["initial"] != expected["fnv1a"]):
+                raise ValueError("Flash tables differ from audited image")
+        flash[hart] = record
+    if set(flash) != {0, 1} or flash[0] != flash[1]:
+        raise ValueError("missing/inconsistent per-hart Flash table evidence")
     return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
+            "image_elf_sha256": image["elf_sha256"] if image is not None else None,
+            "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
             "psram_mapping": mapped, "psram_smp": psram_smp,
@@ -284,13 +308,14 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
 
 
 def main():
-    if len(sys.argv) not in (3, 4, 5):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled] [0|4M|8M|16M|32M|64M]")
+    if len(sys.argv) not in (3, 4, 5, 6):
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json]")
     try:
-        size = sys.argv[4] if len(sys.argv) == 5 else "0"
+        size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
-        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None, PSRAM_SIZES[size])
+        image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) == 6 else None
+        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None, PSRAM_SIZES[size], image)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

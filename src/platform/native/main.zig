@@ -4,6 +4,7 @@ const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
 const record_log = @import("record_log");
+const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 
 extern fn nih_rom_putc(u8) callconv(.c) i32;
@@ -41,7 +42,7 @@ const Console = struct {
         print(message);
     }
 };
-var logger = record_log.Writer(Console){ .sink = .{} };
+var logger = record_log.PlacedWriter(Console, ".flash.rodata.records"){ .sink = .{} };
 
 noinline fn hex(value: u32) void {
     const digits = "0123456789abcdef";
@@ -270,6 +271,7 @@ fn floatingReport(hart: u32) void {
 
 export fn nih_native_cpu1_main() callconv(.c) noreturn {
     nih_rom_set_cpu1_entry(0);
+    if (!flash_records.begin(1)) fail("CPU1 Flash records begin");
     interruptGuard(1).* = @splat(0x6e69_6972);
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
@@ -282,6 +284,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
         _ = tasks.service(1);
         if (tasks.ipi.done()) {
             tasks.floating.quiesce(1);
+            if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
             while (true) asm volatile ("wfi");
         }
@@ -302,6 +305,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     asm volatile ("ecall" ::: .{ .memory = true });
     if (exceptions[0] != 1) fail("CPU0 exception return");
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
     const external = native_psram.probe(timer(0));
@@ -386,6 +390,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
                 tasks.floating.quiesce(0);
+                if (!flash_records.finish(0)) fail("CPU0 Flash records finish");
                 if (!tasks.memory.finish()) fail("CPU0 memory finish");
                 const started = cycle();
                 while (tasks.floating.report(1).confirmed != 1 or tasks.memory.report(1).confirmed != 1) {
@@ -404,6 +409,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                 heapReport(1);
                 resourceReport(0);
                 resourceReport(1);
+                flashReport(0);
+                flashReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
@@ -430,4 +437,10 @@ fn heapReport(hart: u32) void {
 fn resourceReport(hart: u32) void {
     const report = tasks.memory.reusable.resourceReport(hart);
     logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected" }, &report);
+}
+
+fn flashReport(hart: u32) void {
+    const report = flash_records.report(hart);
+    if (report.confirmed != 1) fail("Flash record publication");
+    logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
 }

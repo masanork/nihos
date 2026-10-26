@@ -6,6 +6,28 @@ import unittest
 
 
 class NativeRecordSchemaTests(unittest.TestCase):
+    def test_oversized_record_text_does_not_compile(self):
+        root = Path(__file__).resolve().parent.parent
+        zig = root / ".tools/zig-0.17.0/zig"
+        if not zig.exists():
+            subprocess.run(["sh", str(root / "tools/bootstrap-zig.sh")], check=True, capture_output=True)
+        with tempfile.TemporaryDirectory(prefix="nihos-record-text-") as directory:
+            source = Path(directory) / "invalid.zig"
+            for length in (65532, 65536):
+                source.write_text('const log = @import("record_log");\n'
+                                  'const Sink = struct { pub fn write(_: @This(), _: []const u8) void {} };\n'
+                                  'export fn check_schema() void {\n'
+                                  '  const marker: [' + str(length) + ']u8 = @splat(109);\n'
+                                  '  var value: extern struct { value: u32 } = undefined;\n'
+                                  '  var writer = log.Writer(Sink){ .sink = .{} };\n'
+                                  '  writer.record(&marker, null, .{"value"}, &value);\n}\n')
+                result = subprocess.run([str(zig), "build-obj", "-fno-emit-bin", "--dep", "record_log",
+                                         "-Mroot=" + str(source), "-Mrecord_log=" + str(root / "src/diagnostics/record.zig")],
+                                        capture_output=True, text=True, timeout=30, cwd=root)
+                with self.subTest(length=length):
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("record text exceeds", result.stderr)
+
     def test_unsafe_schemas_do_not_compile(self):
         root = Path(__file__).resolve().parent.parent
         zig = root / ".tools/zig-0.17.0/zig"
