@@ -8,6 +8,21 @@ import sys
 
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
+STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
+
+
+def check_storage(record, sectors):
+    if (record['status'] not in (1, 2) or record['error_code'] != 0 or record['passes'] != 2 or
+            record['block_size'] not in (512, 4096) or record['block_count'] * record['block_size'] != sectors * 512 or
+            record['entries'] > 128 or record['files'] + record['directories'] != record['entries'] or
+            not 0 < record['reads'] <= 8192 or record['denied_writes'] != 0):
+        raise ValueError('incomplete read-only littlefs qualification')
+    if record['status'] == 2:
+        if not 0 < record['file_bytes'] <= 65536 or record['files'] == 0:
+            raise ValueError('incomplete littlefs file read')
+    elif record['file_bytes'] or record['file_crc'] or record['file_name_digest']:
+        raise ValueError('unexpected file data in directory-only qualification')
+    return record
 
 
 def repeated_records(log, marker, names):
@@ -26,7 +41,7 @@ def fixed_record(log, marker, names):
 
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
-          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False):
+          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False):
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     profile = image.get("memory", {}).get("profile") if image is not None else None
@@ -468,7 +483,23 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
                 raise ValueError("missing/inconsistent SDMMC distributed sweep")
         elif sdmmc_sweeps:
             raise ValueError("unexpected SDMMC distributed sweep")
-    return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode,
+    storage = None
+    storage_stack = None
+    storage_expected = image is not None and image.get('sqlite', {}).get('littlefs') is not None
+    if require_storage or storage_expected or 'NIHOS_NATIVE_STORAGE ' in log:
+        if evidence != 'physical-device' or sdmmc is None or mode != 'sqlite':
+            raise ValueError('storage requires physical SDMMC and SQLite mapped span')
+        if image.get('sqlite', {}).get('littlefs', {}).get('read_only') is not True:
+            raise ValueError('storage log requires a littlefs image audit')
+        storage = check_storage(fixed_record(log, 'NIHOS_NATIVE_STORAGE', STORAGE_FIELDS), sdmmc['sectors_low'] + (sdmmc['sectors_high'] << 32))
+        storage_stack = fixed_record(log, 'NIHOS_NATIVE_STORAGE_STACK', ('low', 'high', 'painted_to', 'used', 'confirmed'))
+        if (storage_stack['low'] != stacks[0]['boot_start'] + 16 or storage_stack['high'] != stacks[0]['boot_end'] or
+                not storage_stack['low'] < storage_stack['painted_to'] < storage_stack['high'] or
+                not storage_stack['high'] - storage_stack['painted_to'] <= storage_stack['used'] < 8176 - 160 or storage_stack['confirmed'] != 1):
+            raise ValueError('incomplete littlefs stack qualification')
+    elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
+        raise ValueError('orphan storage stack record')
+    return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
@@ -496,18 +527,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
 
 def main():
     if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|comma-separated requirements]")
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|comma-separated requirements]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
         image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
         extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
-        if not extra <= {"qualification", "sdmmc", "sdmmc-fast"}:
+        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage"}:
             raise ValueError("invalid required extra evidence")
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
                        PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
-                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra)
+                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra, "storage" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

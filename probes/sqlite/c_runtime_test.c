@@ -17,6 +17,12 @@ int main(void) {
         for (size_t i = 0; i < sn; ++i) set[i] = (char)(1 + next() % 255);
         a[an] = b[bn] = set[sn] = 0;
         if (round % 4 == 0) { memcpy(b, a, an + 1); bn = an; }
+        char copied[67], reference[67];
+        memset(copied, 0x5a, sizeof(copied));
+        memset(reference, 0x5a, sizeof(reference));
+        CHECK(nih_c_strcpy(copied + 1, a) == copied + 1);
+        CHECK(strcpy(reference + 1, a) == reference + 1);
+        CHECK(memcmp(copied, reference, sizeof(copied)) == 0);
         CHECK(sign(nih_c_strcmp(a, b)) == sign(strcmp(a, b)));
         for (size_t n = 0; n <= 64; ++n) {
             CHECK(sign(nih_c_strncmp(a, b, n)) == sign(strncmp(a, b, n)));

@@ -265,6 +265,13 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                       "rodata_end": hex(ro_end), "text_bytes": len(sql_code), "rodata_bytes": len(sql_ro),
                       "functions": sql_funcs, "object_manifest_sha256": hashlib.sha256(json.dumps(sqlite_manifest, sort_keys=True).encode()).hexdigest(),
                       "text_sha256": hashlib.sha256(sql_code).hexdigest(), "rodata_sha256": hashlib.sha256(sql_ro).hexdigest()}
+        if 'littlefs' in sqlite_manifest:
+            lfs = sqlite_manifest['littlefs']
+            require(lfs.get('read_only') is True and lfs.get('no_malloc') is True and
+                    lfs.get('revision') == '6cb4e86540eca0d9ba62500a298385c9d863c8be', 'unapproved littlefs build profile')
+            require({'lfs_mount', 'lfs_unmount', 'lfs_dir_read', 'lfs_file_read', 'nih_storage_probe'}.issubset(sql_funcs), 'missing littlefs reader functions')
+            require(not {'lfs_format', 'lfs_file_write', 'lfs_remove', 'lfs_mkdir', 'lfs_rename', 'lfs_file_truncate'}.intersection(symbols), 'littlefs write API linked')
+            sql_report['littlefs'] = lfs
         stack_data = [elf[section[4]:section[4] + section[5]] for section in sections
                       if string(names, section[0]) == ".stack_sizes"]
         require(len(stack_data) == 1, "missing/duplicate C stack metadata")

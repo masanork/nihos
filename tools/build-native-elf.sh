@@ -43,12 +43,22 @@ if [ "$sdmmc_profile" != 0 ] && [ "$sdmmc" != true ]; then
     echo "SDMMC profiles require NIHOS_NATIVE_SDMMC=1" >&2
     exit 1
 fi
+storage=${NIHOS_NATIVE_STORAGE:-0}
+case "$storage" in
+    0) storage=false ;;
+    1) storage=true ;;
+    *) echo "NIHOS_NATIVE_STORAGE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$storage" = true ] && { [ "$sdmmc" != true ] || [ "$sqlite" != true ]; }; then
+    echo "Storage probe requires SDMMC=1 and sqlite mode (shared audited Flash span)" >&2
+    exit 1
+fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -114,7 +124,25 @@ if [ "$sqlite" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
         "$repo_root/probes/sqlite/stack_paint.S" -o "$build_dir/sql_stack_paint.o"
     set -- "$@" "$build_dir/sql_stack_paint.o"
-    python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir"
+    littlefs_source=
+    if [ "$storage" = true ]; then
+        littlefs_source=$(sh "$repo_root/tools/bootstrap-littlefs.sh")
+        for name in lfs lfs_util lfs_reader; do
+            source="$littlefs_source/$name.c"
+            if [ "$name" = lfs_reader ]; then source="$repo_root/probes/storage/littlefs_ro.c"; fi
+            "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+                -Oz -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+                -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fstack-size-section \
+                -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
+                -isystem "$headers/riscv-linux-any" -I "$littlefs_source" -I "$repo_root/include" \
+                -DLFS_READONLY -DLFS_NO_MALLOC -DLFS_NO_ASSERT -DLFS_NO_DEBUG -DLFS_NO_WARN -DLFS_NO_ERROR \
+                "$source" -o "$build_dir/sql_$name.o"
+            set -- "$@" "$build_dir/sql_$name.o"
+        done
+        python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir" "$littlefs_source"
+    else
+        python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir"
+    fi
 fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -fno-strip \
@@ -124,7 +152,9 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mblock_reader="$repo_root/src/storage/block.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Msdmmc="$repo_root/src/soc/esp32p4/sdmmc.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

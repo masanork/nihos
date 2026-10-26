@@ -77,8 +77,9 @@ name = "littlefs"
 url = "https://github.com/littlefs-project/littlefs"
 revision = "6cb4e86540eca0d9ba62500a298385c9d863c8be"
 license = "BSD-3-Clause"
-status = "candidate-dependency"
-use = "Internal NOR filesystem after block-device and fault-injection validation"
+status = "build-and-opt-in-firmware-dependency"
+use = "Checksum-verified unmodified build cache; opt-in read-only native SD boot fixture and independent IDF block IO comparison; no writable runtime VFS"
+sha256 = "4803faf6db6c60093558a315a10c50926d2cfa5668a3f03fa2523fd09b10b747"
 
 [[source]]
 name = "MeOS"
