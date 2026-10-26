@@ -54,6 +54,12 @@ On the tested RC-S300/P, requests immediately after USB configuration returned
 absent with an empty PowerOn result. A two-second settle after configuration
 then produced a card/ATR and successful APDUs. This is a physical observation
 of one reader and card, not a general timing requirement or a root-cause proof.
+Later repeat qualification encountered an EP0 transaction error before any
+card APDU was sent. A second reset reproduced it. Gating USB5V_EN off for
+250 ms and back on with a 100 ms settle restored enumeration and the PIN-free
+read. The boot diagnostic now applies this sequence before host initialization.
+This establishes a recovery observation, not the root cause of the retained
+reader state or electrical power measurements. Failed attempts are retained.
 
 After installing the selected native image:
 
