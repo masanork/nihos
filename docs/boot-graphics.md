@@ -43,14 +43,13 @@ presents do add rendering/refresh work. The 60-sample VSYNC measurement stays
 separate from animation so its wait timings are not mixed with rendering.
 The preview's timing and stage transitions are illustrative.
 
-The **independent native boot path remains serial-only**: it has no MIPI-DSI
-panel driver yet. This change does not link ESP-IDF into it, change its PSRAM
-mapping, access a block device, or change filesystem code. The shared renderer
-can be used once native panel power/reset, scanout, cache coherency, and
-backlight control are implemented. A host image or firmware build does not
-establish physical panel operation or native display readiness.
-The opt-in [native preparation probe](native-display.md) now starts that
-bring-up, while deliberately keeping video and the backlight disabled.
+The **independent native path** now has its own opt-in DSI/PSRAM scanout;
+see [native display evidence](native-display.md). Its default graphic experiment
+still runs after native qualification with an aesthetic hold/fade. The optional
+[ASCII diagnostic snapshot](native-console.md) records actual boot stages and
+serial output independently; earlier stage-driven video and input adapters are
+separate next steps. Do not infer native boot order from the hosted sequence
+above.
 
 ## Preview and checks
 

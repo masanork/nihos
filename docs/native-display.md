@@ -10,6 +10,10 @@ After extending the monochrome hold to about one second and the fade to about
 two seconds in attempt 38, the user also confirmed the colour animation.
 See [physical evidence](measurements/2026-10-27-native-landscape.md).
 
+The optional [native diagnostic console](native-console.md) adds a bounded
+SRAM boot journal and an ASCII snapshot in the same landscape framebuffer.
+Japanese UD font loading remains a later microSD/filesystem service.
+
 ## Build and preview
 
 ```sh

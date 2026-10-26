@@ -86,6 +86,26 @@ case "$display" in
     7) display=true; display_scanout=true; display_sram=true; display_tile=true; display_scene=true ;;
     *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6 or 7" >&2; exit 1 ;;
 esac
+console_font=${NIHOS_NATIVE_CONSOLE_FONT:-1}
+case "$console_font" in
+    1|2) ;;
+    *) echo "NIHOS_NATIVE_CONSOLE_FONT must be 1 or 2" >&2; exit 1 ;;
+esac
+console_palette=${NIHOS_NATIVE_CONSOLE_PALETTE:-0}
+case "$console_palette" in
+    0|1|2) ;;
+    *) echo "NIHOS_NATIVE_CONSOLE_PALETTE must be 0, 1 or 2" >&2; exit 1 ;;
+esac
+console=${NIHOS_NATIVE_CONSOLE:-0}
+case "$console" in
+    0) console=false ;;
+    1) console=true ;;
+    *) echo "NIHOS_NATIVE_CONSOLE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$console" = true ] && { [ "${NIHOS_NATIVE_DISPLAY:-0}" != 2 ] || [ "$psram_200" != true ]; }; then
+    echo "Native console requires DISPLAY=2 and PSRAM_200=1" >&2
+    exit 1
+fi
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display_tile" = true ]; then display_tile_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
@@ -106,7 +126,7 @@ if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -233,7 +253,7 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console -Mroot="$repo_root/src/platform/native/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mtab5_panels="$repo_root/src/board/tab5/panels.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -244,6 +264,8 @@ fi
     -Mboot_i2c="$repo_root/src/board/tab5/boot_i2c.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mtab5_display="$repo_root/src/board/tab5/display.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mtext_console="$repo_root/src/console.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mboot_graphics="$repo_root/src/graphics/boot_graphics.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

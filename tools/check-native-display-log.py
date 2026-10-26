@@ -16,7 +16,7 @@ SOURCE = ('sram', 'source', 'dma_source', 'dma_control', 'word')
 REFRESH = ('frames', 'fault', 'event', 'dsi_error0', 'dsi_error1', 'dma_error', 'bridge_error')
 
 
-def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
+def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=False):
     if mode not in (2, 3, 4, 5, 6, 7) or expected_dpi not in (10, 60, 80):
         raise ValueError('unknown display mode/timing')
     log = log.replace('\r', '')
@@ -73,7 +73,27 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
         layout = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_LAYOUT', ('logical_width', 'logical_height', 'rotation'))
         if layout != dict(zip(('logical_width', 'logical_height', 'rotation'), (720, 1280, 0) if mode in (6, 7) else (1280, 720, 1))):
             raise ValueError('unexpected display composition/rotation')
-    return {'timing': timing, 'layout': layout, 'native': core, 'display': screen, 'source': source, 'refresh': refresh,
+    console = None
+    console_style = None
+    if require_console or 'NIHOS_NATIVE_CONSOLE ' in log:
+        console = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CONSOLE', ('status', 'columns', 'rows', 'log_bytes', 'dropped_low', 'input'))
+        if (mode != 2 or core['psram_fast'] is None or layout is None or
+                console['status'] != 1 or (console['columns'], console['rows']) not in ((78, 43), (80, 22)) or
+                console['log_bytes'] != 2048 or console['input'] != 0 or
+                log.index('NIHOS_NATIVE_CONSOLE ') < log.index('NIHOS_NATIVE_DISPLAY_SCANOUT ')):
+            raise ValueError('incomplete read-only native console snapshot')
+        if console['rows'] == 22:
+            console_style = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CONSOLE_STYLE', ('cell_width', 'cell_height', 'palette', 'foreground', 'accent', 'background', 'font'))
+            if (console_style['cell_width'] != 15 or console_style['cell_height'] != 30 or console_style['font'] not in (1, 2) or
+                    console_style['palette'] not in (0, 1, 2) or
+                    console_style['foreground'] != {0: 0xe71c, 1: 0xa5f5, 2: 0xadd9}.get(console_style['palette']) or
+                    console_style['accent'] != 0x85b5 or console_style['background'] != 0x1082):
+                raise ValueError('console style/geometry does not match the raster')
+        elif 'NIHOS_NATIVE_CONSOLE_STYLE ' in log:
+            raise ValueError('unexpected style on historical square console raster')
+    elif 'NIHOS_NATIVE_CONSOLE_STYLE ' in log:
+        raise ValueError('orphan console style record')
+    return {'console_style': console_style, 'console': console, 'timing': timing, 'layout': layout, 'native': core, 'display': screen, 'source': source, 'refresh': refresh,
             'mode': mode, 'lease': lease, 'optical_evidence': 'not evaluated by this checker'}
 
 
@@ -84,8 +104,9 @@ def main():
     parser.add_argument('report', type=Path)
     parser.add_argument('--mode', type=int, required=True)
     parser.add_argument('--dpi', type=int, required=True)
+    parser.add_argument("--console", action="store_true", help="Require the read-only ASCII snapshot record")
     args = parser.parse_args()
-    report = check(args.log.read_text(), json.loads(args.audit.read_text()), args.mode, args.dpi)
+    report = check(args.log.read_text(), json.loads(args.audit.read_text()), args.mode, args.dpi, require_console=args.console)
     args.report.write_text(json.dumps(report, indent=2) + '\n')
     print('Native memory/core and display startup/IRQ evidence passed; optical evidence is separate')
 
