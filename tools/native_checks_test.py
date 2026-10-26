@@ -159,10 +159,28 @@ class NativeSQLiteLogTests(unittest.TestCase):
 class NativeLogTests(unittest.TestCase):
     def test_physical_evidence_requires_explicit_source_and_device_profile(self):
         image = {**complete_image(), "memory": {"profile": "device"}}
-        report = MODULE.check(complete_log(), image=image, evidence="physical-device")
+        image["heap"] = {"start": "0x4ff20000", "end": "0x4ff28000", "bytes": 32768}
+        log = complete_log().replace("start=4ff40000 end=4ff44000", "start=4ff20000 end=4ff24000")
+        log = log.replace("start=4ff44000 end=4ff48000", "start=4ff24000 end=4ff28000")
+        report = MODULE.check(log, image=image, evidence="physical-device")
         self.assertEqual(report["evidence"], "physical-device")
         with self.assertRaisesRegex(ValueError, "explicit physical"):
-            MODULE.check(complete_log(), image=image)
+            MODULE.check(log, image=image)
+
+    def test_physical_heap_range_is_checked_before_audit_accounting(self):
+        image = {**complete_image(), "memory": {"profile": "device"}}
+        with self.assertRaisesRegex(ValueError, "memory ownership"):
+            MODULE.check(complete_log(), image=image, evidence="physical-device")
+        # Actual rev1/2 heaps can start below the emulator's SRAM origin.
+        image["heap"] = {"start": "0x4ff14000", "end": "0x4ff1c000", "bytes": 32768}
+        log = complete_log().replace("start=4ff40000 end=4ff44000", "start=4ff14000 end=4ff18000")
+        log = log.replace("start=4ff44000 end=4ff48000", "start=4ff18000 end=4ff1c000")
+        MODULE.check(log, image=image, evidence="physical-device")
+        with self.assertRaisesRegex(ValueError, "memory ownership"):
+            MODULE.check(log)
+        with self.assertRaisesRegex(ValueError, "audited heap"):
+            MODULE.check(log, image={**image, "heap": {**image["heap"], "start": "0x4ff14040"}},
+                         evidence="physical-device")
 
     def test_physical_evidence_rejects_emulator_and_missing_image_binding(self):
         for image in (None, complete_image(), {**complete_image(), "memory": {"profile": "emulator"}}):

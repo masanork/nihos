@@ -358,6 +358,9 @@ export fn nih_native_main() callconv(.c) noreturn {
     };
     logger.record("NIHOS_NATIVE_PSRAM_IO", null, .{ "status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions" }, &io);
     logger.record("NIHOS_NATIVE_PSRAM_MAP", null, .{ "status", "failure", "line_bytes", "last_address", "last_actual", "last_expected", "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs" }, &external.mapping);
+    if (external.discovery.status != .absent and
+        (external.discovery.status != .detected or external.io_status != 1 or external.mapping.status != 1))
+        fail("PSRAM qualification");
     prepareTasks(0);
     startCpu1();
     const external_smp = native_psram.exchange();
