@@ -54,3 +54,8 @@ void nih_sdmmc_clock_init(void) {
     sdmmc_ll_select_clk_source(&SDMMC, SDMMC_CLK_SRC_PLL160M);
     sdmmc_ll_init_phase_delay(&SDMMC);
 }
+
+void nih_sdmmc_fourbit_pins(void) {
+    /* Card has acknowledged ACMD6; return D3 from GPIO-high to slot-0 IOMUX. */
+    IO_MUX.gpio[42].mcu_sel = 0;
+}

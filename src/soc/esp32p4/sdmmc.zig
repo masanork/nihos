@@ -1,4 +1,4 @@
-//! Bounded read-only SDHC/SDXC boot probe, slot 0, 1-bit, 400 kHz.
+//! Bounded read-only SDHC/SDXC boot probe, slot 0, optional 4-bit/20 MHz.
 //! Command/PIO registers: pinned ESP-IDF v5.4.4 sdmmc register definitions.
 //! One fixed internal DMA buffer/descriptor, no IRQ, filesystem or write/erase.
 const std = @import("std");
@@ -33,9 +33,14 @@ pub const Error = error{ InvalidCommand, Timeout, Controller, Response, Unsuppor
 
 pub fn allowed(index: u6) bool {
     return switch (index) {
-        0, 2, 3, 7, 8, 9, 13, 17, 41, 55 => true,
+        0, 2, 3, 6, 7, 8, 9, 13, 17, 41, 51, 55 => true,
         else => false,
     };
+}
+
+pub fn scrWidths(scr: [8]u8) Error!u32 {
+    if (scr[0] >> 4 != 0 or scr[1] & 1 == 0) return error.Unsupported;
+    return scr[1] & 15;
 }
 
 pub fn sectorCount(csd: [4]u32) Error!u64 {
@@ -53,6 +58,29 @@ pub fn crc32(bytes: []const u8) u32 {
     return ~value;
 }
 
+pub fn sampleLba(index: u32, count: u32, sectors: u64) ?u32 {
+    if (count < 2 or index >= count or sectors < 2 or sectors > @as(u64, 1) << 32) return null;
+    return @intCast(@as(u64, index) * (sectors - 1) / (count - 1));
+}
+
+pub fn foldSample(previous: u32, lba: u32, checksum: u32) u32 {
+    var value = previous;
+    var bytes: [8]u8 = undefined;
+    std.mem.writeInt(u32, bytes[0..4], lba, .little);
+    std.mem.writeInt(u32, bytes[4..8], checksum, .little);
+    for (bytes) |byte| value = (value ^ byte) *% 16777619;
+    return value;
+}
+
+test "distributed sample addresses include both ends and cannot overflow a 2 TiB card" {
+    try std.testing.expectEqual(@as(u32, 0), sampleLba(0, 1024, @as(u64, 1) << 32).?);
+    try std.testing.expectEqual(@as(u32, 0xffff_ffff), sampleLba(1023, 1024, @as(u64, 1) << 32).?);
+    try std.testing.expect(sampleLba(1024, 1024, 2048) == null);
+    try std.testing.expect(sampleLba(0, 1, 2048) == null);
+    try std.testing.expect(sampleLba(0, 2, (@as(u64, 1) << 32) + 1) == null);
+    try std.testing.expect(foldSample(0x811c9dc5, 1, 2) != foldSample(0x811c9dc5, 2, 1));
+}
+
 pub fn Controller(comptime IO: type) type {
     return struct {
         io: IO,
@@ -67,6 +95,11 @@ pub fn Controller(comptime IO: type) type {
         sectors: u64 = 0,
         faulted: bool = false,
         cleanup_failed: bool = false,
+        bus_bits: u32 = 1,
+        clock_khz: u32 = 400,
+        scr_widths: u32 = 0,
+        host_width: u32 = 0,
+        divider: u32 = 50,
         const Self = @This();
 
         fn pollClear(self: *Self, offset: usize, bits: u32) Error!void {
@@ -97,6 +130,9 @@ pub fn Controller(comptime IO: type) type {
             try self.clockUpdate();
             self.io.write(regs.clkena, 1); // Continuous clock during power-up.
             try self.clockUpdate();
+            self.host_width = self.io.read(regs.width) & 0x0001_0001;
+            self.divider = self.io.read(regs.clkdiv) & 255;
+            if (self.host_width != 0 or self.divider != 50 or self.io.read(regs.clkena) & 1 != 1) return error.Controller;
         }
 
         pub fn command(self: *Self, index: u6, argument: u32) Error![4]u32 {
@@ -112,7 +148,7 @@ pub fn Controller(comptime IO: type) type {
             if (index == 0) flags |= 1 << 15 else flags |= (1 << 6) | (1 << 13);
             if (index != 0 and index != 41) flags |= 1 << 8;
             if (index == 2 or index == 9) flags |= 1 << 7;
-            if (index == 17) flags |= 1 << 9;
+            if (index == 17 or index == 51) flags |= 1 << 9;
             self.io.write(regs.command, flags);
             self.commands += 1;
             for (0..self.poll_limit) |_| {
@@ -168,8 +204,49 @@ pub fn Controller(comptime IO: type) type {
             try self.pollClear(regs.ctrl, 4);
         }
 
+        fn appPrefix(self: *Self) Error!void {
+            const response = try self.r1(55, self.rca);
+            if (response & (1 << 5) == 0) return error.Response;
+        }
+
+        pub fn switchFourBit(self: *Self) Error!void {
+            if (self.rca == 0 or self.faulted or self.bus_bits != 1) return error.Controller;
+            errdefer self.faulted = true;
+            var buffer: [512]u8 = undefined;
+            try self.appPrefix();
+            try self.readTransfer(51, 0, 8, &buffer);
+            self.scr_widths = try scrWidths(buffer[0..8].*);
+            if (self.scr_widths & 4 == 0) return error.Unsupported;
+            try self.appPrefix();
+            _ = try self.r1(6, 2); // ACMD6 changes volatile card bus width only.
+            self.io.fourBitPins();
+            self.io.write(regs.width, 1);
+            self.host_width = self.io.read(regs.width) & 0x0001_0001;
+            if (self.host_width != 1) return error.Controller;
+            self.bus_bits = 4;
+        }
+
+        pub fn switch20MHz(self: *Self) Error!void {
+            if (self.faulted or self.bus_bits != 4 or self.clock_khz != 400) return error.Controller;
+            errdefer self.faulted = true;
+            self.io.write(regs.clkena, 0);
+            try self.clockUpdate();
+            self.io.write(regs.clkdiv, 1); // Retained 40 MHz host / (2 * 1).
+            try self.clockUpdate();
+            self.io.write(regs.clkena, 1);
+            try self.clockUpdate();
+            self.divider = self.io.read(regs.clkdiv) & 255;
+            if (self.divider != 1 or self.io.read(regs.clkena) & 1 != 1) return error.Controller;
+            self.clock_khz = 20_000;
+        }
+
         pub fn readSector(self: *Self, lba: u32, buffer: *[512]u8) Error!void {
             if (self.rca == 0 or lba >= self.sectors) return error.InvalidAddress;
+            return self.readTransfer(17, lba, 512, buffer);
+        }
+
+        fn readTransfer(self: *Self, index: u6, argument: u32, length: u32, buffer: *[512]u8) Error!void {
+            if (!((index == 17 and length == 512) or (index == 51 and length == 8))) return error.InvalidCommand;
             if (self.faulted) return error.Controller;
             self.words_read = 0;
             self.io.write(regs.ctrl, self.io.read(regs.ctrl) | 6);
@@ -177,9 +254,9 @@ pub fn Controller(comptime IO: type) type {
             self.io.delay(10);
             self.io.write(regs.dma_mode, 1);
             try self.pollClear(regs.dma_mode, 1);
-            const descriptor = self.io.prepareDma() orelse return error.Controller;
-            self.io.write(regs.block, 512);
-            self.io.write(regs.bytes, 512);
+            const descriptor = self.io.prepareDma(length) orelse return error.Controller;
+            self.io.write(regs.block, length);
+            self.io.write(regs.bytes, length);
             self.io.write(regs.dma_status, 0xffff_ffff);
             self.io.write(regs.dma_mask, 0);
             self.io.write(regs.descriptor, descriptor);
@@ -192,7 +269,7 @@ pub fn Controller(comptime IO: type) type {
                     self.cleanup_failed = true;
                 };
             }
-            _ = try self.r1(17, lba);
+            _ = try self.r1(index, argument);
             for (0..self.poll_limit) |_| {
                 const interrupts = self.io.read(regs.interrupts);
                 self.last_interrupts = interrupts;
@@ -200,8 +277,8 @@ pub fn Controller(comptime IO: type) type {
                 if (interrupts & errors != 0 or self.last_status & 0x34 != 0) return error.Controller;
                 if (interrupts & (done | data_over) == done | data_over) {
                     try self.stopDma();
-                    if (!self.io.finishDma(buffer)) return error.ShortRead;
-                    self.words_read = 128;
+                    if (!self.io.finishDma(buffer, length)) return error.ShortRead;
+                    self.words_read = length / 4;
                     return;
                 }
                 self.io.delay(1);
@@ -260,11 +337,11 @@ const DmaModel = struct {
         if (offset == regs.dma_mode and value == 0) self.stopped += 1;
     }
     pub fn delay(_: *@This(), _: u32) void {}
-    pub fn prepareDma(self: *@This()) ?u32 {
+    pub fn prepareDma(self: *@This(), _: u32) ?u32 {
         self.prepared += 1;
         return if (self.fail_prepare) null else 0x4ff1_0000;
     }
-    pub fn finishDma(self: *@This(), output: *[512]u8) bool {
+    pub fn finishDma(self: *@This(), output: *[512]u8, _: u32) bool {
         if (self.owned) return false;
         for (output, 0..) |*byte, i| byte.* = @truncate(i);
         return true;
@@ -305,4 +382,98 @@ test "DMA errors timeouts and retained ownership do not publish data and stop th
         if (fault == 4) try std.testing.expect(controller.cleanup_failed);
         for (output) |byte| try std.testing.expectEqual(@as(u8, 0xa5), byte);
     }
+}
+
+const WidthModel = struct {
+    width: u32 = 0,
+    divider: u32 = 50,
+    clock_enable: u32 = 1,
+    last_index: u32 = 0,
+    trace: [4]u32 = @splat(0),
+    count: usize = 0,
+    pins_switched: bool = false,
+    deny_app: bool = false,
+    drop_width: bool = false,
+    drop_clock: bool = false,
+    widths: u8 = 5,
+    length: u32 = 0,
+    pub fn read(self: *@This(), offset: usize) u32 {
+        return switch (offset) {
+            regs.interrupts => done | data_over,
+            regs.response => 0x900 | (if (self.last_index == 55 and !self.deny_app) @as(u32, 0x20) else 0),
+            regs.width => self.width,
+            regs.clkdiv => self.divider,
+            regs.clkena => self.clock_enable,
+            else => 0,
+        };
+    }
+    pub fn write(self: *@This(), offset: usize, value: u32) void {
+        if (offset == regs.width and !self.drop_width) self.width = value;
+        if (offset == regs.clkdiv and !self.drop_clock) self.divider = value;
+        if (offset == regs.clkena) self.clock_enable = value;
+        if (offset == regs.command and value & (1 << 21) == 0) {
+            self.last_index = value & 63;
+            self.trace[self.count] = self.last_index;
+            self.count += 1;
+        }
+    }
+    pub fn delay(_: *@This(), _: u32) void {}
+    pub fn fourBitPins(self: *@This()) void {
+        self.pins_switched = true;
+    }
+    pub fn prepareDma(self: *@This(), length: u32) ?u32 {
+        self.length = length;
+        return 0x4ff1_0000;
+    }
+    pub fn finishDma(self: *@This(), output: *[512]u8, length: u32) bool {
+        std.debug.assert(self.length == 8 and length == 8);
+        output[0..8].* = .{ 2, self.widths, 0, 0, 0, 0, 0, 0 };
+        return true;
+    }
+};
+
+test "4-bit transition requires SCR and APP_CMD before ACMD6 and verifies the host" {
+    var model = WidthModel{};
+    var controller = Controller(*WidthModel){ .io = &model, .poll_limit = 4, .rca = 1 << 16 };
+    try controller.prepare();
+    try std.testing.expectError(error.Controller, controller.switch20MHz());
+    try std.testing.expectEqual(@as(usize, 0), model.count);
+    try controller.switchFourBit();
+    try std.testing.expectEqualSlices(u32, &.{ 55, 51, 55, 6 }, &model.trace);
+    try std.testing.expect(model.pins_switched);
+    try std.testing.expectEqual(@as(u32, 5), controller.scr_widths);
+    try std.testing.expectEqual(@as(u32, 4), controller.bus_bits);
+    try controller.switch20MHz();
+    try std.testing.expectEqual(@as(u32, 20_000), controller.clock_khz);
+    try std.testing.expectEqual(@as(u32, 1), controller.divider);
+}
+
+test "initial 1-bit width and 400 kHz divider are also read back" {
+    var model = WidthModel{ .width = 0x10001, .drop_width = true };
+    var controller = Controller(*WidthModel){ .io = &model, .poll_limit = 4 };
+    try std.testing.expectError(error.Controller, controller.prepare());
+}
+
+test "missing APP_CMD unsupported SCR and dropped host configuration stop switching" {
+    for (0..4) |fault| {
+        var model = WidthModel{ .deny_app = fault == 0, .widths = if (fault == 1) 1 else 5, .drop_width = fault == 2, .drop_clock = fault == 3 };
+        var controller = Controller(*WidthModel){ .io = &model, .poll_limit = 4, .rca = 1 << 16 };
+        switch (fault) {
+            0 => try std.testing.expectError(error.Response, controller.switchFourBit()),
+            1 => try std.testing.expectError(error.Unsupported, controller.switchFourBit()),
+            2 => try std.testing.expectError(error.Controller, controller.switchFourBit()),
+            3 => {
+                try controller.switchFourBit();
+                try std.testing.expectError(error.Controller, controller.switch20MHz());
+            },
+            else => unreachable,
+        }
+        try std.testing.expect(controller.faulted);
+        const commands = model.count;
+        try std.testing.expectError(error.Controller, controller.switchFourBit());
+        try std.testing.expectEqual(commands, model.count);
+        if (fault < 2) try std.testing.expect(!model.pins_switched);
+    }
+    try std.testing.expectError(error.Unsupported, scrWidths(.{ 0x10, 5, 0, 0, 0, 0, 0, 0 }));
+    try std.testing.expectError(error.Unsupported, scrWidths(.{ 0, 4, 0, 0, 0, 0, 0, 0 }));
 }

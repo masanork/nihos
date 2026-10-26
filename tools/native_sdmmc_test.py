@@ -44,6 +44,25 @@ class OracleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "capacities differ"):
             MODULE.compare(log, report)
 
+    def test_wide_oracle_must_report_its_working_configuration(self):
+        log, report = log_and_report()
+        log = log.replace("width=1 khz=400", "width=4 khz=20000")
+        with self.assertRaisesRegex(ValueError, "working bus"):
+            MODULE.compare(log, report)
+        log += "\nNIHOS_SDMMC_IDF_ORACLE_CONFIG width=4 khz=20000"
+        self.assertEqual(MODULE.compare(log, report)["oracle_bus_bits"], 4)
+
+    def test_distributed_native_and_oracle_reads_must_match(self):
+        log, report = log_and_report()
+        report["sdmmc_sweeps"] = [{"index": i, "samples": 1024, "digest": 0x12345678} for i in range(3)]
+        with self.assertRaisesRegex(ValueError, "missing native/oracle"):
+            MODULE.compare(log, report)
+        log = log.replace("PASS reads=8", "PASS reads=1032") + "\nNIHOS_SDMMC_IDF_ORACLE_SWEEP samples=1024 digest=12345678"
+        self.assertEqual(MODULE.compare(log, report)["distributed_samples"], 1024)
+        report["sdmmc_sweeps"][2]["digest"] += 1
+        with self.assertRaisesRegex(ValueError, "digests differ"):
+            MODULE.compare(log, report)
+
 
 if __name__ == "__main__":
     unittest.main()

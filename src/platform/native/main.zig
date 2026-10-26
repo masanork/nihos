@@ -371,6 +371,10 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (options.sdmmc) {
         const sd = @import("sdmmc_probe.zig").run(timer(0));
         logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
+        for (0..sd.stage_count) |phase| {
+            logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
+            if (sd.stages[phase].samples != 0) logger.record("NIHOS_NATIVE_SDMMC_SWEEP", null, .{ "index", "samples", "digest" }, &sd.stages[phase]);
+        }
         if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
         if (sd.status != 1) fail("SDMMC probe");
     }

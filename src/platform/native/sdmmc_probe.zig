@@ -1,15 +1,18 @@
 //! Boot-only read-only slot-0 experiment; owns timer 0 before CPU1 release.
 const sd = @import("sdmmc");
 const timer_group = @import("timer_group");
+const options = @import("native_options");
 extern fn nih_sdmmc_power_off() callconv(.c) void;
 extern fn nih_sdmmc_power_on() callconv(.c) void;
 extern fn nih_sdmmc_clock_init() callconv(.c) void;
+extern fn nih_sdmmc_fourbit_pins() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
-pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1 };
+pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
+pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}) };
 var last_error: u32 = 0;
 const Bus = struct {
     clock: timer_group.Timer,
@@ -28,10 +31,14 @@ const Bus = struct {
         }
         nih_native_task_failed();
     }
-    pub fn prepareDma(_: Bus) ?u32 {
+    pub fn fourBitPins(_: Bus) void {
+        nih_sdmmc_fourbit_pins();
+    }
+    pub fn prepareDma(_: Bus, length: u32) ?u32 {
+        if (length != 8 and length != 512) return null;
         dma_descriptor = @splat(0);
         dma_descriptor[0] = (1 << 31) | (1 << 4) | (1 << 3) | (1 << 2);
-        dma_descriptor[1] = 512;
+        dma_descriptor[1] = length;
         dma_descriptor[2] = @intFromPtr(&dma_data);
         if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&dma_data), 512) != 0 or
             nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_data), 512) != 0 or
@@ -39,12 +46,13 @@ const Bus = struct {
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
         return @intFromPtr(&dma_descriptor);
     }
-    pub fn finishDma(_: Bus, destination: *[512]u8) bool {
+    pub fn finishDma(_: Bus, destination: *[512]u8, length: u32) bool {
+        if (length != 8 and length != 512) return false;
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
         if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_data), 512) != 0 or
             nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
         if (@as(*volatile u32, &dma_descriptor[0]).* & ((1 << 31) | (1 << 30)) != 0) return false;
-        for (destination, 0..) |*byte, index| byte.* = @as(*volatile u8, &dma_data[index]).*;
+        for (destination[0..length], 0..) |*byte, index| byte.* = @as(*volatile u8, &dma_data[index]).*;
         return true;
     }
 };
@@ -72,37 +80,68 @@ pub noinline fn run(clock: timer_group.Timer) Report {
     const lbas = [_]u32{ 0, 1, @intCast(controller.sectors / 2), @intCast(controller.sectors - 1) };
     var checks: [4]u32 = @splat(0);
     var buffer: [512]u8 = undefined;
-    report.stage = 3;
-    for (0..2) |pass| {
-        for (lbas, 0..) |lba, index| {
-            controller.readSector(lba, &buffer) catch |err| {
-                last_error = switch (err) {
-                    error.Timeout => 1,
-                    error.Controller => 2,
-                    error.Response => 3,
-                    error.Unsupported => 4,
-                    error.InvalidAddress => 5,
-                    error.ShortRead => 6,
-                    else => 7,
+    const sample_count: u32 = if (options.sdmmc_profile == 0) 0 else 1024;
+    var baseline_digest: u32 = 0;
+    for (0..options.sdmmc_profile + 1) |phase| {
+        report.stage = 3 + @as(u32, @intCast(phase));
+        if (phase == 1) controller.switchFourBit() catch |err| {
+            last_error = errorCode(err);
+            return failure(report, &controller);
+        };
+        if (phase == 2) controller.switch20MHz() catch |err| {
+            last_error = errorCode(err);
+            return failure(report, &controller);
+        };
+        for (0..2) |pass| {
+            for (lbas, 0..) |lba, index| {
+                controller.readSector(lba, &buffer) catch |err| {
+                    last_error = errorCode(err);
+                    return failure(report, &controller);
                 };
+                const checksum = sd.crc32(&buffer);
+                if (phase == 0 and pass == 0) checks[index] = checksum else if (checks[index] != checksum) return failure(report, &controller);
+                report.reads += 1;
+            }
+        }
+        var digest: u32 = 0x811c9dc5;
+        for (0..sample_count) |sample| {
+            const lba = sd.sampleLba(@intCast(sample), sample_count, controller.sectors).?;
+            controller.readSector(lba, &buffer) catch |err| {
+                last_error = errorCode(err);
                 return failure(report, &controller);
             };
-            const checksum = sd.crc32(&buffer);
-            if (pass == 0) checks[index] = checksum else if (checks[index] != checksum) return failure(report, &controller);
+            digest = sd.foldSample(digest, lba, sd.crc32(&buffer));
             report.reads += 1;
         }
+        if (phase == 0) baseline_digest = digest else if (digest != baseline_digest) return failure(report, &controller);
+        report.stages[phase] = .{ .index = @intCast(phase), .bus_bits = controller.bus_bits, .clock_khz = controller.clock_khz, .scr_widths = controller.scr_widths, .host_width = controller.host_width, .divider = controller.divider, .reads = 8 + sample_count, .crc0 = checks[0], .crc1 = checks[1], .crc_middle = checks[2], .crc_last = checks[3], .samples = sample_count, .digest = digest };
+        report.stage_count += 1;
     }
     report.crc0 = checks[0];
     report.crc1 = checks[1];
     report.crc_middle = checks[2];
     report.crc_last = checks[3];
     report.status = 1;
+    report.bus_bits = controller.bus_bits;
+    report.clock_khz = controller.clock_khz;
     report.stage = 4;
     report.commands = controller.commands;
     report.error_code = last_error;
     report.host_status = controller.last_status;
     report.data_words = controller.words_read;
     return report;
+}
+
+fn errorCode(err: sd.Error) u32 {
+    return switch (err) {
+        error.Timeout => 1,
+        error.Controller => 2,
+        error.Response => 3,
+        error.Unsupported => 4,
+        error.InvalidAddress => 5,
+        error.ShortRead => 6,
+        else => 7,
+    };
 }
 
 fn failure(previous: Report, controller: anytype) Report {
@@ -112,6 +151,8 @@ fn failure(previous: Report, controller: anytype) Report {
     report.interrupts = controller.last_interrupts;
     report.response = controller.last_response;
     report.commands = controller.commands;
+    report.bus_bits = controller.bus_bits;
+    report.clock_khz = controller.clock_khz;
     report.error_code = last_error;
     report.host_status = controller.last_status;
     report.data_words = controller.words_read;

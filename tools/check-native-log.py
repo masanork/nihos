@@ -10,16 +10,23 @@ PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 
 
-def fixed_record(log, marker, names):
+def repeated_records(log, marker, names):
     pattern = re.escape(marker) + "".join(" " + name + r"=([0-9a-f]{8})" for name in names)
     found = re.findall(pattern + r"(?:\n|$)", log)
-    if len(found) != 1 or log.count(marker + " ") != 1:
+    if len(found) != log.count(marker + " "):
         raise ValueError("missing/duplicate/malformed " + marker)
-    return dict(zip(names, (int(value, 16) for value in found[0])))
+    return [dict(zip(names, (int(value, 16) for value in row))) for row in found]
+
+
+def fixed_record(log, marker, names):
+    found = repeated_records(log, marker, names)
+    if len(found) != 1:
+        raise ValueError("missing/duplicate/malformed " + marker)
+    return found[0]
 
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
-          require_qualification=False, require_sdmmc=False):
+          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False):
     if evidence not in ("emulator", "physical-device"):
         raise ValueError("invalid evidence source")
     profile = image.get("memory", {}).get("profile") if image is not None else None
@@ -427,17 +434,42 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     elif "NIHOS_NATIVE_PSRAM_SWEEP" in log or "NIHOS_NATIVE_SQLITE_SOAK" in log:
         raise ValueError("qualification records without mode")
     sdmmc = None
-    if require_sdmmc or "NIHOS_NATIVE_SDMMC" in log:
+    sdmmc_stages = []
+    sdmmc_sweeps = []
+    if require_sdmmc or require_sdmmc_fast or "NIHOS_NATIVE_SDMMC" in log:
         if log.count("NIHOS_NATIVE_SDMMC_MODE enabled=1") != 1:
             raise ValueError("missing/invalid SDMMC mode")
         sdmmc = fixed_record(log, "NIHOS_NATIVE_SDMMC", ("status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma"))
         sectors = sdmmc["sectors_low"] + (sdmmc["sectors_high"] << 32)
-        if (sdmmc["status"] != 1 or sdmmc["stage"] != 4 or not 1024 <= sectors <= 1 << 32 or
-                sdmmc["reads"] != 8 or sdmmc["writes"] != 0 or sdmmc["bus_bits"] != 1 or
-                sdmmc["clock_khz"] != 400 or sdmmc["error_code"] != 0 or sdmmc["commands"] < 16 or sdmmc["data_words"] != 128 or sdmmc["dma"] != 1):
+        profiles = {(1, 400): 1, (4, 400): 2, (4, 20000): 3}
+        phases = profiles.get((sdmmc["bus_bits"], sdmmc["clock_khz"]), 0)
+        sample_count = 1024 if phases > 1 else 0
+        if (sdmmc["status"] != 1 or sdmmc["stage"] != 4 or not 1024 <= sectors <= 1 << 32 or phases == 0 or
+                sdmmc["reads"] != (8 + sample_count) * phases or sdmmc["writes"] != 0 or
+                sdmmc["error_code"] != 0 or sdmmc["commands"] < sdmmc["reads"] + 9 + (4 if phases > 1 else 0) or sdmmc["data_words"] != 128 or sdmmc["dma"] != 1):
             raise ValueError("incomplete read-only SDMMC probe")
+        if require_sdmmc_fast and phases != 3:
+            raise ValueError("required 4-bit/20 MHz profile missing")
+        sdmmc_stages = repeated_records(log, "NIHOS_NATIVE_SDMMC_STAGE", ("index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last"))
+        if phases > 1 or sdmmc_stages:
+            if len(sdmmc_stages) != phases:
+                raise ValueError("missing SDMMC transition stages")
+            for i, stage in enumerate(sdmmc_stages):
+                bits, khz, host, divider = ((1, 400, 0, 50), (4, 400, 1, 50), (4, 20000, 1, 1))[i]
+                if (stage["index"] != i or stage["bus_bits"] != bits or stage["clock_khz"] != khz or
+                        stage["host_width"] != host or stage["divider"] != divider or stage["reads"] != 8 + sample_count or
+                        (i == 0 and stage["scr_widths"] != 0) or (i > 0 and stage["scr_widths"] & 5 != 5) or
+                        any(stage[name] != sdmmc[name] for name in ("crc0", "crc1", "crc_middle", "crc_last"))):
+                    raise ValueError("invalid SDMMC transition/readback/CRC evidence")
+        sdmmc_sweeps = repeated_records(log, "NIHOS_NATIVE_SDMMC_SWEEP", ("index", "samples", "digest"))
+        if sample_count:
+            if len(sdmmc_sweeps) != phases or any(row["index"] != i or row["samples"] != sample_count or
+                                                row["digest"] != sdmmc_sweeps[0]["digest"] for i, row in enumerate(sdmmc_sweeps)):
+                raise ValueError("missing/inconsistent SDMMC distributed sweep")
+        elif sdmmc_sweeps:
+            raise ValueError("unexpected SDMMC distributed sweep")
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode,
-            "qualification": qualification, "sdmmc": sdmmc,
+            "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
             "flash_boot": boot, "sqlite": sql_report,
@@ -464,18 +496,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
 
 def main():
     if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|qualification,sdmmc]")
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|comma-separated requirements]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
         image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
         extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
-        if not extra <= {"qualification", "sdmmc"}:
+        if not extra <= {"qualification", "sdmmc", "sdmmc-fast"}:
             raise ValueError("invalid required extra evidence")
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
                        PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
-                       "qualification" in extra, "sdmmc" in extra)
+                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

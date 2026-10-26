@@ -34,12 +34,21 @@ case "$sdmmc" in
     1) sdmmc=true ;;
     *) echo "NIHOS_NATIVE_SDMMC must be 0 or 1" >&2; exit 1 ;;
 esac
+sdmmc_profile=${NIHOS_NATIVE_SDMMC_PROFILE:-0}
+case "$sdmmc_profile" in
+    0|1|2) ;;
+    *) echo "NIHOS_NATIVE_SDMMC_PROFILE must be 0, 1 or 2" >&2; exit 1 ;;
+esac
+if [ "$sdmmc_profile" != 0 ] && [ "$sdmmc" != true ]; then
+    echo "SDMMC profiles require NIHOS_NATIVE_SDMMC=1" >&2
+    exit 1
+fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
