@@ -69,6 +69,14 @@ certificate serial is in the private raw serial log; JSON summaries and
 repository measurement notes retain only its byte length. Resetting the
 installed diagnostic reruns the same PIN-free sequence.
 
+When firmware installation and qualification must be protected from other
+concurrent device work, append `--install build/native-device`. This explicitly
+writes the native build's bootloader, partition table and app, verifies all
+three before capture, retains one exclusive serial descriptor across all
+boots, then verifies all three again before releasing it. Without `--install`,
+the tool only captures the already installed image. It never terminates another
+port owner or releases another task's reservation.
+
 References: [CCID 1.1](https://www.usb.org/sites/default/files/DWG_Smart-Card_CCID_Rev110.pdf),
 [civ JPKI source](https://github.com/masanork/civ/blob/54a843e656513930df60bbc20d752ff3289e7078/src/jpki.rs).
 Sony's distributed CCID source and third-party Port-400 implementations were
