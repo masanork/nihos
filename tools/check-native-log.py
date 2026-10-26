@@ -12,7 +12,7 @@ STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count",
 USB_FIELDS = ("status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped")
 JPKI_FIELDS = ("status", "stage", "error_code", "power_status", "power_error", "atr_bytes", "card_state", "apdu_count", "rejected", "pin_data_sent", "auth_before", "auth_after", "last_sw", "serial_bytes", "poweroff")
 DISPLAY_PREP_FIELDS = ("status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight")
-CARD_FIELDS = ("status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts", "last_type", "last_flags", "last_error", "last_parameter", "last_bytes")
+CARD_FIELDS = ("status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts", "last_type", "last_flags", "last_error", "last_parameter", "last_bytes", "vbus_off")
 
 
 def check_display_preparation(log):
@@ -32,11 +32,11 @@ def check_card(log):
     if (r['status'] != 1 or r['stage'] != 3 or r['usb'] != 1 or r['card'] != 1 or
             r['remaining'] not in (0, 1, 2, 3) or
             r['card_fault'] != {0: 6, 1: 7, 2: 1, 3: 1}[r['remaining']] or
-            r['poweroff'] != 1 or r['dma_erased'] != 1 or r['pin_data_sent'] != 0 or
+            r['poweroff'] not in (1, 2) or r['dma_erased'] != 1 or r['vbus_off'] != 1 or r['pin_data_sent'] != 0 or
             r['touch'] != 1 or (r['width'], r['height']) != (720, 1280) or not 1 <= r['slots'] <= 10 or
             r['samples'] != 64 or r['fresh'] > 64 or r['contacts'] + r['releases'] != r['fresh'] or
             r['max_contacts'] > r['slots'] or (r['max_contacts'] == 0) != (r['contacts'] == 0) or
-            r['last_type'] != 0x81 or r['last_flags'] != 1 or r['last_error'] != 0 or
+            r['last_type'] != 0x81 or r['last_flags'] != (1 if r['poweroff'] == 1 else 0) or r['last_error'] != 0 or
             r['last_parameter'] > 3 or r['last_bytes'] != 0):
         raise ValueError('incomplete PIN-free card/touch readiness check')
     if not log.index('NIHOS_NATIVE_FP_PASS') < log.index('NIHOS_NATIVE_CARD_CHECK_START') < log.index('NIHOS_NATIVE_CARD_CHECK '):
