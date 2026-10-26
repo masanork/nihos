@@ -6,25 +6,28 @@ profile=${1:-device}
 case "$profile" in
     device) rev3=0 ;;
     emulator) rev3=1 ;;
-    *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled]" >&2; exit 1 ;;
+    *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 mode=${3:-integer}
 cpu=generic_rv32+m+a+c+zicsr+zifencei
 compiled=false
+sqlite=false
+sqlite_cpp=0
 abi=ilp32
 case "$mode" in
     integer) floating=false; fp_asm=0 ;;
+    sqlite) floating=false; fp_asm=0; sqlite=true; sqlite_cpp=1 ;;
     floating) floating=true; fp_asm=1 ;;
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
-    *) echo "mode must be integer, floating or compiled" >&2; exit 1 ;;
+    *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
-"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\n' "$floating" "$compiled" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\n' "$floating" "$compiled" "$sqlite" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -34,7 +37,7 @@ fi
     -O2 -std=c11 -Wall -Wextra -Wconversion -Werror -ffreestanding \
     -I "$repo_root/include" -o "$build_dir/c_allocator.o" "$repo_root/probes/allocator/c_probe.c"
 set -- "$build_dir/c_allocator.o"
-if [ "$mode" != integer ]; then
+if [ "$floating" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none \
         -mcpu=generic_rv32+m+a+c+f+zicsr+zifencei -mabi="$abi" -I "$repo_root/src/kernel" \
         -o "$build_dir/fpu.o" "$repo_root/src/arch/riscv32/fpu.S"
@@ -46,6 +49,33 @@ if [ "$mode" = compiled ]; then
         -o "$build_dir/c_math.o" "$repo_root/probes/native_fp/c_math.c"
     set -- "$@" "$build_dir/c_math.o"
 fi
+if [ "$sqlite" = true ]; then
+    source_dir=$(sh "$repo_root/tools/bootstrap-sqlite.sh")
+    headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
+    for name in sqlite3 session vfs strings; do
+        case "$name" in
+            sqlite3) source="$source_dir/sqlite3.c" ;;
+            session) source="$repo_root/src/services/sqlite_session.c" ;;
+            vfs) source="$repo_root/probes/sqlite/noio_vfs.c" ;;
+            strings) source="$repo_root/src/compat/c_strings.c" ;;
+        esac
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -Oz -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+            -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fstack-size-section \
+            -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
+            -isystem "$headers/riscv-linux-any" -I "$repo_root/include" -I "$source_dir" \
+            -DNIH_SQLITE_NATIVE_PROBE -DSQLITE_THREADSAFE=0 -DSQLITE_ZERO_MALLOC=1 -DSQLITE_OS_OTHER=1 \
+            -DSQLITE_TEMP_STORE=3 -DSQLITE_DEFAULT_PAGE_SIZE=1024 -DSQLITE_DEFAULT_MEMSTATUS=1 \
+            -DSQLITE_OMIT_LOCALTIME -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL \
+            -DSQLITE_OMIT_AUTOINIT -DSQLITE_OMIT_LOOKASIDE -DSQLITE_ENABLE_API_ARMOR \
+            "$source" -o "$build_dir/sql_$name.o"
+        set -- "$@" "$build_dir/sql_$name.o"
+    done
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        "$repo_root/probes/sqlite/stack_paint.S" -o "$build_dir/sql_stack_paint.o"
+    set -- "$@" "$build_dir/sql_stack_paint.o"
+    python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir"
+fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
@@ -54,7 +84,7 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log -Mroot="$repo_root/src/platform/native/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mrecord_log="$repo_root/src/diagnostics/record.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

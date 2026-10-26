@@ -17,6 +17,9 @@ MEMORY {
     stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
+#if NIH_NATIVE_SQLITE
+    flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
+#endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
@@ -34,6 +37,31 @@ SECTIONS
         KEEP(*(.flash.rodata.records))
         __flash_records_end = .;
     } > flash_records
+#if NIH_NATIVE_SQLITE
+    /* The stock P4 loader accepts exactly two mapped segments. Fill the gap
+     * so esptool can merge records + SQLite into its second contiguous span. */
+    .flash.sqlpad : ALIGN(4) {
+        __flash_sql_pad_start = .;
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+        __flash_sql_pad_end = .;
+    } > flash_records
+    .flash.sqltext : {
+        __flash_sql_text_start = .;
+        *sql_sqlite3.o(.text .text.*)
+        *sql_session.o(.text .text.*)
+        *sql_vfs.o(.text .text.*)
+        . = ALIGN(16);
+        __flash_sql_text_end = .;
+    } > flash_sql
+    .flash.sqlrodata : ALIGN(16) {
+        __flash_sql_rodata_start = .;
+        *sql_sqlite3.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_session.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_vfs.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_sql_rodata_end = .;
+    } > flash_sql
+#endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {
         __fp_app_start = .;

@@ -1,5 +1,6 @@
 //! Independent native boot experiment: no IDF application or FreeRTOS link.
 const std = @import("std");
+const options = @import("native_options");
 const timer_group = @import("timer_group");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
@@ -310,6 +311,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
+    if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
         fail("CRT data/BSS");
@@ -409,6 +411,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                 print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
+                if (options.sqlite) {
+                    const sql = @import("sqlite_probe.zig").run();
+                    logger.record("NIHOS_NATIVE_SQLITE", null, .{ "status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie" }, &sql);
+                    const classes = @import("sqlite_probe.zig").classPeaks();
+                    logger.record("NIHOS_NATIVE_SQLITE_CLASSES", null, .{ "c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096" }, &classes);
+                }
                 tasks.floating.quiesce(0);
                 if (!flash_records.finish(0)) fail("CPU0 Flash records finish");
                 if (!tasks.memory.stacks.finish(0)) fail("CPU0 stack bank finish");

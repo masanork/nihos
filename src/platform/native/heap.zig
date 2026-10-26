@@ -622,6 +622,15 @@ pub noinline fn cleanupOne() enum { none, progress, complete } {
     return if (complete) .complete else .progress;
 }
 
+/// Resident metadata snapshot for owner-local admission/qualification.
+pub fn availableBytes() ?usize {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return null;
+    const status = mask();
+    defer restore(status);
+    return owners[core].heap.free_bytes;
+}
+
 pub fn resourceReport(core: u32) ResourceReport {
     const ledger = &resources[core].ledger;
     return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected, .slab_objects = resources[core].slab_objects, .slab_frees = resources[core].slab_frees, .slab_rejected = resources[core].slab_rejected, .object_moves = resources[core].object_moves, .object_inplace = resources[core].object_inplace, .object_rejected = resources[core].object_rejected, .object_copy_bytes = resources[core].object_copy_bytes, .c_probes = resources[core].c_probes };

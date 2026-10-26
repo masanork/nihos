@@ -10,7 +10,14 @@ PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 
 
-def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
+def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator"):
+    if evidence not in ("emulator", "physical-device"):
+        raise ValueError("invalid evidence source")
+    profile = image.get("memory", {}).get("profile") if image is not None else None
+    if evidence == "physical-device" and profile != "device":
+        raise ValueError("physical evidence requires a device-profile image audit")
+    if evidence == "emulator" and profile == "device":
+        raise ValueError("device image requires explicit physical evidence source")
     log = log.replace("\\r", "").replace("\r", "")
     if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
         raise ValueError("missing boot or unexpected reboot")
@@ -25,6 +32,11 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         raise ValueError("missing/incompatible compiler FP mode")
     if compiled_modes[0] == "1":
         mode = "compiled"
+    sql_modes = re.findall(r"NIHOS_NATIVE_SQLITE_MODE enabled=([01])", log)
+    if sql_modes:
+        if sql_modes != ["1"] or log.count("NIHOS_NATIVE_SQLITE_MODE") != 1 or mode != "integer":
+            raise ValueError("invalid/incompatible SQLite build mode")
+        mode = "sqlite"
     if expected_mode is not None and mode != expected_mode:
         raise ValueError("native mode differs from requested build")
     if "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned" not in log:
@@ -161,7 +173,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         if (record["confirmed"] != 1 or record["saves"] != record["restores"] or
                 record["saves"] != record["timer"] + record["calls"] + record["ipi"]):
             raise ValueError("FP copy/return accounting mismatch")
-        if mode == "integer":
+        if mode in ("integer", "sqlite"):
             if any(record[name] != 0 for name in fp_names[:-1]):
                 raise ValueError("integer tasks paid FP transfer overhead")
         elif (record["initial"] != 5 or min(record["checks0"], record["checks1"], record["checks2"]) < 4 or
@@ -342,10 +354,51 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
             function = expected["functions"][role]
             if not int(function["start"], 16) <= boot[role] < int(function["end"], 16):
                 raise ValueError("Flash boot PC outside audited function")
-    return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
+    sql_report = None
+    sql_names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
+    sql_records = re.findall("NIHOS_NATIVE_SQLITE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in sql_names), log)
+    if mode == "sqlite":
+        if len(sql_records) != 1 or sum(line.startswith("NIHOS_NATIVE_SQLITE ") for line in log.splitlines()) != 1:
+            raise ValueError("missing/duplicate SQLite execution evidence")
+        sql_report = dict(zip(sql_names, (int(value, 16) for value in sql_records[0])))
+        q = sql_report
+        if not (q["text_start"] == 0x40020000 < q["text_end"] <= q["rodata_start"] < q["rodata_end"] <= 0x400c0000):
+            raise ValueError("invalid SQLite Flash spans")
+        runtime_fields = ("owner", "sessions", "queries", "open_pc", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
+        if psram["status"] == 0:
+            if q["status"] != 0 or any(q[name] for name in runtime_fields):
+                raise ValueError("SQLite ran without PSRAM")
+        elif not (q["status"] == 1 and q["owner"] == 1 and q["sessions"] == 2 and q["queries"] == 26 and
+                  q["text_start"] <= q["open_pc"] < q["text_end"] and q["heap_before"] > 65536 and
+                  q["heap_after"] == q["heap_before"] == heaps[0]["free"] and q["stack_low"] == 0x4ff60010 and q["stack_high"] == 0x4ff62000 and
+                  q["stack_low"] < q["painted_to"] < q["stack_high"] and
+                  q["stack_high"] - q["painted_to"] <= q["observed_used"] <= q["stack_high"] - q["stack_low"] - 160 and q["mie"] == 8):
+            raise ValueError("incomplete SQLite query/recovery/stack evidence")
+        class_names = ("c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096")
+        class_records = re.findall("NIHOS_NATIVE_SQLITE_CLASSES" + "".join(" " + name + r"=([0-9a-f]{8})" for name in class_names), log)
+        if len(class_records) != 1 or log.count("NIHOS_NATIVE_SQLITE_CLASSES") != 1:
+            raise ValueError("missing/duplicate native SQLite allocation trace")
+        peaks = [int(value, 16) for value in class_records[0]]
+        quotas = image["sqlite"]["pool_quotas"] if image is not None else [24, 12, 64, 64, 64, 4, 8, 12, 8, 1]
+        if any(peak > quota for peak, quota in zip(peaks, quotas)) or (not q["status"] and any(peaks)) or (q["status"] and not any(peaks)):
+            raise ValueError("invalid native SQLite class peaks")
+        if q["status"] and peaks != [20, 10, 22, 23, 16, 3, 6, 8, 3, 0]:
+            raise ValueError("native SQLite allocation trace differs from fixed workload")
+        sql_report["class_peaks"] = dict(zip(class_names, peaks))
+        if image is not None:
+            audited = image.get("sqlite")
+            if audited is None or any(q[name] != int(audited[name], 16) for name in ("text_start", "text_end", "rodata_start", "rodata_end")):
+                raise ValueError("SQLite spans differ from audited image")
+            if q["status"]:
+                function = audited["functions"]["nih_sqlite_session_open"]
+                if not int(function["start"], 16) <= q["open_pc"] < int(function["end"], 16):
+                    raise ValueError("SQLite execution PC outside actual open function")
+    elif "NIHOS_NATIVE_SQLITE" in log:
+        raise ValueError("unexpected SQLite evidence in ordinary build")
+    return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
-            "flash_boot": boot,
+            "flash_boot": boot, "sqlite": sql_report,
             "stacks": [{"hart": hart, **stacks[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
             "psram_supply": supply, "psram_io": psram_io,
@@ -368,14 +421,15 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
 
 
 def main():
-    if len(sys.argv) not in (3, 4, 5, 6):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json]")
+    if len(sys.argv) not in (3, 4, 5, 6, 7):
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
-        image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) == 6 else None
-        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None, PSRAM_SIZES[size], image)
+        image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
+        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
+                       PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) == 7 else "emulator")
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

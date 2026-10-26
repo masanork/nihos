@@ -1,4 +1,4 @@
-/* Host-qualified single-owner SQLite prototype. Not linked into native images. */
+/* Single-owner SQLite prototype; native execution is an opt-in boot fixture. */
 #include "nihos_allocator.h"
 #include "nihos_sqlite_session.h"
 #include "sqlite3.h"
@@ -9,6 +9,24 @@ static atomic_flag entry = ATOMIC_FLAG_INIT;
 static sqlite3 *connection;
 static uint32_t serial, progress_calls, live_blocks;
 static int pool_opened, allocator_fault;
+#ifdef NIH_SQLITE_NATIVE_PROBE
+_Static_assert(sizeof(void *) == 4, "native SQLite probe requires RV32");
+volatile uint32_t nih_sqlite_open_execution_pc;
+volatile uint32_t nih_sqlite_native_failed_size;
+volatile uint32_t nih_sqlite_native_peak[10];
+static uint32_t native_live[10];
+static unsigned int native_class(size_t bytes) {
+    unsigned int index = 0;
+    for (size_t capacity = 8; capacity < bytes && index < 9; capacity *= 2) ++index;
+    return index;
+}
+static void native_add(size_t bytes) {
+    const unsigned int index = native_class(bytes);
+    ++native_live[index];
+    if (native_live[index] > nih_sqlite_native_peak[index]) nih_sqlite_native_peak[index] = native_live[index];
+}
+static void native_remove(size_t bytes) { --native_live[native_class(bytes)]; }
+#endif
 #ifdef NIH_SQLITE_TESTING
 static int fail_after = -1, allocation_attempts, injected;
 void nih_sqlite_test_fail_after(int point) { fail_after = point; allocation_attempts = 0; injected = 0; }
@@ -31,18 +49,38 @@ static void *allocate(int n) {
     if (n <= 0 || !owns() || fail_allocation()) return NULL;
     void *p = nih_task_malloc((size_t)n);
     if (p) ++live_blocks;
+#ifdef NIH_SQLITE_NATIVE_PROBE
+    if (p) native_add(nih_task_capacity(p));
+    else nih_sqlite_native_failed_size = (uint32_t)n;
+#endif
     return p;
 }
 static void release(void *p) {
     if (!p) return;
+#ifdef NIH_SQLITE_NATIVE_PROBE
+    const size_t bytes = nih_task_capacity(p);
+#endif
     if (!owns() || !live_blocks || nih_task_free(p)) { allocator_fault = 1; return; }
     --live_blocks;
+#ifdef NIH_SQLITE_NATIVE_PROBE
+    native_remove(bytes);
+#endif
 }
 static void *resize(void *p, int n) {
     if (n <= 0) { release(p); return NULL; }
     if (!owns() || fail_allocation()) return NULL;
+#ifdef NIH_SQLITE_NATIVE_PROBE
+    const size_t old_bytes = nih_task_capacity(p);
+#endif
     void *next = nih_task_realloc(p, (size_t)n);
     if (next && !p) ++live_blocks;
+#ifdef NIH_SQLITE_NATIVE_PROBE
+    if (next) {
+        const size_t bytes = nih_task_capacity(next);
+        if (!p) native_add(bytes);
+        else if (bytes != old_bytes) { native_add(bytes); native_remove(old_bytes); }
+    } else nih_sqlite_native_failed_size = (uint32_t)n;
+#endif
     return next;
 }
 static int size_of(void *p) { return owns() ? (int)nih_task_capacity(p) : 0; }
@@ -91,6 +129,11 @@ static int authorize(void *context, int action, const char *one, const char *two
     return action == SQLITE_PRAGMA || action == SQLITE_ATTACH || action == SQLITE_DETACH ? SQLITE_DENY : SQLITE_OK;
 }
 int nih_sqlite_session_open(void) {
+#ifdef NIH_SQLITE_NATIVE_PROBE
+    uint32_t pc;
+    __asm__ volatile ("auipc %0,0" : "=r"(pc));
+    nih_sqlite_open_execution_pc = pc;
+#endif
     const uint32_t current = nih_task_identity();
     if (!current) return NIH_SQLITE_OWNER;
     if (atomic_flag_test_and_set_explicit(&entry, memory_order_acquire)) return NIH_SQLITE_BUSY;

@@ -27,7 +27,20 @@ FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.rodata": (0x40010020, None)}
 
 
-def audit_flash_section(name, kind, flags, address, size):
+SQL_START, SQL_END = 0x40020000, 0x400C0000
+SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
+
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False):
+    if name == ".flash.sqlpad":
+        require(allow_sql and kind == 1 and flags == 2 and 0x40010020 < address < SQL_START and address + size == SQL_START,
+                "invalid SQLite Flash padding")
+        return
+    if name in SQL_SECTIONS:
+        require(allow_sql and kind == 1 and (flags == 6 if name == ".flash.sqltext" else (flags & 7 == 2 and flags & ~50 == 0)),
+                "unapproved/mutable SQLite Flash section")
+        require(SQL_START <= address < address + size <= SQL_END and
+                (name != ".flash.sqltext" or address == SQL_START), "invalid SQLite Flash extent")
+        return
     expected = FLASH_SECTIONS.get(name)
     require(expected is not None and address == expected[0], "unexpected non-SRAM section: " + name)
     require(kind == 1 and flags == (6 if name == ".flash.boot" else 2),
@@ -37,13 +50,16 @@ def audit_flash_section(name, kind, flags, address, size):
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=()):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if ROM_SYMBOLS.get(name) == address:
+            continue
+        if sql_span is not None and sql_span[0] <= address < stop <= sql_span[1]:
+            require(name in sql_functions, "non-manifest function in SQLite Flash: " + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
@@ -122,7 +138,35 @@ def audit_stack_layout(symbols, sizes, allocated):
             "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768)}
 
 
-def audit(elf, image, mode=None, profile="device"):
+def decode_stack_sizes(data, functions):
+    """LLVM static C frames, not a recursive call-graph/whole-stack bound."""
+    names = {}
+    for name, address, _ in functions:
+        names.setdefault(address, []).append(name)
+    rows = []
+    cursor = 0
+    while cursor < len(data):
+        require(cursor + 4 <= len(data), "truncated C stack address")
+        address = struct.unpack_from("<I", data, cursor)[0]
+        cursor += 4
+        value, shift = 0, 0
+        while True:
+            require(cursor < len(data) and shift < 35, "truncated/overflowing C stack size")
+            byte = data[cursor]
+            cursor += 1
+            value |= (byte & 127) << shift
+            shift += 7
+            if byte & 128 == 0:
+                break
+        require(address in names and value <= 0xffffffff, "unknown C stack function/size")
+        rows.append({"address": hex(address), "functions": sorted(names[address]), "bytes": value})
+    require(rows, "empty C static stack metadata")
+    return {"records": len(rows), "maximum_reported_frame_bytes": max(row["bytes"] for row in rows),
+            "largest_frames": sorted(rows, key=lambda row: row["bytes"], reverse=True)[:10],
+            "recursive_or_Zig_call_graph_bound": False}
+
+
+def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
     require(high <= STACK_LOW, "stack bank overlaps primary SRAM")
@@ -150,6 +194,10 @@ def audit(elf, image, mode=None, profile="device"):
     flash_found = set()
     flash_tables = None
     boot_code = None
+    sql_sections = {}
+    allow_sql = mode == "sqlite"
+    require(not allow_sql or (sqlite_manifest is not None and sqlite_manifest.get("schema") == 1 and
+                             sqlite_manifest.get("allowed_functions")), "missing SQLite object manifest")
     for section in sections:
         name_id, section_type, flags, address, offset, size, link, _, _, stride = section
         name = string(names, name_id)
@@ -161,9 +209,11 @@ def audit(elf, image, mode=None, profile="device"):
                 audit_stack_section(section_type, flags, address, size)
             in_sram = low <= address and address + size <= high
             if not in_sram and not in_stacks:
-                audit_flash_section(name, section_type, flags, address, size)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name in SQL_SECTIONS:
+                    sql_sections[name] = (address, elf[offset:offset + size])
                 if name == ".flash.appdesc":
                     audit_app_descriptor(elf[offset:offset + size])
                 if name == ".flash.rodata":
@@ -191,12 +241,42 @@ def audit(elf, image, mode=None, profile="device"):
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()), "missing mapped Flash sections")
+    sql_span = None
+    sql_report = None
+    if allow_sql:
+        pad_start, sql_pad = sql_sections[".flash.sqlpad"]
+        require(pad_start == FLASH_SECTIONS[".flash.rodata"][0] + ((len(flash_tables) + 3) & ~3) and not any(sql_pad), "invalid nonzero/noncontiguous SQLite padding")
+        text_start, sql_code = sql_sections[".flash.sqltext"]
+        ro_start, sql_ro = sql_sections[".flash.sqlrodata"]
+        text_end, ro_end = text_start + len(sql_code), ro_start + len(sql_ro)
+        require(ro_start == text_end and text_end % 16 == 0 and ro_end <= SQL_END, "invalid SQLite code/rodata ordering")
+        expected_symbols = {"__flash_sql_text_start": text_start, "__flash_sql_text_end": text_end,
+                            "__flash_sql_rodata_start": ro_start, "__flash_sql_rodata_end": ro_end}
+        require(all(symbols.get(key) == value for key, value in expected_symbols.items()), "SQLite linker symbols differ")
+        sql_span = (text_start, text_end)
+        sql_funcs = {name: {"start": hex(low), "end": hex(high)} for name, low, high in functions
+                     if text_start <= low < high <= text_end}
+        require({"nih_sqlite_session_open", "nih_sqlite_session_eval", "nih_sqlite_session_close", "sqlite3_open"}.issubset(sql_funcs),
+                "missing actual SQLite/session functions")
+        quotas = sqlite_manifest.get("pool_quotas")
+        require(isinstance(quotas, list) and len(quotas) == 10 and all(isinstance(n, int) and 0 < n <= 65535 for n in quotas), "invalid SQLite manifest quotas")
+        sql_report = {"pool_quotas": quotas, "text_start": hex(text_start), "text_end": hex(text_end), "rodata_start": hex(ro_start),
+                      "rodata_end": hex(ro_end), "text_bytes": len(sql_code), "rodata_bytes": len(sql_ro),
+                      "functions": sql_funcs, "object_manifest_sha256": hashlib.sha256(json.dumps(sqlite_manifest, sort_keys=True).encode()).hexdigest(),
+                      "text_sha256": hashlib.sha256(sql_code).hexdigest(), "rodata_sha256": hashlib.sha256(sql_ro).hexdigest()}
+        stack_data = [elf[section[4]:section[4] + section[5]] for section in sections
+                      if string(names, section[0]) == ".stack_sizes"]
+        require(len(stack_data) == 1, "missing/duplicate C stack metadata")
+        sql_report["static_c_stack"] = decode_stack_sizes(stack_data[0], functions)
+        sql_payload = flash_tables + bytes((-len(flash_tables)) % 4) + sql_pad + sql_code + sql_ro
+        sql_payload += bytes((-len(sql_payload)) % 4)
+        sql_report["padding_bytes"] = len(sql_pad)
     boot_start = FLASH_SECTIONS[".flash.boot"][0]
     boot_end = boot_start + len(boot_code)
     require(symbols.get("__flash_boot_start") == boot_start and symbols.get("__flash_boot_end") == boot_end,
             "Flash boot symbols differ from section")
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest["allowed_functions"] if allow_sql else ())
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -254,6 +334,10 @@ def audit(elf, image, mode=None, profile="device"):
                                 "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
                                 "executable": False, "writable": False},
               "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
+    if allow_sql:
+        require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
+                "unexpected libc heap/time fallback in native SQLite image")
+        report["sqlite"] = sql_report
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
@@ -275,19 +359,22 @@ def audit(elf, image, mode=None, profile="device"):
             require(data[256:256 + len(boot_code)] == boot_code, "Flash boot bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
+            mapped_length = len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
             require((low <= address and address + length <= high) or
                     (address == FLASH_SECTIONS[".flash.appdesc"][0] and length == first_length) or
-                    (address == flash_start and length == ((len(flash_tables) + 3) & ~3)),
-                    "unexpected image load range")
+                    (address == flash_start and length == mapped_length), "unexpected image load range")
             if address in (FLASH_SECTIONS[".flash.appdesc"][0], flash_start):
                 require(address % 65536 == position % 65536, "Flash image/MMU offset mismatch")
                 mapped.append(address)
             if address == flash_start:
                 require(data[:len(flash_tables)] == flash_tables, "mapped Flash bytes differ from ELF")
+                if allow_sql:
+                    require(data == sql_payload, "merged records/SQLite image bytes differ from ELF")
+                    report["sqlite"]["image_offset"] = position + SQL_START - flash_start
                 report["flash_records"]["image_offset"] = position
             image_segments.append({"address": hex(address), "bytes": length})
         position += length
-    require(mapped == [FLASH_SECTIONS[".flash.appdesc"][0], flash_start], "missing/duplicate mapped image sections")
+    require(mapped == [FLASH_SECTIONS[".flash.appdesc"][0], flash_start], "stock loader requires exactly two mapped image sections")
     # ESP image checksum sits at the end of the next 16-byte block.
     checksum_end = (position + 16) & ~15
     require(image[23] == 1 and len(image) == checksum_end + 32, "missing image SHA256")
@@ -345,18 +432,19 @@ def audit_loader_config(text, profile):
 
 
 def main():
-    if len(sys.argv) not in (4, 5, 6, 7, 8):
-        raise SystemExit("usage: check-native-image.py ELF BIN|--elf-only REPORT.json [MODE [PROFILE [LOADER.elf [CONFIG.h]]]]")
+    if len(sys.argv) not in (4, 5, 6, 7, 8, 9):
+        raise SystemExit("usage: check-native-image.py ELF BIN|--elf-only REPORT.json [MODE [PROFILE [LOADER.elf [CONFIG.h [SQLITE-MANIFEST.json]]]]]")
     try:
         image = None if sys.argv[2] == "--elf-only" else Path(sys.argv[2]).read_bytes()
         report = audit(Path(sys.argv[1]).read_bytes(), image, sys.argv[4] if len(sys.argv) >= 5 else None,
-                       sys.argv[5] if len(sys.argv) >= 6 else "device")
+                       sys.argv[5] if len(sys.argv) >= 6 else "device",
+                       json.loads(Path(sys.argv[8]).read_text()) if len(sys.argv) == 9 else None)
         if len(sys.argv) >= 5:
-            require(sys.argv[4] in ("integer", "floating", "compiled"), "invalid FP mode")
-            require(report["fp_assembly_linked"] == (sys.argv[4] != "integer"), "FP assembly differs from requested mode")
+            require(sys.argv[4] in ("integer", "floating", "compiled", "sqlite"), "invalid FP mode")
+            require(report["fp_assembly_linked"] == (sys.argv[4] in ("floating", "compiled")), "FP assembly differs from requested mode")
         if len(sys.argv) >= 7:
             report["loader"] = audit_loader(report, Path(sys.argv[6]).read_bytes())
-        if len(sys.argv) == 8:
+        if len(sys.argv) >= 8:
             report["loader_config"] = audit_loader_config(Path(sys.argv[7]).read_text(), sys.argv[5])
     except (ValueError, IndexError, KeyError, struct.error) as error:
         raise SystemExit("Native image audit failed: " + str(error)) from error
