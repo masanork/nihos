@@ -113,3 +113,25 @@ failure remains private until successful cleanup, can then display just the
 four fields, and is erased on cancellation/dismissal. Failed cleanup or
 physical disconnect cannot publish that partial result. The one-shot budgets
 and no-retry rules remain unchanged.
+
+## Candidate 708700c: corrected format and preflight passed
+
+Attempt 7 fully verified the preceding 00c0871 image, installed the exact
+708700c candidate, and verified it under one exclusive serial lease. Native
+selftest matched the synthetic image reference (`selftest=1`, error 0), stack
+high-water was 1112/12288 bytes. The synthetic indicator test passed 480 frames
+with VERIFY budget 0. PIN-free counters were Input Support 3 and Surface 10,
+both credential budgets 0, and the explicit start-touch stage was reached.
+Actual combined real-card portrait success remains pending local entry.
+
+Debug/ReleaseSafe host tests, ZLint (109 files, zero errors/warnings), 138 Python
+regressions and shellcheck passed. DISPLAY=8 and DISPLAY=9 ELF regression links
+also passed. The candidate passed the unmodified 48 KiB heap minimum/image
+auditor; new end-message captions remain in mapped read-only Flash and shared
+failure routines avoid unnecessary SRAM duplication. A separate analysis-only
+ELF was used to inspect the size problem; it was never packaged or installed.
+
+Application SHA256:
+`510d9f756adc46c04ca9db5fb7435cd2177bb59bd31a6af451f1f48151f19f86`
+ELF SHA256:
+`ae0582722360f60e4e31bb82228268920944f1bba66aa1d1f30f034f1311d98a`
