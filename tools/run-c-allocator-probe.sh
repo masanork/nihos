@@ -9,6 +9,6 @@ mkdir -p "$out_dir"
     --dep buddy_heap --dep task_resources -Mroot=probes/allocator/host.zig \
     -Mbuddy_heap=src/kernel/buddy_heap.zig -Mtask_resources=src/kernel/task_resources.zig \
     -femit-bin="$out_dir/allocator.o"
-"$zig" cc -O2 -g -std=c11 -Wall -Wextra -Wconversion -Werror -I include \
+"$zig" cc -O2 -g -pthread -std=c11 -Wall -Wextra -Wconversion -Werror -I include \
     probes/allocator/host_probe.c probes/allocator/c_probe.c "$out_dir/allocator.o" -o "$out_dir/probe"
 "$out_dir/probe"
