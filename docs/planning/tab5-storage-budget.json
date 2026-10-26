@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "status": "proposal arithmetic; not implemented capacity or performance evidence",
+  "standard_limits": {
+    "tasks_global_including_bootstrap": 16,
+    "tasks_per_cpu": 8,
+    "storage_clients": 8,
+    "global_open_objects": 32,
+    "logical_fds_per_app": 8,
+    "global_file_handles": 16,
+    "mounts": 8,
+    "path_buffer_bytes": 512,
+    "io_chunk_bytes": 4096,
+    "stack_budget_bytes": 131072,
+    "vm_stack_initial_bytes": 16384,
+    "network_tls_stack_initial_bytes": 24576
+  },
+  "sram_budget_bytes": {
+    "resident_code_and_base_state": 114688,
+    "task_and_irq_stacks": 131072,
+    "fixed_dma_and_io": 32768,
+    "reusable_internal_heap": 262144,
+    "unassigned_headroom": 16384
+  },
+  "sram_total_bytes": 557056,
+  "high_sram_additional_bytes_requiring_qualification": 335872,
+  "psram_peak_envelope_bytes": {
+    "boot_allocator_metadata_and_guards": 2097152,
+    "single_framebuffer_and_display": 2097152,
+    "editor_project_buffers": 1048576,
+    "vm_4mib_payload_with_current_buddy_charge": 8388608,
+    "sqlite": 2097152,
+    "vfs_rpc_and_io_ceiling": 524288,
+    "experimental_store_ceiling": 2097152,
+    "network_tls_ai": 2097152,
+    "sensor_logs": 524288,
+    "unassigned_headroom": 12582912
+  },
+  "psram_total_bytes": 33554432,
+  "store_budget_bytes": {
+    "persistent_map_cache": 524288,
+    "resident_transaction_window": 65536,
+    "append_buffer": 65536,
+    "gc_buffer": 65536,
+    "recovery_buffer": 131072,
+    "checkpoint_buffer": 65536,
+    "summary_cache": 131072,
+    "metadata_and_handles": 131072,
+    "unassigned_headroom": 917504
+  },
+  "store_total_bytes": 2097152,
+  "flat_map_assumptions": {
+    "chunk_bytes": 4096,
+    "entry_bytes": 16,
+    "excludes_hash_slack_versions_object_names_and_segment_map": true
+  },
+  "flat_maps": [
+    {
+      "logical_bytes": 67108864,
+      "entries": 16384,
+      "flat_map_bytes": 262144,
+      "fits_512kib_cache_without_other_overhead": true
+    },
+    {
+      "logical_bytes": 134217728,
+      "entries": 32768,
+      "flat_map_bytes": 524288,
+      "fits_512kib_cache_without_other_overhead": true
+    },
+    {
+      "logical_bytes": 1073741824,
+      "entries": 262144,
+      "flat_map_bytes": 4194304,
+      "fits_512kib_cache_without_other_overhead": false
+    },
+    {
+      "logical_bytes": 4294967296,
+      "entries": 1048576,
+      "flat_map_bytes": 16777216,
+      "fits_512kib_cache_without_other_overhead": false
+    },
+    {
+      "logical_bytes": 17179869184,
+      "entries": 4194304,
+      "flat_map_bytes": 67108864,
+      "fits_512kib_cache_without_other_overhead": false
+    },
+    {
+      "logical_bytes": 34359738368,
+      "entries": 8388608,
+      "flat_map_bytes": 134217728,
+      "fits_512kib_cache_without_other_overhead": false
+    }
+  ],
+  "full_scan_examples": [
+    {
+      "volume_bytes": 17179869184,
+      "assumed_bytes_per_second": 1048576,
+      "seconds": 16384.0,
+      "measured_rate": false
+    },
+    {
+      "volume_bytes": 17179869184,
+      "assumed_bytes_per_second": 8388608,
+      "seconds": 2048.0,
+      "measured_rate": false
+    }
+  ],
+  "cleaner_data_copy_factor_examples": [
+    {
+      "victim_live_fraction": 0.5,
+      "ideal_data_copy_factor": 2.0
+    },
+    {
+      "victim_live_fraction": 0.8,
+      "ideal_data_copy_factor": 5.000000000000001
+    },
+    {
+      "victim_live_fraction": 0.9,
+      "ideal_data_copy_factor": 10.000000000000002
+    },
+    {
+      "victim_live_fraction": 0.95,
+      "ideal_data_copy_factor": 19.999999999999982
+    }
+  ],
+  "cleaner_factor_scope": "uniform fixed-size payloads; victim live fraction, not volume fullness; excludes journal, metadata and SD FTL",
+  "geometry_candidates_not_format_decisions": {
+    "logical_chunk_bytes": 4096,
+    "sd_segment_bytes": 1048576,
+    "clean_reserve_segments": 8,
+    "gc_step_bytes": 16384,
+    "recovery_tail_bytes_target": 4194304
+  },
+  "clean_reserve_example": {
+    "max_unpublished_bytes": 1048576,
+    "gc_live_copy_bytes": 1048576,
+    "checkpoint_bytes": 65536,
+    "transition_slack_bytes": 2097152,
+    "required_bytes": 4259840,
+    "candidate_bytes": 8388608,
+    "fits_this_assumption_only": true
+  },
+  "notes": [
+    "Budgets are ceilings/envelopes, not startup reservations.",
+    "Current CPU-local PSRAM heaps do not form a borrowable global pool.",
+    "Header/alignment rounding must be charged for every real parent allocation.",
+    "A resident transaction window is not a cap on a SQLite transaction or blob size.",
+    "Checkpoint, recovery and GC must fit at peak overlap, not only steady state.",
+    "High SRAM registration, reusable internal pools and expanded task stacks remain qualification gates."
+  ]
+}
