@@ -49,7 +49,9 @@ const Bus = struct {
     }
 };
 
-pub fn run(clock: timer_group.Timer) Report {
+// Keep the temporary sector buffer out of the permanent bootstrap frame so
+// its reservation is returned before SQLite uses the same stack.
+pub noinline fn run(clock: timer_group.Timer) Report {
     var report = Report{};
     clock.start();
     clock.disarm();

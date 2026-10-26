@@ -242,6 +242,7 @@ const DmaModel = struct {
     owned: bool = false,
     fail_prepare: bool = false,
     dma_error: u32 = 0,
+    stall_stop: bool = false,
     prepared: u32 = 0,
     stopped: u32 = 0,
     command_word: u32 = 0,
@@ -250,6 +251,7 @@ const DmaModel = struct {
             regs.interrupts => done | (if (self.complete) data_over else @as(u32, 0)),
             regs.response => 0x900,
             regs.dma_status => self.dma_error,
+            regs.ctrl => if (self.stall_stop and self.stopped != 0) 4 else 0,
             else => 0,
         };
     }
@@ -285,15 +287,22 @@ test "DMA read is read-only bounded and stopped before publishing a complete sec
 }
 
 test "DMA errors timeouts and retained ownership do not publish data and stop the engine" {
-    for (0..4) |fault| {
-        var model = DmaModel{ .complete = fault != 0, .owned = fault == 1, .dma_error = if (fault == 2) 4 else 0, .fail_prepare = fault == 3 };
+    for (0..5) |fault| {
+        var model = DmaModel{ .complete = fault != 0, .owned = fault == 1, .dma_error = if (fault == 2) 4 else 0, .fail_prepare = fault == 3, .stall_stop = fault == 4 };
         var controller = Controller(*DmaModel){ .io = &model, .poll_limit = 4, .rca = 1 << 16, .sectors = 8 };
         var output: [512]u8 = @splat(0xa5);
-        if (fault == 0) try std.testing.expectError(error.Timeout, controller.readSector(0, &output)) else if (fault == 1)
+        if (fault == 0 or fault == 4) try std.testing.expectError(error.Timeout, controller.readSector(0, &output)) else if (fault == 1)
             try std.testing.expectError(error.ShortRead, controller.readSector(0, &output))
         else
             try std.testing.expectError(error.Controller, controller.readSector(0, &output));
         if (fault != 3) try std.testing.expect(model.stopped != 0);
+        if (fault != 3) {
+            try std.testing.expect(controller.faulted);
+            const prepared = model.prepared;
+            try std.testing.expectError(error.Controller, controller.readSector(0, &output));
+            try std.testing.expectEqual(prepared, model.prepared);
+        }
+        if (fault == 4) try std.testing.expect(controller.cleanup_failed);
         for (output) |byte| try std.testing.expectEqual(@as(u8, 0xa5), byte);
     }
 }
