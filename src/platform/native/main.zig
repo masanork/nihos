@@ -219,7 +219,7 @@ fn taskReport(hart: u32) void {
     const report = tasks.report(hart);
     if (report.progress[0] == 0 or report.progress[1] == 0 or
         report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
-        report.calls < 12 or report.reaped != 2 or report.sleeps != 2)
+        report.calls < 12 or report.reaped != 3 or report.sleeps != 2)
         fail("task execution proof");
     print("NIHOS_NATIVE_TASKS hart=");
     hex(hart);
@@ -292,6 +292,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     prepareTasks(1);
     enableTimer(1);
     while (true) {
+        _ = tasks.service(1);
         if (tasks.ipi.done()) {
             tasks.floating.quiesce(1);
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
@@ -373,6 +374,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     var previous_ticks = [_]u32{ 0, 0 };
     var deadline = cycle();
     while (true) {
+        _ = tasks.service(0);
         _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
         // Cycle intervals are deliberately not advertised as wall time:
         // the retained bootloader owns the initial clock configuration.
@@ -428,6 +430,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                 externalMemoryReport(1);
                 heapReport(0);
                 heapReport(1);
+                resourceReport(0);
+                resourceReport(1);
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
@@ -463,6 +467,17 @@ fn heapReport(hart: u32) void {
     print("NIHOS_NATIVE_HEAP hart=");
     hex(hart);
     inline for (.{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }) |field| {
+        print(" " ++ field ++ "=");
+        hex(@field(report, field));
+    }
+    print("\n");
+}
+
+fn resourceReport(hart: u32) void {
+    const report = tasks.memory.reusable.resourceReport(hart);
+    print("NIHOS_NATIVE_RESOURCES hart=");
+    hex(hart);
+    inline for (.{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced" }) |field| {
         print(" " ++ field ++ "=");
         hex(@field(report, field));
     }

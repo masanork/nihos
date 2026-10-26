@@ -163,11 +163,11 @@ pub fn alloc(length: usize, alignment: usize) ?[]u8 {
 
 /// Cached CPU memory; owner-local handles, no DMA or isolation promise.
 pub fn allocExternal(length: usize, alignment: usize) reusable.Error!reusable.Allocation {
-    return reusable.alloc(length, alignment);
+    return reusable.allocTask(length, alignment);
 }
 
 pub fn freeExternal(allocation: reusable.Allocation) reusable.Error!void {
-    return reusable.free(allocation);
+    return reusable.freeTask(allocation);
 }
 
 pub fn begin() bool {

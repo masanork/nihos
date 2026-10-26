@@ -9,6 +9,7 @@ extern fn nih_fp_native_stop() callconv(.c) u32;
 extern fn nih_fp_native_progress(u32) callconv(.c) void;
 extern fn nih_fp_native_slept(u32) callconv(.c) void;
 extern fn nih_fp_native_protocol(u32) callconv(.c) i32;
+extern fn nih_fp_native_resources() callconv(.c) void;
 extern var __fp_app_start: u8;
 extern var __fp_app_end: u8;
 
@@ -98,6 +99,7 @@ pub fn busy(argument: u32) linksection(".fp_app") callconv(.c) i32 {
 pub fn lifecycle(argument: u32) linksection(".fp_app") callconv(.c) i32 {
     const hart = argument / 4;
     begin(hart, 2);
+    nih_fp_native_resources();
     const x = nih_fp_c_mix(@floatFromInt(argument + 1), 0.5, 0.25);
     const before = calls.nowTicks();
     const duration: u32 = if (argument % 4 == 2) 3 else 1;

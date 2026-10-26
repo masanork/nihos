@@ -39,7 +39,7 @@ def complete_log(mode="integer", psram_size="0"):
             for hart in range(2):
                 lines.append("NIHOS_NATIVE_TASKS hart={0:08x} work0={1:08x} work1={1:08x} "
                              "cap0={2:08x} cap1={2:08x} switches={3:08x} calls=0000000c "
-                             "reaped=00000002 sleeps=00000002 elapsed={3:08x}".format(
+                             "reaped=00000003 sleeps=00000002 elapsed={3:08x}".format(
                                  hart, count * 1000, count * 2, count * 6))
             lines.append("NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none")
     lines.append("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none")
@@ -76,11 +76,42 @@ def complete_log(mode="integer", psram_size="0"):
         names = ("start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed")
         lines.append("NIHOS_NATIVE_HEAP hart={:08x}".format(hart) + "".join(
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
+        names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced")
+        values = [7, 6, 6, 8 if size else 0, 3, 0, 0, 3, 3 if size else 0, 1]
+        lines.append("NIHOS_NATIVE_RESOURCES hart={:08x}".format(hart) + "".join(
+            " {}={:08x}".format(name, value) for name, value in zip(names, values)))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_missing_or_duplicate_resource_owner_is_rejected(self):
+        for size in ("0", "32M"):
+            log = complete_log(psram_size=size)
+            line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_RESOURCES"))
+            for changed in (log.replace(line, ""), log + "\n" + line):
+                with self.subTest(size=size), self.assertRaisesRegex(ValueError, "resource"):
+                    MODULE.check(changed, "integer", 0 if size == "0" else 32 << 20)
+
+    def test_partial_cleanup_or_reuse_evidence_is_rejected(self):
+        log = complete_log(psram_size="32M")
+        for field, old, new in (("opened", 7, 6), ("closed", 6, 5), ("completed", 6, 5), ("reclaimed", 8, 7),
+                                ("reuses", 3, 2), ("owned", 0, 1), ("pending", 0, 1), ("stale", 3, 2), ("full", 3, 2), ("forced", 1, 0)):
+            changed = "\n".join(line.replace("{}={:08x}".format(field, old), "{}={:08x}".format(field, new))
+                                if line.startswith("NIHOS_NATIVE_RESOURCES") else line for line in log.splitlines())
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "deferred task resource"):
+                MODULE.check(changed, "integer", 32 << 20)
+
+    def test_absent_die_cannot_claim_physical_reclamation(self):
+        log = "\n".join(line.replace("reclaimed=00000000", "reclaimed=00000008")
+                        if line.startswith("NIHOS_NATIVE_RESOURCES") else line for line in complete_log().splitlines())
+        with self.assertRaisesRegex(ValueError, "deferred task resource"):
+            MODULE.check(log)
+
+    def test_two_normal_reaps_cannot_substitute_for_forced_termination(self):
+        with self.assertRaisesRegex(ValueError, "lifecycle"):
+            MODULE.check(complete_log().replace("reaped=00000003", "reaped=00000002"))
+
     def test_missing_or_duplicate_reusable_heap_owner_is_rejected(self):
         for size in ("0", "32M"):
             log = complete_log(psram_size=size)
@@ -343,9 +374,9 @@ class NativeLogTests(unittest.TestCase):
                 MODULE.check(re.sub(field + r"=[0-9a-f]{8}", field + "=00000004", complete_log()))
 
     def test_incomplete_lifecycle_reap_or_sleep_is_rejected(self):
-        for field in ("reaped", "sleeps"):
+        for field, value in (("reaped", "00000003"), ("sleeps", "00000002")):
             with self.subTest(field=field), self.assertRaisesRegex(ValueError, "lifecycle"):
-                MODULE.check(complete_log().replace(field + "=00000002", field + "=00000001"))
+                MODULE.check(complete_log().replace(field + "=" + value, field + "=00000001"))
 
     def test_scheduler_only_run_does_not_qualify_ipi(self):
         log = "\n".join(line for line in complete_log().splitlines() if "NIHOS_NATIVE_IPI" not in line)

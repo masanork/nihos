@@ -1,8 +1,11 @@
 //! Per-hart reusable PSRAM heaps; descriptor state stays in internal SRAM.
 const std = @import("std");
 const buddy = @import("buddy_heap");
+const task_resources = @import("task_resources");
+pub const Key = task_resources.Key;
+const Ledger = task_resources.Resources(buddy, 4, 2);
 pub const Allocation = buddy.Allocation;
-pub const Error = buddy.Error || error{NotReady};
+pub const Error = Ledger.Error || error{NotReady};
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
 const Owner = struct {
@@ -33,6 +36,129 @@ var owners: [2]Owner align(64) = undefined;
 var prepared: [2]u32 = .{ 0, 0 };
 var reports: [2]Report = .{ .{}, .{} };
 
+const Resources = struct {
+    ledger: Ledger align(64) = .{},
+    current: Key = .{ .slot = 0, .generation = 0 },
+    stale: u32 = 0,
+    full: u32 = 0,
+    forced: u32 = 0,
+};
+var resources: [2]Resources = .{ .{}, .{} };
+pub const ResourceReport = struct {
+    opened: u32 = 0,
+    closed: u32 = 0,
+    completed: u32 = 0,
+    reclaimed: u32 = 0,
+    reuses: u32 = 0,
+    owned: u32 = 0,
+    pending: u32 = 0,
+    stale: u32 = 0,
+    full: u32 = 0,
+    forced: u32 = 0,
+};
+
+/// Trap-side operations touch only the fixed internal ledger, never PSRAM.
+pub fn openTask(core: u32, key: Key) bool {
+    const state = &resources[core];
+    if (!state.ledger.open(key)) return false;
+    if (key.generation > 1) {
+        const old = Key{ .slot = key.slot, .generation = key.generation - 1 };
+        if (state.ledger.close(old) or state.ledger.active(old)) return false;
+        state.stale += 1;
+    }
+    return true;
+}
+
+pub fn selectTask(core: u32, key: Key) void {
+    resources[core].current = key;
+}
+
+pub fn closeTask(core: u32, key: Key) bool {
+    return resources[core].ledger.close(key);
+}
+
+pub fn taskCleaned(core: u32, key: Key) bool {
+    return resources[core].ledger.cleaned(key);
+}
+
+pub fn terminatedTask(core: u32) void {
+    resources[core].forced += 1;
+}
+
+fn mask() u32 {
+    return asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+}
+
+fn restore(status: u32) void {
+    if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+}
+
+pub noinline fn allocTask(length: usize, alignment: usize) Error!Allocation {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.alloc(&owners[core].heap, core, resources[core].current, length, alignment);
+}
+
+pub noinline fn freeTask(allocation: Allocation) Error!void {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.free(&owners[core].heap, core, resources[core].current, allocation);
+}
+
+/// Fixture tasks deliberately retain two allocations at exit/termination.
+pub noinline fn lifecycleProbe() void {
+    const core = hart();
+    if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return;
+    const a = allocTask(96, 64) catch nih_native_task_failed();
+    _ = allocTask(192, 64) catch nih_native_task_failed();
+    if (allocTask(8, 8)) |_| nih_native_task_failed() else |err| {
+        if (err != error.Full or interrupts() != 8) nih_native_task_failed();
+        resources[core].full += 1; // Only the serialized lifecycle task writes.
+    }
+    freeTask(a) catch nih_native_task_failed();
+    _ = allocTask(128, 64) catch nih_native_task_failed();
+}
+
+/// Bootstrap-only. At most one handle is released per call; a completed
+/// close asks the scheduler to revisit its retained completion record.
+pub noinline fn cleanupOne() enum { none, progress, complete } {
+    const core = hart();
+    const before = mask();
+    const next = resources[core].ledger.pending();
+    restore(before);
+    const pending = next orelse return .none;
+    var worker: ?usize = null;
+    if (pending.allocation) |allocation| {
+        for (owners[core].workers, 0..) |entry, index| if (entry) |candidate| {
+            if (Ledger.equal(candidate, allocation)) {
+                if (!valid(allocation, core, @intCast(index))) nih_native_task_failed();
+                worker = index;
+                break;
+            }
+        };
+    }
+    const status = mask();
+    defer restore(status);
+    const complete = if (pending.allocation == null)
+        resources[core].ledger.finishEmpty(pending.key) catch nih_native_task_failed()
+    else
+        resources[core].ledger.drainOne(&owners[core].heap, core, pending.key) catch nih_native_task_failed();
+    if (worker) |index| owners[core].workers[index] = null;
+    return if (complete) .complete else .progress;
+}
+
+pub fn resourceReport(core: u32) ResourceReport {
+    const ledger = &resources[core].ledger;
+    return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced };
+}
+
 fn hart() u32 {
     return asm volatile ("csrr %[result], mhartid"
         : [result] "=r" (-> u32),
@@ -45,7 +171,7 @@ fn interrupts() u32 {
     ) & 8;
 }
 
-pub noinline fn alloc(length: usize, alignment: usize) Error!Allocation {
+noinline fn alloc(length: usize, alignment: usize) Error!Allocation {
     const core = hart();
     if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
     const status = asm volatile ("csrrci %[result], mstatus, 8"
@@ -56,7 +182,7 @@ pub noinline fn alloc(length: usize, alignment: usize) Error!Allocation {
     return owners[core].heap.alloc(core, length, alignment);
 }
 
-pub noinline fn free(allocation: Allocation) Error!void {
+noinline fn free(allocation: Allocation) Error!void {
     const core = hart();
     if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
     const status = asm volatile ("csrrci %[result], mstatus, 8"
@@ -139,11 +265,11 @@ pub noinline fn probe(argument: u32) void {
     if (owner.checks[worker] % 64 == 0) {
         if (owner.workers[worker]) |previous| {
             if (!valid(previous, core, worker)) nih_native_task_failed();
-            free(previous) catch nih_native_task_failed();
+            freeTask(previous) catch nih_native_task_failed();
         }
         const length = 1 + (owner.checks[worker] *% 13 + worker * 97) % 2048;
         const alignment: usize = if (owner.checks[worker] & 64 == 0) 64 else 256;
-        const allocation = alloc(length, alignment) catch nih_native_task_failed();
+        const allocation = allocTask(length, alignment) catch nih_native_task_failed();
         if (interrupts() != 8 or @intFromPtr(allocation.bytes.ptr) % alignment != 0) nih_native_task_failed();
         for (allocation.bytes, 0..) |*byte, index| byte.* = pattern(core, worker, index);
         owner.workers[worker] = allocation;
@@ -161,9 +287,7 @@ pub noinline fn finish() bool {
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return true;
     const owner = &owners[core];
     for (owner.workers, 0..) |entry, worker| {
-        const allocation = entry orelse return false;
-        if (owner.checks[worker] < 4 or !valid(allocation, core, @intCast(worker))) return false;
-        free(allocation) catch return false;
+        if (entry != null or owner.checks[worker] < 4) return false;
     }
     if (owner.heap.free_bytes != owner.heap.payload.len or owner.heap.live != 0) return false;
     // Greedy maximal blocks exhaust the initial forest in at most levels+1
