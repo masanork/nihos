@@ -64,6 +64,19 @@ def check_jpki(log):
     return record
 
 
+def check_authenticated_owner(log, image, evidence):
+    storage = image.get('keypad_storage', {}) if image else {}
+    text = image.get('card_text', {}) if image else {}
+    ready = fixed_record(log, 'NIHOS_NATIVE_CARD_READ_READY', ('remaining_before', 'verifies', 'preflight_cut'))
+    if (evidence != 'physical-device' or storage.get('ui_mode') != 'runtime' or storage.get('font_bytes', 0) <= 0 or
+            text.get('writable') is not False or text.get('executable') is not True or
+            log.count('NIHOS_NATIVE_USB_MODE enabled=1') != 1 or
+            ready['remaining_before'] not in (2, 3) or ready['verifies'] != 0 or ready['preflight_cut'] != 1 or
+            any(marker in log for marker in ('NIHOS_NATIVE_USB ', 'NIHOS_NATIVE_JPKI_MODE', 'NIHOS_NATIVE_CARD_CHECK_START'))):
+        raise ValueError('incomplete authenticated-owner preparation')
+    return {'scope': 'PIN-free authenticated-owner preparation; boot USB probe not run', **ready}
+
+
 def check_usb(log):
     if log.count("NIHOS_NATIVE_USB_MODE enabled=1") != 1:
         raise ValueError("missing/duplicate native USB mode")
@@ -580,7 +593,11 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
         raise ValueError('orphan storage stack record')
     usb = None
-    if require_usb or require_jpki or 'NIHOS_NATIVE_USB ' in log or 'NIHOS_NATIVE_USB_MODE' in log:
+    authenticated_usb = None
+    authenticated_image = image is not None and image.get('keypad_storage', {}).get('ui_mode') == 'runtime' and image.get('card_text') is not None
+    if authenticated_image and not (require_usb or require_jpki or require_card):
+        authenticated_usb = check_authenticated_owner(log, image, evidence)
+    elif require_usb or require_jpki or 'NIHOS_NATIVE_USB ' in log or 'NIHOS_NATIVE_USB_MODE' in log:
         if evidence != 'physical-device':
             raise ValueError('native USB requires physical-device evidence')
         usb = check_usb(log)
@@ -595,7 +612,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             raise ValueError('card readiness requires physical USB and display preparation')
         card = check_card(log)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
-            "usb": usb,
+            "usb": usb, "authenticated_usb": authenticated_usb,
             "jpki": jpki,
             "card_readiness": card, "display_preparation": display_preparation,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
