@@ -40,6 +40,7 @@ incomplete coverage is rejected by the evidence checker. Optical visibility
 must still be confirmed by the user.
 
 ```sh
+python3 tools/boot-graphics/generate-keypad-atlas.py
 python3 tools/boot-graphics/preview-card-pin.py --demo --out build/keypad-demo-preview
 python tools/capture-native-usb.py PORT OUTPUT build/native-device/image-audit.json \
   --install build/native-device --keypad --runs 1
