@@ -131,3 +131,5 @@ manifestのservice versionにより、log checkerが追加taskの台帳とservic
 今回の正常EXITは全reply受信後で、in-flight cancellationは資格確認していない。
 taskはmachine-modeの共有address spaceを使い、一般アプリ向けの権限/path分離やsyscall ABIは未実装。
 C6 Wi-Fi/slot 1仲裁、hot removal、partition内FS/FAT/exFAT、SD書込、永続SQL VFSと電源断回復も未対応。
+
+続報: [未完了RPCを伴うclient強制終了](2026-10-26-tab5-storage-cancellation.md)。
