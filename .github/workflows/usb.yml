@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   native-usb:
-    name: Host checks and three device build configurations
+    name: Host checks and four device build configurations
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -62,14 +62,15 @@ jobs:
           sh tools/check-card-rv32.sh
           python3 -m unittest discover -s tools -p '*test.py'
 
-      - name: Compile disabled, USB-only and PIN-free JPKI images
+      - name: Compile disabled, USB-only, JPKI and card readiness images
         # Build/image audit only. GitHub runners provide no Tab5/card evidence.
         run: |
-          for feature in disabled usb jpki; do
-            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0
+          for feature in disabled usb jpki card; do
+            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0
             case "$feature" in
               usb) export NIHOS_NATIVE_USB=1 ;;
               jpki) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_JPKI=1 ;;
+              card) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=1 NIHOS_NATIVE_CARD_CHECK=1 ;;
             esac
             sh tools/build-native.sh device integer
             destination="build/usb-ci/$feature"

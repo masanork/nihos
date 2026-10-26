@@ -1,7 +1,7 @@
 //! Bounded synchronous dispatch, called only by the card's owner task.
 //! UI talks to Service between dispatches; it never sends arbitrary APDUs.
 const std = @import("std");
-const ccid = @import("../usb/ccid.zig");
+const ccid = @import("ccid");
 const card = @import("service.zig");
 
 pub const Owner = struct {
@@ -26,20 +26,29 @@ pub const Owner = struct {
             .power_off => 0x63,
         };
         const frame = ccid.request(&send, kind, sequence, action.bytes) catch {
-            link.scrub();
-            try service.failed(action.token);
+            try failAndScrub(service, action.token, link);
             return true;
         };
         const payload = exchange(link, frame, &receive, if (action.kind == .power_off) 0x81 else 0x80, sequence, action.kind) catch {
-            link.scrub();
-            try service.failed(action.token);
+            try failAndScrub(service, action.token, link);
             return true;
         };
-        link.scrub();
+        link.scrub() catch |err| {
+            try service.failed(action.token);
+            return err;
+        };
         try service.complete(action.token, payload);
         return true;
     }
 };
+
+fn failAndScrub(service: *card.Service, token: u32, link: anytype) !void {
+    link.scrub() catch |err| {
+        try service.failed(token);
+        return err;
+    };
+    try service.failed(token);
+}
 
 fn exchange(link: anytype, send: []const u8, receive: []u8, expected: u8, sequence: u8, kind: card.Kind) ![]const u8 {
     if (try link.send(send) != send.len) return error.Transfer;

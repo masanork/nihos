@@ -791,5 +791,38 @@ class NativeJPKITests(unittest.TestCase):
                 MODULE.check_jpki(changed)
 
 
+class NativeCardTests(unittest.TestCase):
+    @staticmethod
+    def card_log():
+        values = (1, 3, 1, 1, 3, 1, 1, 1, 0, 1, 720, 1280, 10, 64, 64, 60, 4, 2)
+        return 'NIHOS_NATIVE_FP_PASS floating=0\nNIHOS_NATIVE_CARD_CHECK_START pin_enabled=0\nNIHOS_NATIVE_CARD_CHECK' + ''.join(
+            ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.CARD_FIELDS, values)) + '\n'
+
+    def test_card_readiness_requires_stopped_power_pin_disabled_and_consistent_samples(self):
+        log = self.card_log()
+        self.assertEqual(MODULE.check_card(log)['remaining'], 3)
+        for key, value in [('remaining', 255), ('card_fault', 6), ('poweroff', 0), ('dma_erased', 0),
+                           ('pin_data_sent', 1), ('touch', 0), ('width', 1280), ('slots', 11),
+                           ('samples', 63), ('fresh', 65), ('releases', 59), ('max_contacts', 0)]:
+            changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_card(changed)
+        for changed in [log + log, log[:-4], log.replace('pin_enabled=0', 'pin_enabled=1'),
+                        log.replace('NIHOS_NATIVE_FP_PASS floating=0\n', '')]:
+            with self.assertRaises(ValueError):
+                MODULE.check_card(changed)
+
+    def test_display_preparation_proves_exact_reservation_without_claiming_scanout(self):
+        values = (1, 6, 0, 3, 18, 0x48030000, 720 * 1280 * 2, 29 * 65536, 0x12345678, 1, 3, 0, 0)
+        log = 'NIHOS_NATIVE_DISPLAY_PREP' + ''.join(
+            ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.DISPLAY_PREP_FIELDS, values)) + '\n'
+        self.assertEqual(MODULE.check_display_preparation(log)['reserve_bytes'], 29 * 65536)
+        for key, value in [('frame_start', 0x48020000), ('frame_bytes', 1), ('reserve_bytes', 0),
+                           ('panel', 0), ('phy_status', 0), ('backlight', 1), ('scanout', 1)]:
+            changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_display_preparation(changed)
+
+
 if __name__ == "__main__":
     unittest.main()
