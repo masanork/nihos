@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "scope": "native PIN-free Input Support counter and touch-I2C readiness",
+  "source": {
+    "source_commit": "a6006c759cab06e4bb7cb6f48a0194561a0485fa",
+    "sources": {
+      "src/platform/native/usb_probe.zig": "b4c407699fe193c4d858f93ab1efa148653bd6af440476169f802321791bd875",
+      "src/platform/native/card_probe.zig": "cfbe6ad4a7489cdba90352c8679efa3c3d7b6893ba7fc336d9aaa61f6f728021",
+      "src/board/tab5/touch.zig": "b6a55bf18d465db46a002d3bb494be37fbdfc55f0fd4d6052d8c0749c299da88",
+      "src/board/tab5/boot_i2c.zig": "39df9927030833b90378e25fc30f907582c76895226193ac049e05c2dd38797a",
+      "src/card/service.zig": "2533af2fb822df01551ce02574ab15d550ea568162ee429d32ac2dd8be62dce3",
+      "src/card/ccid_owner.zig": "15b7fb7adfe535e0eb4eda08c619835ddc70f1f04d3d91a6f7cce5c4145f85c1",
+      "tools/build-native-elf.sh": "8dc13fadc71a5276c42259d7bc199bc2e783e7d296fe284bb9328e7b5b0b6f69"
+    }
+  },
+  "app_sha256": "e8b9c1b046710fc5d10f160163c9f5793d6570dcb6d6118ad5466b92d06acfe2",
+  "app_bytes": 140128,
+  "elf_sha256": "60e3e5abbed87f94855deaaeec5fc9ffebcd28519286b6fdfc4feedd1a8ec4c6",
+  "exclusive_serial_descriptor_held": true,
+  "preverify": true,
+  "postverify": true,
+  "hardware": {
+    "board": "M5Stack Tab5",
+    "reader_vid": 1356,
+    "reader_pid": 3529,
+    "touch_panel": "ST7121",
+    "touch_width": 720,
+    "touch_height": 1280,
+    "touch_slots": 10
+  },
+  "pin_input_enabled": false,
+  "authenticated_read_tested": false,
+  "visible_pin_screen_tested": false,
+  "physical_finger_events_observed": false,
+  "poweroff_note": "CCID success still reported ICC active; VBUS control latch/direction/high-Z readback verified OFF; voltage not measured",
+  "boots": [
+    {
+      "run": 1,
+      "native_checker_passed": true,
+      "log_sha256": "25f119c6761211901529b3cceccbd8fcae5d79c107186a5a820032365105091a",
+      "raw_sha256": "1a54d4aafebd6501b0fbb36cd432ae4ce286abb498c151f7942248e722ad60aa",
+      "card_readiness": {
+        "status": 1,
+        "stage": 3,
+        "usb": 1,
+        "card": 1,
+        "remaining": 3,
+        "card_fault": 1,
+        "poweroff": 2,
+        "dma_erased": 1,
+        "pin_data_sent": 0,
+        "touch": 1,
+        "width": 720,
+        "height": 1280,
+        "slots": 10,
+        "samples": 64,
+        "fresh": 0,
+        "releases": 0,
+        "contacts": 0,
+        "max_contacts": 0,
+        "last_type": 129,
+        "last_flags": 0,
+        "last_error": 0,
+        "last_parameter": 0,
+        "last_bytes": 0,
+        "vbus_off": 1
+      }
+    },
+    {
+      "run": 2,
+      "native_checker_passed": true,
+      "log_sha256": "389ec06efa62054526ac1881da61d754b47667b5c6ac7b372642902b5b8cc584",
+      "raw_sha256": "389ec06efa62054526ac1881da61d754b47667b5c6ac7b372642902b5b8cc584",
+      "card_readiness": {
+        "status": 1,
+        "stage": 3,
+        "usb": 1,
+        "card": 1,
+        "remaining": 3,
+        "card_fault": 1,
+        "poweroff": 2,
+        "dma_erased": 1,
+        "pin_data_sent": 0,
+        "touch": 1,
+        "width": 720,
+        "height": 1280,
+        "slots": 10,
+        "samples": 64,
+        "fresh": 0,
+        "releases": 0,
+        "contacts": 0,
+        "max_contacts": 0,
+        "last_type": 129,
+        "last_flags": 0,
+        "last_error": 0,
+        "last_parameter": 0,
+        "last_bytes": 0,
+        "vbus_off": 1
+      }
+    },
+    {
+      "run": 3,
+      "native_checker_passed": true,
+      "log_sha256": "3c8e52bac93d07537be3b0fbd616b64ea5354ee2b7bea82f53d0ecc08f65601e",
+      "raw_sha256": "3c8e52bac93d07537be3b0fbd616b64ea5354ee2b7bea82f53d0ecc08f65601e",
+      "card_readiness": {
+        "status": 1,
+        "stage": 3,
+        "usb": 1,
+        "card": 1,
+        "remaining": 3,
+        "card_fault": 1,
+        "poweroff": 2,
+        "dma_erased": 1,
+        "pin_data_sent": 0,
+        "touch": 1,
+        "width": 720,
+        "height": 1280,
+        "slots": 10,
+        "samples": 64,
+        "fresh": 0,
+        "releases": 0,
+        "contacts": 0,
+        "max_contacts": 0,
+        "last_type": 129,
+        "last_flags": 0,
+        "last_error": 0,
+        "last_parameter": 0,
+        "last_bytes": 0,
+        "vbus_off": 1
+      }
+    }
+  ],
+  "retained_attempts": [
+    {
+      "path": "build/card-readiness-3a884a8-attempt-1",
+      "passed": false,
+      "log_sha256": "fa0f1343dcc53894a899fcf7e43d2989402d8da805367746fa682f2acd71f869",
+      "postverify": false
+    },
+    {
+      "path": "build/card-readiness-da62744-attempt-2",
+      "passed": false,
+      "log_sha256": "38be2bafa6dfbe74b0f0f4b7aebac2724708a754fad2297a3cefbd82000fc828",
+      "postverify": true
+    },
+    {
+      "path": "build/card-readiness-a6006c7-attempt-3",
+      "passed": true,
+      "log_sha256": "25f119c6761211901529b3cceccbd8fcae5d79c107186a5a820032365105091a",
+      "postverify": true
+    }
+  ],
+  "public_log": {
+    "path": "2026-10-26-native-card-readiness.log",
+    "sha256": "3ab4e4cb6d615ee802ea1895615170d2fc8cf9d107d97757014d8af2c1356721",
+    "format": "CRLF normalized to LF; byte-exact originals retained separately"
+  }
+}

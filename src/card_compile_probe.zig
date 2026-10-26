@@ -3,6 +3,7 @@
 const card = @import("card/service.zig");
 const ui = @import("card/pin_entry.zig");
 const ccid = @import("card/ccid_owner.zig");
+const screen = @import("graphics/card_pin.zig");
 var service = card.Service{};
 var entry = ui.Entry{};
 var owner = ccid.Owner{};
@@ -43,6 +44,7 @@ export fn card_compile_probe(event: u32, token: u32, bytes: [*]const u8, length:
         },
         11 => entry.clear(),
         12 => return @intFromBool(owner.step(&service, Link{}) catch return 0),
+        13 => return @intFromBool(screen.paint(@constCast(bytes[0..length]), 1440, entry.view(&service))),
         else => {},
     }
     return @backingInt(service.state);
