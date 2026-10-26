@@ -1,0 +1,20 @@
+{
+  "converter_bytes": 37256,
+  "ime_workspace_bytes": 53648,
+  "meos_screen_snapshot_bytes": 491520,
+  "font_glyph_index_bytes": 187856,
+  "font_bitmap_bytes": 2379909,
+  "source_scope": "MeOS dirty worktree at 5d82fc1; source layout inspection, not firmware or physical measurement",
+  "ime_source_sha256": "1f3e2c5f7a34736ca2d37d06b87170225391e045654c34a8a4ad61d4c7fa027a",
+  "large_dictionary_artifact_available": false,
+  "proposed_paged_ime_psram_backing_bytes": 2097152,
+  "remaining_psram_budget_bytes": 8912896,
+  "source_sha256": {
+    "drivers/ime/ime.c": "1f3e2c5f7a34736ca2d37d06b87170225391e045654c34a8a4ad61d4c7fa027a",
+    "drivers/ime/conv.h": "4412974a9c0837a9b8933aaa84e463275bc4d1c02c55cd2281d855ebe83c429a",
+    "drivers/ime/ime_flash.c": "398f571bbe842a1e9680bdfe2376bf7c701b1962973eb2cfcad463c9f0e2d29c",
+    "drivers/ime/ime_dict.c": "78a00abe81299b1cc11812a031394584f25f0f266a9a72207eeb003472a91d0f",
+    "drivers/lcd/bizud24_data.inc": "260648681a6a0be8844a43023b8b3094cd1d0fc493187e8a3730ea96955fd13e"
+  },
+  "layout_method": "Host sizeof of pointer-free converter/UI/font data structures; scalar widths match RV32; no target execution."
+}

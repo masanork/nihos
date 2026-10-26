@@ -7,8 +7,8 @@ for the first useful OS would put too much durability work on the initial
 release. Keep the common log as a research direction, and qualify it in stages
 alongside working filesystem adapters.
 
-The standard workload is an editor, one language runtime, sensor logging,
-Wi-Fi/AI assistance and one SQLite service. Media playback, multiple language
+The standard workload is an editor with kana/kanji input, one language runtime,
+sensor logging, Wi-Fi/AI assistance, up to two BLE links and one SQLite service. Media playback, multiple language
 VMs and retained history are optional workloads with their own admission
 budgets. [The unified-store proposal](unified-log-store.md) defines the
 longer-term boundary; this assessment narrows its first delivery scope.
@@ -21,7 +21,7 @@ The map follows the pinned
 [ESP-IDF v5.4.4 definitions](https://github.com/espressif/esp-idf/blob/v5.4.4/components/esp_system/ld/esp32p4/memory.ld.in).
 Other silicon/cache configurations require separate bounds.
 
-| Range | Present role | Planning treatment |
+| Range | Retained baseline role | Planning treatment |
 | --- | --- | --- |
 | `0x4ff00000..0x4ff28000` | 160 KiB resident code/data and low heap | Preserve; 104,192 B static and 59,648 B heap in the qualified image |
 | `0x4ff28000..0x4ff40000` | Excluded loader/ROM area and safety gaps | Do not reclaim; the nearest retained loader allocation begins at `0x4ff2abd0` |
@@ -98,23 +98,38 @@ must not revoke sibling tasks' still-live application resources.
 | SRAM planning envelope | KiB |
 | --- | ---: |
 | Resident code and basic state | 112 |
-| Task and IRQ stacks | 128 |
-| Fixed DMA and I/O buffers | 32 |
-| Reusable internal heap | 256 |
+| Task and IRQ stacks | 144 |
+| Fixed DMA and I/O buffers | 48 |
+| Reusable internal heap including a 64 KiB minimum free reserve | 224 |
 | Software guard reservation | 16 |
 | Total | 544 |
 
-The stack budget covers two 8 KiB bootstrap tasks, two 8 KiB heavy services,
-one 16 KiB VM task, one 24 KiB network/TLS task, ten ordinary 4 KiB tasks and
-two 8 KiB IRQ stacks. This revises the earlier 96 KiB candidate: the VM and
-network/TLS call paths should not be admitted on ordinary 4 KiB stacks by
-default. Exact port measurements may change those reservations. Admission must reserve stacks
-before creating tasks and retain at least 64 KiB internal free capacity after
-standard services start. Peak usage, largest free block and allocation failures
+The stack budget covers two 8 KiB bootstrap tasks, two 8 KiB storage/SQLite
+tasks, one 16 KiB VM task, one 24 KiB TLS/HTTP task, four 8 KiB communication
+workers (C6 RX/TX, TCP/IP and BLE), six ordinary 4 KiB tasks and two 8 KiB IRQ
+stacks. The ordinary tasks include input/IME, display, editor, sensors, audio
+and supervision/spare work; IME does not create a seventeenth task. This
+revises the previous 128 KiB stack / 32 KiB DMA / 256 KiB heap proposal.
+Exact port measurements may change these reservations. Admission must reserve
+stacks before creating tasks and retain at least 64 KiB internal free capacity
+at the combined standard-workload peak. Peak usage, largest free block and allocation failures
 must accompany total-free statistics. These are proposed budgets; the current
 56 KiB stack layout still needs admission/expansion work. The follow-up's
 208 KiB high page pool establishes capacity without implementing the complete
-application-facing heap or stack policy.
+application-facing heap or stack policy. The development profile proposes
+reducing that qualified pool's 208 KiB to 176 KiB, leaving
+48 KiB low heap and reserves another 16 KiB each for DMA and stacks.
+
+The 224 KiB internal heap envelope contains 24 KiB kernel/scheduler control,
+24 KiB storage/VFS control, 64 KiB network control, 24 KiB BLE control, 8 KiB
+IME control, 16 KiB allocation/fragmentation allowance and a 64 KiB free
+reserve. IME control is transferred from the earlier kernel allowance.
+The 48 KiB DMA envelope initially assigns 16 KiB each to C6 RX/TX, SD staging,
+and display/audio/descriptors/alignment. These are charged backing limits;
+static state, dynamic state, stacks and DMA are counted once. If measurements
+require more, revise admission or reduce another envelope rather than borrowing
+the mandatory free reserve. The candidate addresses and parent/child budgets
+are in the [development profile](tab5-development-profile.json).
 
 Keep interrupt/ROM-facing state and DMA staging internal. VM heaps, editor
 buffers, filesystem maps/caches and RPC payloads belong in PSRAM when their
@@ -129,12 +144,14 @@ a native implementation must establish its own exact cache/ROM contract.
 | Single framebuffer and display working set | 2 |
 | Editor/project buffers | 1 |
 | One 4 MiB VM payload, charged at current buddy cost | 8 |
-| SQLite service | 2 |
+| SQLite including page cache and wal-index | 2 |
 | VFS/RPC/I/O ceiling | 0.5 |
 | Experimental store ceiling | 2 |
-| Network/TLS/AI working set | 2 |
-| Sensor/log buffers | 0.5 |
-| Unassigned headroom | 12 |
+| Wi-Fi/TCP/IP/TLS/HTTP/AI working set | 3 |
+| BLE buffers and profiles | 0.5 |
+| IME dictionary cache, conversion, display and learning | 2 |
+| Sensor/audio/log buffers | 0.5 |
+| Unassigned headroom | 8.5 |
 | Total | 32 |
 
 These are peak admission envelopes, not eager startup reservations or a proof
@@ -145,11 +162,54 @@ when the global sum fits; solve those constraints before advertising the
 unassigned space as a shared pool. Charge actual backing allocations, including
 slab/guard overhead, rather than only requested payload sizes.
 
-Start SQLite around a 512 KiB service budget and permit growth toward 2 MiB
-through quota admission. Its current 1024-byte pages, 16-page database and
+Start SQLite with a suggested 512 KiB page cache inside its 2 MiB service
+envelope. The page cache is not a total memory cap: statement/schema/sort
+state, allocation headers and wal-index also consume that envelope. Its current 1024-byte pages, 16-page database and
 small C size-class quotas are fixture limits, not the persistent DB design.
 A 4 MiB VM payload is the standard target; an 8 MiB ceiling depends on the
 large-allocation work. Do not reserve a second VM by default.
+
+### Communication and input admission
+
+The initial simultaneous limits are one SQLite connection/database, one Wi-Fi STA, one active TLS connection
+and handshake, two BLE connections, one VM, one framebuffer, one storage
+writer, and one shared IME with one active composition. C6 radio/controller
+RAM is separate from P4 RAM. The conservative profile retains TCP/IP, TLS
+and the BLE host on P4, following the [ESP-Hosted split](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/architecture.md).
+The [BLE host](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/features/bluetooth.md)
+and actual C6 firmware capabilities need their own integration checks.
+Socket/ESP-AT offload is an alternative; no RAM or task saving is booked
+until its firmware, transport, security and reconnection lifecycle are qualified.
+
+The 3 MiB Wi-Fi/network envelope contains 512 KiB TCP/IP queues/sockets/DNS,
+1 MiB TLS/crypto/certificates/handshake, 512 KiB HTTP/AI streaming buffers
+and 1 MiB peak/backing-rounding reserve. BLE has its own 512 KiB PSRAM ceiling.
+Queues and responses stay bounded. Normal protocol code should execute from
+mapped Flash; IRQ/cache-off paths and required state remain internal. This
+requires explicit linker/audit and cache-lifetime work rather than assuming
+the current all-resident runtime contract already permits it.
+
+The IME 2 MiB charged-backing envelope contains 1 MiB dictionary index/read
+cache, 128 KiB conversion/candidates/preedit, 512 KiB composition display/glyph
+cache, 64 KiB user learning and 320 KiB I/O/allocator/peak reserve. Full immutable
+dictionary and font payloads reside on Flash/SD, with an internal small-dictionary
+fallback. Application contexts share the service and dictionary cache. Learned
+entries are batched into a bounded persistent object/database instead of
+creating a small file or issuing a durable write for every key.
+
+MeOS currently copies its large dictionary into PSRAM and searches a contiguous
+pointer; a bounded read-at/index interface is required for the paged design.
+The [source layout inspection](evidence/ime-budget-review.json) found 53,648 B
+for its main IME workspace, a possible 491,520 B screen snapshot, and 2,567,765 B
+of immutable 24-dot font tables. Font tables are storage assets; glyph cache is
+inside the IME envelope. Prefer damaged-region redraw over retaining a large
+screen snapshot. Do not infer dictionary size from those numbers: the full
+dictionary artifact was not present in that inspection. A hypothetical 5 MiB
+dictionary alone costs an 8 MiB block in the current native buddy allocator.
+The 2 MiB IME allowance therefore depends on bounded caches and backing-charge
+accounting, not a direct full-dictionary port or a 2 MiB parent request that
+silently rounds to 4 MiB. A qualified 4 MiB VM lease would increase the present
+8.5 MiB headroom to 12.5 MiB; that saving is not yet booked.
 
 ## Store indexing and bounded recovery
 
@@ -184,7 +244,19 @@ reads. If that target fails, change checkpointing or I/O, not boot correctness.
 Boot/UI recovery must remain available while SD is absent, damaged or still
 mounting. Full scans belong to an explicit repair operation with progress.
 
-A 4 KiB logical chunk and 1 MiB SD segment are evaluation candidates only.
+Separate workload units: SQLite pages and map nodes start at 4 KiB; large
+immutable file extents target 256 KiB and coalesce toward 1 MiB or more;
+SD log segments target 4 MiB. Small logical updates must not rewrite a whole
+large extent. For a 16 GiB volume, a hypothetical flat 16-byte map costs
+4 MiB at 64 KiB granularity, 1 MiB at 256 KiB and 256 KiB at 1 MiB; even those
+tables belong on media with bounded caches. A retail 16 GB card has fewer
+bytes than this 16 GiB example.
+
+The 64 KiB PSRAM append buffer can batch 32 KiB of requested I/O, but initial
+internal SD DMA transfers are at most 16 KiB to fit the staging allowance.
+Larger single commands require proved DMA-buffer lifetime/support or a revised
+DMA split. The batching unit does not force a 4 KiB lookup to read 32 KiB.
+These geometries are evaluation candidates only.
 Do not freeze them into the format until partial VFS I/O, crash recovery,
 write amplification and GC measurements have passed. A bounded resident
 transaction window must not silently become a 64 KiB maximum SQLite
@@ -202,8 +274,10 @@ of space; fail safely rather than revoking a committed reader silently.
 
 Require clean space sufficient for the maximum unpublished update, live-data
 copy of a GC victim, checkpoint publication and segment-transition slack.
-Eight 1 MiB clean segments is a candidate reserve, not a general proof. For
-example, 1 MiB unpublished + 1 MiB live copy + 64 KiB checkpoint + 2 MiB slack
+Eight 4 MiB clean segments is a candidate minimum reserve, not a general proof.
+The normal clean-space target is 10% of logical volume capacity, independent
+of this emergency reserve and not a claim about free space inside the SD FTL.
+For example, 4 MiB unpublished + 4 MiB live copy + 64 KiB checkpoint + 8 MiB slack
 fits; a larger streamed update may not. Reserve/admit space before accepting
 writes, and use read-only/space-pressure errors when progress cannot be proved.
 NOR will require different geometry and reserve calculations.
@@ -216,6 +290,41 @@ victims expensive even when RAM fits. Evaluate GC in bounded byte steps
 (candidate 16 KiB); a byte quantum cannot guarantee an SD card's command
 latency. Measure pauses and foreground p95/p99 instead of promising a hard
 millisecond deadline.
+
+## WAL candidate after durable VFS qualification
+
+The initial persistent baseline remains `PERSIST`/FULL under ADR 0002. Reserve
+WAL memory now so that a later WAL profile does not require an unbounded heap.
+Candidate DB pages are 4 KiB, suggested page cache 512 KiB, checkpoint trigger
+1,024 frames (4,218,912 logical WAL bytes), and a broker/VFS frame quota of
+4,096 frames (16,875,552 B). The wal-index starts at 32 KiB and budgets 64 KiB
+within SQLite's 2 MiB ceiling; the WAL payload stays on storage. The initial
+WAL profile has one connection with EXCLUSIVE locking set before WAL access,
+and `synchronous=FULL`. These follow the [WAL layout](https://sqlite.org/walformat.html)
+and [single-owner contract](https://sqlite.org/wal.html#use_of_wal_without_shared_memory).
+
+An 8 MiB `journal_size_limit` is a retained-file hint after reset, not the
+active growth quota. Admission must account for a whole transaction, quota
+failure and recovery; it must not silently split application transactions.
+Close or explicitly manage long-lived reader cursors so they cannot pin
+unbounded WAL. `PASSIVE` checkpoint avoids waiting for some locks but is not
+a byte/time work limit. Measure its foreground p95/p99 and scheduler/transport
+interference before enabling it on device.
+
+Preserve the WAL's byte offsets: a 4 KiB frame has a 24-byte header, so do not
+charge each frame as a separately padded 8 KiB allocation or journal the entire
+WAL again in another payload log. Data, locating metadata and root publication
+still need correct durable ordering. Optional future DB/WAL immutable-range
+sharing must retain DB-referenced payload across WAL reset and may postpone
+copying to GC rather than remove it.
+
+The [12-case host comparison](evidence/sqlite-host-results.json) used SQLite
+3.54.1 and Unix VFS, 8,192 rows, 512 updates and a fixed 512 KiB cache suggestion.
+For adjacent updates in explicit 32-row transactions, WAL bytes were 201,912 /
+262,944 / 393,824 for 4 / 8 / 16 KiB pages. Random updates produced 2,051,792 /
+3,902,632 / 7,432,856 B. This supports 4 KiB for that update workload, not an
+SD throughput or durability conclusion. The [probe source](../../tools/probes/sqlite-geometry.c)
+and [input provenance](evidence/sqlite-host-provenance.json) permit replay.
 
 ## Initial release and deferred features
 
@@ -241,9 +350,9 @@ The [WAL contract](https://sqlite.org/wal.html) adds locking, shared-memory or
 exclusive-mode assumptions and checkpoint/reset behavior; it is a later gate.
 Boot, firmware and recovery erase regions remain outside all store GC.
 
-The native qualification app currently occupies 769,168 B of a 1 MiB factory
-partition, leaving 279,408 B. Its SQLite/shared-code Flash span has only
-65,408 B remaining. A language runtime plus writable VFS/FatFs and a new store
+The high-SRAM qualification app occupies 775,744 B of a 1 MiB factory
+partition, leaving 272,832 B. A language runtime, communication libraries,
+Japanese fonts/dictionary, writable VFS/FatFs and a new store
 must have linked size budgets before integration. Do not adopt a new Flash
 partition table from RAM arithmetic; app/OTA/recovery/settings sizes and
 migration protection need a separate reviewed map.
@@ -254,6 +363,8 @@ migration protection need a separate reviewed map.
    loader/cache configuration. Integrate reusable internal pools with the
    general memory broker and add stack admission. Fix large PSRAM allocation
    rounding and quota accounting before integrating bigger application heaps.
+   Implement the 144 KiB stack / 48 KiB DMA / 224 KiB heap profile only after
+   broker integration; keep the existing qualified firmware as a separate receipt.
 2. Bring up ordinary VFS/adapters and development workflows independently of
    the experimental store. Verify app-owned handles, bounded buffers, media
    removal and meaningful sync before claiming writable durability.
@@ -269,6 +380,12 @@ migration protection need a separate reviewed map.
 6. Promote the store only if correctness, recovery/latency and memory gates
    pass on the development workload. Otherwise ship the adapter-backed path
    and retain the store experiment without blocking the useful OS.
+7. Gate the combined development workload on native measurements of Wi-Fi
+   reconnect/TLS handshake, BLE traffic, IME dictionary cache misses and SQLite
+   checkpoint/GC overlap. Require 64 KiB internal free reserve, sufficient largest
+   free block, measured stack headroom, bounded queues/cache miss latency and
+   allocator recovery after cancellation or disconnect. Add WAL only after its
+   locking, sync, quota, reset/reuse and power-loss gates pass.
 
 [The budget model](tab5-storage-budget.json) is reproducible with
 `python3 tools/storage_budget.py --output docs/planning/tab5-storage-budget.json`.
