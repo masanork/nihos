@@ -1,5 +1,7 @@
 # Tab5 read-only file backendと固定workspaceの実機検証
 
+後続の[native storage owner taskとcopy型RPCの実機検証](2026-10-26-tab5-storage-owner-rpc.md)も参照。
+
 2026-10-26。前段のlittlefs boot fixtureから、ファイル操作を独立したbackendへ切り出した。
 **APIを使った既存ファイル読取り、owner解放・古いhandleの拒否、workspace消去を実機3起動で確認した。**
 実行ソース `0044861`、ブランチ `codex/tab5-psram-physical-fix`。

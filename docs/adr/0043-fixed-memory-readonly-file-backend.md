@@ -1,5 +1,8 @@
 # ADR 0043: Fixed-memory read-only file backend
 
+Follow-up: [ADR 0044](0044-native-storage-owner-and-copied-rpc.md) adds opt-in
+native task/RPC qualification; the general application service remains open.
+
 - Status: accepted for the trusted backend; service/task/IPC integration remains open
 - Date: 2026-10-26
 
