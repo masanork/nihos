@@ -12,6 +12,8 @@ pub const card_ccid_owner = @import("card/ccid_owner.zig");
 pub const tab5_touch = @import("board/tab5/touch.zig");
 pub const tab5_touch_feedback = @import("board/tab5/touch_feedback.zig");
 pub const card_pin_graphics = @import("graphics/card_pin.zig");
+pub const keypad_demo = @import("card/keypad_demo.zig");
+pub const keypad_plan = @import("graphics/keypad_plan.zig");
 pub const usb_host = @import("soc/esp32p4/usb_host.zig");
 pub const usb_descriptors = @import("usb/descriptors.zig");
 pub const boot_i2c = @import("board/tab5/boot_i2c.zig");
@@ -59,6 +61,8 @@ test {
     _ = tab5_touch;
     _ = tab5_touch_feedback;
     _ = card_pin_graphics;
+    _ = keypad_demo;
+    _ = keypad_plan;
     _ = @import("card/service_test.zig");
     _ = usb_host;
     _ = usb_descriptors;

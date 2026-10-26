@@ -71,6 +71,7 @@ display_pattern=false
 display_sram=false
 display_tile=false
 display_tile_cpp=0
+keypad_demo=false
 display_boot_cpp=0
 case "$display" in
     0) display=false ;;
@@ -80,7 +81,8 @@ case "$display" in
     4) display=true; display_scanout=true; display_white=true; display_pattern=true ;;
     5) display=true; display_scanout=true; display_white=true; display_sram=true ;;
     6) display=true; display_scanout=true; display_sram=true; display_tile=true; display_tile_cpp=1 ;;
-    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5 or 6" >&2; exit 1 ;;
+    8) display=true; display_scanout=true; display_sram=true; keypad_demo=true ;;
+    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6 or 8" >&2; exit 1 ;;
 esac
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
@@ -88,6 +90,10 @@ if [ "$display" = true ] && [ "$profile" != device ]; then
     exit 1
 fi
 card_check=${NIHOS_NATIVE_CARD_CHECK:-0}
+if [ "$keypad_demo" = true ] && { [ "$usb" = true ] || [ "$jpki" = true ] || [ "$card_check" != 0 ]; }; then
+    echo "Keypad demonstration requires USB=0, JPKI=0 and CARD_CHECK=0" >&2
+    exit 1
+fi
 touch_check=${NIHOS_NATIVE_TOUCH_CHECK:-0}
 case "$touch_check" in
     0) touch_check=false ;;
@@ -125,6 +131,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
 {
     printf 'pub const card_check = %s;\n' "$card_check"
     printf 'pub const touch_check = %s;\n' "$touch_check"
+    printf 'pub const keypad_demo = %s;\n' "$keypad_demo"
     printf 'pub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = false;\n' "$display_sram" "$display_tile"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
