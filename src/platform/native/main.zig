@@ -459,7 +459,7 @@ fn heapReport(hart: u32) void {
 
 fn resourceReport(hart: u32) void {
     const report = tasks.memory.reusable.resourceReport(hart);
-    logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected" }, &report);
+    logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes" }, &report);
 }
 
 fn flashReport(hart: u32) void {

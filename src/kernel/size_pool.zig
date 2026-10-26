@@ -1,0 +1,116 @@
+//! Ten independently bounded size classes in one task-owned parent span.
+//! Metadata operations never copy payloads; moving resize uses an explicit plan.
+const slab = @import("slab.zig");
+pub const classes = [_]usize{ 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
+pub const Error = slab.Error;
+pub const Allocation = struct { cell: slab.Allocation, class: u32 };
+pub const Move = struct { old: Allocation, next: Allocation };
+pub const Resize = union(enum) { done: ?Allocation, move: Move };
+
+pub fn classFor(length: usize) ?u32 {
+    if (length == 0) return null;
+    for (classes, 0..) |capacity, index| if (length <= capacity) return @intCast(index);
+    return null;
+}
+
+pub fn requiredBytes(count: usize) ?usize {
+    var total: usize = 0;
+    for (classes) |capacity| {
+        const bytes = slab.requiredBytes(capacity, count) orelse return null;
+        const sum = @addWithOverflow(total, bytes);
+        if (sum[1] != 0) return null;
+        total = sum[0];
+    }
+    return total;
+}
+
+pub const View = struct {
+    memory: []u8,
+    count: usize,
+    epoch: u64,
+
+    pub noinline fn from(memory: []u8, count: usize, epoch: u64) ?View {
+        if (epoch == 0 or @intFromPtr(memory.ptr) % slab.alignment != 0 or
+            @addWithOverflow(@intFromPtr(memory.ptr), memory.len)[1] != 0 or
+            requiredBytes(count) != memory.len) return null;
+        return .{ .memory = memory, .count = count, .epoch = epoch };
+    }
+
+    fn classView(self: View, index: u32) Error!slab.View {
+        if (index >= classes.len) return error.InvalidAllocation;
+        var start: usize = 0;
+        for (classes, 0..) |cell_bytes, current| {
+            const length = slab.requiredBytes(cell_bytes, self.count) orelse return error.InvalidRequest;
+            if (current == index) return slab.View.from(self.memory[start..][0..length], cell_bytes, self.epoch) orelse error.InvalidRequest;
+            start += length;
+        }
+        unreachable;
+    }
+
+    /// Linear work belongs outside the owner interrupt mask.
+    pub noinline fn initialize(self: View) Error!void {
+        for (0..classes.len) |index| (try self.classView(@intCast(index))).initialize();
+    }
+
+    /// Fixed ten-header publication check; independent of cells per class.
+    pub fn ready(self: View) Error!void {
+        for (0..classes.len) |index| try (try self.classView(@intCast(index))).ready();
+    }
+
+    pub noinline fn alloc(self: View, length: usize) Error!Allocation {
+        const index = classFor(length) orelse return error.InvalidRequest;
+        return .{ .cell = try (try self.classView(index)).allocSized(length), .class = index };
+    }
+
+    pub fn validate(self: View, allocation: Allocation) Error!void {
+        try (try self.classView(allocation.class)).validate(allocation.cell);
+    }
+
+    pub fn capacity(self: View, allocation: Allocation) Error!usize {
+        try self.validate(allocation);
+        return classes[allocation.class];
+    }
+
+    pub noinline fn free(self: View, allocation: Allocation) Error!void {
+        try (try self.classView(allocation.class)).free(allocation.cell);
+    }
+
+    /// Allocates a destination before releasing the source. A caller must
+    /// copy old.cell.bytes, then commit, or cancel to release only next.
+    pub noinline fn beginResize(self: View, old: ?Allocation, length: usize) Error!Resize {
+        if (old) |allocation| {
+            const current = try self.classView(allocation.class);
+            try current.validate(allocation.cell);
+            if (length == 0) {
+                try current.free(allocation.cell);
+                return .{ .done = null };
+            }
+            if (length <= classes[allocation.class]) return .{ .done = .{
+                .cell = try current.renew(allocation.cell, length),
+                .class = allocation.class,
+            } };
+            return .{ .move = .{ .old = allocation, .next = try self.alloc(length) } };
+        }
+        return .{ .done = if (length == 0) null else try self.alloc(length) };
+    }
+
+    fn moveShape(plan: Move) bool {
+        return plan.old.class < classes.len and plan.next.class < classes.len and plan.next.class > plan.old.class and
+            plan.next.cell.bytes.len > classes[plan.old.class] and plan.old.cell.bytes.ptr != plan.next.cell.bytes.ptr;
+    }
+
+    pub noinline fn commit(self: View, plan: Move) Error!Allocation {
+        if (!moveShape(plan)) return error.InvalidAllocation;
+        try self.validate(plan.old);
+        try self.validate(plan.next);
+        try self.free(plan.old);
+        return plan.next;
+    }
+
+    /// Cancellation does not need to read a possibly poisoned source class.
+    /// The plan is a trusted kernel borrow; the target is still fully checked.
+    pub fn cancel(self: View, plan: Move) Error!void {
+        if (!moveShape(plan)) return error.InvalidAllocation;
+        try self.free(plan.next);
+    }
+};
