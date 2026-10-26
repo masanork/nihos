@@ -47,6 +47,13 @@ an entry for every card sector or promise full-volume replay at normal boot.
 Store geometry and space reserves remain candidates until fault, memory and
 latency tests pass. Boot and recovery remain independent of SD and SQLite.
 
+The development target budgets Wi-Fi/TLS, two BLE links and shared kana/kanji
+input together with storage. The [machine-readable profile](tab5-development-profile.json)
+reserves 144 KiB internal stacks, 48 KiB DMA, 224 KiB internal heap and 2 MiB
+PSRAM for bounded IME caches/workspace, leaving 8.5 MiB PSRAM headroom.
+Immutable dictionary/font assets stay on Flash/SD. Large user files use extent
+mapping; SQLite pages and small internal metadata keep their own update units.
+
 ## Current baseline and compatibility
 
 - [Architecture](../architecture.md) currently proposes littlefs for internal
@@ -175,6 +182,12 @@ wal-index/shared-memory and locking semantics (or a deliberately constrained
 exclusive single-owner configuration), and add WAL reset/reuse and checkpoint
 write patterns. Do not promise an arbitrary SQLite file plus unrelated blob
 are atomically committed merely because SQLite batch atomic writes are on.
+The [WAL candidate](tab5-storage-feasibility.md#wal-candidate-after-durable-vfs-qualification)
+uses 4 KiB DB pages, a 512 KiB suggested page cache and 32–64 KiB volatile
+wal-index inside the SQLite envelope. It distinguishes a 1,024-frame checkpoint
+trigger from a broker-enforced 4,096-frame quota and retains the current
+rollback-journal qualification baseline. Neither a retained-file size pragma
+nor a PASSIVE checkpoint provides a hard growth/time bound.
 
 ## Blob API and later cross object transactions
 

@@ -1,0 +1,266 @@
+{
+  "status": "development profile target; physical cell qualification does not qualify the complete workload",
+  "sram_budget_bytes": {
+    "resident_code_and_base_state": 114688,
+    "task_and_irq_stacks": 147456,
+    "fixed_dma_and_io": 49152,
+    "reusable_internal_heap": 229376,
+    "software_guard_reserve": 16384
+  },
+  "internal_heap_subdivision_bytes": {
+    "kernel_and_scheduler": 24576,
+    "storage_and_vfs_control": 24576,
+    "network_control_excluding_dma_and_stacks": 65536,
+    "ble_control_excluding_dma_and_stacks": 24576,
+    "allocator_and_fragmentation_allowance": 16384,
+    "minimum_free_reserve": 65536,
+    "ime_control": 8192
+  },
+  "tasks": [
+    {
+      "role": "bootstrap",
+      "count": 2,
+      "each": 8192
+    },
+    {
+      "role": "storage_and_sqlite",
+      "count": 2,
+      "each": 8192
+    },
+    {
+      "role": "vm",
+      "count": 1,
+      "each": 16384
+    },
+    {
+      "role": "tls_http",
+      "count": 1,
+      "each": 24576
+    },
+    {
+      "role": "c6_rx_tx",
+      "count": 2,
+      "each": 8192
+    },
+    {
+      "role": "tcpip",
+      "count": 1,
+      "each": 8192
+    },
+    {
+      "role": "ble_host",
+      "count": 1,
+      "each": 8192
+    },
+    {
+      "role": "other_or_spare",
+      "count": 6,
+      "each": 4096,
+      "includes": [
+        "display",
+        "editor",
+        "keyboard_ime",
+        "sensors",
+        "audio",
+        "supervision_or_spare"
+      ]
+    }
+  ],
+  "irq_stacks": {
+    "count": 2,
+    "each": 8192
+  },
+  "psram_peak_envelope_bytes": {
+    "boot_allocator_metadata_and_guards": 2097152,
+    "single_framebuffer_and_display": 2097152,
+    "editor_project_buffers": 1048576,
+    "vm_4MiB_payload_with_current_buddy_charge": 8388608,
+    "sqlite_including_wal_index": 2097152,
+    "vfs_rpc_io": 524288,
+    "experimental_store_including_map_and_gc": 2097152,
+    "wifi_tcpip_tls_http_ai": 3145728,
+    "ble_bulk_and_profiles": 524288,
+    "sensor_audio_logs": 524288,
+    "unassigned_headroom": 8912896,
+    "ime_dictionary_cache_composition_and_learning": 2097152
+  },
+  "candidate_sram_address_ranges": [
+    {
+      "role": "resident",
+      "start": "0x4ff00000",
+      "end": "0x4ff1c000",
+      "bytes": 114688,
+      "budget": "resident_code_and_base_state"
+    },
+    {
+      "role": "low_heap",
+      "start": "0x4ff1c000",
+      "end": "0x4ff28000",
+      "bytes": 49152,
+      "budget": "reusable_internal_heap"
+    },
+    {
+      "role": "dma_all_peripherals",
+      "start": "0x4ff40000",
+      "end": "0x4ff4c000",
+      "bytes": 49152,
+      "budget": "fixed_dma_and_io"
+    },
+    {
+      "role": "future_stack_bank_a",
+      "start": "0x4ff4c000",
+      "end": "0x4ff5e000",
+      "bytes": 73728,
+      "budget": "task_and_irq_stacks"
+    },
+    {
+      "role": "guard_a",
+      "start": "0x4ff5e000",
+      "end": "0x4ff60000",
+      "bytes": 8192,
+      "budget": "software_guard_reserve"
+    },
+    {
+      "role": "retained_stack_bank",
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "budget": "task_and_irq_stacks"
+    },
+    {
+      "role": "future_stack_extension",
+      "start": "0x4ff6e000",
+      "end": "0x4ff72000",
+      "bytes": 16384,
+      "budget": "task_and_irq_stacks"
+    },
+    {
+      "role": "guard_b_low",
+      "start": "0x4ff72000",
+      "end": "0x4ff73000",
+      "bytes": 4096,
+      "budget": "software_guard_reserve"
+    },
+    {
+      "role": "high_heap",
+      "start": "0x4ff73000",
+      "end": "0x4ff9f000",
+      "bytes": 180224,
+      "budget": "reusable_internal_heap"
+    },
+    {
+      "role": "guard_b_high",
+      "start": "0x4ff9f000",
+      "end": "0x4ffa0000",
+      "bytes": 4096,
+      "budget": "software_guard_reserve"
+    }
+  ],
+  "initial_admission_limits": {
+    "wifi_sta": 1,
+    "active_tls_connections": 1,
+    "tls_handshakes": 1,
+    "ble_connections": 2,
+    "language_vms": 1,
+    "framebuffers": 1,
+    "storage_writers": 1,
+    "ime_services": 1,
+    "active_ime_compositions": 1,
+    "sqlite_connections": 1,
+    "sqlite_databases": 1
+  },
+  "assumptions": [
+    "Noncritical TCP/IP, TLS and BLE code executes from mapped Flash after linker/cache-off contract changes.",
+    "Bulk network, TLS and BLE allocations may use PSRAM only where port and access lifetime permit.",
+    "Internal DMA 48KiB covers display, audio, SD and C6 including descriptors and alignment. It may shrink to 32KiB after concurrent measurements, returning 16KiB to heap.",
+    "Stack, DMA, static control and dynamic heap allocations must be charged to exactly one parent.",
+    "64KiB internal free reserve remains at the combined standard-workload peak; largest free block also gates admission.",
+    "C6 RAM is separate and unavailable to the P4 allocator.",
+    "Current two-owner PSRAM heaps must be replaced or coordinated by an admission broker; global sum alone does not prove admission.",
+    "VM remains charged at 8MiB for a 4MiB payload until external-metadata leases are integrated and qualified.",
+    "Filesystem and SQLite WAL caches are included in their 2MiB service envelopes.",
+    "Additional app code must fit a reviewed Flash partition; current native app 775744B leaves 272832B in the 1MiB partition.",
+    "IME gets 2MiB of charged PSRAM backing and 8KiB internal control from existing kernel allowance; shares the input task.",
+    "Full dictionary and font payloads remain on Flash/SD, with bounded read caches and a built-in fallback dictionary.",
+    "The IME two-MiB envelope requires a reader interface instead of the MeOS contiguous dictionary pointer API.",
+    "PSRAM batches may be 32KiB but initial internal SD DMA commands are at most 16KiB to fit the staging allowance."
+  ],
+  "dma_candidate_subdivision_bytes": {
+    "c6_rx_tx": 16384,
+    "sd_staging": 16384,
+    "display_audio_descriptors_alignment": 16384
+  },
+  "network_3MiB_subdivision_bytes": {
+    "tcpip_packet_queues_sockets_dns": 524288,
+    "tls_crypto_certificates_handshake": 1048576,
+    "http_ai_streaming_bounded_buffers": 524288,
+    "peak_and_backing_rounding_reserve": 1048576
+  },
+  "allocator_transition_effect": {
+    "current_vm_charge_bytes": 8388608,
+    "candidate_exact_lease_vm_charge_bytes": 4194304,
+    "additional_psram_headroom_after_qualification_bytes": 4194304
+  },
+  "schema": 1,
+  "ime_2MiB_subdivision_bytes": {
+    "dictionary_index_and_read_cache": 1048576,
+    "conversion_candidates_preedit": 131072,
+    "composition_display_and_glyph_cache": 524288,
+    "user_learning": 65536,
+    "io_allocator_and_peak_reserve": 327680
+  },
+  "store_2MiB_subdivision_bytes": {
+    "persistent_map_cache": 524288,
+    "resident_transaction_window": 65536,
+    "append_buffer": 65536,
+    "gc_buffer": 65536,
+    "recovery_buffer": 131072,
+    "checkpoint_buffer": 65536,
+    "summary_cache": 131072,
+    "metadata_and_handles": 131072,
+    "unassigned_headroom": 917504
+  },
+  "standard_limits": {
+    "tasks_global_including_bootstrap": 16,
+    "tasks_per_cpu": 8,
+    "storage_clients": 8,
+    "global_open_objects": 32,
+    "logical_fds_per_app": 8,
+    "global_file_handles": 16,
+    "mounts": 8,
+    "path_buffer_bytes": 512,
+    "io_chunk_bytes": 4096,
+    "stack_budget_bytes": 147456,
+    "vm_stack_initial_bytes": 16384,
+    "network_tls_stack_initial_bytes": 24576
+  },
+  "storage_geometry": {
+    "sqlite_page_bytes": 4096,
+    "mapping_node_bytes": 4096,
+    "blob_extent_target_bytes": 262144,
+    "blob_extent_coalescing_target_bytes": 1048576,
+    "sd_io_batch_bytes": 32768,
+    "sd_dma_transfer_ceiling_bytes": 16384,
+    "psram_append_buffer_bytes": 65536,
+    "sd_segment_bytes": 4194304,
+    "clean_reserve_segments": 8,
+    "gc_step_bytes": 16384,
+    "recovery_tail_bytes_target": 4194304,
+    "logical_clean_space_target_percent": 10
+  },
+  "wal_candidate": {
+    "enabled_in_native_fixture": false,
+    "sqlite_page_cache_target_bytes": 524288,
+    "soft_checkpoint_frames": 1024,
+    "frame_quota_candidate": 4096,
+    "index_initial_bytes": 32768,
+    "index_budget_bytes": 65536,
+    "retained_size_hint_bytes": 8388608,
+    "synchronous": "FULL",
+    "locking_mode": "EXCLUSIVE",
+    "connection_count": 1,
+    "passive_checkpoint_is_work_bound": false,
+    "journal_size_limit_is_growth_cap": false,
+    "checkpoint_payload_sharing_qualified": false
+  }
+}
