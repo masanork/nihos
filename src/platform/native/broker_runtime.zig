@@ -9,6 +9,7 @@ pub const panic = std.debug.no_panic;
 const A = std.atomic.Value(u32);
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
+extern fn nih_broker_sd_read(*[512]u8) callconv(.c) i32;
 var peer_quiet = A.init(0);
 var enabled = A.init(0);
 var identity = A.init(0);
@@ -17,6 +18,9 @@ var exited = A.init(0);
 var flags = A.init(0);
 var cleanup = A.init(0);
 var reaped = A.init(0);
+var io_armed = A.init(0);
+var cancel_requested = A.init(0);
+var io_after_exit = A.init(0);
 var stack_low: u32 = 0;
 var stack_high: u32 = 0;
 const Request = struct { sequence: u32, identity: u32, operation: u32, length: u32 = 0, token: u32 = 0 };
@@ -38,8 +42,9 @@ const State = struct {
     current_token: u32 = 0,
     closed: bool = false,
     waited: bool = false,
+    painted: u32 = 0,
 };
-pub export const nih_broker_config: [14]u32 = .{ 1, 0x4ff73000, 16384, 0x4ff1c000, 0x4ff28000, 0x4ff77000, 0x4ff9f000, 0x48200000, 0x4a000000, 65536, 8912896, 0x48008000, 32768, @sizeOf(dev.Manager) };
+pub export const nih_broker_config: [14]u32 = .{ 2, 0x4ff73000, 16384, 0x4ff1c000, 0x4ff28000, 0x4ff77000, 0x4ff9f000, 0x48200000, 0x4a000000, 65536, 8912896, 0x48008000, 32768, @sizeOf(dev.Manager) };
 comptime {
     if (@sizeOf(State) > 32768 or @sizeOf(dev.Manager) > 16384) @compileError("broker reservation exceeded");
 }
@@ -79,6 +84,7 @@ pub export fn nih_broker_register(handle: u32, low: u32, high: u32) linksection(
     stack_high = high;
     exited.store(0, .release);
     cleanup.store(0, .release);
+    cancel_requested.store(0, .release);
     _ = iteration.fetchAdd(1, .release);
     identity.store(handle, .release);
 }
@@ -97,14 +103,35 @@ pub export fn nih_broker_round() linksection(".iram1.broker_hooks") callconv(.c)
 pub export fn nih_broker_reaped() linksection(".iram1.broker_hooks") callconv(.c) void {
     _ = reaped.fetchAdd(1, .release);
 }
+pub export fn nih_broker_cancel_requested() linksection(".iram1.broker_hooks") callconv(.c) u32 {
+    return cancel_requested.load(.acquire);
+}
+/// Ordinary CPU0 driver context, with interrupts enabled. No PSRAM access.
+/// The native Bus invokes this only after the actual CMD17 register write.
+pub export fn nih_broker_io_issued() linksection(".iram1.broker_hooks") callconv(.c) void {
+    if (io_armed.cmpxchgStrong(1, 2, .acq_rel, .acquire) != null) return;
+    cancel_requested.store(1, .release);
+    const target = identity.load(.acquire);
+    const began = asm volatile ("csrr %[value], mcycle"
+        : [value] "=r" (-> u32),
+    );
+    while (exited.load(.acquire) != target) {
+        const now = asm volatile ("csrr %[value], mcycle"
+            : [value] "=r" (-> u32),
+        );
+        if (now -% began > 1_000_000_000) nih_native_task_failed();
+    }
+    io_after_exit.store(1, .release);
+}
 
-pub export fn nih_broker_runtime_init(old_api_denied: u32) callconv(.c) void {
+pub export fn nih_broker_runtime_init(old_api_denied: u32, expected_crc: u32) callconv(.c) void {
     check(peer_quiet.load(.acquire) == 1 and old_api_denied == 4, 1);
     state().* = .{};
     for (guards) |g| @memset(bytes(g[0], g[1]), 0x96);
     manager().* = .{};
     check(manager().init(&.{ .{ .memory = bytes(0x4ff1c000, 49152) }, .{ .memory = bytes(0x4ff77000, 163840) } }, &.{.{ .memory = bytes(0x48200000, 30 * 1024 * 1024) }}, dev.policy), 2);
     state().report.old_api_denied = old_api_denied;
+    state().report.expected_crc = expected_crc;
     const network = manager().open(.network, .{ .internal = 65536 }) catch fail(38);
     const staging = manager().alloc(network, .internal, 65536, 64) catch fail(38);
     check(@intFromPtr(staging.bytes.ptr) == 0x4ff77000, 38);
@@ -135,7 +162,7 @@ pub export fn nih_broker_runtime_init(old_api_denied: u32) callconv(.c) void {
     enabled.store(1, .release);
 }
 
-fn dispatch(request: Request) Response {
+fn dispatch(request: Request) ?Response {
     const s = state();
     var response = Response{ .sequence = request.sequence };
     s.report.requests += 1;
@@ -180,6 +207,29 @@ fn dispatch(request: Request) Response {
                 s.report.rejected += 1;
             }
         },
+        4 => {
+            check(iteration.load(.acquire) == 3 and s.lease != null and s.borrow == null and
+                request.token == s.current_token and s.lease.?.bytes.len == 4096 and request.length == 512, 42);
+            s.borrow = manager().pin(owner, s.lease.?) catch fail(42);
+            io_armed.store(1, .release);
+            // No reply is published. The gate kills the blocked client after
+            // CMD17 launch; the driver must finish copying before we unpin.
+            check(nih_broker_sd_read(@ptrCast(s.borrow.?.bytes.ptr)) == 0, 43);
+            check(io_armed.load(.acquire) == 2 and io_after_exit.load(.acquire) == 1 and
+                exited.load(.acquire) == s.bound_identity, 44);
+            if (manager().free(owner, s.lease.?)) |_| fail(45) else |err| check(err == error.Busy, 45);
+            s.report.io_crc = std.hash.Crc32.hash(s.borrow.?.bytes[0..512]);
+            check(s.report.io_crc == s.report.expected_crc, 46);
+            s.report.io_issued = 1;
+            s.report.io_completed = 1;
+            s.report.io_bytes = 512;
+            s.report.pinned_after_kill = 1;
+            s.report.completion_after_exit = 1;
+            s.report.forced_exit = 1;
+            s.report.discarded_responses = 1;
+            io_armed.store(0, .release);
+            return null;
+        },
         else => {
             response.status = -22;
             s.report.rejected += 1;
@@ -201,12 +251,24 @@ pub export fn nih_broker_runtime_poll() callconv(.c) void {
         s.bound_identity = current;
         s.closed = false;
         s.waited = false;
-        if (iteration.load(.acquire) == 1) s.report.client = current else s.report.replacement = current;
+        switch (iteration.load(.acquire)) {
+            1 => s.report.client = current,
+            2 => s.report.replacement = current,
+            3 => s.report.forced_client = current,
+            4 => s.report.after_forced = current,
+            else => fail(47),
+        }
     }
     if (current == 0) return;
     if (s.owner == null) return;
     if (exited.load(.acquire) == current) {
         if (!s.closed) {
+            // The task is stopped and cannot modify its stack. Measure before
+            // publishing cleanup, which permits the scheduler to reuse it.
+            var low = stack_low;
+            const painted_bytes: [*]volatile u8 = @ptrFromInt(low);
+            while (low < s.painted and painted_bytes[low - stack_low] == 0x73) : (low += 1) {}
+            s.report.client_stack = @max(s.report.client_stack, stack_high - low);
             for (s.control.?.bytes) |byte| check(byte == 0xa7, 40);
             manager().free(s.owner.?, s.control.?) catch fail(40);
             s.control = null;
@@ -221,7 +283,9 @@ pub export fn nih_broker_runtime_poll() callconv(.c) void {
                 s.waited = true;
                 s.report.pin_waited += 1;
                 const data: [*]volatile u8 = s.borrow.?.bytes.ptr;
-                for (0..s.borrow.?.bytes.len) |i| check(data[i] == 0x31 + iteration.load(.acquire), 21);
+                const start: usize = if (iteration.load(.acquire) == 3) 512 else 0;
+                for (start..s.borrow.?.bytes.len) |i| check(data[i] == 0x31 + iteration.load(.acquire), 21);
+                if (start == 512) check(std.hash.Crc32.hash(s.borrow.?.bytes[0..512]) == s.report.expected_crc, 46);
                 manager().unpin(s.borrow.?.token) catch fail(22);
                 s.borrow = null;
                 s.report.borrow_completed += 1;
@@ -235,7 +299,8 @@ pub export fn nih_broker_runtime_poll() callconv(.c) void {
         return;
     }
     if (s.requests.tryPop()) |request| {
-        check(s.responses.tryPush(dispatch(request)), 23);
+        const response = dispatch(request) orelse return;
+        check(s.responses.tryPush(response), 23);
         flags.store(1, .release);
     }
 }
@@ -266,31 +331,40 @@ pub export fn nih_broker_task_entry(hart: u32) callconv(.c) i32 {
     check(painted > stack_low and painted < stack_high, 28);
     const paint: [*]volatile u8 = @ptrFromInt(stack_low);
     for (0..painted - stack_low) |i| paint[i] = 0x73;
+    state().painted = painted;
     const current = identity.load(.acquire);
     if (round == 2) {
         check(exchange(3, 0, 1, state().report.client).status == -13, 29);
         check(exchange(3, 0, 1, current).status == -9, 30);
     }
-    const length: u32 = if (round == 1) 8192 else 2097152;
+    if (round == 4) {
+        check(exchange(3, 0, 3, state().report.forced_client).status == -13, 48);
+        check(exchange(3, 0, 3, current).status == -9, 49);
+    }
+    const length: u32 = switch (round) {
+        1 => 8192,
+        2 => 2097152,
+        else => 4096,
+    };
     const grant = exchange(1, length, 0, current);
     check(grant.status == 0 and grant.length == length and grant.charged == length and grant.address >= 0x48200000 and grant.address <= 0x4a000000 - length, 31);
     const data: [*]volatile u8 = @ptrFromInt(grant.address);
     for (0..length) |i| data[i] = @intCast(0x31 + round);
+    if (round == 3) {
+        _ = exchange(4, 512, grant.token, current);
+        fail(50); // A forced-exit task must never receive or resume.
+    }
     check(exchange(2, 0, grant.token, current).status == 0, 32);
     check(exchange(3, 0, grant.token, current).status == -16, 33);
     if (round == 1) check(exchange(3, 0, grant.token, current ^ 0x10000).status == -13, 34);
-    var low = stack_low;
-    const painted_bytes: [*]volatile u8 = @ptrFromInt(low);
-    while (low < painted and painted_bytes[low - stack_low] == 0x73) : (low += 1) {}
-    state().report.client_stack = @max(state().report.client_stack, stack_high - low);
     return @intCast(400 + round);
 }
 pub export fn nih_broker_runtime_done() callconv(.c) u32 {
-    return @intFromBool(reaped.load(.acquire) == 2);
+    return @intFromBool(reaped.load(.acquire) == 4);
 }
 pub export fn nih_broker_runtime_finish(out: *abi.Report) callconv(.c) void {
     const s = state();
-    check(reaped.load(.acquire) == 2 and s.owner == null and s.lease == null and s.borrow == null and s.requests.countApprox() == 0 and s.responses.countApprox() == 0, 35);
+    check(reaped.load(.acquire) == 4 and s.owner == null and s.lease == null and s.borrow == null and s.requests.countApprox() == 0 and s.responses.countApprox() == 0, 35);
     for (s.network_lease.?.bytes) |byte| check(byte == 0x59, 41);
     manager().beginClose(s.network_owner.?) catch fail(41);
     check((manager().reclaimOne(s.network_owner.?) catch fail(41)) == .released, 41);

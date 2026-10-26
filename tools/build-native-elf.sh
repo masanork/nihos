@@ -66,8 +66,8 @@ case "$broker" in
     1) broker=true ;;
     *) echo "NIHOS_NATIVE_MEMORY_BROKER must be 0 or 1" >&2; exit 1 ;;
 esac
-if [ "$broker" = true ] && { [ "$high_sram" != true ] || [ "$profile" != device ] || [ "$sqlite" != true ]; }; then
-    echo "Memory broker handoff requires device, sqlite and HIGH_SRAM=1" >&2
+if [ "$broker" = true ] && { [ "$high_sram" != true ] || [ "$profile" != device ] || [ "$sqlite" != true ] || [ "$storage_service" != 1 ]; }; then
+    echo "Memory broker handoff requires device, sqlite, HIGH_SRAM=1 and STORAGE_SERVICE=1" >&2
     exit 1
 fi
 if [ "$high_sram" = true ] && [ "$profile" != device ]; then

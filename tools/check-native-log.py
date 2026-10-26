@@ -56,10 +56,16 @@ def fixed_record(log, marker, names):
 
 HIGH_FIELDS = ('status', 'bytes', 'passes', 'reads', 'writes', 'peer_reads', 'peer_writes', 'owner_reads', 'heap_bytes', 'free_bytes', 'guards', 'rejected', 'checks0', 'checks1', 'checks2', 'checks3', 'recovered')
 PAGE_FIELDS = ('status', 'start', 'bytes', 'requested4', 'charged4', 'requested8', 'charged8', 'reads', 'writes', 'boundary_ok', 'recovered')
-BROKER_FIELDS = ('status','old_api_denied','metadata','internal_bytes','internal_free','external_bytes','external_free',
+BROKER_FIELDS_V1 = ('status','old_api_denied','metadata','internal_bytes','internal_free','external_bytes','external_free',
                  'internal_floor','external_floor','requested4','charged4','requested8','charged8','client','replacement',
                  'requests','responses','rejected','exits','reaped','pin_waited','borrow_completed','stale_identity',
                  'stale_lease','guards','recovered','client_stack')
+BROKER_IO_FIELDS = ('forced_client','after_forced','forced_exit','io_issued','io_completed','io_bytes','io_crc',
+                    'expected_crc','pinned_after_kill','completion_after_exit','discarded_responses')
+BROKER_FIELDS = BROKER_FIELDS_V1 + BROKER_IO_FIELDS
+
+
+SDMMC_FIELDS = ("status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma")
 
 
 def check_broker(log, image, evidence):
@@ -70,7 +76,10 @@ def check_broker(log, image, evidence):
         return None
     if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
         raise ValueError('broker handoff requires bound physical device evidence')
-    record = fixed_record(log, 'NIHOS_NATIVE_BROKER', BROKER_FIELDS)
+    version = config.get('version', 1)
+    if version not in (1, 2):
+        raise ValueError('unsupported broker qualification version')
+    record = fixed_record(log, 'NIHOS_NATIVE_BROKER', BROKER_FIELDS if version == 2 else BROKER_FIELDS_V1)
     expected = {'status':1,'old_api_denied':4,'metadata':config['metadata_bytes'],
                 'internal_bytes':config['internal_bytes'],'internal_free':config['internal_bytes'],
                 'external_bytes':config['external_bytes'],'external_free':config['external_bytes'],
@@ -78,6 +87,15 @@ def check_broker(log, image, evidence):
                 'requested4':4<<20,'charged4':4<<20,'requested8':8<<20,'charged8':8<<20,
                 'requests':9,'responses':9,'rejected':5,'exits':2,'reaped':2,'pin_waited':2,'borrow_completed':2,
                 'stale_identity':2,'stale_lease':1,'guards':16384,'recovered':1}
+    if version == 2:
+        sd = fixed_record(log, 'NIHOS_NATIVE_SDMMC', SDMMC_FIELDS)
+        expected.update({'requests':16,'responses':15,'rejected':8,'exits':4,'reaped':4,'pin_waited':4,
+                         'borrow_completed':4,'stale_identity':3,'stale_lease':2,'forced_exit':1,
+                         'io_issued':1,'io_completed':1,'io_bytes':512,'io_crc':sd['crc0'],'expected_crc':sd['crc0'],
+                         'pinned_after_kill':1,'completion_after_exit':1,'discarded_responses':1})
+        ids = [record[key] for key in ('client','replacement','forced_client','after_forced')]
+        if any(b & 65535 != a & 65535 or b >> 16 != (a >> 16) + 1 for a,b in zip(ids, ids[1:])):
+            raise ValueError('broker forced exit generation/rebind mismatch')
     if any(record[key] != value for key,value in expected.items()):
         raise ValueError('incomplete broker retirement, lease or recovery qualification')
     first,second = record['client'],record['replacement']
@@ -540,7 +558,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if require_sdmmc or require_sdmmc_fast or "NIHOS_NATIVE_SDMMC" in log:
         if log.count("NIHOS_NATIVE_SDMMC_MODE enabled=1") != 1:
             raise ValueError("missing/invalid SDMMC mode")
-        sdmmc = fixed_record(log, "NIHOS_NATIVE_SDMMC", ("status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma"))
+        sdmmc = fixed_record(log, "NIHOS_NATIVE_SDMMC", SDMMC_FIELDS)
         sectors = sdmmc["sectors_low"] + (sdmmc["sectors_high"] << 32)
         profiles = {(1, 400): 1, (4, 400): 2, (4, 20000): 3}
         phases = profiles.get((sdmmc["bus_bits"], sdmmc["clock_khz"]), 0)

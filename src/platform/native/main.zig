@@ -391,7 +391,7 @@ noinline fn bootMemory() u32 {
 
 extern var __flash_sdmmc_boot_start: u8;
 extern var __flash_sdmmc_boot_end: u8;
-noinline fn runSdProbe(workspace: ?*[8192]u8) void {
+noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {
     const sd = @import("sdmmc_probe.zig").run(timer(0), workspace);
     const Code = struct { start: u32, end: u32, pc: u32, completed: u32 };
     const code = Code{ .start = @intFromPtr(&__flash_sdmmc_boot_start), .end = @intFromPtr(&__flash_sdmmc_boot_end), .pc = sd.code_pc, .completed = sd.status };
@@ -412,6 +412,7 @@ noinline fn runSdProbe(workspace: ?*[8192]u8) void {
     }
     if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
     if (sd.status != 1) fail("SDMMC probe");
+    return sd.crc0;
 }
 
 export fn nih_native_main() callconv(.c) noreturn {
@@ -436,7 +437,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     const external_bytes = bootMemory();
     if (options.broker and external_bytes != 32 * 1024 * 1024) fail("broker PSRAM geometry");
     if (options.high_sram and !tasks.memory.high.init(external_bytes)) fail("high SRAM initialization");
-    if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null);
+    const sd_crc = if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null) else 0;
     if (options.storage_service) storage_runtime.init();
     prepareTasks(0);
     startCpu1();
@@ -535,7 +536,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (cycle() -% waited > 1_000_000_000) fail("broker peer quiescence");
                     }
                     if (!tasks.memory.retireForBroker()) fail("broker heap retirement");
-                    broker_runtime.init();
+                    broker_runtime.init(sd_crc);
                     const began = cycle();
                     while (!broker_runtime.done()) {
                         _ = tasks.service(0);
@@ -544,7 +545,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (cycle() -% began > 2_000_000_000) fail("broker cleanup timeout");
                     }
                     const b = broker_runtime.finish();
-                    logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack" }, &b);
+                    logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses" }, &b);
                 }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");

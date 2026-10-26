@@ -53,6 +53,7 @@ extern fn nih_sdmmc_fourbit_pins() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
+extern fn nih_broker_io_issued() callconv(.c) void;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
@@ -70,6 +71,10 @@ const Bus = struct {
     pub fn write(_: Bus, offset: usize, value: u32) void {
         @as(*volatile u32, @ptrFromInt(sd.base + offset)).* = value;
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+        // Qualification gate after the real CMD17 register write. DMA owns
+        // resident staging; the broker keeps the eventual PSRAM destination.
+        if (options.broker and offset == sd.regs.command and value & 63 == 17 and value & (1 << 31) != 0)
+            nih_broker_io_issued();
     }
     pub fn delay(self: Bus, microseconds: u32) void {
         const started = self.clock.counter() orelse nih_native_task_failed();
@@ -240,4 +245,15 @@ pub export fn nih_storage_controller_begin() callconv(.c) u32 {
 }
 pub export fn nih_storage_controller_end() callconv(.c) void {
     runtimeEnd();
+}
+
+/// CPU0 after the legacy storage owner has retired. The driver stops DMA,
+/// invalidates staging/descriptor caches and copies before returning success.
+pub export fn nih_broker_sd_read(destination: *[512]u8) callconv(.c) i32 {
+    if (!options.broker or runtime_ready or active_controller != null) return -1;
+    runtime_controller.readSector(0, destination) catch return -1;
+    if (runtime_controller.words_read != 128 or runtime_controller.cleanup_failed or
+        runtime_controller.io.read(sd.regs.ctrl) & ((1 << 25) | (1 << 5) | 4) != 0 or
+        runtime_controller.io.read(sd.regs.dma_mode) != 0) return -1;
+    return 0;
 }

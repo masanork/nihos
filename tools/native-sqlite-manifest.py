@@ -57,9 +57,10 @@ def main(directory, source, littlefs=None):
               'allowed_functions': sorted(set().union(*(set(item['functions']) for item in objects.values())))}
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
         root = Path(__file__).resolve().parents[1]
-        result['broker'] = {'version': 1, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),
+        result['broker'] = {'version': 2, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),
                             'runtime_sha256': sha(root / 'src/platform/native/broker_runtime.zig'),
-                            'core_sha256': sha(root / 'src/kernel/memory_broker.zig')}
+                            'core_sha256': sha(root / 'src/kernel/memory_broker.zig'),
+                            'sd_adapter_sha256': sha(root / 'src/platform/native/sdmmc_probe.zig')}
     if littlefs is not None:
         result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
                              'read_only': True, 'no_malloc': True, 'api_version': 1, 'workspace_bytes': 8192,

@@ -27,11 +27,22 @@ pub const Report = extern struct {
     guards: u32 = 0,
     recovered: u32 = 0,
     client_stack: u32 = 0,
+    forced_client: u32 = 0,
+    after_forced: u32 = 0,
+    forced_exit: u32 = 0,
+    io_issued: u32 = 0,
+    io_completed: u32 = 0,
+    io_bytes: u32 = 0,
+    io_crc: u32 = 0,
+    expected_crc: u32 = 0,
+    pinned_after_kill: u32 = 0,
+    completion_after_exit: u32 = 0,
+    discarded_responses: u32 = 0,
 };
 extern fn nih_broker_peer_quiet() callconv(.c) void;
 extern fn nih_broker_ready() callconv(.c) u32;
 extern fn nih_broker_quiet() callconv(.c) u32;
-extern fn nih_broker_runtime_init(u32) callconv(.c) void;
+extern fn nih_broker_runtime_init(u32, u32) callconv(.c) void;
 extern fn nih_broker_runtime_poll() callconv(.c) void;
 extern fn nih_broker_runtime_done() callconv(.c) u32;
 extern fn nih_broker_runtime_finish(*Report) callconv(.c) void;
@@ -44,8 +55,8 @@ pub fn ready() bool {
 pub fn quiet() bool {
     return nih_broker_quiet() == 1;
 }
-pub fn init() void {
-    nih_broker_runtime_init(4);
+pub fn init(expected_crc: u32) void {
+    nih_broker_runtime_init(4, expected_crc);
 }
 pub fn poll() void {
     nih_broker_runtime_poll();
