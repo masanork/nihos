@@ -5,6 +5,11 @@ const at = @import("esp_at.zig");
 pub const Command = union(enum) {
     version,
     memory,
+    wifi_dhcp_enable,
+    wifi_dhcp_query,
+    wifi_join_saved,
+    wifi_state,
+    wifi_addresses,
     wifi_join: struct { ssid: []const u8, password: []const u8 },
     tcp_connect: struct { link: u8, host: []const u8, port: u16 },
     socket_close: u8,
@@ -67,8 +72,13 @@ pub fn encode(output: []u8, command: Command) Error!Encoded {
     switch (command) {
         .version => try writer.put("AT+GMR"),
         .memory => try writer.put("AT+SYSRAM?"),
+        .wifi_dhcp_enable => try writer.put("AT+CWDHCP=1,1"),
+        .wifi_dhcp_query => try writer.put("AT+CWDHCP?"),
+        .wifi_join_saved => try writer.put("AT+CWJAP"),
+        .wifi_state => try writer.put("AT+CWSTATE?"),
+        .wifi_addresses => try writer.put("AT+CIPSTA?"),
         .wifi_join => |join| {
-            if (join.ssid.len == 0 or join.ssid.len > 32 or join.password.len > 64) return error.InvalidArgument;
+            if (join.ssid.len == 0 or join.ssid.len > 32 or join.password.len > 63) return error.InvalidArgument;
             try writer.put("AT+CWJAP=");
             try writer.quoted(join.ssid);
             try writer.put(",");

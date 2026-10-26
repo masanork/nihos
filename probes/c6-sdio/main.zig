@@ -2,6 +2,7 @@
 const std = @import("std");
 const c6 = @import("c6_probe");
 const timers = @import("timer_group");
+const config = @import("wifi_config");
 pub const panic = std.debug.no_panic;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
@@ -21,6 +22,13 @@ fn print(bytes: []const u8) void {
 fn hex(value: u32) void {
     const digits = "0123456789abcdef";
     for (0..8) |i| _ = nih_rom_putc(digits[(value >> @as(u5, @intCast(28 - i * 4))) & 15]);
+}
+fn printAddress(value: u32) void {
+    var buffer: [16]u8 = undefined;
+    const text = std.fmt.bufPrint(&buffer, "{d}.{d}.{d}.{d}", .{
+        value >> 24, (value >> 16) & 255, (value >> 8) & 255, value & 255,
+    }) catch @panic("IPv4 formatting overflow");
+    print(text);
 }
 fn halt() noreturn {
     while (true) asm volatile ("wfi");
@@ -63,13 +71,24 @@ export fn nih_c6_main() callconv(.c) noreturn {
         print("NIHOS_C6_FAIL timer\n");
         halt();
     }
-    const report = c6.run(clock);
+    const join: ?c6.WifiJoin = if (!config.enabled) null else if (config.saved) .saved else .{ .network = .{ .ssid = &config.ssid, .password = &config.password } };
+    const report = c6.run(clock, join);
     print("NIHOS_NATIVE_C6");
     inline for (comptime std.meta.fieldNames(c6.Report)) |field| {
         print(" " ++ field ++ "=");
         hex(@field(report, field));
     }
     print("\n");
-    print(if (report.status == 1) "NIHOS_C6_AT_PASS\n" else "NIHOS_C6_AT_FAIL\n");
+    if (config.enabled) {
+        if (report.status == 1 and report.stage == 10) {
+            print("NIHOS_C6_WIFI_PASS ip=");
+            printAddress(report.ip);
+            print(" gateway=");
+            printAddress(report.gateway);
+            print(" netmask=");
+            printAddress(report.netmask);
+            print("\n");
+        } else print("NIHOS_C6_WIFI_FAIL\n");
+    } else print(if (report.status == 1) "NIHOS_C6_AT_PASS\n" else "NIHOS_C6_AT_FAIL\n");
     halt();
 }

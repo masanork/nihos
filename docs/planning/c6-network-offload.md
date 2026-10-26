@@ -11,6 +11,9 @@ P4はnihos、C6はESP-IDF上の通信ファームとし、まずESP-AT＋SDIOを
 - C6用SDIO＋Wi-Fi＋NimBLEファームのビルドが通過。上流SDK修正の実体も確認。
 - P4側native SDIO boot driver、C6のFIFO/credit管理、専用CPU0プローブを実装・ビルド。
   [手順と制約](../../probes/c6-sdio/README.md)を参照。実機での通信は未確認。
+- AP接続・DHCP有効化・接続状態・IPv4/gateway/netmask確認までのopt-in試験を追加。
+  ホスト試験とnativeイメージ監査は通過。C6書き込み接続とAP設定が未確認のため、
+  [実機preflight](../measurements/2026-10-27-c6-wifi-preflight.md)は未完了。
 - ホスト試験対象：改行・NUL・偽のOKを含むTCP/BLE混在データ、容量超過、
   不正ヘッダ、途中切断、遅延応答、古いtokenの拒否。
 - 未実装：IRQ駆動SDIOサービス、microSDとの共有調停、socket/BLEリソース表、アプリ接続。

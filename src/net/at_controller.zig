@@ -4,6 +4,7 @@ const std = @import("std");
 pub const wire = @import("esp_at.zig");
 const at = wire;
 pub const commands = @import("at_commands.zig");
+pub const wifi = @import("wifi_station.zig");
 
 pub const profile = [_][]const u8{
     "AT\r\n",                 "ATE0\r\n",         "AT+GMR\r\n",      "AT+SYSSTORE=0\r\n",
