@@ -743,5 +743,32 @@ class HardwareQualificationTests(unittest.TestCase):
                 MODULE.check(self.fast_log().replace(old, new), "integer", 32 << 20, require_sdmmc_fast=True)
 
 
+class NativeUSBTests(unittest.TestCase):
+    @staticmethod
+    def usb_log():
+        values = (1, 8, 0, 0x4f54400a, 0x2140f, 1, 0x054c, 0x0dc9, 116, 2,
+                  1, 0x81, 1, 0x83, 522, 22, 3, 2, 3, 0x06000036, 1)
+        return "NIHOS_NATIVE_USB_MODE enabled=1\nNIHOS_NATIVE_USB" + "".join(
+            " {}={:08x}".format(key, value) for key, value in zip(MODULE.USB_FIELDS, values)) + "\n"
+
+    def test_native_usb_requires_complete_correlated_record(self):
+        log = self.usb_log()
+        self.assertEqual(MODULE.check_usb(log)['pid'], 0x0dc9)
+        for key, value in [('status', 2), ('stage', 7), ('error_code', 1),
+                           ('slot_queries', 2), ('transfers', 21), ('dma_stopped', 0),
+                           ('card_state', 3), ('last_descriptor', 0x80000000), ('last_irq', 0x0b)]:
+            malformed = re.sub(r' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_usb(malformed)
+        for malformed in [log + log, log[:-5], log.replace('NIHOS_NATIVE_USB_MODE enabled=1\n', ''),
+                          'NIHOS_NATIVE_USB status=00000\n' + log]:
+            with self.assertRaises(ValueError):
+                MODULE.check_usb(malformed)
+
+    def test_usb_evidence_is_never_accepted_as_emulator_evidence(self):
+        with self.assertRaisesRegex(ValueError, 'requires physical-device'):
+            MODULE.check(complete_log() + self.usb_log(), require_usb=True)
+
+
 if __name__ == "__main__":
     unittest.main()

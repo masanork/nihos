@@ -28,6 +28,16 @@ case "$mode" in
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
     *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
+usb=${NIHOS_NATIVE_USB:-0}
+case "$usb" in
+    0) usb=false ;;
+    1) usb=true ;;
+    *) echo "NIHOS_NATIVE_USB must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$usb" = true ] && [ "$profile" != device ]; then
+    echo "Native USB probe currently supports the rev1/2 device profile only" >&2
+    exit 1
+fi
 sdmmc=${NIHOS_NATIVE_SDMMC:-0}
 case "$sdmmc" in
     0) sdmmc=false ;;
@@ -58,7 +68,7 @@ if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const usb = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$usb" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -86,6 +96,26 @@ if [ "$sdmmc" = true ]; then
         -I "$idf_path/components/esp_rom/esp32p4" \
         -o "$build_dir/sdmmc_pads.o" "$repo_root/probes/sdmmc/pads.c"
     set -- "$@" "$build_dir/sdmmc_pads.o"
+fi
+
+if [ "$usb" = true ]; then
+    idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
+    register_version=hw_ver1
+    if [ "$profile" = emulator ]; then register_version=hw_ver3; fi
+    headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
+        -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
+        -isystem "$headers/riscv-linux-any" \
+        -I "$repo_root/build/native-$profile/loader/config" \
+        -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+        -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+        -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/$register_version" \
+        -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+        -I "$idf_path/components/esp_rom/include" -I "$idf_path/components/esp_rom/esp32p4/include" \
+        -I "$idf_path/components/esp_rom/esp32p4" \
+        -o "$build_dir/usb_pads.o" "$repo_root/probes/usb_native/pads.c"
+    set -- "$@" "$build_dir/usb_pads.o"
 fi
 if [ "$floating" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none \
@@ -152,7 +182,13 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep usb_host --dep usb_descriptors --dep boot_i2c -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Musb_host="$repo_root/src/soc/esp32p4/usb_host.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Musb_descriptors="$repo_root/src/usb/descriptors.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mboot_i2c="$repo_root/src/board/tab5/boot_i2c.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mblock_reader="$repo_root/src/storage/block.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

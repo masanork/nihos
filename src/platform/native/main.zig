@@ -314,6 +314,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
     if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
     if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
+    if (options.usb) print("NIHOS_NATIVE_USB_MODE enabled=1\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
         fail("CRT data/BSS");
@@ -367,6 +368,11 @@ export fn nih_native_main() callconv(.c) noreturn {
         if (external.mapping.status != 1) fail("qualification requires PSRAM");
         const sweep = native_psram.memory.fullSweep(external.mapping.bytes);
         logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
+    }
+    if (options.usb) {
+        const usb_report = @import("usb_probe.zig").run(timer(0));
+        logger.record("NIHOS_NATIVE_USB", null, .{ "status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped" }, &usb_report);
+        if (!timer(0).configureOneShot(tasks.period_us)) fail("USB timer return");
     }
     if (options.sdmmc) {
         const sd = @import("sdmmc_probe.zig").run(timer(0));
