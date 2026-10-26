@@ -29,6 +29,9 @@ jobs:
       - name: Zig tests (Debug)
         run: .tools/zig-0.17.0/zig build test
 
+      - name: Development memory budget
+        run: python3 -m unittest discover -s tools -p storage_budget_test.py
+
       - name: Zig tests (ReleaseSafe)
         run: .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
 
