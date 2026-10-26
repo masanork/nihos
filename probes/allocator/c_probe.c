@@ -7,6 +7,8 @@ unsigned char *nih_c_allocator_probe(void);
 unsigned char *nih_c_allocator_probe(void) {
     unsigned char local = 0;
     if (nih_task_malloc(1) || nih_task_capacity(&local) || nih_task_free(&local) != -1) return NULL;
+    if (nih_task_allocator_open_profile(0) != -1 || nih_task_allocator_open_profile(UINT32_MAX) != -1) return NULL;
+    if (nih_task_allocator_open_profile(1) != 0 || nih_task_allocator_close() != 0) return NULL;
     if (nih_task_allocator_open(0) != -1 || nih_task_allocator_open(2) != 0) return NULL;
     if (nih_task_allocator_open(2) != -1 || nih_task_free(NULL) != 0) return NULL;
     if (nih_task_malloc(0) || nih_task_malloc(SIZE_MAX) || nih_task_realloc(NULL, 0)) return NULL;

@@ -10,7 +10,7 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         const Self = @This();
         pub const Error = Backend.Error || slab.Error || error{ Inactive, Full, NotReady };
         const State = enum { vacant, active, closing, cleaned, faulted };
-        const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize, objects_pending: usize, objects: usize };
+        const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize, objects_pending: size_pool.Config, objects: size_pool.Config };
         const Entry = struct {
             allocation: Backend.Allocation,
             // Canonical cursor stays in the ledger, so copied pool handles
@@ -194,14 +194,18 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         }
 
         pub fn reserveObjects(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, count: usize) Error!Objects {
-            const length = size_pool.requiredBytes(count) orelse return error.InvalidRequest;
-            return .{ .key = key, .allocation = try self.acquire(heap, caller, key, length, slab.alignment, .{ .objects_pending = count }) };
+            return self.reserveConfiguredObjects(heap, caller, key, size_pool.Config.uniform(count) orelse return error.InvalidRequest);
+        }
+
+        pub fn reserveConfiguredObjects(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, config: size_pool.Config) Error!Objects {
+            const length = size_pool.configuredBytes(config) orelse return error.InvalidRequest;
+            return .{ .key = key, .allocation = try self.acquire(heap, caller, key, length, slab.alignment, .{ .objects_pending = config }) };
         }
 
         pub fn prepareObjects(self: *Self, caller: u32, key: Key, lease: Objects) Error!size_pool.View {
             const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
             return switch (entry.storage) {
-                .objects_pending => |count| size_pool.View.from(entry.allocation.bytes, count, entry.allocation.ticket) orelse error.InvalidRequest,
+                .objects_pending => |config| size_pool.View.fromConfigured(entry.allocation.bytes, config, entry.allocation.ticket) orelse error.InvalidRequest,
                 else => error.InvalidAllocation,
             };
         }
@@ -209,10 +213,10 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         pub fn publishObjects(self: *Self, caller: u32, key: Key, lease: Objects) Error!void {
             const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
             switch (entry.storage) {
-                .objects_pending => |count| {
-                    const view = size_pool.View.from(entry.allocation.bytes, count, entry.allocation.ticket) orelse return error.InvalidRequest;
+                .objects_pending => |config| {
+                    const view = size_pool.View.fromConfigured(entry.allocation.bytes, config, entry.allocation.ticket) orelse return error.InvalidRequest;
                     try view.ready();
-                    entry.storage = .{ .objects = count };
+                    entry.storage = .{ .objects = config };
                 },
                 else => return error.InvalidAllocation,
             }
@@ -221,7 +225,7 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         noinline fn objectsView(self: *Self, caller: u32, key: Key, lease: Objects) Error!size_pool.View {
             const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
             return switch (entry.storage) {
-                .objects => |count| size_pool.View.from(entry.allocation.bytes, count, entry.allocation.ticket) orelse error.InvalidRequest,
+                .objects => |config| size_pool.View.fromConfigured(entry.allocation.bytes, config, entry.allocation.ticket) orelse error.InvalidRequest,
                 .objects_pending => error.NotReady,
                 else => error.InvalidAllocation,
             };

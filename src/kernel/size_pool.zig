@@ -13,34 +13,62 @@ pub fn classFor(length: usize) ?u32 {
     return null;
 }
 
-pub fn requiredBytes(count: usize) ?usize {
+/// Canonical quotas are copied into the owner ledger, never read from PSRAM.
+/// Zero disables a class without reserving a header or falling back upward.
+pub const Config = struct {
+    counts: [classes.len]u16,
+
+    pub fn uniform(count: usize) ?Config {
+        if (count == 0 or count > slab.max_cells) return null;
+        return .{ .counts = @splat(@intCast(count)) };
+    }
+};
+
+/// Trace-informed host SQLite fixture; this is not a general service budget.
+pub const sqlite_probe = Config{ .counts = .{ 24, 12, 16, 12, 40, 4, 8, 12, 8, 1 } };
+
+pub fn configuredBytes(config: Config) ?usize {
     var total: usize = 0;
-    for (classes) |capacity| {
+    for (classes, config.counts) |capacity, count| {
+        if (count == 0) continue;
         const bytes = slab.requiredBytes(capacity, count) orelse return null;
         const sum = @addWithOverflow(total, bytes);
         if (sum[1] != 0) return null;
         total = sum[0];
     }
-    return total;
+    return if (total == 0) null else total;
+}
+
+pub fn requiredBytes(count: usize) ?usize {
+    return configuredBytes(Config.uniform(count) orelse return null);
 }
 
 pub const View = struct {
     memory: []u8,
-    count: usize,
+    config: Config,
     epoch: u64,
 
     pub noinline fn from(memory: []u8, count: usize, epoch: u64) ?View {
+        return fromConfigured(memory, Config.uniform(count) orelse return null, epoch);
+    }
+
+    pub noinline fn fromConfigured(memory: []u8, config: Config, epoch: u64) ?View {
         if (epoch == 0 or @intFromPtr(memory.ptr) % slab.alignment != 0 or
             @addWithOverflow(@intFromPtr(memory.ptr), memory.len)[1] != 0 or
-            requiredBytes(count) != memory.len) return null;
-        return .{ .memory = memory, .count = count, .epoch = epoch };
+            configuredBytes(config) != memory.len) return null;
+        return .{ .memory = memory, .config = config, .epoch = epoch };
     }
 
     fn classView(self: View, index: u32) Error!slab.View {
         if (index >= classes.len) return error.InvalidAllocation;
         var start: usize = 0;
         for (classes, 0..) |cell_bytes, current| {
-            const length = slab.requiredBytes(cell_bytes, self.count) orelse return error.InvalidRequest;
+            const count = self.config.counts[current];
+            if (count == 0) {
+                if (current == index) return error.OutOfMemory;
+                continue;
+            }
+            const length = slab.requiredBytes(cell_bytes, count) orelse return error.InvalidRequest;
             if (current == index) return slab.View.from(self.memory[start..][0..length], cell_bytes, self.epoch) orelse error.InvalidRequest;
             start += length;
         }
@@ -49,12 +77,16 @@ pub const View = struct {
 
     /// Linear work belongs outside the owner interrupt mask.
     pub noinline fn initialize(self: View) Error!void {
-        for (0..classes.len) |index| (try self.classView(@intCast(index))).initialize();
+        for (self.config.counts, 0..) |count, index| {
+            if (count != 0) (try self.classView(@intCast(index))).initialize();
+        }
     }
 
     /// Fixed ten-header publication check; independent of cells per class.
     pub fn ready(self: View) Error!void {
-        for (0..classes.len) |index| try (try self.classView(@intCast(index))).ready();
+        for (self.config.counts, 0..) |count, index| {
+            if (count != 0) try (try self.classView(@intCast(index))).ready();
+        }
     }
 
     pub noinline fn alloc(self: View, length: usize) Error!Allocation {
@@ -66,7 +98,8 @@ pub const View = struct {
     pub noinline fn lookup(self: View, address: usize) Error!Allocation {
         const base = @intFromPtr(self.memory.ptr);
         if (address < base or address - base >= self.memory.len) return error.InvalidAllocation;
-        for (0..classes.len) |index| {
+        for (self.config.counts, 0..) |count, index| {
+            if (count == 0) continue;
             const view = try self.classView(@intCast(index));
             const start = @intFromPtr(view.memory.ptr);
             if (address >= start and address - start < view.memory.len) return .{

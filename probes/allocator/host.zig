@@ -24,6 +24,10 @@ const Backend = struct {
     }
 
     pub fn open(count: usize) !void {
+        return openConfigured(resources.size_pool.Config.uniform(count) orelse return error.InvalidRequest);
+    }
+
+    pub fn openConfigured(config: resources.size_pool.Config) !void {
         if (!initialized) {
             heap = buddy.Heap.init(&memory, 0).?;
             _ = table.open(.{ .slot = 0, .generation = 1 });
@@ -31,7 +35,7 @@ const Backend = struct {
             initialized = true;
         }
         if (bindings[slot] != null) return error.Full;
-        const lease = try table.reserveObjects(&heap, 0, key(), count);
+        const lease = try table.reserveConfiguredObjects(&heap, 0, key(), config);
         errdefer table.closeObjects(&heap, 0, key(), lease) catch @panic("host allocator rollback failed");
         try (try table.prepareObjects(0, key(), lease)).initialize();
         try table.publishObjects(0, key(), lease);
@@ -86,4 +90,13 @@ export fn nih_host_retire() c_int {
 
 export fn nih_host_recovered() c_int {
     return @intFromBool(initialized and heap.free_bytes == heap.payload.len and table.owned() == 0);
+}
+
+export fn nih_host_parent_bytes() usize {
+    const lease = bindings[slot] orelse return 0;
+    return lease.allocation.bytes.len;
+}
+
+export fn nih_host_reserved_bytes() usize {
+    return if (initialized) heap.payload.len - heap.free_bytes else 0;
 }

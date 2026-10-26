@@ -1,6 +1,7 @@
 #ifndef NIHOS_ALLOCATOR_H
 #define NIHOS_ALLOCATOR_H
 #include <stddef.h>
+#include <stdint.h>
 
 /* Explicit task-local pool; count is the quota for EACH 8..4096 size class.
  * Task context, interrupts enabled, no sharing or migration. open/close/free:
@@ -12,6 +13,8 @@
  * close invalidates every pointer; automatic task cleanup has no destructors.
  */
 int nih_task_allocator_open(size_t count);
+/* Profile 1: trace-informed SQLite HOST fixture; other IDs are rejected. */
+int nih_task_allocator_open_profile(uint32_t profile);
 int nih_task_allocator_close(void);
 void *nih_task_malloc(size_t bytes);
 void *nih_task_realloc(void *pointer, size_t bytes);

@@ -8,9 +8,12 @@
 
 int nih_host_retire(void);
 int nih_host_recovered(void);
+size_t nih_host_parent_bytes(void);
+size_t nih_host_reserved_bytes(void);
 static int fail_after = -1, attempts, failures, injected, largest, close_failed;
 static int histogram[10], live_blocks, class_live[10], class_peak[10];
 static size_t quota = 64;
+static int use_profile;
 static size_t class_index(size_t bytes) {
     size_t index = 0, capacity = 8;
     while (capacity < bytes) { ++index; capacity *= 2; }
@@ -83,7 +86,7 @@ static int round_mem(int n) {
     ++histogram[index];
     return (int)size;
 }
-static int init_mem(void *context) { (void)context; return nih_task_allocator_open(quota) ? SQLITE_NOMEM : SQLITE_OK; }
+static int init_mem(void *context) { (void)context; return (use_profile ? nih_task_allocator_open_profile(1) : nih_task_allocator_open(quota)) ? SQLITE_NOMEM : SQLITE_OK; }
 static void shutdown_mem(void *context) { (void)context; if (live_blocks || nih_task_allocator_close()) close_failed = 1; }
 static const sqlite3_mem_methods methods = {
     alloc_mem, free_mem, resize_mem, size_mem, round_mem, init_mem, shutdown_mem, NULL
@@ -118,7 +121,8 @@ done:
 }
 int main(int argc, char **argv) {
     if (sqlite3_threadsafe() != 0) return 10;
-    if (argc > 1) {
+    if (argc > 1 && strcmp(argv[1], "profile") == 0) use_profile = 1;
+    else if (argc > 1) {
         char *end = NULL;
         unsigned long parsed = strtoul(argv[1], &end, 10);
         if (!end || *end || !parsed || parsed > 65535) return 9;
@@ -132,10 +136,11 @@ int main(int argc, char **argv) {
     const int baseline_attempts = attempts;
     printf("SQLite %s host rc=%d max_request=%d attempts=%d rejected=%d peak=%lld remaining=%lld\n",
            sqlite3_libversion(), rc, largest, attempts, failures, (long long)peak, (long long)used);
+    printf("pool_profile=%d requested=%zu reserved=%zu\n", use_profile, nih_host_parent_bytes(), nih_host_reserved_bytes());
     printf("class_request_histogram:");
     for (size_t i = 0; i < 10; ++i) printf(" %d", histogram[i]);
     puts("");
-    printf("class_peak_live quota=%zu:", quota);
+    printf("class_peak_live profile=%d quota=%zu:", use_profile, use_profile ? (size_t)0 : quota);
     for (size_t i = 0; i < 10; ++i) printf(" %d", class_peak[i]);
     puts("");
     if (sqlite3_shutdown() != SQLITE_OK || close_failed || !nih_host_recovered()) return 3;

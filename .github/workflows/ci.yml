@@ -36,4 +36,6 @@ jobs:
         run: sh tools/run-language-probe.sh
 
       - name: C allocator and SQLite memory-only host probe
-        run: sh tools/run-sqlite-memory-probe.sh
+        run: |
+          sh tools/run-sqlite-memory-probe.sh
+          build/sqlite/memory-probe profile
