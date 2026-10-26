@@ -1,5 +1,7 @@
 # Tab5での追加実機検証とnative SDMMC読取試験
 
+後続の[4ビット・20 MHzと分散読取の実機検証](2026-10-26-tab5-sdmmc-wide.md)も参照。
+
 2026-10-26。前段のPSRAM修正後、USB接続中の実機で検証を進めた。
 最終ソースは `57d9697`、ブランチは `codex/tab5-psram-physical-fix`。
 **FPの実機確認、PSRAM全ワード検査、SQLite反復実行、native SDMMCの読取が成功した。**
