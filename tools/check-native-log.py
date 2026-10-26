@@ -247,7 +247,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         heaps[hart] = record
     if set(heaps) != {0, 1}:
         raise ValueError("missing per-hart reusable heap evidence")
-    resource_names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced")
+    resource_names = ("opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected")
     pattern = r"NIHOS_NATIVE_RESOURCES hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in resource_names)
     resources = {}
@@ -255,7 +255,8 @@ def check(log, expected_mode=None, expected_psram_bytes=0):
         hart, *values = [int(value, 16) for value in match]
         if hart >= 2 or hart in resources:
             raise ValueError("invalid/duplicate task resource owner")
-        expected = [7, 6, 6, 8 if psram["status"] else 0, 3, 0, 0, 3, 3 if psram["status"] else 0, 1]
+        expected = [7, 6, 6, 8 if psram["status"] else 0, 3, 0, 0, 3, 3 if psram["status"] else 0, 1,
+                    18 if psram["status"] else 0, 6 if psram["status"] else 0]
         if values != expected:
             raise ValueError("incomplete deferred task resource cleanup")
         resources[hart] = dict(zip(resource_names, values))
