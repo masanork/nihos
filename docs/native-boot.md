@@ -45,6 +45,8 @@ Task-owned fixed-size cell allocation/reuse is described in
 [ADR 0034](adr/0034-task-owned-fixed-size-slabs.md).
 Separate source-supported internal SRAM for stacks is described in
 [ADR 0035](adr/0035-separate-internal-sram-stack-region.md).
+Task-owned size-class pools and preemptible resize are described in
+[ADR 0036](adr/0036-task-owned-size-class-pools.md).
 
 ## Build and emulated execution
 
@@ -190,7 +192,7 @@ the scheduler even when periodic alarms are disarmed.
 `NIHOS_NATIVE_RESOURCES` and the `task_resources` array require seven opened
 generations per hart (including the retained bootstrap), six closed/cleaned
 tasks, three slot reuses, three stale-generation rejections and one forced
-termination. A populated run reclaims eight intentionally retained handles
+termination. A populated run reclaims ten intentionally retained handles
 per hart, with no owned or pending resources at the end. An absent run still
 checks the lifecycle and empty-ledger protocol but must claim zero frees.
 Ordinary worker churn now uses the same task-bound allocation API; the final
@@ -309,7 +311,7 @@ epochs and child tickets reject stale frees across cell and parent reuse.
 Populated resource reports additionally require 120 slab allocations, 24
 cell frees and 27 rejections per hart; absent runs require zero. Normal and
 forced task cleanup reclaim live/pending/poisoned slabs as one parent without
-walking their children. This is not a variable-size or SQLite C allocator.
+walking their children. These fixed slabs also back the size-class pools below.
 
 The stack reservations now use a separate 56 KiB internal-SRAM span at
 `0x4ff60000..0x4ff6e000`. Primary SRAM bounds, cache geometry and the 48 KiB
@@ -322,7 +324,19 @@ Both full SRAM spans are checked against actual loader allocations. Sampled
 frame minima are not complete peak-stack measurements. Total reserved SRAM
 is 216 KiB; reports distinguish total static use from primary static use.
 
-Run all 83 Python tests with:
+Task-owned size-class pools now offer 8..4096-byte objects under one parent
+with an explicit equal cell quota for ten classes. Resize renews the ticket
+within capacity; moving resize reserves first, copies with MIE enabled and
+then commits. A full target class preserves the original object. Shrinks
+retain their class; there is no larger-class fallback or automatic growth.
+Each populated hart must report eight moves, four in-place changes, eight
+rejections and 4208 copied bytes. Two additional retained parents are reclaimed
+after checking their final 4 KiB payloads. Absent runs require zero. This is
+a typed Zig API; a C/SQLite allocator remains future work. See
+[ADR 0036](adr/0036-task-owned-size-class-pools.md) and its
+[source-bound measurement](measurements/2026-10-26-native-size-pools.md).
+
+Run all 84 Python tests with:
 
 ```sh
 python3 -m unittest discover -s tools -p 'native*_test.py'

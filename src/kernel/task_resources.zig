@@ -2,13 +2,14 @@
 //! Closing only touches ledger state; drainOne performs deferred heap work.
 pub const Key = struct { slot: u16, generation: u16 };
 pub const slab = @import("slab.zig");
+pub const size_pool = @import("size_pool.zig");
 
 pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limit: usize) type {
     return struct {
         const Self = @This();
         pub const Error = Backend.Error || slab.Error || error{ Inactive, Full, NotReady };
         const State = enum { vacant, active, closing, cleaned, faulted };
-        const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize };
+        const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize, objects_pending: usize, objects: usize };
         const Entry = struct {
             allocation: Backend.Allocation,
             // Canonical cursor stays in the ledger, so copied pool handles
@@ -18,6 +19,7 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         };
         pub const Pool = struct { key: Key, allocation: Backend.Allocation };
         pub const Slab = struct { key: Key, allocation: Backend.Allocation };
+        pub const Objects = struct { key: Key, allocation: Backend.Allocation };
         const Slot = struct {
             generation: u16 = 0,
             state: State = .vacant,
@@ -186,6 +188,72 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
             const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
             switch (entry.storage) {
                 .slab, .slab_pending => try self.free(heap, caller, key, lease.allocation),
+                else => return error.InvalidAllocation,
+            }
+        }
+
+        pub fn reserveObjects(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, count: usize) Error!Objects {
+            const length = size_pool.requiredBytes(count) orelse return error.InvalidRequest;
+            return .{ .key = key, .allocation = try self.acquire(heap, caller, key, length, slab.alignment, .{ .objects_pending = count }) };
+        }
+
+        pub fn prepareObjects(self: *Self, caller: u32, key: Key, lease: Objects) Error!size_pool.View {
+            const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
+            return switch (entry.storage) {
+                .objects_pending => |count| size_pool.View.from(entry.allocation.bytes, count, entry.allocation.ticket) orelse error.InvalidRequest,
+                else => error.InvalidAllocation,
+            };
+        }
+
+        pub fn publishObjects(self: *Self, caller: u32, key: Key, lease: Objects) Error!void {
+            const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
+            switch (entry.storage) {
+                .objects_pending => |count| {
+                    const view = size_pool.View.from(entry.allocation.bytes, count, entry.allocation.ticket) orelse return error.InvalidRequest;
+                    try view.ready();
+                    entry.storage = .{ .objects = count };
+                },
+                else => return error.InvalidAllocation,
+            }
+        }
+
+        noinline fn objectsView(self: *Self, caller: u32, key: Key, lease: Objects) Error!size_pool.View {
+            const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
+            return switch (entry.storage) {
+                .objects => |count| size_pool.View.from(entry.allocation.bytes, count, entry.allocation.ticket) orelse error.InvalidRequest,
+                .objects_pending => error.NotReady,
+                else => error.InvalidAllocation,
+            };
+        }
+
+        pub fn allocObject(self: *Self, caller: u32, key: Key, lease: Objects, length: usize) Error!size_pool.Allocation {
+            return (try self.objectsView(caller, key, lease)).alloc(length);
+        }
+
+        pub fn freeObject(self: *Self, caller: u32, key: Key, lease: Objects, allocation: size_pool.Allocation) Error!void {
+            try (try self.objectsView(caller, key, lease)).free(allocation);
+        }
+
+        pub fn objectCapacity(self: *Self, caller: u32, key: Key, lease: Objects, allocation: size_pool.Allocation) Error!usize {
+            return (try self.objectsView(caller, key, lease)).capacity(allocation);
+        }
+
+        pub fn beginObjectResize(self: *Self, caller: u32, key: Key, lease: Objects, old: ?size_pool.Allocation, length: usize) Error!size_pool.Resize {
+            return (try self.objectsView(caller, key, lease)).beginResize(old, length);
+        }
+
+        pub fn commitObjectResize(self: *Self, caller: u32, key: Key, lease: Objects, plan: size_pool.Move) Error!size_pool.Allocation {
+            return (try self.objectsView(caller, key, lease)).commit(plan);
+        }
+
+        pub fn cancelObjectResize(self: *Self, caller: u32, key: Key, lease: Objects, plan: size_pool.Move) Error!void {
+            try (try self.objectsView(caller, key, lease)).cancel(plan);
+        }
+
+        pub fn closeObjects(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, lease: Objects) Error!void {
+            const entry = try self.leaseEntry(caller, key, lease.key, lease.allocation);
+            switch (entry.storage) {
+                .objects, .objects_pending => try self.free(heap, caller, key, lease.allocation),
                 else => return error.InvalidAllocation,
             }
         }

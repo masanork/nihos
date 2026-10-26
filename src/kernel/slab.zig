@@ -4,7 +4,7 @@ const std = @import("std");
 pub const alignment: usize = 8;
 pub const max_cells: usize = 65535;
 const magic: u32 = 0x736c6162;
-const allocated = std.math.maxInt(u32);
+const allocated: u32 = 1 << 31;
 const Header = extern struct { serial: u64, epoch: u64, head: u32, live: u32, cookie: u32, faulted: u32 };
 const Cell = extern struct { ticket: u64, next: u32, cookie: u32 };
 pub const header_bytes = @sizeOf(Header);
@@ -108,6 +108,13 @@ pub const View = struct {
     }
 
     pub noinline fn alloc(self: View) Error!Allocation {
+        return self.allocSized(self.object_bytes);
+    }
+
+    /// Sized users retain the same cell capacity but authenticate the exact
+    /// exposed length in metadata. Fixed-size slab callers use alloc().
+    pub noinline fn allocSized(self: View, length: usize) Error!Allocation {
+        if (length == 0 or length > self.object_bytes) return error.InvalidRequest;
         const h = try self.checkedHeader();
         if (h.head == self.count) return error.OutOfMemory;
         if (h.serial == std.math.maxInt(u64)) return error.SerialExhausted;
@@ -121,20 +128,48 @@ pub const View = struct {
         h.head = c.next;
         h.live += 1;
         c.ticket = h.serial;
-        c.next = allocated;
+        c.next = allocated | @as(u32, @intCast(length));
         c.cookie = self.cellCookie(index, c);
         h.cookie = self.headerCookie();
-        return .{ .bytes = self.payload(index), .ticket = c.ticket, .epoch = self.epoch, .index = index };
+        return .{ .bytes = self.payload(index)[0..length], .ticket = c.ticket, .epoch = self.epoch, .index = index };
+    }
+
+    fn liveCell(self: View, allocation: Allocation) Error!*Cell {
+        if (allocation.epoch != self.epoch or allocation.index >= self.count) return error.InvalidAllocation;
+        const c = self.cell(allocation.index);
+        const bytes = self.payload(allocation.index);
+        const length = c.next & ~allocated;
+        if (c.next & allocated == 0 or length == 0 or length > self.object_bytes or
+            c.ticket != allocation.ticket or allocation.ticket == 0 or
+            allocation.bytes.ptr != bytes.ptr or allocation.bytes.len != length) return error.InvalidAllocation;
+        if (c.cookie != self.cellCookie(allocation.index, c)) return self.corrupt();
+        return c;
+    }
+
+    pub fn validate(self: View, allocation: Allocation) Error!void {
+        _ = try self.checkedHeader();
+        _ = try self.liveCell(allocation);
+    }
+
+    /// Transfer the same cell to a new length/ticket without copying data.
+    /// Old operation handles become stale even when the address is unchanged.
+    pub noinline fn renew(self: View, allocation: Allocation, length: usize) Error!Allocation {
+        if (length == 0 or length > self.object_bytes) return error.InvalidRequest;
+        const h = try self.checkedHeader();
+        const c = try self.liveCell(allocation);
+        if (h.serial == std.math.maxInt(u64)) return error.SerialExhausted;
+        h.serial += 1;
+        c.ticket = h.serial;
+        c.next = allocated | @as(u32, @intCast(length));
+        c.cookie = self.cellCookie(allocation.index, c);
+        h.cookie = self.headerCookie();
+        return .{ .bytes = self.payload(allocation.index)[0..length], .ticket = c.ticket, .epoch = self.epoch, .index = allocation.index };
     }
 
     pub noinline fn free(self: View, allocation: Allocation) Error!void {
         const h = try self.checkedHeader();
-        if (allocation.epoch != self.epoch or allocation.index >= self.count) return error.InvalidAllocation;
-        const c = self.cell(allocation.index);
-        const bytes = self.payload(allocation.index);
-        if (c.next != allocated or c.ticket != allocation.ticket or allocation.ticket == 0 or
-            allocation.bytes.ptr != bytes.ptr or allocation.bytes.len != bytes.len) return error.InvalidAllocation;
-        if (c.cookie != self.cellCookie(allocation.index, c) or h.live == 0) return self.corrupt();
+        const c = try self.liveCell(allocation);
+        if (h.live == 0) return self.corrupt();
         if (h.head != self.count) _ = try self.freeHead(h.head);
         c.next = h.head;
         c.cookie = self.cellCookie(allocation.index, c);
@@ -156,6 +191,21 @@ test "slab serial exhaustion and corrupt header fail before consuming a cell" {
     view.header().cookie = view.headerCookie();
     try std.testing.expectError(error.Corrupt, view.alloc());
     try std.testing.expectError(error.Faulted, view.alloc());
+}
+
+test "slab in-place renewal exhaustion preserves live length ticket and data" {
+    var memory: [224]u8 align(8) = undefined;
+    const view = View.from(&memory, 32, 1).?;
+    view.initialize();
+    const old = try view.allocSized(13);
+    @memset(old.bytes, 0x34);
+    view.header().serial = std.math.maxInt(u64);
+    view.header().cookie = view.headerCookie();
+    try std.testing.expectError(error.SerialExhausted, view.renew(old, 20));
+    try view.validate(old);
+    try std.testing.expectEqual(@as(u32, 1), view.header().live);
+    for (old.bytes) |byte| try std.testing.expectEqual(@as(u8, 0x34), byte);
+    try view.free(old);
 }
 
 test "slab free-list corruption is bounded and poisons further operations" {
