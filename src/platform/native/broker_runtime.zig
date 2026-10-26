@@ -21,6 +21,7 @@ var reaped = A.init(0);
 var io_armed = A.init(0);
 var cancel_requested = A.init(0);
 var io_after_exit = A.init(0);
+var cancel_state = A.init(0);
 var stack_low: u32 = 0;
 var stack_high: u32 = 0;
 const Request = struct { sequence: u32, identity: u32, operation: u32, length: u32 = 0, token: u32 = 0 };
@@ -109,12 +110,14 @@ pub export fn nih_broker_round() linksection(".iram1.broker_hooks") callconv(.c)
 pub export fn nih_broker_reaped() linksection(".iram1.broker_hooks") callconv(.c) void {
     _ = reaped.fetchAdd(1, .release);
 }
-pub export fn nih_broker_cancel_requested() linksection(".iram1.broker_hooks") callconv(.c) u32 {
-    return cancel_requested.load(.acquire);
+pub export fn nih_broker_cancel_requested(task_state: u32) linksection(".iram1.broker_hooks") callconv(.c) u32 {
+    const requested = cancel_requested.load(.acquire);
+    if (requested == 1) cancel_state.store(10 + task_state, .release);
+    return requested;
 }
 /// Ordinary CPU0 driver context, with interrupts enabled. No PSRAM access.
 /// The native Bus invokes this only after the actual CMD17 register write.
-pub export fn nih_broker_io_issued() linksection(".iram1.broker_hooks") callconv(.c) void {
+pub export fn nih_broker_io_issued() callconv(.c) void {
     if (io_armed.cmpxchgStrong(1, 2, .acq_rel, .acquire) != null) return;
     cancel_requested.store(1, .release);
     const target = identity.load(.acquire);
@@ -125,7 +128,10 @@ pub export fn nih_broker_io_issued() linksection(".iram1.broker_hooks") callconv
         const now = asm volatile ("csrr %[value], mcycle"
             : [value] "=r" (-> u32),
         );
-        if (now -% began > 1_000_000_000) nih_native_task_failed();
+        if (now -% began > 1_000_000_000) {
+            stage(@intCast(60 + cancel_state.load(.acquire)));
+            nih_native_task_failed();
+        }
     }
     io_after_exit.store(1, .release);
 }
