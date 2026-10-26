@@ -56,7 +56,7 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
-pub const Report = struct { status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{}, api: ApiReport = .{} };
+pub const Report = struct { code_pc: u32 = 0, status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{}, api: ApiReport = .{} };
 var last_error: u32 = 0;
 // SAFETY: run fully initializes the controller; runtimeBegin requires the
 // ready flag set only after all SD boot checks succeed.
@@ -107,8 +107,13 @@ const Bus = struct {
 
 // Keep the temporary sector buffer out of the permanent bootstrap frame so
 // its reservation is returned before SQLite uses the same stack.
-pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) Report {
+// Boot only, after mapping preparation and before CPU1/tasks are released.
+// Controller callbacks/DMA state remain resident for the later owner task.
+pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) linksection(".flash.text.sdboot") Report {
     var report = Report{};
+    report.code_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
     clock.start();
     clock.disarm();
     defer clock.stop();

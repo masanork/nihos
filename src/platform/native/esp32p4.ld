@@ -28,6 +28,9 @@ SECTIONS
     .flash.boot : {
         __flash_boot_start = .;
         *(.flash.text.boot)
+        __flash_sdmmc_boot_start = .;
+        *(.flash.text.sdboot)
+        __flash_sdmmc_boot_end = .;
         __flash_boot_end = .;
     } > flash_boot
     /* The stock P4 loader maps both segments before entering SRAM.

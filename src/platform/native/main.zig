@@ -378,8 +378,13 @@ noinline fn bootMemory() u32 {
     return external.mapping.bytes;
 }
 
+extern var __flash_sdmmc_boot_start: u8;
+extern var __flash_sdmmc_boot_end: u8;
 noinline fn runSdProbe(workspace: ?*[8192]u8) void {
     const sd = @import("sdmmc_probe.zig").run(timer(0), workspace);
+    const Code = struct { start: u32, end: u32, pc: u32, completed: u32 };
+    const code = Code{ .start = @intFromPtr(&__flash_sdmmc_boot_start), .end = @intFromPtr(&__flash_sdmmc_boot_end), .pc = sd.code_pc, .completed = sd.status };
+    logger.record("NIHOS_NATIVE_SDMMC_CODE", null, .{ "start", "end", "pc", "completed" }, &code);
     logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
     for (0..sd.stage_count) |phase| {
         logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
