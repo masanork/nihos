@@ -32,6 +32,9 @@ pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const boot_graphics = @import("graphics/boot_graphics.zig");
 pub const tab5_boot_i2c = @import("board/tab5/boot_i2c.zig");
 pub const tab5_display = @import("board/tab5/display.zig");
+pub const tab5_panels = @import("board/tab5/panels.zig");
+pub const display_dcs = @import("board/tab5/dcs.zig");
+pub const scanout_state = @import("board/tab5/scanout_state.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
@@ -75,6 +78,10 @@ test {
     _ = boot_graphics;
     _ = tab5_boot_i2c;
     _ = tab5_display;
+    _ = tab5_panels;
+    _ = display_dcs;
+    _ = scanout_state;
+    _ = @import("platform/native/external_layout.zig");
     _ = platform_abi;
 }
 

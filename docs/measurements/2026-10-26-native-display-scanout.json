@@ -1,0 +1,903 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "scope": "native internal-pattern milestone; PSRAM pixels unqualified",
+  "base_commit": "0fc5ecc",
+  "branch": "codex/native-boot-graphics",
+  "device": {
+    "chip": "ESP32-P4 rev1.3",
+    "port": "/dev/cu.usbmodem101",
+    "panel": "ST7121",
+    "touch_firmware": 1,
+    "flash_bytes": 16777216,
+    "psram_bytes": 33554432
+  },
+  "final_mode": 4,
+  "final_capture": "build/native-scanout-physical/attempt-17-checkpoint-pattern",
+  "scanout_report": {
+    "status": 1,
+    "stage": 5,
+    "error_code": 0,
+    "panel": 3,
+    "commands": 34,
+    "last_command": 41,
+    "frames": 2,
+    "fault": 0,
+    "event": 0,
+    "backlight": 1,
+    "dpi_mhz": 80,
+    "lane_mbps": 960,
+    "cleanup": 0,
+    "dsi_error0": 0,
+    "dsi_error1": 0,
+    "dma_error": 0,
+    "bridge_error": 0,
+    "start_code": 0,
+    "prime_depth": 773,
+    "bl_latch": 1,
+    "bl_enable": 1,
+    "bl_level": 1,
+    "bl_mux": 6656,
+    "bl_matrix": 1280,
+    "white": 1
+  },
+  "installed_artifacts": {
+    "0x2000": {
+      "path": "/Users/masanork/repo/nihos-native-boot-graphics/build/native-scanout-physical/attempt-17-checkpoint-pattern/installed/bootloader.bin",
+      "sha256": "b5fbaacadc6c2a2ea8bcdb5edefd1745468f255dccc6f95a3c78e0d1d768478d"
+    },
+    "0x8000": {
+      "path": "/Users/masanork/repo/nihos-native-boot-graphics/build/native-scanout-physical/attempt-17-checkpoint-pattern/installed/partition-table.bin",
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "0x10000": {
+      "path": "/Users/masanork/repo/nihos-native-boot-graphics/build/native-scanout-physical/attempt-17-checkpoint-pattern/installed/nihos-native.bin",
+      "sha256": "0c3755eadf2bc132beae503515b4596153e56395aa11c2d027d58ca0ac315b35"
+    }
+  },
+  "image_audit": {
+    "schema": 1,
+    "backend": "native-sram",
+    "rtos_linked": false,
+    "fp_assembly_linked": false,
+    "riscv_flags": "0x1",
+    "fp_instructions": {
+      "app": 0,
+      "c": 0,
+      "zig": 0,
+      "transfer_helpers": 0
+    },
+    "entry": "0x4ff00000",
+    "elf_sha256": "548d97f779f8329eda8b24190e6fe39f34ed98e2863c55e07c2f7dbb8e0e27d5",
+    "memory": {
+      "profile": "device",
+      "origin": "0x4ff00000",
+      "end": "0x4ff28000",
+      "bytes": 163840,
+      "total_bytes": 221184,
+      "regions": [
+        {
+          "name": "resident",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840
+        },
+        {
+          "name": "stacks",
+          "origin": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344
+        }
+      ]
+    },
+    "sram_reserved_bytes": 150912,
+    "primary_static_bytes": 93568,
+    "stacks": {
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "bootstrap_bytes_per_hart": 8192,
+      "irq_bytes_per_hart": 8192,
+      "worker_bytes": 4096,
+      "workers_per_hart": 3,
+      "worker_start": "0x4ff68000"
+    },
+    "heap": {
+      "start": "0x4ff16d80",
+      "end": "0x4ff28000",
+      "bytes": 70272,
+      "owner_count": 2,
+      "granule_bytes": 64,
+      "external_bytes": 0
+    },
+    "flash_boot": {
+      "start": "0x40000120",
+      "end": "0x400011ce",
+      "bytes": 4270,
+      "sha256": "2f8086d54a6992e1fcd136c326802c3f4d6cd771c3ea4221ef08d5ae71288d5c",
+      "functions": {
+        "probe": {
+          "name": "psram.probe",
+          "start": "0x40000120",
+          "end": "0x40000d00"
+        },
+        "mapping": {
+          "name": "psram_memory.prepare__func_67",
+          "start": "0x40000d00",
+          "end": "0x400011ce"
+        }
+      },
+      "image_offset": 288
+    },
+    "flash_records": {
+      "start": "0x40010020",
+      "end": "0x4001837f",
+      "bytes": 33631,
+      "fnv1a": 387178001,
+      "executable": false,
+      "writable": false,
+      "image_offset": 65568
+    },
+    "rom_symbols": {
+      "nih_rom_putc": "0x4fc00054",
+      "nih_rom_set_cpu1_entry": "0x4fc000a8",
+      "nih_rom_l2_line_size": "0x4fc003cc",
+      "nih_rom_l2_enable": "0x4fc00504",
+      "nih_rom_cache_invalidate": "0x4fc003e4",
+      "nih_rom_cache_writeback": "0x4fc003f4"
+    },
+    "sections": [
+      {
+        "name": ".flash.appdesc",
+        "address": "0x40000020",
+        "bytes": 256
+      },
+      {
+        "name": ".flash.boot",
+        "address": "0x40000120",
+        "bytes": 4270
+      },
+      {
+        "name": ".flash.rodata",
+        "address": "0x40010020",
+        "bytes": 33631
+      },
+      {
+        "name": ".text",
+        "address": "0x4ff00000",
+        "bytes": 83934
+      },
+      {
+        "name": ".rodata",
+        "address": "0x4ff147e0",
+        "bytes": 4292
+      },
+      {
+        "name": ".data",
+        "address": "0x4ff158c0",
+        "bytes": 1360
+      },
+      {
+        "name": ".bss",
+        "address": "0x4ff15e80",
+        "bytes": 3840
+      },
+      {
+        "name": ".stacks",
+        "address": "0x4ff60000",
+        "bytes": 57344
+      },
+      {
+        "name": ".heap",
+        "address": "0x4ff16d80",
+        "bytes": 70272
+      }
+    ],
+    "image_sha256": "0c3755eadf2bc132beae503515b4596153e56395aa11c2d027d58ca0ac315b35",
+    "image_bytes": 127856,
+    "image_segments": [
+      {
+        "address": "0x40000020",
+        "bytes": 4528
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 60992
+      },
+      {
+        "address": "0x40010020",
+        "bytes": 33632
+      },
+      {
+        "address": "0x4ff0ee40",
+        "bytes": 27236
+      },
+      {
+        "address": "0x4ff158c0",
+        "bytes": 1360
+      }
+    ],
+    "loader": {
+      "elf_sha256": "d607bc7ed6c3c3f94813248ba363d79fd908765c45b09a3f817395dad3be13b7",
+      "allocated": [
+        {
+          "address": "0x4ff2cbd0",
+          "bytes": 12498
+        },
+        {
+          "address": "0x4ff33bd0",
+          "bytes": 272
+        },
+        {
+          "address": "0x4ff33ce0",
+          "bytes": 80
+        },
+        {
+          "address": "0x4ff33d30",
+          "bytes": 12
+        },
+        {
+          "address": "0x4ff33d3c",
+          "bytes": 4536
+        },
+        {
+          "address": "0x4ff2abd0",
+          "bytes": 3010
+        }
+      ],
+      "nearest_higher_address": "0x4ff2abd0",
+      "gap_bytes": 11216,
+      "regions_checked": [
+        {
+          "name": "resident",
+          "gap_below": null,
+          "gap_above": 11216
+        },
+        {
+          "name": "stacks",
+          "gap_below": 176396,
+          "gap_above": null
+        }
+      ]
+    },
+    "loader_config": {
+      "l2_bytes": 131072,
+      "line_bytes": 64,
+      "profile": "device",
+      "stack_source_window": {
+        "origin": "0x4ff40000",
+        "end": "0x4ffa0000"
+      },
+      "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+    }
+  },
+  "lease": {
+    "exclusive": true,
+    "installed": true,
+    "postverified": true,
+    "backup_requested": false,
+    "rom_banner": true
+  },
+  "optical_evidence": [
+    {
+      "attempt": 9,
+      "observer": "user",
+      "observation": "backlight on, framebuffer white test still black"
+    },
+    {
+      "attempt": 12,
+      "observer": "user",
+      "observation": "colour bands visible"
+    },
+    {
+      "attempt": 17,
+      "observer": "serial only",
+      "observation": "same internal-pattern configuration restored; new optical confirmation not requested"
+    }
+  ],
+  "qualification_limits": [
+    "no visible PSRAM lettering",
+    "no sustained DMA IRQ qualification",
+    "no concurrent storage/display qualification",
+    "only ST7121 physically tested",
+    "no proven root cause for black framebuffer",
+    "40/80 MHz live clock changes stalled fullSweep; removed"
+  ],
+  "checks": {
+    "host_debug": {
+      "passed": 175
+    },
+    "host_release_safe": "passed",
+    "python_tests": {
+      "passed": 110
+    },
+    "panel_packing_c_comparison": "passed",
+    "pattern_native_image_audit": "passed",
+    "format": "passed",
+    "shellcheck": "passed",
+    "logo_native_image_audit": "passed; built only, not installed",
+    "default_native_integer_elf": "compiled",
+    "whitespace": "passed"
+  },
+  "attempts": [
+    {
+      "directory": "build/native-scanout-physical/attempt-01",
+      "number": 1,
+      "result": "allocator rejected valid reserved owner range; fixed",
+      "boot.raw.log_sha256": "40afa7fb085a1bd371b45d52779bdcdf3084c669cb55f053a096c2bb5f1ed03f",
+      "boot.log_sha256": "7734f1acb72ee004c93b4f738180ebd74bbed5bcb634d39ce8afc841625d98a7",
+      "artifacts.json_sha256": "89c6c8d43b1e65b6c547822168a2c2b462bdfb463f4a73ad155b0a732df87ebb",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_FAIL external memory prepare"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-02",
+      "number": 2,
+      "result": "retired scheduler timer interrupt fired during display delays; fixed",
+      "boot.raw.log_sha256": "50f33c5d5150a82cd7e1ba6a6b2e88ee8096369e4d163dcaade8a2852de854cf",
+      "boot.log_sha256": "127abbf842b5ddf2697018fcd796ca15c16592f722688e3a9cb0ff2041d5f33b",
+      "artifacts.json_sha256": "14935c585951b7f5b4aaf8dc2c07ec9628b0fdcb4d7328c47b0754220f577231",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_TRAP cause=b8000010 pc=4ff03920 hart=00000000NIHOS_NATIVE_FAIL native task dispatch"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-03",
+      "number": 3,
+      "result": "DCS link error",
+      "boot.raw.log_sha256": "6b22759fae10ae5f9d52677c86073e8fe5a31e1ae6b6d675f5e33477f5c22c2c",
+      "boot.log_sha256": "852d70354831c99ea6b26314c220bcb3318b5e7c257d2a071b97e0b13adccfd3",
+      "artifacts.json_sha256": "74f70b6703cd6c3e9d5aea3b09d94ced0cc0a2df41ae5e89ea6d8abd900e4843",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000002 error_code=00000003 panel=00000003 commands=00000001 last_command=00000060 frames=00000000 fault=00000000 event=00000000 backlight=00000000 dpi_mhz=00000014 lane_mbps=000003c0 cleanup=00000001",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-04",
+      "number": 4,
+      "result": "LP1 contention raw int_st0=0x00100000",
+      "boot.raw.log_sha256": "32e8d75681deb2515165488231f1ab5cdccd964379dbf11459c90586de986f5e",
+      "boot.log_sha256": "c4dd1088ab18f387ee1cd33335d39262df97abefb5a5d9a818af6cf2efdbed90",
+      "artifacts.json_sha256": "89a3a625483819d5536f68d53e255cce04ec6702a46bdca7f8bb7db39e00bdbb",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000002 error_code=00000003 panel=00000003 commands=00000001 last_command=00000060 frames=00000000 fault=00000000 event=00000000 backlight=00000000 dpi_mhz=00000014 lane_mbps=000003c0 cleanup=00000001 dsi_error0=00100000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-05",
+      "number": 5,
+      "result": "BTA enabled still LP1 contention",
+      "boot.raw.log_sha256": "efdf6c3ec128304d351fb5691900762c5469bcf6dcbe6b259986c9db6908cf38",
+      "boot.log_sha256": "c0e83bd5efe5327cd2166505348cf1dcc5fef6c2f3ae20f18542322309c2ebdb",
+      "artifacts.json_sha256": "43de07e21fecaeda2d42359b3898a260e29cc265b0e88ee5c746553bc195ddd9",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000002 error_code=00000003 panel=00000003 commands=00000001 last_command=00000060 frames=00000000 fault=00000000 event=00000000 backlight=00000000 dpi_mhz=00000014 lane_mbps=000003c0 cleanup=00000001 dsi_error0=00100000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-06",
+      "number": 6,
+      "result": "ACK and BTA disabled; all34 commands; DPI20 underrun",
+      "boot.raw.log_sha256": "ff38d75e0efffff977f184424ee5d88f0eb928f6cdea19345934019aa1023749",
+      "boot.log_sha256": "1d25f2a69879c204597f0bb9b034537fb91c4b34cca125a72b9bd72500eccef0",
+      "artifacts.json_sha256": "efe2575652a4ff71b583e010d731e6a4899b7cdaec7dfb9641bc30b353051e45",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000004 error_code=00000007 panel=00000003 commands=00000022 last_command=00000029 frames=00000000 fault=00000002 event=00000004 backlight=00000000 dpi_mhz=00000014 lane_mbps=000003c0 cleanup=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000001",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-07",
+      "number": 7,
+      "result": "FIFO prime did not fix DPI20 underrun",
+      "boot.raw.log_sha256": "65de4ad1a4119365438b8c1d2d7527f260873ba6b694c4147252de2be6a7a9b6",
+      "boot.log_sha256": "0879e144c98785db91d5db98f5a895fc15624001045fb50d9c24e8a0854e77b0",
+      "artifacts.json_sha256": "1289e268032b5e24e3562736ac0f5232ee27ded79728fad1afea6a346c1da1b1",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000004 error_code=00000007 panel=00000003 commands=00000022 last_command=00000029 frames=00000000 fault=00000002 event=00000004 backlight=00000000 dpi_mhz=00000014 lane_mbps=000003c0 cleanup=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000001 start_code=00000000 prime_depth=00000304",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-08",
+      "number": 8,
+      "result": "DPI10 DMA completion but dark; warm-reset DMA clock retention found",
+      "boot.raw.log_sha256": "cd3bc2b912221616c6a392a59d70603de372e24784445b4985bcf9bbceb780fb",
+      "boot.log_sha256": "3eacbe4c802167daa10fcb7c200ff49b1ee01a7ac5568039356ec07bbd17428e",
+      "artifacts.json_sha256": "39d9b7738d12e8646da537772872a6ff87e312701088a06d8e7b0c9fe3b4e7c2",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000012 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=0000000a lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000302"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-08-final-observation",
+      "number": 8,
+      "result": "DPI10 DMA completion but dark; warm-reset DMA clock retention found",
+      "boot.raw.log_sha256": "f616f64b08aa2023dc5b31229b18a9cedb60230d65337835a65d46e792b99d15",
+      "boot.log_sha256": "3af695d6d912384058b24085c6cde15042064519d2a28bc112f4107dddf94df2",
+      "artifacts.json_sha256": "78eca57b954626a239db9aab2af238f1a84a9cb4c5fb0a8e03ad1c925abd13db",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000003 error_code=00000007 panel=00000003 commands=00000022 last_command=00000029 frames=00000000 fault=00000000 event=00000000 backlight=00000000 dpi_mhz=0000000a lane_mbps=000003c0 cleanup=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=fffffffe prime_depth=00000000",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-09-white",
+      "number": 9,
+      "result": "white framebuffer black despite backlight and two DMA blocks",
+      "boot.raw.log_sha256": "61b1efedfb2aef3876225183b427fc70449bda92c4cee5eea52816347157995b",
+      "boot.log_sha256": "277fa6d6386eda3a3b12c69fda1f20b46611c9e4d3a03958eeeb175015bd7428",
+      "artifacts.json_sha256": "39fe1eff1ebd6f8646ea2c97aa126e0e4029f58558bd2cffc48c14502ba56e0d",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=0000000a lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-09-white-final",
+      "number": 9,
+      "result": "white framebuffer black despite backlight and two DMA blocks",
+      "boot.raw.log_sha256": "fe885cdb8ec9ce1db3683e5dceefa3453bcec1fa126a68d2b8870cad2798e292",
+      "boot.log_sha256": "fe885cdb8ec9ce1db3683e5dceefa3453bcec1fa126a68d2b8870cad2798e292",
+      "artifacts.json_sha256": "5faed00a4446cb4215421806148a13e744e2edd3a8aef500838a9df1f75f52cd",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=0000000a lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-10-pattern",
+      "number": 10,
+      "result": "internal VPG with simultaneous bridge feed failed",
+      "boot.raw.log_sha256": "045f8c15595e310519b52f6ffbb5f62fa5c219796f5cd4eeca6b1d7e6e44f801",
+      "boot.log_sha256": "e39c8da31ad71719dff0c354d37112da6b62c4982ed22cfb8abf3c649cf2492a",
+      "artifacts.json_sha256": "80ac8193476213b2932bd758abac5a5c1205a272663124b97da97dfe58acbc10",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001",
+        "NIHOS_NATIVE_FAIL display refresh"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-10-pattern-final",
+      "number": 10,
+      "result": "internal VPG with simultaneous bridge feed failed",
+      "boot.raw.log_sha256": "e9cc5654c0c5dd4921d7c390a77692decb1b20e59045f6a6732df6af0bf35005",
+      "boot.log_sha256": "e9cc5654c0c5dd4921d7c390a77692decb1b20e59045f6a6732df6af0bf35005",
+      "artifacts.json_sha256": "8eb4d365a89054cc3de6ec2273fb80af4e4032e7c6fbbbcf792b6aeb4b72dee8",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001",
+        "NIHOS_NATIVE_FAIL display refresh"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-11-pattern",
+      "number": 11,
+      "result": "PLL240 gate enabled; payload FIFO overflow 0x80; external bridge feed disabled subsequently",
+      "boot.raw.log_sha256": "f734f241783a7356ca849cee44d134d6c8511382bafeb47cb04761ff8ebf4c8f",
+      "boot.log_sha256": "d376dec7bfd2ff7e137f811a4fcc994624f8651aba98fa0d85863fd1dfe97bab",
+      "artifacts.json_sha256": "4cfceb39784756e420c1f3f6d8a9fc8d6f2f291b83219d519d42a01168d6bd16",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001",
+        "NIHOS_NATIVE_DISPLAY_IRQ_FAIL frames=00000002 fault=00000001 event=00000002 dsi_error0=00000000 dsi_error1=00000080 dma_error=00000000 bridge_error=00000001",
+        "NIHOS_NATIVE_FAIL display refresh"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-11-pattern-final",
+      "number": 11,
+      "result": "PLL240 gate enabled; payload FIFO overflow 0x80; external bridge feed disabled subsequently",
+      "boot.raw.log_sha256": "185633e080f092bd81fd29ff5adf0facd8feb171de3a3b1195f443f4aaf199a5",
+      "boot.log_sha256": "185633e080f092bd81fd29ff5adf0facd8feb171de3a3b1195f443f4aaf199a5",
+      "artifacts.json_sha256": "b98ed3babda3dbe7fa181b6bc0ebfc2673d751b3ee6e510f5cb42df181e7bfa1",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001",
+        "NIHOS_NATIVE_DISPLAY_IRQ_FAIL frames=00000002 fault=00000001 event=00000002 dsi_error0=00000000 dsi_error1=00000080 dma_error=00000000 bridge_error=00000001",
+        "NIHOS_NATIVE_FAIL display refresh"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-12-pattern",
+      "number": 12,
+      "result": "internal bars at DPI80 visibly confirmed by user",
+      "boot.raw.log_sha256": "950160837cac7c6ae7f91aaaf7bf0ede432561eefceed6da38d79befcccc2465",
+      "boot.log_sha256": "263d36216f007dcefc40f6e9d203b2c8a240b8f3f28180683adce949235806ef",
+      "artifacts.json_sha256": "459836564745923eb2329b4f781af9f1379b62bbe972530924dfbae769c1f0db",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-12-pattern-final",
+      "number": 12,
+      "result": "internal bars at DPI80 visibly confirmed by user",
+      "boot.raw.log_sha256": "576c1075add29be3c77900a92ffac9b9379526d172f8c3b4b4ae5822f6d7f7c7",
+      "boot.log_sha256": "576c1075add29be3c77900a92ffac9b9379526d172f8c3b4b4ae5822f6d7f7c7",
+      "artifacts.json_sha256": "eddf183d86665fe2c3fdbf7afbad3c122a9ea19634864f9aafa8c699e8608f27",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-13-clock80",
+      "number": 13,
+      "result": "INVALID stale candidate flashed after failed build; not80MHz evidence",
+      "boot.raw.log_sha256": "11fa2d3ee90d3bfdcb318d0d5e1e8c328c38da2b4fc24fb7f51c6f0484fa9ae1",
+      "boot.log_sha256": "2f2ebec682f3632b78c4f59d1f6965c2b0e1df9dfacc798ce06957b228f65456",
+      "artifacts.json_sha256": "c45be9ec157930f4f4f76b76d35f793a07e4a777ed405087fb2831ffa01ffc41",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000003 error_code=00000007 panel=00000003 commands=00000022 last_command=00000029 frames=00000000 fault=00000000 event=00000000 backlight=00000000 dpi_mhz=0000000a lane_mbps=000003c0 cleanup=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=fffffffe prime_depth=00000000",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-13-clock80-final",
+      "number": 13,
+      "result": "INVALID stale candidate flashed after failed build; not80MHz evidence",
+      "boot.raw.log_sha256": "7ee68041bc1e7d4d4cfb4128e5ed6639531498c306865b775c4a1846366929cb",
+      "boot.log_sha256": "7ee68041bc1e7d4d4cfb4128e5ed6639531498c306865b775c4a1846366929cb",
+      "artifacts.json_sha256": "78eca57b954626a239db9aab2af238f1a84a9cb4c5fb0a8e03ad1c925abd13db",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000002 stage=00000003 error_code=00000007 panel=00000003 commands=00000022 last_command=00000029 frames=00000000 fault=00000000 event=00000000 backlight=00000000 dpi_mhz=0000000a lane_mbps=000003c0 cleanup=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=fffffffe prime_depth=00000000",
+        "NIHOS_NATIVE_FAIL display scanout startup"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-14-clock80",
+      "number": 14,
+      "result": "actual80MHz live PSRAM change; no sweep completion within45sec",
+      "boot.raw.log_sha256": "0ebf62ad26d081b5cc388b5e3514c7a10b25b5d98d8ac827304536910f6581ce",
+      "boot.log_sha256": "25076b773e35bb965b5f787d281f770b6cbb7e5232df19612c0f8c36668314f1",
+      "artifacts.json_sha256": "5cd09eddf76cb637c859bcb70c975bfca4cbdc04d05562ea35825b5e34d85888",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PSRAM_CLOCK core=0005e05d bus=80000000 mhz=00000050"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-14-clock80-final",
+      "number": 14,
+      "result": "actual80MHz live PSRAM change; no sweep completion within45sec",
+      "boot.raw.log_sha256": "25076b773e35bb965b5f787d281f770b6cbb7e5232df19612c0f8c36668314f1",
+      "boot.log_sha256": "25076b773e35bb965b5f787d281f770b6cbb7e5232df19612c0f8c36668314f1",
+      "artifacts.json_sha256": "ae1ccadd3280dc9d74686fe07b05eb113fa8f97abede170cf1b7131940d98555",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PSRAM_CLOCK core=0005e05d bus=80000000 mhz=00000050"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-15-clock40",
+      "number": 15,
+      "result": "no install; filesystem session owned serial",
+      "artifacts.json_sha256": "8d8e8e5780a4a9dfd2d28d6850603abfd101aa13f7046f7b991251dc95769c70"
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-16-clock40",
+      "number": 16,
+      "result": "40MHz live PSRAM change; no sweep completion within45sec",
+      "boot.raw.log_sha256": "5922b24c8ee6013a61d1653ae6d2299b0106f8fb46f5b5c3303ff4a7fd1c2ebf",
+      "boot.log_sha256": "dcae6ef86a887ed4d51507217b9ef6e7491da6b2d19152ae4b95cded42421d37",
+      "artifacts.json_sha256": "d64eab8347e2fc90285fe2b994a181e541ae2d1a9778f52851db42387a5342da",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PSRAM_CLOCK core=0000c05d bus=80000000 mhz=00000028"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-16-clock40-final",
+      "number": 16,
+      "result": "40MHz live PSRAM change; no sweep completion within45sec",
+      "boot.raw.log_sha256": "dcae6ef86a887ed4d51507217b9ef6e7491da6b2d19152ae4b95cded42421d37",
+      "boot.log_sha256": "dcae6ef86a887ed4d51507217b9ef6e7491da6b2d19152ae4b95cded42421d37",
+      "artifacts.json_sha256": "d22dd716be1d5211d810ec1bda3f4522f7eab83116ba381719b2b9ce42b02a47",
+      "lease-complete.json_sha256": "d8d280b1b37564be805ba508e66a4d7f95d643000a6b23e903a096491b19ed03",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PSRAM_CLOCK core=0000c05d bus=80000000 mhz=00000028"
+      ]
+    },
+    {
+      "directory": "build/native-scanout-physical/attempt-17-checkpoint-pattern",
+      "number": 17,
+      "result": "checkpoint: removed live clock change; native internal bars restored and serial lease released",
+      "boot.raw.log_sha256": "e3755c6659284d5963cdd1984ed7c6a6c217dcd05c796d22a2f1f39c5bfa7f0d",
+      "boot.log_sha256": "d14eabcdd8b5ade52c8eddae27035fe03fb0cba9685942138e80f381e5595b71",
+      "artifacts.json_sha256": "3581e058661ce48dd4c2980ddd66dd3694b3c14e1294f04d901a80084e3f0262",
+      "lease-complete.json_sha256": "7bcea8ed8d9f796a50337795884e1415561a814918e4ade6586c2efafc0bcdb4",
+      "display_records": [
+        "NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=a3112444 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000",
+        "NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000001"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "src/board/tab5/dcs.zig": "5b68afee81e946c4f592389f51c02f0a20cbbf731c6953243425b08d0fd71450",
+    "src/board/tab5/native_pads.c": "b4a5d5014f99f64015348483d5ce7908087467eda4c4cfff1f4ec43aec0cae88",
+    "src/board/tab5/native_scanout.c": "93c5c0485626d687693ed6040dd3c9bd40f01d904a77cd6e1f32c76ad3b60b50",
+    "src/board/tab5/panel_data/ili9881c.bin": "12be71fded85fb0e2f1ffd93c3669543ff40fa5b0f82f8a7077484fa47fee7c8",
+    "src/board/tab5/panel_data/manifest.json": "32d58565c76009b34133a1cc10213064bd5d8549174166b54bc550b358b61e39",
+    "src/board/tab5/panel_data/st7121.bin": "4c55e2c115ca0014d36315b22cf7dd35ff6aa82a724c7c623b4e0bfd206dd892",
+    "src/board/tab5/panel_data/st7123.bin": "40d77dbcf5486a25678ae372b211a52a3079c035b976aae5cff8386e1aceb90f",
+    "src/board/tab5/panels.zig": "f0784b9aee37f9d84defb390232c6815763d5bc26c09269269113fcc4ac17f84",
+    "src/board/tab5/provenance.toml": "2e190c20679c542a441bf9038b67ce7909f29329df17db34ffd3c9cd6e3b984f",
+    "src/board/tab5/scanout_state.zig": "4bad04a018246caa5764240e98c3d7bd32e71caee94bab95909da2eff290d6ac",
+    "src/graphics/boot_graphics.zig": "c421554d3605d7f74938f5d16c8f57b5045de17970bba83eb0fd1414aa07dc67",
+    "src/platform/native/display_probe.zig": "933f734a33ab34c049155aa0f1d7f2b16eac0551b09a28e723db298768087498",
+    "src/platform/native/display_runtime.zig": "f88cc786bfc0b5df9b3e67913f72d7c6c75b925fa2b20ec5cfeb3077ebfc52c9",
+    "src/platform/native/esp32p4.ld": "a02b3d029aa3df7ef9d1833afcd24ae7b730f5df6148241ccb08ce147a96e8db",
+    "src/platform/native/external_layout.zig": "484c5c82a3b92686ff3409358be9bcd20367e84b4c014d5159ea5cbf9cb4efa7",
+    "src/platform/native/main.zig": "a3c2164e926d2415c898b35447bb0b6f6dbd34fc5d6d7b9d846e37e43fcbda35",
+    "src/platform/native/memory.zig": "783e065b2e95973e61b8c6d120c0038c03070afbe755f0fe055358dc40b1dd2d",
+    "src/platform/native/start.S": "ba9c95a26b1b727cca5787e709762b581a2611ea1a14fbd0a71e94b2be8ffa90",
+    "src/root.zig": "82895c920b8becce8bb4b8acc4b177250bf76d6cca43cbad697063597a3567bf",
+    "third_party/tab5-panel-init/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "third_party/tab5-panel-init/README.md": "b64e5cfba8baa5a3ed9214c9d3d880a4923779a45fc8577ac03d5394a46f8ff8",
+    "third_party/tab5-panel-init/disp_init_data.h": "7571c61a4e80e4e263d1d5e709746d98587b04522fd351c3f86c593393890f69",
+    "third_party/tab5-panel-init/disp_init_data_1.h": "2e1539e77251a99c357b875c4f92ea9da9468f38bdbb09357307bf05dc5ca4dd",
+    "third_party/tab5-panel-init/disp_init_data_st7121.h": "7b8777fab8953df9d56b0717958542444d8e60513644b66cd78893d55adfd326",
+    "tools/boot-graphics/capture-native-display.py": "c98b310c8f920c016338ccf4348167d11b4531c380a8407a93241e26594c07a0",
+    "tools/boot-graphics/generate-panel-init.py": "3fc2643f7b437bce8696e41f79c02fa82dde74cd91c66b44fff7645ba65decac",
+    "tools/build-native-elf.sh": "d63a129f0744654b67c3869c6178df092627f7d85de4ab188c341d8cb06b77c5"
+  },
+  "logo_build_audit": {
+    "schema": 1,
+    "backend": "native-sram",
+    "rtos_linked": false,
+    "fp_assembly_linked": false,
+    "riscv_flags": "0x1",
+    "fp_instructions": {
+      "app": 0,
+      "c": 0,
+      "zig": 0,
+      "transfer_helpers": 0
+    },
+    "entry": "0x4ff00000",
+    "elf_sha256": "31fb89d1af00ee6d4679871085ed836f0a0a86311eb629bcb796c3e759eb23c0",
+    "memory": {
+      "profile": "device",
+      "origin": "0x4ff00000",
+      "end": "0x4ff28000",
+      "bytes": 163840,
+      "total_bytes": 221184,
+      "regions": [
+        {
+          "name": "resident",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840
+        },
+        {
+          "name": "stacks",
+          "origin": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344
+        }
+      ]
+    },
+    "sram_reserved_bytes": 151552,
+    "primary_static_bytes": 94208,
+    "stacks": {
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "bootstrap_bytes_per_hart": 8192,
+      "irq_bytes_per_hart": 8192,
+      "worker_bytes": 4096,
+      "workers_per_hart": 3,
+      "worker_start": "0x4ff68000"
+    },
+    "heap": {
+      "start": "0x4ff17000",
+      "end": "0x4ff28000",
+      "bytes": 69632,
+      "owner_count": 2,
+      "granule_bytes": 64,
+      "external_bytes": 0
+    },
+    "flash_boot": {
+      "start": "0x40000120",
+      "end": "0x400011ce",
+      "bytes": 4270,
+      "sha256": "e49e6028f62064159e98a26cc88543f7993bab8f96fc472bc122461fff6cefd3",
+      "functions": {
+        "probe": {
+          "name": "psram.probe",
+          "start": "0x40000120",
+          "end": "0x40000d00"
+        },
+        "mapping": {
+          "name": "psram_memory.prepare__func_67",
+          "start": "0x40000d00",
+          "end": "0x400011ce"
+        }
+      },
+      "image_offset": 288
+    },
+    "flash_records": {
+      "start": "0x40010020",
+      "end": "0x4001837f",
+      "bytes": 33631,
+      "fnv1a": 387178001,
+      "executable": false,
+      "writable": false,
+      "image_offset": 65568
+    },
+    "rom_symbols": {
+      "nih_rom_putc": "0x4fc00054",
+      "nih_rom_set_cpu1_entry": "0x4fc000a8",
+      "nih_rom_l2_line_size": "0x4fc003cc",
+      "nih_rom_l2_enable": "0x4fc00504",
+      "nih_rom_cache_invalidate": "0x4fc003e4",
+      "nih_rom_cache_writeback": "0x4fc003f4"
+    },
+    "sections": [
+      {
+        "name": ".flash.appdesc",
+        "address": "0x40000020",
+        "bytes": 256
+      },
+      {
+        "name": ".flash.boot",
+        "address": "0x40000120",
+        "bytes": 4270
+      },
+      {
+        "name": ".flash.rodata",
+        "address": "0x40010020",
+        "bytes": 33631
+      },
+      {
+        "name": ".text",
+        "address": "0x4ff00000",
+        "bytes": 84594
+      },
+      {
+        "name": ".rodata",
+        "address": "0x4ff14a80",
+        "bytes": 4292
+      },
+      {
+        "name": ".data",
+        "address": "0x4ff15b80",
+        "bytes": 1360
+      },
+      {
+        "name": ".bss",
+        "address": "0x4ff16100",
+        "bytes": 3840
+      },
+      {
+        "name": ".stacks",
+        "address": "0x4ff60000",
+        "bytes": 57344
+      },
+      {
+        "name": ".heap",
+        "address": "0x4ff17000",
+        "bytes": 69632
+      }
+    ],
+    "image_sha256": "e262cf2a8a5472ff57313f3e26f1591c5ab1541f7665f5e4cdc088ac4b654f7e",
+    "image_bytes": 128528,
+    "image_segments": [
+      {
+        "address": "0x40000020",
+        "bytes": 4528
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 60992
+      },
+      {
+        "address": "0x40010020",
+        "bytes": 33632
+      },
+      {
+        "address": "0x4ff0ee40",
+        "bytes": 23604
+      },
+      {
+        "address": "0x4ff14a80",
+        "bytes": 4292
+      },
+      {
+        "address": "0x4ff15b80",
+        "bytes": 1360
+      }
+    ],
+    "loader": {
+      "elf_sha256": "d607bc7ed6c3c3f94813248ba363d79fd908765c45b09a3f817395dad3be13b7",
+      "allocated": [
+        {
+          "address": "0x4ff2cbd0",
+          "bytes": 12498
+        },
+        {
+          "address": "0x4ff33bd0",
+          "bytes": 272
+        },
+        {
+          "address": "0x4ff33ce0",
+          "bytes": 80
+        },
+        {
+          "address": "0x4ff33d30",
+          "bytes": 12
+        },
+        {
+          "address": "0x4ff33d3c",
+          "bytes": 4536
+        },
+        {
+          "address": "0x4ff2abd0",
+          "bytes": 3010
+        }
+      ],
+      "nearest_higher_address": "0x4ff2abd0",
+      "gap_bytes": 11216,
+      "regions_checked": [
+        {
+          "name": "resident",
+          "gap_below": null,
+          "gap_above": 11216
+        },
+        {
+          "name": "stacks",
+          "gap_below": 176396,
+          "gap_above": null
+        }
+      ]
+    },
+    "loader_config": {
+      "l2_bytes": 131072,
+      "line_bytes": 64,
+      "profile": "device",
+      "stack_source_window": {
+        "origin": "0x4ff40000",
+        "end": "0x4ffa0000"
+      },
+      "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+    }
+  },
+  "published_log": "LF-normalized copy of final boot.log; raw hashes refer to retained build evidence",
+  "published_log_sha256": "9f6c70c99453d4b736eed0f54061a5fd87129fbdb6e090cb0c8fe02cac22b59c"
+}

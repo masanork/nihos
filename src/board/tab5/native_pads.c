@@ -32,6 +32,8 @@ void nih_display_pads_init(void) {
     GPIO.func_out_sel_cfg[22].out_inv_sel = 0;
     GPIO.func_out_sel_cfg[22].oen_inv_sel = 0;
     gpio_ll_set_level(&GPIO, 22, 0);
+    gpio_ll_od_disable(&GPIO, 22);
+    gpio_ll_input_enable(&GPIO, 22);
     gpio_ll_output_enable(&GPIO, 22);
     for (unsigned pin = 31; pin <= 32; ++pin) {
         IO_MUX.gpio[pin].mcu_sel = 1;
@@ -77,7 +79,7 @@ static void phy_write(uint8_t address, uint8_t value) {
     mipi_dsi_phy_ll_write_clock(&MIPI_DSI_HOST, 0, false);
 }
 
-void nih_display_phy_init(void) {
+void nih_display_phy_init(uint32_t lane_mbps) {
     const int __DECLARE_RCC_ATOMIC_ENV = 0;
     (void)__DECLARE_RCC_ATOMIC_ENV;
     mipi_dsi_ll_enable_bus_clock(0, true);
@@ -98,13 +100,14 @@ void nih_display_phy_init(void) {
     mipi_dsi_phy_ll_enable_clock_lane(&MIPI_DSI_HOST, true);
     mipi_dsi_phy_ll_force_pll(&MIPI_DSI_HOST, true);
     mipi_dsi_brg_ll_reset(&MIPI_DSI_BRIDGE);
-    /* Fixed 1 Gbit/s: M/N=50/1 at 20 MHz, or 50/2 at 40 MHz XTAL.
-     * Both use even M, matching the vendor HAL PLL constraint. */
-    phy_write(0x44, 0x2a << 1);
+    /* M=50 for 1000 Mbit/s, M=48 for ST7121's achievable 960 Mbit/s.
+     * N=1 at 20 MHz, or N=2 at 40 MHz XTAL. No parent PLL retuning. */
+    const uint32_t multiplier = lane_mbps == 960 ? 48 : 50;
+    phy_write(0x44, (lane_mbps == 960 ? 0x1a : 0x2a) << 1);
     phy_write(0x19, 0x30);
     phy_write(0x17, NIH_NATIVE_REV3 ? 1 : 0);
-    phy_write(0x18, 49 & 0x1f);
-    phy_write(0x18, 0x80 | (49 >> 5));
+    phy_write(0x18, (multiplier - 1) & 0x1f);
+    phy_write(0x18, 0x80 | ((multiplier - 1) >> 5));
     mipi_dsi_host_ll_enable_video_mode(&MIPI_DSI_HOST, false);
     mipi_dsi_host_ll_set_clock_lane_state(&MIPI_DSI_HOST, MIPI_DSI_LL_CLOCK_LANE_STATE_LP);
 }

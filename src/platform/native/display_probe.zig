@@ -8,7 +8,7 @@ extern fn nih_display_pads_init() callconv(.c) void;
 extern fn nih_display_pin_release(u32, bool) callconv(.c) void;
 extern fn nih_display_pin_level(u32) callconv(.c) bool;
 extern fn nih_display_phy_power() callconv(.c) u32;
-extern fn nih_display_phy_init() callconv(.c) void;
+extern fn nih_display_phy_init(u32) callconv(.c) void;
 extern fn nih_display_phy_status() callconv(.c) u32;
 extern fn nih_display_phy_stop() callconv(.c) void;
 extern fn nih_display_phy_power_off() callconv(.c) void;
@@ -30,7 +30,7 @@ pub const Report = struct {
     backlight: u32 = 0,
 };
 
-const Pins = struct {
+pub const Pins = struct {
     clock: timer_group.Timer,
     pub fn release(_: Pins, pin: u32, high: bool) void {
         nih_display_pin_release(pin, high);
@@ -90,7 +90,7 @@ pub fn run(clock: timer_group.Timer, selected: board.Layout) Report {
     for (frame) |byte| checksum = (checksum ^ byte) *% 0x01000193;
     report.checksum = checksum;
     asm volatile ("fence rw, rw" ::: .{ .memory = true });
-    if (nih_rom_cache_writeback(1 << 5, selected.frame_start, selected.frame_bytes) != 0) {
+    if (nih_rom_cache_writeback((1 << 4) | (1 << 5), selected.frame_start, selected.frame_bytes) != 0) {
         report.error_code = 10;
         return report;
     }
@@ -104,7 +104,7 @@ pub fn run(clock: timer_group.Timer, selected: board.Layout) Report {
         report.error_code = 8;
         return report;
     }
-    nih_display_phy_init();
+    nih_display_phy_init(if (panel == .st7121) 960 else 1000);
     phy_started = true;
     report.stage = 5;
     const start = clock.counter() orelse {
