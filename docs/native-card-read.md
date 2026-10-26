@@ -101,3 +101,19 @@ Run `sh tools/check-photo-codec.sh` for synthetic reference, truncation, quota
 and guard checks under ASan/UBSan. `probes/photo/README.md` records the codec
 profile and provenance. Actual card/photo rendering and optical confirmation
 remain physical-device evidence, separate from these build and host tests.
+
+EF0001 numbers accept a primitive FF10 TLV with padding, legacy 01/DF01 or
+exactly twelve ASCII digits. Duplicate fields, malformed lengths, non-digits
+and a bad check digit stop before Surface credential submission. References:
+[author's card read trace](https://tex2e.github.io/blog/protocol/jpki-mynumbercard-with-apdu)
+and [J-LIS check digit formula](https://www.j-lis.go.jp/data/open/cnt/3/1282/1/H2707_qa.pdf).
+No digit filtering or guessed credential fallback is used.
+
+A later Surface/photo error preserves only already validated four fields,
+and exposes them via `attributesResult()` only after successful terminal
+cleanup. The existing `result()` still requires overall job success. Failed
+cleanup, cancellation and disconnect erase the fields. The UART phase record
+contains only failed state, status word, timeout category and consumed VERIFY
+budgets. Failure paths now emit RESULT as well as DONE, even without attributes.
+End messages distinguish timeout, cancellation, PIN/counter problems,
+communication/parse failure and partial portrait failure.

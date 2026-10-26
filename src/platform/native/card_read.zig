@@ -19,6 +19,8 @@ var preflight_cut: u32 = 0;
 var erased = false;
 pub var armed = false;
 var abort_fault: u32 = 0;
+var abort_state: u32 = 0;
+var abort_sw: u32 = 0;
 var dma_erased = false;
 pub const Diagnostic = struct { state: u32, verifies: u32, surface_verifies: u32, outstanding: u32, remaining: u32, fault: u32 };
 pub fn diagnostic() Diagnostic {
@@ -34,6 +36,9 @@ pub const Report = struct {
     photo_decoded: u32 = 0,
     photo_error: u32 = 0,
     truncated: u32 = 0,
+    failed_state: u32 = 0,
+    card_sw: u32 = 0,
+    timeout: u32 = 0,
     remaining_after: u32 = 255,
     verifies: u32 = 0,
     cleanup: u32 = 0,
@@ -104,6 +109,8 @@ pub noinline fn prepare(clock: timer.Timer, panel: u32) linksection(".flash.text
 }
 
 pub fn abort() void {
+    abort_state = @backingInt(if (service.fault != .none) service.fault_state else service.state);
+    abort_sw = service.last_sw;
     if (device) |*link| dma_erased = link.emergency();
     entry.clear();
     const previous = service.fault;
@@ -193,6 +200,7 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
                 if (start_contact.sample(true, point.contacts, point.x, point.y, anyTap)) |_| break;
             }
             if ((clock.counter() orelse start_until) >= start_until) {
+                report.timeout = 1;
                 service.cancel();
                 break;
             }
@@ -236,7 +244,10 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
         }
         const snapshot = display.snapshot();
         log.refresh(&snapshot);
-        if ((clock.counter() orelse deadline) >= deadline) service.cancel();
+        if ((clock.counter() orelse deadline) >= deadline) {
+            report.timeout = 2;
+            service.cancel();
+        }
         if (!bus.pins.delay(20_000)) {
             abort();
             break;
@@ -253,6 +264,8 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
         };
     };
     report.fault = if (erased) abort_fault else @backingInt(service.fault);
+    report.failed_state = if (erased) abort_state else @backingInt(service.fault_state);
+    report.card_sw = if (erased) abort_sw else service.last_sw;
     report.remaining_after = service.remaining orelse 255;
     if (device) |*link| {
         report.verifies = link.policy.verifies;
@@ -264,17 +277,21 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
         dma_erased = !erased;
         report.vbus_off = @intFromBool(!erased);
     }
-    if (service.result()) |attributes| {
+    const attributes_result = service.attributesResult();
+    var portrait: ?[]const u8 = null;
+    if (attributes_result != null) {
         report.status = 1;
         report.attributes = 15;
-        var portrait: ?[]const u8 = null;
         if (options.card_photo) {
             if (service.portrait()) |encoded| portrait = photo.decode(encoded);
             report.photo_decoded = @intFromBool(portrait != null);
             report.photo_error = photo.report.error_code;
             if (portrait == null) report.status = 2;
         }
-        log.result(&report);
+    }
+    log.phase(&report);
+    log.result(&report);
+    if (attributes_result) |attributes| {
         renderer.static_frame = true;
         renderer.overview_frame = true;
         const painted = card.ResultScreen.overview(".flash.keypad.font", frame(), attributes, portrait) catch {
@@ -317,7 +334,17 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
     }
     renderer.static_frame = true;
     renderer.overview_frame = false;
-    card.ResultScreen.message(".flash.keypad.font", frame(), report.status == 1);
+    const reason: card.ResultScreen.End = if (!dma_erased) .cleanup_failed else if (report.status == 1) .cleared else if (report.timeout != 0) .timeout else if (report.attributes == 15) .photo_failed else switch (@as(@FieldType(card.Service, "fault"), @fromBackingInt(@intCast(report.fault)))) {
+        .cancelled => .cancelled,
+        .wrong_pin => .wrong_pin,
+        .blocked => .blocked,
+        .last_attempt => .last_attempt,
+        .counter_changed => .counter_changed,
+        .pin_outcome_unknown => .unknown,
+        .disconnected, .transport => .transport,
+        .none, .status, .malformed, .too_large => .malformed,
+    };
+    card.ResultScreen.endMessage(".flash.keypad.font", frame(), reason);
     report.erased = @intFromBool(dma_erased);
     redraw(clock, panel) catch {
         report.status = 2;
