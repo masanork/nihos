@@ -85,12 +85,25 @@ def complete_log(mode="integer", psram_size="0"):
             " {}={:08x}".format(name, value) for name, value in zip(names, values)))
         lines.append("NIHOS_NATIVE_FLASH hart={:08x} start=40010020 end=40010820 bytes=00000800 "
                      "initial=12345678 final=12345678 checks=00001000 confirmed=00000001".format(hart))
+        base = 0x4ff60000
+        values = [base, base + 57344, base + hart * 8192, base + (hart + 1) * 8192,
+                  base + 16384 + hart * 8192, base + 16384 + (hart + 1) * 8192,
+                  base + 32768 + hart * 12288, base + 32768 + (hart + 1) * 12288,
+                  base + (hart + 1) * 8192 - 256, base + 16384 + (hart + 1) * 8192 - 256,
+                  base + 32768 + hart * 12288 + 4096 - 256, base + 32768 + hart * 12288 + 8192 - 256,
+                  base + 32768 + hart * 12288 + 12288 - 256, 1000, 20480, 1]
+        names = ("start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end",
+                 "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed")
+        lines.append("NIHOS_NATIVE_STACKS hart={:08x}".format(hart) + "".join(
+            " {}={:08x}".format(name, value) for name, value in zip(names, values)))
     lines.append("NIHOS_NATIVE_FP_PASS floating=" + ("0" if mode == "integer" else "1"))
     return "\n".join(lines)
 
 
 def complete_image():
     return {"elf_sha256": "tested-elf",
+            "heap": {"start": "0x4ff40000", "end": "0x4ff48000", "bytes": 32768},
+            "stacks": {"start": "0x4ff60000", "end": "0x4ff6e000"},
             "flash_records": {"start": "0x40010020", "end": "0x40010820", "bytes": 2048, "fnv1a": 0x12345678},
             "flash_boot": {"start": "0x40000120", "end": "0x40001120", "functions": {
                 "probe": {"start": "0x40000120", "end": "0x40000920"},
@@ -98,6 +111,34 @@ def complete_image():
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_stack_owners_cannot_be_missing_or_duplicated(self):
+        log = complete_log()
+        line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_STACKS"))
+        for changed in (log.replace(line, ""), log + "\n" + line):
+            with self.assertRaisesRegex(ValueError, "stack"):
+                MODULE.check(changed)
+
+    def test_stack_dimensions_initialization_and_owned_samples_are_required(self):
+        log = complete_log()
+        line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_STACKS"))
+        for old, new in (("end=4ff6e000", "end=4ff6d000"), ("boot_end=4ff62000", "boot_end=4ff61000"),
+                         ("irq_start=4ff64000", "irq_start=4ff66000"), ("task_end=4ff6b000", "task_end=4ff6a000"),
+                         ("boot_frame=4ff61f00", "boot_frame=4ff60000"), ("irq_sp=4ff65f00", "irq_sp=4ff66000"),
+                         ("task0_frame=4ff68f00", "task0_frame=4ff69f00"), ("task1_frame=4ff69f00", "task1_frame=00000000"),
+                         ("task2_frame=4ff6af00", "task2_frame=4ff6af01"), ("frames=000003e8", "frames=00000000"),
+                         ("zeroed=00005000", "zeroed=00002000"), ("confirmed=00000001", "confirmed=00000000")):
+            with self.subTest(value=new), self.assertRaisesRegex(ValueError, "stack"):
+                MODULE.check(log.replace(line, line.replace(old, new)))
+
+    def test_both_sram_domains_are_bound_to_the_audited_image(self):
+        log = complete_log()
+        image = complete_image()
+        MODULE.check(log, image=image)
+        for changed in ({**image, "heap": {**image["heap"], "start": "0x4ff40040"}},
+                        {**image, "stacks": {**image["stacks"], "start": "0x4ff60010"}}):
+            with self.assertRaisesRegex(ValueError, "audited"):
+                MODULE.check(log, image=changed)
+
     def test_slab_reuse_and_rejection_evidence_is_required(self):
         for size, expected in (("0", (0, 0, 0)), ("32M", (120, 24, 27))):
             log = complete_log(psram_size=size)

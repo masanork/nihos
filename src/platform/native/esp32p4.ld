@@ -1,6 +1,7 @@
 /* Preprocessed by build-native-elf.sh. ESP-IDF v5.4.4 memory.ld.in uses
  * a low bank on rev1/2 and skips the first 128 KiB cache bank on rev3.
- * Keep the entire 160 KiB region below live loader/ROM allocations.
+ * Keep the 160 KiB primary region below live loader/ROM allocations.
+ * Stacks use a separate RW span supported by both revision layouts.
  */
 #if NIH_NATIVE_REV3
 __native_profile = 1;
@@ -13,6 +14,7 @@ OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
+    stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
@@ -50,11 +52,16 @@ SECTIONS
         __bss_end = .;
     } > ram
     .stacks (NOLOAD) : ALIGN(16) {
+        __stacks_start = .;
         __stack0_bottom = .; . += 8192; __stack0_top = .;
         __stack1_bottom = .; . += 8192; __stack1_top = .;
         __irq_stack0_bottom = .; . += 8192; __irq_stack0_top = .;
         __irq_stack1_bottom = .; . += 8192; __irq_stack1_top = .;
-    } > ram
+        __task_stacks_start = .;
+        KEEP(*(.native.task_stacks))
+        __task_stacks_end = .;
+        __stacks_end = .;
+    } > stack_ram
     .heap (NOLOAD) : ALIGN(64) {
         __heap_start = .;
         . = ORIGIN(ram) + LENGTH(ram);
@@ -66,7 +73,10 @@ SECTIONS
     ASSERT(SIZEOF(.flash.boot) <= 65248, "boot code exceeds first Flash page")
     ASSERT(SIZEOF(.flash.rodata) > 0, "missing mapped record tables")
     ASSERT(SIZEOF(.flash.rodata) <= 65504, "record tables exceed one Flash page")
-    ASSERT(__irq_stack1_top <= ORIGIN(ram) + LENGTH(ram), "native SRAM overflow")
+    ASSERT(__stacks_start == ORIGIN(stack_ram), "wrong stack region origin")
+    ASSERT(ORIGIN(ram) + LENGTH(ram) <= ORIGIN(stack_ram), "primary and stack SRAM overlap")
+    ASSERT(__task_stacks_end - __task_stacks_start == 24576, "invalid worker stack reservation")
+    ASSERT(__stacks_end == ORIGIN(stack_ram) + LENGTH(stack_ram), "invalid stack region size")
     ASSERT(__heap_end - __heap_start >= 49152, "native SRAM heap below 48 KiB")
 }
 /* ROM ABI, not linked ESP-IDF implementations. */

@@ -15,6 +15,7 @@ import re
 SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF28000
 SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
                  "emulator": (0x4FF20000, 0x4FF48000, 1)}
+STACK_LOW, STACK_HIGH = 0x4FF60000, 0x4FF6E000
 ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_set_cpu1_entry": 0x4FC000A8,
                "nih_rom_l2_line_size": 0x4FC003CC,
@@ -84,7 +85,7 @@ def is_fp_instruction(word, width):
 
 def audit_heap_layout(symbols, allocated, low=SRAM_LOW, high=SRAM_HIGH):
     start, end = symbols["__heap_start"], symbols["__heap_end"]
-    require(low <= symbols["__irq_stack1_top"] <= start < end == high and
+    require(low <= symbols["__bss_end"] <= start < end == high and
             start % 64 == 0 and end % 64 == 0 and end - start >= 49152,
             "invalid native heap boundary")
     heap = [section for section in allocated if section["name"] == ".heap"]
@@ -98,9 +99,33 @@ def audit_heap_layout(symbols, allocated, low=SRAM_LOW, high=SRAM_HIGH):
             "owner_count": 2, "granule_bytes": 64, "external_bytes": 0}
 
 
+def audit_stack_section(kind, flags, address, size):
+    require(kind == 8 and flags == 3 and address == STACK_LOW and size == STACK_HIGH - STACK_LOW,
+            "stacks must be the fixed writable non-executable NOBITS bank")
+
+
+def audit_stack_layout(symbols, sizes, allocated):
+    expected = {"__stacks_start": STACK_LOW, "__stack0_bottom": STACK_LOW,
+                "__stack0_top": STACK_LOW + 8192, "__stack1_bottom": STACK_LOW + 8192,
+                "__stack1_top": STACK_LOW + 16384, "__irq_stack0_bottom": STACK_LOW + 16384,
+                "__irq_stack0_top": STACK_LOW + 24576, "__irq_stack1_bottom": STACK_LOW + 24576,
+                "__irq_stack1_top": STACK_LOW + 32768, "__task_stacks_start": STACK_LOW + 32768,
+                "__task_stacks_end": STACK_HIGH, "__stacks_end": STACK_HIGH,
+                "native_tasks.stacks": STACK_LOW + 32768}
+    require(all(symbols.get(name) == value for name, value in expected.items()), "stack symbols differ from fixed bank layout")
+    require(sizes.get("native_tasks.stacks") == 24576, "worker stack array size differs from reservation")
+    stacks = [section for section in allocated if section["name"] == ".stacks"]
+    require(len(stacks) == 1 and int(stacks[0]["address"], 16) == STACK_LOW and stacks[0]["bytes"] == STACK_HIGH - STACK_LOW,
+            "missing/invalid stack bank section")
+    return {"start": hex(STACK_LOW), "end": hex(STACK_HIGH), "bytes": STACK_HIGH - STACK_LOW,
+            "bootstrap_bytes_per_hart": 8192, "irq_bytes_per_hart": 8192,
+            "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768)}
+
+
 def audit(elf, image, mode=None, profile="device"):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
+    require(high <= STACK_LOW, "stack bank overlaps primary SRAM")
     require(elf[:7] == b"\x7fELF\x01\x01\x01", "expected ELF32 little endian")
     header = struct.unpack_from("<HHIIIIIHHHHHH", elf, 16)
     kind, machine, _, entry, _, shoff, _, _, _, _, shsize, shnum, shstr = header
@@ -119,6 +144,7 @@ def audit(elf, image, mode=None, profile="device"):
 
     allocated = []
     symbols = {}
+    symbol_sizes = {}
     functions = []
     executable = []
     flash_found = set()
@@ -130,8 +156,11 @@ def audit(elf, image, mode=None, profile="device"):
         if flags & 2 and size:  # SHF_ALLOC
             if name == ".heap":
                 require(section_type == 8 and flags & 7 == 3, "heap must be writable NOBITS")
+            in_stacks = name == ".stacks"
+            if in_stacks:
+                audit_stack_section(section_type, flags, address, size)
             in_sram = low <= address and address + size <= high
-            if not in_sram:
+            if not in_sram and not in_stacks:
                 audit_flash_section(name, section_type, flags, address, size)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
@@ -161,6 +190,7 @@ def audit(elf, image, mode=None, profile="device"):
                 if info & 15 == 2:  # STT_FUNC
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
+                symbol_sizes[symbol] = symbol_size
     require(flash_found == set(FLASH_SECTIONS), "missing mapped Flash sections")
     boot_start = FLASH_SECTIONS[".flash.boot"][0]
     boot_end = boot_start + len(boot_code)
@@ -207,16 +237,17 @@ def audit(elf, image, mode=None, profile="device"):
             position += width
     if mode == "compiled":
         require(fp_linked and fp_counts["c"] > 0 and fp_counts["zig"] > 0, "missing compiled C/Zig FP instructions")
-    require(symbols["__stack0_top"] <= symbols["__stack1_bottom"] and
-            symbols["__stack1_top"] <= symbols["__irq_stack0_bottom"] and
-            symbols["__irq_stack0_top"] <= symbols["__irq_stack1_bottom"] and
-            symbols["__irq_stack1_top"] <= high, "stack layout overflow")
+    stacks = audit_stack_layout(symbols, symbol_sizes, allocated)
     heap = audit_heap_layout(symbols, allocated, low, high)
     report = {"schema": 1, "backend": "native-sram", "rtos_linked": False,
               "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]), "fp_instructions": fp_counts,
               "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
-              "memory": {"profile": profile, "origin": hex(low), "end": hex(high), "bytes": high - low},
-              "sram_reserved_bytes": symbols["__heap_start"] - low, "heap": heap,
+              "memory": {"profile": profile, "origin": hex(low), "end": hex(high), "bytes": high - low,
+                         "total_bytes": high - low + stacks["bytes"],
+                         "regions": [{"name": "resident", "origin": hex(low), "end": hex(high), "bytes": high - low},
+                                     {"name": "stacks", "origin": hex(STACK_LOW), "end": hex(STACK_HIGH), "bytes": stacks["bytes"]}]},
+              "sram_reserved_bytes": symbols["__heap_start"] - low + stacks["bytes"],
+              "primary_static_bytes": symbols["__heap_start"] - low, "stacks": stacks, "heap": heap,
               "flash_boot": {"start": hex(boot_start), "end": hex(boot_end), "bytes": len(boot_code),
                              "sha256": hashlib.sha256(boot_code).hexdigest(), "functions": boot_functions},
               "flash_records": {"start": hex(flash_start), "end": hex(flash_start + len(flash_tables)),
@@ -273,17 +304,27 @@ def audit_loader(report, elf):
     require(header[1] == 243 and header[10] == 40, "unexpected loader ELF")
     sections = [struct.unpack_from("<10I", elf, header[5] + index * 40) for index in range(header[11])]
     low, high = int(report["memory"]["origin"], 16), int(report["memory"]["end"], 16)
+    regions = report["memory"].get("regions", [{"name": "resident", "origin": hex(low), "end": hex(high)}])
     allocated = []
     for _, _, flags, address, _, size, *_ in sections:
         if not flags & 2 or not size:
             continue
-        require(address + size <= low or address >= high, "native SRAM overlaps live loader")
+        for region in regions:
+            require(address + size <= int(region["origin"], 16) or address >= int(region["end"], 16),
+                    "native SRAM overlaps live loader in " + region["name"])
         allocated.append({"address": hex(address), "bytes": size})
     higher = [int(section["address"], 16) for section in allocated
               if high <= int(section["address"], 16) < 0x50000000]
     require(bool(higher), "missing live loader SRAM allocations")
+    gaps = []
+    for region in regions:
+        before = [int(section["address"], 16) + section["bytes"] for section in allocated
+                  if int(section["address"], 16) + section["bytes"] <= int(region["origin"], 16)]
+        after = [int(section["address"], 16) for section in allocated if int(section["address"], 16) >= int(region["end"], 16)]
+        gaps.append({"name": region["name"], "gap_below": int(region["origin"], 16) - max(before) if before else None,
+                     "gap_above": min(after) - int(region["end"], 16) if after else None})
     return {"elf_sha256": hashlib.sha256(elf).hexdigest(), "allocated": allocated,
-            "nearest_higher_address": hex(min(higher)), "gap_bytes": min(higher) - high}
+            "nearest_higher_address": hex(min(higher)), "gap_bytes": min(higher) - high, "regions_checked": gaps}
 
 
 def audit_loader_config(text, profile):
@@ -293,7 +334,13 @@ def audit_loader_config(text, profile):
             "loader cache geometry differs from native layout")
     require(bool(int(values.get("ESP32P4_SELECTS_REV_LESS_V3", "0"), 0)) == (profile == "device"),
             "loader silicon selection differs from native layout")
+    # Pinned v5.4.4 application memory.ld.in: early silicon's high RW
+    # window ends below the cache; rev3 excludes its low cache prefix.
+    supported_low = 0x4ff40000 if profile == "device" else 0x4ff00000 + 0x20000
+    supported_high = 0x4ffc0000 - 0x20000 if profile == "device" else 0x4ffaefc0
+    require(supported_low <= STACK_LOW < STACK_HIGH <= supported_high, "stack bank outside source-supported SRAM")
     return {"l2_bytes": 0x20000, "line_bytes": 64, "profile": profile,
+            "stack_source_window": {"origin": hex(supported_low), "end": hex(supported_high)},
             "config_sha256": hashlib.sha256(text.encode()).hexdigest()}
 
 
