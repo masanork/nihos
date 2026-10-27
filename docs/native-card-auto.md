@@ -1,5 +1,11 @@
 # Native automatic card reader
 
+Current qualification is recorded in
+[the 2026-10-27 build evidence](measurements/2026-10-27-native-card-auto.md).
+The automatic profile has not yet been installed or tested with a physical
+card; conventional licence authentication and real insertion/removal remain
+open checks. The previous My Number optical result does not qualify this image.
+
 DISPLAY=11 adds physical insertion/removal gating and PIN-free SELECT-AID
 classification for My Number cards and conventional Japanese IC driving
 licences. Unsupported cards and cards answering both application probes do
