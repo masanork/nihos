@@ -9,6 +9,14 @@ case "$profile" in
     *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
+network=${NIHOS_NATIVE_NETWORK:-0}
+case "$network" in 0) network=false ;; 1) network=true; umask 077 ;; *) echo "NETWORK must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network"; fi
+network_test=${NIHOS_NATIVE_NETWORK_TEST:-0}
+case "$network_test" in 0) network_test=false ;; 1) network_test=true ;; *) echo "NETWORK_TEST must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$network_test" = true ] && [ "$network" != true ]; then echo "NETWORK_TEST requires NETWORK=1" >&2; exit 1; fi
+root_opt=safe
+if [ "$network" = true ]; then root_opt=small; fi
 mode=${3:-integer}
 if [ "$profile" = device ]; then default_cpu_mhz=360; else default_cpu_mhz=0; fi
 cpu_mhz=${NIHOS_NATIVE_CPU_MHZ:-$default_cpu_mhz}
@@ -144,6 +152,9 @@ if [ "$boot_test" != 0 ] && [ "$boot_fast" != true ]; then echo "Boot test requi
 if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
     echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
 fi
+if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ] || [ -z "${NIHOS_C6_WIFI_CONFIG:-}" ]; }; then
+    echo "NETWORK requires normal device boot, private Wi-Fi JSON, and exclusive SDMMC (SDMMC=0)" >&2; exit 1
+fi
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display_tile" = true ]; then display_tile_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
@@ -162,6 +173,11 @@ fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
+native_boot_dir="$repo_root/build/native-$profile"
+if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
+network_json=
+if [ "$network" = true ]; then network_json=$NIHOS_C6_WIFI_CONFIG; fi
+NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
@@ -169,6 +185,8 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
+    printf 'pub const network = %s;\n' "$network"
+    printf 'pub const network_test = %s;\n' "$network_test"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
@@ -189,7 +207,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
         -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SDMMC_PADS="$sdmmc_pads" \
         -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
         -isystem "$headers/riscv-linux-any" \
-        -I "$repo_root/build/native-$profile/loader/config" \
+        -I "$native_boot_dir/loader/config" \
         -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
         -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
         -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/hw_ver1" \
@@ -203,7 +221,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
             -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
-            -I "$repo_root/build/native-$profile/loader/config" \
+            -I "$native_boot_dir/loader/config" \
             -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
             -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
             -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/hw_ver1" \
@@ -212,7 +230,9 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
         set -- "$@" "$build_dir/display_scanout.o"
     fi
 fi
-if [ "$sdmmc" = true ]; then
+if [ "$sdmmc" = true ] || [ "$network" = true ]; then
+    pad_source="$repo_root/probes/sdmmc/pads.c"
+    if [ "$network" = true ]; then pad_source="$repo_root/probes/c6-sdio/pads.c"; fi
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
     register_version=hw_ver1
     if [ "$profile" = emulator ]; then register_version=hw_ver3; fi
@@ -221,14 +241,14 @@ if [ "$sdmmc" = true ]; then
         -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
         -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
         -isystem "$headers/riscv-linux-any" \
-        -I "$repo_root/build/native-$profile/loader/config" \
+        -I "$native_boot_dir/loader/config" \
         -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
         -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
         -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/$register_version" \
         -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
         -I "$idf_path/components/esp_rom/include" -I "$idf_path/components/esp_rom/esp32p4/include" -I "$idf_path/components/esp_rom/esp32p4/include/esp32p4" \
         -I "$idf_path/components/esp_rom/esp32p4" \
-        -o "$build_dir/sdmmc_pads.o" "$repo_root/probes/sdmmc/pads.c"
+        -o "$build_dir/sdmmc_pads.o" "$pad_source"
     set -- "$@" "$build_dir/sdmmc_pads.o"
 fi
 if [ "$floating" = true ]; then
@@ -295,8 +315,22 @@ fi
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
-    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    --dep timer_group --dep sdio --dep c6_sdio --dep at_controller --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mnetwork_config="$build_dir/network-config.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Msdio="$repo_root/src/soc/esp32p4/sdio.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mc6_sdio="$repo_root/src/net/c6_sdio.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mat_controller="$repo_root/src/net/at_controller.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \

@@ -9,6 +9,10 @@ case "$profile" in
     *) echo "usage: $0 [device|emulator] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
 esac
 build_dir="$repo_root/build/native-$profile"
+if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
+    umask 077
+    build_dir="$build_dir-network"
+fi
 boot_dir="$build_dir/loader"
 mode=${2:-integer}
 case "$mode" in
@@ -16,14 +20,14 @@ case "$mode" in
     floating|compiled|sqlite) build_dir="$build_dir-$mode" ;;
     *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
-idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
-if [ ! -f "$idf_path/export.sh" ]; then
+native_sdk=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
+if [ ! -f "$native_sdk/export.sh" ]; then
     echo "ESP-IDF v5.4.4 not found; set NIHOS_IDF_PATH" >&2
     exit 1
 fi
 if ! command -v idf.py >/dev/null 2>&1; then
     # shellcheck disable=SC1091
-    . "$idf_path/export.sh" >/dev/null
+    . "$native_sdk/export.sh" >/dev/null
 fi
 python=${NIHOS_IDF_PYTHON:-python}
 mkdir -p "$build_dir"
@@ -52,3 +56,6 @@ if [ "$mode" = sqlite ]; then set -- "$build_dir/sqlite-manifest.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"
+if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
+    "$python" "$repo_root/tools/native-network-receipt.py" "$build_dir" "$native_sdk"
+fi

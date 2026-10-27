@@ -40,6 +40,10 @@ pub const tab5_panels = @import("board/tab5/panels.zig");
 pub const display_dcs = @import("board/tab5/dcs.zig");
 pub const scanout_state = @import("board/tab5/scanout_state.zig");
 pub const platform_abi = @import("platform/abi.zig");
+pub const esp_at = @import("net/esp_at.zig");
+pub const at_controller = @import("net/at_controller.zig");
+pub const c6_sdio = @import("net/c6_sdio.zig");
+pub const esp32p4_sdio = @import("soc/esp32p4/sdio.zig");
 
 test {
     _ = cpu_clock;
@@ -91,6 +95,18 @@ test {
     _ = psram_mpll;
     _ = psram_tuning;
     _ = platform_abi;
+    _ = esp_at;
+    _ = @import("net/esp_at_test.zig");
+    _ = at_controller;
+    _ = @import("net/at_controller_test.zig");
+    _ = @import("net/wifi_station_test.zig");
+    _ = @import("net/hosted_test.zig");
+    _ = @import("net/ipv6_test.zig");
+    _ = c6_sdio;
+    _ = @import("net/c6_sdio_test.zig");
+    _ = @import("net/c6_link_test.zig");
+    _ = esp32p4_sdio;
+    _ = @import("soc/esp32p4/sdio_test.zig");
 }
 
 test "Tab5 scanout reservation uses identity-mapped PSRAM pages" {
