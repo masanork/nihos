@@ -54,6 +54,11 @@ echo "Native network owner codegen (normal and diagnostic): ok"
     "-Mtab5_rtc=$repo_root/src/board/tab5/rtc.zig"
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/bmi270.o" --dep tab5_bmi270 \
+    "-Mroot=$repo_root/tools/probes/bmi270.zig" \
+    "-Mtab5_bmi270=$repo_root/src/board/tab5/bmi270.zig"
+
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/context.o" \
     "$repo_root/src/arch/riscv32/context.zig"
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
