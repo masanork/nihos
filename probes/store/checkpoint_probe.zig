@@ -2,6 +2,7 @@
 const std = @import("std");
 const model = @import("checkpoint_model");
 const file_media = @import("file_media");
+const cache_options = @import("cache_options");
 const Backend = file_media.Media(16 * 1024 * 1024 * 1024);
 const Device = struct {
     pub const capacity = Backend.capacity;
@@ -21,7 +22,7 @@ const Device = struct {
         return self.backend.sync();
     }
 };
-const Store = model.Store(Device, .{ .index_pages = 256, .payload_start_page = Backend.capacity / model.page_bytes - 64, .payload_reserve_pages = 4 });
+const Store = model.Store(Device, .{ .index_pages = 256, .payload_start_page = Backend.capacity / model.page_bytes - 64, .payload_reserve_pages = 4, .leaf_cache_pages = cache_options.leaf_cache_pages });
 const large_length = 70 * 1024 + 1;
 fn pattern(comptime n: usize, seed: u8) [n]u8 {
     @setEvalBranchQuota(n * 2 + 1000);
@@ -71,6 +72,16 @@ fn pinnedObject(store: *Store, reader: model.Reader, length: usize, seed: u8) !v
         offset += n;
     }
 }
+fn preparedPut(store: *Store, key: u32, bytes: []const u8) !void {
+    try store.beginPayloadSearch(model.dataPages(bytes.len) + model.checksumPages(bytes.len));
+    while (true) switch (try store.stepPayloadSearch(.{})) {
+        .pending => {}, // A native service must yield here; this is a host runner.
+        .found => break,
+        .no_space => return error.NoSpace,
+        .space => return error.BadSearchResult,
+    };
+    try store.putPrepared(key, bytes);
+}
 fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount_bytes: usize, operation_bytes: usize) !void {
     const space = try store.indexSpace();
     const first = if (store.get(1)) |item| item.first * model.page_bytes else |err| switch (err) {
@@ -79,8 +90,8 @@ fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount
     };
     var buffer: [1024]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(io, &buffer);
-    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d},\"index_free_pages\":{d},\"reader_slots\":{d},\"search_windows\":{d},\"search_leaf_reads\":{d}}}\n", .{
-        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes, space.available_pages, Store.reader_limit, store.search_windows, store.search_leaf_reads,
+    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d},\"index_free_pages\":{d},\"reader_slots\":{d},\"search_windows\":{d},\"search_leaf_reads\":{d},\"cache_pages\":{d},\"metadata_reads\":{d},\"metadata_hits\":{d}}}\n", .{
+        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes, space.available_pages, Store.reader_limit, store.search_windows, store.search_leaf_reads, Store.metadata_cache_pages, store.metadata_reads, store.metadata_hits,
     });
     try stdout.interface.flush();
 }
@@ -209,7 +220,7 @@ pub fn main(init: std.process.Init) !void {
         try store.collectPayload();
         for (0..128) |iteration| {
             try store.begin();
-            try store.put(3, if (iteration % 2 == 0) old_a[0..bytes] else new_a[0..bytes]);
+            try preparedPut(&store, 3, if (iteration % 2 == 0) old_a[0..bytes] else new_a[0..bytes]);
             try store.commit();
             try store.collectPayload();
         }

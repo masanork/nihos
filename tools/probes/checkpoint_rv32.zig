@@ -16,12 +16,16 @@ const Device = struct {
     }
 };
 const Store = checkpoint.Store(Device, .{});
+const CachedStore = checkpoint.Store(Device, .{ .leaf_cache_pages = 128 });
 var device = Device{};
 var store = Store{};
+var cached_store = CachedStore{};
 comptime {
     if (@sizeOf(usize) != 4 or @sizeOf(Store) > 32 * 1024) @compileError("expected RV32 with a bounded descriptor");
+    if (@sizeOf(CachedStore) > 640 * 1024) @compileError("metadata cache exceeds its host experiment envelope");
 }
 pub export const checkpoint_probe_state_bytes: u32 = @sizeOf(Store);
+pub export const checkpoint_probe_cached_state_bytes: u32 = @sizeOf(CachedStore);
 pub export fn checkpoint_probe_format() c_int {
     store.format(&device) catch return -1;
     return 0;
@@ -78,4 +82,32 @@ pub export fn checkpoint_probe_collect_payload() c_int {
 }
 pub export fn checkpoint_probe_payload_free() u64 {
     return (store.payloadSpace() catch return 0).free_pages;
+}
+pub export fn checkpoint_probe_cached_recover() c_int {
+    cached_store.recover(&device) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_cached_begin() c_int {
+    cached_store.begin() catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_cached_search(pages: u64) c_int {
+    cached_store.beginPayloadSearch(pages) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_cached_step() c_int {
+    return switch (cached_store.stepPayloadSearch(.{}) catch return -1) {
+        .pending => 0,
+        .found => 1,
+        .no_space => 2,
+        .space => 3,
+    };
+}
+pub export fn checkpoint_probe_cached_put(key: u32, bytes: [*]const u8, length: usize) c_int {
+    cached_store.putPrepared(key, bytes[0..length]) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_cached_commit() c_int {
+    cached_store.commit() catch return -1;
+    return 0;
 }
