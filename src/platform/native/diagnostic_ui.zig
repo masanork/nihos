@@ -12,6 +12,7 @@ extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_keyboard_pads_init() callconv(.c) void;
 extern fn nih_diagnostic_serial_dropped() callconv(.c) u32;
 extern fn nih_diagnostic_serial_read() callconv(.c) i32;
+extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
 
 var journal = console.Journal(2048){};
 pub var model = console.boot.Model{};
@@ -39,6 +40,20 @@ const Renderer = console.raster.Renderer(".flash.rodata.display", face);
 // Unused tail of the existing private display reservation, not owner heaps.
 const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
+const Session = console.session;
+const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
+const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
+var session_active = false;
+var session_pending = false;
+var session_serial = Session.input.Serial{};
+var session_hid = Session.input.Hid{};
+var shown_session_revision: u32 = 0;
+var shown_session_view: ?Session.View = null;
+const SerialSink = struct {
+    pub fn write(_: @This(), bytes: []const u8) void {
+        for (bytes) |byte| nih_diagnostic_serial_write(byte);
+    }
+};
 var renderer_ready = false;
 var max_scroll_us: u32 = 0;
 var max_copy_us: u32 = 0;
@@ -47,7 +62,7 @@ var max_cache_chunk_us: u32 = 0;
 var line_step_us: u32 = 0;
 var cpu_mhz: u32 = 0;
 comptime {
-    if (@sizeOf(Renderer) + @sizeOf(Text) > board.reserve_bytes - board.frame_bytes or @alignOf(Renderer) > 64)
+    if (session_offset + @sizeOf(Session.Model) > board.reserve_bytes - board.frame_bytes or @alignOf(Renderer) > 64)
         @compileError("console renderer exceeds private display tail");
 }
 fn palette() console.raster.Palette {
@@ -71,7 +86,7 @@ pub noinline fn append(message: []const u8) void {
     if (hart != 0) return;
     const previous = if (options.console_live) 0 else mask();
     journal.append(message);
-    if (renderer_ready) live_text.write(message);
+    if (renderer_ready and !session_active) live_text.write(message);
     @atomicStore(u32, &dirty, 1, .release);
     if (!options.console_live) restore(previous);
 }
@@ -96,7 +111,15 @@ pub fn unavailable(stage: console.boot.Stage) void {
     if (options.console) _ = model.unavailable(stage);
 }
 pub fn failed() void {
-    if (options.console) model.fail(1);
+    if (options.console) {
+        model.fail(1);
+        session_pending = false;
+        if (session_active) {
+            // Rebuild the diagnostic grid from its own journal on failure.
+            session_active = false;
+            renderer_ready = false;
+        }
+    }
 }
 fn frame() []u8 {
     const data: [*]u8 = @ptrFromInt(board.framebuffer);
@@ -256,9 +279,13 @@ noinline fn poll(now: u64, log: anytype) void {
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
-        if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);
+        if (session_active) {
+            if (session_serial.feed(@intCast(byte), now)) |key| sessionKey(key, log);
+        } else if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);
     }
-    if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
+    if (session_active) {
+        if (session_serial.expire(now)) |key| sessionKey(key, log);
+    } else if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
     if (hardware_ready) {
         var events: [4]console.keyboard.Event = undefined;
         const count = keyboard.poll(&events) catch blk: {
@@ -266,8 +293,101 @@ noinline fn poll(now: u64, log: anytype) void {
             model.input_sources &= ~console.keys.capability(.tab5_keyboard);
             break :blk 0;
         };
-        for (events[0..count]) |event| if (console.keys.hid(event.modifiers, event.usage)) |value| action(value, .tab5_keyboard, event.modifiers, event.usage, log);
+        for (events[0..count]) |event| {
+            if (session_active) {
+                if (session_hid.feed(event.modifiers, event.usage)) |key| sessionKey(key, log);
+            } else if (console.keys.hid(event.modifiers, event.usage)) |value| action(value, .tab5_keyboard, event.modifiers, event.usage, log);
+        }
     }
+}
+
+pub fn startSession(log: anytype) bool {
+    if (!options.console_live or model.failure_latched) return false;
+    // Finish the existing milestone-driven splash before handing over input.
+    session_pending = true;
+    model.details = false;
+    revision +%= 1;
+    return service(log);
+}
+fn beginSession(log: anytype) void {
+    @memset(@import("std").mem.asBytes(session), 0);
+    session.begin(SerialSink{});
+    // Do not let a boot-time partial serial escape leak into the shell.
+    session_serial = .{};
+    session_hid = .{};
+    session_active = true;
+    session_pending = false;
+    const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
+    log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);
+    @atomicStore(u32, &dirty, 1, .release);
+}
+noinline fn sessionKey(key: Session.input.Key, log: anytype) void {
+    const before = session.view;
+    if (session.handle(key, SerialSink{})) |command| {
+        switch (command) {
+            .mem => {
+                session.write(SerialSink{}, "CPU0 owner only (bytes; excludes stacks/display):\r\n");
+                if (tasks.memory.localUsage()) |usage| sessionUsage("SRAM boot arena", usage.capacity, usage.free) else session.write(SerialSink{}, "SRAM boot arena unavailable\r\n");
+                if (tasks.memory.reusable.localUsage()) |usage| sessionUsage("PSRAM reusable heap", usage.capacity, usage.free) else session.write(SerialSink{}, "PSRAM reusable heap unavailable\r\n");
+            },
+            .tasks => {
+                session.write(SerialSink{}, "Published runtime counters (per-field snapshots):\r\n");
+                for (0..2) |index| {
+                    const observed = tasks.report(@intCast(index));
+                    session.write(SerialSink{}, "hart ");
+                    session.number(SerialSink{}, @intCast(index));
+                    session.write(SerialSink{}, " ticks=");
+                    session.number(SerialSink{}, observed.ticks);
+                    session.write(SerialSink{}, " switches=");
+                    session.number(SerialSink{}, observed.switches);
+                    session.write(SerialSink{}, " calls=");
+                    session.number(SerialSink{}, observed.calls);
+                    session.write(SerialSink{}, "\r\n");
+                }
+                session.write(SerialSink{}, "Normal boot runs bootstrap/idle; no user apps yet.\r\n");
+            },
+            else => unreachable,
+        }
+    }
+    if (session.view != before) {
+        if (session.view == .logs) {
+            for (journal.spans()) |part| (SerialSink{}).write(part);
+            (SerialSink{}).write("\r\nEsc: launcher\r\n");
+        }
+        const values = .{ .from = @as(u32, @backingInt(before)), .to = @as(u32, @backingInt(session.view)) };
+        log.record("NIHOS_NATIVE_SESSION_VIEW", null, .{ "from", "to" }, &values);
+    }
+    session.finishInput(key, before, SerialSink{});
+    @atomicStore(u32, &dirty, 1, .release);
+}
+fn sessionUsage(label: []const u8, capacity: u32, free: u32) void {
+    session.write(SerialSink{}, label);
+    session.write(SerialSink{}, " capacity=");
+    session.number(SerialSink{}, capacity);
+    session.write(SerialSink{}, " free=");
+    session.number(SerialSink{}, free);
+    session.write(SerialSink{}, " used=");
+    session.number(SerialSink{}, capacity - free);
+    session.write(SerialSink{}, "\r\n");
+}
+fn drawSession() bool {
+    if (!renderer_ready) {
+        @memset(@import("std").mem.asBytes(renderer), 0);
+        renderer_ready = true;
+    }
+    if (renderer.moving() and !renderer.finish(frame(), 1440, palette())) return false;
+    if (shown_session_view != session.view) renderer.invalidate();
+    if (session.view == .logs) {
+        console.snapshot.fill(live_text, &model, journal.spans(), journal.dropped);
+        // The boot snapshot's controls no longer apply after session handoff.
+        @memset(live_text.cells[5 * geometry.columns .. 6 * geometry.columns], ' ');
+        const hint = "Esc: launcher | Ctrl-C: return";
+        @memcpy(live_text.cells[5 * geometry.columns ..][0..hint.len], hint);
+    } else session.render(live_text);
+    if (!renderer.submit(frame(), 1440, live_text, palette()) or !presentDamage()) return false;
+    shown_session_view = session.view;
+    shown_session_revision = session.revision;
+    return true;
 }
 pub noinline fn service(log: anytype) bool {
     if (!options.console_live or !runtime.active()) return true;
@@ -282,6 +402,14 @@ pub noinline fn service(log: anytype) bool {
     if (!new_frame and !forced) return true;
     last_frame = observed.frames;
     const changed = @atomicRmw(u32, &dirty, .Xchg, 0, .acquire) != 0;
+    if (session_active) {
+        if (changed or shown_session_view != session.view or shown_session_revision != session.revision or renderer.moving()) {
+            rendering = true;
+            defer rendering = false;
+            return drawSession();
+        }
+        return true;
+    }
     const selected = status();
     const target = model.dyeTarget();
     const old_progress = progress;
@@ -325,6 +453,17 @@ pub noinline fn service(log: anytype) bool {
         const values: extern struct { frames: u32, progress: u32, target: u32 } = .{ .frames = runtime.snapshot().frames, .progress = progress, .target = target };
         log.record("NIHOS_NATIVE_UI_SETTLED", null, .{ "frames", "progress", "target" }, &values);
     }
+    if (session_pending and progress == 255) {
+        if (model.details) {
+            // A late boot-time Esc may have selected logs. Publish the final
+            // splash/settled record before the next frame hands over the UI.
+            model.details = false;
+            revision +%= 1;
+            return true;
+        }
+        beginSession(log);
+        return drawSession();
+    }
     return true;
 }
 pub noinline fn checkpoint(log: anytype) bool {
@@ -343,7 +482,7 @@ pub noinline fn checkpoint(log: anytype) bool {
 /// Direct fatal path: no allocation, scheduler, key requirement or IRQ dependence.
 pub noinline fn failureFrame() bool {
     if (!options.console_live or !clock_ready or !runtime.active() or rendering or runtime.snapshot().fault != 0) return false;
-    model.fail(1);
+    failed();
     if (renderer_ready) renderer.invalidate();
     rendering = true;
     defer rendering = false;

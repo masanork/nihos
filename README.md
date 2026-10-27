@@ -202,6 +202,14 @@ and
 The first idle touch-poll result is in
 [`docs/measurements/2026-10-25-tab5-touch-bootstrap.md`](docs/measurements/2026-10-25-tab5-touch-bootstrap.md).
 
+## Native launcher
+
+The live native integer normal-boot profile now opens a small launcher after
+initialisation. Escape opens an ASCII shell; `exit` returns to the launcher.
+Shell, boot logs, CPU0 memory usage and per-core runtime counters are available.
+See [native session behaviour and build flags](docs/native-session.md).
+This candidate still needs physical Tab5 validation.
+
 ## Project boundary
 
 nihos is a new, independent project. It is not MeOS and is not presented as a

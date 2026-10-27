@@ -98,7 +98,7 @@ const Model = struct {
             calibration => self.cal = value,
             analog => {
                 std.debug.assert(value & 255 == 0x63);
-                const index: usize = @as(u8, @truncate(value >> 8));
+                const index: u8 = @truncate(value >> 8);
                 if (value & (1 << 24) != 0) {
                     self.registers[index] = @truncate(value >> 16);
                     if (index == 2 and self.ready) self.cal |= done_mask;
