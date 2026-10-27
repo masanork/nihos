@@ -6,6 +6,7 @@
 pub const version = "0.0.0";
 pub const record_log = @import("diagnostics/record.zig");
 pub const native_stack_layout = @import("platform/native/stack_layout.zig");
+pub const vfs = @import("fs/vfs.zig");
 pub const riscv32_context = @import("arch/riscv32/context.zig");
 pub const riscv32_trap = @import("arch/riscv32/trap.zig");
 pub const esp32p4_timer_group = @import("soc/esp32p4/timer_group.zig");
@@ -32,6 +33,8 @@ pub const platform_abi = @import("platform/abi.zig");
 test {
     _ = record_log;
     _ = native_stack_layout;
+    _ = vfs;
+    _ = @import("fs/vfs_test.zig");
     _ = riscv32_context;
     _ = riscv32_trap;
     _ = esp32p4_timer_group;
