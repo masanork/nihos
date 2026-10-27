@@ -1,6 +1,6 @@
 # ADR 0046: Maintain leases and recover the native network owner
 
-- Status: implemented and host-tested; successful physical renewal/recovery pending AP availability
+- Status: implemented and host-tested; physical early renewal ACK and controlled C6-reset recovery passed; natural timing and long-duration gates remain
 - Date: 2026-10-27
 - Extends: [ADR 0045](0045-normal-boot-network-integration.md)
 
@@ -49,3 +49,5 @@ the corresponding ACK and re-acquisition are observed.
 References: [RFC 2131, section 4.4.5](https://www.rfc-editor.org/rfc/rfc2131.html#section-4.4.5),
 [RFC 2132, sections 9.11–9.12](https://www.rfc-editor.org/rfc/rfc2132.html#section-9.11).
 See [measurements and remaining gates](../measurements/2026-10-27-network-lease-lifecycle.md).
+The subsequent [positive device result](../measurements/2026-10-27-network-lease-device.md)
+records the real renewal ACK and recovery after the AP became available.

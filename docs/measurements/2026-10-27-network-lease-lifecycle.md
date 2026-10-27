@@ -1,5 +1,9 @@
 # Native network lease lifecycle and retry checkpoint
 
+This is the AP-absence checkpoint. The later [positive device result](2026-10-27-network-lease-device.md)
+records an early renewal ACK and controlled C6-reset recovery with the same
+committed implementation after the AP became available.
+
 2026-10-27. Lease renewal, rebinding, expiry and reconnect are implemented for
 the normal-boot owner. The fixed 120-second limit is removed in source.
 **Successful physical renewal and AP recovery remain unqualified**: the saved

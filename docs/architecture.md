@@ -76,8 +76,9 @@ provided no router advertisements. The subsequent bounded, opt-in normal-boot
 path integrates networking alongside the display; see
 [ADR 0045](adr/0045-normal-boot-network-integration.md). Lease renewal, expiry
 and reconnect now have a host-tested implementation under
-[ADR 0046](adr/0046-native-network-lease-lifecycle.md); successful physical
-renewal/recovery is pending AP availability. Application network services,
+[ADR 0046](adr/0046-native-network-lease-lifecycle.md). A real early-renewal ACK
+and controlled C6-reset recovery are now [physically recorded](measurements/2026-10-27-network-lease-device.md).
+Natural lease timing and long-duration recovery remain open. Application network services,
 C6 TCP/IP/BLE offload, IRQ-driven service and arbitration with
 storage are open. See [ADR 0044](adr/0044-c6-sdio-boot-transport.md) and the
 [IPv6 evidence](measurements/2026-10-27-native-ipv6.md).
