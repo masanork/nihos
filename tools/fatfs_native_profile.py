@@ -14,12 +14,13 @@ SOURCES = (
     'include/nihos_fatfs_backend.h', 'include/nihos_fatfs_disk.h',
     'src/storage_vfs.zig', 'src/fs/vfs.zig', 'src/fs/fatfs_backend.zig',
     'src/fs/vfs_rpc.zig', 'src/fs/vfs_memory.zig', 'src/fs/io_leases.zig', 'src/fs/io_stop.zig',
-    'src/kernel/spsc_ring.zig', 'src/kernel/memory_broker.zig', 'src/kernel/page_pool.zig',
+    'src/kernel/event_latch.zig', 'src/kernel/spsc_ring.zig', 'src/kernel/memory_broker.zig', 'src/kernel/page_pool.zig',
     'src/kernel/development_memory.zig', 'src/arch/riscv32/native_tasks.zig',
     'probes/fatfs-disk/safety.c', 'probes/fatfs-disk/safety.h', 'probes/fatfs-disk/ffconf.h',
     'tools/build-native-elf.sh', 'tools/build-fatfs-native-input.py', 'tools/bootstrap-fatfs.py',
     'tools/native-sqlite-manifest.py', 'tools/check-native-image.py', 'tools/fatfs_native_profile.py',
 )
+SOURCES_V1 = tuple(path for path in SOURCES if path != 'src/kernel/event_latch.zig')
 UPSTREAM = {
     'ff.c': '3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250',
     'ff.h': '42920ae4d6080bfc2a72d92a9969b5e94eeaff070e5e71d90da9ab6d7d8e158e',
@@ -39,10 +40,10 @@ def require(ok, reason):
 
 
 def validate_profile(config):
-    require(isinstance(config, dict) and config.get('version') == 1 and config.get('source') == SOURCE and
+    require(isinstance(config, dict) and config.get('version') in (1, 2) and config.get('source') == SOURCE and
             config.get('flash_end') == '0x400d0000' and config.get('c_no_inline') is True, 'invalid fixture profile')
     sources = config.get('sources', {})
-    require(isinstance(sources, dict) and set(sources) == set(SOURCES) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}', x)
+    require(isinstance(sources, dict) and set(sources) == set(SOURCES if config['version'] == 2 else SOURCES_V1) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}', x)
             for x in sources.values()), 'incomplete source identity')
     f = config.get('fixture', {})
     require(isinstance(f, dict) and f.get('schema') == 1 and f.get('source') == SOURCE and f.get('image_sha256') == IMAGE_SHA256 and

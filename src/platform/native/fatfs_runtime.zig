@@ -23,7 +23,7 @@ extern fn nih_fatfs_fixture_id() u32;
 
 var notifications = rpc.Notifications{};
 var handles: [2]A = @splat(.init(0));
-var flags: [2]A = @splat(.init(0));
+var flags: [2]support.event_latch.Latch = @splat(.{});
 var enabled = A.init(0);
 var ready = A.init(0);
 var cleanup = A.init(0);
@@ -74,7 +74,7 @@ fn check(ok: bool) void {
     if (!ok) fail();
 }
 inline fn signal(hart: u32) void {
-    _ = flags[hart].fetchOr(1, .release);
+    flags[hart].notify();
     @as(*volatile u32, @ptrFromInt(0x500e5010 + hart * 4)).* = 1;
     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
 }
@@ -99,7 +99,7 @@ pub export fn nih_storage_register(hart: u32, handle: u32, low: u32, high: u32) 
     signal(hart ^ 1);
 }
 pub export fn nih_storage_pending(hart: u32) linksection(".iram1.storage_hooks") callconv(.c) u32 {
-    return flags[hart].swap(0, .acq_rel);
+    return flags[hart].take();
 }
 pub export fn nih_storage_task_exited(hart: u32, handle: u32) linksection(".iram1.storage_hooks") callconv(.c) void {
     if (hart != 1) return;

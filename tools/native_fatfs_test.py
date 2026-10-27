@@ -14,7 +14,7 @@ def line(marker, values):
 
 
 def config():
-    return {'version': 1, 'source': PROFILE.SOURCE, 'flash_end': '0x400d0000', 'c_no_inline': True,
+    return {'version': 2, 'source': PROFILE.SOURCE, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': dict.fromkeys(PROFILE.SOURCES, 'a' * 64),
             'fixture': {'schema': 1, 'source': PROFILE.SOURCE, 'image_sha256': PROFILE.IMAGE_SHA256,
                 'image_bytes': 1048576, 'fixture_id': int(PROFILE.IMAGE_SHA256[:8], 16),
@@ -35,6 +35,13 @@ class NativeFatFsImageChecks(unittest.TestCase):
             bad['fixture'][key] = 0
             with self.subTest(fixture=key), self.assertRaises(ValueError):
                 PROFILE.validate_profile(bad)
+
+    def test_version_one_source_manifest_remains_replayable(self):
+        old = config(); old['version'] = 1
+        old['sources'] = dict.fromkeys(PROFILE.SOURCES_V1, 'a' * 64)
+        PROFILE.validate_profile(old)
+        old['version'] = 2
+        with self.assertRaises(ValueError): PROFILE.validate_profile(old)
 
     def test_expanded_flash_requires_explicit_fixture_window(self):
         module = IMAGE.MODULE
