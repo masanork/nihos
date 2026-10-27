@@ -1,0 +1,321 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "base_commit": "51da82e61e57b3715e1d73b57ce61637546a9c74",
+  "source_manifest_sha256": "3ce1803800923d66962cf05ede57bd290ffa9f359e661a877dab06bc0fcc695d",
+  "evidence": "physical-device",
+  "chip": "ESP32-P4 rev1.3",
+  "mode": "normal native boot; Wi-Fi unconfigured, BLE enabled",
+  "candidate": {
+    "app_sha256": "0c0ac924ae5779183be5f17a8f00dafb801bef532a6a1ca75167c26d27e499fa",
+    "elf_sha256": "fcd631b745364df1492fb08ccea3631f94d05f3fd961623cad51b1298fa91c19",
+    "app_bytes": 159888,
+    "primary_heap_bytes": 56192,
+    "flash_table_bytes": 54270,
+    "bmi270_config_sha256": "2d75e68e343a13ff99be98261dfbd99d9e8c6f267da9e3c5aeb883276ad178db"
+  },
+  "exclusive_lease": {
+    "at": "2026-10-27T14:29:38.518560+00:00",
+    "app_sha256": "0c0ac924ae5779183be5f17a8f00dafb801bef532a6a1ca75167c26d27e499fa",
+    "runs": [
+      {
+        "run": 1,
+        "seconds": 40.032704791,
+        "log_sha256": "77850d1e088bd5d651efda37870f48d72c1517ce7b12dc42ee628acfd8774ae9"
+      },
+      {
+        "run": 2,
+        "seconds": 40.05249783400001,
+        "log_sha256": "e160f626088f0c12ff43c5a8a5fb7e2bf8786ac3691778248927b0be34c7f521"
+      },
+      {
+        "run": 3,
+        "seconds": 40.043087833,
+        "log_sha256": "6a6911f880442e825658ce0e2e9c77915d17f9fb16a47c965b3fcf0583775c7c"
+      }
+    ],
+    "app_offset": "0x10000",
+    "loader_table_c6_sd_written": false,
+    "optical_confirmation": false,
+    "motion_requested": false,
+    "postverified": true,
+    "boot_unchanged": true
+  },
+  "private_artifacts": "/private/tmp/nihos-native-imu/build/imu-qualification/physical-01",
+  "runs": [
+    {
+      "run": 1,
+      "log_sha256": "77850d1e088bd5d651efda37870f48d72c1517ce7b12dc42ee628acfd8774ae9",
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 8,
+        "ready_records": 7,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 7,
+          "acc_x": 8064,
+          "acc_y": 340,
+          "acc_z": -2,
+          "gyr_x": 6,
+          "gyr_y": -98,
+          "gyr_z": -104,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 13,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1206,
+          "acc_x": 8134,
+          "acc_y": 418,
+          "acc_z": -81,
+          "gyr_x": -1,
+          "gyr_y": -4,
+          "gyr_z": -12,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.9852496000829706,
+          "max": 1.0317023686713562
+        },
+        "sample_delta": 1199
+      },
+      "display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 188,
+        "advertisements": 181,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "network": {
+        "phase": 3,
+        "station": 12,
+        "error_code": 0,
+        "ip": 0,
+        "linklocal": 0,
+        "echo_requests": 0,
+        "rx": 8772,
+        "tx": 195,
+        "polls": 4321,
+        "max_poll_us": 6970,
+        "renewals": 0,
+        "reconnects": 0,
+        "acquisitions": 0,
+        "failures": 0,
+        "disconnect_reason": 0,
+        "failed_station": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 2133,
+        "ticks0": 3518,
+        "ticks1": 3518
+      }
+    },
+    {
+      "run": 2,
+      "log_sha256": "e160f626088f0c12ff43c5a8a5fb7e2bf8786ac3691778248927b0be34c7f521",
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 8,
+        "ready_records": 7,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 7,
+          "acc_x": 8122,
+          "acc_y": 317,
+          "acc_z": -101,
+          "gyr_x": 7,
+          "gyr_y": 31,
+          "gyr_z": 8,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 13,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1206,
+          "acc_x": 8007,
+          "acc_y": 344,
+          "acc_z": -311,
+          "gyr_x": -145,
+          "gyr_y": 3,
+          "gyr_z": 18,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.9790549400517443,
+          "max": 1.0075401337323255
+        },
+        "sample_delta": 1199
+      },
+      "display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 162,
+        "advertisements": 152,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "network": {
+        "phase": 3,
+        "station": 12,
+        "error_code": 0,
+        "ip": 0,
+        "linklocal": 0,
+        "echo_requests": 0,
+        "rx": 7506,
+        "tx": 195,
+        "polls": 4319,
+        "max_poll_us": 6972,
+        "renewals": 0,
+        "reconnects": 0,
+        "acquisitions": 0,
+        "failures": 0,
+        "disconnect_reason": 0,
+        "failed_station": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 2133,
+        "ticks0": 3518,
+        "ticks1": 3518
+      }
+    },
+    {
+      "run": 3,
+      "log_sha256": "6a6911f880442e825658ce0e2e9c77915d17f9fb16a47c965b3fcf0583775c7c",
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 8,
+        "ready_records": 7,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 9,
+          "acc_x": 8070,
+          "acc_y": 271,
+          "acc_z": -334,
+          "gyr_x": -130,
+          "gyr_y": 12,
+          "gyr_z": 27,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1208,
+          "acc_x": 8046,
+          "acc_y": 176,
+          "acc_z": -1027,
+          "gyr_x": -28,
+          "gyr_y": -11,
+          "gyr_z": 25,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.9834892662856034,
+          "max": 1.0435382845298247
+        },
+        "sample_delta": 1199
+      },
+      "display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 170,
+        "advertisements": 162,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "network": {
+        "phase": 3,
+        "station": 12,
+        "error_code": 0,
+        "ip": 0,
+        "linklocal": 0,
+        "echo_requests": 0,
+        "rx": 7920,
+        "tx": 195,
+        "polls": 4372,
+        "max_poll_us": 6973,
+        "renewals": 0,
+        "reconnects": 0,
+        "acquisitions": 0,
+        "failures": 0,
+        "disconnect_reason": 0,
+        "failed_station": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 2132,
+        "ticks0": 3517,
+        "ticks1": 3517
+      }
+    }
+  ],
+  "remaining": [
+    "controlled movement and gyro bias/calibration",
+    "board/display axis mapping",
+    "physical sensor disconnect and I2C fault injection",
+    "FIFO and IRQ acquisition",
+    "application IPC/input service",
+    "Wi-Fi AP traffic coexistence and long-duration operation",
+    "cold power-on; these were USB resets",
+    "optical confirmation of this exact candidate"
+  ]
+}
