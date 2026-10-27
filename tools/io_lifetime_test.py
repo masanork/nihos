@@ -18,6 +18,7 @@ def load(name):
 LOG = load('check-native-log')
 IMAGE = load('check-native-image')
 RUNNER = load('qualify-storage-io')
+SERIAL_CAPTURE = load('native_serial')
 
 
 class LifetimeEvidenceTests(unittest.TestCase):
@@ -83,7 +84,7 @@ class LifetimeEvidenceTests(unittest.TestCase):
                 'candidate': ('nihos-native.bin', 'nihos-native.elf', 'image-audit.json', 'sqlite-manifest.json', 'native_options.zig', 'native-layout.ld'),
                 'loader': ('bootloader.bin', 'bootloader.elf', 'partition-table.bin', 'loader-sdkconfig.h'),
                 'source': ('tools/qualify-storage-io.py', 'tools/check-native-log.py', 'tools/check-native-image.py',
-                           'tools/native-sqlite-manifest.py', 'tools/native-cold-policy.json'),
+                           'tools/native-sqlite-manifest.py', 'tools/native-cold-policy.json', 'tools/native_serial.py'),
             }
             bundle = {}
             for key, files in names.items():
@@ -157,6 +158,63 @@ class PhysicalRemovalEvidenceTests(unittest.TestCase):
                     'rst:0x1 (POWERON_RESET)\nrst:0x17 (CHIP_USB_UART_RESET)'):
             with self.assertRaises(ValueError):
                 RUNNER.require_power_on_reset(log)
+
+
+class PassiveCaptureTests(unittest.TestCase):
+    def test_passive_open_preserves_modem_lines_and_boot_bytes_but_normal_mode_restores_control(self):
+        events = []
+
+        class Base:
+            def _reconfigure_port(self, **kwargs): events.append(('configure', kwargs))
+            def _update_dtr_state(self): events.append('dtr')
+            def _update_rts_state(self): events.append('rts')
+            def _reset_input_buffer(self): events.append('flush')
+            def open(self):
+                self._reconfigure_port(force_update=True)
+                self._update_dtr_state()
+                self._update_rts_state()
+                self._reset_input_buffer()
+
+        Port = SERIAL_CAPTURE.capture_serial_class(Base, lambda _: events.append('disable_hupcl'))
+        port = Port()
+        port.passive_open = True
+        port.open()
+        self.assertEqual(events, [('configure', {'force_update': True}), 'disable_hupcl'])
+        events.clear()
+        port.passive_open = False
+        port.open()
+        self.assertEqual(events, [('configure', {'force_update': True}), 'dtr', 'rts', 'flush'])
+
+    def test_reset_baseline_identity_hashes_and_three_runs_are_required(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            audit = {'image_sha256': 'image', 'elf_sha256': 'elf'}
+            (directory / 'image-audit.json').write_text(json.dumps(audit))
+            report = {'io_lifetimes': {'status': 1}}
+            rows = []
+            for run in range(1, 4):
+                log = directory / f'boot{run}.log'
+                log.write_text(f'boot {run}')
+                rows.append({'run': run, 'log_sha256': RUNNER.digest(log), 'report': report})
+            path = directory / 'results.json'
+            path.write_text(json.dumps(rows))
+            for name in ('verify-candidate-before.log', 'verify-candidate-after.log'):
+                (directory / name).write_text('-- verify OK (digest matched)\n' * 3)
+
+            class Check:
+                @staticmethod
+                def check(*args, **kwargs): return report
+
+            self.assertEqual(RUNNER.validate_baseline(path, audit, Check)['runs'], 3)
+            with self.assertRaises(ValueError):
+                RUNNER.validate_baseline(path, {**audit, 'image_sha256': 'different'}, Check)
+            path.write_text(json.dumps(rows[:2]))
+            with self.assertRaises(ValueError):
+                RUNNER.validate_baseline(path, audit, Check)
+            path.write_text(json.dumps(rows))
+            (directory / 'boot1.log').write_text('changed')
+            with self.assertRaises(ValueError):
+                RUNNER.validate_baseline(path, audit, Check)
 
 
 if __name__ == '__main__':

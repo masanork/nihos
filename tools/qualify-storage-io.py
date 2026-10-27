@@ -26,13 +26,40 @@ def require_power_on_reset(log):
         raise ValueError('Power-on evidence needs one cold power-on reset, not USB/watchdog/mixed boots')
 
 
+def validate_baseline(path, audit, check):
+    """Reuse exact-image reset evidence; never reuse a partially checked boot."""
+    path = path.resolve()
+    previous = json.loads((path.parent / 'image-audit.json').read_text())
+    if any(previous.get(key) != audit.get(key) for key in ('image_sha256', 'elf_sha256')):
+        raise ValueError('Baseline is from a different candidate')
+    rows = json.loads(path.read_text())
+    if [row.get('run') for row in rows] != [1, 2, 3]:
+        raise ValueError('Baseline needs three distinct reset runs')
+    artifacts = {'results.json': digest(path), 'image-audit.json': digest(path.parent / 'image-audit.json')}
+    for row in rows:
+        log = path.parent / f"boot{row['run']}.log"
+        if digest(log) != row['log_sha256']:
+            raise ValueError('Baseline boot log changed')
+        refreshed = check.check(log.read_text(), 'sqlite', 32 << 20, previous, 'physical-device',
+                                require_sdmmc_fast=True, require_storage=True)
+        if refreshed != row['report'] or refreshed['io_lifetimes'] is None:
+            raise ValueError('Incomplete baseline qualification')
+        artifacts[log.name] = digest(log)
+    for name in ('verify-candidate-before.log', 'verify-candidate-after.log'):
+        log = path.parent / name
+        if log.read_text().count('-- verify OK (digest matched)') != 3:
+            raise ValueError('Baseline lacks complete candidate Flash verification')
+        artifacts[name] = digest(log)
+    return {'source': str(path), 'runs': 3, 'artifacts': artifacts}
+
+
 def validate_bundle(candidate, loader, root):
     bundle = json.loads((candidate / 'qualification-bundle.json').read_text())
     required = {
         'candidate': {'nihos-native.bin', 'nihos-native.elf', 'image-audit.json', 'sqlite-manifest.json', 'native_options.zig', 'native-layout.ld'},
         'loader': {'bootloader.bin', 'bootloader.elf', 'partition-table.bin', 'loader-sdkconfig.h'},
         'source': {'tools/qualify-storage-io.py', 'tools/check-native-log.py', 'tools/check-native-image.py',
-                   'tools/native-sqlite-manifest.py', 'tools/native-cold-policy.json'},
+                   'tools/native-sqlite-manifest.py', 'tools/native-cold-policy.json', 'tools/native_serial.py'},
     }
     for key, names in required.items():
         if not names <= set(bundle.get(key, {})):
@@ -52,6 +79,7 @@ def main():
     parser.add_argument('--loader', type=Path, required=True, help='Frozen audited loader directory')
     parser.add_argument('--output', type=Path, required=True, help='New private directory, must not exist')
     parser.add_argument('--power-cycle', action='store_true', help='After three reset runs, wait for an operator power OFF/ON and validate cold boot')
+    parser.add_argument('--baseline-results', type=Path, help='For --power-cycle, reuse three validated reset runs of this exact candidate')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     # Validate artifacts and source before taking or resetting the device.
@@ -61,6 +89,8 @@ def main():
     removal_test = audit.get('io_lifetimes', {}).get('removal_test') is True
     if removal_test and args.power_cycle:
         raise ValueError('Use separate removal and cold-boot attempts; cold reboot must not repeat the manual removal fixture')
+    if args.baseline_results is not None and not args.power_cycle:
+        raise ValueError('Reset baseline reuse requires --power-cycle')
     if (audit.get('io_lifetimes', {}).get('qualification') is not True or
             audit.get('memory', {}).get('profile') != 'device' or
             digest(candidate / 'nihos-native.bin') != audit.get('image_sha256') or
@@ -74,7 +104,10 @@ def main():
     spec = importlib.util.spec_from_file_location('native_check', root / 'tools/check-native-log.py')
     check = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(check)
+    baseline = validate_baseline(args.baseline_results, audit, check) if args.baseline_results else None
     out.mkdir(parents=True, mode=0o700, exist_ok=False)
+    if baseline is not None:
+        (out / 'baseline.json').write_text(json.dumps(baseline, indent=2) + '\n')
     for name in ('nihos-native.bin', 'nihos-native.elf', 'image-audit.json', 'sqlite-manifest.json', 'native_options.zig'):
         shutil.copy2(candidate / name, out / name)
     for name in ('bootloader.bin', 'bootloader.elf', 'partition-table.bin', 'loader-sdkconfig.h'):
@@ -82,26 +115,29 @@ def main():
     # Imports are deferred so --help needs no device dependencies.
     import esptool
     import serial
+    from native_serial import capture_serial_class, disable_hangup
     from esptool.reset import HardReset
     owners = subprocess.run(['lsof', '-t', args.port], capture_output=True, text=True, check=False)
     if owners.stdout.strip():
         raise RuntimeError('Serial already in use: ' + owners.stdout.strip())
     results = []
     serial_reopens = 0
-    with serial.Serial(args.port, 115200, timeout=.2, exclusive=True) as port:
+    with capture_serial_class(serial.Serial)(args.port, 115200, timeout=.2, exclusive=True) as port:
         expected_identity = {'chip': 'ESP32-P4 (revision v1.3)', 'mac': 'e8:f6:0a:e2:e8:9c'}
 
-        def reopen():
+        def reopen(passive=False):
             nonlocal serial_reopens
             owners = subprocess.run(['lsof', '-t', args.port], capture_output=True, text=True, check=False)
             if owners.stdout.strip():
                 raise RuntimeError('Serial acquired by another owner during power-off: ' + owners.stdout.strip())
+            port.passive_open = passive
             port.dtr = False
             port.rts = False
             port.open()
             serial_reopens += 1
 
         def connect():
+            port.passive_open = False
             if not port.is_open:
                 reopen()
             port.baudrate = 115200
@@ -150,7 +186,7 @@ def main():
             verify = ['verify_flash', '0x2000', str(out / 'bootloader.bin'), '0x8000', str(out / 'partition-table.bin'),
                       '0x10000', str(out / 'nihos-native.bin')]
             command('verify-candidate-before', verify)
-            for run in range(1, 2 if removal_test else 4):
+            for run in range(1, 1 if baseline is not None else (2 if removal_test else 4)):
                 port.baudrate = 115200
                 port.dtr = False
                 port.reset_input_buffer()
@@ -180,11 +216,13 @@ def main():
                 results.append({'run': run, 'log_sha256': digest(path), 'report': report})
                 (out / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
                 print(f'boot {run}: passed', flush=True)
-            command('verify-candidate-after', verify)
+            if baseline is None:
+                command('verify-candidate-after', verify)
             if args.power_cycle:
                 port.baudrate = 115200
                 port.dtr = False
                 port.reset_input_buffer()
+                disable_hangup(port)
                 print('NIHOS_POWER_CYCLE_READY', flush=True)
                 raw_log = bytearray()
                 path = out / 'power-cycle.log'
@@ -196,7 +234,7 @@ def main():
                             time.sleep(.2)
                             continue
                         try:
-                            reopen()
+                            reopen(passive=True)
                         except serial.SerialException as error:
                             if error.errno not in (2, 6, 19):
                                 raise
@@ -233,8 +271,10 @@ def main():
                 (out / 'restored.json').write_text(json.dumps({'verified': True, 'sha256': digest(backup)}) + '\n')
                 port.baudrate = 115200
                 HardReset(port, uses_usb=True)()
-        (out / 'complete.json').write_text(json.dumps({'passed': len(results) == (1 if removal_test else 3 + int(args.power_cycle)), 'restored': True,
+        expected_runs = 1 if removal_test or baseline is not None else 3 + int(args.power_cycle)
+        (out / 'complete.json').write_text(json.dumps({'passed': len(results) == expected_runs, 'restored': True,
                 'exclusive_serial': True, 'removal_fixture_run': removal_test,
+                'reset_baseline_reused': baseline is not None,
                 'serial_reopens': serial_reopens, 'same_serial_descriptor': serial_reopens == 0,
                 'electrical_removal_operator_confirmed': False, 'power_on_reset_observed': args.power_cycle}) + '\n')
 
