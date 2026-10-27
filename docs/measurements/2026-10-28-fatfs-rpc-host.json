@@ -1,0 +1,1003 @@
+{
+  "schema": 1,
+  "passed": true,
+  "evidence": "host guarded FatFs, VFS/RPC and actual broker lifetime integration; RV32 compile only",
+  "hardware_executed": false,
+  "firmware_linked": false,
+  "c_sanitizers": [
+    "address",
+    "undefined"
+  ],
+  "zig_mode": "ReleaseSafe",
+  "upstream_sha256": {
+    "diskio.h": "1c2b29f53e061c55d43b2e412c3a61320b2621bac7561a05e275514baa44785a",
+    "ff.c": "3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250",
+    "ff.h": "42920ae4d6080bfc2a72d92a9969b5e94eeaff070e5e71d90da9ab6d7d8e158e",
+    "ffunicode.c": "3f1632c1f1e64b0b683b0d7e51341b9870728f398604869dd8211f1819509a8e"
+  },
+  "disk_contract": {
+    "observed": {
+      "kind": "contract",
+      "checks": 155859,
+      "workspace_bytes": 4160
+    },
+    "writable_config_rejected": true,
+    "forbidden_write_symbols": []
+  },
+  "base_results": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-v9a6_o8a/results.json",
+  "base_results_sha256": "15f1e2b009ce7ed51062c9a7d2189f440f0a885c7592551a52a8619d9943630f",
+  "cases": [
+    {
+      "name": "fat12:identity-and-admission",
+      "observed": {
+        "mode": "normal",
+        "checks": 15854,
+        "observed": 0,
+        "sector_reads": 130,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:vfs",
+      "observed": {
+        "mode": "vfs",
+        "checks": 15740,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:io",
+      "observed": {
+        "mode": "io",
+        "checks": 19841,
+        "observed": 4,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:removed",
+      "observed": {
+        "mode": "removed",
+        "checks": 19843,
+        "observed": 10,
+        "sector_reads": 12,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:rpc-cancel",
+      "observed": {
+        "mode": "rpc-cancel",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 22,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "fat12:rpc-exit",
+      "observed": {
+        "mode": "rpc-exit",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 22,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "fat12:self-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:two-node-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:short-chain",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:parent-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 7,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:ancestor-alias",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15774,
+        "observed": 3,
+        "sector_reads": 6,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:boot-signature",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat12:volume-bounds",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:identity-and-admission",
+      "observed": {
+        "mode": "normal",
+        "checks": 15854,
+        "observed": 0,
+        "sector_reads": 130,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:vfs",
+      "observed": {
+        "mode": "vfs",
+        "checks": 15740,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:io",
+      "observed": {
+        "mode": "io",
+        "checks": 19841,
+        "observed": 4,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:removed",
+      "observed": {
+        "mode": "removed",
+        "checks": 19843,
+        "observed": 10,
+        "sector_reads": 12,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:rpc-cancel",
+      "observed": {
+        "mode": "rpc-cancel",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 22,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "fat16:rpc-exit",
+      "observed": {
+        "mode": "rpc-exit",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 22,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "fat16:self-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:two-node-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:short-chain",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:parent-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 7,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:ancestor-alias",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15774,
+        "observed": 3,
+        "sector_reads": 6,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:boot-signature",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat16:volume-bounds",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:identity-and-admission",
+      "observed": {
+        "mode": "normal",
+        "checks": 15854,
+        "observed": 0,
+        "sector_reads": 161,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:vfs",
+      "observed": {
+        "mode": "vfs",
+        "checks": 15740,
+        "observed": 0,
+        "sector_reads": 31,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:io",
+      "observed": {
+        "mode": "io",
+        "checks": 19841,
+        "observed": 4,
+        "sector_reads": 20,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:removed",
+      "observed": {
+        "mode": "removed",
+        "checks": 19843,
+        "observed": 10,
+        "sector_reads": 19,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:rpc-cancel",
+      "observed": {
+        "mode": "rpc-cancel",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 29,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "fat32:rpc-exit",
+      "observed": {
+        "mode": "rpc-exit",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 29,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "fat32:self-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:two-node-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:short-chain",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:root-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 3,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:parent-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:ancestor-alias",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15774,
+        "observed": 3,
+        "sector_reads": 10,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:boot-signature",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "fat32:volume-bounds",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:identity-and-admission",
+      "observed": {
+        "mode": "normal",
+        "checks": 15854,
+        "observed": 0,
+        "sector_reads": 161,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:vfs",
+      "observed": {
+        "mode": "vfs",
+        "checks": 15740,
+        "observed": 0,
+        "sector_reads": 31,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:io",
+      "observed": {
+        "mode": "io",
+        "checks": 19841,
+        "observed": 4,
+        "sector_reads": 20,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:removed",
+      "observed": {
+        "mode": "removed",
+        "checks": 19843,
+        "observed": 10,
+        "sector_reads": 19,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:rpc-cancel",
+      "observed": {
+        "mode": "rpc-cancel",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 29,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "mbr-fat32:rpc-exit",
+      "observed": {
+        "mode": "rpc-exit",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 29,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "mbr-fat32:self-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:two-node-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:short-chain",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:root-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 3,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:parent-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 11,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:ancestor-alias",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15774,
+        "observed": 3,
+        "sector_reads": 10,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:boot-signature",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:volume-bounds",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15744,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:identity-and-admission",
+      "observed": {
+        "mode": "normal",
+        "checks": 15854,
+        "observed": 0,
+        "sector_reads": 146,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:vfs",
+      "observed": {
+        "mode": "vfs",
+        "checks": 15740,
+        "observed": 0,
+        "sector_reads": 26,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:io",
+      "observed": {
+        "mode": "io",
+        "checks": 19841,
+        "observed": 4,
+        "sector_reads": 15,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:removed",
+      "observed": {
+        "mode": "removed",
+        "checks": 19843,
+        "observed": 10,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:rpc-cancel",
+      "observed": {
+        "mode": "rpc-cancel",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 24,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "exfat:rpc-exit",
+      "observed": {
+        "mode": "rpc-exit",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 24,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "exfat:rpc-large",
+      "observed": {
+        "mode": "rpc-large",
+        "checks": 19,
+        "observed": 0,
+        "sector_reads": 15,
+        "backend_bytes": 15720,
+        "rpc_used": 38656,
+        "rpc_charged": 65536
+      }
+    },
+    {
+      "name": "exfat:self-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:two-node-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:short-chain",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:root-cycle",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15746,
+        "observed": 3,
+        "sector_reads": 4,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:large-guarded-offsets",
+      "observed": {
+        "mode": "large",
+        "checks": 15795,
+        "observed": 0,
+        "sector_reads": 19,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:ancestor-alias",
+      "observed": {
+        "mode": "corrupt",
+        "checks": 15838,
+        "observed": 3,
+        "sector_reads": 8,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:boot-signature",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15742,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    },
+    {
+      "name": "exfat:volume-bounds",
+      "observed": {
+        "mode": "bad-volume",
+        "checks": 15748,
+        "observed": 3,
+        "sector_reads": 1,
+        "backend_bytes": 15720,
+        "rpc_used": 0,
+        "rpc_charged": 0
+      }
+    }
+  ],
+  "fixtures": [
+    {
+      "format": "fat12",
+      "sha256_before": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "sha256_after": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d"
+    },
+    {
+      "format": "fat16",
+      "sha256_before": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80",
+      "sha256_after": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80"
+    },
+    {
+      "format": "fat32",
+      "sha256_before": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28",
+      "sha256_after": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28"
+    },
+    {
+      "format": "mbr-fat32",
+      "sha256_before": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12",
+      "sha256_after": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12"
+    },
+    {
+      "format": "exfat",
+      "sha256_before": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e",
+      "sha256_after": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e"
+    }
+  ],
+  "rv32_objects": {
+    "src/storage/fatfs_backend.c": {
+      "sha256": "f119a0ccfad83a61bb4eb10604bf4a9ce28b44684f6c3c773c56e9e17eb3bbeb",
+      "bytes": 34464
+    },
+    "probes/fatfs-disk/safety.c": {
+      "sha256": "31b24e5e088d78a06e49e36cdbc001d0c6776e125fa6ec63659e466c480b536a",
+      "bytes": 102860
+    },
+    "build/fatfs-disk/run-v9a6_o8a/fatfs/source/ffunicode.c": {
+      "sha256": "452fbb1a85f550147937b4357cc25f8d4193d85fcb5bd42eeef8432dd0d1a6b5",
+      "bytes": 7520
+    },
+    "VFS/RPC and broker parent instantiation": {
+      "sha256": "71360e1b1682e2de0281a5737d75a1951d43e91bf64a863e8e5b1c2de6e285f3",
+      "bytes": 245476
+    }
+  },
+  "rv32_workspace_bytes": {
+    "disk": 4152,
+    "backend": 15712,
+    "vfs_one_mount_32_handles": 3520
+  },
+  "rpc_layout_bytes": {
+    "owner_including_vfs": 8680,
+    "queues": 9984,
+    "notifications_internal": 28,
+    "request": 560,
+    "response": 4136,
+    "parent_coordinator": 72,
+    "client_frames": 4696
+  },
+  "rpc_parent": {
+    "offsets": {
+      "disk": 0,
+      "backend": 4224,
+      "endpoint": 19968,
+      "queues": 28672
+    },
+    "used": 38656,
+    "charged": 65536,
+    "client_frames_charged_separately": 8192,
+    "policy": "unchanged generated development profile"
+  },
+  "sources": {
+    "include/nihos_fatfs_disk.h": "47aa7697456bc4c58a1f0b8f024bb1f19cf8648ecdc8fda617d4dae9bf546499",
+    "src/storage/fatfs_disk.c": "5f551db505838930bfd1f214c659133060b1de909f278067cb198f12c047417e",
+    "src/platform/native/fatfs_disk.c": "518fd3a561cfc5aa0b346eacd109e566979eb54dcf55ed77a28444079cf3bb41",
+    "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1",
+    "tools/check-fatfs-disk.py": "b6eba9f2e458939dd7711b62a865b05c26ccc7d84a6f38105d062589faf2e463",
+    "provenance.toml": "47a0f5e7df769d40934c9a859260e8a8753fa6154351ce65427fd1304e6d3a10",
+    "probes/fatfs-disk/README.md": "ddd6e07fef4d88b6784a2cbb27d10290601d8983705344294e4c74d9b9754ebd",
+    "probes/fatfs-disk/backend_check.c": "af57e0cda3fb7a27e9044d832f99e59a5a21d4dba9c7813beb8d75667209719d",
+    "probes/fatfs-disk/check_disk.c": "4297f3aa396923e284fb475d427e85037ceb8fe9865af740eb17a2d24539a802",
+    "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+    "probes/fatfs-disk/host_disk.c": "d20bdd888dc96cd73a87bf60cf81c0e846c84693c4356cdc5b317d8416236436",
+    "probes/fatfs-disk/host_disk.h": "cd884e13b6b8e6ad2a2b6d10fd4f2c7d8ad6a193fa36d26df9b20492b370af90",
+    "probes/fatfs-disk/host_library.zig": "9ce0189ac7690c6f0ececfc89d6dc370da6901154beaeaffb1ee0e8b2eaf4b73",
+    "probes/fatfs-disk/make_fixture.c": "b667a04a4b9a8be880d75f3eeb88c58aa091d22d08bd26ea3135e6fce117b5ef",
+    "probes/fatfs-disk/rpc_check.zig": "d11c331194b75fe908ac1fd56f9081fd5dea1eab00e95ee8c4cfef5512916b17",
+    "probes/fatfs-disk/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+    "probes/fatfs-disk/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+    "probes/fatfs-disk/vfs_check.zig": "a40a6f6b58324d0645754d32071020a8f528f05f8097d42a9c81f1e2d7894842",
+    "probes/fatfs-disk/vfs_rv32.zig": "b2dd5a9e2562eb2928645eadb6c51dfb129dcfbe7d87a1cfc998742fa5a483f5",
+    "include/nihos_fatfs_backend.h": "079dbba8774195a11fe16b0cb768229fc8b7c9249812072a76ca9e231ceef864",
+    "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
+    "src/fs/fatfs_backend.zig": "45c0415cc576cb4e4645dcf4a5684f2d3d3f7b6900a2ba88a26cec22b8fee566",
+    "src/fs/vfs.zig": "c1000e64da2ca0607f148d456beebde309c47587fc3854daf29b7c029e91bf1f",
+    "src/fs/vfs_test.zig": "45b581de786aaf623e2bfd1df574a3e597666980108a467f4e020cf9535031d7",
+    "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+    "src/root.zig": "76bc4e8f40bd361dae07ccdcd9cd301283fd24bcd8e4f1b3bca3cf0c82716efd",
+    "tools/check-fatfs-backend.py": "ae3dd4a47e8a10a8154d01785e9694e5f449842bd0a717fc4f48488591d118c7",
+    "src/storage_vfs.zig": "1b16e53b47bf68ba1978df6e07223bcfebf30b2006cb296726627013671b6bd1",
+    "src/fs/vfs_rpc.zig": "c4745f6d2a9d9d69376282ba9e96302f58af5f82665d93bc76d1f24cb9203c1e",
+    "src/fs/vfs_rpc_test.zig": "d98c2e800044cb989fa4048fd0e3d9c00b5d5753c39e704c592d5119f18a90de",
+    "src/fs/vfs_memory.zig": "56d3155e5cba971794412b66e72184b89fa15179d53ddb2d9a9d5345d474bbcb",
+    "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+    "src/kernel/spsc_ring.zig": "bfdd052265942ee54fa58f5c46fa167f141632958933f5bef40956dbb6fbf0b4",
+    "src/kernel/memory_broker.zig": "7d1a6db5e26b06c7e49e7542f922a9fe70507c4b32c24d2541a9c920a5035b97",
+    "src/kernel/page_pool.zig": "386a5e3ffb5b021d9e70a79ac2e2c6ad10e88afa931df68cc181d195b2f7b4b6",
+    "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+    "docs/planning/tab5-development-profile.json": "b59fcc52a7dcff3ba5ea0843316f0b0b0ff5ed1e085014c2ea78f39fbe427d6f",
+    "tools/run-static-analysis.sh": "b697e766f9e0b0b65250c50e66703a0353d22c774c7e747bc090010f7c9403ea",
+    ".github/workflows/ci.yml": "588a33e2cac01f2963268c0595e11ec762a48ac70a024bdc03a36ab8df7c6669"
+  },
+  "limitations": [
+    "Host synchronous callback replaces native DMA implementation; no hardware execution",
+    "No native firmware link or final layout/stack/memory admission",
+    "Volume root only; trusted selected region, no MBR/GPT discovery",
+    "Single owner, immutable mounted media, 16 open files plus one staged guarded lookup",
+    "RPC exit/cancel events are injected into a synchronous host callback; no native scheduler/wakeup or IRQ hookup",
+    "Read cancellation waits for backend quiescent return and scrubs the reply; it does not abort the controller",
+    "Full native placement, stack/call-graph admission, persistent SQLite, writes and power-loss recovery remain separate gates"
+  ],
+  "date": "2026-10-28",
+  "base_commit": "1347f73c85d826f24f8a4d7f9b6dfd3e36532844",
+  "raw_results": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-v9a6_o8a/backend-results.json",
+  "raw_results_sha256": "36f03e631c6b7f412cd4122a36fd607bc25b94f42c251288eb94c6b82933fdbe",
+  "regressions": {
+    "zig_debug": 238,
+    "zig_release_safe": 238,
+    "python": 184,
+    "static_analysis": true,
+    "native_elf_audits": 6,
+    "remote_ci_executed": false
+  },
+  "legacy_profile_audit": {
+    "image_sha256": "439462ea7ea091789b07e1f2db19f1a079f4bd342b944c5c0ce5ef9c9e21d125",
+    "elf_sha256": "851c2566f93961cfef3e4cf6eddc372ee741bffb51124817c63e709867fe9ee9",
+    "image_bytes": 822048,
+    "primary_static_bytes": 106176,
+    "new_rpc_linked": false,
+    "hardware_executed": false,
+    "audit_path": "/private/tmp/nihos-vfs-native/build/vfs-rpc-legacy-regression/image-audit.json",
+    "audit_sha256": "a72aa8af5aff01f6996c798cec01e50b30ed680c5ff2dca83feb0eb914a1c71a",
+    "resident_limit": 106496
+  }
+}

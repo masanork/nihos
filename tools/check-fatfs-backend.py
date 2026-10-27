@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded FatFs + actual Zig VFS host integration; RV32 compile only, no device."""
+"""Guarded FatFs/VFS/RPC and broker lifetime tests; RV32 compile only, no device."""
 import json
 from pathlib import Path
 import runpy
@@ -45,9 +45,9 @@ def main():
         arch = {'arm64': 'aarch64', 'x86_64': 'x86_64'}[platform.machine()]
         host_target = ['-target', arch + '-macos.' + run(['xcrun', '--sdk', 'macosx', '--show-sdk-version']).strip()]
     library = work / 'vfs-check.a'
-    run([zig, 'build-lib', *host_target, '-O', 'ReleaseSafe', '--dep', 'fatfs_backend',
-         '-Mroot=' + str(PROBE / 'vfs_check.zig'), *host_target, '-O', 'ReleaseSafe',
-         '-Mfatfs_backend=' + str(ROOT / 'src/fs/fatfs_backend.zig'), '-femit-bin=' + str(library)])
+    run([zig, 'build-lib', *host_target, '-O', 'ReleaseSafe', '--dep', 'storage_vfs',
+         '-Mroot=' + str(PROBE / 'host_library.zig'), *host_target, '-O', 'ReleaseSafe',
+         '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'), '-femit-bin=' + str(library)])
     cc = shlex.split(os.environ.get('CC', 'cc'))
     binary = work / 'backend-check'
     flags = ['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
@@ -56,7 +56,7 @@ def main():
     run([*cc, *flags, PROBE / 'backend_check.c', ROOT / 'src/storage/fatfs_backend.c',
          ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/platform/native/fatfs_disk.c',
          PROBE / 'safety.c', source / 'ffunicode.c', library, '-o', binary])
-    report = {'schema': 1, 'passed': False, 'evidence': 'host guarded FatFs and actual Zig VFS integration; RV32 compile only',
+    report = {'schema': 1, 'passed': False, 'evidence': 'host guarded FatFs, VFS/RPC and actual broker lifetime integration; RV32 compile only',
               'hardware_executed': False, 'firmware_linked': False,
               'c_sanitizers': ['address', 'undefined'], 'zig_mode': 'ReleaseSafe',
               'upstream_sha256': base['upstream_sha256'],
@@ -91,6 +91,10 @@ def main():
         probe(row, 'identity-and-admission', 'normal', fixture['alias'] or 'LONG FILENAME FOR ALIAS.TXT')
         for mode in ('vfs', 'io', 'removed'):
             probe(row, mode, mode)
+        for mode in ('rpc-cancel', 'rpc-exit'):
+            probe(row, mode, mode)
+        if fixture['fs_type'] == 4:
+            probe(row, 'rpc-large', 'rpc-large')
         first = fixture['fragment_first_cluster']
         second = fat_entry(image, fixture, first)
         for label, cluster, replacement in (
@@ -151,9 +155,9 @@ def main():
         report['rv32_objects'][str(path.relative_to(ROOT))] = {'sha256': sha(output), 'bytes': output.stat().st_size}
     native = work / 'rv32-vfs.o'
     module_target = ['-target', 'riscv32-freestanding-none', '-mcpu=generic_rv32+m+a+c+zicsr+zifencei', '-O', 'ReleaseSafe']
-    run([zig, 'build-obj', *module_target, '--dep', 'fatfs_backend', '-Mroot=' + str(PROBE / 'vfs_rv32.zig'),
-         *module_target, '-Mfatfs_backend=' + str(ROOT / 'src/fs/fatfs_backend.zig'), '-femit-bin=' + str(native)])
-    report['rv32_objects']['VFS and Zig Backend instantiation'] = {'sha256': sha(native), 'bytes': native.stat().st_size}
+    run([zig, 'build-obj', *module_target, '--dep', 'storage_vfs', '-Mroot=' + str(PROBE / 'vfs_rv32.zig'),
+         *module_target, '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'), '-femit-bin=' + str(native)])
+    report['rv32_objects']['VFS/RPC and broker parent instantiation'] = {'sha256': sha(native), 'bytes': native.stat().st_size}
     # Exact opaque session size from a compiler-produced ELF symbol; no target
     # code is executed and ELF file/debug bytes are not counted as workspace.
     layout_source, layout_object = work / 'backend-layout.c', work / 'backend-layout.o'
@@ -162,16 +166,38 @@ def main():
     report['rv32_workspace_bytes'] = {'disk': base['rv32_workspace_bytes'],
         'backend': symbol_size(layout_object, b'nih_backend_layout'),
         'vfs_one_mount_32_handles': symbol_size(native, b'nih_fatfs_vfs_layout')}
+    report['rpc_layout_bytes'] = {name: symbol_size(native, symbol.encode()) for name,symbol in (
+        ('owner_including_vfs', 'nih_fatfs_rpc_layout'), ('queues', 'nih_fatfs_queues_layout'),
+        ('notifications_internal', 'nih_fatfs_notifications_layout'), ('request', 'nih_fatfs_request_layout'),
+        ('response', 'nih_fatfs_response_layout'), ('parent_coordinator', 'nih_fatfs_parent_control_layout'),
+        ('client_frames', 'nih_fatfs_client_frames_layout'))}
+    at = 0
+    offsets = {}
+    for name, size in (('disk', report['rv32_workspace_bytes']['disk']), ('backend', report['rv32_workspace_bytes']['backend']),
+                       ('endpoint', report['rpc_layout_bytes']['owner_including_vfs']), ('queues', report['rpc_layout_bytes']['queues'])):
+        at = (at + 127) // 128 * 128
+        offsets[name] = at
+        at += size
+    if at > 65536:
+        raise RuntimeError('RPC parent exceeds its admitted allocation')
+    report['rpc_parent'] = {'offsets': offsets, 'used': at, 'charged': 65536,
+                            'client_frames_charged_separately': 8192, 'policy': 'unchanged generated development profile'}
     inputs = [ROOT / 'include/nihos_fatfs_backend.h', ROOT / 'src/storage/fatfs_backend.c',
               ROOT / 'src/fs/fatfs_backend.zig', ROOT / 'src/fs/vfs.zig', ROOT / 'src/fs/vfs_test.zig',
               ROOT / 'src/fs/io_leases.zig', ROOT / 'src/root.zig', ROOT / 'tools/check-fatfs-backend.py',
+              ROOT / 'src/storage_vfs.zig', ROOT / 'src/fs/vfs_rpc.zig', ROOT / 'src/fs/vfs_rpc_test.zig',
+              ROOT / 'src/fs/vfs_memory.zig', ROOT / 'src/fs/io_stop.zig', ROOT / 'src/kernel/spsc_ring.zig',
+              ROOT / 'src/kernel/memory_broker.zig', ROOT / 'src/kernel/page_pool.zig', ROOT / 'src/kernel/development_memory.zig',
+              ROOT / 'docs/planning/tab5-development-profile.json',
               ROOT / 'tools/run-static-analysis.sh', ROOT / '.github/workflows/ci.yml']
     report['sources'] = {**base['sources'], **{str(p.relative_to(ROOT)): sha(p) for p in inputs}}
     report['limitations'] = ['Host synchronous callback replaces native DMA implementation; no hardware execution',
         'No native firmware link or final layout/stack/memory admission',
         'Volume root only; trusted selected region, no MBR/GPT discovery',
         'Single owner, immutable mounted media, 16 open files plus one staged guarded lookup',
-        'RPC, public async cancellation, persistent SQLite, writes and power-loss recovery remain separate gates']
+        'RPC exit/cancel events are injected into a synchronous host callback; no native scheduler/wakeup or IRQ hookup',
+        'Read cancellation waits for backend quiescent return and scrubs the reply; it does not abort the controller',
+        'Full native placement, stack/call-graph admission, persistent SQLite, writes and power-loss recovery remain separate gates']
     report['passed'] = True
     save()
     print(work / 'backend-results.json')

@@ -12,14 +12,23 @@
 
 static unsigned checks;
 #define CHECK(x) do { ++checks; if (!(x)) { fprintf(stderr,"%s:%d: %s\n",__FILE__,__LINE__,#x); exit(1); } } while (0)
-static nih_fatfs_disk disk;
+static nih_fatfs_disk local_disk;
+static nih_fatfs_disk *disk = &local_disk;
 static nih_fatfs_backend *session;
 static void *workspace;
 static uint64_t epoch = 1, patch_offset, device_total, volume_first;
 static uint8_t patch[512];
 static size_t patch_size;
 static uint32_t calls, fail_at;
+static uint32_t rpc_kind, rpc_event;
 static int image;
+extern int nih_rpc_prepare(uint32_t,uint32_t,uintptr_t *,uintptr_t *);
+extern int nih_check_rpc(void);
+extern int nih_rpc_finish(void);
+extern void nih_rpc_event(uint32_t);
+extern uint32_t nih_rpc_metric(uint32_t);
+void host_rpc_arm(uint32_t kind) { rpc_event = kind; }
+uint32_t host_rpc_kind(void) { return rpc_kind; }
 int32_t nih_storage_read(uint32_t lba, uint8_t sector[512]) {
     ++calls;
     if (pread(image, sector, 512, (off_t)((uint64_t)lba * 512)) != 512) return -1;
@@ -27,6 +36,7 @@ int32_t nih_storage_read(uint32_t lba, uint8_t sector[512]) {
     uint64_t begin = offset > patch_offset ? offset : patch_offset;
     uint64_t end = offset + 512 < patch_offset + patch_size ? offset + 512 : patch_offset + patch_size;
     if (patch_size && begin < end) memcpy(sector + (begin - offset), patch + (begin - patch_offset), (size_t)(end - begin));
+    if (rpc_event) { uint32_t event = rpc_event; rpc_event = 0; nih_rpc_event(event); }
     return calls == fail_at ? -1 : 0;
 }
 void host_test_failure(const char *name) { fprintf(stderr,"Zig VFS integration: %s\n",name); }
@@ -35,13 +45,13 @@ uint64_t host_backend_epoch(void) { return epoch; }
 uint32_t host_backend_reads(void) { return calls; }
 void host_backend_fail_after(uint32_t count) { fail_at = calls + count; }
 int host_backend_remove(void) { return nih_fatfs_backend_remove(session, epoch); }
-int host_backend_disk_remove(void) { return nih_fatfs_disk_invalidate(&disk, epoch); }
+int host_backend_disk_remove(void) { return nih_fatfs_disk_invalidate(disk, epoch); }
 int host_backend_rebind(void) {
     if (nih_fatfs_backend_destroy(session,epoch)) return -1;
     ++epoch;
     fail_at = 0;
-    if (nih_fatfs_disk_bind(&disk,nih_fatfs_native_read,NULL,device_total,volume_first,device_total-volume_first,epoch)) return -1;
-    session = nih_fatfs_backend_init(workspace,nih_fatfs_backend_bytes(),&disk,epoch);
+    if (nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,device_total,volume_first,device_total-volume_first,epoch)) return -1;
+    session = nih_fatfs_backend_init(workspace,nih_fatfs_backend_bytes(),disk,epoch);
     return session ? nih_fatfs_backend_mount(session,epoch) : -1;
 }
 extern int nih_check_vfs(void);
@@ -86,7 +96,7 @@ static void normal(const char *alias) {
     CHECK(nih_fatfs_backend_lookup(session,epoch,1,"../Memo.txt",11,&id) == NIH_FB_INVALID_NAME && calls == before);
     CHECK(nih_fatfs_backend_lookup(session,epoch,1,"0:Memo.txt",10,&id) == NIH_FB_INVALID_NAME && calls == before);
     CHECK(nih_fatfs_backend_lookup(session,epoch - 1,1,"Memo.txt",8,&id) == NIH_FB_STALE && calls == before);
-    CHECK(nih_fatfs_disk_detach(&disk,epoch) == NIH_FATFS_BUSY);
+    CHECK(nih_fatfs_disk_detach(disk,epoch) == NIH_FATFS_BUSY);
     uint64_t tokens[16];
     for (unsigned i = 0; i < 16; ++i) tokens[i] = opened("Memo.txt");
     id = lookup("Memo.txt");
@@ -100,11 +110,11 @@ static void normal(const char *alias) {
     FIL file = {0};
     nih_ro_identity found;
     nih_ro_control control = {.remaining = 3};
-    CHECK(nih_fatfs_disk_arm(&disk,epoch,8192) == NIH_FATFS_OK);
+    CHECK(nih_fatfs_disk_arm(disk,epoch,8192) == NIH_FATFS_OK);
     CHECK(nih_ro_open(&file,"fragment.bin",&found,&control) == NIH_RO_LIMIT && control.steps == 3);
     control = (nih_ro_control){.remaining=8192,.cancelled=cancel_after_three};
     control.context = &control;
-    CHECK(nih_fatfs_disk_arm(&disk,epoch,8192) == NIH_FATFS_OK);
+    CHECK(nih_fatfs_disk_arm(disk,epoch,8192) == NIH_FATFS_OK);
     CHECK(nih_ro_open(&file,"fragment.bin",&found,&control) == NIH_RO_CANCELLED && control.steps == 3);
 }
 int main(int argc, char **argv) {
@@ -125,29 +135,36 @@ int main(int argc, char **argv) {
     CHECK(image >= 0 && !fstat(image,&info) && S_ISREG(info.st_mode) && info.st_size > 0 && info.st_size % 512 == 0);
     uint64_t total = (uint64_t)info.st_size / 512, first = strtoull(argv[2],NULL,10);
     device_total = total; volume_first = first;
-    CHECK(first < total && nih_fatfs_disk_bind(&disk,nih_fatfs_native_read,NULL,total,first,total-first,epoch) == NIH_FATFS_OK);
-    uint32_t bytes = nih_fatfs_backend_bytes();
-    workspace = malloc(bytes);
-    CHECK(workspace);
-    CHECK(!nih_fatfs_backend_init(&disk,bytes,&disk,epoch));
-    CHECK(!nih_fatfs_backend_init((uint8_t *)workspace + 1,bytes,&disk,epoch));
-    CHECK(!nih_fatfs_backend_init(workspace,bytes - 1,&disk,epoch));
-    CHECK(!nih_fatfs_backend_init(workspace,bytes,&disk,epoch - 1));
-    CHECK(!disk.retained && !calls);
-    CHECK(nih_fatfs_disk_arm(&disk,epoch,7) == NIH_FATFS_OK);
-    CHECK(nih_fatfs_disk_retain(&disk,epoch) == NIH_FATFS_OK);
-    CHECK(!nih_fatfs_backend_init(workspace,bytes,&disk,epoch) && disk.remaining == 7);
-    CHECK(nih_fatfs_disk_release(&disk,epoch) == NIH_FATFS_OK);
-    session = nih_fatfs_backend_init(workspace,bytes,&disk,epoch);
-    CHECK(session);
-    CHECK(!nih_fatfs_backend_init(workspace,bytes,&disk,epoch));
-    int mounted = nih_fatfs_backend_mount(session,epoch), observed = mounted;
     const char *mode = argv[3];
+    rpc_kind = !strcmp(mode,"rpc-cancel") ? 1 : !strcmp(mode,"rpc-exit") ? 2 : !strcmp(mode,"rpc-large") ? 3 : 0;
+    uint32_t bytes = nih_fatfs_backend_bytes();
+    if (rpc_kind) {
+        uintptr_t disk_address, fs_address;
+        CHECK(nih_rpc_prepare(sizeof *disk,bytes,&disk_address,&fs_address) == 0);
+        disk = (nih_fatfs_disk *)disk_address;
+        workspace = (void *)fs_address;
+    } else workspace = malloc(bytes);
+    CHECK(first < total && nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,total,first,total-first,epoch) == NIH_FATFS_OK);
+    CHECK(workspace);
+    CHECK(!nih_fatfs_backend_init(disk,bytes,disk,epoch));
+    CHECK(!nih_fatfs_backend_init((uint8_t *)workspace + 1,bytes,disk,epoch));
+    CHECK(!nih_fatfs_backend_init(workspace,bytes - 1,disk,epoch));
+    CHECK(!nih_fatfs_backend_init(workspace,bytes,disk,epoch - 1));
+    CHECK(!disk->retained && !calls);
+    CHECK(nih_fatfs_disk_arm(disk,epoch,7) == NIH_FATFS_OK);
+    CHECK(nih_fatfs_disk_retain(disk,epoch) == NIH_FATFS_OK);
+    CHECK(!nih_fatfs_backend_init(workspace,bytes,disk,epoch) && disk->remaining == 7);
+    CHECK(nih_fatfs_disk_release(disk,epoch) == NIH_FATFS_OK);
+    session = nih_fatfs_backend_init(workspace,bytes,disk,epoch);
+    CHECK(session);
+    CHECK(!nih_fatfs_backend_init(workspace,bytes,disk,epoch));
+    int mounted = nih_fatfs_backend_mount(session,epoch), observed = mounted;
     if (!strcmp(mode,"bad-volume")) CHECK(mounted == NIH_FB_CORRUPT);
     else {
         CHECK(mounted == NIH_FB_OK);
         if (!strcmp(mode,"normal")) normal(argv[4]);
         else if (!strcmp(mode,"vfs")) CHECK(nih_check_vfs() == 0);
+        else if (rpc_kind) CHECK(nih_check_rpc() == 0);
         else if (!strcmp(mode,"large")) {
             uint64_t token = opened("large.bin");
             const uint64_t offsets[] = {UINT64_C(0x7ffffff8),UINT64_C(0xfffffff8),UINT64_C(0x100001ff0)};
@@ -186,13 +203,17 @@ int main(int argc, char **argv) {
             CHECK(nih_fatfs_backend_read(session,epoch,token,0,data,1,&got,&eof) == observed && calls == after);
         } else return 2;
     }
-    CHECK(nih_fatfs_backend_destroy(session,epoch) == NIH_FB_OK);
-    uint64_t id;
-    CHECK(nih_fatfs_backend_lookup(session,epoch,1,"Memo.txt",8,&id) == NIH_FB_STALE);
-    uint8_t zero[4096] = {0};
-    CHECK(!memcmp(disk.scratch,zero,sizeof zero));
-    for (uint32_t i=0;i<bytes;++i) CHECK(((uint8_t *)workspace)[i] == 0);
-    free(workspace);
+    if (rpc_kind) CHECK(nih_rpc_finish() == 0);
+    else {
+        CHECK(nih_fatfs_backend_destroy(session,epoch) == NIH_FB_OK);
+        uint64_t id;
+        CHECK(nih_fatfs_backend_lookup(session,epoch,1,"Memo.txt",8,&id) == NIH_FB_STALE);
+        uint8_t zero[4096] = {0};
+        CHECK(!memcmp(disk->scratch,zero,sizeof zero));
+        for (uint32_t i=0;i<bytes;++i) CHECK(((uint8_t *)workspace)[i] == 0);
+        free(workspace);
+    }
     CHECK(close(image) == 0);
-    printf("{\"mode\":\"%s\",\"checks\":%u,\"observed\":%d,\"sector_reads\":%u,\"backend_bytes\":%u}\n",mode,checks,observed,calls,bytes);
+    printf("{\"mode\":\"%s\",\"checks\":%u,\"observed\":%d,\"sector_reads\":%u,\"backend_bytes\":%u,\"rpc_used\":%u,\"rpc_charged\":%u}\n",
+        mode,checks,observed,calls,bytes,rpc_kind ? nih_rpc_metric(0) : 0,rpc_kind ? nih_rpc_metric(1) : 0);
 }
