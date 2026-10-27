@@ -60,6 +60,13 @@ class NormalBootEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             DISPLAY.check(log.replace(line, ''), IMAGE, 2, 80, require_console=True, normal_boot=True)
 
+    def test_later_foreign_firmware_or_rom_reboot_cannot_extend_a_successful_capture(self):
+        log = synthetic_normal()
+        for suffix in ('\nNIHOS_C6_BOOT backend=zig-sram rtos=none cpu1=parked\n',
+                       '\nESP-ROM:esp32p4-eco2-20240710\n'):
+            with self.subTest(suffix=suffix), self.assertRaises(ValueError):
+                self.check(log + suffix)
+
     def test_missing_timer_or_ipi_and_duplicate_health_are_rejected(self):
         log = synthetic_normal()
         health = next(line for line in log.splitlines() if line.startswith('NIHOS_NATIVE_BOOT_HEALTH '))

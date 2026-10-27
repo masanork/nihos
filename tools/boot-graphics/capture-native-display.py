@@ -47,11 +47,12 @@ def main():
     parser.add_argument('--complete-marker', default='NIHOS_NATIVE_DISPLAY_SCANOUT')
     parser.add_argument('--linger', type=float, default=3)
     parser.add_argument('--exercise-live', action='store_true', help='Exercise diagnostic serial Esc, splash, pause/resume, and logs')
+    parser.add_argument('--exercise-normal', action='store_true', help='After READY, exercise console/splash/console without pausing boot')
     parser.add_argument('--exercise-failure', action='store_true', help='Exercise Esc and rejected splash/resume/pause after an injected failure')
     parser.add_argument('--serial-wait', type=int, default=0, help='Seconds to wait for an existing exclusive owner')
     args = parser.parse_args()
     assert args.serial_wait >= 0
-    assert not (args.exercise_live and args.exercise_failure)
+    assert sum((args.exercise_live, args.exercise_normal, args.exercise_failure)) <= 1
     audit = json.loads(args.audit.read_text())
     assert audit['rtos_linked'] is False and audit['memory']['profile'] == 'device'
     assert hashlib.sha256(args.image.read_bytes()).hexdigest() == audit['image_sha256']
@@ -88,7 +89,11 @@ def main():
         raw = bytearray()
         console.dtr = False
         console.reset_input_buffer()
+        reset_requested = time.monotonic()
         HardReset(console, uses_usb=True)()
+        reset_returned = time.monotonic()
+        observations = {}
+        markers = (b'ESP-ROM:esp32p4', b'NIHOS_NATIVE_BOOT backend=', b'NIHOS_NATIVE_UI_START ', b'NIHOS_NATIVE_UI_READY ', b'NIHOS_NATIVE_UI_SETTLED ', b'NIHOS_NATIVE_FAIL ')
         deadline = time.monotonic() + args.seconds
         completed = None
         exercise = 0
@@ -103,6 +108,10 @@ def main():
                 chunk = console.read(max(1, console.in_waiting))
                 if chunk:
                     raw.extend(chunk); output.write(chunk); output.flush()
+                    for marker in markers:
+                        name = marker.decode().strip()
+                        if name not in observations and marker in raw:
+                            observations[name] = time.monotonic() - reset_requested
                 if args.exercise_live and exercise < 6:
                     ready = (b'NIHOS_NATIVE_UI_START ' in raw if exercise == 0 else
                              key_seen(1) if exercise == 1 else key_seen(2) if exercise == 2 else
@@ -113,6 +122,14 @@ def main():
                     if due is not None and time.monotonic() >= due:
                         console.write(commands[exercise]); console.flush()
                         sent.append(commands[exercise].hex()); exercise += 1; due = None
+                if args.exercise_normal and exercise < 3:
+                    ready = (b'NIHOS_NATIVE_UI_READY ' in raw if exercise == 0 else
+                             key_seen(1) if exercise == 1 else b'NIHOS_NATIVE_UI_SETTLED ' in raw)
+                    if ready and due is None: due = time.monotonic() + 0.4
+                    if due is not None and time.monotonic() >= due:
+                        command = (b'\x1b', b'\x0c', b'\x1b')[exercise]
+                        console.write(command); console.flush()
+                        sent.append(command.hex()); exercise += 1; due = None
                 if args.exercise_failure and exercise < len(failure_commands):
                     if b'NIHOS_NATIVE_UI_FAILURE visible=1 scheduler=stopped' in raw and due is None:
                         due = time.monotonic() + 0.4
@@ -132,7 +149,10 @@ def main():
         (args.output / 'lease-complete.json').write_text(json.dumps({
             'exclusive': True, 'installed': args.install, 'postverified': args.install,
             'backup_requested': False, 'rom_banner': start >= 0,
-            'completion_marker': args.complete_marker, 'exercise_live': args.exercise_live, 'keys_sent': sent,
+            'completion_marker': args.complete_marker, 'exercise_live': args.exercise_live, 'exercise_normal': args.exercise_normal, 'keys_sent': sent,
+            'marker_receive_seconds_from_reset_request': observations,
+            'reset_call_seconds': reset_returned - reset_requested,
+            'timing_scope': 'host serial receive timestamps; includes reset pulse and USB buffering; not cold power-on time',
             'exercise_failure': args.exercise_failure,
         }, indent=2) + '\n')
         print('Serial lease released', flush=True)
