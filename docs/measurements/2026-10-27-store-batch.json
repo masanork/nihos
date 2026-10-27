@@ -1,0 +1,854 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "a85238a7471e0a5736cc18cce1fd1f821c5b062b",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-bounded-mapped-batch",
+  "native_execution": false,
+  "physical_power_cuts": 0,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-batch-host",
+  "host": {
+    "zig_debug": 274,
+    "zig_release_safe": 274,
+    "new_zig_tests": 7,
+    "python": 168,
+    "format_zlint_shellcheck": true,
+    "native_elf_links_and_audits": 6,
+    "rv32_batch_compile": true
+  },
+  "contract": {
+    "max_patches": 16,
+    "one_object_per_batch": true,
+    "one_patch_per_logical_page": true,
+    "ordered_by_logical_page": true,
+    "empty_or_out_of_range_patch": "reject before writes",
+    "cross_page_patch": "reject; caller splits by logical page",
+    "EOF_change": "resize separately",
+    "format_version": 5,
+    "payload_allocation": "exact data + unique touched map nodes; contiguous range",
+    "prepared_allocation_search": "resumable; invalidated by writer/reader state changes",
+    "batch_IO": "synchronous inside one bounded-size call; no latency guarantee"
+  },
+  "budget": {
+    "rv32_plain_state_bytes": 31512,
+    "rv32_cached_state_bytes": 557848,
+    "host_plain_state_bytes": 31528,
+    "host_cached_state_bytes": 557864,
+    "caller_map_scratch_bytes": 16384,
+    "shares_resize_scratch": true,
+    "rv32_16_patch_descriptors_bytes": 256,
+    "host_16_patch_descriptors_bytes": 384,
+    "call_local_crc_array_bytes": 64,
+    "state_growth_bytes": 0,
+    "store_envelope_bytes": 2097152,
+    "native_placement_or_stack_peak_measured": false
+  },
+  "write_comparison": {
+    "object_bytes": 34603025,
+    "changed_pages": 16,
+    "changed_bytes": 16,
+    "reference": {
+      "data_pages": 16,
+      "map_nodes": 32,
+      "object_leaves": 16,
+      "commit_roots": 1,
+      "total_write_bytes": 266240,
+      "syncs": 2
+    },
+    "batch": {
+      "data_pages": 16,
+      "map_nodes": 2,
+      "object_leaves": 1,
+      "commit_roots": 1,
+      "total_write_bytes": 81920,
+      "syncs": 2
+    },
+    "reduction_fraction": 0.6923076923076923,
+    "excludes_later_root_retirement": true,
+    "shared_previous_payload_range_bytes": 69480448,
+    "added_payload_range_bytes": 73728
+  },
+  "fault_campaigns": {
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "per_mode": [
+      {
+        "operation": "dense-two-page-shared-map",
+        "events": 82,
+        "crash_cases": 2952
+      },
+      {
+        "operation": "sparse-two-leaf-map",
+        "events": 114,
+        "crash_cases": 4104
+      }
+    ],
+    "crash_cases_per_mode": 7056,
+    "acknowledged_cases_per_campaign_per_mode": 6,
+    "backgrounds": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_orders": [
+      "ascending",
+      "descending"
+    ],
+    "sector_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ]
+  },
+  "reuse": {
+    "repetitions": 64,
+    "pages_per_batch": 16,
+    "pinned_zero_snapshot_preserved": true
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-fixed-buffer-streaming",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "b8dc8aa146c47389caa87a084a1340d66869a0dcdaa4860d644c73ec49251082",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":1,\"map_metadata_pages\":35,\"payload_high_water_pages\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":8460,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "cancel",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"cancel\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":256,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "stage-wait",
+        "pid": 89336,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "stage-wait",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 256,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "finish-wait",
+        "pid": 89345,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "finish-wait",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8459,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "patch-wait",
+        "pid": 89363,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "patch-wait",
+          "generation": 3,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8460,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16916
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16916}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16916}\n",
+        "stderr": ""
+      },
+      {
+        "command": "promote-map",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"promote-map\",\"generation\":4,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":37,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16951}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-old\",\"generation\":4,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16951}\n",
+        "stderr": ""
+      },
+      {
+        "command": "mapped-patch-wait",
+        "pid": 89411,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "mapped-patch-wait",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 9,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":5,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "collect-map",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"collect-map\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "mapped-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "resize-cycle",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"resize-cycle\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":11,\"syncs\":6,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-resized",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-resized\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-resized",
+        "image": "resized-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-resized\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      },
+      {
+        "command": "batch-single-reference",
+        "image": "resized-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"batch-single-reference\",\"generation\":10,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":65,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":17011}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-batch",
+        "image": "resized-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-batch\",\"generation\":10,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":17011}\n",
+        "stderr": ""
+      },
+      {
+        "command": "batch-stage-wait",
+        "pid": 89508,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "batch-stage-wait",
+          "generation": 9,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 19,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16963
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-resized",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-resized\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      },
+      {
+        "command": "batch-wait",
+        "pid": 89538,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "batch-wait",
+          "generation": 10,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 20,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16981
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-batch",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-batch\",\"generation\":10,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16981}\n",
+        "stderr": ""
+      },
+      {
+        "command": "collect-batch",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"collect-batch\",\"generation\":11,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16981}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-batch",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-batch\",\"generation\":11,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16981}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-batch",
+        "image": "batch-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-batch\",\"generation\":11,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"map_scratch_bytes\":16384,\"batch_descriptor_bytes\":384,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16981}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "33MiB_object_with_4KiB_input_reopens",
+        "passed": true,
+        "seed": {
+          "phase": "seed",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8460,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        }
+      },
+      {
+        "name": "cancel_after_1MiB_keeps_old_object",
+        "passed": true
+      },
+      {
+        "name": "kill_during_stream_keeps_old_generation",
+        "passed": true
+      },
+      {
+        "name": "kill_after_finish_before_commit_keeps_old_generation",
+        "passed": true
+      },
+      {
+        "name": "patch_crosses_checksum_table_boundary_and_survives_kill_after_ack",
+        "passed": true,
+        "reopened": {
+          "phase": "verify-new",
+          "generation": 3,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 0,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16916
+        }
+      },
+      {
+        "name": "compact_range_reconstruction_reopens_patched_object",
+        "passed": true
+      },
+      {
+        "name": "map_promotion_shares_existing_33MiB_payload",
+        "passed": true,
+        "promotion": {
+          "phase": "promote-map",
+          "generation": 4,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 37,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16951
+        }
+      },
+      {
+        "name": "mapped_patch_changes_two_pages_and_survives_ack_kill",
+        "passed": true,
+        "patch": {
+          "phase": "mapped-patch-wait",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 9,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "reopened": {
+          "phase": "verify-map-new",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 0,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "collected": {
+          "phase": "collect-map",
+          "generation": 6,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 1,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "legacy_write_bytes": 34652160,
+        "mapped_write_bytes": 36864
+      },
+      {
+        "name": "mapped_range_snapshot_reuses_unchanged_payload_file",
+        "passed": true
+      },
+      {
+        "name": "truncate_regrow_zero_tail_and_pinned_old_reader",
+        "passed": true,
+        "resize": {
+          "phase": "resize-cycle",
+          "generation": 9,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 11,
+          "syncs": 6,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16963
+        },
+        "scratch_bytes": 16384,
+        "shrink_payload_pages": 3,
+        "grow_payload_pages": 3,
+        "zero_after": 34598916
+      },
+      {
+        "name": "resized_range_snapshot_reopens_without_resurrecting_tail",
+        "passed": true
+      },
+      {
+        "name": "sixteen_separate_page_updates_reference",
+        "passed": true,
+        "reference": {
+          "phase": "batch-single-reference",
+          "generation": 10,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 65,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 17011
+        }
+      },
+      {
+        "name": "kill_staged_batch_keeps_entire_old_file",
+        "passed": true
+      },
+      {
+        "name": "sixteen_page_batch_survives_ack_kill_and_gc",
+        "passed": true,
+        "batch": {
+          "phase": "batch-wait",
+          "generation": 10,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "map_scratch_bytes": 16384,
+          "batch_descriptor_bytes": 384,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 20,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16981
+        },
+        "reference_write_bytes": 266240,
+        "batch_write_bytes": 81920,
+        "scratch_bytes": 16384,
+        "input_bytes": 16,
+        "host_patch_descriptors_bytes": 384
+      },
+      {
+        "name": "batch_snapshot_reuses_previous_payload_and_reopens",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "9109731e0a86e366885acc584cfdbc3486029d9266cb6653cc131bc833c83349"
+        },
+        {
+          "file": "payload.bin",
+          "offset": 17045651456,
+          "bytes": 69287936,
+          "sha256": "5cc32d48df1b87edba01ca8d2c1faf6dd3d20308007f9e3ff7afbdccd2e7be79"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "mapped_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "mapped-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "e8519edc81a429db8f135cc9408232e27e8a2736b59e32a9e4a91e70218dc973"
+        },
+        {
+          "file": "payload.bin",
+          "offset": 17045651456,
+          "bytes": 69287936,
+          "sha256": "5cc32d48df1b87edba01ca8d2c1faf6dd3d20308007f9e3ff7afbdccd2e7be79"
+        },
+        {
+          "file": "map-pages.bin",
+          "offset": 17114939392,
+          "bytes": 167936,
+          "sha256": "75e40f225b3545b21efa5d9dc806eb102929279163f12076bf288698517c9e76"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "resized_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "resized-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "c2310dfb84c7218fe2b9aac193d0e16c2e7acc5e35c2bac309961e5b2291cf6c"
+        },
+        {
+          "file": "resized-payload.bin",
+          "offset": 17045651456,
+          "bytes": 69480448,
+          "sha256": "2fd2702cb6df6c841303247b3cbce86d19eef2a555270d393c03915faea7453b"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "batch_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "batch-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "4fad4c77964f7bf17dc0b87927809a4eecba32369c5f4e77ba3fab8902751834"
+        },
+        {
+          "file": "batch-pages.bin",
+          "offset": 17115131904,
+          "bytes": 73728,
+          "sha256": "945fda5e0584d9ebd8104c8ffd98e2543d22080a1cadaba4577338a1973d7312"
+        },
+        {
+          "file": "resized-payload.bin",
+          "offset": 17045651456,
+          "bytes": 69480448,
+          "sha256": "2fd2702cb6df6c841303247b3cbce86d19eef2a555270d393c03915faea7453b"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 69599232
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70352896
+      },
+      "mapped-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70533120
+      },
+      "resized-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70746112
+      },
+      "batch-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70631424
+      }
+    }
+  },
+  "negative_controls": {
+    "batch": [
+      {
+        "variant": "data_alias",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-batch/negative-batch.zl16u8c6/data_alias/batch_test.zig",
+          "--test-filter",
+          "batch spans all four map levels"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (Corrupt)"
+      },
+      {
+        "variant": "parent",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-batch/negative-batch.zl16u8c6/parent/batch_test.zig",
+          "--test-filter",
+          "batch spans all four map levels"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      }
+    ],
+    "resize": [
+      {
+        "variant": "resurrection",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-resize/negative-resize.b907os17/resurrection/resize_test.zig",
+          "--test-filter",
+          "truncate and regrow cannot resurrect bytes"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      },
+      {
+        "variant": "holes",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-resize/negative-resize.b907os17/holes/resize_test.zig",
+          "--test-filter",
+          "sparse growth allocates no zero data"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      }
+    ],
+    "extents": [
+      {
+        "variant": "data",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.cr_ltx6b/data/extent_map_test.zig",
+          "--test-filter",
+          "pinned mapped data and map nodes survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "EXTENT_READER_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "nodes",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.cr_ltx6b/nodes/extent_map_test.zig",
+          "--test-filter",
+          "pinned mapped data and map nodes survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "EXTENT_READER_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "node_summary",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.cr_ltx6b/node_summary/extent_map_test.zig",
+          "--test-filter",
+          "internal node summaries protect metadata far"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      }
+    ]
+  },
+  "physical_candidate_hashes_rechecked": 55,
+  "limitations": [
+    "host model and file evidence; finite fault model, not a proof of all physical failures",
+    "no cross-call or cross-object coalescing; max 16 ordered distinct-page patches",
+    "caller inputs, scratch, descriptors, call stack and backend excluded from Store state",
+    "prepared batch still performs synchronous reads/writes; target latency and peak stack unmeasured",
+    "contiguous allocation and conservative GC summaries can impose near-full/fragmentation cost",
+    "no native service ownership, cancellation, PSRAM placement or SD write/removal/power-loss qualification",
+    "no relocating cleaner or persistent SQLite VFS/WAL"
+  ],
+  "archive_regular_files": 77
+}

@@ -481,3 +481,13 @@ The RV32 store state remains 31,512 B uncached or 557,848 B cached; a caller-own
 campaigns passed 7,776 cuts per build mode. Batching, native ownership/cancellation,
 PSRAM placement and stack peak, target durability and persistent SQLite VFS/WAL
 remain open; the frozen physical candidate is unchanged.
+
+The [bounded-batch host follow-up](../measurements/2026-10-27-store-batch.md)
+groups up to 16 ordered, distinct logical-page patches in one object, writing
+each touched map node and the object leaf once. In the 33 MiB file workload,
+16 one-byte changes wrote 80 KiB versus 260 KiB through the individual API,
+with the same two commit barriers. The 16 KiB workspace is shared with resize;
+the Store state is unchanged, with 256 B of caller descriptors on RV32 plus a
+64 B CRC array and other call-stack use. Publication tests covered 7,056 cuts
+per build mode. This advances metadata batching without providing cross-call
+coalescing, native scheduling/ownership or a persistent SQLite VFS/WAL.
