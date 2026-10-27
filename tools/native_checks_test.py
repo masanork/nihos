@@ -157,6 +157,19 @@ class NativeSQLiteLogTests(unittest.TestCase):
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_automatic_selftest_header_does_not_admit_foreign_or_repeated_boots(self):
+        boot='ESP-ROM:esp32p4\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n'
+        auxiliary='NIHOS_NATIVE_CARD_AUTO_BOOT selftest=00000001\n'
+        MODULE.check_boot_headers(boot)
+        MODULE.check_boot_headers(boot+auxiliary,True)
+        with self.assertRaises(ValueError):MODULE.check_boot_headers(boot+auxiliary)
+        with self.assertRaises(ValueError):MODULE.check_boot_headers(boot,True)
+        for changed in (boot+auxiliary+auxiliary,auxiliary+boot,boot+boot+auxiliary,
+                        boot+auxiliary+'NIHOS_C6_BOOT backend=other\n',
+                        boot+'NIHOS_NATIVE_CARD_FAKE_BOOT selftest=1\n',
+                        boot+auxiliary+'ESP-ROM:esp32p4\n'):
+            with self.subTest(changed=changed),self.assertRaises(ValueError):
+                MODULE.check_boot_headers(changed,True)
     def test_physical_evidence_requires_explicit_source_and_device_profile(self):
         image = {**complete_image(), "memory": {"profile": "device"}}
         image["heap"] = {"start": "0x4ff20000", "end": "0x4ff28000", "bytes": 32768}

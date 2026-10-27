@@ -120,6 +120,14 @@ def check_storage(record, sectors):
     return record
 
 
+def check_boot_headers(log, automatic_cards=False):
+    headers = re.findall(r"^NIHOS_[A-Z0-9_]*_BOOT(?= |$)", log, re.MULTILINE)
+    expected = ["NIHOS_NATIVE_BOOT"] + (["NIHOS_NATIVE_CARD_AUTO_BOOT"] if automatic_cards else [])
+    if (log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1 or
+            headers != expected or log.count("ESP-ROM:esp32p4") > 1):
+        raise ValueError("missing boot, unexpected reboot or mixed firmware capture")
+
+
 def repeated_records(log, marker, names):
     pattern = re.escape(marker) + "".join(" " + name + r"=([0-9a-f]{8})" for name in names)
     found = [match.groups() for match in re.finditer(pattern + r"(?:\n|$)", log)]
@@ -223,10 +231,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     normal_boot = log.count("NIHOS_NATIVE_PROFILE normal=1 qualification=0") == 1
     if require_normal != normal_boot or (normal_boot and (require_qualification or require_sdmmc or require_sdmmc_fast or require_storage or (profile != 'device' and not headless))):
         raise ValueError('normal boot must be explicitly requested and cannot qualify a soak/storage run')
-    boot_headers = re.findall(r"^NIHOS_[A-Z0-9_]*_BOOT(?= |$)", log, re.MULTILINE)
-    if (log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1 or
-            boot_headers != ["NIHOS_NATIVE_BOOT"] or log.count("ESP-ROM:esp32p4") > 1):
-        raise ValueError("missing boot, unexpected reboot or mixed firmware capture")
+    check_boot_headers(log, bool(image and image.get('automatic_cards')))
     if "NIHOS_NATIVE_FAIL" in log or "NIHOS_NATIVE_TRAP" in log:
         raise ValueError("native failure/trap")
     modes = re.findall(r"NIHOS_NATIVE_MODE floating=([01])", log)
