@@ -33,7 +33,10 @@ pub const Kind = enum(u32) { blob, mapped };
 pub const Value = struct { first: u64, length: u64, checksum: u32, kind: Kind = .blob, high_water: u64 = 0 };
 pub const Reader = struct { slot: u8, token: u64 };
 pub const Stream = struct { token: u64 };
-pub const ResizeScratch = struct { nodes: [extent_map.max_height + 1][page_bytes]u8 = @splat(@splat(0)) };
+pub const MapScratch = struct { nodes: [extent_map.max_height + 1][page_bytes]u8 = @splat(@splat(0)) };
+pub const ResizeScratch = MapScratch;
+pub const max_mapped_batch_pages = 16;
+pub const MappedPatch = struct { offset: u64, bytes: []const u8 };
 pub const PatchProgress = struct { consumed: usize = 0, done: bool = false, need_input: bool = false };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
 pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
@@ -990,6 +993,102 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                 updated = extent_map.seal(&self.map_buffer, first + 1 + level, level, base, value.length, .{ .start = data_start, .end = bound }) catch return self.corruption();
                 try self.writePage(updated.page, &self.map_buffer);
             }
+            self.staged.payload_next = bound;
+            _ = try self.checkedLookup(&self.staged, key);
+            try self.replace(key, .{ .first = updated.page, .length = value.length, .checksum = updated.checksum, .kind = .mapped }, true);
+        }
+        /// Patches are nonempty, ordered by logical page, with at most one
+        /// patch per page. The caller owns the slices until this call returns.
+        pub fn mappedBatchPages(length: u64, patches: []const MappedPatch) Error!u64 {
+            if (patches.len == 0 or patches.len > max_mapped_batch_pages) return error.InvalidArgument;
+            const height = extent_map.height(length) catch return error.InvalidArgument;
+            var previous: ?u64 = null;
+            for (patches) |patch| {
+                if (patch.bytes.len == 0 or patch.offset >= length or patch.bytes.len > length - patch.offset or
+                    patch.bytes.len > page_bytes - patch.offset % page_bytes) return error.InvalidArgument;
+                const logical = patch.offset / page_bytes;
+                if (previous) |prior| if (logical <= prior) return error.InvalidArgument;
+                previous = logical;
+            }
+            var pages: u64 = patches.len;
+            for (0..@as(usize, height) + 1) |level| {
+                previous = null;
+                for (patches) |patch| {
+                    const node = patch.offset / page_bytes / extent_map.capacity(@intCast(level));
+                    if (previous == null or previous.? != node) pages += 1;
+                    previous = node;
+                }
+            }
+            return pages;
+        }
+        fn mappedBatchSource(self: *Self, key: u32, patches: []const MappedPatch) Error!Value {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            const value = try self.checkedLookup(&self.staged, key) orelse return error.NotFound;
+            if (value.kind != .mapped) return error.NotMapped;
+            _ = try mappedBatchPages(value.length, patches);
+            try self.preflight();
+            return value;
+        }
+        pub fn patchMappedBatch(self: *Self, key: u32, patches: []const MappedPatch, scratch: *MapScratch) Error!void {
+            const value = try self.mappedBatchSource(key, patches);
+            const first = try self.findPayload(try mappedBatchPages(value.length, patches));
+            return self.patchBatchAt(key, patches, scratch, value, first);
+        }
+        pub fn patchMappedBatchPrepared(self: *Self, key: u32, patches: []const MappedPatch, scratch: *MapScratch) Error!void {
+            const value = try self.mappedBatchSource(key, patches);
+            if (self.search.phase != .done or self.search.wanted != try mappedBatchPages(value.length, patches)) return error.SearchRequired;
+            const first = switch (self.search.result) {
+                .found => |first| first,
+                else => return error.SearchRequired,
+            };
+            return self.patchBatchAt(key, patches, scratch, value, first);
+        }
+        fn patchBatchNode(self: *Self, value: Value, patches: []const MappedPatch, checksums: *const [max_mapped_batch_pages]u32, start: usize, end: usize, level: u8, base: u64, original: extent_map.Ref, first: u64, cursor: *u64, bound: u64, scratch: *MapScratch) Error!extent_map.Ref {
+            const node = &scratch.nodes[level];
+            if (original.page == 0) try extent_map.init(node, level, base, value.length) else {
+                _ = try self.loadMap(original, level, base, value);
+                node.* = self.map_buffer;
+            }
+            if (level == 0) {
+                for (start..end) |i| extent_map.setData(node, @intCast(patches[i].offset / page_bytes - base), .{ .page = first + i, .checksum = checksums[i] });
+            } else {
+                var i = start;
+                while (i < end) {
+                    const index = (patches[i].offset / page_bytes - base) / extent_map.capacity(level - 1);
+                    var next = i + 1;
+                    while (next < end and (patches[next].offset / page_bytes - base) / extent_map.capacity(level - 1) == index) next += 1;
+                    const old_child = extent_map.child(node, @intCast(index));
+                    const updated = try self.patchBatchNode(value, patches, checksums, i, next, level - 1, base + index * extent_map.capacity(level - 1), old_child, first, cursor, bound, scratch);
+                    extent_map.setChild(node, @intCast(index), updated);
+                    i = next;
+                }
+            }
+            self.map_cache.valid = false;
+            const updated = extent_map.seal(node, first + cursor.*, level, base, value.length, .{ .start = data_start, .end = bound }) catch return self.corruption();
+            try self.writePage(updated.page, node);
+            cursor.* += 1;
+            return updated;
+        }
+        fn patchBatchAt(self: *Self, key: u32, patches: []const MappedPatch, scratch: *MapScratch, value: Value, first: u64) Error!void {
+            self.invalidateSearch();
+            const pages = try mappedBatchPages(value.length, patches);
+            const bound = @max(self.staged.payload_next, first + pages);
+            var checksums: [max_mapped_batch_pages]u32 = undefined;
+            for (patches, 0..) |patch, i| {
+                const original = try self.mappedData(value, patch.offset / page_bytes);
+                if (original.page == 0) self.writer.data = @splat(0) else {
+                    try self.readPage(original.page, &self.writer.data);
+                    if (std.hash.Crc32.hash(&self.writer.data) != original.checksum) return self.corruption();
+                }
+                const within: usize = @intCast(patch.offset % page_bytes);
+                @memcpy(self.writer.data[within..][0..patch.bytes.len], patch.bytes);
+                checksums[i] = std.hash.Crc32.hash(&self.writer.data);
+                try self.writePage(first + i, &self.writer.data);
+            }
+            var cursor: u64 = patches.len;
+            const updated = try self.patchBatchNode(value, patches, &checksums, 0, patches.len, try extent_map.height(value.length), 0, .{ .page = value.first, .checksum = value.checksum }, first, &cursor, bound, scratch);
+            if (cursor != pages) return self.corruption();
             self.staged.payload_next = bound;
             _ = try self.checkedLookup(&self.staged, key);
             try self.replace(key, .{ .first = updated.page, .length = value.length, .checksum = updated.checksum, .kind = .mapped }, true);

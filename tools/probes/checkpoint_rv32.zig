@@ -153,3 +153,13 @@ pub export fn checkpoint_probe_resize(key: u32, length: u64, scratch: *checkpoin
     cached_store.resizeMappedPrepared(key, length, scratch) catch return -1;
     return 0;
 }
+
+pub export fn checkpoint_probe_batch_pages(length: u64, patches: [*]const checkpoint.MappedPatch, count: usize) u64 {
+    return CachedStore.mappedBatchPages(length, patches[0..count]) catch ~@as(u64, 0);
+}
+pub export fn checkpoint_probe_batch(key: u32, patches: [*]const checkpoint.MappedPatch, count: usize, scratch: *checkpoint.MapScratch) c_int {
+    cached_store.patchMappedBatchPrepared(key, patches[0..count], scratch) catch return -1;
+    return 0;
+}
+
+pub export const checkpoint_probe_batch_descriptor_bytes: u32 = @sizeOf([16]checkpoint.MappedPatch);
