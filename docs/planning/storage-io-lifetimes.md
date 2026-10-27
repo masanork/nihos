@@ -75,8 +75,10 @@ IRQからの全推移call graphやnative最悪時間/stack上限の証明では�
 同じexclusive serial FDでFlash 16 MiB全体をprivateに退避し、partitionを照合、loader/appだけを書き換え、
 3回のUSB reset起動と各PASS後10秒の監視を行う。成功/失敗いずれでも書換え範囲を復元し、元のFlash全体を照合する。
 backupは秘密を含み得るため公開artifactには含めない。SDのformatや書込みは行わない。
-runnerは構文、helpとartifact改変拒否をhostで検査済み。実機への書込み・runnerの復元経路は未実施。
+runnerは構文、helpとartifact改変拒否をhostで検査した後、固定候補を実機で3回起動して全回合格した。
+Flash退避と復元経路も実行し、16 MiB全体のdigest一致を確認した。
+[実機記録](../measurements/2026-10-27-native-storage-io-physical.md)に通知、停止値、source/image hashと生ログの参照を保存した。
 
-残るgateは、共有Tab5の利用調整後のexact candidate試験、電気的な抜去/再挿入、電源OFF→ON、
+残るgateは、電気的な抜去/再挿入、電源OFF→ON、
 silicon上の停止失敗・cache失敗の安全な注入、実FatFs BackendとVFS/RPCの接続である。
-現時点ではserial resetやFlash書込みを行っていない。native側の変更はlocal commitとして保持し、実機未確認のまま公開しない。
+serialは解放済み。実装はlocal commit `ad62703`として保持し、他セッションのnative branchは変更していない。
