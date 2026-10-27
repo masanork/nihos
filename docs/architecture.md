@@ -66,14 +66,16 @@ The platform boundary models resources, not generic convenience calls.
 
 ## Connectivity direction
 
-The C6 is the proposed owner of Wi-Fi, TCP/IP and the BLE host, exposed to
-the native P4 through ESP-AT over SDIO. ADR 0029 defines the service boundary,
-bounded receive profile and physical qualification gates. The decoder,
-transaction controller and typed command encoder are host-tested; the separate
-C6 SDIO firmware has been built. A slot-1 native SDIO boot driver and separate
-CPU0 fixture are built under ADR 0030; their physical execution, IRQ-driven
-service and arbitration with storage are not yet qualified. See
-[`ADR 0029`](adr/0029-c6-network-offload.md).
+The intended service boundary puts Wi-Fi, TCP/IP and the BLE host on the C6,
+exposed through ESP-AT over SDIO (ADR 0043). Its decoder/controller are
+host-tested and its separate C6 firmware builds. The current physical path
+instead preserves the factory ESP-Hosted 1.4.1 firmware: a native P4 slot-1
+SDIO CPU0 boot fixture has associated with an AP, acquired IPv4 through P4
+DHCP, and answered link-local IPv6 Echo. SLAAC is host-tested; the current AP
+provided no router advertisements. This remains a standalone fixture: normal
+OS networking, C6 TCP/IP/BLE offload, IRQ-driven service and arbitration with
+storage are open. See [ADR 0044](adr/0044-c6-sdio-boot-transport.md) and the
+[IPv6 evidence](measurements/2026-10-27-native-ipv6.md).
 
 ## Storage direction
 

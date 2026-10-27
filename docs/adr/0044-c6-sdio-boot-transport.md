@@ -1,12 +1,12 @@
-# ADR 0030: Qualify the C6 transport with an exclusive native boot fixture
+# ADR 0044: Qualify the C6 transport with an exclusive native boot fixture
 
-- Status: accepted for initial qualification; host-tested and native image built; physical execution pending
+- Status: accepted; factory Hosted SDIO, DHCPv4 and IPv6 link-local physically qualified in a boot fixture; ESP-AT peer execution and normal OS integration pending
 - Date: 2026-10-27
 
 ## Decision
 
 Add an ESP32-P4 slot-1 SDIO host and C6 byte stream to the ESP-AT direction
-in ADR 0029. First qualify it in a separate CPU0-only native boot fixture.
+in ADR 0043. First qualify it in a separate CPU0-only native boot fixture.
 Do not attach a controller-resetting polling driver to the permanent SMP
 runtime or claim it arbitrates slot 0 microSD traffic.
 

@@ -1,6 +1,6 @@
 # C6へTCP/IP・BLEホストを集約する検証
 
-2026-10-27。方針は[ADR 0029](../adr/0029-c6-network-offload.md)。
+2026-10-27。方針は[ADR 0043](../adr/0043-c6-network-offload.md)。
 最終的にはP4をnihos、C6をTCP/IP・BLEホスト付き通信ファームとし、ESP-AT＋SDIOを検証する。
 現段階の実機AP/IP試験は、既存C6のESP-HostedとP4 DHCPで通過した。
 本体からWi-Fiで通信できることを目指し、PCは開発・測定時に使う。

@@ -101,6 +101,6 @@ cache behavior, the AT fixture's complete serial report, AP/TCP/GATT traffic,
 heap/latency/loss, IRQ integration, microSD/controller arbitration, permanent
 service memory/lifetime and application resource generations remain open.
 
-See [ADR 0030](../adr/0030-c6-sdio-boot-transport.md) and the
+See [ADR 0044](../adr/0044-c6-sdio-boot-transport.md) and the
 [fixture procedure](../../probes/c6-sdio/README.md). Do not infer physical Wi-Fi
 or BLE operation from the model pass or the audited image.

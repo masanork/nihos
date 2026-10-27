@@ -211,3 +211,15 @@ RS/RA/SLAAC, neighbor resolution and ICMPv6 run beside IPv4 DHCP. The
 outgoing router Echo reply. `PARTIAL` records lesser progress, including no RA.
 IPv4 markers retain their DHCP-only meaning; IPv6-only success is supported.
 See [scope and physical evidence](../../docs/measurements/2026-10-27-native-ipv6.md).
+
+## Integration boundary
+
+The networking branch includes the display/console normal-boot changes and
+the remote main snapshot recorded in the [integration checkpoint](../../docs/measurements/2026-10-27-c6-integration-rebase.md).
+This standalone CPU0 fixture retains its own 128 KiB
+`probes/c6-sdio/esp32p4.ld` and `tools/check-c6-sram-boundary.py`, derived from
+the pre-integration fixture. Normal boot continues to use its revision-aware
+linker and `tools/check-native-image.py`, including its separate stacks and
+approved Flash boot code. Both audit suites run in the architecture check.
+The combined source tree does not mean display and networking run together
+on the device; the network fixture still prints its report and halts.
