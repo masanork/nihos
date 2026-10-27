@@ -427,3 +427,15 @@ its former lifetime limit of 4,096 mutations. The RV32 descriptor is 14,536 B,
 excluding stack/backend memory. Payload remains append-only, so this qualifies
 index recycling rather than a complete cleaner; payload reserve, reclamation,
 streaming/partial writes and physical SD qualification remain open.
+
+The [payload-recycling host follow-up](../measurements/2026-10-27-store-payload-gc.md)
+adds a fixed 4 KiB occupancy window to find unreferenced contiguous payload and
+sidecar ranges. Version 3 records an excluded tail reserve; it does not relocate
+live data. The RV32 descriptor is 18,640 B, excluding stack/backend memory, and
+two reader snapshots remain protected. A 64 KiB repeated-update probe passed
+within a 60-page ordinary region plus four reserved pages at the end of a sparse
+16 GiB file. This is a correctness experiment, not target foreground readiness:
+the probe issued 214,335,488 B of backend reads during its payload churn, and a
+full search can scan metadata for every bitmap window. Budgeted/resumable search
+and metadata caching are required before native integration. Relocating-cleaner
+reserve use, streaming/partial writes and physical durability remain open.

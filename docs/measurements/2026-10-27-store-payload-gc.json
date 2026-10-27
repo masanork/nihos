@@ -1,0 +1,689 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "ce2a8f2cd6bba4a612c8d49d494fc5d4b1abae49",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-nonmoving-payload-recycling",
+  "physical_power_cuts": 0,
+  "native_execution": false,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-payload-gc-host",
+  "archive_regular_files": 55,
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "zig": "0.17.0",
+    "zig_debug": 230,
+    "zig_release_safe": 230,
+    "new_zig_tests": 9,
+    "python": 168,
+    "native_elf_links": 6,
+    "format_zlint_shellcheck": true,
+    "rv32_broker_compile": true,
+    "rv32_checkpoint_compile": true
+  },
+  "format": {
+    "version": 3,
+    "reserve_field_byte_offset": 60,
+    "older_version_and_wrong_reserve_geometry": "Corrupt; no implicit migration/format"
+  },
+  "allocator": {
+    "kind": "nonmoving reachability; tail fast path then first contiguous free run",
+    "default_bitmap_bytes": 4096,
+    "default_window_pages": 32768,
+    "default_window_bytes": 134217728,
+    "protected_roots": [
+      "current disk root",
+      "other valid disk root",
+      "staged transaction",
+      "two reader snapshots"
+    ],
+    "marks_payload_and_checksum_sidecars": true,
+    "media_sized_ram_map": false,
+    "payload_high_water_mark_rewound": false,
+    "allocation_admission_before_write": true,
+    "root_only_collection_requires_fresh_payload_pages": 0,
+    "default_experimental_reserve_pages": 0,
+    "probe_reserve_pages": 4,
+    "relocating_reserve_use_implemented": false
+  },
+  "budget": {
+    "host_state_bytes": 18648,
+    "rv32_state_bytes": 18640,
+    "increase_bytes": 4104,
+    "state_excludes": [
+      "call stack",
+      "backend",
+      "OS file cache"
+    ],
+    "descriptor_gate_bytes": 32768,
+    "same_state_at_1GiB_and_16GiB": true,
+    "store_heap_allocation": false,
+    "mount_limit_bytes": 1056768,
+    "single_byte_read_bytes": 12288,
+    "native_peak_ram_measured": false
+  },
+  "search_cost": {
+    "budgeted_or_resumable": false,
+    "duplicate_leaf_reads_removed": false,
+    "default_16GiB_max_windows": 128,
+    "default_max_leaf_references_in_transaction": 640,
+    "worst_case_metadata_read_bound_bytes": 335544320,
+    "probe_churn_backend_read_request_bytes": 214335488,
+    "metric": "backend read requests; not physical transfer or latency"
+  },
+  "reuse": {
+    "memory_fixture_usable_pages": 8,
+    "nonempty_object_mutations": 512,
+    "object_physical_pages": 2,
+    "free_after_collection": 6,
+    "reopened_generation": 514,
+    "file_probe_usable_pages": 60,
+    "file_probe_reserved_pages": 4,
+    "file_probe_repeated_updates": 128,
+    "file_probe_object_bytes": 65536,
+    "file_probe_final_generation": 277,
+    "file_probe_final_free_pages": 40,
+    "file_probe_largest_free_run_pages": 23
+  },
+  "fault_campaign": {
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "events": 84,
+    "backgrounds": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_orders": [
+      "ascending",
+      "descending"
+    ],
+    "torn_sector_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ],
+    "crash_cases_per_mode": 3024,
+    "acknowledged_cases_per_mode": 6,
+    "baseline_ack_generation": 4,
+    "collection_ack_generation": 5,
+    "final_ack_generation": 6,
+    "assertion": "recovered generation >= last acknowledged generation and <= 6 with whole correct payload"
+  },
+  "negative_controls": {
+    "payload": [
+      {
+        "variant": "reader",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-payload-gc/negative-payload.id_ux2bl/reader/payload_gc_test.zig",
+          "--test-filter",
+          "a pinned payload view stays valid"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "PAYLOAD_PIN_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "retained",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-payload-gc/negative-payload.id_ux2bl/retained/payload_gc_test.zig",
+          "--test-filter",
+          "the retained disk payload survives"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "PAYLOAD_RETAINED_COUNTEREXAMPLE error=Corrupt"
+      }
+    ],
+    "index": [
+      {
+        "variant": "reader",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-index-gc/negative-index.rr8fcdcj/reader/index_gc_test.zig",
+          "--test-filter",
+          "pinned snapshots survive metadata reuse"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "PIN_COUNTEREXAMPLE current_generation=5 error=Corrupt"
+      },
+      {
+        "variant": "retained",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-index-gc/negative-index.rr8fcdcj/retained/index_gc_test.zig",
+          "--test-filter",
+          "both valid disk roots survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "RETAINED_ROOT_COUNTEREXAMPLE error=Corrupt"
+      }
+    ],
+    "barrier": {
+      "schema": 1,
+      "mutation": "omit first commit barrier only; disable event/case count assertions in copied test",
+      "command": [
+        ".tools/zig-0.17.0/zig",
+        "test",
+        "/Users/masanork/repo/nihos-store-model/build/checkpoint/negative.7_t_nty0/checkpoint_model_test.zig",
+        "--test-filter",
+        "checkpoint publication"
+      ],
+      "exit_code": 1,
+      "semantic_counterexample_found": true,
+      "counterexample": {
+        "event": 112,
+        "prefix": 512,
+        "background": "none",
+        "order": "ascending",
+        "generation": 3,
+        "error": "Corrupt"
+      }
+    }
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-sparse-file-checkpoint",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "9967ce0d4f7cde033c32fec3e16ddb19153b34aae4dd2db607b078906563df6e",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"mount_bytes\":0,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":1,\"operation_read_bytes\":0,\"index_free_pages\":256,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"mount_bytes\":8192,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":25,\"syncs\":2,\"operation_read_bytes\":0,\"index_free_pages\":253,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":1302528,\"index_free_pages\":253,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "update",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"update\",\"generation\":3,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":26,\"syncs\":2,\"operation_read_bytes\":1323008,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":1306624,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-one",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-one\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":12288,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-cross",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-cross\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":16384,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-full",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-full\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":81920,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "inspect",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"inspect\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":0,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "read-one",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-one\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":12288,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-far",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "verify-full",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "fill-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"fill-index\",\"generation\":4,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":129,\"syncs\":2,\"operation_read_bytes\":12288,\"index_free_pages\":125,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "checkpoint",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"checkpoint\",\"generation\":5,\"mount_bytes\":544768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":2,\"operation_read_bytes\":0,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":524288,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":524288,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "churn-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"churn-index\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":650,\"syncs\":20,\"operation_read_bytes\":3145728,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-recycled",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-recycled\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":610304,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-recycled",
+        "image": "recycled-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-recycled\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":610304,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "churn-payload",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"churn-payload\",\"generation\":277,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":2638,\"syncs\":524,\"operation_read_bytes\":214335488,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":1,\"search_leaf_reads\":384}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-payload-recycled",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-payload-recycled\",\"generation\":277,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":2240512,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":1,\"search_leaf_reads\":256}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-payload-recycled",
+        "image": "payload-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-payload-recycled\",\"generation\":277,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":18648,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":2240512,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":1,\"search_leaf_reads\":256}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "separate_process_reopen_above_4GiB",
+        "passed": true,
+        "old": {
+          "phase": "verify-old",
+          "generation": 2,
+          "mount_bytes": 20480,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 17179607040,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 1302528,
+          "index_free_pages": 253,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        },
+        "new": {
+          "phase": "verify-new",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 1306624,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        }
+      },
+      {
+        "name": "bounded_partial_read_and_explicit_scrub",
+        "passed": true,
+        "one_byte": {
+          "phase": "read-one",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 12288,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        },
+        "crossing": {
+          "phase": "read-cross",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 16384,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        },
+        "scrub": {
+          "phase": "verify-full",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 81920,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        }
+      },
+      {
+        "name": "metadata_only_mount_and_on_demand_payload_integrity",
+        "passed": true
+      },
+      {
+        "name": "cold_payload_corruption_is_deferred_until_read_or_scrub",
+        "passed": true
+      },
+      {
+        "name": "both_roots_reference_all_128_leaves",
+        "passed": true,
+        "report": {
+          "phase": "verify-index",
+          "generation": 5,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 524288,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        }
+      },
+      {
+        "name": "compact_range_snapshot_reconstruction",
+        "passed": true
+      },
+      {
+        "name": "reader_pin_backpressure_and_640_leaf_mutations_in_256_page_pool",
+        "passed": true,
+        "churn": {
+          "phase": "churn-index",
+          "generation": 15,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 650,
+          "syncs": 20,
+          "operation_read_bytes": 3145728,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        },
+        "reopened": {
+          "phase": "verify-recycled",
+          "generation": 15,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 610304,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0
+        }
+      },
+      {
+        "name": "recycled_index_snapshot_reconstruction",
+        "passed": true
+      },
+      {
+        "name": "64KiB_payload_128_updates_and_two_pins_with_four_page_reserve",
+        "passed": true,
+        "churn": {
+          "phase": "churn-payload",
+          "generation": 277,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 2638,
+          "syncs": 524,
+          "operation_read_bytes": 214335488,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 1,
+          "search_leaf_reads": 384
+        },
+        "reopened": {
+          "phase": "verify-payload-recycled",
+          "generation": 277,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 18648,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 2240512,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 1,
+          "search_leaf_reads": 256
+        },
+        "reserved_bytes": 16384,
+        "reserve_sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+      },
+      {
+        "name": "recycled_payload_snapshot_reconstruction",
+        "passed": true
+      }
+    ],
+    "snapshots": {
+      "generation3": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation3-metadata.bin",
+            "sha256": "8f63200aa527c039ef9784b3b630b72f18744a3cf7e85e8af7e040a231912d99"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation3-payload.bin",
+            "sha256": "5c290f9e576a680cbd887d82fad2c0c3be4f1eec6132fb4ed11eaf6bfc39dd2f"
+          }
+        ]
+      },
+      "generation5": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation5-metadata.bin",
+            "sha256": "38aefba3a8a41d8a087e33a409901becc6cab32baf69118f2510dcf21db95eee"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation5-payload.bin",
+            "sha256": "5c290f9e576a680cbd887d82fad2c0c3be4f1eec6132fb4ed11eaf6bfc39dd2f"
+          }
+        ]
+      },
+      "generation15": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation15-metadata.bin",
+            "sha256": "fc6ce2c4c205d9e0c16c946147a63fe2e3d544d7ac17f794ebf8432a37caf818"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation15-payload.bin",
+            "sha256": "5c290f9e576a680cbd887d82fad2c0c3be4f1eec6132fb4ed11eaf6bfc39dd2f"
+          }
+        ]
+      },
+      "generation277": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation277-metadata.bin",
+            "sha256": "01c9d9d70bfb09a494801801230bc6254b1ed70294a563254a6a02ff389cea8d"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation277-payload.bin",
+            "sha256": "a8f97cd9555923e6897462560c3384d62f07f055fc4e845a915837dc5cd730f0"
+          }
+        ]
+      }
+    },
+    "passed": true,
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "recycled-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "payload-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      }
+    }
+  },
+  "regressions": {
+    "index_crash_cases_per_mode": 3024,
+    "checkpoint_crash_cases_per_mode": 5832,
+    "old_cow_crash_cases_per_mode": 4212,
+    "physical_candidate_hashes_rechecked": 55
+  },
+  "limitations": [
+    "synchronous bitmap search may read metadata for all windows; budget/cache required before native VFS use",
+    "free space need not contain a sufficiently large contiguous run; no relocation/compaction",
+    "reserved tail is excluded from normal writes; borrowing/replenishing relocation reserve is not implemented",
+    "file probe constrains the payload region near the end of 16 GiB; not a full-volume workload",
+    "no native SD/NOR writes, removal or physical power-loss qualification",
+    "no streaming/partial write, bounded tail replay or persistent SQLite PERSIST/FULL/WAL VFS",
+    "store descriptor excludes stack/backend; native RAM peaks and latency are unmeasured"
+  ]
+}
