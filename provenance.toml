@@ -105,3 +105,11 @@ license = "Public domain; https://www.sqlite.org/copyright.html"
 status = "build-and-opt-in-firmware-dependency"
 use = "Checksum-verified unmodified sqlite3.c/sqlite3.h in ignored build directory; host tests, RV32 probes and opt-in native memory-only qualification; no production VFS or MeOS source import"
 sha3_256 = "92281c86e2957f9b9305890f9ac04204caa7b677cc868dc326d942689df28e30"
+
+[[source]]
+name = "ESP-AT"
+url = "https://github.com/espressif/esp-at"
+revision = "7c092f9aee793d6dbfae31e7585637baa14fb4ce (v4.1.1.0)"
+license = "Apache-2.0 for repository source; separately licensed AT core and SDK binary dependencies"
+status = "candidate-firmware-dependency"
+use = "Separate C6 TCP/IP and BLE host SDIO firmware built in an external pinned checkout with verified upstream SDK patches; no upstream source or binary tracked here, no flashing or execution qualification"
