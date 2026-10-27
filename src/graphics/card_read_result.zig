@@ -33,7 +33,7 @@ fn Glyph(comptime section: ?[]const u8) type {
     return struct {
         pub fn find(value: u21) linksection(if (isCompressed(section) and @import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") ?[32]u8 {
             const data = &Store(section).data;
-            if (isCompressed(section)) {
+            if (comptime isCompressed(section)) {
                 const count = std.mem.readInt(u32, data[4..8], .little);
                 const table: usize = 12 + 4095 * 2;
                 const payload = table + count * 6;
@@ -53,20 +53,27 @@ fn Glyph(comptime section: ?[]const u8) type {
                 }
                 return decoded_glyph;
             }
-            var low: usize = 0;
-            var high: usize = data.len / 36;
-            while (low < high) {
-                const mid = low + (high - low) / 2;
-                const found = code(data[mid * 36 ..]);
-                if (found < value) low = mid + 1 else high = mid;
-            }
-            if (low == data.len / 36 or code(data[low * 36 ..]) != value) return null;
-            return data[low * 36 + 4 ..][0..32].*;
+            unreachable;
         }
     };
 }
-inline fn glyph(comptime section: ?[]const u8, value: u21) ?[32]u8 {
-    return Glyph(section).find(value);
+fn GlyphResult(comptime section: ?[]const u8) type {
+    return if (isCompressed(section)) [32]u8 else []const u8;
+}
+inline fn glyph(comptime section: ?[]const u8, value: u21) ?GlyphResult(section) {
+    if (comptime isCompressed(section)) return Glyph(section).find(value) else return rawGlyph(section, value);
+}
+fn rawGlyph(comptime section: ?[]const u8, value: u21) ?[]const u8 {
+    const data = &Store(section).data;
+    var low: usize = 0;
+    var high: usize = data.len / 36;
+    while (low < high) {
+        const mid = low + (high - low) / 2;
+        const found = code(data[mid * 36 ..]);
+        if (found < value) low = mid + 1 else high = mid;
+    }
+    if (low == data.len / 36 or code(data[low * 36 ..]) != value) return null;
+    return data[low * 36 + 4 ..][0..32];
 }
 const Canvas = struct {
     frame: []u8,
@@ -74,7 +81,7 @@ const Canvas = struct {
         return self.sized(section, value, x, y, 32);
     }
     fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
-        if (isCompressed(section)) return AutoPainter(section).draw(self, value, x, y, size);
+        if (comptime isCompressed(section)) return AutoPainter(section).draw(self, value, x, y, size);
         return self.sizedInline(section, value, x, y, size);
     }
     inline fn sizedInline(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
