@@ -28,6 +28,19 @@ NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ \
 That compiles `metadata_size.cpp` and records `sizeof(LazyPool)` for ILP32.
 It neither compiles the POSIX backing implementation for nihos nor runs on P4.
 
+To also run against the unchanged kernel buddy heap and four-task,
+two-parent-per-task resource ledger:
+
+```sh
+NIHOS_GRAPHICS_KERNEL_BACKING=1 sh tools/run-graphics-memory-probe.sh
+```
+
+This bootstraps Zig 0.17.0 when needed; `NIHOS_GRAPHICS_ZIG` can name an already
+installed 0.17.0 compiler. Combining the kernel option with the RV32 compiler
+option also compiles the allocator and Zig bridge for RV32, without linking
+or executing firmware. The runner compares glyph hashes and OOM point counts
+between the POSIX and kernel variants before producing a receipt.
+
 ## What is exercised
 
 - FreeType 2.14.3 and HarfBuzz 15.0.0 render real BIZ UD Gothic and Mincho
@@ -70,9 +83,9 @@ cache belong to their client. Closing a client destroys its library objects
 before returning its spans. The service's remaining process-global allocations
 are retained; forced service-task cleanup/restart remains unqualified.
 
-The host backend uses `posix_memalign/free`. A native version still needs a
-backing/ownership design compatible with the current two-parent task ledger;
-requesting each page as a separate current task allocation would exceed it.
+The default host backend uses `posix_memalign/free`. The optional kernel
+variant shares two task-owned parent extents across all clients; requesting
+each page as a separate task allocation would exceed the current ledger.
 The bounded metadata scan is a host prototype, not an interrupt-latency proof.
 This implementation does not replace `nih_task_malloc` or any libc symbol.
 
@@ -102,6 +115,68 @@ RAM use, SD latency, or physical-device qualification.
 
 The receipt, including exact source hashes, is retained in
 [`docs/measurements/2026-10-27-graphics-demand-memory.json`](../../docs/measurements/2026-10-27-graphics-demand-memory.json).
+
+## Kernel-backed host bridge
+
+`buddy_backing.zig` calls the actual `buddy_heap.zig` and `task_resources.zig`
+without changing either. A host array models the 15,596,992-byte CPU0 heap
+backing left by the current 32 MiB layout. Its payload after buddy metadata
+and guards is 15,072,576 bytes. The array represents available kernel memory,
+not an allocation reserved exclusively for graphics.
+
+The bridge models one font service task. It loans 64 KiB multiples to
+`LazyPool` from at most two canonical task-ledger entries. Every application
+session uses the same service backing, with independent logical quotas and
+lifetimes. One raw 128 KiB parent holds the shared-library span. A raw 2 MiB
+parent is acquired when the small parent cannot satisfy a request and is
+returned when its last loan is released. Requested parent payloads leave
+128 bytes for buddy header/alignment, avoiding power-of-two boundary doubling.
+
+The current two-parent limit has a measurable price:
+
+| State | Kernel raw block occupancy |
+| --- | ---: |
+| Before library use | 0 |
+| Only retained service state | 128 KiB |
+| Sessions active in this fixture | 2,176 KiB (2.125 MiB) |
+| Both sessions closed | 128 KiB |
+
+The 2 MiB logical loan threshold and 1 MiB client thresholds still apply to
+the suballocator. Kernel occupancy includes the unloaned parent capacity and
+can therefore exceed the loan threshold. The active parent is shared between
+sessions, not reserved separately per application. Returning one client's
+loans can make them available to another without returning the whole parent
+to the kernel yet. This is the current two-entry compatibility baseline;
+smaller incremental kernel returns need a different backing/ledger policy.
+
+Both backends pass the same 547 injected OOM points and 32 reopen cycles with
+identical glyph/advance hashes. Additional backing checks exercise canonical
+loan validation, buddy coalescing, service retirement through bounded
+`drainOne`, full capacity recovery, and a separate ledger task surviving
+service retirement with its bytes intact. These retirement checks contain no
+HarfBuzz objects and do not qualify restarting process-global library state.
+
+The fragmentation fixture leaves 2,358,592 bytes free with a largest block of
+1 MiB. Acquiring the active 2 MiB parent fails cleanly despite the aggregate
+free space. Releasing another task's 4 MiB allocation permits a retry. This
+is a demonstrated limitation of the coarse-parent policy, not a guarantee
+that enough aggregate free memory always permits opening a session.
+
+RV32 compilation reports 4,920 bytes for `LazyPool` and 1,749 bytes as the sum
+of bridge control-state sizes, before independent-global alignment padding.
+Their 6,669-byte sum plus 64-byte padding allowance fits the earlier 8 KiB
+control target. This excludes stack and is not a final native linked footprint.
+
+The kernel variant still executes on the host: no native scheduler task,
+interrupt masking, physical PSRAM, SD, Flash layout or display integration is
+qualified. This fixture initializes its own heap; native integration must
+borrow from the already-initialized per-hart heap and bind the real task key.
+It must not initialize another heap over live PSRAM allocations.
+C/C++ and third-party libraries run under ASan/UBSan; the Zig bridge
+uses ReleaseSafe checks. The emulated heap's internal object lifetimes do not
+have independent ASan redzones, so canonical records and canary tests remain
+essential. The kernel receipt is
+[`docs/measurements/2026-10-27-graphics-kernel-backing.json`](../../docs/measurements/2026-10-27-graphics-kernel-backing.json).
 
 ## Sources and attribution
 

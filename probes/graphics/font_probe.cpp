@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+#include "buddy_backing.h"
+#endif
 
 // Only this worker calls the libraries. Multiple client sessions stay open.
 // HB process-shared allocations belong to owner 0, never a dying client.
@@ -223,6 +226,9 @@ int main(int argc, char **argv) {
     check(first.draw(false, 24, &final_h) && final_h == first_h, "first survives all trials");
     first.close();
     check(pool.owner_reserved[1] == 0 && pool.owner_reserved[2] == 0 && pool.valid(), "all clients reclaimed");
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+    graphics_backing_check_report(1);
+#endif
     printf("{\"status\":\"pass\",\"scope\":\"host FT+HB memory/lifetime probe, not native GUI\","
         "\"startup_reserved\":0,\"initial_service_reserved\":%zu,\"single_client_reserved\":%zu,"
         "\"two_client_normal_peak_reserved\":%zu,\"two_client_stress_peak_reserved\":%zu,"
@@ -230,8 +236,17 @@ int main(int argc, char **argv) {
         "\"after_second_close\":%zu,\"after_all_clients_close\":%zu,"
         "\"shared_live_payload_after_close\":%zu,\"client_backing_after_close\":0,"
         "\"oom_points\":%zu,\"reopen_cycles\":32,\"controller_host_bytes\":%zu,"
-        "\"gothic_horizontal_hash\":%u,\"gothic_vertical_hash\":%u,\"mincho_vertical_hash\":%u}\n",
+        "\"gothic_horizontal_hash\":%u,\"gothic_vertical_hash\":%u,\"mincho_vertical_hash\":%u"
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        ",\"backing\":\"kernel buddy plus unchanged two-entry ledger on host\","
+        "\"kernel_raw_after_close\":%zu,\"kernel_raw_peak\":%zu,\"kernel_parents_after_close\":%u"
+#endif
+        "}\n",
         idle_initial, single_reserved, normal_two_client_peak, two_client_stress_peak,
         measured_peak, after_second_close, pool.reserved,
-        pool.live_bytes(0), baseline_attempts, sizeof(pool), first_h, first_v, expected_second);
+        pool.live_bytes(0), baseline_attempts, sizeof(pool), first_h, first_v, expected_second
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        ,nih_graphics_backing_raw_used(), nih_graphics_backing_raw_peak(), nih_graphics_backing_parents()
+#endif
+    );
 }

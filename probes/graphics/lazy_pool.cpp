@@ -1,6 +1,9 @@
 #include "lazy_pool.h"
 #include <stdlib.h>
 #include <string.h>
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+#include "buddy_backing.h"
+#endif
 
 int LazyPool::find(unsigned owner, const void *pointer) const {
     for (unsigned i = 0; i < record_count; ++i)
@@ -52,7 +55,13 @@ void *LazyPool::allocate(unsigned owner, size_t bytes) {
             owner_reserved[owner] > owner_limit[owner] || backing > owner_limit[owner] - owner_reserved[owner])
             return reject();
         void *base = nullptr;
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        graphics_backing_ensure();
+        base = nih_graphics_backing_acquire(backing);
+        if (!base) return reject();
+#else
         if (posix_memalign(&base, 64, backing)) return reject();
+#endif
         spans[selected] = { (unsigned char *)base, (uint32_t)backing, (uint16_t)owner, 0 };
         reserved += backing; owner_reserved[owner] += backing;
         if (reserved > peak) peak = reserved;
@@ -73,7 +82,12 @@ bool LazyPool::release(unsigned owner, void *pointer) {
     records[index] = {};
     if (--span.live == 0) {
         reserved -= span.bytes; owner_reserved[owner] -= span.bytes;
-        free(span.base); span = {};
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        if (nih_graphics_backing_release(span.base)) abort();
+#else
+        free(span.base);
+#endif
+        span = {};
     }
     return true;
 }
