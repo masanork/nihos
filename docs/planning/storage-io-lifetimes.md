@@ -68,7 +68,7 @@ cache返却失敗での隔離を検査した。判定器はfield欠落、非zero
 
 試験用Flash関数を明示的allowlistで監査する。追加の通常owner/SD処理はcache有効のmapped Flashに配置し、
 notification hookとlease metadata、DMA staging / descriptorはresidentに保つ。
-candidateは821,104 B。residentは105,792 B、112 KiB枠の余裕は8,896 B。
+初期candidate `ad62703`は821,104 B。residentは105,792 B、112 KiB枠の余裕は8,896 B。
 IRQからの全推移call graphやnative最悪時間/stack上限の証明ではない。
 
 実機runner [qualify-storage-io.py](../../tools/qualify-storage-io.py)は、固定bundleの全指定hashを照合してから対象Tab5を確認する。
@@ -79,9 +79,10 @@ runnerは構文、helpとartifact改変拒否をhostで検査した後、固定�
 Flash退避と復元経路も実行し、16 MiB全体のdigest一致を確認した。
 [実機記録](../measurements/2026-10-27-native-storage-io-physical.md)に通知、停止値、source/image hashと生ログの参照を保存した。
 
-残るgateは、電気的な抜去/再挿入、電源OFF→ON、
+残るgateは、起動理由`0x01`を確認できるclean power-on、
 silicon上の停止失敗・cache失敗の安全な注入、実FatFs BackendとVFS/RPCの接続である。
-serialは解放済み。実装はlocal commit `ad62703`として保持し、他セッションのnative branchは変更していない。
+serialは解放済み。I/O寿命接続の起点はlocal commit `ad62703`で、後続の手操作・取得fixtureも独立branchに保持する。
+他セッションのnative branchは変更していない。
 
 ## 手操作を伴う追加試験
 
@@ -104,11 +105,13 @@ firmwareの記録だけから`electrical_removal_operator_confirmed`をtrueに�
 operatorが同じmicroSDを抜き・戻す操作を行い、実カード試験に合格した。
 [実抜去記録](../measurements/2026-10-27-sd-removal-physical.md)に、CMD17 timeout、停止後の状態、世代3→4と再読取りを保存した。
 
-電源試験は、手操作用imageとは別に、通常設定のimageとrunnerの`--power-cycle`で実施する。
+電源試験の最新fixtureは、手操作用imageとは別に、`SD_REMOVAL=0` / `COLD_CAPTURE=1`のbroker opt-in imageと
+runnerの`--power-cycle`で実施する。
 3回のUSB reset検証後に`NIHOS_POWER_CYCLE_READY`を出し、operatorの本体OFF→ONを待つ。
 USB disconnectが起きた場合は同じportをexclusiveに開き直し、後続Flashアクセス前にchip/MACを再確認する。
-新たなUSB resetを指示せず起動ログを取り、ROMのreset reasonがpower-on (`0x1`)の1起動であることを要求する。
-USB reset、watchdog、複数bootの混在、ROM header欠落ではcold bootを合格にしない。
+新たなUSB resetを指示せず、最初にROM APIから保存したreset reasonとhost ACK後の全ログを取得する。
+power-on (`0x1`)の1起動を要求し、USB reset、watchdog、複数bootの混在をcold bootの成功に含めない。
+ROM headerが失われた場合でもimageに結び付いた機器側recordは必要で、両方が欠けた記録は拒否する。
 FDを開き直した場合は、その回数と「同一FDを維持したか」を分けて記録する。
 電源OFF中に接続が戻らない場合は復元を完了できないため、private backupと失敗ログを保持し、電源復帰後に復元を完了する。
 
@@ -120,3 +123,10 @@ FDを開き直した場合は、その回数と「同一FDを維持したか」�
 公式には電源キーのダブルクリックでshutdown、単押しで起動と記載され、直接給電を切った場合は5秒以上空けるとしている。
 このnative fixtureでボタンによるshutdown処理は検証していないため、操作方法だけから電源断を成立したと見なさず、
 実際の給電構成、operatorの操作記録、ROMのreset reasonを併せて確認する。
+
+電源キーの操作後、USB消失と復帰、および復帰後の全workload成功は確認した。
+ただし機器側に保存したreset reasonは`0x07`であり、clean power-on gateは合格にしていない。
+[電源試験の記録と未解決点](../measurements/2026-10-27-sd-cold-power-inconclusive.md)に取得経路の修正と全失敗試行を残した。
+起動待ち前へのTG0 MWDT停止の移動だけでは`0x07`が解消せず、原因は未確定である。
+最新候補`c6e3190`は821,904 B、resident 105,920 B、112 KiB枠の余裕8,768 Bである。
+USBとバッテリーを両方外す試験は、operatorが実施困難なため未実施のまま残す。

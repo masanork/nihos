@@ -161,6 +161,14 @@ class PhysicalRemovalEvidenceTests(unittest.TestCase):
 
 
 class PassiveCaptureTests(unittest.TestCase):
+    def test_actual_watchdog_reset_replay_is_valid_startup_but_not_clean_power_on(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/cold-watchdog-reset.json').read_text())
+        text = bytes.fromhex(fixture['wire_hex']).decode()
+        image = {'io_lifetimes': {'capture_handshake': True}, 'memory': {'profile': 'device'}}
+        self.assertEqual(LOG.check_boot_capture(text.replace('\r', ''), image, 'physical-device'), {'cpu0': 7, 'ack': 1})
+        with self.assertRaises(ValueError):
+            RUNNER.require_power_on_reset(text, image)
+
     def test_real_crlf_wait_replay_and_power_cause_are_not_lf_only(self):
         fixture = json.loads((Path(__file__).parent / 'fixtures/cold-capture-crlf.json').read_text())
         wire = bytes.fromhex(fixture['wire_hex'])
