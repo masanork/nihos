@@ -101,5 +101,26 @@ class NativeFastDisplayEvidenceTests(unittest.TestCase):
                 self.check(FAST_LOG.replace(old, new))
 
 
+CARD_EVIDENCE = ROOT / 'docs/measurements/evidence/2026-10-28-card-foreground-startup'
+CARD_LOG = (CARD_EVIDENCE / 'fixed-boot.log').read_text()
+CARD_IMAGE = json.loads((CARD_EVIDENCE / 'fixed-image-audit.json').read_text())
+
+
+class NativeCardStartupEvidenceTests(unittest.TestCase):
+    def test_physical_probe_startup_accepts_auxiliary_boot_and_portrait(self):
+        report = DISPLAY.check(CARD_LOG, CARD_IMAGE, 11, 80)
+        self.assertEqual(report['layout'], dict(logical_width=720, logical_height=1280, rotation=0))
+        self.assertEqual(report['refresh']['frames'], 32)
+        self.assertEqual(report['optical_evidence'], 'not evaluated by this checker')
+
+    def test_card_probe_rejects_wrong_layout_or_foreign_boot(self):
+        for old, new in (('rotation=00000000', 'rotation=00000001'),
+                         ('logical_width=000002d0', 'logical_width=00000500'),
+                         ('NIHOS_NATIVE_CARD_AUTO_BOOT ', 'NIHOS_C6_BOOT ')):
+            self.assertIn(old, CARD_LOG)
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                DISPLAY.check(CARD_LOG.replace(old, new), CARD_IMAGE, 11, 80)
+
+
 if __name__ == '__main__':
     unittest.main()
