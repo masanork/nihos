@@ -4,6 +4,7 @@
 //! kernel imports only the stable platform ABI, never ESP-IDF headers.
 
 pub const version = "0.0.0";
+pub const block_reader = @import("storage/block.zig");
 pub const record_log = @import("diagnostics/record.zig");
 pub const native_stack_layout = @import("platform/native/stack_layout.zig");
 pub const riscv32_context = @import("arch/riscv32/context.zig");
@@ -11,6 +12,7 @@ pub const riscv32_trap = @import("arch/riscv32/trap.zig");
 pub const esp32p4_timer_group = @import("soc/esp32p4/timer_group.zig");
 pub const esp32p4_software_ipi = @import("soc/esp32p4/software_ipi.zig");
 pub const esp32p4_psram = @import("soc/esp32p4/psram.zig");
+pub const esp32p4_sdmmc = @import("soc/esp32p4/sdmmc.zig");
 pub const esp32p4_psram_supply = @import("soc/esp32p4/psram_supply.zig");
 pub const esp32p4_psram_mapping = @import("soc/esp32p4/psram_mapping.zig");
 pub const arena = @import("kernel/arena.zig");
@@ -27,9 +29,21 @@ pub const tick_clock = @import("kernel/tick_clock.zig");
 pub const task_control = @import("kernel/task_control.zig");
 pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
+pub const console = @import("console.zig");
+pub const boot_graphics = @import("graphics/boot_graphics.zig");
+pub const tab5_boot_i2c = @import("board/tab5/boot_i2c.zig");
+pub const tab5_display = @import("board/tab5/display.zig");
+pub const psram_tuning = @import("soc/esp32p4/psram_tuning.zig");
+pub const psram_mpll = @import("soc/esp32p4/psram_mpll.zig");
+pub const cpu_clock = @import("soc/esp32p4/cpu_clock.zig");
+pub const tab5_panels = @import("board/tab5/panels.zig");
+pub const display_dcs = @import("board/tab5/dcs.zig");
+pub const scanout_state = @import("board/tab5/scanout_state.zig");
 pub const platform_abi = @import("platform/abi.zig");
 
 test {
+    _ = cpu_clock;
+    _ = block_reader;
     _ = record_log;
     _ = native_stack_layout;
     _ = riscv32_context;
@@ -37,6 +51,7 @@ test {
     _ = esp32p4_timer_group;
     _ = esp32p4_software_ipi;
     _ = esp32p4_psram;
+    _ = esp32p4_sdmmc;
     _ = esp32p4_psram_supply;
     _ = esp32p4_psram_mapping;
     _ = @import("soc/esp32p4/psram_mapping_test.zig");
@@ -65,5 +80,28 @@ test {
     _ = fp_vectors;
     _ = @import("kernel/task_control_test.zig");
     _ = test_pattern;
+    _ = boot_graphics;
+    _ = console;
+    _ = tab5_boot_i2c;
+    _ = tab5_display;
+    _ = tab5_panels;
+    _ = display_dcs;
+    _ = scanout_state;
+    _ = @import("platform/native/external_layout.zig");
+    _ = psram_mpll;
+    _ = psram_tuning;
     _ = platform_abi;
+}
+
+test "Tab5 scanout reservation uses identity-mapped PSRAM pages" {
+    const std = @import("std");
+    for ([_]u32{ 4, 8, 16, 32, 64 }) |mib| {
+        const capacity = mib * 1024 * 1024;
+        const selected = tab5_display.layout(capacity).?;
+        const first = (selected.frame_start - esp32p4_psram_mapping.virtual_base) / esp32p4_psram_mapping.page_bytes;
+        for (0..tab5_display.reserve_bytes / esp32p4_psram_mapping.page_bytes) |offset| {
+            const page = first + @as(u32, @intCast(offset));
+            try std.testing.expectEqual(page, esp32p4_psram_mapping.physicalPage(capacity, page).?);
+        }
+    }
 }

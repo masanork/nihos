@@ -89,10 +89,24 @@ class NativeInstructionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 MODULE.audit_app_descriptor(changed)
 
+    def test_clock_boot_role_is_narrow_and_contiguous(self):
+        functions = [("cpu_boot.run__func_1",0x40000120,0x40000320),
+                     ("psram.probe",0x40000320,0x40000920),
+                     ("psram_memory.prepare__func_43",0x40000920,0x40001120)]
+        def check(values): return MODULE.audit_boot_functions(values,0x40000120,0x40001120,0x4ff00000,0x4ff28000)
+        self.assertEqual(set(check(functions)),{"clock","probe","mapping"})
+        for name in ("cpu_boot.unexpected__func_1","cpu_boot.run_forever"):
+            with self.subTest(name=name),self.assertRaises(ValueError):check([(name,*functions[0][1:]),*functions[1:]])
+        with self.assertRaises(ValueError):check([functions[0],("psram.probe",0x40000340,0x40000920),functions[2]])
+
     def test_flash_tables_are_bounded_read_only_progbits(self):
         MODULE.audit_flash_section(".flash.appdesc", 1, 2, 0x40000020, 256)
         for size in (1, 1986, 65504):
-            MODULE.audit_flash_section(".flash.rodata", 1, 2, 0x40010020, size)
+            for flags in (2, 18, 50):
+                MODULE.audit_flash_section(".flash.rodata", 1, flags, 0x40010020, size)
+        for flags in (3, 6, 19, 22, 51, 54, 130):
+            with self.subTest(flags=flags), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(".flash.rodata", 1, flags, 0x40010020, 64)
         for kind, flags, address, size in ((8, 2, 0x40010020, 64), (1, 3, 0x40010020, 64),
                                             (1, 6, 0x40010020, 64), (1, 2, 0x40010024, 64),
                                             (1, 2, 0x40010020, 0), (1, 2, 0x40010020, 65505)):
@@ -170,6 +184,37 @@ class NativeInstructionTests(unittest.TestCase):
             self.assertTrue(MODULE.is_fp_instruction(instruction, 2))
         for instruction in (0x4000, 0x4002, 0xc000, 0xc002, 0x0001):
             self.assertFalse(MODULE.is_fp_instruction(instruction, 2))
+
+
+class SQLiteBoundaryTests(unittest.TestCase):
+    def test_flash_sql_requires_opt_in_and_no_writable_or_outside_sections(self):
+        MODULE.audit_flash_section(".flash.sqltext", 1, 6, 0x40020000, 64, True)
+        MODULE.audit_flash_section(".flash.sqlrodata", 1, 50, 0x40020100, 64, True)
+        for name, flags, address, enabled in ((".flash.sqltext", 6, 0x40020000, False),
+                (".flash.sqltext", 7, 0x40020000, True), (".flash.sqlrodata", 3, 0x40020100, True),
+                (".flash.sqltext", 6, 0x400c0000, True)):
+            with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(name, 1, flags, address, 64, enabled)
+
+    def test_sql_manifest_cannot_silently_admit_a_resident_function(self):
+        funcs = [("psram.probe", 0x40000120, 0x40000140),
+                 ("psram_memory.prepare__func_1", 0x40000140, 0x40000160),
+                 ("heap.allocTask", 0x40020000, 0x40020020)]
+        with self.assertRaisesRegex(ValueError, "non-manifest"):
+            MODULE.audit_boot_functions(funcs, 0x40000120, 0x40000160, 0x4ff20000, 0x4ff48000,
+                                        (0x40020000, 0x40020100), ["sqlite3_open"])
+        funcs[-1] = ("sqlite3_open", 0x40020000, 0x40020020)
+        result = MODULE.audit_boot_functions(funcs, 0x40000120, 0x40000160, 0x4ff20000, 0x4ff48000,
+                                            (0x40020000, 0x40020100), ["sqlite3_open"])
+        self.assertEqual(set(result), {"probe", "mapping"})
+
+    def test_c_static_stack_metadata_has_bounded_checked_records(self):
+        funcs = [("sqlite3_open", 0x40020000, 0x40020020)]
+        result = MODULE.decode_stack_sizes(struct.pack("<I", 0x40020000) + bytes([0x80, 0x06]), funcs)
+        self.assertEqual(result["maximum_reported_frame_bytes"], 768)
+        for data in (b"x", struct.pack("<I", 0x40020000) + b"\x80", struct.pack("<I", 0x40020020) + b"\0"):
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                MODULE.decode_stack_sizes(data, funcs)
 
 
 def loader_elf(sections):

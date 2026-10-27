@@ -6,15 +6,15 @@ profile=${1:-device}
 case "$profile" in
     device) revision=100; max_revision=299 ;;
     emulator) revision=300; max_revision=399 ;;
-    *) echo "usage: $0 [device|emulator] [integer|floating|compiled]" >&2; exit 1 ;;
+    *) echo "usage: $0 [device|emulator] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
 esac
 build_dir="$repo_root/build/native-$profile"
 boot_dir="$build_dir/loader"
 mode=${2:-integer}
 case "$mode" in
     integer) ;;
-    floating|compiled) build_dir="$build_dir-$mode" ;;
-    *) echo "mode must be integer, floating or compiled" >&2; exit 1 ;;
+    floating|compiled|sqlite) build_dir="$build_dir-$mode" ;;
+    *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
 idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
 if [ ! -f "$idf_path/export.sh" ]; then
@@ -27,6 +27,8 @@ if ! command -v idf.py >/dev/null 2>&1; then
 fi
 python=${NIHOS_IDF_PYTHON:-python}
 mkdir -p "$build_dir"
+# A failed rebuild must not expose an older image/audit as current output.
+rm -f "$build_dir/image-audit.json" "$build_dir/nihos-native.bin" "$build_dir/nihos-native-flash.bin"
 defaults="$repo_root/ports/esp32p4-native/sdkconfig.defaults"
 if [ "$profile" = emulator ]; then
     defaults="$defaults;$repo_root/sdkconfig.emulator.defaults"
@@ -45,6 +47,8 @@ sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
     0x2000 "$boot_dir/bootloader/bootloader.bin" \
     0x8000 "$boot_dir/partition_table/partition-table.bin" \
     0x10000 "$build_dir/nihos-native.bin"
+set --
+if [ "$mode" = sqlite ]; then set -- "$build_dir/sqlite-manifest.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
-    "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h"
+    "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"

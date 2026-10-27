@@ -42,7 +42,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set(NIHOS_ZIG_ARENA "${NIHOS_ROOT}/src/kernel/arena.zig")
     set(NIHOS_ZIG_SPSC "${NIHOS_ROOT}/src/kernel/spsc_ring.zig")
     set(NIHOS_ZIG_TICK_COUNTER "${NIHOS_ROOT}/src/kernel/tick_counter.zig")
-    set(NIHOS_ZIG_PATTERN "${NIHOS_ROOT}/src/graphics/test_pattern.zig")
+    set(NIHOS_ZIG_BOOT_GRAPHICS "${NIHOS_ROOT}/src/graphics/boot_graphics.zig")
     set(NIHOS_ZIG_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/libnihos_zig.a")
 
     if(NOT EXISTS "${NIHOS_ZIG}")
@@ -62,7 +62,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             --dep native_trap
             --dep spsc_ring
             --dep tick_counter
-            --dep test_pattern
+            --dep boot_graphics
             "-Mroot=${NIHOS_ZIG_SOURCE}"
             "-Mabi=${NIHOS_ZIG_ABI}"
             "-Marena=${NIHOS_ZIG_ARENA}"
@@ -86,7 +86,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
             "-Msoftware_ipi=${NIHOS_ZIG_SOFTWARE_IPI}"
             "-Mpark=${NIHOS_ZIG_PARK}"
             "-Mtick_counter=${NIHOS_ZIG_TICK_COUNTER}"
-            "-Mtest_pattern=${NIHOS_ZIG_PATTERN}"
+            "-Mboot_graphics=${NIHOS_ZIG_BOOT_GRAPHICS}"
             "-femit-bin=${NIHOS_ZIG_LIBRARY}"
         DEPENDS "${NIHOS_ZIG_SOURCE}" "${NIHOS_ZIG_ABI}"
                 "${NIHOS_ZIG_NATIVE_TRAP}" "${NIHOS_ZIG_CONTEXT}"
@@ -104,7 +104,9 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
                 "${NIHOS_ZIG_PARK}" "${NIHOS_ZIG_IDLE}"
                 "${NIHOS_ZIG_ARENA}" "${NIHOS_ZIG_SPSC}"
                 "${NIHOS_ZIG_TICK_COUNTER}"
-                "${NIHOS_ZIG_PATTERN}"
+                "${NIHOS_ZIG_BOOT_GRAPHICS}"
+                "${NIHOS_ROOT}/src/graphics/boot/assets.zig"
+                "${NIHOS_ROOT}/src/graphics/boot/masks.rle"
         COMMENT "Building the freestanding nihOS Zig entry"
         VERBATIM
     )

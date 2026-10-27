@@ -1,5 +1,8 @@
 //! CPU0-only supply, command-data and full-capacity CPU mapping startup.
 const psram = @import("psram");
+const options = @import("native_options");
+const mpll = @import("psram_mpll");
+const tuning = @import("psram_tuning");
 const supply = @import("psram_supply");
 const timer_group = @import("timer_group");
 pub const memory = @import("psram_memory.zig");
@@ -7,6 +10,16 @@ pub const memory = @import("psram_memory.zig");
 fn reg(address: usize) *volatile u32 {
     return @ptrFromInt(address);
 }
+
+const AbsoluteBus = struct {
+    pub fn read(_: @This(), address: usize) u32 {
+        return reg(address).*;
+    }
+    pub fn write(_: @This(), address: usize, value: u32) void {
+        reg(address).* = value;
+        asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+    }
+};
 
 const Bus = struct {
     pub fn read(_: Bus, offset: usize) u32 {
@@ -25,10 +38,14 @@ pub const Report = struct {
     transactions: u32 = 0,
     total_transactions: u32 = 0,
     supply: SupplyReport = .{},
+    mpll: MpllReport = .{},
+    tuning: tuning.Report = .{ .status = 0 },
     io_status: u32 = 0,
     exercise: psram.Exercise = .{},
     mapping: memory.Report = .{},
 };
+
+pub const MpllReport = struct { status: u32 = 0, mhz: u32 = 0, reused: u32 = 0, divider: u32 = 0, error_code: u32 = 0 };
 
 pub const SupplyReport = struct {
     programmed: u32 = 0,
@@ -47,6 +64,27 @@ const SupplyBus = struct {
     pub fn write(_: SupplyBus, offset: usize, value: u32) void {
         reg(0x50115000 + offset).* = value;
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+    }
+};
+
+extern fn nih_psram_fast_clock(u32) callconv(.c) void;
+extern fn nih_psram_fast_phase(u32) callconv(.c) void;
+extern fn nih_psram_fast_delay(u32) callconv(.c) void;
+extern fn nih_psram_fast_setup() callconv(.c) void;
+const TuningHardware = struct {
+    timer: timer_group.Timer,
+    pub fn now(self: @This()) u64 {
+        return self.timer.counter() orelse 0;
+    }
+    pub fn clock(_: @This(), divider: u32) !void {
+        if (divider != 20 and divider != 2) return error.InvalidDivider;
+        nih_psram_fast_clock(divider);
+    }
+    pub fn phase(_: @This(), value: u2) void {
+        nih_psram_fast_phase(value);
+    }
+    pub fn delay(_: @This(), value: u5) void {
+        nih_psram_fast_delay(value);
     }
 };
 
@@ -80,6 +118,20 @@ pub noinline fn probe(clock: timer_group.Timer) linksection(".flash.text.boot") 
     if (report.supply.programmed != 1) return report;
     report.supply.settled = @intFromBool(settle(clock));
     if (report.supply.settled != 1) return report;
+    if (options.psram_mpll) {
+        report.mpll.status = 2;
+        const result = mpll.initialize(AbsoluteBus{}, 100_000) catch |err| {
+            report.mpll.error_code = switch (err) {
+                error.Busy => 1,
+                error.Timeout => 2,
+                error.Readback => 3,
+                error.AlreadyOwned => 4,
+                error.InvalidBudget => 5,
+            };
+            return report;
+        };
+        report.mpll = .{ .status = 1, .mhz = result.mhz, .reused = result.reused, .divider = result.divider };
+    }
     // Boot code uses Flash; mutable state and runtime code stay in SRAM.
     // No peer/cache user may access PSRAM during this controller setup.
     reg(0x500e6014).* |= 1 << 31; // PSRAM system clock.
@@ -102,12 +154,37 @@ pub noinline fn probe(clock: timer_group.Timer) linksection(".flash.text.boot") 
     reg(0x5008f014).* = (1 << 16) | 1; // XTAL / 2, nominally 20 MHz.
     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
     controller = .{ .io = .{}, .poll_limit = 100_000 };
-    const result = controller.discover();
+    const result = controller.discoverRetained();
     report.discovery = result;
     report.transactions = controller.transactions;
     if (result.status == .detected) {
         report.io_status = 2;
         report.exercise = controller.exercise(result) catch {
+            report.total_transactions = controller.transactions;
+            return report;
+        };
+        report.io_status = 1;
+    }
+    if (options.psram_200 and report.io_status == 1) {
+        report.io_status = 2;
+        report.tuning = .{};
+        const modes = controller.configureProfile(result, .fast200x16) catch {
+            report.tuning.error_code = 1;
+            report.total_transactions = controller.transactions;
+            return report;
+        };
+        nih_psram_fast_setup();
+        clock.start();
+        clock.disarm();
+        defer clock.stop();
+        (if (options.boot_fast) tuning.tuneRejectEarly(&controller, TuningHardware{ .timer = clock }, &report.tuning) else tuning.tune(&controller, TuningHardware{ .timer = clock }, &report.tuning)) catch {
+            report.tuning.error_code = 2;
+            report.total_transactions = controller.transactions;
+            return report;
+        };
+        report.exercise = controller.exerciseData(modes) catch {
+            report.tuning.status = 2;
+            report.tuning.error_code = 3;
             report.total_transactions = controller.transactions;
             return report;
         };

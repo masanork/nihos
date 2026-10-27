@@ -1,0 +1,3273 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "evidence": "local-host-and-emulator; device qualification pending",
+  "implementation": {
+    "base_commit": "0f0b9fcd70a4395283277dff0036d02cd8e80c43",
+    "source_sha256": {
+      ".github/workflows/native.yml": "790367fcda5aeb6cec32406159c6e0d31f958097d34fd52c08d87130795a1fad",
+      "include/nihos_allocator.h": "3856d4def5e5d0544d1b442af264c42f8b790427e0f8c93977942a5d1d7ca23c",
+      "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+      "provenance.toml": "620d15b21dfd6c75e67f4ec0cd2ba461b611d6ecef69d997cf2e4dfe0c4090eb",
+      "src/kernel/size_pool.zig": "f29b0809accdfa0a302ee6d397f73200efbb38e132e5c9b36daf31451e3b8b31",
+      "src/platform/native/esp32p4.ld": "9c2d6cf2f6b1afa969140427e7b08ada15e1d8a35a2dd8b9c959a58b388c81b2",
+      "src/platform/native/heap.zig": "01ebb0aff5daef3ef8f321155ddec4eb40c8e2a0ad2bf24f354281d4b1502d98",
+      "src/platform/native/main.zig": "af9a92e32996ad44b8837b000db50035d5e2e37feba337ceb31c14c82b328bb8",
+      "src/platform/native/sqlite_probe.zig": "360a6a8a4f6f1e6456be6d13a109b05abe72a9d53983861c6acb0f9c48340a39",
+      "src/services/sqlite_session.c": "211f35d173cd7f185cf7c01470f7d47fb2134cda24070e0f5b3e32a25ef6c82b",
+      "tools/bootstrap-sqlite.sh": "907c16ff87258798d6ea0cbb76f8115eb807d7f579f326a6d50637a6eee0d890",
+      "tools/build-native-elf.sh": "bf23b5e82488fd84c248b539effffd5de4d0c90bfd97620298c1f0ba7ab65676",
+      "tools/build-native.sh": "706c92de4005904e48586586ac9919609407fccd483e5484733aabadaae0a5f6",
+      "tools/check-native-image.py": "7608abc17a4f99bed92a59c0af830aeebd14ebdfffc1a237a388ed86ba0a6519",
+      "tools/check-native-log.py": "236cd2c8ee7694b5a5883f6819dd4599ed2c85c2d180282eb3481d1c085a103e",
+      "tools/native-sqlite-manifest.py": "347479437b369591efba8b7e9bbdb7eebb123e9862ed0c0cc91a6f49a1482a83",
+      "tools/native_checks_test.py": "3e19abe51ee153f7bc487b723c10ce63dfebb0f46701b82c59c6cb097133895d",
+      "tools/native_image_test.py": "d7486c2977deb3a635603e7f5ff8231a888285e90c6236fdf3d33db8caa1d822",
+      "tools/run-native-smoke.sh": "64ab398102589cb372655d07dc0e7367bfe675ffeb2621ba2f1ea1ea25e8fd01",
+      "tools/run-sqlite-memory-probe.sh": "74d05d76abdf7688f8bfd54f139c6a6d87ef21e47303c0b6be80724c55803ccc"
+    }
+  },
+  "validation": {
+    "host_debug_tests": 148,
+    "host_release_safe_tests": 148,
+    "python_native_tests": 93,
+    "emulator_cases": 12,
+    "full_profile_image_audits": 8,
+    "original_oom_points": 308,
+    "session_oom_points": 321,
+    "zlint": "pass",
+    "formatting": "pass",
+    "shellcheck": "pass",
+    "remote_ci_this_stage": "not run",
+    "physical_boots_of_candidate": 0
+  },
+  "tools": {
+    "zig": "0.17.0",
+    "esp_idf_loader": "v5.4.4",
+    "esp_emu": "0.50.0",
+    "sqlite": "3.54.1"
+  },
+  "profile": {
+    "quotas": [
+      24,
+      12,
+      64,
+      64,
+      64,
+      4,
+      8,
+      12,
+      8,
+      1
+    ],
+    "requested_bytes": 57104,
+    "outer_buddy_bytes": 65536,
+    "native_fixed_workload_peaks": [
+      20,
+      10,
+      22,
+      23,
+      16,
+      3,
+      6,
+      8,
+      3,
+      0
+    ]
+  },
+  "sdk_loader": {
+    "source": "/Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader_support/src/bootloader_utility.c",
+    "sha256": "5ae38992cce9e7a9f919a9923bf6acbbf6f74a24d4f4c13ce3cf6c488cbe8401",
+    "two_mapping_assertion_line": 777,
+    "sdk_patched": false
+  },
+  "partition": {
+    "path": "build/native-device/loader/partition_table/partition-table.bin",
+    "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+    "factory": {
+      "offset": 65536,
+      "bytes": 1048576,
+      "label": "factory",
+      "sqlite_app_bytes": 727856,
+      "remaining_bytes": 320720
+    }
+  },
+  "images": [
+    {
+      "profile": "emulator",
+      "mode": "integer",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": false,
+        "riscv_flags": "0x1",
+        "fp_instructions": {
+          "app": 0,
+          "c": 0,
+          "zig": 0,
+          "transfer_helpers": 0
+        },
+        "entry": "0x4ff20000",
+        "elf_sha256": "0c0154cc66c3074a12a4676307c1012d916fcebbd2ab3a08a948c6eb31eec99b",
+        "memory": {
+          "profile": "emulator",
+          "origin": "0x4ff20000",
+          "end": "0x4ff48000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff20000",
+              "end": "0x4ff48000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 133248,
+        "primary_static_bytes": 75904,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011d8",
+          "bytes": 4280,
+          "sha256": "8058c4285f25618cc510d0a0bc8f8299ecf8db0166b35a35466fddec199256da",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_48",
+              "start": "0x40000d00",
+              "end": "0x400011d8"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x400109c0",
+          "bytes": 2464,
+          "fnv1a": 941026165,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4280
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff20000",
+            "bytes": 67930
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff30960",
+            "bytes": 2808
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff31480",
+            "bytes": 1360
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff31a00",
+            "bytes": 3712
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff32880",
+            "bytes": 87936
+          }
+        ],
+        "image_sha256": "712009026641693eb5194497db05e410cbf2214cb087ae998654549774cfcf31",
+        "image_bytes": 79216,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff20000",
+            "bytes": 60984
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "address": "0x4ff2ee38",
+            "bytes": 6948
+          },
+          {
+            "address": "0x4ff30960",
+            "bytes": 2808
+          },
+          {
+            "address": "0x4ff31480",
+            "bytes": 1360
+          }
+        ],
+        "loader": {
+          "elf_sha256": "cd819e99d3480dbf9303f3b00dd0a32704debbb0eeb84ce84b83f048b07968f5",
+          "allocated": [
+            {
+              "address": "0x4ffaefc0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ffb5fc0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ffb60d0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ffb6120",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ffb612c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ffac2c0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ffac2c0",
+          "gap_bytes": 410304,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 410304
+            },
+            {
+              "name": "stacks",
+              "gap_below": null,
+              "gap_above": 254656
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "emulator",
+          "stack_source_window": {
+            "origin": "0x4ff20000",
+            "end": "0x4ffaefc0"
+          },
+          "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+        }
+      },
+      "artifacts": {
+        "build/native-emulator/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "0c0154cc66c3074a12a4676307c1012d916fcebbd2ab3a08a948c6eb31eec99b"
+        },
+        "build/native-emulator/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "712009026641693eb5194497db05e410cbf2214cb087ae998654549774cfcf31"
+        },
+        "build/native-emulator/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "61d8ad0c81ceec9a9a0666d383d4002c3b7b6e83a9079b1d566694b49b937781"
+        },
+        "build/native-emulator/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "4bc99fb3923b8e70b14bd55432350b27844b0a40f221ef233c3d5a0801dbf0ab"
+        },
+        "build/native-emulator/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        }
+      }
+    },
+    {
+      "profile": "emulator",
+      "mode": "floating",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": true,
+        "riscv_flags": "0x1",
+        "fp_instructions": {
+          "app": 0,
+          "c": 0,
+          "zig": 0,
+          "transfer_helpers": 132
+        },
+        "entry": "0x4ff20000",
+        "elf_sha256": "dcda8828eb608efb4d7da0cff6bb8b838bd7a2e0eadaabafcdc70650df9d912e",
+        "memory": {
+          "profile": "emulator",
+          "origin": "0x4ff20000",
+          "end": "0x4ff48000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff20000",
+              "end": "0x4ff48000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 137408,
+        "primary_static_bytes": 80064,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff338c0",
+          "end": "0x4ff48000",
+          "bytes": 83776,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011d8",
+          "bytes": 4280,
+          "sha256": "9dd29456f4a44033797761fa05481f000fe6f34b77863c9ceef9723352945d76",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_48",
+              "start": "0x40000d00",
+              "end": "0x400011d8"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x400109c0",
+          "bytes": 2464,
+          "fnv1a": 941026165,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4280
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff20000",
+            "bytes": 71080
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff315b0",
+            "bytes": 2808
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff320c0",
+            "bytes": 1360
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff32680",
+            "bytes": 4640
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff338c0",
+            "bytes": 83776
+          }
+        ],
+        "image_sha256": "2678d2cf7c5cae4f511c35d23c39e6626d213ae8decbc917a30169bcb8169b10",
+        "image_bytes": 82368,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff20000",
+            "bytes": 60984
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "address": "0x4ff2ee38",
+            "bytes": 10096
+          },
+          {
+            "address": "0x4ff315b0",
+            "bytes": 2808
+          },
+          {
+            "address": "0x4ff320c0",
+            "bytes": 1360
+          }
+        ],
+        "loader": {
+          "elf_sha256": "cd819e99d3480dbf9303f3b00dd0a32704debbb0eeb84ce84b83f048b07968f5",
+          "allocated": [
+            {
+              "address": "0x4ffaefc0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ffb5fc0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ffb60d0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ffb6120",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ffb612c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ffac2c0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ffac2c0",
+          "gap_bytes": 410304,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 410304
+            },
+            {
+              "name": "stacks",
+              "gap_below": null,
+              "gap_above": 254656
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "emulator",
+          "stack_source_window": {
+            "origin": "0x4ff20000",
+            "end": "0x4ffaefc0"
+          },
+          "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+        }
+      },
+      "artifacts": {
+        "build/native-emulator-floating/nihos-native.elf": {
+          "bytes": 1530904,
+          "sha256": "dcda8828eb608efb4d7da0cff6bb8b838bd7a2e0eadaabafcdc70650df9d912e"
+        },
+        "build/native-emulator-floating/nihos-native.bin": {
+          "bytes": 82368,
+          "sha256": "2678d2cf7c5cae4f511c35d23c39e6626d213ae8decbc917a30169bcb8169b10"
+        },
+        "build/native-emulator-floating/nihos-native-flash.bin": {
+          "bytes": 147904,
+          "sha256": "9b282ee7ff89ee403f9a5b0f0d9ec90f48fab7fa0e7c4922ab15c27904b608df"
+        },
+        "build/native-emulator-floating/image-audit.json": {
+          "bytes": 4660,
+          "sha256": "01f786cdd387877d38648db53c27596c93806a2be8b0c374172c35456aeea631"
+        },
+        "build/native-emulator-floating/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        }
+      }
+    },
+    {
+      "profile": "emulator",
+      "mode": "compiled",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": true,
+        "riscv_flags": "0x3",
+        "fp_instructions": {
+          "app": 120,
+          "c": 14,
+          "zig": 106,
+          "transfer_helpers": 66
+        },
+        "entry": "0x4ff20000",
+        "elf_sha256": "bbdb1978574a4050889ced1f3112f708ec21d3c4f43384692bf5bb273af6b879",
+        "memory": {
+          "profile": "emulator",
+          "origin": "0x4ff20000",
+          "end": "0x4ff48000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff20000",
+              "end": "0x4ff48000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 137664,
+        "primary_static_bytes": 80320,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff339c0",
+          "end": "0x4ff48000",
+          "bytes": 83520,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011ce",
+          "bytes": 4270,
+          "sha256": "b50cd0c3c5ead0ce59e76071e724cc5d02a77140702e3b8443b19cb58dcc25a6",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_50",
+              "start": "0x40000d00",
+              "end": "0x400011ce"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x400109c0",
+          "bytes": 2464,
+          "fnv1a": 941026165,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4270
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff20000",
+            "bytes": 69406
+          },
+          {
+            "name": ".fp_app",
+            "address": "0x4ff30f20",
+            "bytes": 1964
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff316d0",
+            "bytes": 2848
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff32200",
+            "bytes": 1360
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff32780",
+            "bytes": 4640
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff339c0",
+            "bytes": 83520
+          }
+        ],
+        "image_sha256": "06ed7314e8d2e6ca32f0ed1b2cd48c7949bc9f9fea8008ed93f8d5e17a4a9c53",
+        "image_bytes": 82688,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4528
+          },
+          {
+            "address": "0x4ff20000",
+            "bytes": 60992
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "address": "0x4ff2ee40",
+            "bytes": 10380
+          },
+          {
+            "address": "0x4ff316d0",
+            "bytes": 2848
+          },
+          {
+            "address": "0x4ff32200",
+            "bytes": 1360
+          }
+        ],
+        "loader": {
+          "elf_sha256": "cd819e99d3480dbf9303f3b00dd0a32704debbb0eeb84ce84b83f048b07968f5",
+          "allocated": [
+            {
+              "address": "0x4ffaefc0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ffb5fc0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ffb60d0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ffb6120",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ffb612c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ffac2c0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ffac2c0",
+          "gap_bytes": 410304,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 410304
+            },
+            {
+              "name": "stacks",
+              "gap_below": null,
+              "gap_above": 254656
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "emulator",
+          "stack_source_window": {
+            "origin": "0x4ff20000",
+            "end": "0x4ffaefc0"
+          },
+          "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+        }
+      },
+      "artifacts": {
+        "build/native-emulator-compiled/nihos-native.elf": {
+          "bytes": 1556840,
+          "sha256": "bbdb1978574a4050889ced1f3112f708ec21d3c4f43384692bf5bb273af6b879"
+        },
+        "build/native-emulator-compiled/nihos-native.bin": {
+          "bytes": 82688,
+          "sha256": "06ed7314e8d2e6ca32f0ed1b2cd48c7949bc9f9fea8008ed93f8d5e17a4a9c53"
+        },
+        "build/native-emulator-compiled/nihos-native-flash.bin": {
+          "bytes": 148224,
+          "sha256": "43de65940465ee7119646ff01d4a12f750aaa215dfb16d6e0a43edd6ae37ff3e"
+        },
+        "build/native-emulator-compiled/image-audit.json": {
+          "bytes": 4753,
+          "sha256": "0ab114a9c70e0c0f66e20531a409e035262b40f0a34de862e2c4a01e9705c2e4"
+        },
+        "build/native-emulator-compiled/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        }
+      }
+    },
+    {
+      "profile": "emulator",
+      "mode": "sqlite",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": false,
+        "riscv_flags": "0x1",
+        "fp_instructions": {
+          "app": 0,
+          "c": 0,
+          "zig": 0,
+          "transfer_helpers": 0
+        },
+        "entry": "0x4ff20000",
+        "elf_sha256": "d13f699f6db5d62bd6f55b002ef78df82dd2d098fecaa680bc89f2a29b4cc8e0",
+        "memory": {
+          "profile": "emulator",
+          "origin": "0x4ff20000",
+          "end": "0x4ff48000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff20000",
+              "end": "0x4ff48000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 153088,
+        "primary_static_bytes": 95744,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff37600",
+          "end": "0x4ff48000",
+          "bytes": 68096,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011d8",
+          "bytes": 4280,
+          "sha256": "8b3272cf36ebfccf61c9c690e060dd71b2ed5a18d9180301ee66d4a789545b12",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_52",
+              "start": "0x40000d00",
+              "end": "0x400011d8"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x40010b3c",
+          "bytes": 2844,
+          "fnv1a": 2774280164,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4280
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2844
+          },
+          {
+            "name": ".flash.sqlpad",
+            "address": "0x40010b3c",
+            "bytes": 62660
+          },
+          {
+            "name": ".flash.sqltext",
+            "address": "0x40020000",
+            "bytes": 512448
+          },
+          {
+            "name": ".flash.sqlrodata",
+            "address": "0x4009d1c0",
+            "bytes": 54272
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff20000",
+            "bytes": 80174
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff33930",
+            "bytes": 3184
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff345c0",
+            "bytes": 7632
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff36400",
+            "bytes": 4608
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff37600",
+            "bytes": 68096
+          }
+        ],
+        "sqlite": {
+          "pool_quotas": [
+            24,
+            12,
+            64,
+            64,
+            64,
+            4,
+            8,
+            12,
+            8,
+            1
+          ],
+          "text_start": "0x40020000",
+          "text_end": "0x4009d1c0",
+          "rodata_start": "0x4009d1c0",
+          "rodata_end": "0x400aa5c0",
+          "text_bytes": 512448,
+          "rodata_bytes": 54272,
+          "object_manifest_sha256": "793fdc087f49071b96dd7c67381c802ef2f79e98d3090733a2ab3ec54436d686",
+          "text_sha256": "249389a315195e8d68a11d43269d112d34922d1c40c36a27d86b24260fdf18b1",
+          "rodata_sha256": "42ffb7e2c3ca87b17071c63392106556b705a72cacb24c5f3a7fff16a7337b8f",
+          "static_c_stack": {
+            "records": 1435,
+            "maximum_reported_frame_bytes": 768,
+            "largest_frames": [
+              {
+                "address": "0x4002312a",
+                "functions": [
+                  "sqlite3_log"
+                ],
+                "bytes": 768
+              },
+              {
+                "address": "0x400819f8",
+                "functions": [
+                  "whereLoopAddOr"
+                ],
+                "bytes": 736
+              },
+              {
+                "address": "0x400289c0",
+                "functions": [
+                  "sqlite3RunParser"
+                ],
+                "bytes": 704
+              },
+              {
+                "address": "0x40041ab4",
+                "functions": [
+                  "sqlite3SchemaClear"
+                ],
+                "bytes": 592
+              },
+              {
+                "address": "0x40089d26",
+                "functions": [
+                  "getRowTrigger"
+                ],
+                "bytes": 448
+              },
+              {
+                "address": "0x40093daa",
+                "functions": [
+                  "renameTableFunc"
+                ],
+                "bytes": 448
+              },
+              {
+                "address": "0x400937e2",
+                "functions": [
+                  "renameColumnFunc"
+                ],
+                "bytes": 432
+              },
+              {
+                "address": "0x40045308",
+                "functions": [
+                  "balance"
+                ],
+                "bytes": 400
+              },
+              {
+                "address": "0x40094292",
+                "functions": [
+                  "renameTableTest"
+                ],
+                "bytes": 400
+              },
+              {
+                "address": "0x40094680",
+                "functions": [
+                  "renameQuotefixFunc"
+                ],
+                "bytes": 400
+              }
+            ],
+            "recursive_or_Zig_call_graph_bound": false
+          },
+          "padding_bytes": 62660,
+          "image_offset": 131072,
+          "function_count": 1427,
+          "functions_sha256": "f24868a07402203e561f831e55fbf9a4e436834e5918e6a9aa636fa745c40d52",
+          "open_function": {
+            "start": "0x4009c90c",
+            "end": "0x4009cb02"
+          }
+        },
+        "image_sha256": "4e7a0feb7bdc7f187ea2f70651f14e97b00784e61d0deed92e3be7269d1539f1",
+        "image_bytes": 727856,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff20000",
+            "bytes": 60984
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 632224
+          },
+          {
+            "address": "0x4ff2ee38",
+            "bytes": 22376
+          },
+          {
+            "address": "0x4ff345c0",
+            "bytes": 7632
+          }
+        ],
+        "loader": {
+          "elf_sha256": "cd819e99d3480dbf9303f3b00dd0a32704debbb0eeb84ce84b83f048b07968f5",
+          "allocated": [
+            {
+              "address": "0x4ffaefc0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ffb5fc0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ffb60d0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ffb6120",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ffb612c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ffac2c0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ffac2c0",
+          "gap_bytes": 410304,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 410304
+            },
+            {
+              "name": "stacks",
+              "gap_below": null,
+              "gap_above": 254656
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "emulator",
+          "stack_source_window": {
+            "origin": "0x4ff20000",
+            "end": "0x4ffaefc0"
+          },
+          "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+        }
+      },
+      "artifacts": {
+        "build/native-emulator-sqlite/nihos-native.elf": {
+          "bytes": 2362312,
+          "sha256": "d13f699f6db5d62bd6f55b002ef78df82dd2d098fecaa680bc89f2a29b4cc8e0"
+        },
+        "build/native-emulator-sqlite/nihos-native.bin": {
+          "bytes": 727856,
+          "sha256": "4e7a0feb7bdc7f187ea2f70651f14e97b00784e61d0deed92e3be7269d1539f1"
+        },
+        "build/native-emulator-sqlite/nihos-native-flash.bin": {
+          "bytes": 793392,
+          "sha256": "8deed9dad62ca1a76645c8dafb836a239a0ed9615ff2f9bc63c4ddc94068952e"
+        },
+        "build/native-emulator-sqlite/image-audit.json": {
+          "bytes": 147070,
+          "sha256": "2f0bcb912a6e572e658ad50eee9e474dd7c069f1b37bbd3c0c0e3cb4f90cf5a6"
+        },
+        "build/native-emulator-sqlite/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "3c761cf7b65a0a91d5a1e20c1861fc29ad1eaabcdb78ffeecc23c6a84e7fe17a"
+        },
+        "build/native-emulator-sqlite/sqlite-manifest.json": {
+          "bytes": 93417,
+          "sha256": "e021208e1410fc5dca6e1afc05d8f57741ef74ee5b71e1625194c06f25f61386"
+        }
+      }
+    },
+    {
+      "profile": "device",
+      "mode": "integer",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": false,
+        "riscv_flags": "0x1",
+        "fp_instructions": {
+          "app": 0,
+          "c": 0,
+          "zig": 0,
+          "transfer_helpers": 0
+        },
+        "entry": "0x4ff00000",
+        "elf_sha256": "77db1598df06fd4f173f9ae231ecafe12763d70f7bb08022502999439002bbf6",
+        "memory": {
+          "profile": "device",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff00000",
+              "end": "0x4ff28000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 133248,
+        "primary_static_bytes": 75904,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff12880",
+          "end": "0x4ff28000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011d8",
+          "bytes": 4280,
+          "sha256": "cabb4b5d4af6475c932a8e6553d969f27c3a9735373931104924c93f1341236f",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_48",
+              "start": "0x40000d00",
+              "end": "0x400011d8"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x400109c0",
+          "bytes": 2464,
+          "fnv1a": 941026165,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4280
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff00000",
+            "bytes": 67930
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff10960",
+            "bytes": 2808
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff11480",
+            "bytes": 1360
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff11a00",
+            "bytes": 3712
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff12880",
+            "bytes": 87936
+          }
+        ],
+        "image_sha256": "f7b88f15b201ab9c3749da2fb7e65efa997ee17612067ed540e7f5c3fc866338",
+        "image_bytes": 79216,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff00000",
+            "bytes": 60984
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "address": "0x4ff0ee38",
+            "bytes": 6948
+          },
+          {
+            "address": "0x4ff10960",
+            "bytes": 2808
+          },
+          {
+            "address": "0x4ff11480",
+            "bytes": 1360
+          }
+        ],
+        "loader": {
+          "elf_sha256": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+          "allocated": [
+            {
+              "address": "0x4ff2cbd0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ff33bd0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ff33ce0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ff33d30",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ff33d3c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ff2abd0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ff2abd0",
+          "gap_bytes": 11216,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 11216
+            },
+            {
+              "name": "stacks",
+              "gap_below": 176396,
+              "gap_above": null
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "device",
+          "stack_source_window": {
+            "origin": "0x4ff40000",
+            "end": "0x4ffa0000"
+          },
+          "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+        }
+      },
+      "artifacts": {
+        "build/native-device/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "77db1598df06fd4f173f9ae231ecafe12763d70f7bb08022502999439002bbf6"
+        },
+        "build/native-device/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "f7b88f15b201ab9c3749da2fb7e65efa997ee17612067ed540e7f5c3fc866338"
+        },
+        "build/native-device/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "2168f1fcf2753db1c21aab4361f92785d537106c808203783ecb1ed35262bd08"
+        },
+        "build/native-device/image-audit.json": {
+          "bytes": 4652,
+          "sha256": "6f4999d1a47eaaa0e1898672b64b9d8dfb800b70e8e0475d3003867687c1ce4c"
+        },
+        "build/native-device/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "b79ecbcb74477ab077559763d06ba0b2735b1b1ccbe192052b374efc7fe12e8b"
+        }
+      }
+    },
+    {
+      "profile": "device",
+      "mode": "floating",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": true,
+        "riscv_flags": "0x1",
+        "fp_instructions": {
+          "app": 0,
+          "c": 0,
+          "zig": 0,
+          "transfer_helpers": 132
+        },
+        "entry": "0x4ff00000",
+        "elf_sha256": "e7b2e75b109dbb73e39252b09f0ce24fe0470f6dbd7337ab7101bd47ed223640",
+        "memory": {
+          "profile": "device",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff00000",
+              "end": "0x4ff28000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 137408,
+        "primary_static_bytes": 80064,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff138c0",
+          "end": "0x4ff28000",
+          "bytes": 83776,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011d8",
+          "bytes": 4280,
+          "sha256": "57e71289271c1b012f64aaf8587937848070e040988fe79a6fc7a516e21af885",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_48",
+              "start": "0x40000d00",
+              "end": "0x400011d8"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x400109c0",
+          "bytes": 2464,
+          "fnv1a": 941026165,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4280
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff00000",
+            "bytes": 71080
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff115b0",
+            "bytes": 2808
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff120c0",
+            "bytes": 1360
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff12680",
+            "bytes": 4640
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff138c0",
+            "bytes": 83776
+          }
+        ],
+        "image_sha256": "2b3b6d3721a805ad4820bbf538a61a445b8aa85632a2582fba63e7d91328d79f",
+        "image_bytes": 82368,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff00000",
+            "bytes": 60984
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "address": "0x4ff0ee38",
+            "bytes": 10096
+          },
+          {
+            "address": "0x4ff115b0",
+            "bytes": 2808
+          },
+          {
+            "address": "0x4ff120c0",
+            "bytes": 1360
+          }
+        ],
+        "loader": {
+          "elf_sha256": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+          "allocated": [
+            {
+              "address": "0x4ff2cbd0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ff33bd0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ff33ce0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ff33d30",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ff33d3c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ff2abd0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ff2abd0",
+          "gap_bytes": 11216,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 11216
+            },
+            {
+              "name": "stacks",
+              "gap_below": 176396,
+              "gap_above": null
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "device",
+          "stack_source_window": {
+            "origin": "0x4ff40000",
+            "end": "0x4ffa0000"
+          },
+          "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+        }
+      },
+      "artifacts": {
+        "build/native-device-floating/nihos-native.elf": {
+          "bytes": 1530900,
+          "sha256": "e7b2e75b109dbb73e39252b09f0ce24fe0470f6dbd7337ab7101bd47ed223640"
+        },
+        "build/native-device-floating/nihos-native.bin": {
+          "bytes": 82368,
+          "sha256": "2b3b6d3721a805ad4820bbf538a61a445b8aa85632a2582fba63e7d91328d79f"
+        },
+        "build/native-device-floating/nihos-native-flash.bin": {
+          "bytes": 147904,
+          "sha256": "938b3474ad304d0e6ad62d542dfd8de37f83527789341aec64f4f86b8473c1ce"
+        },
+        "build/native-device-floating/image-audit.json": {
+          "bytes": 4654,
+          "sha256": "ee24557c0e1a8cce69073124efdade908059f12883e0c98360d6a68e1eb6930e"
+        },
+        "build/native-device-floating/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "b79ecbcb74477ab077559763d06ba0b2735b1b1ccbe192052b374efc7fe12e8b"
+        }
+      }
+    },
+    {
+      "profile": "device",
+      "mode": "compiled",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": true,
+        "riscv_flags": "0x3",
+        "fp_instructions": {
+          "app": 120,
+          "c": 14,
+          "zig": 106,
+          "transfer_helpers": 66
+        },
+        "entry": "0x4ff00000",
+        "elf_sha256": "1a057a194800d70d5cd986a0fe33552b51adc8166f9ed2e6bdabcf0c4d337276",
+        "memory": {
+          "profile": "device",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff00000",
+              "end": "0x4ff28000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 137664,
+        "primary_static_bytes": 80320,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff139c0",
+          "end": "0x4ff28000",
+          "bytes": 83520,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011ce",
+          "bytes": 4270,
+          "sha256": "54c82f032316b98b7b95d65f221d3b94794c826512d8df057f9605c2beb183aa",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_50",
+              "start": "0x40000d00",
+              "end": "0x400011ce"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x400109c0",
+          "bytes": 2464,
+          "fnv1a": 941026165,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4270
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff00000",
+            "bytes": 69406
+          },
+          {
+            "name": ".fp_app",
+            "address": "0x4ff10f20",
+            "bytes": 1964
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff116d0",
+            "bytes": 2848
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff12200",
+            "bytes": 1360
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff12780",
+            "bytes": 4640
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff139c0",
+            "bytes": 83520
+          }
+        ],
+        "image_sha256": "3eff71040ec67cc767eb239aec6b0efbc81ff281978815c46eb7c7c58ed2866e",
+        "image_bytes": 82688,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4528
+          },
+          {
+            "address": "0x4ff00000",
+            "bytes": 60992
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 2464
+          },
+          {
+            "address": "0x4ff0ee40",
+            "bytes": 10380
+          },
+          {
+            "address": "0x4ff116d0",
+            "bytes": 2848
+          },
+          {
+            "address": "0x4ff12200",
+            "bytes": 1360
+          }
+        ],
+        "loader": {
+          "elf_sha256": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+          "allocated": [
+            {
+              "address": "0x4ff2cbd0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ff33bd0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ff33ce0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ff33d30",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ff33d3c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ff2abd0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ff2abd0",
+          "gap_bytes": 11216,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 11216
+            },
+            {
+              "name": "stacks",
+              "gap_below": 176396,
+              "gap_above": null
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "device",
+          "stack_source_window": {
+            "origin": "0x4ff40000",
+            "end": "0x4ffa0000"
+          },
+          "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+        }
+      },
+      "artifacts": {
+        "build/native-device-compiled/nihos-native.elf": {
+          "bytes": 1556840,
+          "sha256": "1a057a194800d70d5cd986a0fe33552b51adc8166f9ed2e6bdabcf0c4d337276"
+        },
+        "build/native-device-compiled/nihos-native.bin": {
+          "bytes": 82688,
+          "sha256": "3eff71040ec67cc767eb239aec6b0efbc81ff281978815c46eb7c7c58ed2866e"
+        },
+        "build/native-device-compiled/nihos-native-flash.bin": {
+          "bytes": 148224,
+          "sha256": "db1ded1f9c5383db6355ed7b607c2ad1faa60c5c3ef9ef28a347f8e72c2f545e"
+        },
+        "build/native-device-compiled/image-audit.json": {
+          "bytes": 4747,
+          "sha256": "d8cd72b5d0200324baa7d5d09405ef8b6dc8c3f7b22b1ee1ccfd1659573b73eb"
+        },
+        "build/native-device-compiled/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "b79ecbcb74477ab077559763d06ba0b2735b1b1ccbe192052b374efc7fe12e8b"
+        }
+      }
+    },
+    {
+      "profile": "device",
+      "mode": "sqlite",
+      "audit": {
+        "schema": 1,
+        "backend": "native-sram",
+        "rtos_linked": false,
+        "fp_assembly_linked": false,
+        "riscv_flags": "0x1",
+        "fp_instructions": {
+          "app": 0,
+          "c": 0,
+          "zig": 0,
+          "transfer_helpers": 0
+        },
+        "entry": "0x4ff00000",
+        "elf_sha256": "a68a2bbd702ce4a6fc71f712210ce2461a0cc6b36373407e2ebe14c81baa2853",
+        "memory": {
+          "profile": "device",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840,
+          "total_bytes": 221184,
+          "regions": [
+            {
+              "name": "resident",
+              "origin": "0x4ff00000",
+              "end": "0x4ff28000",
+              "bytes": 163840
+            },
+            {
+              "name": "stacks",
+              "origin": "0x4ff60000",
+              "end": "0x4ff6e000",
+              "bytes": 57344
+            }
+          ]
+        },
+        "sram_reserved_bytes": 153088,
+        "primary_static_bytes": 95744,
+        "stacks": {
+          "start": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344,
+          "bootstrap_bytes_per_hart": 8192,
+          "irq_bytes_per_hart": 8192,
+          "worker_bytes": 4096,
+          "workers_per_hart": 3,
+          "worker_start": "0x4ff68000"
+        },
+        "heap": {
+          "start": "0x4ff17600",
+          "end": "0x4ff28000",
+          "bytes": 68096,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        },
+        "flash_boot": {
+          "start": "0x40000120",
+          "end": "0x400011d8",
+          "bytes": 4280,
+          "sha256": "160b7a7a8e531cd18f28baab7691fe253c66aa9c692e025b3acfceb6721628d9",
+          "functions": {
+            "probe": {
+              "name": "psram.probe",
+              "start": "0x40000120",
+              "end": "0x40000d00"
+            },
+            "mapping": {
+              "name": "psram_memory.prepare__func_52",
+              "start": "0x40000d00",
+              "end": "0x400011d8"
+            }
+          },
+          "image_offset": 288
+        },
+        "flash_records": {
+          "start": "0x40010020",
+          "end": "0x40010b3c",
+          "bytes": 2844,
+          "fnv1a": 2774280164,
+          "executable": false,
+          "writable": false,
+          "image_offset": 65568
+        },
+        "rom_symbols": {
+          "nih_rom_putc": "0x4fc00054",
+          "nih_rom_set_cpu1_entry": "0x4fc000a8",
+          "nih_rom_l2_line_size": "0x4fc003cc",
+          "nih_rom_l2_enable": "0x4fc00504",
+          "nih_rom_cache_invalidate": "0x4fc003e4",
+          "nih_rom_cache_writeback": "0x4fc003f4"
+        },
+        "sections": [
+          {
+            "name": ".flash.appdesc",
+            "address": "0x40000020",
+            "bytes": 256
+          },
+          {
+            "name": ".flash.boot",
+            "address": "0x40000120",
+            "bytes": 4280
+          },
+          {
+            "name": ".flash.rodata",
+            "address": "0x40010020",
+            "bytes": 2844
+          },
+          {
+            "name": ".flash.sqlpad",
+            "address": "0x40010b3c",
+            "bytes": 62660
+          },
+          {
+            "name": ".flash.sqltext",
+            "address": "0x40020000",
+            "bytes": 512448
+          },
+          {
+            "name": ".flash.sqlrodata",
+            "address": "0x4009d1c0",
+            "bytes": 54272
+          },
+          {
+            "name": ".text",
+            "address": "0x4ff00000",
+            "bytes": 80174
+          },
+          {
+            "name": ".rodata",
+            "address": "0x4ff13930",
+            "bytes": 3184
+          },
+          {
+            "name": ".data",
+            "address": "0x4ff145c0",
+            "bytes": 7632
+          },
+          {
+            "name": ".bss",
+            "address": "0x4ff16400",
+            "bytes": 4608
+          },
+          {
+            "name": ".stacks",
+            "address": "0x4ff60000",
+            "bytes": 57344
+          },
+          {
+            "name": ".heap",
+            "address": "0x4ff17600",
+            "bytes": 68096
+          }
+        ],
+        "sqlite": {
+          "pool_quotas": [
+            24,
+            12,
+            64,
+            64,
+            64,
+            4,
+            8,
+            12,
+            8,
+            1
+          ],
+          "text_start": "0x40020000",
+          "text_end": "0x4009d1c0",
+          "rodata_start": "0x4009d1c0",
+          "rodata_end": "0x400aa5c0",
+          "text_bytes": 512448,
+          "rodata_bytes": 54272,
+          "object_manifest_sha256": "793fdc087f49071b96dd7c67381c802ef2f79e98d3090733a2ab3ec54436d686",
+          "text_sha256": "3b42c694e6333ec54b70732720a6f18fe56ed53eee16cbc4b8e73c1009dcf955",
+          "rodata_sha256": "42ffb7e2c3ca87b17071c63392106556b705a72cacb24c5f3a7fff16a7337b8f",
+          "static_c_stack": {
+            "records": 1435,
+            "maximum_reported_frame_bytes": 768,
+            "largest_frames": [
+              {
+                "address": "0x4002312a",
+                "functions": [
+                  "sqlite3_log"
+                ],
+                "bytes": 768
+              },
+              {
+                "address": "0x400819f8",
+                "functions": [
+                  "whereLoopAddOr"
+                ],
+                "bytes": 736
+              },
+              {
+                "address": "0x400289c0",
+                "functions": [
+                  "sqlite3RunParser"
+                ],
+                "bytes": 704
+              },
+              {
+                "address": "0x40041ab4",
+                "functions": [
+                  "sqlite3SchemaClear"
+                ],
+                "bytes": 592
+              },
+              {
+                "address": "0x40089d26",
+                "functions": [
+                  "getRowTrigger"
+                ],
+                "bytes": 448
+              },
+              {
+                "address": "0x40093daa",
+                "functions": [
+                  "renameTableFunc"
+                ],
+                "bytes": 448
+              },
+              {
+                "address": "0x400937e2",
+                "functions": [
+                  "renameColumnFunc"
+                ],
+                "bytes": 432
+              },
+              {
+                "address": "0x40045308",
+                "functions": [
+                  "balance"
+                ],
+                "bytes": 400
+              },
+              {
+                "address": "0x40094292",
+                "functions": [
+                  "renameTableTest"
+                ],
+                "bytes": 400
+              },
+              {
+                "address": "0x40094680",
+                "functions": [
+                  "renameQuotefixFunc"
+                ],
+                "bytes": 400
+              }
+            ],
+            "recursive_or_Zig_call_graph_bound": false
+          },
+          "padding_bytes": 62660,
+          "image_offset": 131072,
+          "function_count": 1427,
+          "functions_sha256": "f24868a07402203e561f831e55fbf9a4e436834e5918e6a9aa636fa745c40d52",
+          "open_function": {
+            "start": "0x4009c90c",
+            "end": "0x4009cb02"
+          }
+        },
+        "image_sha256": "4a61deb5f059c45ac042110326bad6a8b134fda478461c59cc8e7c3831a836d0",
+        "image_bytes": 727856,
+        "image_segments": [
+          {
+            "address": "0x40000020",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff00000",
+            "bytes": 60984
+          },
+          {
+            "address": "0x40010020",
+            "bytes": 632224
+          },
+          {
+            "address": "0x4ff0ee38",
+            "bytes": 22376
+          },
+          {
+            "address": "0x4ff145c0",
+            "bytes": 7632
+          }
+        ],
+        "loader": {
+          "elf_sha256": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+          "allocated": [
+            {
+              "address": "0x4ff2cbd0",
+              "bytes": 12498
+            },
+            {
+              "address": "0x4ff33bd0",
+              "bytes": 272
+            },
+            {
+              "address": "0x4ff33ce0",
+              "bytes": 80
+            },
+            {
+              "address": "0x4ff33d30",
+              "bytes": 12
+            },
+            {
+              "address": "0x4ff33d3c",
+              "bytes": 4536
+            },
+            {
+              "address": "0x4ff2abd0",
+              "bytes": 3010
+            }
+          ],
+          "nearest_higher_address": "0x4ff2abd0",
+          "gap_bytes": 11216,
+          "regions_checked": [
+            {
+              "name": "resident",
+              "gap_below": null,
+              "gap_above": 11216
+            },
+            {
+              "name": "stacks",
+              "gap_below": 176396,
+              "gap_above": null
+            }
+          ]
+        },
+        "loader_config": {
+          "l2_bytes": 131072,
+          "line_bytes": 64,
+          "profile": "device",
+          "stack_source_window": {
+            "origin": "0x4ff40000",
+            "end": "0x4ffa0000"
+          },
+          "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+        }
+      },
+      "artifacts": {
+        "build/native-device-sqlite/nihos-native.elf": {
+          "bytes": 2362312,
+          "sha256": "a68a2bbd702ce4a6fc71f712210ce2461a0cc6b36373407e2ebe14c81baa2853"
+        },
+        "build/native-device-sqlite/nihos-native.bin": {
+          "bytes": 727856,
+          "sha256": "4a61deb5f059c45ac042110326bad6a8b134fda478461c59cc8e7c3831a836d0"
+        },
+        "build/native-device-sqlite/nihos-native-flash.bin": {
+          "bytes": 793392,
+          "sha256": "f1f081d707f8c5106a9ade12c214511630623f61d0abe809df4e757439179c62"
+        },
+        "build/native-device-sqlite/image-audit.json": {
+          "bytes": 147064,
+          "sha256": "5a4173b0c6973d84ea7fc3d9eca28aab6ddedd04729877e4c179444dc65eecc2"
+        },
+        "build/native-device-sqlite/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "df462570265bb89f680f2c1785241923ce75ecf47a62c48b7cf8b6db77009bed"
+        },
+        "build/native-device-sqlite/sqlite-manifest.json": {
+          "bytes": 93417,
+          "sha256": "e021208e1410fc5dca6e1afc05d8f57741ef74ee5b71e1625194c06f25f61386"
+        }
+      }
+    }
+  ],
+  "emulator": [
+    {
+      "mode": "integer",
+      "psram": "0",
+      "audit_summary": {
+        "elf_sha256": "a2b5c90877d2cfe54d7f9194a6738d3b249dfef0c2fa44f07e40e41583c2ab2e",
+        "image_sha256": "6a214088ecac3dcf1b2644875dffca4d453a0606fa1dc3f3ebd9dc396ec645ec",
+        "image_bytes": 79216,
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 8555732,
+        "cpu1_progress": 6498507,
+        "cpu0_interrupts": 903,
+        "cpu1_interrupts": 902,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator/psram-0/emulator.log": {
+          "bytes": 10386,
+          "sha256": "ded546bbecb90bc3c60b4766e5c4eb8a8e4cb13afabb087774c9f43a10e6577e"
+        },
+        "build/native-emulator/psram-0/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "d516597004822cf19dd8009a61d7a916ba9851f82128148ce0fa39e8b2758553"
+        },
+        "build/native-emulator/psram-0/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator/psram-0/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "c986dc7051c7369b5596c7d8b22d9a7d55f68a3ce151e65a70e7d473d2415d21"
+        },
+        "build/native-emulator/psram-0/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "6a214088ecac3dcf1b2644875dffca4d453a0606fa1dc3f3ebd9dc396ec645ec"
+        },
+        "build/native-emulator/psram-0/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "a2b5c90877d2cfe54d7f9194a6738d3b249dfef0c2fa44f07e40e41583c2ab2e"
+        },
+        "build/native-emulator/psram-0/smoke-report.json": {
+          "bytes": 7139,
+          "sha256": "6471107b52f14dcb7d6359b0ef82b64f9b688f675c05a2483529a27f2d124ac0"
+        }
+      }
+    },
+    {
+      "mode": "integer",
+      "psram": "4M",
+      "audit_summary": {
+        "elf_sha256": "c75ce9f8b52b93fd67df0d574877124f950ba176cdd8aace830e99f5bcd94c14",
+        "image_sha256": "4185afc6c51e4553e9d39d34ad16a7f9da532d628515f974199e60d357b480d6",
+        "image_bytes": 79216,
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4235314,
+        "cpu1_progress": 2194326,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator/psram-4M/emulator.log": {
+          "bytes": 10386,
+          "sha256": "182c80e016bba2b9054a1db586d96804868f731c932de76a2762783f1a7b7be1"
+        },
+        "build/native-emulator/psram-4M/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "ca759651570e3b2722e8d8da91e0b2b3e266ea0164e33ff8accf2a977e3d1b8d"
+        },
+        "build/native-emulator/psram-4M/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator/psram-4M/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "0411123611229d3082c4f6122cbbc51cad393ce0a7fd056c8b32f9cddd9026d8"
+        },
+        "build/native-emulator/psram-4M/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "4185afc6c51e4553e9d39d34ad16a7f9da532d628515f974199e60d357b480d6"
+        },
+        "build/native-emulator/psram-4M/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "c75ce9f8b52b93fd67df0d574877124f950ba176cdd8aace830e99f5bcd94c14"
+        },
+        "build/native-emulator/psram-4M/smoke-report.json": {
+          "bytes": 7406,
+          "sha256": "6c0d40435e8bb73a226317a28a49ee600e1803563377321f964fa2e79db608a2"
+        }
+      }
+    },
+    {
+      "mode": "integer",
+      "psram": "8M",
+      "audit_summary": {
+        "elf_sha256": "a323b5d34dd002132a77f97f61b82fa056332876978783a18bbe8288042b594e",
+        "image_sha256": "083a1244d0c254f53e564b2d25857420abd03b8362119db9531346c529a9081c",
+        "image_bytes": 79216,
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4225903,
+        "cpu1_progress": 2185053,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 899,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator/psram-8M/emulator.log": {
+          "bytes": 10386,
+          "sha256": "a64956d0b8dad8a9dde00308ae901df581cf7811987e0b008220fef217fdc8e8"
+        },
+        "build/native-emulator/psram-8M/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "691be0c77c5da1a11fc4ea453064c1716e16c966f9297f9d13a1daaa3c98458f"
+        },
+        "build/native-emulator/psram-8M/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator/psram-8M/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "194cbd0e8e1d4fda84e90eb88ebf7af6aac1c6a91a8a2073a90cdccdd7fcfada"
+        },
+        "build/native-emulator/psram-8M/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "083a1244d0c254f53e564b2d25857420abd03b8362119db9531346c529a9081c"
+        },
+        "build/native-emulator/psram-8M/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "a323b5d34dd002132a77f97f61b82fa056332876978783a18bbe8288042b594e"
+        },
+        "build/native-emulator/psram-8M/smoke-report.json": {
+          "bytes": 7408,
+          "sha256": "826ae8befe856ea3c5a8e06d53c1808ceb005223b04740fe8071db5e6ca6f4f2"
+        }
+      }
+    },
+    {
+      "mode": "integer",
+      "psram": "16M",
+      "audit_summary": {
+        "elf_sha256": "a2c935c40799a70f12b5b16ce5b9d9d6a578776c07f28c4e262585694b8aab4b",
+        "image_sha256": "66cd069dfac5fcdd7c3fdee5bea1e8f20c1c6f357319c3175b800e0a975b275e",
+        "image_bytes": 79216,
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4216949,
+        "cpu1_progress": 2176041,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator/psram-16M/emulator.log": {
+          "bytes": 10386,
+          "sha256": "f5387ce27ac8d0541f60179ca615080d04bbe8fc83aed8df2d5bdc519edd3cc2"
+        },
+        "build/native-emulator/psram-16M/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "32d377144475b7cde6af40b47ae3f3bc532d986e960537c19e6462d0d444ef7a"
+        },
+        "build/native-emulator/psram-16M/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator/psram-16M/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "dcf0014601a8f5ec53486344459e2c3010229b9361331c6150e5d152e17ca9e1"
+        },
+        "build/native-emulator/psram-16M/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "66cd069dfac5fcdd7c3fdee5bea1e8f20c1c6f357319c3175b800e0a975b275e"
+        },
+        "build/native-emulator/psram-16M/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "a2c935c40799a70f12b5b16ce5b9d9d6a578776c07f28c4e262585694b8aab4b"
+        },
+        "build/native-emulator/psram-16M/smoke-report.json": {
+          "bytes": 7413,
+          "sha256": "694255071a0f5417c6c18452e122f6714c064515692127eb33dd8f1fdae479b6"
+        }
+      }
+    },
+    {
+      "mode": "integer",
+      "psram": "32M",
+      "audit_summary": {
+        "elf_sha256": "425f14f4728c5ceef3f2361f6126c229d5d4844fb6f8a63fe0c7dd3d3cdcd60b",
+        "image_sha256": "e787ea306e3a2d025289c7b05c24bebec6ec73e37e69359589fde1b29ee6f31b",
+        "image_bytes": 79216,
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4207711,
+        "cpu1_progress": 2167001,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator/psram-32M/emulator.log": {
+          "bytes": 10386,
+          "sha256": "f102898c264bae0223582711283ee29c408fc1ed2ec1a29df0fc8958db1860b5"
+        },
+        "build/native-emulator/psram-32M/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "e38126d2b12c0c7c0a55cb2239a7bdac0302b2629ea07946be586f64563a39bc"
+        },
+        "build/native-emulator/psram-32M/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator/psram-32M/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "8d9085adec79550c2a407526332112ef85203db5cf0579858361fe00346b247c"
+        },
+        "build/native-emulator/psram-32M/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "e787ea306e3a2d025289c7b05c24bebec6ec73e37e69359589fde1b29ee6f31b"
+        },
+        "build/native-emulator/psram-32M/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "425f14f4728c5ceef3f2361f6126c229d5d4844fb6f8a63fe0c7dd3d3cdcd60b"
+        },
+        "build/native-emulator/psram-32M/smoke-report.json": {
+          "bytes": 7421,
+          "sha256": "a38b754b87afb898ee8ba1ec9b86a28e27e6c669b49aa1643fdb2cc554a8c295"
+        }
+      }
+    },
+    {
+      "mode": "integer",
+      "psram": "64M",
+      "audit_summary": {
+        "elf_sha256": "0c0154cc66c3074a12a4676307c1012d916fcebbd2ab3a08a948c6eb31eec99b",
+        "image_sha256": "712009026641693eb5194497db05e410cbf2214cb087ae998654549774cfcf31",
+        "image_bytes": 79216,
+        "heap": {
+          "start": "0x4ff32880",
+          "end": "0x4ff48000",
+          "bytes": 87936,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4198917,
+        "cpu1_progress": 2158444,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator/psram-64M/emulator.log": {
+          "bytes": 10386,
+          "sha256": "0ade099fab019188bfc8acb9e82f03630ee993a873c004731431a689701e004b"
+        },
+        "build/native-emulator/psram-64M/image-audit.json": {
+          "bytes": 4658,
+          "sha256": "4bc99fb3923b8e70b14bd55432350b27844b0a40f221ef233c3d5a0801dbf0ab"
+        },
+        "build/native-emulator/psram-64M/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator/psram-64M/nihos-native-flash.bin": {
+          "bytes": 144752,
+          "sha256": "61d8ad0c81ceec9a9a0666d383d4002c3b7b6e83a9079b1d566694b49b937781"
+        },
+        "build/native-emulator/psram-64M/nihos-native.bin": {
+          "bytes": 79216,
+          "sha256": "712009026641693eb5194497db05e410cbf2214cb087ae998654549774cfcf31"
+        },
+        "build/native-emulator/psram-64M/nihos-native.elf": {
+          "bytes": 1512832,
+          "sha256": "0c0154cc66c3074a12a4676307c1012d916fcebbd2ab3a08a948c6eb31eec99b"
+        },
+        "build/native-emulator/psram-64M/smoke-report.json": {
+          "bytes": 7423,
+          "sha256": "2fee2918d5308c928093038eb0fe45a4a76d17ea445abc7c1aff576b1dfa319e"
+        }
+      }
+    },
+    {
+      "mode": "floating",
+      "psram": "0",
+      "audit_summary": {
+        "elf_sha256": "dcda8828eb608efb4d7da0cff6bb8b838bd7a2e0eadaabafcdc70650df9d912e",
+        "image_sha256": "2678d2cf7c5cae4f511c35d23c39e6626d213ae8decbc917a30169bcb8169b10",
+        "image_bytes": 82368,
+        "heap": {
+          "start": "0x4ff338c0",
+          "end": "0x4ff48000",
+          "bytes": 83776,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 6023425,
+        "cpu1_progress": 3966949,
+        "cpu0_interrupts": 903,
+        "cpu1_interrupts": 902,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator-floating/psram-0/emulator.log": {
+          "bytes": 10386,
+          "sha256": "ce121f4a71a84b2cd9e5f2595d1e6e452b09e1b42dc3669ea79270115567e110"
+        },
+        "build/native-emulator-floating/psram-0/image-audit.json": {
+          "bytes": 4660,
+          "sha256": "01f786cdd387877d38648db53c27596c93806a2be8b0c374172c35456aeea631"
+        },
+        "build/native-emulator-floating/psram-0/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator-floating/psram-0/nihos-native-flash.bin": {
+          "bytes": 147904,
+          "sha256": "9b282ee7ff89ee403f9a5b0f0d9ec90f48fab7fa0e7c4922ab15c27904b608df"
+        },
+        "build/native-emulator-floating/psram-0/nihos-native.bin": {
+          "bytes": 82368,
+          "sha256": "2678d2cf7c5cae4f511c35d23c39e6626d213ae8decbc917a30169bcb8169b10"
+        },
+        "build/native-emulator-floating/psram-0/nihos-native.elf": {
+          "bytes": 1530904,
+          "sha256": "dcda8828eb608efb4d7da0cff6bb8b838bd7a2e0eadaabafcdc70650df9d912e"
+        },
+        "build/native-emulator-floating/psram-0/smoke-report.json": {
+          "bytes": 7182,
+          "sha256": "a6686c83d49a55ffc0454d109d46d044757f022c26e578940859a60d6a02b6ca"
+        }
+      }
+    },
+    {
+      "mode": "compiled",
+      "psram": "0",
+      "audit_summary": {
+        "elf_sha256": "10122a3158a6bf925f0724ddf42ecf8e5f49524a579c50fffc7e5ccf1c76f96c",
+        "image_sha256": "4cbd349ec55eb1cde6a8a89ef935d56fe9585050168cae6fe83fcf6c78b6e3de",
+        "image_bytes": 82688,
+        "heap": {
+          "start": "0x4ff339c0",
+          "end": "0x4ff48000",
+          "bytes": 83520,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4738536,
+        "cpu1_progress": 2689130,
+        "cpu0_interrupts": 900,
+        "cpu1_interrupts": 899,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator-compiled/psram-0/emulator.log": {
+          "bytes": 10386,
+          "sha256": "93c0fc4bebfb7b8db7fce6fb68166db71c10edfa5b39bb5c58f2139fcee79639"
+        },
+        "build/native-emulator-compiled/psram-0/image-audit.json": {
+          "bytes": 4753,
+          "sha256": "e59e10a05a50b18b47a7228fa13cf825b8030cc6cede45492222bd1e0b9b1fe6"
+        },
+        "build/native-emulator-compiled/psram-0/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator-compiled/psram-0/nihos-native-flash.bin": {
+          "bytes": 148224,
+          "sha256": "26172259232342a087c65785d58100c9c6ff23798a0b8d89377bab32f72016d1"
+        },
+        "build/native-emulator-compiled/psram-0/nihos-native.bin": {
+          "bytes": 82688,
+          "sha256": "4cbd349ec55eb1cde6a8a89ef935d56fe9585050168cae6fe83fcf6c78b6e3de"
+        },
+        "build/native-emulator-compiled/psram-0/nihos-native.elf": {
+          "bytes": 1556840,
+          "sha256": "10122a3158a6bf925f0724ddf42ecf8e5f49524a579c50fffc7e5ccf1c76f96c"
+        },
+        "build/native-emulator-compiled/psram-0/smoke-report.json": {
+          "bytes": 7174,
+          "sha256": "c11af1c165595370bbd6f83521003ac9785edbcaa1abe1b92ff5435914447cdc"
+        }
+      }
+    },
+    {
+      "mode": "compiled",
+      "psram": "32M",
+      "audit_summary": {
+        "elf_sha256": "bbdb1978574a4050889ced1f3112f708ec21d3c4f43384692bf5bb273af6b879",
+        "image_sha256": "06ed7314e8d2e6ca32f0ed1b2cd48c7949bc9f9fea8008ed93f8d5e17a4a9c53",
+        "image_bytes": 82688,
+        "heap": {
+          "start": "0x4ff339c0",
+          "end": "0x4ff48000",
+          "bytes": 83520,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 3930269,
+        "cpu1_progress": 1889387,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": null
+      },
+      "artifacts": {
+        "build/native-emulator-compiled/psram-32M/emulator.log": {
+          "bytes": 10386,
+          "sha256": "7b44ec75844bda43744e4271354b90e6405b4cf45b29b57dfe3ff1ad7e3cd01a"
+        },
+        "build/native-emulator-compiled/psram-32M/image-audit.json": {
+          "bytes": 4753,
+          "sha256": "0ab114a9c70e0c0f66e20531a409e035262b40f0a34de862e2c4a01e9705c2e4"
+        },
+        "build/native-emulator-compiled/psram-32M/native-layout.ld": {
+          "bytes": 3011,
+          "sha256": "df4724660e4bba31fe139e1f79c8fad811974608a8722255d7e512ec0503998b"
+        },
+        "build/native-emulator-compiled/psram-32M/nihos-native-flash.bin": {
+          "bytes": 148224,
+          "sha256": "43de65940465ee7119646ff01d4a12f750aaa215dfb16d6e0a43edd6ae37ff3e"
+        },
+        "build/native-emulator-compiled/psram-32M/nihos-native.bin": {
+          "bytes": 82688,
+          "sha256": "06ed7314e8d2e6ca32f0ed1b2cd48c7949bc9f9fea8008ed93f8d5e17a4a9c53"
+        },
+        "build/native-emulator-compiled/psram-32M/nihos-native.elf": {
+          "bytes": 1556840,
+          "sha256": "bbdb1978574a4050889ced1f3112f708ec21d3c4f43384692bf5bb273af6b879"
+        },
+        "build/native-emulator-compiled/psram-32M/smoke-report.json": {
+          "bytes": 7460,
+          "sha256": "b582ca64dabaea0b1570b97e0ffe93f9a7a6b5dcbc48894a9b4726e978dbbf57"
+        }
+      }
+    },
+    {
+      "mode": "sqlite",
+      "psram": "0",
+      "audit_summary": {
+        "elf_sha256": "3f62ad33beddb16f01694784096d9c6c5e227cc095d3921027012ca2dee9e574",
+        "image_sha256": "00ba0620af468a8900cebca8e64e685eb9d17f95d58f95a2c558b2ad8e252bff",
+        "image_bytes": 727856,
+        "heap": {
+          "start": "0x4ff37600",
+          "end": "0x4ff48000",
+          "bytes": 68096,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 8555732,
+        "cpu1_progress": 6498490,
+        "cpu0_interrupts": 903,
+        "cpu1_interrupts": 902,
+        "sqlite": {
+          "status": 0,
+          "owner": 0,
+          "sessions": 0,
+          "queries": 0,
+          "open_pc": 0,
+          "text_start": 1073872896,
+          "text_end": 1074385344,
+          "rodata_start": 1074385344,
+          "rodata_end": 1074439616,
+          "heap_before": 0,
+          "heap_after": 0,
+          "stack_low": 0,
+          "stack_high": 0,
+          "painted_to": 0,
+          "observed_used": 0,
+          "mie": 0,
+          "class_peaks": {
+            "c8": 0,
+            "c16": 0,
+            "c32": 0,
+            "c64": 0,
+            "c128": 0,
+            "c256": 0,
+            "c512": 0,
+            "c1024": 0,
+            "c2048": 0,
+            "c4096": 0
+          }
+        }
+      },
+      "artifacts": {
+        "build/native-emulator-sqlite/psram-0/emulator.log": {
+          "bytes": 10909,
+          "sha256": "6561e029520509bd3c3a583d1013a7449eb603e03960f930ad638777f604398a"
+        },
+        "build/native-emulator-sqlite/psram-0/image-audit.json": {
+          "bytes": 147070,
+          "sha256": "4ab83aa28bd6958e3163d49106b05260f0ecf56ccdbdf6cab03c6ef10047e64a"
+        },
+        "build/native-emulator-sqlite/psram-0/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "3c761cf7b65a0a91d5a1e20c1861fc29ad1eaabcdb78ffeecc23c6a84e7fe17a"
+        },
+        "build/native-emulator-sqlite/psram-0/nihos-native-flash.bin": {
+          "bytes": 793392,
+          "sha256": "e69d035cb05872764c4ddacc12f26d587ac78959d9117779e023ae612abae306"
+        },
+        "build/native-emulator-sqlite/psram-0/nihos-native.bin": {
+          "bytes": 727856,
+          "sha256": "00ba0620af468a8900cebca8e64e685eb9d17f95d58f95a2c558b2ad8e252bff"
+        },
+        "build/native-emulator-sqlite/psram-0/nihos-native.elf": {
+          "bytes": 2362312,
+          "sha256": "3f62ad33beddb16f01694784096d9c6c5e227cc095d3921027012ca2dee9e574"
+        },
+        "build/native-emulator-sqlite/psram-0/smoke-report.json": {
+          "bytes": 7688,
+          "sha256": "c25a2bd6741ff10a37d0e727b6f870f4e5ba977efc033ab7cb9d371cebe6ef58"
+        },
+        "build/native-emulator-sqlite/psram-0/sqlite-manifest.json": {
+          "bytes": 93417,
+          "sha256": "e021208e1410fc5dca6e1afc05d8f57741ef74ee5b71e1625194c06f25f61386"
+        }
+      }
+    },
+    {
+      "mode": "sqlite",
+      "psram": "4M",
+      "audit_summary": {
+        "elf_sha256": "185717c372675e437c81b42e77607b26afdfcce54e8aa854c4e1cb7be33a5583",
+        "image_sha256": "c2db3ba9a84f82c1d9e967b03e3499fa45cd7a7cfdce1bc98422d7d644a1b6e6",
+        "image_bytes": 727856,
+        "heap": {
+          "start": "0x4ff37600",
+          "end": "0x4ff48000",
+          "bytes": 68096,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4235314,
+        "cpu1_progress": 2194399,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": {
+          "status": 1,
+          "owner": 1,
+          "sessions": 2,
+          "queries": 26,
+          "open_pc": 1074383124,
+          "text_start": 1073872896,
+          "text_end": 1074385344,
+          "rodata_start": 1074385344,
+          "rodata_end": 1074439616,
+          "heap_before": 1801536,
+          "heap_after": 1801536,
+          "stack_low": 1341521936,
+          "stack_high": 1341530112,
+          "painted_to": 1341529008,
+          "observed_used": 6472,
+          "mie": 8,
+          "class_peaks": {
+            "c8": 20,
+            "c16": 10,
+            "c32": 22,
+            "c64": 23,
+            "c128": 16,
+            "c256": 3,
+            "c512": 6,
+            "c1024": 8,
+            "c2048": 3,
+            "c4096": 0
+          }
+        }
+      },
+      "artifacts": {
+        "build/native-emulator-sqlite/psram-4M/emulator.log": {
+          "bytes": 10909,
+          "sha256": "efe4ba7ad9012267ab4af415d2ce05c611e8b27ecb2dd4676b00f5a7261a2cd4"
+        },
+        "build/native-emulator-sqlite/psram-4M/image-audit.json": {
+          "bytes": 147070,
+          "sha256": "7242f9785b34fe160073b05750ba153594441aa9ddb218f132c5b0f5b9e7fb16"
+        },
+        "build/native-emulator-sqlite/psram-4M/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "3c761cf7b65a0a91d5a1e20c1861fc29ad1eaabcdb78ffeecc23c6a84e7fe17a"
+        },
+        "build/native-emulator-sqlite/psram-4M/nihos-native-flash.bin": {
+          "bytes": 793392,
+          "sha256": "ece4a72ec826e1199cb0674d7822bf9415984b8e75bc1e428d20c278ae734b92"
+        },
+        "build/native-emulator-sqlite/psram-4M/nihos-native.bin": {
+          "bytes": 727856,
+          "sha256": "c2db3ba9a84f82c1d9e967b03e3499fa45cd7a7cfdce1bc98422d7d644a1b6e6"
+        },
+        "build/native-emulator-sqlite/psram-4M/nihos-native.elf": {
+          "bytes": 2362312,
+          "sha256": "185717c372675e437c81b42e77607b26afdfcce54e8aa854c4e1cb7be33a5583"
+        },
+        "build/native-emulator-sqlite/psram-4M/smoke-report.json": {
+          "bytes": 8012,
+          "sha256": "487285e8b8cae001c4113f618b836f7d325912cbae394f6f6a2a8fbf34de51fc"
+        },
+        "build/native-emulator-sqlite/psram-4M/sqlite-manifest.json": {
+          "bytes": 93417,
+          "sha256": "e021208e1410fc5dca6e1afc05d8f57741ef74ee5b71e1625194c06f25f61386"
+        }
+      }
+    },
+    {
+      "mode": "sqlite",
+      "psram": "32M",
+      "audit_summary": {
+        "elf_sha256": "d13f699f6db5d62bd6f55b002ef78df82dd2d098fecaa680bc89f2a29b4cc8e0",
+        "image_sha256": "4e7a0feb7bdc7f187ea2f70651f14e97b00784e61d0deed92e3be7269d1539f1",
+        "image_bytes": 727856,
+        "heap": {
+          "start": "0x4ff37600",
+          "end": "0x4ff48000",
+          "bytes": 68096,
+          "owner_count": 2,
+          "granule_bytes": 64,
+          "external_bytes": 0
+        }
+      },
+      "report_summary": {
+        "evidence": "emulator",
+        "rounds": 300,
+        "samples": 31,
+        "cpu0_progress": 4207877,
+        "cpu1_progress": 2166999,
+        "cpu0_interrupts": 899,
+        "cpu1_interrupts": 898,
+        "sqlite": {
+          "status": 1,
+          "owner": 1,
+          "sessions": 2,
+          "queries": 26,
+          "open_pc": 1074383124,
+          "text_start": 1073872896,
+          "text_end": 1074385344,
+          "rodata_start": 1074385344,
+          "rodata_end": 1074439616,
+          "heap_before": 16022848,
+          "heap_after": 16022848,
+          "stack_low": 1341521936,
+          "stack_high": 1341530112,
+          "painted_to": 1341529008,
+          "observed_used": 6472,
+          "mie": 8,
+          "class_peaks": {
+            "c8": 20,
+            "c16": 10,
+            "c32": 22,
+            "c64": 23,
+            "c128": 16,
+            "c256": 3,
+            "c512": 6,
+            "c1024": 8,
+            "c2048": 3,
+            "c4096": 0
+          }
+        }
+      },
+      "artifacts": {
+        "build/native-emulator-sqlite/psram-32M/emulator.log": {
+          "bytes": 10909,
+          "sha256": "9ab14537ca737a95b201d0e8bf16890fef936701345b25bca46aa3f177d559ed"
+        },
+        "build/native-emulator-sqlite/psram-32M/image-audit.json": {
+          "bytes": 147070,
+          "sha256": "2f0bcb912a6e572e658ad50eee9e474dd7c069f1b37bbd3c0c0e3cb4f90cf5a6"
+        },
+        "build/native-emulator-sqlite/psram-32M/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "3c761cf7b65a0a91d5a1e20c1861fc29ad1eaabcdb78ffeecc23c6a84e7fe17a"
+        },
+        "build/native-emulator-sqlite/psram-32M/nihos-native-flash.bin": {
+          "bytes": 793392,
+          "sha256": "8deed9dad62ca1a76645c8dafb836a239a0ed9615ff2f9bc63c4ddc94068952e"
+        },
+        "build/native-emulator-sqlite/psram-32M/nihos-native.bin": {
+          "bytes": 727856,
+          "sha256": "4e7a0feb7bdc7f187ea2f70651f14e97b00784e61d0deed92e3be7269d1539f1"
+        },
+        "build/native-emulator-sqlite/psram-32M/nihos-native.elf": {
+          "bytes": 2362312,
+          "sha256": "d13f699f6db5d62bd6f55b002ef78df82dd2d098fecaa680bc89f2a29b4cc8e0"
+        },
+        "build/native-emulator-sqlite/psram-32M/smoke-report.json": {
+          "bytes": 8029,
+          "sha256": "453e7de5823e52d36433b4b65d7286525bb38f77b10f6d16788aac6e1d65a52b"
+        },
+        "build/native-emulator-sqlite/psram-32M/sqlite-manifest.json": {
+          "bytes": 93417,
+          "sha256": "e021208e1410fc5dca6e1afc05d8f57741ef74ee5b71e1625194c06f25f61386"
+        }
+      }
+    }
+  ],
+  "retained_failures": [
+    {
+      "reason": "stock P4 loader rejects a third mapped Flash segment",
+      "marker": "rom_index < 2",
+      "artifacts": {
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/emulator.log": {
+          "bytes": 1347,
+          "sha256": "3baf564110dad37eec9f089778793c8795da3b5baff766c796e6d59259f77cc3"
+        },
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/image-audit.json": {
+          "bytes": 145420,
+          "sha256": "9be2e722b7ff5dd5ab2835b15a761e5e4cd9568df1a686e71bddff0818f4d460"
+        },
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/native-layout.ld": {
+          "bytes": 3604,
+          "sha256": "30b05a257a9f5c1f5aeba1b8962d0b4bfe2c29ce27956454a891b7d581d81a91"
+        },
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/nihos-native-flash.bin": {
+          "bytes": 763136,
+          "sha256": "e1213236121e84f86517cf98339c4011afc8f92a9b39425375ddd0810db6588e"
+        },
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/nihos-native.bin": {
+          "bytes": 697600,
+          "sha256": "79c730a3613900646b653ba4e7ff4d8c41b313e735b882829046abd8a495dad7"
+        },
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/nihos-native.elf": {
+          "bytes": 2289864,
+          "sha256": "a875668ade37cea215ead081b620d8c703b37f3ee9d89a6256d1ad1ad66d83ca"
+        },
+        "build/qualification-native-sqlite-third-segment-failure/psram-4M/sqlite-manifest.json": {
+          "bytes": 93185,
+          "sha256": "a600e0ee2044fb6e52b366e6cf293397818572017512009087fffcd4325450a3"
+        }
+      }
+    },
+    {
+      "reason": "UTC query allocation failed in 64-byte class",
+      "marker": "need=00000040",
+      "artifacts": {
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/emulator.log": {
+          "bytes": 6378,
+          "sha256": "8f5481cf50e8a4ad55d62b29420e9096bbe476bba762cda3faf5e0fdf46a6505"
+        },
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/image-audit.json": {
+          "bytes": 147010,
+          "sha256": "4b8c121d2177c38185811ca9d1d4c810ccf17188a50276f7e253a3429d04244f"
+        },
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "3c761cf7b65a0a91d5a1e20c1861fc29ad1eaabcdb78ffeecc23c6a84e7fe17a"
+        },
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/nihos-native-flash.bin": {
+          "bytes": 793248,
+          "sha256": "917190ab39e1c2c3bb56bb7af51b3d93c9f4064857c0abeb5a93bbb9bd63ca9c"
+        },
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/nihos-native.bin": {
+          "bytes": 727712,
+          "sha256": "27acd189d7e8c0a59f9f2e59c83dba5c7ef46f4f78d667fa834606928aef2a2c"
+        },
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/nihos-native.elf": {
+          "bytes": 2362056,
+          "sha256": "9ee70a8dce7dab4e57c17686325a4e0a08b80f9ff5e3fa1db1ea95b96dad7a3a"
+        },
+        "build/qualification-native-sqlite-quota64-failure/psram-4M/sqlite-manifest.json": {
+          "bytes": 93225,
+          "sha256": "e6d4330222d369c70ba7b85a8502271ebee3ae80374d03660235ed44edc44bf1"
+        }
+      }
+    },
+    {
+      "reason": "CREATE allocation failed in 32-byte class",
+      "marker": "need=00000020",
+      "artifacts": {
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/emulator.log": {
+          "bytes": 6378,
+          "sha256": "6d5e91e66678ba2ad361e4b2b992dcabb2ff3f5e80d2d9c7ae556e358e1a9fb3"
+        },
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/image-audit.json": {
+          "bytes": 146947,
+          "sha256": "0a8d3ca7fbd0b3cb93ddf481c8178f8225d53658096bf1f48bf637e31fdecaa6"
+        },
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/native-layout.ld": {
+          "bytes": 3816,
+          "sha256": "3c761cf7b65a0a91d5a1e20c1861fc29ad1eaabcdb78ffeecc23c6a84e7fe17a"
+        },
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/nihos-native-flash.bin": {
+          "bytes": 793392,
+          "sha256": "ab1162d9f04651605fe2c6b725e0b0d340807bc96d00ea082bde1fb3f7ff155c"
+        },
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/nihos-native.bin": {
+          "bytes": 727856,
+          "sha256": "fbec77ba73577a631918e7e8e74fe15c39a6d536745d5aed1de8389045e61241"
+        },
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/nihos-native.elf": {
+          "bytes": 2364020,
+          "sha256": "16522e68a6cd37b2981ac7509f91a250913a94623b972c2b58d418e14d5131a8"
+        },
+        "build/qualification-native-sqlite-quota32-failure/psram-4M/sqlite-manifest.json": {
+          "bytes": 93225,
+          "sha256": "e6d4330222d369c70ba7b85a8502271ebee3ae80374d03660235ed44edc44bf1"
+        }
+      }
+    }
+  ],
+  "verification_logs": {
+    "build/native-sqlite-host-sql.log": {
+      "sha256": "07a08de0a762b45c8499d03aa29eb27fbe70a8b9426c8856435574fd38fbc7e3",
+      "output": "C allocator host PASS: capacity-copy, OOM, foreign task, retirement/recovery\nSQLite 3.54.1 host rc=0 max_request=2048 attempts=308 rejected=0 peak=27456 remaining=0\npool_profile=0 requested=534336 reserved=1048576\nclass_request_histogram: 56 29 35 24 111 7 19 21 8 0\nclass_peak_live profile=0 quota=64: 21 9 14 11 35 4 6 9 5 0\nSQLite memory-only host PASS: 308 injected OOM points, retry and full parent recovery\nSQLite owner session host PASS: 321 OOM points, quotas=64KiB, ownership, bounds, VM budget, pthread cancel, retry, retired-owner fail-stop\nSQLite non-test configuration host PASS: scalar result, shutdown and heap recovery\n"
+    },
+    "build/native-sqlite-static.log": {
+      "sha256": "c610f437622b9926825cb2a71c3353c40ea777fcd6d0eb27ebe625fc9bf30bad",
+      "output": "....................\n----------------------------------------------------------------------\nRan 20 tests in 0.002s\n\nOK\nNative image audit passed: SRAM runtime, approved Flash boot code/tables, known ROM ABI, no RTOS symbols\nNative image audit passed: SRAM runtime, approved Flash boot code/tables, known ROM ABI, no RTOS symbols\nNative image audit passed: SRAM runtime, approved Flash boot code/tables, known ROM ABI, no RTOS symbols\nNative image audit passed: SRAM runtime, approved Flash boot code/tables, known ROM ABI, no RTOS symbols\nNative image audit passed: SRAM runtime, approved Flash boot code/tables, known ROM ABI, no RTOS symbols\nNative image audit passed: SRAM runtime, approved Flash boot code/tables, known ROM ABI, no RTOS symbols\nRV32 architecture contract and six audited native ELF links: ok\n"
+    },
+    "build/native-sqlite-python.log": {
+      "sha256": "9fe03f90812bf2f0fcb99e281d63ee84882d532fc276ba3577ec581dc12de0e2",
+      "output": ".............................................................................................\n----------------------------------------------------------------------\nRan 93 tests in 0.705s\n\nOK\n"
+    },
+    "build/native-sqlite-host-safe.log": {
+      "sha256": "b5fb82871e6e14da96e8e92fb5470f05abf27a800d01cdedc84868400b3567d3",
+      "output": "Build Summary: 3/3 steps succeeded; 148/148 tests passed\ntest success\n+- run test 148 pass (148 total) 220ms MaxRSS:2M\n   +- compile test safe native success 10s MaxRSS:446M\n\n"
+    },
+    "build/native-sqlite-zlint.log": {
+      "sha256": "626a9e409990c9605e3eb6a9493a4a56328b84f9e943a7a5e6d8267c48437af7",
+      "output": "\tFound \u001b[33m0\u001b[39m errors and \u001b[33m0\u001b[39m warnings across \u001b[33m64\u001b[39m files in \u001b[33m6ms\u001b[39m.\n"
+    },
+    "build/native-sqlite-host-profile.log": {
+      "sha256": "81a5ab6a0c3a5c97e75213999a3a5220be84e11c2f2b9e3a64910105301ba705",
+      "output": "SQLite 3.54.1 host rc=0 max_request=2048 attempts=308 rejected=0 peak=27456 remaining=0\npool_profile=1 requested=57104 reserved=65536\nclass_request_histogram: 56 29 35 24 111 7 19 21 8 0\nclass_peak_live profile=1 quota=0: 21 9 14 11 35 4 6 9 5 0\nSQLite memory-only host PASS: 308 injected OOM points, retry and full parent recovery\n"
+    },
+    "build/native-sqlite-initial-python.log": {
+      "sha256": "228fcc106c47a52e39255d75b74ea64889f5717c1236c65e4c9ade9fe340ba24",
+      "output": "..................................................................................\n======================================================================\nFAIL: test_oversized_record_text_does_not_compile (native_record_test.NativeRecordSchemaTests) (length=65532)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 29, in test_oversized_record_text_does_not_compile\n    self.assertIn(\"record text exceeds\", result.stderr)\nAssertionError: 'record text exceeds' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n======================================================================\nFAIL: test_oversized_record_text_does_not_compile (native_record_test.NativeRecordSchemaTests) (length=65536)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 29, in test_oversized_record_text_does_not_compile\n    self.assertIn(\"record text exceeds\", result.stderr)\nAssertionError: 'record text exceeds' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n======================================================================\nFAIL: test_unsafe_schemas_do_not_compile (native_record_test.NativeRecordSchemaTests) (declaration='struct { value: u64 }')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 58, in test_unsafe_schemas_do_not_compile\n    self.assertIn(expected, result.stderr)\nAssertionError: 'must be u32' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n======================================================================\nFAIL: test_unsafe_schemas_do_not_compile (native_record_test.NativeRecordSchemaTests) (declaration='packed struct { value: u32 }')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 58, in test_unsafe_schemas_do_not_compile\n    self.assertIn(expected, result.stderr)\nAssertionError: 'unpacked struct' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n======================================================================\nFAIL: test_unsafe_schemas_do_not_compile (native_record_test.NativeRecordSchemaTests) (declaration='struct { runtime: u32, comptime value: u32 = 1 }')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 58, in test_unsafe_schemas_do_not_compile\n    self.assertIn(expected, result.stderr)\nAssertionError: 'runtime storage' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n======================================================================\nFAIL: test_unsafe_schemas_do_not_compile (native_record_test.NativeRecordSchemaTests) (declaration='struct { value: u32 }')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 58, in test_unsafe_schemas_do_not_compile\n    self.assertIn(expected, result.stderr)\nAssertionError: 'pointer requires' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n======================================================================\nFAIL: test_unsafe_schemas_do_not_compile (native_record_test.NativeRecordSchemaTests) (declaration='extern struct { padding: [65536]u8, value: u32 }')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/nihos-c-allocator/tools/native_record_test.py\", line 58, in test_unsafe_schemas_do_not_compile\n    self.assertIn(expected, result.stderr)\nAssertionError: 'descriptor format' not found in '/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/std.zig:1:1: error: unable to load \"std.zig\": PermissionDenied\\n'\n\n----------------------------------------------------------------------\nRan 84 tests in 0.439s\n\nFAILED (failures=7)\n"
+    },
+    "build/native-sqlite-host-debug.log": {
+      "sha256": "ddfadcce6d21bee2e817653b3c360f4d839217d4fbe66924feb2a139d42d39b8",
+      "output": "Build Summary: 3/3 steps succeeded; 148/148 tests passed\ntest success\n+- run test 148 pass (148 total) 391ms MaxRSS:3M\n   +- compile test debug native success 2s MaxRSS:319M\n\n"
+    }
+  },
+  "physical_gate": {
+    "port": "/dev/cu.usbmodem101",
+    "initial_readonly_log": {
+      "build/qualification-native-sqlite-device/initial-readonly.log": {
+        "bytes": 31,
+        "sha256": "e1c8a53aeaf08aca69d7efa8944f0a3f3ab949c48f171548a0627c811fa5ac76"
+      }
+    },
+    "readonly_observation": "ESP-ROM:esp32p4-eco2-20240710",
+    "write_attempted": false,
+    "reason": "serial port write permission was not granted; only read access was granted",
+    "candidate_profile": "device",
+    "candidate_mode": "sqlite",
+    "candidate_app_sha256": "4a61deb5f059c45ac042110326bad6a8b134fda478461c59cc8e7c3831a836d0",
+    "pending": [
+      "chip identity and actual flash capacity",
+      "write verification",
+      "repeated full kernel/PSRAM/SQL boots",
+      "post-pass observation for resets/traps",
+      "power-cycle boot when user can disconnect/reconnect"
+    ]
+  },
+  "limits": [
+    "CPU0 bootstrap SQL after timers disarmed and peer quiescent; not a scheduled SQL task or RPC",
+    "no physical timing/cache/PSRAM qualification",
+    "no persistent VFS; deterministic fixture time and randomness",
+    "stack overwrite observation for fixed workload only; no arbitrary SQL or interrupted-SQL stack bound",
+    "C maximum single frame is not a recursive or Zig callgraph bound"
+  ]
+}

@@ -19,9 +19,35 @@ const IO = struct {
     }
     pub fn sync(_: IO, operation: mapping.Operation, address: u32, length: u32) bool {
         ioFence();
+        // Live display IRQs also issue ROM cache commands for DMA descriptors.
+        // Serialize each bounded chunk locally; CPU1 never calls this mapper.
+        if (@import("native_options").console_live) {
+            const status = asm volatile ("csrr %[status], mstatus"
+                : [status] "=r" (-> u32),
+            );
+            if (status & 8 != 0) {
+                var offset: u32 = 0;
+                while (offset < length) {
+                    const count = @min(@as(u32, 1024), length - offset);
+                    asm volatile ("csrci mstatus, 8" ::: .{ .memory = true });
+                    const result = switch (operation) {
+                        .invalidate => nih_rom_cache_invalidate((1 << 4) | (1 << 5), address + offset, count),
+                        .writeback => nih_rom_cache_writeback((1 << 4) | (1 << 5), address + offset, count),
+                    };
+                    asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+                    if (result != 0) return false;
+                    offset += count;
+                }
+                ioFence();
+                return true;
+            }
+        }
+        // The physical rev1.3 bridge failed with L2 alone: dirty CPU writes
+        // to the nonidentity windows were not visible through MSPI3. Include
+        // the shared L1 data cache in the ROM's ordered data-cache operation.
         const result = switch (operation) {
-            .invalidate => nih_rom_cache_invalidate(1 << 5, address, length),
-            .writeback => nih_rom_cache_writeback(1 << 5, address, length),
+            .invalidate => nih_rom_cache_invalidate((1 << 4) | (1 << 5), address, length),
+            .writeback => nih_rom_cache_writeback((1 << 4) | (1 << 5), address, length),
         };
         ioFence();
         return result == 0;
@@ -47,7 +73,7 @@ const CPU = struct {
     }
 };
 
-var mapper = mapping.Mapper(IO){ .io = .{} };
+var mapper = mapping.Mapper(IO){ .io = .{}, .fast200 = @import("native_options").psram_200 };
 var enabled: u32 = 0;
 var request: u32 = 0;
 var acknowledgement: u32 = 0;
@@ -58,6 +84,32 @@ var owners_ready: u32 = 0;
 
 pub const heap_start = mapping.virtual_base + mapping.reserved_bytes;
 pub const reserved_bytes = mapping.reserved_bytes;
+
+pub const SweepReport = struct { bytes: u32, passes: u32, reads: u32, writes: u32, syncs: u32, confirmed: u32 };
+
+/// Opt-in destructive boot test, before CPU1 release or external allocation.
+/// Every mapped CPU word is written and checked through both polarities.
+pub fn fullSweep(capacity: u32) SweepReport {
+    if (capacity < 4 << 20 or capacity > 64 << 20 or capacity & (capacity - 1) != 0)
+        nih_native_task_failed();
+    const words: [*]volatile u32 = @ptrFromInt(mapping.virtual_base);
+    const count = capacity / 4;
+    for (0..2) |pass| {
+        for (0..count) |index| {
+            const value = 0xa55a_7e31 ^ (mapping.virtual_base + @as(u32, @intCast(index * 4)));
+            words[index] = if (pass == 0) value else ~value;
+        }
+        if (!IO.sync(.{}, .writeback, mapping.virtual_base, capacity) or
+            !IO.sync(.{}, .invalidate, mapping.virtual_base, capacity)) nih_native_task_failed();
+        for (0..count) |index| {
+            const value = 0xa55a_7e31 ^ (mapping.virtual_base + @as(u32, @intCast(index * 4)));
+            const expected = if (pass == 0) value else ~value;
+            const actual = words[index];
+            if (actual != expected) nih_native_psram_mismatch(6, mapping.virtual_base + @as(u32, @intCast(index * 4)), actual, expected);
+        }
+    }
+    return .{ .bytes = capacity, .passes = 2, .reads = count * 2, .writes = count * 2, .syncs = 4, .confirmed = 1 };
+}
 
 /// Only CPU0, after command checks and external arena registration.
 pub fn releasePeer() void {
@@ -181,9 +233,11 @@ fn message(round: u32, window: u32, index: u32) u32 {
     return 0x5c30_0000 ^ (round << 12) ^ (window << 8) ^ index;
 }
 
+const exchange_rounds: u32 = if (@import("native_options").boot_fast) 1 else 64;
+
 pub fn peer() void {
     if (@atomicLoad(u32, &enabled, .acquire) != 1) return;
-    for (1..65) |round| {
+    for (1..exchange_rounds + 1) |round| {
         waitFor(&request, @intCast(round), 100_000_000);
         for (0..mapping.window_count) |window| {
             for (0..16) |index| {
@@ -205,7 +259,7 @@ pub fn peer() void {
 pub fn exchange(controller: anytype) SmpReport {
     if (@atomicLoad(u32, &enabled, .acquire) != 1) return .{};
     var report = SmpReport{ .status = 1 };
-    for (1..65) |round| {
+    for (1..exchange_rounds + 1) |round| {
         for (0..mapping.window_count) |window| {
             for (0..16) |index| pointer(@intCast(window), 0x100 + @as(u32, @intCast(index)) * 4).* =
                 message(@intCast(round), @intCast(window), @intCast(index));
@@ -230,7 +284,7 @@ pub fn exchange(controller: anytype) SmpReport {
     for (0..mapping.window_count) |window| {
         const physical = mapping.physicalPage(controller.capacity, @intCast(window)).? * mapping.page_bytes;
         for (0..16) |index| {
-            const expected = ~message(64, @intCast(window), @intCast(index));
+            const expected = ~message(exchange_rounds, @intCast(window), @intCast(index));
             const address = physical + 0x100 + @as(u32, @intCast(index)) * 4;
             const actual = controller.readWord(address) catch nih_native_task_failed();
             if (actual != expected) nih_native_psram_mismatch(5, address, actual, expected);

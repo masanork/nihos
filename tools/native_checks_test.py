@@ -111,7 +111,86 @@ def complete_image():
                 "mapping": {"start": "0x40000920", "end": "0x40001120"}}}}
 
 
+def sqlite_log(psram_size="32M"):
+    log = complete_log("integer", psram_size)
+    log = log.replace("NIHOS_NATIVE_COMPILER enabled=0", "NIHOS_NATIVE_COMPILER enabled=0\nNIHOS_NATIVE_SQLITE_MODE enabled=1")
+    populated = psram_size != "0"
+    ordinary = MODULE.check(complete_log("integer", psram_size), "integer", MODULE.PSRAM_SIZES[psram_size])
+    free = ordinary["heaps"][0]["free"]
+    names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
+    values = [int(populated), 1 if populated else 0, 2 if populated else 0, 26 if populated else 0,
+              0x40020020 if populated else 0, 0x40020000, 0x40021000, 0x40021000, 0x40022000,
+              free if populated else 0, free if populated else 0, 0x4ff60010 if populated else 0,
+              0x4ff62000 if populated else 0, 0x4ff61c00 if populated else 0, 6472 if populated else 0, 8 if populated else 0]
+    line = "NIHOS_NATIVE_SQLITE" + "".join(" {}={:08x}".format(n, v) for n,v in zip(names,values))
+    class_names = ("c8","c16","c32","c64","c128","c256","c512","c1024","c2048","c4096")
+    peaks = [20,10,22,23,16,3,6,8,3,0] if populated else [0]*10
+    classes = "NIHOS_NATIVE_SQLITE_CLASSES" + "".join(" {}={:08x}".format(n,v) for n,v in zip(class_names,peaks))
+    return log + "\n" + line + "\n" + classes
+
+
+class NativeSQLiteLogTests(unittest.TestCase):
+    def test_complete_populated_and_absent_sqlite_runs(self):
+        for size in ("0", "4M", "32M"):
+            report = MODULE.check(sqlite_log(size), "sqlite", MODULE.PSRAM_SIZES[size])
+            self.assertEqual(report["sqlite"]["queries"], 0 if size=="0" else 26)
+
+    def test_missing_or_incomplete_sqlite_runtime_and_stack_evidence_fails(self):
+        log = sqlite_log()
+        for old, new in (("queries=0000001a", "queries=00000019"), ("owner=00000001", "owner=00000002"),
+                         ("mie=00000008", "mie=00000000"), ("observed_used=00001948", "observed_used=00001fff")):
+            with self.subTest(old=old), self.assertRaisesRegex(ValueError, "SQLite"):
+                MODULE.check(log.replace(old,new), "sqlite",32<<20)
+        line=next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_SQLITE "))
+        for changed in (log.replace(line,""),log+"\n"+line,log+"\nNIHOS_NATIVE_SQLITE malformed"):
+            with self.assertRaisesRegex(ValueError,"SQLite"):
+                MODULE.check(changed,"sqlite",32<<20)
+
+    def test_allocation_trace_and_mode_are_required(self):
+        log=sqlite_log()
+        for old,new in (("c64=00000017","c64=00000001"),("c32=00000016","c32=00000080"),
+                        ("NIHOS_NATIVE_SQLITE_MODE enabled=1","")):
+            with self.subTest(old=old),self.assertRaises(ValueError):
+                MODULE.check(log.replace(old,new),"sqlite",32<<20)
+        with self.assertRaisesRegex(ValueError,"unexpected SQLite"):
+            MODULE.check(complete_log()+"\nNIHOS_NATIVE_SQLITE_CLASSES malformed")
+
+
 class NativeLogTests(unittest.TestCase):
+    def test_physical_evidence_requires_explicit_source_and_device_profile(self):
+        image = {**complete_image(), "memory": {"profile": "device"}}
+        image["heap"] = {"start": "0x4ff20000", "end": "0x4ff28000", "bytes": 32768}
+        log = complete_log().replace("start=4ff40000 end=4ff44000", "start=4ff20000 end=4ff24000")
+        log = log.replace("start=4ff44000 end=4ff48000", "start=4ff24000 end=4ff28000")
+        report = MODULE.check(log, image=image, evidence="physical-device")
+        self.assertEqual(report["evidence"], "physical-device")
+        with self.assertRaisesRegex(ValueError, "explicit physical"):
+            MODULE.check(log, image=image)
+
+    def test_physical_heap_range_is_checked_before_audit_accounting(self):
+        image = {**complete_image(), "memory": {"profile": "device"}}
+        with self.assertRaisesRegex(ValueError, "memory ownership"):
+            MODULE.check(complete_log(), image=image, evidence="physical-device")
+        # Actual rev1/2 heaps can start below the emulator's SRAM origin.
+        image["heap"] = {"start": "0x4ff14000", "end": "0x4ff1c000", "bytes": 32768}
+        log = complete_log().replace("start=4ff40000 end=4ff44000", "start=4ff14000 end=4ff18000")
+        log = log.replace("start=4ff44000 end=4ff48000", "start=4ff18000 end=4ff1c000")
+        MODULE.check(log, image=image, evidence="physical-device")
+        with self.assertRaisesRegex(ValueError, "memory ownership"):
+            MODULE.check(log)
+        with self.assertRaisesRegex(ValueError, "audited heap"):
+            MODULE.check(log, image={**image, "heap": {**image["heap"], "start": "0x4ff14040"}},
+                         evidence="physical-device")
+
+    def test_physical_evidence_rejects_emulator_and_missing_image_binding(self):
+        for image in (None, complete_image(), {**complete_image(), "memory": {"profile": "emulator"}}):
+            with self.subTest(image=image), self.assertRaisesRegex(ValueError, "device-profile"):
+                MODULE.check(complete_log(), image=image, evidence="physical-device")
+
+    def test_unknown_evidence_source_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "evidence source"):
+            MODULE.check(complete_log(), evidence="assumed-device")
+
     def test_stack_owners_cannot_be_missing_or_duplicated(self):
         log = complete_log()
         line = next(line for line in log.splitlines() if line.startswith("NIHOS_NATIVE_STACKS"))
@@ -575,6 +654,93 @@ class NativeLogTests(unittest.TestCase):
     def test_failed_compiled_calculation_cannot_pass_existing_markers(self):
         with self.assertRaisesRegex(ValueError, "failure/trap"):
             MODULE.check(complete_log("compiled") + "\nNIHOS_NATIVE_FAIL compiled FP invariant")
+
+
+class HardwareQualificationTests(unittest.TestCase):
+    @staticmethod
+    def record(marker, **fields):
+        return marker + "".join(f" {key}={value:08x}" for key, value in fields.items())
+
+    def qualification_log(self):
+        log = sqlite_log()
+        free = MODULE.check(log, "sqlite", 32 << 20)["sqlite"]["heap_before"]
+        sweep = self.record("NIHOS_NATIVE_PSRAM_SWEEP", bytes=32 << 20, passes=2,
+                            reads=16 << 20, writes=16 << 20, syncs=4, confirmed=1)
+        soak = self.record("NIHOS_NATIVE_SQLITE_SOAK", loops=1000, sessions=2000, queries=26000,
+                           heap_before=free, heap_after=free, max_stack=6520, confirmed=1)
+        return log + "\nNIHOS_NATIVE_QUALIFICATION enabled=1\n" + sweep + "\n" + soak
+
+    def test_full_sweep_and_all_sql_sessions_are_required(self):
+        report = MODULE.check(self.qualification_log(), "sqlite", 32 << 20, require_qualification=True)
+        self.assertEqual(report["qualification"]["sqlite_soak"]["queries"], 26000)
+        with self.assertRaisesRegex(ValueError, "qualification mode"):
+            MODULE.check(sqlite_log(), "sqlite", 32 << 20, require_qualification=True)
+
+    def test_partial_sweep_and_sql_soak_are_rejected(self):
+        log = self.qualification_log()
+        for old, new in (("reads=01000000", "reads=00000000"),
+                         ("sessions=000007d0", "sessions=00000002"),
+                         ("queries=00006590", "queries=0000001a"),
+                         ("max_stack=00001978", "max_stack=00002000"),
+                         ("NIHOS_NATIVE_SQLITE_SOAK", "MISSING_SQLITE_SOAK")):
+            with self.subTest(field=old), self.assertRaises(ValueError):
+                MODULE.check(log.replace(old, new), "sqlite", 32 << 20, require_qualification=True)
+
+    def test_orphan_duplicate_and_malformed_qualification_records_fail(self):
+        log = self.qualification_log()
+        for changed in (log.replace("NIHOS_NATIVE_QUALIFICATION enabled=1\n", ""),
+                        log + "\nNIHOS_NATIVE_PSRAM_SWEEP malformed", log + "\nNIHOS_NATIVE_QUALIFICATION enabled=1"):
+            with self.assertRaises(ValueError):
+                MODULE.check(changed, "sqlite", 32 << 20)
+
+    def sdmmc_log(self):
+        record = self.record("NIHOS_NATIVE_SDMMC", status=1, stage=4, command=0, interrupts=0,
+                             response=0, commands=20, sectors_low=0x1d70000, sectors_high=0,
+                             reads=8, crc0=1, crc1=2, crc_middle=3, crc_last=4,
+                             bus_bits=1, clock_khz=400, writes=0, error_code=0, host_status=0, data_words=128, dma=1)
+        return complete_log(psram_size="32M") + "\nNIHOS_NATIVE_SDMMC_MODE enabled=1\n" + record
+
+    def test_read_only_sdmmc_evidence_can_be_required_explicitly(self):
+        report = MODULE.check(self.sdmmc_log(), "integer", 32 << 20, require_sdmmc=True)
+        self.assertEqual(report["sdmmc"]["reads"], 8)
+        with self.assertRaisesRegex(ValueError, "SDMMC mode"):
+            MODULE.check(complete_log(), require_sdmmc=True)
+
+    def test_sdmmc_writes_short_reads_and_incompatible_modes_fail(self):
+        for old, new in (("reads=00000008", "reads=00000001"), ("writes=00000000", "writes=00000001"),
+                         ("bus_bits=00000001", "bus_bits=00000004"), ("data_words=00000080", "data_words=0000007f"),
+                         ("error_code=00000000", "error_code=00000001"), ("sectors_low=01d70000", "sectors_low=00000000")):
+            with self.subTest(field=old), self.assertRaises(ValueError):
+                MODULE.check(self.sdmmc_log().replace(old, new), "integer", 32 << 20, require_sdmmc=True)
+
+    def fast_log(self):
+        log = self.sdmmc_log().replace("commands=00000014", "commands=00000c27")
+        log = log.replace("reads=00000008", "reads=00000c18").replace("bus_bits=00000001", "bus_bits=00000004")
+        log = log.replace("clock_khz=00000190", "clock_khz=00004e20")
+        for i, (bits, khz, host, div) in enumerate(((1, 400, 0, 50), (4, 400, 1, 50), (4, 20000, 1, 1))):
+            log += "\n" + self.record("NIHOS_NATIVE_SDMMC_STAGE", index=i, bus_bits=bits, clock_khz=khz,
+                                      scr_widths=5 if i else 0, host_width=host, divider=div, reads=1032,
+                                      crc0=1, crc1=2, crc_middle=3, crc_last=4)
+            log += "\n" + self.record("NIHOS_NATIVE_SDMMC_SWEEP", index=i, samples=1024, digest=0x12345678)
+        return log
+
+    def test_fast_sdmmc_requires_all_transitions_and_distributed_checks(self):
+        report = MODULE.check(self.fast_log(), "integer", 32 << 20, require_sdmmc_fast=True)
+        self.assertEqual(len(report["sdmmc_stages"]), 3)
+        self.assertEqual(report["sdmmc"]["reads"], 3096)
+        with self.assertRaisesRegex(ValueError, "profile missing"):
+            MODULE.check(self.sdmmc_log(), "integer", 32 << 20, require_sdmmc_fast=True)
+
+    def test_fast_sdmmc_cannot_skip_scr_readbacks_stages_or_sample_comparison(self):
+        for old, new in (("scr_widths=00000005", "scr_widths=00000001"),
+                         ("host_width=00000001", "host_width=00000000"),
+                         ("divider=00000001", "divider=00000032"),
+                         ("reads=00000c18", "reads=00000018"),
+                         ("NIHOS_NATIVE_SDMMC_STAGE index=00000002", "MISSING_STAGE index=00000002"),
+                         ("NIHOS_NATIVE_SDMMC_SWEEP index=00000002 samples=00000400 digest=12345678",
+                          "NIHOS_NATIVE_SDMMC_SWEEP index=00000002 samples=00000400 digest=12345679")):
+            with self.subTest(field=old), self.assertRaises(ValueError):
+                MODULE.check(self.fast_log().replace(old, new), "integer", 32 << 20, require_sdmmc_fast=True)
 
 
 if __name__ == "__main__":

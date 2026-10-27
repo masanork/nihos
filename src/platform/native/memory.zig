@@ -59,17 +59,19 @@ const Domain = struct {
         return self.owners[hart].pool.alloc(hart, length, alignment);
     }
 
-    noinline fn begin(self: *Domain) bool {
+    noinline fn begin(self: *Domain, expected_mie: u32) bool {
         const hart = currentHart();
-        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1 or interruptEnable() != 0) return false;
+        if (hart >= 2 or @atomicLoad(u32, &self.prepared, .acquire) != 1 or interruptEnable() != expected_mie) return false;
         const owner = &self.owners[hart];
         if (owner.bootstrap != null) return false;
         const before = owner.pool.remaining();
-        if (self.alloc(0, 1) != null or self.alloc(8, 3) != null or
-            self.alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
-        owner.rejected = 3;
+        if (!@import("native_options").boot_fast) {
+            if (self.alloc(0, 1) != null or self.alloc(8, 3) != null or
+                self.alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
+            owner.rejected = 3;
+        }
         owner.bootstrap = self.alloc(64, 64) orelse return false;
-        if (interruptEnable() != 0) return false;
+        if (interruptEnable() != expected_mie) return false;
         fill(owner.bootstrap.?, hart, 2);
         return true;
     }
@@ -151,10 +153,7 @@ pub fn prepare() bool {
 /// Only a mapped, checked PSRAM tail may be transferred here by CPU0.
 /// CPU1 stays in the external boot rendezvous until this completes.
 pub fn prepareExternal(start: u32, length: u32) bool {
-    if (start != 0x4803_0000 or length < 4 * 1024 * 1024 - 3 * 65536 or
-        length > 64 * 1024 * 1024 - 3 * 65536) return false;
-    const capacity = length + 3 * 65536;
-    if (capacity & (capacity - 1) != 0) return false;
+    if (!@import("external_layout.zig").valid(start, length)) return false;
     return external.prepare(start, length);
 }
 
@@ -172,18 +171,27 @@ pub fn freeExternal(allocation: reusable.Allocation) reusable.Error!void {
 }
 
 pub fn begin() bool {
-    return internal.begin();
+    return internal.begin(0);
 }
 
 pub fn beginExternal() bool {
+    return beginExternalMode(0);
+}
+/// Exclusive boot owner only: CPU0 scheduler/IPI routes must still be disabled.
+/// The sole enabled handler rearms display DMA and cannot allocate.
+pub fn beginExternalWithDisplayIrq() bool {
+    if (currentHart() != 0) return false;
+    return beginExternalMode(8);
+}
+fn beginExternalMode(expected_mie: u32) bool {
     if (@atomicLoad(u32, &external.prepared, .acquire) == 0) {
         if (allocExternal(64, 64)) |_| return false else |err| return err == error.NotReady;
     }
-    if (!external.begin()) return false;
+    if (!external.begin(expected_mie)) return false;
     const owner = &external.owners[currentHart()];
     // Retain the two preemptible boot allocations at the end of the arena.
     const span = external.alloc(owner.pool.remaining() - 2 * external.buffer_bytes, 64) orelse return false;
-    return reusable.prepare(span);
+    return if (expected_mie == 8) reusable.prepareWithDisplayIrq(span) else reusable.prepare(span);
 }
 
 fn pattern(hart: u32, worker: u32, index: usize) u8 {

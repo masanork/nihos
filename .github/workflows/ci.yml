@@ -39,3 +39,15 @@ jobs:
         run: |
           sh tools/run-sqlite-memory-probe.sh
           build/sqlite/memory-probe profile
+
+      - name: Minimal C runtime differential checks
+        run: sh tools/run-c-runtime-test.sh
+
+      - name: Read-only littlefs host and fault checks
+        run: sh tools/run-storage-host-test.sh
+
+      - name: Native evidence checker regressions
+        run: python3 -m unittest discover -s tools -p '*test.py'
+
+      - name: RV32 SQLite standalone link (synthetic map only)
+        run: sh tools/probe-sqlite-rv32-link.sh

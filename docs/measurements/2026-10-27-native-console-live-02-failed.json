@@ -1,0 +1,438 @@
+{
+  "image_audit": {
+    "schema": 1,
+    "backend": "native-sram",
+    "rtos_linked": false,
+    "fp_assembly_linked": false,
+    "riscv_flags": "0x1",
+    "fp_instructions": {
+      "app": 0,
+      "c": 0,
+      "zig": 0,
+      "transfer_helpers": 0
+    },
+    "entry": "0x4ff00000",
+    "elf_sha256": "cc34f6bc72fa8a23576eff436109e9bcaa0d0aaad639dff35078e165c31daeca",
+    "memory": {
+      "profile": "device",
+      "origin": "0x4ff00000",
+      "end": "0x4ff28000",
+      "bytes": 163840,
+      "total_bytes": 221184,
+      "regions": [
+        {
+          "name": "resident",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840
+        },
+        {
+          "name": "stacks",
+          "origin": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344
+        }
+      ]
+    },
+    "sram_reserved_bytes": 170560,
+    "primary_static_bytes": 113216,
+    "stacks": {
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "bootstrap_bytes_per_hart": 8192,
+      "irq_bytes_per_hart": 8192,
+      "worker_bytes": 4096,
+      "workers_per_hart": 3,
+      "worker_start": "0x4ff68000"
+    },
+    "heap": {
+      "start": "0x4ff1ba40",
+      "end": "0x4ff28000",
+      "bytes": 50624,
+      "owner_count": 2,
+      "granule_bytes": 64,
+      "external_bytes": 0
+    },
+    "flash_boot": {
+      "start": "0x40000120",
+      "end": "0x4000118e",
+      "bytes": 4206,
+      "sha256": "646b61fd3e8cdddc87c4228c2e7096b9f1aabd6028b404217ed67e736fb8f8b6",
+      "functions": {
+        "probe": {
+          "name": "psram.probe",
+          "start": "0x40000120",
+          "end": "0x40000cc2"
+        },
+        "mapping": {
+          "name": "psram_memory.prepare__func_129",
+          "start": "0x40000cc2",
+          "end": "0x4000118e"
+        }
+      },
+      "image_offset": 288
+    },
+    "flash_records": {
+      "start": "0x40010020",
+      "end": "0x4001dabe",
+      "bytes": 55966,
+      "fnv1a": 3592038996,
+      "executable": false,
+      "writable": false,
+      "image_offset": 65568
+    },
+    "rom_symbols": {
+      "nih_rom_putc": "0x4fc00054",
+      "nih_rom_set_cpu1_entry": "0x4fc000a8",
+      "nih_rom_l2_line_size": "0x4fc003cc",
+      "nih_rom_l2_enable": "0x4fc00504",
+      "nih_rom_cache_invalidate": "0x4fc003e4",
+      "nih_rom_cache_writeback": "0x4fc003f4"
+    },
+    "sections": [
+      {
+        "name": ".flash.appdesc",
+        "address": "0x40000020",
+        "bytes": 256
+      },
+      {
+        "name": ".flash.boot",
+        "address": "0x40000120",
+        "bytes": 4206
+      },
+      {
+        "name": ".flash.rodata",
+        "address": "0x40010020",
+        "bytes": 55966
+      },
+      {
+        "name": ".text",
+        "address": "0x4ff00000",
+        "bytes": 97562
+      },
+      {
+        "name": ".rodata",
+        "address": "0x4ff17d20",
+        "bytes": 7864
+      },
+      {
+        "name": ".data",
+        "address": "0x4ff19c00",
+        "bytes": 1424
+      },
+      {
+        "name": ".bss",
+        "address": "0x4ff1a200",
+        "bytes": 6208
+      },
+      {
+        "name": ".stacks",
+        "address": "0x4ff60000",
+        "bytes": 57344
+      },
+      {
+        "name": ".heap",
+        "address": "0x4ff1ba40",
+        "bytes": 50624
+      }
+    ],
+    "image_sha256": "9dcd3760ab2f4df6d5f228b2bc8947d06887e8330552ac772a915062d2d96b95",
+    "image_bytes": 167392,
+    "image_segments": [
+      {
+        "address": "0x40000020",
+        "bytes": 4464
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 61056
+      },
+      {
+        "address": "0x40010020",
+        "bytes": 55968
+      },
+      {
+        "address": "0x4ff0ee80",
+        "bytes": 36508
+      },
+      {
+        "address": "0x4ff17d20",
+        "bytes": 7864
+      },
+      {
+        "address": "0x4ff19c00",
+        "bytes": 1424
+      }
+    ],
+    "loader": {
+      "elf_sha256": "3da57cc281815b529e544fe8e38d213f494c4fb568353bfcb18288c5bc970149",
+      "allocated": [
+        {
+          "address": "0x4ff2cbd0",
+          "bytes": 12498
+        },
+        {
+          "address": "0x4ff33bd0",
+          "bytes": 272
+        },
+        {
+          "address": "0x4ff33ce0",
+          "bytes": 80
+        },
+        {
+          "address": "0x4ff33d30",
+          "bytes": 12
+        },
+        {
+          "address": "0x4ff33d3c",
+          "bytes": 4536
+        },
+        {
+          "address": "0x4ff2abd0",
+          "bytes": 3010
+        }
+      ],
+      "nearest_higher_address": "0x4ff2abd0",
+      "gap_bytes": 11216,
+      "regions_checked": [
+        {
+          "name": "resident",
+          "gap_below": null,
+          "gap_above": 11216
+        },
+        {
+          "name": "stacks",
+          "gap_below": 176396,
+          "gap_above": null
+        }
+      ]
+    },
+    "loader_config": {
+      "l2_bytes": 131072,
+      "line_bytes": 64,
+      "profile": "device",
+      "stack_source_window": {
+        "origin": "0x4ff40000",
+        "end": "0x4ffa0000"
+      },
+      "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+    }
+  },
+  "artifacts": {
+    "0x2000": {
+      "path": "/Users/masanork/repo/nihos-native-console/build/physical/live-02/installed/bootloader.bin",
+      "sha256": "4e462fe0f0d248db9447521f124b4b506da88ec14271688a07d53b762461eca3"
+    },
+    "0x8000": {
+      "path": "/Users/masanork/repo/nihos-native-console/build/physical/live-02/installed/partition-table.bin",
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "0x10000": {
+      "path": "/Users/masanork/repo/nihos-native-console/build/physical/live-02/installed/nihos-native.bin",
+      "sha256": "9dcd3760ab2f4df6d5f228b2bc8947d06887e8330552ac772a915062d2d96b95"
+    }
+  },
+  "result": "failed attempt; not normal qualification",
+  "raw_log_sha256": "0ed1714df82774d0b58c3d28347c97cdac8f88ea7b88f29ade6d726547da2d86",
+  "source_manifest": {
+    "include/nihos/platform_abi.h": "89ed8c4a5bcb6c8804bac32ee741eea8a1d1c727400808443fcf2790ff5eb209",
+    "include/nihos_allocator.h": "3856d4def5e5d0544d1b442af264c42f8b790427e0f8c93977942a5d1d7ca23c",
+    "include/nihos_c_strings.h": "4c32f8dfbb5e981ca015f70d13ea8ecec4296ccf5b58a682cb8271e51de8c6d4",
+    "include/nihos_sqlite_session.h": "2194bbccd5470064d2e7c75f74eb88d076fdfea2028b69aa210437c0b2979201",
+    "include/nihos_storage_probe.h": "24369dd57c59d7ce6a40a4b7d5e158905a38468c5dfc9a79523d6be47f232a41",
+    "ports/esp32p4-native/CMakeLists.txt": "aea388e544cc5d57f66bdfd5a4fb022be167f750dd3684063b9ef9b03e9292ca",
+    "ports/esp32p4-native/main/CMakeLists.txt": "1b07b2a81841a6e12fc589126fca551dfa39cd6db0646f802740972b48a2cf1b",
+    "ports/esp32p4-native/sdkconfig.defaults": "514fa424ea989dd2ebff9c57e4b9c4d8f78b3c411f5287ac89ba1780348502b2",
+    "probes/allocator/c_probe.c": "f998c86bd2b2d0abd0b98de8af7c217d9e0bb280e3d6b67963ee44b2c666cde4",
+    "probes/allocator/host.zig": "9affee92a548e3ec2199bcd1813a753e4c6bbc5714933af8e502ea51a047f3a7",
+    "probes/allocator/host_probe.c": "dcaca88a052461c000cc06e0754dfc4f4e4334fee01f1f8c3c9a4468ae58395c",
+    "probes/language/c/probe.c": "cf546c4ee8fabd68e1c4b507fe3a4449b8630f1853f084432a7b660fa205de94",
+    "probes/language/harness.c": "3e1d170f7001a0549ab00bbbb938f38795cbe18b932078289da30ff91f759e64",
+    "probes/language/include/nihos_probe.h": "238fa9bfad9c68b9e391652c766684d26398c6e95c90aa9b79bbd161e691ef31",
+    "probes/language/rust/Cargo.lock": "27d2677eb40c0195f02f50efb38af7a19137e42023514221186a754c7539ba5d",
+    "probes/language/rust/Cargo.toml": "49d7695395ea86d6b8624e4424a32739a062a7ed925ec8c3954aa06292b14323",
+    "probes/language/rust/src/lib.rs": "4f0569bde22d6c4a1e7af466866ad2003e252b44011a07df32125f0b330d77b9",
+    "probes/language/zig/probe.zig": "4568a96e30cb6542bf18520433792b353dfec18720b9a4cec7d4ed54cd6b2c12",
+    "probes/native_fp/README.md": "600d5846f5a79154f3e8819ebba91ef49c3c953670f3181a0c9c502f97e540f1",
+    "probes/native_fp/abi.h": "b9e484c58ac9599fb2417558d925a5c566f814acd7ddb153fbf227f44f61fe46",
+    "probes/native_fp/c_math.c": "b013fea8859bb4df2b207545bf6117c60bed96d1f2905ddfcc22729e39d10c31",
+    "probes/sdmmc/oracle/CMakeLists.txt": "6b0d4f838546228b4f3263212ddd67def3c7c2b93b5173ce352f7bf6dca1f6ad",
+    "probes/sdmmc/oracle/main/CMakeLists.txt": "9ec7eaa540eb88f2868b23e6a445f37b6e0f69ca28af7b973bb82ba545b7ff14",
+    "probes/sdmmc/oracle/main/main.c": "b1c7623a488edaf1241986624dcfc8db88f7bb3535d960c9a351fdcaf6f1ab1f",
+    "probes/sdmmc/oracle/sdkconfig.defaults": "37de746f522a5d17de5f232018a43c5c779eae1ebe63177dcbe15accd79eff12",
+    "probes/sdmmc/pads.c": "b736860821dc5a628dee08adc2e28c5a609202064ab4cfc775647a14f215a8ab",
+    "probes/sqlite/c_runtime_test.c": "7ba6304c2910fda96e0bccc2ac8bd929f0fb8fdc46e0f7aa291d4a7a48c1b658",
+    "probes/sqlite/link_host_main.c": "70346db9ec3ec79dc3feff7b6b034a8e4cc7f7b78f0b8cf57848eed91ebd8d69",
+    "probes/sqlite/memory_probe.c": "3aa10da8f2411839591cb935bbbce22412ef5ea6e94db39ee5245ed13f3a84f6",
+    "probes/sqlite/noio_vfs.c": "0af8561a4ea721304edc18177588e386f3cb1b311afcfda106bbbf065105b04d",
+    "probes/sqlite/production_probe.c": "41e4ac14df15588fed1efcbca9becacb78f3040e9d2bf789eb1f00bf854a7967",
+    "probes/sqlite/rv32_abi.c": "6543c0478b1e7d6b0d31a8a08ef81c974ab62b48a31f31fa03503a6a5d9f8d28",
+    "probes/sqlite/rv32_link.ld": "cdc9de76d514052b715a2ff48e2bf41ecc46b4356ad499627955ed993939a455",
+    "probes/sqlite/rv32_link.zig": "7364dd7120d98c1c3ace542b86f769a9f24eeae85f0d2973208514491b5b398a",
+    "probes/sqlite/session_probe.c": "c01150a622472b5e4010018fcaf122bed7433ceac1262df933e22239c68818fd",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/storage/host_test.c": "93a5833f63b3c6b3ab511e8dad1e83bf04f2e7dc9ec8a641d34b62156d131e5e",
+    "probes/storage/littlefs_ro.c": "3a8f8ef6cd96f7cabe0434b92094c8e517fbed1c646c81670e89a645bd4644b5",
+    "probes/storage/make_fixture.c": "ca8c1fdd1d209b013711c11cbae59930c80e86b5b46d4189aba137ebac1b59d2",
+    "src/arch/riscv32/compiled_fp.zig": "0d9a0a0ec193485f2d4778b4fa38d693e1f5f30f61952430e05205822798999d",
+    "src/arch/riscv32/context.zig": "df609e59f1dc77bda712a49ea1458313ef0ff2141745ae2699ab0ab9cd55a105",
+    "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
+    "src/arch/riscv32/cpu1_tasks.zig": "4089f66529aae794c78a9d6cdadedaaaf589686c653d77ee1d56467a11c033dd",
+    "src/arch/riscv32/duplex_scenario.zig": "aa42ab702780d37aadcfa1aadfe0a59b0520878a575a0fd67f45cb12f1f101d1",
+    "src/arch/riscv32/fpu.S": "440e60f02a42a138784eaf52348871f43e5afb437d15c1b20fbddb82e0b5fd37",
+    "src/arch/riscv32/idle.zig": "42868da738fd3fa6efef68ce2c5fcffb52a5f28b8f08a1a1f861dd651e2e1204",
+    "src/arch/riscv32/ipc_scenario.zig": "8de20da789d6e438dd383763de8feeb7a44c59c9e94153de0d41b352cb3f3465",
+    "src/arch/riscv32/lifecycle_test.zig": "5eb5aa2cab826c865c9e46e36adb86455fb440047e6a7d57700e29ad35534ca2",
+    "src/arch/riscv32/native_floating.zig": "25ba2da8ebd772fc6ac06264c8944b06cd7b823e973ab00f2f89aee1d4c2d472",
+    "src/arch/riscv32/native_ipi.zig": "985662dad59fb62d8f28923986e385f78e9a300d8382de5b4bb92f5fd3228026",
+    "src/arch/riscv32/native_tasks.zig": "be2c99b70fe7a45bf6ab85fde06309b17f418bab01907031934d8c325be17c9a",
+    "src/arch/riscv32/native_trap.zig": "5e64d942152d260bfbb4a360a84f0879b73923dc05830a39157c8527019379a7",
+    "src/arch/riscv32/preemption_test.zig": "cdd317010cdb54685440d7216db5b59e96e69a0129074999dd9deefbe7594863",
+    "src/arch/riscv32/remote_scenario.zig": "f9354fe0be442001d116b9d297558c35f546060e517cbaf5649f46c361ec7301",
+    "src/arch/riscv32/task_calls.zig": "b561c6341f5e35da17368b51302b0b051f1688426912a376a57bcc443d37cb2c",
+    "src/arch/riscv32/task_runtime.zig": "12159afd62720a3d8c5c00eea315ecada1bbbac586c2ba95fe4ade6a97d9517a",
+    "src/arch/riscv32/trap.zig": "7b5b093c50b205e618c0ac4a16b94d9ed785828170a0635b5c2b358b61628000",
+    "src/arch/riscv32/trap_entry.S": "f66727322072079e2af68be99d7b7ab85e2a51529d2ef953fddc568665258c17",
+    "src/board/tab5/boot_i2c.zig": "9d75b2eab81e9f359e7f39e34c0d54deb2b91dccbf593fbc602ae6df0cc51a54",
+    "src/board/tab5/dcs.zig": "5b68afee81e946c4f592389f51c02f0a20cbbf731c6953243425b08d0fd71450",
+    "src/board/tab5/display.zig": "c87d1904da72b3bf7c51cb57856e1048c3b4560398f3a0e390d74fd86d5cb55a",
+    "src/board/tab5/keyboard.zig": "0c6acc07b6d0feb4cfacc1f2fd42f44aa4a3266241ed29c479d4981d70f1b541",
+    "src/board/tab5/native_pads.c": "6b4ecc206b06df3b1fda9a1b16b01ceaca8d75e2c4ef1fe22a08f80ce36089ae",
+    "src/board/tab5/native_scanout.c": "328fa6986666a2166503cb8a6d3720d268cb25c2d6218b74cd3ce0a8bcb7d59e",
+    "src/board/tab5/panel_data/ili9881c.bin": "12be71fded85fb0e2f1ffd93c3669543ff40fa5b0f82f8a7077484fa47fee7c8",
+    "src/board/tab5/panel_data/manifest.json": "32d58565c76009b34133a1cc10213064bd5d8549174166b54bc550b358b61e39",
+    "src/board/tab5/panel_data/st7121.bin": "4c55e2c115ca0014d36315b22cf7dd35ff6aa82a724c7c623b4e0bfd206dd892",
+    "src/board/tab5/panel_data/st7123.bin": "40d77dbcf5486a25678ae372b211a52a3079c035b976aae5cff8386e1aceb90f",
+    "src/board/tab5/panels.zig": "df78a9adeb0b945fb6f3ad40f0893d307a2b4c9bceacffe275e2ceafc274897b",
+    "src/board/tab5/provenance.toml": "2e190c20679c542a441bf9038b67ce7909f29329df17db34ffd3c9cd6e3b984f",
+    "src/board/tab5/scanout_state.zig": "4bad04a018246caa5764240e98c3d7bd32e71caee94bab95909da2eff290d6ac",
+    "src/compat/c_strings.c": "cfadeb90d036f48878e30b47d36f6338d29e97f3f94625fe290362765ae05025",
+    "src/console/ascii.zig": "9ab2812db82d39a473da36ce6ef208a0aee83a2e89ab862d5eaa370d0dc9442b",
+    "src/console/diagnostic_keys.zig": "fd83b37082751bfe3e28befe9a6e7304762e56b4b591b79684cd7896f55a01b8",
+    "src/console/snapshot.zig": "561dc33c4576cd6d8a916814dd97b731c93583960380794f4c4cfa33bb7eb2c7",
+    "src/console.zig": "3d95833bdab88cee6d71565549502c7117b85d4ffcccbfb746bf44fecb249ef7",
+    "src/diagnostics/boot_journal.zig": "b4679a36e030f84236e174a48ce817c068b03ba2c5a864f8c8a3a8ba4324a432",
+    "src/diagnostics/boot_state.zig": "0dcb8d4e7a22035a0c5fbc6b4227fbe670455934e698188c95b8b5cf77cbc893",
+    "src/diagnostics/record.zig": "f338f148837f877d703bfc7f5c78a6ca66af685b7bd7a6ad08244cdeae091387",
+    "src/graphics/ascii/JetBrainsMono-OFL.txt": "c1ab7c666206842a02b35b30770dac0d7a10156ed401c9defc3f02a754d89e90",
+    "src/graphics/ascii/README.md": "0715c000426b8883c9a53077a2ef601beee7bd0e37d1374cd97ab0050aba04ce",
+    "src/graphics/ascii/SourceCodePro-LICENSE.md": "0b2c3168605cb4f3ba54cf3cf2003f67ff894c66484c75702007f23eda92c353",
+    "src/graphics/ascii/basic.bin": "028050a3eaf7597f298b733d7c30d420265dc641ffe1405ce3d097de00d703d3",
+    "src/graphics/ascii/fonts.json": "2a3b503cae93e2d12ea1f1325b87c0f2631076a351ec0efa353969a6a5e0338a",
+    "src/graphics/ascii/jetbrains.rle": "1b58c92e6063b2260e41fd5e20e62ad2f949df458280bffd5cab405f39c3dc31",
+    "src/graphics/ascii/jetbrains.zig": "1046097c46c929b730dc3b7a3376d073b11b8cfb98c5681d7c351e3335a9daa2",
+    "src/graphics/ascii/source_code.rle": "be2a5d9f455ed235a73758dfc97701205851a484cb4045773166e89a014b9725",
+    "src/graphics/ascii/source_code.zig": "bbb864beb1d72f3de0c09fad0a8cfdf868c9f5675b6e476551f1781e966405d8",
+    "src/graphics/ascii_console.zig": "718d2f67b9a1b62c55ad8feb658b8c83d44c8d0abc512f9f5c68eb0ae4fba25c",
+    "src/graphics/boot/OFL.txt": "d8b8eea77c2821908e78f8eabbe4a005757d643f4e87dca6588a23fe90d47cbe",
+    "src/graphics/boot/README.md": "e9c7fd34b70bc5e5b536aa555ced46290b6a792f6fdb81891ede5a81472eaecc",
+    "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
+    "src/graphics/boot/masks.rle": "ae55b084604465897eb857074c6a11088f38d59f62a645bae82ee42d42968087",
+    "src/graphics/boot/provenance.toml": "a76e3dbfdb9326c646df8df5bf24bb52f015f7d26f6cab099e2f46afca7f16be",
+    "src/graphics/boot_graphics.zig": "8085bafa3fb00765c3dbd3d5e07c7e617f78789f9dacf1d8cc458fdedd3f4b99",
+    "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
+    "src/kernel/arena.zig": "67cb3baa4e700e51c31949d4b007fe68eb1b80927aa3ddf0bd5a0b487a6a3b54",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "src/kernel/buddy_heap_test.zig": "f446c24804ac5eaff0dcfc56b19bae42721613becf2918546a3a61bc142b6022",
+    "src/kernel/c_allocator.zig": "31b4dbe99768202990246ae440d815329b43107fed094a9b157e8e74b75673e8",
+    "src/kernel/c_allocator_test.zig": "6c2de72aaa4e21816158ec9fb18559cad794f1955bdebad402a793058626cf85",
+    "src/kernel/core_arena.zig": "b7ae72da52d9c0d2c6a5fe53fa34939cd31fd479f5abc1935dd6a5708ad8f847",
+    "src/kernel/fp_vectors.zig": "63c2a8ab28f30dbb032cbbf32051f1576641921f408bd5b7953de17facf3525a",
+    "src/kernel/park.zig": "2d13bf34a5d40238e47b4fad4ab5b66859ef6210a6e0c23517d10e384bc008f5",
+    "src/kernel/remote_events.zig": "fb5582e30da560fdeaf42eb8a08ea9b75757793126597fae5c4dfe7e017413f2",
+    "src/kernel/remote_events_test.zig": "05bc4659d4704d56f143c8de58723a6258633a996775b609eb2ec22fee0c4ce2",
+    "src/kernel/scheduler.zig": "af2046898265dbe8cbe2d65c3d94500e46c6fe772376b9d4e3127a6a620b688e",
+    "src/kernel/size_pool.zig": "f29b0809accdfa0a302ee6d397f73200efbb38e132e5c9b36daf31451e3b8b31",
+    "src/kernel/size_pool_test.zig": "09633b26b8bb73ed4481d908c4de12e67a7c641a9f2fb15b79908cf4ee6d20b5",
+    "src/kernel/slab.zig": "a8ffb87f89c60ee60056bc669c838b2cf59079c4005962a2ae70596b7b411794",
+    "src/kernel/slab_test.zig": "4a3ea1b362c3e23975a95e08401f3a8afab291d0b825bd15fa3f451ef8d519d0",
+    "src/kernel/spsc_channel.zig": "2ad51f26e8ae29d3d7f1c9e66fd1012bb59c2be36f21c146416ee24452681817",
+    "src/kernel/spsc_channel_test.zig": "1a2e2c9d635015cb654d99efbbfb3fad8e473b573e5b85b6c2426502e7104d96",
+    "src/kernel/spsc_ring.zig": "6d8a9fd63e853dfd84bd39d44717fa25519ea38e21fd730296ee33e2f1bb28ba",
+    "src/kernel/task_call_numbers.inc": "2560a143af2308bfd94f44bf22cc104a213bcc3a56826e46195d49bd349d0e40",
+    "src/kernel/task_control.zig": "0f15f3005f5293082ef6c9bd9f9a0b4eaca8c99f0962a01459fd2e72e7f69571",
+    "src/kernel/task_control_test.zig": "f737a460b2416c1481dd7b34b6a5e5ec21b42f5d07fe901850157d62f38608dc",
+    "src/kernel/task_pools_test.zig": "072798ea7e6d12814c6fcb5b375d8499ce69b58a08f07ac4aab8d6fbc4f8a769",
+    "src/kernel/task_resources.zig": "6cf302b6388edd191a4b9d1099f294132bd97ce0a2332aea037484d1f4327b61",
+    "src/kernel/task_resources_test.zig": "0e1fd7ac3f7aad839bfb91eacee7bb5177973380276af0d656a2687d02716875",
+    "src/kernel/tick_clock.zig": "7bc43c23f3ee31aba3ff618a98cec7d982ef75daddc5cf3f0d97047a17917c7c",
+    "src/kernel/tick_counter.zig": "0aec17698c2e4dff66496a430798c3a06f4da406cc543cab0944c1a0dff89085",
+    "src/platform/abi.zig": "ee4bed75417238b7e933e81647f8d0144c1795ddaf70dc7bfda153ad4896c208",
+    "src/platform/espidf_main.zig": "3d506e673edf45ee0f534c270a338bed3fd6302407966b784fb7e9592ab43e9c",
+    "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
+    "src/platform/native/diagnostic_ui.zig": "de732b71b6d91bed7f554ace721483a363386e3465d055bbb65512271040cd4c",
+    "src/platform/native/display_probe.zig": "eaabe11c5d0a9d5bcd610e4455a084d90451990b79afaaf54ac381c5e20cbf53",
+    "src/platform/native/display_runtime.zig": "ad14d9a9e886d46a79eaf9dc3da741584d9f6a50119ee8aae1aa1b5fdc431038",
+    "src/platform/native/display_service.zig": "5233bee41928966f77796effb8fe5792e1112b688f4c0aeb123baf81490e6832",
+    "src/platform/native/esp32p4.ld": "576577ef0a392ad86158f57c26084661ee68bc8315fbdac9543f379652e678b7",
+    "src/platform/native/external_layout.zig": "484c5c82a3b92686ff3409358be9bcd20367e84b4c014d5159ea5cbf9cb4efa7",
+    "src/platform/native/flash_records.zig": "5565e748e4e7a9e6e9bd35f40a53edc103ba7553c78f70b5da7a1db811f1c141",
+    "src/platform/native/heap.zig": "fa01925f2367c6d58dc59a9bbc2fc1e879f7ecdcae3f79dff5eca337455cd0ed",
+    "src/platform/native/main.zig": "1663ba8f01d4b229993162c7046e0020e83cce614a3e7190ea8dc113a5f9a60a",
+    "src/platform/native/memory.zig": "d9a7469bd21b343c7131d9b03e2ea17f8ff6eb944066195bdab62e4906d6d77e",
+    "src/platform/native/psram.zig": "1f5903e8ddb940a055ab60eb1381cd572e83e59cbfce1c58ee1f1560a622e419",
+    "src/platform/native/psram_memory.zig": "8b12ccc70253f3bb648bca8f54f3cffd1cd9de3e4765b08cfdcd610acb77b69a",
+    "src/platform/native/sdmmc_probe.zig": "f3005d7b7fa034be577df24a75aace85aeba61fa9314572073734ed40bfb0d04",
+    "src/platform/native/sqlite_probe.zig": "95cfce174817e7b024ed63ccfa36d18c9688e6492c5422415663d28c1fe29311",
+    "src/platform/native/stack_layout.zig": "89277ab57dbaa5f5d4a51f056ef54b5d2f298b1a5178b45cc844deb6d2e49806",
+    "src/platform/native/stacks.zig": "0a8fdb54c7302bd0f6a47130af67950894771018ded1d036e54d2d10f3a1493b",
+    "src/platform/native/start.S": "ba9c95a26b1b727cca5787e709762b581a2611ea1a14fbd0a71e94b2be8ffa90",
+    "src/root.zig": "4452fa62119311b181200a4e69fd4efe94f2f103d1c701343b1c4c1f347f3819",
+    "src/services/sqlite_session.c": "211f35d173cd7f185cf7c01470f7d47fb2134cda24070e0f5b3e32a25ef6c82b",
+    "src/soc/esp32p4/psram.zig": "c4a3cbed9576a5546ad1282303811547d72e4e087e954da9fe85ff99c9f7c826",
+    "src/soc/esp32p4/psram_mapping.zig": "32351f5bf166dbc3ad6e2d203a9b53edfc819d5006360e179e8abaeff888984f",
+    "src/soc/esp32p4/psram_mapping_test.zig": "a2b694e572433c5b3b49bf6328834ca52f6589b20f0581809a7107f0d9151177",
+    "src/soc/esp32p4/psram_mpll.zig": "787a4d2cdba4ab13ee5120468d05f6e04a59e3a21f02df7d87f5025a9da08836",
+    "src/soc/esp32p4/psram_supply.zig": "e53a6e2c40b602adb79da90600fb24f95b17df80da6763a1ccfea090e7e0a4ef",
+    "src/soc/esp32p4/psram_test.zig": "e2adb99bb598739e449099bc98b9e9292d9f42cc5c3462493f1f6befe36da98c",
+    "src/soc/esp32p4/psram_tuning.zig": "f2f4dbfc298a4c2fd039921fbe38319280ad00b9b302afe9d7ee3cf50fc955a8",
+    "src/soc/esp32p4/sdmmc.zig": "5c878d32b0a72a2d7dbb708399777ed0f2f43939856ef25db489f4aee66d97ea",
+    "src/soc/esp32p4/software_ipi.zig": "dbe7dafacad21c5acab4fd7772be95fb125f3f2c1ce3ad1cdd500e6c304f8117",
+    "src/soc/esp32p4/timer_group.zig": "24a821031bde77b15ca366760be29a47edb9dda58dc9907f9e7a987aae3ff07f",
+    "src/storage/block.zig": "e2d348ccd20957fa2e461b3b13e9ea270b17cb49605ca2935a953c75c09eb4c7",
+    "tools/boot-graphics/capture-native-display.py": "d231efdfd707af317aa0a5c23dc08452a4eabe9c0dbbe05db6ae4e2aa700508d",
+    "tools/boot-graphics/generate-panel-init.py": "3fc2643f7b437bce8696e41f79c02fa82dde74cd91c66b44fff7645ba65decac",
+    "tools/boot-graphics/generate.py": "f38614f5c6f0d2a7062d09d36c10e60675a15e38071ba11d991a081f8339379f",
+    "tools/boot-graphics/preview.py": "882016468c1a1afe41b1b4a90f063f0981752a4cdc2eeba86b49fa6b71116d43",
+    "tools/boot-graphics/preview.zig": "0b31273a872b448d724ab0ad8132883786074032c0f3421a241668d5d899565c",
+    "tools/bootstrap-esp-emu.sh": "0f6726224cf6815262e080a781caf6560a59a5cf7946f09b857ba3db0efb9e13",
+    "tools/bootstrap-littlefs.sh": "17169f4acd205731303391aab7609225216e569938a829139a76907b4207de55",
+    "tools/bootstrap-sqlite.sh": "907c16ff87258798d6ea0cbb76f8115eb807d7f579f326a6d50637a6eee0d890",
+    "tools/bootstrap-zig.sh": "131d24fa3ec1d35e0c84aad30eb49f3feedf667472dfebad7383c2447fe3dfe4",
+    "tools/bootstrap-zlint.sh": "ac801ee6c64aeef2d8c17a2e29ca94dd09eb3fd19b64c9091d2eb2481922fe5a",
+    "tools/build-espidf-emulator.sh": "c0c95c9d1af3a72229bd6537130b4981b044f17af616d5750f5a8fb23c59d222",
+    "tools/build-espidf.sh": "d1765596f3d8ec3652b605364bc6ddd584be8bf96fb94664b1e2b9aae86b0852",
+    "tools/build-native-elf.sh": "67fe869ee308d7258e8bdd3520485e5a39381277a0dddf38623afb879646f4ad",
+    "tools/build-native.sh": "706c92de4005904e48586586ac9919609407fccd483e5484733aabadaae0a5f6",
+    "tools/check-native-display-log.py": "92b89b9129a7ef69f6af53a5778202ffe91d8fb6a76ad44ea5278790c3043509",
+    "tools/check-native-image.py": "aff1e7a9e769b7640cd6a50689558ef3827574a48158b7607a5063bcafa92df2",
+    "tools/check-native-log.py": "b13f829b0ea67ce202f7464937a371c19a22b023a758f4319980aa98c0696682",
+    "tools/check-riscv32-arch.sh": "bf38d209a2d965d25af24f3242d35d75c5efa92870ab8d04811a4c4770df4f87",
+    "tools/check-sdmmc-oracle.py": "de94588dbde2f717719aac42d7e35304a896d8eb20f4df6d0ee0953d6c29d22a",
+    "tools/check-sqlite-rv32-link.py": "6cf85f7c9d73356d9f4d52b090f1b1046875a763efb4839b02244562c4912fb8",
+    "tools/check-sqlite-rv32-object.py": "020b2e11359fcadb9ae1309ba8fafb194a292f3328c637f57dc7e68ade04fca5",
+    "tools/check-storage-oracle.py": "68319726c93a8d0046acd97d6a007899b0881fa4cefdcbd7229654b0290e1aac",
+    "tools/console/generate-fonts.py": "5e9c862a43136edd2f52a9947c66c6de876f4d6a8ba936d5dc41c7d4bcc31a90",
+    "tools/console/preview.py": "a5a578dceee1a76113b7c01d5075c289828a36527991e51cf40ab8ff75d34459",
+    "tools/console/preview.zig": "f86790913d77b6b675877b70e3d8a325e363a33dd4f8d44dd2c62a27b8d6bbdd",
+    "tools/native-sqlite-manifest.py": "ffb69fbadaf78da629095c612774d2b01633aeb2f72ff07bfb04f4d90a018e8e",
+    "tools/native_checks_test.py": "14c8db4363ca1ddfebebeca754399fbc0dff0cdc45b5afdea8a5275a050452e4",
+    "tools/native_console_test.py": "66a045d04a245d94d7f93c2716aa87dccdf4e80950f9531ac0d6df41d48f98b2",
+    "tools/native_display_test.py": "c9d1d559d8dafe0cc7597ab762f141614bfd2ccd43f339b2ed29d0335971e8d1",
+    "tools/native_image_test.py": "d7486c2977deb3a635603e7f5ff8231a888285e90c6236fdf3d33db8caa1d822",
+    "tools/native_record_test.py": "146ec66ef27d6fbc412b6def8888edcf3075b9606026b932259d250ff47b4ca2",
+    "tools/native_sdmmc_test.py": "da3bbcf0b9a031fa836aec68887372d7116eeea648b3258b7dca43caff1402fe",
+    "tools/probe-sqlite-rv32-link.sh": "c6497f871e6b72caa78c3ea98009c3964bc13df082a7e98e7d4b8edb9f20ee95",
+    "tools/probe-sqlite-rv32.sh": "485fd9e9f92c33c3a86cc0fc7084a546bd4b2cf2bcfa9c587cd727c6350c9b11",
+    "tools/run-c-allocator-probe.sh": "310de91554237c61b02c2830caf6bab7664b3f52ccadda82ae1ba0dcb86acc37",
+    "tools/run-c-runtime-test.sh": "47f1ad475ef1361294ff4500a803a7cf384823f04beb465245e448bbf8e22d9b",
+    "tools/run-esp-emu-smoke.sh": "d6875b6094b7d89f5baae7c4afddcd92081b80a4ea238f2fc1088ca520dfe30b",
+    "tools/run-language-probe.sh": "e4490fd03ec8bc829b6d4302851ebf3c0953edf52b258ee6cd52a53ea9b6610f",
+    "tools/run-native-smoke.sh": "64ab398102589cb372655d07dc0e7367bfe675ffeb2621ba2f1ea1ea25e8fd01",
+    "tools/run-sqlite-memory-probe.sh": "74d05d76abdf7688f8bfd54f139c6a6d87ef21e47303c0b6be80724c55803ccc",
+    "tools/run-static-analysis.sh": "7dabbae1ef3ca080e79ca25b92701d0f57685ff7cc598a502fde322f69305a27",
+    "tools/run-storage-host-test.sh": "48aad8fa16a095dcb0b112beef0efc6857e3371891d1227393ffa225cd4d900b",
+    "tools/storage_checks_test.py": "26218ecf2b8d604993e847d31666287d70d8b8a74a89eefbb3d226a892055f4d"
+  }
+}
