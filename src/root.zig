@@ -5,6 +5,7 @@
 
 pub const version = "0.0.0";
 pub const block_reader = @import("storage/block.zig");
+pub const experimental_store_model = @import("storage/cow_model.zig");
 pub const storage_rpc = @import("kernel/storage_rpc.zig");
 pub const record_log = @import("diagnostics/record.zig");
 pub const high_sram_layout = @import("platform/native/high_sram_layout.zig");
@@ -38,6 +39,9 @@ pub const platform_abi = @import("platform/abi.zig");
 
 test {
     _ = block_reader;
+    _ = experimental_store_model;
+    _ = @import("storage/cow_model_test.zig");
+    _ = @import("storage/model_media.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;
