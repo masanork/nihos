@@ -46,7 +46,7 @@ pub fn Pool(comptime page_bytes: usize, comptime max_pages: usize, comptime max_
         }
         fn address(self: *const Self, first: u32) usize {
             var base: u32 = 0;
-            for (self.regions) |maybe| {
+            for (&self.regions) |maybe| {
                 const memory = maybe orelse break;
                 const count: u32 = @intCast(memory.len / page_bytes);
                 if (first < base + count) return @intFromPtr(memory.ptr) + (first - base) * page_bytes;
@@ -60,11 +60,11 @@ pub fn Pool(comptime page_bytes: usize, comptime max_pages: usize, comptime max_
             if (self.serial == std.math.maxInt(u64)) return error.SerialExhausted;
             const needed: u32 = @intCast((length + page_bytes - 1) / page_bytes);
             if (needed > self.free_pages) return error.OutOfMemory;
-            const slot = for (self.entries, 0..) |entry, index| {
+            const slot = for (&self.entries, 0..) |entry, index| {
                 if (entry == null) break index;
             } else return error.Full;
             var base: u32 = 0;
-            for (self.regions) |maybe| {
+            for (&self.regions) |maybe| {
                 const memory = maybe orelse break;
                 const count: u32 = @intCast(memory.len / page_bytes);
                 var consecutive: u32 = 0;
@@ -103,7 +103,7 @@ pub fn Pool(comptime page_bytes: usize, comptime max_pages: usize, comptime max_
         pub fn largestFree(self: *const Self) u32 {
             var base: u32 = 0;
             var largest: u32 = 0;
-            for (self.regions) |maybe| {
+            for (&self.regions) |maybe| {
                 const memory = maybe orelse break;
                 const count: u32 = @intCast(memory.len / page_bytes);
                 var run: u32 = 0;

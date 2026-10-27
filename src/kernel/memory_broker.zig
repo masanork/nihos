@@ -118,7 +118,7 @@ pub fn Broker(comptime internal_pages: usize, comptime external_pages: usize, co
             for ([_]Domain{ .internal, .external }) |domain| {
                 if (limit.get(domain) > self.policy.groups[index].get(domain) - self.admitted[index].get(domain)) return error.Quota;
             }
-            const slot = for (self.owners, 0..) |entry, i| {
+            const slot = for (&self.owners, 0..) |entry, i| {
                 if (entry == null) break i;
             } else return error.Full;
             try self.availableTicket();
@@ -145,7 +145,7 @@ pub fn Broker(comptime internal_pages: usize, comptime external_pages: usize, co
             if (capacity_bytes == 0) return error.Unavailable;
             if (bytes > who.limit.get(domain) - who.used.get(domain)) return error.Quota;
             if (bytes > free_bytes - self.policy.floor.get(domain)) return error.Reserve;
-            const slot = for (self.leases, 0..) |entry, i| {
+            const slot = for (&self.leases, 0..) |entry, i| {
                 if (entry == null) break i;
             } else return error.Full;
             try self.availableTicket();
@@ -199,7 +199,7 @@ pub fn Broker(comptime internal_pages: usize, comptime external_pages: usize, co
             if (who.closing) return error.Closing;
             const allocation = try self.leaseEntry(owner, lease);
             if (allocation.pins == std.math.maxInt(u16)) return error.Full;
-            const slot = for (self.pins, 0..) |held, i| {
+            const slot = for (&self.pins, 0..) |held, i| {
                 if (held == null) break i;
             } else return error.Full;
             try self.availableTicket();

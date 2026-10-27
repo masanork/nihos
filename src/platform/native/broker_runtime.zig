@@ -1,9 +1,13 @@
 //! Post-fixture ownership transfer and real EXIT/reap qualification.
 const std = @import("std");
-const dev = @import("development_memory");
+const options = @import("native_options");
+const dev = @import("storage_vfs").development;
+comptime {
+    if (options.fatfs_native) _ = @import("fatfs_runtime.zig");
+}
 const api = dev.api;
 const calls = @import("task_calls");
-const ring = @import("spsc_ring");
+const ring = @import("storage_vfs").spsc;
 const timer_group = @import("timer_group");
 const abi = @import("broker_abi.zig");
 pub const panic = std.debug.no_panic;
@@ -53,7 +57,7 @@ comptime {
 fn state() *State {
     return @ptrFromInt(0x48008000);
 }
-fn manager() *dev.Manager {
+pub fn manager() *dev.Manager {
     return @ptrFromInt(0x4ff73000);
 }
 fn fail(step: u8) noreturn {

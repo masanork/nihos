@@ -22,7 +22,11 @@ MEMORY {
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
 #if NIH_NATIVE_SQLITE
+#if NIH_NATIVE_FATFS_RPC
+    flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 704K
+#else
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
+#endif
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
@@ -64,6 +68,7 @@ SECTIONS
         *sql_storage_api.o(.text .text.*)
         *sql_storage_runtime.o(.text .text.*)
         *sql_broker_runtime.o(.text .text.*)
+        *sql_fat_*.o(.text .text.*)
         *(.flash.text.storage)
         . = ALIGN(4);
         __flash_cold_start = .;
@@ -82,7 +87,9 @@ SECTIONS
         *sql_lfs_reader.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_storage_api.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_storage_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        KEEP(*sql_broker_runtime.o(.rodata.fatfs_config))
         *sql_broker_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_fat_*.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
 #endif

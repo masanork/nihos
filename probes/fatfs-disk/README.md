@@ -137,3 +137,17 @@ Client frames are 4,696 bytes (8,192 bytes charged separately); notification sta
 is 28 bytes and parent-coordinator metadata is 72 bytes on RV32. These counts do
 not admit the final native code/rodata, globals, task stacks or complete workload.
 The existing native littlefs fixture stays on its original protocol and layout.
+
+## Opt-in native fixture link
+
+`NIHOS_NATIVE_FATFS_RPC=1` now links the guarded reader and actual VFS/RPC into
+an optional native FSD/client phase after the existing broker qualification.
+This phase uses an immutable sparse/RLE FAT12 Flash fixture, not the physical SD
+adapter described above. The C decoder's complete logical image is checked on
+host by `tools/check-fatfs-native-input.py`. Native C objects disable inlining to
+avoid overlapping LFN stack buffers; the copied safety shim remains unchanged.
+The final ELF audit checks resident notifications/hooks, immutable fixture hash,
+reserved control/parent layout and individual static frame ceilings. The current
+worker stack is 4 KiB. Whole-call-stack and physical scheduler/SD qualification
+remain separate gates. See
+[the native link record](../../docs/measurements/2026-10-28-fatfs-native-link.md).

@@ -247,5 +247,18 @@ service parentのpinを外せるのは、RPC shutdownとprivate FS destroyの両
 hostでは実FatFs、実VFS/RPC、生成済みdevelopment policyを使う実brokerを接続した。
 sector callback中のexit/cancel注入、client pagesの回収、service親領域の保持、再bind後の読取りと
 4 GiB超offsetを確認する。native kernelのtask stop/wakeup、IRQ配置、controller abortとの連動、
-最終image placementと8 KiB task stackの検証はまだ行っていない。
+最終image placementとtask stackの検証はまだ行っていない。
 [69 scenarioとbroker admissionの記録](../measurements/2026-10-28-fatfs-rpc-host.md)にraw hashとtarget layoutを保存した。
+
+## Native fixtureの最終link（2026-10-28、実機未実行）
+
+`NIHOS_NATIVE_FATFS_RPC=1`で既存storage task ABIをVFS/RPC v2のFSD/clientへ接続する。
+brokerの終了後に予約IPCをcontrolとして再利用し、service parentとclient frameは実brokerへ別々にchargeする。
+同期read中のcancel、kernel側のclient停止、drain、reap/rebind、旧handle/epoch/通知拒否、全回収を
+nativeの受入経路へ実装した。入力は組込みのimmutable FAT12 fixtureで、実カードFatFsとの接続は次のgateである。
+
+最終ELF/image、IRQ hookと通知wordのresident配置、fixture全体hash、static frameを監査した。
+値反復による大きな配列copyを除去し、native FatFs Cのinliningも止める。
+現workerは4 KiBで、将来計画の8 KiBを実割当として数えない。
+frame単体の上限は監査するが、総call stackと実taskのpaint/guard、停止・wakeupはまだ実機で確認していない。
+[linkとstack修正の記録](../measurements/2026-10-28-fatfs-native-link.md)に根拠と残るgateを示す。

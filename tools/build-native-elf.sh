@@ -91,6 +91,16 @@ if [ "$cold_capture" = true ] && [ "$broker" != true ]; then
     exit 1
 fi
 cold_flash=${NIHOS_NATIVE_COLD_FLASH:-0}
+fatfs_native=${NIHOS_NATIVE_FATFS_RPC:-0}
+case "$fatfs_native" in
+    0) fatfs_native=false; fatfs_cpp=0 ;;
+    1) fatfs_native=true; fatfs_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_FATFS_RPC must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$fatfs_native" = true ] && { [ "$broker" != true ] || [ "$sd_removal" = true ]; }; then
+    echo "Native FatFs RPC fixture requires MEMORY_BROKER=1 and SD_REMOVAL=0" >&2
+    exit 1
+fi
 case "$cold_flash" in
     0) cold_flash=false ;;
     1) cold_flash=true ;;
@@ -116,9 +126,10 @@ fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
-"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\npub const broker = %s;\npub const cold_flash = %s;\npub const sd_removal = %s;\npub const cold_capture = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" "$broker" "$cold_flash" "$sd_removal" "$cold_capture" > "$build_dir/native_options.next"
+printf 'pub const fatfs_native = %s;\n' "$fatfs_native" >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -130,21 +141,30 @@ fi
 set -- "$build_dir/c_allocator.o"
 if [ "$broker" = true ]; then
     python3 "$repo_root/tools/generate_memory_profile.py" --check
+    broker_bitcode=-fno-emit-llvm-bc
+    if [ "$fatfs_native" = true ]; then broker_bitcode="-femit-llvm-bc=$build_dir/fatfs-runtime.bc"; fi
     "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
         -fno-stack-check -fno-stack-protector -fno-unwind-tables \
-        --dep development_memory --dep task_calls --dep spsc_ring --dep timer_group \
+        --dep native_options --dep storage_vfs --dep task_calls --dep timer_group \
         -Mroot="$repo_root/src/platform/native/broker_runtime.zig" \
+        -Mnative_options="$build_dir/native_options.zig" \
         -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-        -Mdevelopment_memory="$repo_root/src/kernel/development_memory.zig" \
+        -Mstorage_vfs="$repo_root/src/storage_vfs.zig" \
         -target riscv32-freestanding-none -mcpu="$cpu" -O safe --dep task_control \
         -Mtask_calls="$repo_root/src/arch/riscv32/task_calls.zig" \
         -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
         -Mtask_control="$repo_root/src/kernel/task_control.zig" \
         -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-        -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
-        -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
         -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
-        -femit-bin="$build_dir/sql_broker_runtime.o"
+        -femit-bin="$build_dir/sql_broker_runtime.o" "$broker_bitcode"
+    if [ "$fatfs_native" = true ]; then
+        # Preserve the Zig module's optimized LLVM IR/section attributes, emit
+        # its final machine object with LLVM stack metadata. The final ELF
+        # audit below enforces frame sizes; this is not a call-stack proof.
+        "$zig" clang -cc1 -x ir -triple riscv32-unknown-none -target-abi "$abi" \
+            -emit-obj -O2 -Wno-override-module -Werror -fstack-size-section \
+            "$build_dir/fatfs-runtime.bc" -o "$build_dir/sql_broker_runtime.o"
+    fi
     set -- "$@" "$build_dir/sql_broker_runtime.o"
 fi
 if [ "$sdmmc" = true ]; then
@@ -219,11 +239,12 @@ if [ "$sqlite" = true ]; then
                 "$source" -o "$build_dir/sql_$name.o"
             set -- "$@" "$build_dir/sql_$name.o"
         done
-        if [ "$storage_service" = true ]; then
+        if [ "$storage_service" = true ] && [ "$fatfs_native" != true ]; then
             "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
                 -fno-stack-check -fno-stack-protector -fno-unwind-tables \
-                --dep task_calls --dep timer_group --dep storage_rpc --dep spsc_ring \
+                --dep native_options --dep task_calls --dep timer_group --dep storage_rpc --dep spsc_ring \
                 -Mroot="$repo_root/src/platform/native/storage_runtime.zig" \
+                -Mnative_options="$build_dir/native_options.zig" \
                 -target riscv32-freestanding-none -mcpu="$cpu" -O safe --dep task_control \
                 -Mtask_calls="$repo_root/src/arch/riscv32/task_calls.zig" \
                 -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -236,6 +257,30 @@ if [ "$sqlite" = true ]; then
                 -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
                 -femit-bin="$build_dir/sql_storage_runtime.o"
             set -- "$@" "$build_dir/sql_storage_runtime.o"
+        fi
+        if [ "$fatfs_native" = true ]; then
+            fixture_manifest=$(python3 "$repo_root/tools/build-fatfs-native-input.py" "$build_dir")
+            cp "$fixture_manifest" "$build_dir/fatfs-fixture-manifest.json"
+            fatfs_source=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_directory"])' "$fixture_manifest")
+            fixture_include=$(dirname "$fixture_manifest")
+            for name in guard unicode backend disk fixture fixture_disk; do
+                case "$name" in
+                    guard) source="$repo_root/probes/fatfs-disk/safety.c" ;;
+                    unicode) source="$fatfs_source/ffunicode.c" ;;
+                    backend) source="$repo_root/src/storage/fatfs_backend.c" ;;
+                    disk) source="$repo_root/src/storage/fatfs_disk.c" ;;
+                    fixture) source="$repo_root/src/platform/native/fatfs_fixture.c" ;;
+                    fixture_disk) source="$repo_root/src/platform/native/fatfs_fixture_disk.c" ;;
+                esac
+                "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+                    -Oz -fno-inline-functions -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+                    -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fstack-size-section \
+                    -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
+                    -I "$repo_root/include" -I "$repo_root/probes/fatfs-disk" -I "$fatfs_source" -I "$fixture_include" \
+                    -Dnih_ro_open=nih_fatfs_guard_open -Dnih_ro_directory=nih_fatfs_guard_directory -Dnih_ro_status_name=nih_fatfs_guard_status_name \
+                    "$source" -o "$build_dir/sql_fat_$name.o"
+                set -- "$@" "$build_dir/sql_fat_$name.o"
+            done
         fi
         python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir" "$littlefs_source"
     else
@@ -303,3 +348,19 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mpsram_mapping="$repo_root/src/soc/esp32p4/psram_mapping.zig" \
     -femit-bin="$build_dir/nihos-native.elf"
+
+if [ "$fatfs_native" = true ]; then
+    python3 - "$repo_root" "$build_dir" <<'PY_AUDIT'
+import json
+from pathlib import Path
+import runpy
+import sys
+root, directory = map(Path, sys.argv[1:])
+sys.path.insert(0, str(root / 'tools'))
+audit = runpy.run_path(str(root / 'tools/check-native-image.py'))['audit']
+report = audit((directory / 'nihos-native.elf').read_bytes(), None, 'sqlite', 'device',
+               json.loads((directory / 'sqlite-manifest.json').read_text()))
+(directory / 'fatfs-link-audit.json').write_text(json.dumps(report, indent=2) + '\n')
+print('Native fixture ELF/frame audit passed; physical task stacks remain unqualified')
+PY_AUDIT
+fi

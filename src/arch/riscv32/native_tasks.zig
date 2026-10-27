@@ -496,7 +496,7 @@ pub fn startStorage(hart: u32) bool {
         : .{ .memory = true });
     defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     const owner = &owners[hart];
-    if (owner.phase != .complete) return false;
+    if (owner.phase != .complete and !(options.fatfs_native and owner.phase == .broker_complete)) return false;
     return admitStorage(hart);
 }
 

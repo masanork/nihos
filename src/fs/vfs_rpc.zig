@@ -64,12 +64,12 @@ pub const Notifications = struct {
     pub fn exited(self: *const @This(), epoch: u32) bool {
         return self.binding.load(.acquire) == ((epoch << 1) | 1);
     }
-    pub fn notifyExit(self: *@This(), caller: u32, epoch: u32) bool {
+    pub inline fn notifyExit(self: *@This(), caller: u32, epoch: u32) bool {
         if (epoch == 0 or epoch > 0x7fffffff or self.client.load(.acquire) != caller) return false;
         const expected = epoch << 1;
         return self.binding.cmpxchgStrong(expected, expected | 1, .acq_rel, .acquire) == null;
     }
-    pub fn cancelRead(self: *@This(), caller: u32, epoch: u32, sequence: u32) bool {
+    pub inline fn cancelRead(self: *@This(), caller: u32, epoch: u32, sequence: u32) bool {
         const ticket = self.signal.active();
         if (ticket == 0 or self.binding.load(.acquire) != epoch << 1 or self.client.load(.acquire) != caller or
             self.sequence.load(.acquire) != sequence or !self.readable.load(.acquire)) return false;
