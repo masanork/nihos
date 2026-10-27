@@ -52,7 +52,7 @@ fn serviceNetwork() void {
     const state = network.snapshot();
     if (network_ready and state.ip == 0) {
         network_ready = false;
-        print("Wi-Fi integration session stopped; addresses retired\n");
+        print("Wi-Fi disconnected; addresses retired, retry scheduled\n");
     }
     if (!network_ready and state.ip != 0 and state.linklocal != 0) {
         network_ready = true;
@@ -65,7 +65,7 @@ fn serviceNetwork() void {
     }
     if (now < network_report_at) return;
     network_report_at = now + 5_000_000;
-    logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us" }, &state);
+    logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us", "renewals", "reconnects", "acquisitions", "failures", "disconnect_reason", "failed_station" }, &state);
     const heartbeat = .{ .frames = display_service.runtime.snapshot().frames, .ticks0 = @atomicLoad(u32, &ticks[0], .acquire), .ticks1 = @atomicLoad(u32, &ticks[1], .acquire) };
     logger.record("NIHOS_NATIVE_NETWORK_UI", null, .{ "frames", "ticks0", "ticks1" }, &heartbeat);
 }
@@ -586,7 +586,7 @@ export fn nih_native_main() callconv(.c) noreturn {
         stageComplete(.storage);
     }
     if (options.network) {
-        print("Wi-Fi starting (exclusive SDIO, 120s integration session)\n");
+        print("Wi-Fi starting (exclusive SDIO, lease maintenance enabled)\n");
         network.begin(ui.timer(), if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, ui.serviceBacking(network.storage_bytes));
     }
     stageBegin(.cores);

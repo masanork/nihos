@@ -1,9 +1,10 @@
 # Native Zig boot on ESP32-P4
 
 An opt-in [normal-boot networking integration](adr/0045-normal-boot-network-integration.md)
-now services factory Hosted Wi-Fi alongside the live display. Its bounded
-120-second session and separate [physical evidence](measurements/2026-10-27-normal-boot-network.md)
-do not qualify a permanent network service or the standalone C6 probe.
+services factory Hosted Wi-Fi alongside the live display. The initial
+[120-second physical evidence](measurements/2026-10-27-normal-boot-network.md)
+is followed by [lease maintenance and retry](adr/0046-native-network-lease-lifecycle.md).
+Successful physical renewal/recovery remains an explicit qualification gate.
 
 This is the first independent native boot fixture. The stock ROM and
 second-stage loader hand off to Zig/assembly code in internal SRAM, with no

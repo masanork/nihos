@@ -5,6 +5,9 @@ schedulers running while CPU0 acquires IPv4 and services link-local IPv6.
 See [ADR 0045](../adr/0045-normal-boot-network-integration.md) for its bounded
 lifetime and ownership contract.
 
+The subsequent [lease-lifecycle checkpoint](2026-10-27-network-lease-lifecycle.md)
+removes the fixed session limit in source and retains separate physical gates.
+
 ## Reproduce the private build
 
 ```sh
