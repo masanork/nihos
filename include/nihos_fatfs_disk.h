@@ -20,6 +20,7 @@ typedef struct {
     uint32_t remaining, reads;
     nih_fatfs_disk_state state;
     int busy;
+    uint32_t retained;
     uint8_t scratch[NIH_FATFS_IO_BYTES];
 } nih_fatfs_disk;
 enum { NIH_FATFS_OK, NIH_FATFS_INVALID, NIH_FATFS_BUSY, NIH_FATFS_STALE };
@@ -38,6 +39,10 @@ int nih_fatfs_disk_bind(nih_fatfs_disk *disk, nih_fatfs_sector_read read_sector,
 int nih_fatfs_disk_arm(nih_fatfs_disk *disk, uint64_t epoch, uint32_t sectors);
 int nih_fatfs_disk_invalidate(nih_fatfs_disk *disk, uint64_t epoch);
 int nih_fatfs_disk_detach(nih_fatfs_disk *disk, uint64_t epoch);
+/* A mounted backend retains its binding so raw detach cannot replace media
+ * beneath cached filesystem objects. Only that backend releases the hold. */
+int nih_fatfs_disk_retain(nih_fatfs_disk *disk, uint64_t epoch);
+int nih_fatfs_disk_release(nih_fatfs_disk *disk, uint64_t epoch);
 /* Native adapter to the existing pinned, fenced nih_storage_read path. */
 int nih_fatfs_native_read(void *unused, uint32_t lba, uint8_t sector[512]);
 #endif

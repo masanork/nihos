@@ -51,13 +51,28 @@ int nih_fatfs_disk_invalidate(nih_fatfs_disk *disk, uint64_t epoch) {
 
 int nih_fatfs_disk_detach(nih_fatfs_disk *disk, uint64_t epoch) {
     if (!matches(disk, epoch)) return NIH_FATFS_STALE;
-    if (disk->busy) return NIH_FATFS_BUSY;
+    if (disk->busy || disk->retained) return NIH_FATFS_BUSY;
     memset(disk->scratch, 0, sizeof disk->scratch);
     disk->state = NIH_FATFS_DETACHED;
     disk->remaining = 0;
     disk->read_sector = NULL;
     disk->context = NULL;
     active = NULL;
+    return NIH_FATFS_OK;
+}
+
+int nih_fatfs_disk_retain(nih_fatfs_disk *disk, uint64_t epoch) {
+    if (!matches(disk, epoch)) return NIH_FATFS_STALE;
+    if (disk->busy || disk->retained) return NIH_FATFS_BUSY;
+    if (disk->state != NIH_FATFS_READY) return NIH_FATFS_INVALID;
+    disk->retained = 1;
+    return NIH_FATFS_OK;
+}
+int nih_fatfs_disk_release(nih_fatfs_disk *disk, uint64_t epoch) {
+    if (!matches(disk, epoch)) return NIH_FATFS_STALE;
+    if (disk->busy) return NIH_FATFS_BUSY;
+    if (!disk->retained) return NIH_FATFS_INVALID;
+    disk->retained = 0;
     return NIH_FATFS_OK;
 }
 

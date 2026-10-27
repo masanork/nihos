@@ -186,3 +186,34 @@ RV32でのadapter workspaceは4144 Bで、別途global状態・コードを要�
 この段階でfirmwareへのlink・実カードmountは有効にしていない。
 PR #3の循環chain・ancestor・identity shim、partition検証、VFS BackendとRPCの接続を次のgateとする。
 [試験の範囲と再利用元](../../probes/fatfs-disk/README.md)に詳細を記す。
+
+## Guarded BackendとVFSのhost接続（2026-10-28）
+
+[C Backend](../../src/storage/fatfs_backend.c)と[Zig adapter](../../src/fs/fatfs_backend.zig)を追加し、
+PR #3 `542b3a3`のchain / ancestry / identity shimを同じdisk callbackへ接続した。
+lookupは検証済みの`FIL`を固定slotへ保持し、openはidentityが一致するslotをtoken化する。
+名前による再openは行わず、空ファイルのidentity 0も有効値として扱う。
+openは16個、未消費lookupは1個までとし、次のlookupとdestroyで未消費slotを回収する。
+
+backendはdisk bindingをretainし、FS objectが生きている間のraw disk detachを拒否する。
+全operationでepochと失効状態をFatFsのcacheへ触れる前に検査する。
+全量成功後にだけ4 KiB以下のpublic read結果を出力へコピーし、途中I/O失敗の部分結果を公開しない。
+constructorは容量不足・非整列・diskと重なるworkspaceを拒否する。
+ownerはVFSをquiescent detachしてpublic handleを取り消した後、C側の全FILとFS登録を破棄し、
+diskをdetachしてから新しいepochへ進める。workspaceとclient destinationのpinはowner/RPCの責任である。
+
+VFS coreと既存testも`542b3a3`を起点に取り込み、lookup/openのI/O・回復要求・contract失敗でも
+mountをfaultedにする変更を加えた。失敗後にbackendを再度呼び出さず、明示的なdetach/remountを要求する。
+PR #3のbranchや他セッションの実装は変更していない。
+
+hostでは実際のZig VFSからguarded FatFsを呼び、principal/root/write権限、読取り、失敗後の失効、
+旧epochと旧handle、再mount後の新handle、cached bytesの抜去後非公開を検査する。
+別のfault overlayで循環・短縮file chain、root/親chain循環、ancestor aliasとVBRの署名・宣言長を検査する。
+input imageはread-onlyで、overlayをsourceへ書き戻さない。
+RV32ではC Backend、shimを含むFatFs、Unicode、VFS/adapterの実体をcompileするが、firmwareへlinkしない。
+
+volume rootのみを実装し、選択済みpartition領域をtrusted ownerから受け取る。
+複数FSのruntime routing、subtree root、RPCの取消・kill時のpin、card-detect IRQの接続と最終メモリ配置は残る。
+現在の8 KiB littlefs workspaceには収まらないため、置換前に別途admissionが必要である。
+clean power-on、実カードFatFs mount、永続SQLite、書込み・電断耐性の合格を追加したものではない。
+[58ケースのhost結果とRV32 layout](../measurements/2026-10-28-fatfs-vfs-host.md)にsource一致の記録を保存した。
