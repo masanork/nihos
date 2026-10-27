@@ -45,8 +45,11 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False):
         return
     expected = FLASH_SECTIONS.get(name)
     require(expected is not None and address == expected[0], "unexpected non-SRAM section: " + name)
-    require(kind == 1 and flags == (6 if name == ".flash.boot" else 2),
-            "invalid Flash PROGBITS permissions")
+    # SHF_MERGE/SHF_STRINGS describe immutable constant folding, not memory
+    # permissions. Small headless tables may retain these linker metadata bits.
+    permissions = flags == 6 if name == ".flash.boot" else (
+        flags & 7 == 2 and flags & ~50 == 0 if name == ".flash.rodata" else flags == 2)
+    require(kind == 1 and permissions, "invalid Flash PROGBITS permissions")
     maximum = 65248 if name == ".flash.boot" else 65504
     require(size == expected[1] if expected[1] is not None else 0 < size <= maximum,
             "invalid Flash section size")

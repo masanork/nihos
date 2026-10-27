@@ -76,7 +76,7 @@ pub noinline fn append(message: []const u8) void {
     if (!options.console_live) restore(previous);
 }
 pub fn initializeClock() bool {
-    if (!options.console_live) return true;
+    if (!options.console_live and options.boot_test == 0) return true;
     clock_ready = clock.initialize();
     return clock_ready;
 }

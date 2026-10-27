@@ -104,7 +104,7 @@ def check_cpu_clock(log, image, evidence):
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
-          external_reserved_bytes=3 * 65536, require_normal=False):
+          external_reserved_bytes=3 * 65536, require_normal=False, headless_case=0):
     if external_reserved_bytes not in (3 * 65536, 2 << 20):
         raise ValueError("unknown external reservation")
     if evidence not in ("emulator", "physical-device"):
@@ -115,8 +115,17 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if evidence == "emulator" and profile == "device":
         raise ValueError("device image requires explicit physical evidence source")
     log = log.replace("\\r", "").replace("\r", "")
+    headless = headless_case in (1, 2)
+    if headless_case and (not headless or not require_normal or profile != 'emulator' or evidence != 'emulator'):
+        raise ValueError('headless normal boot requires an explicit emulator test case')
+    if headless:
+        case = fixed_record(log, 'NIHOS_NATIVE_BOOT_TEST', ('case',))
+        if case['case'] != headless_case or 'NIHOS_NATIVE_UI_' in log:
+            raise ValueError('headless test case mismatch or invented display evidence')
+    elif 'NIHOS_NATIVE_BOOT_TEST ' in log:
+        raise ValueError('emulator test evidence cannot qualify device boot')
     normal_boot = log.count("NIHOS_NATIVE_PROFILE normal=1 qualification=0") == 1
-    if require_normal != normal_boot or (normal_boot and (require_qualification or require_sdmmc or require_storage or profile != 'device')):
+    if require_normal != normal_boot or (normal_boot and (require_qualification or require_sdmmc or require_sdmmc_fast or require_storage or (profile != 'device' and not headless))):
         raise ValueError('normal boot must be explicitly requested and cannot qualify a soak/storage run')
     if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
         raise ValueError("missing boot or unexpected reboot")
@@ -209,7 +218,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if list(psram_smp.values()) != ([1, 1 if normal_boot else 64, 48 if normal_boot else 3072, 48 if normal_boot else 3072, 48, 1] if psram["status"] else [0] * 6):
         raise ValueError("incomplete PSRAM cross-core handoff evidence")
     if normal_boot:
-        if mode != 'integer' or fast_psram is None:
+        if mode != 'integer' or (fast_psram is None and not headless):
             raise ValueError('normal boot requires native integer PSRAM200 profile')
         for forbidden in ('NIHOS_NATIVE_QUALIFICATION ', 'NIHOS_NATIVE_PSRAM_SWEEP ', 'NIHOS_NATIVE_HEARTBEAT ', 'NIHOS_NATIVE_SOAK_PASS ', 'NIHOS_NATIVE_TASKS '):
             if forbidden in log:
@@ -218,13 +227,15 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
         if min(health.values()) < 1 or health['ipi0'] != 1 or health['ipi1'] != 1:
             raise ValueError('incomplete normal boot CPU/timer/IPI health')
         times = repeated_records(log, 'NIHOS_NATIVE_BOOT_TIME', ('stage','elapsed_us'))
-        if ([row['stage'] for row in times] != [1,3,5,7,4,6] or
+        if ([row['stage'] for row in times] != ([1,4,6] if headless else [1,3,5,7,4,6]) or
                 not times[0]['elapsed_us'] or any(a['elapsed_us'] >= b['elapsed_us'] for a,b in zip(times,times[1:]))):
             raise ValueError('missing or out-of-order normal boot stage timestamps')
         order = ('NIHOS_NATIVE_BOOT_HEALTH ', 'NIHOS_NATIVE_CONSOLE ', 'NIHOS_NATIVE_UI_READY ')
+        if headless:
+            order = ('NIHOS_NATIVE_BOOT_HEALTH ', 'NIHOS_NATIVE_NORMAL_READY ', 'NIHOS_NATIVE_NORMAL_IDLE ')
         if [log.index(m) for m in order] != sorted(log.index(m) for m in order):
             raise ValueError('normal boot READY precedes health checks')
-        return {'normal_boot': True, 'qualification': None, 'evidence': evidence, 'psram': psram,
+        return {'normal_boot': True, 'headless_emulator': headless, 'qualification': None, 'evidence': evidence, 'psram': psram,
                 'psram_fast': fast_psram, 'psram_mapping': mapped, 'psram_smp': psram_smp,
                 'cpu_clock': check_cpu_clock(log, image, evidence), 'health': health, 'boot_times': times,
                 'ready_us_from_diagnostic_clock': times[-1]['elapsed_us']}

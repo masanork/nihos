@@ -233,6 +233,7 @@ fn enableTimer(hart: u32) void {
     if (options.console_live and hart == 0 and display_service.runtime.active()) routeDisplay();
     if (!timer(hart).configureOneShot(tasks.period_us)) fail("scheduler timer restart");
     timer(hart).start();
+    if (options.boot_test == 5 and hart == 1) timer(hart).disarm();
     asm volatile ("fence rw, rw" ::: .{ .memory = true });
     asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
 }
@@ -260,7 +261,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
     if (options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
         tasks.ipi.bell(hart).acknowledge();
         _ = @atomicRmw(u32, &boot_ipi[hart], .Add, 1, .release);
-        if (hart == 1) tasks.ipi.bell(0).raise();
+        if (hart == 1 and options.boot_test != 4) tasks.ipi.bell(0).raise();
         nih_native_return_states[hart] = state;
         return frame;
     }
@@ -410,9 +411,13 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     native_psram.memory.ownerReady(1);
     prepareTasks(1);
+    if (options.boot_test == 2) {
+        const started = ui.timer().counter() orelse fail("late CPU1 clock");
+        while ((ui.timer().counter() orelse fail("late CPU1 clock")) - started < 100_000) asm volatile ("nop");
+    }
     enableTimer(1);
     if (options.boot_fast) {
-        @atomicStore(u32, &progress[1], 1, .release);
+        if (options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
         while (true) tasks.idleOnce(1);
     }
     while (true) {
@@ -440,6 +445,10 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
     if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
     if (options.boot_fast) printBoot("NIHOS_NATIVE_PROFILE normal=1 qualification=0\n");
+    if (options.boot_test != 0) {
+        const test_case: extern struct { case: u32 } = .{ .case = options.boot_test };
+        logger.record("NIHOS_NATIVE_BOOT_TEST", null, .{"case"}, &test_case);
+    }
     if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
@@ -691,9 +700,26 @@ fn normalReady() noreturn {
     stageComplete(.cores);
     stageBegin(.console);
     stageComplete(.console);
-    ui.report(&logger);
-    ui.liveReport(&logger, true);
+    if (options.console_live) {
+        ui.report(&logger);
+        ui.liveReport(&logger, true);
+    }
+    if (options.boot_test != 0) {
+        const ready = .{ .wait_us = @as(u32, @intCast((ui.timer().counter() orelse fail("ready clock")) - started)) };
+        logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
+    }
+    var idle_checked = false;
     while (true) {
+        if (options.boot_test != 0 and !idle_checked and (ui.timer().counter() orelse fail("idle clock")) - started >= 200_000) {
+            for (0..2) |core| {
+                const hart: u32 = @intCast(core);
+                const state = tasks.report(hart);
+                const idle = .{ .hart = hart, .ticks = state.ticks, .work0 = state.progress[0], .work1 = state.progress[1], .switches = state.switches, .calls = state.calls, .reaped = state.reaped, .sleeps = state.sleeps };
+                logger.record("NIHOS_NATIVE_NORMAL_IDLE", null, .{ "hart", "ticks", "work0", "work1", "switches", "calls", "reaped", "sleeps" }, &idle);
+            }
+            printBoot("NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator\n");
+            idle_checked = true;
+        }
         flushDisplayReport();
         if (!ui.service(&logger)) fail("normal console idle");
         tasks.idleOnce(0);
