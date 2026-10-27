@@ -101,7 +101,8 @@ lease回収、旧ticket拒否、抜去latchによる新規発行拒否を記録�
 runnerはこの構成では1起動だけを取り、両READY markerをhostへ通知する。
 read errorだけでは物理抜去と断定できないため、operatorの抜去・再挿入の確認記録を別途保存する。
 firmwareの記録だけから`electrical_removal_operator_confirmed`をtrueにはしない。
-現在はoperatorが操作可能かを確認待ちで、手操作用imageは実機へ書き込んでいない。
+operatorが同じmicroSDを抜き・戻す操作を行い、実カード試験に合格した。
+[実抜去記録](../measurements/2026-10-27-sd-removal-physical.md)に、CMD17 timeout、停止後の状態、世代3→4と再読取りを保存した。
 
 電源試験は、手操作用imageとは別に、通常設定のimageとrunnerの`--power-cycle`で実施する。
 3回のUSB reset検証後に`NIHOS_POWER_CYCLE_READY`を出し、operatorの本体OFF→ONを待つ。
