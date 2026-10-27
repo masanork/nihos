@@ -66,6 +66,26 @@ BROKER_FIELDS = BROKER_FIELDS_V1 + BROKER_IO_FIELDS
 
 
 SDMMC_FIELDS = ("status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma")
+IO_LIFETIME_FIELDS = ('version', 'status', 'normal_reads', 'cancelled', 'removed', 'stale_rejected',
+                      'idle_denied', 'fences', 'unpublished', 'crc', 'ctrl', 'dma_mode', 'dma_fsm',
+                      'irq_mask', 'dma_mask', 'descriptor', 'descriptor_word')
+
+
+def check_io_lifetimes(log, image, evidence, sdmmc):
+    config = (image or {}).get('io_lifetimes')
+    if config is None or not config.get('qualification'):
+        if 'NIHOS_NATIVE_IO_LIFETIMES' in log:
+            raise ValueError('I/O lifetime record without image qualification configuration')
+        return None
+    if config.get('version') != 1 or evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
+        raise ValueError('I/O lifetime qualification requires bound physical device evidence')
+    record = fixed_record(log, 'NIHOS_NATIVE_IO_LIFETIMES', IO_LIFETIME_FIELDS)
+    expected = dict.fromkeys(IO_LIFETIME_FIELDS, 0)
+    expected.update(version=1, status=1, normal_reads=2, cancelled=1, removed=1, stale_rejected=3,
+                    idle_denied=1, fences=2, unpublished=2, crc=sdmmc['crc0'])
+    if record != expected:
+        raise ValueError('incomplete SD stop, quarantine or cache/descriptor handback qualification')
+    return record
 
 
 def check_broker(log, image, evidence):
@@ -638,9 +658,10 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             raise ValueError('incomplete storage task/IPC/EXIT cleanup qualification')
     high_sram, page_lease = check_high(log, image, evidence)
     broker = check_broker(log, image, evidence)
+    io_lifetimes = check_io_lifetimes(log, image, evidence, sdmmc)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "high_sram": high_sram, "page_lease": page_lease,
-            "broker": broker,
+            "broker": broker, "io_lifetimes": io_lifetimes,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,

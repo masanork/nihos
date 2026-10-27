@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "evidence": "host-and-native-build-only",
+  "native_base": "b69b7c3",
+  "host_lease_source": "542b3a366e9a6938cbacc9b0c966642f14980925",
+  "tests": {
+    "zig_debug": 198,
+    "zig_release_safe": 198,
+    "python": 173,
+    "static_analysis": "passed; six audited native ELF links",
+    "native_broker_storage_elf": "passed; exact loader/cache geometry audit"
+  },
+  "sources": {
+    "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+    "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+    "src/fs/sdmmc_owner.zig": "eac6e5a5483653d278fd668bf28c062e2ebae5f3ffba1dc9c43d5e120aaae10f",
+    "src/fs/sdmmc_owner_test.zig": "c814d3ae2cd98ea9a814bdf55fad20ebd5306699c4b6a57c209ba02e29f70479",
+    "src/soc/esp32p4/sdmmc.zig": "179f78299aa811f0b21a564e1e687c69c400ae826ba687e9ff1f082d24d1b957",
+    "src/platform/native/sdmmc_probe.zig": "ac877404bfc8a7db7c392e59a51ef71c35002aeee0538c7deeb181d808641216",
+    "src/platform/native/main.zig": "93f614aa39e25bfcbc209444d847fad6bcd499f661e3c1bee4f0b2547988b371",
+    "include/nihos_storage_io.h": "702b83fcbe1d5eeb3e06cac6c8b5047830842a88a3691bdc949eb330a51b8274",
+    "tools/qualify-storage-io.py": "690234b976bcc983db91ba2ec6333602fbd8c8f6b28edb954d207db5f18b859b",
+    "tools/io_lifetime_test.py": "2743ea6029ae624e67e1623ec23f87b8c98e264a5efa5e08fb11bf3bab1a780c",
+    "tools/check-native-image.py": "9580e4647a1fc520a2172faa53f7ab4deb8435965a679b644d6a24ce806b0b11",
+    "tools/check-native-log.py": "ff1158511e3676d7b46e675b403e4ea629d0c2f83143a31eca4a92e303b67e0e",
+    "tools/native-sqlite-manifest.py": "2375ad3e38fe8005c8551b53a34a1bcfb54ea1b983169c56c48c428b7d197e60",
+    "tools/build-native-elf.sh": "125d23147cccd2b5c89804de20b8eb9bf6346c9a5bd34979c3365f5d2b9dca9f"
+  },
+  "candidate": {
+    "elf_sha256": "a6ba5fc257312d540d09c28649f6f62ed1736595701b82bbff2700d0d6c6b773",
+    "image_sha256": "fb07319f021cce040300407222eedbc3813ae70957cb173115bff8cab5575258",
+    "image_bytes": 821104,
+    "primary_static_bytes": 105792,
+    "io_lifetimes": {
+      "version": 1,
+      "qualification": true,
+      "sources": {
+        "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+        "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+        "src/fs/sdmmc_owner.zig": "eac6e5a5483653d278fd668bf28c062e2ebae5f3ffba1dc9c43d5e120aaae10f",
+        "src/soc/esp32p4/sdmmc.zig": "179f78299aa811f0b21a564e1e687c69c400ae826ba687e9ff1f082d24d1b957",
+        "src/platform/native/sdmmc_probe.zig": "ac877404bfc8a7db7c392e59a51ef71c35002aeee0538c7deeb181d808641216",
+        "src/platform/native/main.zig": "93f614aa39e25bfcbc209444d847fad6bcd499f661e3c1bee4f0b2547988b371",
+        "src/diagnostics/record.zig": "882a6288a08840af138cf190fd125353c0ed5b7cbfe1c15f56fcc6085c85132f",
+        "include/nihos_storage_io.h": "702b83fcbe1d5eeb3e06cac6c8b5047830842a88a3691bdc949eb330a51b8274"
+      }
+    },
+    "cold_flash": {
+      "version": 1,
+      "start": "0x400a76f8",
+      "end": "0x400a9f76",
+      "bytes": 10366,
+      "functions": {
+        "high_sram.finish": {
+          "start": "0x400a76f8",
+          "bytes": 598
+        },
+        "heap.finish": {
+          "start": "0x400a794e",
+          "bytes": 714
+        },
+        "sqlite_probe.run": {
+          "start": "0x400a7c18",
+          "bytes": 2250
+        },
+        "heap.lifecycleProbe": {
+          "start": "0x400a84e2",
+          "bytes": 584
+        },
+        "heap.slabProbe": {
+          "start": "0x400a872a",
+          "bytes": 1146
+        },
+        "heap.poolProbe": {
+          "start": "0x400a8ba4",
+          "bytes": 360
+        },
+        "heap.objectsProbe": {
+          "start": "0x400a8d0c",
+          "bytes": 2092
+        },
+        "heap.growProbe": {
+          "start": "0x400a9538",
+          "bytes": 284
+        },
+        "high_sram.ownerExchange": {
+          "start": "0x400a9654",
+          "bytes": 722
+        },
+        "high_sram.init": {
+          "start": "0x400a9926",
+          "bytes": 916
+        },
+        "high_sram.vmProbe": {
+          "start": "0x400a9cba",
+          "bytes": 700
+        }
+      },
+      "resident": {
+        "nih_native_start": "0x4ff00000",
+        "nih_native_dispatch": "0x4ff0f8e8",
+        "native_tasks.service": "0x4ff0a91a",
+        "native_tasks.maintain": "0x4ff10c6c",
+        "heap.cleanupOne": "0x4ff0ad72",
+        "heap.allocTask": "0x4ff03fc8",
+        "heap.freeTask": "0x4ff083a2",
+        "heap.openPool": "0x4ff03ea8",
+        "heap.allocPool": "0x4ff066da",
+        "heap.closePool": "0x4ff0658e",
+        "heap.allocObject": "0x4ff0961e",
+        "heap.freeObject": "0x4ff0863a",
+        "heap.reallocObject": "0x4ff088ca"
+      },
+      "baseline_primary_bytes": 114688,
+      "primary_bytes": 105792,
+      "recovered_bytes": 8896,
+      "old_heap_bytes": 58048,
+      "source": {
+        "version": 1,
+        "functions": [
+          "heap.finish",
+          "heap.growProbe",
+          "heap.lifecycleProbe",
+          "heap.objectsProbe",
+          "heap.poolProbe",
+          "heap.slabProbe",
+          "high_sram.finish",
+          "high_sram.init",
+          "high_sram.ownerExchange",
+          "high_sram.vmProbe",
+          "sqlite_probe.run"
+        ],
+        "resident": [
+          "nih_native_start",
+          "nih_native_dispatch",
+          "native_tasks.service",
+          "native_tasks.maintain",
+          "heap.cleanupOne",
+          "heap.allocTask",
+          "heap.freeTask",
+          "heap.openPool",
+          "heap.allocPool",
+          "heap.closePool",
+          "heap.allocObject",
+          "heap.freeObject",
+          "heap.reallocObject"
+        ],
+        "baseline_bytes": 114688,
+        "resident_limit": 106496,
+        "sources": {
+          "src/platform/native/heap.zig": "4bd25d0e702107a59d415cfd06fb8bf48148c12b68d54a4a832f86836d891931",
+          "src/platform/native/high_sram.zig": "28f32b83a71b46399157e1e4039335eaaa8bb81748caf37d1b11ad07d48de499",
+          "src/platform/native/sqlite_probe.zig": "5b1baac96ea2587a899ec42d42afe870079ba19a15a7df4aa0be83e6c99a6dbd"
+        },
+        "policy_sha256": "817639e1a7138b4360e97e339ac420648d25e777e2fcbceb39efed0bd26025ce"
+      },
+      "irq_call_graph_proven": false
+    }
+  },
+  "physical": {
+    "run": false,
+    "reason": "Shared Tab5 availability is awaiting coordination; no serial reset or Flash write performed",
+    "electrical_removal": false,
+    "power_cycle": false,
+    "cache_or_reset_failure_on_silicon": false
+  },
+  "scope": {
+    "fatfs_native_backend": false,
+    "full_vfs_rpc": false,
+    "card_detect_handler": false,
+    "polling_driver": true,
+    "permanent_internal_dma_staging": true,
+    "quarantine_fatal_in_fixture": true
+  }
+}

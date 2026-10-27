@@ -3,6 +3,7 @@ const sd = @import("sdmmc");
 const timer_group = @import("timer_group");
 const options = @import("native_options");
 const block = @import("block_reader");
+const storage_io = @import("storage_io");
 pub const StorageReport = extern struct {
     status: u32 = 0,
     error_code: u32 = 0,
@@ -42,8 +43,17 @@ var active_controller: ?*sd.Controller(Bus) = null;
 pub export fn nih_storage_read(lba: u32, destination: *block.Sector) callconv(.c) i32 {
     if (!options.storage) return -1;
     const controller = active_controller orelse return -1;
-    const device = block.Reader(sd.Controller(Bus)).init(controller, controller.sectors) catch return -1;
-    device.read(lba, destination) catch return -1;
+    return ownedRead(controller, lba, destination);
+}
+// Normal owner context, mapped Flash with caches enabled; IRQs never call it.
+noinline fn ownedRead(controller: *sd.Controller(Bus), lba: u32, destination: *[512]u8) linksection(".flash.text.storage") i32 {
+    const control = beginIo() orelse return -1;
+    io_owner.read(controller, lba, destination, control.ticket, control) catch |err| {
+        // Do not return into FS/client cleanup with a lease still retained.
+        // This boot fixture has no recovery owner: stop the qualification.
+        if (err == error.Quarantined) nih_native_task_failed();
+        return -1;
+    };
     return 0;
 }
 extern fn nih_sdmmc_power_off() callconv(.c) void;
@@ -56,6 +66,25 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 extern fn nih_broker_io_issued() callconv(.c) void;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
+// Only the owner mutates the ledger. IRQ/other-hart code can publish a stop
+// request for the exact active ticket through one resident 32-bit CAS.
+var io_owner: storage_io.ReadOwner = .{};
+var io_signal: storage_io.Signal = .{};
+var qualification_stop: u32 = 0;
+var qualification_ticket: u32 = 0;
+fn beginIo() ?storage_io.Signal.Control {
+    if (io_owner.busy()) return null;
+    return io_signal.begin();
+}
+pub export fn nih_storage_io_active() linksection(".iram1.storage_hooks") callconv(.c) u32 {
+    return io_signal.active();
+}
+pub export fn nih_storage_io_stop(ticket: u32, reason: u32) linksection(".iram1.storage_hooks") callconv(.c) u32 {
+    return @intFromBool(io_signal.stop(ticket, reason));
+}
+pub export fn nih_storage_io_removed() linksection(".iram1.storage_hooks") callconv(.c) void {
+    io_signal.remove();
+}
 pub const StageReport = struct { index: u32 = 0, bus_bits: u32 = 0, clock_khz: u32 = 0, scr_widths: u32 = 0, host_width: u32 = 0, divider: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, samples: u32 = 0, digest: u32 = 0 };
 pub const Report = struct { code_pc: u32 = 0, status: u32 = 0, stage: u32 = 0, command: u32 = 0, interrupts: u32 = 0, response: u32 = 0, commands: u32 = 0, sectors_low: u32 = 0, sectors_high: u32 = 0, reads: u32 = 0, crc0: u32 = 0, crc1: u32 = 0, crc_middle: u32 = 0, crc_last: u32 = 0, bus_bits: u32 = 1, clock_khz: u32 = 400, writes: u32 = 0, error_code: u32 = 0, host_status: u32 = 0, data_words: u32 = 0, dma: u32 = 1, stage_count: u32 = 0, stages: [3]StageReport = @splat(.{}), storage: StorageReport = .{}, storage_stack: StorageStack = .{}, api: ApiReport = .{} };
 var last_error: u32 = 0;
@@ -64,6 +93,7 @@ var last_error: u32 = 0;
 var runtime_controller: sd.Controller(Bus) = undefined;
 var runtime_ready = false;
 const Bus = struct {
+    pub const runtime_section = if (options.storage) ".flash.text.storage" else ".text";
     clock: timer_group.Timer,
     pub fn read(_: Bus, offset: usize) u32 {
         return @as(*volatile u32, @ptrFromInt(sd.base + offset)).*;
@@ -74,7 +104,12 @@ const Bus = struct {
         // Qualification gate after the real CMD17 register write. DMA owns
         // resident staging; the broker keeps the eventual PSRAM destination.
         if (options.broker and offset == sd.regs.command and value & 63 == 17 and value & (1 << 31) != 0)
-            nih_broker_io_issued();
+            if (qualification_stop != 0) {
+                qualification_ticket = nih_storage_io_active();
+                if (qualification_stop == 1) {
+                    _ = nih_storage_io_stop(qualification_ticket, 1);
+                } else nih_storage_io_removed();
+            } else nih_broker_io_issued();
     }
     pub fn delay(self: Bus, microseconds: u32) void {
         const started = self.clock.counter() orelse nih_native_task_failed();
@@ -106,6 +141,17 @@ const Bus = struct {
             nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
         if (@as(*volatile u32, &dma_descriptor[0]).* & ((1 << 31) | (1 << 30)) != 0) return false;
         for (destination[0..length], 0..) |*byte, index| byte.* = @as(*volatile u8, &dma_data[index]).*;
+        return true;
+    }
+    // Called only after reset self-clear, disabled DMA and idle IDMAC FSM.
+    // OWN may still be set after an abort. The CPU may reclaim it only here.
+    pub fn releaseDma(_: Bus) bool {
+        asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
+        if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_data), 512) != 0 or
+            nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
+        dma_descriptor = @splat(0);
+        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
+        asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
         return true;
     }
 };
@@ -235,6 +281,7 @@ pub fn runtimeBegin(clock: timer_group.Timer) ?u32 {
     return @intCast(runtime_controller.sectors);
 }
 pub fn runtimeEnd() void {
+    if (io_owner.busy()) return; // Quarantined staging still belongs to this owner.
     runtime_ready = false;
     active_controller = null;
 }
@@ -251,9 +298,92 @@ pub export fn nih_storage_controller_end() callconv(.c) void {
 /// invalidates staging/descriptor caches and copies before returning success.
 pub export fn nih_broker_sd_read(destination: *[512]u8) callconv(.c) i32 {
     if (!options.broker or runtime_ready or active_controller != null) return -1;
-    runtime_controller.readSector(0, destination) catch return -1;
+    if (ownedRead(&runtime_controller, 0, destination) != 0) return -1;
     if (runtime_controller.words_read != 128 or runtime_controller.cleanup_failed or
         runtime_controller.io.read(sd.regs.ctrl) & ((1 << 25) | (1 << 5) | 4) != 0 or
         runtime_controller.io.read(sd.regs.dma_mode) != 0) return -1;
     return 0;
+}
+
+pub const LifetimeReport = struct {
+    version: u32 = 1,
+    status: u32 = 0,
+    normal_reads: u32 = 0,
+    cancelled: u32 = 0,
+    removed: u32 = 0,
+    stale_rejected: u32 = 0,
+    idle_denied: u32 = 0,
+    fences: u32 = 0,
+    unpublished: u32 = 0,
+    crc: u32 = 0,
+    ctrl: u32 = 0,
+    dma_mode: u32 = 0,
+    dma_fsm: u32 = 0,
+    irq_mask: u32 = 0,
+    dma_mask: u32 = 0,
+    descriptor: u32 = 0,
+    descriptor_word: u32 = 0,
+};
+/// Opt-in broker qualification only, after both storage and broker retire.
+/// Injects NOTIFICATIONS after CMD17 MMIO, not an electrical card removal.
+pub noinline fn qualifyLifetimes(expected_crc: u32) linksection(".flash.text.storage") LifetimeReport {
+    var report = LifetimeReport{};
+    const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
+    if (!options.broker or runtime_ready or active_controller != null or io_owner.busy() or
+        clock.channel.config & (timer_group.counter_enable | timer_group.alarm_enable) != 0) return report;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    defer qualification_stop = 0;
+    var data: [512]u8 = @splat(0xa5);
+    if (ownedRead(&runtime_controller, 0, &data) != 0 or sd.crc32(&data) != expected_crc) return report;
+    report.normal_reads += 1;
+    report.crc = sd.crc32(&data);
+    for (1..3) |mode| {
+        data = @splat(0xa5);
+        qualification_stop = @intCast(mode);
+        if (ownedRead(&runtime_controller, 0, &data) == 0 or qualification_ticket == 0 or
+            !runtime_controller.faulted or io_owner.busy() or !runtime_controller.quiescence.complete() or
+            nih_storage_io_active() != 0) return report;
+        if (mode == 1) report.cancelled = 1 else report.removed = 1;
+        for (data) |byte| {
+            if (byte != 0xa5) return report;
+        }
+        report.unpublished += 1;
+        report.fences += 1;
+        if (nih_storage_io_stop(qualification_ticket, 1) != 0) return report;
+        report.stale_rejected += 1;
+        qualification_stop = 0;
+        if (mode == 1) {
+            // This is a NEW controller/card session, only after the old fence.
+            // Preserve the monotonically increasing notification tickets.
+            io_owner.generation += 1;
+            runtime_controller = .{ .io = .{ .clock = clock } };
+            nih_sdmmc_power_off();
+            runtime_controller.io.delay(250_000);
+            nih_sdmmc_power_on();
+            runtime_controller.io.delay(10_000);
+            nih_sdmmc_clock_init();
+            runtime_controller.io.delay(20);
+            runtime_controller.prepare() catch return report;
+            runtime_controller.identify() catch return report;
+            if (ownedRead(&runtime_controller, 0, &data) != 0 or sd.crc32(&data) != expected_crc) return report;
+            report.normal_reads += 1;
+            if (nih_storage_io_stop(qualification_ticket, 2) != 0) return report;
+            report.stale_rejected += 1;
+        }
+    }
+    const commands = runtime_controller.commands;
+    if (ownedRead(&runtime_controller, 0, &data) == 0 or runtime_controller.commands != commands) return report;
+    report.idle_denied = 1;
+    report.ctrl = runtime_controller.io.read(sd.regs.ctrl) & ((1 << 25) | (1 << 5) | (1 << 4) | 4);
+    report.dma_mode = runtime_controller.io.read(sd.regs.dma_mode);
+    report.dma_fsm = runtime_controller.io.read(sd.regs.dma_status) >> 13 & 15;
+    report.irq_mask = runtime_controller.io.read(sd.regs.mask);
+    report.dma_mask = runtime_controller.io.read(sd.regs.dma_mask);
+    report.descriptor = runtime_controller.io.read(sd.regs.descriptor);
+    report.descriptor_word = @as(*volatile u32, &dma_descriptor[0]).*;
+    if (report.ctrl | report.dma_mode | report.dma_fsm | report.irq_mask | report.dma_mask | report.descriptor | report.descriptor_word != 0) return report;
+    report.status = 1;
+    return report;
 }
