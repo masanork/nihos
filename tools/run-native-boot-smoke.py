@@ -56,16 +56,21 @@ def main():
             # have drained, leaving a truncated record instead of evidence.
             marker = ('NIHOS_NATIVE_FAIL ' + SMOKE.FAILURES[case] if case in SMOKE.FAILURES
                       else 'NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator') + '\r\n'
-            with (target / 'emulator.log').open('w') as log:
+            # UART uses stdout; emulator diagnostics use stderr. Combining
+            # them can splice a host INFO line into a guest UART record.
+            # Keep both raw streams and check only the guest evidence.
+            with (target / 'emulator.log').open('w') as log, (target / 'emulator-stderr.log').open('w') as diagnostic:
                 subprocess.run([emulator, '--chip','esp32p4','--firmware',str(case_dir / 'nihos-native-flash.bin'),
                                 '--elf',str(case_dir / 'nihos-native.elf'),'--psram-size',size,'--timeout','15s',
-                                '--exit-on',marker], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
+                                '--exit-on',marker], cwd=ROOT, stdout=log, stderr=diagnostic,
                                check=True, timeout=45)
             result = SMOKE.check((target / 'emulator.log').read_text(), audit, SMOKE.NATIVE.PSRAM_SIZES[size], case)
             report_path.write_text(json.dumps(result,indent=2)+'\n')
             results.append({'case':case, 'psram':size, 'artifacts':artifacts, 'result':result,
                             'log_sha256':digest(target / 'emulator.log'),
-                            'log':str((target / 'emulator.log').relative_to(output))})
+                            'log':str((target / 'emulator.log').relative_to(output)),
+                            'diagnostic_sha256':digest(target / 'emulator-stderr.log'),
+                            'diagnostic':str((target / 'emulator-stderr.log').relative_to(output))})
             print('case={} psram={} passed {}'.format(case,size,'expected timeout' if case in SMOKE.FAILURES else 'READY + idle'),flush=True)
     sources = subprocess.check_output(['git','ls-files','src','include','ports/esp32p4-native',
                                        'tools/build-native.sh','tools/build-native-elf.sh'],cwd=ROOT,text=True).splitlines()
