@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "c7ec6fd0b80040a896ffef6dab9f1c746d88c655",
+  "branch": "codex/store-crash-model",
+  "worktree": "/Users/masanork/repo/nihos-store-model",
+  "evidence": "host-model",
+  "physical_runs": 0,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-crash-model-host",
+  "archive_files": 21,
+  "host": {
+    "zig_debug": 197,
+    "zig_release_safe": 197,
+    "new_zig_tests": 13,
+    "python": 168,
+    "native_elf_links": 6,
+    "format_zlint_shellcheck": true,
+    "broker_rv32_compile": true
+  },
+  "geometry": {
+    "page_bytes": 4096,
+    "fault_sector_bytes": 512,
+    "root_slots": 2,
+    "object_limit": 8,
+    "campaign_media_bytes": 49152,
+    "large_object_test_media_bytes": 98304,
+    "large_object_test_bytes": 71681,
+    "format_is_model_only": true
+  },
+  "fault_parameters": {
+    "background": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_order": [
+      "ascending",
+      "descending"
+    ],
+    "tear_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ],
+    "faults": "each generated cache-write sector, barrier entry and dirty-sector flush event",
+    "stable_data_after_successful_sync_is_preserved": true
+  },
+  "campaigns": {
+    "debug": [
+      {
+        "kind": "campaign",
+        "events": 82,
+        "crash_cases": 2952,
+        "acknowledged_cases": 6
+      },
+      {
+        "kind": "metadata",
+        "events": 18,
+        "crash_cases": 648,
+        "acknowledged_cases": 6
+      },
+      {
+        "kind": "initial",
+        "events": 17,
+        "crash_cases": 612,
+        "acknowledged_cases": 6
+      }
+    ],
+    "safe": [
+      {
+        "kind": "campaign",
+        "events": 82,
+        "crash_cases": 2952,
+        "acknowledged_cases": 6
+      },
+      {
+        "kind": "metadata",
+        "events": 18,
+        "crash_cases": 648,
+        "acknowledged_cases": 6
+      },
+      {
+        "kind": "initial",
+        "events": 17,
+        "crash_cases": 612,
+        "acknowledged_cases": 6
+      }
+    ]
+  },
+  "negative_controls": {
+    "omit_locating_root_from_sync": "acknowledged generation 3 reopens as generation 2; detected",
+    "publish_root_without_payload": "recovery falls back to generation 2; published-root completeness rejects it",
+    "remove_payload_sync_in_source": {
+      "expected_failure": true,
+      "exit_code": 1,
+      "rejected_by": "DanglingPublishedRoot",
+      "mutation": "remove data sync before root publication",
+      "counterexample": {
+        "background": "none",
+        "order": "ascending",
+        "event": "48",
+        "prefix": "512",
+        "recovered": "2"
+      }
+    }
+  },
+  "limitations": [
+    "bounded in-memory media model; no file-backed or SD driver",
+    "not the final log/on-media format or an accepted replacement filesystem",
+    "no erase, GC, checkpoint/tail replay, persistent index, reader pins or media-removal qualification",
+    "representative byte tears and six schedules, not exhaustive device/FTL behavior",
+    "single writer assumed; no multi-task owner or public capability ABI",
+    "no SQLite VFS, WAL or atomic-write capability claims",
+    "recovery scans referenced payloads; unsuitable as the 16 GB mount algorithm",
+    "native cold-Flash physical candidate remains separate and unchanged"
+  ]
+}
