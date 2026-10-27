@@ -53,6 +53,11 @@ It covers 4,212 finite cut conditions and rejects deliberately broken barrier
 ordering. It does not implement this log format, an on-media index, reader pins,
 GC or a SQLite VFS, and does not promote the experimental store to hardware.
 
+The [host file backend](../measurements/2026-10-27-store-file-backend.md) adds
+fixed-image I/O, exclusive writer ownership, sync-error handling and six
+separate-process cases, including SIGKILL before/after publication. Process
+termination retains OS caches; physical power-loss qualification is separate.
+
 The development target budgets Wi-Fi/TLS, two BLE links and shared kana/kanji
 input together with storage. The [machine-readable profile](tab5-development-profile.json)
 reserves 144 KiB internal stacks, 48 KiB DMA, 224 KiB internal heap and 2 MiB

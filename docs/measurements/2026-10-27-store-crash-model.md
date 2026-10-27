@@ -4,6 +4,7 @@
 実機を使わずに、immutable payloadと交互に更新する2個のrootによる公開順序を検査するホストモデルを実装した。
 4,212通りの中断条件と、成功通知後の18通りの再起動をDebug／ReleaseSafeの両方で検査した。
 これは[unified log store計画](../planning/unified-log-store.md)の初期モデルで、実際のlog形式や新filesystemの採用を確定するものではない。
+後続の[file backend](2026-10-27-store-file-backend.md)で実ファイルと別processの再openを確認した。
 
 ## 実装した範囲
 

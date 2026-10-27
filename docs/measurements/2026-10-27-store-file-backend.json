@@ -1,0 +1,334 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "75033413c2e05f33d5ab54395c67f8a1fe81b80d",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-file-and-process",
+  "physical_power_cuts": 0,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-file-backend-host",
+  "archive_regular_files": 24,
+  "archive_symlinks": 1,
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "zig_debug": 202,
+    "zig_release_safe": 202,
+    "new_zig_tests": 5,
+    "python": 168,
+    "native_elf_links": 6,
+    "format_zlint_shellcheck": true,
+    "broker_rv32_compile": true
+  },
+  "file_backend": {
+    "capacity_dependent_ram_cache": false,
+    "same_descriptor_size_at_48KiB_and_16GiB": true,
+    "open": "existing regular file, exact capacity, exclusive advisory nonblocking lock, no final symlink follow",
+    "io": "positional exact reads, progressive writes with zero-progress rejection",
+    "sync": "std.Io.File.sync; observed successful return, not power-loss certification",
+    "error": "terminal I/O fault until close/reopen; no implicit format/create/truncate"
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-file-and-process",
+    "physical_power_cuts": 0,
+    "creation": "exclusive create; fill; file fsync; parent directory fsync",
+    "binary_sha256": "7fa78b88e8f3f53d2d65d549038b9ec1c88ac6ea3809236c764548c26fbd0f2f",
+    "capacity": 524288,
+    "commands": [
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "format",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/normal.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"formatted\",\"generation\":1,\"writes\":1,\"syncs\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "seed",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/normal.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"writes\":20,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-old",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/normal.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "update",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/normal.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"update\",\"generation\":3,\"writes\":21,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-new",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/normal.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "format",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/uncommitted.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"formatted\",\"generation\":1,\"writes\":1,\"syncs\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "seed",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/uncommitted.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"writes\":20,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-old",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/uncommitted.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "pid": 22828,
+        "readiness": {
+          "phase": "staged",
+          "generation": 2,
+          "writes": 18,
+          "syncs": 0
+        },
+        "exit_code": -9,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-old",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/uncommitted.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "format",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/acknowledged.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"formatted\",\"generation\":1,\"writes\":1,\"syncs\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "seed",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/acknowledged.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"writes\":20,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-old",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/acknowledged.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "pid": 22833,
+        "readiness": {
+          "phase": "acknowledged",
+          "generation": 3,
+          "writes": 21,
+          "syncs": 2
+        },
+        "exit_code": -9,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-new",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/acknowledged.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-old",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/uncommitted.img"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: WouldBlock\n"
+      },
+      {
+        "pid": 22835,
+        "readiness": {
+          "phase": "locked",
+          "generation": 0,
+          "writes": 0,
+          "syncs": 0
+        },
+        "exit_code": -9,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "verify-old",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/uncommitted.img"
+        ],
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "inspect",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/short.img"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: WrongSize\n"
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "inspect",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/missing.img"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: FileNotFound\n"
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "inspect",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/link.img"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: SymLinkLoop\n"
+      },
+      {
+        "command": [
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/file-probe",
+          "inspect",
+          "/Users/masanork/repo/nihos-store-model/build/store-file/process.2hcgoa/corrupt.img"
+        ],
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      }
+    ],
+    "cases": [
+      {
+        "name": "normal_separate_process_reopen",
+        "generation": 3,
+        "passed": true
+      },
+      {
+        "name": "kill_before_root_publication",
+        "generation": 2,
+        "passed": true
+      },
+      {
+        "name": "kill_after_synced_acknowledgement",
+        "generation": 3,
+        "passed": true
+      },
+      {
+        "name": "cross_process_writer_lock_and_release",
+        "passed": true
+      },
+      {
+        "name": "no_create_truncate_or_symlink_follow",
+        "passed": true
+      },
+      {
+        "name": "corrupt_roots_rejected_without_format",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "images": {
+      "uncommitted.img": {
+        "bytes": 524288,
+        "sha256": "f6c54afd8e1b23a94ecbf645653ddd2a3882d15f175520b202beed4e495cdc89"
+      },
+      "corrupt.img": {
+        "bytes": 524288,
+        "sha256": "5bf6c8d47aa6327eba19cd86b91321821be0184b6ad684b7c79954ff900f3d47"
+      },
+      "normal.img": {
+        "bytes": 524288,
+        "sha256": "cdf1b6b20ca530f5f733120824ab597a0260685eacbe06ad902cd414e634726b"
+      },
+      "short.img": {
+        "bytes": 16,
+        "sha256": "72343c373dae4ca85d045311aee039484560fd4b52a99953945710c166b43818"
+      },
+      "acknowledged.img": {
+        "bytes": 524288,
+        "sha256": "cdf1b6b20ca530f5f733120824ab597a0260685eacbe06ad902cd414e634726b"
+      }
+    }
+  },
+  "model_regression": {
+    "crash_cases_per_mode": 4212,
+    "acknowledged_cases_per_mode": 18,
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ]
+  },
+  "limitations": [
+    "SIGKILL preserves OS caches; these are process-lifetime/recovery tests, not simulated power cuts",
+    "image creation and parent directory sync are harness responsibilities; backend opens only existing files",
+    "advisory locking coordinates cooperating users; no public isolated capability or card-removal ABI",
+    "no native/SD/NOR writes, GC, reader pins, on-media index or bounded checkpoint/tail replay",
+    "no SQLite persistent VFS, WAL or atomic-write device capability",
+    "I/O failure after root write may recover an old or new complete generation; it is not a guaranteed rollback"
+  ]
+}
