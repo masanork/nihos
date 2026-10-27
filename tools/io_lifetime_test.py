@@ -161,6 +161,21 @@ class PhysicalRemovalEvidenceTests(unittest.TestCase):
 
 
 class PassiveCaptureTests(unittest.TestCase):
+    def test_bound_latched_power_on_reason_survives_missing_rom_header(self):
+        image = {'io_lifetimes': {'capture_handshake': True}, 'memory': {'profile': 'device'}}
+        log = 'NIHOS_CAPTURE_WAIT\nNIHOS_NATIVE_RESET cpu0=00000001 ack=00000001\nNIHOS_NATIVE_BOOT backend=zig-sram\n'
+        self.assertEqual(LOG.check_boot_capture(log, image, 'physical-device'), {'cpu0': 1, 'ack': 1})
+        RUNNER.require_power_on_reset(log, image)
+        for changed in (log.replace('cpu0=00000001', 'cpu0=00000017'),
+                        log.replace('ack=00000001', 'ack=00000000'),
+                        log + 'rst:0x17 (CHIP_USB_UART_RESET)\n', log + log):
+            with self.assertRaises(ValueError):
+                RUNNER.require_power_on_reset(changed, image)
+        with self.assertRaises(ValueError):
+            LOG.check_boot_capture(log, {}, 'physical-device')
+        with self.assertRaises(ValueError):
+            LOG.check_boot_capture(log, image, 'emulator')
+
     def test_passive_open_preserves_modem_lines_and_boot_bytes_but_normal_mode_restores_control(self):
         events = []
 

@@ -20,8 +20,14 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def require_power_on_reset(log):
+def require_power_on_reset(log, image=None):
     reasons = re.findall(r'rst:0x([0-9a-f]+)\s*\(', log)
+    if (image or {}).get('io_lifetimes', {}).get('capture_handshake') is True:
+        captured = re.findall(r'NIHOS_NATIVE_RESET cpu0=([0-9a-f]{8}) ack=([0-9a-f]{8})(?:\n|$)', log)
+        if (captured != [('00000001', '00000001')] or log.count('NIHOS_NATIVE_RESET ') != 1 or
+                len(reasons) > 1 or any(value != '1' for value in reasons)):
+            raise ValueError('Latched reset reason is missing, mixed, or not power-on')
+        return
     if reasons != ['1'] or log.count('rst:') != 1:
         raise ValueError('Power-on evidence needs one cold power-on reset, not USB/watchdog/mixed boots')
 
@@ -42,7 +48,10 @@ def validate_baseline(path, audit, check):
             raise ValueError('Baseline boot log changed')
         refreshed = check.check(log.read_text(), 'sqlite', 32 << 20, previous, 'physical-device',
                                 require_sdmmc_fast=True, require_storage=True)
-        if refreshed != row['report'] or refreshed['io_lifetimes'] is None:
+        recorded = dict(row['report'])
+        if 'boot_capture' in refreshed and 'boot_capture' not in recorded and refreshed['boot_capture'] is None:
+            recorded['boot_capture'] = None
+        if refreshed != recorded or refreshed['io_lifetimes'] is None:
             raise ValueError('Incomplete baseline qualification')
         artifacts[log.name] = digest(log)
     for name in ('verify-candidate-before.log', 'verify-candidate-after.log'):
@@ -101,6 +110,9 @@ def main():
     for name, expected in audit['io_lifetimes']['sources'].items():
         if digest(root / name) != expected:
             raise ValueError('Source differs from candidate: ' + name)
+    for name, expected in audit['io_lifetimes'].get('capture_sources', {}).items():
+        if digest(root / name) != expected:
+            raise ValueError('Capture source differs from candidate: ' + name)
     spec = importlib.util.spec_from_file_location('native_check', root / 'tools/check-native-log.py')
     check = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(check)
@@ -196,9 +208,14 @@ def main():
                 passed_at = None
                 path = out / f'boot{run}.log'
                 announced = set()
+                capture_ack = False
                 while time.monotonic() - began < (360 if removal_test else 180):
                     raw_log.extend(port.read(max(1, port.in_waiting)))
                     path.write_bytes(raw_log)
+                    if not capture_ack and b'NIHOS_CAPTURE_WAIT\n' in raw_log:
+                        port.write(b'G')
+                        port.flush()
+                        capture_ack = True
                     for marker in (b'NIHOS_SD_REMOVE_READY', b'NIHOS_SD_INSERT_READY'):
                         if marker in raw_log and marker not in announced:
                             print(marker.decode(), flush=True)
@@ -228,6 +245,7 @@ def main():
                 path = out / 'power-cycle.log'
                 began = time.monotonic()
                 passed_at = None
+                capture_ack = False
                 while time.monotonic() - began < 360:
                     if not port.is_open:
                         if not Path(args.port).exists():
@@ -248,6 +266,10 @@ def main():
                         time.sleep(.2)
                         continue
                     path.write_bytes(raw_log)
+                    if not capture_ack and b'NIHOS_CAPTURE_WAIT\n' in raw_log:
+                        port.write(b'G')
+                        port.flush()
+                        capture_ack = True
                     if b'NIHOS_NATIVE_FAIL' in raw_log or b'NIHOS_NATIVE_TRAP' in raw_log:
                         raise RuntimeError('Cold boot failed; see power-cycle.log')
                     if b'NIHOS_NATIVE_FP_PASS' in raw_log and passed_at is None:
@@ -255,7 +277,7 @@ def main():
                     if passed_at and time.monotonic() - passed_at >= 10:
                         break
                 text = raw_log.decode(errors='replace')
-                require_power_on_reset(text)
+                require_power_on_reset(text, audit)
                 report = check.check(text, 'sqlite', 32 << 20, audit, 'physical-device',
                                      require_sdmmc_fast=True, require_storage=True)
                 if passed_at is None:

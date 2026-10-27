@@ -17,6 +17,9 @@ comptime {
 
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
+extern fn nih_rom_reset_reason(u32) callconv(.c) u32;
+extern fn nih_boot_capture_getc() callconv(.c) i32;
+extern fn nih_storage_clock_start() callconv(.c) u32;
 extern fn nih_native_cpu1_start() callconv(.c) void;
 extern var __stack0_bottom: u8;
 extern var __stack0_top: u8;
@@ -426,10 +429,39 @@ noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {
     return sd.crc0;
 }
 
+noinline fn captureBoot() linksection(".flash.text.storage") void {
+    // Latch before waiting for a late-enumerating host. No reset is issued.
+    const reset_reason = nih_rom_reset_reason(0);
+    if (nih_storage_clock_start() != 1) fail("boot capture clock");
+    const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
+    defer clock.stop();
+    const started = clock.counter() orelse fail("boot capture counter");
+    var last_marker = started;
+    var drained: u32 = 0;
+    while (nih_boot_capture_getc() >= 0) {
+        drained += 1;
+        if (drained >= 1024) fail("boot capture stale input flood");
+    }
+    print("NIHOS_CAPTURE_WAIT\n");
+    while (true) {
+        if (nih_boot_capture_getc() == 'G') break;
+        const now = clock.counter() orelse fail("boot capture counter");
+        if (now - started >= 120_000_000) fail("boot capture timeout");
+        if (now - last_marker >= 1_000_000) {
+            print("NIHOS_CAPTURE_WAIT\n");
+            last_marker = now;
+        }
+    }
+    const Reset = struct { cpu0: u32, ack: u32 };
+    const record = Reset{ .cpu0 = reset_reason, .ack = 1 };
+    logger.record("NIHOS_NATIVE_RESET", null, .{ "cpu0", "ack" }, &record);
+}
+
 export fn nih_native_main() callconv(.c) noreturn {
     watchdogOff();
     if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
     interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
+    if (options.cold_capture) captureBoot();
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");

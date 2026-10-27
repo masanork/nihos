@@ -75,6 +75,24 @@ SD_REMOVAL_FIELDS = ('version', 'status', 'before_reads', 'failed_command', 'fai
                      'ctrl', 'dma_mode', 'dma_fsm', 'irq_mask', 'dma_mask', 'descriptor', 'descriptor_word')
 
 
+def check_boot_capture(log, image, evidence):
+    configured = (image or {}).get('io_lifetimes', {}).get('capture_handshake') is True
+    if not configured:
+        if 'NIHOS_NATIVE_RESET' in log or 'NIHOS_CAPTURE_WAIT' in log:
+            raise ValueError('capture record without bound image configuration')
+        return None
+    if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
+        raise ValueError('boot capture requires physical device evidence')
+    record = fixed_record(log, 'NIHOS_NATIVE_RESET', ('cpu0', 'ack'))
+    if (not 0 < record['cpu0'] < 64 or record['ack'] != 1 or 'NIHOS_CAPTURE_WAIT\n' not in log or
+            not log.index('NIHOS_CAPTURE_WAIT\n') < log.index('NIHOS_NATIVE_RESET ') < log.index('NIHOS_NATIVE_BOOT ')):
+        raise ValueError('incomplete early reset capture/acknowledgment')
+    reasons = re.findall(r'rst:0x([0-9a-f]+)\s*\(', log)
+    if len(reasons) > 1 or any(int(value, 16) != record['cpu0'] for value in reasons):
+        raise ValueError('mixed ROM and latched reset evidence')
+    return record
+
+
 def check_sd_removal(log, image, evidence, sdmmc):
     config = (image or {}).get('io_lifetimes', {})
     if config.get('removal_test') is not True:
@@ -692,9 +710,10 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     broker = check_broker(log, image, evidence)
     io_lifetimes = check_io_lifetimes(log, image, evidence, sdmmc)
     sd_removal = check_sd_removal(log, image, evidence, sdmmc)
+    boot_capture = check_boot_capture(log, image, evidence)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "high_sram": high_sram, "page_lease": page_lease,
-            "broker": broker, "io_lifetimes": io_lifetimes, "sd_removal": sd_removal,
+            "broker": broker, "io_lifetimes": io_lifetimes, "sd_removal": sd_removal, "boot_capture": boot_capture,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,

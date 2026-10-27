@@ -146,3 +146,6 @@ PROVIDE(nih_rom_l2_line_size = 0x4fc003cc);
 PROVIDE(nih_rom_l2_enable = 0x4fc00504);
 PROVIDE(nih_rom_cache_invalidate = 0x4fc003e4);
 PROVIDE(nih_rom_cache_writeback = 0x4fc003f4);
+#if NIH_NATIVE_CAPTURE
+PROVIDE(nih_rom_reset_reason = 0x4fc00018);
+#endif
