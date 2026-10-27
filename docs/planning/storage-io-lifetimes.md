@@ -151,3 +151,38 @@ format 2の理由・flag・WDT validとraw wordの不一致、欠落、重複、
 clean power-onは引き続きHP CPU0理由`0x01`とACKを要求し、`0x07`を合格へ変更しない。
 [host検証記録](../measurements/2026-10-27-native-reset-snapshot-host.json)には新候補のhashと監査を保存した。
 新snapshotは実機未検証で、この追加作業ではserial接続・Flash書込み・電源操作を行っていない。
+
+## FatFs disk I/O adapter（2026-10-28、host実行・RV32 compileまで）
+
+[fatfs_disk.c](../../src/storage/fatfs_disk.c)と[trusted owner API](../../include/nihos_fatfs_disk.h)を追加した。
+単一owner / drive 0、512 B sector、最大2^32 sectorのdevice、検証済みpartition領域を前提とする。
+partitionの発見や妥当性判定はこの層へ入れず、ownerが渡す範囲を越えるreadをI/O前に拒否する。
+最大4 KiBのdisk readを512 Bずつ同期callbackへ渡し、全sectorの成功後だけ出力へコピーする。
+callback内部の部分コピーや途中失敗があっても、このdisk readの出力は変更しない。
+複数回のdisk readにまたがる`f_read`全体や、永続transactionの原子性ではない。
+
+operationごとのsector budgetは最大8192で、bind時は0。
+I/O失敗、budget不足、owner側の失効通知はstickyとし、`disk_initialize`やbudget再設定で復帰させない。
+再bindはdetach後の単調増加epochだけを認め、callback中の再入・detach・再bindを拒否する。
+epochはFatFs内部のcached `FIL`を検証するものではない。
+outer Backendがmountを失効させ、古いfile/root/FS objectを全て破棄してから別epochへ進める必要がある。
+IRQからはこの非atomic APIを呼ばず、既存のresident mailboxへ通知する。
+現native callbackはエラーを`-1`へまとめるため、disk層だけでは取消・物理抜去の原因を区別しない。
+
+[native callback](../../src/platform/native/fatfs_disk.c)は既存の`nih_storage_read`へ渡す。
+ownerがcontrollerとclockを準備し、controller sessionを開始してから使う。
+全callbackのreturn時にDMA fenceが成立し、workspace/contextがownerに保持されることが前提である。
+未成立のfenceを普通のFS errorへ変えないという既存のfatal quarantine経路も維持する。
+
+[試験runner](../../tools/check-fatfs-disk.py)は実FatFsでFAT12/16/32、MBR FAT32、exFATを読み、
+日本語名、断片化、4 GiB超のoffsetと入力imageの全体hash不変を調べる。
+8個の各sectorでの失敗・失効、要求間の失効、範囲、budget、再入、古いepoch、
+2 TiB deviceの末尾もfault callbackで検査する。
+read-only設定のcompile guardとFatFs write API非linkも確認する。
+RV32でのadapter workspaceは4144 Bで、別途global状態・コードを要する。
+`FATFS` / file table / LFN stack / safety shim / upstream libraryを含む最終link予算は未算定である。
+現candidateのresident policy余裕320 Bにこの追加機能が収まった、という判定には使わない。
+
+この段階でfirmwareへのlink・実カードmountは有効にしていない。
+PR #3の循環chain・ancestor・identity shim、partition検証、VFS BackendとRPCの接続を次のgateとする。
+[試験の範囲と再利用元](../../probes/fatfs-disk/README.md)に詳細を記す。
