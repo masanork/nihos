@@ -117,7 +117,7 @@ test "checkpoint publication survives every sector and barrier cut with bounded 
             try recover(&store, &device);
             try update(&store);
             events = clean.events;
-            try equal(@as(usize, 130), events);
+            try equal(@as(usize, 162), events);
             clean.powerLoss();
             var acknowledged = Store{};
             try recover(&acknowledged, &device);
@@ -149,7 +149,7 @@ test "checkpoint publication survives every sector and barrier cut with bounded 
             }
         }
     }
-    try equal(@as(usize, 4680), cuts);
+    try equal(@as(usize, 5832), cuts);
     std.debug.print("CHECKPOINT_CAMPAIGN events={d} crash_cases={d} acknowledged_cases=6 max_mount_bytes={d}\n", .{ events, cuts, max_mount });
 }
 

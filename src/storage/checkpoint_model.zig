@@ -6,7 +6,16 @@ pub const crc_offset = page_bytes - 4;
 pub const leaf_entries = (crc_offset - 32) / 32;
 pub const root_magic: u32 = 0x4e494332;
 pub const leaf_magic: u32 = 0x4e494c32;
-pub const version: u32 = 1;
+pub const version: u32 = 2;
+pub const checksum_magic: u32 = 0x4e495332;
+pub const checksums_per_page = (crc_offset - 32) / 4;
+pub fn dataPages(length: u64) u64 {
+    return length / page_bytes + @intFromBool(length % page_bytes != 0);
+}
+pub fn checksumPages(length: u64) u64 {
+    const pages = dataPages(length);
+    return pages / checksums_per_page + @intFromBool(pages % checksums_per_page != 0);
+}
 pub const Config = struct { leaf_pages: u16 = 128, index_pages: u32 = 4096, payload_start_page: ?u64 = null };
 pub const Value = struct { first: u64, length: u64, checksum: u32 };
 pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted };
@@ -140,7 +149,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             if (length == 0) {
                 if (first != 0 or checksum != 0) return error.Corrupt;
             } else {
-                const pages = length / page_bytes + @intFromBool(length % page_bytes != 0);
+                const pages = dataPages(length) + checksumPages(length);
                 if (first < data_start or first > root.payload_next or pages > root.payload_next - first) return error.Corrupt;
             }
             return .{ .first = first, .length = length, .checksum = checksum };
@@ -182,7 +191,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             return try self.checkedLookup(&self.current, key) orelse error.NotFound;
         }
 
-        fn preflight(self: *Self, pages: usize) Error!void {
+        fn preflight(self: *Self, pages: u64) Error!void {
             if (self.staged.index_next >= 2 + @as(u64, config.index_pages) or
                 pages > Device.capacity / page_bytes - self.staged.payload_next) return error.NoSpace;
         }
@@ -210,19 +219,36 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         pub fn put(self: *Self, key: u32, data: []const u8) Error!void {
             try self.transaction();
             try validKey(key);
-            const pages = data.len / page_bytes + @intFromBool(data.len % page_bytes != 0);
-            try self.preflight(pages);
+            const pages = dataPages(data.len);
+            const tables = checksumPages(data.len);
+            try self.preflight(pages + tables);
             const existed = try self.checkedLookup(&self.staged, key) != null;
+            const first = self.staged.payload_next;
             var position: usize = 0;
-            for (0..pages) |i| {
-                var bytes: [page_bytes]u8 = @splat(0);
-                const n = @min(page_bytes, data.len - position);
-                @memcpy(bytes[0..n], data[position..][0..n]);
-                try self.writePage(self.staged.payload_next + i, &bytes);
-                position += n;
+            for (0..@intCast(tables)) |table| {
+                self.cache = @splat(0);
+                std.mem.writeInt(u32, self.cache[0..4], checksum_magic, .little);
+                std.mem.writeInt(u32, self.cache[4..8], version, .little);
+                std.mem.writeInt(u64, self.cache[8..16], first, .little);
+                std.mem.writeInt(u64, self.cache[16..24], data.len, .little);
+                std.mem.writeInt(u64, self.cache[24..32], table, .little);
+                const count: usize = @intCast(@min(checksums_per_page, pages - table * checksums_per_page));
+                for (0..count) |entry| {
+                    var bytes: [page_bytes]u8 = @splat(0);
+                    const n = @min(page_bytes, data.len - position);
+                    @memcpy(bytes[0..n], data[position..][0..n]);
+                    try self.writePage(first + table * checksums_per_page + entry, &bytes);
+                    std.mem.writeInt(u32, self.cache[32 + entry * 4 ..][0..4], std.hash.Crc32.hash(&bytes), .little);
+                    position += n;
+                }
+                _ = finishPage(&self.cache);
+                try self.writePage(first + pages + table, &self.cache);
             }
-            const value = Value{ .first = if (data.len == 0) 0 else self.staged.payload_next, .length = data.len, .checksum = std.hash.Crc32.hash(data) };
-            self.staged.payload_next += pages;
+            // The checksum table used the leaf scratch. Reload the staged leaf
+            // before replacing one entry, preserving other keys in that leaf.
+            if (tables != 0) _ = try self.checkedLookup(&self.staged, key);
+            const value = Value{ .first = if (data.len == 0) 0 else first, .length = data.len, .checksum = std.hash.Crc32.hash(data) };
+            self.staged.payload_next += pages + tables;
             try self.replace(key, value, existed);
         }
         pub fn remove(self: *Self, key: u32) Error!void {
@@ -242,25 +268,60 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
 
         pub fn read(self: *Self, key: u32, offset: u64, destination: []u8) Error!usize {
             const value = try self.get(key);
-            // Metadata-only mount intentionally defers payload verification.
-            // This first experiment verifies the whole extent on every read.
+            if (offset >= value.length or destination.len == 0) return 0;
+            const n: usize = @intCast(@min(destination.len, value.length - offset));
+            var position: usize = 0;
+            var loaded_table: ?u64 = null;
+            var buffer: [page_bytes]u8 = undefined;
+            while (position < n) {
+                const logical = offset + position;
+                const page = logical / page_bytes;
+                try self.checkedPage(value, page, &loaded_table, &buffer);
+                const within: usize = @intCast(logical % page_bytes);
+                const count = @min(page_bytes - within, n - position);
+                @memcpy(destination[position..][0..count], buffer[within..][0..count]);
+                position += count;
+            }
+            return n;
+        }
+
+        fn checkedPage(self: *Self, value: Value, page: u64, loaded_table: *?u64, buffer: *[page_bytes]u8) Error!void {
+            const table = page / checksums_per_page;
+            if (loaded_table.* != table) {
+                try self.readPage(value.first + dataPages(value.length) + table, &self.cache);
+                if (!pageValid(&self.cache) or std.mem.readInt(u32, self.cache[0..4], .little) != checksum_magic or
+                    std.mem.readInt(u32, self.cache[4..8], .little) != version or
+                    std.mem.readInt(u64, self.cache[8..16], .little) != value.first or
+                    std.mem.readInt(u64, self.cache[16..24], .little) != value.length or
+                    std.mem.readInt(u64, self.cache[24..32], .little) != table) return self.corruption();
+                loaded_table.* = table;
+            }
+            try self.readPage(value.first + page, buffer);
+            const entry: usize = @intCast(page % checksums_per_page);
+            if (std.hash.Crc32.hash(buffer) != std.mem.readInt(u32, self.cache[32 + entry * 4 ..][0..4], .little)) return self.corruption();
+        }
+
+        fn corruption(self: *Self) Error {
+            self.faulted = true;
+            self.in_transaction = false;
+            return error.Corrupt;
+        }
+
+        /// Explicit full-object scrub. Ordinary partial reads verify only the
+        /// pages they touch; callers can request this pass for cold corruption.
+        pub fn verify(self: *Self, key: u32) Error!void {
+            const value = try self.get(key);
             var crc = std.hash.Crc32.init();
-            var buffer: [512]u8 = undefined;
+            var buffer: [page_bytes]u8 = undefined;
             var position: u64 = 0;
+            var loaded_table: ?u64 = null;
             while (position < value.length) {
                 const n: usize = @intCast(@min(buffer.len, value.length - position));
-                self.device.read(value.first * page_bytes + position, buffer[0..n]) catch return self.ioFailure();
+                try self.checkedPage(value, position / page_bytes, &loaded_table, &buffer);
                 crc.update(buffer[0..n]);
                 position += n;
             }
-            if (crc.final() != value.checksum) {
-                self.faulted = true;
-                return error.Corrupt;
-            }
-            if (offset >= value.length) return 0;
-            const n: usize = @intCast(@min(destination.len, value.length - offset));
-            self.device.read(value.first * page_bytes + offset, destination[0..n]) catch return self.ioFailure();
-            return n;
+            if (crc.final() != value.checksum) return self.corruption();
         }
 
         fn publish(self: *Self, root: *const Root) Error!void {

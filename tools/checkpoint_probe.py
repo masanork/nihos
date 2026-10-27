@@ -104,6 +104,15 @@ def main():
         results["cases"].append({"name": "separate_process_reopen_above_4GiB", "passed": True, "old": old, "new": new})
         results["snapshots"]["generation3"] = capture(image, output, "generation3")
 
+        one = run("read-one")
+        cross = run("read-cross")
+        full_scrub = run("verify-full")
+        require(one["operation_read_bytes"] == 3 * PAGE, "one-byte read scanned excess data")
+        require(cross["operation_read_bytes"] == 4 * PAGE, "crossing read scanned excess data")
+        require(full_scrub["operation_read_bytes"] == 20 * PAGE, "full scrub footprint")
+        results["cases"].append({"name": "bounded_partial_read_and_explicit_scrub", "passed": True,
+                                 "one_byte": one, "crossing": cross, "scrub": full_scrub})
+
         fd = os.open(image, os.O_RDWR)
         try:
             offset = new["payload_first_byte"] + 17
@@ -119,6 +128,22 @@ def main():
         finally:
             os.close(fd)
         results["cases"].append({"name": "metadata_only_mount_and_on_demand_payload_integrity", "passed": True})
+
+        fd = os.open(image, os.O_RDWR)
+        try:
+            offset = new["payload_first_byte"] + 17 * PAGE + 17
+            original = os.pread(fd, 1, offset)
+            require(len(original) == 1, "missing cold payload byte")
+            require(os.pwrite(fd, bytes([original[0] ^ 1]), offset) == 1, "short cold corruption write")
+            os.fsync(fd)
+            run("read-one")
+            run("read-far", failure="Corrupt")
+            run("verify-full", failure="Corrupt")
+            require(os.pwrite(fd, original, offset) == 1, "short cold repair write")
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        results["cases"].append({"name": "cold_payload_corruption_is_deferred_until_read_or_scrub", "passed": True})
 
         run("fill-index")
         run("checkpoint")

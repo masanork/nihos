@@ -61,15 +61,15 @@ fn check(store: *Store, expected: u64) !void {
         if (store.get(127)) |_| return error.UnexpectedObject else |err| if (err != error.NotFound) return err;
     }
 }
-fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount_bytes: usize) !void {
+fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount_bytes: usize, operation_bytes: usize) !void {
     const first = if (store.get(1)) |item| item.first * model.page_bytes else |err| switch (err) {
         error.NotFound => 0,
         else => return err,
     };
     var buffer: [1024]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(io, &buffer);
-    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d}}}\n", .{
-        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs,
+    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d}}}\n", .{
+        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes,
     });
     try stdout.interface.flush();
 }
@@ -78,7 +78,7 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(init.arena.allocator());
     if (args.len != 3) return error.Usage;
     const command = args[1];
-    const known = [_][]const u8{ "format", "seed", "update", "verify-old", "verify-new", "fill-index", "checkpoint", "verify-index", "inspect" };
+    const known = [_][]const u8{ "format", "seed", "update", "verify-old", "verify-new", "fill-index", "checkpoint", "verify-index", "inspect", "read-one", "read-cross", "read-far", "verify-full" };
     var valid = false;
     for (known) |name| if (std.mem.eql(u8, command, name)) {
         valid = true;
@@ -91,7 +91,7 @@ pub fn main(init: std.process.Init) !void {
     var store = Store{};
     if (std.mem.eql(u8, command, "format")) {
         try store.format(&device);
-        return report(init.io, &backend, &store, command, 0);
+        return report(init.io, &backend, &store, command, 0, 0);
     }
     device.mount_only = true;
     try store.recover(&device);
@@ -116,6 +116,17 @@ pub fn main(init: std.process.Init) !void {
         try check(&store, 2);
     } else if (std.mem.eql(u8, command, "verify-new")) {
         try check(&store, 3);
+    } else if (std.mem.eql(u8, command, "verify-full")) {
+        if (store.generation() != 3) return error.BadGeneration;
+        try store.verify(1);
+    } else if (std.mem.startsWith(u8, command, "read-")) {
+        if (store.generation() != 3) return error.BadGeneration;
+        const cross = std.mem.eql(u8, command, "read-cross");
+        const offset: usize = if (cross) model.page_bytes - 1 else if (std.mem.eql(u8, command, "read-far")) 17 * model.page_bytes + 17 else 17;
+        var bytes: [2]u8 = undefined;
+        const n: usize = if (cross) 2 else 1;
+        if (try store.read(1, offset, bytes[0..n]) != n) return error.BadReadLength;
+        for (bytes[0..n], 0..) |byte, i| if (byte != value(offset + i, 0x53)) return error.BadPayload;
     } else if (std.mem.eql(u8, command, "fill-index")) {
         if (store.generation() != 3) return error.BadGeneration;
         try store.begin();
@@ -129,5 +140,5 @@ pub fn main(init: std.process.Init) !void {
         if (store.generation() != 5 or mount_bytes != Store.mount_limit_bytes) return error.BadFullIndex;
         for (0..128) |index| if ((try store.get(@intCast(index * model.leaf_entries + 1))).length != 0) return error.BadEmptyObject;
     }
-    try report(init.io, &backend, &store, command, mount_bytes);
+    try report(init.io, &backend, &store, command, mount_bytes, device.bytes_read - mount_bytes);
 }
