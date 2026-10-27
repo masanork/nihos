@@ -124,6 +124,8 @@ test {
     _ = boot_graphics;
     _ = console;
     _ = tab5_boot_i2c;
+    _ = @import("board/tab5/rtc.zig");
+    _ = @import("net/ble_hci.zig");
     _ = tab5_display;
     _ = tab5_panels;
     _ = display_dcs;

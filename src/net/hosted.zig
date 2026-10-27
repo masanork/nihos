@@ -2,7 +2,7 @@
 //! v2.13.1 public header/proto definitions. No OTA or persistent-write RPCs.
 const std = @import("std");
 pub const Error = error{ Malformed, Capacity, Fragmented, Checksum, Stale, Rejected };
-pub const Frame = struct { interface: u8, payload: []const u8 };
+pub const Frame = struct { interface: u8, payload: []const u8, packet_type: u8 = 0 };
 pub const Decoder = struct {
     bytes: [4096]u8 = @splat(0),
     used: usize = 0,
@@ -27,7 +27,7 @@ pub const Decoder = struct {
         const expected = std.mem.readInt(u16, self.bytes[6..8], .little);
         if (expected != 0 and expected != checksum(self.bytes[0..self.used])) return error.Checksum;
         if (expected == 0) self.unchecked +|= 1;
-        const result = Frame{ .interface = self.bytes[0], .payload = self.bytes[12..self.used] };
+        const result = Frame{ .interface = self.bytes[0], .payload = self.bytes[12..self.used], .packet_type = self.bytes[11] };
         self.used = 0;
         self.wanted = 12;
         return result;
@@ -41,11 +41,15 @@ fn checksum(bytes: []const u8) u16 {
     return sum;
 }
 pub fn frame(out: []u8, interface: u8, sequence: u16, payload: []const u8) Error![]const u8 {
+    return typedFrame(out, interface, sequence, if (interface & 15 == 5) 0x33 else 0, payload);
+}
+/// ESP-Hosted stores the H4 packet type in header byte 11, outside payload.
+pub fn typedFrame(out: []u8, interface: u8, sequence: u16, packet_type: u8, payload: []const u8) Error![]const u8 {
     if (payload.len == 0 or payload.len > 1500 or payload.len + 12 > out.len) return error.Capacity;
     const result = out[0 .. payload.len + 12];
     @memset(result[0..12], 0);
     result[0] = interface;
-    if (interface & 15 == 5) result[11] = 0x33;
+    result[11] = packet_type;
     std.mem.writeInt(u16, result[2..4], @intCast(payload.len), .little);
     std.mem.writeInt(u16, result[4..6], 12, .little);
     std.mem.writeInt(u16, result[8..10], sequence, .little);

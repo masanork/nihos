@@ -74,5 +74,29 @@
       "heap_bytes": 73216
     }
   },
-  "physical_gate": "No merged candidate installed. New card insertion/removal optical checks required before PIN testing. Licence signatures lack official issuer keys."
+  "physical_gate": "No merged candidate installed. New card insertion/removal optical checks required before PIN testing. Licence signatures lack official issuer keys.",
+  "initial_integration_commit": "70e7bb7afae1125f39b904e1f542bb069c647ffc",
+  "additional_main_parent": "0f573cde0fa8a4d4208edb17e705392746da37ed",
+  "additional_main_validation": {
+    "zig": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "python_tests": 200,
+    "static_six_links": true,
+    "candidates": {
+      "full": {
+        "elf_sha256": "913b7d66fb8a0cdbf0ebe5ffa9ff9122ea3af9218e186f71c43ea6077bbe8c60",
+        "app_sha256": "314efd7b428ec9708e9ac01ba9d028f084625382143fc42748c89dcff66c1dfc",
+        "heap_bytes": 52608,
+        "installed": false
+      },
+      "default-connected": {
+        "elf_sha256": "65a3a325da343cc52128776ca103cc5470dea90468d73062ae7f52d23c5178e3",
+        "app_sha256": "a0bf412e42042d3b7cd03add55c9e85cea834fce2b7466e4dd3234446318bc7a",
+        "heap_bytes": 57728,
+        "installed": false
+      }
+    }
+  }
 }

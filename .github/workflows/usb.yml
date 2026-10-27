@@ -127,11 +127,17 @@ jobs:
 
       - name: Compile normal splash and live-console configuration
         run: |
-          NIHOS_NATIVE_DISPLAY=2 NIHOS_NATIVE_PSRAM_200=1 NIHOS_NATIVE_CONSOLE=1 \
+          NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_DISPLAY=2 NIHOS_NATIVE_PSRAM_200=1 NIHOS_NATIVE_CONSOLE=1 \
             NIHOS_NATIVE_CONSOLE_LIVE=1 NIHOS_NATIVE_KEYBOARD_I2C=1 \
             sh tools/build-native.sh device integer
           mkdir -p build/usb-ci/normal-display
           cp build/native-device/image-audit.json build/native-device/native_options.zig build/usb-ci/normal-display/
+
+      - name: Compile default connected Tab5 OS
+        run: |
+          sh tools/build-native.sh device integer
+          mkdir -p build/usb-ci/default-connected
+          cp build/native-device-network/image-audit.json build/native-device-network/native_options.zig build/usb-ci/default-connected/
 
       - name: Retain source-bound compile evidence
         if: always()

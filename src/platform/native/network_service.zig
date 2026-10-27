@@ -1,4 +1,4 @@
-//! Opt-in CPU0 normal-boot integration. Owns both SDMMC slots exclusively.
+//! CPU0 normal-boot integration. Owns both SDMMC slots exclusively.
 //! One FIFO chunk/TX per poll; DHCP maintenance and reset/backoff reconnect.
 const options = @import("native_options");
 const timers = @import("timer_group");
@@ -11,12 +11,21 @@ extern fn nih_c6_power_enable() callconv(.c) u32;
 extern fn nih_c6_reset(u32) callconv(.c) void;
 var host = sd.Controller(pads.Bus){ .io = .{} };
 var transport = stream.ProfileStream(@TypeOf(host), 64){ .host = &host };
-const State = struct { client: hosted.Client = .{}, decoder: hosted.wire.Decoder = .{} };
+const State = struct {
+    client: hosted.Client = .{},
+    decoder: hosted.wire.Decoder = .{},
+    configuration: hosted.Configuration = .{},
+    ble: hosted.ble.Client = .{},
+    ble_output: [32]u8 = @splat(0),
+    ble_length: usize = 0,
+};
 pub const storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
 // SAFETY: begin binds these exclusively reserved CPU0 PSRAM objects before poll.
 var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
 var decoder: *hosted.wire.Decoder = undefined;
+// SAFETY: begin binds the exclusive PSRAM state before the first active poll.
+var state_storage: *State = undefined;
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
 var clock: timers.Timer = undefined;
@@ -24,7 +33,8 @@ var next: u64 = 0;
 var limit: u64 = 0;
 var phase: enum(u32) { off, power_wait, reset_wait, active, backoff, failed } = .off;
 var report: Report = .{};
-var join_config: hosted.Join = .saved;
+// SAFETY: begin binds the owned configuration before starting the transport.
+var configuration: *hosted.Configuration = undefined;
 var failures: u8 = 0;
 var ready_at: ?u64 = null;
 var attempt_bound = false;
@@ -48,6 +58,9 @@ pub const Report = extern struct {
     failures: u32 = 0,
     disconnect_reason: u32 = 0,
     failed_station: u32 = 0,
+    configured: u32 = 0,
+    capabilities: u32 = 0,
+    bluetooth_status: u32 = 0,
 };
 
 /// CPU0 only, between display initialization and CPU1 release. The shared I2C
@@ -55,12 +68,14 @@ pub const Report = extern struct {
 /// SDMMC because both slots remain exclusively owned by this service.
 pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storage_bytes]u8) void {
     const state: *State = @ptrCast(backing);
+    state_storage = state;
     state.* = .{};
     client = &state.client;
     decoder = &state.decoder;
     clock = timer;
-    join_config = join;
+    configuration = &state.configuration;
     report = .{};
+    configuration.set(join) catch return stop(error.InvalidArgument, null);
     failures = 0;
     test_renewed = false;
     test_reset = false;
@@ -77,7 +92,9 @@ fn startAttempt(now: u64) void {
     transport = .{ .host = &host };
     client.* = .{};
     decoder.* = .{};
-    client.beginDual(join_config, now, true);
+    state_storage.ble = .{};
+    state_storage.ble_length = 0;
+    client.beginDual(configuration.get(), now, true);
     client.keep_serving = true;
     attempt_bound = false;
     counted_renewals = 0;
@@ -102,6 +119,8 @@ fn stop(err: anyerror, now: ?u64) void {
     transport.invalidate();
     client.* = .{};
     decoder.* = .{};
+    state_storage.ble = .{};
+    state_storage.ble_length = 0;
     nih_c6_reset(0);
     if (now == null or err == error.Clock or pads.clockFailed()) {
         phase = .failed;
@@ -142,10 +161,14 @@ fn step(now: u64) !void {
     const count = try transport.receive(&rx);
     report.rx +|= @intCast(count);
     for (rx[0..count]) |byte| if (try decoder.push(byte)) |frame| {
+        if (frame.interface == 4) state_storage.ble.receiveHosted(frame.packet_type, frame.payload, now);
         try client.receive(frame, clock.counter() orelse return error.Clock);
         collectRenewals();
     };
     const stamp = clock.counter() orelse return error.Clock;
+    const ble = &state_storage.ble;
+    if (ble.phase == .off and client.bluetooth_setup_done) ble.begin(if (client.bluetooth_ready) client.peer_capabilities else 0);
+    ble.tick(stamp);
     if (stamp < client.started) return error.Clock;
     if (client.dhcp_client) |*v4| if (v4.lease != null) {
         if (!attempt_bound) {
@@ -170,6 +193,24 @@ fn step(now: u64) !void {
         if (sent != 0 and sent != bytes.len) return error.PartialPacket;
         if (sent != 0) client.sent(clock.counter() orelse return error.Clock);
         report.tx +|= @intCast(sent);
+    } else {
+        if (state_storage.ble_length == 0) {
+            const command = ble.tx(stamp);
+            if (command.len != 0) {
+                const packet = try hosted.wire.typedFrame(&state_storage.ble_output, 4, client.sequence, 1, command);
+                client.sequence +%= 1;
+                state_storage.ble_length = packet.len;
+            }
+        }
+        if (state_storage.ble_length != 0) {
+            const sent = try transport.send(state_storage.ble_output[0..state_storage.ble_length]);
+            if (sent != 0 and sent != state_storage.ble_length) return error.PartialPacket;
+            if (sent != 0) {
+                state_storage.ble_length = 0;
+                ble.sent(clock.counter() orelse return error.Clock);
+                report.tx +|= @intCast(sent);
+            }
+        }
     }
 }
 pub fn poll() void {
@@ -193,6 +234,9 @@ pub fn snapshot() Report {
     var result = report;
     result.phase = @backingInt(phase);
     result.station = @backingInt(client.phase);
+    result.configured = @intFromBool(configuration.mode != .disabled);
+    result.capabilities = client.peer_capabilities;
+    result.bluetooth_status = client.bluetooth_status;
     if (client.dhcp_client) |v4| {
         if (v4.lease) |lease| result.ip = lease.ip;
     }
@@ -201,4 +245,25 @@ pub fn snapshot() Report {
         result.echo_requests = v6.echo_requests;
     }
     return result;
+}
+pub fn bluetoothSnapshot() hosted.ble.Report {
+    return state_storage.ble.snapshot();
+}
+
+/// CPU0 only. Starts another bounded discovery session after the previous one.
+pub fn scanBluetooth() !void {
+    if (phase != .active or client.priv_events == 0) return error.NotStarted;
+    if (state_storage.ble.phase != .idle and state_storage.ble.phase != .failed) return error.Busy;
+    state_storage.ble_length = 0;
+    state_storage.ble.begin(client.peer_capabilities);
+}
+
+/// CPU0 settings-service entry point. Replaces credentials atomically after
+/// validation and revokes all addresses/output by starting a fresh C6 epoch.
+pub fn configure(join: hosted.Join) !void {
+    if (phase == .off) return error.NotStarted;
+    try configuration.set(join);
+    const now = clock.counter() orelse return error.Clock;
+    nih_c6_reset(0);
+    startAttempt(now);
 }

@@ -132,9 +132,18 @@ unsigned nih_c6_power_enable(void) {
         gpio_ll_set_level(&GPIO, pin, 1); gpio_ll_output_enable(&GPIO, pin);
     }
     unsigned out = 0, dir = 0, hiz = 0, check = 0;
-    if (!exp_read(5, &out) || !exp_read(3, &dir) || !exp_read(7, &hiz)) return 0;
-    if (!exp_write(5, out | 1) || !exp_write(7, hiz & ~1u) || !exp_write(3, dir | 1)) return 0;
-    return exp_read(5, &check) && check == (out | 1) &&
-           exp_read(7, &check) && check == (hiz & ~1u) &&
-           exp_read(3, &check) && check == (dir | 1);
+    int ok = exp_read(5, &out) && exp_read(3, &dir) && exp_read(7, &hiz) &&
+             exp_write(5, out | 1) && exp_write(7, hiz & ~1u) && exp_write(3, dir | 1) &&
+             exp_read(5, &check) && check == (out | 1) &&
+             exp_read(7, &check) && check == (hiz & ~1u) &&
+             exp_read(3, &check) && check == (dir | 1);
+    /* Hand back the shared bus to the Zig master: its open-drain primitive
+     * toggles output-enable around a LOW latch. Retaining this shim's HIGH
+     * latch makes every subsequent RTC/sensor transfer unable to drive low. */
+    for (unsigned pin = 31; pin <= 32; ++pin) {
+        gpio_ll_output_disable(&GPIO, pin);
+        gpio_ll_set_level(&GPIO, pin, 0);
+        gpio_ll_od_disable(&GPIO, pin);
+    }
+    return ok;
 }

@@ -183,8 +183,8 @@ if [ "$boot_test" != 0 ] && [ "$boot_fast" != true ]; then echo "Boot test requi
 if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
     echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
 fi
-if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ] || [ -z "${NIHOS_C6_WIFI_CONFIG:-}" ]; }; then
-    echo "NETWORK requires normal device boot, private Wi-Fi JSON, and exclusive SDMMC (SDMMC=0)" >&2; exit 1
+if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ]; }; then
+    echo "NETWORK requires normal device boot and exclusive SDMMC (SDMMC=0)" >&2; exit 1
 fi
 auto_probe=${NIHOS_NATIVE_CARD_AUTO_PROBE:-0}
 case "$auto_probe" in
@@ -252,7 +252,7 @@ mkdir -p "$build_dir"
 native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
 network_json=
-if [ "$network" = true ]; then network_json=$NIHOS_C6_WIFI_CONFIG; fi
+if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
@@ -434,7 +434,8 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
