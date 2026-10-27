@@ -15,6 +15,8 @@ if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network";
 network_test=${NIHOS_NATIVE_NETWORK_TEST:-0}
 case "$network_test" in 0) network_test=false ;; 1) network_test=true ;; *) echo "NETWORK_TEST must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$network_test" = true ] && [ "$network" != true ]; then echo "NETWORK_TEST requires NETWORK=1" >&2; exit 1; fi
+audio=${NIHOS_NATIVE_AUDIO:-0}
+case "$audio" in 0) audio=false ;; 1) audio=true ;; *) echo "AUDIO must be 0 or 1" >&2; exit 1 ;; esac
 root_opt=safe
 if [ "$network" = true ]; then root_opt=small; fi
 mode=${3:-integer}
@@ -248,9 +250,13 @@ if [ "$storage" = true ] && { [ "$sdmmc" != true ] || [ "$sqlite" != true ]; }; 
 fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
+if [ "$audio" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ]; }; then
+    echo "AUDIO requires the normal native integer device display/console boot" >&2; exit 1
+fi
 mkdir -p "$build_dir"
 native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
+if [ "$audio" = true ]; then native_boot_dir="$native_boot_dir-audio"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
@@ -261,6 +267,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
+    printf 'pub const audio = %s;\n' "$audio"
     printf 'pub const network = %s;\n' "$network"
     printf 'pub const network_test = %s;\n' "$network_test"
     printf 'pub const card_check = %s;\n' "$card_check"
@@ -297,6 +304,18 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
         -I "$idf_path/components/esp_rom/esp32p4" \
         -o "$build_dir/display_pads.o" "$repo_root/src/board/tab5/native_pads.c"
     set -- "$@" "$build_dir/display_pads.o"
+    if [ "$audio" = true ]; then
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+            -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
+            -I "$native_boot_dir/loader/config" \
+            -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+            -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+            -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/hw_ver1" \
+            -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+            -o "$build_dir/audio_tx.o" "$repo_root/probes/audio_native/tx.c"
+        set -- "$@" "$build_dir/audio_tx.o"
+    fi
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
             -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" \
@@ -434,9 +453,12 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_es8388 --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -Mtab5_bmi270="$repo_root/src/board/tab5/bmi270.zig" \
+    -Mtab5_es8388="$repo_root/src/board/tab5/es8388.zig" \
+    -Maudio_tone="$repo_root/src/audio/tone.zig" \
+    -Maudio_probe_model="$repo_root/src/audio/playback_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \

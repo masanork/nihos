@@ -139,3 +139,11 @@ license = "BSD-3-Clause; Copyright (c) 2023 Bosch Sensortec GmbH"
 status = "firmware-data-dependency"
 use = "Unmodified 8192-byte bmi270_config_file extracted into src/board/tab5/bmi270/config.bin; original license retained alongside; independent Zig host protocol, no Bosch host driver code import"
 sha256 = "2d75e68e343a13ff99be98261dfbd99d9e8c6f267da9e3c5aeb883276ad178db"
+
+[[source]]
+name = "Everest ES8388 datasheet"
+url = "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/1141/ES8388.pdf"
+revision = "Revision 5.0, July 2018"
+license = "Vendor documentation; register facts used as a specification"
+status = "reference-only"
+use = "Independent playback-only Zig control implementation, writable register masks, I2S format, gain, mute and power sequencing; no vendor host driver code imported"

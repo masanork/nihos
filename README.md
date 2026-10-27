@@ -242,3 +242,9 @@ Normal native Tab5 boot also initializes BMI270 and acquires acceleration and
 gyroscope readings through the shared board I2C owner. See
 [ADR 0048](docs/adr/0048-native-bmi270-acquisition.md) for sensor-frame raw values,
 the licensed configuration data and remaining motion/calibration gates.
+
+An experimental finite audio-output probe can be built explicitly with
+`NIHOS_NATIVE_AUDIO=1 sh tools/build-native.sh device`. Normal builds keep it
+disabled. Its native codec/DMA transfer and shutdown have physical evidence;
+audible output is still unconfirmed. See
+[the audio checkpoint](docs/measurements/2026-10-28-native-audio.md).
