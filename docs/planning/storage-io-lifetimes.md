@@ -109,4 +109,13 @@ USB disconnectが起きた場合は同じportをexclusiveに開き直し、後�
 新たなUSB resetを指示せず起動ログを取り、ROMのreset reasonがpower-on (`0x1`)の1起動であることを要求する。
 USB reset、watchdog、複数bootの混在、ROM header欠落ではcold bootを合格にしない。
 FDを開き直した場合は、その回数と「同一FDを維持したか」を分けて記録する。
-電源OFF中に接続が戻らない場合は復元を完了できないため、private backupと失敗ログを保持して電源復帰を待つ。
+電源OFF中に接続が戻らない場合は復元を完了できないため、private backupと失敗ログを保持し、電源復帰後に復元を完了する。
+
+追加経路OFFの通常設定は、commit `b21e114`の固定imageで実機3回のUSB reset起動にも合格した。
+[通常設定の回帰結果](../measurements/2026-10-27-sd-manual-normal-physical.json)に生ログhashと復元照合を保存した。
+これは手操作用imageの実抜去試験やcold bootの合格ではない。
+
+[公式のTab5操作説明](https://docs.m5stack.com/ja/core/Tab5)も照合した。
+公式には電源キーのダブルクリックでshutdown、単押しで起動と記載され、直接給電を切った場合は5秒以上空けるとしている。
+このnative fixtureでボタンによるshutdown処理は検証していないため、操作方法だけから電源断を成立したと見なさず、
+実際の給電構成、operatorの操作記録、ROMのreset reasonを併せて確認する。
