@@ -1,4 +1,5 @@
 #include "host_disk.h"
+#include "safety.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -7,6 +8,8 @@
 
 _Static_assert(FF_FS_READONLY == 1, "reader must have write APIs compiled out");
 _Static_assert(sizeof(FSIZE_t) == 8 && sizeof(LBA_t) == 8, "64-bit file offsets and LBA required");
+static uint64_t cancel_after = UINT64_MAX;
+static int cancelled(void *context) { return ((nih_ro_control *)context)->steps >= cancel_after; }
 
 static int number(const char *text, uint64_t *result) {
     char *end;
@@ -113,6 +116,16 @@ int main(int argc, char **argv) {
     if (argc < 3 || host_disk_open(argv[1], 0) != 0) return 2;
     if (configure_overlay() != 0) return 2;
     const char *command = argv[2];
+    nih_ro_control control = { .remaining = 8192, .cancelled = cancelled };
+    control.context = &control;
+    const char *chain_budget = getenv("NIHOS_FATFS_CHAIN_BUDGET");
+    const char *cancel_step = getenv("NIHOS_FATFS_CANCEL_AFTER");
+    uint64_t setting;
+    if (chain_budget != NULL) {
+        if (number(chain_budget, &setting) != 0 || setting > UINT32_MAX) return 2;
+        control.remaining = (uint32_t)setting;
+    }
+    if (cancel_step != NULL && number(cancel_step, &cancel_after) != 0) return 2;
     if (strcmp(command, "disk-write") == 0) {
         const BYTE sector[512] = { 0xa5 };
         DRESULT status = disk_write(0, sector, 0, 1);
@@ -138,9 +151,14 @@ int main(int argc, char **argv) {
     if (strcmp(command, "mount") == 0 || strcmp(command, "raw-mount") == 0) {
         printf("{\"status\":\"OK\",\"fs_type\":%u", fs.fs_type); statistics();
     } else if (strcmp(command, "list") == 0) {
-        DIR directory;
+        DIR directory = {0};
         FILINFO item;
-        result = f_opendir(&directory, "");
+        nih_ro_status guarded = nih_ro_directory(&directory, "", &control);
+        if (guarded != NIH_RO_OK) {
+            printf("{\"status\":\"%s\",\"guard_steps\":%u", nih_ro_status_name(guarded), control.steps); statistics();
+            return host_disk_close() == 0 ? 0 : 2;
+        }
+        result = FR_OK;
         printf("{\"entries\":[");
         unsigned int count = 0;
         while (result == FR_OK && count < 128) {
@@ -154,17 +172,26 @@ int main(int argc, char **argv) {
         if (result == FR_OK) result = f_closedir(&directory);
         printf("],\"status\":\"%s\",\"fresult\":%d", count == 128 ? "Limit" : result == FR_OK ? "OK" : "Error", (int)result);
         statistics();
-    } else if (strcmp(command, "read") == 0 || strcmp(command, "raw-write-open") == 0) {
+    } else if (strcmp(command, "read") == 0 || strcmp(command, "raw-read") == 0 || strcmp(command, "identity") == 0 || strcmp(command, "raw-write-open") == 0) {
         if (argc != 6 || !valid_path(argv[3])) return 2;
         uint64_t offset, amount;
         if (number(argv[4], &offset) != 0 || number(argv[5], &amount) != 0 || amount > 4096 || amount > UINT64_MAX - offset) return 2;
-        FIL file;
-        result = f_open(&file, argv[3], (BYTE)(FA_READ | (strcmp(command, "raw-write-open") == 0 ? FA_WRITE : 0)));
+        FIL file = {0};
+        nih_ro_identity identity = {0};
+        nih_ro_status guarded = NIH_RO_OK;
+        int raw = strcmp(command, "raw-write-open") == 0 || strcmp(command, "raw-read") == 0;
+        if (raw) result = f_open(&file, argv[3], (BYTE)(FA_READ | (strcmp(command, "raw-write-open") == 0 ? FA_WRITE : 0)));
+        else {
+            guarded = nih_ro_open(&file, argv[3], &identity, &control);
+            result = guarded == NIH_RO_OK ? FR_OK : control.fat_result;
+        }
         UINT got = 0;
         unsigned char bytes[4096];
         uint64_t size = 0;
-        if (result == FR_OK) {
+        uint32_t data_cluster = 0;
+        if (result == FR_OK && guarded == NIH_RO_OK) {
             size = f_size(&file);
+            data_cluster = file.obj.sclust;
             if (offset < size) {
                 result = f_lseek(&file, offset);
                 if (result == FR_OK && f_tell(&file) != offset) result = FR_INT_ERR;
@@ -173,9 +200,10 @@ int main(int argc, char **argv) {
             FRESULT closed = f_close(&file);
             if (result == FR_OK) result = closed;
         }
-        printf("{\"status\":\"%s\",\"fresult\":%d,\"size\":%" PRIu64 ",\"count\":%u,\"eof\":%s,\"hex\":\"",
-               result == FR_OK ? "OK" : "Error", (int)result, size, got,
-               offset >= size || got >= size - offset ? "true" : "false");
+        printf("{\"status\":\"%s\",\"fresult\":%d,\"size\":%" PRIu64 ",\"count\":%u,\"eof\":%s,"
+               "\"identity\":[%u,%u],\"data_cluster\":%u,\"guard_steps\":%u,\"hex\":\"",
+               guarded != NIH_RO_OK ? nih_ro_status_name(guarded) : result == FR_OK ? "OK" : "Error", (int)result, size, got,
+               offset >= size || got >= size - offset ? "true" : "false", identity.directory_cluster, identity.entry_offset, data_cluster, control.steps);
         for (UINT i = 0; i < got; i++) printf("%02x", bytes[i]);
         printf("\""); statistics();
     } else return 2;

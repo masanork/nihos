@@ -25,6 +25,7 @@ const Fake = struct {
     partial: ?usize = null,
     failure: ?api.Failure = null,
     fail_open: bool = false,
+    corrupt_lookup: bool = false,
     fail_close: bool = false,
     fail_sync: bool = false,
     bad_count: bool = false,
@@ -33,6 +34,8 @@ const Fake = struct {
     pub fn lookupBeneath(self: *Fake, root: u64, path: []const u8) api.Error!u64 {
         self.lookups += 1;
         if (root != 42) return error.PermissionDenied;
+        if (self.corrupt_lookup) return error.Corrupt;
+        if (std.mem.eql(u8, path, "zero-id.txt")) return 0;
         if (std.ascii.eqlIgnoreCase(path, "memo.txt") or std.ascii.eqlIgnoreCase(path, "MEMO~1.TXT")) return 7;
         if (std.mem.eql(u8, path, "other.txt")) return 8;
         if (std.mem.eql(u8, path, "教材/漢字𠮷.txt")) return 9;
@@ -448,4 +451,150 @@ test "development profile distinguishes open objects from data-file handles" {
     _ = try core.openAt(1, root, "memo.txt", read);
     try equal(@as(usize, 4096), api.standard_limits.io_bytes);
     try equal(@as(usize, 511), api.standard_limits.path_bytes);
+}
+
+const stopped = api.io.Fence{ .device_idle = true, .descriptors_released = true, .cache_handed_back = true };
+
+test "cancelled active read pins file and mount until stop and completion acknowledgement" {
+    var fake = Fake{};
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, .{}, .{});
+    const root = try core.grantRoot(mount, 1, read);
+    const file = try core.openAt(1, root, "memo.txt", read);
+    const request = try core.retainRead(1, file, 501);
+    try core.startRead(request);
+    try core.cancelRead(1, request);
+    var dma_buffer: [8]u8 = @splat(0);
+    try expectError(error.Busy, core.readAt(1, file, 0, &dma_buffer));
+    try expectError(error.Busy, core.openAt(1, root, "other.txt", read));
+    try expectError(error.Busy, core.close(1, file));
+    try expectError(error.Busy, core.detachQuiescent(mount));
+    try expectError(error.Busy, core.finishRead(request, true, .{ .device_idle = true }));
+    try expectError(error.Busy, core.takeRead(1, request));
+    dma_buffer[0] = 0xaa; // Fake DMA can still touch the retained lease.
+    try expect(try core.readStopRequired(request));
+    try equal(@as(usize, 0), fake.reads + fake.closes);
+    try core.finishRead(request, true, stopped);
+    try expectError(error.Busy, core.close(1, file));
+    try expectError(error.PermissionDenied, core.takeRead(2, request));
+    const completion = try core.takeRead(1, request);
+    try equal(api.io.Outcome.cancelled, completion.outcome);
+    try equal(@as(u64, 501), completion.buffer_lease);
+    try equal(@as(u8, 0xaa), dma_buffer[0]);
+    try core.close(1, file);
+    try core.close(1, root);
+    try core.unmount(mount);
+}
+
+test "removal and dead client cannot retire active DMA or rebind its mount" {
+    var fake = Fake{};
+    var replacement = Fake{};
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, .{}, .{});
+    const root = try core.grantRoot(mount, 1, read);
+    const file = try core.openAt(1, root, "memo.txt", read);
+    const active = try core.retainRead(1, file, 501);
+    const queued = try core.retainRead(1, file, 502);
+    try core.startRead(active);
+    try core.markRemoved(mount);
+    try expectError(error.StaleHandle, core.startRead(queued));
+    try expectError(error.Busy, core.discardRead(active));
+    try expectError(error.Busy, core.detachQuiescent(mount));
+    try equal(api.io.Outcome.removed, (try core.discardRead(queued)).outcome);
+    try expectError(error.Busy, core.finishRead(active, false, .{})); // Failed stop: keep buffer pinned.
+    try core.finishRead(active, false, stopped);
+    try equal(api.io.Outcome.removed, (try core.discardRead(active)).outcome);
+    try core.detachQuiescent(mount);
+    const fresh_mount = try core.mount(&replacement, 42, .{}, .{});
+    const fresh_root = try core.grantRoot(fresh_mount, 2, read);
+    const fresh_file = try core.openAt(2, fresh_root, "memo.txt", read);
+    const fresh = try core.retainRead(2, fresh_file, 601);
+    try core.startRead(fresh);
+    try expectError(error.StaleHandle, core.finishRead(active, true, stopped));
+    try expectError(error.Busy, core.takeRead(2, fresh));
+    try core.finishRead(fresh, true, stopped);
+    try equal(@as(u64, 601), (try core.takeRead(2, fresh)).buffer_lease);
+    try equal(@as(usize, 0), fake.reads + fake.closes);
+}
+
+test "queued cancellation, foreign callers and failed DMA preserve ownership" {
+    var fake = Fake{};
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, .{}, .{});
+    const root = try core.grantRoot(mount, 1, read);
+    const file = try core.openAt(1, root, "memo.txt", read);
+    try expectError(error.PermissionDenied, core.retainRead(2, file, 100));
+    try expectError(error.PermissionDenied, core.retainRead(1, root, 100));
+    const queued = try core.retainRead(1, file, 100);
+    try expectError(error.PermissionDenied, core.cancelRead(2, queued));
+    try core.cancelRead(1, queued);
+    try equal(api.io.Outcome.cancelled, (try core.takeRead(1, queued)).outcome);
+    const active = try core.retainRead(1, file, 101);
+    try core.startRead(active);
+    try core.finishRead(active, false, stopped);
+    try equal(api.State.faulted, (try core.queryMount(mount)).state);
+    try equal(api.io.Outcome.failed, (try core.takeRead(1, active)).outcome);
+    try expectError(error.RecoveryRequired, core.retainRead(1, file, 102));
+    try core.close(1, file);
+}
+
+test "synchronous device removal cancels queued leases before they can issue" {
+    var fake = Fake{ .failure = .removed };
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, .{}, .{});
+    const root = try core.grantRoot(mount, 1, read);
+    const file = try core.openAt(1, root, "memo.txt", read);
+    const queued = try core.retainRead(1, file, 100);
+    var buffer: [8]u8 = @splat(0);
+    _ = try core.readAt(1, file, 0, &buffer);
+    try expectError(error.StaleHandle, core.startRead(queued));
+    try equal(api.io.Outcome.removed, (try core.takeRead(1, queued)).outcome);
+    try core.detachQuiescent(mount);
+}
+
+test "corruption is distinct from EOF and blocks further device work" {
+    var fake = Fake{ .failure = .corrupt, .partial = 0 };
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, .{}, .{});
+    const root = try core.grantRoot(mount, 1, read);
+    const file = try core.openAt(1, root, "memo.txt", read);
+    var buffer: [8]u8 = @splat(0xaa);
+    const result = try core.readAt(1, file, 0, &buffer);
+    try equal(api.Failure.corrupt, result.failure.?);
+    try expect(!result.eof);
+    try equal(@as(usize, 0), result.transferred);
+    try equal(@as(u8, 0xaa), buffer[0]);
+    try expectError(error.RecoveryRequired, core.retainRead(1, file, 100));
+    try core.close(1, file);
+}
+
+test "zero is a valid directory-entry identity and lookup corruption never opens a file" {
+    var fake = Fake{};
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, writable, .{ .writable = true });
+    const root = try core.grantRoot(mount, 1, both);
+    const zero = try core.openAt(1, root, "zero-id.txt", both);
+    try expectError(error.Busy, core.openAt(1, root, "zero-id.txt", read));
+    try core.close(1, zero);
+    fake.corrupt_lookup = true;
+    try expectError(error.Corrupt, core.openAt(1, root, "other.txt", read));
+    try equal(@as(usize, 1), fake.opens);
+    try equal(api.State.faulted, (try core.queryMount(mount)).state);
+}
+
+test "a cleanly aborted cancellation leaves the mount usable" {
+    var fake = Fake{};
+    var core = Core{};
+    const mount = try core.mount(&fake, 42, .{}, .{});
+    const root = try core.grantRoot(mount, 1, read);
+    const file = try core.openAt(1, root, "memo.txt", read);
+    const request = try core.retainRead(1, file, 100);
+    try core.startRead(request);
+    try core.cancelRead(1, request);
+    try core.finishRead(request, false, stopped);
+    try equal(api.io.Outcome.cancelled, (try core.takeRead(1, request)).outcome);
+    try equal(api.State.mounted, (try core.queryMount(mount)).state);
+    var buffer: [8]u8 = @splat(0);
+    try equal(@as(usize, 8), (try core.readAt(1, file, 0, &buffer)).transferred);
+    try core.close(1, file);
 }

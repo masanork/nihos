@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
     save("Long filename for alias.txt", "alias\n", 6);
     save("empty-a.txt", "", 0);
     save("empty-b.txt", "", 0);
+    save("Long empty filename.txt", "", 0);
     char long_ascii[256], long_utf8[766];
     memset(long_ascii, 'a', 251);
     memcpy(long_ascii + 251, ".txt", 5);
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
     save("教材/漢字𠮷.txt", japanese, sizeof japanese - 1);
     save("教材/か\xe3\x82\x99.txt", "decomposed\n", 11);
     save("教材/が.txt", "composed\n", 9);
+    save("教材/Memo.txt", "nested\n", 7);
 
     FIL fragmented, spacer;
     require(f_open(&fragmented, "fragment.bin", FA_CREATE_NEW | FA_WRITE), "fragment create");
@@ -91,11 +93,30 @@ int main(int argc, char **argv) {
     }
     FILINFO alias;
     require(f_stat("Long filename for alias.txt", &alias), "alias stat");
+    FILINFO empty_alias;
+    require(f_stat("Long empty filename.txt", &empty_alias), "empty alias stat");
+    DIR child = {0};
+    require(f_opendir(&child, "教材"), "child open");
+    DWORD child_cluster = child.obj.sclust;
+    require(f_closedir(&child), "child close");
+    uint64_t child_entry_byte = 0;
+    if (fs.fs_type != FS_EXFAT) {
+        FILINFO info;
+        require(f_stat("教材", &info), "child stat");
+        for (size_t i = 0; i < 512; i += 32) {
+            uint32_t cluster_id = (uint32_t)fs.win[i + 26] | (uint32_t)fs.win[i + 27] << 8 |
+                                  (uint32_t)fs.win[i + 20] << 16 | (uint32_t)fs.win[i + 21] << 24;
+            if ((fs.win[i + 11] & AM_DIR) && cluster_id == child_cluster) child_entry_byte = (uint64_t)fs.winsect * 512 + i;
+        }
+        if (child_entry_byte == 0) return 1;
+    }
     printf("{\"format\":\"%s\",\"fs_type\":%u,\"image_bytes\":%" PRIu64 ",\"cluster_bytes\":%u,"
            "\"fragment_first_cluster\":%" PRIu32 ",\"fat_byte\":%" PRIu64 ",\"volume_byte\":%" PRIu64 ","
-           "\"data_byte\":%" PRIu64 ",\"big_size\":%" PRIu64 ",\"alias\":\"%s\"}\n",
+           "\"data_byte\":%" PRIu64 ",\"big_size\":%" PRIu64 ",\"alias\":\"%s\",\"empty_alias\":\"%s\","
+           "\"root_cluster\":%" PRIu64 ",\"child_cluster\":%" PRIu32 ",\"child_entry_byte\":%" PRIu64 "}\n",
            argv[2], fs.fs_type, size, cluster_bytes, first_cluster, (uint64_t)fs.fatbase * 512,
-           (uint64_t)fs.volbase * 512, (uint64_t)fs.database * 512, big_size, alias.altname);
+           (uint64_t)fs.volbase * 512, (uint64_t)fs.database * 512, big_size, alias.altname, empty_alias.altname,
+           fs.fs_type >= FS_FAT32 ? (uint64_t)fs.dirbase : 0, child_cluster, child_entry_byte);
     require(f_mount(NULL, "", 0), "unmount");
     if (host_disk_close() != 0) return 1;
     return 0;
