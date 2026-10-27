@@ -46,7 +46,7 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     -o "$build_dir/pads.o" "$repo_root/probes/c6-sdio/pads.c"
 "$zig" build-exe -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
-    -fentry=nih_native_start -T "$repo_root/src/platform/native/esp32p4.ld" --gc-sections \
+    -fentry=nih_native_start -T "$repo_root/probes/c6-sdio/esp32p4.ld" --gc-sections \
     "$repo_root/probes/c6-sdio/start.S" "$build_dir/pads.o" \
     --dep c6_probe --dep timer_group --dep wifi_config -Mroot="$repo_root/probes/c6-sdio/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -76,14 +76,14 @@ from pathlib import Path
 root, dest, sdk = map(Path, sys.argv[1:])
 names = [
     'probes/c6-sdio/start.S', 'probes/c6-sdio/main.zig', 'probes/c6-sdio/pads.c',
-    'src/platform/native/c6_probe.zig', 'src/platform/native/esp32p4.ld',
+    'src/platform/native/c6_probe.zig', 'probes/c6-sdio/esp32p4.ld',
     'src/soc/esp32p4/sdio.zig', 'src/soc/esp32p4/timer_group.zig',
     'src/net/c6_sdio.zig', 'src/net/esp_at.zig', 'src/net/at_commands.zig',
     'src/net/at_controller.zig', 'tools/build-c6-sdio-probe.sh',
     'src/net/wifi_station.zig', 'tools/c6-wifi-config.py',
     'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/dhcp.zig',
     'src/net/ipv6.zig',
-    'tools/check-c6-sdio-image.py', 'tools/check-native-image.py',
+    'tools/check-c6-sdio-image.py', 'tools/check-c6-sram-boundary.py', 'tools/c6_image_test.py',
 ]
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()

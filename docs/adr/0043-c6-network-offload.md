@@ -1,4 +1,4 @@
-# ADR 0029: Offload TCP/IP and the BLE host to the C6 over SDIO
+# ADR 0043: Offload TCP/IP and the BLE host to the C6 over SDIO
 
 - Status: accepted direction; controller host-tested and C6 firmware built; hardware qualification pending
 - Date: 2026-10-27

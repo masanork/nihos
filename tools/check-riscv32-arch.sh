@@ -3,6 +3,7 @@ set -eu
 
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 python3 "$repo_root/tools/native_image_test.py"
+python3 "$repo_root/tools/c6_image_test.py"
 zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 out_dir=$(mktemp -d "${TMPDIR:-/tmp}/nihos-riscv32-check.XXXXXX")
 trap 'rm -rf "$out_dir"' EXIT HUP INT TERM

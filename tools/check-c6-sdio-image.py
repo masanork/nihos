@@ -12,7 +12,7 @@ def main():
     protocol = sys.argv[4] if len(sys.argv) == 5 else 'at'
     if protocol not in ('at', 'hosted'):
         raise SystemExit('unknown C6 protocol')
-    path = Path(__file__).with_name("check-native-image.py")
+    path = Path(__file__).with_name("check-c6-sram-boundary.py")
     spec = importlib.util.spec_from_file_location("native_image_audit", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
