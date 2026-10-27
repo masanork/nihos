@@ -1,0 +1,40 @@
+[
+  {
+    "name": "freetype.tar.gz",
+    "url": "https://codeload.github.com/freetype/freetype/tar.gz/0a0221a1347e2f1e07c395263540026e9a0aa7c7",
+    "sha256": "11cd478953fc1d382f20a233b8e2aed6c31b47cbf0568c4bdb3334bcc1550698",
+    "extract": "freetype",
+    "license": "FTL or GPL-2.0; select FTL, see docs/FTL.TXT in archive"
+  },
+  {
+    "name": "harfbuzz.tar.gz",
+    "url": "https://codeload.github.com/harfbuzz/harfbuzz/tar.gz/35f656a1a2bab548ea7f54a6dd3fba2b09680d14",
+    "sha256": "f4d39fc3216d82d01ba2a18ba03a05b69f60510585b764784224a5f51f372a38",
+    "extract": "harfbuzz",
+    "license": "MIT, see COPYING in archive"
+  },
+  {
+    "name": "BIZUDGothic-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/googlefonts/morisawa-biz-ud-gothic/18934af56b9c003ca58c54bffbf226848cb11032/fonts/ttf/BIZUDGothic-Regular.ttf",
+    "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0",
+    "license": "OFL-1.1"
+  },
+  {
+    "name": "BIZUDMincho-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/googlefonts/morisawa-biz-ud-mincho/c30a6221b1f3d09afae9137ffe73c7cbec649947/fonts/ttf/BIZUDMincho-Regular.ttf",
+    "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2",
+    "license": "OFL-1.1"
+  },
+  {
+    "name": "BIZ-UD-Gothic-OFL.txt",
+    "url": "https://raw.githubusercontent.com/googlefonts/morisawa-biz-ud-gothic/18934af56b9c003ca58c54bffbf226848cb11032/OFL.txt",
+    "sha256": "e753d7155d53c747d037a445e584c8ecfca6dd79846db610417e282a736b28bc",
+    "license": "OFL-1.1"
+  },
+  {
+    "name": "BIZ-UD-Mincho-OFL.txt",
+    "url": "https://raw.githubusercontent.com/googlefonts/morisawa-biz-ud-mincho/c30a6221b1f3d09afae9137ffe73c7cbec649947/OFL.txt",
+    "sha256": "ef0ed524b3bd012f37015e986809eed6f67905456ebfc1ebd7fcc2765282ee01",
+    "license": "OFL-1.1"
+  }
+]

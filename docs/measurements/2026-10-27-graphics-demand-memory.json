@@ -1,0 +1,62 @@
+{
+  "scope": "host memory/lifetime probe; not native GUI or hardware evidence",
+  "sanitizers": "ON",
+  "base_commit": "603d83fca2d2a332218ae985797466ae0daf207f",
+  "asan_options": "detect_stack_use_after_return=1",
+  "ubsan_options": "halt_on_error=1:print_stacktrace=1",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "pool": {
+    "pool_checks": "pass",
+    "churn_operations": 3000,
+    "controller_host_bytes": 7280
+  },
+  "font": {
+    "status": "pass",
+    "scope": "host FT+HB memory/lifetime probe, not native GUI",
+    "startup_reserved": 0,
+    "initial_service_reserved": 65536,
+    "single_client_reserved": 655360,
+    "two_client_normal_peak_reserved": 1310720,
+    "two_client_stress_peak_reserved": 1703936,
+    "including_background_pressure_peak": 2097152,
+    "pressure_recovery": true,
+    "after_second_close": 655360,
+    "after_all_clients_close": 65536,
+    "shared_live_payload_after_close": 1415,
+    "client_backing_after_close": 0,
+    "oom_points": 547,
+    "reopen_cycles": 32,
+    "controller_host_bytes": 7280,
+    "gothic_horizontal_hash": 3714262540,
+    "gothic_vertical_hash": 1920594771,
+    "mincho_vertical_hash": 3427725594
+  },
+  "source_sha256": {
+    "probes/graphics/CMakeLists.txt": "f91b41df11835b97426d3140e52543ac8af2e03636f3fc48f1eef1088d16fa62",
+    "probes/graphics/README.md": "447be271ab8137cb87b4bc1f13862b0ff560382e2e5042c92ea2c253e94957ce",
+    "probes/graphics/fetch_sources.py": "bbd3dda5435a294ce40b9d474c1328dcc25ed9eaa571f6653b4f38620472d8e8",
+    "probes/graphics/font_probe.cpp": "54399e474506cb1fc04a5ee198264bcae6837676cf0391e53de854f2bea38c30",
+    "probes/graphics/hb_config.h": "70806235b812f5008c86bd9c066f2ea71110faf8b310f5a0a402ce10f3521e89",
+    "probes/graphics/lazy_pool.cpp": "aa5009505279d34a41e5f372b24216d92fbbc4b4dc54ed9ccdcc4908a8420a62",
+    "probes/graphics/lazy_pool.h": "315dcead3edd05bc7413c1bc1c79ded4248d842ea456b6363251806c3b5df94d",
+    "probes/graphics/metadata_size.cpp": "ef75a613fa5b1b4ab9711ecd6eb1c4334589edf7e75263644a0d92fa398a68cf",
+    "probes/graphics/pool_test.cpp": "37508d2ad9cb82e04001129df61ce9fdddbf3f8d8ca708a16ed2bfd7a40f0a28",
+    "probes/graphics/sources.json": "4651ffc4e5aee444552194e0d49986f94c6b45b1c9413114953a3e79518f20a6",
+    "tools/run-graphics-memory-probe.sh": "9a30717d0dd7a7db44489761639edc52c61e9a7b743793486c0982b842ea084f",
+    "provenance.toml": "4878a98e27b18de1972c4516e9f3b0b82499be43600be766f9658fda1a025659"
+  },
+  "limits": [
+    "64-bit host requested backing; not resident memory or native PSRAM measurement",
+    "Backing excludes controller, libc stdio, stack, code/rodata and host OS file cache",
+    "No glyph bitmap cache, paragraph/ruby layout, editor document, framebuffer or scanout tested",
+    "Sessions overlap in lifetime; worker calls are serialized, not parallel threads",
+    "Backing uses host posix_memalign/free; native task-ledger/page integration is not implemented",
+    "Shared library allocations stay live for service lifetime; forced task teardown/restart unqualified"
+  ],
+  "rv32_compile_only": {
+    "controller_bytes": 4920,
+    "object_sha256": "245991cc84a1608299329b4611e0bfcf0c52dbee4bb5d284f2cd184264165ffe",
+    "compiler": "riscv32-esp-elf-g++ (crosstool-NG esp-14.2.0_20260121) 14.2.0",
+    "native_runtime_tested": false
+  }
+}
