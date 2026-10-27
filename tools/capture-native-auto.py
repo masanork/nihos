@@ -40,7 +40,7 @@ def main():
                 if chunk:data.extend(chunk);out.write(chunk);out.flush()
                 text=data.decode('ascii',errors='replace').replace('\r','')
                 for line in text.splitlines():
-                    if line.startswith(('NIHOS_NATIVE_CARD_AUTO_BOOT ','NIHOS_NATIVE_CARD_AUTO_DETECTED ','NIHOS_NATIVE_CARD_AUTO_SELECTED ','NIHOS_NATIVE_CARD_AUTO_PROMPT ','NIHOS_NATIVE_CARD_AUTO_RESULT ','NIHOS_NATIVE_CARD_AUTO_DONE ','NIHOS_NATIVE_CARD_AUTO_REMOVED ','NIHOS_NATIVE_CARD_AUTO_ABORT ')) and line not in announced:
+                    if line.startswith(('NIHOS_NATIVE_CARD_AUTO_BOOT ','NIHOS_NATIVE_CARD_AUTO_DISPLAY ','NIHOS_NATIVE_CARD_AUTO_DETECTED ','NIHOS_NATIVE_CARD_AUTO_SELECTED ','NIHOS_NATIVE_CARD_AUTO_PROMPT ','NIHOS_NATIVE_CARD_AUTO_RESULT ','NIHOS_NATIVE_CARD_AUTO_DONE ','NIHOS_NATIVE_CARD_AUTO_REMOVED ','NIHOS_NATIVE_CARD_AUTO_ABORT ')) and line not in announced:
                         print(line,flush=True);announced.add(line)
                 marker='NIHOS_NATIVE_CARD_AUTO_DONE ' if profile['read_enabled'] else 'NIHOS_NATIVE_CARD_AUTO_DETECTED '
                 count=text.count(marker)

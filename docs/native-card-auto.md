@@ -10,6 +10,12 @@ separately in [the qualification notes](measurements/2026-10-27-native-licence-v
 No official issuer keys are provisioned in the default build. It therefore
 reports **unknown key**, never signature success for a real licence.
 
+Public insertion/removal messages now switch between two SRAM banks at DMA
+frame completion, keeping the panel and backlight running. See the
+[notice-transition investigation](measurements/2026-10-27-native-card-notices.md)
+for the old reset-path cause, software checks and pending physical gate.
+Private PIN/result scenes retain their existing stop/wipe/rebuild path.
+
 ## Card jobs and local consent
 
 | Kind | Profile | Local PIN namespaces |

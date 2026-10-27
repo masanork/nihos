@@ -472,3 +472,50 @@ const AutoCaptions = struct {
 pub noinline fn automaticOverview(comptime section: ?[]const u8, frame: []u8, attributes: Document, portrait: ?[]const u8) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") !Paint {
     return overviewDocument(section, frame, attributes, portrait);
 }
+
+pub const NoticeCaptions = struct {
+    const text = "カードを置いてください\x00" ++ "マイナンバーカード・IC運転免許証\x00" ++ "本籍の変更\x00" ++ "公安委員会\x00" ++ "氏名の変更\x00" ++ "呼び名の変更\x00" ++ "住所の変更\x00" ++ "免許条件の追加\x00" ++ "免許条件の解除\x00" ++ "備考\x00" ++ "追加の記載事項\x00" ++ "免許の条件\x00" ++ "予備の記録\x00" ++ "読み取りを中止しました\x00" ++ "カードを取り外してください\x00" ++ "取り外し後、次のカードを検知します\x00" ++ "リーダーを確認してください\x00" ++ "USB-Aにカードリーダーを接続してください\x00" ++ "カードを取り外してから接続してください\x00" ++ "カードを確認しています\x00" ++ "しばらくお待ちください\x00" ++ "カードを判定できませんでした\x00" ++ "マイナンバーカードを検知しました\x00" ++ "IC運転免許証を検知しました\x00" ++ "免許情報対応カードを検知しました\x00" ++ "対応するカードではありません\x00" ++ "PINは送信しません・取り外して次へ\x00";
+    const placement = if (@import("builtin").os.tag == .freestanding) ".flash.rodata.card_pin" else if (@import("builtin").os.tag == .macos) "__TEXT,__const" else ".rodata";
+    const data: [text.len]u8 align(4) linksection(placement) = text.*;
+    pub inline fn get(index: usize) []const u8 {
+        const live: [*]const volatile u8 = @ptrCast(&data);
+        var offset: usize = 0;
+        for (0..index) |_| {
+            while (live[offset] != 0) : (offset += 1) {}
+            offset += 1;
+        }
+        var end = offset;
+        while (live[end] != 0) : (end += 1) {}
+        return data[offset..end];
+    }
+};
+
+test "every public notice fits either SRAM bank and reconstructs the entire frame" {
+    const sparse = @import("keypad_plan.zig");
+    const frame = try std.testing.allocator.alloc(u8, sparse.frame_bytes);
+    defer std.testing.allocator.free(frame);
+    const replay = try std.testing.allocator.alloc(u8, sparse.frame_bytes);
+    defer std.testing.allocator.free(replay);
+    var spans: [1280]sparse.Segment = undefined;
+    for (0..27) |index| {
+        const caption = NoticeCaptions.get(index);
+        try notice(null, frame, caption, caption);
+        const selected = try sparse.buildStatic(frame, &spans);
+        var used: usize = 64 + selected.len * 64;
+        var offset: usize = 0;
+        for (selected) |span| {
+            const length = span.words * 8;
+            if (span.kind == .paper) {
+                for (0..length / 2) |i| std.mem.writeInt(u16, replay[offset + i * 2 ..][0..2], screen.paper_color, .little);
+            } else {
+                try std.testing.expectEqual(sparse.Kind.pixels, span.kind);
+                @memcpy(replay[offset..][0..length], frame[span.offset..][0..length]);
+                used += length;
+            }
+            offset += length;
+        }
+        try std.testing.expect(used <= 94 * 1024);
+        try std.testing.expectEqual(frame.len, offset);
+        try std.testing.expectEqualSlices(u8, frame, replay);
+    }
+}

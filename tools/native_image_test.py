@@ -14,7 +14,8 @@ class NativeInstructionTests(unittest.TestCase):
     def test_automatic_card_flash_functions_require_explicit_profile_and_bounded_span(self):
         boot = [('psram.probe', 0x40000120, 0x40000920),
                 ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
-        allowed = ('card_auto.run', 'card.license.Parser(.flash.photo).decode',
+        allowed = ('card_auto.run', 'notice_build', 'nih_display_notice_publish', 'nih_display_scanout_begin',
+                   'display_runtime.presentNotice', 'keypad_display.publishNotice', 'card.license.Parser(.flash.photo).decode',
                    'card.service.ServiceType(true,.flash.photo).take',
                    'card.wire_policy.PolicyType(true).allow')
         for name in allowed:

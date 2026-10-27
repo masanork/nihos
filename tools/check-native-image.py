@@ -102,7 +102,7 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if photo_span is not None and photo_span[0] <= address < stop <= photo_span[1]:
             software = (name.startswith(('compiler_rt.addf3.', 'compiler_rt.mulf3.', 'compiler_rt.divf3.', 'compiler_rt.divsf3.', 'compiler_rt.divdf3.', 'compiler_rt.comparef.', 'compiler_rt.float_from_int.', 'compiler_rt.int_from_float.', 'compiler_rt.extendf.', 'compiler_rt.truncf.')) or re.fullmatch(r'__(?:(?:add|sub|mul|div|cmp|eq|ne|ge|gt|le|lt|unord)(?:sf|df)2?3?|float(?:un)?(?:si|di)(?:sf|df)|fix(?:uns)?(?:sf|df)(?:si|di)|extendsfdf2|truncdfsf2)',name))
-            automatic = automatic_cards and name.startswith(('card_auto.', 'graphics.card_read_result.automaticText', 'graphics.card_read_result.Glyph(', 'graphics.card_read_result.AutoPainter(', 'graphics.card_read_result.readBits', 'graphics.card_read_result.automaticOverview', 'card.jis0208.Decoder(', 'card.license_trust.lookup', 'card.license.Parser(', 'card.license_record.Parser(', 'card.license_session.Session(', 'card.service.ServiceType(true,', 'card.wire_policy.PolicyType(true)'))
+            automatic = automatic_cards and (name in ('notice_build', 'nih_display_notice_publish', 'nih_display_scanout_begin', 'display_runtime.presentNotice', 'keypad_display.publishNotice') or name.startswith(('card_auto.', 'graphics.card_read_result.automaticText', 'graphics.card_read_result.Glyph(', 'graphics.card_read_result.AutoPainter(', 'graphics.card_read_result.readBits', 'graphics.card_read_result.automaticOverview', 'card.jis0208.Decoder(', 'card.license_trust.lookup', 'card.license.Parser(', 'card.license_record.Parser(', 'card.license_session.Session(', 'card.service.ServiceType(true,', 'card.wire_policy.PolicyType(true)')))
             require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name == 'photo_runtime.execute' or software, 'unapproved photo codec function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
@@ -333,6 +333,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         automatic = keypad_manifest.get('automatic_cards')
         jis_first,jis_last=symbols.get('__license_jis_start',0),symbols.get('__license_jis_end',0)
         if automatic:
+            require(automatic.get('notice_scanout') == 'sram-double-bank-v1', 'unapproved public notice scanout')
             require(automatic.get('kinds') == ['mynumber','license','myna_license'] and automatic.get('credential_budget_per_pin') == 1 and type(automatic.get('read_enabled')) is bool and automatic.get('jis_bytes') == (17672 if automatic['read_enabled'] else 0), 'unapproved automatic card profile')
             require(ro_start <= jis_first <= jis_last <= ro_start+len(ro) and jis_last-jis_first == automatic['jis_bytes'] and (not automatic['read_enabled'] or hashlib.sha256(ro[jis_first-ro_start:jis_last-ro_start]).hexdigest() == automatic['jis_sha256']), 'JIS mapping differs from automatic card manifest')
             trust_first,trust_last=symbols.get('__license_trust_start',0),symbols.get('__license_trust_end',0)

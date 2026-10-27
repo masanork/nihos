@@ -1,0 +1,18 @@
+"""Execute the actual SRAM notice builder and publication logic on the host."""
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class NativeNoticeTest(unittest.TestCase):
+    def test_frame_handoff_and_failed_candidates_preserve_active_bank(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / "notice-replay"
+            subprocess.run([str(ROOT / ".tools/zig-0.17.0/zig"), "cc", "-std=c17", "-O2", "-UNDEBUG",
+                            "-Wall", "-Wextra", "-Werror", str(ROOT / "probes/display_notice/replay.c"),
+                            "-o", str(binary)], check=True, capture_output=True)
+            result = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
+            self.assertIn("Public notice bank replay passed", result.stdout)

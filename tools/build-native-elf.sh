@@ -191,7 +191,7 @@ if [ "$display" = true ]; then
     set -- "$@" "$build_dir/display_pads.o"
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
             -I "$repo_root/build/native-$profile/loader/config" \

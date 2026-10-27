@@ -12,7 +12,19 @@ PROMPT=('job','kind','pin_index','pin1_remaining','pin2_remaining','pin1_verifie
 RESULT=('job','kind','state','fault','sw','pin1_verifies','pin2_verifies','fields','photo_decoded','photo_error','shown','missing','truncated','cleanup','verification','changes')
 DONE=('job','kind','fault','pin1_verifies','pin2_verifies','fields','photo_decoded','shown','missing','truncated','cleanup','erased','verification','changes')
 ABORT=('job','kind','state','fault','pin1_verifies','pin2_verifies')
+NOTICE=('swaps','panel_starts','backlight_offs','frames','backlight','fault')
 def records(log,tag,names):return NATIVE.repeated_records(log,'NIHOS_NATIVE_CARD_AUTO_'+tag,names)
+def check_notices(log):
+    rows=records(log.replace('\r',''),'DISPLAY',NOTICE)
+    if len(rows)<3:raise ValueError('missing boot/classification/removal notice observations')
+    previous=None
+    for row in rows:
+        if row['panel_starts']!=1 or row['backlight_offs'] or row['backlight']!=1 or row['fault']:
+            raise ValueError('public notice reset or darkened the display')
+        if previous and (row['frames']<=previous['frames'] or row['swaps']<=previous['swaps']):
+            raise ValueError('notice frames/swaps did not advance')
+        previous=row
+    return rows
 def check_auto(log,read_enabled,required=()):
     log=log.replace('\r','')
     detected=records(log,'DETECTED',DETECTED)
@@ -93,6 +105,8 @@ def main():
     profile=image.get('automatic_cards')
     if not profile:raise SystemExit('not an audited automatic-card image')
     report={'display':DISPLAY.check(log,image,11,80),'automatic_cards':check_auto(log,profile['read_enabled'],[int(v) for v in args.kinds.split(',') if v])}
+    if profile.get('notice_scanout')=='sram-double-bank-v1' and not profile['read_enabled']:
+        report['notice_scanout']=check_notices(log)
     completed=report['automatic_cards']['completed']
     if not profile.get('trust_bytes') and any(r['verification']==2 for r in completed):raise ValueError('signature success without a provisioned key')
     licence=[r for r in completed if r['kind']!=1]

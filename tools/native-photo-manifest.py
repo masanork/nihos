@@ -13,12 +13,13 @@ def main():
     if automatic:
         manifest=json.loads((ROOT/'src/graphics/card_auto_font.json').read_text())
         manifest['allowed_functions']=[name for name in manifest['allowed_functions'] if not name.startswith('card_read.')]
-        manifest['automatic_cards']={'schema':2,'kinds':['mynumber','license','myna_license'],'credential_budget_per_pin':1,'read_enabled':not probe,'jis_bytes':0 if probe else 17672,'jis_sha256':sha(ROOT/'src/card/jis0208.bin'),'trust_bytes':0 if probe else (ROOT/'src/card/license_trust.bin').stat().st_size,'trust_sha256':sha(ROOT/'src/card/license_trust.bin')}
+        manifest['automatic_cards']={'schema':2,'kinds':['mynumber','license','myna_license'],'credential_budget_per_pin':1,'read_enabled':not probe,'notice_scanout':'sram-double-bank-v1','jis_bytes':0 if probe else 17672,'jis_sha256':sha(ROOT/'src/card/jis0208.bin'),'trust_bytes':0 if probe else (ROOT/'src/card/license_trust.bin').stat().st_size,'trust_sha256':sha(ROOT/'src/card/license_trust.bin')}
     objects={p.name:{'sha256':sha(p),'functions':C.functions(p)} for p in sorted(build.glob('photo_*.o'))}
     source=ROOT/'build/openjpeg/openjpeg-2.5.4/src/lib/openjp2'
     paths=list(source.glob('*.c'))+list(source.glob('*.h'))+list((ROOT/'probes/photo').glob('*'))
     paths += [ROOT/p for p in ('src/card/service.zig','src/card/surface.zig','src/card/wire_policy.zig','src/platform/native/photo_runtime.zig','src/graphics/photo_fixture.zig','src/graphics/photo_fixture.jp2','tools/build-photo-codec.sh','tools/bootstrap-openjpeg.sh')]
     if automatic:
+        paths += [ROOT/p for p in ('src/board/tab5/notice_sparse.h','src/board/tab5/native_scanout.c','src/board/tab5/keypad_sparse.h','tools/build-native-elf.sh')]
         paths += [ROOT/p for p in ('src/card/license.zig','src/card/jis0208.zig','src/card/jis0208.bin','src/card/jis0208.json','src/card/presence.zig','src/card/ccid_owner.zig','src/card/pin_entry.zig','src/platform/native/card_auto.zig','src/platform/native/main.zig','src/graphics/card_read_result.zig')]
     if automatic:
         paths += [ROOT/p for p in ('src/card/license_session.zig','src/card/license_record.zig','src/card/license_crypto.zig','src/card/license_trust.zig','src/card/license_trust.bin','src/card/license_trust.json','src/card/fixtures/license-rsa.bin','probes/card_crypto/link.zig','probes/card_crypto/stack.S')]
