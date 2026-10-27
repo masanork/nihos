@@ -112,7 +112,7 @@ url = "https://github.com/freetype/freetype"
 revision = "0a0221a1347e2f1e07c395263540026e9a0aa7c7 (2.14.3)"
 license = "FTL selected; alternate GPL-2.0 available upstream"
 status = "host-probe-only"
-use = "Custom memory/stream callbacks; module registry selects autofit, TrueType, sfnt and smooth. Downloaded sources and FTL retained in ignored build cache; no native integration or MeOS source import. See probes/graphics/sources.json."
+use = "Custom memory/stream callbacks; module registry selects autofit, TrueType, sfnt and smooth. Tracked local patch probes/graphics/patches/freetype-autofit-map-error.patch propagates reverse-map initialization failure in af_latin_metrics_init. Downloaded sources and FTL retained in ignored build cache; host/RV32 ISA probes only, no native integration or MeOS source import. See probes/graphics/sources.json."
 sha256 = "11cd478953fc1d382f20a233b8e2aed6c31b47cbf0568c4bdb3334bcc1550698"
 
 [[source]]

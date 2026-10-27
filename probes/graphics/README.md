@@ -256,8 +256,12 @@ the repository `provenance.toml`. No MeOS driver source is imported.
 - FreeType is used under the FreeType License (FTL). Portions of this software
   are copyright © 2026 The FreeType Project (www.freetype.org).
   All rights reserved. The original license and source files remain in the
-  download cache. The only upstream source configuration change selects the
-  autofit, TrueType, sfnt and smooth modules in `ftmodule.h`.
+  download cache. The module configuration selects autofit, TrueType, sfnt and
+  smooth in `ftmodule.h`. The tracked local
+  [`autofit patch`](patches/freetype-autofit-map-error.patch) propagates reverse
+  character-map initialization failure instead of allowing a later null
+  dereference. `fetch_sources.py` restores the pinned archive before applying
+  it; no SDK or system FreeType installation is modified.
 - HarfBuzz is MIT licensed; its source and `COPYING` are retained. The custom
   configuration keeps Unicode, GSUB/GPOS and vertical support for static
   TrueType fonts. CFF, variable fonts, AAT, Graphite, color, SVG and math are
@@ -278,8 +282,8 @@ NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ \
 ```
 
 This first runs the existing memory probe, then builds a memory-stream oracle
-for the host and RV32. Python 3.9+, CMake, a host C++17 compiler and the pinned
-Zig tool are needed. Unicorn 2.1.4 is installed into an ignored local virtual
+for the host and RV32. Python 3.9+, CMake, a host C++17 compiler, POSIX `patch`
+and the pinned Zig tool are needed. Unicorn 2.1.4 is installed into an ignored local virtual
 environment from checksum-pinned binary wheels; no global Python installation
 or hardware state is modified. The native host runner uses the Unicorn C API.
 
@@ -327,8 +331,9 @@ The smaller pool processes more bands. The fixed fixture executes about
 1.6% more RV32 instructions; that is not a Tab5 timing result. At 3,808 bytes,
 a 4 KiB stack leaves 144 bytes after the current 16-byte guard and 128-byte
 context frame, before native caller or SD/VFS overhead. It is not approved as
-a 4 KiB native task. The registered auto-hinter also has larger linked static
-frames; forced auto-hint and arbitrary fallback fonts are not exercised.
+a 4 KiB native task. The initial receipt did not exercise forced auto-hint or
+arbitrary fallback fonts. The extended hinting study measures forced
+auto-hint separately.
 
 The oracle's Session state is local to the entry function, matching this
 probe's lifetime style; a production service's context placement is still
@@ -342,3 +347,70 @@ stack attempt under `build/graphics-rv32/profiles`. The receipt is
 It records code/static RAM separately from stack, external font input and the
 runtime PSRAM heap. These sizes cannot be treated as the final native-image
 delta; the current Flash mapping and library/runtime overlap still need work.
+
+## Hinting paths and a dedicated worker stack
+
+The extended study in
+[`2026-10-28-graphics-hinting-stack.json`](../../docs/measurements/2026-10-28-graphics-hinting-stack.json)
+uses the same script. It adds immutable per-session load flags, used by both
+HarfBuzz metrics and explicit FreeType glyph loading. Each mode has 16 cases
+with exact host/RV32 hashes. The three modes must produce distinct hash
+matrices; instruction-entry counters also require the intended hinter path.
+This prevents an ignored flag from appearing to pass on both platforms.
+
+With the 2 KiB raster pool and 1024 allocation records:
+
+| Hinting policy | Observed RV32 stack peak | Measured record peak | Executed path |
+| --- | ---: | ---: | --- |
+| Default, pinned BIZ TrueType hints | 3,824 B | 195 | TrueType interpreter |
+| Forced auto-hint | 16,864 B | 694 | CJK and Latin auto-hint metrics; no TrueType interpreter |
+| No hinting, including auto-hint | 3,824 B | 184 | Neither hinter |
+
+Forced auto-hint rejects 4/8/16 KiB stacks and completes with 32 KiB. Both
+other modes complete with 4/8 KiB, but a 4 KiB native stack leaves only 128 B
+after the 16 B guard and 128 B integer context frame, before native caller/IO
+overhead. It remains unsuitable for integration on the existing worker stack.
+The upstream 16 KiB raster pool still rejects 4/16 KiB and completes with
+32 KiB, with an observed 18,160 B peak in the extended entry function.
+
+The first auto-hint attempt exhausted the allocator's 256-record capacity,
+not its byte quota. Pinned FreeType 2.14.3 ignored a failed reverse-character
+map initialization in `af_latin_metrics_init`, then dereferenced its null map
+from `af_latin_hints_apply`. The captured host UBSan failure is retained in
+[`graphics-autofit-failure.txt`](../../docs/measurements/2026-10-28-graphics-autofit-failure.txt).
+The local tracked patch propagates that error through the existing cleanup
+path. Both 256- and 512-record configurations now refuse auto-hint safely on
+host/RV32, append no hash for a failed draw, free both clients and retain only
+65,792 B of service backing. The successful 1024-record profile keeps the
+original 2 MiB total and 1 MiB/client byte quotas.
+
+| Allocation records | RV32 allocator controller | Synthetic static writable data | Synthetic Flash payload |
+| --- | ---: | ---: | ---: |
+| 256 | 4,936 B | 9,401 B | 587,125 B |
+| 512 | 9,032 B | 13,497 B | 591,221 B |
+| 1024 | 17,224 B | 21,689 B | 599,413 B |
+
+Only the ISA oracle's successful 2 KiB-pool profile selects 1024 records. The
+ordinary memory probe retains 256 records and its 8 KiB controller ceiling.
+The larger record array has a fixed cost: it is not demand allocated. The
+allocator now scans its active prefix, reuses interior holes and trims empty
+trailing records, so unused configured capacity does not lengthen every lookup.
+The 3000-operation ownership/realloc/churn checks cover that behavior.
+
+All three successful RV32 modes peak at 1,310,976 B of actual buddy backing
+for two open clients and retain 65,792 B after closing them. The 64-bit host
+auto-hint run peaks higher, at 1,442,048 B. Those backing measurements exclude
+the controller, static library data, stack and external full TTF inputs.
+Mode selection retains the same linked modules; it does not measure a build
+with the auto-hinter removed. Instruction counts are ISA work observations,
+not hardware timing or a rendering-quality comparison.
+
+The next native candidate is one serialized font worker with a 32 KiB internal
+SRAM stack and the explicit 1024-record profile. Multiple clients share that
+stack and controller. Static writable data plus the proposed stack sum to
+54,457 B in this synthetic budget; that is not a final firmware SRAM delta.
+Native task entry, storage callbacks, preemption, Flash/loader placement and
+physical Tab5 qualification remain pending. The
+[`font-worker contract`](../../docs/graphics-font-worker.md) records lifetime,
+reservation/reclamation choices and acceptance gates; this commit does not
+resize or start a native worker.

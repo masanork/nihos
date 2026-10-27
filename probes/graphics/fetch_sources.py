@@ -42,7 +42,10 @@ if __name__ == "__main__":
     manifest = json.loads((ROOT / "probes/graphics/sources.json").read_text())
     with ThreadPoolExecutor(max_workers=4) as executor:
         list(executor.map(fetch, manifest))
-    # Module selection is the only upstream source configuration change.
+    # Restore the pinned archive before applying each tracked local patch.
+    patch = ROOT / "probes/graphics/patches/freetype-autofit-map-error.patch"
+    subprocess.run(["patch", "-s", "-p1", "-i", str(patch)], cwd=OUT / "freetype", check=True)
+    # Select only the modules used by the experiment.
     modules = """/* nihos static TrueType host experiment; see sources.json. */
 FT_USE_MODULE( FT_Module_Class, autofit_module_class )
 FT_USE_MODULE( FT_Driver_ClassRec, tt_driver_class )
