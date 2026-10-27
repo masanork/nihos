@@ -1,5 +1,27 @@
 //! Host bridge: actual SQLite C VFS calls only the copy-owned store service.
 const std = @import("std");
+const experiment = @import("build_options").cache_experiment;
+comptime {
+    if (experiment) _ = @import("host_allocator");
+}
+extern fn nih_store_allocator_quotas() [*:0]const u8;
+extern fn nih_store_rows() c_int;
+extern fn nih_store_cache_pages() c_int;
+extern fn nih_sqlite_checked_version() c_int;
+extern fn nih_store_allocator_class_peaks() [*:0]const u8;
+extern fn nih_store_memory_setup([*:0]const u8) c_int;
+extern fn nih_store_memory_shutdown_ok() c_int;
+extern fn nih_store_cache_kib() c_int;
+extern fn nih_store_allocator_is_bounded() c_int;
+extern fn nih_store_allocator_attempts() u64;
+extern fn nih_store_allocator_injected() u64;
+extern fn nih_store_allocator_rejected() u64;
+extern fn nih_store_allocator_max_request() u64;
+extern fn nih_store_allocator_parent_bytes() u64;
+extern fn nih_store_allocator_reserved_bytes() u64;
+extern fn nih_store_pagecache_bytes() u64;
+extern fn nih_store_pagecache_cell_bytes() u64;
+extern fn nih_store_pagecache_cells() u64;
 const api = @import("checkpoint_service");
 const model = api.model;
 const File = @import("file_media").Media(16 * 1024 * 1024 * 1024);
@@ -42,6 +64,8 @@ var unknown_publications: usize = 0;
 var requests: usize = 0;
 extern fn nih_sqlite_store_run([*:0]const u8) c_int;
 extern fn nih_sqlite_peak() u64;
+extern fn nih_sqlite_committed() c_int;
+extern fn nih_sqlite_failure_cleanup() c_int;
 extern fn nih_sqlite_observed_error() c_int;
 extern fn nih_sqlite_version() [*:0]const u8;
 fn call(handle: api.Handle, operation: api.Operation, offset: u64, length: u32, input: ?[]const u8) api.Response {
@@ -131,7 +155,8 @@ fn report(point: u32, committed: bool) !void {
     const hot = if (!owner.alive or owner.recovery_required) false else journalHot();
     var buffer: [2048]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(host_io, &buffer);
-    try stdout.interface.print("{{\"phase\":\"{s}\",\"sqlite_version\":\"{s}\",\"sqlite_peak_bytes\":{d},\"sqlite_error\":{d},\"point\":{d},\"sql_committed\":{},\"generation\":{d},\"journal_hot\":{},\"writes\":{d},\"syncs\":{d},\"requests\":{d},\"unknown_publications\":{d},\"recovery_required\":{},\"payload_high_water_pages\":{d},\"store_bytes\":{d},\"owner_bytes\":{d},\"queue_bytes\":{d}}}\n", .{ command, std.mem.span(nih_sqlite_version()), nih_sqlite_peak(), nih_sqlite_observed_error(), point, committed, store.generation(), hot, device.file.writes, device.file.syncs, requests, unknown_publications, owner.recovery_required, store.current.payload_next - Store.payload_start, @sizeOf(Store), @sizeOf(Owner), @sizeOf(Queues) });
+    try stdout.interface.print("{{\"phase\":\"{s}\",\"sqlite_version\":\"{s}\",\"sqlite_peak_bytes\":{d},\"sqlite_error\":{d},\"cache_kib\":{d},\"cache_pages\":{d},\"rows\":{d},\"checked_version\":{d},\"allocator_quotas\":{s},\"bounded_allocator\":{},\"allocator_clean\":{},\"allocator_class_peaks\":{s},\"allocator_attempts\":{d},\"allocator_injected\":{d},\"allocator_rejected\":{d},\"allocator_max_request\":{d},\"allocator_parent_bytes\":{d},\"allocator_reserved_bytes\":{d},\"pagecache_bytes\":{d},\"pagecache_cell_bytes\":{d},\"pagecache_cells\":{d},", .{ command, std.mem.span(nih_sqlite_version()), nih_sqlite_peak(), nih_sqlite_observed_error(), if (experiment) nih_store_cache_kib() else @as(c_int, 32), if (experiment) nih_store_cache_pages() else @as(c_int, 8), if (experiment) nih_store_rows() else @as(c_int, 64), nih_sqlite_checked_version(), if (experiment) std.mem.span(nih_store_allocator_quotas()) else "[]", experiment and nih_store_allocator_is_bounded() != 0, !experiment or nih_store_memory_shutdown_ok() != 0, if (experiment) std.mem.span(nih_store_allocator_class_peaks()) else "[]", if (experiment) nih_store_allocator_attempts() else @as(u64, 0), if (experiment) nih_store_allocator_injected() else @as(u64, 0), if (experiment) nih_store_allocator_rejected() else @as(u64, 0), if (experiment) nih_store_allocator_max_request() else @as(u64, 0), if (experiment) nih_store_allocator_parent_bytes() else @as(u64, 0), if (experiment) nih_store_allocator_reserved_bytes() else @as(u64, 0), if (experiment) nih_store_pagecache_bytes() else @as(u64, 0), if (experiment) nih_store_pagecache_cell_bytes() else @as(u64, 0), if (experiment) nih_store_pagecache_cells() else @as(u64, 0) });
+    try stdout.interface.print("\"point\":{d},\"sql_committed\":{},\"generation\":{d},\"journal_hot\":{},\"writes\":{d},\"syncs\":{d},\"requests\":{d},\"unknown_publications\":{d},\"recovery_required\":{},\"payload_high_water_pages\":{d},\"store_bytes\":{d},\"owner_bytes\":{d},\"queue_bytes\":{d}}}\n", .{ point, committed, store.generation(), hot, device.file.writes, device.file.syncs, requests, unknown_publications, owner.recovery_required, store.current.payload_next - Store.payload_start, @sizeOf(Store), @sizeOf(Owner), @sizeOf(Queues) });
     try stdout.interface.flush();
 }
 fn wait() !void {
@@ -182,8 +207,22 @@ pub fn main(init: std.process.Init) !void {
     var command_z: [64:0]u8 = @splat(0);
     if (command.len >= command_z.len) return error.Usage;
     @memcpy(command_z[0..command.len], command);
+    if (experiment) {
+        if (args.len != 4) return error.ProfileRequired;
+        var profile: [64:0]u8 = @splat(0);
+        if (args[3].len >= profile.len) return error.Usage;
+        @memcpy(profile[0..args[3].len], args[3]);
+        if (nih_store_memory_setup(&profile) != 0) return error.MemorySetupFailed;
+    }
     const result = nih_sqlite_store_run(&command_z);
-    if (result != 0) return error.SQLiteProbeFailed;
+    if (result != 0) {
+        _ = try owner.clientExited(11, &queues);
+        if (experiment) {
+            if (nih_sqlite_failure_cleanup() != 0 or nih_store_memory_shutdown_ok() == 0) return error.AllocatorLeak;
+            try report(0, nih_sqlite_committed() != 0);
+        }
+        return error.SQLiteProbeFailed;
+    }
     if (std.mem.eql(u8, command, "commit-wait")) {
         try report(0, true);
         return wait();

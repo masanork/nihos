@@ -12,6 +12,7 @@ var bindings: [2]?Table.Objects = .{ null, null };
 var generations: [2]u16 = .{ 1, 1 };
 threadlocal var slot: u16 = 0;
 var initialized = false;
+var large: [2]?buddy.Allocation = .{ null, null };
 
 fn key() resources.Key {
     return .{ .slot = slot, .generation = generations[slot] };
@@ -52,6 +53,7 @@ const Backend = struct {
     }
 
     pub fn close() !void {
+        if (large[slot] != null) return error.Full;
         try table.closeObjects(&heap, 0, key(), try pool());
         bindings[slot] = null;
     }
@@ -91,6 +93,7 @@ export fn nih_host_select(next: u16) c_int {
 export fn nih_host_retire() c_int {
     if (!initialized or !table.close(key())) return -1;
     bindings[slot] = null;
+    large[slot] = null;
     while (!(table.drainOne(&heap, 0, key()) catch return -1)) {}
     generations[slot] += 1;
     if (!table.open(key())) return -1;
@@ -108,4 +111,35 @@ export fn nih_host_parent_bytes() usize {
 
 export fn nih_host_reserved_bytes() usize {
     return if (initialized) heap.payload.len - heap.free_bytes else 0;
+}
+
+// Trusted host qualification hook; no native C allocator ABI is changed.
+export fn nih_host_allocator_open_config(counts: [*]const u16, count: usize) c_int {
+    if (count != resources.size_pool.classes.len) return -1;
+    // SAFETY: every quota is copied before passing this value to the backend.
+    var config: resources.size_pool.Config = undefined;
+    @memcpy(&config.counts, counts[0..count]);
+    Backend.openConfigured(config) catch return -1;
+    return 0;
+}
+
+// One bounded large scratch allocation beside the small-object parent.
+// Trusted host qualification only; every entry authenticates the task first.
+export fn nih_host_large_alloc(bytes: usize) ?*anyopaque {
+    _ = Backend.pool() catch return null;
+    if (bytes == 0 or bytes > 8192 or large[slot] != null) return null;
+    const allocation = table.alloc(&heap, 0, key(), 8192, 8) catch return null;
+    large[slot] = allocation;
+    return @ptrCast(allocation.bytes.ptr);
+}
+export fn nih_host_large_capacity(pointer: ?*anyopaque) usize {
+    _ = Backend.pool() catch return 0;
+    const allocation = large[slot] orelse return 0;
+    return if (@intFromPtr(pointer orelse return 0) == @intFromPtr(allocation.bytes.ptr)) allocation.bytes.len else 0;
+}
+export fn nih_host_large_free(pointer: ?*anyopaque) c_int {
+    if (nih_host_large_capacity(pointer) == 0) return -1;
+    table.free(&heap, 0, key(), large[slot].?) catch return -1;
+    large[slot] = null;
+    return 0;
 }

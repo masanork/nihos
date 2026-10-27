@@ -12,3 +12,7 @@ mkdir -p "$out_dir"
 "$zig" cc -O2 -g -pthread -std=c11 -Wall -Wextra -Wconversion -Werror -I include \
     probes/allocator/host_probe.c probes/allocator/c_probe.c "$out_dir/allocator.o" -o "$out_dir/probe"
 "$out_dir/probe"
+
+"$zig" cc -O2 -g -std=c11 -Wall -Wextra -Wconversion -Werror -I include \
+    probes/allocator/large_probe.c "$out_dir/allocator.o" -o "$out_dir/large-probe"
+"$out_dir/large-probe"
