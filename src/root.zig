@@ -60,6 +60,7 @@ pub const c6_sdio = @import("net/c6_sdio.zig");
 pub const esp32p4_sdio = @import("soc/esp32p4/sdio.zig");
 
 test {
+    _ = @import("platform/native/foreground_timer.zig");
     _ = cpu_clock;
     _ = ccid;
     _ = jpki;
