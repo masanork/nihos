@@ -172,8 +172,24 @@ static bool trial(const char *path, size_t fail, uint32_t expected, size_t *atte
 int main(int argc, char **argv) {
     if (argc != 3) { fprintf(stderr, "usage: font-probe gothic.ttf mincho.ttf\n"); return 2; }
     check(pool.reserved == 0, "no eager reservation");
+    bool fragmented = false;
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+    unsigned char *peers[2] = {};
+    const char *fragment_mode = getenv("NIHOS_GRAPHICS_FRAGMENTED");
+    fragmented = fragment_mode && strcmp(fragment_mode, "1") == 0;
+    if (fragmented) {
+        graphics_backing_ensure();
+        peers[0] = (unsigned char *)nih_graphics_backing_peer_allocate(8 * 1024 * 1024 - 128);
+        peers[1] = (unsigned char *)nih_graphics_backing_peer_allocate(4 * 1024 * 1024 - 128);
+        check(peers[0] && peers[1], "fragmented peer setup");
+        peers[0][0] = 0xa7; peers[1][0] = 0xb4;
+    }
+#endif
     // Pin language process-global state to the service owner before client use.
     hb_language_from_string("ja", -1);
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+    if (fragmented) check(nih_graphics_backing_largest_free() < 2 * 1024 * 1024, "no contiguous 2 MiB before fonts");
+#endif
     size_t idle_initial = pool.reserved;
     pool.begin_operation();
     Session first(1);
@@ -196,6 +212,10 @@ int main(int argc, char **argv) {
     check(trial(argv[2], 0, expected_second, &attempts), "warm baseline trial");
     size_t baseline_attempts = attempts;
     size_t normal_two_client_peak = measured_peak;
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+    size_t font_max_extent = nih_graphics_backing_largest_extent();
+    size_t kernel_normal_peak = nih_graphics_backing_raw_peak();
+#endif
     for (size_t failure = 1; failure <= baseline_attempts; ++failure) {
         bool adopted = trial(argv[2], failure, expected_second, &attempts);
         check(pool.failures && !adopted, "injected OOM never publishes a partial result");
@@ -209,44 +229,57 @@ int main(int argc, char **argv) {
     for (unsigned cycle = 0; cycle < 32; ++cycle)
         check(trial(argv[2], 0, expected_second, &attempts), "repeat open/close");
     size_t two_client_stress_peak = measured_peak;
+    if (!fragmented) {
     pool.begin_operation();
-    void *background = pool.allocate(3, 1024 * 1024);
+    const size_t background_bytes = 1024 * 1024
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        - 128
+#endif
+        ;
+    void *background = pool.allocate(3, background_bytes);
     check(background != nullptr, "independent background allocation");
-    memset(background, 0xa3, 1024 * 1024);
+    memset(background, 0xa3, background_bytes);
     check(!trial(argv[2], 0, expected_second, &attempts) && pool.failures,
         "shared memory pressure refuses only new session");
     pool.begin_operation(); uint32_t pressure_hash = 0;
     check(first.draw(true, 24, &pressure_hash) && pressure_hash == first_v,
         "existing session survives background pressure");
-    for (size_t i = 0; i < 1024 * 1024; ++i)
+    for (size_t i = 0; i < background_bytes; ++i)
         check(((unsigned char *)background)[i] == 0xa3, "background allocation intact");
     check(pool.release(3, background) && pool.owner_reserved[3] == 0, "background pages returned");
     check(trial(argv[2], 0, expected_second, &attempts), "new session opens after pressure clears");
+    }
     pool.begin_operation(); uint32_t final_h = 0;
     check(first.draw(false, 24, &final_h) && final_h == first_h, "first survives all trials");
     first.close();
     check(pool.owner_reserved[1] == 0 && pool.owner_reserved[2] == 0 && pool.valid(), "all clients reclaimed");
 #ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+    if (fragmented) {
+        check(peers[0][0] == 0xa7 && peers[1][0] == 0xb4, "peer data survives all font trials");
+        check(nih_graphics_backing_peer_release() == 0 && nih_graphics_backing_peer_release() == 0, "peer release");
+    }
     graphics_backing_check_report(1);
 #endif
     printf("{\"status\":\"pass\",\"scope\":\"host FT+HB memory/lifetime probe, not native GUI\","
         "\"startup_reserved\":0,\"initial_service_reserved\":%zu,\"single_client_reserved\":%zu,"
         "\"two_client_normal_peak_reserved\":%zu,\"two_client_stress_peak_reserved\":%zu,"
-        "\"including_background_pressure_peak\":%zu,\"pressure_recovery\":true,"
+        "\"including_background_pressure_peak\":%zu,\"pressure_recovery\":%s,"
         "\"after_second_close\":%zu,\"after_all_clients_close\":%zu,"
         "\"shared_live_payload_after_close\":%zu,\"client_backing_after_close\":0,"
         "\"oom_points\":%zu,\"reopen_cycles\":32,\"controller_host_bytes\":%zu,"
         "\"gothic_horizontal_hash\":%u,\"gothic_vertical_hash\":%u,\"mincho_vertical_hash\":%u"
 #ifdef NIHOS_GRAPHICS_BUDDY_BACKING
-        ",\"backing\":\"kernel buddy plus unchanged two-entry ledger on host\","
-        "\"kernel_raw_after_close\":%zu,\"kernel_raw_peak\":%zu,\"kernel_parents_after_close\":%u"
+        ",\"backing\":\"kernel buddy with opt-in bounded extent group on host\","
+        "\"kernel_raw_after_close\":%zu,\"kernel_raw_peak\":%zu,\"kernel_parents_after_close\":%u,"
+        "\"font_max_extent\":%zu,\"kernel_raw_normal_peak\":%zu,\"fragmented_heap\":%s"
 #endif
         "}\n",
         idle_initial, single_reserved, normal_two_client_peak, two_client_stress_peak,
-        measured_peak, after_second_close, pool.reserved,
+        measured_peak, fragmented ? "null" : "true", after_second_close, pool.reserved,
         pool.live_bytes(0), baseline_attempts, sizeof(pool), first_h, first_v, expected_second
 #ifdef NIHOS_GRAPHICS_BUDDY_BACKING
-        ,nih_graphics_backing_raw_used(), nih_graphics_backing_raw_peak(), nih_graphics_backing_parents()
+        ,nih_graphics_backing_raw_used(), nih_graphics_backing_raw_peak(), nih_graphics_backing_parents(),
+        font_max_extent, kernel_normal_peak, fragmented ? "true" : "false"
 #endif
     );
 }

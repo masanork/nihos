@@ -14,7 +14,7 @@ extern "C" void graphics_backing_ensure() {
 extern "C" void graphics_backing_check_report(int all_clients_closed) {
     if (nih_graphics_backing_parents() > 2) abort();
     if (all_clients_closed && (nih_graphics_backing_parents() != 1 ||
-        nih_graphics_backing_raw_used() != 128 * 1024)) abort();
+        nih_graphics_backing_raw_used() != 64 * 1024 + 256)) abort();
     fprintf(stderr, "GRAPHICS_BUDDY raw_used=%zu raw_peak=%zu parents=%u loans=%u initial_free=%zu control_host=%zu\n",
         nih_graphics_backing_raw_used(), nih_graphics_backing_raw_peak(),
         nih_graphics_backing_parents(), nih_graphics_backing_loan_count(),
