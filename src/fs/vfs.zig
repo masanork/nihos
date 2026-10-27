@@ -2,6 +2,7 @@
 //! Backend instances and their filesystem identities outlive every mounted
 //! reference. No scheduler, device, durable-replace, or SQLite adapter here.
 const std = @import("std");
+pub const io = @import("io_leases.zig");
 
 pub const Error = error{
     StaleHandle,
@@ -14,9 +15,10 @@ pub const Error = error{
     Busy,
     NotFound,
     IoError,
+    Corrupt,
     RecoveryRequired,
     BackendContract,
-};
+} || io.Error;
 
 pub const Principal = u32;
 // Development profile at codex/storage-plan-tab5-budget, 67c991b.
@@ -49,7 +51,7 @@ pub const Capabilities = struct {
 pub const Policy = struct { writable: bool = false };
 pub const Handle = struct { slot: u16, generation: u64 };
 pub const Mount = struct { slot: u16, generation: u64 };
-pub const Failure = enum { no_space, io_error, removed, timed_out, outcome_unknown };
+pub const Failure = enum { no_space, io_error, corrupt, removed, timed_out, outcome_unknown };
 pub const Transfer = struct {
     transferred: usize = 0,
     eof: bool = false,
@@ -90,6 +92,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
         const Slot = struct { generation: u64 = 1, retired: bool = false, resource: ?Resource = null };
         mounts: [mount_limit]MountSlot = @splat(.{}),
         handles: [handle_limit]Slot = @splat(.{}),
+        requests: io.IoLeases(16) = .{},
 
         // Table mutations are trusted owner operations, not client syscalls.
         pub fn mount(self: *Self, backend: *Backend, root: u64, caps: Capabilities, policy: Policy) Error!Mount {
@@ -140,6 +143,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             };
             if (!parent.rights.contains(rights)) return error.PermissionDenied;
             const binding = try self.activeMount(parent.mount);
+            if (self.requests.deviceBusy()) return error.Busy;
             try checkRights(binding.*, rights);
             try validatePath(path, binding.capabilities.max_path_bytes);
             const index = try self.freeSlot(); // Check capacity before any backend call; no re-entry is allowed.
@@ -150,7 +154,10 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
                 }
             }
             if (file_count >= standard_limits.file_handles) return error.NoHandles;
-            const identity = try binding.backend.lookupBeneath(directory, path);
+            const identity = binding.backend.lookupBeneath(directory, path) catch |err| {
+                if (err == error.Corrupt) binding.state = .faulted;
+                return err;
+            };
             for (self.handles) |slot| {
                 const resource = slot.resource orelse continue;
                 if (!sameMount(resource.mount, parent.mount)) continue;
@@ -179,10 +186,12 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             };
             if (!resource.rights.read) return error.PermissionDenied;
             const binding = try self.activeMount(resource.mount);
+            if (self.requests.deviceBusy()) return error.Busy;
             if (!binding.capabilities.read_at) return error.Unsupported;
             try checkRange(binding.capabilities, offset, buffer.len);
             const result = binding.backend.readAt(file.token, offset, buffer);
             try observe(binding, result, buffer.len, false);
+            if (binding.state == .removed) self.requests.removeMount(reference(resource.mount));
             return result;
         }
 
@@ -194,12 +203,14 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             };
             if (!resource.rights.write) return error.PermissionDenied;
             const binding = try self.activeMount(resource.mount);
+            if (self.requests.deviceBusy()) return error.Busy;
             try checkRights(binding.*, .{ .write = true });
             try checkRange(binding.capabilities, offset, buffer.len);
             var result = binding.backend.writeAt(file.token, offset, buffer);
             // Once submitted, a timeout does not establish no side effects.
             if (result.failure == .timed_out) result.failure = .outcome_unknown;
             try observe(binding, result, buffer.len, true);
+            if (binding.state == .removed) self.requests.removeMount(reference(resource.mount));
             return result;
         }
 
@@ -211,6 +222,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             };
             if (!resource.rights.write) return error.PermissionDenied;
             const binding = try self.activeMount(resource.mount);
+            if (self.requests.deviceBusy()) return error.Busy;
             if (!binding.capabilities.sync_file) return error.Unsupported;
             binding.backend.syncFile(file.token) catch |err| {
                 binding.state = .faulted;
@@ -218,11 +230,14 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             };
         }
 
-        /// Close revokes the handle even on failure. A removed backend is not
+        /// Live I/O returns Busy without revoking the handle. Once drained,
+        /// close revokes it even on backend failure. A removed backend is not
         /// called; its owner must discard its remaining tokens at teardown.
         pub fn close(self: *Self, principal: Principal, handle: Handle) Error!void {
             const resource = (try self.getResource(principal, handle)).*;
             const binding = try self.getMount(resource.mount);
+            if (self.requests.holdsFile(reference(handle))) return error.Busy;
+            if (resource.object == .file and self.requests.deviceBusy()) return error.Busy;
             revoke(&self.handles[handle.slot]);
             switch (resource.object) {
                 .root => {},
@@ -240,6 +255,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
         /// after an unsupported or failed volume-wide data/metadata flush.
         pub fn unmount(self: *Self, handle: Mount) Error!void {
             const binding = try self.activeMount(handle);
+            if (self.requests.holdsMount(reference(handle)) or self.requests.deviceBusy()) return error.Busy;
             for (self.handles) |slot| {
                 if (slot.resource) |resource| {
                     if (sameMount(resource.mount, handle)) return error.Busy;
@@ -259,19 +275,62 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
         /// free backend resources or establish device/DMA quiescence.
         pub fn markRemoved(self: *Self, handle: Mount) Error!void {
             (try self.getMount(handle)).state = .removed;
+            self.requests.removeMount(reference(handle));
         }
 
-        /// Trusted teardown only: caller must have stopped device/DMA/workers.
+        /// Trusted teardown only: rejects retained I/O including unconsumed
+        /// completions. Caller must also stop any out-of-registry device work.
         /// Revokes all references without calling the old backend. The caller
         /// must then destroy its mount-local open tokens before reusing it.
         pub fn detachQuiescent(self: *Self, handle: Mount) Error!void {
             _ = try self.getMount(handle);
+            if (self.requests.holdsMount(reference(handle)) or self.requests.deviceBusy()) return error.Busy;
             for (&self.handles) |*slot| {
                 if (slot.resource) |resource| {
                     if (sameMount(resource.mount, handle)) revoke(slot);
                 }
             }
             retireMount(&self.mounts[handle.slot]);
+        }
+
+        /// Retain a trusted allocator's generation-bearing buffer lease until
+        /// exactly one terminal completion is consumed. This does not start DMA.
+        pub fn retainRead(self: *Self, principal: Principal, handle: Handle, buffer_lease: u64) Error!io.Handle {
+            const resource = (try self.getResource(principal, handle)).*;
+            if (resource.object != .file or !resource.rights.read) return error.PermissionDenied;
+            _ = try self.activeMount(resource.mount);
+            return self.requests.retain(principal, reference(resource.mount), reference(handle), buffer_lease);
+        }
+
+        pub fn startRead(self: *Self, request: io.Handle) Error!void {
+            const mount_ref = try self.requests.mountOf(request);
+            _ = try self.activeMount(.{ .slot = mount_ref.slot, .generation = mount_ref.generation });
+            try self.requests.start(request);
+        }
+
+        pub fn cancelRead(self: *Self, principal: Principal, request: io.Handle) Error!void {
+            try self.requests.cancel(principal, request);
+        }
+
+        pub fn readStopRequired(self: *Self, request: io.Handle) Error!bool {
+            return self.requests.stopRequired(request);
+        }
+
+        /// Trusted driver owner supplies the fence after stop/reset, descriptor
+        /// ownership and cache maintenance have actually completed.
+        pub fn finishRead(self: *Self, request: io.Handle, successful: bool, fence: io.Fence) Error!void {
+            const mount_ref = try self.requests.mountOf(request);
+            const binding = try self.getMount(.{ .slot = mount_ref.slot, .generation = mount_ref.generation });
+            try self.requests.finish(request, successful, fence);
+            if (try self.requests.terminalOutcome(request) == .failed and binding.state == .mounted) binding.state = .faulted;
+        }
+
+        pub fn takeRead(self: *Self, principal: Principal, request: io.Handle) Error!io.Completion {
+            return self.requests.take(principal, request);
+        }
+
+        pub fn discardRead(self: *Self, request: io.Handle) Error!io.Completion {
+            return self.requests.discard(request);
         }
 
         fn getMount(self: *Self, handle: Mount) Error!*Binding {
@@ -319,7 +378,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             if (result.failure) |failure| {
                 switch (failure) {
                     .removed => binding.state = .removed,
-                    .io_error, .outcome_unknown => binding.state = .faulted,
+                    .io_error, .corrupt, .outcome_unknown => binding.state = .faulted,
                     .timed_out => binding.state = .faulted,
                     .no_space => {},
                 }
@@ -340,6 +399,10 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
 
 fn sameMount(a: Mount, b: Mount) bool {
     return a.slot == b.slot and a.generation == b.generation;
+}
+
+fn reference(handle: anytype) io.Reference {
+    return .{ .slot = handle.slot, .generation = handle.generation };
 }
 
 fn checkRights(binding: anytype, rights: Rights) Error!void {

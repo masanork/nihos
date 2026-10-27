@@ -35,6 +35,7 @@ test {
     _ = native_stack_layout;
     _ = vfs;
     _ = @import("fs/vfs_test.zig");
+    _ = @import("fs/io_leases_test.zig");
     _ = riscv32_context;
     _ = riscv32_trap;
     _ = esp32p4_timer_group;

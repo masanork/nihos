@@ -34,14 +34,29 @@ image with this setup and is not used. No image is attached as a block device.
   deadlines. These contain host tests; they do not establish native cancellation
   or a strict worst-case CPU/I/O time.
 - The raw write-mode and missing-signature probes are negative controls:
-  upstream FatFs alone does not enforce these outer VFS policies. A FAT chain
-  self-loop is also observed to repeat data rather than fail. That observation
-  is retained as a remaining corrupted-volume qualification gate.
+  upstream FatFs alone does not enforce these outer VFS policies. Raw FatFs
+  also repeats data for a FAT chain self-loop; guarded opens reject it before
+  returning data. The raw example remains a negative control.
+- `safety.c` includes the hash-pinned upstream translation unit without changing
+  it. The narrow private shim checks file and containing-directory chains using
+  Brent cycle detection with constant chain workspace, a shared step/cancel
+  budget and a 16-directory ancestry bound. Corruption, budget exhaustion and
+  cancellation have different outcomes. exFAT NoFatChain extents use checked
+  bounds instead of walking a synthesized billion-byte chain.
+- File identity is the canonical containing-directory cluster plus directory
+  entry offset, scoped by the outer mount epoch. Empty files have distinct IDs;
+  long/short aliases and case variants of one entry share an ID. This uses pinned
+  FatFs internals and must be requalified when upstream source/config changes.
 
-This package does not connect FatFs to `src/fs/vfs.zig`, native storage RPC,
-SQLite, DMA, an SD card or power-loss recovery. In particular, a production
-adapter still needs stable file identity for empty files and aliases, backend
-lifetime/admission accounting, corrupt-chain policy and native measurements.
+The shim has not been connected to native storage RPC, SQLite, DMA, an SD card
+or power-loss recovery. `src/fs/io_leases.zig` supplies an owner-side lease state
+machine used by the VFS: active cancellation/removal cannot release a buffer,
+close its file or detach its mount before the driver establishes device idle,
+descriptor release and cache hand-back, then the terminal completion is taken.
+One physical transfer is admitted globally until controller sharing is explicit.
+These are executable host contracts. The actual driver must supply those facts,
+drain old interrupts, and use service-owned buffers whose allocator honors the
+lease; a client task exit must not free active DMA backing.
 The host package and the separate common-log crash model can progress
 independently; neither changes the other's on-media format or owner model.
 

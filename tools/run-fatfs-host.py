@@ -44,7 +44,7 @@ def build(source, work):
         arguments = [*cc, *flags]
         if kind == "writer":
             arguments.append("-DNIHOS_FIXTURE_WRITER=1")
-        arguments += [PROBE / main, PROBE / "host_disk.c", source / "ff.c", source / "ffunicode.c", "-o", binary]
+        arguments += [PROBE / main, PROBE / "host_disk.c", source / "ff.c" if kind == "writer" else PROBE / "safety.c", source / "ffunicode.c", "-o", binary]
         run(arguments, timeout=120)
         binaries[kind] = binary
     return binaries, run([*cc, "--version"]).stdout.splitlines()[0]
@@ -52,7 +52,7 @@ def build(source, work):
 
 def execute(work, binaries, source, compiler):
     env = os.environ.copy()
-    for key in ("NIHOS_FATFS_PATCH_OFFSET", "NIHOS_FATFS_PATCH_HEX", "NIHOS_FATFS_READ_BUDGET"):
+    for key in ("NIHOS_FATFS_PATCH_OFFSET", "NIHOS_FATFS_PATCH_HEX", "NIHOS_FATFS_READ_BUDGET", "NIHOS_FATFS_CHAIN_BUDGET", "NIHOS_FATFS_CANCEL_AFTER"):
         env.pop(key, None)
     env["ASAN_OPTIONS"] = "abort_on_error=1:detect_leaks=" + ("0" if platform.system() == "Darwin" else "1")
     env["UBSAN_OPTIONS"] = "halt_on_error=1:print_stacktrace=1"
@@ -76,7 +76,7 @@ def execute(work, binaries, source, compiler):
         if tool:
             report["oracles"].append({"binary": tool, "sha256": sha256(Path(tool))})
 
-    def probe(image, command, path=None, offset=0, amount=0, patch=None, budget=None):
+    def probe(image, command, path=None, offset=0, amount=0, patch=None, budget=None, chain_budget=None, cancel_after=None):
         arguments = [binaries["reader"], image, command]
         if path is not None:
             arguments += [path, str(offset), str(amount)]
@@ -86,6 +86,10 @@ def execute(work, binaries, source, compiler):
             case_env["NIHOS_FATFS_PATCH_HEX"] = patch[1].hex()
         if budget is not None:
             case_env["NIHOS_FATFS_READ_BUDGET"] = str(budget)
+        if chain_budget is not None:
+            case_env["NIHOS_FATFS_CHAIN_BUDGET"] = str(chain_budget)
+        if cancel_after is not None:
+            case_env["NIHOS_FATFS_CANCEL_AFTER"] = str(cancel_after)
         result = run(arguments, timeout=10, env=case_env)
         if result.stderr:
             raise RuntimeError(f"Unexpected reader diagnostics: {result.stderr}")
@@ -100,6 +104,19 @@ def execute(work, binaries, source, compiler):
         (work / "results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         if not condition:
             raise AssertionError(f"{name}: {value}")
+
+    def fat_entry(image, fixture, cluster, replacement=None):
+        fmt = fixture["fs_type"]
+        width = 2 if fmt in (1, 2) else 4
+        offset = fixture["fat_byte"] + (cluster + cluster // 2 if fmt == 1 else cluster * width)
+        with image.open("rb") as stream:
+            stream.seek(offset)
+            raw = int.from_bytes(stream.read(width), "little")
+        if replacement is None:
+            return ((raw >> 4 if cluster % 2 else raw) & 0xfff) if fmt == 1 else raw & (0xffff if fmt == 2 else 0x0fffffff if fmt == 3 else 0x7fffffff)
+        if fmt == 1:
+            replacement = ((raw & 0x000f) | ((replacement & 0xfff) << 4)) if cluster % 2 else ((raw & 0xf000) | (replacement & 0xfff))
+        return offset, replacement.to_bytes(width, "little")
 
     for kind in ("fat12", "fat16", "fat32", "mbr-fat32", "exfat"):
         image = work / (kind + ".img")
@@ -130,11 +147,58 @@ def execute(work, binaries, source, compiler):
         for name in ("empty-a.txt", "empty-b.txt"):
             value = probe(image, "read", name, amount=1)
             record(kind + ":empty:" + name, value, value["status"] == "OK" and value["count"] == 0 and value["size"] == 0 and value["eof"])
+        a = probe(image, "identity", "empty-a.txt")
+        b = probe(image, "identity", "empty-b.txt")
+        again = probe(image, "identity", "EMPTY-A.TXT")
+        record(kind + ":empty-identities", {"a": a, "b": b, "case_alias": again},
+               a["status"] == b["status"] == again["status"] == "OK" and a["data_cluster"] == b["data_cluster"] == 0 and
+               a["identity"] != b["identity"] and a["identity"] == again["identity"])
+        if fixture["empty_alias"]:
+            original = probe(image, "identity", "Long empty filename.txt")
+            alias = probe(image, "identity", fixture["empty_alias"])
+            record(kind + ":empty-long-short-identity", {"lfn": original, "sfn": alias},
+                   original["status"] == alias["status"] == "OK" and original["identity"] == alias["identity"])
+        original = probe(image, "identity", "Long filename for alias.txt")
+        alias = probe(image, "identity", fixture["alias"] or "LONG FILENAME FOR ALIAS.TXT")
+        record(kind + ":long-alias-identity", {"lfn": original, "alias": alias},
+               original["status"] == alias["status"] == "OK" and original["identity"] == alias["identity"])
+        nested = probe(image, "identity", "教材/Memo.txt")
+        root_memo = probe(image, "identity", "Memo.txt")
+        record(kind + ":parent-directory-identity", {"nested": nested, "root": root_memo},
+               nested["status"] == root_memo["status"] == "OK" and nested["identity"] != root_memo["identity"])
+        composed = probe(image, "identity", "教材/が.txt")
+        decomposed = probe(image, "identity", "教材/か\u3099.txt")
+        record(kind + ":unicode-normalization-identity", {"composed": composed, "decomposed": decomposed},
+               composed["status"] == decomposed["status"] == "OK" and composed["identity"] != decomposed["identity"])
         cluster = fixture["cluster_bytes"]
         for boundary in range(1, 8):
             value = probe(image, "read", "fragment.bin", boundary * cluster - 8, 16)
             expected = bytes([0x30 + boundary - 1]) * 8 + bytes([0x30 + boundary]) * 8
             record(kind + f":fragment-boundary:{boundary}", value, value["status"] == "OK" and bytes.fromhex(value["hex"]) == expected)
+        first = fixture["fragment_first_cluster"]
+        second = fat_entry(image, fixture, first)
+        for label, mutated, replacement in (("self-cycle", first, first), ("two-node-cycle", second, first),
+                                            ("short-chain", first, {1: 0xfff, 2: 0xffff, 3: 0x0fffffff, 4: 0xffffffff}[fixture["fs_type"]])):
+            value = probe(image, "read", "fragment.bin", 0, 16, patch=fat_entry(image, fixture, mutated, replacement))
+            record(kind + ":guard:" + label, value, value["status"] == "Corrupt" and value["count"] == 0 and value["guard_steps"] < 64)
+        if fixture["root_cluster"]:
+            value = probe(image, "list", patch=fat_entry(image, fixture, fixture["root_cluster"], fixture["root_cluster"]))
+            record(kind + ":guard:root-cycle", value, value["status"] == "Corrupt" and value["guard_steps"] < 64)
+        if kind != "exfat":
+            child = fixture["child_cluster"]
+            value = probe(image, "read", "教材/漢字𠮷.txt", 0, 16, patch=fat_entry(image, fixture, child, child))
+            record(kind + ":guard:parent-cycle", value, value["status"] == "Corrupt" and value["count"] == 0)
+            with image.open("rb") as stream:
+                stream.seek(fixture["child_entry_byte"])
+                entry_bytes = bytearray(stream.read(32))
+            entry_bytes[20:22] = struct.pack("<H", fixture["root_cluster"] >> 16)
+            entry_bytes[26:28] = struct.pack("<H", fixture["root_cluster"] & 0xffff)
+            value = probe(image, "read", "教材/Memo.txt", 0, 16, patch=(fixture["child_entry_byte"], bytes(entry_bytes)))
+            record(kind + ":guard:directory-ancestor-alias", value, value["status"] == "Corrupt" and value["count"] == 0)
+        value = probe(image, "read", "fragment.bin", 0, 16, chain_budget=3)
+        record(kind + ":guard:budget", value, value["status"] == "BudgetExceeded" and value["count"] == 0 and value["guard_steps"] == 3)
+        value = probe(image, "read", "fragment.bin", 0, 16, cancel_after=3)
+        record(kind + ":guard:cancel", value, value["status"] == "Cancelled" and value["count"] == 0 and value["guard_steps"] == 3)
         value = probe(image, "write-open", "Memo.txt", amount=1)
         record(kind + ":write-policy", value, value["status"] == "ReadOnly" and value["disk_reads"] == 0)
         value = probe(image, "disk-write")
@@ -156,8 +220,8 @@ def execute(work, binaries, source, compiler):
             record(kind + ":oversized-fat-bpb", value, value["status"] == "MountError")
             entry = fixture["fat_byte"] + fixture["fragment_first_cluster"] * 4
             value = probe(image, "read", "fragment.bin", cluster, 16, patch=(entry, struct.pack("<I", 0x0ffffff0)))
-            record(kind + ":invalid-cluster-link", value, value["status"] == "Error")
-            value = probe(image, "read", "fragment.bin", cluster, 16,
+            record(kind + ":invalid-cluster-link", value, value["status"] == "Corrupt" and value["count"] == 0)
+            value = probe(image, "raw-read", "fragment.bin", cluster, 16,
                           patch=(entry, struct.pack("<I", fixture["fragment_first_cluster"])))
             record(kind + ":negative-control-cluster-cycle", value,
                    value["status"] == "OK" and bytes.fromhex(value["hex"]) == b"0" * 16,
@@ -170,6 +234,32 @@ def execute(work, binaries, source, compiler):
             value = probe(image, "mount", patch=(fixture["volume_byte"] + 32, struct.pack("<I", fixture["image_bytes"] // 512)))
             record(kind + ":volume-outside-partition", value, value["status"] == "MountError" and value["out_of_range"] == 0)
         if kind == "exfat":
+            root_byte = fixture["data_byte"] + (fixture["root_cluster"] - 2) * cluster
+            with image.open("rb") as stream:
+                stream.seek(root_byte)
+                root_entries = stream.read(cluster)
+            block = None
+            for position in range(0, len(root_entries) - 64, 32):
+                if root_entries[position] != 0x85 or not (root_entries[position + 4] & 0x10):
+                    continue
+                if struct.unpack_from("<I", root_entries, position + 52)[0] != fixture["child_cluster"]:
+                    continue
+                length = (root_entries[position + 1] + 1) * 32
+                block = bytearray(root_entries[position:position + length])
+                assert len(block) == length
+                struct.pack_into("<I", block, 52, fixture["root_cluster"])
+                checksum = 0
+                for index, byte in enumerate(block):
+                    if index not in (2, 3):
+                        checksum = (((checksum >> 1) | ((checksum & 1) << 15)) + byte) & 0xffff
+                struct.pack_into("<H", block, 2, checksum)
+                patch = (root_byte + position, bytes(block))
+                break
+            assert block is not None, "fixture child directory entry not found"
+            value = probe(image, "raw-read", "教材/Memo.txt", 0, 16, patch=patch)
+            record(kind + ":negative-control-directory-alias", value, value["status"] == "OK" and bytes.fromhex(value["hex"]) == b"nihos read-only fixture\n"[:16])
+            value = probe(image, "read", "教材/Memo.txt", 0, 16, patch=patch)
+            record(kind + ":guard:directory-ancestor-alias", value, value["status"] == "Corrupt" and value["count"] == 0)
             for index, offset in enumerate((0x7ffffff8, 0xfffffff8, 0x100001ff0)):
                 value = probe(image, "read", "large.bin", offset, 16)
                 expected = bytes(range(0xa0 + index * 16, 0xb0 + index * 16))
