@@ -5,6 +5,7 @@ zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 sqlite=$(sh "$repo_root/tools/bootstrap-sqlite.sh")
 out="$repo_root/build/sqlite-store"
 mkdir -p "$out"
+printf 'pub const cache_experiment = false;\n' > "$out/build-options.zig"
 "$zig" fmt --check "$repo_root/probes/sqlite/store_bridge.zig"
 "$zig" cc -c -O2 -g -std=c11 -Wall -Wextra -Werror -Wno-unused-parameter \
     -DSQLITE_THREADSAFE=0 -DSQLITE_OS_OTHER=1 -DSQLITE_TEMP_STORE=3 \
@@ -17,8 +18,9 @@ mkdir -p "$out"
 "$zig" cc -c -O2 -g -std=c11 -Wall -Wextra -Wconversion -Werror \
     -I "$sqlite" -I "$repo_root/probes/sqlite" "$repo_root/probes/sqlite/store_probe.c" -o "$out/store-probe.o"
 "$zig" build-exe -O safe -lc "$out/sqlite3.o" "$out/store-vfs.o" "$out/store-probe.o" \
-    --dep checkpoint_service --dep file_media --dep spsc_ring \
+    --dep checkpoint_service --dep file_media --dep spsc_ring --dep build_options \
     -Mroot="$repo_root/probes/sqlite/store_bridge.zig" \
+    -Mbuild_options="$out/build-options.zig" \
     -Mcheckpoint_service="$repo_root/src/storage/checkpoint_service.zig" \
     -Mfile_media="$repo_root/src/storage/file_media.zig" \
     -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" -femit-bin="$out/sqlite-store-probe"
@@ -36,8 +38,9 @@ PYMUTANT
 "$zig" cc -c -O2 -g -std=c11 -Wall -Wextra -Wconversion -Werror \
     -I "$sqlite" -I "$repo_root/probes/sqlite" "$out/no-sync-vfs.c" -o "$out/no-sync-vfs.o"
 "$zig" build-exe -O safe -lc "$out/sqlite3.o" "$out/no-sync-vfs.o" "$out/store-probe.o" \
-    --dep checkpoint_service --dep file_media --dep spsc_ring \
+    --dep checkpoint_service --dep file_media --dep spsc_ring --dep build_options \
     -Mroot="$repo_root/probes/sqlite/store_bridge.zig" \
+    -Mbuild_options="$out/build-options.zig" \
     -Mcheckpoint_service="$repo_root/src/storage/checkpoint_service.zig" \
     -Mfile_media="$repo_root/src/storage/file_media.zig" \
     -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" -femit-bin="$out/sqlite-store-no-sync"
