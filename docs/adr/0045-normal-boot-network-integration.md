@@ -3,6 +3,9 @@
 - Status: initial opt-in implementation; bounded session, not permanent netd
 - Date: 2026-10-27
 
+The initial 120-second lifetime below is extended by
+[ADR 0046](0046-native-network-lease-lifecycle.md); its physical gates are separate.
+
 ## Decision
 
 Keep the factory C6 ESP-Hosted firmware for this integration step. CPU0 owns

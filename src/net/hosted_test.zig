@@ -50,7 +50,7 @@ fn connect(client: *station.Client) !void {
     try client.receive(.{ .interface = 3, .payload = try reply(&payload, 2, 538, client.uid, &.{}) }, 5);
 }
 fn serverPacket(client: dhcp.Client, kind: u8, out: []u8) ![]const u8 {
-    const template = dhcp.Client{ .mac = client.mac, .xid = client.xid };
+    var template = dhcp.Client{ .mac = client.mac, .xid = client.xid };
     _ = try template.packet(out);
     @memcpy(out[0..6], &client.mac);
     dhcp.put32(out[26..30], 0xc0a80701);
@@ -307,4 +307,171 @@ test "integrated Hosted owner responds after acquisition and retains unsent repl
     try std.testing.expectError(error.Disconnected, client.receive(.{ .interface = 3, .payload = try reply(&event, 3, 776, 1, body.slice()) }, 20_000_006));
     try std.testing.expect(client.ipv6_client == null and client.dhcp_client == null);
     try std.testing.expectError(error.Rejected, client.tx(20_000_007));
+}
+
+fn dhcpNumber(packet: []u8, code: u8, value: u32) void {
+    var pos: usize = 42 + 240;
+    while (packet[pos] != 255) {
+        if (packet[pos] == code) {
+            dhcp.put32(packet[pos + 2 ..], value);
+            return;
+        }
+        pos += 2 + packet[pos + 1];
+    }
+    packet[pos] = code;
+    packet[pos + 1] = 4;
+    dhcp.put32(packet[pos + 2 ..], value);
+    packet[pos + 6] = 255;
+}
+fn shortLease() !dhcp.Client {
+    var v4 = dhcp.Client{ .mac = mac, .xid = 0x1234 };
+    var packet: [342]u8 = undefined;
+    try v4.receiveAt(try serverPacket(v4, 2, &packet), 10);
+    _ = try v4.packet(&packet);
+    v4.sent(20);
+    _ = try serverPacket(v4, 5, &packet);
+    @memcpy(packet[6..12], &[_]u8{ 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee });
+    dhcpNumber(&packet, 51, 12);
+    dhcpNumber(&packet, 58, 3);
+    dhcpNumber(&packet, 59, 9);
+    try v4.receiveAt(&packet, 30);
+    return v4;
+}
+fn hasDhcpOption(packet: []const u8, code: u8) bool {
+    var pos: usize = 42 + 240;
+    while (packet[pos] != 255) {
+        if (packet[pos] == code) return true;
+        pos += 2 + packet[pos + 1];
+    }
+    return false;
+}
+test "DHCP T1 unicast, T2 broadcast and ACK restart the lease clock with a new transaction" {
+    var v4 = try shortLease();
+    const old_xid = v4.xid;
+    try std.testing.expectEqual(@as(u64, 3_000_020), v4.renew_at);
+    try std.testing.expectEqual(@as(u64, 9_000_020), v4.rebind_at);
+    try std.testing.expectEqual(@as(u64, 12_000_020), v4.expires_at);
+    try v4.tick(v4.renew_at - 1);
+    try std.testing.expectEqual(.bound, v4.phase);
+    try v4.tick(v4.renew_at);
+    try std.testing.expectEqual(.renewing, v4.phase);
+    try std.testing.expect(v4.xid != old_xid);
+    var packet: [342]u8 = undefined;
+    const request = try v4.packet(&packet);
+    try std.testing.expectEqualSlices(u8, &v4.server_mac, request[0..6]);
+    try std.testing.expectEqual(v4.lease.?.ip, dhcp.get32(request[26..30]));
+    try std.testing.expectEqual(v4.server, dhcp.get32(request[30..34]));
+    try std.testing.expectEqual(v4.lease.?.ip, dhcp.get32(request[54..58]));
+    try std.testing.expect(!hasDhcpOption(request, 50) and !hasDhcpOption(request, 54));
+    try std.testing.expectEqual(@as(u16, 0), dhcp.checksum(request[14..34]));
+    v4.sent(3_000_020);
+    try std.testing.expect(!v4.due(3_000_021));
+    _ = try serverPacket(v4, 5, &packet);
+    dhcp.put32(packet[46..50], old_xid);
+    try v4.receiveAt(&packet, 3_000_021);
+    try std.testing.expectEqual(.renewing, v4.phase);
+    try v4.tick(v4.rebind_at);
+    const broadcast = try v4.packet(&packet);
+    try std.testing.expectEqualSlices(u8, &@as([6]u8, @splat(255)), broadcast[0..6]);
+    try std.testing.expectEqual(@as(u32, 0xffffffff), dhcp.get32(broadcast[30..34]));
+    try std.testing.expect(!hasDhcpOption(broadcast, 50) and !hasDhcpOption(broadcast, 54));
+    v4.sent(9_000_020);
+    _ = try serverPacket(v4, 5, &packet);
+    dhcpNumber(&packet, 54, 0xc0a80702); // Rebinding accepts a new server.
+    try v4.receiveAt(&packet, 9_000_030);
+    try std.testing.expectEqual(.bound, v4.phase);
+    try std.testing.expectEqual(@as(u32, 1), v4.renewals);
+    // Lifetime starts at the first REQUEST send, not delayed ACK reception.
+    try std.testing.expectEqual(@as(u64, 3_603_000_020), v4.expires_at);
+    try std.testing.expectEqual(@as(u32, 0xc0a80702), v4.server);
+}
+test "DHCP expiry and NAK revoke both families and discard a retained outgoing packet" {
+    for ([_]bool{ false, true }) |nak| {
+        var client: station.Client = .{};
+        client.beginDual(.saved, 0, true);
+        client.keep_serving = true;
+        client.phase = .done;
+        client.dhcp_client = try shortLease();
+        client.ipv6_client = station.ipv6.Client.init(mac, 0);
+        client.ipv6_client.?.ll_valid = true;
+        client.ipv6_client.?.stage = .no_router;
+        _ = try client.tx(3_000_020); // Queued renewal; not consumed yet.
+        if (nak) {
+            client.sent(3_000_020);
+            var packet: [342]u8 = undefined;
+            try std.testing.expectError(error.Rejected, client.receive(.{ .interface = 1, .payload = try serverPacket(client.dhcp_client.?, 6, &packet) }, 3_000_021));
+        } else try std.testing.expectError(error.LeaseExpired, client.tx(12_000_020));
+        try std.testing.expect(client.dhcp_client == null and client.ipv6_client == null);
+        try std.testing.expectEqual(@as(usize, 0), client.output_len);
+    }
+}
+test "leased IPv4 ARP response cannot acknowledge an unsent renewal or survive expiry" {
+    var v4 = try shortLease();
+    v4.requestRenewal(100);
+    var packet: [342]u8 = undefined;
+    _ = try v4.packet(&packet); // DHCP selected before ARP arrives.
+    var arp: [42]u8 = @splat(0);
+    @memset(arp[0..6], 255);
+    @memcpy(arp[6..12], &[_]u8{ 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee });
+    dhcp.put16(arp[12..14], 0x0806);
+    dhcp.put16(arp[14..16], 1);
+    dhcp.put16(arp[16..18], 0x0800);
+    arp[18] = 6;
+    arp[19] = 4;
+    dhcp.put16(arp[20..22], 1);
+    @memcpy(arp[22..28], arp[6..12]);
+    dhcp.put32(arp[28..32], 0xc0a80701);
+    dhcp.put32(arp[38..42], v4.lease.?.ip);
+    try v4.receiveAt(&arp, 101);
+    v4.sent(102); // This was DHCP, not the later ARP request.
+    try std.testing.expectEqual(@as(?u64, 102), v4.last_sent);
+    const response = try v4.packet(&packet);
+    try std.testing.expectEqual(@as(usize, 42), response.len);
+    try std.testing.expectEqual(@as(u16, 2), dhcp.get16(response[20..22]));
+    try std.testing.expectEqual(v4.lease.?.ip, dhcp.get32(response[28..32]));
+    v4.sent(103);
+    try std.testing.expectEqual(@as(?u64, 102), v4.last_sent);
+    try std.testing.expect(!v4.arp_pending);
+    try v4.receiveAt(&arp, 104);
+    try std.testing.expectError(error.LeaseExpired, v4.tick(v4.expires_at));
+    try std.testing.expect(!v4.arp_pending and v4.lease == null);
+}
+test "invalid DHCP T1 T2 leave the previous lease and expiration unchanged" {
+    var v4 = try shortLease();
+    v4.requestRenewal(100);
+    var packet: [342]u8 = undefined;
+    _ = try v4.packet(&packet);
+    v4.sent(101);
+    _ = try serverPacket(v4, 5, &packet);
+    dhcpNumber(&packet, 58, 9);
+    dhcpNumber(&packet, 59, 3);
+    const expiry = v4.expires_at;
+    try std.testing.expectError(error.InvalidLease, v4.receiveAt(&packet, 102));
+    try std.testing.expectEqual(expiry, v4.expires_at);
+    try std.testing.expectEqual(.renewing, v4.phase);
+}
+
+test "a retained T1 unicast is replaced at T2 and only the selected server renews" {
+    var client: station.Client = .{};
+    client.begin(.saved, 0);
+    client.keep_serving = true;
+    client.phase = .done;
+    client.dhcp_client = try shortLease();
+    const unicast_request = try client.tx(3_000_020);
+    try std.testing.expectEqual(@as(u32, 0xc0a80701), dhcp.get32(unicast_request[12 + 30 ..]));
+    const broadcast_request = try client.tx(9_000_020); // No credit for the old packet.
+    try std.testing.expectEqual(@as(u32, 0xffffffff), dhcp.get32(broadcast_request[12 + 30 ..]));
+    var v4 = try shortLease();
+    v4.requestRenewal(100);
+    var packet: [342]u8 = undefined;
+    _ = try v4.packet(&packet);
+    v4.sent(101);
+    _ = try serverPacket(v4, 5, &packet);
+    dhcpNumber(&packet, 54, 0xc0a80702);
+    try v4.receiveAt(&packet, 102);
+    try std.testing.expectEqual(.renewing, v4.phase);
+    dhcpNumber(&packet, 54, 0xc0a80701);
+    try v4.receiveAt(&packet, 103);
+    try std.testing.expectEqual(.bound, v4.phase);
+    try std.testing.expectEqual(@as(u64, 3_600_000_101), v4.expires_at);
 }

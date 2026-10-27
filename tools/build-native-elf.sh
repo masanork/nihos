@@ -12,6 +12,9 @@ build_dir=${2:-"$repo_root/build/native-$profile"}
 network=${NIHOS_NATIVE_NETWORK:-0}
 case "$network" in 0) network=false ;; 1) network=true; umask 077 ;; *) echo "NETWORK must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network"; fi
+network_test=${NIHOS_NATIVE_NETWORK_TEST:-0}
+case "$network_test" in 0) network_test=false ;; 1) network_test=true ;; *) echo "NETWORK_TEST must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$network_test" = true ] && [ "$network" != true ]; then echo "NETWORK_TEST requires NETWORK=1" >&2; exit 1; fi
 root_opt=safe
 if [ "$network" = true ]; then root_opt=small; fi
 mode=${3:-integer}
@@ -183,6 +186,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const network = %s;\n' "$network"
+    printf 'pub const network_test = %s;\n' "$network_test"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
@@ -314,7 +318,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
     --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
+    --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep timer_group --dep sdio --dep c6_sdio --dep at_controller --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \

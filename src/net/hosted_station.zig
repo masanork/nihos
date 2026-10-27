@@ -137,17 +137,28 @@ pub const Client = struct {
                 }
             },
             1 => if (self.phase == .lease or (self.phase == .done and self.keep_serving)) {
-                if (self.phase == .lease) self.dhcp_client.?.receive(frame.payload) catch |err| {
-                    if (err == error.Rejected) {
-                        self.phase = .failed;
-                        return err;
-                    }
-                    self.malformed_network +|= 1;
-                    return;
-                };
+                if (self.keep_serving) try self.maintain(now);
+                if (self.dhcp_client) |*v4| {
+                    const old_phase = v4.phase;
+                    v4.receiveAt(frame.payload, now) catch |err| {
+                        if (err == error.Rejected or err == error.LeaseExpired or err == error.Clock) {
+                            self.phase = .failed;
+                            self.ipv6_client = null;
+                            self.dhcp_client = null;
+                            self.output_len = 0;
+                            return err;
+                        }
+                        self.malformed_network +|= 1;
+                        return;
+                    };
+                    if (self.keep_serving and old_phase != v4.phase and !self.tx_ipv6) self.output_len = 0;
+                }
                 if (self.ipv6_client) |*client| client.receive(frame.payload, now) catch |err| {
                     if (err == error.Duplicate or err == error.Clock) {
                         self.phase = .failed;
+                        self.ipv6_client = null;
+                        self.dhcp_client = null;
+                        self.output_len = 0;
                         return err;
                     }
                     client.dropped +|= 1;
@@ -166,9 +177,15 @@ pub const Client = struct {
     }
     pub fn tx(self: *Client, now: u64) Error![]const u8 {
         if (now < self.started) return error.Timeout;
+        if (self.keep_serving) try self.maintain(now);
         if (self.phase == .done) {
             if (!self.keep_serving) return &.{};
             if (self.output_len != 0) return self.output[0..self.output_len];
+            if (self.dhcp_client) |*v4| if (v4.due(now)) {
+                var buffer: [342]u8 = undefined;
+                self.tx_ipv6 = false;
+                return self.encodeFrame(1, try v4.packet(&buffer));
+            };
             if (self.ipv6_client) |*client| {
                 const packet = try client.tx(now);
                 if (packet.len != 0) {
@@ -292,8 +309,21 @@ pub const Client = struct {
             self.deadline = now + 5_000_000;
         }
     }
+    fn maintain(self: *Client, now: u64) Error!void {
+        if (self.dhcp_client) |*v4| {
+            const previous = v4.phase;
+            v4.tick(now) catch |err| {
+                self.dhcp_client = null;
+                self.ipv6_client = null;
+                self.output_len = 0;
+                self.phase = .failed;
+                return err;
+            };
+            if (previous != v4.phase and !self.tx_ipv6) self.output_len = 0;
+        }
+    }
     fn finishIfReady(self: *Client) void {
-        const v4 = self.dhcp_client != null and self.dhcp_client.?.phase == .bound;
+        const v4 = self.dhcp_client != null and self.dhcp_client.?.lease != null;
         if (self.ipv6_client) |client| {
             if (client.finished() and (v4 or client.complete())) self.phase = .done;
         } else if (v4) self.phase = .done;
