@@ -1,0 +1,643 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "1f68223baea4480baed2f4a8cfc6ce0fe2e42cc0",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-real-SQLite-managed-PERSIST-VFS",
+  "native_execution": false,
+  "physical_power_cuts": 0,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-28/nihos-sqlite-store-vfs-host",
+  "sqlite": {
+    "version": "3.54.1",
+    "source": "https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip",
+    "archive_sha3_256": "92281c86e2957f9b9305890f9ac04204caa7b677cc868dc326d942689df28e30",
+    "unmodified_amalgamation": true,
+    "source_sha256": {
+      "sqlite3.c": "0c657666d819f261cc4007526ad57e1669de9949df7a8ea847aa284a2bf0ee52",
+      "sqlite3.h": "d6c84557261893439b341d2e6c35187ae3ea24fbfd843ad94616f72d89242b8c"
+    },
+    "flags": [
+      "SQLITE_THREADSAFE=0",
+      "SQLITE_OS_OTHER=1",
+      "SQLITE_TEMP_STORE=3",
+      "SQLITE_DEFAULT_PAGE_SIZE=4096",
+      "SQLITE_MAX_DEFAULT_PAGE_SIZE=4096",
+      "SQLITE_MAX_MMAP_SIZE=0",
+      "SQLITE_DEFAULT_MEMSTATUS=1",
+      "SQLITE_OMIT_LOAD_EXTENSION",
+      "SQLITE_OMIT_WAL",
+      "SQLITE_OMIT_AUTOINIT",
+      "SQLITE_ENABLE_API_ARMOR"
+    ],
+    "allocator": "host libc allocator; native quota allocator not used"
+  },
+  "host": {
+    "positive_cases": 8,
+    "negative_controls": 1,
+    "processes": 20,
+    "SIGKILL": 4,
+    "zig_debug_regression": 284,
+    "zig_release_safe_regression": 284,
+    "python_regression": 168,
+    "format_zlint_shellcheck": true,
+    "C_compile": "Wall/Wextra/Wconversion/Werror",
+    "clang_analyzer_sources": 2,
+    "clang_analyzer_diagnostics": 0,
+    "existing_native_elf_links_and_audits": 6,
+    "new_SQLite_adapter_RV32_linked_or_executed": false
+  },
+  "parameters": {
+    "sqlite_page_bytes": 4096,
+    "journal_mode": "PERSIST",
+    "synchronous": "FULL",
+    "temp_store": "MEMORY",
+    "cache_size_pages_target": 8,
+    "max_page_count": 64,
+    "planned_cache_candidate_bytes": 524288,
+    "planned_sqlite_envelope_bytes": 2097152,
+    "planned_store_envelope_bytes": 2097152,
+    "existing_budget_reduced": false
+  },
+  "contract": {
+    "paths": [
+      "/main.db",
+      "/main.db-journal"
+    ],
+    "precreated_store_keys": [
+      1,
+      2
+    ],
+    "connections_per_binding_lifetime": 1,
+    "copy_chunk_bytes": 4096,
+    "xWrite_growth": "explicit service resize before copied writes; partial unsynced growth may remain on failure",
+    "xRead_short": "zero remaining buffer and SQLITE_IOERR_SHORT_READ",
+    "xDelete": "journal only, durable zero length; no general namespace delete",
+    "grants": "binding lifetime; sqlite3_file close is not a global cancel/commit",
+    "xSync": "service volume checkpoint; IO error propagated and endpoint frozen on unknown publication",
+    "locking": "single connection plus image-wide exclusive backend lock",
+    "device_characteristics": 0,
+    "WAL_SHM_mmap": false
+  },
+  "budget": {
+    "host_sqlite_malloc_peak_bytes": 193232,
+    "fixed_store_owner_queues_bytes": 596640,
+    "arithmetic_sum_bytes": 789872,
+    "native_allocator_or_stack_peak_qualified": false,
+    "excludes": [
+      "stack",
+      "process arena",
+      "stdio",
+      "backend",
+      "OS file cache"
+    ],
+    "bounded_allocator_used": false
+  },
+  "workload": {
+    "records": 64,
+    "blob_bytes_per_record": 1000,
+    "DB_bytes": 77824,
+    "update_backend_write_calls": 444,
+    "update_4KiB_write_bytes": 1818624,
+    "update_backend_syncs": 20,
+    "update_service_requests": 345,
+    "small_cache_intentionally_forces_spill": true
+  },
+  "recovery_evidence": "detached DB without journal is new after DB sync; reopening original managed image replays hot journal to old SQL state; detached post-recovery DB is old and integrity checks pass",
+  "process": {
+    "schema": 1,
+    "evidence": "host-real-SQLite-managed-PERSIST-service-VFS",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "detached_oracle_sqlite_version": "3.54.0",
+    "binary_sha256": "9fde5428af05177cc5bcac4494a6864202a0f89a801f5413f9bc3dbe4772f81f",
+    "commands": [
+      {
+        "command": "seed",
+        "image": "seed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":193232,\"sqlite_error\":0,\"point\":0,\"sql_committed\":true,\"generation\":8,\"journal_hot\":false,\"writes\":121,\"syncs\":15,\"requests\":87,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":68,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=193232 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-old",
+        "image": "seed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":9,\"journal_hot\":false,\"writes\":2,\"syncs\":2,\"requests\":92,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":68,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "rollback",
+        "image": "rollback.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"rollback\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":189600,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":17,\"journal_hot\":false,\"writes\":444,\"syncs\":16,\"requests\":418,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":364,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=189600 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-old",
+        "image": "rollback.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":18,\"journal_hot\":false,\"writes\":2,\"syncs\":2,\"requests\":92,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":364,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "quota-full",
+        "image": "quota.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"quota-full\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":189584,\"sqlite_error\":13,\"point\":0,\"sql_committed\":false,\"generation\":13,\"journal_hot\":false,\"writes\":255,\"syncs\":8,\"requests\":278,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":221,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQL rc=13 extended=13 message=database or disk is full sql=BEGIN; INSERT INTO records VALUES(1000,9,zeroblob(524288)); COMMIT;\nSQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=189584 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-old",
+        "image": "quota.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":14,\"journal_hot\":false,\"writes\":2,\"syncs\":2,\"requests\":92,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":221,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "journal-sync-wait",
+        "binary": "sqlite-store-probe",
+        "image": "journal-cut.img",
+        "exit_code": -9,
+        "pid": 5594,
+        "readiness": {
+          "phase": "journal-sync-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 163968,
+          "sqlite_error": 0,
+          "point": 2,
+          "sql_committed": false,
+          "generation": 10,
+          "journal_hot": false,
+          "writes": 101,
+          "syncs": 2,
+          "requests": 70,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 136,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "journal-cut.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":11,\"journal_hot\":false,\"writes\":2,\"syncs\":2,\"requests\":92,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":136,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "db-sync-wait",
+        "binary": "sqlite-store-probe",
+        "image": "db-cut.img",
+        "exit_code": -9,
+        "pid": 5596,
+        "readiness": {
+          "phase": "db-sync-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 163984,
+          "sqlite_error": 0,
+          "point": 1,
+          "sql_committed": false,
+          "generation": 18,
+          "journal_hot": true,
+          "writes": 440,
+          "syncs": 18,
+          "requests": 263,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 361,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "export-db",
+        "image": "db-cut.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"export-db\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":0,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":18,\"journal_hot\":true,\"writes\":0,\"syncs\":0,\"requests\":21,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":361,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "db-cut.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":20,\"journal_hot\":false,\"writes\":57,\"syncs\":4,\"requests\":200,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":397,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "export-db",
+        "image": "db-cut.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"export-db\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":0,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":20,\"journal_hot\":false,\"writes\":0,\"syncs\":0,\"requests\":21,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":397,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": ""
+      },
+      {
+        "command": "commit-wait",
+        "binary": "sqlite-store-probe",
+        "image": "ack-cut.img",
+        "exit_code": -9,
+        "pid": 5601,
+        "readiness": {
+          "phase": "commit-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 189600,
+          "sqlite_error": 0,
+          "point": 0,
+          "sql_committed": true,
+          "generation": 19,
+          "journal_hot": false,
+          "writes": 444,
+          "syncs": 20,
+          "requests": 345,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 363,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        },
+        "stdout": "",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=189600 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-new",
+        "image": "ack-cut.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":20,\"journal_hot\":false,\"writes\":2,\"syncs\":2,\"requests\":92,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":363,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "sync-error",
+        "image": "sync-error.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"sync-error\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":163968,\"sqlite_error\":10,\"point\":0,\"sql_committed\":false,\"generation\":9,\"journal_hot\":false,\"writes\":100,\"syncs\":0,\"requests\":69,\"unknown_publications\":1,\"recovery_required\":true,\"payload_high_water_pages\":68,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQL rc=10 extended=1034 message=disk I/O error sql=BEGIN IMMEDIATE; UPDATE records SET version=1; UPDATE marker SET version=1; COMMIT;\nSQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=163968 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-old",
+        "image": "sync-error.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":9,\"journal_hot\":false,\"writes\":0,\"syncs\":0,\"requests\":81,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":68,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-new",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":20,\"journal_hot\":false,\"writes\":0,\"syncs\":0,\"requests\":81,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":363,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "commit-wait",
+        "binary": "sqlite-store-no-sync",
+        "image": "negative-sync.img",
+        "exit_code": -9,
+        "pid": 5608,
+        "readiness": {
+          "phase": "commit-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 189600,
+          "sqlite_error": 0,
+          "point": 0,
+          "sql_committed": true,
+          "generation": 9,
+          "journal_hot": false,
+          "writes": 434,
+          "syncs": 0,
+          "requests": 329,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 68,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        },
+        "stdout": "",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=189600 cache_page_bytes=4096\n"
+      },
+      {
+        "command": "verify-new",
+        "image": "negative-sync.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "SCALAR_MISMATCH sql=SELECT sum(version) FROM records expected=64\nSQLITE_STORE_RESULT version=3.54.1 rc=1 sqlite_peak_bytes=158784 cache_page_bytes=4096\nerror: SQLiteProbeFailed\n"
+      },
+      {
+        "command": "verify-old",
+        "image": "negative-sync.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"sqlite_version\":\"3.54.1\",\"sqlite_peak_bytes\":185472,\"sqlite_error\":0,\"point\":0,\"sql_committed\":false,\"generation\":9,\"journal_hot\":false,\"writes\":0,\"syncs\":0,\"requests\":81,\"unknown_publications\":0,\"recovery_required\":false,\"payload_high_water_pages\":68,\"store_bytes\":557864,\"owner_bytes\":21112,\"queue_bytes\":17664}\n",
+        "stderr": "SQLITE_STORE_RESULT version=3.54.1 rc=0 sqlite_peak_bytes=185472 cache_page_bytes=4096\n"
+      }
+    ],
+    "cases": [
+      {
+        "name": "real_SQLite_64_rows_4096_page_PERSIST_FULL_reopens",
+        "passed": true,
+        "seed": {
+          "phase": "seed",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 193232,
+          "sqlite_error": 0,
+          "point": 0,
+          "sql_committed": true,
+          "generation": 8,
+          "journal_hot": false,
+          "writes": 121,
+          "syncs": 15,
+          "requests": 87,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 68,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        }
+      },
+      {
+        "name": "explicit_SQL_rollback_preserves_records_and_marker",
+        "passed": true
+      },
+      {
+        "name": "real_SQLITE_FULL_page_quota_rolls_back_and_reopens",
+        "passed": true,
+        "quota": {
+          "phase": "quota-full",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 189584,
+          "sqlite_error": 13,
+          "point": 0,
+          "sql_committed": false,
+          "generation": 13,
+          "journal_hot": false,
+          "writes": 255,
+          "syncs": 8,
+          "requests": 278,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 221,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        }
+      },
+      {
+        "name": "kill_after_journal_sync_keeps_SQL_transaction_old",
+        "passed": true,
+        "cut": {
+          "phase": "journal-sync-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 163968,
+          "sqlite_error": 0,
+          "point": 2,
+          "sql_committed": false,
+          "generation": 10,
+          "journal_hot": false,
+          "writes": 101,
+          "syncs": 2,
+          "requests": 70,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 136,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        }
+      },
+      {
+        "name": "real_hot_journal_reverts_durable_new_DB_to_old_transaction",
+        "passed": true,
+        "cut": {
+          "phase": "db-sync-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 163984,
+          "sqlite_error": 0,
+          "point": 1,
+          "sql_committed": false,
+          "generation": 18,
+          "journal_hot": true,
+          "writes": 440,
+          "syncs": 18,
+          "requests": 263,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 361,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        },
+        "detached_before": {
+          "records": 64,
+          "sum_version": 64,
+          "marker": 1,
+          "integrity": "ok",
+          "bytes": 77824,
+          "sha256": "166b4b1609bb044a24359a401eb8c6f6ad91366dd4ba6904fd2cfc97fead51fd"
+        },
+        "detached_after": {
+          "records": 64,
+          "sum_version": 0,
+          "marker": 0,
+          "integrity": "ok",
+          "bytes": 77824,
+          "sha256": "47b2d731578b88e6bf193326142652f577bb658168ee63652d3427b577b67ec3"
+        },
+        "recovered": {
+          "phase": "verify-old",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 185472,
+          "sqlite_error": 0,
+          "point": 0,
+          "sql_committed": false,
+          "generation": 20,
+          "journal_hot": false,
+          "writes": 57,
+          "syncs": 4,
+          "requests": 200,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 397,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        }
+      },
+      {
+        "name": "kill_after_SQL_COMMIT_success_preserves_all_changes",
+        "passed": true,
+        "ack": {
+          "phase": "commit-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 189600,
+          "sqlite_error": 0,
+          "point": 0,
+          "sql_committed": true,
+          "generation": 19,
+          "journal_hot": false,
+          "writes": 444,
+          "syncs": 20,
+          "requests": 345,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 363,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        }
+      },
+      {
+        "name": "device_sync_failure_reaches_SQLITE_IOERR_and_stops_binding",
+        "passed": true,
+        "error": {
+          "phase": "sync-error",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 163968,
+          "sqlite_error": 10,
+          "point": 0,
+          "sql_committed": false,
+          "generation": 9,
+          "journal_hot": false,
+          "writes": 100,
+          "syncs": 0,
+          "requests": 69,
+          "unknown_publications": 1,
+          "recovery_required": true,
+          "payload_high_water_pages": 68,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        }
+      },
+      {
+        "name": "compact_range_reconstruction_reopens_committed_SQLite",
+        "passed": true
+      }
+    ],
+    "negative_controls": [
+      {
+        "variant": "omit_all_VFS_sync_callbacks",
+        "semantic_counterexample_found": true,
+        "false_success": {
+          "phase": "commit-wait",
+          "sqlite_version": "3.54.1",
+          "sqlite_peak_bytes": 189600,
+          "sqlite_error": 0,
+          "point": 0,
+          "sql_committed": true,
+          "generation": 9,
+          "journal_hot": false,
+          "writes": 434,
+          "syncs": 0,
+          "requests": 329,
+          "unknown_publications": 0,
+          "recovery_required": false,
+          "payload_high_water_pages": 68,
+          "store_bytes": 557864,
+          "owner_bytes": 21112,
+          "queue_bytes": 17664
+        },
+        "verification_exit_code": 1,
+        "binary_sha256": "0bf12e856b5d3ca785c85a92b1fe9f69bba6ab32b426579bd7daac7748f5c228"
+      }
+    ],
+    "passed": true,
+    "baseline_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "baseline-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "40099f5955b78c79c72409a2ad76ccfed3ca3708b40fcc4fd5783a2a093e6b71"
+        },
+        {
+          "file": "baseline-payload.bin",
+          "offset": 17045651456,
+          "bytes": 278528,
+          "sha256": "404ba08b00189b1cab73cd5cef317925a21c75b30b8f4bd12871c35d26731dd5"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "committed_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "committed-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "65c10a3490070975edb0c69d5273734940f85cf26be18bfb1a80103447e78d07"
+        },
+        {
+          "file": "committed-payload.bin",
+          "offset": 17045651456,
+          "bytes": 1486848,
+          "sha256": "9507b2c655263f91df2c8f77917470b80f1198144ffc9372898a03444e83056b"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "images": {
+      "db-cut.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 2703360
+      },
+      "journal-cut.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1622016
+      },
+      "quota.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1982464
+      },
+      "seed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 311296
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 2555904
+      },
+      "rollback.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 2555904
+      },
+      "negative-sync.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 2555904
+      },
+      "ack-cut.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 2555904
+      },
+      "sync-error.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1622016
+      }
+    }
+  },
+  "physical_candidate_hashes_rechecked": 55,
+  "initial_diagnostics": [
+    "getentropy header declaration added",
+    "obsolete Zig dupeZ replaced by fixed sentinel command buffer",
+    "SAFETY comments added for globals initialized before C callback publication",
+    "Clang analyzer invocation split into one output per source"
+  ],
+  "limitations": [
+    "host managed two-slot prototype; not generic VFS or native SQLite session integration",
+    "single connection lifetime, no arbitrary file namespace or multiwriter locking",
+    "host allocator measurement is not bounded native allocator/OOM qualification",
+    "SQLite page quota FULL is not an injected real store allocator NoSpace",
+    "one device sync error tested; no exhaustive real-SQLite sector tear/callback fault matrix",
+    "SIGKILL preserves OS cache and is not physical power loss",
+    "8-page cache chosen to force spill; planned 512KiB cache performance comparison remains",
+    "no native C runtime/placement/stack/DMA/removal/SD power-loss qualification; WAL and relocating cleaner absent"
+  ],
+  "archive_regular_files": 43
+}
