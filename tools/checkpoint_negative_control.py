@@ -25,8 +25,7 @@ def main():
     changes = "".join(difflib.unified_diff(original.splitlines(True), mutant.splitlines(True), fromfile="source", tofile="mutant"))
     test = output / "checkpoint_model_test.zig"
     original = test.read_text()
-    mutant = original.replace("try equal(@as(usize, 130), events);", "// The mutation changes event count; retain semantic checks.")
-    mutant = mutant.replace("try equal(@as(usize, 4680), cuts);", "// The mutation changes case count; retain semantic checks.")
+    mutant = re.sub(r"try equal\(@as\(usize, \d+\), (events|cuts)\);", "// The mutation changes event/case count; retain semantic checks.", original)
     test.write_text(mutant)
     changes += "".join(difflib.unified_diff(original.splitlines(True), mutant.splitlines(True), fromfile="test-source", tofile="test-mutant"))
     (output / "mutation.diff").write_text(changes)

@@ -50,3 +50,7 @@ pub export fn checkpoint_probe_read(key: u32, offset: u64, bytes: [*]u8, length:
     _ = store.read(key, offset, bytes[0..length]) catch return -1;
     return 0;
 }
+pub export fn checkpoint_probe_verify(key: u32) c_int {
+    store.verify(key) catch return -1;
+    return 0;
+}
