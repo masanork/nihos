@@ -11,6 +11,7 @@ const ui = display_service.ui;
 const cpu_boot = @import("cpu_boot");
 const network = @import("network_service");
 const network_config = @import("network_config");
+const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 
@@ -45,7 +46,17 @@ var display_refresh_reported = false;
 var display_refresh_pending: u32 = 0;
 var network_report_at: u64 = 0;
 var network_ready = false;
+var devices_report_at: u64 = 0;
 fn serviceNetwork() void {
+    if (options.console_live and options.boot_fast) {
+        board_devices.poll();
+        const now = ui.timer().counter() orelse fail("device report clock");
+        if (now >= devices_report_at) {
+            devices_report_at = now + 5_000_000;
+            const devices = board_devices.snapshot();
+            logger.record("NIHOS_NATIVE_DEVICES", null, .{ "rtc_present", "rtc_valid", "rtc_flags", "rtc_control", "rtc_error", "rtc_raw_date", "rtc_raw_time", "year", "month", "day", "hour", "minute", "second", "ina_present", "bus_uv", "shunt_uv_x10", "shunt_negative", "imu_chip", "imu_initialized", "errors", "samples" }, &devices);
+        }
+    }
     if (!options.network) return;
     network.poll();
     const now = ui.timer().counter() orelse fail("network report clock");
@@ -66,6 +77,9 @@ fn serviceNetwork() void {
     if (now < network_report_at) return;
     network_report_at = now + 5_000_000;
     logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us", "renewals", "reconnects", "acquisitions", "failures", "disconnect_reason", "failed_station" }, &state);
+    logger.record("NIHOS_NATIVE_CONNECTIVITY", null, .{ "configured", "capabilities", "bluetooth_status" }, &state);
+    const bluetooth = network.bluetoothSnapshot();
+    logger.record("NIHOS_NATIVE_BLE", null, .{ "phase", "commands", "events", "advertisements", "malformed", "status", "timeouts" }, &bluetooth);
     const heartbeat = .{ .frames = display_service.runtime.snapshot().frames, .ticks0 = @atomicLoad(u32, &ticks[0], .acquire), .ticks1 = @atomicLoad(u32, &ticks[1], .acquire) };
     logger.record("NIHOS_NATIVE_NETWORK_UI", null, .{ "frames", "ticks0", "ticks1" }, &heartbeat);
 }
@@ -587,8 +601,10 @@ export fn nih_native_main() callconv(.c) noreturn {
     }
     if (options.network) {
         print("Wi-Fi starting (exclusive SDIO, lease maintenance enabled)\n");
-        network.begin(ui.timer(), if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, ui.serviceBacking(network.storage_bytes));
+        if (!network_config.enabled) print("Wi-Fi unconfigured: waiting for settings\n");
+        network.begin(ui.timer(), if (!network_config.enabled) .disabled else if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, ui.serviceBacking(network.storage_bytes));
     }
+    if (options.console_live and options.boot_fast) board_devices.begin(ui.timer());
     stageBegin(.cores);
     if (options.console_fault) {
         print("NIHOS_NATIVE_UI_FAULT_INJECTION stage=cores\n");
