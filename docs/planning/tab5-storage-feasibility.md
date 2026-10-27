@@ -439,3 +439,15 @@ the probe issued 214,335,488 B of backend reads during its payload churn, and a
 full search can scan metadata for every bitmap window. Budgeted/resumable search
 and metadata caching are required before native integration. Relocating-cleaner
 reserve use, streaming/partial writes and physical durability remain open.
+
+The [bounded-search/cache host follow-up](../measurements/2026-10-27-store-search-cache.md)
+now exposes resumable steps with independent leaf-visit and bitmap-page budgets.
+Prepared allocation results are invalidated by writer/reader state changes.
+The 128-leaf current-view cache uses 512 KiB data plus 2 KiB tags; the RV32 store
+state including it is 545,128 B, compared with 18,792 B uncached. In the identical
+host churn scenario, backend read requests fell from 214,335,488 B to 962,560 B,
+while all four saved generations were byte-identical. This supports the planned
+512 KiB map-cache envelope for that stress workload, not a measured target speedup.
+Blocking compatibility wrappers still exist; a native service must yield between
+steps and place the cache in its PSRAM budget. Streaming/partial writes, full I/O
+latency, target placement and physical durability remain separate gates.
