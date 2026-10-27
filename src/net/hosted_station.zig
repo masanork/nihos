@@ -2,10 +2,47 @@
 //! volatile, correlates RPC UID + ID, and requires an actual DHCP ACK.
 const std = @import("std");
 pub const wire = @import("hosted.zig");
+pub const ble = @import("ble_hci.zig");
 pub const dhcp = @import("dhcp.zig");
 pub const ipv6 = @import("ipv6.zig");
-pub const Join = union(enum) { saved, network: struct { ssid: []const u8, password: []const u8 } };
-pub const Phase = enum { handshake, version, init_wifi, storage, mode, start, ps, mac, config, connect, link, lease, done, failed };
+pub const Join = union(enum) { disabled, saved, network: struct { ssid: []const u8, password: []const u8 } };
+/// Owned, bounded provider boundary. JSON is only the initial provider; a later
+/// settings/SQLite service can replace it without retaining borrowed strings.
+pub const Configuration = struct {
+    ssid: [32]u8 = @splat(0),
+    password: [63]u8 = @splat(0),
+    ssid_len: u8 = 0,
+    password_len: u8 = 0,
+    mode: enum { disabled, saved, network } = .disabled,
+    pub fn set(self: *Configuration, join: Join) error{InvalidArgument}!void {
+        if (join == .network) {
+            const net = join.network;
+            if (net.ssid.len == 0 or net.ssid.len > 32 or net.password.len > 63) return error.InvalidArgument;
+            for (net.ssid) |b| if (b < 32 or b == 127) return error.InvalidArgument;
+            for (net.password) |b| if (b < 32 or b == 127) return error.InvalidArgument;
+        }
+        self.* = .{};
+        switch (join) {
+            .disabled => {},
+            .saved => self.mode = .saved,
+            .network => |net| {
+                self.mode = .network;
+                self.ssid_len = @intCast(net.ssid.len);
+                self.password_len = @intCast(net.password.len);
+                @memcpy(self.ssid[0..net.ssid.len], net.ssid);
+                @memcpy(self.password[0..net.password.len], net.password);
+            },
+        }
+    }
+    pub fn get(self: *const Configuration) Join {
+        return switch (self.mode) {
+            .disabled => .disabled,
+            .saved => .saved,
+            .network => .{ .network = .{ .ssid = self.ssid[0..self.ssid_len], .password = self.password[0..self.password_len] } },
+        };
+    }
+};
+pub const Phase = enum { handshake, version, init_wifi, storage, mode, start, ps, mac, config, connect, link, lease, done, failed, bt_init, bt_enable };
 pub const Error = wire.Error || dhcp.Error || ipv6.Error || error{ Timeout, Disconnected, InvalidArgument };
 pub const Client = struct {
     join: Join = .saved,
@@ -34,6 +71,11 @@ pub const Client = struct {
     peer_chip: u32 = 0,
     peer_mode: u32 = 255,
     peer_version: u32 = 0,
+    peer_capabilities: u8 = 0,
+    peer_extended_capabilities: u32 = 0,
+    bluetooth_setup_done: bool = false,
+    bluetooth_ready: bool = false,
+    bluetooth_status: u32 = 0,
     ipv6_enabled: bool = false,
     ipv6_client: ?ipv6.Client = null,
     tx_ipv6: bool = false,
@@ -64,6 +106,14 @@ pub const Client = struct {
                     const value = frame.payload[pos..][0..length];
                     pos += length;
                     switch (tag) {
+                        0x11 => {
+                            if (length != 1) return error.Malformed;
+                            self.peer_capabilities = value[0];
+                        },
+                        0x16 => {
+                            if (length != 4) return error.Malformed;
+                            self.peer_extended_capabilities = std.mem.readInt(u32, value[0..4], .little);
+                        },
                         0x12 => {
                             if (length != 1 or chip_seen or value[0] != 13) return error.Malformed;
                             self.peer_chip = value[0];
@@ -108,6 +158,19 @@ pub const Client = struct {
                 }
                 self.rpc_status = try wire.integer(response.body, if (self.phase == .mac) 2 else 1);
                 self.last_response = response.id;
+                if (self.phase == .bt_init or self.phase == .bt_enable) {
+                    self.bluetooth_status = self.rpc_status;
+                    if (self.rpc_status != 0) {
+                        self.afterBluetooth(now);
+                        return;
+                    }
+                    if (try wire.integer(response.body, 2) != 1 or try wire.integer(response.body, 3) != @as(u32, if (self.phase == .bt_init) 1 else 3)) return error.Malformed;
+                    if (self.phase == .bt_init) self.advance(.bt_enable, now) else {
+                        self.bluetooth_ready = true;
+                        self.afterBluetooth(now);
+                    }
+                    return;
+                }
                 if (self.rpc_status != 0 and self.phase != .version) {
                     self.phase = .failed;
                     return error.Rejected;
@@ -118,7 +181,7 @@ pub const Client = struct {
                             for (&self.version, 2..) |*value, field| value.* = try wire.integer(response.body, @intCast(field));
                             self.version_known = true;
                         }
-                        self.advance(.init_wifi, now);
+                        self.afterVersion(now);
                     },
                     .init_wifi => self.advance(.storage, now),
                     .storage => self.advance(.mode, now),
@@ -199,7 +262,14 @@ pub const Client = struct {
         if (now >= self.deadline) {
             // Old factory versions may not implement the version request. Its
             // late reply has a distinct UID and cannot complete another request.
-            if (self.phase == .version) self.advance(.init_wifi, now) else {
+            if (self.phase == .version) {
+                self.afterVersion(now);
+                if (self.phase == .done) return &.{};
+            } else if (self.phase == .bt_init or self.phase == .bt_enable) {
+                self.bluetooth_status = 0xffffffff;
+                self.afterBluetooth(now);
+                if (self.phase == .done) return &.{};
+            } else {
                 self.phase = .failed;
                 return error.Timeout;
             }
@@ -236,6 +306,11 @@ pub const Client = struct {
         var body = wire.Writer{ .out = &body_buffer };
         const id: u32 = switch (self.phase) {
             .version => 350,
+            .bt_init, .bt_enable => blk: {
+                try body.uint(1, 1); // Bluetooth feature
+                try body.uint(2, if (self.phase == .bt_init) 1 else 3);
+                break :blk 387;
+            },
             .init_wifi => blk: {
                 var config_buffer: [128]u8 = undefined;
                 var config = wire.Writer{ .out = &config_buffer };
@@ -298,6 +373,21 @@ pub const Client = struct {
         self.sequence +%= 1;
         self.output_len = result.len;
         return result;
+    }
+    fn afterVersion(self: *Client, now: u64) void {
+        // Factory 1.4.1 initializes/enables the controller during C6 boot and
+        // predates FeatureControl RPC 387. Verified against its registry source
+        // ee11e08c, not inferred from the advertised capability alone.
+        if (self.version_known and self.version[0] == 1 and self.version[1] == 4 and self.version[2] == 1) {
+            self.bluetooth_ready = self.peer_capabilities & 4 != 0;
+            self.afterBluetooth(now);
+            return;
+        }
+        if (self.peer_capabilities & 4 != 0) self.advance(.bt_init, now) else self.afterBluetooth(now);
+    }
+    fn afterBluetooth(self: *Client, now: u64) void {
+        self.bluetooth_setup_done = true;
+        self.advance(if (self.join == .disabled) .done else .init_wifi, now);
     }
     pub fn sent(self: *Client, now: u64) void {
         @memset(self.output[0..self.output_len], 0);
