@@ -65,7 +65,13 @@ noinline fn hex(value: u32) void {
 
 fn fail(reason: []const u8) noreturn {
     asm volatile ("csrci mstatus, 8");
-    if (options.card_read and @import("card_read.zig").armed) {
+    if (options.card_auto) {
+        if (@import("card_auto.zig").armed) {
+            const diagnostic = @import("card_auto.zig").diagnostic();
+            logger.record("NIHOS_NATIVE_CARD_AUTO_ABORT", null, .{ "job", "kind", "state", "fault", "pin1_verifies", "pin2_verifies" }, &diagnostic);
+            if (!@import("card_auto.zig").emergency()) print("NIHOS_NATIVE_CARD_ERASE_FAIL\n");
+        }
+    } else if (options.card_read and @import("card_read.zig").armed) {
         const diagnostic = @import("card_read.zig").diagnostic();
         logger.record("NIHOS_NATIVE_CARD_ABORT", null, .{ "state", "verifies", "surface_verifies", "outstanding", "remaining", "fault" }, &diagnostic);
         if (!@import("card_read.zig").emergency()) print("NIHOS_NATIVE_CARD_ERASE_FAIL\n");
@@ -547,14 +553,16 @@ export fn nih_native_main() callconv(.c) noreturn {
                     reg(0x500d6000 + 46 * 4).* = 0;
                     timer(0).stop();
                     asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
-                    if (options.card_read) @import("card_read.zig").prepare(timer(0), display_panel) catch |err| {
-                        if (options.card_photo) CardReadLog.photoPreflight();
+                    if (options.card_auto) @import("card_auto.zig").prepare(timer(0), display_panel) catch {
+                        fail("automatic card preparation; no PIN sent");
+                    } else if (options.card_read) @import("card_read.zig").prepare(timer(0), display_panel) catch |err| {
+                        if (options.card_photo and !options.card_auto) CardReadLog.photoPreflight();
                         print("NIHOS_NATIVE_CARD_READ_PREP_FAIL ");
                         print(@errorName(err));
                         print("\n");
                         fail("card read preparation; no PIN sent");
                     };
-                    if (options.card_photo) CardReadLog.photoPreflight();
+                    if (options.card_photo and !options.card_auto) CardReadLog.photoPreflight();
                     const screen = display.start(timer(0), display_panel, options.display_white, options.display_pattern, options.display_sram);
                     if (screen.status == 1) {
                         const source = display.irqSource();
@@ -569,10 +577,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
                     if (options.keypad_demo or options.card_read) logger.record("NIHOS_NATIVE_KEYPAD_STORAGE", null, .{ "font_low", "font_low_bytes", "pixel_bytes" }, &screen);
                     if (screen.status != 1) {
-                        if (options.card_read) @import("card_read.zig").abort();
+                        if (options.card_auto) {
+                            _ = @import("card_auto.zig").emergency();
+                        } else if (options.card_read) @import("card_read.zig").abort();
                         fail("display scanout startup");
                     }
-                    if (options.card_read) @import("card_read.zig").run(timer(0), display_panel, CardReadLog{});
+                    if (options.card_auto) @import("card_auto.zig").run(timer(0), display_panel, AutoLog{}) else if (options.card_read) @import("card_read.zig").run(timer(0), display_panel, CardReadLog{});
                     if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                     if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                 }
@@ -679,5 +689,33 @@ const CardReadLog = struct {
         logger.record("NIHOS_NATIVE_CARD_OVERVIEW", null, .{ "shown", "truncated", "missing_glyphs", "photo_enabled", "photo_decoded" }, report);
         if (options.card_photo) logger.record("NIHOS_NATIVE_PHOTO_CLEANUP", null, .{ "decoded", "stack_used", "erased" }, &@import("photo_runtime.zig").report);
         logger.record("NIHOS_NATIVE_CARD_READ_DONE", null, .{ "status", "fault", "remaining_before", "remaining_after", "verifies", "cleanup", "vbus_off", "attributes", "preflight_cut", "shown", "missing_glyphs", "erased" }, report);
+    }
+};
+
+const AutoLog = struct {
+    pub fn refresh(_: AutoLog, report: *const @import("display_runtime.zig").Report) void {
+        TouchLog.refresh(.{}, report);
+    }
+    pub fn boot(_: AutoLog, report: *const @import("photo_runtime.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_BOOT", null, .{ "selftest", "error_code", "stack_used", "erased" }, report);
+    }
+    pub fn detected(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_DETECTED", null, .{ "job", "kind", "pin1_verifies", "pin2_verifies", "cleanup", "erased" }, report);
+    }
+    pub fn prompt(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_PROMPT", null, .{ "job", "kind", "pin_index", "pin1_remaining", "pin2_remaining", "pin1_verifies", "pin2_verifies" }, report);
+    }
+    pub fn result(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_RESULT", null, .{ "job", "kind", "state", "fault", "sw", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "photo_error", "shown", "missing", "truncated", "cleanup" }, report);
+    }
+    pub fn finish(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_DONE", null, .{ "job", "kind", "fault", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "shown", "missing", "truncated", "cleanup", "erased" }, report);
+    }
+    pub fn abort(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_ABORT", null, .{ "job", "kind", "state", "fault", "pin1_verifies", "pin2_verifies" }, report);
+    }
+    pub fn removed(_: AutoLog, job: u32) void {
+        const report: struct { job: u32 } = .{ .job = job };
+        logger.record("NIHOS_NATIVE_CARD_AUTO_REMOVED", null, .{"job"}, &report);
     }
 };

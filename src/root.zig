@@ -67,6 +67,10 @@ test {
     _ = @import("graphics/card_read_result.zig");
     _ = @import("card/wire_policy.zig");
     _ = @import("card/surface.zig");
+    _ = @import("card/license.zig");
+    _ = @import("card/presence.zig");
+    _ = @import("card/extended_test.zig");
+    _ = @import("card/jis0208.zig");
     _ = @import("card/service_test.zig");
     _ = usb_host;
     _ = usb_descriptors;

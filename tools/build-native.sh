@@ -49,7 +49,7 @@ sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
     0x10000 "$build_dir/nihos-native.bin"
 set --
 if [ "$mode" = sqlite ]; then set -- "$build_dir/sqlite-manifest.json"; fi
-if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 10 ]; then set -- --none "$build_dir/photo-manifest.json"; fi
+if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 10 ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" = 11 ]; then set -- --none "$build_dir/photo-manifest.json"; fi
 if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 9 ]; then set -- --none "$repo_root/src/graphics/card_read_font.json"; fi
 if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/graphics/keypad_atlas.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \

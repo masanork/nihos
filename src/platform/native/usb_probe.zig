@@ -250,7 +250,7 @@ pub const Device = struct {
     alive: bool = true,
     cut_verified: bool = false,
     authenticated: bool = false,
-    policy: @import("card").WirePolicy = .{},
+    policy: @import("card").WirePolicyType(options.card_auto) = .{},
     last_header: [10]u8 = @splat(0),
 
     pub fn open(clock: timer_group.Timer, report: *Report) !Device {
@@ -281,14 +281,41 @@ pub const Device = struct {
         device.policy.photo_enabled = options.card_photo;
         return device;
     }
+    pub fn openAutomatic(clock: timer_group.Timer, report: *Report) !Device {
+        if (!options.card_auto) return error.Denied;
+        var device = try openAuthenticated(clock, report);
+        device.policy.profile = .detection;
+        device.policy.probe_only = options.card_auto_probe;
+        return device;
+    }
+    pub fn slotState(self: *Device, sequence: *u8) !u2 {
+        if (!options.card_auto) return error.Denied;
+        const ticket = sequence.*;
+        sequence.* +%= 1;
+        const request = [_]u8{ 0x65, 0, 0, 0, 0, 0, ticket, 0, 0, 0 };
+        var response: [64]u8 = @splat(0);
+        defer std.crypto.secureZero(u8, &response);
+        errdefer self.scrub() catch {
+            _ = self.emergency();
+        };
+        if (try self.send(&request) != request.len) return error.Transfer;
+        const length = try self.receive(&response);
+        const result = try ccid.response(response[0..length], 0x81, ticket);
+        try self.scrub();
+        if (result.status != 0 or result.code != 0 or result.payload.len != 0) return error.Card;
+        return result.state;
+    }
     pub noinline fn send(self: *Device, bytes: []const u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !usize {
         if (!self.alive) return error.Poisoned;
         // Readiness link deliberately cannot submit a PIN. Authenticated UI
         // activation is a later gate, independent of Service's host model.
-        if (bytes.len < 10 or (bytes[0] != 0x62 and bytes[0] != 0x63 and bytes[0] != 0x6f)) return error.Denied;
+        if (bytes.len < 10) return error.Denied;
         if (self.authenticated) {
             if (!self.policy.allow(bytes)) return error.Denied;
-        } else if (bytes[0] == 0x6f and bytes.len > 14 and bytes[11] == 0x20) return error.Denied;
+        } else {
+            if (bytes[0] != 0x62 and bytes[0] != 0x63 and bytes[0] != 0x6f) return error.Denied;
+            if (bytes[0] == 0x6f and bytes.len > 14 and bytes[11] == 0x20) return error.Denied;
+        }
         // OUT preparation copies bytes to the private DMA slot, never writes
         // into the caller's source. IN uses the separate receive entry point.
         return self.controller.stage(&self.pipes.output, false, false, @constCast(bytes));

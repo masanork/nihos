@@ -12,16 +12,16 @@ pub const Owner = struct {
     /// every retained DMA copy, including on error. A poisoned link must fail
     /// subsequent calls until the board owner explicitly reinitializes it.
     /// This call may block; run it on the card owner, never the UI/IRQ path.
-    pub fn step(self: *Owner, service: *card.Service, link: anytype) !bool {
+    pub fn step(self: *Owner, service: anytype, link: anytype) !bool {
         return self.dispatch(service, link, false);
     }
     /// Explicit board contract: powerCut must confirm VBUS-off, physical USB
     /// disconnect, and DMA retirement/erasure. A CCID acknowledgement alone
     /// never satisfies this fallback. Ordinary step keeps its strict policy.
-    pub inline fn stepWithPowerCut(self: *Owner, service: *card.Service, link: anytype) !bool {
+    pub inline fn stepWithPowerCut(self: *Owner, service: anytype, link: anytype) !bool {
         return self.dispatch(service, link, true);
     }
-    inline fn dispatch(self: *Owner, service: *card.Service, link: anytype, comptime cut: bool) !bool {
+    inline fn dispatch(self: *Owner, service: anytype, link: anytype, comptime cut: bool) !bool {
         const action = (try service.take()) orelse return false;
         var send: [512]u8 = @splat(0);
         var receive: [512]u8 = @splat(0);
@@ -58,7 +58,7 @@ pub const Owner = struct {
     }
 };
 
-fn failAndScrub(service: *card.Service, token: u32, link: anytype) !void {
+fn failAndScrub(service: anytype, token: u32, link: anytype) !void {
     link.scrub() catch |err| {
         try service.failed(token);
         return err;

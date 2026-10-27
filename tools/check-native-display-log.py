@@ -34,7 +34,7 @@ def check_keypad_storage(lease, storage, audit, runtime=False):
 
 
 def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
-    if mode not in (2, 3, 4, 5, 6, 7, 8, 9, 10) or expected_dpi not in (10, 60, 80):
+    if mode not in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11) or expected_dpi not in (10, 60, 80):
         raise ValueError('unknown display mode/timing')
     log = log.replace('\r', '')
     core = NATIVE.check(log, 'integer', psram_bytes, image, 'physical-device')
@@ -52,12 +52,12 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
                                          'dma_error', 'bridge_error', 'start_code')) or
             any(screen[name] != 1 for name in ('bl_latch', 'bl_enable', 'bl_level'))):
         raise ValueError('incomplete display startup')
-    if source['sram'] != (5 if mode in (8, 9, 10) else 2 if mode == 7 else int(mode in (5, 6))):
+    if source['sram'] != (5 if mode in (8, 9, 10, 11) else 2 if mode == 7 else int(mode in (5, 6))):
         raise ValueError('unexpected display source')
-    if mode in (5, 6, 7, 8, 9, 10):
+    if mode in (5, 6, 7, 8, 9, 10, 11):
         if (not 0x4ff00000 <= source['source'] < 0x4ff28000 or
                 (mode == 5 and source['dma_source'] != source['source']) or
-                source['word'] != (0xf7bdf7bd if mode in (8, 9, 10) else 0xffffffff if mode == 5 else 0x10821082) or
+                source['word'] != (0xf7bdf7bd if mode in (8, 9, 10, 11) else 0xffffffff if mode == 5 else 0x10821082) or
                 not source['dma_control'] & (1 << 4)):
             raise ValueError('invalid fixed SRAM source')
     elif source['source'] != 0x48030000:
@@ -71,11 +71,11 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20):
                 lease['lease_start'] < owner['start'] + owner['used'] or
                 lease['lease_start'] + lease['lease_bytes'] > owner['end'] - 64):
             raise ValueError('display descriptor lease crosses owner bounds')
-    if mode in (8, 9, 10):
+    if mode in (8, 9, 10, 11):
         lease = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_LEASE', ('lease_start', 'lease_bytes', 'nodes'))
         storage = NATIVE.fixed_record(log, 'NIHOS_NATIVE_KEYPAD_STORAGE', ('font_low', 'font_low_bytes', 'pixel_bytes'))
         audit = image.get('keypad_storage', {})
-        check_keypad_storage(lease, storage, audit, mode in (9, 10))
+        check_keypad_storage(lease, storage, audit, mode in (9, 10, 11))
         lease['storage'] = storage
     refresh = None
     if mode != 4:
