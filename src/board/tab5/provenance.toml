@@ -1,0 +1,30 @@
+schema = 1
+
+[[source]]
+name = "ESP-IDF ESP32-P4 LL headers and DSI HAL sequencing"
+url = "https://github.com/espressif/esp-idf/tree/v5.4.4"
+revision = "v5.4.4"
+license = "Apache-2.0"
+status = "header-dependency-and-reference"
+use = "GPIO, VO3 calibration/PMU, DSI host/PHY register layouts and fixed PLL setup; no SDK runtime linked"
+
+[[source]]
+name = "Espressif M5Stack Tab5 BSP (no graphical library)"
+url = "https://components.espressif.com/components/espressif/m5stack_tab5_noglib/versions/1.3.2"
+revision = "1.3.2"
+license = "Apache-2.0"
+status = "vendored-panel-tables-and-reference"
+use = "GPIO31/32 I2C wiring, GPIO22 backlight, expander LCD_EN/TOUCH_EN masks, touch firmware panel selection and VO3 2.5 V; licensed panel command headers in third_party/tab5-panel-init (ST7123 A3/E8 lengths bounded to initialized payloads)"
+
+[[source]]
+name = "PI4IOE5V6408 data sheet"
+url = "https://www.diodes.com/assets/Datasheets/PI4IOE5V6408.pdf"
+status = "hardware-register-reference"
+use = "Device identity, direction, latch, high impedance and pull configuration; no software reset of the shared expander"
+
+[[source]]
+name = "ESP32-P4 Technical Reference Manual"
+url = "https://documentation.espressif.com/esp32-p4_technical_reference_manual_en.html"
+revision = "pre-release v0.7 consulted 2026-10-26"
+status = "hardware-register-reference"
+use = "DW-GDMA descriptor completion/rearm and DSI internal video pattern generator; internal pattern bypasses external DPI pixels"

@@ -17,6 +17,9 @@ MEMORY {
     stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
+#if NIH_NATIVE_SQLITE
+    flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
+#endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
@@ -32,8 +35,41 @@ SECTIONS
     .flash.rodata : {
         __flash_records_start = .;
         KEEP(*(.flash.rodata.records))
+        *(.flash.rodata.boot_graphics)
+        *(.flash.rodata.display)
         __flash_records_end = .;
     } > flash_records
+#if NIH_NATIVE_SQLITE
+    /* The stock P4 loader accepts exactly two mapped segments. Fill the gap
+     * so esptool can merge records + SQLite into its second contiguous span. */
+    .flash.sqlpad : ALIGN(4) {
+        __flash_sql_pad_start = .;
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+        __flash_sql_pad_end = .;
+    } > flash_records
+    .flash.sqltext : {
+        __flash_sql_text_start = .;
+        *sql_sqlite3.o(.text .text.*)
+        *sql_session.o(.text .text.*)
+        *sql_vfs.o(.text .text.*)
+        *sql_lfs.o(.text .text.*)
+        *sql_lfs_util.o(.text .text.*)
+        *sql_lfs_reader.o(.text .text.*)
+        . = ALIGN(16);
+        __flash_sql_text_end = .;
+    } > flash_sql
+    .flash.sqlrodata : ALIGN(16) {
+        __flash_sql_rodata_start = .;
+        *sql_sqlite3.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_session.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_vfs.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_lfs.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_lfs_util.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_lfs_reader.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_sql_rodata_end = .;
+    } > flash_sql
+#endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {
         __fp_app_start = .;
@@ -80,7 +116,11 @@ SECTIONS
     ASSERT(__heap_end - __heap_start >= 49152, "native SRAM heap below 48 KiB")
 }
 /* ROM ABI, not linked ESP-IDF implementations. */
-PROVIDE(nih_rom_putc = 0x4fc00054);
+/* Keep the audited ROM ABI visible even when bounded live-console TX replaces
+ * all ROM putc calls in this image. This does not link or execute ROM code. */
+nih_rom_putc = 0x4fc00054;
+nih_rom_get_cpu_ticks = 0x4fc00040;
+nih_rom_set_cpu_ticks = 0x4fc00044;
 PROVIDE(nih_rom_set_cpu1_entry = 0x4fc000a8);
 PROVIDE(nih_rom_l2_line_size = 0x4fc003cc);
 PROVIDE(nih_rom_l2_enable = 0x4fc00504);

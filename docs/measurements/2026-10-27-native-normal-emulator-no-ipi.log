@@ -1,0 +1,53 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  esp_emu] Loaded firmware: 132736 bytes
+[INFO  machine] WiFi SoftAP: WPA2/WPA3 transition enabled (PWE Both) for SSID 'myssid'
+[INFO  net_user] user-net: DNS forwarder upstream [10.193.127.155:53], restrict=false
+[INFO  net_user] user-net: backend ready (gateway 192.168.4.1, 0 hostfwd rules)
+[INFO  esp_emu] Network backend: user-mode (smoltcp NAT, 192.168.4.1 -> host loopback)
+[INFO  esp_emu] Loaded ROM ELF: <embedded esp32p4> (256824 bytes)
+[INFO  esp_emu] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 2095 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  machine] PSRAM configured as 32768 KB
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  esp_emu] Loaded application ELF /Users/masanork/repo/nihos-native-console/build/normal-boot-smoke/case-4/nihos-native.elf: 1378136 bytes
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  esp_emu] Starting emulation (chip=esp32p4, batch_size=50000)
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbc4
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+[INFO  machine] App nihos-native native-boot-1 from flash offset 0x10000: application ELF #1 is its build
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  periph::ble_hci] BLE: no VHCI symbols found (firmware may not use Bluetooth)
+[INFO  periph::thread_radio] Thread: no IEEE 802.15.4 symbols found (firmware may not use Thread)
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_BOOT_TEST case=00000004
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001366 probe=4000019a mapping=40000ea8 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00000d00 identity=000000cf bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000028 mr4=00000040 mr8=0000000b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=00000071
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_BOOT_TIME stage=00000001 elapsed_us=00000796
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000001 owner_checks=00000030 peer_checks=00000030 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_FAIL boot health timeout
+[INFO  esp_emu] Exit-on string 'NIHOS_NATIVE_FAIL' found in output

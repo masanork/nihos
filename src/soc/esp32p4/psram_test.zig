@@ -15,6 +15,7 @@ const Model = struct {
     stuck: bool = false,
     update_fifo: bool = true,
     valid_phases: bool = true,
+    drop_four_byte_gate: bool = false,
 
     pub fn read(self: *Model, offset: usize) u32 {
         if (offset == regs.command and self.pending != 0) {
@@ -23,7 +24,14 @@ const Model = struct {
                 self.pending -= 1;
                 if (self.pending == 0) {
                     self.words[regs.command / 4] &= ~regs.start;
-                    if (self.update_fifo) self.words[regs.fifo / 4] = self.responses[self.starts - 1];
+                    if (self.update_fifo) {
+                        // With the independent four-byte gate closed, the
+                        // requested identity register is not addressable.
+                        self.words[regs.fifo / 4] = if (self.words[regs.cache_control / 4] & regs.four_byte_address != 0)
+                            self.responses[self.starts - 1]
+                        else
+                            self.responses[0];
+                    }
                 }
             }
         }
@@ -33,6 +41,8 @@ const Model = struct {
     pub fn write(self: *Model, offset: usize, value: u32) void {
         self.writes += 1;
         self.words[offset / 4] = value;
+        if (offset == regs.cache_control and self.drop_four_byte_gate)
+            self.words[offset / 4] &= ~regs.four_byte_address;
         if (offset == regs.command and value & regs.start != 0) {
             // Fixed register-read protocol: command=16, address=32,
             // dummy=8, input=16 bits, CS1, low FIFO, DDR/octal phases.
@@ -42,6 +52,7 @@ const Model = struct {
                 self.words[regs.user / 4] == 0xf0000000 and
                 self.words[regs.control / 4] == 0x274 and
                 self.words[regs.ddr / 4] == 0x21 and
+                self.words[regs.cache_control / 4] & regs.four_byte_address != 0 and
                 self.words[regs.miso_length / 4] == 15 and
                 self.words[regs.misc / 4] & 3 == 1;
             self.addresses[self.starts] = self.words[regs.address / 4];
@@ -61,6 +72,20 @@ test "discovery waits for completion and repeats both identity pairs" {
     try std.testing.expectEqual(@as(u32, 8), model.polls);
     try std.testing.expectEqualSlices(u32, &.{ 0, 2, 0, 2 }, &model.addresses);
     try std.testing.expect(model.valid_phases);
+}
+
+test "32-bit address length also needs the four-byte gate and preserves other controls" {
+    var model = Model{};
+    model.words[regs.cache_control / 4] = 0x4000_0200;
+    var controller = psram.Controller(*Model){ .io = &model, .poll_limit = 2 };
+    try std.testing.expectEqual(psram.Status.detected, controller.discover().status);
+    try std.testing.expectEqual(@as(u32, 0x4000_0202), model.words[regs.cache_control / 4]);
+    var dropped = Model{ .drop_four_byte_gate = true };
+    var rejected = psram.Controller(*Model){ .io = &dropped, .poll_limit = 2 };
+    const found = rejected.discover();
+    try std.testing.expectEqual(psram.Status.unsupported, found.status);
+    try std.testing.expectEqual(@as(u32, 0), found.bytes);
+    try std.testing.expectEqual(@as(u32, 31), dropped.words[regs.user1 / 4] >> 26);
 }
 
 test "a stuck command has a fixed poll budget and poisons reuse" {
@@ -125,6 +150,7 @@ const Device = struct {
     data_reads: u32 = 0,
     data_writes: u32 = 0,
     valid_phases: bool = true,
+    enforce_mode_dummy: bool = false,
 
     const Cell = struct { address: u32 = 0, value: u32 = 0, occupied: bool = false };
 
@@ -165,8 +191,13 @@ const Device = struct {
         const operation = self.opcode();
         const writing = operation == 0xc0c0 or operation == 0x8080;
         const mode = operation == 0x4040 or operation == 0xc0c0;
-        const dummy: u32 = if (operation == 0xc0c0) 0 else if (operation == 0) 18 else 8;
+        const fast = self.modes[0] & 0x1c == 0x10;
+        const dummy: u32 = if (operation == 0xc0c0) 0 else if (operation == 0) (if (fast) 26 else 18) else (if (fast) 12 else 8);
         const address = self.words[regs.address / 4];
+        if (self.enforce_mode_dummy and operation == 0x4040 and self.words[regs.user1 / 4] & 63 != dummy - 1) {
+            self.words[regs.fifo / 4] = 0xa5a5a5a5;
+            return;
+        }
         const count: u32 = if (mode) (if (operation == 0x4040 and address == 8) 8 else 16) else 32;
         const expected_user: u32 = 0xc0000000 | (if (dummy == 0) @as(u32, 0) else 1 << 29) |
             (if (writing) @as(u32, 1 << 27) else 1 << 28);
@@ -266,4 +297,35 @@ test "data corruption revokes the command capacity" {
     const found = controller.discover();
     try std.testing.expectError(error.DataMismatch, controller.exercise(found));
     try std.testing.expectEqual(@as(u32, 0), controller.capacity);
+}
+
+test "200 MHz mode transition updates mode latency before data qualification" {
+    var device = Device{};
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discover();
+    const modes = try controller.configureProfile(found, .fast200x16);
+    try std.testing.expectEqualDeep(psram.Modes{ .mr0 = 0x30, .mr4 = 0x20, .mr8 = 0x4b }, modes);
+    try controller.writeWord(0, 0x5a6b7c8d);
+    try std.testing.expectEqual(@as(u32, 0x5a6b7c8d), try controller.readWord(0));
+    try std.testing.expect(device.valid_phases);
+    _ = try controller.configureProfile(found, .safe20x8);
+    try controller.writeWord(0, 0xa55aff00);
+    try std.testing.expectEqual(@as(u32, 0xa55aff00), try controller.readWord(0));
+    try std.testing.expect(device.valid_phases);
+}
+
+test "retained 200 MHz mode can be identified and returned to conservative boot mode" {
+    var device = Device{ .enforce_mode_dummy = true };
+    device.modes[0] = 0x30;
+    device.modes[4] = 0x20;
+    device.modes[8] = 0x4b;
+    var controller = psram.Controller(*Device){ .io = &device, .poll_limit = 2 };
+    const found = controller.discoverRetained();
+    try std.testing.expectEqual(psram.Status.detected, found.status);
+    try std.testing.expectEqual(@as(u32, 8), controller.transactions);
+    const modes = try controller.configure(found);
+    try std.testing.expectEqualDeep(psram.Modes{ .mr0 = 0x28, .mr4 = 0x40, .mr8 = 0x0b }, modes);
+    try controller.writeWord(0, 0x7fff8000);
+    try std.testing.expectEqual(@as(u32, 0x7fff8000), try controller.readWord(0));
+    try std.testing.expect(device.valid_phases);
 }

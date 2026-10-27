@@ -46,11 +46,18 @@ jobs:
           done
           sh tools/run-native-smoke.sh compiled 32M
 
+      - name: Native SQLite Flash execution and stack qualification
+        run: |
+          sh tools/run-native-smoke.sh sqlite 0
+          sh tools/run-native-smoke.sh sqlite 4M
+          sh tools/run-native-smoke.sh sqlite 32M
+
       - name: Build physical Tab5 revision 1.x image
         run: |
           sh tools/build-native.sh device
           sh tools/build-native.sh device floating
           sh tools/build-native.sh device compiled
+          sh tools/build-native.sh device sqlite
 
       - name: Retain native evidence
         if: always()
@@ -59,6 +66,7 @@ jobs:
           name: native-boot-evidence
           path: |
             build/native-*/image-audit.json
+            build/native-*/sqlite-manifest.json
             build/native-*/native-layout.ld
             build/native-*/loader/bootloader/bootloader.elf
             build/native-*/loader/config/sdkconfig.h
@@ -70,6 +78,7 @@ jobs:
             build/native-emulator*/psram-*/emulator.log
             build/native-emulator*/psram-*/smoke-report.json
             build/native-emulator*/psram-*/image-audit.json
+            build/native-emulator*/psram-*/sqlite-manifest.json
             build/native-emulator*/psram-*/native-layout.ld
             build/native-emulator*/psram-*/nihos-native.elf
             build/native-emulator*/psram-*/nihos-native.bin

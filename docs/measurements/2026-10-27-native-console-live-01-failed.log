@@ -1,0 +1,37 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff096d0
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbc4
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_QUALIFICATION enabled=1
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=4000118e probe=4000016e mapping=40000ce0 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00008d30 identity=0000a0df bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_LINK core=0000d05d bus=00010001 command=00010001 sctrl=02f7c679 cmd=8cfc0000 ddr=00003023 dll_cache=00000021 dll_command=00000021 dqs0=00010001 dqs1=00010001
+NIHOS_NATIVE_PSRAM_TUNING status=00000001 stage=00000004 phase_mask=0000000f phase=00000000 delay_mask=3fffffe0 delay=00000011 repetitions=00000064 reads=00018440 writes=00000020 error_code=00000000
+NIHOS_NATIVE_PSRAM_MPLL status=00000001 mhz=00000190 reused=00000001 divider=00000099 error_code=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000001 dref=00000007 mul=00000005 control=00000180 analog=76800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000030 mr4=00000020 mr8=0000004b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=0001853e
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_PSRAM_SWEEP bytes=02000000 passes=00000002 reads=01000000 writes=01000000 syncs=00000004 confirmed=00000001
+NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000006 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=0ac43d13 phy_trim=0000020f phy_status=00000003 scanout=00000000 backlight=00000000
+NIHOS_NATIVE_DISPLAY_PINS initial_pins=00000003 failed_pins=00000000 recovery_pulses=00000000
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000302 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_DISPLAY_SOURCE sram=00000000 source=48030000 dma_source=48030880 dma_control=001e1b41 word=00000000
+NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=00000500 logical_height=000002d0 rotation=00000001
+NIHOS_NATIVE_DISPLAY_TIMING pixel_hz=04c4b400 refresh_millihz=0000ea4e htotal=00000322 vtotal=0000067f
+NIHOS_NATIVE_DISPLAY_LEASE lease_start=00000000 lease_bytes=00000000 nodes=00000001
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000005 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000017 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000009 target=00000055
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000040 owner_checks=00000c00 peer_checks=00000c00 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_FAIL CPU0 external memory begin
+NIHOS_NATIVE_UI_FAILURE visible=1 scheduler=stopped

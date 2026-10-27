@@ -8,12 +8,129 @@ import sys
 
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
+STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
 
 
-def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
+def check_storage(record, sectors):
+    if (record['status'] not in (1, 2) or record['error_code'] != 0 or record['passes'] != 2 or
+            record['block_size'] not in (512, 4096) or record['block_count'] * record['block_size'] != sectors * 512 or
+            record['entries'] > 128 or record['files'] + record['directories'] != record['entries'] or
+            not 0 < record['reads'] <= 8192 or record['denied_writes'] != 0):
+        raise ValueError('incomplete read-only littlefs qualification')
+    if record['status'] == 2:
+        if not 0 < record['file_bytes'] <= 65536 or record['files'] == 0:
+            raise ValueError('incomplete littlefs file read')
+    elif record['file_bytes'] or record['file_crc'] or record['file_name_digest']:
+        raise ValueError('unexpected file data in directory-only qualification')
+    return record
+
+
+def repeated_records(log, marker, names):
+    pattern = re.escape(marker) + "".join(" " + name + r"=([0-9a-f]{8})" for name in names)
+    found = [match.groups() for match in re.finditer(pattern + r"(?:\n|$)", log)]
+    if len(found) != log.count(marker + " "):
+        raise ValueError("missing/duplicate/malformed " + marker)
+    return [dict(zip(names, (int(value, 16) for value in row))) for row in found]
+
+
+def fixed_record(log, marker, names):
+    found = repeated_records(log, marker, names)
+    if len(found) != 1:
+        raise ValueError("missing/duplicate/malformed " + marker)
+    return found[0]
+
+
+def check_fast_psram(log, evidence, normal_boot=False):
+    if 'NIHOS_NATIVE_PSRAM_TUNING ' not in log:
+        if 'NIHOS_NATIVE_PSRAM_LINK ' in log:
+            raise ValueError('PSRAM200 register report requires tuning evidence')
+        return None
+    if evidence != 'physical-device':
+        raise ValueError('PSRAM200 requires physical-device evidence')
+    pll = fixed_record(log, 'NIHOS_NATIVE_PSRAM_MPLL', ('status', 'mhz', 'reused', 'divider', 'error_code'))
+    tuning = fixed_record(log, 'NIHOS_NATIVE_PSRAM_TUNING',
+                          ('status', 'stage', 'phase_mask', 'phase', 'delay_mask', 'delay', 'repetitions', 'reads', 'writes', 'error_code'))
+    link = fixed_record(log, 'NIHOS_NATIVE_PSRAM_LINK',
+                        ('core', 'bus', 'command', 'sctrl', 'cmd', 'ddr', 'dll_cache', 'dll_command', 'dqs0', 'dqs1'))
+    def window(mask, count):
+        best = (0, 0)
+        run = 0
+        for index in range(count):
+            run = run + 1 if mask & (1 << index) else 0
+            if run > best[1]:
+                best = (index + 1 - run, run)
+        return best
+    valid_taps = bin(tuning['delay_mask']).count('1')
+    reads_valid = tuning['reads'] == 99392
+    if normal_boot:
+        reads_valid = ((6 + valid_taps * 100 + 31 - valid_taps) * 32 <= tuning['reads'] <= 99392 and tuning['reads'] % 32 == 0)
+    phase, phase_length = window(tuning['phase_mask'], 4)
+    delay_start, delay_length = window(tuning['delay_mask'], 31)
+    delay = delay_start + (delay_length - 1) // 2
+    if (pll['status'] != 1 or pll['mhz'] != 400 or pll['reused'] not in (0, 1) or
+            pll['divider'] != 0x99 or pll['error_code'] or
+            tuning['status'] != 1 or tuning['stage'] != 4 or tuning['error_code'] or
+            tuning['phase_mask'] >> 4 or tuning['delay_mask'] >> 31 or
+            not phase_length or delay_length < 2 or tuning['phase'] != phase or tuning['delay'] != delay or
+            tuning['repetitions'] != 100 or not reads_valid or tuning['writes'] != 32):
+        raise ValueError('incomplete PSRAM200 PLL/tuning qualification')
+    dqs = max(15 - delay, 0)
+    if (link['core'] >> 12 & 3 != 1 or link['core'] >> 16 & 255 != 0 or
+            link['bus'] != 0x10001 or link['command'] != 0x10001 or
+            link['sctrl'] >> 6 & 63 != 25 or link['sctrl'] >> 22 & 63 != 11 or
+            link['cmd'] & (3 << 26) != 3 << 26 or link['ddr'] & 31 != 3 or
+            not link['dll_cache'] & 32 or not link['dll_command'] & 32 or
+            any(value >> 1 & 3 != phase or value >> 7 & 15 != dqs or value >> 17 & 15 != dqs
+                for value in (link['dqs0'], link['dqs1']))):
+        raise ValueError('PSRAM200 register readback does not match selected timing')
+    return {'mpll': pll, 'tuning': tuning, 'link': link}
+
+
+def check_cpu_clock(log, image, evidence):
+    cpu_clock = None
+    clock_function = image.get('flash_boot',{}).get('functions',{}).get('clock') if image else None
+    if clock_function is not None or 'NIHOS_NATIVE_CPU_CLOCK ' in log:
+        cpu_clock = fixed_record(log,'NIHOS_NATIVE_CPU_CLOCK',('status','error_code','pc','source','cpll_mhz','before_mhz','after_mhz','mem_mhz','apb_mhz','ctrl0','ctrl1','ctrl2','rom_mhz'))
+        c = cpu_clock
+        if (clock_function is None or evidence != 'physical-device' or c['status'] != 1 or c['error_code'] or c['source'] != 1 or
+                c['cpll_mhz'] != 360 or c['rom_mhz'] != 360 or c['mem_mhz'] != 180 or c['apb_mhz'] != 90 or
+                not 358 <= c['after_mhz'] <= 362 or not any(abs(c['before_mhz']-mhz) <= 2 for mhz in (90,180,360)) or
+                c['ctrl0'] & 0x1ffffff0 or c['ctrl1'] != 1 or c['ctrl2'] & 0x00ffffff != 0x10000 or
+                not int(clock_function['start'],16) <= c['pc'] < int(clock_function['end'],16) or c['pc']%2 or
+                log.index('NIHOS_NATIVE_CPU_CLOCK ') > log.index('NIHOS_NATIVE_PSRAM ')):
+            raise ValueError('incomplete native CPU clock initialization')
+    return cpu_clock
+
+
+def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
+          require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
+          external_reserved_bytes=3 * 65536, require_normal=False, headless_case=0):
+    if external_reserved_bytes not in (3 * 65536, 2 << 20):
+        raise ValueError("unknown external reservation")
+    if evidence not in ("emulator", "physical-device"):
+        raise ValueError("invalid evidence source")
+    profile = image.get("memory", {}).get("profile") if image is not None else None
+    if evidence == "physical-device" and profile != "device":
+        raise ValueError("physical evidence requires a device-profile image audit")
+    if evidence == "emulator" and profile == "device":
+        raise ValueError("device image requires explicit physical evidence source")
     log = log.replace("\\r", "").replace("\r", "")
-    if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
-        raise ValueError("missing boot or unexpected reboot")
+    headless = headless_case in (1, 2)
+    if headless_case and (not headless or not require_normal or profile != 'emulator' or evidence != 'emulator'):
+        raise ValueError('headless normal boot requires an explicit emulator test case')
+    if headless:
+        case = fixed_record(log, 'NIHOS_NATIVE_BOOT_TEST', ('case',))
+        if case['case'] != headless_case or 'NIHOS_NATIVE_UI_' in log:
+            raise ValueError('headless test case mismatch or invented display evidence')
+    elif 'NIHOS_NATIVE_BOOT_TEST ' in log:
+        raise ValueError('emulator test evidence cannot qualify device boot')
+    normal_boot = log.count("NIHOS_NATIVE_PROFILE normal=1 qualification=0") == 1
+    if require_normal != normal_boot or (normal_boot and (require_qualification or require_sdmmc or require_sdmmc_fast or require_storage or (profile != 'device' and not headless))):
+        raise ValueError('normal boot must be explicitly requested and cannot qualify a soak/storage run')
+    boot_headers = re.findall(r"^NIHOS_[A-Z0-9_]*_BOOT(?= |$)", log, re.MULTILINE)
+    if (log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1 or
+            boot_headers != ["NIHOS_NATIVE_BOOT"] or log.count("ESP-ROM:esp32p4") > 1):
+        raise ValueError("missing boot, unexpected reboot or mixed firmware capture")
     if "NIHOS_NATIVE_FAIL" in log or "NIHOS_NATIVE_TRAP" in log:
         raise ValueError("native failure/trap")
     modes = re.findall(r"NIHOS_NATIVE_MODE floating=([01])", log)
@@ -25,6 +142,11 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         raise ValueError("missing/incompatible compiler FP mode")
     if compiled_modes[0] == "1":
         mode = "compiled"
+    sql_modes = re.findall(r"NIHOS_NATIVE_SQLITE_MODE enabled=([01])", log)
+    if sql_modes:
+        if sql_modes != ["1"] or log.count("NIHOS_NATIVE_SQLITE_MODE") != 1 or mode != "integer":
+            raise ValueError("invalid/incompatible SQLite build mode")
+        mode = "sqlite"
     if expected_mode is not None and mode != expected_mode:
         raise ValueError("native mode differs from requested build")
     if "NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned" not in log:
@@ -59,6 +181,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
             supply["analog"] != (supply["dref"] << 28) | (supply["mul"] << 23) | (1 << 26) or
             (supply["calibrated"] == 0 and (supply["dref"], supply["mul"]) != (6, 5))):
         raise ValueError("incomplete PSRAM supply programming/readback")
+    fast_psram = check_fast_psram(log, evidence, normal_boot)
     io_names = ("status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions")
     pattern = "NIHOS_NATIVE_PSRAM_IO" + "".join(" " + name + r"=([0-9a-f]{8})" for name in io_names)
     matches = re.findall(pattern, log)
@@ -72,10 +195,11 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         addresses = psram["bytes"].bit_length() - 1
         if (psram_io["status"] != 1 or psram_io["addresses"] != addresses or psram_io["passes"] != 2 or
                 psram_io["reads"] != 2 * addresses or psram_io["writes"] != 2 * addresses or
-                psram_io["transactions"] != 13 + 4 * addresses or
+                psram_io["transactions"] != (4 + 18 + 8 * addresses + 32 + fast_psram["tuning"]["reads"] if fast_psram else 13 + 4 * addresses) or
                 any(psram_io[name] > 255 for name in ("mr0", "mr4", "mr8")) or
-                psram_io["mr0"] & 63 != 0x28 or psram_io["mr4"] & 0xe0 != 0x40 or
-                psram_io["mr8"] & 0x4f != 0x0b):
+                psram_io["mr0"] & 63 != (0x30 if fast_psram else 0x28) or
+                psram_io["mr4"] & 0xe0 != (0x20 if fast_psram else 0x40) or
+                psram_io["mr8"] & 0x4f != (0x4b if fast_psram else 0x0b)):
             raise ValueError("incomplete PSRAM data/mode qualification")
     mapping_names = ("status", "failure", "line_bytes", "last_address", "last_actual", "last_expected",
                      "bytes", "entries", "cpu_checks", "command_checks", "transactions", "syncs")
@@ -93,8 +217,30 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
     if len(matches) != 1:
         raise ValueError("missing/duplicate PSRAM SMP evidence")
     psram_smp = dict(zip(smp_names, (int(value, 16) for value in matches[0])))
-    if list(psram_smp.values()) != ([1, 64, 3072, 3072, 48, 1] if psram["status"] else [0] * 6):
+    if list(psram_smp.values()) != ([1, 1 if normal_boot else 64, 48 if normal_boot else 3072, 48 if normal_boot else 3072, 48, 1] if psram["status"] else [0] * 6):
         raise ValueError("incomplete PSRAM cross-core handoff evidence")
+    if normal_boot:
+        if mode != 'integer' or (fast_psram is None and not headless):
+            raise ValueError('normal boot requires native integer PSRAM200 profile')
+        for forbidden in ('NIHOS_NATIVE_QUALIFICATION ', 'NIHOS_NATIVE_PSRAM_SWEEP ', 'NIHOS_NATIVE_HEARTBEAT ', 'NIHOS_NATIVE_SOAK_PASS ', 'NIHOS_NATIVE_TASKS '):
+            if forbidden in log:
+                raise ValueError('qualification workload in normal boot')
+        health = fixed_record(log, 'NIHOS_NATIVE_BOOT_HEALTH', ('cpu0_ticks','cpu1_ticks','ipi0','ipi1'))
+        if min(health.values()) < 1 or health['ipi0'] != 1 or health['ipi1'] != 1:
+            raise ValueError('incomplete normal boot CPU/timer/IPI health')
+        times = repeated_records(log, 'NIHOS_NATIVE_BOOT_TIME', ('stage','elapsed_us'))
+        if ([row['stage'] for row in times] != ([1,4,6] if headless else [1,3,5,7,4,6]) or
+                not times[0]['elapsed_us'] or any(a['elapsed_us'] >= b['elapsed_us'] for a,b in zip(times,times[1:]))):
+            raise ValueError('missing or out-of-order normal boot stage timestamps')
+        order = ('NIHOS_NATIVE_BOOT_HEALTH ', 'NIHOS_NATIVE_CONSOLE ', 'NIHOS_NATIVE_UI_READY ')
+        if headless:
+            order = ('NIHOS_NATIVE_BOOT_HEALTH ', 'NIHOS_NATIVE_NORMAL_READY ', 'NIHOS_NATIVE_NORMAL_IDLE ')
+        if [log.index(m) for m in order] != sorted(log.index(m) for m in order):
+            raise ValueError('normal boot READY precedes health checks')
+        return {'normal_boot': True, 'headless_emulator': headless, 'qualification': None, 'evidence': evidence, 'psram': psram,
+                'psram_fast': fast_psram, 'psram_mapping': mapped, 'psram_smp': psram_smp,
+                'cpu_clock': check_cpu_clock(log, image, evidence), 'health': health, 'boot_times': times,
+                'ready_us_from_diagnostic_clock': times[-1]['elapsed_us']}
     pattern = (r"NIHOS_NATIVE_HEARTBEAT round=([0-9a-f]{8}) cpu0=([0-9a-f]{8}) "
                r"cpu1=([0-9a-f]{8}) ticks0=([0-9a-f]{8}) ticks1=([0-9a-f]{8})")
     samples = [tuple(int(value, 16) for value in match)
@@ -161,7 +307,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         if (record["confirmed"] != 1 or record["saves"] != record["restores"] or
                 record["saves"] != record["timer"] + record["calls"] + record["ipi"]):
             raise ValueError("FP copy/return accounting mismatch")
-        if mode == "integer":
+        if mode in ("integer", "sqlite"):
             if any(record[name] != 0 for name in fp_names[:-1]):
                 raise ValueError("integer tasks paid FP transfer overhead")
         elif (record["initial"] != 5 or min(record["checks0"], record["checks1"], record["checks2"]) < 4 or
@@ -179,12 +325,16 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
     pattern = r"NIHOS_NATIVE_MEMORY hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in memory_names)
     memory_owners = {}
+    # Rev1/2 silicon uses the lower SRAM bank. The emulator profile skips
+    # its cache bank; never apply that emulated lower bound to physical logs.
+    memory_low, memory_high = ((0x4ff00000, 0x4ff28000) if profile == "device"
+                               else (0x4ff20000, 0x4ff48000))
     for match in re.findall(pattern, log):
         hart, *values = [int(value, 16) for value in match]
         if hart >= 2 or hart in memory_owners:
             raise ValueError("invalid/duplicate memory owner")
         record = dict(zip(memory_names, values))
-        if (not 0x4ff20000 <= record["start"] < record["end"] <= 0x4ff48000 or
+        if (not memory_low <= record["start"] < record["end"] <= memory_high or
                 record["start"] % 64 or record["end"] % 64 or
                 record["capacity"] != record["end"] - record["start"] - 128 or
                 record["used"] != 448 or record["used"] + record["free"] != record["capacity"] or
@@ -206,7 +356,18 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
     pattern = r"NIHOS_NATIVE_EXTERNAL hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in memory_names)
     external_owners = {}
-    stride = (expected_psram_bytes - 3 * 65536) // 2 if psram["status"] else 0
+    if external_reserved_bytes == 2 << 20:
+        preparation = fixed_record(log, "NIHOS_NATIVE_DISPLAY_PREP", (
+            "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes",
+            "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight"))
+        if (preparation["status"] != 1 or preparation["stage"] != 6 or preparation["error_code"] != 0 or
+                preparation["panel"] not in (1, 2, 3) or preparation["frame_start"] != 0x48030000 or
+                preparation["frame_bytes"] != 720 * 1280 * 2 or preparation["reserve_bytes"] != 0x1d0000 or
+                preparation["scanout"] or preparation["backlight"] or preparation["phy_status"] != 3 or
+                expected_psram_bytes < 4 << 20):
+            raise ValueError("invalid display external reservation")
+    external_start = 0x48000000 + external_reserved_bytes
+    stride = (expected_psram_bytes - external_reserved_bytes) // 2 if psram["status"] else 0
     for match in re.findall(pattern, log):
         hart, *values = [int(value, 16) for value in match]
         if hart >= 2 or hart in external_owners:
@@ -215,8 +376,8 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
         if not psram["status"]:
             if any(values):
                 raise ValueError("external allocation without a mapped die")
-        elif (record["start"] != 0x48030000 + hart * stride or
-              record["end"] != 0x48030000 + (hart + 1) * stride or
+        elif (record["start"] != external_start + hart * stride or
+              record["end"] != external_start + (hart + 1) * stride or
               record["capacity"] != stride - 128 or record["used"] != record["capacity"] or
               record["free"] != 0 or
               min(record["checks0"], record["checks1"]) < 4 or
@@ -342,13 +503,125 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
             function = expected["functions"][role]
             if not int(function["start"], 16) <= boot[role] < int(function["end"], 16):
                 raise ValueError("Flash boot PC outside audited function")
-    return {"schema": 1, "backend": "native-sram", "evidence": "emulator", "mode": mode,
+    cpu_clock = check_cpu_clock(log, image, evidence)
+    sql_report = None
+    sql_names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
+    sql_records = re.findall("NIHOS_NATIVE_SQLITE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in sql_names), log)
+    if mode == "sqlite":
+        if len(sql_records) != 1 or sum(line.startswith("NIHOS_NATIVE_SQLITE ") for line in log.splitlines()) != 1:
+            raise ValueError("missing/duplicate SQLite execution evidence")
+        sql_report = dict(zip(sql_names, (int(value, 16) for value in sql_records[0])))
+        q = sql_report
+        if not (q["text_start"] == 0x40020000 < q["text_end"] <= q["rodata_start"] < q["rodata_end"] <= 0x400c0000):
+            raise ValueError("invalid SQLite Flash spans")
+        runtime_fields = ("owner", "sessions", "queries", "open_pc", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
+        if psram["status"] == 0:
+            if q["status"] != 0 or any(q[name] for name in runtime_fields):
+                raise ValueError("SQLite ran without PSRAM")
+        elif not (q["status"] == 1 and q["owner"] == 1 and q["sessions"] == 2 and q["queries"] == 26 and
+                  q["text_start"] <= q["open_pc"] < q["text_end"] and q["heap_before"] > 65536 and
+                  q["heap_after"] == q["heap_before"] == heaps[0]["free"] and q["stack_low"] == 0x4ff60010 and q["stack_high"] == 0x4ff62000 and
+                  q["stack_low"] < q["painted_to"] < q["stack_high"] and
+                  q["stack_high"] - q["painted_to"] <= q["observed_used"] <= q["stack_high"] - q["stack_low"] - 160 and q["mie"] == 8):
+            raise ValueError("incomplete SQLite query/recovery/stack evidence")
+        class_names = ("c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096")
+        class_records = re.findall("NIHOS_NATIVE_SQLITE_CLASSES" + "".join(" " + name + r"=([0-9a-f]{8})" for name in class_names), log)
+        if len(class_records) != 1 or log.count("NIHOS_NATIVE_SQLITE_CLASSES") != 1:
+            raise ValueError("missing/duplicate native SQLite allocation trace")
+        peaks = [int(value, 16) for value in class_records[0]]
+        quotas = image["sqlite"]["pool_quotas"] if image is not None else [24, 12, 64, 64, 64, 4, 8, 12, 8, 1]
+        if any(peak > quota for peak, quota in zip(peaks, quotas)) or (not q["status"] and any(peaks)) or (q["status"] and not any(peaks)):
+            raise ValueError("invalid native SQLite class peaks")
+        if q["status"] and peaks != [20, 10, 22, 23, 16, 3, 6, 8, 3, 0]:
+            raise ValueError("native SQLite allocation trace differs from fixed workload")
+        sql_report["class_peaks"] = dict(zip(class_names, peaks))
+        if image is not None:
+            audited = image.get("sqlite")
+            if audited is None or any(q[name] != int(audited[name], 16) for name in ("text_start", "text_end", "rodata_start", "rodata_end")):
+                raise ValueError("SQLite spans differ from audited image")
+            if q["status"]:
+                function = audited["functions"]["nih_sqlite_session_open"]
+                if not int(function["start"], 16) <= q["open_pc"] < int(function["end"], 16):
+                    raise ValueError("SQLite execution PC outside actual open function")
+    elif "NIHOS_NATIVE_SQLITE" in log:
+        raise ValueError("unexpected SQLite evidence in ordinary build")
+    qualification = None
+    qualification_marker = "NIHOS_NATIVE_QUALIFICATION enabled=1"
+    if require_qualification or "NIHOS_NATIVE_QUALIFICATION" in log:
+        if log.count(qualification_marker) != 1 or expected_psram_bytes == 0:
+            raise ValueError("missing/invalid qualification mode")
+        sweep = fixed_record(log, "NIHOS_NATIVE_PSRAM_SWEEP", ("bytes", "passes", "reads", "writes", "syncs", "confirmed"))
+        if list(sweep.values()) != [expected_psram_bytes, 2, expected_psram_bytes // 2, expected_psram_bytes // 2, 4, 1]:
+            raise ValueError("incomplete full PSRAM sweep")
+        qualification = {"psram_sweep": sweep}
+        if mode == "sqlite":
+            soak = fixed_record(log, "NIHOS_NATIVE_SQLITE_SOAK", ("loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed"))
+            if (soak["loops"] != 1000 or soak["sessions"] != 2000 or soak["queries"] != 26000 or
+                    soak["heap_before"] != soak["heap_after"] or soak["heap_before"] != sql_report["heap_before"] or
+                    not 0 < soak["max_stack"] <= 8000 or soak["confirmed"] != 1):
+                raise ValueError("incomplete SQLite soak")
+            qualification["sqlite_soak"] = soak
+    elif "NIHOS_NATIVE_PSRAM_SWEEP" in log or "NIHOS_NATIVE_SQLITE_SOAK" in log:
+        raise ValueError("qualification records without mode")
+    sdmmc = None
+    sdmmc_stages = []
+    sdmmc_sweeps = []
+    if require_sdmmc or require_sdmmc_fast or "NIHOS_NATIVE_SDMMC" in log:
+        if log.count("NIHOS_NATIVE_SDMMC_MODE enabled=1") != 1:
+            raise ValueError("missing/invalid SDMMC mode")
+        sdmmc = fixed_record(log, "NIHOS_NATIVE_SDMMC", ("status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma"))
+        sectors = sdmmc["sectors_low"] + (sdmmc["sectors_high"] << 32)
+        profiles = {(1, 400): 1, (4, 400): 2, (4, 20000): 3}
+        phases = profiles.get((sdmmc["bus_bits"], sdmmc["clock_khz"]), 0)
+        sample_count = 1024 if phases > 1 else 0
+        if (sdmmc["status"] != 1 or sdmmc["stage"] != 4 or not 1024 <= sectors <= 1 << 32 or phases == 0 or
+                sdmmc["reads"] != (8 + sample_count) * phases or sdmmc["writes"] != 0 or
+                sdmmc["error_code"] != 0 or sdmmc["commands"] < sdmmc["reads"] + 9 + (4 if phases > 1 else 0) or sdmmc["data_words"] != 128 or sdmmc["dma"] != 1):
+            raise ValueError("incomplete read-only SDMMC probe")
+        if require_sdmmc_fast and phases != 3:
+            raise ValueError("required 4-bit/20 MHz profile missing")
+        sdmmc_stages = repeated_records(log, "NIHOS_NATIVE_SDMMC_STAGE", ("index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last"))
+        if phases > 1 or sdmmc_stages:
+            if len(sdmmc_stages) != phases:
+                raise ValueError("missing SDMMC transition stages")
+            for i, stage in enumerate(sdmmc_stages):
+                bits, khz, host, divider = ((1, 400, 0, 50), (4, 400, 1, 50), (4, 20000, 1, 1))[i]
+                if (stage["index"] != i or stage["bus_bits"] != bits or stage["clock_khz"] != khz or
+                        stage["host_width"] != host or stage["divider"] != divider or stage["reads"] != 8 + sample_count or
+                        (i == 0 and stage["scr_widths"] != 0) or (i > 0 and stage["scr_widths"] & 5 != 5) or
+                        any(stage[name] != sdmmc[name] for name in ("crc0", "crc1", "crc_middle", "crc_last"))):
+                    raise ValueError("invalid SDMMC transition/readback/CRC evidence")
+        sdmmc_sweeps = repeated_records(log, "NIHOS_NATIVE_SDMMC_SWEEP", ("index", "samples", "digest"))
+        if sample_count:
+            if len(sdmmc_sweeps) != phases or any(row["index"] != i or row["samples"] != sample_count or
+                                                row["digest"] != sdmmc_sweeps[0]["digest"] for i, row in enumerate(sdmmc_sweeps)):
+                raise ValueError("missing/inconsistent SDMMC distributed sweep")
+        elif sdmmc_sweeps:
+            raise ValueError("unexpected SDMMC distributed sweep")
+    storage = None
+    storage_stack = None
+    storage_expected = image is not None and image.get('sqlite', {}).get('littlefs') is not None
+    if require_storage or storage_expected or 'NIHOS_NATIVE_STORAGE ' in log:
+        if evidence != 'physical-device' or sdmmc is None or mode != 'sqlite':
+            raise ValueError('storage requires physical SDMMC and SQLite mapped span')
+        if image.get('sqlite', {}).get('littlefs', {}).get('read_only') is not True:
+            raise ValueError('storage log requires a littlefs image audit')
+        storage = check_storage(fixed_record(log, 'NIHOS_NATIVE_STORAGE', STORAGE_FIELDS), sdmmc['sectors_low'] + (sdmmc['sectors_high'] << 32))
+        storage_stack = fixed_record(log, 'NIHOS_NATIVE_STORAGE_STACK', ('low', 'high', 'painted_to', 'used', 'confirmed'))
+        if (storage_stack['low'] != stacks[0]['boot_start'] + 16 or storage_stack['high'] != stacks[0]['boot_end'] or
+                not storage_stack['low'] < storage_stack['painted_to'] < storage_stack['high'] or
+                not storage_stack['high'] - storage_stack['painted_to'] <= storage_stack['used'] < 8176 - 160 or storage_stack['confirmed'] != 1):
+            raise ValueError('incomplete littlefs stack qualification')
+    elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
+        raise ValueError('orphan storage stack record')
+    return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
+            "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
-            "flash_boot": boot,
+            "flash_boot": boot, "cpu_clock": cpu_clock, "sqlite": sql_report,
             "stacks": [{"hart": hart, **stacks[hart]} for hart in (0, 1)],
             "rounds": samples[-1][0], "samples": len(samples), "psram": psram,
-            "psram_supply": supply, "psram_io": psram_io,
+            "psram_supply": supply, "psram_io": psram_io, "psram_fast": fast_psram,
             "psram_mapping": mapped, "psram_smp": psram_smp,
             "cpu0_progress": samples[-1][1], "cpu1_progress": samples[-1][2],
             "cpu0_interrupts": samples[-1][3], "cpu1_interrupts": samples[-1][4],
@@ -368,14 +641,19 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None):
 
 
 def main():
-    if len(sys.argv) not in (3, 4, 5, 6):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json]")
+    if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|comma-separated requirements]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
-        image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) == 6 else None
-        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None, PSRAM_SIZES[size], image)
+        image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
+        extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
+        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage"}:
+            raise ValueError("invalid required extra evidence")
+        report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
+                       PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
+                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra, "storage" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

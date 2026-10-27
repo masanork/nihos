@@ -18,7 +18,8 @@ const initial_state = context.ReturnState{ .mstatus = 0x1880, .mcause = 0 };
 extern fn nih_native_task_trampoline() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
-const Phase = enum { initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete };
+const normal_boot = @import("native_options").boot_fast;
+const Phase = enum { normal, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol };
 
 const Owner = struct {
@@ -218,6 +219,15 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     memory.reusable.selectTask(hart, key(owner.bootstrap));
     _ = owner.runtime.policy.schedule() orelse return false;
     owner.last_slot = owner.bootstrap.slot;
+    if (normal_boot) {
+        for (&stacks[hart]) |*stack| {
+            const guard: *[4]u32 = @ptrCast(stack);
+            guard.* = @splat(memory.stacks.layout.worker_guard);
+        }
+        owner.phase = .normal;
+        owner.ready = true;
+        return true;
+    }
     for (0..2) |index| owner.workers[index] = add(hart, @intCast(index), .busy) orelse return false;
     owner.lifecycle = add(hart, 2, .initial_lifecycle) orelse return false;
     owner.ready = true;
@@ -229,6 +239,7 @@ pub fn ready(hart: u32) bool {
 }
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {
+    if (normal_boot) return true;
     const owner = &owners[hart];
     if (owner.phase != .initial_lifecycle and owner.phase != .replacement_lifecycle and owner.phase != .forced_lifecycle)
         return maintainProtocol(hart, device);
@@ -335,7 +346,7 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     const current = owner.runtime.policy.current() orelse return null;
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer, frame.mepc);
     for (owner.workers, 0..) |handle, index| {
-        if (current.slot == handle.slot) owner.captures[index] +%= 1;
+        if (!normal_boot and current.slot == handle.slot) owner.captures[index] +%= 1;
     }
     if (!maintain(hart, device)) return null;
     return publish(hart, owner.runtime.select() orelse return null);
@@ -368,7 +379,7 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
 /// Bootstrap can park only after becoming the lower-priority idle context.
 pub fn idleOnce(hart: u32) void {
     if (service(hart)) return;
-    if (ipi.active(hart)) ipi.idleOnce(hart);
+    if (normal_boot) asm volatile ("wfi" ::: .{ .memory = true }) else if (ipi.active(hart)) ipi.idleOnce(hart);
 }
 
 fn key(handle: scheduler.TaskHandle) memory.reusable.Key {
