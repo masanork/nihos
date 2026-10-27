@@ -491,3 +491,14 @@ the Store state is unchanged, with 256 B of caller descriptors on RV32 plus a
 64 B CRC array and other call-stack use. Publication tests covered 7,056 cuts
 per build mode. This advances metadata batching without providing cross-call
 coalescing, native scheduling/ownership or a persistent SQLite VFS/WAL.
+
+The [copy-owned service host follow-up](../measurements/2026-10-28-store-service.md)
+connects the model to one authenticated client binding, 16 granted existing
+objects and bounded copy mailboxes. Staged reads, explicit resize, volume sync,
+cancel, stopped-client rollback and epoch/handle invalidation are host-tested;
+an unknown commit outcome stops the endpoint until recovery. Cached Store,
+service and two-slot request/reply queues total 596,616 B on RV32 at compile
+time, excluding stacks, client and backend buffers. The existing native
+read-only RPC reservation/ABI and separate VFS work remain unchanged. The next
+gate is a host SQLite VFS adapter with actual journal/recovery tests, followed
+by native placement, exit hooks, DMA quiescence and physical SD qualification.
