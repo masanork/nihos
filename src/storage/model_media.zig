@@ -26,9 +26,10 @@ pub fn Media(comptime byte_count: usize) type {
         // metadata. The real model protocol must detect its durability failure.
         omit_root_sync: bool = false,
 
-        pub fn read(self: *Self, offset: usize, destination: []u8) error{Io}!void {
+        pub fn read(self: *Self, offset: u64, destination: []u8) error{Io}!void {
             if (self.read_error or offset > capacity or destination.len > capacity - offset) return error.Io;
-            @memcpy(destination, self.cache[offset..][0..destination.len]);
+            const start: usize = @intCast(offset);
+            @memcpy(destination, self.cache[start..][0..destination.len]);
         }
 
         fn event(self: *Self, offset: usize, data: []const u8, persist: bool) error{Io}!void {
@@ -47,12 +48,13 @@ pub fn Media(comptime byte_count: usize) type {
             }
         }
 
-        pub fn write(self: *Self, offset: usize, data: []const u8) error{Io}!void {
+        pub fn write(self: *Self, offset: u64, data: []const u8) error{Io}!void {
             if (self.tripped or offset % sector_bytes != 0 or data.len % sector_bytes != 0 or
                 offset > capacity or data.len > capacity - offset) return error.Io;
+            const base: usize = @intCast(offset);
             var position: usize = 0;
             while (position < data.len) : (position += sector_bytes) {
-                const start = offset + position;
+                const start = base + position;
                 const sector = start / sector_bytes;
                 @memcpy(self.cache[start..][0..sector_bytes], data[position..][0..sector_bytes]);
                 self.dirty[sector] = true;
