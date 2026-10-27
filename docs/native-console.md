@@ -52,6 +52,18 @@ lifecycle, allocator and IPI/idle checks. Normal-image internal SRAM heap is
 reservation and 56 KiB stack bank remain unchanged. Physical normal-boot
 timing and cold power-on validation remain pending until the Tab5 is connected.
 
+A first [physical normal-boot capture](measurements/2026-10-27-native-normal-physical.json)
+on 2026-10-27 passed the normal CPU/timer/IPI, PSRAM200, keyboard detection and
+scanout/refresh log checks. READY was 1.757 seconds from diagnostic-clock
+initialization, or 0.333 seconds after UI_START; no boot control keys were sent.
+This is a warm USB-reset observation. Optical confirmation is still pending:
+a later capture contained `NIHOS_C6_BOOT`, and a subsequent Flash comparison
+confirmed that another firmware had replaced the application. The user saw a
+black screen after that replacement. Do not treat this log-only result as a
+visible-display or cold-power-on pass. Coordinate exclusive device ownership
+before repeating the visual test; port exclusion per individual capture alone
+does not prevent a later writer from replacing the firmware.
+
 Headless normal-boot regression is now reproducible without a device:
 
 ```sh
