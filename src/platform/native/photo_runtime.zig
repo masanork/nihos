@@ -1,11 +1,12 @@
 //! Private CPU0 external-memory lease and isolated decode stack, one card job.
 const std = @import("std");
 const card = @import("card");
+const options = @import("native_options");
 const memory = @import("native_tasks").memory;
 const heap = memory.reusable;
 const bytes = 4 * 1024 * 1024 - 128;
 var lease: ?heap.Allocation = null;
-pub const Report = struct { selftest: u32 = 0, decoded: u32 = 0, error_code: u32 = 0, stack_used: u32 = 0, arena_bytes: u32 = 0, surface_sw: u32 = 0, surface_counter: u32 = 255, erased: u32 = 0, crypto_selftest: u32 = 0, crypto_stack: u32 = 0 };
+pub const Report = struct { selftest: u32 = 0, decoded: u32 = 0, error_code: u32 = 0, stack_used: u32 = 0, arena_bytes: u32 = 0, surface_sw: u32 = 0, surface_counter: u32 = 255, erased: u32 = 0, crypto_selftest: if (options.card_auto) u32 else void = if (options.card_auto) 0 else {}, crypto_stack: if (options.card_auto) u32 else void = if (options.card_auto) 0 else {} };
 pub var report = Report{};
 extern fn nih_photo_call([*]const u8, usize, [*]u8, usize, [*]u8, usize) callconv(.c) c_int;
 extern fn nih_card_crypto_call(?*const card.LicenseCrypto.Request, usize) callconv(.c) c_int;

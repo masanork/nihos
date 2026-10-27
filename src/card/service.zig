@@ -246,7 +246,7 @@ pub fn ServiceType(comptime extended: bool, comptime section: ?[]const u8) type 
         }
         /// For power actions reply is the ATR / empty power-off payload; transport
         /// validates CCID slot, sequence, status, card state and time extensions.
-        pub fn complete(self: *Self, token: u32, reply: []const u8) Error!void {
+        pub inline fn complete(self: *Self, token: u32, reply: []const u8) Error!void {
             if (section != null) return self.completePlaced(token, reply);
             return self.completeInline(token, reply);
         }
