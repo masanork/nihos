@@ -5,6 +5,7 @@
 #include "hal/gpio_ll.h"
 #include "hal/sdmmc_ll.h"
 #include "hal/timer_ll.h"
+#include "hal/usb_serial_jtag_ll.h"
 #include "soc/gpio_sig_map.h"
 
 __asm__(".global GPIO\n.set GPIO,0x500e0000\n"
@@ -14,6 +15,13 @@ __asm__(".global GPIO\n.set GPIO,0x500e0000\n"
         ".global LP_AON_CLKRST\n.set LP_AON_CLKRST,0x50111000\n"
         ".global SDMMC\n.set SDMMC,0x50083000\n");
 __asm__(".global TIMERG1\n.set TIMERG1,0x500c3000\n");
+__asm__(".global USB_SERIAL_JTAG\n.set USB_SERIAL_JTAG,0x500d2000\n");
+
+/* Boot capture only; no IRQ registration and no modem-line manipulation. */
+int nih_boot_capture_getc(void) {
+    uint8_t byte;
+    return usb_serial_jtag_ll_read_rxfifo(&byte, 1) == 1 ? (int)byte : -1;
+}
 
 /* Sole TG1 owner, boot only. TG0 belongs to the two schedulers. */
 unsigned nih_storage_clock_start(void) {

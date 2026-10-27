@@ -43,6 +43,7 @@ ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_l2_enable": 0x4FC00504,
                "nih_rom_cache_invalidate": 0x4FC003E4,
                "nih_rom_cache_writeback": 0x4FC003F4}
+OPTIONAL_ROM_SYMBOLS = {"nih_rom_reset_reason": 0x4FC00018}
 FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.boot": (0x40000120, None),
                   ".flash.rodata": (0x40010020, None)}
@@ -77,7 +78,7 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
-        if ROM_SYMBOLS.get(name) == address:
+        if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
             continue
         if sql_span is not None and sql_span[0] <= address < stop <= sql_span[1]:
             require(name in sql_functions, "non-manifest function in SQLite Flash: " + name)
@@ -110,6 +111,15 @@ def audit_io_lifetimes(config, symbols, sizes, low, high):
     require(config.get('version') == 1 and isinstance(config.get('qualification'), bool), 'invalid I/O lifetime manifest')
     require(isinstance(config.get('removal_test', False), bool) and
             (not config.get('removal_test') or config['qualification']), 'invalid physical removal profile')
+    require(isinstance(config.get('capture_handshake', False), bool) and
+            (not config.get('capture_handshake') or config['qualification']), 'invalid capture handshake profile')
+    if config.get('capture_handshake'):
+        require(symbols.get('nih_rom_reset_reason') == OPTIONAL_ROM_SYMBOLS['nih_rom_reset_reason'] and
+                symbols.get('USB_SERIAL_JTAG') == 0x500d2000 and
+                low <= symbols.get('nih_boot_capture_getc', 0) < high, 'invalid capture ROM/input ABI')
+        require(set(config.get('capture_sources', {})) == {'probes/sdmmc/pads.c', 'src/platform/native/esp32p4.ld'} and
+                all(re.fullmatch('[0-9a-f]{64}', value) for value in config['capture_sources'].values()),
+                'missing capture source identity')
     expected = {'src/fs/io_leases.zig', 'src/fs/io_stop.zig', 'src/fs/sdmmc_owner.zig',
                 'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
                 'src/platform/native/main.zig', 'src/diagnostics/record.zig', 'include/nihos_storage_io.h'}
@@ -435,6 +445,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     require(symbols.get("__native_profile") == revision, "ELF profile differs from requested layout")
     for name, address in ROM_SYMBOLS.items():
         require(symbols.get(name) == address, "wrong ROM ABI: " + name)
+    for name, address in OPTIONAL_ROM_SYMBOLS.items():
+        if name in symbols:
+            require(symbols[name] == address, "wrong optional ROM ABI: " + name)
     fp_linked = "nih_riscv_fpu_save" in symbols
     if fp_linked:
         required = ["nih_riscv_fpu_restore", "nih_riscv_fpu_snapshot"]
@@ -484,7 +497,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
               "flash_records": {"start": hex(flash_start), "end": hex(flash_start + len(flash_tables)),
                                 "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
                                 "executable": False, "writable": False},
-              "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
+              "rom_symbols": {name: hex(value) for name, value in (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).items() if name in symbols}, "sections": allocated}
     if high_sram is not None:
         report["high_sram"] = high_sram
         report["memory"]["total_bytes"] += high_sram["tested_bytes"]

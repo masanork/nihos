@@ -88,6 +88,11 @@ def main(directory, source, littlefs=None):
                 'src/platform/native/main.zig', 'src/diagnostics/record.zig',
                 'include/nihos_storage_io.h')}}
         result['io_lifetimes']['removal_test'] = 'pub const sd_removal = true;' in (directory / 'native_options.zig').read_text()
+        result['io_lifetimes']['capture_handshake'] = 'pub const cold_capture = true;' in (directory / 'native_options.zig').read_text()
+        if result['io_lifetimes']['capture_handshake']:
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.captureBoot'})
+            result['io_lifetimes']['capture_sources'] = {name: sha(root / name) for name in (
+                'probes/sdmmc/pads.c', 'src/platform/native/esp32p4.ld')}
         if result['io_lifetimes']['removal_test']:
             result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
                 'sdmmc_probe.qualifyRemoval', 'sdmmc_probe.freshCardSession', 'sdmmc_probe.operatorMarker'})
