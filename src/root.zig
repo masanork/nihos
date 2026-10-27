@@ -55,6 +55,7 @@ test {
     _ = @import("storage/stream_test.zig");
     _ = @import("storage/extent_map_test.zig");
     _ = @import("storage/resize_test.zig");
+    _ = @import("storage/batch_test.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;

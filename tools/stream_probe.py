@@ -230,8 +230,65 @@ def main():
             os.close(fd)
         run("verify-resized", resized_image)
         result["cases"].append({"name": "resized_range_snapshot_reopens_without_resurrecting_tail", "passed": True})
+        baseline = run("batch-single-reference", resized_image)
+        run("verify-batch", resized_image)
+        require(baseline["writes"] == 65, "unexpected unbatched reference cost")
+        result["cases"].append({"name": "sixteen_separate_page_updates_reference", "passed": True, "reference": baseline})
+        kill_ready("batch-stage-wait", 9)
+        run("verify-resized")
+        result["cases"].append({"name": "kill_staged_batch_keeps_entire_old_file", "passed": True})
+        kill_ready("batch-wait", 10)
+        run("verify-batch")
+        collected_batch = run("collect-batch")
+        run("verify-batch")
+        batch = next(item["readiness"] for item in result["commands"] if item["command"] == "batch-wait")
+        require(batch["map_scratch_bytes"] == 16384 and batch["batch_descriptor_bytes"] == 384, "batch workspace exceeded expected host layout")
+        require(batch["writes"] == 20, "batch failed to share map and object-leaf writes")
+        result["cases"].append({"name": "sixteen_page_batch_survives_ack_kill_and_gc", "passed": True,
+                                 "batch": batch, "reference_write_bytes": baseline["writes"] * PAGE,
+                                 "batch_write_bytes": batch["writes"] * PAGE, "scratch_bytes": 16384,
+                                 "input_bytes": 16, "host_patch_descriptors_bytes": batch["batch_descriptor_bytes"]})
+        batch_ranges = []
+        fd = os.open(image, os.O_RDONLY)
+        try:
+            for item in resized_ranges:
+                if item["file"] == "resized-payload.bin":
+                    digest = hashlib.sha256()
+                    position = 0
+                    while position < item["bytes"]:
+                        data = os.pread(fd, min(65536, item["bytes"] - position), item["offset"] + position)
+                        require(data, "short shared resized range")
+                        digest.update(data)
+                        position += len(data)
+                    require(digest.hexdigest() == item["sha256"], "batch rewrote shared previous payload")
+            for name, offset, size in (("batch-metadata.bin", 0, 258 * PAGE),
+                                       ("batch-pages.bin", PAYLOAD_START + resized["payload_high_water_pages"] * PAGE,
+                                        (collected_batch["payload_high_water_pages"] - resized["payload_high_water_pages"]) * PAGE)):
+                require(size > 0, "missing batch snapshot range")
+                digest = copy_range(fd, offset, size, output / name)
+                batch_ranges.append({"file": name, "offset": offset, "bytes": size, "sha256": digest})
+        finally:
+            os.close(fd)
+        batch_ranges.append(next(item for item in resized_ranges if item["file"] == "resized-payload.bin"))
+        result["batch_snapshot"] = {"capacity": CAPACITY, "ranges": batch_ranges, "omitted_bytes": "zero sparse holes"}
+        batch_image = output / "batch-reconstructed.img"
+        create_image(batch_image)
+        fd = os.open(batch_image, os.O_RDWR)
+        try:
+            for item in batch_ranges:
+                position = 0
+                with (output / item["file"]).open("rb") as source_file:
+                    while data := source_file.read(65536):
+                        require(os.pwrite(fd, data, item["offset"] + position) == len(data), "short batch restore")
+                        position += len(data)
+                require(position == item["bytes"], "batch range length mismatch")
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        run("verify-batch", batch_image)
+        result["cases"].append({"name": "batch_snapshot_reuses_previous_payload_and_reopens", "passed": True})
         result["images"] = {path.name: {"bytes": path.stat().st_size, "allocated_bytes": path.stat().st_blocks * 512}
-                            for path in (image, rebuilt, mapped_image, resized_image)}
+                            for path in (image, rebuilt, mapped_image, resized_image, batch_image)}
         require(all(info["bytes"] == CAPACITY and info["allocated_bytes"] < 256 * 1024**2 for info in result["images"].values()), "image lost sparse allocation")
         result["passed"] = True
     finally:

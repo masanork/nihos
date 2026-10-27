@@ -6,6 +6,7 @@ const Device = file_media.Media(16 * 1024 * 1024 * 1024);
 const Store = model.Store(Device, .{ .index_pages = 256, .payload_start_page = Device.capacity / model.page_bytes - 32768, .payload_reserve_pages = 16, .leaf_cache_pages = 128 });
 const length: u64 = 33 * 1024 * 1024 + 17;
 const short_length = length - 4096 - 13;
+const batch_base = 1014 * model.page_bytes;
 const patch_offset = model.checksums_per_page * model.page_bytes - 5;
 const replacement = "STREAMING-PATCH-TEST";
 const mapped_replacement = "MAPPED-PAGE-CHANGED!";
@@ -15,8 +16,8 @@ fn value(offset: u64) u8 {
 fn report(io: std.Io, device: *Device, store: *Store, command: []const u8) !void {
     var buffer: [1024]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(io, &buffer);
-    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"state_bytes\":{d},\"object_bytes\":{d},\"input_buffer_bytes\":4096,\"data_pages\":{d},\"checksum_pages\":{d},\"writes\":{d},\"syncs\":{d},\"map_metadata_pages\":{d},\"payload_high_water_pages\":{d}}}\n", .{
-        command, store.generation(), @sizeOf(Store), length, model.dataPages(length), model.checksumPages(length), device.writes, device.syncs, try Store.mapMetadataPages(length), store.current.payload_next - Store.payload_start,
+    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"state_bytes\":{d},\"object_bytes\":{d},\"input_buffer_bytes\":4096,\"map_scratch_bytes\":{d},\"batch_descriptor_bytes\":{d},\"data_pages\":{d},\"checksum_pages\":{d},\"writes\":{d},\"syncs\":{d},\"map_metadata_pages\":{d},\"payload_high_water_pages\":{d}}}\n", .{
+        command, store.generation(), @sizeOf(Store), length, @sizeOf(model.MapScratch), @sizeOf([16]model.MappedPatch), model.dataPages(length), model.checksumPages(length), device.writes, device.syncs, try Store.mapMetadataPages(length), store.current.payload_next - Store.payload_start,
     });
     try stdout.interface.flush();
 }
@@ -56,7 +57,7 @@ fn verify(store: *Store, change: []const u8) !void {
     }
     try store.verify(1);
 }
-fn verifyResized(store: *Store, expected_length: u64) !void {
+fn verifyResized(store: *Store, expected_length: u64, batch: bool) !void {
     if ((try store.get(1)).length != expected_length) return error.BadLength;
     var buffer: [4096]u8 = undefined;
     var offset: u64 = 0;
@@ -65,7 +66,8 @@ fn verifyResized(store: *Store, expected_length: u64) !void {
         if (n == 0) return error.BadRead;
         for (buffer[0..n], 0..) |byte, i| {
             const position = offset + i;
-            const expected = if (position >= short_length) 0 else if (position >= patch_offset and position < patch_offset + mapped_replacement.len) mapped_replacement[@intCast(position - patch_offset)] else value(position);
+            const batch_index = if (position >= batch_base) (position - batch_base) / model.page_bytes else 16;
+            const expected: u8 = if (batch and batch_index < 16 and (position - batch_base) % model.page_bytes == 7) @intCast(0xe0 + batch_index) else if (position >= short_length) 0 else if (position >= patch_offset and position < patch_offset + mapped_replacement.len) mapped_replacement[@intCast(position - patch_offset)] else value(position);
             if (byte != expected) return error.ResizedPayload;
         }
         offset += n;
@@ -94,7 +96,7 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(init.arena.allocator());
     if (args.len != 3) return error.Usage;
     const command = args[1];
-    const known = [_][]const u8{ "format", "seed", "verify-old", "patch", "patch-wait", "verify-new", "cancel", "stage-wait", "finish-wait", "promote-map", "verify-map-old", "mapped-patch-wait", "verify-map-new", "collect-map", "resize-cycle", "verify-resized" };
+    const known = [_][]const u8{ "format", "seed", "verify-old", "patch", "patch-wait", "verify-new", "cancel", "stage-wait", "finish-wait", "promote-map", "verify-map-old", "mapped-patch-wait", "verify-map-new", "collect-map", "resize-cycle", "verify-resized", "batch-single-reference", "batch-stage-wait", "batch-wait", "verify-batch", "collect-batch" };
     var valid = false;
     for (known) |name| if (std.mem.eql(u8, command, name)) {
         valid = true;
@@ -177,9 +179,9 @@ pub fn main(init: std.process.Init) !void {
         const reader = try store.pin();
         var scratch = model.ResizeScratch{};
         try resizePrepared(&store, short_length, &scratch);
-        try verifyResized(&store, short_length);
+        try verifyResized(&store, short_length, false);
         try resizePrepared(&store, length, &scratch);
-        try verifyResized(&store, length);
+        try verifyResized(&store, length, false);
         var old: [4096]u8 = undefined;
         var offset: u64 = short_length;
         while (offset < length) {
@@ -192,7 +194,45 @@ pub fn main(init: std.process.Init) !void {
         try store.collectPayload();
     } else if (std.mem.eql(u8, command, "verify-resized")) {
         if (store.generation() != 9) return error.BadGeneration;
-        try verifyResized(&store, length);
+        try verifyResized(&store, length, false);
+    } else if (std.mem.eql(u8, command, "batch-single-reference") or std.mem.eql(u8, command, "batch-stage-wait") or std.mem.eql(u8, command, "batch-wait")) {
+        if (store.generation() != 9) return error.BadGeneration;
+        var changes: [16]u8 = undefined;
+        var patches: [16]model.MappedPatch = undefined;
+        for (&patches, 0..) |*patch, i| {
+            changes[i] = @intCast(0xe0 + i);
+            patch.* = .{ .offset = batch_base + i * model.page_bytes + 7, .bytes = changes[i..][0..1] };
+        }
+        try store.begin();
+        if (std.mem.eql(u8, command, "batch-single-reference")) {
+            for (patches) |patch| try store.patchMappedPage(1, patch.offset, patch.bytes);
+        } else {
+            var scratch = model.MapScratch{};
+            const wanted = try Store.mappedBatchPages(length, &patches);
+            if (wanted != 18) return error.BadBatchPlan;
+            try store.beginPayloadSearch(wanted);
+            while (true) switch (try store.stepPayloadSearch(.{})) {
+                .pending => {},
+                .found => break,
+                else => return error.BadSearch,
+            };
+            try store.patchMappedBatchPrepared(1, &patches, &scratch);
+            if (std.mem.eql(u8, command, "batch-stage-wait")) {
+                try report(init.io, &device, &store, command);
+                return waitForKill(init.io);
+            }
+        }
+        try store.commit();
+        if (std.mem.eql(u8, command, "batch-wait")) {
+            try report(init.io, &device, &store, command);
+            return waitForKill(init.io);
+        }
+    } else if (std.mem.eql(u8, command, "verify-batch")) {
+        if (store.generation() != 10 and store.generation() != 11) return error.BadGeneration;
+        try verifyResized(&store, length, true);
+    } else if (std.mem.eql(u8, command, "collect-batch")) {
+        if (store.generation() != 10) return error.BadGeneration;
+        try store.collectPayload();
     } else if (std.mem.eql(u8, command, "collect-map")) {
         if (store.generation() != 5) return error.BadGeneration;
         try store.collectPayload();
