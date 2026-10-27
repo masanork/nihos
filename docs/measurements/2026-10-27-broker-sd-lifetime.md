@@ -3,6 +3,7 @@
 2026-10-27。`codex/tab5-memory-broker`、最初の実装 `c30269d`、タイマー寿命の修正 `5ee3a19`。
 [正常EXITと排他的handoff](2026-10-27-broker-native-handoff.md)を拡張するversion 2のopt-in試験。
 ホスト検査と配置監査に加え、修正版 `5ee3a19` の実機3回のUSBリセット起動に合格した。
+後続の[検証コードのFlash配置候補](2026-10-27-native-cold-flash.md)ではresident枠の余裕を回復したが、実機確認は未実施。
 
 ## 実装した順序
 

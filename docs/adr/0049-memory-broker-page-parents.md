@@ -78,3 +78,9 @@ completion, pinned SRAM-staging-to-PSRAM delivery, reply discard and clock
 reacquisition/release. It does not assert that hardware was still transferring
 at task stop. Boot-time replacement, multi-task owner teardown, direct PSRAM
 DMA, controller abort/error recovery and C ABI integration remain separate gates.
+
+The [cold qualification placement candidate](../measurements/2026-10-27-native-cold-flash.md)
+recovers 10,368 bytes within the 112 KiB resident envelope by moving eleven
+explicit normal-context fixture functions to mapped Flash. Allocator and IRQ
+callbacks remain resident; broker payload, floors and quotas are unchanged.
+It is opt-in and has only host/build/structural evidence pending Tab5 execution.
