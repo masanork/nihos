@@ -183,6 +183,8 @@ test "fixed geometry bounds descriptor RAM independently of volume capacity" {
     try equal(@sizeOf(Small), @sizeOf(Large));
     try expect(@sizeOf(Large) <= 16 * 1024);
     try equal(@as(usize, 258 * 4096), Large.mount_limit_bytes);
+    try equal(@as(u32, 640), Large.max_protected_index_pages);
+    try expect(Large.index_pool_pages > Large.max_protected_index_pages);
     std.debug.print("CHECKPOINT_BUDGET state_bytes={d} max_objects={d} mount_limit_bytes={d} tail_replay_bytes=0\n", .{
         @sizeOf(Large), Large.max_objects, Large.mount_limit_bytes,
     });

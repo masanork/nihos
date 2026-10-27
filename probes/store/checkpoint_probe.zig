@@ -62,14 +62,15 @@ fn check(store: *Store, expected: u64) !void {
     }
 }
 fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount_bytes: usize, operation_bytes: usize) !void {
+    const space = try store.indexSpace();
     const first = if (store.get(1)) |item| item.first * model.page_bytes else |err| switch (err) {
         error.NotFound => 0,
         else => return err,
     };
     var buffer: [1024]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(io, &buffer);
-    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d}}}\n", .{
-        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes,
+    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d},\"index_free_pages\":{d},\"reader_slots\":{d}}}\n", .{
+        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes, space.available_pages, Store.reader_limit,
     });
     try stdout.interface.flush();
 }
@@ -78,7 +79,7 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(init.arena.allocator());
     if (args.len != 3) return error.Usage;
     const command = args[1];
-    const known = [_][]const u8{ "format", "seed", "update", "verify-old", "verify-new", "fill-index", "checkpoint", "verify-index", "inspect", "read-one", "read-cross", "read-far", "verify-full" };
+    const known = [_][]const u8{ "format", "seed", "update", "verify-old", "verify-new", "fill-index", "checkpoint", "verify-index", "inspect", "read-one", "read-cross", "read-far", "verify-full", "churn-index", "verify-recycled" };
     var valid = false;
     for (known) |name| if (std.mem.eql(u8, command, name)) {
         valid = true;
@@ -139,6 +140,33 @@ pub fn main(init: std.process.Init) !void {
     } else if (std.mem.eql(u8, command, "verify-index")) {
         if (store.generation() != 5 or mount_bytes != Store.mount_limit_bytes) return error.BadFullIndex;
         for (0..128) |index| if ((try store.get(@intCast(index * model.leaf_entries + 1))).length != 0) return error.BadEmptyObject;
+    } else if (std.mem.eql(u8, command, "churn-index")) {
+        if (store.generation() != 5) return error.BadGeneration;
+        const reader = try store.pin();
+        try store.begin();
+        for (0..128) |index| try store.put(@intCast(index * model.leaf_entries + 1), "");
+        try store.commit();
+        if ((try store.collectIndex()).available_pages != 0) return error.PinDidNotProtectIndex;
+        try store.begin();
+        const writes = backend.writes;
+        if (store.put(1, "")) |_| return error.PinDidNotBlockWriter else |err| if (err != error.NoSpace) return err;
+        if (backend.writes != writes) return error.AdmissionWroteData;
+        try store.rollback();
+        var byte: [1]u8 = undefined;
+        for (0..128) |index| if (try store.readPinned(reader, @intCast(index * model.leaf_entries + 1), 0, &byte) != 0) return error.BadEmptyObject;
+        try store.release(reader);
+        if ((try store.indexSpace()).available_pages != 128) return error.ReleasedPinDidNotFreeIndex;
+        for (0..4) |_| {
+            try store.begin();
+            for (0..128) |index| try store.put(@intCast(index * model.leaf_entries + 1), "");
+            try store.commit();
+            if ((try store.collectIndex()).available_pages != 128) return error.BadIndexCollection;
+        }
+    } else if (std.mem.eql(u8, command, "verify-recycled")) {
+        if (store.generation() != 15 or mount_bytes != Store.mount_limit_bytes or (try store.indexSpace()).available_pages != 128) return error.BadRecycledIndex;
+        for (0..128) |index| if ((try store.get(@intCast(index * model.leaf_entries + 1))).length != 0) return error.BadEmptyObject;
+        if ((try store.get(Store.max_objects)).length != 0) return error.BadEmptyObject;
+        try object(&store, 2, new_c.len, 0x64);
     }
     try report(init.io, &backend, &store, command, mount_bytes, device.bytes_read - mount_bytes);
 }
