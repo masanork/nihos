@@ -250,7 +250,9 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep storage_io --dep block_reader --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep reset_capture --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mapping --dep record_log --dep sdmmc --dep storage_io --dep block_reader --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mreset_capture="$repo_root/src/soc/esp32p4/reset_capture.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mstorage_rpc="$repo_root/src/kernel/storage_rpc.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

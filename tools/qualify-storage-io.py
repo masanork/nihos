@@ -29,8 +29,11 @@ def require_power_on_reset(log, image=None):
     log = log.replace('\r', '')
     reasons = re.findall(r'rst:0x([0-9a-f]+)\s*\(', log)
     if (image or {}).get('io_lifetimes', {}).get('capture_handshake') is True:
-        captured = re.findall(r'NIHOS_NATIVE_RESET cpu0=([0-9a-f]{8}) ack=([0-9a-f]{8})(?:\n|$)', log)
-        if (captured != [('00000001', '00000001')] or log.count('NIHOS_NATIVE_RESET ') != 1 or
+        spec = importlib.util.spec_from_file_location('reset_check', Path(__file__).with_name('check-native-log.py'))
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+        captured = check.parse_reset_capture(log, image)
+        if (captured['cpu0'] != 1 or
                 len(reasons) > 1 or any(value != '1' for value in reasons)):
             raise ValueError('Latched reset reason is missing, mixed, or not power-on')
         return

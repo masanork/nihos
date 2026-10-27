@@ -52,6 +52,7 @@ test {
     _ = esp32p4_software_ipi;
     _ = esp32p4_psram;
     _ = esp32p4_sdmmc;
+    _ = @import("soc/esp32p4/reset_capture.zig");
     _ = esp32p4_psram_supply;
     _ = esp32p4_psram_mapping;
     _ = @import("soc/esp32p4/psram_mapping_test.zig");
