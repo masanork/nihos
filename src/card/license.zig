@@ -3,6 +3,9 @@
 //! 54a843e. No upstream implementation is copied. No issuer verification.
 const std = @import("std");
 const jis = @import("jis0208.zig");
+pub inline fn decodeJis(input: []const u8, output: []u8) jis.Error!jis.Decoded {
+    return jis.Decoder(if (@import("builtin").os.tag == .freestanding) ".flash.license.data" else null).decode(input, output);
+}
 pub const Error = @import("surface.zig").Error;
 pub const select_mf = [_]u8{ 0, 0xa4, 0, 0 };
 pub const select_pin_setting = [_]u8{ 0, 0xa4, 2, 0x0c, 2, 0, 0x0a };
@@ -14,7 +17,7 @@ pub const common_bytes = 880;
 pub const photo_bytes = 2005;
 pub const text_bytes = 512;
 pub const Fields = struct { name: []const u8, address: []const u8, birth_date: []const u8, expiration: []const u8, number: []const u8 };
-pub const Info = struct { name: []const u8, address: []const u8, birth_date: []const u8, expiration: []const u8, number: []const u8, missing: u32 };
+pub const Info = struct { name: []const u8, address: []const u8, birth_date: []const u8, expiration: []const u8, number: []const u8, missing: u32, history_unresolved: bool = false };
 pub const Tlv = struct { tag: u16, value: []const u8 };
 pub const Iterator = struct {
     bytes: []const u8,
@@ -106,7 +109,7 @@ pub fn Parser(comptime section: ?[]const u8) type {
             if (!j2k and !jp2) return error.Malformed;
             return field.value;
         }
-        fn date(raw: []const u8, output: *[8]u8) linksection(section orelse defaultSection()) Error!void {
+        pub fn date(raw: []const u8, output: *[8]u8) linksection(section orelse defaultSection()) Error!void {
             if (raw.len != 7) return error.Malformed;
             for (raw) |digit| if (digit < '0' or digit > '9') return error.Malformed;
             const bases = [_]u16{ 1867, 1911, 1925, 1988, 2018 };

@@ -11,6 +11,7 @@ from pathlib import Path
 import struct
 import sys
 import re
+import importlib.util
 
 SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF28000
 SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
@@ -44,6 +45,12 @@ def audit_ui_assets(start, data, symbols, manifest):
         require(start <= first < last <= start + len(data) and first % 64 == 0, 'invalid keypad asset extent')
         raw = data[first - start:last - start]
         require(len(raw) == manifest[role + '_bytes'] and hashlib.sha256(raw).hexdigest() == manifest[role + '_sha256'], 'keypad asset differs from manifest')
+        if role=='font' and manifest.get('font_encoding'):
+            require(manifest['font_encoding']=='row12-v1','unapproved font encoding')
+            spec=importlib.util.spec_from_file_location('native_font_codec',Path(__file__).with_name('font_codec.py'))
+            codec=importlib.util.module_from_spec(spec);spec.loader.exec_module(codec)
+            decoded=codec.decode(raw)
+            require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
 def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False):
@@ -95,7 +102,7 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if photo_span is not None and photo_span[0] <= address < stop <= photo_span[1]:
             software = (name.startswith(('compiler_rt.addf3.', 'compiler_rt.mulf3.', 'compiler_rt.divf3.', 'compiler_rt.divsf3.', 'compiler_rt.divdf3.', 'compiler_rt.comparef.', 'compiler_rt.float_from_int.', 'compiler_rt.int_from_float.', 'compiler_rt.extendf.', 'compiler_rt.truncf.')) or re.fullmatch(r'__(?:(?:add|sub|mul|div|cmp|eq|ne|ge|gt|le|lt|unord)(?:sf|df)2?3?|float(?:un)?(?:si|di)(?:sf|df)|fix(?:uns)?(?:sf|df)(?:si|di)|extendsfdf2|truncdfsf2)',name))
-            automatic = automatic_cards and name.startswith(('card_auto.', 'card.license.Parser(', 'card.service.ServiceType(true,', 'card.wire_policy.PolicyType(true)'))
+            automatic = automatic_cards and name.startswith(('card_auto.', 'graphics.card_read_result.automaticText', 'graphics.card_read_result.Glyph(', 'graphics.card_read_result.AutoPainter(', 'graphics.card_read_result.readBits', 'graphics.card_read_result.automaticOverview', 'card.jis0208.Decoder(', 'card.license_trust.lookup', 'card.license.Parser(', 'card.license_record.Parser(', 'card.license_session.Session(', 'card.service.ServiceType(true,', 'card.wire_policy.PolicyType(true)'))
             require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name == 'photo_runtime.execute' or software, 'unapproved photo codec function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else None
@@ -326,8 +333,14 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         automatic = keypad_manifest.get('automatic_cards')
         jis_first,jis_last=symbols.get('__license_jis_start',0),symbols.get('__license_jis_end',0)
         if automatic:
-            require(automatic.get('kinds') == ['mynumber','license'] and automatic.get('credential_budget_per_pin') == 1 and type(automatic.get('read_enabled')) is bool and automatic.get('jis_bytes') == (17672 if automatic['read_enabled'] else 0), 'unapproved automatic card profile')
+            require(automatic.get('kinds') == ['mynumber','license','myna_license'] and automatic.get('credential_budget_per_pin') == 1 and type(automatic.get('read_enabled')) is bool and automatic.get('jis_bytes') == (17672 if automatic['read_enabled'] else 0), 'unapproved automatic card profile')
             require(ro_start <= jis_first <= jis_last <= ro_start+len(ro) and jis_last-jis_first == automatic['jis_bytes'] and (not automatic['read_enabled'] or hashlib.sha256(ro[jis_first-ro_start:jis_last-ro_start]).hexdigest() == automatic['jis_sha256']), 'JIS mapping differs from automatic card manifest')
+            trust_first,trust_last=symbols.get('__license_trust_start',0),symbols.get('__license_trust_end',0)
+            require(ro_start<=trust_first<=trust_last<=ro_start+len(ro) and trust_last-trust_first==automatic.get('trust_bytes') and automatic['trust_bytes']%293==0 and automatic['trust_bytes']<=64*293 and (not automatic['read_enabled'] or hashlib.sha256(ro[trust_first-ro_start:trust_last-ro_start]).hexdigest()==automatic.get('trust_sha256')), 'licence trust bundle differs from audited pins')
+            if automatic['read_enabled']:
+                crypto=keypad_manifest.get('license_crypto',{})
+                require(crypto.get('profile')=='npa-raw-sha256-v1_5' and crypto.get('bits')==2048 and crypto.get('exponents')==[3,65537] and crypto.get('stack_bytes')==65536 and crypto.get('external_stack') is True and set(crypto.get('objects',{}))=={'card_crypto.o','card_crypto_stack.o'}, 'unapproved licence crypto profile')
+                require(crypto.get('allowed_functions')==sorted(set().union(*(set(obj['functions']) for obj in crypto['objects'].values()))), 'licence crypto function manifest mismatch')
         else:
             require(jis_first == jis_last, 'licence data without automatic card profile')
         forbidden = {'fopen','fclose','fread','fwrite','fprintf','printf','snprintf','vsnprintf','getenv','opj_create_compress','opj_encode','opj_start_compress','opj_pi_initialise_encode','opj_tcd_rateallocate'}
@@ -387,7 +400,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(keypad_manifest.get('allowed_functions') == (([] if keypad_manifest.get('automatic_cards') else ['card_read.prepare', 'card_read.run']) + ['keypad_display.prepare', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start'] + (['photo_runtime.prepare'] + ([] if keypad_manifest.get('automatic_cards', {}).get('read_enabled') is False else ['photo_runtime.decode']) + ['photo_runtime.close'] if allow_photo else [])), 'unapproved foreground manifest')
         for prefix in keypad_manifest['allowed_functions']:
             require(sum(1 for name, address, stop in functions if card_span[0] <= address < stop <= card_span[1] and (name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name))) == 1, 'missing/duplicate card foreground entry: ' + prefix)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, keypad_manifest['codec']['allowed_functions'] if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),

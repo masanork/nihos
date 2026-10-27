@@ -31,7 +31,7 @@ def main():
         data += struct.pack('<I',code) + image.tobytes()
     destination = ROOT / 'src/graphics/card_read_font.bin'
     destination.write_bytes(data)
-    sources = ('tools/boot-graphics/generate-card-read-font.py', 'src/platform/native/card_read.zig', 'src/platform/native/keypad_display.zig', 'src/platform/native/usb_probe.zig', 'src/platform/native/display_runtime.zig')
+    sources = ('tools/boot-graphics/generate-card-read-font.py', 'src/platform/native/card_read.zig', 'src/platform/native/keypad_display.zig', 'src/platform/native/usb_probe.zig', 'src/platform/native/display_runtime.zig', 'src/graphics/card_pin.zig')
     manifest = {'schema':1, 'ui_mode':'runtime', 'font_bytes':len(data), 'font_sha256':hashlib.sha256(data).hexdigest(),
                 'font_source_sha256':FONT_SHA, 'glyphs':len(chars),
                 'allowed_functions':['card_read.prepare', 'card_read.run', 'keypad_display.prepare', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start'],

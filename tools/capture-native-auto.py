@@ -16,8 +16,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('port');p.add_argument('output',type=Path);p.add_argument('audit',type=Path)
     p.add_argument('--install',type=Path);p.add_argument('--prior',type=Path,help='retained installation to verify before replacement')
-    p.add_argument('--seconds',type=int,default=600);p.add_argument('--jobs',type=int,default=2)
-    p.add_argument('--kinds',default='1,2');p.add_argument('--require-removal',action='store_true')
+    p.add_argument('--seconds',type=int,default=600);p.add_argument('--jobs',type=int,default=3)
+    p.add_argument('--kinds',default='1,2,4');p.add_argument('--require-removal',action='store_true')
     a=p.parse_args()
     if not 1<=a.jobs<=10 or not 10<=a.seconds<=1800:p.error('jobs 1..10, seconds 10..1800 required')
     audit=json.loads(a.audit.read_text());profile=audit.get('automatic_cards')
@@ -40,7 +40,7 @@ def main():
                 if chunk:data.extend(chunk);out.write(chunk);out.flush()
                 text=data.decode('ascii',errors='replace').replace('\r','')
                 for line in text.splitlines():
-                    if line.startswith(('NIHOS_NATIVE_CARD_AUTO_BOOT ','NIHOS_NATIVE_CARD_AUTO_DETECTED ','NIHOS_NATIVE_CARD_AUTO_PROMPT ','NIHOS_NATIVE_CARD_AUTO_RESULT ','NIHOS_NATIVE_CARD_AUTO_DONE ','NIHOS_NATIVE_CARD_AUTO_REMOVED ','NIHOS_NATIVE_CARD_AUTO_ABORT ')) and line not in announced:
+                    if line.startswith(('NIHOS_NATIVE_CARD_AUTO_BOOT ','NIHOS_NATIVE_CARD_AUTO_DETECTED ','NIHOS_NATIVE_CARD_AUTO_SELECTED ','NIHOS_NATIVE_CARD_AUTO_PROMPT ','NIHOS_NATIVE_CARD_AUTO_RESULT ','NIHOS_NATIVE_CARD_AUTO_DONE ','NIHOS_NATIVE_CARD_AUTO_REMOVED ','NIHOS_NATIVE_CARD_AUTO_ABORT ')) and line not in announced:
                         print(line,flush=True);announced.add(line)
                 marker='NIHOS_NATIVE_CARD_AUTO_DONE ' if profile['read_enabled'] else 'NIHOS_NATIVE_CARD_AUTO_DETECTED '
                 count=text.count(marker)

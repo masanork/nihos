@@ -247,6 +247,17 @@ if [ "$card_photo" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
         "$repo_root/probes/photo/stack.S" -o "$build_dir/photo_stack.o"
     set -- "$@" "$build_dir"/photo_*.o
+    if [ "$card_auto" = true ] && [ "$auto_probe" = false ]; then
+        "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm \
+            -ffunction-sections -fdata-sections -fno-stack-check -fno-stack-protector \
+            -femit-bin="$build_dir/card_crypto.o" \
+            --dep crypto -Mroot="$repo_root/probes/card_crypto/link.zig" \
+            -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+            -Mcrypto="$repo_root/src/card/license_crypto.zig"
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            "$repo_root/probes/card_crypto/stack.S" -o "$build_dir/card_crypto_stack.o"
+        set -- "$@" "$build_dir/card_crypto.o" "$build_dir/card_crypto_stack.o"
+    fi
 fi
 if [ "$floating" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none \

@@ -5,9 +5,10 @@ const memory = @import("native_tasks").memory;
 const heap = memory.reusable;
 const bytes = 4 * 1024 * 1024 - 128;
 var lease: ?heap.Allocation = null;
-pub const Report = struct { selftest: u32 = 0, decoded: u32 = 0, error_code: u32 = 0, stack_used: u32 = 0, arena_bytes: u32 = 0, surface_sw: u32 = 0, surface_counter: u32 = 255, erased: u32 = 0 };
+pub const Report = struct { selftest: u32 = 0, decoded: u32 = 0, error_code: u32 = 0, stack_used: u32 = 0, arena_bytes: u32 = 0, surface_sw: u32 = 0, surface_counter: u32 = 255, erased: u32 = 0, crypto_selftest: u32 = 0, crypto_stack: u32 = 0 };
 pub var report = Report{};
 extern fn nih_photo_call([*]const u8, usize, [*]u8, usize, [*]u8, usize) callconv(.c) c_int;
+extern fn nih_card_crypto_call(?*const card.LicenseCrypto.Request, usize) callconv(.c) c_int;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 pub fn raw() []u8 {
     return lease.?.bytes[0..card.Surface.capacity];
@@ -20,6 +21,23 @@ fn scratch() []u8 {
 }
 fn stack() []u8 {
     return @as([*]u8, @ptrFromInt(0x4ff68000))[0..12288];
+}
+pub noinline fn cryptoExecute(request: ?*const card.LicenseCrypto.Request) linksection(".flash.photo") !bool {
+    if (lease == null) return error.CryptoNotReady;
+    const private_stack = lease.?.bytes[bytes - 65536 ..];
+    @memset(private_stack, 0xa5);
+    const status = nih_card_crypto_call(request, @intFromPtr(private_stack.ptr) + private_stack.len);
+    var first: usize = 128;
+    while (first < private_stack.len and private_stack[first] == 0xa5) : (first += 1) {}
+    report.crypto_stack = @max(report.crypto_stack, @as(u32, @intCast(private_stack.len - first)));
+    var intact = true;
+    for (private_stack[0..128]) |byte| if (byte != 0xa5) {
+        intact = false;
+    };
+    std.crypto.secureZero(u8, private_stack);
+    if (!intact) return error.CryptoStack;
+    if (request == null and status == 0) report.crypto_selftest = 1;
+    return status == 0;
 }
 noinline fn execute(encoded: []const u8) linksection(".flash.photo") bool {
     @memset(stack(), 0xa5);

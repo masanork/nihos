@@ -70,7 +70,7 @@ SECTIONS
         __keypad_atlas_end = .;
         . = ALIGN(64);
         __keypad_font_start = .;
-        *(.flash.keypad.font)
+        *(.flash.keypad.font .flash.keypad.auto_font)
         __keypad_font_end = .;
 #if NIH_NATIVE_PHOTO
         . = ALIGN(64);
@@ -81,6 +81,7 @@ SECTIONS
     .flash.photo : ALIGN(64) {
         __photo_text_start = .;
         *photo_*.o(.text .text.*)
+        *card_crypto*.o(.text .text.*)
         *(.flash.photo)
         *(.text.compiler_rt.addf3.* .text.compiler_rt.mulf3.* .text.compiler_rt.divf3.* .text.compiler_rt.divsf3.* .text.compiler_rt.divdf3.* .text.compiler_rt.comparef.* .text.compiler_rt.float_from_int.* .text.compiler_rt.int_from_float.* .text.compiler_rt.extendf.* .text.compiler_rt.truncf.*)
         . = ALIGN(64);
@@ -89,6 +90,7 @@ SECTIONS
     .flash.photo.rodata : ALIGN(64) {
         __photo_rodata_start = .;
         *photo_*.o(.rodata .rodata.* .srodata .srodata.*)
+        *card_crypto*.o(.rodata .rodata.* .srodata .srodata.*)
         . = ALIGN(64);
         __photo_fixture_start = .;
         *(.flash.photo.fixture)
@@ -97,6 +99,10 @@ SECTIONS
         __license_jis_start = .;
         *(.flash.license.data)
         __license_jis_end = .;
+        . = ALIGN(4);
+        __license_trust_start = .;
+        *(.flash.license.trust)
+        __license_trust_end = .;
         __photo_rodata_end = .;
     } > flash_ui
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
