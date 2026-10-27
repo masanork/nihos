@@ -102,7 +102,11 @@ class NativeInstructionTests(unittest.TestCase):
     def test_flash_tables_are_bounded_read_only_progbits(self):
         MODULE.audit_flash_section(".flash.appdesc", 1, 2, 0x40000020, 256)
         for size in (1, 1986, 65504):
-            MODULE.audit_flash_section(".flash.rodata", 1, 2, 0x40010020, size)
+            for flags in (2, 18, 50):
+                MODULE.audit_flash_section(".flash.rodata", 1, flags, 0x40010020, size)
+        for flags in (3, 6, 19, 22, 51, 54, 130):
+            with self.subTest(flags=flags), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(".flash.rodata", 1, flags, 0x40010020, 64)
         for kind, flags, address, size in ((8, 2, 0x40010020, 64), (1, 3, 0x40010020, 64),
                                             (1, 6, 0x40010020, 64), (1, 2, 0x40010024, 64),
                                             (1, 2, 0x40010020, 0), (1, 2, 0x40010020, 65505)):

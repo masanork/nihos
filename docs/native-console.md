@@ -52,6 +52,31 @@ lifecycle, allocator and IPI/idle checks. Normal-image internal SRAM heap is
 reservation and 56 KiB stack bank remain unchanged. Physical normal-boot
 timing and cold power-on validation remain pending until the Tab5 is connected.
 
+Headless normal-boot regression is now reproducible without a device:
+
+```sh
+python3 tools/run-native-boot-smoke.py
+```
+
+This runs the same normal bootstrap/scheduler/memory/IPI path under ESP-EMU,
+with LCD/input disabled and the emulator's command-mode PSRAM profile. It tests
+PSRAM absent, 4/32/64 MiB, CPU1 readiness delayed by 100 ms, and missing readiness,
+IPI reply or CPU1 timer. Successful cases must stay alive with continued ticks
+and zero fixture-worker counters after READY; injected failures must time out
+without READY. `NIHOS_NATIVE_BOOT_TEST=1..5` is restricted to a headless integer
+emulator build and rejected for device builds. No device-profile exception is
+provided. All eight captured cases pass; 154 Python checks include retained
+log replay and rejection of invented physical/qualification evidence.
+
+The [receipt](measurements/2026-10-27-native-normal-emulator.json) binds emulator
+version/hash, native source hash, image audits, UART logs and each result. The
+previous device-build candidate's allocated ELF sections (including all code,
+constants, initialized data and memory layout) match the device regression
+build byte-for-byte. Test/fault marker strings are absent from that device
+image. Embedded ELF/debug digests can still change the `.bin` hash. The replay
+checks kernel execution and fault handling; LCD, keyboard, PSRAM200 and real
+power-on/boot timing remain untested by it.
+
 ```sh
 NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_LIVE=1 \
   NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=4 \
