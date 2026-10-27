@@ -72,8 +72,10 @@ host-tested and its separate C6 firmware builds. The current physical path
 instead preserves the factory ESP-Hosted 1.4.1 firmware: a native P4 slot-1
 SDIO CPU0 boot fixture has associated with an AP, acquired IPv4 through P4
 DHCP, and answered link-local IPv6 Echo. SLAAC is host-tested; the current AP
-provided no router advertisements. This remains a standalone fixture: normal
-OS networking, C6 TCP/IP/BLE offload, IRQ-driven service and arbitration with
+provided no router advertisements. The subsequent bounded, opt-in normal-boot
+path integrates networking alongside the display; see
+[ADR 0045](adr/0045-normal-boot-network-integration.md). Permanent
+services, C6 TCP/IP/BLE offload, IRQ-driven service and arbitration with
 storage are open. See [ADR 0044](adr/0044-c6-sdio-boot-transport.md) and the
 [IPv6 evidence](measurements/2026-10-27-native-ipv6.md).
 
