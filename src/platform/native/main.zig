@@ -703,6 +703,7 @@ fn normalReady() noreturn {
     if (options.console_live) {
         ui.report(&logger);
         ui.liveReport(&logger, true);
+        if (!ui.startSession(&logger)) fail("launcher startup");
     }
     if (options.boot_test != 0) {
         const ready = .{ .wait_us = @as(u32, @intCast((ui.timer().counter() orelse fail("ready clock")) - started)) };

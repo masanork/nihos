@@ -827,3 +827,12 @@ pub fn report(core: u32) Report {
     if (@atomicLoad(u32, &reports[core].confirmed, .acquire) != 1) return .{};
     return reports[core];
 }
+
+/// Live counters of the calling owner only; not a completed qualification.
+pub fn localUsage() ?struct { capacity: u32, free: u32 } {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return null;
+    const previous = mask();
+    defer restore(previous);
+    return .{ .capacity = @intCast(owners[core].heap.payload.len), .free = @intCast(owners[core].heap.free_bytes) };
+}
