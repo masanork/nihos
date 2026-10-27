@@ -49,6 +49,7 @@ test {
     _ = experimental_checkpoint_model;
     _ = @import("storage/checkpoint_model_test.zig");
     _ = @import("storage/range_checksum_test.zig");
+    _ = @import("storage/index_gc_test.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;

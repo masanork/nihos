@@ -155,8 +155,18 @@ def main():
         restore(results["snapshots"]["generation5"], output, reconstructed)
         run("verify-index", reconstructed)
         results["cases"].append({"name": "compact_range_snapshot_reconstruction", "passed": True})
+        churn = run("churn-index")
+        recycled = run("verify-recycled")
+        require(churn["generation"] == 15 and recycled["index_free_pages"] == 128, "index reuse did not survive reopen")
+        results["cases"].append({"name": "reader_pin_backpressure_and_640_leaf_mutations_in_256_page_pool", "passed": True,
+                                 "churn": churn, "reopened": recycled})
+        results["snapshots"]["generation15"] = capture(image, output, "generation15")
+        recycled_image = output / "recycled-reconstructed.img"
+        restore(results["snapshots"]["generation15"], output, recycled_image)
+        run("verify-recycled", recycled_image)
+        results["cases"].append({"name": "recycled_index_snapshot_reconstruction", "passed": True})
         results["images"] = {}
-        for path in (image, reconstructed):
+        for path in (image, reconstructed, recycled_image):
             info = path.stat()
             allocated = info.st_blocks * 512
             require(info.st_size == CAPACITY and allocated < 32 * 1024**2, "image lost sparse allocation")

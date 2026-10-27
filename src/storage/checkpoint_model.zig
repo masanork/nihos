@@ -1,5 +1,6 @@
 //! Host-only paged-index experiment. Every transaction publishes a checkpoint;
-//! there is no replay log or GC. Payload checksums are verified on demand.
+//! Index pages are reclaimed by reachability; payload remains append-only.
+//! There is no replay log. Payload checksums are verified on demand.
 const std = @import("std");
 pub const page_bytes = 4096;
 pub const crc_offset = page_bytes - 4;
@@ -16,9 +17,11 @@ pub fn checksumPages(length: u64) u64 {
     const pages = dataPages(length);
     return pages / checksums_per_page + @intFromBool(pages % checksums_per_page != 0);
 }
-pub const Config = struct { leaf_pages: u16 = 128, index_pages: u32 = 4096, payload_start_page: ?u64 = null };
+pub const Config = struct { leaf_pages: u16 = 128, index_pages: u32 = 4096, payload_start_page: ?u64 = null, reader_slots: u8 = 2 };
 pub const Value = struct { first: u64, length: u64, checksum: u32 };
-pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted };
+pub const Reader = struct { slot: u8, token: u64 };
+pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
+pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader };
 
 pub fn Store(comptime Device: type, comptime config: Config) type {
     const data_start = config.payload_start_page orelse (2 + @as(u64, config.index_pages));
@@ -35,13 +38,21 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             count: u32 = 0,
             refs: [config.leaf_pages]Ref = @splat(.{}),
         };
+        const Pin = struct { root: Root = .{}, token: u64 = 0 };
         pub const max_objects = config.leaf_pages * leaf_entries;
+        pub const reader_limit = config.reader_slots;
+        pub const index_pool_pages = config.index_pages;
+        // Current + retained disk root + staged transaction + reader snapshots.
+        pub const max_protected_index_pages = (3 + @as(u32, config.reader_slots)) * config.leaf_pages;
         pub const mount_limit_bytes = (2 + 2 * @as(usize, config.leaf_pages)) * page_bytes;
         pub const payload_start = data_start;
         // SAFETY: format/recover assign device before I/O; ready gates public operations.
         device: *Device = undefined,
         current: Root = .{},
         staged: Root = .{},
+        retained: Root = .{},
+        readers: [config.reader_slots]Pin = @splat(.{}),
+        next_reader: u64 = 1,
         cache: [page_bytes]u8 = @splat(0),
         ready: bool = false,
         faulted: bool = false,
@@ -113,7 +124,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                     error.Corrupt => continue,
                     else => return err,
                 };
-                if (root.generation > self.current.generation) self.current = root;
+                if (root.generation > self.current.generation) {
+                    self.retained = self.current;
+                    self.current = root;
+                } else self.retained = root;
             }
             if (self.current.generation == 0) return if (blank) error.Unformatted else error.Corrupt;
             self.ready = true;
@@ -133,6 +147,60 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         pub fn rollback(self: *Self) Error!void {
             try self.transaction();
             self.in_transaction = false;
+        }
+
+        /// Instance-scoped host handle, not an isolated public capability ABI.
+        pub fn pin(self: *Self) Error!Reader {
+            try self.usable();
+            if (self.next_reader == std.math.maxInt(u64)) return error.GenerationExhausted;
+            for (&self.readers, 0..) |*reader, i| if (reader.token == 0) {
+                reader.* = .{ .root = self.current, .token = self.next_reader };
+                self.next_reader += 1;
+                return .{ .slot = @intCast(i), .token = reader.token };
+            };
+            return error.ReaderLimit;
+        }
+        fn readerRoot(self: *Self, reader: Reader) Error!*const Root {
+            if (reader.slot >= self.readers.len or reader.token == 0 or self.readers[reader.slot].token != reader.token) return error.InvalidReader;
+            return &self.readers[reader.slot].root;
+        }
+        pub fn release(self: *Self, reader: Reader) Error!void {
+            // Allow resource release after an I/O/integrity fault as well.
+            if (!self.ready) return error.NotReady;
+            _ = try self.readerRoot(reader);
+            self.readers[reader.slot].token = 0;
+        }
+        fn rootReferences(root: *const Root, page: u64) bool {
+            for (root.refs) |ref| if (ref.page == page) return true;
+            return false;
+        }
+        fn protectedIndex(self: *const Self, page: u64) bool {
+            if (rootReferences(&self.current, page) or rootReferences(&self.retained, page) or
+                (self.in_transaction and rootReferences(&self.staged, page))) return true;
+            for (&self.readers) |*reader| if (reader.token != 0 and rootReferences(&reader.root, page)) return true;
+            return false;
+        }
+        fn availableIndex(self: *const Self) ?u64 {
+            for (0..config.index_pages) |i| {
+                const page = 2 + @as(u64, i);
+                if (!self.protectedIndex(page)) return page;
+            }
+            return null;
+        }
+        pub fn indexSpace(self: *Self) Error!IndexSpace {
+            try self.usable();
+            var used: u32 = 0;
+            for (0..config.index_pages) |i| if (self.protectedIndex(2 + @as(u64, i))) {
+                used += 1;
+            };
+            return .{ .capacity_pages = config.index_pages, .protected_pages = used, .available_pages = config.index_pages - used };
+        }
+        /// A root-only checkpoint retires the previous disk root without
+        /// allocating index/payload pages. Pinned readers remain protected.
+        pub fn collectIndex(self: *Self) Error!IndexSpace {
+            try self.begin();
+            try self.commit();
+            return self.indexSpace();
         }
 
         fn decodeEntry(root: *const Root, bytes: []const u8) Error!?Value {
@@ -192,10 +260,11 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
 
         fn preflight(self: *Self, pages: u64) Error!void {
-            if (self.staged.index_next >= 2 + @as(u64, config.index_pages) or
+            if (self.availableIndex() == null or
                 pages > Device.capacity / page_bytes - self.staged.payload_next) return error.NoSpace;
         }
         fn replace(self: *Self, key: u32, value: ?Value, existed: bool) Error!void {
+            const page = self.availableIndex() orelse return error.NoSpace;
             const offset = entryOffset(key);
             @memset(self.cache[offset..][0..32], 0);
             if (value) |item| {
@@ -209,9 +278,9 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             std.mem.writeInt(u32, self.cache[8..12], @intCast(leafIndex(key)), .little);
             std.mem.writeInt(u64, self.cache[16..24], self.staged.generation, .little);
             const checksum = finishPage(&self.cache);
-            try self.writePage(self.staged.index_next, &self.cache);
-            self.staged.refs[leafIndex(key)] = .{ .page = self.staged.index_next, .checksum = checksum };
-            self.staged.index_next += 1;
+            try self.writePage(page, &self.cache);
+            self.staged.refs[leafIndex(key)] = .{ .page = page, .checksum = checksum };
+            self.staged.index_next = @max(self.staged.index_next, page + 1);
             if (value != null and !existed) self.staged.count += 1;
             if (value == null and existed) self.staged.count -= 1;
         }
@@ -262,12 +331,22 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             try self.transaction();
             self.device.sync() catch return self.ioFailure();
             try self.publish(&self.staged);
+            self.retained = self.current;
             self.current = self.staged;
             self.in_transaction = false;
         }
 
         pub fn read(self: *Self, key: u32, offset: u64, destination: []u8) Error!usize {
             const value = try self.get(key);
+            return self.readValue(value, offset, destination);
+        }
+        pub fn readPinned(self: *Self, reader: Reader, key: u32, offset: u64, destination: []u8) Error!usize {
+            try self.usable();
+            const root = try self.readerRoot(reader);
+            const value = try self.checkedLookup(root, key) orelse return error.NotFound;
+            return self.readValue(value, offset, destination);
+        }
+        fn readValue(self: *Self, value: Value, offset: u64, destination: []u8) Error!usize {
             if (offset >= value.length or destination.len == 0) return 0;
             const n: usize = @intCast(@min(destination.len, value.length - offset));
             var position: usize = 0;

@@ -54,3 +54,21 @@ pub export fn checkpoint_probe_verify(key: u32) c_int {
     store.verify(key) catch return -1;
     return 0;
 }
+pub export fn checkpoint_probe_collect_index() c_int {
+    _ = store.collectIndex() catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_pin(slot: *u8, token: *u64) c_int {
+    const reader = store.pin() catch return -1;
+    slot.* = reader.slot;
+    token.* = reader.token;
+    return 0;
+}
+pub export fn checkpoint_probe_release(slot: u8, token: u64) c_int {
+    store.release(.{ .slot = slot, .token = token }) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_read_pinned(slot: u8, token: u64, key: u32, offset: u64, bytes: [*]u8, length: usize) c_int {
+    _ = store.readPinned(.{ .slot = slot, .token = token }, key, offset, bytes[0..length]) catch return -1;
+    return 0;
+}
