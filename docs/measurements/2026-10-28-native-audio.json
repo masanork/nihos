@@ -1,0 +1,238 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-28",
+  "base_commit": "734e89e5eab8ab925b52971cfe1c5b6a9889d766",
+  "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+  "sdk_dirty": false,
+  "scope": "finite native PCM DMA/codec progression; audible output unconfirmed",
+  "candidate": {
+    "app_sha256": "51f89b7c662afc80f2310863d7f9594a12446bcc5fee2336b66f1a1e65684ce0",
+    "elf_sha256": "c289e137cec19c54e039ad875e1e474630dce5f3f108e0319ce4b55e130ac472",
+    "app_bytes": 164816,
+    "primary_heap_bytes": 49856,
+    "heap_floor_bytes": 49152,
+    "nominal_rate": 16000,
+    "frames": 8192,
+    "descriptor_slots": 32,
+    "pcm_bytes": 1024,
+    "descriptor_bytes": 512,
+    "source_archive_sha256": "dc49afef918351c775cb696935d9e4a771ba6f0d35cdd3652a567bbf67bbb027"
+  },
+  "capture": {
+    "at": "2026-10-27T16:28:05.396678+00:00",
+    "app_sha256": "51f89b7c662afc80f2310863d7f9594a12446bcc5fee2336b66f1a1e65684ce0",
+    "scope": "finite native PCM output; audible confirmation separate",
+    "restored": true,
+    "written": true,
+    "prior_app_partition_sha256": "1c35050010e6a89aa8e23525e074262a3c7aba960bc599044005412decbfd855",
+    "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+    "seconds": 35.024320415999995,
+    "serial_sha256": "4222428a11c744d828d97160764bc39398bd2396e05a5d201aa5a5a564d36a54",
+    "native_fail": false
+  },
+  "audio": {
+    "scope": "native finite DMA/codec output progression; audible output not evaluated",
+    "records": 7,
+    "complete_records": 5,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "dma": 11,
+      "bclk": 262145,
+      "fifo": 16384,
+      "eof_descriptor": 1341241008,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1
+    },
+    "evidence": "physical-device capture",
+    "app_sha256": "51f89b7c662afc80f2310863d7f9594a12446bcc5fee2336b66f1a1e65684ce0",
+    "serial_sha256": "4222428a11c744d828d97160764bc39398bd2396e05a5d201aa5a5a564d36a54"
+  },
+  "imu": {
+    "schema": 1,
+    "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+    "records": 7,
+    "ready_records": 6,
+    "first": {
+      "chip": 36,
+      "initialized": 1,
+      "stage": 12,
+      "fault": 0,
+      "uploaded": 8192,
+      "valid": 1,
+      "samples": 7,
+      "acc_x": 62,
+      "acc_y": 1297,
+      "acc_z": -8086,
+      "gyr_x": -8,
+      "gyr_y": 10,
+      "gyr_z": -1,
+      "sensor_error": 0,
+      "ready_status": 208
+    },
+    "last": {
+      "chip": 36,
+      "initialized": 1,
+      "stage": 13,
+      "fault": 0,
+      "uploaded": 8192,
+      "valid": 1,
+      "samples": 1005,
+      "acc_x": 71,
+      "acc_y": 1316,
+      "acc_z": -8082,
+      "gyr_x": -8,
+      "gyr_y": -2,
+      "gyr_z": 0,
+      "sensor_error": 0,
+      "ready_status": 208
+    },
+    "observed_acceleration_norm_g": {
+      "min": 0.9990114228093857,
+      "max": 1.0002344646362942
+    },
+    "sample_delta": 998,
+    "log_sha256": "4222428a11c744d828d97160764bc39398bd2396e05a5d201aa5a5a564d36a54"
+  },
+  "normal_display_core_check_passed": true,
+  "board_i2c_errors": 0,
+  "ble": {
+    "phase": 4,
+    "commands": 7,
+    "events": 32,
+    "advertisements": 25,
+    "malformed": 0,
+    "status": 0,
+    "timeouts": 0
+  },
+  "display_cpu_first": {
+    "frames": 32,
+    "ticks0": 15,
+    "ticks1": 15
+  },
+  "display_cpu_last": {
+    "frames": 1833,
+    "ticks0": 3018,
+    "ticks1": 3018
+  },
+  "earlier_success": {
+    "scope": "native finite DMA/codec output progression; audible output not evaluated",
+    "records": 7,
+    "complete_records": 5,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "dma": 11,
+      "bclk": 262145,
+      "fifo": 16384,
+      "eof_descriptor": 1341241008,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1
+    },
+    "evidence": "physical-device capture",
+    "app_sha256": "b3cba826f77ca027180c3b69d289e37376b72803c5336fbe5dc367927a944841",
+    "serial_sha256": "103de2feacfce3b2e9e349427faa331d16816a713f3c3dc262cf05345e6416d6"
+  },
+  "failures": [
+    {
+      "attempt": "attempt-01",
+      "reason": "loader mismatch before any write",
+      "capture": {
+        "at": "2026-10-27T16:03:23.530523+00:00",
+        "app_sha256": "efba92bc1c332a95bc2cd5dd2022f1906632b3eee24de8bd0bd2fd8a2b185d0f",
+        "scope": "finite native PCM output; audible confirmation separate",
+        "restored": false,
+        "written": false
+      }
+    },
+    {
+      "attempt": "attempt-02",
+      "reason": "codec readback failed; subsequently localized to reserved CONTROL2 bit6",
+      "capture": {
+        "at": "2026-10-27T16:04:35.317453+00:00",
+        "app_sha256": "efba92bc1c332a95bc2cd5dd2022f1906632b3eee24de8bd0bd2fd8a2b185d0f",
+        "scope": "finite native PCM output; audible confirmation separate",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "4781112f4c021c0c7c195b1f29e9f4ddddf0ecff45e28ffaef8ef0b82dba476c",
+        "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+        "seconds": 35.033155417,
+        "serial_sha256": "4388f3c6d9bd90f4a4c55ec852efa7f3474f8d7f19e5f3a3df3a3bf0d1f80eb7",
+        "native_fail": false
+      },
+      "log_sha256": "4388f3c6d9bd90f4a4c55ec852efa7f3474f8d7f19e5f3a3df3a3bf0d1f80eb7"
+    },
+    {
+      "attempt": "attempt-03",
+      "reason": "candidate build missing before any serial operation"
+    },
+    {
+      "attempt": "attempt-04",
+      "reason": "confirmed CONTROL2 expected 0x00, read 0x40; reserved-bit mask corrected",
+      "capture": {
+        "at": "2026-10-27T16:06:56.402319+00:00",
+        "app_sha256": "d4c0fff8ed3356627ee3bdc4ada9100db40b38702b4f5795df300234f891a524",
+        "scope": "finite native PCM output; audible confirmation separate",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "4781112f4c021c0c7c195b1f29e9f4ddddf0ecff45e28ffaef8ef0b82dba476c",
+        "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+        "seconds": 35.060490791999996,
+        "serial_sha256": "30eaba8314987cbc8ae85af964aa03194dc8ad5dbe71852ec7be4bfdd64f41c0",
+        "native_fail": false
+      },
+      "log_sha256": "30eaba8314987cbc8ae85af964aa03194dc8ad5dbe71852ec7be4bfdd64f41c0"
+    },
+    {
+      "attempt": "attempt-05",
+      "reason": "access exception with incorrect DMA base; later localized by mtval",
+      "capture": {
+        "at": "2026-10-27T16:08:41.891168+00:00",
+        "app_sha256": "2b298e7795a8fa4023d0eb016dfedb7f2fd6e31c6c42f8e2a1f15c99a4609d8f",
+        "scope": "finite native PCM output; audible confirmation separate",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "4781112f4c021c0c7c195b1f29e9f4ddddf0ecff45e28ffaef8ef0b82dba476c",
+        "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+        "seconds": 9.717827,
+        "serial_sha256": "ebff1b95edc95e4c70483c6b22efc3f24719550b4d2dcdd937db8a6041d516b9",
+        "native_fail": true
+      },
+      "log_sha256": "ebff1b95edc95e4c70483c6b22efc3f24719550b4d2dcdd937db8a6041d516b9"
+    },
+    {
+      "attempt": "attempt-06",
+      "reason": "serial lease busy; no device access"
+    },
+    {
+      "attempt": "attempt-07",
+      "reason": "mtval=0x500810e0: DW_GDMA was incorrectly addressed as AHB-DMA",
+      "capture": {
+        "at": "2026-10-27T16:22:30.738800+00:00",
+        "app_sha256": "10c8cf4327634d53ffaf1ba1582b30fc8f1a7ad42412c10f069d64342ccb2568",
+        "scope": "finite native PCM output; audible confirmation separate",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "1c35050010e6a89aa8e23525e074262a3c7aba960bc599044005412decbfd855",
+        "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+        "seconds": 9.702804292,
+        "serial_sha256": "38af209cfceebf75c862c8982f8856d4a7bc77e71f59a5ea77e670f2c3bae78e",
+        "native_fail": true
+      },
+      "log_sha256": "38af209cfceebf75c862c8982f8856d4a7bc77e71f59a5ea77e670f2c3bae78e"
+    }
+  ],
+  "remaining": [
+    "audible confirmation for the exact candidate",
+    "measured clock/analog levels, click/quality checks",
+    "cold power-on, headphones and repeated/reopen playback",
+    "long-running streaming/refill and mixer/application ABI",
+    "microphone/ES7210 recording",
+    "active Wi-Fi AP traffic coexistence"
+  ],
+  "private_artifacts": "/private/tmp/nihos-native-audio/build/audio-qualification"
+}

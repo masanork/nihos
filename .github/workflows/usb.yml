@@ -139,6 +139,19 @@ jobs:
           mkdir -p build/usb-ci/default-connected
           cp build/native-device-network/image-audit.json build/native-device-network/native_options.zig build/usb-ci/default-connected/
 
+      - name: Compile opt-in finite native audio probe and reject wrong DMA base
+        run: |
+          NIHOS_NATIVE_AUDIO=1 sh tools/build-native.sh device
+          python3 tools/check-audio-shim.py
+          mkdir -p build/usb-ci/finite-audio/licenses
+          cp build/native-device-network-audio/nihos-native.elf \
+             build/native-device-network-audio/nihos-native.bin \
+             build/native-device-network-audio/image-audit.json \
+             build/native-device-network-audio/native_options.zig \
+             build/native-device-network-audio/network-receipt.json \
+             build/audio-shim-check/result.json build/usb-ci/finite-audio/
+          cp build/native-device-network-audio/licenses/BMI270.txt build/usb-ci/finite-audio/licenses/
+
       - name: Retain source-bound compile evidence
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

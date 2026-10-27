@@ -5,6 +5,8 @@ const display = @import("display_service");
 const i2c = @import("boot_i2c");
 const rtc = @import("tab5_rtc");
 const bmi270 = @import("tab5_bmi270");
+const options = @import("native_options");
+pub const audio = @import("audio_probe.zig");
 const timers = @import("timer_group");
 const Bus = i2c.Master(display.probe.Pins);
 // SAFETY: begin binds the bus before active allows poll or setCalendar.
@@ -15,6 +17,7 @@ var next: u64 = 0;
 var job: u1 = 0;
 var imu: bmi270.Driver = .{};
 var active = false;
+var audio_requested = false;
 pub const Report = extern struct {
     rtc_present: u32 = 0,
     rtc_valid: u32 = 0,
@@ -96,7 +99,17 @@ fn step() !void {
 }
 pub fn poll() void {
     if (!active) return;
-    const now = clock.counter() orelse return;
+    const now = clock.counter() orelse {
+        if (options.audio and audio_requested) audio.poll(&bus, clock);
+        return;
+    };
+    if (options.audio and now >= 10_000_000) {
+        if (!audio_requested) {
+            audio_requested = true;
+            _ = audio.request();
+        }
+        audio.poll(&bus, clock);
+    }
     if (now < next) {
         imu.poll(&bus, clock);
         return;
