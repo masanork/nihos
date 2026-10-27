@@ -20,7 +20,13 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def capture_ready(data):
+    # Native print emits CRLF. Do not require LF-only bytes before sending ACK.
+    return b'\nNIHOS_CAPTURE_WAIT\n' in b'\n' + data.replace(b'\r', b'')
+
+
 def require_power_on_reset(log, image=None):
+    log = log.replace('\r', '')
     reasons = re.findall(r'rst:0x([0-9a-f]+)\s*\(', log)
     if (image or {}).get('io_lifetimes', {}).get('capture_handshake') is True:
         captured = re.findall(r'NIHOS_NATIVE_RESET cpu0=([0-9a-f]{8}) ack=([0-9a-f]{8})(?:\n|$)', log)
@@ -127,7 +133,7 @@ def main():
     # Imports are deferred so --help needs no device dependencies.
     import esptool
     import serial
-    from native_serial import capture_serial_class, disable_hangup
+    from native_serial import capture_serial_class, disable_hangup, disconnected
     from esptool.reset import HardReset
     owners = subprocess.run(['lsof', '-t', args.port], capture_output=True, text=True, check=False)
     if owners.stdout.strip():
@@ -150,10 +156,19 @@ def main():
 
         def connect():
             port.passive_open = False
-            if not port.is_open:
-                reopen()
-            port.baudrate = 115200
-            esp = esptool.detect_chip(port=port, baud=115200)
+            deadline = time.monotonic() + 60
+            while True:
+                try:
+                    if not port.is_open:
+                        reopen()
+                    port.baudrate = 115200
+                    esp = esptool.detect_chip(port=port, baud=115200)
+                    break
+                except (serial.SerialException, OSError) as error:
+                    if not disconnected(error) or time.monotonic() >= deadline:
+                        raise
+                    port.close()
+                    time.sleep(.2)
             identity = {'chip': esp.get_chip_description(), 'mac': ':'.join(f'{b:02x}' for b in esp.read_mac())}
             if identity != expected_identity:
                 raise RuntimeError('Device identity changed; refusing Flash access')
@@ -212,7 +227,7 @@ def main():
                 while time.monotonic() - began < (360 if removal_test else 180):
                     raw_log.extend(port.read(max(1, port.in_waiting)))
                     path.write_bytes(raw_log)
-                    if not capture_ack and b'NIHOS_CAPTURE_WAIT\n' in raw_log:
+                    if not capture_ack and capture_ready(raw_log):
                         port.write(b'G')
                         port.flush()
                         capture_ack = True
@@ -266,7 +281,7 @@ def main():
                         time.sleep(.2)
                         continue
                     path.write_bytes(raw_log)
-                    if not capture_ack and b'NIHOS_CAPTURE_WAIT\n' in raw_log:
+                    if not capture_ack and capture_ready(raw_log):
                         port.write(b'G')
                         port.flush()
                         capture_ack = True

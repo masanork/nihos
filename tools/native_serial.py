@@ -6,6 +6,18 @@ capture open suppresses the calls made by pyserial.Serial.open().
 import termios
 
 
+def disconnected(error):
+    """pyserial may wrap a termios/OS errno in a string-only exception."""
+    while error is not None:
+        code = getattr(error, 'errno', None)
+        if code is None and error.args and isinstance(error.args[0], int):
+            code = error.args[0]
+        if code in (2, 6, 19):
+            return True
+        error = error.__cause__ or error.__context__
+    return False
+
+
 def disable_hangup(port):
     attributes = termios.tcgetattr(port.fd)
     if attributes[2] & termios.HUPCL:

@@ -161,6 +161,25 @@ class PhysicalRemovalEvidenceTests(unittest.TestCase):
 
 
 class PassiveCaptureTests(unittest.TestCase):
+    def test_real_crlf_wait_replay_and_power_cause_are_not_lf_only(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/cold-capture-crlf.json').read_text())
+        wire = bytes.fromhex(fixture['wire_hex'])
+        self.assertTrue(RUNNER.capture_ready(wire))
+        self.assertNotIn(b'NIHOS_CAPTURE_WAIT\n', wire)  # old detector misses it
+        self.assertFalse(RUNNER.capture_ready(b'NIHOS_CAPTURE_WAIT\r'))
+        image = {'io_lifetimes': {'capture_handshake': True}}
+        RUNNER.require_power_on_reset('NIHOS_NATIVE_RESET cpu0=00000001 ack=00000001\r\n', image)
+        with self.assertRaises(ValueError):
+            RUNNER.require_power_on_reset('NIHOS_NATIVE_RESET cpu0=00000017 ack=00000001\r\n', image)
+
+    def test_wrapped_disconnect_is_recoverable_but_busy_ports_are_not(self):
+        wrapped = RuntimeError('Could not configure port')
+        wrapped.__context__ = OSError(6, 'Device not configured')
+        self.assertTrue(SERIAL_CAPTURE.disconnected(wrapped))
+        self.assertTrue(SERIAL_CAPTURE.disconnected(FileNotFoundError(2, 'gone')))
+        self.assertFalse(SERIAL_CAPTURE.disconnected(OSError(16, 'Device busy')))
+        self.assertFalse(SERIAL_CAPTURE.disconnected(ValueError('bad candidate')))
+
     def test_bound_latched_power_on_reason_survives_missing_rom_header(self):
         image = {'io_lifetimes': {'capture_handshake': True}, 'memory': {'profile': 'device'}}
         log = 'NIHOS_CAPTURE_WAIT\nNIHOS_NATIVE_RESET cpu0=00000001 ack=00000001\nNIHOS_NATIVE_BOOT backend=zig-sram\n'
