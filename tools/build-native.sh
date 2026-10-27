@@ -41,7 +41,13 @@ idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=$defaults" bootloader partition-table
 sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
+set --
+# Boot-clock code can leave alignment padding before the optional card section.
+# Keep that padding inside its ELF load segment instead of generating two
+# separately mapped image segments in the same 64 KiB Flash page.
+case "${NIHOS_NATIVE_DISPLAY:-0}" in 9|10|11) set -- --use_segments ;; esac
 "$python" -m esptool --chip esp32p4 elf2image \
+    "$@" \
     --flash_mode dio --flash_freq 80m --flash_size 16MB \
     --min-rev-full "$revision" --max-rev-full "$max_revision" --elf-sha256-offset 0xb0 \
     -o "$build_dir/nihos-native.bin" \
@@ -53,6 +59,9 @@ sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
     0x10000 "$build_dir/nihos-native.bin"
 set --
 if [ "$mode" = sqlite ]; then set -- "$build_dir/sqlite-manifest.json"; fi
+if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 10 ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" = 11 ]; then set -- --none "$build_dir/photo-manifest.json"; fi
+if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 9 ]; then set -- --none "$repo_root/src/graphics/card_read_font.json"; fi
+if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/graphics/keypad_atlas.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"

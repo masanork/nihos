@@ -9,6 +9,101 @@ import sys
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
                "32M": 32 << 20, "64M": 64 << 20}
 STORAGE_FIELDS = ("status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes")
+USB_FIELDS = ("status", "stage", "error_code", "core_id", "port", "speed", "vid", "pid", "config_bytes", "interfaces", "ccid", "bulk_in", "bulk_out", "interrupt_in", "max_message", "transfers", "slot_queries", "card_state", "last_irq", "last_descriptor", "dma_stopped")
+JPKI_FIELDS = ("status", "stage", "error_code", "power_status", "power_error", "atr_bytes", "card_state", "apdu_count", "rejected", "pin_data_sent", "auth_before", "auth_after", "last_sw", "serial_bytes", "poweroff")
+DISPLAY_PREP_FIELDS = ("status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight")
+CARD_FIELDS = ("status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts", "last_type", "last_flags", "last_error", "last_parameter", "last_bytes", "vbus_off")
+
+
+def check_display_preparation(log):
+    r = fixed_record(log, 'NIHOS_NATIVE_DISPLAY_PREP', DISPLAY_PREP_FIELDS)
+    if (r['status'] != 1 or r['stage'] != 6 or r['error_code'] != 0 or r['panel'] not in (1, 2, 3) or
+            not 0 < r['transactions'] <= 256 or r['frame_start'] != 0x48030000 or
+            r['frame_bytes'] != 720 * 1280 * 2 or r['reserve_bytes'] != 29 * 65536 or
+            r['phy_status'] != 3 or r['scanout'] != 0 or r['backlight'] != 0):
+        raise ValueError('incomplete display preparation or invalid reservation')
+    return r
+
+
+def check_card(log):
+    if log.count('NIHOS_NATIVE_CARD_CHECK_START pin_enabled=0') != 1:
+        raise ValueError('missing/duplicate PIN-disabled card mode')
+    r = fixed_record(log, 'NIHOS_NATIVE_CARD_CHECK', CARD_FIELDS)
+    if (r['status'] != 1 or r['stage'] != 3 or r['usb'] != 1 or r['card'] != 1 or
+            r['remaining'] not in (0, 1, 2, 3) or
+            r['card_fault'] != {0: 6, 1: 7, 2: 1, 3: 1}[r['remaining']] or
+            r['poweroff'] not in (1, 2) or r['dma_erased'] != 1 or r['vbus_off'] != 1 or r['pin_data_sent'] != 0 or
+            r['touch'] != 1 or (r['width'], r['height']) != (720, 1280) or not 1 <= r['slots'] <= 10 or
+            r['samples'] != 64 or r['fresh'] > 64 or r['contacts'] + r['releases'] != r['fresh'] or
+            r['max_contacts'] > r['slots'] or (r['max_contacts'] == 0) != (r['contacts'] == 0) or
+            r['last_type'] != 0x81 or r['last_flags'] != (1 if r['poweroff'] == 1 else 0) or r['last_error'] != 0 or
+            r['last_parameter'] > 3 or r['last_bytes'] != 0):
+        raise ValueError('incomplete PIN-free card/touch readiness check')
+    if not log.index('NIHOS_NATIVE_FP_PASS') < log.index('NIHOS_NATIVE_CARD_CHECK_START') < log.index('NIHOS_NATIVE_CARD_CHECK '):
+        raise ValueError('card check must follow native qualification')
+    return r
+
+
+def check_jpki(log):
+    if log.count('NIHOS_NATIVE_JPKI_MODE pin_input=disabled') != 1:
+        raise ValueError('missing/duplicate PIN-free JPKI mode')
+    record = fixed_record(log, 'NIHOS_NATIVE_JPKI', JPKI_FIELDS)
+    if (record['status'] != 1 or record['stage'] != 6 or record['error_code'] != 0 or
+            record['power_status'] != 0 or record['power_error'] != 0 or
+            not 2 <= record['atr_bytes'] <= 33 or record['card_state'] != 0 or
+            record['apdu_count'] != 7 or record['rejected'] != 0 or record['pin_data_sent'] != 0 or
+            not 1 <= record['auth_before'] <= 3 or record['auth_before'] != record['auth_after'] or
+            record['last_sw'] != 0x63c0 + record['auth_before'] or
+            not 1 <= record['serial_bytes'] <= 20 or record['poweroff'] != 1):
+        raise ValueError('incomplete PIN-free JPKI read or changed retry count')
+    serials = re.findall(r'^NIHOS_NATIVE_JPKI_SERIAL hex=([0-9a-f]+)$', log, re.M)
+    if len(serials) != 1 or log.count('NIHOS_NATIVE_JPKI_SERIAL') != 1 or len(serials[0]) != record['serial_bytes'] * 2:
+        raise ValueError('missing/duplicate/malformed JPKI certificate serial')
+    # The private raw log contains the requested serial. The public summary
+    # records only its length, not the value or the certificate prefix.
+    return record
+
+
+def check_authenticated_owner(log, image, evidence):
+    storage = image.get('keypad_storage', {}) if image else {}
+    text = image.get('card_text', {}) if image else {}
+    if image and image.get('automatic_cards'):
+        boot = fixed_record(log, 'NIHOS_NATIVE_CARD_AUTO_BOOT', ('selftest','error_code','stack_used','erased','crypto_selftest','crypto_stack'))
+        read_enabled=image['automatic_cards'].get('read_enabled')
+        if boot['crypto_selftest'] != int(read_enabled) or (not 0<boot['crypto_stack']<65408 if read_enabled else boot['crypto_stack']!=0):raise ValueError('licence crypto self-test / private stack evidence missing')
+        if (evidence != 'physical-device' or storage.get('ui_mode') != 'runtime' or text.get('executable') is not True or text.get('writable') is not False or
+                log.count('NIHOS_NATIVE_USB_MODE enabled=1') != 1 or boot['selftest'] != 1 or boot['error_code'] or not 0 < boot['stack_used'] < 12224 or boot['erased'] != 1 or
+                any(marker in log for marker in ('NIHOS_NATIVE_USB ', 'NIHOS_NATIVE_JPKI_MODE', 'NIHOS_NATIVE_CARD_CHECK_START'))):
+            raise ValueError('incomplete automatic-card owner preparation')
+        return {'scope':'automatic card owner; no boot USB/JPKI probe', **boot}
+    ready = fixed_record(log, 'NIHOS_NATIVE_CARD_READ_READY', ('remaining_before', 'verifies', 'preflight_cut'))
+    if (evidence != 'physical-device' or storage.get('ui_mode') != 'runtime' or storage.get('font_bytes', 0) <= 0 or
+            text.get('writable') is not False or text.get('executable') is not True or
+            log.count('NIHOS_NATIVE_USB_MODE enabled=1') != 1 or
+            ready['remaining_before'] not in (2, 3) or ready['verifies'] != 0 or ready['preflight_cut'] != 1 or
+            any(marker in log for marker in ('NIHOS_NATIVE_USB ', 'NIHOS_NATIVE_JPKI_MODE', 'NIHOS_NATIVE_CARD_CHECK_START'))):
+        raise ValueError('incomplete authenticated-owner preparation')
+    return {'scope': 'PIN-free authenticated-owner preparation; boot USB probe not run', **ready}
+
+
+def check_usb(log):
+    if log.count("NIHOS_NATIVE_USB_MODE enabled=1") != 1:
+        raise ValueError("missing/duplicate native USB mode")
+    record = fixed_record(log, "NIHOS_NATIVE_USB", USB_FIELDS)
+    if (record['status'] != 1 or record['stage'] != 8 or record['error_code'] != 0 or
+            record['core_id'] not in (0x4f54400a, 0x4f54430a) or
+            record['port'] & 0x15 != 5 or record['speed'] not in (0, 1) or
+            not 0 < record['vid'] <= 0xffff or not 0 < record['pid'] <= 0xffff or
+            not 9 <= record['config_bytes'] <= 512 or not 0 < record['interfaces'] <= 255 or
+            record['ccid'] != 1 or not 0x81 <= record['bulk_in'] <= 0x8f or
+            not 1 <= record['bulk_out'] <= 15 or
+            record['interrupt_in'] not in (0, *range(0x81, 0x90)) or
+            not 10 <= record['max_message'] <= 4096 or record['transfers'] != 22 or
+            record['slot_queries'] != 3 or record['card_state'] not in (0, 1, 2) or
+            record['last_irq'] & 3 != 3 or record['last_irq'] & 0x190c != 0 or
+            record['last_descriptor'] & 0xb0000000 != 0 or record['dma_stopped'] != 1):
+        raise ValueError("incomplete native USB/CCID qualification")
+    return record
 
 
 def check_storage(record, sectors):
@@ -104,7 +199,8 @@ def check_cpu_clock(log, image, evidence):
 
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
-          external_reserved_bytes=3 * 65536, require_normal=False, headless_case=0):
+          external_reserved_bytes=3 * 65536, require_normal=False, headless_case=0,
+          require_usb=False, require_jpki=False, require_card=False):
     if external_reserved_bytes not in (3 * 65536, 2 << 20):
         raise ValueError("unknown external reservation")
     if evidence not in ("emulator", "physical-device"):
@@ -356,16 +452,15 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     pattern = r"NIHOS_NATIVE_EXTERNAL hart=([0-9a-f]{8})" + "".join(
         " " + name + r"=([0-9a-f]{8})" for name in memory_names)
     external_owners = {}
+    display_preparation = None
+    if require_card:
+        external_reserved_bytes = 2 << 20
     if external_reserved_bytes == 2 << 20:
-        preparation = fixed_record(log, "NIHOS_NATIVE_DISPLAY_PREP", (
-            "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes",
-            "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight"))
-        if (preparation["status"] != 1 or preparation["stage"] != 6 or preparation["error_code"] != 0 or
-                preparation["panel"] not in (1, 2, 3) or preparation["frame_start"] != 0x48030000 or
-                preparation["frame_bytes"] != 720 * 1280 * 2 or preparation["reserve_bytes"] != 0x1d0000 or
-                preparation["scanout"] or preparation["backlight"] or preparation["phy_status"] != 3 or
-                expected_psram_bytes < 4 << 20):
-            raise ValueError("invalid display external reservation")
+        if evidence != 'physical-device':
+            raise ValueError('native display preparation requires physical-device evidence')
+        display_preparation = check_display_preparation(log)
+        if expected_psram_bytes < 4 << 20:
+            raise ValueError('invalid display external reservation')
     external_start = 0x48000000 + external_reserved_bytes
     stride = (expected_psram_bytes - external_reserved_bytes) // 2 if psram["status"] else 0
     for match in re.findall(pattern, log):
@@ -614,7 +709,29 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             raise ValueError('incomplete littlefs stack qualification')
     elif 'NIHOS_NATIVE_STORAGE_STACK ' in log:
         raise ValueError('orphan storage stack record')
+    usb = None
+    authenticated_usb = None
+    authenticated_image = image is not None and image.get('keypad_storage', {}).get('ui_mode') == 'runtime' and image.get('card_text') is not None
+    if authenticated_image and not (require_usb or require_jpki or require_card):
+        authenticated_usb = check_authenticated_owner(log, image, evidence)
+    elif require_usb or require_jpki or 'NIHOS_NATIVE_USB ' in log or 'NIHOS_NATIVE_USB_MODE' in log:
+        if evidence != 'physical-device':
+            raise ValueError('native USB requires physical-device evidence')
+        usb = check_usb(log)
+    jpki = None
+    if require_jpki or 'NIHOS_NATIVE_JPKI_MODE' in log or 'NIHOS_NATIVE_JPKI ' in log:
+        if evidence != 'physical-device' or usb is None:
+            raise ValueError('PIN-free JPKI requires physical USB evidence')
+        jpki = check_jpki(log)
+    card = None
+    if require_card or 'NIHOS_NATIVE_CARD_CHECK_START' in log or 'NIHOS_NATIVE_CARD_CHECK ' in log:
+        if evidence != 'physical-device' or usb is None or display_preparation is None:
+            raise ValueError('card readiness requires physical USB and display preparation')
+        card = check_card(log)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
+            "usb": usb, "authenticated_usb": authenticated_usb,
+            "jpki": jpki,
+            "card_readiness": card, "display_preparation": display_preparation,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,
             "flash_records": [{"hart": hart, **flash[hart]} for hart in (0, 1)],
@@ -642,18 +759,20 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
 
 def main():
     if len(sys.argv) not in (3, 4, 5, 6, 7, 8):
-        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|comma-separated requirements]")
+        raise SystemExit("usage: check-native-log.py LOG REPORT.json [integer|floating|compiled|sqlite] [0|4M|8M|16M|32M|64M] [IMAGE-AUDIT.json] [emulator|physical-device] [qualification|sdmmc|sdmmc-fast|storage|usb|jpki|card|comma-separated requirements]")
     try:
         size = sys.argv[4] if len(sys.argv) >= 5 else "0"
         if size not in PSRAM_SIZES:
             raise ValueError("invalid expected PSRAM size")
         image = json.loads(Path(sys.argv[5]).read_text()) if len(sys.argv) >= 6 else None
         extra = set(sys.argv[7].split(",")) if len(sys.argv) == 8 else set()
-        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage"}:
+        if not extra <= {"qualification", "sdmmc", "sdmmc-fast", "storage", "usb", "jpki", "card"}:
             raise ValueError("invalid required extra evidence")
         report = check(Path(sys.argv[1]).read_text(), sys.argv[3] if len(sys.argv) >= 4 else None,
                        PSRAM_SIZES[size], image, sys.argv[6] if len(sys.argv) >= 7 else "emulator",
-                       "qualification" in extra, "sdmmc" in extra, "sdmmc-fast" in extra, "storage" in extra)
+                       require_qualification="qualification" in extra, require_sdmmc="sdmmc" in extra,
+                       require_sdmmc_fast="sdmmc-fast" in extra, require_storage="storage" in extra,
+                       require_usb="usb" in extra, require_jpki="jpki" in extra, require_card="card" in extra)
     except ValueError as error:
         raise SystemExit("Native smoke failed: " + str(error)) from error
     Path(sys.argv[2]).write_text(json.dumps(report, indent=2) + "\n")

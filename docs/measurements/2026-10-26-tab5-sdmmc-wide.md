@@ -1,5 +1,7 @@
 # Tab5 native SDMMC: 4ビット・20 MHzの実機読取検証
 
+後続の[read-only block APIとlittlefs読取りの実機検証](2026-10-26-tab5-littlefs-readonly.md)も参照。
+
 2026-10-26。USB再接続後、前段の1ビット・400 kHzから段階的に広げた。
 **4ビット・20 MHzまでの切替と読取を実装し、同一最終画像で3起動合格した。**
 実行ソースは `971ff11`、ブランチは `codex/tab5-psram-physical-fix`。
