@@ -262,3 +262,14 @@ nativeの受入経路へ実装した。入力は組込みのimmutable FAT12 fixt
 現workerは4 KiBで、将来計画の8 KiBを実割当として数えない。
 frame単体の上限は監査するが、総call stackと実taskのpaint/guard、停止・wakeupはまだ実機で確認していない。
 [linkとstack修正の記録](../measurements/2026-10-28-fatfs-native-link.md)に根拠と残るgateを示す。
+
+## kernel待機とのhost結合とcall-chainの未解決箇所（2026-10-28）
+
+native FSDとhost試験で同じresident event latchを使い、実Scheduler / task_control / RPCと結合した。
+request / reply / creditのcheck→wait競合30通り、coalesce、停止時の3つのkernel状態と世代再利用を検査する。
+IRQ→kernel通知の省略と、doorbell ack / latch exchangeの逆転は、待機が解けない負例になる。
+これはhostの順序モデルで、実IPIの配送やweak-memoryの検証ではない。
+
+最終ELFのcall-chain inventoryは未測定frame、間接transfer、ROM/assembly境界、再帰等を列挙し、
+未解決のgraphを`--require-closed`で拒否する。既知frameの合算だけで4 KiB総stackの合格にしてはならない。
+[host結果と残るstack gate](../measurements/2026-10-28-fatfs-wakeup-host.md)に記録を保存した。

@@ -64,7 +64,7 @@ def main(directory, source, littlefs=None):
     if fatfs_native:
         root = Path(__file__).resolve().parents[1]
         fixture = json.loads((directory / 'fatfs-fixture-manifest.json').read_text())
-        result['fatfs_native'] = {'version': 1, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
+        result['fatfs_native'] = {'version': 2, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': {path: sha(root / path) for path in SOURCES}}
         result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.runFatFsTasks'})
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
