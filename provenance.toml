@@ -131,3 +131,11 @@ revision = "Gothic 18934af56b9c003ca58c54bffbf226848cb11032; Mincho c30a6221b1f3
 license = "OFL-1.1"
 status = "host-probe-only"
 use = "Unmodified regular TTF fixtures and both OFL notices; URLs and SHA-256 pins in probes/graphics/sources.json. Kept in ignored build cache, never provisioned to hardware by the probe."
+
+[[source]]
+name = "Unicorn Engine (optional RV32 ISA oracle)"
+url = "https://github.com/unicorn-engine/unicorn"
+revision = "2.1.4"
+license = "Component-specific GPL/LGPL core and API notices; Python wheel metadata identifies BSD bindings. See upstream COPYING and COPYING.LGPL2."
+status = "host-test-tool-only"
+use = "Checksum-pinned macOS/Linux wheels in probes/graphics/unicorn-requirements.txt, installed only into ignored build virtualenv. The host runner observes unmodified RV32 SP instruction by instruction. Not linked into native firmware."
