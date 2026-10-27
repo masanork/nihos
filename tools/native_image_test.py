@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 import struct
+import hashlib
 
 SPEC = importlib.util.spec_from_file_location("native_image", Path(__file__).with_name("check-native-image.py"))
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -10,6 +11,76 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_automatic_card_flash_functions_require_explicit_profile_and_bounded_span(self):
+        boot = [('psram.probe', 0x40000120, 0x40000920),
+                ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
+        allowed = ('card_auto.run', 'notice_build', 'nih_display_notice_publish', 'nih_display_scanout_begin',
+                   'display_runtime.presentNotice', 'keypad_display.publishNotice', 'card.license.Parser(.flash.photo).decode',
+                   'card.service.ServiceType(true,.flash.photo).take',
+                   'card.wire_policy.PolicyType(true).allow')
+        for name in allowed:
+            functions = boot + [(name, 0x40090000, 0x40090100)]
+            MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120,
+                0x4ff00000, 0x4ff28000, photo_span=(0x40090000, 0x40090100), automatic_cards=True)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120,
+                    0x4ff00000, 0x4ff28000, photo_span=(0x40090000, 0x40090100))
+        for name, stop in (('card_auto.run', 0x40090104), ('arbitrary.run', 0x40090100),
+                           ('card.service.ServiceType(false,null).take', 0x40090100)):
+            with self.subTest(name=name, stop=stop), self.assertRaises(ValueError):
+                MODULE.audit_boot_functions(boot + [(name, 0x40090000, stop)],
+                    0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                    photo_span=(0x40090000, 0x40090100), automatic_cards=True)
+
+    def test_keypad_pools_are_opt_in_exact_rw_nonexecuting_nobits(self):
+        for name, (address, size) in MODULE.UI_POOLS.items():
+            MODULE.audit_ui_pool(name, 8, 3, address, size, True)
+            for kind, flags, origin, length, allowed in ((1, 3, address, size, True),
+                    (8, 7, address, size, True), (8, 2, address, size, True),
+                    (8, 3, address + 64, size, True), (8, 3, address, size - 64, True),
+                    (8, 3, address, size, False)):
+                with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
+                    MODULE.audit_ui_pool(name, kind, flags, origin, length, allowed)
+
+    def test_keypad_assets_require_readonly_flash_and_matching_manifest(self):
+        for name, address, size in (('.flash.ui', 0x40020000, 128), ('.flash.uipad', 0x4001fff0, 16)):
+            for flags in (2, 50):
+                MODULE.audit_flash_section(name, 1, flags, address, size, allow_ui=True)
+            for kind, flags, allowed in ((8, 2, True), (1, 3, True), (1, 6, True), (1, 2, False)):
+                with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
+                    MODULE.audit_flash_section(name, kind, flags, address, size, allow_ui=allowed)
+        start, data = 0x40020000, bytes(range(128))
+        symbols = {'__keypad_plan_start': start, '__keypad_plan_end': start + 64,
+                   '__keypad_atlas_start': start + 64, '__keypad_atlas_end': start + 128}
+        manifest = {}
+        for role, raw in (('plan', data[:64]), ('atlas', data[64:])):
+            manifest[role + '_bytes'] = 64
+            manifest[role + '_sha256'] = hashlib.sha256(raw).hexdigest()
+        MODULE.audit_ui_assets(start, data, symbols, manifest)
+        for changed in (data[:-1], b'x' + data[1:], data[:64] + b'x' + data[65:]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_ui_assets(start, changed, symbols, manifest)
+        with self.assertRaises(ValueError):
+            MODULE.audit_ui_assets(start, data, {**symbols, '__keypad_atlas_start': start + 65}, manifest)
+
+    def test_card_foreground_is_opt_in_rx_and_has_only_named_functions(self):
+        MODULE.audit_flash_section('.flash.card', 1, 6, 0x40002000, 128, allow_ui=True)
+        for kind, flags, allowed in ((1, 6, False), (1, 7, True), (1, 2, True), (8, 6, True)):
+            with self.assertRaises(ValueError):
+                MODULE.audit_flash_section('.flash.card', kind, flags, 0x40002000, 128, allow_ui=allowed)
+        functions = [('psram.probe', 0x40000120, 0x40000920),
+                     ('psram_memory.prepare__func_1', 0x40000920, 0x40001120),
+                     ('card_read.run__func_2', 0x40002000, 0x40002080)]
+        MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                                    card_span=(0x40002000, 0x40002080), card_functions=('card_read.run',))
+        for changed in (functions[:-1] + [('unexpected', 0x40002000, 0x40002080)],
+                        functions[:-1] + [('card_read.run__func_2', 0x40002000, 0x40002084)]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_boot_functions(changed, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                                            card_span=(0x40002000, 0x40002080), card_functions=('card_read.run',))
+        with self.assertRaises(ValueError):
+            MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000)
+
     def test_stack_symbols_array_and_section_have_exact_reservations(self):
         base = 0x4ff60000
         symbols = {"__stacks_start": base, "__stacks_end": base + 57344,

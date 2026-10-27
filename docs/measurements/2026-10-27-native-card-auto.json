@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-27",
+  "source_commit": "4f8d6b1d2cd6ac1797a76e4fe79bc8f7e4d3c219",
+  "evidence_scope": "host models and native device build/image audits; no hardware observation",
+  "host_debug": "passed",
+  "host_release_safe": "passed",
+  "python_tests": 141,
+  "python_tests_passed": true,
+  "static_analysis": "passed; Zig format, ZLint, shellcheck and six audited default RV32 links",
+  "card_rv32_compile": "passed",
+  "candidates": {
+    "full": {
+      "elf_sha256": "355bd2d248733f41aa57064238a59daa95ba52475ed9c0b55e259849deb033e2",
+      "image_sha256": "8131f5ea387cebbbddc6fa0823308edde52917dde92b53abc08b8f36b819d194",
+      "image_bytes": 809264,
+      "heap_bytes": 51072,
+      "automatic_cards": {
+        "kinds": [
+          "mynumber",
+          "license"
+        ],
+        "credential_budget_per_pin": 1,
+        "read_enabled": true,
+        "jis_bytes": 17672,
+        "jis_sha256": "e23674f4b6f90450cca8c54fdd6a2601ab18c18ea931b9a99d4a7c4c719c65ac"
+      },
+      "image_audit_passed": true,
+      "installed": false
+    },
+    "probe": {
+      "elf_sha256": "a1610a3d05cd4cf53a8bbd89e2658ce199b805d1d2ece801a4b3ff63a1aaafce",
+      "image_sha256": "e4807a82e7bfc706f9acf65674419711d52e7e9a15023d88914abadde7512b8d",
+      "image_bytes": 761856,
+      "heap_bytes": 54144,
+      "automatic_cards": {
+        "kinds": [
+          "mynumber",
+          "license"
+        ],
+        "credential_budget_per_pin": 1,
+        "read_enabled": false,
+        "jis_bytes": 0,
+        "jis_sha256": "e23674f4b6f90450cca8c54fdd6a2601ab18c18ea931b9a99d4a7c4c719c65ac"
+      },
+      "image_audit_passed": true,
+      "installed": false
+    }
+  },
+  "physical": {
+    "serial_port_present": false,
+    "candidate_installed": false,
+    "classification": "pending",
+    "insertion_removal": "pending",
+    "licence_pin1_pin2": "pending",
+    "licence_optical_result": "pending",
+    "mynumber_regression": "pending"
+  },
+  "legacy_mynumber_photo_build": {
+    "display": 10,
+    "image_audit_passed": true,
+    "elf_sha256": "a8d09020874cbf9ec21d8bc06b25fcba31f25f5e0c8e7498381b47fdae3527bc",
+    "image_sha256": "2761b9ddb217d1e43644cc72d42d8f9576d3a2f5f21b7ba169c2eca50982ebdc",
+    "heap_bytes": 49536,
+    "physical_retest": false
+  }
+}

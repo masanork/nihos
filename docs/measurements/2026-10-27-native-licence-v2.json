@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-27",
+  "source_commit": "3e685862afe26faa78be5281ad9aca9637938687",
+  "evidence_scope": "host models, synthetic UI and native image audits; no new card firmware installed",
+  "checks": {
+    "zig_debug": "passed",
+    "zig_release_safe": "passed",
+    "python_cases": 145,
+    "python": "passed",
+    "format_zlint_shellcheck": "passed",
+    "six_default_rv32_links": "passed",
+    "card_rv32_compile": "passed",
+    "font_glyphs_compared": 11336,
+    "synthetic_rsa_exponents": [
+      3,
+      65537
+    ],
+    "fixed_file_padding_domicile_portrait_mutations": "rejected",
+    "literal_rfu_ff_and_tag_profile_mismatch": "passed"
+  },
+  "trust": {
+    "official_keys_provisioned": 0,
+    "test_keys_in_firmware_trust": false,
+    "real_card_signature_verification": "not run; official pins required"
+  },
+  "candidates": {
+    "full": {
+      "elf_sha256": "df148d499a049efeffe8c49e7599c1845af2c041a6a3e07ae24ae6d9b5eea9cc",
+      "image_sha256": "e3b190309022fd6f7e13b510b363aa5959ccf3127bcb7be96ac22b6a1d928958",
+      "image_bytes": 810304,
+      "heap_bytes": 50048,
+      "image_audit_passed": true,
+      "source_commit": "3e685862afe26faa78be5281ad9aca9637938687",
+      "installed": false,
+      "automatic_cards": {
+        "schema": 2,
+        "kinds": [
+          "mynumber",
+          "license",
+          "myna_license"
+        ],
+        "credential_budget_per_pin": 1,
+        "read_enabled": true,
+        "jis_bytes": 17672,
+        "jis_sha256": "e23674f4b6f90450cca8c54fdd6a2601ab18c18ea931b9a99d4a7c4c719c65ac",
+        "trust_bytes": 0,
+        "trust_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "flash_end": "0x400b74a4"
+    },
+    "probe": {
+      "elf_sha256": "49464fa42a5b8f18a1b00c0ce7a512336d5d1957d9b920679deab684b1e44e3d",
+      "image_sha256": "2b838ee14c8c16f3a264acc50bad2c1d88578e810d78706c71ed1ee5266f4984",
+      "image_bytes": 716336,
+      "heap_bytes": 55168,
+      "image_audit_passed": true,
+      "source_commit": "3e685862afe26faa78be5281ad9aca9637938687",
+      "installed": false,
+      "automatic_cards": {
+        "schema": 2,
+        "kinds": [
+          "mynumber",
+          "license",
+          "myna_license"
+        ],
+        "credential_budget_per_pin": 1,
+        "read_enabled": false,
+        "jis_bytes": 0,
+        "jis_sha256": "e23674f4b6f90450cca8c54fdd6a2601ab18c18ea931b9a99d4a7c4c719c65ac",
+        "trust_bytes": 0,
+        "trust_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "flash_end": "0x400a251c"
+    },
+    "legacy": {
+      "elf_sha256": "856702ad5cb8a55270ca8cb796657951974090d0bd771eca5f5c4e6cee702c53",
+      "image_sha256": "0d2e253d93239e895a042e0050c942e8d5769babdc6f12e30f6a0d28a0279404",
+      "image_bytes": 789792,
+      "heap_bytes": 49536,
+      "image_audit_passed": true,
+      "source_commit": "3e685862afe26faa78be5281ad9aca9637938687",
+      "installed": false,
+      "automatic_cards": null,
+      "flash_end": "0x400a8d9c"
+    }
+  },
+  "physical": {
+    "current_header_project": "nihos-c6-probe",
+    "header_elf_sha256": "6f7b64023f258c57f9cbaffde0ee0a7bf6dec19f9b8e11649123c9b887416ab3",
+    "header_only": true,
+    "reset_for_identification": true,
+    "image_written": false,
+    "other_task": "C6 network evaluation active",
+    "new_classification": "pending",
+    "insertion_removal": "pending",
+    "conventional_licence_read": "pending",
+    "myna_licence_read": "pending",
+    "optical_confirmation": "pending"
+  },
+  "npa_specification": {
+    "url": "https://www.npa.go.jp/laws/notification/koutuu/menkyo/menkyo20240719_145.pdf",
+    "sha256": "663a19bcbe3e6cc8947ec1d7316db11315981d88a04660ded44e62d09951e114"
+  },
+  "synthetic_ui": {
+    "2026-10-27-licence-v2-synthetic-history.png": {
+      "sha256": "fb3d988c5b0816885c8c9b919ed8d8c72c3212a8897dde6551456422cd4a9133",
+      "physical_evidence": false
+    },
+    "2026-10-27-licence-v2-synthetic-classic.png": {
+      "sha256": "e5fd2343ab19c957e952f2e8db352fb1f29fd41f482e81c28ed54376a7fcee54",
+      "physical_evidence": false
+    },
+    "2026-10-27-licence-v2-synthetic-myna.png": {
+      "sha256": "f362df207e2f814d0acab1357fcf226369676819bb690057c4bdf33bfebac3aa",
+      "physical_evidence": false
+    }
+  }
+}

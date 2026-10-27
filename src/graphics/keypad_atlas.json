@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "plan_bytes": 10192,
+  "plan_sha256": "2177561d5f883c0786ebaab9f2e96bd5f10b61cc2faa8ea76132e8c24896e047",
+  "atlas_bytes": 203144,
+  "atlas_sha256": "abff8f6a880dfdcb954c5f25a9fb5bb9de8a8380b07602e339801daf467662e5",
+  "nodes": 637,
+  "frame_words": 230400,
+  "sources": {
+    "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
+    "src/graphics/card_pin.rle": "55c7d6d438067c8cdb935d1142d331455fdb813b1be143a1e9b02392a6484340",
+    "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
+    "src/graphics/keypad_plan.zig": "705807426ad678d78fcd120c4556a80d81654886c85d624e76c400265fa0e856",
+    "src/card_pin_preview.zig": "70097056c8ba0106185424cd4e80f2d5accf88316ac250ffae4d2b955712491a",
+    "tools/boot-graphics/generate-keypad-atlas.py": "d367b701e7d673975b2228a477f74594c7fa6d7484cde5680ec4864adca3576e"
+  }
+}

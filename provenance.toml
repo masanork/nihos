@@ -1,6 +1,14 @@
 schema = 1
 
 [[source]]
+name = "civ JPKI wire sequence"
+url = "https://github.com/masanork/civ"
+revision = "54a843e656513930df60bbc20d752ff3289e7078"
+license = "MIT OR Apache-2.0"
+status = "reference-only"
+use = "User-provided JPKI and Input Support AID/EF identifiers, PIN/retry/read sequences and four-attribute TLV tags; independently implemented bounded Zig state machine/parser, no Rust library linked"
+
+[[source]]
 name = "TLA+ tools / TLC"
 url = "https://github.com/tlaplus/tlaplus"
 revision = "v1.7.4"

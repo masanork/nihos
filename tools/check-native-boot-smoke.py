@@ -13,6 +13,10 @@ FAILURES = {3: 'CPU1 ready timeout', 4: 'boot health timeout', 5: 'boot health t
 
 def check(log, image, psram_bytes, case):
     log = log.replace('\r', '')
+    # --exit-on echoes its configured UART marker. That host diagnostic is
+    # neither a second guest pass nor evidence for a missing guest record.
+    log = '\n'.join(line for line in log.splitlines()
+                    if not line.startswith('[INFO  esp_emu] Exit-on string '))
     if (case not in (1, 2, 3, 4, 5) or image.get('rtos_linked') is not False or
             image.get('memory', {}).get('profile') != 'emulator'):
         raise ValueError('headless smoke requires an audited emulator image and known case')

@@ -51,7 +51,11 @@ def main():
             target.mkdir(exist_ok=True)
             report_path = target / 'result.json'
             report_path.unlink(missing_ok=True)
-            marker = 'NIHOS_NATIVE_FAIL' if case in SMOKE.FAILURES else 'NIHOS_NATIVE_NORMAL_IDLE_PASS'
+            # Wait for the complete UART line. Matching only its prefix can
+            # stop the emulator before the failure reason/qualification flags
+            # have drained, leaving a truncated record instead of evidence.
+            marker = ('NIHOS_NATIVE_FAIL ' + SMOKE.FAILURES[case] if case in SMOKE.FAILURES
+                      else 'NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator') + '\r\n'
             with (target / 'emulator.log').open('w') as log:
                 subprocess.run([emulator, '--chip','esp32p4','--firmware',str(case_dir / 'nihos-native-flash.bin'),
                                 '--elf',str(case_dir / 'nihos-native.elf'),'--psram-size',size,'--timeout','15s',
