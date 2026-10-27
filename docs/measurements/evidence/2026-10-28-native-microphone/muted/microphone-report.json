@@ -1,0 +1,33 @@
+{
+  "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+  "muted_control": true,
+  "records": 7,
+  "completed_records": 5,
+  "final": {
+    "phase": 5,
+    "fault": 0,
+    "dma": 3,
+    "end": 1341239872,
+    "parked": 1,
+    "codec_off": 1,
+    "stopped": 1,
+    "returned": 1,
+    "samples": 512,
+    "erased": 1
+  },
+  "signal": {
+    "active": 0,
+    "clipped": 0,
+    "peak0": 0,
+    "peak1": 0,
+    "peak2": 0,
+    "peak3": 0,
+    "span0": 0,
+    "span1": 0,
+    "span2": 0,
+    "span3": 0
+  },
+  "evidence": "physical-device capture",
+  "app_sha256": "1666d0dd7bedda2d1ce5a8eefac35ff01627b91655999e3e1749208ecaa1ac2e",
+  "serial_sha256": "122737b4cc5ad4fd74050c5e5415c444bf475edb61ce8b89e1ca0a8657126751"
+}

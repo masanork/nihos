@@ -147,3 +147,11 @@ revision = "Revision 5.0, July 2018"
 license = "Vendor documentation; register facts used as a specification"
 status = "reference-only"
 use = "Independent playback-only Zig control implementation, writable register masks, I2S format, gain, mute and power sequencing; no vendor host driver code imported"
+
+[[source]]
+name = "Everest ES7210 register reference"
+url = "https://uploadcdn.oneyac.com/attachments/userfile/68/63/1629167664244_5904.pdf"
+revision = "ES7210 datasheet rev2.0, February 2018"
+license = "Vendor datasheet; reference-only, not redistributed"
+status = "reference-only"
+use = "Independent finite ADC control, TDM framing and power-down sequencing from section 7; no external ES7210 driver source imported or linked. Board routing is from the pinned M5Tab5-UserDemo reference."

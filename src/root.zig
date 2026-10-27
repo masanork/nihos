@@ -129,6 +129,8 @@ test {
     _ = @import("board/tab5/bmi270.zig");
     _ = @import("board/tab5/es8388.zig");
     _ = @import("audio/tone.zig");
+    _ = @import("audio/capture_probe.zig");
+    _ = @import("board/tab5/es7210.zig");
     _ = @import("audio/playback_probe.zig");
     _ = @import("net/ble_hci.zig");
     _ = tab5_display;

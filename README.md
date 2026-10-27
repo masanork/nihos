@@ -248,3 +248,10 @@ An experimental finite audio-output probe can be built explicitly with
 disabled. Its native codec/DMA transfer and shutdown have physical evidence;
 audible output is still unconfirmed. See
 [the audio checkpoint](docs/measurements/2026-10-28-native-audio.md).
+
+An opt-in finite ES7210 microphone input probe uses
+`NIHOS_NATIVE_MICROPHONE=1 sh tools/build-native.sh device`. It reports only
+local PCM statistics after DMA ownership returns, then clears the buffer.
+A separate `NIHOS_NATIVE_MICROPHONE_MUTED=1` build is the all-zero control.
+See [ADR 0050](docs/adr/0050-native-finite-microphone-input.md) for the finite
+input boundary and remaining acoustic/streaming gates.

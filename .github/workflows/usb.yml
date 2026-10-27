@@ -12,6 +12,7 @@ on:
       - 'probes/card*/**'
       - 'probes/display_notice/**'
       - 'probes/audio_native/**'
+      - 'probes/microphone_native/**'
       - 'tools/check-audio-shim.py'
       - 'tools/*photo*'
       - 'tools/*auto*'
@@ -37,6 +38,7 @@ on:
       - 'probes/card*/**'
       - 'probes/display_notice/**'
       - 'probes/audio_native/**'
+      - 'probes/microphone_native/**'
       - 'tools/check-audio-shim.py'
       - 'tools/*photo*'
       - 'tools/*auto*'
@@ -155,6 +157,22 @@ jobs:
              build/native-device-network-audio/network-receipt.json \
              build/audio-shim-check/result.json build/usb-ci/finite-audio/
           cp build/native-device-network-audio/licenses/BMI270.txt build/usb-ci/finite-audio/licenses/
+
+      - name: Compile finite microphone input and muted-control configurations
+        run: |
+          for muted in 0 1; do
+            NIHOS_NATIVE_MICROPHONE=1 NIHOS_NATIVE_MICROPHONE_MUTED="$muted" sh tools/build-native.sh device
+            python3 tools/check-audio-shim.py --microphone
+            destination="build/usb-ci/finite-microphone-$muted"
+            mkdir -p "$destination/licenses"
+            cp build/native-device-network-microphone/nihos-native.elf \
+               build/native-device-network-microphone/nihos-native.bin \
+               build/native-device-network-microphone/image-audit.json \
+               build/native-device-network-microphone/native_options.zig \
+               build/native-device-network-microphone/network-receipt.json \
+               build/microphone-shim-check/result.json "$destination/"
+            cp build/native-device-network-microphone/licenses/BMI270.txt "$destination/licenses/"
+          done
 
       - name: Retain source-bound compile evidence
         if: always()

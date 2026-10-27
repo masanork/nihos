@@ -1,6 +1,6 @@
 # Tab5 native device support inventory
 
-2026-10-28, based on main `734e89e` plus opt-in finite audio qualification.
+2026-10-28, based on main `64c67d6` plus opt-in finite ES7210 input qualification.
 Presence, a read
 operation and a complete application service are different gates. Hardware
 inventory follows [M5Stack's board documentation](https://docs.m5stack.com/en/core/Tab5).
@@ -19,7 +19,7 @@ pre-merge candidate scope; the merged card candidate has not been retested.
 | BMI270 IMU, 0x68 | Native chunked configuration/init, checked +/-4 g and +/-500 dps acquisition; continuous sensor-frame raw readings physically observed | Controlled movement, gyro bias/calibration, board axis mapping, FIFO/IRQ, application input service |
 | PI4IOE5V6408, 0x43/0x44 | Existing display/C6 power sequencing; preserved handoff to shared I2C | Unified runtime GPIO/power service |
 | Touch, GT911 or ST7123 family | Native ST7121 diagnostic/card profiles; earlier physical candidate confirmed four-quadrant contacts and releases | Normal application input, other panel/multitouch qualification, IRQ23 |
-| ES8388 / ES7210 audio | Opt-in finite ES8388 PCM/DMA probe physically completed with ownership returned and amp off; no audible confirmation yet | Actual sound/quality, long/repeated playback, runtime streaming/mixer, ES7210 recording |
+| ES8388 / ES7210 audio | Opt-in finite ES8388 output and ES7210 TDM input; output DMA/amp-off and input DMA/erasure plus all-zero muted control physically observed; no audible confirmation | Mic/reference slot mapping, acoustic response, long/repeated playback or recording, runtime streaming/mixer |
 | SC2356 camera | No native capture service | Sensor setup, MIPI CSI/ISP, DMA and buffer ownership |
 | microSD | Existing bounded native read-only boot fixtures | Runtime filesystem, removal/reinsertion, SDMMC arbitration with C6 |
 | USB-A host / USB-C OTG | Opt-in native USB-A PaSoRi/CCID card profiles landed; earlier candidate read/photo physically confirmed | Merged candidate retest; USB-C role/power and other USB classes |
