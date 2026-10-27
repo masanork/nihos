@@ -391,6 +391,12 @@ noinline fn bootMemory() u32 {
 
 extern var __flash_sdmmc_boot_start: u8;
 extern var __flash_sdmmc_boot_end: u8;
+noinline fn runIoLifetimes(expected_crc: u32) linksection(".flash.text.storage") void {
+    const lifetime = @import("sdmmc_probe.zig").qualifyLifetimes(expected_crc);
+    logger.record("NIHOS_NATIVE_IO_LIFETIMES", null, .{ "version", "status", "normal_reads", "cancelled", "removed", "stale_rejected", "idle_denied", "fences", "unpublished", "crc", "ctrl", "dma_mode", "dma_fsm", "irq_mask", "dma_mask", "descriptor", "descriptor_word" }, &lifetime);
+    if (lifetime.status != 1) fail("SD request lifetime qualification");
+}
+
 noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {
     const sd = @import("sdmmc_probe.zig").run(timer(0), workspace);
     const Code = struct { start: u32, end: u32, pc: u32, completed: u32 };
@@ -546,6 +552,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     }
                     const b = broker_runtime.finish();
                     logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses", "io_clock_acquired", "io_clock_released" }, &b);
+                    runIoLifetimes(sd_crc);
                 }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");

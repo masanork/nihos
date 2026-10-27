@@ -74,6 +74,19 @@ def main(directory, source, littlefs=None):
         }
         result['allowed_functions'] = sorted(set(result['allowed_functions']) | set(cold['functions']))
     if littlefs is not None:
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'sdmmc_probe.ownedRead'})
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
+            'sdmmc.Controller(sdmmc_probe.Bus).' + name for name in
+            ('prepare', 'identify', 'stopDma', 'releaseDma', 'readSector')})
+        if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'sdmmc_probe.qualifyLifetimes', 'main.runIoLifetimes'})
+        root = Path(__file__).resolve().parents[1]
+        result['io_lifetimes'] = {'version': 1, 'qualification': 'pub const broker = true;' in (directory / 'native_options.zig').read_text(), 'sources': {
+            name: sha(root / name) for name in (
+                'src/fs/io_leases.zig', 'src/fs/io_stop.zig', 'src/fs/sdmmc_owner.zig',
+                'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
+                'src/platform/native/main.zig', 'src/diagnostics/record.zig',
+                'include/nihos_storage_io.h')}}
         result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
                              'read_only': True, 'no_malloc': True, 'api_version': 1, 'workspace_bytes': 8192,
                              'shared_span': 'SQLite mapped code and rodata',

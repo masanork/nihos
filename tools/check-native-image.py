@@ -106,6 +106,22 @@ def audit_sdmmc_resident(symbols, sizes, low, high):
                 sizes.get(name) == size and symbols[name] % 64 == 0, "SD DMA buffer outside aligned internal SRAM")
 
 
+def audit_io_lifetimes(config, symbols, sizes, low, high):
+    require(config.get('version') == 1 and isinstance(config.get('qualification'), bool), 'invalid I/O lifetime manifest')
+    expected = {'src/fs/io_leases.zig', 'src/fs/io_stop.zig', 'src/fs/sdmmc_owner.zig',
+                'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
+                'src/platform/native/main.zig', 'src/diagnostics/record.zig', 'include/nihos_storage_io.h'}
+    require(set(config.get('sources', {})) == expected and all(re.fullmatch('[0-9a-f]{64}', value)
+            for value in config['sources'].values()), 'incomplete I/O lifetime source identity')
+    for name in ('sdmmc_probe.io_owner', 'sdmmc_probe.io_signal'):
+        require(name in symbols and 0 < sizes.get(name, 0) and low <= symbols[name] < symbols[name] + sizes[name] <= high,
+                'I/O lease or notification metadata left resident SRAM: ' + name)
+    if config['qualification']:
+        for name in ('nih_storage_io_active', 'nih_storage_io_stop', 'nih_storage_io_removed'):
+            require(low <= symbols.get(name, 0) < high, 'I/O notification hook left resident SRAM: ' + name)
+    return config
+
+
 def audit_cold_flash(manifest, symbols, functions, low, high, heap_start, sql_span, profile, broker):
     start, end = symbols.get('__flash_cold_start'), symbols.get('__flash_cold_end')
     require((start is None) == (end is None), 'partial cold Flash linker extent')
@@ -406,6 +422,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                                           sd_boot if sd_boot[0] != sd_boot[1] else None)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
+    io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None
+    if io_lifetimes is not None:
+        audit_io_lifetimes(io_lifetimes, symbols, symbol_sizes, low, high)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -474,6 +493,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
         report["sqlite"] = sql_report
+        if io_lifetimes is not None:
+            report["io_lifetimes"] = io_lifetimes
     broker_manifest = sqlite_manifest.get('broker') if allow_sql else None
     require(('nih_broker_config' in symbols) == (broker_manifest is not None), 'broker configuration/manifest mismatch')
     if broker_manifest is not None:

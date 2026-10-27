@@ -38,6 +38,9 @@ pub const platform_abi = @import("platform/abi.zig");
 
 test {
     _ = block_reader;
+    _ = @import("fs/io_leases_test.zig");
+    _ = @import("fs/io_stop.zig");
+    _ = @import("fs/sdmmc_owner_test.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;
