@@ -52,6 +52,7 @@ test {
     _ = @import("storage/index_gc_test.zig");
     _ = @import("storage/payload_gc_test.zig");
     _ = @import("storage/search_cache_test.zig");
+    _ = @import("storage/stream_test.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;

@@ -111,3 +111,28 @@ pub export fn checkpoint_probe_cached_commit() c_int {
     cached_store.commit() catch return -1;
     return 0;
 }
+var stream: checkpoint.Stream = .{ .token = 0 };
+pub export fn checkpoint_probe_stream_begin(key: u32, length: u64) c_int {
+    stream = cached_store.beginStreamPrepared(key, length) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_stream_write(bytes: [*]const u8, length: usize) c_int {
+    _ = cached_store.writeStream(stream, bytes[0..length]) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_stream_finish() c_int {
+    cached_store.finishStream(stream) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_stream_abort() c_int {
+    cached_store.abortStream(stream) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_patch_begin(key: u32, offset: u64, length: u64) c_int {
+    stream = cached_store.beginPatchPrepared(key, offset, length) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_patch_step(bytes: [*]const u8, length: usize) c_int {
+    const progress = cached_store.stepPatch(stream, bytes[0..length]) catch return -1;
+    return if (progress.done) 1 else 0;
+}
