@@ -13,7 +13,7 @@ import tempfile
 def main():
     repo = Path(__file__).resolve().parent.parent
     output = Path(tempfile.mkdtemp(prefix="negative.", dir=repo / "build/checkpoint"))
-    for name in ("checkpoint_model.zig", "checkpoint_model_test.zig", "model_media.zig", "file_media.zig"):
+    for name in ("checkpoint_model.zig", "checkpoint_model_test.zig", "model_media.zig", "extent_map.zig", "file_media.zig"):
         shutil.copyfile(repo / "src/storage" / name, output / name)
     path = output / "checkpoint_model.zig"
     original = path.read_text()

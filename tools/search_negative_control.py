@@ -24,11 +24,11 @@ def main():
     for name, changes, test_filter, marker in variants:
         directory = output / name
         directory.mkdir()
-        for filename in ("search_cache_test.zig", "model_media.zig", "file_media.zig"):
+        for filename in ("search_cache_test.zig", "model_media.zig", "extent_map.zig", "file_media.zig"):
             shutil.copy2(repo / "src/storage" / filename, directory / filename)
         mutant = original
         for needle, replacement in changes:
-            if mutant.count(needle) != 1:
+            if mutant.count(needle) != (2 if name == "budget" and "step_leaf_visits" in needle else 1):
                 raise RuntimeError(f"{name} mutation is not unique")
             mutant = mutant.replace(needle, replacement)
         (directory / "checkpoint_model.zig").write_text(mutant)
