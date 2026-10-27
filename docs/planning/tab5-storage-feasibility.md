@@ -398,3 +398,13 @@ migration protection need a separate reviewed map.
 `python3 tools/storage_budget.py --output docs/planning/tab5-storage-budget.json`.
 It validates envelope sums and exposes its assumptions. It does not measure
 execution speed, code size of future features or physical durability.
+
+The [paged-checkpoint host experiment](../measurements/2026-10-27-store-checkpoint.md)
+now exercises a sparse 16 GiB file with u64 media offsets. Its store descriptor is
+8,272 B on RV32 at compile time, and metadata-only mount reads at most 1,056,768 B
+for two roots and 128 leaves per root. These exclude call-stack/backend memory
+and do not establish target latency. Every commit checkpoints; tail replay is
+zero. The append-only index pool still exhausts without cleaning, and whole-object
+CRC on every read needs range-based replacement before SQLite partial I/O.
+This advances the host model gate without qualifying an experimental SD volume,
+changing the 2 MiB store envelope or providing a persistent SQLite VFS.

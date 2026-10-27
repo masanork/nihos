@@ -1,0 +1,303 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "b751f899a7bc2d62c98297d1b0df42c4c8aa35d9",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-paged-checkpoint",
+  "physical_power_cuts": 0,
+  "native_execution": false,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-checkpoint-host",
+  "archive_regular_files": 29,
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "zig": "0.17.0",
+    "zig_debug": 209,
+    "zig_release_safe": 209,
+    "new_zig_tests": 7,
+    "python": 168,
+    "native_elf_links": 6,
+    "format_zlint_shellcheck": true,
+    "rv32_broker_compile": true,
+    "rv32_checkpoint_compile": true
+  },
+  "geometry": {
+    "page_bytes": 4096,
+    "root_slots": 2,
+    "leaf_pages": 128,
+    "leaf_entries": 126,
+    "addressable_key_slots": 16128,
+    "default_index_pool_pages": 4096,
+    "media_offsets": "u64",
+    "checkpoint_frequency": "every commit",
+    "tail_replay_bytes": 0
+  },
+  "budget": {
+    "host_state_bytes": 8280,
+    "rv32_state_bytes": 8272,
+    "state_excludes": [
+      "call stack",
+      "backend",
+      "OS file cache"
+    ],
+    "store_heap_allocation": false,
+    "same_state_at_1GiB_and_16GiB": true,
+    "mount_limit_bytes": 1056768,
+    "full_mount_bound_exercised": true,
+    "mount_payload_reads_forbidden": true,
+    "native_peak_ram_measured": false
+  },
+  "fault_campaign": {
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "events": 130,
+    "backgrounds": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_orders": [
+      "ascending",
+      "descending"
+    ],
+    "torn_sector_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ],
+    "crash_cases_per_mode": 4680,
+    "acknowledged_cases_per_mode": 6,
+    "small_fixture_max_mount_bytes": 24576
+  },
+  "negative_control": {
+    "schema": 1,
+    "mutation": "omit first commit barrier only; disable event/case count assertions in copied test",
+    "command": [
+      ".tools/zig-0.17.0/zig",
+      "test",
+      "/Users/masanork/repo/nihos-store-model/build/checkpoint/negative.3rlflj6u/checkpoint_model_test.zig",
+      "--test-filter",
+      "checkpoint publication"
+    ],
+    "exit_code": 1,
+    "semantic_counterexample_found": true,
+    "counterexample": {
+      "event": 96,
+      "prefix": 512,
+      "background": "none",
+      "order": "ascending",
+      "generation": 3,
+      "error": "Corrupt"
+    }
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-sparse-file-checkpoint",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "d508a893c93be4c4350ecae36865acaf77940e77cd5ce562416a6ad98de9b0d7",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"mount_bytes\":0,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"mount_bytes\":8192,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":23,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "update",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"update\",\"generation\":3,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":17179684864,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":24,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":17179684864,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "inspect",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"inspect\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":17179684864,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "fill-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"fill-index\",\"generation\":4,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":129,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "checkpoint",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"checkpoint\",\"generation\":5,\"mount_bytes\":544768,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":8280,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "separate_process_reopen_above_4GiB",
+        "passed": true,
+        "old": {
+          "phase": "verify-old",
+          "generation": 2,
+          "mount_bytes": 20480,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 8280,
+          "payload_first_byte": 17179607040,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0
+        },
+        "new": {
+          "phase": "verify-new",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 8280,
+          "payload_first_byte": 17179684864,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0
+        }
+      },
+      {
+        "name": "metadata_only_mount_and_on_demand_payload_integrity",
+        "passed": true
+      },
+      {
+        "name": "both_roots_reference_all_128_leaves",
+        "passed": true,
+        "report": {
+          "phase": "verify-index",
+          "generation": 5,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 8280,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0
+        }
+      },
+      {
+        "name": "compact_range_snapshot_reconstruction",
+        "passed": true
+      }
+    ],
+    "snapshots": {
+      "generation3": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation3-metadata.bin",
+            "sha256": "7346ddf2775ac2a6a89ab9963aac143402b0f38046e70691b535d65ade87a571"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation3-payload.bin",
+            "sha256": "fe38824b1b9c0fb0c71e626bdebc0997c3ac7b46c52701c91ed509d96b2a2876"
+          }
+        ]
+      },
+      "generation5": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation5-metadata.bin",
+            "sha256": "406759a3e5f92373ebdd5e6565b115b7833630fa9c407f8bfe225da0ab1204d5"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation5-payload.bin",
+            "sha256": "fe38824b1b9c0fb0c71e626bdebc0997c3ac7b46c52701c91ed509d96b2a2876"
+          }
+        ]
+      }
+    },
+    "passed": true,
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 819200
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      }
+    }
+  },
+  "regressions": {
+    "old_cow_crash_cases_per_mode": 4212,
+    "old_cow_acknowledged_cases_per_mode": 18,
+    "file_backend_cases": 6,
+    "file_backend_processes": 22,
+    "physical_candidate_hashes_rechecked": 55
+  },
+  "limitations": [
+    "host sparse file and simulated persistence only; no target execution or physical power loss",
+    "16 GiB addressing probe touches only 256 metadata pages and 64 tail payload pages",
+    "no cleaner/GC, reader pin, clean reserve, tail replay or native adapter",
+    "default metadata pool permits at most 4096 put/remove mutations from empty; 16128 is a key range",
+    "whole-object payload CRC on every read is unsuitable for frequent partial reads",
+    "store descriptor excludes stack/backend; no target RAM peak or mount latency measurement",
+    "no streaming write, persistent SQLite VFS, PERSIST/FULL or WAL integration"
+  ]
+}
