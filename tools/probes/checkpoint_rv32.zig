@@ -144,3 +144,12 @@ pub export fn checkpoint_probe_map_patch(key: u32, offset: u64, bytes: [*]const 
     cached_store.patchMappedPagePrepared(key, offset, bytes[0..length]) catch return -1;
     return 0;
 }
+
+pub export const checkpoint_probe_resize_scratch_bytes: u32 = @sizeOf(checkpoint.ResizeScratch);
+pub export fn checkpoint_probe_resize_pages(key: u32, length: u64, scratch: *checkpoint.ResizeScratch) u64 {
+    return cached_store.mappedResizePages(key, length, scratch) catch ~@as(u64, 0);
+}
+pub export fn checkpoint_probe_resize(key: u32, length: u64, scratch: *checkpoint.ResizeScratch) c_int {
+    cached_store.resizeMappedPrepared(key, length, scratch) catch return -1;
+    return 0;
+}

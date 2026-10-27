@@ -6,8 +6,8 @@ pub const header_bytes = 48;
 pub const leaf_entries = (crc_offset - header_bytes) / 16;
 pub const children = (crc_offset - header_bytes) / 32;
 pub const max_height = 3;
-pub const magic: u32 = 0x4e494d34;
-pub const version: u32 = 4;
+pub const magic: u32 = 0x4e494d35;
+pub const version: u32 = 5;
 pub const Error = error{Corrupt};
 pub const Bounds = struct {
     low: u32 = 0,
@@ -46,6 +46,9 @@ pub fn count(level: u8, base: u64, length: u64) Error!usize {
 }
 pub fn init(bytes: *[page_bytes]u8, level: u8, base: u64, length: u64) Error!void {
     bytes.* = @splat(0);
+    try setHeader(bytes, level, base, length);
+}
+pub fn setHeader(bytes: *[page_bytes]u8, level: u8, base: u64, length: u64) Error!void {
     std.mem.writeInt(u32, bytes[0..4], magic, .little);
     std.mem.writeInt(u32, bytes[4..8], version, .little);
     std.mem.writeInt(u32, bytes[8..12], level, .little);
@@ -96,11 +99,20 @@ fn summarize(bytes: *const [page_bytes]u8, page: u64, level: u8, base: u64, leng
         }
         if (level == 0) {
             const ref = data(bytes, i);
+            if (ref.page == 0) {
+                for (entry) |byte| if (byte != 0) return error.Corrupt;
+                continue;
+            }
             if (ref.page < limits.start or ref.page >= limits.end or std.mem.readInt(u32, entry[12..16], .little) != 0) return error.Corrupt;
             result.data.include(.{ .low = @intCast(ref.page), .high = @intCast(ref.page + 1) });
         } else {
             const ref = child(bytes, i);
-            if (!validBounds(ref.data, limits) or !validBounds(ref.nodes, limits) or ref.page < ref.nodes.low or ref.page >= ref.nodes.high or
+            if (ref.page == 0) {
+                for (entry) |byte| if (byte != 0) return error.Corrupt;
+                continue;
+            }
+            const empty_data = ref.data.low == 0 and ref.data.high == 0;
+            if ((!empty_data and !validBounds(ref.data, limits)) or !validBounds(ref.nodes, limits) or ref.page < ref.nodes.low or ref.page >= ref.nodes.high or
                 std.mem.readInt(u32, entry[28..32], .little) != 0) return error.Corrupt;
             result.data.include(ref.data);
             result.nodes.include(ref.nodes);
@@ -128,6 +140,6 @@ pub fn validate(bytes: *const [page_bytes]u8, expected: Ref, level: u8, base: u6
     result.checksum = expected.checksum;
     if (std.mem.readInt(u32, bytes[32..36], .little) != result.data.low or std.mem.readInt(u32, bytes[36..40], .little) != result.data.high or
         std.mem.readInt(u32, bytes[40..44], .little) != result.nodes.low or std.mem.readInt(u32, bytes[44..48], .little) != result.nodes.high) return error.Corrupt;
-    if (expected.data.low != 0 and (!std.meta.eql(expected.data, result.data) or !std.meta.eql(expected.nodes, result.nodes))) return error.Corrupt;
+    if (expected.nodes.low != 0 and (!std.meta.eql(expected.data, result.data) or !std.meta.eql(expected.nodes, result.nodes))) return error.Corrupt;
     return result;
 }

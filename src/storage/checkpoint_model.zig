@@ -33,6 +33,7 @@ pub const Kind = enum(u32) { blob, mapped };
 pub const Value = struct { first: u64, length: u64, checksum: u32, kind: Kind = .blob, high_water: u64 = 0 };
 pub const Reader = struct { slot: u8, token: u64 };
 pub const Stream = struct { token: u64 };
+pub const ResizeScratch = struct { nodes: [extent_map.max_height + 1][page_bytes]u8 = @splat(@splat(0)) };
 pub const PatchProgress = struct { consumed: usize = 0, done: bool = false, need_input: bool = false };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
 pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
@@ -813,10 +814,12 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             return extent_map.validate(&self.map_buffer, ref, level, base, value.length, .{ .start = data_start, .end = value.high_water }) catch return self.corruption();
         }
         fn mapPath(self: *Self, value: Value, logical: u64, path: *[extent_map.max_height + 1]extent_map.Ref) Error!extent_map.Data {
+            path.* = @splat(.{});
             var level = extent_map.height(value.length) catch return self.corruption();
             var base: u64 = 0;
             var ref = extent_map.Ref{ .page = value.first, .checksum = value.checksum };
             while (true) {
+                if (ref.page == 0) return .{ .page = 0, .checksum = 0 };
                 ref = try self.loadMap(ref, level, base, value);
                 path[level] = ref;
                 if (level == 0) {
@@ -848,8 +851,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             while (position < n) {
                 const logical = offset + position;
                 const ref = try self.mappedData(value, logical / page_bytes);
-                try self.readPage(ref.page, &buffer);
-                if (std.hash.Crc32.hash(&buffer) != ref.checksum) return self.corruption();
+                if (ref.page == 0) buffer = @splat(0) else {
+                    try self.readPage(ref.page, &buffer);
+                    if (std.hash.Crc32.hash(&buffer) != ref.checksum) return self.corruption();
+                }
                 const within: usize = @intCast(logical % page_bytes);
                 const count = @min(page_bytes - within, n - position);
                 @memcpy(destination[position..][0..count], buffer[within..][0..count]);
@@ -960,8 +965,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             var path: [extent_map.max_height + 1]extent_map.Ref = undefined;
             const logical = offset / page_bytes;
             const original = try self.mapPath(value, logical, &path);
-            try self.readPage(original.page, &self.writer.data);
-            if (std.hash.Crc32.hash(&self.writer.data) != original.checksum) return self.corruption();
+            if (original.page == 0) self.writer.data = @splat(0) else {
+                try self.readPage(original.page, &self.writer.data);
+                if (std.hash.Crc32.hash(&self.writer.data) != original.checksum) return self.corruption();
+            }
             const within: usize = @intCast(offset % page_bytes);
             @memcpy(self.writer.data[within..][0..bytes.len], bytes);
             const data_crc = std.hash.Crc32.hash(&self.writer.data);
@@ -972,7 +979,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             for (0..@as(usize, height) + 1) |level_index| {
                 const level: u8 = @intCast(level_index);
                 const base = logical / extent_map.capacity(level) * extent_map.capacity(level);
-                _ = try self.loadMap(path[level], level, base, value);
+                if (path[level].page == 0) {
+                    self.map_cache.valid = false;
+                    try extent_map.init(&self.map_buffer, level, base, value.length);
+                } else _ = try self.loadMap(path[level], level, base, value);
                 if (level == 0) extent_map.setData(&self.map_buffer, @intCast(logical - base), .{ .page = first, .checksum = data_crc }) else {
                     const index = (logical - base) / extent_map.capacity(level - 1);
                     extent_map.setChild(&self.map_buffer, @intCast(index), updated);
@@ -983,6 +993,139 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.staged.payload_next = bound;
             _ = try self.checkedLookup(&self.staged, key);
             try self.replace(key, .{ .first = updated.page, .length = value.length, .checksum = updated.checksum, .kind = .mapped }, true);
+        }
+        const ResizePlan = struct {
+            source: Value,
+            length: u64,
+            height: u8 = 0,
+            old_level: u8 = 0,
+            old_ref: extent_map.Ref = .{},
+            tail: ?u64 = null,
+            original_tail: extent_map.Data = .{ .page = 0, .checksum = 0 },
+            pages: u64 = 0,
+        };
+        fn subtree(self: *Self, value: Value, target: u8) Error!extent_map.Ref {
+            var level = try extent_map.height(value.length);
+            var ref = extent_map.Ref{ .page = value.first, .checksum = value.checksum };
+            while (level > target and ref.page != 0) {
+                _ = try self.loadMap(ref, level, 0, value);
+                ref = extent_map.child(&self.map_buffer, 0);
+                level -= 1;
+            }
+            return ref;
+        }
+        fn reshapeNode(self: *Self, comptime write: bool, plan: *const ResizePlan, old_ref: extent_map.Ref, old_level: u8, level: u8, base: u64, force_root: bool, tail_ref: extent_map.Data, first: u64, cursor: *u64, bound: u64, scratch: *ResizeScratch) Error!extent_map.Ref {
+            const tail_inside = if (plan.tail) |logical| logical >= base and logical - base < extent_map.capacity(level) else false;
+            if (old_ref.page == 0 and !tail_inside and !force_root) return .{};
+            const new_coverage = @min(extent_map.capacity(level), dataPages(plan.length) - base);
+            const old_coverage = if (base < dataPages(plan.source.length)) @min(extent_map.capacity(level), dataPages(plan.source.length) - base) else 0;
+            if (old_ref.page != 0 and old_level == level and old_coverage == new_coverage and !tail_inside) return old_ref;
+            const node = &scratch.nodes[level];
+            var old_count: usize = 0;
+            if (old_ref.page != 0 and old_level == level) {
+                _ = try self.loadMap(old_ref, level, base, plan.source);
+                node.* = self.map_buffer;
+                old_count = try extent_map.count(level, base, plan.source.length);
+            } else try extent_map.init(node, level, base, plan.length);
+            const new_count = try extent_map.count(level, base, plan.length);
+            if (level == 0) {
+                if (write and tail_inside) extent_map.setData(node, @intCast(plan.tail.? - base), tail_ref);
+            } else {
+                for (0..new_count) |i| {
+                    const child_ref = if (old_ref.page != 0 and old_level == level and i < old_count) extent_map.child(node, i) else if (old_level < level and i == 0) old_ref else extent_map.Ref{};
+                    const child_level = if (old_level < level and i == 0) old_level else level - 1;
+                    const child_base = base + i * extent_map.capacity(level - 1);
+                    const updated = try self.reshapeNode(write, plan, child_ref, child_level, level - 1, child_base, false, tail_ref, first, cursor, bound, scratch);
+                    if (write) extent_map.setChild(node, i, updated);
+                }
+            }
+            var result = extent_map.Ref{};
+            if (write) {
+                const stride: usize = if (level == 0) 16 else 32;
+                @memset(node[extent_map.header_bytes + new_count * stride .. crc_offset], 0);
+                try extent_map.setHeader(node, level, base, plan.length);
+                result = extent_map.seal(node, first + cursor.*, level, base, plan.length, .{ .start = data_start, .end = bound }) catch return self.corruption();
+                try self.writePage(result.page, node);
+            }
+            cursor.* += 1;
+            return result;
+        }
+        fn resizePlan(self: *Self, key: u32, length: u64, scratch: *ResizeScratch) Error!ResizePlan {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            const source = try self.checkedLookup(&self.staged, key) orelse return error.NotFound;
+            if (length > Device.capacity or data_end > std.math.maxInt(u32)) return error.InvalidArgument;
+            var plan = ResizePlan{ .source = source, .length = length };
+            if (length == source.length or length == 0) return plan;
+            if (source.kind != .mapped and source.length != 0) return error.NotMapped;
+            plan.height = extent_map.height(length) catch return error.InvalidArgument;
+            if (source.length != 0) {
+                const old_height = try extent_map.height(source.length);
+                plan.old_level = @min(old_height, plan.height);
+                plan.old_ref = if (old_height > plan.height) try self.subtree(source, plan.height) else .{ .page = source.first, .checksum = source.checksum };
+                if (plan.old_ref.page != 0) plan.old_ref = try self.loadMap(plan.old_ref, plan.old_level, 0, source);
+                const edge = @min(length, source.length);
+                if (edge % page_bytes != 0) {
+                    const logical = edge / page_bytes;
+                    const original = try self.mappedData(source, logical);
+                    if (original.page != 0) {
+                        plan.tail = logical;
+                        plan.original_tail = original;
+                    }
+                }
+            }
+            var count: u64 = 0;
+            _ = try self.reshapeNode(false, &plan, plan.old_ref, plan.old_level, plan.height, 0, true, .{ .page = 0, .checksum = 0 }, 0, &count, 0, scratch);
+            plan.pages = count + @intFromBool(plan.tail != null);
+            return plan;
+        }
+        /// Caller owns a fixed 16 KiB metadata workspace. This planning pass
+        /// reads only boundary paths, and performs no writes or allocation scan.
+        pub fn mappedResizePages(self: *Self, key: u32, length: u64, scratch: *ResizeScratch) Error!u64 {
+            return (try self.resizePlan(key, length, scratch)).pages;
+        }
+        pub fn resizeMapped(self: *Self, key: u32, length: u64, scratch: *ResizeScratch) Error!void {
+            const plan = try self.resizePlan(key, length, scratch);
+            if (length == plan.source.length) return;
+            try self.preflight();
+            const first = try self.findPayload(plan.pages);
+            return self.applyResize(key, &plan, first, scratch);
+        }
+        pub fn resizeMappedPrepared(self: *Self, key: u32, length: u64, scratch: *ResizeScratch) Error!void {
+            const plan = try self.resizePlan(key, length, scratch);
+            if (length == plan.source.length) return;
+            try self.preflight();
+            if (self.search.phase != .done or self.search.wanted != plan.pages) return error.SearchRequired;
+            const first = switch (self.search.result) {
+                .found => |first| first,
+                else => return error.SearchRequired,
+            };
+            return self.applyResize(key, &plan, first, scratch);
+        }
+        fn applyResize(self: *Self, key: u32, plan: *const ResizePlan, first: u64, scratch: *ResizeScratch) Error!void {
+            self.invalidateSearch();
+            self.map_cache.valid = false;
+            if (plan.length == 0) {
+                _ = try self.checkedLookup(&self.staged, key);
+                return self.replace(key, .{ .first = 0, .length = 0, .checksum = 0 }, true);
+            }
+            const bound = @max(self.staged.payload_next, first + plan.pages);
+            var cursor: u64 = 0;
+            var tail = extent_map.Data{ .page = 0, .checksum = 0 };
+            if (plan.tail != null) {
+                try self.readPage(plan.original_tail.page, &self.writer.data);
+                if (std.hash.Crc32.hash(&self.writer.data) != plan.original_tail.checksum) return self.corruption();
+                const edge: usize = @intCast(@min(plan.length, plan.source.length) % page_bytes);
+                @memset(self.writer.data[edge..], 0);
+                tail = .{ .page = first, .checksum = std.hash.Crc32.hash(&self.writer.data) };
+                try self.writePage(first, &self.writer.data);
+                cursor += 1;
+            }
+            const root = try self.reshapeNode(true, plan, plan.old_ref, plan.old_level, plan.height, 0, true, tail, first, &cursor, bound, scratch);
+            if (cursor != plan.pages or root.page == 0) return self.corruption();
+            self.staged.payload_next = bound;
+            _ = try self.checkedLookup(&self.staged, key);
+            try self.replace(key, .{ .first = root.page, .length = plan.length, .checksum = root.checksum, .kind = .mapped }, true);
         }
         pub fn remove(self: *Self, key: u32) Error!void {
             try self.transaction();

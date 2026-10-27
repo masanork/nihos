@@ -195,8 +195,43 @@ def main():
             os.close(fd)
         run("verify-map-new", mapped_image)
         result["cases"].append({"name": "mapped_range_snapshot_reuses_unchanged_payload_file", "passed": True})
+        resized = run("resize-cycle")
+        require(resized["writes"] == 11, "resize rewrote more than two boundary paths and root retirement")
+        run("verify-resized")
+        result["cases"].append({"name": "truncate_regrow_zero_tail_and_pinned_old_reader", "passed": True,
+                                 "resize": resized, "scratch_bytes": 16384, "shrink_payload_pages": 3,
+                                 "grow_payload_pages": 3, "zero_after": 33 * 1024**2 + 17 - PAGE - 13})
+        # Reclamation can reuse old physical pages. Preserve the earlier
+        # snapshots and capture this generation as independent ranges.
+        resized_ranges = []
+        fd = os.open(image, os.O_RDONLY)
+        try:
+            require(os.pread(fd, 16 * PAGE, CAPACITY - 16 * PAGE) == bytes(16 * PAGE), "reserved tail modified")
+            for name, offset, size in (("resized-metadata.bin", 0, 258 * PAGE),
+                                       ("resized-payload.bin", PAYLOAD_START, resized["payload_high_water_pages"] * PAGE)):
+                digest = copy_range(fd, offset, size, output / name)
+                resized_ranges.append({"file": name, "offset": offset, "bytes": size, "sha256": digest})
+        finally:
+            os.close(fd)
+        result["resized_snapshot"] = {"capacity": CAPACITY, "ranges": resized_ranges, "omitted_bytes": "zero sparse holes"}
+        resized_image = output / "resized-reconstructed.img"
+        create_image(resized_image)
+        fd = os.open(resized_image, os.O_RDWR)
+        try:
+            for item in resized_ranges:
+                position = 0
+                with (output / item["file"]).open("rb") as source_file:
+                    while data := source_file.read(65536):
+                        require(os.pwrite(fd, data, item["offset"] + position) == len(data), "short resized restore")
+                        position += len(data)
+                require(position == item["bytes"], "resized range length mismatch")
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        run("verify-resized", resized_image)
+        result["cases"].append({"name": "resized_range_snapshot_reopens_without_resurrecting_tail", "passed": True})
         result["images"] = {path.name: {"bytes": path.stat().st_size, "allocated_bytes": path.stat().st_blocks * 512}
-                            for path in (image, rebuilt, mapped_image)}
+                            for path in (image, rebuilt, mapped_image, resized_image)}
         require(all(info["bytes"] == CAPACITY and info["allocated_bytes"] < 256 * 1024**2 for info in result["images"].values()), "image lost sparse allocation")
         result["passed"] = True
     finally:
