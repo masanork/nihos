@@ -43,6 +43,26 @@ case "$mode" in
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
     *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
+usb=${NIHOS_NATIVE_USB:-0}
+case "$usb" in
+    0) usb=false ;;
+    1) usb=true ;;
+    *) echo "NIHOS_NATIVE_USB must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$usb" = true ] && [ "$profile" != device ]; then
+    echo "Native USB probe currently supports the rev1/2 device profile only" >&2
+    exit 1
+fi
+jpki=${NIHOS_NATIVE_JPKI:-0}
+case "$jpki" in
+    0) jpki=false ;;
+    1) jpki=true ;;
+    *) echo "NIHOS_NATIVE_JPKI must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$jpki" = true ] && [ "$usb" != true ]; then
+    echo "PIN-free JPKI requires NIHOS_NATIVE_USB=1" >&2
+    exit 1
+fi
 sdmmc=${NIHOS_NATIVE_SDMMC:-0}
 case "$sdmmc" in
     0) sdmmc=false ;;
@@ -88,8 +108,15 @@ display_pattern=false
 display_sram=false
 display_tile=false
 display_scene=false
-display_boot_cpp=0
 display_tile_cpp=0
+keypad_demo=false
+card_read=false
+card_photo=false
+card_auto=false
+photo_cpp=0
+card_read_cpp=0
+keypad_cpp=0
+display_boot_cpp=0
 case "$display" in
     0) display=false ;;
     1) display=true ;;
@@ -99,7 +126,11 @@ case "$display" in
     5) display=true; display_scanout=true; display_white=true; display_sram=true ;;
     6) display=true; display_scanout=true; display_sram=true; display_tile=true ;;
     7) display=true; display_scanout=true; display_sram=true; display_tile=true; display_scene=true ;;
-    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6 or 7" >&2; exit 1 ;;
+    11) display=true; display_scanout=true; display_sram=true; card_read=true; card_photo=true; card_auto=true; photo_cpp=1; card_read_cpp=1; keypad_cpp=1 ;;
+    10) display=true; display_scanout=true; display_sram=true; card_read=true; card_photo=true; photo_cpp=1; card_read_cpp=1; keypad_cpp=1 ;;
+    9) display=true; display_scanout=true; display_sram=true; card_read=true; card_read_cpp=1; keypad_cpp=1 ;;
+    8) display=true; display_scanout=true; display_sram=true; keypad_demo=true; keypad_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 or 11" >&2; exit 1 ;;
 esac
 console_font=${NIHOS_NATIVE_CONSOLE_FONT:-3}
 case "$console_font" in
@@ -155,12 +186,57 @@ fi
 if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ]; }; then
     echo "NETWORK requires normal device boot and exclusive SDMMC (SDMMC=0)" >&2; exit 1
 fi
+auto_probe=${NIHOS_NATIVE_CARD_AUTO_PROBE:-0}
+case "$auto_probe" in
+    0) auto_probe=false ;;
+    1) auto_probe=true ;;
+    *) echo "NIHOS_NATIVE_CARD_AUTO_PROBE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$auto_probe" = true ] && [ "$card_auto" != true ]; then
+    echo "Automatic card probe requires DISPLAY=11" >&2; exit 1
+fi
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display_tile" = true ]; then display_tile_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
     echo "Native display preparation requires the physical-device profile" >&2
     exit 1
 fi
+card_check=${NIHOS_NATIVE_CARD_CHECK:-0}
+if [ "$keypad_demo" = true ] && { [ "$usb" = true ] || [ "$jpki" = true ] || [ "$card_check" != 0 ]; }; then
+    echo "Keypad demonstration requires USB=0, JPKI=0 and CARD_CHECK=0" >&2
+    exit 1
+fi
+if [ "$keypad_demo" = true ] && [ "$mode" != integer ]; then
+    echo "Keypad demonstration requires integer mode" >&2
+    exit 1
+fi
+if [ "$card_read" = true ] && { [ "$usb" != true ] || [ "$jpki" = true ] || [ "$card_check" != 0 ] || [ "$mode" != integer ] || [ "$sdmmc" = true ] || [ "$storage" != 0 ]; }; then
+    echo "Card read requires USB=1, JPKI=0, CARD_CHECK=0, SDMMC=0, STORAGE=0 and integer mode" >&2
+    exit 1
+fi
+touch_check=${NIHOS_NATIVE_TOUCH_CHECK:-0}
+case "$touch_check" in
+    0) touch_check=false ;;
+    1) touch_check=true ;;
+    *) echo "NIHOS_NATIVE_TOUCH_CHECK must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$touch_check" = true ] && { [ "$display_tile" != true ] || [ "$usb" = true ] || [ "$jpki" = true ] || [ "$card_check" != 0 ]; }; then
+    echo "Touch feedback requires DISPLAY=6, USB=0, JPKI=0 and CARD_CHECK=0" >&2
+    exit 1
+fi
+case "$card_check" in
+    0) card_check=false ;;
+    1) card_check=true ;;
+    *) echo "NIHOS_NATIVE_CARD_CHECK must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$card_check" = true ] && { [ "$usb" != true ] || [ "$display" != true ] || [ "$display_scanout" = true ]; }; then
+    echo "Card readiness check requires USB=1 and DISPLAY=1 (preparation only)" >&2
+    exit 1
+fi
+# Keep foreground-only PIN-free readiness/touch fixtures within the same 48 KiB
+# heap gate as normal networking. The card/CCID modules remain ReleaseSafe;
+# only the native orchestration/transport root uses the smaller codegen.
+if [ "$card_check" = true ] || [ "$touch_check" = true ]; then root_opt=small; fi
 case "$storage" in
     0) storage=false ;;
     1) storage=true ;;
@@ -178,7 +254,7 @@ if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 {
@@ -187,6 +263,11 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const network = %s;\n' "$network"
     printf 'pub const network_test = %s;\n' "$network_test"
+    printf 'pub const card_check = %s;\n' "$card_check"
+    printf 'pub const touch_check = %s;\n' "$touch_check"
+    printf 'pub const keypad_demo = %s;\npub const card_read = %s;\npub const card_photo = %s;\n' "$keypad_demo" "$card_read" "$card_photo"
+    printf 'pub const card_auto = %s;\npub const card_auto_probe = %s;\n' "$card_auto" "$auto_probe"
+    printf 'pub const usb = %s;\npub const jpki = %s;\n' "$usb" "$jpki"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
@@ -218,7 +299,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     set -- "$@" "$build_dir/display_pads.o"
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
             -I "$native_boot_dir/loader/config" \
@@ -250,6 +331,43 @@ if [ "$sdmmc" = true ] || [ "$network" = true ]; then
         -I "$idf_path/components/esp_rom/esp32p4" \
         -o "$build_dir/sdmmc_pads.o" "$pad_source"
     set -- "$@" "$build_dir/sdmmc_pads.o"
+fi
+
+if [ "$usb" = true ]; then
+    idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
+    register_version=hw_ver1
+    if [ "$profile" = emulator ]; then register_version=hw_ver3; fi
+    headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
+        -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
+        -isystem "$headers/riscv-linux-any" \
+        -I "$repo_root/build/native-$profile/loader/config" \
+        -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+        -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+        -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/$register_version" \
+        -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+        -I "$idf_path/components/esp_rom/include" -I "$idf_path/components/esp_rom/esp32p4/include" \
+        -I "$idf_path/components/esp_rom/esp32p4" \
+        -o "$build_dir/usb_pads.o" "$repo_root/probes/usb_native/pads.c"
+    set -- "$@" "$build_dir/usb_pads.o"
+fi
+if [ "$card_photo" = true ]; then
+    sh "$repo_root/tools/build-photo-codec.sh" "$build_dir" rv32
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        "$repo_root/probes/photo/stack.S" -o "$build_dir/photo_stack.o"
+    set -- "$@" "$build_dir"/photo_*.o
+    if [ "$card_auto" = true ] && [ "$auto_probe" = false ]; then
+        "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm \
+            -ffunction-sections -fdata-sections -fno-stack-check -fno-stack-protector \
+            -femit-bin="$build_dir/card_crypto.o" \
+            --dep crypto -Mroot="$repo_root/probes/card_crypto/link.zig" \
+            -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+            -Mcrypto="$repo_root/src/card/license_crypto.zig"
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            "$repo_root/probes/card_crypto/stack.S" -o "$build_dir/card_crypto_stack.o"
+        set -- "$@" "$build_dir/card_crypto.o" "$build_dir/card_crypto_stack.o"
+    fi
 fi
 if [ "$floating" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none \
@@ -309,14 +427,14 @@ if [ "$sqlite" = true ]; then
     fi
 fi
 "$zig" build-exe -target riscv32-freestanding-none \
-    -mcpu="$cpu" -O safe -fllvm -fno-strip \
+    -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
@@ -333,12 +451,22 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
+    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep cpu_clock --dep timer_group -Mcpu_boot="$repo_root/src/platform/native/cpu_boot.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mcpu_clock="$repo_root/src/soc/esp32p4/cpu_clock.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mccid="$repo_root/src/usb/ccid.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    --dep ccid -Mcard="$repo_root/src/card.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mjpki="$repo_root/src/usb/jpki.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Musb_host="$repo_root/src/soc/esp32p4/usb_host.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Musb_descriptors="$repo_root/src/usb/descriptors.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mtab5_panels="$repo_root/src/board/tab5/panels.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
@@ -400,3 +528,5 @@ fi
     -Mpsram_mapping="$repo_root/src/soc/esp32p4/psram_mapping.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -femit-bin="$build_dir/nihos-native.elf"
+
+if [ "$card_photo" = true ]; then python3 "$repo_root/tools/native-photo-manifest.py" "$build_dir"; fi

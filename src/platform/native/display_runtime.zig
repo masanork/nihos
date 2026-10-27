@@ -25,6 +25,7 @@ extern fn nih_display_backlight(bool) callconv(.c) void;
 extern fn nih_display_pattern_enable(*const panels.Timing) callconv(.c) void;
 extern fn nih_display_dma_irq_source() callconv(.c) u32;
 extern fn nih_display_diagnostic(u32) callconv(.c) u32;
+extern fn nih_display_notice_status() callconv(.c) u32;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 
 var state: Scanout = .{};
@@ -44,7 +45,7 @@ pub fn onInterrupt() void {
     state.observe(event & 1 != 0, event & 10, event & 4 != 0);
     nih_display_backlight(state.backlight);
 }
-pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0 };
+pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0, font_low: u32 = 0, font_low_bytes: u32 = 0, pixel_bytes: u32 = 0 };
 pub fn snapshot() Report {
     const previous = asm volatile ("csrrci %[previous], mstatus, 8"
         : [previous] "=r" (-> u32),
@@ -52,6 +53,11 @@ pub fn snapshot() Report {
         : .{ .memory = true });
     defer if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     return .{ .status = if (running and state.fault == 0) 1 else 2, .frames = state.frames, .fault = state.fault, .event = last_event, .backlight = @intFromBool(state.backlight), .dsi_error0 = nih_display_diagnostic(0), .dsi_error1 = nih_display_diagnostic(1), .dma_error = nih_display_diagnostic(2), .bridge_error = nih_display_diagnostic(3) };
+}
+pub const NoticeReport = struct { swaps: u32, panel_starts: u32, backlight_offs: u32, frames: u32, backlight: u32, fault: u32 };
+pub fn noticeSnapshot() NoticeReport {
+    const current = snapshot();
+    return .{ .swaps = nih_display_diagnostic(15), .panel_starts = nih_display_diagnostic(16), .backlight_offs = nih_display_diagnostic(17), .frames = current.frames, .backlight = current.backlight, .fault = current.fault };
 }
 
 const Sender = struct {
@@ -93,7 +99,9 @@ fn waitFrame(pins: Pins, previous: u32) !void {
 }
 fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool, report: *Report, powered: *bool, phy_started: *bool) !void {
     var selected = panels.timing(panel) orelse return error.Panel;
-    if (sram or options.psram_200) selected = panels.refreshProfile(panel, options.display_hz) orelse return error.Panel;
+    if (options.card_read or options.keypad_demo) {
+        selected.dpi_mhz = if (panel == 1) 60 else 80;
+    } else if (sram or options.psram_200) selected = panels.refreshProfile(panel, options.display_hz) orelse return error.Panel;
     report.panel = panel;
     report.dpi_mhz = selected.dpi_mhz;
     report.lane_mbps = selected.lane_mbps;
@@ -138,7 +146,14 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     const frame = base[0..board.frame_bytes];
     const paint = if (options.display_tile) boot.paintPlacedRgb565Le else boot.paintLandscapePlacedRgb565Le;
     const recolor = if (options.display_tile) boot.recolorPlacedRgb565Le else boot.recolorLandscapePlacedRgb565Le;
-    if (white) @memset(frame, 0xff) else if (!paint(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, if (options.console_live) .display else .ready)) return error.Image;
+    if (comptime options.keypad_demo or options.card_read) {
+        const prepared = try @import("keypad_display.zig").prepare(clock, frame);
+        report.lease_start = prepared.local_start;
+        report.lease_bytes = prepared.local_bytes;
+        report.font_low = prepared.font_low;
+        report.font_low_bytes = prepared.font_low_bytes;
+        report.pixel_bytes = prepared.pixel_bytes;
+    } else if (white) @memset(frame, 0xff) else if (!paint(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, if (options.console_live) .display else .ready)) return error.Image;
     if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
     if (options.display_tile) {
         const rows: usize = if (options.display_scene) 40 + 112 + 14 + 10 else 40;
@@ -147,7 +162,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         report.lease_bytes = lease.len;
         if (options.display_scene and !nih_display_scene_refresh(board.framebuffer)) return error.Cache;
     }
-    const source_kind: u32 = if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
+    const source_kind: u32 = if (options.card_auto and @import("keypad_display.zig").notice_frame) 5 else if ((options.keypad_demo or options.card_read)) 4 else if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
     const start_code = nih_display_scanout_begin(board.framebuffer, &selected, source_kind, report.lease_start, report.lease_bytes);
     report.start_code = @bitCast(start_code);
     report.prime_depth = nih_display_diagnostic(4);
@@ -160,8 +175,8 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         nih_display_pattern_enable(&selected);
         report.dpi_mhz = if (panel == 1) 60 else 80;
     }
-    if (!options.console_live and !white and (!options.display_tile or options.display_scene)) for (0..60) |_| try waitFrame(pins, state.frames);
-    if (!options.console_live and !white and (!options.display_tile or options.display_scene)) for (1..33) |step| {
+    if (!options.console_live and !options.card_read and !options.keypad_demo and !white and (!options.display_tile or options.display_scene)) for (0..60) |_| try waitFrame(pins, state.frames);
+    if (!options.console_live and !options.card_read and !options.keypad_demo and !white and (!options.display_tile or options.display_scene)) for (1..33) |step| {
         try waitFrame(pins, state.frames);
         if (!recolor(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, @intCast(step * 255 / 32), .ready)) return error.Image;
         if (options.display_scene) {
@@ -181,7 +196,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     report.bl_mux = nih_display_diagnostic(8);
     report.bl_matrix = nih_display_diagnostic(9);
     report.white = @intFromBool(white);
-    report.sram = if (options.display_scene) 2 else @intFromBool(sram);
+    report.sram = if ((options.keypad_demo or options.card_read)) 5 else if (options.display_scene) 2 else @intFromBool(sram);
     report.source = nih_display_diagnostic(10);
     report.dma_source = nih_display_diagnostic(11);
     report.dma_control = nih_display_diagnostic(12);
@@ -191,7 +206,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
 }
 
 /// Caller routes CLIC18 only after success. No framebuffer or DMA reuse on error.
-pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) Report {
+pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) linksection(if (options.card_read) ".flash.text.card" else ".text") Report {
     if (attempted) return .{ .error_code = 8 };
     attempted = true;
     var report = Report{};
@@ -228,4 +243,61 @@ pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern
         return report;
     };
     return report;
+}
+
+/// Foreground-only scene replacement. Retire DMA before clearing any retained
+/// result pixels, then rebuild under masked local IRQs. No personal framebuffer
+/// is modified while the display DMA borrows it.
+pub fn replace(clock: timer_group.Timer, panel: u32) Report {
+    const previous = asm volatile ("csrrci %[value],mstatus,8"
+        : [value] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    running = false;
+    if (!nih_display_scanout_stop()) return .{ .error_code = 9 };
+    nih_display_phy_stop();
+    if (!wipePools()) return .{ .error_code = 6 };
+    state = .{};
+    last_event = 0;
+    attempted = false;
+    return start(clock, panel, false, false, true);
+}
+/// Public notices already scan from private SRAM banks. Keep the panel and
+/// backlight running, publish the inactive bank, and await the frame handoff.
+/// PIN/results still use replace(), which retires and wipes retained pixels.
+pub noinline fn presentNotice(clock: timer_group.Timer, panel: u32) linksection(if (options.card_auto) ".flash.photo" else ".text") !void {
+    if (options.card_auto and running and nih_display_notice_status() != 0) {
+        if (state.fault != 0) return error.Scanout;
+        try @import("keypad_display.zig").publishNotice(@as([*]const u8, @ptrFromInt(board.framebuffer))[0..board.frame_bytes]);
+        const pins = Pins{ .clock = clock };
+        const started = clock.counter() orelse return error.Timer;
+        while (nih_display_notice_status() == 2) {
+            if (state.fault != 0) return error.Scanout;
+            const now = clock.counter() orelse return error.Timer;
+            if (now - started >= 200_000) return error.Timeout;
+            if (!pins.delay(1000)) return error.Timer;
+        }
+        if (nih_display_notice_status() != 1) return error.Scanout;
+    } else {
+        const result = replace(clock, panel);
+        clock.start();
+        clock.disarm();
+        if (result.status != 1) return error.Scanout;
+    }
+}
+fn wipePools() bool {
+    const std = @import("std");
+    for ([_][2]usize{ .{ 0x4ff40000, 0x20000 }, .{ 0x4ff70000, 0x2f000 } }) |span| {
+        std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(span[0]))[0..span[1]]);
+        if (nih_rom_cache_writeback(1 << 4, @intCast(span[0]), @intCast(span[1])) != 0) return false;
+    }
+    return true;
+}
+pub fn emergency() bool {
+    running = false;
+    const clean = nih_display_scanout_stop() and wipePools();
+    const std = @import("std");
+    std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(board.framebuffer))[0..board.frame_bytes]);
+    return nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) == 0 and clean;
 }

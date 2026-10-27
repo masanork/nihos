@@ -20,6 +20,11 @@ MEMORY {
 #if NIH_NATIVE_SQLITE
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
+#if NIH_NATIVE_KEYPAD
+    flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
+    keypad_low (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
+    keypad_high (rw) : ORIGIN = 0x4ff70000, LENGTH = 188K
+#endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
@@ -30,6 +35,13 @@ SECTIONS
         *(.flash.text.boot)
         __flash_boot_end = .;
     } > flash_boot
+#if NIH_NATIVE_CARD_READ
+    .flash.card : ALIGN(16) {
+        __flash_card_start = .;
+        *(.flash.text.card)
+        __flash_card_end = .;
+    } > flash_boot
+#endif
     /* The stock P4 loader maps both segments before entering SRAM.
      * Only self-contained normal diagnostic tables use the second page. */
     .flash.rodata : {
@@ -37,8 +49,65 @@ SECTIONS
         KEEP(*(.flash.rodata.records))
         *(.flash.rodata.boot_graphics)
         *(.flash.rodata.display)
+        *(.flash.rodata.card_pin)
         __flash_records_end = .;
     } > flash_records
+#if NIH_NATIVE_KEYPAD
+    .keypad.low (NOLOAD) : { __keypad_low_start = .; KEEP(*(.keypad.low.anchor)) . = ORIGIN(keypad_low) + LENGTH(keypad_low); __keypad_low_end = .; } > keypad_low
+    .keypad.high (NOLOAD) : { __keypad_high_start = .; KEEP(*(.keypad.high.anchor)) . = ORIGIN(keypad_high) + LENGTH(keypad_high); __keypad_high_end = .; } > keypad_high
+    .flash.uipad : ALIGN(4) {
+        KEEP(*(.flash.keypad.pad))
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.ui : ALIGN(64) {
+        __flash_ui_start = .;
+        __keypad_plan_start = .;
+        *(.flash.keypad.plan)
+        __keypad_plan_end = .;
+        . = ALIGN(64);
+        __keypad_atlas_start = .;
+        *(.flash.keypad.atlas)
+        __keypad_atlas_end = .;
+        . = ALIGN(64);
+        __keypad_font_start = .;
+        *(.flash.keypad.font .flash.keypad.auto_font)
+        __keypad_font_end = .;
+#if NIH_NATIVE_PHOTO
+        . = ALIGN(64);
+#endif
+        __flash_ui_end = .;
+    } > flash_ui
+#if NIH_NATIVE_PHOTO
+    .flash.photo : ALIGN(64) {
+        __photo_text_start = .;
+        *photo_*.o(.text .text.*)
+        *card_crypto*.o(.text .text.*)
+        *(.flash.photo)
+        *(.text.compiler_rt.addf3.* .text.compiler_rt.mulf3.* .text.compiler_rt.divf3.* .text.compiler_rt.divsf3.* .text.compiler_rt.divdf3.* .text.compiler_rt.comparef.* .text.compiler_rt.float_from_int.* .text.compiler_rt.int_from_float.* .text.compiler_rt.extendf.* .text.compiler_rt.truncf.*)
+        . = ALIGN(64);
+        __photo_text_end = .;
+    } > flash_ui
+    .flash.photo.rodata : ALIGN(64) {
+        __photo_rodata_start = .;
+        *photo_*.o(.rodata .rodata.* .srodata .srodata.*)
+        *card_crypto*.o(.rodata .rodata.* .srodata .srodata.*)
+        . = ALIGN(64);
+        __photo_fixture_start = .;
+        *(.flash.photo.fixture)
+        __photo_fixture_end = .;
+        . = ALIGN(4);
+        __license_jis_start = .;
+        *(.flash.license.data)
+        __license_jis_end = .;
+        . = ALIGN(4);
+        __license_trust_start = .;
+        *(.flash.license.trust)
+        __license_trust_end = .;
+        __photo_rodata_end = .;
+    } > flash_ui
+    .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
+#endif
+#endif
 #if NIH_NATIVE_SQLITE
     /* The stock P4 loader accepts exactly two mapped segments. Fill the gap
      * so esptool can merge records + SQLite into its second contiguous span. */

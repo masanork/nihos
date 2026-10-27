@@ -20,6 +20,18 @@ def fixture(case):
 
 
 class NormalBootSmokeTests(unittest.TestCase):
+    def test_host_exit_marker_echo_cannot_duplicate_or_substitute_guest_evidence(self):
+        log,audit=fixture(1)
+        marker='NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator'
+        echo="[INFO  esp_emu] Exit-on string '"+marker+"\r\n' found in output\n"
+        self.assertTrue(SMOKE.check(log+echo,audit,32<<20,1)['ready'])
+        with self.assertRaises(ValueError):
+            SMOKE.check(log.replace(marker,'INCOMPLETE')+echo,audit,32<<20,1)
+        failed,image=fixture(3)
+        reason='NIHOS_NATIVE_FAIL '+SMOKE.FAILURES[3]
+        diagnostic="[INFO  esp_emu] Exit-on string '"+reason+"\r\n' found in output\n"
+        with self.assertRaises(ValueError):
+            SMOKE.check(failed.replace(reason,'INCOMPLETE')+diagnostic,image,32<<20,3)
     def test_real_normal_and_delayed_core_reach_ready_then_idle(self):
         for case in (1,2):
             with self.subTest(case=case):

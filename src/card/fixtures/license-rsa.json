@@ -1,0 +1,6 @@
+{
+  "synthetic": true,
+  "production_trust_anchor": false,
+  "generator": "tools/generate-license-fixtures.py; Python cryptography key generation + independent Python integer exponentiation; private keys discarded",
+  "sha256": "a3565dbae75b705eff2c4fc16ede90222584c9d057fc94c25d0321af887bb3e9"
+}
