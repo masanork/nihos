@@ -66,6 +66,12 @@ The platform boundary models resources, not generic convenience calls.
 
 ## Connectivity direction
 
+The public normal Tab5 build now enables the C6 driver by default and accepts
+an unconfigured Wi-Fi state. The shared transport also supports physically
+observed BLE HCI passive discovery. RTC and read-only power/IMU status share
+the CPU0 board I2C owner. See [ADR 0047](adr/0047-default-connectivity-and-board-devices.md)
+and the [device inventory](planning/tab5-native-device-support.md).
+
 The intended service boundary puts Wi-Fi, TCP/IP and the BLE host on the C6,
 exposed through ESP-AT over SDIO (ADR 0043). Its decoder/controller are
 host-tested and its separate C6 firmware builds. The current physical path

@@ -230,3 +230,10 @@ be copied into the repository.
 Original nihos code and documentation are available under the
 [MIT License](LICENSE) unless otherwise noted. Third-party components, if
 introduced, will retain their own licenses and notices.
+
+Normal native Tab5 builds now enable connectivity by default:
+`sh tools/build-native.sh device`. A private `NIHOS_C6_WIFI_CONFIG` JSON is
+optional; without it Wi-Fi waits for settings while BLE discovery can run.
+See [ADR 0047](docs/adr/0047-default-connectivity-and-board-devices.md) and the
+[device support inventory](docs/planning/tab5-native-device-support.md) for
+implemented features and remaining gates.

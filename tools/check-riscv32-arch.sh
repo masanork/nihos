@@ -29,7 +29,7 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
 
 # Generate both owner paths without SDK headers, credentials or device access.
 # Exporting begin/poll/snapshot through the probe forces codegen of the live
-# owner, which the disabled-by-default normal images intentionally eliminate.
+# owner, which the SDK-free qualification images intentionally eliminate.
 for diagnostic in false true; do
     printf 'pub const network_test = %s;\n' "$diagnostic" > "$out_dir/network-options.zig"
     "$zig" build-obj -target "$target" -mcpu="$cpu" \
@@ -47,6 +47,11 @@ for diagnostic in false true; do
         "-Mnative_options=$out_dir/network-options.zig"
 done
 echo "Native network owner codegen (normal and diagnostic): ok"
+
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
+    "-Mroot=$repo_root/tools/probes/rtc.zig" \
+    "-Mtab5_rtc=$repo_root/src/board/tab5/rtc.zig"
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/context.o" \

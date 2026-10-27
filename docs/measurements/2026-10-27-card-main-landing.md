@@ -78,3 +78,16 @@ key bundle is empty; unknown-key is never reported as a trusted match.
 Build artifacts and raw successful/failed logs are retained privately under
 the dated Codex evidence directory. Host models, audited images, emulator
 execution, CI and physical observations remain separate evidence classes.
+
+## Concurrent main update
+
+Main advanced to `0f573cd` while PR #7 was prepared, adding default connected
+Tab5 builds, BLE discovery and board-device/RTC bring-up. That commit was
+merged into the landing branch as a second merge, preserving both provenance
+entries and adding the shared RTC module dependency. The default connected
+build and the automatic full reader passed fresh image audits; Debug,
+ReleaseSafe, 200 Python cases and static/six-link gates also passed again.
+Their new candidate hashes are recorded separately in the JSON receipt rather
+than replacing the initial integration evidence. USB CI explicitly checks
+both the network-disabled splash/live-console configuration and the new
+default connected build. No hardware was accessed for either merge.
