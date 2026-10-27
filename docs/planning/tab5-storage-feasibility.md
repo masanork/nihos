@@ -462,3 +462,11 @@ This addresses whole-object input RAM, not random-write amplification: replacing
 extent map with immutable range sharing is a prerequisite for practical large-DB
 partial writes. Native cancellation/ownership, placement, target durability and
 SQLite integration remain open.
+
+The [shared-page-map follow-up](../measurements/2026-10-27-store-extents.md)
+adds version 4 COW maps with per-page CRCs, shared immutable subtrees and
+data/node range summaries for resumable GC. The 33 MiB host object's two-page,
+20-byte replacement wrote 36,864 B versus 34,652,160 B for the prior full copy.
+The RV32 state is 31,512 B uncached or 557,848 B with the 512 KiB metadata cache.
+Initial conversion still constructs the whole map; growth/truncate, batching,
+native placement, target durability and SQLite integration remain open.

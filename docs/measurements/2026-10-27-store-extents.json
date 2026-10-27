@@ -1,0 +1,1152 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "227685e7d1c6a7fc129a263a89ede9af109d4b76",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-shared-extent-map",
+  "native_execution": false,
+  "physical_power_cuts": 0,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-extents-host",
+  "archive_regular_files": 120,
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "zig_debug": 255,
+    "zig_release_safe": 255,
+    "new_zig_tests": 10,
+    "python": 168,
+    "native_elf_links": 6,
+    "format_zlint_shellcheck": true,
+    "rv32_map_compile": true
+  },
+  "format": {
+    "version": 4,
+    "map_page_bytes": 4096,
+    "header_bytes": 48,
+    "leaf_entries": 252,
+    "internal_children": 126,
+    "max_levels": 4,
+    "node_identity": "logical base and covered pages, independent of whole-file EOF",
+    "data_crc": "inline per-page CRC chained through map nodes",
+    "physical_range_summaries": [
+      "data",
+      "nodes"
+    ],
+    "older_format_behavior": "reject without writes; no automatic migration"
+  },
+  "budget": {
+    "host_plain_state_bytes": 31528,
+    "host_cached_state_bytes": 557864,
+    "rv32_plain_state_bytes": 31512,
+    "rv32_cached_state_bytes": 557848,
+    "increase_bytes": 4408,
+    "capacity_dependent_RAM_map": false,
+    "state_excludes": [
+      "caller buffers",
+      "stack",
+      "backend",
+      "OS file cache"
+    ],
+    "native_placement_or_peak_ram_measured": false
+  },
+  "write_comparison": {
+    "object_bytes": 34603025,
+    "replacement_bytes": 20,
+    "pages_changed": 2,
+    "legacy_backend_write_bytes": 34652160,
+    "mapped_backend_write_bytes": 36864,
+    "reduction_fraction": 0.9989361702127659,
+    "promotion_map_pages": 35,
+    "promotion_total_written_pages": 37,
+    "promotion_copies_payload": false
+  },
+  "fault_campaigns": {
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "promotion_events": 50,
+    "promotion_crash_cases_per_mode": 1800,
+    "shared_patch_and_retirement_events": 84,
+    "shared_patch_crash_cases_per_mode": 3024,
+    "backgrounds": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_orders": [
+      "ascending",
+      "descending"
+    ],
+    "torn_sector_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ],
+    "acknowledged_cases_per_campaign_per_mode": 6
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-fixed-buffer-streaming",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "6cdf986a4a15cc0430abd2ca794aeacd433a0b1142646220d35ef34fdd00b5d7",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":1,\"map_metadata_pages\":35,\"payload_high_water_pages\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":8460,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "cancel",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"cancel\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":256,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "stage-wait",
+        "pid": 24724,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "stage-wait",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 256,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "finish-wait",
+        "pid": 24726,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "finish-wait",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8459,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "patch-wait",
+        "pid": 24729,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "patch-wait",
+          "generation": 3,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8460,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16916
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16916}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16916}\n",
+        "stderr": ""
+      },
+      {
+        "command": "promote-map",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"promote-map\",\"generation\":4,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":37,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16951}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-old\",\"generation\":4,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16951}\n",
+        "stderr": ""
+      },
+      {
+        "command": "mapped-patch-wait",
+        "pid": 24734,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "mapped-patch-wait",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 9,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":5,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "collect-map",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"collect-map\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "mapped-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "33MiB_object_with_4KiB_input_reopens",
+        "passed": true,
+        "seed": {
+          "phase": "seed",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8460,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        }
+      },
+      {
+        "name": "cancel_after_1MiB_keeps_old_object",
+        "passed": true
+      },
+      {
+        "name": "kill_during_stream_keeps_old_generation",
+        "passed": true
+      },
+      {
+        "name": "kill_after_finish_before_commit_keeps_old_generation",
+        "passed": true
+      },
+      {
+        "name": "patch_crosses_checksum_table_boundary_and_survives_kill_after_ack",
+        "passed": true,
+        "reopened": {
+          "phase": "verify-new",
+          "generation": 3,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 0,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16916
+        }
+      },
+      {
+        "name": "compact_range_reconstruction_reopens_patched_object",
+        "passed": true
+      },
+      {
+        "name": "map_promotion_shares_existing_33MiB_payload",
+        "passed": true,
+        "promotion": {
+          "phase": "promote-map",
+          "generation": 4,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 37,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16951
+        }
+      },
+      {
+        "name": "mapped_patch_changes_two_pages_and_survives_ack_kill",
+        "passed": true,
+        "patch": {
+          "phase": "mapped-patch-wait",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 9,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "reopened": {
+          "phase": "verify-map-new",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 0,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "collected": {
+          "phase": "collect-map",
+          "generation": 6,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 1,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "legacy_write_bytes": 34652160,
+        "mapped_write_bytes": 36864
+      },
+      {
+        "name": "mapped_range_snapshot_reuses_unchanged_payload_file",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "42062eaef6ddc1c0f2b2490987eafe1c17fe30b5eaacb415e7ae9fdbaed31577"
+        },
+        {
+          "file": "payload.bin",
+          "offset": 17045651456,
+          "bytes": 69287936,
+          "sha256": "f877f2dc7ab6e795dcaf0970f1137fc2e86fdde615f0f3d7cd58efd5efbf7f2d"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "mapped_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "mapped-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "b1f2e5a079d1dd48d4476ee76b4ec0adf1c8d572ace9b64ea50debcce4fffad5"
+        },
+        {
+          "file": "payload.bin",
+          "offset": 17045651456,
+          "bytes": 69287936,
+          "sha256": "f877f2dc7ab6e795dcaf0970f1137fc2e86fdde615f0f3d7cd58efd5efbf7f2d"
+        },
+        {
+          "file": "map-pages.bin",
+          "offset": 17114939392,
+          "bytes": 167936,
+          "sha256": "c348d99a9d9437138aeeb2966078bf8487ebbf220268205c816682223012ac31"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 69500928
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70352896
+      },
+      "mapped-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70533120
+      }
+    }
+  },
+  "checkpoint_process_regression": {
+    "schema": 1,
+    "evidence": "host-sparse-file-checkpoint",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "d9abd59f6977999d10e55ec8f2626a9d3f730e1024ea22f7c3a8849d700fc16b",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"mount_bytes\":0,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":1,\"operation_read_bytes\":0,\"index_free_pages\":256,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":0,\"metadata_hits\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"mount_bytes\":8192,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":25,\"syncs\":2,\"operation_read_bytes\":0,\"index_free_pages\":253,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":1,\"metadata_hits\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":892928,\"index_free_pages\":253,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":6,\"metadata_hits\":101}\n",
+        "stderr": ""
+      },
+      {
+        "command": "update",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"update\",\"generation\":3,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":26,\"syncs\":2,\"operation_read_bytes\":901120,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":9,\"metadata_hits\":103}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":892928,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":8,\"metadata_hits\":102}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-one",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-one\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":12288,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":7,\"metadata_hits\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-cross",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-cross\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":16384,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":7,\"metadata_hits\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-full",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-full\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":81920,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":7,\"metadata_hits\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": "inspect",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"inspect\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":0,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":7,\"metadata_hits\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "read-one",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-one\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":12288,\"index_free_pages\":251,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":7,\"metadata_hits\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-far",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "verify-full",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "fill-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"fill-index\",\"generation\":4,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":129,\"syncs\":2,\"operation_read_bytes\":8192,\"index_free_pages\":125,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":9,\"metadata_hits\":1}\n",
+        "stderr": ""
+      },
+      {
+        "command": "checkpoint",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"checkpoint\",\"generation\":5,\"mount_bytes\":544768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":2,\"operation_read_bytes\":0,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":132,\"metadata_hits\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":0,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":256,\"metadata_hits\":129}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":0,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":256,\"metadata_hits\":129}\n",
+        "stderr": ""
+      },
+      {
+        "command": "churn-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"churn-index\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":650,\"syncs\":20,\"operation_read_bytes\":2097152,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":769,\"metadata_hits\":256}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-recycled",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-recycled\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":53248,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":256,\"metadata_hits\":137}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-recycled",
+        "image": "recycled-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-recycled\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":53248,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":0,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":256,\"metadata_hits\":137}\n",
+        "stderr": ""
+      },
+      {
+        "command": "churn-payload",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"churn-payload\",\"generation\":277,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":2638,\"syncs\":524,\"operation_read_bytes\":962560,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":1,\"search_leaf_reads\":1,\"cache_pages\":128,\"metadata_reads\":420,\"metadata_hits\":52093}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-payload-recycled",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-payload-recycled\",\"generation\":277,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":811008,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":1,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":256,\"metadata_hits\":350}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-payload-recycled",
+        "image": "payload-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-payload-recycled\",\"generation\":277,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":557864,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":811008,\"index_free_pages\":128,\"reader_slots\":2,\"search_windows\":1,\"search_leaf_reads\":0,\"cache_pages\":128,\"metadata_reads\":256,\"metadata_hits\":350}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "separate_process_reopen_above_4GiB",
+        "passed": true,
+        "old": {
+          "phase": "verify-old",
+          "generation": 2,
+          "mount_bytes": 20480,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 17179607040,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 892928,
+          "index_free_pages": 253,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 6,
+          "metadata_hits": 101
+        },
+        "new": {
+          "phase": "verify-new",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 892928,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 8,
+          "metadata_hits": 102
+        }
+      },
+      {
+        "name": "bounded_partial_read_and_explicit_scrub",
+        "passed": true,
+        "one_byte": {
+          "phase": "read-one",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 12288,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 7,
+          "metadata_hits": 1
+        },
+        "crossing": {
+          "phase": "read-cross",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 16384,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 7,
+          "metadata_hits": 1
+        },
+        "scrub": {
+          "phase": "verify-full",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 81920,
+          "index_free_pages": 251,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 7,
+          "metadata_hits": 1
+        }
+      },
+      {
+        "name": "metadata_only_mount_and_on_demand_payload_integrity",
+        "passed": true
+      },
+      {
+        "name": "cold_payload_corruption_is_deferred_until_read_or_scrub",
+        "passed": true
+      },
+      {
+        "name": "both_roots_reference_all_128_leaves",
+        "passed": true,
+        "report": {
+          "phase": "verify-index",
+          "generation": 5,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 0,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 256,
+          "metadata_hits": 129
+        }
+      },
+      {
+        "name": "compact_range_snapshot_reconstruction",
+        "passed": true
+      },
+      {
+        "name": "reader_pin_backpressure_and_640_leaf_mutations_in_256_page_pool",
+        "passed": true,
+        "churn": {
+          "phase": "churn-index",
+          "generation": 15,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 650,
+          "syncs": 20,
+          "operation_read_bytes": 2097152,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 769,
+          "metadata_hits": 256
+        },
+        "reopened": {
+          "phase": "verify-recycled",
+          "generation": 15,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 53248,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 0,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 256,
+          "metadata_hits": 137
+        }
+      },
+      {
+        "name": "recycled_index_snapshot_reconstruction",
+        "passed": true
+      },
+      {
+        "name": "64KiB_payload_128_updates_and_two_pins_with_four_page_reserve",
+        "passed": true,
+        "churn": {
+          "phase": "churn-payload",
+          "generation": 277,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 2638,
+          "syncs": 524,
+          "operation_read_bytes": 962560,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 1,
+          "search_leaf_reads": 1,
+          "cache_pages": 128,
+          "metadata_reads": 420,
+          "metadata_hits": 52093
+        },
+        "reopened": {
+          "phase": "verify-payload-recycled",
+          "generation": 277,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 557864,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 811008,
+          "index_free_pages": 128,
+          "reader_slots": 2,
+          "search_windows": 1,
+          "search_leaf_reads": 0,
+          "cache_pages": 128,
+          "metadata_reads": 256,
+          "metadata_hits": 350
+        },
+        "reserved_bytes": 16384,
+        "reserve_sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+      },
+      {
+        "name": "recycled_payload_snapshot_reconstruction",
+        "passed": true
+      }
+    ],
+    "snapshots": {
+      "generation3": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation3-metadata.bin",
+            "sha256": "5d7ce9c1cc3d85568833f17c7fbcc1fdaf967ca9d4129aee5d4698041c7c92ff"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation3-payload.bin",
+            "sha256": "99d12be27c853c8c4076378f0790c3c038000d5d1ac7c62dbf752b1b6e8ec736"
+          }
+        ]
+      },
+      "generation5": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation5-metadata.bin",
+            "sha256": "938398612f6694f5a5bb288aeb25fb5c2af9cae98d6980c6563090b01517324f"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation5-payload.bin",
+            "sha256": "99d12be27c853c8c4076378f0790c3c038000d5d1ac7c62dbf752b1b6e8ec736"
+          }
+        ]
+      },
+      "generation15": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation15-metadata.bin",
+            "sha256": "920d8231809651a9f67ee630a85aa3a267bb6572a4f6801dff2b5ce293d76ead"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation15-payload.bin",
+            "sha256": "99d12be27c853c8c4076378f0790c3c038000d5d1ac7c62dbf752b1b6e8ec736"
+          }
+        ]
+      },
+      "generation277": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation277-metadata.bin",
+            "sha256": "689b87527591f472fb0432990af46341932b897e130376aec2a644915760ddbc"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation277-payload.bin",
+            "sha256": "82d1d8306773166de19e9e3e61bacd3c9feb753efba87e1c80b9b8498e8c6102"
+          }
+        ]
+      }
+    },
+    "passed": true,
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "recycled-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "payload-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      }
+    }
+  },
+  "negative_controls": {
+    "extents": [
+      {
+        "variant": "data",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.276cxs9r/data/extent_map_test.zig",
+          "--test-filter",
+          "pinned mapped data and map nodes survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "EXTENT_READER_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "nodes",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.276cxs9r/nodes/extent_map_test.zig",
+          "--test-filter",
+          "pinned mapped data and map nodes survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "EXTENT_READER_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "node_summary",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.276cxs9r/node_summary/extent_map_test.zig",
+          "--test-filter",
+          "internal node summaries protect metadata far"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      }
+    ],
+    "stream": [
+      {
+        "variant": "incomplete",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-stream/negative-stream.i64m1nka/incomplete/stream_test.zig",
+          "--test-filter",
+          "stream declared length prepared allocation"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "expected error.IncompleteStream"
+      },
+      {
+        "variant": "cancel",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-stream/negative-stream.i64m1nka/cancel/stream_test.zig",
+          "--test-filter",
+          "stream cancellation preserves earlier staged work"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (Busy)"
+      }
+    ],
+    "search": [
+      {
+        "variant": "budget",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-search/negative-search.zej0ozxx/budget/search_cache_test.zig",
+          "--test-filter",
+          "allocation search yields within both budgets"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "step_leaf_visits <= budget.leaf_visits"
+      },
+      {
+        "variant": "cache_crc",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-search/negative-search.zej0ozxx/cache_crc/search_cache_test.zig",
+          "--test-filter",
+          "metadata cache avoids backend reads"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "expected error.Corrupt"
+      }
+    ],
+    "payload": [
+      {
+        "variant": "reader",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-payload-gc/negative-payload.pcyo7da9/reader/payload_gc_test.zig",
+          "--test-filter",
+          "a pinned payload view stays valid"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "PAYLOAD_PIN_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "retained",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-payload-gc/negative-payload.pcyo7da9/retained/payload_gc_test.zig",
+          "--test-filter",
+          "the retained disk payload survives"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "PAYLOAD_RETAINED_COUNTEREXAMPLE error=Corrupt"
+      }
+    ],
+    "index": [
+      {
+        "variant": "reader",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-index-gc/negative-index.xgt1jr7j/reader/index_gc_test.zig",
+          "--test-filter",
+          "pinned snapshots survive metadata reuse"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "PIN_COUNTEREXAMPLE current_generation=5 error=Corrupt"
+      },
+      {
+        "variant": "retained",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-index-gc/negative-index.xgt1jr7j/retained/index_gc_test.zig",
+          "--test-filter",
+          "both valid disk roots survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "RETAINED_ROOT_COUNTEREXAMPLE error=Corrupt"
+      }
+    ],
+    "barrier": {
+      "schema": 1,
+      "mutation": "omit first commit barrier only; disable event/case count assertions in copied test",
+      "command": [
+        ".tools/zig-0.17.0/zig",
+        "test",
+        "/Users/masanork/repo/nihos-store-model/build/checkpoint/negative.khl1o40m/checkpoint_model_test.zig",
+        "--test-filter",
+        "checkpoint publication"
+      ],
+      "exit_code": 1,
+      "semantic_counterexample_found": true,
+      "counterexample": {
+        "event": 112,
+        "prefix": 512,
+        "background": "none",
+        "order": "ascending",
+        "generation": 3,
+        "error": "Corrupt"
+      }
+    }
+  },
+  "physical_candidate_hashes_rechecked": 55,
+  "limitations": [
+    "initial map promotion is blocking and needs contiguous metadata space",
+    "summary min/max ranges may become broad under fragmentation; near-full target performance unqualified",
+    "fixed-length mapped page patches only; no growth/truncate or metadata batching",
+    "mapped Value.checksum is the map-root CRC, not a flat whole-file CRC",
+    "legacy stream patch API still copies the whole object",
+    "no native service ownership, SD/NOR writes/removal/power-loss or persistent SQLite VFS/WAL qualification"
+  ]
+}
