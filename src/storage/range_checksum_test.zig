@@ -156,7 +156,7 @@ test "range I/O failure faults the transaction and a crossing read exposes only 
     try equal(@as(u8, 0xee), crossing[1]);
 }
 
-test "two checksum tables cover an object above four MiB with bounded crossing IO" {
+test "two checksum tables cover a large object with bounded crossing IO" {
     const File = file_media.Media(1040 * page);
     const Metered = Meter(File);
     const Large = model.Store(Metered, .{ .leaf_pages = 1, .index_pages = 4 });
