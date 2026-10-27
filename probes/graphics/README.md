@@ -267,3 +267,78 @@ the repository `provenance.toml`. No MeOS driver source is imported.
 
 The next native gate is backing ownership, RV32 allocation/stack behavior and
 library lifetime under failure, followed by shared layout and presentation.
+
+## RV32 instruction-level stack and link oracle
+
+Run the separate ISA study with the ESP RV32 GCC installed:
+
+```sh
+NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ \
+  sh tools/run-graphics-rv32-probe.sh
+```
+
+This first runs the existing memory probe, then builds a memory-stream oracle
+for the host and RV32. Python 3.9+, CMake, a host C++17 compiler and the pinned
+Zig tool are needed. Unicorn 2.1.4 is installed into an ignored local virtual
+environment from checksum-pinned binary wheels; no global Python installation
+or hardware state is modified. The native host runner uses the Unicorn C API.
+
+`generate_link_oracle.py` derives the Session directly from `font_probe.cpp`,
+replacing only file opening and cache-fill reads with a read-only memory
+source. The 256 KiB stream cache, allocator, size changes, shaping, glyph
+rasterization and result hashing remain the tested implementation. A source
+hash and generated source are retained. Full original TTF files are supplied
+as external mapped test input; their 10.8 MB is not included in code/heap
+footprint numbers and does not model native SD storage consumption.
+
+The target links the real C++ allocator, opt-in kernel extent groups,
+FreeType and HarfBuzz. Default FreeType file/memory allocation entry points
+are explicitly unsupported, environment-variable properties are disabled,
+and callbacks are mandatory. Newlib has a single fixed reent context and
+bounded allocator hooks. Unused nosys stubs can remain in the image; the
+runner stops if any selected unsupported syscall, abort or assertion entry
+is executed. Both configurations' successful runs execute none of those
+paths and make zero fallback libc allocator calls.
+
+The linker uses synthetic code/data windows, not ESP32-P4 Flash partitions,
+MMU mappings or boot images. The result has no dynamic C++ initializer and no
+unresolved symbol. Newlib syscall warnings remain recorded: a successful ISA
+fixture is not a general native C runtime port.
+
+The instruction hook observes SP before every target instruction without
+inserting calls into the target. It stops at the logical 16-byte stack guard
+before an out-of-range stack access. A deliberately 128-byte stack is the
+negative control. Two fonts, 12/16/24/32 px body with half-size ruby runs,
+horizontal/vertical shaping give 16 cases per profile. Full pixel/glyph/advance
+hashes must match the corresponding host run and each other.
+
+| FreeType render pool | Observed RV32 stack peak | Stack cases |
+| --- | ---: | --- |
+| Upstream 16 KiB | 18,144 bytes | 4/16 KiB reject at guard; 32 KiB completes |
+| Experimental 2 KiB | 3,808 bytes | 4/8 KiB complete with identical hashes |
+
+The large frame is `gray_convert_glyph`: compiler stack-usage records show
+16,688 bytes in the upstream configuration, reduced to 2,352 bytes by the
+2 KiB pool. This uses FreeType's existing raster banding, not a static shared
+scratch buffer. Only the standalone oracle selects this experimental option;
+the existing memory probe and native firmware retain their settings.
+
+The smaller pool processes more bands. The fixed fixture executes about
+1.6% more RV32 instructions; that is not a Tab5 timing result. At 3,808 bytes,
+a 4 KiB stack leaves 144 bytes after the current 16-byte guard and 128-byte
+context frame, before native caller or SD/VFS overhead. It is not approved as
+a 4 KiB native task. The registered auto-hinter also has larger linked static
+frames; forced auto-hint and arbitrary fallback fonts are not exercised.
+
+The oracle's Session state is local to the entry function, matching this
+probe's lifetime style; a production service's context placement is still
+undecided. Interrupts, timer preemption, native storage calls, task teardown,
+actual Flash placement and physical display are all outside the ISA fixture.
+Static per-function stack sizes are not whole-call-chain upper bounds.
+
+Each profile retains its ELF, map, compiler stack records and every failed
+stack attempt under `build/graphics-rv32/profiles`. The receipt is
+[`docs/measurements/2026-10-28-graphics-rv32-stack.json`](../../docs/measurements/2026-10-28-graphics-rv32-stack.json).
+It records code/static RAM separately from stack, external font input and the
+runtime PSRAM heap. These sizes cannot be treated as the final native-image
+delta; the current Flash mapping and library/runtime overlap still need work.

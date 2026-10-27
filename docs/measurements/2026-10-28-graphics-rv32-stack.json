@@ -1,0 +1,508 @@
+{
+  "scope": "symbol-closed synthetic link and Unicorn RV32 ISA execution; not ESP32-P4 boot/peripheral or physical-device evidence",
+  "base_commit": "d105575be112f8f7b85183880f622ec67b8011ce",
+  "unicorn_version": "2.1.4",
+  "unicorn_library_sha256": "7207c8e3d7a63118fb0bca73e01816797fd51b1d8a39a4cbc7abfd562ee59c85",
+  "compiler": "riscv32-esp-elf-g++ (crosstool-NG esp-14.2.0_20260121) 14.2.0",
+  "profiles": [
+    {
+      "render_pool_bytes": 16384,
+      "host": {
+        "rc": 0,
+        "stage": 100,
+        "runs": 16,
+        "pool_peak": 1310720,
+        "raw_peak": 1310976,
+        "retained": 65792,
+        "hashes": [
+          3313056789,
+          2608330329,
+          3668753709,
+          2443660112,
+          2407914542,
+          1513483610,
+          2731523734,
+          1103624515,
+          3714262540,
+          1090914601,
+          1920594771,
+          3427725594,
+          3666212853,
+          945058783,
+          2993689685,
+          2669989247
+        ]
+      },
+      "cases": [
+        {
+          "status": "stack_guard",
+          "uc_error": 0,
+          "stack_bytes": 128,
+          "stack_peak": 672,
+          "min_pc": 1090520582,
+          "instructions": 2,
+          "last_pc": 1090520582,
+          "invalid_address": 0,
+          "stage": 0,
+          "failure": 0,
+          "runs": 0,
+          "raw_peak": 0,
+          "retained": 0,
+          "runtime_malloc_calls": 0,
+          "unavailable_calls": 0,
+          "hashes": [],
+          "min_function": "graphics_font_link_probe\n??:?"
+        },
+        {
+          "status": "stack_guard",
+          "uc_error": 0,
+          "stack_bytes": 4096,
+          "stack_peak": 17824,
+          "min_pc": 1090830266,
+          "instructions": 28696050,
+          "last_pc": 1090830266,
+          "invalid_address": 0,
+          "stage": 10,
+          "failure": 0,
+          "runs": 0,
+          "raw_peak": 0,
+          "retained": 0,
+          "runtime_malloc_calls": 0,
+          "unavailable_calls": 0,
+          "hashes": [],
+          "min_function": "gray_convert_glyph\nsmooth.c:?"
+        },
+        {
+          "status": "stack_guard",
+          "uc_error": 0,
+          "stack_bytes": 16384,
+          "stack_peak": 17824,
+          "min_pc": 1090830266,
+          "instructions": 28696050,
+          "last_pc": 1090830266,
+          "invalid_address": 0,
+          "stage": 10,
+          "failure": 0,
+          "runs": 0,
+          "raw_peak": 0,
+          "retained": 0,
+          "runtime_malloc_calls": 0,
+          "unavailable_calls": 0,
+          "hashes": [],
+          "min_function": "gray_convert_glyph\nsmooth.c:?"
+        },
+        {
+          "status": "pass",
+          "uc_error": 0,
+          "stack_bytes": 32768,
+          "stack_peak": 18144,
+          "min_pc": 1090827108,
+          "instructions": 348547551,
+          "last_pc": 1106247680,
+          "invalid_address": 0,
+          "stage": 100,
+          "failure": 0,
+          "runs": 16,
+          "raw_peak": 1310976,
+          "retained": 65792,
+          "runtime_malloc_calls": 0,
+          "unavailable_calls": 0,
+          "hashes": [
+            3313056789,
+            2608330329,
+            3668753709,
+            2443660112,
+            2407914542,
+            1513483610,
+            2731523734,
+            1103624515,
+            3714262540,
+            1090914601,
+            1920594771,
+            3427725594,
+            3666212853,
+            945058783,
+            2993689685,
+            2669989247
+          ],
+          "min_function": "gray_render_line\nsmooth.c:?"
+        }
+      ],
+      "sizes": {
+        "text_and_rodata": 580383,
+        "data": 6456,
+        "bss": 2913,
+        "elf_flags": 1
+      },
+      "elf_sha256": "ddb78298debf3643a1114d4acae8b703a8ed37452d59c66ecc3e651eebf7d99e",
+      "map_sha256": "093564d099185ad3a24b5b315080e8a1af8c5cf5da940b06b71cdd38ca3b9e0e",
+      "largest_linked_c_frames": [
+        {
+          "function": "gray_convert_glyph",
+          "frame_bytes": 16688,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_widths",
+          "frame_bytes": 7840,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_widths",
+          "frame_bytes": 7712,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_autofitter_load_glyph",
+          "frame_bytes": 6896,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_blues",
+          "frame_bytes": 576,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_blues",
+          "frame_bytes": 480,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_render_cubic",
+          "frame_bytes": 432,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_build_cmaps.isra",
+          "frame_bytes": 416,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "ft_open_face_internal",
+          "frame_bytes": 336,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_glyph_load",
+          "frame_bytes": 320,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "load_truetype_glyph",
+          "frame_bytes": 240,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_init",
+          "frame_bytes": 208,
+          "kind": "static",
+          "linked": true
+        }
+      ],
+      "unresolved_symbols": [],
+      "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv32i2p1_m2p0_a2p1_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zaamo1p0_zalrsc1p0_zca1p0\"\n",
+      "floating_point_instructions": 0,
+      "flash_payload_bytes": 586839,
+      "static_writable_bytes": 9369,
+      "isa_results_sha256": {
+        "128": "40b8aab0cac59b788f5019df60337d2d52685b577d97b94154658d309d4ab689",
+        "4096": "5393dced728383d88aab38bb22420722741ee699ab1a72ff76663c13ac35add8",
+        "16384": "558a8540a5fbda59ddd437faf9dfbf5b59b77e00b5a2ff0eed0928c727ef91ca",
+        "32768": "81208bb41db66a1ec7c7bd10a4d30a39d5365f139b6acdc05a7e672334464232"
+      }
+    },
+    {
+      "render_pool_bytes": 2048,
+      "host": {
+        "rc": 0,
+        "stage": 100,
+        "runs": 16,
+        "pool_peak": 1310720,
+        "raw_peak": 1310976,
+        "retained": 65792,
+        "hashes": [
+          3313056789,
+          2608330329,
+          3668753709,
+          2443660112,
+          2407914542,
+          1513483610,
+          2731523734,
+          1103624515,
+          3714262540,
+          1090914601,
+          1920594771,
+          3427725594,
+          3666212853,
+          945058783,
+          2993689685,
+          2669989247
+        ]
+      },
+      "cases": [
+        {
+          "status": "pass",
+          "uc_error": 0,
+          "stack_bytes": 4096,
+          "stack_peak": 3808,
+          "min_pc": 1090827108,
+          "instructions": 354027760,
+          "last_pc": 1106247680,
+          "invalid_address": 0,
+          "stage": 100,
+          "failure": 0,
+          "runs": 16,
+          "raw_peak": 1310976,
+          "retained": 65792,
+          "runtime_malloc_calls": 0,
+          "unavailable_calls": 0,
+          "hashes": [
+            3313056789,
+            2608330329,
+            3668753709,
+            2443660112,
+            2407914542,
+            1513483610,
+            2731523734,
+            1103624515,
+            3714262540,
+            1090914601,
+            1920594771,
+            3427725594,
+            3666212853,
+            945058783,
+            2993689685,
+            2669989247
+          ],
+          "min_function": "gray_render_line\nsmooth.c:?"
+        },
+        {
+          "status": "pass",
+          "uc_error": 0,
+          "stack_bytes": 8192,
+          "stack_peak": 3808,
+          "min_pc": 1090827108,
+          "instructions": 354027760,
+          "last_pc": 1106247680,
+          "invalid_address": 0,
+          "stage": 100,
+          "failure": 0,
+          "runs": 16,
+          "raw_peak": 1310976,
+          "retained": 65792,
+          "runtime_malloc_calls": 0,
+          "unavailable_calls": 0,
+          "hashes": [
+            3313056789,
+            2608330329,
+            3668753709,
+            2443660112,
+            2407914542,
+            1513483610,
+            2731523734,
+            1103624515,
+            3714262540,
+            1090914601,
+            1920594771,
+            3427725594,
+            3666212853,
+            945058783,
+            2993689685,
+            2669989247
+          ],
+          "min_function": "gray_render_line\nsmooth.c:?"
+        }
+      ],
+      "sizes": {
+        "text_and_rodata": 580383,
+        "data": 6456,
+        "bss": 2913,
+        "elf_flags": 1
+      },
+      "elf_sha256": "45ecbd512cb99e7c945ca242e1c2a9ef15331b150eb68a70e53b294f92d09d3a",
+      "map_sha256": "093564d099185ad3a24b5b315080e8a1af8c5cf5da940b06b71cdd38ca3b9e0e",
+      "largest_linked_c_frames": [
+        {
+          "function": "af_latin_metrics_init_widths",
+          "frame_bytes": 7840,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_widths",
+          "frame_bytes": 7712,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_autofitter_load_glyph",
+          "frame_bytes": 6896,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_convert_glyph",
+          "frame_bytes": 2352,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_blues",
+          "frame_bytes": 576,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_blues",
+          "frame_bytes": 480,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_render_cubic",
+          "frame_bytes": 432,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_build_cmaps.isra",
+          "frame_bytes": 416,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "ft_open_face_internal",
+          "frame_bytes": 336,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_glyph_load",
+          "frame_bytes": 320,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "load_truetype_glyph",
+          "frame_bytes": 240,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_init",
+          "frame_bytes": 208,
+          "kind": "static",
+          "linked": true
+        }
+      ],
+      "unresolved_symbols": [],
+      "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv32i2p1_m2p0_a2p1_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zaamo1p0_zalrsc1p0_zca1p0\"\n",
+      "floating_point_instructions": 0,
+      "flash_payload_bytes": 586839,
+      "static_writable_bytes": 9369,
+      "isa_results_sha256": {
+        "4096": "83591c61b21e009ce77f491a3ed298a97b5d641af68a2daa3bd628b4dd5b1798",
+        "8192": "6c664bb91ada33b56ceceeda28240989f5444640952cf0805ca5b7f012292835"
+      }
+    }
+  ],
+  "limits": [
+    "Full pinned TTFs are mapped external read-only test inputs, not native FS reads or fonts embedded in Flash footprint",
+    "All target instructions are observed for SP; guard check stops before out-of-range stack use",
+    "16 fixed cases: two fonts, 12/16/24/32 px body, half-size ruby run, horizontal and vertical shaping",
+    "No native SD/VFS, interrupts, dispatcher, task stop/restart, real Flash mapping or physical timing tested",
+    "4 KiB minus observed 3808-byte peak, 16-byte guard and 128-byte context frame leaves only 144 bytes before native caller/IO overhead",
+    "Registered auto-hinter has larger linked static frames; forced auto-hint/fallback-font paths are not executed or stack-qualified",
+    "FreeType uses explicit callbacks and no environment configuration; unavailable default memory/file entry points fail explicitly",
+    "Target newlib has one fixed reent context and bounded malloc hooks; unused nosys stubs remain and are execution-forbidden",
+    "Static stack frames are not whole-call-chain upper bounds; no worst-case stack certificate for arbitrary fonts/text"
+  ],
+  "source_sha256": {
+    "probes/graphics/CMakeLists.txt": "f5d9efd2c7d27bc8456384ff73f8b79600b8aa8bbe03192fe5194f81081bee1f",
+    "probes/graphics/README.md": "ca04eca4134838bad23faabc4985bb6c9a2fbe89bec4e04bdb0a3130f4926213",
+    "probes/graphics/backing_test.cpp": "83f7a7bb89f954ac1dee202099930bdf15f8dab11c88a12445517e81d4932bcd",
+    "probes/graphics/buddy_backing.h": "fc05e93582b3f0bdff20a97363872961e9547fd458ce9f56c4b7ff7ca3ea65b9",
+    "probes/graphics/buddy_backing.zig": "d282978ba38eae75f53a4bb7763730173baea6849351331c9ec1006f9805c536",
+    "probes/graphics/buddy_driver.cpp": "b8b4f2fb82a2119e3d7d73de5e3ca9508a24d75eb64ae2ff89cafc5d883f1bd7",
+    "probes/graphics/elf32_layout.h": "342b1a7b271eb0ca34edd2c67fab6f6e91138e89652b686d22d922ff08f872ec",
+    "probes/graphics/fetch_sources.py": "bbd3dda5435a294ce40b9d474c1328dcc25ed9eaa571f6653b4f38620472d8e8",
+    "probes/graphics/font_probe.cpp": "340d126c242b917354b12e273dcfdb920d69b3cd74acb9391a49ecfd1e28fd41",
+    "probes/graphics/ft_noenv.h": "5938a5e02ebc0303cd4024aad13fc1757d54dfb01365ae82840e87b55047e254",
+    "probes/graphics/ft_noio.c": "77a3e688b481056e7f495e6a3ebddbe3bbd10f4fef0e81020f78622e1539626c",
+    "probes/graphics/generate_link_oracle.py": "c1706541459e81f2700083b6114e0e4f41678b636b8011ec04abf8204e02127c",
+    "probes/graphics/hb_config.h": "70806235b812f5008c86bd9c066f2ea71110faf8b310f5a0a402ce10f3521e89",
+    "probes/graphics/isa_stack_runner.cpp": "7c69792c89e44a5c5e42614952691e3f4e99988d51bf003bbb2ce12ef02cbf14",
+    "probes/graphics/lazy_pool.cpp": "37a37bb2ee9c24a1427eb5bd9e829670a5bfbebd4027431c8fa133692d77e21c",
+    "probes/graphics/lazy_pool.h": "315dcead3edd05bc7413c1bc1c79ded4248d842ea456b6363251806c3b5df94d",
+    "probes/graphics/link_host_main.cpp": "57a73caa2f9667d9d529d774810057927db8cc8bbedaaabb976cea8ecf87f099",
+    "probes/graphics/link_oracle.h": "64684847aa6c0308ea50e032c6bd4855d7ac09944cbdb6ef4d5c0dc1a1c84ab4",
+    "probes/graphics/metadata_size.cpp": "ef75a613fa5b1b4ab9711ecd6eb1c4334589edf7e75263644a0d92fa398a68cf",
+    "probes/graphics/pool_test.cpp": "37508d2ad9cb82e04001129df61ce9fdddbf3f8d8ca708a16ed2bfd7a40f0a28",
+    "probes/graphics/report.py": "d865a3e49d23d33ff25e50e65316e448d889816ce99f67bedd9772a073d7f3a0",
+    "probes/graphics/run_rv32_study.py": "57d4dbf599fa5301016836b81f66d5b61fe73f4148bdb80ac2071d62cdeeaf60",
+    "probes/graphics/rv32_link.ld": "8086dbb59fa980c7e3a45654f657714bf2ec36d07f857bd6e1fc052034b4b57f",
+    "probes/graphics/rv32_toolchain.cmake": "e79cbd6957c2d882db7db95ef611a3d145db624576de65be92a4a58ec8ee9127",
+    "probes/graphics/sources.json": "4651ffc4e5aee444552194e0d49986f94c6b45b1c9413114953a3e79518f20a6",
+    "probes/graphics/unicorn-requirements.txt": "c1a3d9963a1a25f50b4041c71fd7eaa01919f421bed4ec1348871025617bc66a",
+    "tools/run-graphics-rv32-probe.sh": "8743fa9417b43ceb1c3434e131779e61877c1d31c1e828e537cd815b555eb467",
+    "src/kernel/task_resources.zig": "0e4e30d80ff193cc35f175e93fbd48e5b71d7193c88ff79782a41e64e5918694",
+    "src/kernel/extent_groups.zig": "611c96a6eeb7937405da9c5831e9b6dcac2088cb0a617a4f996611357a463217",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97"
+  },
+  "created_utc": "2026-10-27T16:04:55.186207+00:00",
+  "input_fonts": [
+    {
+      "name": "BIZUDGothic-Regular.ttf",
+      "bytes": 4667380,
+      "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0"
+    },
+    {
+      "name": "BIZUDMincho-Regular.ttf",
+      "bytes": 6153932,
+      "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2"
+    }
+  ],
+  "runtime_archives": {
+    "libc.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libc.a",
+      "sha256": "5a28fce37bfd3e9bea5d164f30506d6df5f529fa81b138de91ce317196d6acf4"
+    },
+    "libm.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libm.a",
+      "sha256": "c5ed853aec663b709fa7916bc5f359f4e321a2be39a6eea1b59947647f84973a"
+    },
+    "libgcc.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/14.2.0/rv32imac_zicsr_zifencei/ilp32/no-rtti/libgcc.a",
+      "sha256": "4c2876bd272143f14318f30cae36838585e10414e06b07b99ed010c8372c82af"
+    },
+    "libnosys.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libnosys.a",
+      "sha256": "f7126d252773c77ed58e3a21fb6c1e0f8170dffaefe5e19c36485293c6438266"
+    },
+    "libstdc++.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libstdc++.a",
+      "sha256": "5c4f25d8d610be8d8906fb49168d0dae0e1d5f3a2e956b3aaf00dfad8fffcd6e"
+    }
+  },
+  "provenance_sha256": "a142644cbbfe380ded8429df204d1de4cf68f703b3e656e07e75015318b551ba",
+  "checks": {
+    "host_oracle_sanitizers": "ASan/UBSan",
+    "native_fonts_executed_on_hardware": false,
+    "static_analysis_passed": true,
+    "existing_native_links_audited": 6,
+    "static_analysis_log_sha256": "5843a6d7317f7d4ca83d1a9e77d2f240043047a26d3b5f96081ddf4362794cb1",
+    "memory_probe_replayed": true,
+    "memory_probe_log_sha256": "65e276f4786591ca3cec66c8d3765c41d2389f111585f163aaa8b5ce6a5549cf"
+  }
+}
