@@ -17,6 +17,10 @@ old = """                if (fseek(s->file, (long)s->base[slot], SEEK_SET)) retu
                 if (fread(s->cache + slot * page, 1, n, s->file) != n) return done;"""
 assert session.count(old) == 1
 session = session.replace(old, "                memcpy(s->cache + slot * page, s->input + s->base[slot], n);")
+session = session.replace("                s->valid[slot] = n;", """#ifdef PROBE_TASK_ORACLE
+                graphics_source_read_completed();
+#endif
+                s->valid[slot] = n;""")
 session = session.replace("        if (file) { fclose(file); file = nullptr; }", "        input = nullptr;")
 assert "FILE" not in session and "fread" not in session and "fopen" not in session
 prefix = r'''
@@ -30,6 +34,9 @@ prefix = r'''
 #include <hb.h>
 #include <hb-ft.h>
 #include <string.h>
+#ifdef PROBE_TASK_ORACLE
+extern "C" void graphics_source_read_completed();
+#endif
 static LazyPool pool;
 static bool backing_ready;
 extern "C" { GraphicsResult graphics_result = {}; }
