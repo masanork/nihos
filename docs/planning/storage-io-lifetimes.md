@@ -130,3 +130,24 @@ FDを開き直した場合は、その回数と「同一FDを維持したか」�
 起動待ち前へのTG0 MWDT停止の移動だけでは`0x07`が解消せず、原因は未確定である。
 最新候補`c6e3190`は821,904 B、resident 105,920 B、112 KiB枠の余裕8,768 Bである。
 USBとバッテリーを両方外す試験は、operatorが実施困難なため未実施のまま残す。
+
+## 次回採取用のreset snapshot（host検証まで）
+
+`COLD_CAPTURE=1`の新規buildは`capture_format=2`をmanifestに保存する。
+[reset_capture.zig](../../src/soc/esp32p4/reset_capture.zig)で、nativeの`watchdogOff`と
+`prepareTimers`より前にreset cause word、LP / HP0 / HP1の理由とflag、ROM保存PC 2語、
+TG0 / TG1のclock gateとWDT config0を読み取る。reset flagのclearやclock操作は行わず、
+clockが無効なtimerは読み出さず、`wdt_valid`とゼロ値を組にする。
+`wdt_valid=0`のゼロ値を「WDT停止済み」の証拠にはしない。
+
+アドレスは固定SDK v5.4.4のESP32-P4 hw_ver1 register定義と`esp32p4.rom.ld`へ照合した。
+ROM data alias `g_saved_pc` (`0x4ff3fff8`, 8 B)と追加source hashもimage監査の対象にする。
+保存PCはraw値で、有効性や直前resetとの対応は保証されない。
+採取前にはROM、loader、native assembly CRTが既に走っているため、
+これだけでROM / loader内部の停止箇所を確定したことにはならない。
+
+ログ検証はformat 1の既存実機証跡とformat 2をmanifestで区別し、
+format 2の理由・flag・WDT validとraw wordの不一致、欠落、重複、未知formatを拒否する。
+clean power-onは引き続きHP CPU0理由`0x01`とACKを要求し、`0x07`を合格へ変更しない。
+[host検証記録](../measurements/2026-10-27-native-reset-snapshot-host.json)には新候補のhashと監査を保存した。
+新snapshotは実機未検証で、この追加作業ではserial接続・Flash書込み・電源操作を行っていない。

@@ -148,4 +148,5 @@ PROVIDE(nih_rom_cache_invalidate = 0x4fc003e4);
 PROVIDE(nih_rom_cache_writeback = 0x4fc003f4);
 #if NIH_NATIVE_CAPTURE
 PROVIDE(nih_rom_reset_reason = 0x4fc00018);
+PROVIDE(nih_rom_saved_pc = 0x4ff3fff8);
 #endif

@@ -76,6 +76,17 @@ class LifetimeEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             IMAGE.audit_io_lifetimes({**config, 'sources': {}}, symbols, sizes, low, high)
 
+        config.update(capture_handshake=True, capture_format=2, capture_sources=dict.fromkeys((
+            'probes/sdmmc/pads.c', 'src/platform/native/esp32p4.ld', 'src/soc/esp32p4/reset_capture.zig'), '2' * 64))
+        symbols.update(nih_rom_reset_reason=0x4fc00018, nih_rom_saved_pc=0x4ff3fff8,
+                       USB_SERIAL_JTAG=0x500d2000, nih_boot_capture_getc=low + 512)
+        IMAGE.audit_io_lifetimes(config, symbols, sizes, low, high)
+        for changed, changed_symbols in (({**config, 'capture_format': 3}, symbols),
+                                         ({**config, 'capture_sources': {}}, symbols),
+                                         (config, {**symbols, 'nih_rom_saved_pc': 0x4ff40000})):
+            with self.assertRaises(ValueError):
+                IMAGE.audit_io_lifetimes(changed, changed_symbols, sizes, low, high)
+
     def test_runner_rejects_changed_or_incomplete_frozen_artifacts_before_serial_access(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -161,6 +172,34 @@ class PhysicalRemovalEvidenceTests(unittest.TestCase):
 
 
 class PassiveCaptureTests(unittest.TestCase):
+    def test_preinit_snapshot_is_consistent_versioned_and_keeps_power_gate_strict(self):
+        image = {'io_lifetimes': {'capture_handshake': True, 'capture_format': 2}, 'memory': {'profile': 'device'}}
+        fields = dict(cpu0=1, ack=1, raw_cause=0x8015e0d0, lp=16, cpu1=23, reset_flags=7,
+                      saved_pc0=0x4fc12345, saved_pc1=0xffffffff, clock_gates=1 << 21,
+                      wdt_valid=1, wdt0=0xdeadbeef, wdt1=0)
+
+        def log(values):
+            return ('NIHOS_CAPTURE_WAIT\nNIHOS_NATIVE_RESET' + ''.join(f' {k}={v:08x}' for k, v in values.items()) +
+                    '\nNIHOS_NATIVE_BOOT backend=zig-sram\n')
+
+        self.assertEqual(LOG.check_boot_capture(log(fields), image, 'physical-device'), fields)
+        RUNNER.require_power_on_reset(log(fields), image)
+        watchdog = {**fields, 'cpu0': 7, 'raw_cause': fields['raw_cause'] | (7 << 7)}
+        self.assertEqual(LOG.check_boot_capture(log(watchdog), image, 'physical-device'), watchdog)
+        with self.assertRaises(ValueError):
+            RUNNER.require_power_on_reset(log(watchdog), image)
+        for key in ('cpu0', 'ack', 'raw_cause', 'lp', 'cpu1', 'reset_flags', 'clock_gates', 'wdt_valid', 'wdt1'):
+            with self.subTest(field=key), self.assertRaises(ValueError):
+                LOG.check_boot_capture(log({**fields, key: fields[key] ^ (1 << 21 if key == 'clock_gates' else 1)}), image, 'physical-device')
+        for text in (log(fields) * 2, log({k: v for k, v in fields.items() if k != 'saved_pc1'}),
+                     'NIHOS_NATIVE_RESET cpu0=00000001 ack=00000001\n'):
+            with self.assertRaises(ValueError):
+                RUNNER.require_power_on_reset(text, image)
+        with self.assertRaises(ValueError):
+            LOG.parse_reset_capture(log(fields), {'io_lifetimes': {'capture_format': 3}})
+        with self.assertRaises(ValueError):
+            LOG.parse_reset_capture(log(fields), {'io_lifetimes': {'capture_format': 1}})
+
     def test_actual_watchdog_reset_replay_is_valid_startup_but_not_clean_power_on(self):
         fixture = json.loads((Path(__file__).parent / 'fixtures/cold-watchdog-reset.json').read_text())
         text = bytes.fromhex(fixture['wire_hex']).decode()

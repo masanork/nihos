@@ -4,6 +4,7 @@ const options = @import("native_options");
 const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
 const broker_runtime = if (options.broker) @import("broker_abi.zig") else struct {};
 const timer_group = @import("timer_group");
+const reset_capture = @import("reset_capture");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
 const record_log = @import("record_log");
@@ -18,6 +19,7 @@ comptime {
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
 extern fn nih_rom_reset_reason(u32) callconv(.c) u32;
+extern var nih_rom_saved_pc: [2]u32;
 extern fn nih_boot_capture_getc() callconv(.c) i32;
 extern fn nih_storage_clock_start() callconv(.c) u32;
 extern fn nih_native_cpu1_start() callconv(.c) void;
@@ -429,9 +431,7 @@ noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {
     return sd.crc0;
 }
 
-noinline fn captureBoot() linksection(".flash.text.storage") void {
-    // Latch before waiting for a late-enumerating host. No reset is issued.
-    const reset_reason = nih_rom_reset_reason(0);
+noinline fn captureBoot(snapshot: *const reset_capture.Snapshot) linksection(".flash.text.storage") void {
     if (nih_storage_clock_start() != 1) fail("boot capture clock");
     const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
     defer clock.stop();
@@ -452,12 +452,18 @@ noinline fn captureBoot() linksection(".flash.text.storage") void {
             last_marker = now;
         }
     }
-    const Reset = struct { cpu0: u32, ack: u32 };
-    const record = Reset{ .cpu0 = reset_reason, .ack = 1 };
-    logger.record("NIHOS_NATIVE_RESET", null, .{ "cpu0", "ack" }, &record);
+    logger.record("NIHOS_NATIVE_RESET", null, .{ "cpu0", "ack", "raw_cause", "lp", "cpu1", "reset_flags", "saved_pc0", "saved_pc1", "clock_gates", "wdt_valid", "wdt0", "wdt1" }, snapshot);
 }
 
 export fn nih_native_main() callconv(.c) noreturn {
+    // Sample before watchdogOff / prepareTimers alter the state. Assembly CRT
+    // and the loader have already run; this does not record their entry state.
+    const snapshot = if (options.cold_capture) reset_capture.sample(struct {
+        pub fn read32(_: @This(), address: usize) u32 {
+            return @as(*const volatile u32, @ptrFromInt(address)).*;
+        }
+    }{}, @intFromPtr(&nih_rom_saved_pc)) else std.mem.zeroes(reset_capture.Snapshot);
+    if (options.cold_capture and snapshot.cpu0 != nih_rom_reset_reason(0)) fail("reset capture mismatch");
     watchdogOff();
     if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
     interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
@@ -465,7 +471,7 @@ export fn nih_native_main() callconv(.c) noreturn {
         // TG0 flash-boot MWDT can survive into the native entry on power-on.
         // Stop it before waiting for USB enumeration; USB reset often hides it.
         prepareTimers();
-        captureBoot();
+        captureBoot(&snapshot);
     }
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");

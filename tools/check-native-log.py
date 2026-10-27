@@ -75,6 +75,29 @@ SD_REMOVAL_FIELDS = ('version', 'status', 'before_reads', 'failed_command', 'fai
                      'ctrl', 'dma_mode', 'dma_fsm', 'irq_mask', 'dma_mask', 'descriptor', 'descriptor_word')
 
 
+def parse_reset_capture(log, image):
+    capture_format = image.get('io_lifetimes', {}).get('capture_format', 1)
+    if type(capture_format) is not int or capture_format not in (1, 2):
+        raise ValueError('unknown capture format')
+    fields = ('cpu0', 'ack')
+    if capture_format == 2:
+        fields += ('raw_cause', 'lp', 'cpu1', 'reset_flags', 'saved_pc0', 'saved_pc1',
+                   'clock_gates', 'wdt_valid', 'wdt0', 'wdt1')
+    record = fixed_record(log, 'NIHOS_NATIVE_RESET', fields)
+    if not 0 < record['cpu0'] < 64 or record['ack'] != 1:
+        raise ValueError('invalid reset reason/acknowledgment')
+    if capture_format == 2:
+        raw = record['raw_cause']
+        valid = (record['clock_gates'] >> 21) & 3
+        flags = ((raw >> 6) & 1) | (((raw >> 13) & 1) << 1) | (((raw >> 20) & 1) << 2)
+        if (record['cpu0'] != (raw >> 7) & 63 or record['lp'] != raw & 63 or
+                record['cpu1'] != (raw >> 14) & 63 or record['reset_flags'] != flags or
+                record['wdt_valid'] != valid or (not valid & 1 and record['wdt0']) or
+                (not valid & 2 and record['wdt1'])):
+            raise ValueError('inconsistent early reset snapshot')
+    return record
+
+
 def check_boot_capture(log, image, evidence):
     configured = (image or {}).get('io_lifetimes', {}).get('capture_handshake') is True
     if not configured:
@@ -83,8 +106,8 @@ def check_boot_capture(log, image, evidence):
         return None
     if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
         raise ValueError('boot capture requires physical device evidence')
-    record = fixed_record(log, 'NIHOS_NATIVE_RESET', ('cpu0', 'ack'))
-    if (not 0 < record['cpu0'] < 64 or record['ack'] != 1 or 'NIHOS_CAPTURE_WAIT\n' not in log or
+    record = parse_reset_capture(log, image)
+    if ('NIHOS_CAPTURE_WAIT\n' not in log or
             not log.index('NIHOS_CAPTURE_WAIT\n') < log.index('NIHOS_NATIVE_RESET ') < log.index('NIHOS_NATIVE_BOOT ')):
         raise ValueError('incomplete early reset capture/acknowledgment')
     reasons = re.findall(r'rst:0x([0-9a-f]+)\s*\(', log)

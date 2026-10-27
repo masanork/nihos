@@ -63,3 +63,16 @@ silicon上の停止/cache失敗注入と、FatFs Backend / VFS / RPCの接続も
 [最終候補とraw archive](/Users/masanork/Documents/Codex/2026-10-27/nihos-cold-watchdog-fixed-candidate)の
 `power-physical-6`にprivate backupと照合logを保存した。backup本体を公開artifactへ含めない。
 復元時の内容一致は確認済みだが、その後の電源状態や他セッションの書込みまで固定する記録ではない。
+
+## 次回に備えた診断追加（実機未検証）
+
+後続のhost作業で、nativeがWDTやtimerを初期化する前のreset snapshotを追加した。
+LP / HP0 / HP1の理由とflag、生のcause word、ROM保存PC 2語、TG0 / TG1のclock gateと
+clock有効時だけのWDT config0を保存し、host ACK後にformat 2の固定recordへ出力する。
+保存PCの有効性と直前resetへの対応は未保証で、ROM / loader内部での停止位置を確定する情報ではない。
+
+[検証記録](2026-10-27-native-reset-snapshot-host.json)の候補はimage 822,048 B、resident 106,176 B。
+112 KiB枠の余裕は8,512 B、既存配置policyのresident上限106,496 Bまでの余裕は320 Bである。
+Zig Debug / ReleaseSafe各200件、Python 184件、format / ZLint / ShellCheck、
+既存6構成のELF監査と新候補のimage監査が成功した。
+追加の機器操作や書込みは行っておらず、`0x07`の原因とclean power-on gateは引き続き未解決である。
