@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+  "records": 7,
+  "ready_records": 6,
+  "first": {
+    "chip": 36,
+    "initialized": 1,
+    "stage": 12,
+    "fault": 0,
+    "uploaded": 8192,
+    "valid": 1,
+    "samples": 8,
+    "acc_x": 81,
+    "acc_y": 1383,
+    "acc_z": -8076,
+    "gyr_x": -7,
+    "gyr_y": -2,
+    "gyr_z": 0,
+    "sensor_error": 0,
+    "ready_status": 208
+  },
+  "last": {
+    "chip": 36,
+    "initialized": 1,
+    "stage": 13,
+    "fault": 0,
+    "uploaded": 8192,
+    "valid": 1,
+    "samples": 1005,
+    "acc_x": 80,
+    "acc_y": 1415,
+    "acc_z": -8070,
+    "gyr_x": -9,
+    "gyr_y": -2,
+    "gyr_z": -8,
+    "sensor_error": 0,
+    "ready_status": 208
+  },
+  "observed_acceleration_norm_g": {
+    "min": 0.9993787042454914,
+    "max": 1.00170431338213
+  },
+  "sample_delta": 997,
+  "log_sha256": "122737b4cc5ad4fd74050c5e5415c444bf475edb61ce8b89e1ca0a8657126751"
+}
