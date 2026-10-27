@@ -43,7 +43,7 @@ SQLiteのmemory-only workloadは2 session / 26 statementが成功。
 退避は16,777,216 B、backup fileはmode 600、出力directoryはmode 700で保持した。
 loader `0x2000`とapp `0x10000`の候補が触れたerase-aligned範囲を元に戻し、partition tableは変更していない。
 最後に`verify_flash 0 flash-before.bin`でFlash全体のdigest一致を確認し、通常のresetへ戻してFDを解放した。
-退避時と復元照合時のSHA-256は`5d1a5e7d9f014ac79a5dab59353162d6fa9000529919fbeb3727f556b1683e23`。
+退避ファイルのSHA-256は`5d1a5e7d9f014ac79a5dab59353162d6fa9000529919fbeb3727f556b1683e23`。
 インストール状態はこの試験終了時のsnapshotであり、他セッションの後続書込みを固定しない。
 
 [固定候補・source・生ログ・全結果の保存先](/Users/masanork/Documents/Codex/2026-10-27/nihos-vfs-native-lifetimes-host-candidate)

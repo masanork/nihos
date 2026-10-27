@@ -505,12 +505,13 @@
   "restoration": {
     "full_flash_bytes": 16777216,
     "verified": true,
-    "before_after_sha256": "5d1a5e7d9f014ac79a5dab59353162d6fa9000529919fbeb3727f556b1683e23",
     "changed_regions": [
       "loader at 0x2000",
       "app at 0x10000"
     ],
-    "partition_table_changed": false
+    "partition_table_changed": false,
+    "backup_sha256": "5d1a5e7d9f014ac79a5dab59353162d6fa9000529919fbeb3727f556b1683e23",
+    "verification": "esptool verify_flash 0 flash-before.bin, full 16 MiB digest matched"
   },
   "raw_archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-vfs-native-lifetimes-host-candidate/physical-1",
   "remaining": [
