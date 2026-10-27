@@ -1,0 +1,334 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-28",
+  "base_commit": "64c67d606117e154e5f018cb29f35cc12fa023f5",
+  "scope": "finite native ES7210 input and muted control; no acoustic/streaming qualification",
+  "cases": {
+    "muted": {
+      "attempt": "attempt-04",
+      "source_base_commit": "64c67d606117e154e5f018cb29f35cc12fa023f5",
+      "source_dirty": true,
+      "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+      "sdk_dirty": false,
+      "candidate": {
+        "app_sha256": "1666d0dd7bedda2d1ce5a8eefac35ff01627b91655999e3e1749208ecaa1ac2e",
+        "app_bytes": 165760,
+        "elf_sha256": "d23bc44955f23e5b8a037398a1ed4c60425b848b84128f3fc18dbfeaf4416469",
+        "primary_heap_bytes": 49536,
+        "heap_floor_bytes": 49152,
+        "source_archive_sha256": "67d831955db4e2dfb66d490b4918605a7de1b007a6223fdc917751a9a4c3fcfb",
+        "native_options_sha256": "11457858dc06157f78ba96895c5ec65fe3fc4a36609a913c126d5fd365c7cee3"
+      },
+      "capture": {
+        "at": "2026-10-27T22:58:54.737075+00:00",
+        "app_sha256": "1666d0dd7bedda2d1ce5a8eefac35ff01627b91655999e3e1749208ecaa1ac2e",
+        "scope": "finite ES7210 TDM input; analog response separate",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+        "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+        "seconds": 35.072062541,
+        "serial_sha256": "122737b4cc5ad4fd74050c5e5415c444bf475edb61ce8b89e1ca0a8657126751",
+        "native_fail": false
+      },
+      "microphone": {
+        "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+        "muted_control": true,
+        "records": 7,
+        "completed_records": 5,
+        "final": {
+          "phase": 5,
+          "fault": 0,
+          "dma": 3,
+          "end": 1341239872,
+          "parked": 1,
+          "codec_off": 1,
+          "stopped": 1,
+          "returned": 1,
+          "samples": 512,
+          "erased": 1
+        },
+        "signal": {
+          "active": 0,
+          "clipped": 0,
+          "peak0": 0,
+          "peak1": 0,
+          "peak2": 0,
+          "peak3": 0,
+          "span0": 0,
+          "span1": 0,
+          "span2": 0,
+          "span3": 0
+        },
+        "evidence": "physical-device capture",
+        "app_sha256": "1666d0dd7bedda2d1ce5a8eefac35ff01627b91655999e3e1749208ecaa1ac2e",
+        "serial_sha256": "122737b4cc5ad4fd74050c5e5415c444bf475edb61ce8b89e1ca0a8657126751"
+      },
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 7,
+        "ready_records": 6,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 8,
+          "acc_x": 81,
+          "acc_y": 1383,
+          "acc_z": -8076,
+          "gyr_x": -7,
+          "gyr_y": -2,
+          "gyr_z": 0,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 13,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1005,
+          "acc_x": 80,
+          "acc_y": 1415,
+          "acc_z": -8070,
+          "gyr_x": -9,
+          "gyr_y": -2,
+          "gyr_z": -8,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.9993787042454914,
+          "max": 1.00170431338213
+        },
+        "sample_delta": 997,
+        "log_sha256": "122737b4cc5ad4fd74050c5e5415c444bf475edb61ce8b89e1ca0a8657126751"
+      },
+      "normal_display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 25,
+        "advertisements": 18,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 1833,
+        "ticks0": 3019,
+        "ticks1": 3019
+      },
+      "retained_evidence": {
+        "evidence/2026-10-28-native-microphone/muted/serial.log": "122737b4cc5ad4fd74050c5e5415c444bf475edb61ce8b89e1ca0a8657126751",
+        "evidence/2026-10-28-native-microphone/muted/capture.json": "a5f47b51980a17089cbd98a858cf894c497cc1f3fa7443ca723a4d964feec4eb",
+        "evidence/2026-10-28-native-microphone/muted/image-audit.json": "301819c027f97d251d47e20371b93b4792299015ddab2358beb50cf8ae8c9a13",
+        "evidence/2026-10-28-native-microphone/muted/native_options.zig": "11457858dc06157f78ba96895c5ec65fe3fc4a36609a913c126d5fd365c7cee3",
+        "evidence/2026-10-28-native-microphone/muted/microphone-report.json": "dcf3b01ab9c11c17e69316d324a1b397f7fc14a3cf0ffe96a78f1296e676cead",
+        "evidence/2026-10-28-native-microphone/muted/display-report.json": "38370ba5be47c4255b2206450e04b199b4ceac2823679afeb506189269a7f908",
+        "evidence/2026-10-28-native-microphone/muted/imu-report.json": "1c6198442115ade57b03fc190c6de595eadaf71bb4e8d75f2b83e6a53aff1b83",
+        "evidence/2026-10-28-native-microphone/muted/verify-before.log": "fe1f6489852eef68b89d10d74422b805eec168da8ee1ae8b0f98aba39b088755",
+        "evidence/2026-10-28-native-microphone/muted/verify-after.log": "fe1f6489852eef68b89d10d74422b805eec168da8ee1ae8b0f98aba39b088755",
+        "evidence/2026-10-28-native-microphone/muted/verify-restored.log": "241a8a87df68566aa63c97cb8c470154a3e18cc2453bceb2305d98cb407e323f"
+      }
+    },
+    "input": {
+      "attempt": "attempt-05",
+      "source_base_commit": "64c67d606117e154e5f018cb29f35cc12fa023f5",
+      "source_dirty": true,
+      "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+      "sdk_dirty": false,
+      "candidate": {
+        "app_sha256": "a69445830749ac448de38bba8bed4a0ca3f10a96eb58c2f860abe9535193b657",
+        "app_bytes": 165808,
+        "elf_sha256": "85a1f5241fccf61e84023c530baf1d6d59bcc04afa6850a810794c6d3dacbf79",
+        "primary_heap_bytes": 49472,
+        "heap_floor_bytes": 49152,
+        "source_archive_sha256": "30c23a4bad28a366467728cb3a78ea9659e0fb827ca1be5e24e448a629cdd536",
+        "native_options_sha256": "c2b27b62525b75a7aaeccc265d58a1bf9afccf9e73c0615e70a49d0e3bc41dc4"
+      },
+      "capture": {
+        "at": "2026-10-27T23:00:12.826957+00:00",
+        "app_sha256": "a69445830749ac448de38bba8bed4a0ca3f10a96eb58c2f860abe9535193b657",
+        "scope": "finite ES7210 TDM input; analog response separate",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+        "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+        "seconds": 35.03818075,
+        "serial_sha256": "0de1558810516923dd9c648dba1581106e06bdea9c10d2a1c95aaaa08f97e416",
+        "native_fail": false
+      },
+      "microphone": {
+        "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+        "muted_control": false,
+        "records": 7,
+        "completed_records": 5,
+        "final": {
+          "phase": 5,
+          "fault": 0,
+          "dma": 3,
+          "end": 1341239936,
+          "parked": 1,
+          "codec_off": 1,
+          "stopped": 1,
+          "returned": 1,
+          "samples": 512,
+          "erased": 1
+        },
+        "signal": {
+          "active": 15,
+          "clipped": 0,
+          "peak0": 17408,
+          "peak1": 119,
+          "peak2": 64,
+          "peak3": 203,
+          "span0": 17497,
+          "span1": 119,
+          "span2": 85,
+          "span3": 55
+        },
+        "evidence": "physical-device capture",
+        "app_sha256": "a69445830749ac448de38bba8bed4a0ca3f10a96eb58c2f860abe9535193b657",
+        "serial_sha256": "0de1558810516923dd9c648dba1581106e06bdea9c10d2a1c95aaaa08f97e416"
+      },
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 7,
+        "ready_records": 6,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 4,
+          "acc_x": 70,
+          "acc_y": 1401,
+          "acc_z": -8060,
+          "gyr_x": -7,
+          "gyr_y": -3,
+          "gyr_z": -3,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1001,
+          "acc_x": 93,
+          "acc_y": 1391,
+          "acc_z": -8069,
+          "gyr_x": -13,
+          "gyr_y": 0,
+          "gyr_z": -5,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.9986761763028779,
+          "max": 1.0014489599016332
+        },
+        "sample_delta": 997,
+        "log_sha256": "0de1558810516923dd9c648dba1581106e06bdea9c10d2a1c95aaaa08f97e416"
+      },
+      "normal_display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 27,
+        "advertisements": 20,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 1833,
+        "ticks0": 3018,
+        "ticks1": 3018
+      },
+      "retained_evidence": {
+        "evidence/2026-10-28-native-microphone/input/serial.log": "0de1558810516923dd9c648dba1581106e06bdea9c10d2a1c95aaaa08f97e416",
+        "evidence/2026-10-28-native-microphone/input/capture.json": "2f3e3d8d811e45dd51e120de2e6c1014e35da7c9d0269dd3f2f1f5571a9a57d4",
+        "evidence/2026-10-28-native-microphone/input/image-audit.json": "9c2cff8ac8bc2260b145b4a8d18d4e986341e9725af89e76b34b5967fcf17557",
+        "evidence/2026-10-28-native-microphone/input/native_options.zig": "c2b27b62525b75a7aaeccc265d58a1bf9afccf9e73c0615e70a49d0e3bc41dc4",
+        "evidence/2026-10-28-native-microphone/input/microphone-report.json": "08c68567c78fb335029bbe41aca4fb7497ec20b334cbc19da0758389a1e656c2",
+        "evidence/2026-10-28-native-microphone/input/display-report.json": "576f9c23737d54d58d57388eba2529e3bf079d2682f06b6dcfb55b3faec163da",
+        "evidence/2026-10-28-native-microphone/input/imu-report.json": "44e233673d019759fbc763f317919fef52f5947846121fe94dba940e17b3e026",
+        "evidence/2026-10-28-native-microphone/input/verify-before.log": "83dec788ea1dd75f3a26ae556f24cd5c9b88361df4428ddcd3852dea06b292c5",
+        "evidence/2026-10-28-native-microphone/input/verify-after.log": "83dec788ea1dd75f3a26ae556f24cd5c9b88361df4428ddcd3852dea06b292c5",
+        "evidence/2026-10-28-native-microphone/input/verify-restored.log": "2e9de12894955e82f54c48cbf36dc413b7dc9f520cf00fa8da5cdc42cc318a23"
+      }
+    }
+  },
+  "earlier_input": {
+    "attempt": "attempt-01",
+    "capture": {
+      "at": "2026-10-27T22:55:18.175506+00:00",
+      "app_sha256": "6da7d9fc18bd3ed6f7b34876eb7743d507fdb30b30454c89f5247f694c058211",
+      "scope": "finite ES7210 TDM input; analog response separate",
+      "restored": true,
+      "written": true,
+      "prior_app_partition_sha256": "1c35050010e6a89aa8e23525e074262a3c7aba960bc599044005412decbfd855",
+      "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+      "seconds": 35.036598917,
+      "serial_sha256": "a22e404665782c3f9342241bdefd1cf8d823925e17d607347eb54dbc336d663d",
+      "native_fail": false
+    },
+    "scope": "earlier successful input before muted-control build option; not relabeled as the final image"
+  },
+  "rejected": [
+    {
+      "attempt": "build-01",
+      "reason": "compile rejected nonexistent RX-idle status bit; DMA park plus bounded RX update/clock-off used instead; no device write"
+    },
+    {
+      "attempt": "attempt-02",
+      "reason": "exclusive serial lease busy; no device access"
+    },
+    {
+      "attempt": "attempt-03",
+      "reason": "actual loader changed during concurrent card test; mismatch rejected before writing",
+      "capture": {
+        "at": "2026-10-27T22:57:44.004929+00:00",
+        "app_sha256": "1666d0dd7bedda2d1ce5a8eefac35ff01627b91655999e3e1749208ecaa1ac2e",
+        "scope": "finite ES7210 TDM input; analog response separate",
+        "restored": false,
+        "written": false
+      }
+    }
+  ],
+  "remaining": [
+    "physical mic/reference slot mapping",
+    "known acoustic stimulus and calibrated levels/frequency",
+    "cold power-on",
+    "reopen, streaming/refill and application audio IPC",
+    "AEC",
+    "active Wi-Fi AP traffic coexistence"
+  ],
+  "private_artifacts": "/private/tmp/nihos-native-microphone/build/microphone-qualification"
+}

@@ -6,6 +6,7 @@ const i2c = @import("boot_i2c");
 const rtc = @import("tab5_rtc");
 const bmi270 = @import("tab5_bmi270");
 const options = @import("native_options");
+pub const microphone = @import("microphone_probe.zig");
 pub const audio = @import("audio_probe.zig");
 const timers = @import("timer_group");
 const Bus = i2c.Master(display.probe.Pins);
@@ -18,6 +19,7 @@ var job: u1 = 0;
 var imu: bmi270.Driver = .{};
 var active = false;
 var audio_requested = false;
+var microphone_requested = false;
 pub const Report = extern struct {
     rtc_present: u32 = 0,
     rtc_valid: u32 = 0,
@@ -101,6 +103,7 @@ pub fn poll() void {
     if (!active) return;
     const now = clock.counter() orelse {
         if (options.audio and audio_requested) audio.poll(&bus, clock);
+        if (options.microphone and microphone_requested) microphone.poll(&bus, clock);
         return;
     };
     if (options.audio and now >= 10_000_000) {
@@ -109,6 +112,13 @@ pub fn poll() void {
             _ = audio.request();
         }
         audio.poll(&bus, clock);
+    }
+    if (options.microphone and now >= 10_000_000) {
+        if (!microphone_requested) {
+            microphone_requested = true;
+            _ = microphone.request();
+        }
+        microphone.poll(&bus, clock);
     }
     if (now < next) {
         imu.poll(&bus, clock);
