@@ -237,3 +237,8 @@ optional; without it Wi-Fi waits for settings while BLE discovery can run.
 See [ADR 0047](docs/adr/0047-default-connectivity-and-board-devices.md) and the
 [device support inventory](docs/planning/tab5-native-device-support.md) for
 implemented features and remaining gates.
+
+Normal native Tab5 boot also initializes BMI270 and acquires acceleration and
+gyroscope readings through the shared board I2C owner. See
+[ADR 0048](docs/adr/0048-native-bmi270-acquisition.md) for sensor-frame raw values,
+the licensed configuration data and remaining motion/calibration gates.
