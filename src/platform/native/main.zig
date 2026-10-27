@@ -461,7 +461,12 @@ export fn nih_native_main() callconv(.c) noreturn {
     watchdogOff();
     if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
     interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
-    if (options.cold_capture) captureBoot();
+    if (options.cold_capture) {
+        // TG0 flash-boot MWDT can survive into the native entry on power-on.
+        // Stop it before waiting for USB enumeration; USB reset often hides it.
+        prepareTimers();
+        captureBoot();
+    }
     print("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
     print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
@@ -476,7 +481,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     print("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
-    prepareTimers();
+    if (!options.cold_capture) prepareTimers();
     const external_bytes = bootMemory();
     if (options.broker and external_bytes != 32 * 1024 * 1024) fail("broker PSRAM geometry");
     if (options.high_sram and !tasks.memory.high.init(external_bytes)) fail("high SRAM initialization");
