@@ -234,5 +234,129 @@
     "microphone/ES7210 recording",
     "active Wi-Fi AP traffic coexistence"
   ],
-  "private_artifacts": "/private/tmp/nihos-native-audio/build/audio-qualification"
+  "private_artifacts": "/private/tmp/nihos-native-audio/build/audio-qualification",
+  "main_followup": {
+    "base_commit": "2a5d3535c23e91e6b2413f76a95dc73ef26daab3",
+    "source_base_commit": "4a12bfdbb770eba716164f24bd841578b2f47c2b",
+    "source_dirty": true,
+    "candidate": {
+      "app_sha256": "da929550d09110953a4b0989717874f2602dea1fd01dd328221c925ae1e4b145",
+      "elf_sha256": "638454b785735ba055a86b332dd833a825a8d074e7b7184e119429400d0e7d3a",
+      "app_bytes": 164816,
+      "primary_heap_bytes": 49856,
+      "source_archive_sha256": "88f677f3d5d27dd86551aaabd5b158ad046832c718ef82501b1c9bf8575cf198"
+    },
+    "capture": {
+      "at": "2026-10-27T20:53:33.140397+00:00",
+      "app_sha256": "da929550d09110953a4b0989717874f2602dea1fd01dd328221c925ae1e4b145",
+      "scope": "finite native PCM output; audible confirmation separate",
+      "restored": true,
+      "written": true,
+      "prior_app_partition_sha256": "1c35050010e6a89aa8e23525e074262a3c7aba960bc599044005412decbfd855",
+      "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+      "seconds": 35.05812175,
+      "serial_sha256": "fff502db48c2075f3cd0e1041f642fd71003284ba918730dfd57e0e200d98c87",
+      "native_fail": false
+    },
+    "audio": {
+      "scope": "native finite DMA/codec output progression; audible output not evaluated",
+      "records": 7,
+      "complete_records": 5,
+      "final": {
+        "phase": 7,
+        "fault": 0,
+        "dma": 11,
+        "bclk": 262145,
+        "fifo": 16384,
+        "eof_descriptor": 1341241008,
+        "parked": 1,
+        "codec_off": 1,
+        "stopped": 1,
+        "returned": 1
+      },
+      "evidence": "physical-device capture",
+      "app_sha256": "da929550d09110953a4b0989717874f2602dea1fd01dd328221c925ae1e4b145",
+      "serial_sha256": "fff502db48c2075f3cd0e1041f642fd71003284ba918730dfd57e0e200d98c87"
+    },
+    "imu": {
+      "schema": 1,
+      "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+      "records": 7,
+      "ready_records": 6,
+      "first": {
+        "chip": 36,
+        "initialized": 1,
+        "stage": 12,
+        "fault": 0,
+        "uploaded": 8192,
+        "valid": 1,
+        "samples": 8,
+        "acc_x": 64,
+        "acc_y": 1307,
+        "acc_z": -8094,
+        "gyr_x": -3,
+        "gyr_y": -3,
+        "gyr_z": -8,
+        "sensor_error": 0,
+        "ready_status": 208
+      },
+      "last": {
+        "chip": 36,
+        "initialized": 1,
+        "stage": 13,
+        "fault": 0,
+        "uploaded": 8192,
+        "valid": 1,
+        "samples": 1006,
+        "acc_x": 80,
+        "acc_y": 1301,
+        "acc_z": -8086,
+        "gyr_x": -11,
+        "gyr_y": -3,
+        "gyr_z": -6,
+        "sensor_error": 0,
+        "ready_status": 208
+      },
+      "observed_acceleration_norm_g": {
+        "min": 0.9993573001012249,
+        "max": 1.0017984876967028
+      },
+      "sample_delta": 998,
+      "log_sha256": "fff502db48c2075f3cd0e1041f642fd71003284ba918730dfd57e0e200d98c87"
+    },
+    "normal_display_core_check_passed": true,
+    "board_i2c_errors": 0,
+    "ble": {
+      "phase": 4,
+      "commands": 7,
+      "events": 28,
+      "advertisements": 21,
+      "malformed": 0,
+      "status": 0,
+      "timeouts": 0
+    },
+    "display_cpu_first": {
+      "frames": 32,
+      "ticks0": 15,
+      "ticks1": 15
+    },
+    "display_cpu_last": {
+      "frames": 1833,
+      "ticks0": 3018,
+      "ticks1": 3018
+    },
+    "audible_confirmation": "not_received",
+    "retained_evidence": {
+      "evidence/2026-10-28-native-audio-main-followup/serial.log": "fff502db48c2075f3cd0e1041f642fd71003284ba918730dfd57e0e200d98c87",
+      "evidence/2026-10-28-native-audio-main-followup/capture.json": "b867eee8fe66e2c0dca5fde1fd57e99fd002ae73bace66455c51455e0c60a557",
+      "evidence/2026-10-28-native-audio-main-followup/image-audit.json": "e997210f24556264847841810e0982f7af510e5f64492bc31b64bc90bb88b438",
+      "evidence/2026-10-28-native-audio-main-followup/native_options.zig": "78d0eb5e2c4fbf0aaebaf3da0a734c84c3f7be8f7fe7e46cb87ae4530e56940a",
+      "evidence/2026-10-28-native-audio-main-followup/audio-report.json": "02dfbda56da7cfc7f91d6268d44aadc19e567eda6f013d42e974c119c2a211d2",
+      "evidence/2026-10-28-native-audio-main-followup/display-report.json": "fd577605c9d8445c2bb3b2ad0a0d4afb3b9052a81189f92870deeaf353dec1d1",
+      "evidence/2026-10-28-native-audio-main-followup/imu-report.json": "f9c3c8635b0ad321732b38fec86c12cbf7b997ce50c5bb54d044097798f07d0d",
+      "evidence/2026-10-28-native-audio-main-followup/verify-before.log": "35fdd72ac6884a849ae3b880d15a34611e3e4d7d5cfcce5b7e6e0b31b18402e2",
+      "evidence/2026-10-28-native-audio-main-followup/verify-after.log": "35fdd72ac6884a849ae3b880d15a34611e3e4d7d5cfcce5b7e6e0b31b18402e2",
+      "evidence/2026-10-28-native-audio-main-followup/verify-restored.log": "246b7663aa1e78121c933e82e9a22afb52be1ff5bae5c85e78a3c3bbd39640dc"
+    }
+  }
 }

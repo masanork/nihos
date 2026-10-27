@@ -1,0 +1,20 @@
+{
+  "scope": "native finite DMA/codec output progression; audible output not evaluated",
+  "records": 7,
+  "complete_records": 5,
+  "final": {
+    "phase": 7,
+    "fault": 0,
+    "dma": 11,
+    "bclk": 262145,
+    "fifo": 16384,
+    "eof_descriptor": 1341241008,
+    "parked": 1,
+    "codec_off": 1,
+    "stopped": 1,
+    "returned": 1
+  },
+  "evidence": "physical-device capture",
+  "app_sha256": "da929550d09110953a4b0989717874f2602dea1fd01dd328221c925ae1e4b145",
+  "serial_sha256": "fff502db48c2075f3cd0e1041f642fd71003284ba918730dfd57e0e200d98c87"
+}
