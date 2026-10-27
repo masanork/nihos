@@ -9,6 +9,7 @@ import contextlib
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,6 +18,12 @@ import time
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def require_power_on_reset(log):
+    reasons = re.findall(r'rst:0x([0-9a-f]+)\s*\(', log)
+    if reasons != ['1'] or log.count('rst:') != 1:
+        raise ValueError('Power-on evidence needs one cold power-on reset, not USB/watchdog/mixed boots')
 
 
 def validate_bundle(candidate, loader, root):
@@ -44,12 +51,16 @@ def main():
     parser.add_argument('--candidate', type=Path, required=True)
     parser.add_argument('--loader', type=Path, required=True, help='Frozen audited loader directory')
     parser.add_argument('--output', type=Path, required=True, help='New private directory, must not exist')
+    parser.add_argument('--power-cycle', action='store_true', help='After three reset runs, wait for an operator power OFF/ON and validate cold boot')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     # Validate artifacts and source before taking or resetting the device.
     candidate, loader, out = args.candidate.resolve(), args.loader.resolve(), args.output.resolve()
     validate_bundle(candidate, loader, root)
     audit = json.loads((candidate / 'image-audit.json').read_text())
+    removal_test = audit.get('io_lifetimes', {}).get('removal_test') is True
+    if removal_test and args.power_cycle:
+        raise ValueError('Use separate removal and cold-boot attempts; cold reboot must not repeat the manual removal fixture')
     if (audit.get('io_lifetimes', {}).get('qualification') is not True or
             audit.get('memory', {}).get('profile') != 'device' or
             digest(candidate / 'nihos-native.bin') != audit.get('image_sha256') or
@@ -76,10 +87,29 @@ def main():
     if owners.stdout.strip():
         raise RuntimeError('Serial already in use: ' + owners.stdout.strip())
     results = []
+    serial_reopens = 0
     with serial.Serial(args.port, 115200, timeout=.2, exclusive=True) as port:
+        expected_identity = {'chip': 'ESP32-P4 (revision v1.3)', 'mac': 'e8:f6:0a:e2:e8:9c'}
+
+        def reopen():
+            nonlocal serial_reopens
+            owners = subprocess.run(['lsof', '-t', args.port], capture_output=True, text=True, check=False)
+            if owners.stdout.strip():
+                raise RuntimeError('Serial acquired by another owner during power-off: ' + owners.stdout.strip())
+            port.dtr = False
+            port.rts = False
+            port.open()
+            serial_reopens += 1
+
         def connect():
+            if not port.is_open:
+                reopen()
             port.baudrate = 115200
-            return esptool.detect_chip(port=port, baud=115200)
+            esp = esptool.detect_chip(port=port, baud=115200)
+            identity = {'chip': esp.get_chip_description(), 'mac': ':'.join(f'{b:02x}' for b in esp.read_mac())}
+            if identity != expected_identity:
+                raise RuntimeError('Device identity changed; refusing Flash access')
+            return esp
 
         def command(name, arguments):
             esp = connect()
@@ -90,7 +120,7 @@ def main():
         esp = connect()
         identity = {'chip': esp.get_chip_description(), 'mac': ':'.join(f'{b:02x}' for b in esp.read_mac())}
         (out / 'device.json').write_text(json.dumps(identity, indent=2) + '\n')
-        if identity != {'chip': 'ESP32-P4 (revision v1.3)', 'mac': 'e8:f6:0a:e2:e8:9c'}:
+        if identity != expected_identity:
             raise RuntimeError('Unexpected device; no Flash written')
         backup = out / 'flash-before.bin'
         backup.touch(mode=0o600)
@@ -120,7 +150,7 @@ def main():
             verify = ['verify_flash', '0x2000', str(out / 'bootloader.bin'), '0x8000', str(out / 'partition-table.bin'),
                       '0x10000', str(out / 'nihos-native.bin')]
             command('verify-candidate-before', verify)
-            for run in range(1, 4):
+            for run in range(1, 2 if removal_test else 4):
                 port.baudrate = 115200
                 port.dtr = False
                 port.reset_input_buffer()
@@ -129,9 +159,14 @@ def main():
                 raw_log = bytearray()
                 passed_at = None
                 path = out / f'boot{run}.log'
-                while time.monotonic() - began < 180:
+                announced = set()
+                while time.monotonic() - began < (360 if removal_test else 180):
                     raw_log.extend(port.read(max(1, port.in_waiting)))
                     path.write_bytes(raw_log)
+                    for marker in (b'NIHOS_SD_REMOVE_READY', b'NIHOS_SD_INSERT_READY'):
+                        if marker in raw_log and marker not in announced:
+                            print(marker.decode(), flush=True)
+                            announced.add(marker)
                     if b'NIHOS_NATIVE_FAIL' in raw_log or b'NIHOS_NATIVE_TRAP' in raw_log:
                         raise RuntimeError(f'Native failure; see {path}')
                     if b'NIHOS_NATIVE_FP_PASS' in raw_log and passed_at is None:
@@ -146,6 +181,51 @@ def main():
                 (out / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
                 print(f'boot {run}: passed', flush=True)
             command('verify-candidate-after', verify)
+            if args.power_cycle:
+                port.baudrate = 115200
+                port.dtr = False
+                port.reset_input_buffer()
+                print('NIHOS_POWER_CYCLE_READY', flush=True)
+                raw_log = bytearray()
+                path = out / 'power-cycle.log'
+                began = time.monotonic()
+                passed_at = None
+                while time.monotonic() - began < 360:
+                    if not port.is_open:
+                        if not Path(args.port).exists():
+                            time.sleep(.2)
+                            continue
+                        try:
+                            reopen()
+                        except serial.SerialException as error:
+                            if error.errno not in (2, 6, 19):
+                                raise
+                            time.sleep(.2)
+                            continue
+                    try:
+                        raw_log.extend(port.read(max(1, port.in_waiting)))
+                    except (serial.SerialException, OSError):
+                        port.close()
+                        print('POWER_CYCLE_SERIAL_DISCONNECTED', flush=True)
+                        time.sleep(.2)
+                        continue
+                    path.write_bytes(raw_log)
+                    if b'NIHOS_NATIVE_FAIL' in raw_log or b'NIHOS_NATIVE_TRAP' in raw_log:
+                        raise RuntimeError('Cold boot failed; see power-cycle.log')
+                    if b'NIHOS_NATIVE_FP_PASS' in raw_log and passed_at is None:
+                        passed_at = time.monotonic()
+                    if passed_at and time.monotonic() - passed_at >= 10:
+                        break
+                text = raw_log.decode(errors='replace')
+                require_power_on_reset(text)
+                report = check.check(text, 'sqlite', 32 << 20, audit, 'physical-device',
+                                     require_sdmmc_fast=True, require_storage=True)
+                if passed_at is None:
+                    raise RuntimeError('No complete cold boot')
+                results.append({'run': 'power-cycle', 'log_sha256': digest(path), 'report': report,
+                                'power_on_reset_observed': True})
+                (out / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
+                command('verify-candidate-after-power-cycle', verify)
         finally:
             if changed:
                 command('restore-before', ['write_flash', '0x2000', str(old_loader), '0x10000', str(old_app)])
@@ -153,8 +233,10 @@ def main():
                 (out / 'restored.json').write_text(json.dumps({'verified': True, 'sha256': digest(backup)}) + '\n')
                 port.baudrate = 115200
                 HardReset(port, uses_usb=True)()
-        (out / 'complete.json').write_text(json.dumps({'passed': len(results) == 3, 'restored': True,
-                'exclusive_serial': True, 'electrical_removal_tested': False, 'power_cycle_tested': False}) + '\n')
+        (out / 'complete.json').write_text(json.dumps({'passed': len(results) == (1 if removal_test else 3 + int(args.power_cycle)), 'restored': True,
+                'exclusive_serial': True, 'removal_fixture_run': removal_test,
+                'serial_reopens': serial_reopens, 'same_serial_descriptor': serial_reopens == 0,
+                'electrical_removal_operator_confirmed': False, 'power_on_reset_observed': args.power_cycle}) + '\n')
 
 
 if __name__ == '__main__':

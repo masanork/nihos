@@ -108,6 +108,8 @@ def audit_sdmmc_resident(symbols, sizes, low, high):
 
 def audit_io_lifetimes(config, symbols, sizes, low, high):
     require(config.get('version') == 1 and isinstance(config.get('qualification'), bool), 'invalid I/O lifetime manifest')
+    require(isinstance(config.get('removal_test', False), bool) and
+            (not config.get('removal_test') or config['qualification']), 'invalid physical removal profile')
     expected = {'src/fs/io_leases.zig', 'src/fs/io_stop.zig', 'src/fs/sdmmc_owner.zig',
                 'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
                 'src/platform/native/main.zig', 'src/diagnostics/record.zig', 'include/nihos_storage_io.h'}

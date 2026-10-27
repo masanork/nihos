@@ -82,3 +82,31 @@ Flash退避と復元経路も実行し、16 MiB全体のdigest一致を確認し
 残るgateは、電気的な抜去/再挿入、電源OFF→ON、
 silicon上の停止失敗・cache失敗の安全な注入、実FatFs BackendとVFS/RPCの接続である。
 serialは解放済み。実装はlocal commit `ad62703`として保持し、他セッションのnative branchは変更していない。
+
+## 手操作を伴う追加試験
+
+`NIHOS_NATIVE_SD_REMOVAL=1`を、既存broker opt-in構成でだけ有効にできる。
+通知注入を終えた後、全leaseの回収とDMA quiescenceを確認して新しいcard sessionを作る。
+`NIHOS_SD_REMOVE_READY`を出してから、1-bit / 400 kHzでLBA 0を繰り返しreadする。
+operatorが同じカードを抜き、readが失敗した後に、destination非公開、実hardwareの停止状態、
+lease回収、旧ticket拒否、抜去latchによる新規発行拒否を記録する。
+
+`NIHOS_SD_INSERT_READY`の後はoperatorが同じカードを戻す。
+旧sessionがquiescentな場合だけSD電源とcontrollerを初期化し、identifyの成功後にmount世代を進める。
+通知ticketの番号を維持して抜去latchを解除し、容量とLBA 0 CRCの一致を2回のreadで検査する。
+容量とCRCはカードの唯一IDではなく、この試験の入力照合である。
+各手操作の待ちは120秒で打ち切り、不完全な記録をPASSにしない。
+接点断とDMA beatの前後を測るcard-detect入力はないため、実転送中の抜去を必ず捕捉する保証はない。
+
+runnerはこの構成では1起動だけを取り、両READY markerをhostへ通知する。
+read errorだけでは物理抜去と断定できないため、operatorの抜去・再挿入の確認記録を別途保存する。
+firmwareの記録だけから`electrical_removal_operator_confirmed`をtrueにはしない。
+現在はoperatorが操作可能かを確認待ちで、手操作用imageは実機へ書き込んでいない。
+
+電源試験は、手操作用imageとは別に、通常設定のimageとrunnerの`--power-cycle`で実施する。
+3回のUSB reset検証後に`NIHOS_POWER_CYCLE_READY`を出し、operatorの本体OFF→ONを待つ。
+USB disconnectが起きた場合は同じportをexclusiveに開き直し、後続Flashアクセス前にchip/MACを再確認する。
+新たなUSB resetを指示せず起動ログを取り、ROMのreset reasonがpower-on (`0x1`)の1起動であることを要求する。
+USB reset、watchdog、複数bootの混在、ROM header欠落ではcold bootを合格にしない。
+FDを開き直した場合は、その回数と「同一FDを維持したか」を分けて記録する。
+電源OFF中に接続が戻らない場合は復元を完了できないため、private backupと失敗ログを保持して電源復帰を待つ。

@@ -395,6 +395,11 @@ noinline fn runIoLifetimes(expected_crc: u32) linksection(".flash.text.storage")
     const lifetime = @import("sdmmc_probe.zig").qualifyLifetimes(expected_crc);
     logger.record("NIHOS_NATIVE_IO_LIFETIMES", null, .{ "version", "status", "normal_reads", "cancelled", "removed", "stale_rejected", "idle_denied", "fences", "unpublished", "crc", "ctrl", "dma_mode", "dma_fsm", "irq_mask", "dma_mask", "descriptor", "descriptor_word" }, &lifetime);
     if (lifetime.status != 1) fail("SD request lifetime qualification");
+    if (options.sd_removal) {
+        const removal = @import("sdmmc_probe.zig").qualifyRemoval(expected_crc);
+        logger.record("NIHOS_NATIVE_SD_REMOVAL", null, .{ "version", "status", "before_reads", "failed_command", "failed_interrupts", "unpublished", "fenced", "idle_denied", "stale_rejected", "reinserted", "after_reads", "crc", "generation_before", "generation_after", "ctrl", "dma_mode", "dma_fsm", "irq_mask", "dma_mask", "descriptor", "descriptor_word" }, &removal);
+        if (removal.status != 1) fail("physical SD removal qualification");
+    }
 }
 
 noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {

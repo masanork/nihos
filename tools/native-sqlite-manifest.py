@@ -87,6 +87,10 @@ def main(directory, source, littlefs=None):
                 'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
                 'src/platform/native/main.zig', 'src/diagnostics/record.zig',
                 'include/nihos_storage_io.h')}}
+        result['io_lifetimes']['removal_test'] = 'pub const sd_removal = true;' in (directory / 'native_options.zig').read_text()
+        if result['io_lifetimes']['removal_test']:
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
+                'sdmmc_probe.qualifyRemoval', 'sdmmc_probe.freshCardSession', 'sdmmc_probe.operatorMarker'})
         result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
                              'read_only': True, 'no_malloc': True, 'api_version': 1, 'workspace_bytes': 8192,
                              'shared_span': 'SQLite mapped code and rodata',

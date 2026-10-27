@@ -69,6 +69,38 @@ SDMMC_FIELDS = ("status", "stage", "command", "interrupts", "response", "command
 IO_LIFETIME_FIELDS = ('version', 'status', 'normal_reads', 'cancelled', 'removed', 'stale_rejected',
                       'idle_denied', 'fences', 'unpublished', 'crc', 'ctrl', 'dma_mode', 'dma_fsm',
                       'irq_mask', 'dma_mask', 'descriptor', 'descriptor_word')
+SD_REMOVAL_FIELDS = ('version', 'status', 'before_reads', 'failed_command', 'failed_interrupts',
+                     'unpublished', 'fenced', 'idle_denied', 'stale_rejected', 'reinserted',
+                     'after_reads', 'crc', 'generation_before', 'generation_after',
+                     'ctrl', 'dma_mode', 'dma_fsm', 'irq_mask', 'dma_mask', 'descriptor', 'descriptor_word')
+
+
+def check_sd_removal(log, image, evidence, sdmmc):
+    config = (image or {}).get('io_lifetimes', {})
+    if config.get('removal_test') is not True:
+        if 'NIHOS_NATIVE_SD_REMOVAL' in log or 'NIHOS_SD_REMOVE_READY' in log or 'NIHOS_SD_INSERT_READY' in log:
+            raise ValueError('SD removal record without opt-in image configuration')
+        return None
+    if (evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device' or
+            config.get('version') != 1 or config.get('qualification') is not True):
+        raise ValueError('SD removal qualification requires bound physical device evidence')
+    record = fixed_record(log, 'NIHOS_NATIVE_SD_REMOVAL', SD_REMOVAL_FIELDS)
+    for marker in ('NIHOS_SD_REMOVE_READY', 'NIHOS_SD_INSERT_READY'):
+        if log.count(marker + '\n') != 1:
+            raise ValueError('missing/duplicate SD operator phase')
+    if not (log.index('NIHOS_NATIVE_IO_LIFETIMES ') < log.index('NIHOS_SD_REMOVE_READY\n') <
+            log.index('NIHOS_SD_INSERT_READY\n') < log.index('NIHOS_NATIVE_SD_REMOVAL ')):
+        raise ValueError('SD removal phases out of order')
+    expected = dict.fromkeys(SD_REMOVAL_FIELDS, 0)
+    expected.update(version=1, status=1, before_reads=record['before_reads'], failed_command=17,
+                    failed_interrupts=record['failed_interrupts'], unpublished=1, fenced=1, idle_denied=1,
+                    stale_rejected=2, reinserted=1, after_reads=2, crc=sdmmc['crc0'],
+                    generation_before=record['generation_before'], generation_after=record['generation_before'] + 1)
+    if record != expected or not 0 < record['before_reads'] < 20000 or record['generation_before'] < 3:
+        raise ValueError('incomplete SD read failure, quiescence or reinsertion qualification')
+    # Operator confirmation is external evidence. This record alone cannot
+    # prove that a person physically removed the card rather than another fault.
+    return record
 
 
 def check_io_lifetimes(log, image, evidence, sdmmc):
@@ -659,9 +691,10 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     high_sram, page_lease = check_high(log, image, evidence)
     broker = check_broker(log, image, evidence)
     io_lifetimes = check_io_lifetimes(log, image, evidence, sdmmc)
+    sd_removal = check_sd_removal(log, image, evidence, sdmmc)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "high_sram": high_sram, "page_lease": page_lease,
-            "broker": broker, "io_lifetimes": io_lifetimes,
+            "broker": broker, "io_lifetimes": io_lifetimes, "sd_removal": sd_removal,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,

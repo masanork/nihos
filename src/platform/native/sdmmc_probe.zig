@@ -63,6 +63,7 @@ extern fn nih_sdmmc_fourbit_pins() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
+extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_broker_io_issued() callconv(.c) void;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
@@ -384,6 +385,129 @@ pub noinline fn qualifyLifetimes(expected_crc: u32) linksection(".flash.text.sto
     report.descriptor = runtime_controller.io.read(sd.regs.descriptor);
     report.descriptor_word = @as(*volatile u32, &dma_descriptor[0]).*;
     if (report.ctrl | report.dma_mode | report.dma_fsm | report.irq_mask | report.dma_mask | report.descriptor | report.descriptor_word != 0) return report;
+    report.status = 1;
+    return report;
+}
+
+pub const RemovalReport = struct {
+    version: u32 = 1,
+    status: u32 = 0,
+    before_reads: u32 = 0,
+    failed_command: u32 = 0,
+    failed_interrupts: u32 = 0,
+    unpublished: u32 = 0,
+    fenced: u32 = 0,
+    idle_denied: u32 = 0,
+    stale_rejected: u32 = 0,
+    reinserted: u32 = 0,
+    after_reads: u32 = 0,
+    crc: u32 = 0,
+    generation_before: u32 = 0,
+    generation_after: u32 = 0,
+    ctrl: u32 = 0,
+    dma_mode: u32 = 0,
+    dma_fsm: u32 = 0,
+    irq_mask: u32 = 0,
+    dma_mask: u32 = 0,
+    descriptor: u32 = 0,
+    descriptor_word: u32 = 0,
+};
+fn operatorMarker(text: []const u8) linksection(".flash.text.storage") void {
+    for (text) |byte| _ = nih_rom_putc(byte);
+}
+
+/// The ordinary owner may create a new session only after old DMA quiescence.
+/// Keep tickets monotonic when clearing the old session's removal latch.
+fn freshCardSession(clock: timer_group.Timer) linksection(".flash.text.storage") bool {
+    if (io_owner.busy() or io_signal.active() != 0 or !runtime_controller.quiescence.complete() or
+        io_owner.generation >= 0xffff_ffff) return false;
+    const next_ticket = io_signal.next_ticket;
+    runtime_controller = .{ .io = .{ .clock = clock } };
+    nih_sdmmc_power_off();
+    runtime_controller.io.delay(250_000);
+    nih_sdmmc_power_on();
+    runtime_controller.io.delay(10_000);
+    nih_sdmmc_clock_init();
+    runtime_controller.io.delay(20);
+    runtime_controller.prepare() catch return false;
+    runtime_controller.identify() catch return false;
+    io_owner.generation += 1;
+    io_signal = .{ .next_ticket = next_ticket };
+    return true;
+}
+
+/// Operator-assisted READ-ONLY test. A read error alone is not proof of
+/// electrical removal; retain the operator's action record alongside this log.
+pub noinline fn qualifyRemoval(expected_crc: u32) linksection(".flash.text.storage") RemovalReport {
+    var report = RemovalReport{};
+    const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
+    if (!options.sd_removal or runtime_ready or active_controller != null or
+        clock.channel.config & (timer_group.counter_enable | timer_group.alarm_enable) != 0) return report;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    if (!freshCardSession(clock)) return report;
+    report.generation_before = @intCast(io_owner.generation);
+    const sectors = runtime_controller.sectors;
+    var data: [512]u8 = @splat(0xa5);
+    if (ownedRead(&runtime_controller, 0, &data) != 0 or sd.crc32(&data) != expected_crc) return report;
+    report.before_reads = 1;
+    operatorMarker("NIHOS_SD_REMOVE_READY\n");
+    const began = clock.counter() orelse return report;
+    while (true) {
+        const now = clock.counter() orelse return report;
+        if (now - began >= 120_000_000) return report;
+        data = @splat(0xa5);
+        if (ownedRead(&runtime_controller, 0, &data) != 0) break;
+        if (sd.crc32(&data) != expected_crc) return report;
+        report.before_reads += 1;
+        // Keep read duty high at the fresh session's 1-bit/400 kHz transport.
+        // This improves coverage but still cannot timestamp physical contact
+        // loss relative to an individual DMA beat without card-detect input.
+        runtime_controller.io.delay(500);
+    }
+    report.failed_command = runtime_controller.last_command;
+    report.failed_interrupts = runtime_controller.last_interrupts;
+    if (!runtime_controller.faulted or runtime_controller.cleanup_failed or
+        !runtime_controller.quiescence.complete() or io_owner.busy() or io_signal.active() != 0) return report;
+    for (data) |byte| {
+        if (byte != 0xa5) return report;
+    }
+    report.unpublished = 1;
+    report.fenced = 1;
+    const old_ticket = io_signal.next_ticket - 1;
+    const commands = runtime_controller.commands;
+    nih_storage_io_removed();
+    if (ownedRead(&runtime_controller, 0, &data) == 0 or runtime_controller.commands != commands) return report;
+    report.idle_denied = 1;
+    if (nih_storage_io_stop(old_ticket, 1) != 0) return report;
+    report.stale_rejected = 1;
+    // Capture the failed session's stop state before creating a new session.
+    report.ctrl = runtime_controller.io.read(sd.regs.ctrl) & ((1 << 25) | (1 << 5) | (1 << 4) | 4);
+    report.dma_mode = runtime_controller.io.read(sd.regs.dma_mode);
+    report.dma_fsm = runtime_controller.io.read(sd.regs.dma_status) >> 13 & 15;
+    report.irq_mask = runtime_controller.io.read(sd.regs.mask);
+    report.dma_mask = runtime_controller.io.read(sd.regs.dma_mask);
+    report.descriptor = runtime_controller.io.read(sd.regs.descriptor);
+    report.descriptor_word = @as(*volatile u32, &dma_descriptor[0]).*;
+    if (report.ctrl | report.dma_mode | report.dma_fsm | report.irq_mask | report.dma_mask | report.descriptor | report.descriptor_word != 0) return report;
+    operatorMarker("NIHOS_SD_INSERT_READY\n");
+    const waiting = clock.counter() orelse return report;
+    while (!freshCardSession(clock)) {
+        const now = clock.counter() orelse return report;
+        if (now - waiting >= 120_000_000) return report;
+        runtime_controller.io.delay(500_000);
+    }
+    if (runtime_controller.sectors != sectors) return report;
+    report.reinserted = 1;
+    report.generation_after = @intCast(io_owner.generation);
+    for (0..2) |_| {
+        if (ownedRead(&runtime_controller, 0, &data) != 0 or sd.crc32(&data) != expected_crc) return report;
+        report.after_reads += 1;
+    }
+    report.crc = sd.crc32(&data);
+    if (nih_storage_io_stop(old_ticket, 2) != 0) return report;
+    report.stale_rejected += 1;
     report.status = 1;
     return report;
 }
