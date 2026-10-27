@@ -1,15 +1,16 @@
 # C6へTCP/IP・BLEホストを集約する検証
 
 2026-10-27。方針は[ADR 0029](../adr/0029-c6-network-offload.md)。
-P4はnihos、C6はESP-IDF上の通信ファームとし、まずESP-AT＋SDIOを使う。
+最終的にはP4をnihos、C6をTCP/IP・BLEホスト付き通信ファームとし、ESP-AT＋SDIOを検証する。
+現段階の実機AP/IP試験は、既存C6のESP-HostedとP4 DHCPで通過した。
 本体からWi-Fiで通信できることを目指し、PCは開発・測定時に使う。
 
 ### 実機工程の修正
 
 通常のWi-Fi利用に外付けUSB–TTLは不要。内蔵C6の既存ESP-HostedへP4から
 内部SDIOで接続できる。ESP-ATへの置換条件を、AP接続・IP取得全般の必須条件と
-したのは誤りだった。次の実機工程は、既存C6を書き換えないSDIO/Hostedの識別・
-version queryから行う。factory HostedでAP/IPを確認する場合、DHCPはP4側で処理し、
+したのは誤りだった。既存C6を書き換えないSDIO/Hostedの識別・version queryから
+実機工程を進めた。factory HostedのAP/IP試験ではDHCPをP4側で処理し、
 C6側TCP/IPオフロードの成功とは分けて記録する。最終的なC6オフロード方針は保持する。
 
 ESP-Hostedには内部transport経由のC6 OTAがあるため、外部UARTだけを更新手段と
@@ -22,19 +23,20 @@ ESP-Hostedには内部transport経由のC6 OTAがあるため、外部UARTだけ
   単一コマンドのdeadlineとepoch管理、初期交渉と切断復旧の状態管理。
 - C6用SDIO＋Wi-Fi＋NimBLEファームのビルドが通過。上流SDK修正の実体も確認。
 - P4側native SDIO boot driver、C6のFIFO/credit管理、専用CPU0プローブを実装・ビルド。
-  [手順と制約](../../probes/c6-sdio/README.md)を参照。実機での通信は未確認。
-- AP接続・DHCP有効化・接続状態・IPv4/gateway/netmask確認までのopt-in試験を追加。
-  ホスト試験とnativeイメージ監査は通過。C6書き込み接続とAP設定が未確認のため、
-  [実機preflight](../measurements/2026-10-27-c6-wifi-preflight.md)は未完了。
+  [手順と制約](../../probes/c6-sdio/README.md)を参照。Hosted向け通信は実機で通過。
+- AT modeのAP接続・DHCP有効化・接続状態・IPv4/gateway/netmask確認も実装。
+  ホスト試験とnativeイメージ監査は通過。AT用C6 firmwareへの移行は行っておらず、
+  このモードの実機試験は未完了。
 - 既存C6用Hosted modeも実装：INIT/版確認、Wi-Fi RPC、P4 DHCP Offer/ACK検証。
   C6更新を伴わず、AP設定はRAMへ指定。専用native imageのビルド・監査と
   ホスト試験を実施。[記録](../measurements/2026-10-27-c6-hosted-station-build.md)。
-  実機でC6のSDIO/RPC・Hosted 1.4.1識別まで通過。保存APがreason 201で見つからず、
-  AP設定を確認中。[実機記録](../measurements/2026-10-27-c6-hosted-device.md)。IP取得は未達。
+  実機でC6のSDIO/RPC・Hosted 1.4.1識別、明示AP設定での接続とP4 DHCP取得まで通過。
+  [実機記録](../measurements/2026-10-27-c6-hosted-device.md)。取得IPは`10.193.127.151`。
+  専用fixtureでの1回の取得成功であり、通常OS統合・lease更新・DNS/TCPは未検証。
 - ホスト試験対象：改行・NUL・偽のOKを含むTCP/BLE混在データ、容量超過、
   不正ヘッダ、途中切断、遅延応答、古いtokenの拒否。
 - 未実装：IRQ駆動SDIOサービス、microSDとの共有調停、socket/BLEリソース表、アプリ接続。
-- 未検証：C6用ファームの書き込み・起動、Tab5上の通信、同時動作、性能。
+- 未検証：C6用ESP-ATファームの書き込み・起動、C6 TCP/IPオフロード、同時動作、性能。
 
 ## C6用候補
 

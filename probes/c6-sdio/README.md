@@ -113,7 +113,7 @@ Success requires status 1/stage 10 and a complete `NIHOS_C6_WIFI_PASS` record wi
 decimal `ip`, `gateway` and `netmask`. On failure, `wifi_step` is 1-based:
 enable DHCP, query DHCP, join, query station state, query addresses, done.
 Report IP fields use network-order hexadecimal integers. All runs halt after
-the result. The Wi-Fi image has been built and audited; no physical AP/IP pass
+the result. The AT-mode Wi-Fi image has been built and audited; no physical AP/IP pass
 is recorded yet. See the [current preflight](../../docs/measurements/2026-10-27-c6-wifi-preflight.md).
 
 ## DMA and stream contracts
@@ -195,5 +195,7 @@ application slot can isolate the experiment; the user's factory-only development
 layout was tested by replacing its factory app under their authorization, with
 no full-flash backup per their explicit instruction. Do not flash the generated
 loader/table over the device. The [physical run](../../docs/measurements/2026-10-27-c6-hosted-device.md)
-identified C6 Hosted 1.4.1 and exercised Wi-Fi RPCs, then failed to find the saved
-AP (reason 201). No physical DHCP/IP pass has been obtained yet.
+identified C6 Hosted 1.4.1. The saved AP was not found (reason 201), then explicit
+private AP configuration produced an association event and DHCP ACK with
+`10.193.127.151/24`. This is one boot-fixture acquisition pass, not normal OS
+service integration, renewal, Internet reachability or a power-cycle qualification.
