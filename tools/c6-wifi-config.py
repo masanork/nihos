@@ -10,6 +10,9 @@ import sys
 def main():
     destination = Path(sys.argv[1])
     source = Path(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else None
+    protocol = sys.argv[3] if len(sys.argv) > 3 else 'at'
+    if protocol not in ('at', 'hosted'):
+        raise ValueError('Unsupported C6 protocol')
     enabled, saved, ssid, password = source is not None, False, b'', b''
     if source is not None:
         if not source.is_file() or stat.S_IMODE(source.stat().st_mode) & 0o077:
@@ -30,6 +33,7 @@ def main():
     def array(value):
         return '[_]u8{' + ','.join(str(byte) for byte in value) + '}'
     text = (f'pub const enabled = {str(enabled).lower()};\n'
+            f'pub const hosted = {str(protocol == "hosted").lower()};\n'
             f'pub const saved = {str(saved).lower()};\n'
             f'pub const ssid = {array(ssid)};\n'
             f'pub const password = {array(password)};\n')

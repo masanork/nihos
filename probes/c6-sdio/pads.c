@@ -77,3 +77,64 @@ void nih_c6_fourbit_pins(void) {
     pin_signal(9, SD_CARD_CDATA2_2_PAD_OUT_IDX, 1);
     pin_signal(8, SD_CARD_CDATA3_2_PAD_OUT_IDX, 1);
 }
+
+/* Boot-exclusive power enable. Preserve all other expander/charger outputs.
+ * PI4IOE5V6408: 0x03 direction (1=output), 0x05 output, 0x07 output high-Z.
+ * Only expander 0x44 P0 (WLAN_PWR_EN) is modified; no chip reset is issued. */
+extern void nih_c6_delay_us(unsigned);
+static void i2c_delay(void) { nih_c6_delay_us(5); }
+static void i2c_sda(unsigned high) { gpio_ll_set_level(&GPIO, 31, high); i2c_delay(); }
+static int i2c_scl(unsigned high) {
+    gpio_ll_set_level(&GPIO, 32, high);
+    if (high) {
+        unsigned tries = 100;
+        while (!gpio_ll_get_level(&GPIO, 32) && --tries) i2c_delay();
+        if (!tries) return 0;
+    }
+    i2c_delay(); return 1;
+}
+static int i2c_start(void) {
+    i2c_sda(1); if (!i2c_scl(1) || !gpio_ll_get_level(&GPIO, 31)) return 0;
+    i2c_sda(0); return i2c_scl(0);
+}
+static void i2c_stop(void) { i2c_sda(0); (void)i2c_scl(1); i2c_sda(1); }
+static int i2c_put(unsigned byte) {
+    for (int bit = 7; bit >= 0; --bit) {
+        i2c_sda((byte >> bit) & 1); if (!i2c_scl(1)) return 0; (void)i2c_scl(0);
+    }
+    i2c_sda(1); if (!i2c_scl(1)) return 0;
+    int ack = !gpio_ll_get_level(&GPIO, 31); (void)i2c_scl(0); return ack;
+}
+static int i2c_get(unsigned *value) {
+    *value = 0; i2c_sda(1);
+    for (int bit = 7; bit >= 0; --bit) {
+        if (!i2c_scl(1)) return 0;
+        *value |= gpio_ll_get_level(&GPIO, 31) << bit; (void)i2c_scl(0);
+    }
+    if (!i2c_scl(1)) return 0; (void)i2c_scl(0); return 1; /* NACK */
+}
+static int exp_read(unsigned reg, unsigned *value) {
+    int ok = i2c_start() && i2c_put(0x88) && i2c_put(reg) &&
+             i2c_start() && i2c_put(0x89) && i2c_get(value);
+    i2c_stop(); return ok;
+}
+static int exp_write(unsigned reg, unsigned value) {
+    int ok = i2c_start() && i2c_put(0x88) && i2c_put(reg) && i2c_put(value);
+    i2c_stop(); return ok;
+}
+unsigned nih_c6_power_enable(void) {
+    for (unsigned pin = 31; pin <= 32; ++pin) {
+        IO_MUX.gpio[pin].mcu_sel = 1;
+        GPIO.func_out_sel_cfg[pin].out_sel = SIG_GPIO_OUT_IDX;
+        GPIO.func_out_sel_cfg[pin].oen_sel = 1;
+        gpio_ll_input_enable(&GPIO, pin); gpio_ll_pullup_en(&GPIO, pin);
+        gpio_ll_pulldown_dis(&GPIO, pin); gpio_ll_od_enable(&GPIO, pin);
+        gpio_ll_set_level(&GPIO, pin, 1); gpio_ll_output_enable(&GPIO, pin);
+    }
+    unsigned out = 0, dir = 0, hiz = 0, check = 0;
+    if (!exp_read(5, &out) || !exp_read(3, &dir) || !exp_read(7, &hiz)) return 0;
+    if (!exp_write(5, out | 1) || !exp_write(7, hiz & ~1u) || !exp_write(3, dir | 1)) return 0;
+    return exp_read(5, &check) && check == (out | 1) &&
+           exp_read(7, &check) && check == (hiz & ~1u) &&
+           exp_read(3, &check) && check == (dir | 1);
+}

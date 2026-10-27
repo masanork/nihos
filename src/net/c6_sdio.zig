@@ -17,6 +17,12 @@ pub fn plan(length: usize) Error!Plan {
 }
 
 pub fn Stream(comptime Host: type) type {
+    return ProfileStream(Host, max_credits);
+}
+
+/// Hosted uses a different receive-buffer profile. Every TX in that fixture
+/// is a complete packet <=512 bytes, fitting one 1536-byte slave RX buffer.
+pub fn ProfileStream(comptime Host: type, comptime credit_limit: u32) type {
     return struct {
         host: *Host,
         received: u32 = 0,
@@ -52,7 +58,7 @@ pub fn Stream(comptime Host: type) type {
             errdefer self.faulted = true;
             const total = ((try self.host.readWord(token_register)) >> 16) & credit_mask;
             const credits = (total -% self.sent_buffers) & credit_mask;
-            if (credits > max_credits) return error.CounterDiscontinuity;
+            if (credits > credit_limit) return error.CounterDiscontinuity;
             if (credits == 0) return 0;
             const transfer = try plan(@min(source.len, 512));
             @memset(&self.scratch, 0);
