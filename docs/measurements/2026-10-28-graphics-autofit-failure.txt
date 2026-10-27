@@ -1,0 +1,21 @@
+FT ALLOC FAIL owner=1 bytes=16 failures=1 reserved=1245184
+/Users/masanork/repo/nihos-graphics-probe/build/graphics-probe/sources/freetype/src/base/fthash.c:110:31: runtime error: member access within null pointer of type 'struct FT_HashRec_'
+    #0 0x000100919b14 in hash_bucket+0x3ac (font-link-oracle:arm64+0x100411b14)
+    #1 0x0001008cd740 in hash_lookup+0x1c (font-link-oracle:arm64+0x1003c5740)
+    #2 0x000100833a80 in af_latin_hints_apply+0x280 (font-link-oracle:arm64+0x10032ba80)
+    #3 0x0001008b95c8 in af_loader_load_glyph+0x14e0 (font-link-oracle:arm64+0x1003b15c8)
+    #4 0x000100838e3c in af_autofitter_load_glyph+0x1ec (font-link-oracle:arm64+0x100330e3c)
+    #5 0x0001008da498 in FT_Load_Glyph+0xbf8 (font-link-oracle:arm64+0x1003d2498)
+    #6 0x0001008c66f0 in ft_load_advances+0x108 (font-link-oracle:arm64+0x1003be6f0)
+    #7 0x0001005c6980 in hb_ft_get_glyph_h_advances(hb_font_t*, void*, unsigned int, unsigned int const*, unsigned int, int*, unsigned int, void*)+0x2bc (font-link-oracle:arm64+0x1000be980)
+    #8 0x0001005a9360 in hb_font_t::get_glyph_h_advances(unsigned int, unsigned int const*, unsigned int, int*, unsigned int, bool)+0x180 (font-link-oracle:arm64+0x1000a1360)
+    #9 0x000100763710 in hb_ot_shape_internal(hb_ot_shape_context_t*)+0x4504 (font-link-oracle:arm64+0x10025b710)
+    #10 0x00010075f144 in _hb_ot_shape+0x12c (font-link-oracle:arm64+0x100257144)
+    #11 0x00010081d474 in hb_shape_plan_execute+0x258 (font-link-oracle:arm64+0x100315474)
+    #12 0x0001008201e0 in hb_shape_full+0x3b0 (font-link-oracle:arm64+0x1003181e0)
+    #13 0x00010050a8d0 in Session::draw(bool, unsigned int, unsigned int*)+0x2c4 (font-link-oracle:arm64+0x1000028d0)
+    #14 0x000100509b20 in graphics_font_link_probe+0x454 (font-link-oracle:arm64+0x100001b20)
+    #15 0x00010051169c in main+0x3d4 (font-link-oracle:arm64+0x10000969c)
+    #16 0x00019c50fe7c in start+0x1a1c (dyld:arm64e+0x31e7c)
+
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /Users/masanork/repo/nihos-graphics-probe/build/graphics-probe/sources/freetype/src/base/fthash.c:110:31 

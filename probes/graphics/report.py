@@ -30,7 +30,7 @@ def elf_u32(path, symbol):
 
 out = Path(sys.argv[1])
 kernel = sys.argv[3] == "1"
-inputs = sorted(Path("probes/graphics").iterdir()) + [
+inputs = sorted(Path("probes/graphics").iterdir()) + sorted(Path("probes/graphics/patches").glob("*.patch")) + [
     Path("tools/run-graphics-memory-probe.sh"), Path("provenance.toml")]
 report = {
     "scope": "host memory/lifetime probe; not native GUI or hardware evidence",

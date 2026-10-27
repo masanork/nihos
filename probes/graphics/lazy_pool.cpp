@@ -6,7 +6,7 @@
 #endif
 
 int LazyPool::find(unsigned owner, const void *pointer) const {
-    for (unsigned i = 0; i < record_count; ++i)
+    for (unsigned i = 0; i < active_end; ++i)
         if (records[i].pointer == pointer && records[i].owner == owner) return (int)i;
     return -1;
 }
@@ -15,10 +15,11 @@ bool LazyPool::gap(unsigned index, size_t bytes, size_t *offset) const {
     const Span &span = spans[index];
     size_t start = 0;
     // Bounded metadata scan; this is deliberately not an IRQ-latency claim.
-    for (unsigned pass = 0; pass <= record_count; ++pass) {
+    for (unsigned pass = 0; pass <= active_end; ++pass) {
         if (start > span.bytes || bytes > span.bytes - start) return false;
         size_t next = start;
-        for (const Record &r : records) {
+        for (unsigned i = 0; i < active_end; ++i) {
+            const Record &r = records[i];
             if (!r.pointer || r.span != index) continue;
             size_t at = (uintptr_t)r.pointer - (uintptr_t)span.base;
             if (at < start + bytes && start < at + r.usable && at + r.usable > next)
@@ -37,10 +38,10 @@ void *LazyPool::allocate(unsigned owner, size_t bytes) {
     if ((fail_at && attempts == fail_at) || owner >= owners ||
         bytes > UINT32_MAX - page_bytes) return reject();
     size_t usable = (bytes + alignment - 1) & ~(alignment - 1);
-    unsigned record = record_count;
-    for (unsigned i = 0; i < record_count; ++i)
+    unsigned record = active_end;
+    for (unsigned i = 0; i < active_end; ++i)
         if (!records[i].pointer) { record = i; break; }
-    if (record == record_count) return reject();
+    if (record == record_count) { ++record_failures; return reject(); }
     unsigned selected = span_count;
     size_t offset = 0;
     for (unsigned i = 0; i < span_count; ++i)
@@ -81,7 +82,9 @@ void *LazyPool::allocate(unsigned owner, size_t bytes) {
     Span &span = spans[selected];
     void *pointer = span.base + offset;
     records[record] = { pointer, (uint32_t)bytes, (uint32_t)usable, (uint16_t)selected, (uint16_t)owner };
+    if (record == active_end) ++active_end;
     ++span.live;
+    if (++live_records > peak_records) peak_records = live_records;
     return pointer;
 }
 
@@ -91,6 +94,8 @@ bool LazyPool::release(unsigned owner, void *pointer) {
     if (index < 0) return false; // Never read metadata through the supplied pointer.
     Span &span = spans[records[index].span];
     records[index] = {};
+    --live_records;
+    while (active_end && !records[active_end - 1].pointer) --active_end;
     if (--span.live == 0) {
 #ifdef NIHOS_GRAPHICS_BUDDY_BACKING
         reserved -= span.bytes + 128; owner_reserved[owner] -= span.bytes + 128;
@@ -137,6 +142,7 @@ size_t LazyPool::live_bytes(unsigned owner) const {
 }
 
 bool LazyPool::valid() const {
+    if (active_end > record_count || (active_end && !records[active_end - 1].pointer)) return false;
     size_t total = 0, per_owner[owners] = {};
     for (unsigned s = 0; s < span_count; ++s) {
         const Span &span = spans[s];
@@ -167,8 +173,15 @@ bool LazyPool::valid() const {
         }
         if (!live || live != span.live) return false;
     }
-    for (const Record &r : records)
-        if (r.pointer && (r.span >= span_count || !spans[r.span].base)) return false;
+    size_t counted = 0;
+    for (unsigned i = 0; i < record_count; ++i) {
+        const Record &r = records[i];
+        if (r.pointer) {
+            ++counted;
+            if (i >= active_end || r.span >= span_count || !spans[r.span].base) return false;
+        }
+    }
+    if (counted != live_records || peak_records < live_records) return false;
     if (total != reserved || total > total_limit) return false;
     for (unsigned owner = 0; owner < owners; ++owner)
         if (per_owner[owner] != owner_reserved[owner] || per_owner[owner] > owner_limit[owner]) return false;

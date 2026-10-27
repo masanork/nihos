@@ -2,6 +2,8 @@
 """Reproducible host/RV32 oracle comparison and instruction-observed SP peaks."""
 from pathlib import Path
 import hashlib
+from datetime import datetime, timezone
+import re
 import json
 import os
 import shutil
@@ -69,13 +71,15 @@ if sys.platform == "darwin" and not env.get("MACOSX_DEPLOYMENT_TARGET"):
 env.setdefault("ASAN_OPTIONS", "detect_stack_use_after_return=1")
 env.setdefault("UBSAN_OPTIONS", "halt_on_error=1:print_stacktrace=1")
 profiles = []
-for pool, stacks in [(16384, [128, 4096, 16384, 32768]), (2048, [4096, 8192])]:
-    print(f"render pool {pool}: build host and RV32", flush=True)
-    profile = OUT / "profiles" / f"pool{pool}"
+negative = {}
+for pool, records, stacks in [(16384, 256, [128, 4096, 16384, 32768]), (2048, 512, []), (2048, 1024, [4096, 8192])]:
+    print(f"render pool {pool}, records {records}: build host and RV32", flush=True)
+    profile = OUT / "profiles" / f"pool{pool}-records{records}"
     profile.mkdir(parents=True, exist_ok=True)
     for target in ("host", "target"):
         args = ["cmake", "-S", ROOT / "probes/graphics", "-B", OUT / target,
                 "-DPROBE_LINK_ORACLE=ON", "-DCMAKE_BUILD_TYPE=", f"-DPROBE_FT_RENDER_POOL_BYTES={pool}",
+                f"-DPROBE_ALLOCATION_RECORDS={records}",
                 "-DPROBE_SANITIZERS=" + ("ON" if target == "host" else "OFF"),
                 "-DPROBE_GENERATED=" + str(OUT / "generated"), "-DPROBE_SOURCES=" + str(SOURCES),
                 "-DPROBE_BUDDY_OBJECT=" + str(ROOT / "build/graphics-probe/buddy" / ("backing.o" if target == "host" else "backing-rv32.o"))]
@@ -84,52 +88,110 @@ for pool, stacks in [(16384, [128, 4096, 16384, 32768]), (2048, [4096, 8192])]:
         run(args, profile / f"{target}-configure.log", env)
         run(["cmake", "--build", OUT / target, "--parallel", "4"], profile / f"{target}-build.log", env)
     fonts = [SOURCES / "BIZUDGothic-Regular.ttf", SOURCES / "BIZUDMincho-Regular.ttf"]
-    with (profile / "host-result.json").open("w") as stream:
-        subprocess.run([str(OUT / "host/font-link-oracle")] + list(map(str, fonts)), stdout=stream, env=env, check=True)
-    host = json.loads((profile / "host-result.json").read_text())
-    assert host["rc"] == 0 and host["runs"] == 16
     image = profile / "oracle.elf"
     shutil.copy2(OUT / "target/font-link-oracle", image)
     shutil.copy2(OUT / "target/oracle.map", profile / "oracle.map")
-    cases = []
-    for stack in stacks:
-        print(f"render pool {pool}: execute RV32 with stack {stack}", flush=True)
-        with (profile / f"isa-{stack}.json").open("w") as stream, (profile / f"isa-{stack}.log").open("w") as errors:
-            p = subprocess.run([str(OUT / "isa-stack-runner"), str(image)] + list(map(str, fonts)) + [str(stack)], stdout=stream, stderr=errors)
-        case = json.loads((profile / f"isa-{stack}.json").read_text())
-        assert case["status"] in ("pass", "stack_guard"), case
-        assert p.returncode == (0 if case["status"] == "pass" else 10)
-        if case["status"] == "pass":
-            assert case["hashes"] == host["hashes"] and case["runs"] == 16
-            assert case["runtime_malloc_calls"] == case["unavailable_calls"] == 0
-        case["min_function"] = subprocess.check_output([PREFIX + "addr2line", "-C", "-f", "-e", str(image), hex(case["min_pc"])], text=True).strip()
-        cases.append(case)
-    assert any(x["status"] == "pass" for x in cases)
+    modes = []
+    mode_cases = [] if records == 512 else [(0, "default", stacks)]
+    if records == 1024:
+        mode_cases += [(1, "auto", [4096, 8192, 16384, 32768]), (2, "none", [4096, 8192])]
+    for mode, label, mode_stacks in mode_cases:
+        with (profile / f"host-{label}.json").open("w") as stream:
+            subprocess.run([str(OUT / "host/font-link-oracle")] + list(map(str, fonts)) + [str(mode)], stdout=stream, env=env, check=True)
+        host = json.loads((profile / f"host-{label}.json").read_text())
+        assert host["rc"] == 0 and host["runs"] == 16
+        cases = []
+        for stack in mode_stacks:
+            print(f"render pool {pool}, hint {label}: execute RV32 with stack {stack}", flush=True)
+            result_path = profile / f"isa-{label}-{stack}.json"
+            with result_path.open("w") as stream, (profile / f"isa-{label}-{stack}.log").open("w") as errors:
+                p = subprocess.run([str(OUT / "isa-stack-runner"), str(image)] + list(map(str, fonts)) + [str(stack), str(mode)], stdout=stream, stderr=errors)
+            case = json.loads(result_path.read_text())
+            assert case["status"] in ("pass", "stack_guard"), case
+            assert p.returncode == (0 if case["status"] == "pass" else 10)
+            if case["status"] == "pass":
+                assert case["hashes"] == host["hashes"] and case["runs"] == 16
+                assert case["runtime_malloc_calls"] == case["unavailable_calls"] == 0
+                assert case["allocation_failures"] == case["record_failures"] == 0
+                assert case["record_peak"] <= case["record_capacity"] == records
+                paths = case["path_entries"]
+                if mode == 1:
+                    assert all(paths[n] > 0 for n in ("af_autofitter_load_glyph", "af_cjk_metrics_init_widths", "af_latin_metrics_init_widths")), paths
+                    assert paths["TT_RunIns"] == 0, paths
+                elif mode == 2:
+                    assert not any(paths.values()), paths
+                else:
+                    assert paths["TT_RunIns"] > 0 and paths["af_autofitter_load_glyph"] == 0, paths
+            case["min_function"] = subprocess.check_output([PREFIX + "addr2line", "-C", "-f", "-e", str(image), hex(case["min_pc"])], text=True).strip()
+            case["result_sha256"] = sha(result_path)
+            cases.append(case)
+        assert any(x["status"] == "pass" for x in cases)
+        modes.append({"load_mode": mode, "hinting": label, "host": host, "cases": cases})
+    if records in (256, 512):
+        # This used to crash inside FreeType after exhausting allocation records.
+        print(f"verify {records}-record auto-hint refusal and full client cleanup", flush=True)
+        negative[str(records)] = {}
+        for target, args in [("host", [str(OUT / "host/font-link-oracle")] + list(map(str, fonts)) + ["1"]),
+                             ("rv32", [str(OUT / "isa-stack-runner"), str(image)] + list(map(str, fonts)) + ["65536", "1"])]:
+            result_path = profile / f"{target}-auto-record-refusal.json"
+            with result_path.open("w") as stream, (profile / f"{target}-auto-record-refusal.log").open("w") as errors:
+                p = subprocess.run(args, stdout=stream, stderr=errors, env=env)
+            case = json.loads(result_path.read_text())
+            assert p.returncode == 20 and case["stage"] == 90 and case["record_failures"] > 0, case
+            assert case["record_peak"] == case["record_capacity"] == records and case["retained"] == 65792, case
+            assert case["runs"] < 16, case
+            if target == "rv32":
+                assert case["status"] == "allocation_refused", case
+            case["result_sha256"] = sha(result_path)
+            negative[str(records)][target] = case
     static = frames(OUT / "target", image)
     (profile / "stack-frames.json").write_text(json.dumps(static, indent=2) + "\n")
-    profiles.append({"render_pool_bytes": pool, "host": host, "cases": cases, "sizes": elf(image),
+    sizes = elf(image)
+    undefined = subprocess.check_output([PREFIX + "nm", "-u", str(image)], text=True).strip()
+    assert not undefined, undefined
+    disassembly = subprocess.check_output([PREFIX + "objdump", "-d", "--no-show-raw-insn", str(image)], text=True)
+    fp = [line for line in disassembly.splitlines() if re.match(r"^\s*[0-9a-f]+:\s+f[a-z0-9.]+\s", line) and not re.search(r"\bfence", line)]
+    assert not fp, fp[:10]
+    profiles.append({"render_pool_bytes": pool, "allocation_records": records, "modes": modes, "sizes": sizes,
                      "elf_sha256": sha(image), "map_sha256": sha(profile / "oracle.map"),
-                     "largest_linked_c_frames": [x for x in static if x["linked"]][:12]})
-assert profiles[0]["host"]["hashes"] == profiles[1]["host"]["hashes"]
-assert profiles[0]["cases"][1]["status"] == "stack_guard"
-assert profiles[1]["cases"][0]["status"] == "pass"
+                     "largest_linked_c_frames": [x for x in static if x["linked"]][:12],
+                     "unresolved_symbols": [], "floating_point_instructions": len(fp),
+                     "riscv_attributes": subprocess.check_output([PREFIX + "readelf", "-A", str(image)], text=True),
+                     "flash_payload_bytes": sizes["text_and_rodata"] + sizes["data"],
+                     "static_writable_bytes": sizes["data"] + sizes["bss"]})
+assert profiles[0]["modes"][0]["host"]["hashes"] == profiles[2]["modes"][0]["host"]["hashes"]
+assert profiles[0]["modes"][0]["cases"][1]["status"] == "stack_guard"
+assert profiles[2]["modes"][0]["cases"][0]["status"] == "pass"
+# Ensure a flag accidentally ignored by both host and target cannot look correct.
+assert len({tuple(m["host"]["hashes"]) for m in profiles[2]["modes"]}) == 3
 report = {"scope": "symbol-closed synthetic link and Unicorn RV32 ISA execution; not ESP32-P4 boot/peripheral or physical-device evidence",
           "base_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
           "unicorn_version": unicorn.__version__, "unicorn_library_sha256": sha(library),
           "compiler": subprocess.check_output([str(CXX), "--version"], text=True).splitlines()[0],
           "profiles": profiles,
+          "allocation_negative_control": negative,
           "limits": ["Full pinned TTFs are mapped external read-only test inputs, not native FS reads or fonts embedded in Flash footprint",
                      "All target instructions are observed for SP; guard check stops before out-of-range stack use",
                      "16 fixed cases: two fonts, 12/16/24/32 px body, half-size ruby run, horizontal and vertical shaping",
                      "No native SD/VFS, interrupts, dispatcher, task stop/restart, real Flash mapping or physical timing tested",
-                     "4 KiB minus observed 3808-byte peak, 16-byte guard and 128-byte context frame leaves only 144 bytes before native caller/IO overhead",
-                     "Registered auto-hinter has larger linked static frames; forced auto-hint/fallback-font paths are not executed or stack-qualified",
+                     "Existing 4 KiB native worker stacks are not approved by these standalone measurements",
+                     "Default, forced auto-hint and unhinted paths are qualified only for the pinned fonts and fixed cases; arbitrary fallback fonts remain untested",
                      "FreeType uses explicit callbacks and no environment configuration; unavailable default memory/file entry points fail explicitly",
                      "Target newlib has one fixed reent context and bounded malloc hooks; unused nosys stubs remain and are execution-forbidden",
                      "Static stack frames are not whole-call-chain upper bounds; no worst-case stack certificate for arbitrary fonts/text"],
           "source_sha256": {str(p.relative_to(ROOT)): sha(p) for p in sorted((ROOT / "probes/graphics").iterdir()) if p.is_file()}}
+report["source_sha256"].update({str(p.relative_to(ROOT)): sha(p) for p in (ROOT / "probes/graphics/patches").glob("*.patch")})
 report["source_sha256"].update({str(p.relative_to(ROOT)): sha(p) for p in
     [ROOT / "tools/run-graphics-rv32-probe.sh", ROOT / "src/kernel/task_resources.zig", ROOT / "src/kernel/extent_groups.zig", ROOT / "src/kernel/buddy_heap.zig"]})
+report["created_utc"] = datetime.now(timezone.utc).isoformat()
+report["input_fonts"] = [{"name": p.name, "bytes": p.stat().st_size, "sha256": sha(p)} for p in fonts]
+report["runtime_archives"] = {}
+for name in ("libc.a", "libm.a", "libgcc.a", "libnosys.a", "libstdc++.a"):
+    path = Path(subprocess.check_output([str(CXX), "-march=rv32imac_zicsr_zifencei", "-mabi=ilp32", "-fno-rtti", "-print-file-name=" + name], text=True).strip())
+    report["runtime_archives"][name] = {"path": str(path), "sha256": sha(path)}
+report["provenance_sha256"] = sha(ROOT / "provenance.toml")
+report["checks"] = {"host_oracle_sanitizers": "ASan/UBSan", "native_fonts_executed_on_hardware": False,
+                    "memory_probe_replayed": True, "memory_probe_log_sha256": sha(OUT / "memory-base.log")}
 temporary = OUT / "report.json.next"
 temporary.write_text(json.dumps(report, indent=2) + "\n")
 temporary.replace(OUT / "report.json")

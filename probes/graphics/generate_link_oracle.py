@@ -71,15 +71,21 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
     backing_ready=true;
     hb_language_from_string("ja",-1);
     pool.begin_operation();
-    Session first(1),second(2);
+    check(inputs->load_mode<=2,"load mode");
+    FT_Int32 flags=FT_LOAD_NO_BITMAP;
+    if(inputs->load_mode==1)flags|=FT_LOAD_FORCE_AUTOHINT;
+    if(inputs->load_mode==2)flags|=FT_LOAD_NO_HINTING|FT_LOAD_NO_AUTOHINT;
+    Session first(1,flags),second(2,flags);
     graphics_result.stage=2;check(first.openMemory(inputs->fonts[0],inputs->lengths[0]),"gothic open");
     graphics_result.stage=3;check(second.openMemory(inputs->fonts[1],inputs->lengths[1]),"mincho open");
     const unsigned sizes[]={12,16,24,32};
+    bool success=true;
     for(unsigned size:sizes)for(unsigned v=0;v<2;v++)for(unsigned family=0;family<2;family++) {
+        if(!success)continue;
         graphics_result.stage=10+graphics_result.runs;
         uint32_t hash=0;
-        check((family?second:first).draw(v!=0,size,&hash),"draw");
-        graphics_result.hashes[graphics_result.runs++]=hash;
+        success=(family?second:first).draw(v!=0,size,&hash);
+        if(success)graphics_result.hashes[graphics_result.runs++]=hash;
     }
     second.close();first.close();
     check(pool.valid() && pool.owner_reserved[1]==0 && pool.owner_reserved[2]==0,"client recovery");
@@ -87,8 +93,13 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
     graphics_result.raw_peak=(uint32_t)nih_graphics_backing_raw_peak();
     graphics_result.retained=(uint32_t)nih_graphics_backing_raw_used();
     graphics_result.largest_extent=(uint32_t)nih_graphics_backing_largest_extent();
+    graphics_result.controller_bytes=sizeof(pool);
+    graphics_result.record_capacity=LazyPool::record_count;
+    graphics_result.record_peak=(uint32_t)pool.peak_records;
+    graphics_result.record_failures=(uint32_t)pool.record_failures;
+    graphics_result.allocation_failures=(uint32_t)pool.failures;
     check(!graphics_result.unavailable_calls,"no unsupported runtime path");
-    graphics_result.stage=100;return 0;
+    graphics_result.stage=success?100:90;return success?0:20;
 }
 '''
 out = Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)

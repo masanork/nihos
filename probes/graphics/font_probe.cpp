@@ -30,6 +30,7 @@ extern "C" void study_free(void *p) { check(pool.release(0, p), "HB free ownersh
 struct Session {
     static constexpr unsigned slots = 16, page = 16384;
     unsigned owner;
+    const FT_Int32 load_flags;
     FILE *file = nullptr;
     uint32_t length = 0, clock = 0, base[slots] = {}, valid[slots] = {}, stamp[slots] = {};
     unsigned char *cache = nullptr;
@@ -39,7 +40,8 @@ struct Session {
     FT_Face face = nullptr;
     hb_font_t *font = nullptr;
     size_t source_bytes = 0, source_reads = 0;
-    explicit Session(unsigned client) : owner(client) { memory.user = this; }
+    explicit Session(unsigned client, FT_Int32 flags = FT_LOAD_DEFAULT | FT_LOAD_NO_BITMAP)
+        : owner(client), load_flags(flags) { memory.user = this; }
     Session(const Session &) = delete;
     Session &operator=(const Session &) = delete;
     ~Session() { close(); }
@@ -97,7 +99,7 @@ struct Session {
         if (FT_Open_Face(library, &args, 0, &face) || pool.failures) return false;
         if (FT_Select_Charmap(face, FT_ENCODING_UNICODE)) return false;
         font = hb_ft_font_create_referenced(face);
-        hb_ft_font_set_load_flags(font, FT_LOAD_DEFAULT | FT_LOAD_NO_BITMAP);
+        hb_ft_font_set_load_flags(font, load_flags);
         return font != hb_font_get_empty() && !pool.failures;
     }
     void close() {
@@ -132,7 +134,7 @@ struct Session {
             if (!count) { good = false; break; }
             for (unsigned i = 0; good && i < count; ++i) {
                 unsigned gid = info[i].codepoint;
-                if (!gid || FT_Load_Glyph(face, gid, FT_LOAD_DEFAULT | FT_LOAD_NO_BITMAP) ||
+                if (!gid || FT_Load_Glyph(face, gid, load_flags) ||
                     FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL) || pool.failures) { good = false; break; }
                 hash = (hash ^ gid) * 16777619u;
                 hash = (hash ^ (uint32_t)pos[i].x_advance) * 16777619u;

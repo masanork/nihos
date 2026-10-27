@@ -15,6 +15,9 @@ int main() {
     CHECK(pool.release(1, a) && pool.owner_reserved[1] == 0);
     CHECK(!pool.release(1, a));
     for (unsigned i = 0; i < 40; ++i) CHECK(((unsigned char *)b)[i] == 0x5a);
+    // Reuse an interior record hole while the higher record remains live.
+    a = pool.allocate(1, 64); CHECK(a && pool.valid());
+    CHECK(pool.release(1, a) && pool.valid());
     CHECK(pool.release(2, b) && pool.reserved == 0);
 
     a = pool.allocate(1, 33); CHECK(a);
@@ -40,8 +43,10 @@ int main() {
     void *records[LazyPool::record_count];
     for (void *&pointer : records) { pointer = pool.allocate(1, 16); CHECK(pointer); }
     CHECK(!pool.allocate(1, 16));
+    CHECK(pool.live_records == LazyPool::record_count && pool.peak_records == LazyPool::record_count);
+    CHECK(pool.record_failures == 1);
     for (void *pointer : records) CHECK(pool.release(1, pointer));
-    CHECK(pool.reserved == 0 && pool.valid());
+    CHECK(pool.reserved == 0 && pool.live_records == 0 && pool.valid());
 
     // Interleaved lifetimes, fragmentation, realloc moves and byte preservation.
     void *live[48] = {};
