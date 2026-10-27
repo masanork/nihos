@@ -233,9 +233,11 @@ fn message(round: u32, window: u32, index: u32) u32 {
     return 0x5c30_0000 ^ (round << 12) ^ (window << 8) ^ index;
 }
 
+const exchange_rounds: u32 = if (@import("native_options").boot_fast) 1 else 64;
+
 pub fn peer() void {
     if (@atomicLoad(u32, &enabled, .acquire) != 1) return;
-    for (1..65) |round| {
+    for (1..exchange_rounds + 1) |round| {
         waitFor(&request, @intCast(round), 100_000_000);
         for (0..mapping.window_count) |window| {
             for (0..16) |index| {
@@ -257,7 +259,7 @@ pub fn peer() void {
 pub fn exchange(controller: anytype) SmpReport {
     if (@atomicLoad(u32, &enabled, .acquire) != 1) return .{};
     var report = SmpReport{ .status = 1 };
-    for (1..65) |round| {
+    for (1..exchange_rounds + 1) |round| {
         for (0..mapping.window_count) |window| {
             for (0..16) |index| pointer(@intCast(window), 0x100 + @as(u32, @intCast(index)) * 4).* =
                 message(@intCast(round), @intCast(window), @intCast(index));
@@ -282,7 +284,7 @@ pub fn exchange(controller: anytype) SmpReport {
     for (0..mapping.window_count) |window| {
         const physical = mapping.physicalPage(controller.capacity, @intCast(window)).? * mapping.page_bytes;
         for (0..16) |index| {
-            const expected = ~message(64, @intCast(window), @intCast(index));
+            const expected = ~message(exchange_rounds, @intCast(window), @intCast(index));
             const address = physical + 0x100 + @as(u32, @intCast(index)) * 4;
             const actual = controller.readWord(address) catch nih_native_task_failed();
             if (actual != expected) nih_native_psram_mismatch(5, address, actual, expected);

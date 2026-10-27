@@ -54,7 +54,7 @@ pub fn prepareBoard(bus: anytype) !void {
     try update(bus, 0x03, 0x20, 0x20);
 }
 
-/// Caller waits the BSP's 500 ms after enabling touch before identification.
+/// Identify only once the touch controller returns a supported firmware ID.
 pub fn identify(bus: anytype) !Panel {
     var version: [1]u8 = .{0};
     bus.transfer(0x55, &.{ 0, 0 }, &version) catch |err| {
@@ -69,10 +69,28 @@ pub fn identify(bus: anytype) !Panel {
     return panelFromFirmware(version[0]);
 }
 
+/// Normal boot polls readiness within the former 500 ms fixed wait budget.
+/// A supported ID permits early completion; an unavailable/busy controller
+/// never silently selects a different panel. Electrical bus faults fail early.
+pub fn identifyReady(bus: anytype, pins: anytype) !Panel {
+    for (0..51) |attempt| {
+        return identify(bus) catch |err| switch (err) {
+            error.AddressNack, error.ReadAddressNack, error.Nack, error.UnsupportedPanel => {
+                if (attempt == 50) return err;
+                if (!pins.delay(10_000)) return error.Timer;
+                continue;
+            },
+            else => return err,
+        };
+    }
+    unreachable;
+}
+
 const BoardModel = struct {
     registers: [20]u8 = @splat(0x69),
     drop: bool = false,
     version: u8 = 3,
+    pending_reads: u8 = 0,
     absent: bool = false,
     timeout: bool = false,
     command_nack: bool = false,
@@ -87,7 +105,10 @@ const BoardModel = struct {
             if (self.absent) return error.AddressNack;
             if (self.command_nack) return error.Nack;
             if (self.read_address_nack) return error.ReadAddressNack;
-            output[0] = self.version;
+            if (self.pending_reads != 0) {
+                self.pending_reads -= 1;
+                output[0] = 0;
+            } else output[0] = self.version;
         } else if (address == 0x5d) {
             self.fallback_reads += 1;
             @memcpy(output, "911\x00");
@@ -151,4 +172,32 @@ test "scanout reservation leaves the nonidentity windows and owner heaps disjoin
     }
     for ([_]u32{ 0, 2 * 1024 * 1024, 5 * 1024 * 1024, 128 * 1024 * 1024 }) |capacity|
         try std.testing.expect(layout(capacity) == null);
+}
+
+test "panel readiness completes early, retries startup IDs and bounds failure" {
+    const Pins = struct {
+        elapsed: u32 = 0,
+        fail: bool = false,
+        pub fn delay(self: *@This(), us: u32) bool {
+            self.elapsed += us;
+            return !self.fail;
+        }
+    };
+    var pins = Pins{};
+    var ready = BoardModel{ .version = 1 };
+    try std.testing.expectEqual(Panel.st7121, try identifyReady(&ready, &pins));
+    try std.testing.expectEqual(@as(u32, 0), pins.elapsed);
+    var starting = BoardModel{ .version = 1, .pending_reads = 2 };
+    try std.testing.expectEqual(Panel.st7121, try identifyReady(&starting, &pins));
+    try std.testing.expectEqual(@as(u32, 20_000), pins.elapsed);
+    pins = .{};
+    var unsupported = BoardModel{ .version = 0 };
+    try std.testing.expectError(error.UnsupportedPanel, identifyReady(&unsupported, &pins));
+    try std.testing.expectEqual(@as(u32, 500_000), pins.elapsed);
+    pins = .{};
+    var broken = BoardModel{ .timeout = true };
+    try std.testing.expectError(error.ClockTimeout, identifyReady(&broken, &pins));
+    try std.testing.expectEqual(@as(u32, 0), pins.elapsed);
+    pins = .{ .fail = true };
+    try std.testing.expectError(error.Timer, identifyReady(&unsupported, &pins));
 }

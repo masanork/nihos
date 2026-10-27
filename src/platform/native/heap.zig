@@ -693,6 +693,7 @@ noinline fn prepareMode(memory: []u8, expected_mie: u32) bool {
     if (core >= 2 or interrupts() != expected_mie or @atomicLoad(u32, &prepared[core], .acquire) != 0) return false;
     owners[core] = .{ .heap = buddy.Heap.init(memory, core) orelse return false };
     @atomicStore(u32, &prepared[core], 1, .release);
+    if (@import("native_options").boot_fast) return true;
     // Preserve the original IRQ-off bootstrap assertions, but not across the
     // potentially long, linear Heap.init above. No worker can enter yet.
     const previous = asm volatile ("csrrci %[previous], mstatus, 8"

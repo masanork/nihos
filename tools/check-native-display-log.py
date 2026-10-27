@@ -18,7 +18,7 @@ UI = ('frames', 'clock_hz', 'sources', 'view', 'progress', 'target')
 KEY = ('sequence', 'source', 'action', 'modifiers', 'usage', 'accepted', 'view', 'stage', 'frames')
 
 
-def check_live(log, screen, exercise=False):
+def check_live(log, screen, exercise=False, normal_boot=False):
     start = NATIVE.fixed_record(log, 'NIHOS_NATIVE_UI_START', UI)
     ready = NATIVE.fixed_record(log, 'NIHOS_NATIVE_UI_READY', UI)
     keyboard = NATIVE.fixed_record(log, 'NIHOS_NATIVE_KEYBOARD', ('status', 'firmware', 'mode', 'transactions', 'error_code', 'sources'))
@@ -26,7 +26,8 @@ def check_live(log, screen, exercise=False):
     if (start['clock_hz'] != 1_000_000 or ready['clock_hz'] != 1_000_000 or
             start['sources'] not in (1, 3) or ready['sources'] not in (1, 3) or
             keyboard['sources'] != start['sources'] or ready['sources'] & ~start['sources'] or
-            not screen['frames'] <= start['frames'] < ready['frames'] or
+            not screen['frames'] <= start['frames'] <= ready['frames'] or
+            (not normal_boot and start['frames'] == ready['frames']) or
             start['view'] not in (0, 1) or ready['view'] not in (0, 1) or
             not 0 <= start['progress'] <= start['target'] == 85 or
             not 0 <= ready['progress'] <= ready['target'] == 255 or io['tx_dropped']):
@@ -39,6 +40,10 @@ def check_live(log, screen, exercise=False):
     order = ('NIHOS_NATIVE_DISPLAY_SCANOUT ', 'NIHOS_NATIVE_KEYBOARD ', 'NIHOS_NATIVE_UI_START ',
              'NIHOS_NATIVE_PSRAM_SMP ', 'NIHOS_NATIVE_HEARTBEAT ', 'NIHOS_NATIVE_FP_PASS ',
              'NIHOS_NATIVE_CONSOLE ', 'NIHOS_NATIVE_UI_IO ', 'NIHOS_NATIVE_UI_READY ')
+    if normal_boot:
+        order = ('NIHOS_NATIVE_DISPLAY_SCANOUT ', 'NIHOS_NATIVE_KEYBOARD ', 'NIHOS_NATIVE_UI_START ',
+                 'NIHOS_NATIVE_PSRAM_SMP ', 'NIHOS_NATIVE_BOOT_HEALTH ', 'NIHOS_NATIVE_CONSOLE ',
+                 'NIHOS_NATIVE_UI_IO ', 'NIHOS_NATIVE_UI_READY ')
     if [log.index(marker) for marker in order] != sorted(log.index(marker) for marker in order):
         raise ValueError('live display was not active during core qualification')
     keys = NATIVE.repeated_records(log, 'NIHOS_NATIVE_DIAGNOSTIC_KEY', KEY)
@@ -81,12 +86,14 @@ def check_live(log, screen, exercise=False):
             'keyboard_escape_seen': any(key['source'] == 2 and key['action'] == 1 and key['accepted'] for key in keys)}
 
 
-def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=False, require_live_controls=False):
+def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=False, require_live_controls=False, normal_boot=False):
+    if normal_boot and (mode != 2 or require_live_controls):
+        raise ValueError('normal boot is not the qualification control exercise')
     if mode not in (2, 3, 4, 5, 6, 7) or expected_dpi not in (10, 60, 80):
         raise ValueError('unknown display mode/timing')
     log = log.replace('\r', '')
     core = NATIVE.check(log, 'integer', psram_bytes, image, 'physical-device',
-                        require_qualification='NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20)
+                        require_qualification=not normal_boot and 'NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20, require_normal=normal_boot)
     if 'NIHOS_NATIVE_DISPLAY_IRQ_FAIL' in log:
         raise ValueError('display refresh failed')
     screen = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_SCANOUT', SCANOUT)
@@ -159,22 +166,22 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
         if console['input'] == 1:
             if console_style is None:
                 raise ValueError('live input requires style readback')
-            live = check_live(log, screen, require_live_controls)
+            live = check_live(log, screen, require_live_controls, normal_boot)
             if 'NIHOS_NATIVE_CONSOLE_RENDER ' in log:
                 fields = ('full','partial','scrolls','steps','max_step_us')
                 if ' cache_chunk_us=' in log: fields += ('copy_us','cache_us','cache_chunk_us')
                 if ' line_step_us=' in log: fields += ('line_step_us',)
                 if ' cpu_mhz=' in log: fields += ('cpu_mhz',)
                 stats = NATIVE.fixed_record(log,'NIHOS_NATIVE_CONSOLE_RENDER',fields)
-                if not stats['full'] or not stats['partial'] or stats['steps'] < stats['scrolls'] or stats['steps'] and not stats['max_step_us']:
+                if not stats['full'] or (not normal_boot and not stats['partial']) or stats['steps'] < stats['scrolls'] or stats['steps'] and not stats['max_step_us']:
                     raise ValueError('incomplete incremental rendering evidence')
-                if 'cache_chunk_us' in stats and (not 0 < stats['cache_chunk_us'] <= 1000 or stats['max_step_us'] < max(stats['copy_us'],stats['cache_us'])):
+                if 'cache_chunk_us' in stats and (not (0 if normal_boot and not stats['steps'] else 1) <= stats['cache_chunk_us'] <= 1000 or stats['max_step_us'] < max(stats['copy_us'],stats['cache_us'])):
                     raise ValueError('unbounded cache IRQ window or inconsistent timing')
                 if 'line_step_us' in stats and stats['line_step_us'] > stats['max_step_us']:
                     raise ValueError('inconsistent line-scroll timing')
-                if 'cpu_mhz' in stats and stats['cpu_mhz'] == 0:
+                if 'cpu_mhz' in stats and stats['cpu_mhz'] == 0 and (not normal_boot or stats['steps']):
                     raise ValueError('missing CPU frequency estimate')
-                if core['cpu_clock'] is not None and ('cpu_mhz' not in stats or abs(stats['cpu_mhz']-core['cpu_clock']['after_mhz']) > 2):
+                if core['cpu_clock'] is not None and (not normal_boot or stats['steps']) and ('cpu_mhz' not in stats or abs(stats['cpu_mhz']-core['cpu_clock']['after_mhz']) > 2):
                     raise ValueError('live CPU clock differs from boot initialization')
                 if console_style['palette'] == 4 and console_style['font'] in (0,3) and stats['steps'] != stats['scrolls']:
                     raise ValueError('Matrix console requires single-pass line advances')
@@ -198,8 +205,9 @@ def main():
     parser.add_argument('--dpi', type=int, required=True)
     parser.add_argument("--console", action="store_true", help="Require the ASCII console record")
     parser.add_argument("--exercise-live", action="store_true", help="Require the complete six-control serial exercise")
+    parser.add_argument("--normal-boot", action="store_true", help="Validate normal boot health, without claiming full qualification")
     args = parser.parse_args()
-    report = check(args.log.read_text(), json.loads(args.audit.read_text()), args.mode, args.dpi, require_console=args.console, require_live_controls=args.exercise_live)
+    report = check(args.log.read_text(), json.loads(args.audit.read_text()), args.mode, args.dpi, require_console=args.console, require_live_controls=args.exercise_live, normal_boot=args.normal_boot)
     args.report.write_text(json.dumps(report, indent=2) + '\n')
     print('Native memory/core and display startup/IRQ evidence passed; optical evidence is separate')
 

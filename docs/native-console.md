@@ -8,18 +8,55 @@ colour target; a frame/timer may smooth movement only towards that target.
 An operation that never returns keeps its current stage visible. Colour is
 not elapsed time, a percentage, or evidence that input/storage is ready.
 
-The opt-in live implementation starts scanout **after destructive PSRAM
-qualification and before core/heap/scheduler qualification**. Its CPU0-owned
-2 KiB byte journal, independent stage state, and fixed ASCII grid share the
-landscape RGB565 buffer with the quiet inscription. Each operation's stage is
-painted before entering it. The earlier final read-only snapshot remains
-available with `NIHOS_NATIVE_CONSOLE_LIVE=0`.
+The live integer console now defaults to normal boot when
+`NIHOS_NATIVE_QUALIFICATION=0`. It starts scanout after PSRAM initialization
+and calibration, then checks one cross-core PSRAM exchange, both scheduler
+timers and one IPI round trip before READY. It creates bootstrap contexts
+without the busy/lifecycle fixture tasks. CPU0 continues to service the
+inscription and keyboard after READY; colour completion never delays READY.
+The 2 KiB byte journal, stage state and ASCII grid still share one landscape
+RGB565 buffer. The earlier final snapshot remains available with
+`NIHOS_NATIVE_CONSOLE_LIVE=0`.
+
+Normal boot omits the destructive full-memory sweep, 300-round scheduler soak,
+allocator misuse/worker probes, Flash table CRC passes, and the preparatory
+framebuffer paint/checksum and PHY start/stop proof. It retains mapping and
+address/data checks, full heap metadata initialization, stack guards, CPU
+clock initialization, and real PHY/DMA startup. DQS still scans every phase
+and delay and requires 100 successful samples for every accepted delay;
+only the remaining samples of an already-failed delay are skipped. Panel
+identification polls within the former 500 ms wait budget; electrical bus
+faults fail rather than select an assumed panel. Normal panel commands keep
+all upstream delays, but omit the additional 5 ms per command.
+
+`NIHOS_NATIVE_QUALIFICATION=1` selects the full existing harness, including
+the full-memory sweep and all 100 samples of rejected DQS delays. Set
+`NIHOS_NATIVE_BOOT_FAST=0` explicitly for a harness comparison without the
+optional full-memory sweep. `NIHOS_NATIVE_BOOT_FAST=1` is restricted to live
+integer, non-qualification builds; floating/compiled/SQLite and emulator
+profiles retain their previous qualification workflow.
+
+`NIHOS_NATIVE_BOOT_TIME` records completion timestamps in microseconds from
+TG1 diagnostic-clock initialization (after CPU clock setup, not power-on).
+Stage IDs are from `boot_state.Stage`: memory=1, display_prepare=3,
+display_scanout=5, input=7, cores=4, console=6. `BOOT_HEALTH` reports both
+scheduler tick counts and IPI counts. Validate these with
+`check-native-display-log.py --normal-boot --console --mode 2 --dpi 80`.
+The full harness checker does not accept normal boot as qualification.
+Validation for this change: 212 host Zig tests pass in Debug, ReleaseSafe and
+ReleaseSmall; 148 Python checks pass, including negative normal/qualification
+evidence cases. Normal and diagnostic device images pass the native image
+audit. The 32 MiB emulator completes the unchanged 300-round integer harness,
+lifecycle, allocator and IPI/idle checks. Normal-image internal SRAM heap is
+76,672 bytes (qualification image: 49,472 bytes); the external display/heap
+reservation and 56 KiB stack bank remain unchanged. Physical normal-boot
+timing and cold power-on validation remain pending until the Tab5 is connected.
 
 ```sh
 NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_LIVE=1 \
   NIHOS_NATIVE_KEYBOARD_I2C=1 NIHOS_NATIVE_CONSOLE_PALETTE=4 \
   NIHOS_NATIVE_DISPLAY=2 NIHOS_NATIVE_PSRAM_200=1 \
-  NIHOS_NATIVE_QUALIFICATION=1 sh tools/build-native.sh device integer
+  NIHOS_NATIVE_QUALIFICATION=0 sh tools/build-native.sh device integer
 python3 tools/console/preview.py
 python3 tools/console/preview.py --failed
 # Palette: 0 = neutral, 1 = pale green, 2 = blue, 3 = stronger green, 4 = Matrix green (default)

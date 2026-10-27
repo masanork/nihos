@@ -32,6 +32,15 @@ fn sample(controller: anytype, hardware: anytype, report: *Report, started: u64)
     return matched;
 }
 pub fn tune(controller: anytype, hardware: anytype, report: *Report) !void {
+    return tunePolicy(controller, hardware, report, false);
+}
+
+/// A failed delay candidate cannot re-enter the window. Retain 100 samples
+/// for every accepted delay; skip only the remaining samples of failed taps.
+pub fn tuneRejectEarly(controller: anytype, hardware: anytype, report: *Report) !void {
+    return tunePolicy(controller, hardware, report, true);
+}
+fn tunePolicy(controller: anytype, hardware: anytype, report: *Report, comptime reject_early: bool) !void {
     const started = hardware.now();
     report.stage = 1;
     try hardware.clock(20); // MPLL400 /20, not a PLL source change while mapped.
@@ -57,6 +66,7 @@ pub fn tune(controller: anytype, hardware: anytype, report: *Report) !void {
         var good = true;
         for (0..100) |_| {
             good = (try sample(controller, hardware, report, started)) and good;
+            if (reject_early and !good) break;
         }
         if (good) report.delay_mask |= @as(u32, 1) << @intCast(delay);
     }
@@ -86,6 +96,8 @@ const TuningModel = struct {
     phases: u4 = 0b0110,
     ticks: u64 = 0,
     tick_step: u64 = 1,
+    late_failure: bool = false,
+    delay16_reads: u32 = 0,
     pub fn now(self: *@This()) u64 {
         self.ticks += self.tick_step;
         return self.ticks;
@@ -103,6 +115,10 @@ const TuningModel = struct {
         self.seed[(address - 0x80) / 4] = value;
     }
     pub fn readWord(self: *@This(), address: u32) !u32 {
+        if (self.divider == 2 and self.phase_id == 1 and self.delay_id == 16) {
+            self.delay16_reads += 1;
+            if (self.late_failure and self.delay16_reads == 3200) return 1 ^ self.seed[(address - 0x80) / 4];
+        }
         const good = self.divider == 20 or
             (self.phases & (@as(u4, 1) << self.phase_id) != 0 and self.delay_id >= 10 and self.delay_id <= 22);
         return self.seed[(address - 0x80) / 4] ^ (if (good) @as(u32, 0) else @as(u32, 1));
@@ -132,4 +148,25 @@ test "no phase window or elapsed deadline prevents calibration success" {
     var timed = Report{};
     try std.testing.expectError(error.TuningDeadline, tune(&late, &late, &timed));
     try std.testing.expectEqual(@as(u32, 2), timed.status);
+}
+
+test "early rejection preserves accepted 100-sample windows and final selection" {
+    var model = TuningModel{};
+    var report = Report{};
+    try tuneRejectEarly(&model, &model, &report);
+    try std.testing.expectEqual(@as(u32, 1), report.status);
+    try std.testing.expectEqual(@as(u32, 100), report.repetitions);
+    try std.testing.expectEqual(@as(u32, 0x7ffc00), report.delay_mask);
+    try std.testing.expectEqual(@as(u32, 16), report.delay);
+    // 6 setup/final samples, 13 valid taps x100, 18 invalid taps x1.
+    try std.testing.expectEqual(@as(u32, (6 + 13 * 100 + 18) * 32), report.reads);
+}
+
+test "early rejection still detects a failure in the hundredth sample" {
+    var model = TuningModel{ .late_failure = true };
+    var report = Report{};
+    try tuneRejectEarly(&model, &model, &report);
+    try std.testing.expectEqual(@as(u32, 3200), model.delay16_reads);
+    try std.testing.expectEqual(@as(u32, 0x7efc00), report.delay_mask);
+    try std.testing.expectEqual(@as(u32, 12), report.delay);
 }
