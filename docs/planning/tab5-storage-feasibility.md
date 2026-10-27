@@ -470,3 +470,14 @@ data/node range summaries for resumable GC. The 33 MiB host object's two-page,
 The RV32 state is 31,512 B uncached or 557,848 B with the 512 KiB metadata cache.
 Initial conversion still constructs the whole map; growth/truncate, batching,
 native placement, target durability and SQLite integration remain open.
+
+The [sparse-resize host follow-up](../measurements/2026-10-27-store-resize.md)
+adds version 5 implicit zero pages/subtrees, COW tail clearing and shared-map
+growth/truncation. A wholly unwritten logical 16 GiB object needs one map root;
+this is not a dense-capacity or full-transfer qualification. A 33 MiB host file
+shrink/regrow wrote 20 KiB per operation while preserving the pinned old tail.
+The RV32 store state remains 31,512 B uncached or 557,848 B cached; a caller-owned
+16 KiB resize workspace must also fit the 2 MiB store envelope. Four publication
+campaigns passed 7,776 cuts per build mode. Batching, native ownership/cancellation,
+PSRAM placement and stack peak, target durability and persistent SQLite VFS/WAL
+remain open; the frozen physical candidate is unchanged.

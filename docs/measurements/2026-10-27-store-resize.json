@@ -1,0 +1,631 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "5b906d40eb3b588ad63f987829d020b6ade9346d",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-sparse-resize",
+  "native_execution": false,
+  "physical_power_cuts": 0,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-resize-host",
+  "host": {
+    "zig_debug": 267,
+    "zig_release_safe": 267,
+    "new_zig_tests": 12,
+    "python": 168,
+    "format_zlint_shellcheck": true,
+    "native_elf_links_and_audits": 6,
+    "rv32_resize_compile": true
+  },
+  "format": {
+    "version": 5,
+    "zero_page_and_subtree": "canonical all-zero reference entry",
+    "old_version_4": "reject without writes or automatic migration"
+  },
+  "budget": {
+    "rv32_plain_state_bytes": 31512,
+    "rv32_cached_state_bytes": 557848,
+    "host_plain_state_bytes": 31528,
+    "host_cached_state_bytes": 557864,
+    "caller_resize_scratch_bytes": 16384,
+    "state_growth_bytes": 0,
+    "store_envelope_bytes": 2097152,
+    "capacity_dependent_RAM_map": false,
+    "native_placement_or_stack_peak_measured": false
+  },
+  "sparse_geometry": {
+    "logical_bytes": 17179869184,
+    "new_map_pages": 1,
+    "new_data_pages": 0,
+    "full_16GiB_transfer": false
+  },
+  "resize_cost": {
+    "object_bytes": 34603025,
+    "shrink_bytes": 4109,
+    "payload_pages_each": 3,
+    "backend_pages_each_including_object_leaf_and_root": 5,
+    "backend_bytes_each": 20480,
+    "retirement_pages": 1,
+    "total_backend_bytes": 45056,
+    "syncs": 6
+  },
+  "fault_campaigns": {
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "per_mode": [
+      {
+        "operation": "partial-tail-shrink",
+        "events": 66,
+        "crash_cases": 2376
+      },
+      {
+        "operation": "partial-tail-growth",
+        "events": 66,
+        "crash_cases": 2376
+      },
+      {
+        "operation": "zero-truncate",
+        "events": 34,
+        "crash_cases": 1224
+      },
+      {
+        "operation": "sparse-growth-from-empty",
+        "events": 50,
+        "crash_cases": 1800
+      }
+    ],
+    "crash_cases_per_mode": 7776,
+    "acknowledged_cases_per_campaign_per_mode": 6,
+    "backgrounds": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_orders": [
+      "ascending",
+      "descending"
+    ],
+    "sector_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ]
+  },
+  "oracle": {
+    "cycles": 36,
+    "operations": [
+      "resize",
+      "sparse-byte-patch",
+      "commit",
+      "GC",
+      "cold-cache-read",
+      "verify"
+    ]
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-fixed-buffer-streaming",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "02e0aa2eb80c409b8288db179e7d4902efa1fb918782595680e987f185696755",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":1,\"map_metadata_pages\":35,\"payload_high_water_pages\":0}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":8460,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "cancel",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"cancel\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":256,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "stage-wait",
+        "pid": 60415,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "stage-wait",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 256,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "finish-wait",
+        "pid": 60417,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "finish-wait",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8459,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":8458}\n",
+        "stderr": ""
+      },
+      {
+        "command": "patch-wait",
+        "pid": 60419,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "patch-wait",
+          "generation": 3,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8460,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16916
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16916}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16916}\n",
+        "stderr": ""
+      },
+      {
+        "command": "promote-map",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"promote-map\",\"generation\":4,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":37,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16951}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-old\",\"generation\":4,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16951}\n",
+        "stderr": ""
+      },
+      {
+        "command": "mapped-patch-wait",
+        "pid": 60424,
+        "exit_code": -9,
+        "readiness": {
+          "phase": "mapped-patch-wait",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 9,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":5,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "collect-map",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"collect-map\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":1,\"syncs\":2,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-map-new",
+        "image": "mapped-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-map-new\",\"generation\":6,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16957}\n",
+        "stderr": ""
+      },
+      {
+        "command": "resize-cycle",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"resize-cycle\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":11,\"syncs\":6,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-resized",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-resized\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-resized",
+        "image": "resized-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-resized\",\"generation\":9,\"state_bytes\":557864,\"object_bytes\":34603025,\"input_buffer_bytes\":4096,\"data_pages\":8449,\"checksum_pages\":9,\"writes\":0,\"syncs\":0,\"map_metadata_pages\":35,\"payload_high_water_pages\":16963}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "33MiB_object_with_4KiB_input_reopens",
+        "passed": true,
+        "seed": {
+          "phase": "seed",
+          "generation": 2,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 8460,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 8458
+        }
+      },
+      {
+        "name": "cancel_after_1MiB_keeps_old_object",
+        "passed": true
+      },
+      {
+        "name": "kill_during_stream_keeps_old_generation",
+        "passed": true
+      },
+      {
+        "name": "kill_after_finish_before_commit_keeps_old_generation",
+        "passed": true
+      },
+      {
+        "name": "patch_crosses_checksum_table_boundary_and_survives_kill_after_ack",
+        "passed": true,
+        "reopened": {
+          "phase": "verify-new",
+          "generation": 3,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 0,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16916
+        }
+      },
+      {
+        "name": "compact_range_reconstruction_reopens_patched_object",
+        "passed": true
+      },
+      {
+        "name": "map_promotion_shares_existing_33MiB_payload",
+        "passed": true,
+        "promotion": {
+          "phase": "promote-map",
+          "generation": 4,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 37,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16951
+        }
+      },
+      {
+        "name": "mapped_patch_changes_two_pages_and_survives_ack_kill",
+        "passed": true,
+        "patch": {
+          "phase": "mapped-patch-wait",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 9,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "reopened": {
+          "phase": "verify-map-new",
+          "generation": 5,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 0,
+          "syncs": 0,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "collected": {
+          "phase": "collect-map",
+          "generation": 6,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 1,
+          "syncs": 2,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16957
+        },
+        "legacy_write_bytes": 34652160,
+        "mapped_write_bytes": 36864
+      },
+      {
+        "name": "mapped_range_snapshot_reuses_unchanged_payload_file",
+        "passed": true
+      },
+      {
+        "name": "truncate_regrow_zero_tail_and_pinned_old_reader",
+        "passed": true,
+        "resize": {
+          "phase": "resize-cycle",
+          "generation": 9,
+          "state_bytes": 557864,
+          "object_bytes": 34603025,
+          "input_buffer_bytes": 4096,
+          "data_pages": 8449,
+          "checksum_pages": 9,
+          "writes": 11,
+          "syncs": 6,
+          "map_metadata_pages": 35,
+          "payload_high_water_pages": 16963
+        },
+        "scratch_bytes": 16384,
+        "shrink_payload_pages": 3,
+        "grow_payload_pages": 3,
+        "zero_after": 34598916
+      },
+      {
+        "name": "resized_range_snapshot_reopens_without_resurrecting_tail",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "9109731e0a86e366885acc584cfdbc3486029d9266cb6653cc131bc833c83349"
+        },
+        {
+          "file": "payload.bin",
+          "offset": 17045651456,
+          "bytes": 69287936,
+          "sha256": "5cc32d48df1b87edba01ca8d2c1faf6dd3d20308007f9e3ff7afbdccd2e7be79"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "mapped_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "mapped-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "e8519edc81a429db8f135cc9408232e27e8a2736b59e32a9e4a91e70218dc973"
+        },
+        {
+          "file": "payload.bin",
+          "offset": 17045651456,
+          "bytes": 69287936,
+          "sha256": "5cc32d48df1b87edba01ca8d2c1faf6dd3d20308007f9e3ff7afbdccd2e7be79"
+        },
+        {
+          "file": "map-pages.bin",
+          "offset": 17114939392,
+          "bytes": 167936,
+          "sha256": "75e40f225b3545b21efa5d9dc806eb102929279163f12076bf288698517c9e76"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "resized_snapshot": {
+      "capacity": 17179869184,
+      "ranges": [
+        {
+          "file": "resized-metadata.bin",
+          "offset": 0,
+          "bytes": 1056768,
+          "sha256": "c2310dfb84c7218fe2b9aac193d0e16c2e7acc5e35c2bac309961e5b2291cf6c"
+        },
+        {
+          "file": "resized-payload.bin",
+          "offset": 17045651456,
+          "bytes": 69480448,
+          "sha256": "2fd2702cb6df6c841303247b3cbce86d19eef2a555270d393c03915faea7453b"
+        }
+      ],
+      "omitted_bytes": "zero sparse holes"
+    },
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 69517312
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70352896
+      },
+      "mapped-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70533120
+      },
+      "resized-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 70549504
+      }
+    }
+  },
+  "negative_controls": {
+    "resize": [
+      {
+        "variant": "resurrection",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-resize/negative-resize.fgp9i38a/resurrection/resize_test.zig",
+          "--test-filter",
+          "truncate and regrow cannot resurrect bytes"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      },
+      {
+        "variant": "holes",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-resize/negative-resize.fgp9i38a/holes/resize_test.zig",
+          "--test-filter",
+          "sparse growth allocates no zero data"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      }
+    ],
+    "existing_extents": [
+      {
+        "variant": "data",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.1ot9ehb6/data/extent_map_test.zig",
+          "--test-filter",
+          "pinned mapped data and map nodes survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "EXTENT_READER_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "nodes",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.1ot9ehb6/nodes/extent_map_test.zig",
+          "--test-filter",
+          "pinned mapped data and map nodes survive"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "EXTENT_READER_COUNTEREXAMPLE error=Corrupt"
+      },
+      {
+        "variant": "node_summary",
+        "command": [
+          ".tools/zig-0.17.0/zig",
+          "test",
+          "/Users/masanork/repo/nihos-store-model/build/store-extents/negative-extents.1ot9ehb6/node_summary/extent_map_test.zig",
+          "--test-filter",
+          "internal node summaries protect metadata far"
+        ],
+        "exit_code": 1,
+        "semantic_counterexample_found": true,
+        "expected_marker": "FAIL (TestExpectedEqual)"
+      }
+    ]
+  },
+  "initial_failure": {
+    "reason": "NoSpace fixture expected one free page but omitted a reclaimed sidecar page",
+    "resolution": "increase blocker from 48 to 49 data pages; retain original failure logs"
+  },
+  "physical_candidate_hashes_rechecked": 55,
+  "limitations": [
+    "host-only model; no native service ownership or cancellation integration",
+    "caller scratch, stack, backend and OS cache are excluded from Store state size",
+    "initial map conversion remains blocking; no multi-page metadata batching",
+    "conservative summaries and contiguous allocation can impose near-full/fragmentation cost",
+    "no physical SD writes, removal or power-loss qualification",
+    "no relocating cleaner or persistent SQLite VFS/WAL"
+  ],
+  "archive_regular_files": 75
+}
