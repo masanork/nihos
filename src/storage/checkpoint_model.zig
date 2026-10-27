@@ -98,6 +98,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             depth: u8 = 0,
             space: PayloadSpace = .{ .usable_pages = data_end - data_start, .reserved_pages = config.payload_reserve_pages, .free_pages = 0, .largest_run = 0 },
         };
+        pub const capacity_bytes = Device.capacity;
         pub const max_objects = config.leaf_pages * leaf_entries;
         pub const reader_limit = config.reader_slots;
         pub const metadata_cache_pages = config.leaf_cache_pages;
@@ -1244,6 +1245,16 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.retained = self.current;
             self.current = self.staged;
             self.in_transaction = false;
+        }
+
+        /// Exclusive-owner view of unpublished mutations; not a public reader
+        /// capability and never an assertion of durability.
+        pub fn getStaged(self: *Self, key: u32) Error!Value {
+            try self.transaction();
+            return try self.checkedLookup(&self.staged, key) orelse error.NotFound;
+        }
+        pub fn readStaged(self: *Self, key: u32, offset: u64, destination: []u8) Error!usize {
+            return self.readValue(try self.getStaged(key), offset, destination);
         }
 
         pub fn read(self: *Self, key: u32, offset: u64, destination: []u8) Error!usize {
