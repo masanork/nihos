@@ -822,8 +822,27 @@ fn normalReady() noreturn {
     }
 }
 
+const ForegroundTimerIo = struct {
+    pub fn maskInterrupts(_: @This()) u32 {
+        return asm volatile ("csrrci %[value],mstatus,8"
+            : [value] "=r" (-> u32),
+            :
+            : .{ .memory = true });
+    }
+    pub fn restoreInterrupts(_: @This(), previous: u32) void {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    }
+    pub fn write(_: @This(), address: u32, value: u32) void {
+        reg(address).* = value;
+    }
+    pub fn fence(_: @This()) void {
+        asm volatile ("fence iorw,iorw" ::: .{ .memory = true });
+    }
+};
+
 fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bool) void {
     stageBegin(.display_scanout);
+    if (!early and !options.console_live) @import("foreground_timer.zig").retire(ForegroundTimerIo{}, clock);
     const display = display_service.runtime;
     if (options.card_auto) @import("card_auto.zig").prepare(timer(0), display_panel) catch {
         fail("automatic card preparation; no PIN sent");
