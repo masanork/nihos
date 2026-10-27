@@ -55,6 +55,14 @@ confirmation. Do not infer native boot order from the hosted sequence above.
 
 ## Preview and checks
 
+The opt-in USB/card fixtures are separate from normal splash/console boot.
+`DISPLAY=8` starts the keypad demonstration; `DISPLAY=9/10/11` starts the
+selected card screen directly. Their never-visible preparation framebuffer is
+cleared instead of embedding the normal splash alongside the card fonts.
+Normal `DISPLAY=2` with live console retains its splash and boot-stage flow.
+See the [card integration record](measurements/2026-10-27-card-main-landing.md)
+for source/build evidence and the pending physical gates.
+
 ```sh
 .tools/zig-0.17.0/zig build test
 .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe

@@ -105,7 +105,12 @@ pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) Report {
     // CPU-only image proof, kept separate from DMA/physical scanout evidence.
     const data: [*]u8 = @ptrFromInt(selected.frame_start);
     const frame = data[0..selected.frame_bytes];
-    if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .display)) {
+    if (comptime @import("native_options").card_read or @import("native_options").keypad_demo) {
+        // This preparation probe never enables scanout. Card modes paint
+        // their own first frame before runtime startup; omit unused splash
+        // assets rather than linking both font sets into the record page.
+        @memset(frame, 0);
+    } else if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .display)) {
         report.error_code = 9;
         return report;
     }

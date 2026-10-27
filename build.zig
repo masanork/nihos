@@ -9,6 +9,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const ccid_module = b.createModule(.{
+        .root_source_file = b.path("src/usb/ccid.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    module.addImport("ccid", ccid_module);
 
     const module_tests = b.addTest(.{
         .root_module = module,
@@ -17,4 +23,6 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run host-side nihOS unit tests");
     test_step.dependOn(&run_module_tests.step);
+    const ccid_tests = b.addTest(.{ .root_module = ccid_module });
+    test_step.dependOn(&b.addRunArtifact(ccid_tests).step);
 }

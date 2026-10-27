@@ -743,5 +743,90 @@ class HardwareQualificationTests(unittest.TestCase):
                 MODULE.check(self.fast_log().replace(old, new), "integer", 32 << 20, require_sdmmc_fast=True)
 
 
+class NativeUSBTests(unittest.TestCase):
+    @staticmethod
+    def usb_log():
+        values = (1, 8, 0, 0x4f54400a, 0x2140f, 1, 0x054c, 0x0dc9, 116, 2,
+                  1, 0x81, 1, 0x83, 522, 22, 3, 2, 3, 0x06000036, 1)
+        return "NIHOS_NATIVE_USB_MODE enabled=1\nNIHOS_NATIVE_USB" + "".join(
+            " {}={:08x}".format(key, value) for key, value in zip(MODULE.USB_FIELDS, values)) + "\n"
+
+    def test_native_usb_requires_complete_correlated_record(self):
+        log = self.usb_log()
+        self.assertEqual(MODULE.check_usb(log)['pid'], 0x0dc9)
+        for key, value in [('status', 2), ('stage', 7), ('error_code', 1),
+                           ('slot_queries', 2), ('transfers', 21), ('dma_stopped', 0),
+                           ('card_state', 3), ('last_descriptor', 0x80000000), ('last_irq', 0x0b)]:
+            malformed = re.sub(r' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_usb(malformed)
+        for malformed in [log + log, log[:-5], log.replace('NIHOS_NATIVE_USB_MODE enabled=1\n', ''),
+                          'NIHOS_NATIVE_USB status=00000\n' + log]:
+            with self.assertRaises(ValueError):
+                MODULE.check_usb(malformed)
+
+    def test_usb_evidence_is_never_accepted_as_emulator_evidence(self):
+        with self.assertRaisesRegex(ValueError, 'requires physical-device'):
+            MODULE.check(complete_log() + self.usb_log(), require_usb=True)
+
+
+class NativeJPKITests(unittest.TestCase):
+    @staticmethod
+    def jpki_log():
+        values = (1, 6, 0, 0, 0, 13, 0, 7, 0, 0, 3, 3, 0x63c3, 2, 1)
+        return 'NIHOS_NATIVE_JPKI_MODE pin_input=disabled\nNIHOS_NATIVE_JPKI' + ''.join(
+            ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.JPKI_FIELDS, values)) + '\nNIHOS_NATIVE_JPKI_SERIAL hex=8123\n'
+
+    def test_jpki_counter_change_pin_data_and_incomplete_receipts_are_rejected(self):
+        log = self.jpki_log()
+        self.assertEqual(MODULE.check_jpki(log)['auth_after'], 3)
+        for key, value in [('auth_after', 2), ('auth_before', 0), ('auth_before', 255),
+                           ('pin_data_sent', 1), ('apdu_count', 6), ('poweroff', 0),
+                           ('serial_bytes', 3), ('rejected', 1), ('last_sw', 0x9000)]:
+            changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_jpki(changed)
+        for changed in [log + log, log[:-4], log.replace('hex=8123', 'hex=nothex')]:
+            with self.assertRaises(ValueError):
+                MODULE.check_jpki(changed)
+
+
+class NativeCardTests(unittest.TestCase):
+    @staticmethod
+    def card_log():
+        values = (1, 3, 1, 1, 3, 1, 1, 1, 0, 1, 720, 1280, 10, 64, 64, 60, 4, 2, 0x81, 1, 0, 0, 0, 1)
+        return 'NIHOS_NATIVE_FP_PASS floating=0\nNIHOS_NATIVE_CARD_CHECK_START pin_enabled=0\nNIHOS_NATIVE_CARD_CHECK' + ''.join(
+            ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.CARD_FIELDS, values)) + '\n'
+
+    def test_card_readiness_requires_stopped_power_pin_disabled_and_consistent_samples(self):
+        log = self.card_log()
+        self.assertEqual(MODULE.check_card(log)['remaining'], 3)
+        for key, value in [('remaining', 255), ('card_fault', 6), ('poweroff', 0), ('dma_erased', 0),
+                           ('pin_data_sent', 1), ('touch', 0), ('width', 1280), ('slots', 11),
+                           ('samples', 63), ('fresh', 65), ('releases', 59), ('max_contacts', 0), ('vbus_off', 0)]:
+            changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_card(changed)
+        fallback = log.replace('poweroff=00000001', 'poweroff=00000002').replace('last_flags=00000001', 'last_flags=00000000')
+        self.assertEqual(MODULE.check_card(fallback)['poweroff'], 2)
+        with self.assertRaises(ValueError):
+            MODULE.check_card(fallback.replace('vbus_off=00000001', 'vbus_off=00000000'))
+        for changed in [log + log, log[:-4], log.replace('pin_enabled=0', 'pin_enabled=1'),
+                        log.replace('NIHOS_NATIVE_FP_PASS floating=0\n', '')]:
+            with self.assertRaises(ValueError):
+                MODULE.check_card(changed)
+
+    def test_display_preparation_proves_exact_reservation_without_claiming_scanout(self):
+        values = (1, 6, 0, 3, 18, 0x48030000, 720 * 1280 * 2, 29 * 65536, 0x12345678, 1, 3, 0, 0)
+        log = 'NIHOS_NATIVE_DISPLAY_PREP' + ''.join(
+            ' {}={:08x}'.format(key, value) for key, value in zip(MODULE.DISPLAY_PREP_FIELDS, values)) + '\n'
+        self.assertEqual(MODULE.check_display_preparation(log)['reserve_bytes'], 29 * 65536)
+        for key, value in [('frame_start', 0x48020000), ('frame_bytes', 1), ('reserve_bytes', 0),
+                           ('panel', 0), ('phy_status', 0), ('backlight', 1), ('scanout', 1)]:
+            changed = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), log)
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                MODULE.check_display_preparation(changed)
+
+
 if __name__ == "__main__":
     unittest.main()

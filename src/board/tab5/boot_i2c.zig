@@ -7,6 +7,76 @@ pub const Error = error{ InvalidTransfer, ClockTimeout, BusBusy, AddressNack, Re
 pub const sda = 31;
 pub const scl = 32;
 
+/// Remove USB-A power without resetting the shared expander or other pins.
+/// Verify the enable latch, output direction and high-impedance control.
+pub fn usbPowerOff(bus: anytype) !void {
+    for ([_]u8{ 0x05, 0x07, 0x03 }) |register| {
+        var previous: [1]u8 = .{0};
+        try bus.transfer(0x44, &.{register}, &previous);
+        const value = if (register == 3) previous[0] | 8 else previous[0] & ~@as(u8, 8);
+        try bus.transfer(0x44, &.{ register, value }, &.{});
+        var readback: [1]u8 = .{0};
+        try bus.transfer(0x44, &.{register}, &readback);
+        if (readback[0] != value) return error.Readback;
+    }
+    if (!bus.pins.delay(250_000)) return error.Timer;
+}
+
+/// Exclusive boot diagnostic only: reset the USB-A reader's retained state.
+pub fn usbPowerCycle(bus: anytype) !void {
+    var saved: [3]u8 = @splat(0);
+    const registers = [_]u8{ 0x05, 0x03, 0x07 };
+    for (registers, 0..) |register, index| try bus.transfer(0x44, &.{register}, saved[index..][0..1]);
+    try bus.transfer(0x44, &.{ 0x05, saved[0] & 0xf7 }, &.{});
+    try bus.transfer(0x44, &.{ 0x03, saved[1] | 8 }, &.{});
+    try bus.transfer(0x44, &.{ 0x07, saved[2] & 0xf7 }, &.{});
+    if (!bus.pins.delay(250_000)) return error.Timer;
+    try bus.transfer(0x44, &.{ 0x05, saved[0] | 8 }, &.{});
+    if (!bus.pins.delay(100_000)) return error.Timer;
+}
+
+const PowerModel = struct {
+    values: [3]u8 = .{ 0xa5, 0x55, 0xaa },
+    waits: [2]u32 = @splat(0),
+    next: usize = 0,
+    pins: *PowerModel,
+    drop: bool = false,
+    pub fn transfer(self: *@This(), address: u8, write: []const u8, read: []u8) !void {
+        try std.testing.expectEqual(@as(u8, 0x44), address);
+        const index: usize = switch (write[0]) {
+            5 => 0,
+            3 => 1,
+            7 => 2,
+            else => return error.InvalidTransfer,
+        };
+        if (read.len == 1) read[0] = self.values[index] else if (!self.drop) self.values[index] = write[1];
+    }
+    pub fn delay(self: *@This(), microseconds: u32) bool {
+        self.waits[self.next] = microseconds;
+        if (self.next == 0 and self.values[0] & 8 != 0) return false;
+        if (self.next == 1 and self.values[0] & 8 == 0) return false;
+        self.next += 1;
+        return true;
+    }
+};
+
+test "USB reader power cycle changes only expander bit 3 and observes off/on waits" {
+    var model: PowerModel = undefined;
+    model = .{ .pins = &model };
+    try usbPowerCycle(&model);
+    try std.testing.expectEqualDeep([3]u8{ 0xad, 0x5d, 0xa2 }, model.values);
+    try std.testing.expectEqualDeep([2]u32{ 250_000, 100_000 }, model.waits);
+}
+test "USB power-off verifies readback, preserves other pins and detects dropped writes" {
+    var model: PowerModel = undefined;
+    model = .{ .pins = &model, .values = .{ 0xad, 0x55, 0xaa } };
+    try usbPowerOff(&model);
+    try std.testing.expectEqualDeep([3]u8{ 0xa5, 0x5d, 0xa2 }, model.values);
+    try std.testing.expectEqual(@as(u32, 250_000), model.waits[0]);
+    model = .{ .pins = &model, .values = .{ 0xad, 0x55, 0xaa }, .drop = true };
+    try std.testing.expectError(error.Readback, usbPowerOff(&model));
+}
+
 pub fn Master(comptime Pins: type) type {
     return struct {
         pins: Pins,

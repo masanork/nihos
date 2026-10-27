@@ -1,0 +1,36 @@
+{
+  "purpose": "Synthetic gradient only; no person or card data",
+  "generator": "Pillow JPEG2000; RGB(x*255/191,y,(x+y)*255/446),192x256",
+  "reference": "OpenJPEG 2.5.4_1 opj_decompress -r 1, RGB565 truncation",
+  "files": [
+    {
+      "file": "lossless.j2k",
+      "sha256": "c312848a8cb477a67965fc77521223a799c464bcbe768d084f11b7bd2bf63e4c",
+      "reference_sha256": "f1369b0a11eec5d95f609f96b1fad61dd764ed89b9cc9da9e271ed148b309a1a"
+    },
+    {
+      "file": "lossless.jp2",
+      "sha256": "ac00ba096edd24e9dcdc7bac5a30b21483b83e5af92674310c777d20158a252a",
+      "reference_sha256": "f1369b0a11eec5d95f609f96b1fad61dd764ed89b9cc9da9e271ed148b309a1a"
+    },
+    {
+      "file": "lossy.jp2",
+      "sha256": "190460fe1d22a5aae7b3d924f367a2161f3449349df2c896f07c104a88c81f10",
+      "reference_sha256": "37ee3a79c4e1924a5fff14557f17e2fbe9b72b1b2f33a34480f075bb792de551"
+    },
+    {
+      "file": "sycc.jp2",
+      "sha256": "7be409be8e9ceabdb3846a3dda29f5bb4c9b9132a06b2a9a33bbdcca0878a9ec",
+      "reference_sha256": "286304a06239d2f8f242f950e1b70a2d10953a26a41e0b0df4e7123569fcae07"
+    },
+    {
+      "file": "wide-gray.jp2",
+      "sha256": "b7a11531f5be985af413f0ca997862720d2b038bf4a1f770258fc90d99c0e1eb",
+      "reference_sha256": "0d36a396182174abfb78968f8192ecd1755998b056c942743d8211a2f37e1a29"
+    }
+  ],
+  "extra_generators": {
+    "sycc.jp2": "Synthetic RGB gradient channels reinterpreted as SYCC via JP2 colr enum 18; tests upstream 4:4:4 conversion",
+    "wide-gray.jp2": "Pillow lossless L-mode 256x128, value (x+y)%256; tests grayscale and aspect padding"
+  }
+}

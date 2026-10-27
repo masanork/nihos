@@ -3,6 +3,20 @@
 //! Hardware-specific code will live below `arch`, `soc`, and `board`. The
 //! kernel imports only the stable platform ABI, never ESP-IDF headers.
 
+pub const ccid = @import("ccid");
+pub const jpki = @import("usb/jpki.zig");
+pub const card_input_support = @import("card/input_support.zig");
+pub const card_service = @import("card/service.zig");
+pub const card_pin_entry = @import("card/pin_entry.zig");
+pub const card_ccid_owner = @import("card/ccid_owner.zig");
+pub const tab5_touch = @import("board/tab5/touch.zig");
+pub const tab5_touch_feedback = @import("board/tab5/touch_feedback.zig");
+pub const card_pin_graphics = @import("graphics/card_pin.zig");
+pub const keypad_demo = @import("card/keypad_demo.zig");
+pub const keypad_plan = @import("graphics/keypad_plan.zig");
+pub const usb_host = @import("soc/esp32p4/usb_host.zig");
+pub const usb_descriptors = @import("usb/descriptors.zig");
+pub const boot_i2c = @import("board/tab5/boot_i2c.zig");
 pub const version = "0.0.0";
 pub const block_reader = @import("storage/block.zig");
 pub const record_log = @import("diagnostics/record.zig");
@@ -47,6 +61,29 @@ pub const esp32p4_sdio = @import("soc/esp32p4/sdio.zig");
 
 test {
     _ = cpu_clock;
+    _ = ccid;
+    _ = jpki;
+    _ = card_input_support;
+    _ = card_service;
+    _ = card_pin_entry;
+    _ = card_ccid_owner;
+    _ = tab5_touch;
+    _ = tab5_touch_feedback;
+    _ = card_pin_graphics;
+    _ = keypad_demo;
+    _ = keypad_plan;
+    _ = @import("graphics/keypad_atlas_test.zig");
+    _ = @import("graphics/card_read_result.zig");
+    _ = @import("card/wire_policy.zig");
+    _ = @import("card/surface.zig");
+    _ = @import("card/license.zig");
+    _ = @import("card/presence.zig");
+    _ = @import("card/extended_test.zig");
+    _ = @import("card/jis0208.zig");
+    _ = @import("card/service_test.zig");
+    _ = usb_host;
+    _ = usb_descriptors;
+    _ = boot_i2c;
     _ = block_reader;
     _ = record_log;
     _ = native_stack_layout;
@@ -122,4 +159,10 @@ test "Tab5 scanout reservation uses identity-mapped PSRAM pages" {
             try std.testing.expectEqual(page, esp32p4_psram_mapping.physicalPage(capacity, page).?);
         }
     }
+}
+
+test {
+    _ = @import("card/license_crypto.zig");
+    _ = @import("card/license_trust.zig");
+    _ = @import("card/license_session_test.zig");
 }

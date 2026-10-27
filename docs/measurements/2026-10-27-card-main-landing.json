@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "base_main": "1f43a4d",
+  "card_parent": "a25ad6a",
+  "scope": "Experimental opt-in USB/card merge; normal splash/console/network flow preserved",
+  "physical_device_used": false,
+  "credentials_submitted": 0,
+  "python_tests": 200,
+  "zig_modes": [
+    "Debug",
+    "ReleaseSafe"
+  ],
+  "normal_emulator_cases": 8,
+  "decoder_sanitizers": true,
+  "six_default_rv32_links": true,
+  "candidates": {
+    "card-photo": {
+      "elf_sha256": "e14c3aadafef86307adce3362dd4c8f2d8044764ba1f00b07c909566b06021f1",
+      "app_sha256": "118870057e25819215c90bc9ec5c42b6258e7c804fdad3513d87c9bd1f2348c5",
+      "primary_heap_bytes": 50560,
+      "installed": false
+    },
+    "full": {
+      "elf_sha256": "7d1aaff51674611dec5630eea0a33a15e3d69abdb055795bb38c38c8abde26f5",
+      "app_sha256": "627e7d8fe47bead3f73a69bd6b211331550083b648f41dc6f570adce95725f03",
+      "primary_heap_bytes": 52608,
+      "installed": false
+    },
+    "normal-display": {
+      "elf_sha256": "63302ad3c46a09216debc2f3c734136d44a92a4cb7fd4ed671809a6446cbbd50",
+      "app_sha256": "5c98009d31bf980f5587f568d265436fcdbeb3f8d05c72c80c00924a00c88c5e",
+      "primary_heap_bytes": 90880,
+      "installed": false
+    },
+    "probe": {
+      "elf_sha256": "724b37650360a5e461d242f9507eea59341e88cd0b20e4bd0e791ae7d5f5c08e",
+      "app_sha256": "9cd825a3e1df1ee40370d2f821e456fbf631edbc7c3e085d93f87ec3698f8c18",
+      "primary_heap_bytes": 58240,
+      "installed": false
+    }
+  },
+  "additional_build_profiles": {
+    "card": {
+      "elf_sha256": "457e140777a35032af60ffef64c1aef3f618b52550a0e6355d00f9c7daf0c329",
+      "heap_bytes": 72704
+    },
+    "card-photo": {
+      "elf_sha256": "e14c3aadafef86307adce3362dd4c8f2d8044764ba1f00b07c909566b06021f1",
+      "heap_bytes": 50560
+    },
+    "card-read": {
+      "elf_sha256": "2c343ed1cf1e6c84d770b7104fb4939ae37e6203509b9c81206e1d8b7d23062d",
+      "heap_bytes": 51584
+    },
+    "disabled": {
+      "elf_sha256": "88ffda4bd971c6cfa30373374a9f7881ba5ac4c880b53214216d3136c94622ff",
+      "heap_bytes": 87296
+    },
+    "jpki": {
+      "elf_sha256": "38d7c96651891efa06a2b195fb72cb8fd0ac5db28e81890eec2b3d6f1792903b",
+      "heap_bytes": 68608
+    },
+    "keypad": {
+      "elf_sha256": "452c2242a9a3f0bb1b866f8e678a68d432010e7cb5e3bed62a28a5071d8445ce",
+      "heap_bytes": 62720
+    },
+    "touch": {
+      "elf_sha256": "a260d2b11a26231a3a2352097ec264d4aeb2afe7db18d4a382a41427ae55939a",
+      "heap_bytes": 63680
+    },
+    "usb": {
+      "elf_sha256": "3d3d2bfbd1c38104d616ace6a7923ab5b76e94690efe9099f2fab1962d2cfc01",
+      "heap_bytes": 73216
+    }
+  },
+  "physical_gate": "No merged candidate installed. New card insertion/removal optical checks required before PIN testing. Licence signatures lack official issuer keys.",
+  "initial_integration_commit": "70e7bb7afae1125f39b904e1f542bb069c647ffc",
+  "additional_main_parent": "0f573cde0fa8a4d4208edb17e705392746da37ed",
+  "additional_main_validation": {
+    "zig": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "python_tests": 200,
+    "static_six_links": true,
+    "candidates": {
+      "full": {
+        "elf_sha256": "913b7d66fb8a0cdbf0ebe5ffa9ff9122ea3af9218e186f71c43ea6077bbe8c60",
+        "app_sha256": "314efd7b428ec9708e9ac01ba9d028f084625382143fc42748c89dcff66c1dfc",
+        "heap_bytes": 52608,
+        "installed": false
+      },
+      "default-connected": {
+        "elf_sha256": "65a3a325da343cc52128776ca103cc5470dea90468d73062ae7f52d23c5178e3",
+        "app_sha256": "a0bf412e42042d3b7cd03add55c9e85cea834fce2b7466e4dd3234446318bc7a",
+        "heap_bytes": 57728,
+        "installed": false
+      }
+    }
+  }
+}
