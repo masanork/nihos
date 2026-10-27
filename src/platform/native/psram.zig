@@ -177,7 +177,7 @@ pub noinline fn probe(clock: timer_group.Timer) linksection(".flash.text.boot") 
         clock.start();
         clock.disarm();
         defer clock.stop();
-        tuning.tune(&controller, TuningHardware{ .timer = clock }, &report.tuning) catch {
+        (if (options.boot_fast) tuning.tuneRejectEarly(&controller, TuningHardware{ .timer = clock }, &report.tuning) else tuning.tune(&controller, TuningHardware{ .timer = clock }, &report.tuning)) catch {
             report.tuning.error_code = 2;
             report.total_transactions = controller.transactions;
             return report;

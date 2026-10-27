@@ -85,11 +85,11 @@ pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) Report {
         return report;
     };
     report.stage = 2;
-    if (!pins.delay(500_000)) {
+    if (!@import("native_options").boot_fast and !pins.delay(500_000)) {
         report.error_code = 8;
         return report;
     }
-    const panel = board.identify(&bus) catch |err| {
+    const panel = (if (@import("native_options").boot_fast) board.identifyReady(&bus, pins) else board.identify(&bus)) catch |err| {
         report.error_code = errorCode(err);
         report.transactions = bus.transactions;
         return report;
@@ -97,6 +97,11 @@ pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) Report {
     report.panel = @backingInt(panel);
     report.transactions = bus.transactions;
     report.stage = 3;
+    if (@import("native_options").boot_fast) {
+        // The runtime paints once and performs the real PHY/DMA startup.
+        report.status = 1;
+        return report;
+    }
     // CPU-only image proof, kept separate from DMA/physical scanout evidence.
     const data: [*]u8 = @ptrFromInt(selected.frame_start);
     const frame = data[0..selected.frame_bytes];

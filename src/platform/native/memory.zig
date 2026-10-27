@@ -65,9 +65,11 @@ const Domain = struct {
         const owner = &self.owners[hart];
         if (owner.bootstrap != null) return false;
         const before = owner.pool.remaining();
-        if (self.alloc(0, 1) != null or self.alloc(8, 3) != null or
-            self.alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
-        owner.rejected = 3;
+        if (!@import("native_options").boot_fast) {
+            if (self.alloc(0, 1) != null or self.alloc(8, 3) != null or
+                self.alloc(std.math.maxInt(usize), 64) != null or owner.pool.remaining() != before) return false;
+            owner.rejected = 3;
+        }
         owner.bootstrap = self.alloc(64, 64) orelse return false;
         if (interruptEnable() != expected_mie) return false;
         fill(owner.bootstrap.?, hart, 2);

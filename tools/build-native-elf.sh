@@ -122,6 +122,19 @@ case "$keyboard_i2c" in 0) keyboard_i2c=false ;; 1) keyboard_i2c=true ;; *) echo
 if [ "$console_live" = true ] && [ "$console" != true ]; then echo "Live UI requires CONSOLE=1" >&2; exit 1; fi
 if [ "$console_fault" = true ] && [ "$console_live" != true ]; then echo "Fault fixture requires CONSOLE_LIVE=1" >&2; exit 1; fi
 if [ "$keyboard_i2c" = true ] && [ "$console_live" != true ]; then echo "Keyboard requires CONSOLE_LIVE=1" >&2; exit 1; fi
+# Interactive integer console boots normally; other profiles remain fixtures.
+boot_fast=${NIHOS_NATIVE_BOOT_FAST:-auto}
+if [ "$boot_fast" = auto ]; then
+    if [ "$console_live" = true ] && [ "$mode" = integer ] && [ "$qualification" = false ]; then boot_fast=1; else boot_fast=0; fi
+fi
+case "$boot_fast" in
+    0) boot_fast=false ;;
+    1) boot_fast=true ;;
+    *) echo "NIHOS_NATIVE_BOOT_FAST must be auto, 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$boot_fast" = true ] && { [ "$console_live" != true ] || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
+    echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
+fi
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display_tile" = true ]; then display_tile_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
@@ -143,6 +156,7 @@ mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
+printf 'pub const boot_fast = %s;\n' "$boot_fast" >> "$build_dir/native_options.next"
 printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz" >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
@@ -322,7 +336,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfp_vectors="$repo_root/src/kernel/fp_vectors.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep core_arena --dep buddy_heap --dep task_resources -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
+    --dep native_options --dep core_arena --dep buddy_heap --dep task_resources -Mnative_memory="$repo_root/src/platform/native/memory.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mcore_arena="$repo_root/src/kernel/core_arena.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

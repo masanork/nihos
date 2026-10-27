@@ -40,7 +40,7 @@ def fixed_record(log, marker, names):
     return found[0]
 
 
-def check_fast_psram(log, evidence):
+def check_fast_psram(log, evidence, normal_boot=False):
     if 'NIHOS_NATIVE_PSRAM_TUNING ' not in log:
         if 'NIHOS_NATIVE_PSRAM_LINK ' in log:
             raise ValueError('PSRAM200 register report requires tuning evidence')
@@ -60,6 +60,10 @@ def check_fast_psram(log, evidence):
             if run > best[1]:
                 best = (index + 1 - run, run)
         return best
+    valid_taps = bin(tuning['delay_mask']).count('1')
+    reads_valid = tuning['reads'] == 99392
+    if normal_boot:
+        reads_valid = ((6 + valid_taps * 100 + 31 - valid_taps) * 32 <= tuning['reads'] <= 99392 and tuning['reads'] % 32 == 0)
     phase, phase_length = window(tuning['phase_mask'], 4)
     delay_start, delay_length = window(tuning['delay_mask'], 31)
     delay = delay_start + (delay_length - 1) // 2
@@ -68,7 +72,7 @@ def check_fast_psram(log, evidence):
             tuning['status'] != 1 or tuning['stage'] != 4 or tuning['error_code'] or
             tuning['phase_mask'] >> 4 or tuning['delay_mask'] >> 31 or
             not phase_length or delay_length < 2 or tuning['phase'] != phase or tuning['delay'] != delay or
-            tuning['repetitions'] != 100 or tuning['reads'] != 99392 or tuning['writes'] != 32):
+            tuning['repetitions'] != 100 or not reads_valid or tuning['writes'] != 32):
         raise ValueError('incomplete PSRAM200 PLL/tuning qualification')
     dqs = max(15 - delay, 0)
     if (link['core'] >> 12 & 3 != 1 or link['core'] >> 16 & 255 != 0 or
@@ -82,9 +86,25 @@ def check_fast_psram(log, evidence):
     return {'mpll': pll, 'tuning': tuning, 'link': link}
 
 
+def check_cpu_clock(log, image, evidence):
+    cpu_clock = None
+    clock_function = image.get('flash_boot',{}).get('functions',{}).get('clock') if image else None
+    if clock_function is not None or 'NIHOS_NATIVE_CPU_CLOCK ' in log:
+        cpu_clock = fixed_record(log,'NIHOS_NATIVE_CPU_CLOCK',('status','error_code','pc','source','cpll_mhz','before_mhz','after_mhz','mem_mhz','apb_mhz','ctrl0','ctrl1','ctrl2','rom_mhz'))
+        c = cpu_clock
+        if (clock_function is None or evidence != 'physical-device' or c['status'] != 1 or c['error_code'] or c['source'] != 1 or
+                c['cpll_mhz'] != 360 or c['rom_mhz'] != 360 or c['mem_mhz'] != 180 or c['apb_mhz'] != 90 or
+                not 358 <= c['after_mhz'] <= 362 or not any(abs(c['before_mhz']-mhz) <= 2 for mhz in (90,180,360)) or
+                c['ctrl0'] & 0x1ffffff0 or c['ctrl1'] != 1 or c['ctrl2'] & 0x00ffffff != 0x10000 or
+                not int(clock_function['start'],16) <= c['pc'] < int(clock_function['end'],16) or c['pc']%2 or
+                log.index('NIHOS_NATIVE_CPU_CLOCK ') > log.index('NIHOS_NATIVE_PSRAM ')):
+            raise ValueError('incomplete native CPU clock initialization')
+    return cpu_clock
+
+
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
-          external_reserved_bytes=3 * 65536):
+          external_reserved_bytes=3 * 65536, require_normal=False):
     if external_reserved_bytes not in (3 * 65536, 2 << 20):
         raise ValueError("unknown external reservation")
     if evidence not in ("emulator", "physical-device"):
@@ -95,6 +115,9 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if evidence == "emulator" and profile == "device":
         raise ValueError("device image requires explicit physical evidence source")
     log = log.replace("\\r", "").replace("\r", "")
+    normal_boot = log.count("NIHOS_NATIVE_PROFILE normal=1 qualification=0") == 1
+    if require_normal != normal_boot or (normal_boot and (require_qualification or require_sdmmc or require_storage or profile != 'device')):
+        raise ValueError('normal boot must be explicitly requested and cannot qualify a soak/storage run')
     if log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1:
         raise ValueError("missing boot or unexpected reboot")
     if "NIHOS_NATIVE_FAIL" in log or "NIHOS_NATIVE_TRAP" in log:
@@ -147,7 +170,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             supply["analog"] != (supply["dref"] << 28) | (supply["mul"] << 23) | (1 << 26) or
             (supply["calibrated"] == 0 and (supply["dref"], supply["mul"]) != (6, 5))):
         raise ValueError("incomplete PSRAM supply programming/readback")
-    fast_psram = check_fast_psram(log, evidence)
+    fast_psram = check_fast_psram(log, evidence, normal_boot)
     io_names = ("status", "mr0", "mr4", "mr8", "addresses", "passes", "reads", "writes", "transactions")
     pattern = "NIHOS_NATIVE_PSRAM_IO" + "".join(" " + name + r"=([0-9a-f]{8})" for name in io_names)
     matches = re.findall(pattern, log)
@@ -161,7 +184,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
         addresses = psram["bytes"].bit_length() - 1
         if (psram_io["status"] != 1 or psram_io["addresses"] != addresses or psram_io["passes"] != 2 or
                 psram_io["reads"] != 2 * addresses or psram_io["writes"] != 2 * addresses or
-                psram_io["transactions"] != (4 + 18 + 8 * addresses + 32 + 99392 if fast_psram else 13 + 4 * addresses) or
+                psram_io["transactions"] != (4 + 18 + 8 * addresses + 32 + fast_psram["tuning"]["reads"] if fast_psram else 13 + 4 * addresses) or
                 any(psram_io[name] > 255 for name in ("mr0", "mr4", "mr8")) or
                 psram_io["mr0"] & 63 != (0x30 if fast_psram else 0x28) or
                 psram_io["mr4"] & 0xe0 != (0x20 if fast_psram else 0x40) or
@@ -183,8 +206,28 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if len(matches) != 1:
         raise ValueError("missing/duplicate PSRAM SMP evidence")
     psram_smp = dict(zip(smp_names, (int(value, 16) for value in matches[0])))
-    if list(psram_smp.values()) != ([1, 64, 3072, 3072, 48, 1] if psram["status"] else [0] * 6):
+    if list(psram_smp.values()) != ([1, 1 if normal_boot else 64, 48 if normal_boot else 3072, 48 if normal_boot else 3072, 48, 1] if psram["status"] else [0] * 6):
         raise ValueError("incomplete PSRAM cross-core handoff evidence")
+    if normal_boot:
+        if mode != 'integer' or fast_psram is None:
+            raise ValueError('normal boot requires native integer PSRAM200 profile')
+        for forbidden in ('NIHOS_NATIVE_QUALIFICATION ', 'NIHOS_NATIVE_PSRAM_SWEEP ', 'NIHOS_NATIVE_HEARTBEAT ', 'NIHOS_NATIVE_SOAK_PASS ', 'NIHOS_NATIVE_TASKS '):
+            if forbidden in log:
+                raise ValueError('qualification workload in normal boot')
+        health = fixed_record(log, 'NIHOS_NATIVE_BOOT_HEALTH', ('cpu0_ticks','cpu1_ticks','ipi0','ipi1'))
+        if min(health.values()) < 1 or health['ipi0'] != 1 or health['ipi1'] != 1:
+            raise ValueError('incomplete normal boot CPU/timer/IPI health')
+        times = repeated_records(log, 'NIHOS_NATIVE_BOOT_TIME', ('stage','elapsed_us'))
+        if ([row['stage'] for row in times] != [1,3,5,7,4,6] or
+                not times[0]['elapsed_us'] or any(a['elapsed_us'] >= b['elapsed_us'] for a,b in zip(times,times[1:]))):
+            raise ValueError('missing or out-of-order normal boot stage timestamps')
+        order = ('NIHOS_NATIVE_BOOT_HEALTH ', 'NIHOS_NATIVE_CONSOLE ', 'NIHOS_NATIVE_UI_READY ')
+        if [log.index(m) for m in order] != sorted(log.index(m) for m in order):
+            raise ValueError('normal boot READY precedes health checks')
+        return {'normal_boot': True, 'qualification': None, 'evidence': evidence, 'psram': psram,
+                'psram_fast': fast_psram, 'psram_mapping': mapped, 'psram_smp': psram_smp,
+                'cpu_clock': check_cpu_clock(log, image, evidence), 'health': health, 'boot_times': times,
+                'ready_us_from_diagnostic_clock': times[-1]['elapsed_us']}
     pattern = (r"NIHOS_NATIVE_HEARTBEAT round=([0-9a-f]{8}) cpu0=([0-9a-f]{8}) "
                r"cpu1=([0-9a-f]{8}) ticks0=([0-9a-f]{8}) ticks1=([0-9a-f]{8})")
     samples = [tuple(int(value, 16) for value in match)
@@ -447,18 +490,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             function = expected["functions"][role]
             if not int(function["start"], 16) <= boot[role] < int(function["end"], 16):
                 raise ValueError("Flash boot PC outside audited function")
-    cpu_clock = None
-    clock_function = image.get('flash_boot',{}).get('functions',{}).get('clock') if image else None
-    if clock_function is not None or 'NIHOS_NATIVE_CPU_CLOCK ' in log:
-        cpu_clock = fixed_record(log,'NIHOS_NATIVE_CPU_CLOCK',('status','error_code','pc','source','cpll_mhz','before_mhz','after_mhz','mem_mhz','apb_mhz','ctrl0','ctrl1','ctrl2','rom_mhz'))
-        c = cpu_clock
-        if (clock_function is None or evidence != 'physical-device' or c['status'] != 1 or c['error_code'] or c['source'] != 1 or
-                c['cpll_mhz'] != 360 or c['rom_mhz'] != 360 or c['mem_mhz'] != 180 or c['apb_mhz'] != 90 or
-                not 358 <= c['after_mhz'] <= 362 or not any(abs(c['before_mhz']-mhz) <= 2 for mhz in (90,180,360)) or
-                c['ctrl0'] & 0x1ffffff0 or c['ctrl1'] != 1 or c['ctrl2'] & 0x00ffffff != 0x10000 or
-                not int(clock_function['start'],16) <= c['pc'] < int(clock_function['end'],16) or c['pc']%2 or
-                log.index('NIHOS_NATIVE_CPU_CLOCK ') > log.index('NIHOS_NATIVE_PSRAM ')):
-            raise ValueError('incomplete native CPU clock initialization')
+    cpu_clock = check_cpu_clock(log, image, evidence)
     sql_report = None
     sql_names = ("status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
     sql_records = re.findall("NIHOS_NATIVE_SQLITE" + "".join(" " + name + r"=([0-9a-f]{8})" for name in sql_names), log)

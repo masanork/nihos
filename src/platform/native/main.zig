@@ -35,6 +35,8 @@ extern var __flash_boot_end: u8;
 export var nih_native_return_states: [2]tasks.context.ReturnState = @splat(.{ .mstatus = 0, .mcause = 0 });
 
 var progress = [_]u32{ 0, 0 };
+var boot_ipi = [_]u32{ 0, 0 };
+var boot_clock_ready = false;
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
 var display_refresh_reported = false;
@@ -51,6 +53,10 @@ noinline fn stageBegin(stage: text_console.boot.Stage) void {
 }
 noinline fn stageComplete(stage: text_console.boot.Stage) void {
     if (!ui.complete(stage)) fail("boot stage completion");
+    if (options.boot_fast and boot_clock_ready) {
+        const stamp = .{ .stage = @as(u32, @backingInt(stage)), .elapsed_us = @as(u32, @truncate(ui.timer().counter() orelse 0)) };
+        logger.record("NIHOS_NATIVE_BOOT_TIME", null, .{ "stage", "elapsed_us" }, &stamp);
+    }
     if (options.console_live and !ui.service(&logger)) fail("diagnostic stage display");
 }
 noinline fn showDiagnosticSnapshot() void {
@@ -251,6 +257,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         nih_native_return_states[hart] = state;
         return frame;
     }
+    if (options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
+        tasks.ipi.bell(hart).acknowledge();
+        _ = @atomicRmw(u32, &boot_ipi[hart], .Add, 1, .release);
+        if (hart == 1) tasks.ipi.bell(0).raise();
+        nih_native_return_states[hart] = state;
+        return frame;
+    }
     if (tasks.ready(hart)) {
         const selected = if (cause & 0x8000_0fff == 11)
             tasks.onCall(hart, frame, state, timer(hart))
@@ -389,7 +402,7 @@ fn floatingReport(hart: u32) void {
 export fn nih_native_cpu1_main() callconv(.c) noreturn {
     nih_rom_set_cpu1_entry(0);
     if (!tasks.memory.stacks.begin(1)) fail("CPU1 stack bank begin");
-    if (!flash_records.begin(1)) fail("CPU1 Flash records begin");
+    if (!options.boot_fast and !flash_records.begin(1)) fail("CPU1 Flash records begin");
     interruptGuard(1).* = @splat(tasks.memory.stacks.layout.irq_guard);
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
@@ -398,6 +411,10 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     native_psram.memory.ownerReady(1);
     prepareTasks(1);
     enableTimer(1);
+    if (options.boot_fast) {
+        @atomicStore(u32, &progress[1], 1, .release);
+        while (true) tasks.idleOnce(1);
+    }
     while (true) {
         _ = tasks.service(1);
         if (tasks.ipi.done()) {
@@ -422,6 +439,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
     if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
     if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
+    if (options.boot_fast) printBoot("NIHOS_NATIVE_PROFILE normal=1 qualification=0\n");
     if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
     if (progress[0] != 0 or progress[1] != 0 or
         @as(*volatile u32, &initialized).* != 0x4e494853)
@@ -431,11 +449,12 @@ export fn nih_native_main() callconv(.c) noreturn {
     printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     stageComplete(.crt);
     stageBegin(.memory);
-    if (!flash_records.begin(0)) fail("CPU0 Flash records begin");
+    if (!options.boot_fast and !flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     prepareTimers();
     if (options.cpu_mhz != 0 and !cpu_boot.run(timer(0), &logger)) fail("native CPU clock");
     if (!ui.initializeClock()) fail("diagnostic clock");
+    boot_clock_ready = true;
     const external = native_psram.probe(timer(0));
     const BootCode = struct { start: u32, end: u32, probe: u32, mapping: u32, completed: u32 };
     const boot_code = BootCode{
@@ -549,6 +568,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
     enableTimer(0);
+    if (options.boot_fast) normalReady();
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };
@@ -647,6 +667,36 @@ export fn nih_native_main() callconv(.c) noreturn {
                 }
             }
         }
+    }
+}
+
+fn normalReady() noreturn {
+    const started = ui.timer().counter() orelse fail("boot health clock");
+    while (@atomicLoad(u32, &progress[1], .acquire) == 0) {
+        if ((ui.timer().counter() orelse fail("boot health clock")) - started > 250_000) fail("CPU1 ready timeout");
+        if (!ui.service(&logger)) fail("CPU1 ready display");
+    }
+    tasks.ipi.bell(1).raise();
+    while (@atomicLoad(u32, &ticks[0], .acquire) == 0 or
+        @atomicLoad(u32, &ticks[1], .acquire) == 0 or
+        @atomicLoad(u32, &boot_ipi[0], .acquire) == 0 or
+        @atomicLoad(u32, &boot_ipi[1], .acquire) == 0)
+    {
+        if ((ui.timer().counter() orelse fail("boot health clock")) - started > 250_000) fail("boot health timeout");
+        if (!ui.service(&logger)) fail("boot health display");
+    }
+    if (@atomicLoad(u32, &exceptions[1], .acquire) != 1) fail("CPU1 exception return");
+    const health = .{ .cpu0_ticks = @atomicLoad(u32, &ticks[0], .acquire), .cpu1_ticks = @atomicLoad(u32, &ticks[1], .acquire), .ipi0 = @atomicLoad(u32, &boot_ipi[0], .acquire), .ipi1 = @atomicLoad(u32, &boot_ipi[1], .acquire) };
+    logger.record("NIHOS_NATIVE_BOOT_HEALTH", null, .{ "cpu0_ticks", "cpu1_ticks", "ipi0", "ipi1" }, &health);
+    stageComplete(.cores);
+    stageBegin(.console);
+    stageComplete(.console);
+    ui.report(&logger);
+    ui.liveReport(&logger, true);
+    while (true) {
+        flushDisplayReport();
+        if (!ui.service(&logger)) fail("normal console idle");
+        tasks.idleOnce(0);
     }
 }
 

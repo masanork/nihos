@@ -127,7 +127,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
     var madctl: u8 = 0;
     const commands = panels.table(".flash.rodata.display", panel) orelse return error.Panel;
     while (try panels.next(commands, &position)) |command| {
-        try send(sender, report, command.opcode, command.payload, @as(u32, command.delay_ms) + 5);
+        try send(sender, report, command.opcode, command.payload, @as(u32, command.delay_ms) + (if (options.boot_fast) @as(u32, 0) else 5));
         if (command.opcode == 0x36 and command.payload.len == 1) madctl = command.payload[0];
     }
     try send(sender, report, 0x20, &.{}, 0);
