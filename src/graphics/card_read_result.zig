@@ -3,7 +3,9 @@ const std = @import("std");
 const screen = @import("card_pin.zig");
 const input = @import("../card/input_support.zig");
 fn Store(comptime section: ?[]const u8) type {
-    return if (section) |name| struct {
+    return if (isCompressed(section)) struct {
+        const data: [@embedFile("card_auto_font.bin").len]u8 align(64) linksection(section.?) = @embedFile("card_auto_font.bin").*;
+    } else if (section) |name| struct {
         const data: [@embedFile("card_read_font.bin").len]u8 align(64) linksection(name) = @embedFile("card_read_font.bin").*;
     } else struct {
         const data: [@embedFile("card_read_font.bin").len]u8 align(64) = @embedFile("card_read_font.bin").*;
@@ -12,17 +14,59 @@ fn Store(comptime section: ?[]const u8) type {
 fn code(bytes: []const u8) u32 {
     return std.mem.readInt(u32, bytes[0..4], .little);
 }
-fn glyph(comptime section: ?[]const u8, value: u21) ?[]const u8 {
-    const data = &Store(section).data;
-    var low: usize = 0;
-    var high: usize = data.len / 36;
-    while (low < high) {
-        const mid = low + (high - low) / 2;
-        const found = code(data[mid * 36 ..]);
-        if (found < value) low = mid + 1 else high = mid;
+fn isCompressed(comptime section: ?[]const u8) bool {
+    return section != null and std.mem.endsWith(u8, section.?, "auto_font");
+}
+fn three(bytes: []const u8) u32 {
+    return @as(u32, bytes[0]) | @as(u32, bytes[1]) << 8 | @as(u32, bytes[2]) << 16;
+}
+fn readBits(data: []const u8, pos: *usize, count: u5) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") ?u16 {
+    if (pos.* + count > data.len * 8) return null;
+    var value: u16 = 0;
+    for (0..count) |i| {
+        value |= @as(u16, (data[(pos.* + i) / 8] >> @as(u3, @intCast((pos.* + i) % 8))) & 1) << @as(u4, @intCast(i));
     }
-    if (low == data.len / 36 or code(data[low * 36 ..]) != value) return null;
-    return data[low * 36 + 4 ..][0..32];
+    pos.* += count;
+    return value;
+}
+fn Glyph(comptime section: ?[]const u8) type {
+    return struct {
+        pub fn find(value: u21) linksection(if (isCompressed(section) and @import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") ?[32]u8 {
+            const data = &Store(section).data;
+            if (isCompressed(section)) {
+                const count = std.mem.readInt(u32, data[4..8], .little);
+                const table: usize = 12 + 4095 * 2;
+                const payload = table + count * 6;
+                var low: usize = 0;
+                var high: usize = count;
+                while (low < high) {
+                    const mid = low + (high - low) / 2;
+                    if (three(data[table + mid * 6 ..]) < value) low = mid + 1 else high = mid;
+                }
+                if (low == count or three(data[table + low * 6 ..]) != value) return null;
+                var bit = (payload + three(data[table + low * 6 + 3 ..])) * 8;
+                var decoded_glyph: [32]u8 = undefined;
+                for (0..16) |row| {
+                    const index = readBits(data, &bit, 12) orelse return null;
+                    const pattern = if (index == 4095) readBits(data, &bit, 16) orelse return null else std.mem.readInt(u16, data[12 + @as(usize, index) * 2 ..][0..2], .little);
+                    std.mem.writeInt(u16, decoded_glyph[row * 2 ..][0..2], pattern, .little);
+                }
+                return decoded_glyph;
+            }
+            var low: usize = 0;
+            var high: usize = data.len / 36;
+            while (low < high) {
+                const mid = low + (high - low) / 2;
+                const found = code(data[mid * 36 ..]);
+                if (found < value) low = mid + 1 else high = mid;
+            }
+            if (low == data.len / 36 or code(data[low * 36 ..]) != value) return null;
+            return data[low * 36 + 4 ..][0..32].*;
+        }
+    };
+}
+inline fn glyph(comptime section: ?[]const u8, value: u21) ?[32]u8 {
+    return Glyph(section).find(value);
 }
 const Canvas = struct {
     frame: []u8,
@@ -30,6 +74,10 @@ const Canvas = struct {
         return self.sized(section, value, x, y, 32);
     }
     fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
+        if (isCompressed(section)) return AutoPainter(section).draw(self, value, x, y, size);
+        return self.sizedInline(section, value, x, y, size);
+    }
+    inline fn sizedInline(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
         const selected = glyph(section, value);
         const bits = selected orelse glyph(section, 0x25a1).?;
         for (0..size) |row| for (0..size) |column| {
@@ -62,6 +110,13 @@ const Canvas = struct {
         while (iterator.nextCodepoint()) |item| : (column += 1) _ = self.character(section, item, x + column * 32, y);
     }
 };
+fn AutoPainter(comptime section: ?[]const u8) type {
+    return struct {
+        pub noinline fn draw(canvas: Canvas, value: u21, x: usize, y: usize, size: usize) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") bool {
+            return canvas.sizedInline(section, value, x, y, size);
+        }
+    };
+}
 pub const Pager = struct {
     field: u8 = 0,
     offset: usize = 0,
@@ -75,6 +130,14 @@ pub const Pager = struct {
         return self.field < 4;
     }
 };
+test "automatic font decoding preserves every original glyph pixel" {
+    const raw = &Store(null).data;
+    for (0..raw.len / 36) |i| {
+        const at = i * 36;
+        const actual = glyph("__TEXT,__auto_font", @intCast(code(raw[at..]))) orelse return error.Missing;
+        try std.testing.expectEqualSlices(u8, raw[at + 4 ..][0..32], &actual);
+    }
+}
 pub const Paint = struct { missing: u32 = 0, shown: u32 = 0, truncated: bool = false };
 pub fn result(comptime section: ?[]const u8, frame: []u8, attributes: input.Attributes, pager: *Pager) !Paint {
     if (frame.len != 720 * 1280 * 2 or pager.field >= 4) return error.Invalid;
@@ -110,7 +173,7 @@ pub inline fn overview(comptime section: ?[]const u8, frame: []u8, attributes: i
 pub inline fn licenseOverview(comptime section: ?[]const u8, frame: []u8, info: @import("../card/license.zig").Info, portrait: ?[]const u8) !Paint {
     return overviewDocument(section, frame, .{ .name = info.name, .address = info.address, .birth_date = info.birth_date, .detail = info.number, .expiration = info.expiration, .external_missing = info.missing }, portrait);
 }
-const Document = struct { name: []const u8, address: []const u8, birth_date: []const u8, detail: []const u8, expiration: ?[]const u8 = null, external_missing: u32 = 0 };
+pub const Document = struct { name: []const u8, address: []const u8, birth_date: []const u8, detail: []const u8, expiration: ?[]const u8 = null, external_missing: u32 = 0 };
 inline fn overviewDocument(comptime section: ?[]const u8, frame: []u8, attributes: Document, portrait: ?[]const u8) !Paint {
     if (frame.len != 720 * 1280 * 2 or (portrait != null and portrait.?.len != portrait_bytes)) return error.Invalid;
     for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
@@ -156,12 +219,84 @@ pub inline fn notice(comptime section: ?[]const u8, frame: []u8, title: []const 
     _ = try canvas.wrapped(section, detail, 24, 420, 24, 28, 6);
 }
 pub inline fn licensePinHeader(comptime section: ?[]const u8, frame: []u8, index: u8) !void {
-    if (frame.len != 720 * 1280 * 2 or index < 1 or index > 2) return error.Invalid;
+    if (frame.len != 720 * 1280 * 2 or index < 1 or index > 3) return error.Invalid;
     for (0..280 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
     const canvas = Canvas{ .frame = frame };
-    _ = try canvas.wrapped(section, "IC運転免許証", 84, 106, 24, 24, 1);
-    _ = try canvas.wrapped(section, if (index == 1) "免許証の暗証番号１" else "写真用の暗証番号２", 84, 190, 24, 24, 1);
-    _ = try canvas.wrapped(section, "暗証番号は保存しません", 84, 245, 16, 32, 1);
+    _ = try canvas.wrapped(section, if (index == 3) "マイナ免許証" else "IC運転免許証", 84, 106, 24, 24, 1);
+    _ = try canvas.wrapped(section, if (index == 3) "免許情報の暗証番号" else if (index == 1) "免許証の暗証番号１" else "写真・署名確認の暗証番号２", 84, 190, 24, 24, 1);
+    _ = try canvas.wrapped(section, if (index == 2) "署名確認のため本籍も端末内で読みます" else if (index == 3) "マイナンバーカード用とは別の暗証番号です" else "暗証番号は保存しません", 84, 245, 16, 32, 1);
+}
+pub inline fn licenseNote(comptime section: ?[]const u8, frame: []u8, verification: @import("../card/license_record.zig").Verification, myna: bool, changed: u2) !void {
+    for (92 * 720..156 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    const canvas = Canvas{ .frame = frame };
+    _ = try automaticText(section, canvas, switch (verification) {
+        .valid => AutoCaptions.get(0),
+        .unknown_key => AutoCaptions.get(1),
+        .invalid => AutoCaptions.get(2),
+        .malformed => AutoCaptions.get(3),
+        .not_checked => AutoCaptions.get(4),
+    }, 24, 100, 16, 42, 1);
+    _ = try automaticText(section, canvas, if (myna) AutoCaptions.get(5) else if (changed == 2) AutoCaptions.get(38) else if (changed == 1) AutoCaptions.get(6) else AutoCaptions.get(7), 24, 128, 16, 42, 1);
+}
+pub inline fn resultControls(comptime section: ?[]const u8, frame: []u8, myna: bool) !void {
+    for (1080 * 720..1280 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    const canvas = Canvas{ .frame = frame };
+    _ = try automaticText(section, canvas, AutoCaptions.get(8), 24, 1140, 24, 8, 1);
+    _ = try automaticText(section, canvas, if (myna) AutoCaptions.get(9) else AutoCaptions.get(10), 264, 1140, 24, 8, 1);
+    _ = try automaticText(section, canvas, AutoCaptions.get(11), 504, 1140, 24, 8, 1);
+}
+pub inline fn chooseLicense(comptime section: ?[]const u8, frame: []u8) !void {
+    try notice(section, frame, "", "");
+    const canvas = Canvas{ .frame = frame };
+    _ = try automaticText(section, canvas, AutoCaptions.get(12), 24, 240, 24, 28, 2);
+    _ = try automaticText(section, canvas, AutoCaptions.get(13), 84, 460, 24, 24, 2);
+    _ = try automaticText(section, canvas, AutoCaptions.get(14), 84, 760, 24, 24, 2);
+}
+pub inline fn mynaOverview(comptime section: ?[]const u8, frame: []u8, number: []const u8, expiry: []const u8, types: u16, portrait: ?[]const u8) !Paint {
+    try notice(section, frame, "", "");
+    const canvas = Canvas{ .frame = frame };
+    _ = try automaticText(section, canvas, AutoCaptions.get(15), 24, 64, 24, 28, 1);
+    _ = try automaticText(section, canvas, AutoCaptions.get(16), 24, 164, 16, 28, 1);
+    _ = try automaticText(section, canvas, number, 24, 200, 24, 18, 1);
+    _ = try automaticText(section, canvas, AutoCaptions.get(17), 24, 300, 16, 28, 1);
+    _ = try automaticText(section, canvas, expiry, 24, 336, 32, 13, 1);
+    _ = try automaticText(section, canvas, AutoCaptions.get(18), 24, 480, 16, 28, 1);
+    const names = [_][]const u8{ AutoCaptions.get(19), AutoCaptions.get(20), AutoCaptions.get(21), AutoCaptions.get(22), AutoCaptions.get(23), AutoCaptions.get(24), AutoCaptions.get(25), AutoCaptions.get(26), AutoCaptions.get(27), AutoCaptions.get(28), AutoCaptions.get(29), AutoCaptions.get(30), AutoCaptions.get(31), AutoCaptions.get(32), AutoCaptions.get(33) };
+    var at: usize = 0;
+    for (names, 0..) |name, i| if (types & (@as(u16, 1) << @as(u4, @intCast(i))) != 0) {
+        _ = try automaticText(section, canvas, name, 24 + (at % 4) * 168, 520 + (at / 4) * 40, 24, 6, 1);
+        at += 1;
+    };
+    _ = try automaticText(section, canvas, AutoCaptions.get(34), 24, 760, 24, 28, 2);
+    if (portrait) |pixels| {
+        if (pixels.len != portrait_bytes) return error.Invalid;
+        for (0..portrait_height * 2) |y| for (0..portrait_width * 2) |x| {
+            const a = ((y / 2) * portrait_width + x / 2) * 2;
+            const b = ((192 + y) * 720 + 480 + x) * 2;
+            frame[b] = pixels[a];
+            frame[b + 1] = pixels[a + 1];
+        };
+    }
+    return .{ .shown = 7 };
+}
+pub const DetailRow = struct { label: []const u8, value: []const u8, date: []const u8 = &.{} };
+pub inline fn licensePage(comptime section: ?[]const u8, frame: []u8, myna: bool, rows: []const DetailRow) !Paint {
+    try notice(section, frame, "", "");
+    const canvas = Canvas{ .frame = frame };
+    var report = Paint{};
+    _ = try automaticText(section, canvas, if (myna) AutoCaptions.get(35) else AutoCaptions.get(36), 24, 64, 24, 28, 1);
+    if (rows.len == 0) _ = try automaticText(section, canvas, AutoCaptions.get(37), 24, 240, 24, 28, 1);
+    if (rows.len > 3) return error.Invalid;
+    for (rows, 0..) |row, i| {
+        const y = 164 + i * 272;
+        _ = try automaticText(section, canvas, row.label, 24, y, 16, 24, 1);
+        _ = try automaticText(section, canvas, row.date, 440, y, 16, 16, 1);
+        const part = try automaticText(section, canvas, row.value, 24, y + 40, 24, 28, 2);
+        report.missing += part.missing;
+        report.truncated = report.truncated or part.truncated;
+    }
+    try resultControls(section, frame, myna);
+    return report;
 }
 pub inline fn preview(comptime section: ?[]const u8, frame: []u8, portrait: []const u8) !void {
     var name: [26 * 3]u8 = undefined;
@@ -239,11 +374,11 @@ test "dense result pages and the real PIN view fit dedicated SRAM with exact rep
     var dense: [252]u8 = undefined;
     for (0..84) |i| @memcpy(dense[i * 3 ..][0..3], "東");
     var spans: [1024]plan.Segment = undefined;
-    for (0..3) |kind| {
+    for (0..4) |kind| {
         if (kind == 0) {
             var pager = Pager{};
             _ = try result(null, frame, .{ .name = &dense, .address = "Tokyo", .birth_date = "19900101", .gender = "1" }, &pager);
-        } else try std.testing.expect(screen.paintRead(null, frame, 1440, .{ .active = true, .masked_digits = 0, .remaining = if (kind == 1) 2 else 3, .can_submit = false }));
+        } else try std.testing.expect(screen.paintRead(null, frame, 1440, .{ .active = true, .masked_digits = 0, .remaining = if (kind == 1) 2 else if (kind == 2) 3 else 10, .can_submit = false }));
         const selected = if (kind == 0) try plan.buildStatic(frame, &spans) else try plan.build(frame, &spans);
         var lower: usize = 2 * plan.textureStride() + selected.len * 64;
         var upper: usize = 0;
@@ -283,9 +418,11 @@ test "both card overviews fit SRAM with maximum fields and a synthetic portrait"
     for (0..portrait_height) |y| for (0..portrait_width) |x| {
         std.mem.writeInt(u16, portrait[(y * portrait_width + x) * 2 ..][0..2], @intCast((x * 317 + y * 113) & 65535), .little);
     };
-    for ([_]bool{ false, true }) |is_license| {
-        const painted = if (is_license) try licenseOverview(null, frame, .{ .name = &name, .address = address[0 .. 40 * 3], .birth_date = "19900101", .number = "000000000000", .expiration = "20300101", .missing = 0 }, &portrait) else try overview(null, frame, .{ .name = name[0 .. 26 * 3], .address = &address, .birth_date = "19900101", .gender = "1" }, &portrait);
-        try std.testing.expect(!painted.truncated and painted.missing == 0 and painted.shown == (if (is_license) @as(u32, 31) else 15));
+    const detailed_rows: [3]DetailRow = @splat(.{ .label = "住所の変更", .value = address[0 .. 40 * 3], .date = "20260101" });
+    for (0..4) |scene| {
+        const painted = if (scene == 1) try licenseOverview(null, frame, .{ .name = &name, .address = address[0 .. 40 * 3], .birth_date = "19900101", .number = "000000000000", .expiration = "20300101", .missing = 0 }, &portrait) else if (scene == 0) try overview(null, frame, .{ .name = name[0 .. 26 * 3], .address = &address, .birth_date = "19900101", .gender = "1" }, &portrait) else if (scene == 2) try mynaOverview("__TEXT,__auto_font", frame, "000000000000", "20300101", 0x7fff, &portrait) else try licensePage("__TEXT,__auto_font", frame, false, &detailed_rows);
+        try std.testing.expect(!painted.truncated and painted.missing == 0);
+        if (scene < 2) try std.testing.expectEqual(@as(u32, if (scene == 1) 31 else 15), painted.shown);
         var spans: [1600]sparse.Segment = undefined;
         const plan = try sparse.buildOverview(frame, &spans);
         var lower: usize = 2 * sparse.textureStride() + plan.len * 64;
@@ -302,4 +439,29 @@ test "both card overviews fit SRAM with maximum fields and a synthetic portrait"
         try std.testing.expect(plan.len <= 1280);
         try std.testing.expect(lower <= 128 * 1024);
     }
+}
+
+noinline fn automaticText(comptime section: ?[]const u8, canvas: Canvas, value: []const u8, x: usize, y: usize, size: usize, columns: usize, lines: usize) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") !Paint {
+    return canvas.wrapped(section, value, x, y, size, columns, lines);
+}
+
+const AutoCaptions = struct {
+    const text = "署名検証OK（登録された公開鍵）\x00" ++ "署名未検証：公開鍵が未登録です\x00" ++ "署名が一致しません\x00" ++ "署名データの形式を確認できません\x00" ++ "署名検証を完了していません\x00" ++ "氏名・住所・生年月日は別のAPに記録\x00" ++ "変更後の記録を表示・履歴は署名対象外\x00" ++ "署名の対象は発行時の記録です\x00" ++ "基本情報\x00" ++ "内容 次へ\x00" ++ "履歴 次へ\x00" ++ "閉じて消去\x00" ++ "読み取る情報を選んでください\x00" ++ "免許情報を読む\x00" ++ "マイナンバーカードの情報を読む\x00" ++ "マイナ免許証\x00" ++ "免許情報記録番号\x00" ++ "有効期限\x00" ++ "免許の種類\x00" ++ "大型\x00" ++ "普通\x00" ++ "大特\x00" ++ "大自二\x00" ++ "普自二\x00" ++ "小特\x00" ++ "原付\x00" ++ "け引\x00" ++ "大二\x00" ++ "普二\x00" ++ "大特二\x00" ++ "け引二\x00" ++ "中型\x00" ++ "中二\x00" ++ "準中型\x00" ++ "免許条件・備考は「内容」で確認\x00" ++ "免許条件・備考\x00" ++ "変更履歴（署名対象外）\x00" ++ "記録はありません\x00" ++ "追加記録あり・最新値は履歴で確認\x00";
+    const placement = if (@import("builtin").os.tag == .freestanding) ".flash.rodata.card_pin" else if (@import("builtin").os.tag == .macos) "__TEXT,__const" else ".rodata";
+    const data: [text.len]u8 align(4) linksection(placement) = text.*;
+    inline fn get(index: usize) []const u8 {
+        const live: [*]const volatile u8 = @ptrCast(&data);
+        var offset: usize = 0;
+        for (0..index) |_| {
+            while (live[offset] != 0) : (offset += 1) {}
+            offset += 1;
+        }
+        var end = offset;
+        while (live[end] != 0) : (end += 1) {}
+        return data[offset..end];
+    }
+};
+
+pub noinline fn automaticOverview(comptime section: ?[]const u8, frame: []u8, attributes: Document, portrait: ?[]const u8) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") !Paint {
+    return overviewDocument(section, frame, attributes, portrait);
 }

@@ -6,7 +6,7 @@ pub fn Decoder(comptime section: ?[]const u8) type {
     return struct {
         const placement = section orelse (if (@import("builtin").os.tag == .macos) "__TEXT,__const" else ".rodata");
         const data: [17672]u8 align(4) linksection(placement) = @embedFile("jis0208.bin").*;
-        pub inline fn decode(input: []const u8, output: []u8) Error!Decoded {
+        pub noinline fn decode(input: []const u8, output: []u8) linksection(if (section != null) ".flash.photo" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") Error!Decoded {
             if (input.len > 160) return error.TooLarge;
             var at: usize = 0;
             var used: usize = 0;

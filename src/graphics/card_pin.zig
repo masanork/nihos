@@ -123,8 +123,11 @@ fn paintInternal(comptime section: ?[]const u8, comptime demo: bool, comptime re
     if (demo) {
         if (reading) {
             canvas.text(.remaining, 84, 300, muted, background);
-            canvas.text(if (view.remaining) |count| digit(count) else .unknown, 154, 286, foreground, background);
-            canvas.text(.times, 222, 300, muted, background);
+            if (view.remaining == 10) {
+                canvas.text(.d1, 154, 286, foreground, background);
+                canvas.text(.d0, 190, 286, foreground, background);
+            } else canvas.text(if (view.remaining) |count| digit(count) else .unknown, 154, 286, foreground, background);
+            canvas.text(.times, if (view.remaining == 10) 254 else 222, 300, muted, background);
         } else canvas.text(.demo_hint, 84, 300, muted, background);
         for (0..4) |index| {
             const left: u16 = @intCast(218 + index * 84);

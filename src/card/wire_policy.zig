@@ -3,7 +3,7 @@ const std = @import("std");
 const input = @import("input_support.zig");
 const surface = @import("surface.zig");
 const license = @import("license.zig");
-pub const Profile = enum { mynumber, detection, license };
+pub const Profile = enum { mynumber, detection, license, myna_license };
 pub fn PolicyType(comptime extended: bool) type {
     return struct {
         const Self = @This();
@@ -15,6 +15,7 @@ pub fn PolicyType(comptime extended: bool) type {
         license_pin: u8 = 0,
         license_file: usize = 0,
         license_offset: usize = 0,
+        license_read_mask: u16 = 0,
         verifies: u32 = 0,
         photo_enabled: bool = false,
         probe_only: bool = false,
@@ -27,8 +28,9 @@ pub fn PolicyType(comptime extended: bool) type {
             if (frame[0] == 0x62 or frame[0] == 0x63) return apdu.len == 0;
             if (frame[0] == 0x65) return extended and apdu.len == 0;
             if (frame[0] != 0x6f) return false;
-            if (extended and self.profile == .detection) return std.mem.eql(u8, apdu, &input.select_ap) or std.mem.eql(u8, apdu, &license.select_df1);
+            if (extended and self.profile == .detection) return std.mem.eql(u8, apdu, &input.select_ap) or std.mem.eql(u8, apdu, &license.select_df1) or std.mem.eql(u8, apdu, &@import("license_session.zig").myna_aid);
             if (extended and self.profile == .license) return self.allowLicense(apdu);
+            if (extended and self.profile == .myna_license) return self.allowMyna(apdu);
             if (self.profile != .mynumber) return false;
             if (self.photo_enabled and std.mem.eql(u8, apdu, &surface.select_number)) return !self.surface_selected and self.verifies == 1;
             if (self.photo_enabled and std.mem.eql(u8, apdu, &surface.select_ap)) {
@@ -97,17 +99,65 @@ pub fn PolicyType(comptime extended: bool) type {
                 return true;
             }
             if (self.license_context == .none) return false;
-            if (std.mem.eql(u8, apdu, &license.select_pin1)) {
-                self.license_file = if (self.license_context == .common) license.common_bytes else license.photo_bytes;
+            if (apdu.len == 7 and std.mem.eql(u8, apdu[0..6], &.{ 0, 0xa4, 2, 0x0c, 2, 0 })) {
+                const fid = apdu[6];
+                if (fid < 1 or fid > 7 or (self.license_context == .photo and fid != 1)) return false;
+                if (self.license_context == .common and (fid == 2 or fid == 6) and self.surface_verifies != 1) return false;
+                const bit = @as(u16, 1) << @as(u4, @intCast(if (self.license_context == .photo) 8 else fid));
+                if (self.license_read_mask & bit != 0) return false;
+                self.license_read_mask |= bit;
+                const sizes = [_]usize{ 0, 880, 82, 264, 640, 663, 256, 578 };
+                self.license_file = if (self.license_context == .common) sizes[fid] else license.photo_bytes;
                 self.license_offset = 0;
                 return true;
             }
+            return self.allowRead(apdu);
+        }
+        fn allowRead(self: *Self, apdu: []const u8) linksection(placement()) bool {
             if (apdu.len != 5 or self.license_file == 0 or self.license_offset >= self.license_file or apdu[0] != 0 or apdu[1] != 0xb0) return false;
             const offset = @as(usize, apdu[2]) << 8 | apdu[3];
             const count = if (apdu[4] == 0) @as(usize, 256) else apdu[4];
             if (offset != self.license_offset or count != @min(256, self.license_file - offset)) return false;
             self.license_offset += count;
             return true;
+        }
+        fn allowMyna(self: *Self, apdu: []const u8) linksection(placement()) bool {
+            if (std.mem.eql(u8, apdu, &@import("license_session.zig").myna_aid)) {
+                if (self.surface_selected or self.verifies != 0) return false;
+                self.surface_selected = true;
+                self.license_pin = 0;
+                return true;
+            }
+            if (!self.surface_selected) return false;
+            if (apdu.len == 7 and std.mem.eql(u8, apdu[0..6], &.{ 0, 0xa4, 2, 0x0c, 2, 0 })) {
+                const fid = apdu[6];
+                self.license_pin = 0;
+                self.license_file = 0;
+                if (fid == 6) {
+                    if (self.verifies != 0) return false;
+                    self.license_pin = 1;
+                    return true;
+                }
+                const bit: u16 = switch (fid) {
+                    0x1a => 1,
+                    0x1b => 2,
+                    0x1c => 4,
+                    else => return false,
+                };
+                if (self.license_read_mask & bit != 0 or (fid == 0x1a and self.verifies != 0) or (fid != 0x1a and self.verifies != 1)) return false;
+                self.license_read_mask |= bit;
+                self.license_file = if (fid == 0x1a) 3 else if (fid == 0x1b) 5845 else 584;
+                self.license_offset = 0;
+                return true;
+            }
+            if (self.license_pin == 1) {
+                if (std.mem.eql(u8, apdu, &.{ 0, 0x20, 0, 0x82 })) return true;
+                if (self.probe_only or self.verifies != 0 or apdu.len != 9 or !std.mem.eql(u8, apdu[0..5], &.{ 0, 0x20, 0, 0x82, 4 })) return false;
+                for (apdu[5..]) |digit| if (digit < '0' or digit > '9') return false;
+                self.verifies = 1;
+                return true;
+            }
+            return self.allowRead(apdu);
         }
     };
 }

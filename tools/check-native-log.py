@@ -68,7 +68,9 @@ def check_authenticated_owner(log, image, evidence):
     storage = image.get('keypad_storage', {}) if image else {}
     text = image.get('card_text', {}) if image else {}
     if image and image.get('automatic_cards'):
-        boot = fixed_record(log, 'NIHOS_NATIVE_CARD_AUTO_BOOT', ('selftest','error_code','stack_used','erased'))
+        boot = fixed_record(log, 'NIHOS_NATIVE_CARD_AUTO_BOOT', ('selftest','error_code','stack_used','erased','crypto_selftest','crypto_stack'))
+        read_enabled=image['automatic_cards'].get('read_enabled')
+        if boot['crypto_selftest'] != int(read_enabled) or (not 0<boot['crypto_stack']<65408 if read_enabled else boot['crypto_stack']!=0):raise ValueError('licence crypto self-test / private stack evidence missing')
         if (evidence != 'physical-device' or storage.get('ui_mode') != 'runtime' or text.get('executable') is not True or text.get('writable') is not False or
                 log.count('NIHOS_NATIVE_USB_MODE enabled=1') != 1 or boot['selftest'] != 1 or boot['error_code'] or not 0 < boot['stack_used'] < 12224 or boot['erased'] != 1 or
                 any(marker in log for marker in ('NIHOS_NATIVE_USB ', 'NIHOS_NATIVE_JPKI_MODE', 'NIHOS_NATIVE_CARD_CHECK_START'))):

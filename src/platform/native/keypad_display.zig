@@ -36,7 +36,7 @@ pub noinline fn prepare(clock: timer.Timer, frame: []u8) linksection(if (options
         if (!static_frame) {
             const painted = if (demo_frame) card.PinScreen.paintDemo(".flash.rodata.card_pin", frame, 1440, view(0)) else card.PinScreen.paintRead(".flash.rodata.card_pin", frame, 1440, .{ .active = true, .masked_digits = 0, .remaining = read_remaining, .can_submit = false });
             if (!painted) return error.Image;
-            if (pin_kind != 0) try card.ResultScreen.licensePinHeader(".flash.keypad.font", frame, pin_kind);
+            if (pin_kind != 0) try card.ResultScreen.licensePinHeader(if (options.card_auto) ".flash.keypad.auto_font" else ".flash.keypad.font", frame, pin_kind);
         }
         const out = @as([*]plan.Segment, @ptrFromInt(plan.scratch_start))[0..plan.planCapacity()];
         break :runtime if (overview_frame) try plan.buildOverview(frame, out) else if (static_frame) try plan.buildStatic(frame, out) else try plan.build(frame, out);

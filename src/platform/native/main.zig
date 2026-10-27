@@ -697,19 +697,22 @@ const AutoLog = struct {
         TouchLog.refresh(.{}, report);
     }
     pub fn boot(_: AutoLog, report: *const @import("photo_runtime.zig").Report) void {
-        logger.record("NIHOS_NATIVE_CARD_AUTO_BOOT", null, .{ "selftest", "error_code", "stack_used", "erased" }, report);
+        logger.record("NIHOS_NATIVE_CARD_AUTO_BOOT", null, .{ "selftest", "error_code", "stack_used", "erased", "crypto_selftest", "crypto_stack" }, report);
     }
     pub fn detected(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_DETECTED", null, .{ "job", "kind", "pin1_verifies", "pin2_verifies", "cleanup", "erased" }, report);
+    }
+    pub fn selected(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
+        logger.record("NIHOS_NATIVE_CARD_AUTO_SELECTED", null, .{ "job", "kind" }, report);
     }
     pub fn prompt(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_PROMPT", null, .{ "job", "kind", "pin_index", "pin1_remaining", "pin2_remaining", "pin1_verifies", "pin2_verifies" }, report);
     }
     pub fn result(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
-        logger.record("NIHOS_NATIVE_CARD_AUTO_RESULT", null, .{ "job", "kind", "state", "fault", "sw", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "photo_error", "shown", "missing", "truncated", "cleanup" }, report);
+        logger.record("NIHOS_NATIVE_CARD_AUTO_RESULT", null, .{ "job", "kind", "state", "fault", "sw", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "photo_error", "shown", "missing", "truncated", "cleanup", "verification", "changes" }, report);
     }
     pub fn finish(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
-        logger.record("NIHOS_NATIVE_CARD_AUTO_DONE", null, .{ "job", "kind", "fault", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "shown", "missing", "truncated", "cleanup", "erased" }, report);
+        logger.record("NIHOS_NATIVE_CARD_AUTO_DONE", null, .{ "job", "kind", "fault", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "shown", "missing", "truncated", "cleanup", "erased", "verification", "changes" }, report);
     }
     pub fn abort(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_ABORT", null, .{ "job", "kind", "state", "fault", "pin1_verifies", "pin2_verifies" }, report);

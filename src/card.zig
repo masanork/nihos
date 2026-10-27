@@ -20,3 +20,7 @@ pub const ServiceType = @import("card/service.zig").ServiceType;
 pub const ExtendedService = @import("card/service.zig").ExtendedService;
 pub const Presence = @import("card/presence.zig");
 pub const WirePolicyType = @import("card/wire_policy.zig").PolicyType;
+pub const LicenseSession = @import("card/license_session.zig");
+pub const LicenseRecord = @import("card/license_record.zig");
+pub const LicenseCrypto = @import("card/license_crypto.zig");
+pub const LicenseTrust = @import("card/license_trust.zig");

@@ -5,7 +5,7 @@ const input = @import("input_support.zig");
 const surface = @import("surface.zig");
 const license = @import("license.zig");
 pub const Mode = enum { mynumber, license, detection };
-pub const State = enum { idle, power_on, select_ap, select_pin, retries, pin, confirm_retries, verify, select_attributes, read, power_off, done, select_number, read_number, select_surface, select_surface_pin, surface_retries, confirm_surface_retries, surface_verify, select_photo, read_photo, detect_my, detect_license, license_mf1, license_pin1, license_retries1, license_mf2, license_pin2, license_retries2, license_df1, license_common, license_read_common, license_df2, license_photo, license_read_photo, license_mf_settings, license_settings_select, license_settings_read };
+pub const State = enum { idle, power_on, select_ap, select_pin, retries, pin, confirm_retries, verify, select_attributes, read, power_off, done, select_number, read_number, select_surface, select_surface_pin, surface_retries, confirm_surface_retries, surface_verify, select_photo, read_photo, detect_my, detect_license, license_mf1, license_pin1, license_retries1, license_mf2, license_pin2, license_retries2, license_df1, license_common, license_read_common, license_df2, license_photo, license_read_photo, license_mf_settings, license_settings_select, license_settings_read, detect_myna };
 pub const Fault = enum { none, cancelled, disconnected, transport, pin_outcome_unknown, wrong_pin, blocked, last_attempt, counter_changed, status, malformed, too_large };
 pub const Error = error{ Busy, Stale, InvalidPin, NotReady, Exhausted };
 pub const Kind = enum { power_on, apdu, power_off };
@@ -17,7 +17,7 @@ pub fn ServiceType(comptime extended: bool, comptime section: ?[]const u8) type 
         const Self = @This();
         state: State = .idle,
         mode: Mode = .mynumber,
-        detected: u2 = 0,
+        detected: u3 = 0,
         license_stage: u2 = 0,
         license_pin_config: u8 = 255,
         license_pin: u8 = 1,
@@ -80,9 +80,15 @@ pub fn ServiceType(comptime extended: bool, comptime section: ?[]const u8) type 
             try self.start();
             self.mode = .detection;
         }
-        pub fn detectedKind(self: *const Self) ?u2 {
+        pub fn detectedKind(self: *const Self) ?u3 {
             if (self.state != .done or self.fault != .none or self.cleanup_failed or self.mode != .detection) return null;
-            return self.detected;
+            return switch (self.detected) {
+                0 => 0,
+                1 => 1,
+                2 => 2,
+                4, 5 => 4,
+                else => 3,
+            };
         }
         pub fn startLicenseWith(self: *Self, comptime Read: type, buffer: []u8) Error!void {
             if (!extended) @compileError("extended card service required");
@@ -199,6 +205,7 @@ pub fn ServiceType(comptime extended: bool, comptime section: ?[]const u8) type 
                 .select_photo => self.setCommand(&surface.select_photo),
                 .read_photo => self.setCommand(&.{ 0, 0xb0, @intCast(self.photo_length >> 8), @truncate(self.photo_length), 0 }),
                 .detect_my => if (extended) self.setCommand(&input.select_ap) else unreachable,
+                .detect_myna => if (extended) self.setCommand(&@import("license_session.zig").myna_aid) else unreachable,
                 .detect_license, .license_df1 => if (extended) self.setCommand(&license.select_df1) else unreachable,
                 .license_df2 => if (extended) self.setCommand(&license.select_df2) else unreachable,
                 .license_mf1, .license_mf2, .license_mf_settings => if (extended) self.setCommand(&license.select_mf) else unreachable,
@@ -239,7 +246,14 @@ pub fn ServiceType(comptime extended: bool, comptime section: ?[]const u8) type 
         }
         /// For power actions reply is the ATR / empty power-off payload; transport
         /// validates CCID slot, sequence, status, card state and time extensions.
-        pub inline fn complete(self: *Self, token: u32, reply: []const u8) Error!void {
+        pub fn complete(self: *Self, token: u32, reply: []const u8) Error!void {
+            if (section != null) return self.completePlaced(token, reply);
+            return self.completeInline(token, reply);
+        }
+        noinline fn completePlaced(self: *Self, token: u32, reply: []const u8) linksection(section orelse defaultSection()) Error!void {
+            return self.completeInline(token, reply);
+        }
+        inline fn completeInline(self: *Self, token: u32, reply: []const u8) Error!void {
             try self.release(token);
             if (self.state == .power_off) {
                 self.state = .done;
@@ -289,11 +303,11 @@ pub fn ServiceType(comptime extended: bool, comptime section: ?[]const u8) type 
                         self.state = if (self.license_pin == 1) .license_df1 else .license_df2;
                     } else self.state = .select_attributes;
                 },
-                .detect_my, .detect_license => if (extended) {
+                .detect_my, .detect_license, .detect_myna => if (extended) {
                     if (body.len != 0) return self.stop(.malformed);
                     if (sw != 0x9000 and sw != 0x6a82) return self.stop(.status);
-                    if (sw == 0x9000) self.detected |= if (self.state == .detect_my) @as(u2, 1) else 2;
-                    self.state = if (self.state == .detect_my) .detect_license else .power_off;
+                    if (sw == 0x9000) self.detected |= if (self.state == .detect_my) @as(u3, 1) else if (self.state == .detect_license) 2 else 4;
+                    self.state = if (self.state == .detect_my) .detect_license else if (self.state == .detect_license) .detect_myna else .power_off;
                 } else self.stop(.status),
                 .license_mf1, .license_mf2, .license_pin1, .license_pin2, .license_df1, .license_common, .license_df2, .license_photo, .license_mf_settings, .license_settings_select => if (extended) {
                     if (body.len != 0) return self.stop(.malformed);

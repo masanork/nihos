@@ -45,15 +45,20 @@ fn file(service: *core.ExtendedService, bytes: []const u8) !void {
     }
 }
 test "PIN-free detection is bounded, distinguishes ambiguous AIDs and never exposes a PIN prompt" {
-    for (0..4) |bits| {
+    for (0..8) |bits| {
         var service = core.ExtendedService{};
         try service.startDetection();
         try reply(&service, &.{ 0x3b, 0x80 });
         try reply(&service, if (bits & 1 != 0) &.{ 0x90, 0 } else &.{ 0x6a, 0x82 });
         try reply(&service, if (bits & 2 != 0) &.{ 0x90, 0 } else &.{ 0x6a, 0x82 });
+        try reply(&service, if (bits & 4 != 0) &.{ 0x90, 0 } else &.{ 0x6a, 0x82 });
         try t.expect(service.prompt() == null and service.detectedKind() == null);
         try reply(&service, &.{});
-        try t.expectEqual(@as(u2, @intCast(bits)), service.detectedKind().?);
+        try t.expectEqual(@as(u3, @intCast(switch (bits) {
+            0, 1, 2 => bits,
+            4, 5 => 4,
+            else => 3,
+        })), service.detectedKind().?);
     }
 }
 test "two distinct local PIN sessions read exact licence files and keep all data private until cleanup" {

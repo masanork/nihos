@@ -134,3 +134,9 @@ test "Tab5 scanout reservation uses identity-mapped PSRAM pages" {
         }
     }
 }
+
+test {
+    _ = @import("card/license_crypto.zig");
+    _ = @import("card/license_trust.zig");
+    _ = @import("card/license_session_test.zig");
+}
