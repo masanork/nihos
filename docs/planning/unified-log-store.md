@@ -47,6 +47,12 @@ an entry for every card sector or promise full-volume replay at normal boot.
 Store geometry and space reserves remain candidates until fault, memory and
 latency tests pass. Boot and recovery remain independent of SD and SQLite.
 
+An initial [bounded host publication model](../measurements/2026-10-27-store-crash-model.md)
+now exercises immutable payloads, alternating roots and interrupted sync.
+It covers 4,212 finite cut conditions and rejects deliberately broken barrier
+ordering. It does not implement this log format, an on-media index, reader pins,
+GC or a SQLite VFS, and does not promote the experimental store to hardware.
+
 The development target budgets Wi-Fi/TLS, two BLE links and shared kana/kanji
 input together with storage. The [machine-readable profile](tab5-development-profile.json)
 reserves 144 KiB internal stacks, 48 KiB DMA, 224 KiB internal heap and 2 MiB
