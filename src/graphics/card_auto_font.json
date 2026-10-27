@@ -18,13 +18,13 @@
   "sources": {
     "tools/boot-graphics/generate-card-read-font.py": "039d6e55781ba297a7dd66b9280f4f37f7a2a0b4b7442b974aea6ba0b820f093",
     "src/platform/native/card_read.zig": "0ed6439500b59443469e34399c052647fa611024a42a988cf5052afe527453cd",
-    "src/platform/native/keypad_display.zig": "fe8ea296aba72cda248b33801114a647f23ff6f4737000a57c4e848cffcbf01d",
+    "src/platform/native/keypad_display.zig": "e2f52df98c04fa0fcedb5b1d8b232e448df6ae1db6691a3319e408713dd38f07",
     "src/platform/native/usb_probe.zig": "62498a59a425881d18acfec00e767b65cbce7c881446f17f8b3cd1feff79a94d",
-    "src/platform/native/display_runtime.zig": "1ff5555b6e817f2028ba87200f05e436f275cf80b8109a4de373607cdfa3f50f",
+    "src/platform/native/display_runtime.zig": "44caf53eb98197e071a112bdff07c45e06eeed759950488729feeda3be4f1ed7",
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
     "tools/font_codec.py": "e7a8c94eba2570f5c74ae056e4ee75ba8c2650096e0cde77910691b2f5044bfd",
     "tools/boot-graphics/compress-card-font.py": "8853e744220179777db1d44073431f31c85524a311054d867f44849951c6f5e9",
-    "src/graphics/card_read_result.zig": "f0f1878b3be244f6a16ac0e3750b9812a50aff21d1c28aa425be3cdc31eb3252"
+    "src/graphics/card_read_result.zig": "0c0ed61d0103d003e59a37ddc1fa29b85a879fae876a0c0bdddbed611171161a"
   },
   "font_encoding": "row12-v1",
   "font_raw_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54"

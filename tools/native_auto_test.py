@@ -5,6 +5,16 @@ SPEC=importlib.util.spec_from_file_location('auto_check',Path(__file__).with_nam
 C=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(C)
 def record(tag,names,values):return 'NIHOS_NATIVE_CARD_AUTO_'+tag+''.join(f' {n}={v:08x}' for n,v in zip(names,values))+'\n'
 class AutoTests(unittest.TestCase):
+    def test_public_notice_transitions_never_restart_or_darken_the_panel(self):
+        a=record('DISPLAY',C.NOTICE,(0,1,0,32,1,0))
+        b=record('DISPLAY',C.NOTICE,(1,1,0,64,1,0))
+        c=record('DISPLAY',C.NOTICE,(3,1,0,120,1,0))
+        self.assertEqual(len(C.check_notices(a+b+c)),3)
+        for values in ((3,2,0,120,1,0),(3,1,1,120,1,0),(3,1,0,120,0,0),
+                       (3,1,0,120,1,1),(1,1,0,120,1,0),(3,1,0,64,1,0)):
+            with self.subTest(values=values),self.assertRaises(ValueError):
+                C.check_notices(a+b+record('DISPLAY',C.NOTICE,values))
+        with self.assertRaises(ValueError):C.check_notices(a+b)
     def test_detection_requires_clean_zero_credentials_and_a_removal_before_next_job(self):
         a=record('DETECTED',C.DETECTED,(1,1,0,0,2,1))
         remove=record('REMOVED',('job',),(1,))

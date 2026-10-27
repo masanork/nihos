@@ -49,6 +49,22 @@ static bool pattern_active;
 #define DMA_ERRORS 0x07ffffe0u
 #include "keypad_sparse.h"
 
+#if NIH_NATIVE_CARD_AUTO
+static bool notice_cache_handoff(uint32_t address, uint32_t bytes) {
+    uint32_t status;
+    __asm__ volatile("csrrc %0,mstatus,%1" : "=r"(status) : "r"(8u) : "memory");
+    const bool ok = !nih_rom_cache_writeback(1u << 4, address, bytes) &&
+                    !nih_rom_cache_invalidate(1u << 4, address, bytes);
+    if (status & 8u) __asm__ volatile("csrsi mstatus,8" ::: "memory");
+    return ok;
+}
+static void notice_publish_fence(void) { __asm__ volatile("fence rw,rw" ::: "memory"); }
+#endif
+#include "notice_sparse.h"
+#if NIH_NATIVE_CARD_AUTO
+static uint32_t panel_starts, backlight_offs;
+#endif
+
 /* PIN-free touch experiment. Only the fixed SRAM background is changed;
  * descriptors and the logo source remain owned by the existing scanout. */
 bool nih_display_touch_feedback(uint32_t color) {
@@ -66,6 +82,9 @@ bool nih_display_touch_feedback(uint32_t color) {
 }
 
 void nih_display_command_setup(void) {
+#if NIH_NATIVE_CARD_AUTO
+    ++panel_starts;
+#endif
     mipi_dsi_phy_ll_set_switch_time(&MIPI_DSI_HOST, 50, 104, 46, 128);
     mipi_dsi_host_ll_enable_rx_crc(&MIPI_DSI_HOST, true);
     mipi_dsi_host_ll_enable_rx_ecc(&MIPI_DSI_HOST, true);
@@ -102,9 +121,15 @@ void nih_display_command_header(uint32_t type, uint32_t low, uint32_t high) {
     mipi_dsi_host_ll_gen_set_packet_header(&MIPI_DSI_HOST, 0, (mipi_dsi_data_type_t)type, (uint8_t)high, (uint8_t)low);
 }
 
-static void dark(void) { gpio_ll_set_level(&GPIO, 22, 0); }
+static void dark(void) {
+#if NIH_NATIVE_CARD_AUTO
+    if (GPIO.out.val & (1u << 22)) ++backlight_offs;
+#endif
+    gpio_ll_set_level(&GPIO, 22, 0);
+}
 void nih_display_backlight(bool enable) {
-    gpio_ll_set_level(&GPIO, 22, enable && dma_owned && completions >= 2 && !fault);
+    if (enable && dma_owned && completions >= 2 && !fault) gpio_ll_set_level(&GPIO, 22, 1);
+    else dark();
 }
 uint32_t nih_display_dma_irq_source(void) { return ETS_DW_GDMA_INTR_SOURCE; }
 void nih_display_pattern_enable(const nih_dpi_timing *t) {
@@ -140,8 +165,17 @@ uint32_t nih_display_diagnostic(uint32_t field) {
         case 10: return source_address;
         case 11: return DW_GDMA.ch[0].sar0.sar0;
         case 12: return descriptor.ctrl_lo.val;
-        case 13: return ui_enabled ? (uint32_t)ui_palette[0] : (uint32_t)solid_word;
+        case 13:
+#if NIH_NATIVE_CARD_AUTO
+            if (notice_enabled) return ui.paper | (ui.paper << 16);
+#endif
+            return ui_enabled ? (uint32_t)ui_palette[0] : (uint32_t)solid_word;
         case 14: return node_count;
+#if NIH_NATIVE_CARD_AUTO
+        case 15: return notice_swaps;
+        case 16: return panel_starts;
+        case 17: return backlight_offs;
+#endif
         default: return 0; }
 }
 
@@ -165,6 +199,9 @@ bool nih_display_scene_refresh(uint32_t address) {
 
 static bool restart_dma(void) {
     if (ui_enabled) ui_activate();
+#if NIH_NATIVE_CARD_AUTO
+    if (notice_enabled) notice_activate();
+#endif
 #if NIH_NATIVE_DISPLAY_TILE && NIH_NATIVE_DISPLAY_SCENE
     if (scene_enabled && scene_active != scene_pending) {
         scene_active = scene_pending;
@@ -176,14 +213,26 @@ static bool restart_dma(void) {
         dw_gdma_ll_lli_set_block_markers(ui_enabled ? ui_node(i) : &active_nodes[i], false, i + 1 == node_count, true);
     /* UI LLIs are CPU/device shared writeback state. They are accessed only
      * through the non-cached alias after the initial cache handoff. */
-    if (!ui_enabled && nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
+    bool cached_nodes = !ui_enabled;
+#if NIH_NATIVE_CARD_AUTO
+    if (notice_enabled) cached_nodes = false;
+#endif
+    if (cached_nodes && nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)active_nodes, node_count * sizeof(*active_nodes))) return false;
     __asm__ volatile("fence iorw,iorw" ::: "memory");
     dw_gdma_ll_channel_set_link_list_master_port(&DW_GDMA, 0, DW_GDMA_LL_MASTER_PORT_MEMORY);
-    dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, ui_enabled ? ui_local : (uint32_t)(uintptr_t)active_nodes);
+    uint32_t head = ui_enabled ? ui_local : (uint32_t)(uintptr_t)active_nodes;
+#if NIH_NATIVE_CARD_AUTO
+    if (notice_enabled) head = notice_head(notice_active);
+#endif
+    dw_gdma_ll_channel_set_link_list_head_addr(&DW_GDMA, 0, head);
     dw_gdma_ll_channel_enable(&DW_GDMA, 0, true);
     return true;
 }
 
+#if NIH_NATIVE_CARD_AUTO
+/* Foreground initialization only; frame-completion/IRQ code stays in SRAM. */
+__attribute__((section(".flash.photo")))
+#endif
 int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uint32_t sram_solid, uint32_t lease, uint32_t lease_bytes) {
     const int __DECLARE_RCC_ATOMIC_ENV = 0;
     (void)__DECLARE_RCC_ATOMIC_ENV;
@@ -238,6 +287,15 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uin
         const int32_t result = ui_build(lease, lease_bytes);
         if (result) return result;
     }
+#if NIH_NATIVE_CARD_AUTO
+    if (sram_solid == 5) {
+        if (!notice_build(0, ui.count)) return -7;
+        notice_active = notice_pending = 0;
+        notice_enabled = true;
+        ui_enabled = false;
+        notice_activate();
+    }
+#endif
 #if NIH_NATIVE_DISPLAY_TILE
     if (sram_solid >= 2) {
         const bool scene = NIH_NATIVE_DISPLAY_SCENE && sram_solid == 3;
@@ -403,6 +461,10 @@ bool nih_display_scanout_stop(void) {
             dw_gdma_ll_enable_controller(&DW_GDMA, false);
             dw_gdma_ll_enable_bus_clock(0, false);
             dma_owned = false;
+            ui_enabled = false;
+#if NIH_NATIVE_CARD_AUTO
+            notice_enabled = false;
+#endif
             return true;
         }
     }

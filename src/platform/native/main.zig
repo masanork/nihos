@@ -693,14 +693,20 @@ const CardReadLog = struct {
 };
 
 const AutoLog = struct {
+    fn notice() void {
+        const report = @import("display_runtime.zig").noticeSnapshot();
+        logger.record("NIHOS_NATIVE_CARD_AUTO_DISPLAY", null, .{ "swaps", "panel_starts", "backlight_offs", "frames", "backlight", "fault" }, &report);
+    }
     pub fn refresh(_: AutoLog, report: *const @import("display_runtime.zig").Report) void {
         TouchLog.refresh(.{}, report);
     }
     pub fn boot(_: AutoLog, report: *const @import("photo_runtime.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_BOOT", null, .{ "selftest", "error_code", "stack_used", "erased", "crypto_selftest", "crypto_stack" }, report);
+        notice();
     }
     pub fn detected(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_DETECTED", null, .{ "job", "kind", "pin1_verifies", "pin2_verifies", "cleanup", "erased" }, report);
+        notice();
     }
     pub fn selected(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_SELECTED", null, .{ "job", "kind" }, report);
@@ -720,5 +726,6 @@ const AutoLog = struct {
     pub fn removed(_: AutoLog, job: u32) void {
         const report: struct { job: u32 } = .{ .job = job };
         logger.record("NIHOS_NATIVE_CARD_AUTO_REMOVED", null, .{"job"}, &report);
+        notice();
     }
 };

@@ -25,6 +25,7 @@ extern fn nih_display_backlight(bool) callconv(.c) void;
 extern fn nih_display_pattern_enable(*const panels.Timing) callconv(.c) void;
 extern fn nih_display_dma_irq_source() callconv(.c) u32;
 extern fn nih_display_diagnostic(u32) callconv(.c) u32;
+extern fn nih_display_notice_status() callconv(.c) u32;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 
 var state: Scanout = .{};
@@ -49,6 +50,11 @@ pub fn snapshot() Report {
     const live: *const volatile Scanout = &state;
     const event: *const volatile u32 = &last_event;
     return .{ .status = if (running and live.fault == 0) 1 else 2, .frames = live.frames, .fault = live.fault, .event = event.*, .backlight = @intFromBool(live.backlight), .dsi_error0 = nih_display_diagnostic(0), .dsi_error1 = nih_display_diagnostic(1), .dma_error = nih_display_diagnostic(2), .bridge_error = nih_display_diagnostic(3) };
+}
+pub const NoticeReport = struct { swaps: u32, panel_starts: u32, backlight_offs: u32, frames: u32, backlight: u32, fault: u32 };
+pub fn noticeSnapshot() NoticeReport {
+    const current = snapshot();
+    return .{ .swaps = nih_display_diagnostic(15), .panel_starts = nih_display_diagnostic(16), .backlight_offs = nih_display_diagnostic(17), .frames = current.frames, .backlight = current.backlight, .fault = current.fault };
 }
 
 const Sender = struct {
@@ -149,7 +155,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         report.lease_bytes = lease.len;
         if (options.display_scene and !nih_display_scene_refresh(board.framebuffer)) return error.Cache;
     }
-    const source_kind: u32 = if ((options.keypad_demo or options.card_read)) 4 else if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
+    const source_kind: u32 = if (options.card_auto and @import("keypad_display.zig").notice_frame) 5 else if ((options.keypad_demo or options.card_read)) 4 else if (options.display_scene) 3 else if (options.display_tile) 2 else @intFromBool(sram);
     const start_code = nih_display_scanout_begin(board.framebuffer, &selected, source_kind, report.lease_start, report.lease_bytes);
     report.start_code = @bitCast(start_code);
     report.prime_depth = nih_display_diagnostic(4);
@@ -244,6 +250,29 @@ pub fn replace(clock: timer_group.Timer, panel: u32) Report {
     last_event = 0;
     attempted = false;
     return start(clock, panel, false, false, true);
+}
+/// Public notices already scan from private SRAM banks. Keep the panel and
+/// backlight running, publish the inactive bank, and await the frame handoff.
+/// PIN/results still use replace(), which retires and wipes retained pixels.
+pub noinline fn presentNotice(clock: timer_group.Timer, panel: u32) linksection(if (options.card_auto) ".flash.photo" else ".text") !void {
+    if (options.card_auto and running and nih_display_notice_status() != 0) {
+        if (state.fault != 0) return error.Scanout;
+        try @import("keypad_display.zig").publishNotice(@as([*]const u8, @ptrFromInt(board.framebuffer))[0..board.frame_bytes]);
+        const pins = Pins{ .clock = clock };
+        const started = clock.counter() orelse return error.Timer;
+        while (nih_display_notice_status() == 2) {
+            if (state.fault != 0) return error.Scanout;
+            const now = clock.counter() orelse return error.Timer;
+            if (now - started >= 200_000) return error.Timeout;
+            if (!pins.delay(1000)) return error.Timer;
+        }
+        if (nih_display_notice_status() != 1) return error.Scanout;
+    } else {
+        const result = replace(clock, panel);
+        clock.start();
+        clock.disarm();
+        if (result.status != 1) return error.Scanout;
+    }
 }
 fn wipePools() bool {
     const std = @import("std");

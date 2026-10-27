@@ -84,9 +84,11 @@ pub noinline fn prepare(clock: timer.Timer, panel: u32) linksection(".flash.phot
     renderer.static_frame = true;
     renderer.overview_frame = false;
     renderer.pin_kind = 0;
+    renderer.notice_frame = true;
     try card.ResultScreen.notice(".flash.keypad.auto_font", frame(), AutoCaptions.get(0), AutoCaptions.get(1));
 }
 noinline fn redraw(clock: timer.Timer, panel: u32) linksection(".flash.photo") !void {
+    renderer.notice_frame = false;
     const result = display.replace(clock, panel);
     clock.start();
     clock.disarm();
@@ -96,8 +98,9 @@ noinline fn notice(clock: timer.Timer, panel: u32, title: []const u8, detail: []
     renderer.static_frame = true;
     renderer.overview_frame = false;
     renderer.pin_kind = 0;
+    renderer.notice_frame = true;
     try card.ResultScreen.notice(".flash.keypad.auto_font", frame(), title, detail);
-    try redraw(clock, panel);
+    try display.presentNotice(clock, panel);
 }
 noinline fn open(clock: timer.Timer) linksection(".flash.photo") !void {
     var enumeration = usb.Report{};
@@ -113,7 +116,7 @@ noinline fn close() linksection(".flash.photo") !void {
         device = null;
     }
 }
-pub noinline fn emergency() linksection(".flash.photo") bool {
+noinline fn retireCard() linksection(".flash.photo") bool {
     entry.clear();
     var clean = true;
     if (device) |*link| clean = link.emergency();
@@ -127,9 +130,19 @@ pub noinline fn emergency() linksection(".flash.photo") bool {
         clean = false;
     };
     if (!photo.close()) clean = false;
-    if (!display.emergency()) clean = false;
     armed = false;
     return clean;
+}
+pub noinline fn emergency() linksection(".flash.photo") bool {
+    const clean = retireCard();
+    const dark = display.emergency();
+    return clean and dark;
+}
+noinline fn recoverLink() linksection(".flash.photo") bool {
+    // The insertion/removal loop only retains public notices. A transport
+    // reconnect must not restart the panel; private-job failures still erase
+    // the whole display through emergency().
+    return if (renderer.notice_frame) retireCard() else emergency();
 }
 noinline fn detect() linksection(".flash.photo") !u3 {
     try service.startDetection();
@@ -445,7 +458,7 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
     log.boot(&photo.report);
     while (true) {
         if (device == null) open(clock) catch {
-            if (!emergency()) halt();
+            if (!recoverLink()) halt();
             notice(clock, panel, AutoCaptions.get(16), AutoCaptions.get(17)) catch {
                 halt();
             };
@@ -453,7 +466,7 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
             continue;
         };
         const slot = device.?.slotState(&owner.sequence) catch {
-            if (!emergency()) halt();
+            if (!recoverLink()) halt();
             gate.finish();
             notice(clock, panel, AutoCaptions.get(16), AutoCaptions.get(18)) catch {
                 halt();
@@ -513,19 +526,4 @@ fn halt() noreturn {
     while (true) asm volatile ("wfi");
 }
 
-const AutoCaptions = struct {
-    const text = "カードを置いてください\x00" ++ "マイナンバーカード・IC運転免許証\x00" ++ "本籍の変更\x00" ++ "公安委員会\x00" ++ "氏名の変更\x00" ++ "呼び名の変更\x00" ++ "住所の変更\x00" ++ "免許条件の追加\x00" ++ "免許条件の解除\x00" ++ "備考\x00" ++ "追加の記載事項\x00" ++ "免許の条件\x00" ++ "予備の記録\x00" ++ "読み取りを中止しました\x00" ++ "カードを取り外してください\x00" ++ "取り外し後、次のカードを検知します\x00" ++ "リーダーを確認してください\x00" ++ "USB-Aにカードリーダーを接続してください\x00" ++ "カードを取り外してから接続してください\x00" ++ "カードを確認しています\x00" ++ "しばらくお待ちください\x00" ++ "カードを判定できませんでした\x00" ++ "マイナンバーカードを検知しました\x00" ++ "IC運転免許証を検知しました\x00" ++ "免許情報対応カードを検知しました\x00" ++ "対応するカードではありません\x00" ++ "PINは送信しません・取り外して次へ\x00";
-    const placement = if (@import("builtin").os.tag == .freestanding) ".flash.rodata.card_pin" else if (@import("builtin").os.tag == .macos) "__TEXT,__const" else ".rodata";
-    const data: [text.len]u8 align(4) linksection(placement) = text.*;
-    inline fn get(index: usize) []const u8 {
-        const live: [*]const volatile u8 = @ptrCast(&data);
-        var offset: usize = 0;
-        for (0..index) |_| {
-            while (live[offset] != 0) : (offset += 1) {}
-            offset += 1;
-        }
-        var end = offset;
-        while (live[end] != 0) : (end += 1) {}
-        return data[offset..end];
-    }
-};
+const AutoCaptions = card.ResultScreen.NoticeCaptions;

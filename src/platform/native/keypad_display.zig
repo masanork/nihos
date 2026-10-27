@@ -8,16 +8,24 @@ pub var static_frame = false;
 pub var overview_frame = false;
 pub var demo_frame = false;
 pub var pin_kind: u8 = 0;
+pub var notice_frame = false;
 extern fn nih_display_keypad_configure(*const plan.Config) callconv(.c) bool;
 extern fn nih_display_keypad_buffer() callconv(.c) u32;
 extern fn nih_display_keypad_publish(u32, u32) callconv(.c) bool;
 extern fn nih_display_keypad_count() callconv(.c) u32;
+extern fn nih_display_notice_publish(u32) callconv(.c) bool;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 pub const low_start: u32 = 0x4ff40000;
 pub const low_end: u32 = 0x4ff60000;
 pub const high_start: u32 = 0x4ff70000;
 pub const high_end: u32 = 0x4ff9f000;
 pub const Prepared = struct { local_start: u32, local_bytes: u32, nodes: u32, pixel_bytes: u32, font_low: u32, font_low_bytes: u32 };
+pub noinline fn publishNotice(frame: []const u8) linksection(if (options.card_auto) ".flash.photo" else ".text") !void {
+    if (!options.card_auto or !notice_frame or !static_frame) return error.Plan;
+    const out = @as([*]plan.Segment, @ptrFromInt(plan.scratch_start))[0..plan.planCapacity()];
+    const spans = try plan.buildStatic(frame, out);
+    if (!nih_display_notice_publish(@intCast(spans.len))) return error.Plan;
+}
 fn bytes(address: usize, length: usize) []u8 {
     return @as([*]u8, @ptrFromInt(address))[0..length];
 }
