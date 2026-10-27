@@ -105,5 +105,59 @@ class LifetimeEvidenceTests(unittest.TestCase):
                 RUNNER.validate_bundle(candidate, loader, source)
 
 
+class PhysicalRemovalEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.image = {'io_lifetimes': {'version': 1, 'qualification': True, 'removal_test': True},
+                      'memory': {'profile': 'device'}}
+        self.record = dict.fromkeys(LOG.SD_REMOVAL_FIELDS, 0)
+        self.record.update(version=1, status=1, before_reads=17, failed_command=17,
+                           failed_interrupts=0x100, unpublished=1, fenced=1, idle_denied=1,
+                           stale_rejected=2, reinserted=1, after_reads=2, crc=0x9022e83d,
+                           generation_before=3, generation_after=4)
+
+    def log(self, record=None):
+        record = self.record if record is None else record
+        return ('NIHOS_NATIVE_IO_LIFETIMES status=00000001\nNIHOS_SD_REMOVE_READY\nNIHOS_SD_INSERT_READY\n' +
+                'NIHOS_NATIVE_SD_REMOVAL' + ''.join(f' {key}={record[key]:08x}' for key in LOG.SD_REMOVAL_FIELDS) + '\n')
+
+    def check(self, log, image=None, evidence='physical-device'):
+        return LOG.check_sd_removal(log, self.image if image is None else image,
+                                    evidence, {'crc0': self.record['crc']})
+
+    def test_hardware_record_passes_without_claiming_operator_confirmation(self):
+        self.assertEqual(self.record, self.check(self.log()))
+        self.assertNotIn('operator_confirmed', self.check(self.log()))
+
+    def test_partial_stop_stale_generation_and_incorrect_data_fail(self):
+        for key in LOG.SD_REMOVAL_FIELDS:
+            if key in ('before_reads', 'failed_interrupts'):
+                continue
+            with self.subTest(field=key), self.assertRaises(ValueError):
+                self.check(self.log({**self.record, key: self.record[key] ^ 1}))
+        for count in (0, 20000):
+            with self.assertRaises(ValueError):
+                self.check(self.log({**self.record, 'before_reads': count}))
+
+    def test_operator_phase_order_and_bound_image_are_required(self):
+        log = self.log()
+        for changed in (log.replace('NIHOS_SD_REMOVE_READY\n', ''),
+                        log.replace('NIHOS_SD_INSERT_READY\n', 'NIHOS_SD_INSERT_READY\n' * 2),
+                        log.replace('NIHOS_SD_REMOVE_READY\nNIHOS_SD_INSERT_READY\n',
+                                    'NIHOS_SD_INSERT_READY\nNIHOS_SD_REMOVE_READY\n')):
+            with self.assertRaises(ValueError):
+                self.check(changed)
+        with self.assertRaises(ValueError):
+            self.check(log, {})
+        with self.assertRaises(ValueError):
+            self.check(log, evidence='emulator')
+
+    def test_cold_boot_rejects_usb_watchdog_missing_and_mixed_reset_evidence(self):
+        RUNNER.require_power_on_reset('rst:0x1 (POWERON_RESET),boot:0x20c\n')
+        for log in ('', 'rst:0x17 (CHIP_USB_UART_RESET)', 'rst:0x7 (TG0WDT_SYS_RESET)',
+                    'rst:0x1 (POWERON_RESET)\nrst:0x17 (CHIP_USB_UART_RESET)'):
+            with self.assertRaises(ValueError):
+                RUNNER.require_power_on_reset(log)
+
+
 if __name__ == '__main__':
     unittest.main()

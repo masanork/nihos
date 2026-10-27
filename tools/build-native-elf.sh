@@ -70,6 +70,16 @@ if [ "$broker" = true ] && { [ "$high_sram" != true ] || [ "$profile" != device 
     echo "Memory broker handoff requires device, sqlite, HIGH_SRAM=1 and STORAGE_SERVICE=1" >&2
     exit 1
 fi
+sd_removal=${NIHOS_NATIVE_SD_REMOVAL:-0}
+case "$sd_removal" in
+    0) sd_removal=false ;;
+    1) sd_removal=true ;;
+    *) echo "NIHOS_NATIVE_SD_REMOVAL must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$sd_removal" = true ] && [ "$broker" != true ]; then
+    echo "Physical SD removal qualification requires MEMORY_BROKER=1" >&2
+    exit 1
+fi
 cold_flash=${NIHOS_NATIVE_COLD_FLASH:-0}
 case "$cold_flash" in
     0) cold_flash=false ;;
@@ -98,7 +108,7 @@ if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
-printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\npub const broker = %s;\npub const cold_flash = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" "$broker" "$cold_flash" > "$build_dir/native_options.next"
+printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\npub const broker = %s;\npub const cold_flash = %s;\npub const sd_removal = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" "$broker" "$cold_flash" "$sd_removal" > "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
