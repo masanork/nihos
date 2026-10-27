@@ -25,7 +25,8 @@ class AudioEvidenceTests(unittest.TestCase):
 
     def test_rejects_missing_dma_progress_or_unreturned_buffers(self):
         for changes in ({'phase': 8}, {'fault': 1}, {'dma': 0}, {'dma': 0xc}, {'bclk': 0},
-                        {'fifo': 0}, {'fifo': 8192}, {'bclk': 131072}, {'eof_descriptor': 0}, {'codec_off': 0}, {'stopped': 0}, {'returned': 0}):
+                        {'fifo': 0}, {'fifo': 8192}, {'bclk': 131072}, {'eof_descriptor': 0},
+                        {'parked': 0}, {'parked': 2}, {'codec_off': 0}, {'stopped': 0}, {'returned': 0}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 AUDIO.check(log(row(**changes)))
 

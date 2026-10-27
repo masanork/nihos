@@ -6,9 +6,38 @@ This checkpoint covers a separate, opt-in ES8388/I2S0/AHB-DMA output fixture.
 It does **not** qualify audible sound or a normal application audio service.
 See [ADR 0049](../adr/0049-native-audio-output-probe.md).
 
-## Final candidate and physical result
+## Main integration follow-up
 
-The final candidate in `attempt-09` is SHA-256
+After main advanced to `2a5d353` (foreground-card startup fix), the audio branch
+merged it and rebuilt the opt-in image. `attempt-10` verified application SHA-256
+`da929550d09110953a4b0989717874f2602dea1fd01dd328221c925ae1e4b145`
+before and after a 35.058-second warm-reset capture. DMA flags 0x0b, BCLK
+262,145, FIFO 16,384, final descriptor 0x4ff1b6b0 and stable phase 7/fault 0
+matched the earlier controller result. Parked, codec-off, stopped and returned
+were all 1. Core/display and continuing-IMU checkers passed; I2C errors were 0.
+The 49,856-byte primary heap and 704-byte margin above the floor are unchanged.
+The exact previous 1 MiB app was restored and verified; the first 64 KiB was
+unchanged. Audible confirmation is still **not received**.
+
+The [retained UART capture](evidence/2026-10-28-native-audio-main-followup/serial.log),
+image audit, checker reports and before/after/restoration verification records
+are source-bound by `main_followup` in the JSON receipt. Private Flash backups
+are excluded. The source archive records the build inputs before the later
+checker/documentation changes; those changes do not alter firmware bytes.
+
+CI exposed an unrelated evidence-capture defect: emulator stderr INFO messages
+could split the UART CRT-pass line when both streams shared a file. The runner
+now retains stdout UART and stderr diagnostics separately, hashes both streams,
+and checks only UART. All eight local normal-boot smoke cases then passed,
+including absent/4/32/64 MiB PSRAM, delayed CPU1 and three expected failures.
+The checker still rejects incomplete guest records; no parser repair fabricates
+a pass from interleaved text. Updated host suites and 209 Python regressions
+passed, along with static analysis and the positive/negative audio-shim builds.
+The audio checker also now explicitly rejects a missing/invalid parked receipt.
+
+## Initial candidate and physical result
+
+The initial qualified candidate in `attempt-09` is SHA-256
 `51f89b7c662afc80f2310863d7f9594a12446bcc5fee2336b66f1a1e65684ce0`.
 Its primary heap is 49,856 bytes; the existing 49,152-byte floor was not changed.
 Only 704 bytes of additional resident headroom remain above that floor in this

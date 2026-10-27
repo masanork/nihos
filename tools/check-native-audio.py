@@ -33,7 +33,7 @@ def check(log):
     final = complete[-1]
     if (final['dma'] & 8 == 0 or final['dma'] & 4 or not 262144 <= final['bclk'] <= 262176 or final['fifo'] != 16384 or
             not 0x4ff00000 <= final['eof_descriptor'] < 0x4ff28000 or final['eof_descriptor'] % 16 or
-            (final['codec_off'], final['stopped'], final['returned']) != (1, 1, 1)):
+            (final['parked'], final['codec_off'], final['stopped'], final['returned']) != (1, 1, 1, 1)):
         raise ValueError('incomplete DMA/end/cleanup evidence')
     if any(row != final for row in complete):
         raise ValueError('completion changed after shutdown')
