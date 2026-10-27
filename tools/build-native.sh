@@ -8,13 +8,22 @@ case "$profile" in
     emulator) revision=300; max_revision=399 ;;
     *) echo "usage: $0 [device|emulator] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
 esac
+mode=${2:-integer}
+# The public device build is the normal interactive OS. Low-level ELF builds
+# and explicitly selected display/qualification/storage profiles remain fixtures.
+if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFICATION:-0}" = 0 ] && [ "${NIHOS_NATIVE_SDMMC:-0}" = 0 ] && [ "${NIHOS_NATIVE_BOOT_FAST:-auto}" != 0 ] && [ "${NIHOS_NATIVE_DISPLAY:-2}" = 2 ] && [ "${NIHOS_NATIVE_CONSOLE:-1}" = 1 ] && [ "${NIHOS_NATIVE_CONSOLE_LIVE:-1}" = 1 ] && [ "${NIHOS_NATIVE_PSRAM_200:-1}" = 1 ]; then
+    export NIHOS_NATIVE_DISPLAY="${NIHOS_NATIVE_DISPLAY:-2}"
+    export NIHOS_NATIVE_PSRAM_200="${NIHOS_NATIVE_PSRAM_200:-1}"
+    export NIHOS_NATIVE_CONSOLE="${NIHOS_NATIVE_CONSOLE:-1}"
+    export NIHOS_NATIVE_CONSOLE_LIVE="${NIHOS_NATIVE_CONSOLE_LIVE:-1}"
+    export NIHOS_NATIVE_NETWORK="${NIHOS_NATIVE_NETWORK:-1}"
+fi
 build_dir="$repo_root/build/native-$profile"
 if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
     umask 077
     build_dir="$build_dir-network"
 fi
 boot_dir="$build_dir/loader"
-mode=${2:-integer}
 case "$mode" in
     integer) ;;
     floating|compiled|sqlite) build_dir="$build_dir-$mode" ;;

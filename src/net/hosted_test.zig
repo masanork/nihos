@@ -4,6 +4,82 @@ const wire = station.wire;
 const dhcp = station.dhcp;
 const mac = [_]u8{ 2, 3, 4, 5, 6, 7 };
 
+test "settings provider owns credentials and validates updates before replacing" {
+    var config: station.Configuration = .{};
+    var name = [_]u8{ 't', 'e', 's', 't' };
+    try config.set(.{ .network = .{ .ssid = &name, .password = "temporary" } });
+    @memset(&name, 0);
+    try std.testing.expectEqualStrings("test", config.get().network.ssid);
+    try std.testing.expectError(error.InvalidArgument, config.set(.{ .network = .{ .ssid = "", .password = "" } }));
+    try std.testing.expectEqualStrings("test", config.get().network.ssid);
+    try config.set(.disabled);
+    try std.testing.expectEqual(station.Join.disabled, config.get());
+    try std.testing.expect(std.mem.allEqual(u8, &config.password, 0));
+}
+
+test "unconfigured Hosted transport never initializes or joins Wi-Fi, even on old version timeout" {
+    var client: station.Client = .{};
+    client.begin(.disabled, 0);
+    client.keep_serving = true;
+    try client.receive(.{ .interface = 5, .payload = &.{ 0x22, 6, 0x12, 1, 13, 0x11, 1, 1 } }, 1);
+    _ = try client.tx(1);
+    client.sent(1);
+    _ = try client.tx(2);
+    try std.testing.expectEqual(@as(u32, 350), client.active_id.?);
+    client.sent(2);
+    try std.testing.expectEqual(@as(usize, 0), (try client.tx(5_000_002)).len);
+    try std.testing.expectEqual(station.Phase.done, client.phase);
+    try std.testing.expect(client.dhcp_client == null);
+    try std.testing.expectEqual(@as(u8, 1), client.peer_capabilities);
+    try std.testing.expectEqual(@as(usize, 0), (try client.tx(100_000_000)).len);
+}
+
+test "Hosted HCI type participates in checksum and survives stream decoding" {
+    var out: [32]u8 = undefined;
+    const bytes = try wire.typedFrame(&out, 4, 1, 4, &.{ 14, 4, 1, 3, 12, 0 });
+    var decoder: wire.Decoder = .{};
+    for (bytes) |b| if (try decoder.push(b)) |frame| {
+        try std.testing.expectEqual(@as(u8, 4), frame.packet_type);
+        try std.testing.expectEqual(@as(u8, 4), frame.interface);
+        try std.testing.expectEqualSlices(u8, &.{ 14, 4, 1, 3, 12, 0 }, frame.payload);
+    };
+    out[11] = 1;
+    decoder = .{};
+    for (bytes[0 .. bytes.len - 1]) |b| _ = try decoder.push(b);
+    try std.testing.expectError(error.Checksum, decoder.push(bytes[bytes.len - 1]));
+}
+
+test "Bluetooth feature RPC is correlated and failures do not prevent Wi-Fi setup" {
+    var client: station.Client = .{};
+    client.begin(.disabled, 0);
+    client.peer_capabilities = 4;
+    client.phase = .bt_init;
+    client.deadline = 5_000_000;
+    _ = try client.tx(0);
+    try std.testing.expectEqual(@as(u32, 387), client.active_id.?);
+    client.sent(0);
+    var bytes: [128]u8 = undefined;
+    try client.receive(.{ .interface = 3, .payload = try reply(&bytes, 2, 643, client.uid, &.{ 16, 1, 24, 1 }) }, 1);
+    try std.testing.expectEqual(station.Phase.bt_enable, client.phase);
+    _ = try client.tx(2);
+    client.sent(2);
+    try client.receive(.{ .interface = 3, .payload = try reply(&bytes, 2, 643, client.uid - 1, &.{ 16, 1, 24, 3 }) }, 3);
+    try std.testing.expect(!client.bluetooth_ready);
+    try client.receive(.{ .interface = 3, .payload = try reply(&bytes, 2, 643, client.uid, &.{ 16, 1, 24, 3 }) }, 4);
+    try std.testing.expect(client.bluetooth_ready);
+    try std.testing.expectEqual(station.Phase.done, client.phase);
+
+    client.begin(.saved, 0);
+    client.phase = .bt_init;
+    client.deadline = 5_000_000;
+    _ = try client.tx(0);
+    client.sent(0);
+    try client.receive(.{ .interface = 3, .payload = try reply(&bytes, 2, 643, client.uid, &.{ 8, 1 }) }, 1);
+    try std.testing.expectEqual(station.Phase.init_wifi, client.phase);
+    try std.testing.expect(client.bluetooth_setup_done and !client.bluetooth_ready);
+    try std.testing.expectEqual(@as(u32, 1), client.bluetooth_status);
+}
+
 fn reply(out: []u8, kind: u8, id: u32, uid: u32, body: []const u8) ![]const u8 {
     const result = try wire.request(out, id, uid, body);
     // Same envelope encoding, but the peer sends a response/event.
