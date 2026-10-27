@@ -33,10 +33,12 @@ fn baseline(backend: *Backend) !void {
     try put(&store, "new");
     backend.powerLoss();
 }
-fn collectAndReplace(store: *Store) !void {
+fn collectAndReplace(store: *Store, last_ack: *u64) !void {
     const space = try store.collectIndex();
+    last_ack.* = store.generation();
     try equal(@as(u32, 2), space.available_pages);
     try put(store, "next");
+    last_ack.* = store.generation();
 }
 
 test "index reachability reuses a tiny pool beyond the old append limit" {
@@ -173,7 +175,9 @@ test "every retirement and recycled leaf write cut preserves the latest acknowle
             clean.order = order;
             var store = Store{};
             try store.recover(&clean);
-            try collectAndReplace(&store);
+            var clean_ack: u64 = 3;
+            try collectAndReplace(&store, &clean_ack);
+            try equal(@as(u64, 5), clean_ack);
             clean_events = clean.events;
             try equal(@as(usize, 84), clean_events);
             clean.powerLoss();
@@ -189,12 +193,13 @@ test "every retirement and recycled leaf write cut preserves the latest acknowle
                     var interrupted = Store{};
                     try interrupted.recover(&broken);
                     broken.cut = .{ .event = event, .prefix = prefix };
-                    try expectError(error.Io, collectAndReplace(&interrupted));
+                    var last_ack: u64 = 3;
+                    try expectError(error.Io, collectAndReplace(&interrupted, &last_ack));
                     try expectError(error.Faulted, interrupted.begin());
                     broken.powerLoss();
                     var recovered = Store{};
                     try recovered.recover(&broken);
-                    try expect(recovered.generation() >= 3 and recovered.generation() <= 5);
+                    try expect(recovered.generation() >= last_ack and recovered.generation() <= 5);
                     try object(&recovered, if (recovered.generation() == 5) "next" else "new");
                     cases += 1;
                 }
