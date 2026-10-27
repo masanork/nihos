@@ -37,6 +37,8 @@ pub const Client = struct {
     ipv6_enabled: bool = false,
     ipv6_client: ?ipv6.Client = null,
     tx_ipv6: bool = false,
+    /// Opt-in integration path; owner must bound session/address lifetime.
+    keep_serving: bool = false,
 
     pub fn begin(self: *Client, join: Join, now: u64) void {
         self.beginDual(join, now, false);
@@ -134,8 +136,8 @@ pub const Client = struct {
                     else => return error.Malformed,
                 }
             },
-            1 => if (self.phase == .lease) {
-                self.dhcp_client.?.receive(frame.payload) catch |err| {
+            1 => if (self.phase == .lease or (self.phase == .done and self.keep_serving)) {
+                if (self.phase == .lease) self.dhcp_client.?.receive(frame.payload) catch |err| {
                     if (err == error.Rejected) {
                         self.phase = .failed;
                         return err;
@@ -164,7 +166,18 @@ pub const Client = struct {
     }
     pub fn tx(self: *Client, now: u64) Error![]const u8 {
         if (now < self.started) return error.Timeout;
-        if (self.phase == .done) return &.{};
+        if (self.phase == .done) {
+            if (!self.keep_serving) return &.{};
+            if (self.output_len != 0) return self.output[0..self.output_len];
+            if (self.ipv6_client) |*client| {
+                const packet = try client.tx(now);
+                if (packet.len != 0) {
+                    self.tx_ipv6 = true;
+                    return self.encodeFrame(1, packet);
+                }
+            }
+            return &.{};
+        }
         if (self.phase == .failed) return error.Rejected;
         if (now >= self.deadline) {
             // Old factory versions may not implement the version request. Its
@@ -272,7 +285,7 @@ pub const Client = struct {
     pub fn sent(self: *Client, now: u64) void {
         @memset(self.output[0..self.output_len], 0);
         self.output_len = 0;
-        if (self.phase == .handshake) self.advance(.version, now) else if (self.phase == .lease) {
+        if (self.phase == .handshake) self.advance(.version, now) else if (self.phase == .lease or (self.phase == .done and self.keep_serving)) {
             if (self.tx_ipv6) self.ipv6_client.?.sent(now) else self.dhcp_client.?.sent(now);
         } else {
             self.transmitted = true;

@@ -1,4 +1,4 @@
-//! Opt-in native boot fixture. Requires backed-up C6 running the AT candidate.
+//! Native C6 transport fixture and shared CPU0-only DMA/pad support.
 //! Exclusive, polling SDMMC ownership before CPU1 release, no filesystem/NVS IO.
 const std = @import("std");
 const sd = @import("sdio");
@@ -20,7 +20,7 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 var clock_failed = false;
-const Bus = struct {
+pub const Bus = struct {
     clock: timers.Timer = timers.Timer.fromGroup(0x500c2000, 0).?,
     pub fn read(_: Bus, offset: usize) u32 {
         return @as(*volatile u32, @ptrFromInt(sd.base + offset)).*;
@@ -49,6 +49,10 @@ const Bus = struct {
     }
     pub fn prepareDma(_: Bus, writing: bool, source: []const u8, length: usize) ?u32 {
         if (length == 0 or length > 512 or length % 4 != 0) return null;
+        // CPU0 display IRQs also use the ROM cache command engine. Serialize
+        // only these private 512/64-byte cache operations, never SDIO waits.
+        const previous = maskCache();
+        defer restoreCache(previous);
         // Cache operations cover exclusively owned complete 64-byte lines.
         if (writing) {
             @memset(&dma_data, 0);
@@ -65,6 +69,8 @@ const Bus = struct {
         return @intFromPtr(&dma_descriptor);
     }
     pub fn finishDma(_: Bus, writing: bool, destination: []u8) bool {
+        const previous = maskCache();
+        defer restoreCache(previous);
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
         if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
         if (@as(*volatile u32, &dma_descriptor[0]).* & ((1 << 31) | (1 << 30)) != 0) return false;
@@ -76,6 +82,16 @@ const Bus = struct {
     }
 };
 
+fn maskCache() u32 {
+    return asm volatile ("csrrci %[previous], mstatus, 8"
+        : [previous] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+}
+fn restoreCache(previous: u32) void {
+    if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+}
+
 var host = sd.Controller(Bus){ .io = .{} };
 var stream = pipe.Stream(@TypeOf(host)){ .host = &host };
 var owner: control.Controller = .{};
@@ -83,6 +99,15 @@ var rx: [512]u8 = @splat(0);
 var hosted_stream = pipe.ProfileStream(@TypeOf(host), 64){ .host = &host };
 var hosted_client: hosted.Client = .{};
 var hosted_decoder: hosted.wire.Decoder = .{};
+/// Bind the LL power shim's delay clock without starting/stopping a timer.
+/// The integrated owner and standalone fixture are mutually exclusive builds.
+pub fn useClock(clock: timers.Timer) void {
+    host.io.clock = clock;
+    clock_failed = false;
+}
+pub fn clockFailed() bool {
+    return clock_failed;
+}
 pub const Report = struct {
     status: u32 = 0,
     stage: u32 = 0,

@@ -39,6 +39,17 @@ const Renderer = console.raster.Renderer(".flash.rodata.display", face);
 // Unused tail of the existing private display reservation, not owner heaps.
 const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
+/// Single optional CPU0 service reservation after all console objects. The
+/// full tail already belongs to the display lease, outside both owner heaps.
+/// No object in this range is a scanout/DMA source.
+pub fn serviceBacking(comptime bytes: usize) *align(64) [bytes]u8 {
+    const start = (board.framebuffer + board.frame_bytes + @sizeOf(Renderer) + @sizeOf(Text) + 63) & ~@as(usize, 63);
+    comptime {
+        if (start + bytes > board.framebuffer + board.reserve_bytes)
+            @compileError("console and network state exceed the reserved display tail");
+    }
+    return @ptrFromInt(start);
+}
 var renderer_ready = false;
 var max_scroll_us: u32 = 0;
 var max_copy_us: u32 = 0;

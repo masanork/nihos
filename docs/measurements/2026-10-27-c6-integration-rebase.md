@@ -82,3 +82,7 @@ integrated in the source history, but have not run together on hardware.
 The current board application is still the headless network fixture, which
 halts after its report. The [IPv6 limits](2026-10-27-native-ipv6.md#limits)
 continue to apply.
+
+The later [normal-boot integration](2026-10-27-normal-boot-network.md) adds a
+separate, bounded combined application. It does not change this checkpoint's
+standalone fixture evidence.

@@ -270,3 +270,41 @@ test "dual stack waits beyond IPv4 ACK and can also finish on IPv6-only networki
         try std.testing.expectEqual(use_ipv4, client.dhcp_client.?.lease != null);
     }
 }
+
+test "integrated Hosted owner responds after acquisition and retains unsent reply" {
+    const ip6 = station.ipv6;
+    const peer_mac = [_]u8{ 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee };
+    var client: station.Client = .{};
+    client.beginDual(.saved, 0, true);
+    client.keep_serving = true;
+    client.phase = .done;
+    client.ipv6_client = ip6.Client.init(mac, 0);
+    client.ipv6_client.?.ll_valid = true;
+    client.ipv6_client.?.stage = .no_router;
+    var bytes: [128]u8 = undefined;
+    const request = try ip6.packet(&bytes, peer_mac, mac, ip6.linkLocal(peer_mac), ip6.linkLocal(mac), 64, &.{ 128, 0, 0, 0, 0x12, 0x34, 0, 1 }, false);
+    try client.receive(.{ .interface = 1, .payload = request }, 20_000_000);
+    const packet = try client.tx(20_000_001);
+    var retained: [512]u8 = undefined;
+    @memcpy(retained[0..packet.len], packet);
+    try std.testing.expectEqual(@as(u8, 129), packet[12 + 54]);
+    try std.testing.expectEqualSlices(u8, retained[0..packet.len], try client.tx(20_000_002));
+    client.sent(20_000_003);
+    try std.testing.expectEqual(@as(usize, 0), (try client.tx(20_000_004)).len);
+    try std.testing.expectEqual(@as(u32, 1), client.ipv6_client.?.echo_requests);
+    // The original finite probe retains its stop-at-acquisition behavior.
+    client.keep_serving = false;
+    try client.receive(.{ .interface = 1, .payload = request }, 20_000_005);
+    try std.testing.expectEqual(@as(u32, 1), client.ipv6_client.?.echo_requests);
+    // A disconnect must revoke the integrated owner's addresses as well.
+    var detail_buf: [32]u8 = undefined;
+    var detail = wire.Writer{ .out = &detail_buf };
+    try detail.uint(4, 201);
+    var body_buf: [64]u8 = undefined;
+    var body = wire.Writer{ .out = &body_buf };
+    try body.data(2, detail.slice());
+    var event: [128]u8 = undefined;
+    try std.testing.expectError(error.Disconnected, client.receive(.{ .interface = 3, .payload = try reply(&event, 3, 776, 1, body.slice()) }, 20_000_006));
+    try std.testing.expect(client.ipv6_client == null and client.dhcp_client == null);
+    try std.testing.expectError(error.Rejected, client.tx(20_000_007));
+}

@@ -9,6 +9,8 @@ const text_console = @import("text_console");
 const display_service = @import("display_service");
 const ui = display_service.ui;
 const cpu_boot = @import("cpu_boot");
+const network = @import("network_service");
+const network_config = @import("network_config");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 
@@ -41,6 +43,32 @@ var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
 var display_refresh_reported = false;
 var display_refresh_pending: u32 = 0;
+var network_report_at: u64 = 0;
+var network_ready = false;
+fn serviceNetwork() void {
+    if (!options.network) return;
+    network.poll();
+    const now = ui.timer().counter() orelse fail("network report clock");
+    const state = network.snapshot();
+    if (network_ready and state.ip == 0) {
+        network_ready = false;
+        print("Wi-Fi integration session stopped; addresses retired\n");
+    }
+    if (!network_ready and state.ip != 0 and state.linklocal != 0) {
+        network_ready = true;
+        var line: [96]u8 = undefined;
+        const message = std.fmt.bufPrint(&line, "Wi-Fi IPv4: {d}.{d}.{d}.{d}; IPv6 link-local ready\n", .{
+            state.ip >> 24, (state.ip >> 16) & 255, (state.ip >> 8) & 255, state.ip & 255,
+        }) catch fail("network message");
+        print(message);
+        print("NIHOS_NATIVE_NETWORK_READY\n");
+    }
+    if (now < network_report_at) return;
+    network_report_at = now + 5_000_000;
+    logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us" }, &state);
+    const heartbeat = .{ .frames = display_service.runtime.snapshot().frames, .ticks0 = @atomicLoad(u32, &ticks[0], .acquire), .ticks1 = @atomicLoad(u32, &ticks[1], .acquire) };
+    logger.record("NIHOS_NATIVE_NETWORK_UI", null, .{ "frames", "ticks0", "ticks1" }, &heartbeat);
+}
 fn flushDisplayReport() void {
     if (!options.console_live or @atomicRmw(u32, &display_refresh_pending, .Xchg, 0, .acquire) == 0) return;
     const observed = display_service.runtime.snapshot();
@@ -557,6 +585,10 @@ export fn nih_native_main() callconv(.c) noreturn {
         if (sd.status != 1) fail("SDMMC probe");
         stageComplete(.storage);
     }
+    if (options.network) {
+        print("Wi-Fi starting (exclusive SDIO, 120s integration session)\n");
+        network.begin(ui.timer(), if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, ui.serviceBacking(network.storage_bytes));
+    }
     stageBegin(.cores);
     if (options.console_fault) {
         print("NIHOS_NATIVE_UI_FAULT_INJECTION stage=cores\n");
@@ -721,6 +753,7 @@ fn normalReady() noreturn {
             idle_checked = true;
         }
         flushDisplayReport();
+        serviceNetwork();
         if (!ui.service(&logger)) fail("normal console idle");
         tasks.idleOnce(0);
     }
