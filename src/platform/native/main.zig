@@ -54,6 +54,12 @@ fn serviceNetwork() void {
         if (now >= devices_report_at) {
             devices_report_at = now + 5_000_000;
             const devices = board_devices.snapshot();
+            if (options.audio) {
+                const audio = board_devices.audio.snapshot();
+                logger.record("NIHOS_NATIVE_AUDIO", null, .{ "phase", "fault", "dma", "bclk", "fifo", "eof_descriptor", "parked", "codec_off", "stopped", "returned" }, &audio);
+                const io = board_devices.audio.ioFailure();
+                logger.record("NIHOS_NATIVE_AUDIO_IO", null, .{ "device", "register", "expected", "actual", "stage" }, &io);
+            }
             const imu = board_devices.imuSnapshot();
             logger.record("NIHOS_NATIVE_IMU", null, .{ "chip", "initialized", "stage", "fault", "uploaded", "valid", "samples", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "sensor_error", "ready_status" }, &imu);
             logger.record("NIHOS_NATIVE_DEVICES", null, .{ "rtc_present", "rtc_valid", "rtc_flags", "rtc_control", "rtc_error", "rtc_raw_date", "rtc_raw_time", "year", "month", "day", "hour", "minute", "second", "ina_present", "bus_uv", "shunt_uv_x10", "shunt_negative", "imu_chip", "imu_initialized", "errors", "samples" }, &devices);
@@ -351,7 +357,17 @@ fn trapFailure(frame: *const tasks.context.IntegerContext, cause: u32, hart: u32
     hex(frame.mepc);
     print(" hart=");
     hex(hart);
+    print(" mtval=");
+    hex(asm volatile ("csrr %[value], mtval"
+        : [value] "=r" (-> u32),
+    ));
     fail(reason);
+}
+
+export fn nih_audio_stage(code: u32) callconv(.c) void {
+    if (!options.audio) return;
+    const stage = .{ .code = code };
+    logger.record("NIHOS_NATIVE_AUDIO_STAGE", null, .{"code"}, &stage);
 }
 
 export fn nih_native_task_failed() callconv(.c) noreturn {

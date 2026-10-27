@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-27T20:53:33.140397+00:00",
+  "app_sha256": "da929550d09110953a4b0989717874f2602dea1fd01dd328221c925ae1e4b145",
+  "scope": "finite native PCM output; audible confirmation separate",
+  "restored": true,
+  "written": true,
+  "prior_app_partition_sha256": "1c35050010e6a89aa8e23525e074262a3c7aba960bc599044005412decbfd855",
+  "boot_sha256": "4376dbc4aea792718d08483f4939fa69aa3961450f7c6bb1d3db9f62fc476168",
+  "seconds": 35.05812175,
+  "serial_sha256": "fff502db48c2075f3cd0e1041f642fd71003284ba918730dfd57e0e200d98c87",
+  "native_fail": false
+}

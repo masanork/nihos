@@ -23,6 +23,7 @@ if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
     umask 077
     build_dir="$build_dir-network"
 fi
+if [ "${NIHOS_NATIVE_AUDIO:-0}" = 1 ]; then build_dir="$build_dir-audio"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;
