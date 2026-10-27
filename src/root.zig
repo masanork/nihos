@@ -8,6 +8,7 @@ pub const block_reader = @import("storage/block.zig");
 pub const experimental_store_model = @import("storage/cow_model.zig");
 pub const host_store_file_media = @import("storage/file_media.zig");
 pub const experimental_checkpoint_model = @import("storage/checkpoint_model.zig");
+pub const experimental_checkpoint_service = @import("storage/checkpoint_service.zig");
 pub const storage_rpc = @import("kernel/storage_rpc.zig");
 pub const record_log = @import("diagnostics/record.zig");
 pub const high_sram_layout = @import("platform/native/high_sram_layout.zig");
@@ -56,6 +57,7 @@ test {
     _ = @import("storage/extent_map_test.zig");
     _ = @import("storage/resize_test.zig");
     _ = @import("storage/batch_test.zig");
+    _ = @import("storage/checkpoint_service_test.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
     _ = record_log;
