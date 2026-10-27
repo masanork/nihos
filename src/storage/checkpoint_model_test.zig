@@ -181,7 +181,7 @@ test "fixed geometry bounds descriptor RAM independently of volume capacity" {
     const Small = checkpoint.Store(file_media.Media(1024 * 1024 * 1024), .{});
     const Large = checkpoint.Store(file_media.Media(16 * 1024 * 1024 * 1024), .{});
     try equal(@sizeOf(Small), @sizeOf(Large));
-    try expect(@sizeOf(Large) <= 16 * 1024);
+    try expect(@sizeOf(Large) <= 32 * 1024);
     try equal(@as(usize, 258 * 4096), Large.mount_limit_bytes);
     try equal(@as(u32, 640), Large.max_protected_index_pages);
     try expect(Large.index_pool_pages > Large.max_protected_index_pages);

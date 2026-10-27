@@ -1,5 +1,5 @@
 //! Host-only paged-index experiment. Every transaction publishes a checkpoint;
-//! Index pages are reclaimed by reachability; payload remains append-only.
+//! Index and payload pages are reclaimed by reachability without relocation.
 //! There is no replay log. Payload checksums are verified on demand.
 const std = @import("std");
 pub const page_bytes = 4096;
@@ -7,7 +7,7 @@ pub const crc_offset = page_bytes - 4;
 pub const leaf_entries = (crc_offset - 32) / 32;
 pub const root_magic: u32 = 0x4e494332;
 pub const leaf_magic: u32 = 0x4e494c32;
-pub const version: u32 = 2;
+pub const version: u32 = 3;
 pub const checksum_magic: u32 = 0x4e495332;
 pub const checksums_per_page = (crc_offset - 32) / 4;
 pub fn dataPages(length: u64) u64 {
@@ -17,17 +17,28 @@ pub fn checksumPages(length: u64) u64 {
     const pages = dataPages(length);
     return pages / checksums_per_page + @intFromBool(pages % checksums_per_page != 0);
 }
-pub const Config = struct { leaf_pages: u16 = 128, index_pages: u32 = 4096, payload_start_page: ?u64 = null, reader_slots: u8 = 2 };
+pub const Config = struct {
+    leaf_pages: u16 = 128,
+    index_pages: u32 = 4096,
+    payload_start_page: ?u64 = null,
+    reader_slots: u8 = 2,
+    payload_reserve_pages: u32 = 0,
+    payload_window_bytes: u16 = 4096,
+};
 pub const Value = struct { first: u64, length: u64, checksum: u32 };
 pub const Reader = struct { slot: u8, token: u64 };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
+pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
 pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader };
 
 pub fn Store(comptime Device: type, comptime config: Config) type {
     const data_start = config.payload_start_page orelse (2 + @as(u64, config.index_pages));
+    const capacity_pages = Device.capacity / page_bytes;
     if (config.leaf_pages == 0 or config.leaf_pages > 128 or config.index_pages < config.leaf_pages or
         Device.capacity % page_bytes != 0 or data_start < 2 + @as(u64, config.index_pages) or
-        data_start >= Device.capacity / page_bytes) @compileError("invalid experimental checkpoint geometry");
+        config.payload_reserve_pages >= capacity_pages or data_start >= capacity_pages - config.payload_reserve_pages or
+        config.payload_window_bytes == 0 or config.payload_window_bytes > 16384) @compileError("invalid experimental checkpoint geometry");
+    const data_end = capacity_pages - config.payload_reserve_pages;
     return struct {
         const Self = @This();
         const Ref = struct { page: u64 = 0, checksum: u32 = 0 };
@@ -46,6 +57,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         pub const max_protected_index_pages = (3 + @as(u32, config.reader_slots)) * config.leaf_pages;
         pub const mount_limit_bytes = (2 + 2 * @as(usize, config.leaf_pages)) * page_bytes;
         pub const payload_start = data_start;
+        pub const payload_end = data_end;
         // SAFETY: format/recover assign device before I/O; ready gates public operations.
         device: *Device = undefined,
         current: Root = .{},
@@ -54,6 +66,9 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         readers: [config.reader_slots]Pin = @splat(.{}),
         next_reader: u64 = 1,
         cache: [page_bytes]u8 = @splat(0),
+        occupancy: [config.payload_window_bytes]u8 = @splat(0),
+        search_windows: u32 = 0,
+        search_leaf_reads: u32 = 0,
         ready: bool = false,
         faulted: bool = false,
         in_transaction: bool = false,
@@ -198,9 +213,105 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         /// A root-only checkpoint retires the previous disk root without
         /// allocating index/payload pages. Pinned readers remain protected.
         pub fn collectIndex(self: *Self) Error!IndexSpace {
+            try self.collectPayload();
+            return self.indexSpace();
+        }
+        /// Retire the older disk root using only the two fixed anchors. This
+        /// requires no free payload/index pages; pinned snapshots stay live.
+        pub fn collectPayload(self: *Self) Error!void {
             try self.begin();
             try self.commit();
-            return self.indexSpace();
+        }
+
+        fn markRange(self: *Self, start: usize, end: usize) void {
+            var cursor = start;
+            while (cursor < end and cursor % 8 != 0) : (cursor += 1) self.occupancy[cursor / 8] |= @as(u8, 1) << @as(u3, @intCast(cursor % 8));
+            const full_end = end / 8 * 8;
+            if (cursor < full_end) {
+                @memset(self.occupancy[cursor / 8 .. full_end / 8], 0xff);
+                cursor = full_end;
+            }
+            while (cursor < end) : (cursor += 1) self.occupancy[cursor / 8] |= @as(u8, 1) << @as(u3, @intCast(cursor % 8));
+        }
+        fn markRoot(self: *Self, root: *const Root, start: u64, end: u64) Error!void {
+            for (root.refs, 0..) |ref, index| {
+                if (ref.page == 0) continue;
+                self.search_leaf_reads +|= 1;
+                self.loadLeaf(root, index) catch |err| {
+                    if (err == error.Corrupt) return self.corruption();
+                    return err;
+                };
+                for (0..leaf_entries) |entry| {
+                    const value = try decodeEntry(root, self.cache[32 + entry * 32 ..][0..32]) orelse continue;
+                    if (value.length == 0) continue;
+                    const last = value.first + dataPages(value.length) + checksumPages(value.length);
+                    const overlap_start = @max(start, value.first);
+                    const overlap_end = @min(end, last);
+                    if (overlap_start < overlap_end) self.markRange(@intCast(overlap_start - start), @intCast(overlap_end - start));
+                }
+            }
+        }
+        fn markWindow(self: *Self, start: u64, end: u64) Error!void {
+            self.search_windows +|= 1;
+            @memset(&self.occupancy, 0);
+            try self.markRoot(&self.current, start, end);
+            try self.markRoot(&self.retained, start, end);
+            if (self.in_transaction) try self.markRoot(&self.staged, start, end);
+            for (&self.readers) |*reader| if (reader.token != 0) try self.markRoot(&reader.root, start, end);
+        }
+        fn occupied(self: *const Self, offset: usize) bool {
+            return self.occupancy[offset / 8] & (@as(u8, 1) << @as(u3, @intCast(offset % 8))) != 0;
+        }
+        fn findPayload(self: *Self, pages: u64) Error!u64 {
+            self.search_windows = 0;
+            self.search_leaf_reads = 0;
+            if (pages == 0) return 0;
+            if (pages > data_end - data_start) return error.NoSpace;
+            // Never rewind high-water marks. A tail beyond every protected
+            // root's high-water mark needs no bitmap scan.
+            var tail = @max(self.current.payload_next, self.retained.payload_next);
+            if (self.in_transaction) tail = @max(tail, self.staged.payload_next);
+            for (&self.readers) |*reader| if (reader.token != 0) {
+                tail = @max(tail, reader.root.payload_next);
+            };
+            if (pages <= data_end - tail) return tail;
+            var start: u64 = data_start;
+            var run: u64 = 0;
+            while (start < data_end) {
+                const end = start + @min(self.occupancy.len * 8, data_end - start);
+                try self.markWindow(start, end);
+                for (0..@intCast(end - start)) |offset| {
+                    run = if (self.occupied(offset)) 0 else run + 1;
+                    if (run == pages) return start + offset + 1 - run;
+                }
+                start = end;
+            }
+            return error.NoSpace;
+        }
+        /// Exact union statistics, scanning fixed-size bitmap windows. This
+        /// may read metadata for every window; it is not a bounded-time API.
+        pub fn payloadSpace(self: *Self) Error!PayloadSpace {
+            try self.usable();
+            self.search_windows = 0;
+            self.search_leaf_reads = 0;
+            var result = PayloadSpace{ .usable_pages = data_end - data_start, .reserved_pages = config.payload_reserve_pages, .free_pages = 0, .largest_run = 0 };
+            var start: u64 = data_start;
+            var run: u64 = 0;
+            while (start < data_end) {
+                const end = start + @min(self.occupancy.len * 8, data_end - start);
+                try self.markWindow(start, end);
+                for (0..@intCast(end - start)) |offset| {
+                    if (self.occupied(offset)) {
+                        run = 0;
+                    } else {
+                        run += 1;
+                        result.free_pages += 1;
+                        result.largest_run = @max(result.largest_run, run);
+                    }
+                }
+                start = end;
+            }
+            return result;
         }
 
         fn decodeEntry(root: *const Root, bytes: []const u8) Error!?Value {
@@ -259,9 +370,8 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             return try self.checkedLookup(&self.current, key) orelse error.NotFound;
         }
 
-        fn preflight(self: *Self, pages: u64) Error!void {
-            if (self.availableIndex() == null or
-                pages > Device.capacity / page_bytes - self.staged.payload_next) return error.NoSpace;
+        fn preflight(self: *Self) Error!void {
+            if (self.availableIndex() == null) return error.NoSpace;
         }
         fn replace(self: *Self, key: u32, value: ?Value, existed: bool) Error!void {
             const page = self.availableIndex() orelse return error.NoSpace;
@@ -290,9 +400,9 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             try validKey(key);
             const pages = dataPages(data.len);
             const tables = checksumPages(data.len);
-            try self.preflight(pages + tables);
+            try self.preflight();
+            const first = try self.findPayload(pages + tables);
             const existed = try self.checkedLookup(&self.staged, key) != null;
-            const first = self.staged.payload_next;
             var position: usize = 0;
             for (0..@intCast(tables)) |table| {
                 self.cache = @splat(0);
@@ -317,13 +427,13 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             // before replacing one entry, preserving other keys in that leaf.
             if (tables != 0) _ = try self.checkedLookup(&self.staged, key);
             const value = Value{ .first = if (data.len == 0) 0 else first, .length = data.len, .checksum = std.hash.Crc32.hash(data) };
-            self.staged.payload_next += pages + tables;
+            if (pages != 0) self.staged.payload_next = @max(self.staged.payload_next, first + pages + tables);
             try self.replace(key, value, existed);
         }
         pub fn remove(self: *Self, key: u32) Error!void {
             try self.transaction();
             try validKey(key);
-            try self.preflight(0);
+            try self.preflight();
             if (try self.checkedLookup(&self.staged, key) == null) return error.NotFound;
             try self.replace(key, null, true);
         }
@@ -415,6 +525,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             std.mem.writeInt(u32, bytes[44..48], config.index_pages, .little);
             std.mem.writeInt(u64, bytes[48..56], data_start, .little);
             std.mem.writeInt(u32, bytes[56..60], root.count, .little);
+            std.mem.writeInt(u32, bytes[60..64], config.payload_reserve_pages, .little);
             for (root.refs, 0..) |ref, i| {
                 std.mem.writeInt(u64, bytes[64 + i * 16 ..][0..8], ref.page, .little);
                 std.mem.writeInt(u32, bytes[72 + i * 16 ..][0..4], ref.checksum, .little);
@@ -431,10 +542,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                 std.mem.readInt(u32, bytes[40..44], .little) != config.leaf_pages or
                 std.mem.readInt(u32, bytes[44..48], .little) != config.index_pages or
                 std.mem.readInt(u64, bytes[48..56], .little) != data_start or
-                std.mem.readInt(u32, bytes[60..64], .little) != 0) return error.Corrupt;
+                std.mem.readInt(u32, bytes[60..64], .little) != config.payload_reserve_pages) return error.Corrupt;
             var root = Root{ .generation = std.mem.readInt(u64, bytes[8..16], .little), .index_next = std.mem.readInt(u64, bytes[24..32], .little), .payload_next = std.mem.readInt(u64, bytes[32..40], .little), .count = std.mem.readInt(u32, bytes[56..60], .little) };
             if (root.generation == 0 or root.generation & 1 != slot or root.index_next < 2 or root.index_next > 2 + @as(u64, config.index_pages) or
-                root.payload_next < data_start or root.payload_next > Device.capacity / page_bytes or root.count > max_objects) return error.Corrupt;
+                root.payload_next < data_start or root.payload_next > data_end or root.count > max_objects) return error.Corrupt;
             for (&root.refs, 0..) |*ref, i| {
                 ref.* = .{ .page = std.mem.readInt(u64, bytes[64 + i * 16 ..][0..8], .little), .checksum = std.mem.readInt(u32, bytes[72 + i * 16 ..][0..4], .little) };
                 if (std.mem.readInt(u32, bytes[76 + i * 16 ..][0..4], .little) != 0) return error.Corrupt;

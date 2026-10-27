@@ -21,7 +21,7 @@ const Device = struct {
         return self.backend.sync();
     }
 };
-const Store = model.Store(Device, .{ .index_pages = 256, .payload_start_page = Backend.capacity / model.page_bytes - 64 });
+const Store = model.Store(Device, .{ .index_pages = 256, .payload_start_page = Backend.capacity / model.page_bytes - 64, .payload_reserve_pages = 4 });
 const large_length = 70 * 1024 + 1;
 fn pattern(comptime n: usize, seed: u8) [n]u8 {
     @setEvalBranchQuota(n * 2 + 1000);
@@ -61,6 +61,16 @@ fn check(store: *Store, expected: u64) !void {
         if (store.get(127)) |_| return error.UnexpectedObject else |err| if (err != error.NotFound) return err;
     }
 }
+fn pinnedObject(store: *Store, reader: model.Reader, length: usize, seed: u8) !void {
+    var bytes: [8192]u8 = undefined;
+    var offset: usize = 0;
+    while (offset < length) {
+        const n = try store.readPinned(reader, 3, offset, bytes[0..@min(bytes.len, length - offset)]);
+        if (n == 0 or n > length - offset) return error.BadReadLength;
+        for (bytes[0..n], 0..) |byte, i| if (byte != value(offset + i, seed)) return error.BadPayload;
+        offset += n;
+    }
+}
 fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount_bytes: usize, operation_bytes: usize) !void {
     const space = try store.indexSpace();
     const first = if (store.get(1)) |item| item.first * model.page_bytes else |err| switch (err) {
@@ -69,8 +79,8 @@ fn report(io: std.Io, backend: *Backend, store: *Store, phase: []const u8, mount
     };
     var buffer: [1024]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(io, &buffer);
-    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d},\"index_free_pages\":{d},\"reader_slots\":{d}}}\n", .{
-        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes, space.available_pages, Store.reader_limit,
+    try stdout.interface.print("{{\"phase\":\"{s}\",\"generation\":{d},\"mount_bytes\":{d},\"mount_limit_bytes\":{d},\"state_bytes\":{d},\"payload_first_byte\":{d},\"max_objects\":{d},\"tail_replay_bytes\":0,\"writes\":{d},\"syncs\":{d},\"operation_read_bytes\":{d},\"index_free_pages\":{d},\"reader_slots\":{d},\"search_windows\":{d},\"search_leaf_reads\":{d}}}\n", .{
+        phase, store.generation(), mount_bytes, Store.mount_limit_bytes, @sizeOf(Store), first, Store.max_objects, backend.writes, backend.syncs, operation_bytes, space.available_pages, Store.reader_limit, store.search_windows, store.search_leaf_reads,
     });
     try stdout.interface.flush();
 }
@@ -79,7 +89,7 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(init.arena.allocator());
     if (args.len != 3) return error.Usage;
     const command = args[1];
-    const known = [_][]const u8{ "format", "seed", "update", "verify-old", "verify-new", "fill-index", "checkpoint", "verify-index", "inspect", "read-one", "read-cross", "read-far", "verify-full", "churn-index", "verify-recycled" };
+    const known = [_][]const u8{ "format", "seed", "update", "verify-old", "verify-new", "fill-index", "checkpoint", "verify-index", "inspect", "read-one", "read-cross", "read-far", "verify-full", "churn-index", "verify-recycled", "churn-payload", "verify-payload-recycled" };
     var valid = false;
     for (known) |name| if (std.mem.eql(u8, command, name)) {
         valid = true;
@@ -167,6 +177,48 @@ pub fn main(init: std.process.Init) !void {
         for (0..128) |index| if ((try store.get(@intCast(index * model.leaf_entries + 1))).length != 0) return error.BadEmptyObject;
         if ((try store.get(Store.max_objects)).length != 0) return error.BadEmptyObject;
         try object(&store, 2, new_c.len, 0x64);
+    } else if (std.mem.eql(u8, command, "churn-payload")) {
+        if (store.generation() != 15) return error.BadGeneration;
+        const bytes = 64 * 1024;
+        try store.begin();
+        try store.put(3, old_a[0..bytes]);
+        try store.commit();
+        const old = try store.pin();
+        try store.begin();
+        try store.put(3, new_a[0..bytes]);
+        try store.commit();
+        const middle = try store.pin();
+        try store.begin();
+        try store.put(3, old_a[0..bytes]);
+        try store.commit();
+        try store.collectPayload();
+        if ((try store.payloadSpace()).largest_run >= 17) return error.PinnedPayloadNotProtected;
+        try store.begin();
+        const writes = backend.writes;
+        if (store.put(3, new_a[0..bytes])) |_| return error.PinnedPayloadNotBlocked else |err| if (err != error.NoSpace) return err;
+        if (backend.writes != writes) return error.AdmissionWroteData;
+        try store.rollback();
+        try pinnedObject(&store, old, bytes, 0x31);
+        try pinnedObject(&store, middle, bytes, 0x53);
+        try store.release(middle);
+        try store.begin();
+        try store.put(3, new_a[0..bytes]);
+        try store.commit();
+        try pinnedObject(&store, old, bytes, 0x31);
+        try store.release(old);
+        try store.collectPayload();
+        for (0..128) |iteration| {
+            try store.begin();
+            try store.put(3, if (iteration % 2 == 0) old_a[0..bytes] else new_a[0..bytes]);
+            try store.commit();
+            try store.collectPayload();
+        }
+    } else if (std.mem.eql(u8, command, "verify-payload-recycled")) {
+        if (store.generation() != 277) return error.BadGeneration;
+        try object(&store, 3, 64 * 1024, 0x53);
+        try object(&store, 2, new_c.len, 0x64);
+        const space = try store.payloadSpace();
+        if (space.usable_pages != 60 or space.reserved_pages != 4 or space.free_pages != 40 or space.largest_run != 23) return error.BadPayloadSpace;
     }
     try report(init.io, &backend, &store, command, mount_bytes, device.bytes_read - mount_bytes);
 }
