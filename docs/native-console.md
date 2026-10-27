@@ -44,25 +44,39 @@ scheduler tick counts and IPI counts. Validate these with
 `check-native-display-log.py --normal-boot --console --mode 2 --dpi 80`.
 The full harness checker does not accept normal boot as qualification.
 Validation for this change: 212 host Zig tests pass in Debug, ReleaseSafe and
-ReleaseSmall; 148 Python checks pass, including negative normal/qualification
+ReleaseSmall; 157 Python checks pass, including negative normal/qualification
 evidence cases. Normal and diagnostic device images pass the native image
 audit. The 32 MiB emulator completes the unchanged 300-round integer harness,
 lifecycle, allocator and IPI/idle checks. Normal-image internal SRAM heap is
 76,672 bytes (qualification image: 49,472 bytes); the external display/heap
-reservation and 56 KiB stack bank remain unchanged. Physical normal-boot
-timing and cold power-on validation remain pending until the Tab5 is connected.
+reservation and 56 KiB stack bank remain unchanged. Visible warm-reset results
+are recorded below; complete cold power-on validation remains pending.
 
-A first [physical normal-boot capture](measurements/2026-10-27-native-normal-physical.json)
-on 2026-10-27 passed the normal CPU/timer/IPI, PSRAM200, keyboard detection and
-scanout/refresh log checks. READY was 1.757 seconds from diagnostic-clock
-initialization, or 0.333 seconds after UI_START; no boot control keys were sent.
-This is a warm USB-reset observation. Optical confirmation is still pending:
-a later capture contained `NIHOS_C6_BOOT`, and a subsequent Flash comparison
-confirmed that another firmware had replaced the application. The user saw a
-black screen after that replacement. Do not treat this log-only result as a
-visible-display or cold-power-on pass. Coordinate exclusive device ownership
-before repeating the visual test; port exclusion per individual capture alone
-does not prevent a later writer from replacing the firmware.
+After the C6 hardware work was stopped, the same candidate was reinstalled
+and its Flash bytes verified twice. [Three subsequent warm-reset captures](measurements/2026-10-27-native-normal-visible.json)
+all pass. The user confirmed the visible display and Esc console transition;
+the first capture independently records the physical Tab5 keyboard Esc
+(source=2, usage=0x29, accepted=1). The final capture exercises serial
+console -> splash -> console after READY and leaves the console visible.
+No C6 firmware banner or unexpected reboot appears in these captures.
+
+The host receives UI_READY 1.867-1.875 seconds after requesting a USB reset;
+UI_START -> UI_READY is 21 DMA frames, approximately 0.350 seconds. The
+1.751-1.757 second diagnostic-clock figure is **console-stage completion
+before the final redraw**, not the exact UI_READY timestamp. This clarifies
+the earlier capture's READY label and the historical checker field
+`ready_us_from_diagnostic_clock`. Host times include reset and USB buffering;
+none of these captures establish a cold power-on time. CPU remains 360 MHz,
+PSRAM200 x16 DDR and 59.982 Hz scanout, with Matrix green font3. Complete
+power-off/on validation remains outstanding.
+
+The earlier [physical capture](measurements/2026-10-27-native-normal-physical.json)
+remains a log-only result: C6 hardware work replaced its application before
+the visual check, and Flash comparison confirmed the mismatch. Its 1.757-second
+value records final-stage completion; the UI_START interval was 0.333 seconds.
+Do not count that interrupted observation as optical confirmation. Holding
+the serial port for each capture alone does not prevent a later writer from
+replacing firmware; exclusive device use was coordinated for the visible runs.
 
 Headless normal-boot regression is now reproducible without a device:
 
@@ -77,7 +91,7 @@ IPI reply or CPU1 timer. Successful cases must stay alive with continued ticks
 and zero fixture-worker counters after READY; injected failures must time out
 without READY. `NIHOS_NATIVE_BOOT_TEST=1..5` is restricted to a headless integer
 emulator build and rejected for device builds. No device-profile exception is
-provided. All eight captured cases pass; 154 Python checks include retained
+provided. All eight captured cases pass; Python checks include retained
 log replay and rejection of invented physical/qualification evidence.
 
 The [receipt](measurements/2026-10-27-native-normal-emulator.json) binds emulator

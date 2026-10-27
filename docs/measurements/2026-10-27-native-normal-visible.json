@@ -1,0 +1,1106 @@
+{
+  "status": "visible-normal-boot-confirmed-warm-resets",
+  "source_commit": "1f52de25b3c1573733c96004117c6bf430e84628",
+  "image_audit": {
+    "schema": 1,
+    "backend": "native-sram",
+    "rtos_linked": false,
+    "fp_assembly_linked": false,
+    "riscv_flags": "0x1",
+    "fp_instructions": {
+      "app": 0,
+      "c": 0,
+      "zig": 0,
+      "transfer_helpers": 0
+    },
+    "entry": "0x4ff00000",
+    "elf_sha256": "c318ff3d20e4b29ca7cb330c0b089d395c576bb6a8fbe1e49048a2875553f9e6",
+    "memory": {
+      "profile": "device",
+      "origin": "0x4ff00000",
+      "end": "0x4ff28000",
+      "bytes": 163840,
+      "total_bytes": 221184,
+      "regions": [
+        {
+          "name": "resident",
+          "origin": "0x4ff00000",
+          "end": "0x4ff28000",
+          "bytes": 163840
+        },
+        {
+          "name": "stacks",
+          "origin": "0x4ff60000",
+          "end": "0x4ff6e000",
+          "bytes": 57344
+        }
+      ]
+    },
+    "sram_reserved_bytes": 144512,
+    "primary_static_bytes": 87168,
+    "stacks": {
+      "start": "0x4ff60000",
+      "end": "0x4ff6e000",
+      "bytes": 57344,
+      "bootstrap_bytes_per_hart": 8192,
+      "irq_bytes_per_hart": 8192,
+      "worker_bytes": 4096,
+      "workers_per_hart": 3,
+      "worker_start": "0x4ff68000"
+    },
+    "heap": {
+      "start": "0x4ff15480",
+      "end": "0x4ff28000",
+      "bytes": 76672,
+      "owner_count": 2,
+      "granule_bytes": 64,
+      "external_bytes": 0
+    },
+    "flash_boot": {
+      "start": "0x40000120",
+      "end": "0x4000167a",
+      "bytes": 5466,
+      "sha256": "de29ab72870c9e3c4ad3315002cb48cfdc241385be131a3a2a62297c7065414a",
+      "functions": {
+        "clock": {
+          "name": "cpu_boot.run__func_1",
+          "start": "0x4000118e",
+          "end": "0x4000167a"
+        },
+        "probe": {
+          "name": "psram.probe",
+          "start": "0x40000120",
+          "end": "0x40000cc2"
+        },
+        "mapping": {
+          "name": "psram_memory.prepare__func_112",
+          "start": "0x40000cc2",
+          "end": "0x4000118e"
+        }
+      },
+      "image_offset": 288
+    },
+    "flash_records": {
+      "start": "0x40010020",
+      "end": "0x4001b00d",
+      "bytes": 45037,
+      "fnv1a": 1704144469,
+      "executable": false,
+      "writable": false,
+      "image_offset": 65568
+    },
+    "rom_symbols": {
+      "nih_rom_putc": "0x4fc00054",
+      "nih_rom_get_cpu_ticks": "0x4fc00040",
+      "nih_rom_set_cpu_ticks": "0x4fc00044",
+      "nih_rom_set_cpu1_entry": "0x4fc000a8",
+      "nih_rom_l2_line_size": "0x4fc003cc",
+      "nih_rom_l2_enable": "0x4fc00504",
+      "nih_rom_cache_invalidate": "0x4fc003e4",
+      "nih_rom_cache_writeback": "0x4fc003f4"
+    },
+    "sections": [
+      {
+        "name": ".flash.appdesc",
+        "address": "0x40000020",
+        "bytes": 256
+      },
+      {
+        "name": ".flash.boot",
+        "address": "0x40000120",
+        "bytes": 5466
+      },
+      {
+        "name": ".flash.rodata",
+        "address": "0x40010020",
+        "bytes": 45037
+      },
+      {
+        "name": ".text",
+        "address": "0x4ff00000",
+        "bytes": 75842
+      },
+      {
+        "name": ".rodata",
+        "address": "0x4ff12850",
+        "bytes": 4748
+      },
+      {
+        "name": ".data",
+        "address": "0x4ff13b00",
+        "bytes": 1424
+      },
+      {
+        "name": ".bss",
+        "address": "0x4ff140c0",
+        "bytes": 5056
+      },
+      {
+        "name": ".stacks",
+        "address": "0x4ff60000",
+        "bytes": 57344
+      },
+      {
+        "name": ".heap",
+        "address": "0x4ff15480",
+        "bytes": 76672
+      }
+    ],
+    "image_sha256": "d603c513686b6c2789a62aedfbf1a652ff2046422f261081783f331198d0c9f2",
+    "image_bytes": 132896,
+    "image_segments": [
+      {
+        "address": "0x40000020",
+        "bytes": 5724
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 59796
+      },
+      {
+        "address": "0x40010020",
+        "bytes": 45040
+      },
+      {
+        "address": "0x4ff0e994",
+        "bytes": 16048
+      },
+      {
+        "address": "0x4ff12850",
+        "bytes": 4748
+      },
+      {
+        "address": "0x4ff13b00",
+        "bytes": 1424
+      }
+    ],
+    "loader": {
+      "elf_sha256": "3da57cc281815b529e544fe8e38d213f494c4fb568353bfcb18288c5bc970149",
+      "allocated": [
+        {
+          "address": "0x4ff2cbd0",
+          "bytes": 12498
+        },
+        {
+          "address": "0x4ff33bd0",
+          "bytes": 272
+        },
+        {
+          "address": "0x4ff33ce0",
+          "bytes": 80
+        },
+        {
+          "address": "0x4ff33d30",
+          "bytes": 12
+        },
+        {
+          "address": "0x4ff33d3c",
+          "bytes": 4536
+        },
+        {
+          "address": "0x4ff2abd0",
+          "bytes": 3010
+        }
+      ],
+      "nearest_higher_address": "0x4ff2abd0",
+      "gap_bytes": 11216,
+      "regions_checked": [
+        {
+          "name": "resident",
+          "gap_below": null,
+          "gap_above": 11216
+        },
+        {
+          "name": "stacks",
+          "gap_below": 176396,
+          "gap_above": null
+        }
+      ]
+    },
+    "loader_config": {
+      "l2_bytes": 131072,
+      "line_bytes": 64,
+      "profile": "device",
+      "stack_source_window": {
+        "origin": "0x4ff40000",
+        "end": "0x4ffa0000"
+      },
+      "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+    }
+  },
+  "device": {
+    "chip": "ESP32-P4",
+    "revision": "1.3",
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "port": "/dev/cu.usbmodem101"
+  },
+  "ownership": {
+    "user_confirmed_c6_hardware_work_stopped": true,
+    "serial_exclusive_for_each_capture": true,
+    "first_capture_held_through_visual_confirmation": true
+  },
+  "validation": {
+    "installation_flash_verified_twice": true,
+    "normal_boots_passed": 3,
+    "optical_confirmed_by_user": true,
+    "user_observation": "表示が見え、Escで切り替わる",
+    "physical_tab5_keyboard_escape_logged": true,
+    "post_ready_serial_console_splash_console_passed": true,
+    "candidate_left_installed": true,
+    "final_view": "console",
+    "cold_power_cycle_validated": false
+  },
+  "timing_scope": {
+    "host_ready": "Host serial receive time after USB-reset request, including reset pulse and USB buffering; not cold power-on time.",
+    "diagnostic_stage": "Stage console completion is recorded before its final redraw; it is not the exact UI_READY timestamp. The historical ready_us_from_diagnostic_clock checker field contains this stage-completion time.",
+    "ui_interval": "Hardware DMA frame-count interval at calculated 59.982 Hz; frame quantized.",
+    "comparison": "The earlier 7.77-second capture included qualification workers and an intentional pause; it is not an isolated speed benchmark."
+  },
+  "boots": [
+    {
+      "boot": 2,
+      "log": "2026-10-27-native-normal-visible-02.log",
+      "log_sha256": "26fff7e408ff6e10b5fff07780f5d42f408f15cce213a1cdffc9f176d13e02ce",
+      "capture_lease": {
+        "exclusive": true,
+        "installed": true,
+        "postverified": true,
+        "backup_requested": false,
+        "rom_banner": true,
+        "completion_marker": "NIHOS_NATIVE_UI_READY",
+        "exercise_live": false,
+        "exercise_normal": false,
+        "keys_sent": [],
+        "marker_receive_seconds_from_reset_request": {
+          "ESP-ROM:esp32p4": 0.40293762499999985,
+          "NIHOS_NATIVE_BOOT backend=": 0.40293929099999914,
+          "NIHOS_NATIVE_UI_START": 1.5396673750000005,
+          "NIHOS_NATIVE_UI_READY": 1.874817457999999,
+          "NIHOS_NATIVE_UI_SETTLED": 3.1442211250000014
+        },
+        "reset_call_seconds": 0.4026459580000008,
+        "timing_scope": "host serial receive timestamps; includes reset pulse and USB buffering; not cold power-on time",
+        "exercise_failure": false
+      },
+      "result": {
+        "live": {
+          "start": {
+            "frames": 10,
+            "clock_hz": 1000000,
+            "sources": 3,
+            "view": 0,
+            "progress": 9,
+            "target": 85
+          },
+          "ready": {
+            "frames": 31,
+            "clock_hz": 1000000,
+            "sources": 3,
+            "view": 0,
+            "progress": 24,
+            "target": 255
+          },
+          "keyboard": {
+            "status": 1,
+            "firmware": 1,
+            "mode": 1,
+            "transactions": 4,
+            "error_code": 0,
+            "sources": 3
+          },
+          "io": {
+            "tx_dropped": 0
+          },
+          "keys": [
+            {
+              "sequence": 1,
+              "source": 2,
+              "action": 1,
+              "modifiers": 0,
+              "usage": 41,
+              "accepted": 1,
+              "view": 1,
+              "stage": 0,
+              "frames": 1444
+            }
+          ],
+          "pauses": [],
+          "resumes": [],
+          "settled": [
+            {
+              "frames": 107,
+              "progress": 255,
+              "target": 255
+            }
+          ],
+          "keyboard_escape_seen": true
+        },
+        "console_style": {
+          "cell_width": 16,
+          "cell_height": 16,
+          "palette": 4,
+          "foreground": 2024,
+          "accent": 1446,
+          "background": 4226,
+          "font": 3
+        },
+        "console": {
+          "status": 1,
+          "columns": 78,
+          "rows": 43,
+          "log_bytes": 2048,
+          "dropped_low": 1765,
+          "input": 1
+        },
+        "timing": {
+          "pixel_hz": 80000000,
+          "refresh_millihz": 59982,
+          "htotal": 802,
+          "vtotal": 1663
+        },
+        "layout": {
+          "logical_width": 1280,
+          "logical_height": 720,
+          "rotation": 1
+        },
+        "native": {
+          "normal_boot": true,
+          "headless_emulator": false,
+          "qualification": null,
+          "evidence": "physical-device",
+          "psram": {
+            "status": 1,
+            "configuration": 36144,
+            "identity": 41183,
+            "bytes": 33554432,
+            "transactions": 4,
+            "mapped": 33554432,
+            "allocatable": 0
+          },
+          "psram_fast": {
+            "mpll": {
+              "status": 1,
+              "mhz": 400,
+              "reused": 1,
+              "divider": 153,
+              "error_code": 0
+            },
+            "tuning": {
+              "status": 1,
+              "stage": 4,
+              "phase_mask": 15,
+              "phase": 0,
+              "delay_mask": 1073741760,
+              "delay": 17,
+              "repetitions": 100,
+              "reads": 77216,
+              "writes": 32,
+              "error_code": 0
+            },
+            "link": {
+              "core": 53341,
+              "bus": 65537,
+              "command": 65537,
+              "sctrl": 49792633,
+              "cmd": 2365325312,
+              "ddr": 12323,
+              "dll_cache": 33,
+              "dll_command": 33,
+              "dqs0": 65537,
+              "dqs1": 65537
+            }
+          },
+          "psram_mapping": {
+            "status": 1,
+            "failure": 0,
+            "line_bytes": 64,
+            "last_address": 0,
+            "last_actual": 0,
+            "last_expected": 0,
+            "bytes": 33554432,
+            "entries": 1024,
+            "cpu_checks": 36,
+            "command_checks": 36,
+            "transactions": 72,
+            "syncs": 5
+          },
+          "psram_smp": {
+            "status": 1,
+            "rounds": 1,
+            "owner_checks": 48,
+            "peer_checks": 48,
+            "command_checks": 48,
+            "syncs": 1
+          },
+          "cpu_clock": {
+            "status": 1,
+            "error_code": 0,
+            "pc": 1073746378,
+            "source": 1,
+            "cpll_mhz": 360,
+            "before_mhz": 89,
+            "after_mhz": 359,
+            "mem_mhz": 180,
+            "apb_mhz": 90,
+            "ctrl0": 0,
+            "ctrl1": 1,
+            "ctrl2": 65536,
+            "rom_mhz": 360
+          },
+          "health": {
+            "cpu0_ticks": 1,
+            "cpu1_ticks": 1,
+            "ipi0": 1,
+            "ipi1": 1
+          },
+          "boot_times": [
+            {
+              "stage": 1,
+              "elapsed_us": 187136
+            },
+            {
+              "stage": 3,
+              "elapsed_us": 203448
+            },
+            {
+              "stage": 5,
+              "elapsed_us": 1322996
+            },
+            {
+              "stage": 7,
+              "elapsed_us": 1422548
+            },
+            {
+              "stage": 4,
+              "elapsed_us": 1659382
+            },
+            {
+              "stage": 6,
+              "elapsed_us": 1757344
+            }
+          ],
+          "ready_us_from_diagnostic_clock": 1757344
+        },
+        "display": {
+          "status": 1,
+          "stage": 5,
+          "error_code": 0,
+          "panel": 3,
+          "commands": 34,
+          "last_command": 41,
+          "frames": 2,
+          "fault": 0,
+          "event": 0,
+          "backlight": 1,
+          "dpi_mhz": 80,
+          "lane_mbps": 960,
+          "cleanup": 0,
+          "dsi_error0": 0,
+          "dsi_error1": 0,
+          "dma_error": 0,
+          "bridge_error": 0,
+          "start_code": 0,
+          "prime_depth": 773,
+          "bl_latch": 1,
+          "bl_enable": 1,
+          "bl_level": 1,
+          "bl_mux": 6656,
+          "bl_matrix": 1280,
+          "white": 0
+        },
+        "source": {
+          "sram": 0,
+          "source": 1208156160,
+          "dma_source": 1208156672,
+          "dma_control": 1973057,
+          "word": 0
+        },
+        "refresh": {
+          "frames": 32,
+          "fault": 0,
+          "event": 1,
+          "dsi_error0": 0,
+          "dsi_error1": 0,
+          "dma_error": 0,
+          "bridge_error": 0
+        },
+        "mode": 2,
+        "lease": null,
+        "optical_evidence": "not evaluated by this checker"
+      },
+      "measurements": {
+        "final_stage_complete_seconds_from_diagnostic_clock": 1.757344,
+        "ready_log_receive_seconds_from_usb_reset_request": 1.874817457999999,
+        "ui_start_to_ready_seconds_from_dma_frames": 0.3501050315094528
+      }
+    },
+    {
+      "boot": 3,
+      "log": "2026-10-27-native-normal-visible-03.log",
+      "log_sha256": "b5ea08423afac999699253369b18e0ea4aaaca7965a8d4e9ab805fad71616476",
+      "capture_lease": {
+        "exclusive": true,
+        "installed": false,
+        "postverified": false,
+        "backup_requested": false,
+        "rom_banner": true,
+        "completion_marker": "NIHOS_NATIVE_UI_READY",
+        "exercise_live": false,
+        "exercise_normal": false,
+        "keys_sent": [],
+        "marker_receive_seconds_from_reset_request": {
+          "ESP-ROM:esp32p4": 0.410042833,
+          "NIHOS_NATIVE_BOOT backend=": 0.41004583299999997,
+          "NIHOS_NATIVE_UI_START": 1.532225292,
+          "NIHOS_NATIVE_UI_READY": 1.867270208,
+          "NIHOS_NATIVE_UI_SETTLED": 3.1368270419999997
+        },
+        "reset_call_seconds": 0.409538042,
+        "timing_scope": "host serial receive timestamps; includes reset pulse and USB buffering; not cold power-on time",
+        "exercise_failure": false
+      },
+      "result": {
+        "live": {
+          "start": {
+            "frames": 10,
+            "clock_hz": 1000000,
+            "sources": 3,
+            "view": 0,
+            "progress": 9,
+            "target": 85
+          },
+          "ready": {
+            "frames": 31,
+            "clock_hz": 1000000,
+            "sources": 3,
+            "view": 0,
+            "progress": 24,
+            "target": 255
+          },
+          "keyboard": {
+            "status": 1,
+            "firmware": 1,
+            "mode": 1,
+            "transactions": 4,
+            "error_code": 0,
+            "sources": 3
+          },
+          "io": {
+            "tx_dropped": 0
+          },
+          "keys": [],
+          "pauses": [],
+          "resumes": [],
+          "settled": [
+            {
+              "frames": 107,
+              "progress": 255,
+              "target": 255
+            }
+          ],
+          "keyboard_escape_seen": false
+        },
+        "console_style": {
+          "cell_width": 16,
+          "cell_height": 16,
+          "palette": 4,
+          "foreground": 2024,
+          "accent": 1446,
+          "background": 4226,
+          "font": 3
+        },
+        "console": {
+          "status": 1,
+          "columns": 78,
+          "rows": 43,
+          "log_bytes": 2048,
+          "dropped_low": 1765,
+          "input": 1
+        },
+        "timing": {
+          "pixel_hz": 80000000,
+          "refresh_millihz": 59982,
+          "htotal": 802,
+          "vtotal": 1663
+        },
+        "layout": {
+          "logical_width": 1280,
+          "logical_height": 720,
+          "rotation": 1
+        },
+        "native": {
+          "normal_boot": true,
+          "headless_emulator": false,
+          "qualification": null,
+          "evidence": "physical-device",
+          "psram": {
+            "status": 1,
+            "configuration": 36144,
+            "identity": 41183,
+            "bytes": 33554432,
+            "transactions": 4,
+            "mapped": 33554432,
+            "allocatable": 0
+          },
+          "psram_fast": {
+            "mpll": {
+              "status": 1,
+              "mhz": 400,
+              "reused": 1,
+              "divider": 153,
+              "error_code": 0
+            },
+            "tuning": {
+              "status": 1,
+              "stage": 4,
+              "phase_mask": 15,
+              "phase": 0,
+              "delay_mask": 536870848,
+              "delay": 17,
+              "repetitions": 100,
+              "reads": 74304,
+              "writes": 32,
+              "error_code": 0
+            },
+            "link": {
+              "core": 53341,
+              "bus": 65537,
+              "command": 65537,
+              "sctrl": 49792633,
+              "cmd": 2365325312,
+              "ddr": 12323,
+              "dll_cache": 33,
+              "dll_command": 33,
+              "dqs0": 65537,
+              "dqs1": 65537
+            }
+          },
+          "psram_mapping": {
+            "status": 1,
+            "failure": 0,
+            "line_bytes": 64,
+            "last_address": 0,
+            "last_actual": 0,
+            "last_expected": 0,
+            "bytes": 33554432,
+            "entries": 1024,
+            "cpu_checks": 36,
+            "command_checks": 36,
+            "transactions": 72,
+            "syncs": 5
+          },
+          "psram_smp": {
+            "status": 1,
+            "rounds": 1,
+            "owner_checks": 48,
+            "peer_checks": 48,
+            "command_checks": 48,
+            "syncs": 1
+          },
+          "cpu_clock": {
+            "status": 1,
+            "error_code": 0,
+            "pc": 1073746378,
+            "source": 1,
+            "cpll_mhz": 360,
+            "before_mhz": 89,
+            "after_mhz": 359,
+            "mem_mhz": 180,
+            "apb_mhz": 90,
+            "ctrl0": 0,
+            "ctrl1": 1,
+            "ctrl2": 65536,
+            "rom_mhz": 360
+          },
+          "health": {
+            "cpu0_ticks": 1,
+            "cpu1_ticks": 1,
+            "ipi0": 1,
+            "ipi1": 1
+          },
+          "boot_times": [
+            {
+              "stage": 1,
+              "elapsed_us": 180560
+            },
+            {
+              "stage": 3,
+              "elapsed_us": 196801
+            },
+            {
+              "stage": 5,
+              "elapsed_us": 1316348
+            },
+            {
+              "stage": 7,
+              "elapsed_us": 1415879
+            },
+            {
+              "stage": 4,
+              "elapsed_us": 1652725
+            },
+            {
+              "stage": 6,
+              "elapsed_us": 1750701
+            }
+          ],
+          "ready_us_from_diagnostic_clock": 1750701
+        },
+        "display": {
+          "status": 1,
+          "stage": 5,
+          "error_code": 0,
+          "panel": 3,
+          "commands": 34,
+          "last_command": 41,
+          "frames": 2,
+          "fault": 0,
+          "event": 0,
+          "backlight": 1,
+          "dpi_mhz": 80,
+          "lane_mbps": 960,
+          "cleanup": 0,
+          "dsi_error0": 0,
+          "dsi_error1": 0,
+          "dma_error": 0,
+          "bridge_error": 0,
+          "start_code": 0,
+          "prime_depth": 773,
+          "bl_latch": 1,
+          "bl_enable": 1,
+          "bl_level": 1,
+          "bl_mux": 6656,
+          "bl_matrix": 1280,
+          "white": 0
+        },
+        "source": {
+          "sram": 0,
+          "source": 1208156160,
+          "dma_source": 1208156672,
+          "dma_control": 1973057,
+          "word": 0
+        },
+        "refresh": {
+          "frames": 32,
+          "fault": 0,
+          "event": 1,
+          "dsi_error0": 0,
+          "dsi_error1": 0,
+          "dma_error": 0,
+          "bridge_error": 0
+        },
+        "mode": 2,
+        "lease": null,
+        "optical_evidence": "not evaluated by this checker"
+      },
+      "measurements": {
+        "final_stage_complete_seconds_from_diagnostic_clock": 1.750701,
+        "ready_log_receive_seconds_from_usb_reset_request": 1.867270208,
+        "ui_start_to_ready_seconds_from_dma_frames": 0.3501050315094528
+      }
+    },
+    {
+      "boot": 4,
+      "log": "2026-10-27-native-normal-visible-04.log",
+      "log_sha256": "b5b5cabf03dccd327cd4906bd6771fb90dfbd36357f78b31d49103d7b67fea8d",
+      "capture_lease": {
+        "exclusive": true,
+        "installed": false,
+        "postverified": false,
+        "backup_requested": false,
+        "rom_banner": true,
+        "completion_marker": "NIHOS_NATIVE_UI_READY",
+        "exercise_live": false,
+        "exercise_normal": true,
+        "keys_sent": [
+          "1b",
+          "0c",
+          "1b"
+        ],
+        "marker_receive_seconds_from_reset_request": {
+          "ESP-ROM:esp32p4": 0.410865084,
+          "NIHOS_NATIVE_BOOT backend=": 0.410867292,
+          "NIHOS_NATIVE_UI_START": 1.533002334,
+          "NIHOS_NATIVE_UI_READY": 1.868247375,
+          "NIHOS_NATIVE_UI_SETTLED": 3.254523667
+        },
+        "reset_call_seconds": 0.410433167,
+        "timing_scope": "host serial receive timestamps; includes reset pulse and USB buffering; not cold power-on time",
+        "exercise_failure": false
+      },
+      "result": {
+        "live": {
+          "start": {
+            "frames": 10,
+            "clock_hz": 1000000,
+            "sources": 3,
+            "view": 0,
+            "progress": 9,
+            "target": 85
+          },
+          "ready": {
+            "frames": 31,
+            "clock_hz": 1000000,
+            "sources": 3,
+            "view": 0,
+            "progress": 24,
+            "target": 255
+          },
+          "keyboard": {
+            "status": 1,
+            "firmware": 1,
+            "mode": 1,
+            "transactions": 4,
+            "error_code": 0,
+            "sources": 3
+          },
+          "io": {
+            "tx_dropped": 0
+          },
+          "keys": [
+            {
+              "sequence": 1,
+              "source": 1,
+              "action": 1,
+              "modifiers": 0,
+              "usage": 27,
+              "accepted": 1,
+              "view": 1,
+              "stage": 0,
+              "frames": 59
+            },
+            {
+              "sequence": 2,
+              "source": 1,
+              "action": 2,
+              "modifiers": 0,
+              "usage": 12,
+              "accepted": 1,
+              "view": 0,
+              "stage": 0,
+              "frames": 85
+            },
+            {
+              "sequence": 3,
+              "source": 1,
+              "action": 1,
+              "modifiers": 0,
+              "usage": 27,
+              "accepted": 1,
+              "view": 1,
+              "stage": 0,
+              "frames": 141
+            }
+          ],
+          "pauses": [],
+          "resumes": [],
+          "settled": [
+            {
+              "frames": 114,
+              "progress": 255,
+              "target": 255
+            }
+          ],
+          "keyboard_escape_seen": false
+        },
+        "console_style": {
+          "cell_width": 16,
+          "cell_height": 16,
+          "palette": 4,
+          "foreground": 2024,
+          "accent": 1446,
+          "background": 4226,
+          "font": 3
+        },
+        "console": {
+          "status": 1,
+          "columns": 78,
+          "rows": 43,
+          "log_bytes": 2048,
+          "dropped_low": 1765,
+          "input": 1
+        },
+        "timing": {
+          "pixel_hz": 80000000,
+          "refresh_millihz": 59982,
+          "htotal": 802,
+          "vtotal": 1663
+        },
+        "layout": {
+          "logical_width": 1280,
+          "logical_height": 720,
+          "rotation": 1
+        },
+        "native": {
+          "normal_boot": true,
+          "headless_emulator": false,
+          "qualification": null,
+          "evidence": "physical-device",
+          "psram": {
+            "status": 1,
+            "configuration": 36144,
+            "identity": 41183,
+            "bytes": 33554432,
+            "transactions": 4,
+            "mapped": 33554432,
+            "allocatable": 0
+          },
+          "psram_fast": {
+            "mpll": {
+              "status": 1,
+              "mhz": 400,
+              "reused": 1,
+              "divider": 153,
+              "error_code": 0
+            },
+            "tuning": {
+              "status": 1,
+              "stage": 4,
+              "phase_mask": 15,
+              "phase": 0,
+              "delay_mask": 536870848,
+              "delay": 17,
+              "repetitions": 100,
+              "reads": 74784,
+              "writes": 32,
+              "error_code": 0
+            },
+            "link": {
+              "core": 53341,
+              "bus": 65537,
+              "command": 65537,
+              "sctrl": 49792633,
+              "cmd": 2365325312,
+              "ddr": 12323,
+              "dll_cache": 33,
+              "dll_command": 33,
+              "dqs0": 65537,
+              "dqs1": 65537
+            }
+          },
+          "psram_mapping": {
+            "status": 1,
+            "failure": 0,
+            "line_bytes": 64,
+            "last_address": 0,
+            "last_actual": 0,
+            "last_expected": 0,
+            "bytes": 33554432,
+            "entries": 1024,
+            "cpu_checks": 36,
+            "command_checks": 36,
+            "transactions": 72,
+            "syncs": 5
+          },
+          "psram_smp": {
+            "status": 1,
+            "rounds": 1,
+            "owner_checks": 48,
+            "peer_checks": 48,
+            "command_checks": 48,
+            "syncs": 1
+          },
+          "cpu_clock": {
+            "status": 1,
+            "error_code": 0,
+            "pc": 1073746378,
+            "source": 1,
+            "cpll_mhz": 360,
+            "before_mhz": 90,
+            "after_mhz": 359,
+            "mem_mhz": 180,
+            "apb_mhz": 90,
+            "ctrl0": 0,
+            "ctrl1": 1,
+            "ctrl2": 65536,
+            "rom_mhz": 360
+          },
+          "health": {
+            "cpu0_ticks": 1,
+            "cpu1_ticks": 1,
+            "ipi0": 1,
+            "ipi1": 1
+          },
+          "boot_times": [
+            {
+              "stage": 1,
+              "elapsed_us": 181560
+            },
+            {
+              "stage": 3,
+              "elapsed_us": 197763
+            },
+            {
+              "stage": 5,
+              "elapsed_us": 1317284
+            },
+            {
+              "stage": 7,
+              "elapsed_us": 1416816
+            },
+            {
+              "stage": 4,
+              "elapsed_us": 1653707
+            },
+            {
+              "stage": 6,
+              "elapsed_us": 1751672
+            }
+          ],
+          "ready_us_from_diagnostic_clock": 1751672
+        },
+        "display": {
+          "status": 1,
+          "stage": 5,
+          "error_code": 0,
+          "panel": 3,
+          "commands": 34,
+          "last_command": 41,
+          "frames": 2,
+          "fault": 0,
+          "event": 0,
+          "backlight": 1,
+          "dpi_mhz": 80,
+          "lane_mbps": 960,
+          "cleanup": 0,
+          "dsi_error0": 0,
+          "dsi_error1": 0,
+          "dma_error": 0,
+          "bridge_error": 0,
+          "start_code": 0,
+          "prime_depth": 773,
+          "bl_latch": 1,
+          "bl_enable": 1,
+          "bl_level": 1,
+          "bl_mux": 6656,
+          "bl_matrix": 1280,
+          "white": 0
+        },
+        "source": {
+          "sram": 0,
+          "source": 1208156160,
+          "dma_source": 1208156672,
+          "dma_control": 1973057,
+          "word": 0
+        },
+        "refresh": {
+          "frames": 32,
+          "fault": 0,
+          "event": 1,
+          "dsi_error0": 0,
+          "dsi_error1": 0,
+          "dma_error": 0,
+          "bridge_error": 0
+        },
+        "mode": 2,
+        "lease": null,
+        "optical_evidence": "not evaluated by this checker"
+      },
+      "measurements": {
+        "final_stage_complete_seconds_from_diagnostic_clock": 1.751672,
+        "ready_log_receive_seconds_from_usb_reset_request": 1.868247375,
+        "ui_start_to_ready_seconds_from_dma_frames": 0.3501050315094528
+      }
+    }
+  ]
+}

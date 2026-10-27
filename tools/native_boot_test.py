@@ -105,5 +105,28 @@ class NormalBootEvidenceTests(unittest.TestCase):
             self.check(log.replace('repetitions=00000064', 'repetitions=00000001'))
 
 
+VISIBLE_RECEIPT = json.loads((ROOT / 'docs/measurements/2026-10-27-native-normal-visible.json').read_text())
+
+
+class NativeVisibleNormalBootTests(unittest.TestCase):
+    def test_three_retained_physical_normal_boots(self):
+        for boot in VISIBLE_RECEIPT['boots']:
+            with self.subTest(boot=boot['boot']):
+                log = (ROOT / 'docs/measurements' / boot['log']).read_text()
+                report = DISPLAY.check(log, VISIBLE_RECEIPT['image_audit'], 2, 80, require_console=True, normal_boot=True)
+                self.assertTrue(report['native']['normal_boot'])
+                self.assertIsNone(report['native']['qualification'])
+                self.assertFalse(report['live']['pauses'])
+                self.assertEqual(report['live']['ready']['frames'] - report['live']['start']['frames'], 21)
+
+    def test_real_keyboard_and_post_ready_serial_view_switches(self):
+        first = VISIBLE_RECEIPT['boots'][0]['result']['live']
+        self.assertTrue(first['keyboard_escape_seen'])
+        self.assertEqual([(k['source'], k['usage'], k['accepted']) for k in first['keys']], [(2, 0x29, 1)])
+        final = VISIBLE_RECEIPT['boots'][-1]['result']['live']
+        self.assertEqual([(k['source'], k['action'], k['accepted']) for k in final['keys']], [(1,1,1), (1,2,1), (1,1,1)])
+        self.assertTrue(all(k['frames'] > final['ready']['frames'] for k in final['keys']))
+
+
 if __name__ == '__main__':
     unittest.main()
