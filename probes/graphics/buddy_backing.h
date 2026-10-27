@@ -13,6 +13,7 @@ size_t nih_graphics_backing_raw_used(void);
 size_t nih_graphics_backing_raw_peak(void);
 size_t nih_graphics_backing_initial_free(void);
 size_t nih_graphics_backing_largest_free(void);
+size_t nih_graphics_backing_largest_extent(void);
 unsigned nih_graphics_backing_parents(void);
 int nih_graphics_backing_retire(void);
 int nih_graphics_backing_reopen(void);

@@ -28,8 +28,8 @@ NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ \
 That compiles `metadata_size.cpp` and records `sizeof(LazyPool)` for ILP32.
 It neither compiles the POSIX backing implementation for nihos nor runs on P4.
 
-To also run against the unchanged kernel buddy heap and four-task,
-two-parent-per-task resource ledger:
+To also run against the kernel buddy heap and opt-in extent groups in the
+four-task, two-entry-per-task resource ledger:
 
 ```sh
 NIHOS_GRAPHICS_KERNEL_BACKING=1 sh tools/run-graphics-memory-probe.sh
@@ -84,8 +84,9 @@ before returning its spans. The service's remaining process-global allocations
 are retained; forced service-task cleanup/restart remains unqualified.
 
 The default host backend uses `posix_memalign/free`. The optional kernel
-variant shares two task-owned parent extents across all clients; requesting
-each page as a separate task allocation would exceed the current ledger.
+variant registers one bounded extent group in the task ledger. Up to 32 child
+extents can be acquired and returned independently through that ownership
+entry. Each buddy extent supplies its full safe payload to the suballocator.
 The bounded metadata scan is a host prototype, not an interrupt-latency proof.
 This implementation does not replace `nih_task_malloc` or any libc symbol.
 
@@ -116,9 +117,78 @@ RAM use, SD latency, or physical-device qualification.
 The receipt, including exact source hashes, is retained in
 [`docs/measurements/2026-10-27-graphics-demand-memory.json`](../../docs/measurements/2026-10-27-graphics-demand-memory.json).
 
-## Kernel-backed host bridge
+## Extent groups: current kernel-backed experiment
 
-`buddy_backing.zig` calls the actual `buddy_heap.zig` and `task_resources.zig`
+`ResourcesWithGroups` opts into a fixed registry of groups and child handles.
+The graphics fixture provisions one group with at most 32 extents. The default
+`Resources` factory retains zero group slots. The two-entry per-task ledger
+limit remains; one group consumes one entry, leaving the other available.
+
+The group root is a 64-byte ownership anchor costing a raw 256-byte buddy
+block. Canonical child handles live in trusted control metadata, not in that
+root's writable payload. `allocExtent`/`freeExtent` authenticate the current
+key, group token and exact child handle before accessing heap metadata. An
+arbitrary C pointer is looked up in the canonical registry before use. Raw C
+addresses still cannot distinguish a stale address after later address reuse.
+
+A live group cannot be freed through the generic root-free API. Task close
+forbids new allocations, then `drainOne` frees at most one child per call and
+finally the root; slot reuse waits until the group and other task resources
+have drained. A heap error retains the handle and faults the slot. Host unit
+tests cover registration rollback, extent quota, OOM, forged/stale/foreign
+children, root payload corruption, peer survival, bounded drain and faulted
+cleanup. These are opt-in kernel APIs; the native font task is not installed.
+
+The suballocator charges the physical buddy block size against client and
+global limits. A block supplies `raw size - 128` usable bytes, avoiding the
+previous policy's large unused shared parent. Empty extents return directly
+to buddy; live extents and library pointers are not relocated. Partially used
+extents remain allocated, and the 256-byte root remains until the last child
+is freed. The fixture's host **kernel raw occupancy** is:
+
+| State | Raw buddy occupancy |
+| --- | ---: |
+| Before first library use | 0 |
+| One client after drawing | 640 KiB + 256 bytes |
+| Two clients, normal peak | 1,280 KiB + 256 bytes |
+| Two clients, OOM stress peak | 1,664 KiB + 256 bytes |
+| Second client closed | 640 KiB + 256 bytes |
+| All clients closed | 64 KiB + 256 bytes |
+
+The last child contains the service's 1,415 requested live HB bytes in this
+fixed workload. These totals exclude controller state, stack, libc stdio,
+code/rodata, OS file cache and sanitizer overhead, as in the earlier table.
+They do not measure paragraph layout, glyph bitmap caches or framebuffers.
+
+The largest contiguous block required by the normal two-font fixture is
+512 KiB. A second run holds another task's 8 MiB and 4 MiB allocations before
+opening fonts, leaving no contiguous 2 MiB block. Both font sessions still
+open and render identical body/ruby-sized glyphs. Both normal and fragmented
+runs inject all 547 OOM points, retain the first client, and reopen 32 times.
+The fragmented run skips the separate 1 MiB quota-pressure stage because the
+12 MiB peer is already active; that stage still runs in the normal fixture.
+This is one demonstrated fragmented geometry, not arbitrary-fragmentation
+or arbitrary-font qualification.
+
+The backing fixture separately fills the 32-extent quota, drains through the
+real task ledger while a peer survives, checks full heap recovery, and shows
+that a 512 KiB extent succeeds while a 2 MiB request fails in the fragmented
+geometry. No child list is trusted from client-writable payload memory.
+
+RV32 compile-only checks cover the C++ allocator and Zig bridge. Their control
+size sum is 6,685 bytes (4,920 allocator + 1,765 bridge), before independent
+static alignment padding and stack. The host uses a separate 15,596,992-byte
+array to emulate the current 32 MiB layout's CPU0 heap. A native port must
+borrow from the already-initialized per-hart heap and bind the real task key;
+it must not initialize another heap over live allocations.
+
+The current receipt is
+[`docs/measurements/2026-10-27-graphics-extent-groups.json`](../../docs/measurements/2026-10-27-graphics-extent-groups.json).
+The earlier two-parent policy and its failure are retained below for comparison.
+
+## Historical coarse-parent baseline (702082f)
+
+Commit `702082f` used the actual `buddy_heap.zig` and `task_resources.zig`
 without changing either. A host array models the 15,596,992-byte CPU0 heap
 backing left by the current 32 MiB layout. Its payload after buddy metadata
 and guards is 15,072,576 bytes. The array represents available kernel memory,

@@ -54,11 +54,15 @@ report = {
 if kernel:
     results = {name: json.loads((out / file).read_text()) for name, file in [
         ("backing", "backing-test-result.json"), ("pool", "pool-buddy-result.json"),
-        ("font", "font-buddy-result.json")]}
+        ("font", "font-buddy-result.json"), ("fragmented_font", "font-fragmented-result.json")]}
     for key in ["gothic_horizontal_hash", "gothic_vertical_hash", "mincho_vertical_hash", "oom_points"]:
         assert report["font"][key] == results["font"][key], key
-    assert results["font"]["kernel_raw_peak"] == 2 * 1024 * 1024 + 128 * 1024
-    assert results["font"]["kernel_raw_after_close"] == 128 * 1024
+        assert report["font"][key] == results["fragmented_font"][key], key
+    assert results["font"]["kernel_raw_normal_peak"] == results["font"]["two_client_normal_peak_reserved"] + 256
+    assert results["font"]["kernel_raw_peak"] < 2 * 1024 * 1024
+    assert results["font"]["kernel_raw_after_close"] == 64 * 1024 + 256
+    assert results["fragmented_font"]["fragmented_heap"]
+    assert results["fragmented_font"]["font_max_extent"] <= 512 * 1024
     assert results["backing"]["full_heap_recovered"]
     assert results["backing"]["peer_survives_retirement"]
     report["kernel_backing"] = {
@@ -66,18 +70,23 @@ if kernel:
         "zig_version": subprocess.check_output([os.environ["NIHOS_GRAPHICS_ZIG_USED"], "version"], text=True).strip(),
         "host_object_sha256": hashlib.sha256((out / "buddy/backing.o").read_bytes()).hexdigest(),
         "task_parent_limit": 2,
-        "small_parent_raw_bytes": 128 * 1024,
-        "active_parent_raw_bytes": 2 * 1024 * 1024,
+        "ownership_group_entries": 1,
+        "extent_limit": 32,
+        "root_raw_bytes": 256,
+        "minimum_extent_raw_bytes": 65536,
         "host_owner_heap_backing_bytes": 15596992,
         "physical_device_tested": False,
     }
     inputs += [Path("src/kernel/buddy_heap.zig"), Path("src/kernel/task_resources.zig"),
+               Path("src/kernel/extent_groups.zig"), Path("src/kernel/task_resources_test.zig"),
                Path("src/kernel/slab.zig"), Path("src/kernel/size_pool.zig"),
                Path("src/kernel/c_allocator.zig"), Path("tools/bootstrap-zig.sh")]
     report["limits"] += [
         "Kernel algorithms execute over a host array emulating the 32 MiB layout's CPU0 heap",
         "Probe bridge uses one fixed service key; native scheduling, interrupts and identity routing are not integrated",
-        "Two-parent compatibility uses a shared 2 MiB active parent; fine-grained logical frees do not always return physical buddy capacity",
+        "Opt-in extent group uses one ledger entry and at most 32 canonical extents; standard Resources has zero group slots",
+        "Empty suballocator extents return to buddy immediately; partially used extents remain allocated",
+        "Fragmented font workload holds a separate task's 12 MiB, omits the independent 1 MiB pressure stage, and still injects every OOM point",
         "Service retirement test uses no HB objects and does not prove safe restart of process-global library state",
     ]
 else:

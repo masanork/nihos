@@ -50,20 +50,31 @@ void *LazyPool::allocate(unsigned owner, size_t bytes) {
     if (selected == span_count) {
         for (unsigned i = 0; i < span_count; ++i)
             if (!spans[i].base) { selected = i; break; }
-        size_t backing = ((usable - 1) / page_bytes + 1) * page_bytes;
-        if (selected == span_count || reserved > total_limit || backing > total_limit - reserved ||
-            owner_reserved[owner] > owner_limit[owner] || backing > owner_limit[owner] - owner_reserved[owner])
+        size_t backing, charge;
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        charge = page_bytes;
+        while (charge < usable + 128) {
+            if (charge > SIZE_MAX / 2) return reject();
+            charge *= 2;
+        }
+        backing = charge - 128; // use the full safe payload of each buddy block
+#else
+        backing = ((usable - 1) / page_bytes + 1) * page_bytes;
+        charge = backing;
+#endif
+        if (selected == span_count || reserved > total_limit || charge > total_limit - reserved ||
+            owner_reserved[owner] > owner_limit[owner] || charge > owner_limit[owner] - owner_reserved[owner])
             return reject();
         void *base = nullptr;
 #ifdef NIHOS_GRAPHICS_BUDDY_BACKING
         graphics_backing_ensure();
-        base = nih_graphics_backing_acquire(backing);
+        base = nih_graphics_backing_acquire(charge);
         if (!base) return reject();
 #else
         if (posix_memalign(&base, 64, backing)) return reject();
 #endif
         spans[selected] = { (unsigned char *)base, (uint32_t)backing, (uint16_t)owner, 0 };
-        reserved += backing; owner_reserved[owner] += backing;
+        reserved += charge; owner_reserved[owner] += charge;
         if (reserved > peak) peak = reserved;
         offset = 0;
     }
@@ -81,7 +92,11 @@ bool LazyPool::release(unsigned owner, void *pointer) {
     Span &span = spans[records[index].span];
     records[index] = {};
     if (--span.live == 0) {
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        reserved -= span.bytes + 128; owner_reserved[owner] -= span.bytes + 128;
+#else
         reserved -= span.bytes; owner_reserved[owner] -= span.bytes;
+#endif
 #ifdef NIHOS_GRAPHICS_BUDDY_BACKING
         if (nih_graphics_backing_release(span.base)) abort();
 #else
@@ -126,8 +141,15 @@ bool LazyPool::valid() const {
     for (unsigned s = 0; s < span_count; ++s) {
         const Span &span = spans[s];
         if (!span.base) continue;
-        if (span.owner >= owners || (uintptr_t)span.base % 64 || span.bytes % page_bytes) return false;
-        total += span.bytes; per_owner[span.owner] += span.bytes;
+        if (span.owner >= owners || (uintptr_t)span.base % 64) return false;
+#ifdef NIHOS_GRAPHICS_BUDDY_BACKING
+        size_t charge = span.bytes + 128;
+        if (charge < page_bytes || (charge & (charge - 1))) return false;
+#else
+        size_t charge = span.bytes;
+        if (span.bytes % page_bytes) return false;
+#endif
+        total += charge; per_owner[span.owner] += charge;
         unsigned live = 0;
         for (unsigned i = 0; i < record_count; ++i) {
             const Record &a = records[i];
