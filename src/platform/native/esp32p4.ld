@@ -50,6 +50,7 @@ SECTIONS
         *(.flash.rodata.boot_graphics)
         *(.flash.rodata.display)
         *(.flash.rodata.card_pin)
+        *(.flash.rodata.bmi270)
         __flash_records_end = .;
     } > flash_records
 #if NIH_NATIVE_KEYPAD

@@ -1,8 +1,10 @@
 //! CPU0 board I2C owner after display/power setup. One bounded transaction job
-//! per second, with interrupts enabled. No bus resets or recovery at runtime.
+//! per second, plus incremental IMU initialization/acquisition, with interrupts
+//! enabled. No bus resets or recovery at runtime.
 const display = @import("display_service");
 const i2c = @import("boot_i2c");
 const rtc = @import("tab5_rtc");
+const bmi270 = @import("tab5_bmi270");
 const timers = @import("timer_group");
 const Bus = i2c.Master(display.probe.Pins);
 // SAFETY: begin binds the bus before active allows poll or setCalendar.
@@ -10,7 +12,8 @@ var bus: Bus = undefined;
 // SAFETY: begin binds the free-running timer before active is set.
 var clock: timers.Timer = undefined;
 var next: u64 = 0;
-var job: u2 = 0;
+var job: u1 = 0;
+var imu: bmi270.Driver = .{};
 var active = false;
 pub const Report = extern struct {
     rtc_present: u32 = 0,
@@ -41,6 +44,7 @@ pub fn begin(timer: timers.Timer) void {
     bus = .{ .pins = .{ .clock = timer } };
     report = .{};
     job = 0;
+    imu = .{};
     next = 0;
     active = true;
 }
@@ -88,32 +92,62 @@ fn step() !void {
             report.shunt_negative = @intFromBool(shunt < 0);
             report.ina_present = 1;
         },
-        2 => {
-            report.imu_chip = 0;
-            report.imu_initialized = 0;
-            var value: [1]u8 = undefined;
-            try bus.transfer(0x68, &.{0}, &value);
-            report.imu_chip = value[0];
-            if (value[0] != 0x24) return error.WrongDevice;
-            try bus.transfer(0x68, &.{0x21}, &value);
-            report.imu_initialized = @intFromBool(value[0] & 15 == 1);
-        },
-        else => unreachable,
     }
 }
 pub fn poll() void {
     if (!active) return;
     const now = clock.counter() orelse return;
-    if (now < next) return;
+    if (now < next) {
+        imu.poll(&bus, clock);
+        return;
+    }
     next = now + 1_000_000;
     step() catch {
         report.errors +|= 1;
     };
     report.samples +|= 1;
-    job = if (job == 2) 0 else job + 1;
+    job +%= 1;
 }
 pub fn snapshot() Report {
+    report.imu_chip = imu.chip;
+    report.imu_initialized = @intFromBool(imu.initialized);
     return report;
+}
+pub const ImuReport = extern struct {
+    chip: u32,
+    initialized: u32,
+    stage: u32,
+    fault: u32,
+    uploaded: u32,
+    valid: u32,
+    samples: u32,
+    acc_x: u32,
+    acc_y: u32,
+    acc_z: u32,
+    gyr_x: u32,
+    gyr_y: u32,
+    gyr_z: u32,
+    sensor_error: u32,
+    ready_status: u32,
+};
+pub fn imuSnapshot() ImuReport {
+    return .{
+        .chip = imu.chip,
+        .initialized = @intFromBool(imu.initialized),
+        .stage = @backingInt(imu.state),
+        .fault = @backingInt(imu.fault),
+        .uploaded = imu.uploaded,
+        .valid = @intFromBool(imu.valid),
+        .samples = imu.samples,
+        .acc_x = @bitCast(@as(i32, imu.sample.acceleration[0])),
+        .acc_y = @bitCast(@as(i32, imu.sample.acceleration[1])),
+        .acc_z = @bitCast(@as(i32, imu.sample.acceleration[2])),
+        .gyr_x = @bitCast(@as(i32, imu.sample.gyroscope[0])),
+        .gyr_y = @bitCast(@as(i32, imu.sample.gyroscope[1])),
+        .gyr_z = @bitCast(@as(i32, imu.sample.gyroscope[2])),
+        .sensor_error = imu.error_register,
+        .ready_status = imu.ready_status,
+    };
 }
 
 /// For a future settings/time service, never called implicitly during boot.

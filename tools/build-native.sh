@@ -50,6 +50,8 @@ idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=$defaults" bootloader partition-table
 sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
+mkdir -p "$build_dir/licenses"
+cp "$repo_root/src/board/tab5/bmi270/LICENSE" "$build_dir/licenses/BMI270.txt"
 set --
 # Boot-clock code can leave alignment padding before the optional card section.
 # Keep that padding inside its ELF load segment instead of generating two

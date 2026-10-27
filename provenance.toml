@@ -129,3 +129,13 @@ revision = "7c092f9aee793d6dbfae31e7585637baa14fb4ce (v4.1.1.0)"
 license = "Apache-2.0 for repository source; separately licensed AT core and SDK binary dependencies"
 status = "candidate-firmware-dependency"
 use = "Separate C6 TCP/IP and BLE host SDIO firmware built in an external pinned checkout with verified upstream SDK patches; no upstream source or binary tracked here, no flashing or execution qualification"
+
+
+[[source]]
+name = "Bosch BMI270 base configuration"
+url = "https://github.com/boschsensortec/BMI270_SensorAPI/blob/41129fcfe39c583ee5462d79195741945d51c1fe/bmi270.c"
+revision = "41129fcfe39c583ee5462d79195741945d51c1fe (bmi270.c v2.86.1)"
+license = "BSD-3-Clause; Copyright (c) 2023 Bosch Sensortec GmbH"
+status = "firmware-data-dependency"
+use = "Unmodified 8192-byte bmi270_config_file extracted into src/board/tab5/bmi270/config.bin; original license retained alongside; independent Zig host protocol, no Bosch host driver code import"
+sha256 = "2d75e68e343a13ff99be98261dfbd99d9e8c6f267da9e3c5aeb883276ad178db"
