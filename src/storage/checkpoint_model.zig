@@ -30,9 +30,11 @@ pub const SearchBudget = struct { leaf_visits: u16 = 8, bitmap_pages: u32 = 1024
 pub const SearchResult = union(enum) { pending, found: u64, no_space, space: PayloadSpace };
 pub const Value = struct { first: u64, length: u64, checksum: u32 };
 pub const Reader = struct { slot: u8, token: u64 };
+pub const Stream = struct { token: u64 };
+pub const PatchProgress = struct { consumed: usize = 0, done: bool = false, need_input: bool = false };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
 pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
-pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired };
+pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired, InvalidStream, IncompleteStream };
 
 pub fn Store(comptime Device: type, comptime config: Config) type {
     const data_start = config.payload_start_page orelse (2 + @as(u64, config.index_pages));
@@ -55,6 +57,22 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         };
         const Pin = struct { root: Root = .{}, token: u64 = 0 };
         const CachedLeaf = struct { ref: Ref = .{}, bytes: [page_bytes]u8 = @splat(0) };
+        const Patch = struct { source: Value, offset: u64, length: u64 };
+        const Writer = struct {
+            token: u64 = 0,
+            key: u32 = 0,
+            first: u64 = 0,
+            length: u64 = 0,
+            received: u64 = 0,
+            page_index: u64 = 0,
+            table_index: u64 = 0,
+            fill: usize = 0,
+            table_entries: usize = 0,
+            crc: std.hash.Crc32 = std.hash.Crc32.init(),
+            patch: ?Patch = null,
+            data: [page_bytes]u8 = @splat(0),
+            table: [page_bytes]u8 = @splat(0),
+        };
         const Search = struct {
             phase: enum { idle, mark, scan, done } = .idle,
             wanted: ?u64 = null,
@@ -87,6 +105,8 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         occupancy: [config.payload_window_bytes]u8 = @splat(0),
         leaf_cache: [config.leaf_cache_pages]CachedLeaf = @splat(.{}),
         search: Search = .{},
+        writer: Writer = .{},
+        next_stream: u64 = 1,
         metadata_reads: u64 = 0,
         metadata_hits: u64 = 0,
         step_leaf_visits: u16 = 0,
@@ -113,6 +133,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.faulted = true;
             self.in_transaction = false;
             self.invalidateSearch();
+            self.writer.token = 0;
             return error.Io;
         }
         fn usable(self: *Self) Error!void {
@@ -193,6 +214,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         pub fn rollback(self: *Self) Error!void {
             try self.transaction();
             self.invalidateSearch();
+            self.writer.token = 0;
             self.in_transaction = false;
         }
 
@@ -336,10 +358,12 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
         pub fn beginPayloadSearch(self: *Self, pages: u64) Error!void {
             try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
             self.startSearch(pages);
         }
         pub fn beginPayloadSpace(self: *Self) Error!void {
             try self.usable();
+            if (self.writer.token != 0) return error.Busy;
             self.startSearch(null);
         }
         fn searchRoot(self: *Self, index: u16) ?*const Root {
@@ -354,6 +378,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         /// costs one visit, including cache hits and absent references.
         pub fn stepPayloadSearch(self: *Self, budget: SearchBudget) Error!SearchResult {
             try self.usable();
+            if (self.writer.token != 0) return error.Busy;
             if (budget.leaf_visits == 0 or budget.leaf_visits > 64 or budget.bitmap_pages == 0 or budget.bitmap_pages > 4096) return error.InvalidArgument;
             if (self.search.phase == .idle) return error.InvalidSearch;
             self.step_leaf_visits = 0;
@@ -523,6 +548,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
 
         pub fn put(self: *Self, key: u32, data: []const u8) Error!void {
             try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
             try validKey(key);
             const pages = dataPages(data.len);
             const tables = checksumPages(data.len);
@@ -534,6 +560,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         /// search work. Payload writing itself is still synchronous.
         pub fn putPrepared(self: *Self, key: u32, data: []const u8) Error!void {
             try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
             try validKey(key);
             try self.preflight();
             if (self.search.phase != .done or self.search.wanted != dataPages(data.len) + checksumPages(data.len)) return error.SearchRequired;
@@ -575,8 +602,142 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             if (pages != 0) self.staged.payload_next = @max(self.staged.payload_next, first + pages + tables);
             try self.replace(key, value, existed);
         }
+        fn streamReady(self: *Self, stream: Stream) Error!void {
+            try self.transaction();
+            if (stream.token == 0 or self.writer.token != stream.token) return error.InvalidStream;
+        }
+        fn initializeStreamTable(self: *Self) void {
+            self.writer.table = @splat(0);
+            std.mem.writeInt(u32, self.writer.table[0..4], checksum_magic, .little);
+            std.mem.writeInt(u32, self.writer.table[4..8], version, .little);
+            std.mem.writeInt(u64, self.writer.table[8..16], self.writer.first, .little);
+            std.mem.writeInt(u64, self.writer.table[16..24], self.writer.length, .little);
+            std.mem.writeInt(u64, self.writer.table[24..32], self.writer.table_index, .little);
+        }
+        fn beginStreamAt(self: *Self, key: u32, length: u64, first: u64) Error!Stream {
+            if (self.next_stream == std.math.maxInt(u64)) return error.GenerationExhausted;
+            _ = try self.checkedLookup(&self.staged, key);
+            self.invalidateSearch();
+            self.writer = .{ .token = self.next_stream, .key = key, .length = length, .first = first };
+            self.next_stream += 1;
+            if (length != 0) self.initializeStreamTable();
+            return .{ .token = self.writer.token };
+        }
+        /// Blocking allocation convenience. Only a declaration and reservation;
+        /// no caller buffer or pointer is retained.
+        pub fn beginStream(self: *Self, key: u32, length: u64) Error!Stream {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            try validKey(key);
+            try self.preflight();
+            const first = try self.findPayload(dataPages(length) + checksumPages(length));
+            return self.beginStreamAt(key, length, first);
+        }
+        pub fn beginStreamPrepared(self: *Self, key: u32, length: u64) Error!Stream {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            try validKey(key);
+            try self.preflight();
+            if (self.search.phase != .done or self.search.wanted != dataPages(length) + checksumPages(length)) return error.SearchRequired;
+            const first = switch (self.search.result) {
+                .found => |first| first,
+                else => return error.SearchRequired,
+            };
+            return self.beginStreamAt(key, length, first);
+        }
+        fn flushStreamPage(self: *Self) Error!void {
+            try self.writePage(self.writer.first + self.writer.page_index, &self.writer.data);
+            std.mem.writeInt(u32, self.writer.table[32 + self.writer.table_entries * 4 ..][0..4], std.hash.Crc32.hash(&self.writer.data), .little);
+            self.writer.page_index += 1;
+            self.writer.table_entries += 1;
+            self.writer.fill = 0;
+            self.writer.data = @splat(0);
+            if (self.writer.table_entries == checksums_per_page or self.writer.page_index == dataPages(self.writer.length)) {
+                _ = finishPage(&self.writer.table);
+                try self.writePage(self.writer.first + dataPages(self.writer.length) + self.writer.table_index, &self.writer.table);
+                self.writer.table_index += 1;
+                self.writer.table_entries = 0;
+                if (self.writer.page_index < dataPages(self.writer.length)) self.initializeStreamTable();
+            }
+        }
+        fn appendStream(self: *Self, bytes: []const u8) Error!usize {
+            if (bytes.len > self.writer.length - self.writer.received) return error.InvalidArgument;
+            const n = @min(bytes.len, page_bytes - self.writer.fill);
+            const start = self.writer.fill;
+            @memcpy(self.writer.data[start..][0..n], bytes[0..n]);
+            self.writer.crc.update(self.writer.data[start..][0..n]);
+            self.writer.fill += n;
+            self.writer.received += n;
+            if (self.writer.fill == page_bytes or (self.writer.fill != 0 and self.writer.received == self.writer.length)) try self.flushStreamPage();
+            return n;
+        }
+        /// Accept at most the remainder of one 4 KiB data page. A call issues
+        /// at most one payload and one checksum-table write, and performs no sync.
+        pub fn writeStream(self: *Self, stream: Stream, bytes: []const u8) Error!usize {
+            try self.streamReady(stream);
+            if (self.writer.patch != null) return error.InvalidArgument;
+            return self.appendStream(bytes);
+        }
+        pub fn finishStream(self: *Self, stream: Stream) Error!void {
+            try self.streamReady(stream);
+            if (self.writer.received != self.writer.length) return error.IncompleteStream;
+            const existed = try self.checkedLookup(&self.staged, self.writer.key) != null;
+            const value = Value{ .first = if (self.writer.length == 0) 0 else self.writer.first, .length = self.writer.length, .checksum = self.writer.crc.final() };
+            if (self.writer.length != 0) self.staged.payload_next = @max(self.staged.payload_next, self.writer.first + dataPages(self.writer.length) + checksumPages(self.writer.length));
+            try self.replace(self.writer.key, value, existed);
+            self.writer.token = 0;
+        }
+        pub fn abortStream(self: *Self, stream: Stream) Error!void {
+            try self.streamReady(stream);
+            self.writer.token = 0;
+            self.invalidateSearch();
+        }
+        fn patchSource(self: *Self, key: u32, offset: u64, length: u64) Error!Value {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            const source = try self.checkedLookup(&self.staged, key) orelse return error.NotFound;
+            if (offset > source.length or length > source.length - offset) return error.InvalidArgument;
+            return source;
+        }
+        /// Fixed-length byte-range replacement. Current contiguous extents
+        /// require copying the complete object; this is not range sharing.
+        pub fn beginPatch(self: *Self, key: u32, offset: u64, length: u64) Error!Stream {
+            const source = try self.patchSource(key, offset, length);
+            const stream = try self.beginStream(key, source.length);
+            self.writer.patch = .{ .source = source, .offset = offset, .length = length };
+            return stream;
+        }
+        pub fn beginPatchPrepared(self: *Self, key: u32, offset: u64, length: u64) Error!Stream {
+            const source = try self.patchSource(key, offset, length);
+            const stream = try self.beginStreamPrepared(key, source.length);
+            self.writer.patch = .{ .source = source, .offset = offset, .length = length };
+            return stream;
+        }
+        /// Copy one source-page fragment or accept one replacement fragment.
+        /// Prefix/suffix copying may return consumed=0 without needing input.
+        pub fn stepPatch(self: *Self, stream: Stream, replacement: []const u8) Error!PatchProgress {
+            try self.streamReady(stream);
+            const patch = self.writer.patch orelse return error.InvalidArgument;
+            const position = self.writer.received;
+            if (position == self.writer.length) return .{ .done = true };
+            const room = page_bytes - self.writer.fill;
+            const patch_end = patch.offset + patch.length;
+            if (position >= patch.offset and position < patch_end) {
+                if (replacement.len == 0) return .{ .need_input = true };
+                const n: usize = @intCast(@min(@min(replacement.len, room), patch_end - position));
+                const consumed = try self.appendStream(replacement[0..n]);
+                return .{ .consumed = consumed, .done = self.writer.received == self.writer.length };
+            }
+            const until = if (position < patch.offset) patch.offset else self.writer.length;
+            const n: usize = @intCast(@min(room, until - position));
+            var bytes: [page_bytes]u8 = undefined;
+            if (try self.readValue(patch.source, position, bytes[0..n]) != n) return self.corruption();
+            _ = try self.appendStream(bytes[0..n]);
+            return .{ .done = self.writer.received == self.writer.length };
+        }
         pub fn remove(self: *Self, key: u32) Error!void {
             try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
             try validKey(key);
             try self.preflight();
             self.invalidateSearch();
@@ -585,6 +746,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
         pub fn commit(self: *Self) Error!void {
             try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
             self.invalidateSearch();
             self.device.sync() catch return self.ioFailure();
             try self.publish(&self.staged);
@@ -641,6 +803,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.faulted = true;
             self.in_transaction = false;
             self.invalidateSearch();
+            self.writer.token = 0;
             return error.Corrupt;
         }
 
