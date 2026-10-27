@@ -417,3 +417,13 @@ remains 8,272 B, excluding stack/backend memory. Explicit full-object verificati
 is available; cold corruption outside a requested range is deferred until read
 or scrubbed. Cleaner, reader pins, streaming/partial writes and target durability
 remain separate gates; the append-only index still exhausts without GC.
+
+The [index-recycling host follow-up](../measurements/2026-10-27-store-index-gc.md)
+now reuses leaves unreachable from either valid disk root, the staged transaction
+and two reader snapshots. A root-only checkpoint can retire the older disk root
+with zero free leaf pages; reader pins can still impose NoSpace until released.
+The default 4,096-page pool exceeds the 640-page maximum protected set, removing
+its former lifetime limit of 4,096 mutations. The RV32 descriptor is 14,536 B,
+excluding stack/backend memory. Payload remains append-only, so this qualifies
+index recycling rather than a complete cleaner; payload reserve, reclamation,
+streaming/partial writes and physical SD qualification remain open.

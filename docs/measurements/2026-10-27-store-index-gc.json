@@ -1,0 +1,536 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "implementation_commit": "2298194d77d8fbfc68464de5ba9025b1875cec83",
+  "source_commit": "736cb5118610b1b80589661d6f7e5d94382daac6",
+  "branch": "codex/store-crash-model",
+  "evidence": "host-index-recycling",
+  "physical_power_cuts": 0,
+  "native_execution": false,
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-store-index-gc-host",
+  "archive_regular_files": 42,
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "zig": "0.17.0",
+    "zig_debug": 221,
+    "zig_release_safe": 221,
+    "new_zig_tests": 6,
+    "python": 168,
+    "native_elf_links": 6,
+    "format_zlint_shellcheck": true,
+    "rv32_broker_compile": true,
+    "rv32_checkpoint_compile": true
+  },
+  "index": {
+    "media_version": 2,
+    "page_bytes": 4096,
+    "default_pool_pages": 4096,
+    "protected_roots": [
+      "current disk root",
+      "other valid disk root",
+      "staged transaction",
+      "reader snapshots"
+    ],
+    "default_reader_slots": 2,
+    "default_max_protected_pages": 640,
+    "default_min_free_pages_by_reference_bound": 3456,
+    "reclamation": "nonmoving reachability; no media-sized bitmap; first free page reuse",
+    "cursor": "index_next remains a high-water mark",
+    "root_only_collection_requires_new_leaf_pages": 0,
+    "payload_reclamation": false,
+    "payload_clean_reserve_qualified": false
+  },
+  "budget": {
+    "host_state_bytes": 14544,
+    "rv32_state_bytes": 14536,
+    "increase_bytes": 6264,
+    "state_excludes": [
+      "call stack",
+      "backend",
+      "OS file cache"
+    ],
+    "same_state_at_1GiB_and_16GiB": true,
+    "store_heap_allocation": false,
+    "mount_limit_bytes": 1056768,
+    "full_mount_bound_exercised": true,
+    "single_byte_read_bytes": 12288,
+    "native_peak_ram_measured": false
+  },
+  "reuse": {
+    "memory_fixture_pool_pages": 3,
+    "mutations": 6000,
+    "reopened_generation": 6001,
+    "payload_added_pages": 0,
+    "protected_pages": 2,
+    "free_pages": 1
+  },
+  "fault_campaign": {
+    "modes": [
+      "Debug",
+      "ReleaseSafe"
+    ],
+    "events": 84,
+    "backgrounds": [
+      "none",
+      "alternating",
+      "all"
+    ],
+    "flush_orders": [
+      "ascending",
+      "descending"
+    ],
+    "torn_sector_prefixes": [
+      0,
+      1,
+      31,
+      255,
+      511,
+      512
+    ],
+    "crash_cases_per_mode": 3024,
+    "acknowledged_cases_per_mode": 6,
+    "baseline_ack_generation": 3,
+    "collection_ack_generation": 4,
+    "final_ack_generation": 5,
+    "assertion": "recovered generation >= last acknowledged generation and <= 5, with whole correct payload"
+  },
+  "negative_index_controls": [
+    {
+      "variant": "reader",
+      "command": [
+        ".tools/zig-0.17.0/zig",
+        "test",
+        "/Users/masanork/repo/nihos-store-model/build/store-index-gc/negative-index.xr7pjzk4/reader/index_gc_test.zig",
+        "--test-filter",
+        "pinned snapshots survive metadata reuse"
+      ],
+      "exit_code": 1,
+      "semantic_counterexample_found": true,
+      "expected_marker": "PIN_COUNTEREXAMPLE current_generation=5 error=Corrupt"
+    },
+    {
+      "variant": "retained",
+      "command": [
+        ".tools/zig-0.17.0/zig",
+        "test",
+        "/Users/masanork/repo/nihos-store-model/build/store-index-gc/negative-index.xr7pjzk4/retained/index_gc_test.zig",
+        "--test-filter",
+        "both valid disk roots survive"
+      ],
+      "exit_code": 1,
+      "semantic_counterexample_found": true,
+      "expected_marker": "RETAINED_ROOT_COUNTEREXAMPLE error=Corrupt"
+    }
+  ],
+  "negative_barrier_control": {
+    "schema": 1,
+    "mutation": "omit first commit barrier only; disable event/case count assertions in copied test",
+    "command": [
+      ".tools/zig-0.17.0/zig",
+      "test",
+      "/Users/masanork/repo/nihos-store-model/build/checkpoint/negative.ecv2zco4/checkpoint_model_test.zig",
+      "--test-filter",
+      "checkpoint publication"
+    ],
+    "exit_code": 1,
+    "semantic_counterexample_found": true,
+    "counterexample": {
+      "event": 112,
+      "prefix": 512,
+      "background": "none",
+      "order": "ascending",
+      "generation": 3,
+      "error": "Corrupt"
+    }
+  },
+  "process": {
+    "schema": 1,
+    "evidence": "host-sparse-file-checkpoint",
+    "physical_power_cuts": 0,
+    "capacity": 17179869184,
+    "binary_sha256": "4560db8f19d1ded29aac61925e183f81694a2440e677daa15757fbd3d3d1bb60",
+    "commands": [
+      {
+        "command": "format",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"format\",\"generation\":1,\"mount_bytes\":0,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":1,\"operation_read_bytes\":0,\"index_free_pages\":256,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "seed",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"seed\",\"generation\":2,\"mount_bytes\":8192,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":25,\"syncs\":2,\"operation_read_bytes\":0,\"index_free_pages\":253,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-old",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-old\",\"generation\":2,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179607040,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":1302528,\"index_free_pages\":253,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "update",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"update\",\"generation\":3,\"mount_bytes\":20480,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":26,\"syncs\":2,\"operation_read_bytes\":1323008,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-new\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":1306624,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-one",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-one\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":12288,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-cross",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-cross\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":16384,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-full",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-full\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":81920,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "inspect",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"inspect\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":0,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-new",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "read-one",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"read-one\",\"generation\":3,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":17179693056,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":12288,\"index_free_pages\":251,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "read-far",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "verify-full",
+        "image": "volume.img",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "error: Corrupt\n"
+      },
+      {
+        "command": "fill-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"fill-index\",\"generation\":4,\"mount_bytes\":32768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":129,\"syncs\":2,\"operation_read_bytes\":12288,\"index_free_pages\":125,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "checkpoint",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"checkpoint\",\"generation\":5,\"mount_bytes\":544768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":1,\"syncs\":2,\"operation_read_bytes\":0,\"index_free_pages\":128,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":524288,\"index_free_pages\":128,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-index",
+        "image": "reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-index\",\"generation\":5,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":524288,\"index_free_pages\":128,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "churn-index",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"churn-index\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":650,\"syncs\":20,\"operation_read_bytes\":3145728,\"index_free_pages\":128,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-recycled",
+        "image": "volume.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-recycled\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":610304,\"index_free_pages\":128,\"reader_slots\":2}\n",
+        "stderr": ""
+      },
+      {
+        "command": "verify-recycled",
+        "image": "recycled-reconstructed.img",
+        "exit_code": 0,
+        "stdout": "{\"phase\":\"verify-recycled\",\"generation\":15,\"mount_bytes\":1056768,\"mount_limit_bytes\":1056768,\"state_bytes\":14544,\"payload_first_byte\":0,\"max_objects\":16128,\"tail_replay_bytes\":0,\"writes\":0,\"syncs\":0,\"operation_read_bytes\":610304,\"index_free_pages\":128,\"reader_slots\":2}\n",
+        "stderr": ""
+      }
+    ],
+    "cases": [
+      {
+        "name": "separate_process_reopen_above_4GiB",
+        "passed": true,
+        "old": {
+          "phase": "verify-old",
+          "generation": 2,
+          "mount_bytes": 20480,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 17179607040,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 1302528,
+          "index_free_pages": 253,
+          "reader_slots": 2
+        },
+        "new": {
+          "phase": "verify-new",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 1306624,
+          "index_free_pages": 251,
+          "reader_slots": 2
+        }
+      },
+      {
+        "name": "bounded_partial_read_and_explicit_scrub",
+        "passed": true,
+        "one_byte": {
+          "phase": "read-one",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 12288,
+          "index_free_pages": 251,
+          "reader_slots": 2
+        },
+        "crossing": {
+          "phase": "read-cross",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 16384,
+          "index_free_pages": 251,
+          "reader_slots": 2
+        },
+        "scrub": {
+          "phase": "verify-full",
+          "generation": 3,
+          "mount_bytes": 32768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 17179693056,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 81920,
+          "index_free_pages": 251,
+          "reader_slots": 2
+        }
+      },
+      {
+        "name": "metadata_only_mount_and_on_demand_payload_integrity",
+        "passed": true
+      },
+      {
+        "name": "cold_payload_corruption_is_deferred_until_read_or_scrub",
+        "passed": true
+      },
+      {
+        "name": "both_roots_reference_all_128_leaves",
+        "passed": true,
+        "report": {
+          "phase": "verify-index",
+          "generation": 5,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 524288,
+          "index_free_pages": 128,
+          "reader_slots": 2
+        }
+      },
+      {
+        "name": "compact_range_snapshot_reconstruction",
+        "passed": true
+      },
+      {
+        "name": "reader_pin_backpressure_and_640_leaf_mutations_in_256_page_pool",
+        "passed": true,
+        "churn": {
+          "phase": "churn-index",
+          "generation": 15,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 650,
+          "syncs": 20,
+          "operation_read_bytes": 3145728,
+          "index_free_pages": 128,
+          "reader_slots": 2
+        },
+        "reopened": {
+          "phase": "verify-recycled",
+          "generation": 15,
+          "mount_bytes": 1056768,
+          "mount_limit_bytes": 1056768,
+          "state_bytes": 14544,
+          "payload_first_byte": 0,
+          "max_objects": 16128,
+          "tail_replay_bytes": 0,
+          "writes": 0,
+          "syncs": 0,
+          "operation_read_bytes": 610304,
+          "index_free_pages": 128,
+          "reader_slots": 2
+        }
+      },
+      {
+        "name": "recycled_index_snapshot_reconstruction",
+        "passed": true
+      }
+    ],
+    "snapshots": {
+      "generation3": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation3-metadata.bin",
+            "sha256": "18a41e64c6b5a64c11824abb5bf0c3eb2a08b1fee29ad3c8d3d0fd7db18d4e7d"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation3-payload.bin",
+            "sha256": "6d0380359a7d8bb2996d5875cd11e16f1aeb2e43acca2824687e50e690716fa1"
+          }
+        ]
+      },
+      "generation5": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation5-metadata.bin",
+            "sha256": "b8fe705655db2941da4ae0f945af99230f910ecf96e9253f67737d8c6536ea46"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation5-payload.bin",
+            "sha256": "6d0380359a7d8bb2996d5875cd11e16f1aeb2e43acca2824687e50e690716fa1"
+          }
+        ]
+      },
+      "generation15": {
+        "capacity": 17179869184,
+        "omitted_bytes": "zero-filled sparse holes",
+        "ranges": [
+          {
+            "offset": 0,
+            "bytes": 1056768,
+            "file": "generation15-metadata.bin",
+            "sha256": "398f5a6ff0b9ee261ad4ea0fdd9274c1699085faa64ebb6c2fd3b86e5a13c3c0"
+          },
+          {
+            "offset": 17179607040,
+            "bytes": 262144,
+            "file": "generation15-payload.bin",
+            "sha256": "6d0380359a7d8bb2996d5875cd11e16f1aeb2e43acca2824687e50e690716fa1"
+          }
+        ]
+      }
+    },
+    "passed": true,
+    "images": {
+      "volume.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      },
+      "recycled-reconstructed.img": {
+        "bytes": 17179869184,
+        "allocated_bytes": 1327104
+      }
+    }
+  },
+  "regressions": {
+    "checkpoint_crash_cases_per_mode": 5832,
+    "old_cow_crash_cases_per_mode": 4212,
+    "physical_candidate_hashes_rechecked": 55
+  },
+  "limitations": [
+    "index pages only; payload remains append-only and eventually fills",
+    "no native SD/NOR execution or physical power-loss qualification",
+    "fixed instance-scoped reader snapshots, not public isolated capabilities or persistent snapshots",
+    "single-owner serialized calls; no concurrent CPU read/write locking",
+    "small index pools may remain full while pinned readers hold pages",
+    "no relocating cleaner reserve, streaming/partial writes or bounded tail replay",
+    "no persistent SQLite VFS, PERSIST/FULL or WAL integration",
+    "state size excludes stack/backend; no native RAM peak or foreground latency measurement"
+  ]
+}
