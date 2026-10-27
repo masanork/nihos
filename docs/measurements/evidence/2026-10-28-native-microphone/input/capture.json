@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-27T23:00:12.826957+00:00",
+  "app_sha256": "a69445830749ac448de38bba8bed4a0ca3f10a96eb58c2f860abe9535193b657",
+  "scope": "finite ES7210 TDM input; analog response separate",
+  "restored": true,
+  "written": true,
+  "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+  "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+  "seconds": 35.03818075,
+  "serial_sha256": "0de1558810516923dd9c648dba1581106e06bdea9c10d2a1c95aaaa08f97e416",
+  "native_fail": false
+}

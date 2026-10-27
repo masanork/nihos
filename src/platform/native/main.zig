@@ -60,6 +60,14 @@ fn serviceNetwork() void {
                 const io = board_devices.audio.ioFailure();
                 logger.record("NIHOS_NATIVE_AUDIO_IO", null, .{ "device", "register", "expected", "actual", "stage" }, &io);
             }
+            if (options.microphone) {
+                const mic = board_devices.microphone.snapshot();
+                logger.record("NIHOS_NATIVE_MICROPHONE", null, .{ "phase", "fault", "dma", "end", "parked", "codec_off", "stopped", "returned", "samples", "erased" }, &mic);
+                const signal = board_devices.microphone.signal();
+                logger.record("NIHOS_NATIVE_MICROPHONE_SIGNAL", null, .{ "active", "clipped", "peak0", "peak1", "peak2", "peak3", "span0", "span1", "span2", "span3" }, &signal);
+                const io = board_devices.microphone.ioFailure();
+                logger.record("NIHOS_NATIVE_MICROPHONE_IO", null, .{ "register", "expected", "actual", "stage" }, &io);
+            }
             const imu = board_devices.imuSnapshot();
             logger.record("NIHOS_NATIVE_IMU", null, .{ "chip", "initialized", "stage", "fault", "uploaded", "valid", "samples", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "sensor_error", "ready_status" }, &imu);
             logger.record("NIHOS_NATIVE_DEVICES", null, .{ "rtc_present", "rtc_valid", "rtc_flags", "rtc_control", "rtc_error", "rtc_raw_date", "rtc_raw_time", "year", "month", "day", "hour", "minute", "second", "ina_present", "bus_uv", "shunt_uv_x10", "shunt_negative", "imu_chip", "imu_initialized", "errors", "samples" }, &devices);
@@ -362,6 +370,14 @@ fn trapFailure(frame: *const tasks.context.IntegerContext, cause: u32, hart: u32
         : [value] "=r" (-> u32),
     ));
     fail(reason);
+}
+
+export fn nih_microphone_stage(code: u32) callconv(.c) void {
+    if (options.microphone) {
+        print("NIHOS_NATIVE_MICROPHONE_STAGE code=");
+        hex(code);
+        print("\n");
+    }
 }
 
 export fn nih_audio_stage(code: u32) callconv(.c) void {
