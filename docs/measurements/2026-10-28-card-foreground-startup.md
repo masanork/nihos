@@ -59,6 +59,15 @@ flicker, cold power-on, credential reads, and signature verification are not
 qualified by this snapshot. No PIN was entered. Full and legacy builds were
 checked offline and were not installed during this run.
 
+The subsequent 600-second observation expired with zero classifications,
+removals, credential prompts, traps, or failure markers. The requested two
+insertion/removal cycles were not reached: the capture exited with status 1
+and produced no completion marker. Silence alone does not establish continuing
+device progress or reader availability. The serial lease was released without
+a post-capture reset or flash verification; the device was left for local
+inspection. [Observation metadata](evidence/2026-10-28-card-foreground-startup/observation.json)
+records this incomplete lifecycle result separately from successful startup.
+
 The immutable candidate and additional failed/checker snapshots are retained at
 `/Users/masanork/Documents/Codex/2026-10-28/nihos-card-foreground-787610a`.
 The earlier `card-notice-timer-probe-frozen-01` directory is diagnostic only: it
