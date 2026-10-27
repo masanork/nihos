@@ -1,8 +1,9 @@
 # 内蔵C6の実機SDIO/RPC接続とAP接続試行
 
-2026-10-27、Tab5実機。**内蔵C6のHosted制御は通過。AP接続・IP取得は未達**。
-保存設定で接続要求を実行したが、reason 201 (`WIFI_REASON_NO_AP_FOUND`)で切断した。
-接続先のローカル設定をユーザーに確認中。
+2026-10-27、Tab5実機。**内蔵C6のHosted制御・AP接続・DHCPでのIPv4取得を通過**。
+初回は保存APがreason 201 (`WIFI_REASON_NO_AP_FOUND`)で見つからなかったが、
+ユーザー指定のローカル設定を使った追試で成功した。DHCPはP4側で実行しており、
+C6 TCP/IPオフロードや通常OSのネットワークサービス統合の実証ではない。
 
 ## 対象・書き込み範囲
 
@@ -34,7 +35,7 @@ USB resetの初期試行ではP4がdownload modeへ戻った。最終的には�
 descriptorでesptool write/verify、DTR解除、USB向けRTS reset、console受信を実行し、
 `SPI_FAST_FLASH_BOOT`とnative fixtureの起動を確認した。
 
-## 実測結果
+## 保存APでの初回実測結果
 
 修正後の2候補で同じ地点まで到達した。最終候補の新規boot結果:
 
@@ -57,7 +58,7 @@ reason名はpinned SDKの`esp_wifi_types_generic.h`で照合した。
 
 旧C6はmode tagを返さず`peer_mode=255`。全13 frameのHosted checksumは0で、
 uncheckedとして計数している。SDIO/DMAでの読み出しとprotobuf ID/UID照合は通ったが、
-大きなEthernet frame、DHCP、cold power-cycle、負荷・同時動作は未検証。
+この初回時点では大きなEthernet frame、DHCP、cold power-cycle、負荷・同時動作は未検証。
 
 ## 候補と証拠
 
@@ -77,5 +78,45 @@ private/ignoredの`build/wifi-device/physical-01/`にログを保存。
 
 `attempt-06.json`、`attempt-07.json`に候補hash・時刻・実行時間・結果、
 `write-06.log`、`write-07.log`に書き込み/照合結果がある。
-AP設定をローカル0600 JSONから指定し、同じ経路でDHCP ACKと
-`NIHOS_C6_HOSTED_WIFI_PASS ip=...`を得る工程が残る。
+この時点ではAP設定待ちだった。以下の追試で設定指定とDHCP取得まで進んだ。
+
+## 明示AP設定による成功
+
+ユーザー指定の`/private/tmp/wifi.json`を使用。SSID値の先頭引用符が一つ欠けていたため、
+原文を表示せず、private/ignoredの`provided-wifi.json`でその構文だけ補正した。
+元ファイルの内容は変更せず、権限を0600にした。SSID/passwordはgitやconsoleへ出していない。
+AP設定はC6のRAM storageに指定し、C6 firmwareは既存1.4.1のまま。
+
+| 項目 | 実機結果 |
+| --- | --- |
+| IP | `10.193.127.151` |
+| Gateway / DHCP server | `10.193.127.155` |
+| Netmask | `255.255.255.0` |
+| Lease | 3599秒 |
+| 接続event | 1 |
+| Hosted frames | 17 |
+| TX / RX | 1163 / 1292 bytes |
+| Probe | status 1 / stage 12 / error 0 / cleanup failure 0 |
+| network drop / disconnect reason | 0 / 0 |
+| Capture所要時間 | 約5.34秒（書き込み時間を含まない） |
+
+```text
+NIHOS_C6_HOSTED_WIFI_PASS ip=10.193.127.151 gateway=10.193.127.155 netmask=255.255.255.0
+```
+
+同一bootのreportとPASS行を照合し、INIT識別、接続event、Wi-Fi RPC成功、
+Offerと取得IPの一致、正のlease時間、gateway/subnet、trap/FAIL不在を確認した。
+`ip-result.json`に検証結果を保存した。DHCP ACKは公開されたsourceのparser経路で
+判定している。独立した無線packet captureは行っていない。
+
+成功候補は65,616 bytes。生成moduleとimageは資格情報を含むためprivate/ignoredのまま。
+
+- bin: `684beb1a9b2cf76cf82ac5b95eb60479893ec50af3475e3f4ef5064510d8ec7d`
+- ELF: `99f554616bd8dc3735c3e2d2139fe5f7d560f9c91220fd5d77f332e400dc8cfc`
+- `run-08.log`: `7a5d8e1c24502925c28e243885c9d976da7f613f0c4f0aa56a09b75ba64d0048`
+- `attempt-08.json`、`write-08.log`に候補hashと書き込み/照合結果。
+
+成功候補の19 source hashと成果物hashがreceiptに一致し、書き込んだ候補hashと
+実行metadataも一致することを確認した。source変更はなく、入力AP設定のみを変えた。
+これは1回の取得成功で、lease更新、ARP conflict検出、DNS/TCP/Internet疎通、
+cold power-cycle、連続運転や通常OS統合は未確認。現在P4は結果を出してhaltする専用fixture。
