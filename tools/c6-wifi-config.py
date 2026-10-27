@@ -11,6 +11,9 @@ def main():
     destination = Path(sys.argv[1])
     source = Path(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else None
     protocol = sys.argv[3] if len(sys.argv) > 3 else 'at'
+    ipv6 = os.environ.get('NIHOS_C6_IPV6', '0')
+    if ipv6 not in ('0', '1') or (ipv6 == '1' and protocol != 'hosted'):
+        raise ValueError('IPv6 requires Hosted mode')
     if protocol not in ('at', 'hosted'):
         raise ValueError('Unsupported C6 protocol')
     enabled, saved, ssid, password = source is not None, False, b'', b''
@@ -34,6 +37,7 @@ def main():
         return '[_]u8{' + ','.join(str(byte) for byte in value) + '}'
     text = (f'pub const enabled = {str(enabled).lower()};\n'
             f'pub const hosted = {str(protocol == "hosted").lower()};\n'
+            f'pub const ipv6 = {str(ipv6 == "1").lower()};\n'
             f'pub const saved = {str(saved).lower()};\n'
             f'pub const ssid = {array(ssid)};\n'
             f'pub const password = {array(password)};\n')

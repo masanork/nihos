@@ -11,6 +11,7 @@ fi
 if [ "${NIHOS_C6_PROTOCOL:-at}" = hosted ]; then
     umask 077
     build_dir="$repo_root/build/c6-hosted-probe"
+    if [ "${NIHOS_C6_IPV6:-0}" = 1 ]; then build_dir="$repo_root/build/c6-ipv6-probe"; fi
 fi
 c6_sdk=${NIHOS_IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}
 if [ ! -f "$c6_sdk/export.sh" ] ||
@@ -81,6 +82,7 @@ names = [
     'src/net/at_controller.zig', 'tools/build-c6-sdio-probe.sh',
     'src/net/wifi_station.zig', 'tools/c6-wifi-config.py',
     'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/dhcp.zig',
+    'src/net/ipv6.zig',
     'tools/check-c6-sdio-image.py', 'tools/check-native-image.py',
 ]
 def sha(path):
@@ -97,9 +99,10 @@ report = {
         'nihos-c6-probe.elf', 'nihos-c6-probe.bin', 'image-audit.json', 'loader/sdkconfig',
         'loader/bootloader/bootloader.bin', 'loader/partition_table/partition-table.bin',
     ]},
-    'peer_assumptions': {'receive_buffer_bytes': 1536 if dest.name == 'c6-hosted-probe' else 512,
-                         'credit_limit': 64 if dest.name == 'c6-hosted-probe' else 10, 'fresh_reset_required': True},
-    'protocol': 'hosted' if dest.name == 'c6-hosted-probe' else 'at',
+    'peer_assumptions': {'receive_buffer_bytes': 1536 if dest.name in ('c6-hosted-probe', 'c6-ipv6-probe') else 512,
+                         'credit_limit': 64 if dest.name in ('c6-hosted-probe', 'c6-ipv6-probe') else 10, 'fresh_reset_required': True},
+    'protocol': 'hosted' if dest.name in ('c6-hosted-probe', 'c6-ipv6-probe') else 'at',
+    'ipv6_enabled': dest.name == 'c6-ipv6-probe',
     'wifi_enabled': dest.name != 'c6-sdio-probe',
     'private_artifacts': dest.name != 'c6-sdio-probe',
 }

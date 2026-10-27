@@ -3,9 +3,10 @@
 const std = @import("std");
 pub const wire = @import("hosted.zig");
 pub const dhcp = @import("dhcp.zig");
+pub const ipv6 = @import("ipv6.zig");
 pub const Join = union(enum) { saved, network: struct { ssid: []const u8, password: []const u8 } };
 pub const Phase = enum { handshake, version, init_wifi, storage, mode, start, ps, mac, config, connect, link, lease, done, failed };
-pub const Error = wire.Error || dhcp.Error || error{ Timeout, Disconnected, InvalidArgument };
+pub const Error = wire.Error || dhcp.Error || ipv6.Error || error{ Timeout, Disconnected, InvalidArgument };
 pub const Client = struct {
     join: Join = .saved,
     phase: Phase = .handshake,
@@ -33,9 +34,15 @@ pub const Client = struct {
     peer_chip: u32 = 0,
     peer_mode: u32 = 255,
     peer_version: u32 = 0,
+    ipv6_enabled: bool = false,
+    ipv6_client: ?ipv6.Client = null,
+    tx_ipv6: bool = false,
 
     pub fn begin(self: *Client, join: Join, now: u64) void {
-        self.* = .{ .join = join, .started = now, .deadline = now + 5_000_000 };
+        self.beginDual(join, now, false);
+    }
+    pub fn beginDual(self: *Client, join: Join, now: u64, enable_ipv6: bool) void {
+        self.* = .{ .join = join, .started = now, .deadline = now + 5_000_000, .ipv6_enabled = enable_ipv6 };
     }
     pub fn receive(self: *Client, frame: wire.Frame, now: u64) Error!void {
         self.frames +|= 1;
@@ -86,6 +93,7 @@ pub const Client = struct {
                         self.disconnect_reason = try wire.integer(details, 4);
                         if (@backingInt(self.phase) >= @backingInt(Phase.connect)) {
                             self.dhcp_client = null;
+                            self.ipv6_client = null;
                             self.phase = .failed;
                             return error.Disconnected;
                         }
@@ -135,7 +143,14 @@ pub const Client = struct {
                     self.malformed_network +|= 1;
                     return;
                 };
-                if (self.dhcp_client.?.phase == .bound) self.phase = .done;
+                if (self.ipv6_client) |*client| client.receive(frame.payload, now) catch |err| {
+                    if (err == error.Duplicate or err == error.Clock) {
+                        self.phase = .failed;
+                        return err;
+                    }
+                    client.dropped +|= 1;
+                };
+                self.finishIfReady();
             },
             else => {},
         }
@@ -163,6 +178,7 @@ pub const Client = struct {
             self.advance(.lease, now);
             self.deadline = now + 45_000_000;
             self.dhcp_client = .{ .mac = self.mac_address, .xid = @as(u32, @truncate(now)) ^ 0x4e49484f };
+            if (self.ipv6_enabled) self.ipv6_client = ipv6.Client.init(self.mac_address, now);
         }
         if (self.transmitted) return &.{};
         if (self.output_len != 0) return self.output[0..self.output_len];
@@ -172,8 +188,18 @@ pub const Client = struct {
         }
         if (self.phase == .link) return &.{};
         if (self.phase == .lease) {
+            if (self.ipv6_client) |*client| {
+                const packet = try client.tx(now);
+                if (packet.len != 0) {
+                    self.tx_ipv6 = true;
+                    return self.encodeFrame(1, packet);
+                }
+                self.finishIfReady();
+                if (self.phase == .done) return &.{};
+            }
             if (!self.dhcp_client.?.due(now)) return &.{};
             var buffer: [342]u8 = undefined;
+            self.tx_ipv6 = false;
             return self.encodeFrame(1, try self.dhcp_client.?.packet(&buffer));
         }
         var body_buffer: [320]u8 = undefined;
@@ -246,9 +272,17 @@ pub const Client = struct {
     pub fn sent(self: *Client, now: u64) void {
         @memset(self.output[0..self.output_len], 0);
         self.output_len = 0;
-        if (self.phase == .handshake) self.advance(.version, now) else if (self.phase == .lease) self.dhcp_client.?.sent(now) else {
+        if (self.phase == .handshake) self.advance(.version, now) else if (self.phase == .lease) {
+            if (self.tx_ipv6) self.ipv6_client.?.sent(now) else self.dhcp_client.?.sent(now);
+        } else {
             self.transmitted = true;
             self.deadline = now + 5_000_000;
         }
+    }
+    fn finishIfReady(self: *Client) void {
+        const v4 = self.dhcp_client != null and self.dhcp_client.?.phase == .bound;
+        if (self.ipv6_client) |client| {
+            if (client.finished() and (v4 or client.complete())) self.phase = .done;
+        } else if (v4) self.phase = .done;
     }
 };
