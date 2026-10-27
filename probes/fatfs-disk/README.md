@@ -45,13 +45,54 @@ sources and license notices remain in ignored build directories and are not
 copied into the repository. The writer is a separate executable, uses `O_EXCL`,
 and is solely for generating private test inputs.
 
-The chain/ancestry/identity safety shim in PR #3 is not part of this disk layer.
-These are valid-volume tests; no native mount of untrusted FAT metadata is
-enabled. Before firmware linkage, the backend still needs that shim, partition
-validation, outer VFS mount invalidation (FatFs can serve cached bytes without a
-disk callback), authenticated file/root handles and RPC integration. A monotonic
-disk epoch does not by itself reject a stale FatFs `FIL` object. The owner must
-retire every old filesystem object before rebinding. Whole-`f_read` atomicity,
-SQLite persistence, power-loss recovery and a clean physical power-on are not
-established here. RV32 workspace size excludes `FATFS`, open-file state, LFN
-stacks, the upstream library and final firmware placement.
+The disk-only command above tests valid volumes. Its disk epoch alone does not
+reject a stale FatFs `FIL` object. It does not enable a native filesystem mount.
+
+## Guarded Backend and actual Zig VFS integration
+
+`python3 tools/check-fatfs-backend.py` runs the disk tests first, then compiles
+`safety.c` instead of raw upstream `ff.c`, plus `src/storage/fatfs_backend.c` and
+the real Zig VFS/adapter. The safety shim is an unchanged copy from `542b3a3`.
+`src/fs/vfs.zig` and its tests start from that same commit; this branch additionally
+faults a mount after lookup/open I/O or contract failure. The earlier fake-backend
+open-retry test now requires quiescent detach and a new mount after such a fault.
+
+The C Backend has one opaque, caller-owned workspace and 16 open-file slots plus
+one staged lookup. Lookup keeps the guarded `FIL` at a stable address. Open only
+consumes that staged slot by identity and performs no new path resolution or I/O.
+An unconsumed lookup uses one slot until the next lookup/destroy. Every operation
+checks the disk epoch and sticky session/disk fault before touching cached file
+state. The backend retains its disk binding until teardown; raw detach cannot
+replace the media under cached objects. Read output is staged for a whole public
+4 KiB quantum, even if multiple FatFs disk reads precede an error. This is not a
+durability or write-transaction guarantee.
+
+The Backend checks the selected VBR signature, sector size and declared volume
+length against its region before mounting. Selection/discovery of that region
+remains the trusted caller's responsibility; there is no GPT or MBR scanner here.
+The root capability represents the volume root only. Public path, rights,
+principal, file-table and handle-generation checks run in the actual Zig VFS.
+
+The companion tests cover cyclic/truncated file chains, cyclic parent/root
+directories and directory ancestor aliases on all supported formats. Identity
+tests include separate empty files, long/short/case aliases, containing directories
+and distinct Unicode normalization forms. VFS tests exercise a real read failure,
+quiescent detach, C teardown and a fresh disk epoch, reject old roots/files/backend
+epochs, then reject cached reads after removal without issuing another sector I/O.
+The C/FF/shim code uses ASan/UBSan; the Zig library uses ReleaseSafe. Per-test
+subprocess deadlines and disk/chain budgets bound the host experiment.
+
+RV32 compilation includes the C Backend, shim/upstream FatFs, Unicode module and
+an actual VFS/adapter instantiation. Workspace sizes are extracted from target
+ELF layout symbols. They do not include LFN/call stacks, all globals, final code
+placement or RPC buffers. The current native 8 KiB littlefs workspace cannot be
+reused unchanged for this larger backend. Firmware linkage and admission remain
+disabled pending those measurements and a runtime integration.
+
+All code here still requires a single serialized owner, immutable mounted media
+and a caller that pins the destination/workspaces through synchronous completion.
+The backend must not return from an unproved DMA fence. Actual broker/RPC kill and
+cancel paths, hardware card-detect notification, simultaneous filesystem routing,
+subtree capabilities, persistent SQLite, writable media, power-loss recovery and
+clean physical power-on are separate gates. No serial/device operations occur in
+either runner.
