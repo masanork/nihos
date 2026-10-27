@@ -414,3 +414,99 @@ physical Tab5 qualification remain pending. The
 [`font-worker contract`](../../docs/graphics-font-worker.md) records lifetime,
 reservation/reclamation choices and acceptance gates; this commit does not
 resize or start a native worker.
+
+## Shared task runtime and native context execution
+
+Run the next, independent context study with:
+
+```sh
+NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ \
+  sh tools/run-graphics-worker-probe.sh
+```
+
+This executes `src/arch/riscv32/task_runtime.zig`, the shared scheduler and
+task-call ABI, and the **unchanged** integer trap/trampoline/return assembly
+from `src/platform/native/start.S`. A small test dispatcher selects captured
+task frames using that runtime. It is not the full native P4 dispatcher and
+does not execute the P4 boot entry. Task runtime now publicly exposes its
+existing context types so the fixture uses the same types without duplicating
+their module or ABI definitions.
+
+The fixture runs bootstrap, font and peer tasks on separate stacks. The font
+task owns one 32 KiB stack and runs the real two-session FreeType/HarfBuzz
+fixture. The peer checks a stack canary and increments progress. IRQ handling
+uses its own 8 KiB stack with MIE clear, validates every frame's saved SP and
+all bottom guards, then executes the native restore/MRET path. Completed
+tasks are reaped from bootstrap after both exit through the actual task-call
+ABI. No production native stack layout or linker whitelist is changed.
+
+The Unicorn host runner supplies synchronous ECALL entry and timer-entry CSR
+effects. It injects timer traps only at instruction boundaries with MIE set,
+including inside HarfBuzz and a deep FreeType call chain. The target performs
+all integer-register stores, stack switching, scheduling, restores and MRET.
+The software event source does not establish P4 timer/CLIC behavior, nested
+interrupt support, hardware latency or an SMP result; only hart 0 executes.
+
+The controls distinguish scheduling mechanisms:
+
+- Without timers or callback yields, the peer must make zero progress while
+  the font call runs, then both tasks must exit and be reaped normally.
+- With timer injection and no callback yields, the peer must progress, both
+  targeted library interrupts must occur, and all 16 auto-hinted hashes must
+  match the non-preempted control and sanitized host reference.
+- With timers disabled, a yield after every 32 source-cache fills tests
+  suspended FreeType/HarfBuzz callback frames. All 16 default-hinted hashes
+  must match the host and the peer must progress.
+- A logical 16 KiB font stack must stop at the guard. The ISA runner also
+  replays the earlier single-stack default fixture after extracting its ELF
+  reader into `isa_image.h`.
+
+Full original TTFs still reside in external read-only test mappings. Callback
+yields do not read an SD card or model native asynchronous IO. The buddy
+bridge still initializes an isolated modeled heap and ledger; binding it to
+the native OS task owner, existing live PSRAM heap and shutdown semantics is
+pending. Client-session memory is recovered, but HarfBuzz's service backing
+remains. Reaping the fixture task does not qualify service teardown/restart.
+
+The synthetic linker reserves 96 KiB of NOLOAD stack address space: two 8 KiB
+bootstrap and two 8 KiB IRQ spans, one 4 KiB peer span, 28 KiB alignment gap
+and the 32 KiB font span. The gap keeps the logical undersized-stack control
+from aliasing another valid stack. This is not a proposed production SRAM
+reservation or a native loader collision audit.
+
+Artifacts and receipts are retained under `build/graphics-worker`. The next
+integration boundary remains native image/Flash placement, live-heap ownership
+and a task-safe native read-at provider, followed by physical qualification.
+
+The source-bound receipt is
+[`2026-10-28-graphics-worker-context.json`](../../docs/measurements/2026-10-28-graphics-worker-context.json).
+Its successful cases observed:
+
+| Case | Peer progress during font work | Font stack peak | IRQ stack peak |
+| --- | ---: | ---: | ---: |
+| No preemption, forced auto-hint | 0 | 16,880 B | 160 B |
+| Injected timer traps, forced auto-hint | 166 | 16,928 B | 160 B |
+| Source-callback yields, default hinting | 18 | 3,872 B | 160 B |
+
+The preempted case executes 166 injected timer entries and 501 total context
+switches. Its deepest observed font-stack point is in `nih_native_trap`, so
+the 16,928 B includes an actual saved integer frame. HarfBuzz entry and a
+deep allocation inside the FreeType auto-hint call chain are interrupted
+explicitly. All 16 hashes match the sanitized host and no-preemption control;
+both clients close and both task images are reaped. All successful cases
+retain only 65,792 B of service backing, with zero fallback libc allocations
+or selected unsupported runtime calls.
+
+The final synthetic worker link contains 441,152 B text, 153,817 B read-only
+data and 19,072 B initialized data: **614,041 B of loadable code/data**, plus
+3,017 B BSS and the separately reported 96 KiB NOLOAD stack span. There are
+no unresolved symbols, dynamic C++ initializers, F/D ISA attributes or hardware
+FP instructions. This remains a synthetic link, not a firmware image size.
+
+An initial single-section Zig object retained unused compiler-rt routines,
+making its loadable code/data 1,038,769 B. Enable function/data sections so
+the linker can discard them, and use the same trapping `std.debug.no_panic`
+root as the native program. ReleaseSafe checks remain enabled. This removed
+424,728 B of incidental link overhead; the final candidate reran all controls
+and comparisons. The original ELF/map/report remain in the ignored build
+directory and their identities and sizes are recorded in the receipt.

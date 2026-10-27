@@ -98,3 +98,35 @@ this study.
 These gates precede native service integration. Paragraph wrapping, ruby
 placement, vertical layout, caret/selection and SDL remain separate framework
 work; shaping body/ruby runs does not implement those features.
+
+## Context-execution fixture
+
+`tools/run-graphics-worker-probe.sh` now exercises the shared task runtime and
+unchanged native trap/trampoline/return assembly with actual FreeType/HarfBuzz
+work. The event source, dispatcher wrapper, heap initialization and mapped
+inputs are still a standalone ISA fixture. It tests part of gate 2, including
+another task progressing during a suspended library call; it does not complete
+the native-image, native storage or task-resource binding gates.
+
+The existing SD controller probe owns a boot-time controller and clock before
+CPU1 release. Its `active_controller` is valid only during that boot probe.
+It cannot simply be retained by a later font task. A native read-at provider
+needs persistent controller ownership, task-safe timing/waits, source lifetime
+and removal/revision handling. Yielding a synthetic read callback first checks
+that the font call chain can survive a task switch without making native IO
+or filesystem claims.
+
+The [context receipt](measurements/2026-10-28-graphics-worker-context.json)
+records 166 timer preemptions and 166 peer progress increments while the
+auto-hinted font task runs, versus zero peer progress without preemption.
+All 16 glyph/position/raster hashes match the control and sanitized host.
+Source-callback yields independently let the peer progress 18 times with
+timers disabled. Completed font/peer tasks exit and are reaped through the
+common ABI, with both font clients' backing reclaimed.
+
+Observed font stack is 16,880 B without preemption and 16,928 B including
+an actual interrupt frame; IRQ stack peaks at 160 B. A 32 KiB reservation
+therefore leaves 15,824 B beyond the observed peak and 16 B bottom guard in
+this fixture. That interrupt frame is already included; do not subtract it
+twice. Native storage, additional caller frames and real interrupt delivery
+are still unqualified. The logical 16 KiB stack rejects at its guard.
