@@ -36,6 +36,9 @@ ESP-Hostedには内部transport経由のC6 OTAがあるため、外部UARTだけ
 - ホスト試験対象：改行・NUL・偽のOKを含むTCP/BLE混在データ、容量超過、
   不正ヘッダ、途中切断、遅延応答、古いtokenの拒否。
 - 未実装：IRQ駆動SDIOサービス、microSDとの共有調停、socket/BLEリソース表、アプリ接続。
+- IPv6 opt-in probeを追加。実機リンクローカルDAD/NDP/Echo応答を5/5で確認。
+  現APでRAは未受信、SLAACと送信側router pingはhost試験まで。
+  [IPv6記録](../measurements/2026-10-27-native-ipv6.md)参照。
 - 未検証：C6用ESP-ATファームの書き込み・起動、C6 TCP/IPオフロード、同時動作、性能。
 
 ## C6用候補

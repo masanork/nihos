@@ -14,6 +14,7 @@ extern fn nih_c6_pads_init() callconv(.c) void;
 extern fn nih_c6_reset(u32) callconv(.c) void;
 extern fn nih_c6_fourbit_pins() callconv(.c) void;
 extern fn nih_c6_power_enable() callconv(.c) u32;
+extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
@@ -132,6 +133,20 @@ pub const Report = struct {
     peer_mode: u32 = 255,
     peer_version: u32 = 0,
     hosted_network_drops: u32 = 0,
+    ip6_stage: u32 = 0,
+    ip6_link_valid: u32 = 0,
+    ip6_slaac_valid: u32 = 0,
+    ip6_ras: u32 = 0,
+    ip6_ns: u32 = 0,
+    ip6_na: u32 = 0,
+    ip6_ping: u32 = 0,
+    ip6_dropped: u32 = 0,
+    ip6_received: u32 = 0,
+    ip6_rs_sent: u32 = 0,
+    ip6_echo_requests: u32 = 0,
+    ip6_linklocal: [4]u32 = @splat(0),
+    ip6_slaac: [4]u32 = @splat(0),
+    ip6_router: [4]u32 = @splat(0),
 };
 
 fn snapshot(report: Report) Report {
@@ -292,7 +307,7 @@ export fn nih_c6_delay_us(value: u32) callconv(.c) void {
 }
 
 // Keep the Hosted execution path as a distinct function for the image audit.
-noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Join) !void {
+noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Join, enable_ipv6: bool) !void {
     report.stage = 1;
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
@@ -313,7 +328,7 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
     try host.writeDoorbell(1, 0x8c, 1);
     report.stage = 11;
     const started = clock.counter() orelse return error.Clock;
-    hosted_client.begin(join, started);
+    hosted_client.beginDual(join, started, enable_ipv6);
     for (0..2_000_000) |_| {
         const count = try hosted_stream.receive(&rx);
         report.rx +|= @intCast(count);
@@ -323,13 +338,18 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
         const now = clock.counter() orelse return error.Clock;
         if (clock_failed or now < started) return error.Clock;
         if (now - started > 100_000_000) return error.Timeout;
+        if (hosted_client.ipv6_client) |client| if (client.ll_valid and report.ip6_link_valid == 0) {
+            report.ip6_link_valid = 1;
+            for ("NIHOS_C6_IPV6_LINK_READY\r\n") |byte| _ = nih_rom_putc(byte);
+        };
         if (hosted_client.phase == .done and hosted_decoder.used == 0) {
-            const lease = hosted_client.dhcp_client.?.lease.?;
-            report.ip = lease.ip;
-            report.gateway = lease.gateway;
-            report.netmask = lease.mask;
-            report.dhcp_server = lease.server;
-            report.dhcp_seconds = lease.seconds;
+            if (hosted_client.dhcp_client.?.lease) |lease| {
+                report.ip = lease.ip;
+                report.gateway = lease.gateway;
+                report.netmask = lease.mask;
+                report.dhcp_server = lease.server;
+                report.dhcp_seconds = lease.seconds;
+            }
             report.status = 1;
             report.stage = 12;
             return;
@@ -346,7 +366,7 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
     return error.Timeout;
 }
 
-pub fn runHosted(clock: timers.Timer, join: hosted.Join) Report {
+pub fn runHosted(clock: timers.Timer, join: hosted.Join, enable_ipv6: bool) Report {
     host = .{ .io = .{ .clock = clock } };
     hosted_stream = .{ .host = &host };
     hosted_client = .{};
@@ -357,7 +377,7 @@ pub fn runHosted(clock: timers.Timer, join: hosted.Join) Report {
     clock.disarm();
     defer clock.stop();
     var report: Report = .{};
-    exerciseHosted(clock, &report, join) catch |err| {
+    exerciseHosted(clock, &report, join, enable_ipv6) catch |err| {
         report.error_code = @intFromError(err);
         hosted_stream.invalidate();
     };
@@ -379,5 +399,23 @@ pub fn runHosted(clock: timers.Timer, join: hosted.Join) Report {
     report.hosted_network_drops = hosted_client.malformed_network;
     report.connected_events = @intFromBool(hosted_client.connected);
     if (hosted_client.dhcp_client) |client| report.dhcp_offered = client.offered;
+    if (hosted_client.ipv6_client) |client| {
+        report.ip6_stage = @backingInt(client.stage) + 1;
+        report.ip6_link_valid = @intFromBool(client.ll_valid);
+        report.ip6_slaac_valid = @intFromBool(client.slaac_valid);
+        report.ip6_ras = client.ras;
+        report.ip6_ns = client.ns_received;
+        report.ip6_na = client.na_received;
+        report.ip6_ping = client.ping_replies;
+        report.ip6_dropped = client.dropped;
+        report.ip6_received = client.received;
+        report.ip6_rs_sent = client.solicitations;
+        report.ip6_echo_requests = client.echo_requests;
+        for (0..4) |i| {
+            report.ip6_linklocal[i] = std.mem.readInt(u32, client.ll[i * 4 ..][0..4], .big);
+            report.ip6_slaac[i] = std.mem.readInt(u32, client.address[i * 4 ..][0..4], .big);
+            report.ip6_router[i] = std.mem.readInt(u32, client.router[i * 4 ..][0..4], .big);
+        }
+    }
     return snapshot(report);
 }

@@ -229,3 +229,44 @@ test "INIT identity and SDIO mode are checked before any RPC" {
     try std.testing.expectEqual(@as(u32, 1), client.peer_mode);
     try std.testing.expect(client.active_id == null);
 }
+
+test "dual stack waits beyond IPv4 ACK and can also finish on IPv6-only networking" {
+    const ip6 = station.ipv6;
+    const peer_mac = [_]u8{ 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee };
+    const router: ip6.Address = .{ 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    for ([_]bool{ true, false }) |use_ipv4| {
+        var client: station.Client = .{};
+        try boot(&client, .saved);
+        client.ipv6_enabled = true;
+        try connect(&client);
+        _ = try client.tx(6);
+        client.sent(6);
+        if (use_ipv4) {
+            var bytes: [342]u8 = undefined;
+            try client.receive(.{ .interface = 1, .payload = try serverPacket(client.dhcp_client.?, 2, &bytes) }, 7);
+            _ = try client.tx(8);
+            client.sent(8);
+            try client.receive(.{ .interface = 1, .payload = try serverPacket(client.dhcp_client.?, 5, &bytes) }, 9);
+            try std.testing.expectEqual(station.Phase.lease, client.phase);
+        }
+        _ = try client.tx(1_000_000);
+        client.sent(1_000_000); // MLD
+        _ = try client.tx(1_000_000);
+        client.sent(1_000_000); // DAD
+        _ = try client.tx(2_000_000);
+        client.sent(2_000_000); // RS
+        try client.receive(.{ .interface = 1, .payload = @embedFile("fixtures/ipv6-ra.bin") }, 2_000_001);
+        _ = try client.tx(2_000_002);
+        client.sent(2_000_002); // SLAAC DAD
+        const ping = try client.tx(3_000_002);
+        try std.testing.expectEqual(@as(u8, 128), ping[12 + 54]);
+        var message: [16]u8 = ping[12 + 54 ..][0..16].*;
+        message[0] = 129;
+        client.sent(3_000_002);
+        var response: [128]u8 = undefined;
+        try client.receive(.{ .interface = 1, .payload = try ip6.packet(&response, peer_mac, mac, router, client.ipv6_client.?.ll, 64, &message, false) }, 3_000_003);
+        try std.testing.expectEqual(station.Phase.done, client.phase);
+        try std.testing.expect(client.ipv6_client.?.complete());
+        try std.testing.expectEqual(use_ipv4, client.dhcp_client.?.lease != null);
+    }
+}

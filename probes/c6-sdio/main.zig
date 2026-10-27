@@ -30,6 +30,16 @@ fn printAddress(value: u32) void {
     }) catch @panic("IPv4 formatting overflow");
     print(text);
 }
+fn print6(words: [4]u32) void {
+    const digits = "0123456789abcdef";
+    for (words, 0..) |word, i| {
+        if (i != 0) print(":");
+        for (0..8) |j| {
+            if (j == 4) print(":");
+            _ = nih_rom_putc(digits[(word >> @as(u5, @intCast(28 - j * 4))) & 15]);
+        }
+    }
+}
 fn halt() noreturn {
     while (true) asm volatile ("wfi");
 }
@@ -76,15 +86,16 @@ export fn nih_c6_main() callconv(.c) noreturn {
         .{ .network = .{ .ssid = &config.ssid, .password = &config.password } }
     else
         .saved;
-    const report = if (config.hosted) c6.runHosted(clock, hosted_join) else c6.run(clock, join);
+    const report = if (config.hosted) c6.runHosted(clock, hosted_join, config.ipv6) else c6.run(clock, join);
     print("NIHOS_NATIVE_C6");
     inline for (comptime std.meta.fieldNames(c6.Report)) |field| {
         print(" " ++ field ++ "=");
-        hex(@field(report, field));
+        const value = @field(report, field);
+        if (@TypeOf(value) == u32) hex(value) else for (value) |word| hex(word);
     }
     print("\n");
     if (config.enabled or config.hosted) {
-        if (report.status == 1 and report.stage == (if (config.hosted) @as(u32, 12) else 10)) {
+        if (report.status == 1 and report.ip != 0 and report.stage == (if (config.hosted) @as(u32, 12) else 10)) {
             print(if (config.hosted) "NIHOS_C6_HOSTED_WIFI_PASS ip=" else "NIHOS_C6_WIFI_PASS ip=");
             printAddress(report.ip);
             print(" gateway=");
@@ -94,5 +105,17 @@ export fn nih_c6_main() callconv(.c) noreturn {
             print("\n");
         } else print(if (config.hosted) "NIHOS_C6_HOSTED_WIFI_FAIL\n" else "NIHOS_C6_WIFI_FAIL\n");
     } else print(if (report.status == 1) "NIHOS_C6_AT_PASS\n" else "NIHOS_C6_AT_FAIL\n");
+    if (config.ipv6) {
+        print("NIHOS_C6_IPV6 linklocal=");
+        print6(report.ip6_linklocal);
+        print(" address=");
+        print6(report.ip6_slaac);
+        print(" router=");
+        print6(report.ip6_router);
+        print("\n");
+        print(if (report.status == 1 and report.ip6_link_valid == 1 and report.ip6_slaac_valid == 1 and report.ip6_ping != 0)
+            "NIHOS_C6_IPV6_PASS\n"
+        else if (report.ip6_link_valid == 1) "NIHOS_C6_IPV6_PARTIAL\n" else "NIHOS_C6_IPV6_FAIL\n");
+    }
     halt();
 }

@@ -199,3 +199,15 @@ identified C6 Hosted 1.4.1. The saved AP was not found (reason 201), then explic
 private AP configuration produced an association event and DHCP ACK with
 `10.193.127.151/24`. This is one boot-fixture acquisition pass, not normal OS
 service integration, renewal, Internet reachability or a power-cycle qualification.
+
+## IPv6 boot mode
+
+Set `NIHOS_C6_PROTOCOL=hosted NIHOS_C6_IPV6=1` to build private
+`build/c6-ipv6-probe/`, using the same optional AP JSON. DAD, MLDv2 reporting,
+RS/RA/SLAAC, neighbor resolution and ICMPv6 run beside IPv4 DHCP. The
+`NIHOS_C6_IPV6_LINK_READY` marker synchronizes external peer tests.
+
+`NIHOS_C6_IPV6_PASS` requires preferred link-local/SLAAC addresses and a matching
+outgoing router Echo reply. `PARTIAL` records lesser progress, including no RA.
+IPv4 markers retain their DHCP-only meaning; IPv6-only success is supported.
+See [scope and physical evidence](../../docs/measurements/2026-10-27-native-ipv6.md).

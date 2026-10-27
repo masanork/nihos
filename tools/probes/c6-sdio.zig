@@ -5,5 +5,5 @@ export fn nih_c6_sdio_compile_probe() u32 {
     return probe.run(timers.Timer.fromGroup(0x500c2000, 0).?, .saved).status;
 }
 export fn nih_c6_hosted_compile_probe() u32 {
-    return probe.runHosted(timers.Timer.fromGroup(0x500c2000, 0).?, .saved).status;
+    return probe.runHosted(timers.Timer.fromGroup(0x500c2000, 0).?, .saved, true).status;
 }
