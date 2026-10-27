@@ -4,13 +4,14 @@ const base = @import("license.zig");
 const jis = @import("jis0208.zig");
 pub const Error = base.Error;
 pub const History = struct { tag: u8, date: [8]u8, text: []const u8, authority: []const u8 };
-pub const Signature = struct { value: *const [256]u8, key_id: []const u8 };
+pub const TagEncoding = enum { none, literal, ff };
+pub const Signature = struct { value: *const [256]u8, key_id: []const u8, encoding: TagEncoding = .literal };
 pub const SignedRecord = struct { data: []const u8, signature: Signature };
 pub const Verification = enum(u32) { not_checked, unknown_key, valid, invalid, malformed };
 pub const ExtendedIterator = struct {
     bytes: []const u8,
     offset: usize = 0,
-    encoding: enum { none, literal, ff } = .none,
+    encoding: TagEncoding = .none,
     pub fn next(self: *ExtendedIterator) Error!?base.Tlv {
         if (self.offset == self.bytes.len) return null;
         const rest = self.bytes[self.offset..];
@@ -27,14 +28,14 @@ pub const ExtendedIterator = struct {
         }
         var tag: u16 = rest[0];
         self.offset += 1;
-        if (tag == 1 or tag == 255) {
+        if (tag == 1 or (tag == 255 and self.encoding != .literal)) {
             const encoding: @TypeOf(self.encoding) = if (tag == 1) .literal else .ff;
             if (self.encoding != .none and self.encoding != encoding) return error.Malformed;
             self.encoding = encoding;
             if (self.offset == self.bytes.len or self.bytes[self.offset] > 13) return error.Malformed;
             tag = 0x100 + @as(u16, self.bytes[self.offset]);
             self.offset += 1;
-        } else if (tag < 0xc1 or tag > 0xfe) return error.Malformed;
+        } else if (tag < 0xc1 or tag > 0xff) return error.Malformed;
         if (self.offset == self.bytes.len) return error.Malformed;
         var length: usize = self.bytes[self.offset];
         self.offset += 1;
@@ -57,7 +58,9 @@ pub fn Parser(comptime section: ?[]const u8) type {
     return struct {
         pub noinline fn envelope(workspace: []const u8, is_myna: bool) linksection(placement(section)) Error!SignedRecord {
             if (workspace.len != 32768) return error.Malformed;
-            return .{ .data = workspace[0..if (is_myna) @as(usize, 5845) else 2967], .signature = try signature(if (is_myna) workspace[5845..6429] else workspace[4270..4848], is_myna) };
+            const signed = try signature(if (is_myna) workspace[5845..6429] else workspace[4270..4848], is_myna);
+            if (is_myna and (try myna(workspace[0..5845])).encoding != signed.encoding) return error.Malformed;
+            return .{ .data = workspace[0..if (is_myna) @as(usize, 5845) else 2967], .signature = signed };
         }
         pub noinline fn history(raw: []const u8, records: []History) linksection(placement(section)) Error![]History {
             if (raw.len != 640 and raw.len != 256) return error.Malformed;
@@ -129,9 +132,20 @@ pub fn Parser(comptime section: ?[]const u8) type {
             return .{ .name = n.text, .address = a.text, .birth_date = output[480..488], .expiration = output[488..496], .number = original.number, .missing = n.missing + a.missing, .history_unresolved = unresolved };
         }
         pub noinline fn signature(raw: []const u8, is_myna: bool) linksection(placement(section)) Error!Signature {
+            if (!is_myna) return signatureWith(raw, false, .literal);
+            var found: ?Signature = null;
+            for ([_]TagEncoding{ .literal, .ff }) |encoding| {
+                if (signatureWith(raw, true, encoding)) |value| {
+                    if (found != null) return error.Malformed;
+                    found = value;
+                } else |_| {}
+            }
+            return found orelse error.Malformed;
+        }
+        noinline fn signatureWith(raw: []const u8, is_myna: bool, encoding: TagEncoding) linksection(placement(section)) Error!Signature {
             if (raw.len != (if (is_myna) @as(usize, 584) else 578)) return error.Malformed;
             var normal = base.Iterator{ .bytes = raw };
-            var extended = ExtendedIterator{ .bytes = raw };
+            var extended = ExtendedIterator{ .bytes = raw, .encoding = encoding };
             var seen: u8 = 0;
             var value: ?*const [256]u8 = null;
             var key: []const u8 = &.{};
@@ -151,12 +165,23 @@ pub fn Parser(comptime section: ?[]const u8) type {
                 if (index == 5) key = field.value;
             }
             if (value == null or key.len == 0) return error.Missing;
-            return .{ .value = value.?, .key_id = key };
+            return .{ .value = value.?, .key_id = key, .encoding = encoding };
         }
-        pub const Myna = struct { number: []const u8, expiration: [8]u8, portrait: []const u8, types: u16, fields: u32 };
+        pub const Myna = struct { number: []const u8, expiration: [8]u8, portrait: []const u8, types: u16, fields: u32, encoding: TagEncoding };
         pub noinline fn myna(raw: []const u8) linksection(placement(section)) Error!Myna {
+            var found: ?Myna = null;
+            defer std.crypto.secureZero(u8, std.mem.asBytes(&found));
+            for ([_]TagEncoding{ .literal, .ff }) |encoding| {
+                if (mynaWith(raw, encoding)) |value| {
+                    if (found != null) return error.Malformed;
+                    found = value;
+                } else |_| {}
+            }
+            return found orelse error.Malformed;
+        }
+        noinline fn mynaWith(raw: []const u8, encoding: TagEncoding) linksection(placement(section)) Error!Myna {
             if (raw.len != 5845) return error.Malformed;
-            var iterator = ExtendedIterator{ .bytes = raw };
+            var iterator = ExtendedIterator{ .bytes = raw, .encoding = encoding };
             var seen: u128 = 0;
             var number: []const u8 = &.{};
             var expiry: []const u8 = &.{};
@@ -175,6 +200,7 @@ pub fn Parser(comptime section: ?[]const u8) type {
                     if (field.value.len != 1 or field.value[0] > 1) return error.Malformed;
                     if (field.value[0] == 1) types |= @as(u16, 1) << @as(u4, @intCast(field.tag - 0xec));
                 }
+                if (field.tag >= 0xfb and field.tag <= 0x106 and field.value.len != 0 and field.value.len != 7) return error.Malformed;
                 const text = (field.tag >= 0xc6 and field.tag <= 0xc9) or (field.tag >= 0xcc and field.tag <= 0xd3) or (field.tag >= 0xd7 and field.tag <= 0xe6);
                 if (text and (field.value.len > 80 or field.value.len % 2 != 0)) return error.Malformed;
             }
@@ -184,7 +210,7 @@ pub fn Parser(comptime section: ?[]const u8) type {
             var converted: [8]u8 = undefined;
             defer std.crypto.secureZero(u8, &converted);
             try base.Parser(section).date(expiry, &converted);
-            return .{ .number = number, .expiration = converted, .portrait = photo, .types = types, .fields = 7 };
+            return .{ .number = number, .expiration = converted, .portrait = photo, .types = types, .fields = 7, .encoding = encoding };
         }
     };
 }

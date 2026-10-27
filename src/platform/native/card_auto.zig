@@ -287,7 +287,8 @@ noinline fn renderDetails(clock: timer.Timer, panel: u32, wanted: u32) linksecti
         report.missing = @max(report.missing, paint.missing);
         report.truncated |= @intFromBool(paint.truncated);
     } else {
-        var iterator = D.ExtendedIterator{ .bytes = raw[0..5845] };
+        const encoding = (try License.myna(raw[0..5845])).encoding;
+        var iterator = D.ExtendedIterator{ .bytes = raw[0..5845], .encoding = encoding };
         var count: usize = 0;
         while (try iterator.next()) |field| if (isMynaText(field.tag) and field.value.len > 0) {
             count += 1;
@@ -295,7 +296,7 @@ noinline fn renderDetails(clock: timer.Timer, panel: u32, wanted: u32) linksecti
         const pages = @max(1, (count + 2) / 3);
         page = @intCast((wanted - 1) % pages + 1);
         const start = (page - 1) * 3;
-        iterator = .{ .bytes = raw[0..5845] };
+        iterator = .{ .bytes = raw[0..5845], .encoding = encoding };
         count = 0;
         while (try iterator.next()) |field| if (isMynaText(field.tag) and field.value.len > 0) {
             if (count >= start and used < 3) {
