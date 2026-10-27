@@ -8,6 +8,10 @@ if [ -n "${NIHOS_C6_WIFI_CONFIG:-}" ]; then
     umask 077
     build_dir="$repo_root/build/c6-wifi-probe"
 fi
+if [ "${NIHOS_C6_PROTOCOL:-at}" = hosted ]; then
+    umask 077
+    build_dir="$repo_root/build/c6-hosted-probe"
+fi
 c6_sdk=${NIHOS_IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}
 if [ ! -f "$c6_sdk/export.sh" ] ||
    [ "$(git -C "$c6_sdk" rev-parse HEAD)" != "$(git -C "$c6_sdk" rev-parse 'v5.4.4^{commit}')" ] ||
@@ -21,7 +25,7 @@ zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 . "$c6_sdk/export.sh" >/dev/null
 python=${NIHOS_IDF_PYTHON:-python}
 mkdir -p "$build_dir"
-"$python" "$repo_root/tools/c6-wifi-config.py" "$build_dir/wifi-config.zig" "${NIHOS_C6_WIFI_CONFIG:-}"
+"$python" "$repo_root/tools/c6-wifi-config.py" "$build_dir/wifi-config.zig" "${NIHOS_C6_WIFI_CONFIG:-}" "${NIHOS_C6_PROTOCOL:-at}"
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$build_dir/loader" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$build_dir/loader/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=$repo_root/ports/esp32p4-native/sdkconfig.defaults" bootloader partition-table \
@@ -47,7 +51,9 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mwifi_config="$build_dir/wifi-config.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep sdio --dep c6_sdio --dep at_controller --dep timer_group -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
+    --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Msdio="$repo_root/src/soc/esp32p4/sdio.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -62,7 +68,7 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     --min-rev-full 100 --max-rev-full 299 --elf-sha256-offset 0xb0 \
     -o "$build_dir/nihos-c6-probe.bin" "$build_dir/nihos-c6-probe.elf"
 "$python" "$repo_root/tools/check-c6-sdio-image.py" "$build_dir/nihos-c6-probe.elf" \
-    "$build_dir/nihos-c6-probe.bin" "$build_dir/image-audit.json"
+    "$build_dir/nihos-c6-probe.bin" "$build_dir/image-audit.json" "${NIHOS_C6_PROTOCOL:-at}"
 "$python" - "$repo_root" "$build_dir" "$c6_sdk" <<'PY'
 import hashlib, json, subprocess, sys
 from pathlib import Path
@@ -74,6 +80,7 @@ names = [
     'src/net/c6_sdio.zig', 'src/net/esp_at.zig', 'src/net/at_commands.zig',
     'src/net/at_controller.zig', 'tools/build-c6-sdio-probe.sh',
     'src/net/wifi_station.zig', 'tools/c6-wifi-config.py',
+    'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/dhcp.zig',
     'tools/check-c6-sdio-image.py', 'tools/check-native-image.py',
 ]
 def sha(path):
@@ -90,9 +97,11 @@ report = {
         'nihos-c6-probe.elf', 'nihos-c6-probe.bin', 'image-audit.json', 'loader/sdkconfig',
         'loader/bootloader/bootloader.bin', 'loader/partition_table/partition-table.bin',
     ]},
-    'peer_assumptions': {'receive_buffer_bytes': 512, 'receive_buffers': 10, 'fresh_reset_required': True},
-    'wifi_enabled': dest.name == 'c6-wifi-probe',
-    'private_artifacts': dest.name == 'c6-wifi-probe',
+    'peer_assumptions': {'receive_buffer_bytes': 1536 if dest.name == 'c6-hosted-probe' else 512,
+                         'credit_limit': 64 if dest.name == 'c6-hosted-probe' else 10, 'fresh_reset_required': True},
+    'protocol': 'hosted' if dest.name == 'c6-hosted-probe' else 'at',
+    'wifi_enabled': dest.name != 'c6-sdio-probe',
+    'private_artifacts': dest.name != 'c6-sdio-probe',
 }
 (dest / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
 print('P4 C6 fixture source/artifact receipt:', dest / 'receipt.json')

@@ -12,6 +12,11 @@ driver and a separate [boot fixture](../../probes/c6-sdio/README.md) connect it
 to the controller. That path is host-tested and image-built; it has no physical
 SDIO qualification or permanent IRQ/service integration yet.
 
+`hosted.zig`, `hosted_station.zig` and `dhcp.zig` provide a separate, bounded
+boot experiment for the **existing** C6 ESP-Hosted firmware: native P4 RPCs,
+association, and P4-side DHCP. This is not the C6 TCP/IP-offload profile above.
+See [Hosted fixture mode](../../probes/c6-sdio/README.md#existing-c6-firmware-hosted-station-mode).
+
 ## Adapter contract
 
 1. Reset/recover the physical link, flush all old RX bytes and wait for the

@@ -5,12 +5,15 @@ const sd = @import("sdio");
 const pipe = @import("c6_sdio");
 const control = @import("at_controller");
 const timers = @import("timer_group");
+const hosted = @import("hosted_station");
 const wifi = control.wifi;
 pub const WifiJoin = wifi.Join;
+pub const HostedJoin = hosted.Join;
 var station: ?wifi.Probe = null;
 extern fn nih_c6_pads_init() callconv(.c) void;
 extern fn nih_c6_reset(u32) callconv(.c) void;
 extern fn nih_c6_fourbit_pins() callconv(.c) void;
+extern fn nih_c6_power_enable() callconv(.c) u32;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
@@ -76,6 +79,9 @@ var host = sd.Controller(Bus){ .io = .{} };
 var stream = pipe.Stream(@TypeOf(host)){ .host = &host };
 var owner: control.Controller = .{};
 var rx: [512]u8 = @splat(0);
+var hosted_stream = pipe.ProfileStream(@TypeOf(host), 64){ .host = &host };
+var hosted_client: hosted.Client = .{};
+var hosted_decoder: hosted.wire.Decoder = .{};
 pub const Report = struct {
     status: u32 = 0,
     stage: u32 = 0,
@@ -107,6 +113,25 @@ pub const Report = struct {
     netmask: u32 = 0,
     connected_events: u32 = 0,
     got_ip_events: u32 = 0,
+    hosted_phase: u32 = 0,
+    hosted_frames: u32 = 0,
+    hosted_priv: u32 = 0,
+    hosted_unchecked: u32 = 0,
+    hosted_ignored: u32 = 0,
+    rpc_status: u32 = 0,
+    rpc_response: u32 = 0,
+    disconnect_reason: u32 = 0,
+    fw_known: u32 = 0,
+    fw_major: u32 = 0,
+    fw_minor: u32 = 0,
+    fw_patch: u32 = 0,
+    dhcp_offered: u32 = 0,
+    dhcp_server: u32 = 0,
+    dhcp_seconds: u32 = 0,
+    peer_chip: u32 = 0,
+    peer_mode: u32 = 255,
+    peer_version: u32 = 0,
+    hosted_network_drops: u32 = 0,
 };
 
 fn snapshot(report: Report) Report {
@@ -258,5 +283,98 @@ pub fn run(clock: timers.Timer, join: ?WifiJoin) Report {
         owner.transportFailed();
         stream.invalidate();
     };
+    return snapshot(report);
+}
+
+// Used only by the LL shim's bounded, open-drain I2C power-enable transaction.
+export fn nih_c6_delay_us(value: u32) callconv(.c) void {
+    host.io.delay(value);
+}
+
+// Keep the Hosted execution path as a distinct function for the image audit.
+noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Join) !void {
+    report.stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    report.stage = 2;
+    try host.prepare(true);
+    report.stage = 3;
+    try host.identify();
+    report.stage = 4;
+    try host.enableFunction();
+    // Factory ESP-Hosted gates its INIT event on the scratch-7 datapath bit.
+    try host.writeByte(1, 0x8c, 1);
+    report.stage = 11;
+    const started = clock.counter() orelse return error.Clock;
+    hosted_client.begin(join, started);
+    for (0..2_000_000) |_| {
+        const count = try hosted_stream.receive(&rx);
+        report.rx +|= @intCast(count);
+        for (rx[0..count]) |byte| if (try hosted_decoder.push(byte)) |frame| {
+            try hosted_client.receive(frame, clock.counter() orelse return error.Clock);
+        };
+        const now = clock.counter() orelse return error.Clock;
+        if (clock_failed or now < started) return error.Clock;
+        if (now - started > 100_000_000) return error.Timeout;
+        if (hosted_client.phase == .done and hosted_decoder.used == 0) {
+            const lease = hosted_client.dhcp_client.?.lease.?;
+            report.ip = lease.ip;
+            report.gateway = lease.gateway;
+            report.netmask = lease.mask;
+            report.dhcp_server = lease.server;
+            report.dhcp_seconds = lease.seconds;
+            report.status = 1;
+            report.stage = 12;
+            return;
+        }
+        const bytes = try hosted_client.tx(now);
+        if (bytes.len != 0) {
+            const sent = try hosted_stream.send(bytes);
+            if (sent != 0 and sent != bytes.len) return error.PartialPacket;
+            if (sent != 0) hosted_client.sent(clock.counter() orelse return error.Clock);
+            report.tx +|= @intCast(sent);
+        }
+        host.io.delay(100);
+    }
+    return error.Timeout;
+}
+
+pub fn runHosted(clock: timers.Timer, join: hosted.Join) Report {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    hosted_client = .{};
+    hosted_decoder = .{};
+    station = null;
+    clock_failed = false;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    var report: Report = .{};
+    exerciseHosted(clock, &report, join) catch |err| {
+        report.error_code = @intFromError(err);
+        hosted_stream.invalidate();
+    };
+    report.hosted_phase = @backingInt(hosted_client.phase) + 1;
+    report.hosted_frames = hosted_client.frames;
+    report.hosted_priv = hosted_client.priv_events;
+    report.hosted_unchecked = hosted_decoder.unchecked;
+    report.hosted_ignored = hosted_client.ignored_rpcs;
+    report.rpc_status = hosted_client.rpc_status;
+    report.rpc_response = hosted_client.last_response;
+    report.disconnect_reason = hosted_client.disconnect_reason;
+    report.fw_known = @intFromBool(hosted_client.version_known);
+    report.fw_major = hosted_client.version[0];
+    report.fw_minor = hosted_client.version[1];
+    report.fw_patch = hosted_client.version[2];
+    report.peer_chip = hosted_client.peer_chip;
+    report.peer_mode = hosted_client.peer_mode;
+    report.peer_version = hosted_client.peer_version;
+    report.hosted_network_drops = hosted_client.malformed_network;
+    report.connected_events = @intFromBool(hosted_client.connected);
+    if (hosted_client.dhcp_client) |client| report.dhcp_offered = client.offered;
     return snapshot(report);
 }

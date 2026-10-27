@@ -1,5 +1,8 @@
 # Native P4 → C6 SDIO/AT boot fixture
 
+For the built-in C6's **existing ESP-Hosted firmware**, use the Hosted mode
+below. It requires no C6 firmware replacement or external USB–TTL adapter.
+
 This fixture owns SDMMC exclusively during boot, while CPU1 is still parked.
 It uses native Zig for enumeration, CMD52/CMD53, DMA control, C6 FIFO counters
 and the AT controller. A small C shim uses pinned ESP-IDF v5.4.4 LL definitions
@@ -135,3 +138,59 @@ above 128 KiB; this is a software bound, not a measured hardware capacity.
 This is a polling boot experiment. IRQ-driven lifetime handling, shared-slot
 arbitration, permanent native service integration, socket/BLE generation
 tables, timing/coherency measurements and network coexistence remain open.
+
+## Existing C6 firmware: Hosted station mode
+
+```sh
+NIHOS_C6_PROTOCOL=hosted sh tools/build-c6-sdio-probe.sh
+```
+
+This builds `build/c6-hosted-probe/` and defaults to the AP already saved in
+C6 NVS. To supply credentials for this run only, also set
+`NIHOS_C6_WIFI_CONFIG=/absolute/path/to/private-wifi.json` using the 0600 JSON
+format above. Hosted uses protobuf byte fields for SSID/password. The image
+contains any supplied credentials and stays private. The build opens no port.
+
+The native P4 fixture enables C6 power through a boot-exclusive, open-drain
+I2C transaction (PI4IOE5V6408 0x44 P0), preserving all other register bits.
+It does not reset either expander or change charger settings. It then resets
+C6, enumerates SDIO, opens Hosted's scratch-7 datapath, validates the INIT
+chip ID (C6=13), rejects advertised packet mode, replies with host capabilities,
+and queries the firmware version. Older peers lacking that query can continue
+with a distinct UID; the report retains `fw_known=0` in that case.
+
+One RPC at a time initializes Wi-Fi, selects RAM configuration storage, sets
+station mode, starts Wi-Fi, disables power save, reads the station MAC,
+optionally supplies AP configuration and requests association. Replies must
+match both UID and message ID. The connection event can precede its RPC reply.
+Disconnect invalidates the run, including after an ACK in the same FIFO read.
+
+P4 then sends DHCP Discover/Request Ethernet packets and validates Offer/ACK
+against xid, MAC and the selected server. A successful ACK needs a valid
+address, subnet mask, gateway and nonzero lease time. IPv4 checksums and any
+nonzero UDP checksum are checked; malformed DHCP is counted and ignored.
+The client has bounded retries and a 45-second acquisition budget. RPC waits
+are five seconds, association is 30 seconds and the whole loop is bounded to
+100 seconds. No renewal, ARP conflict detection, DNS, TCP, Internet test or
+permanent network service is implemented. DHCP runs on **P4** in this mode;
+this does not demonstrate the eventual C6 TCP/IP offload.
+
+`NIHOS_C6_HOSTED_WIFI_PASS ip=... gateway=... netmask=...` requires status 1,
+stage 12, the C6 INIT identity, successful Wi-Fi RPCs and a matching DHCP ACK.
+The report records firmware identity when available, phase, last RPC/status,
+disconnect reason and lease/server. Never accept a marker from a different
+candidate or protocol. The Hosted image audit requires its actual execution
+function and power-enable function; an AT-only image must fail that audit.
+
+The transport is the bounded streaming profile: 512 bytes per SDIO operation,
+one complete <=512-byte TX packet per 1536-byte peer buffer, credit limit 64,
+4096-byte frame assembly, no serial fragments. Nonzero Hosted checksums are
+validated; zero checksums are counted as unchecked for legacy peers. An absent
+SDIO mode tag is reported as 255 (unknown), not proof of streaming mode.
+Protocol/DMA/counter errors stop the experiment. This profile still needs
+physical validation, including partial FIFO reads, coherency and cold boot.
+
+Preserve the actual P4 firmware/layout/OTA selection before starting a device
+run. Use only a verified spare application slot and restore its previous image
+and OTA metadata afterward; do not flash the generated loader/table over the
+device. This fixture has not been executed on physical hardware yet.

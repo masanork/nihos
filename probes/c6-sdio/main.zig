@@ -72,23 +72,27 @@ export fn nih_c6_main() callconv(.c) noreturn {
         halt();
     }
     const join: ?c6.WifiJoin = if (!config.enabled) null else if (config.saved) .saved else .{ .network = .{ .ssid = &config.ssid, .password = &config.password } };
-    const report = c6.run(clock, join);
+    const hosted_join: c6.HostedJoin = if (config.enabled and !config.saved)
+        .{ .network = .{ .ssid = &config.ssid, .password = &config.password } }
+    else
+        .saved;
+    const report = if (config.hosted) c6.runHosted(clock, hosted_join) else c6.run(clock, join);
     print("NIHOS_NATIVE_C6");
     inline for (comptime std.meta.fieldNames(c6.Report)) |field| {
         print(" " ++ field ++ "=");
         hex(@field(report, field));
     }
     print("\n");
-    if (config.enabled) {
-        if (report.status == 1 and report.stage == 10) {
-            print("NIHOS_C6_WIFI_PASS ip=");
+    if (config.enabled or config.hosted) {
+        if (report.status == 1 and report.stage == (if (config.hosted) @as(u32, 12) else 10)) {
+            print(if (config.hosted) "NIHOS_C6_HOSTED_WIFI_PASS ip=" else "NIHOS_C6_WIFI_PASS ip=");
             printAddress(report.ip);
             print(" gateway=");
             printAddress(report.gateway);
             print(" netmask=");
             printAddress(report.netmask);
             print("\n");
-        } else print("NIHOS_C6_WIFI_FAIL\n");
+        } else print(if (config.hosted) "NIHOS_C6_HOSTED_WIFI_FAIL\n" else "NIHOS_C6_WIFI_FAIL\n");
     } else print(if (report.status == 1) "NIHOS_C6_AT_PASS\n" else "NIHOS_C6_AT_FAIL\n");
     halt();
 }

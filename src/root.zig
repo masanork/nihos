@@ -100,6 +100,7 @@ test {
     _ = at_controller;
     _ = @import("net/at_controller_test.zig");
     _ = @import("net/wifi_station_test.zig");
+    _ = @import("net/hosted_test.zig");
     _ = c6_sdio;
     _ = @import("net/c6_sdio_test.zig");
     _ = @import("net/c6_link_test.zig");

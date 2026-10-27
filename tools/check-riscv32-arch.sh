@@ -18,11 +18,12 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/c6-sdio.o" --dep c6_probe --dep timer_group \
     "-Mroot=$repo_root/tools/probes/c6-sdio.zig" \
-    --dep sdio --dep c6_sdio --dep at_controller --dep timer_group \
+    --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
     "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
     "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
     "-Mc6_sdio=$repo_root/src/net/c6_sdio.zig" \
     "-Mat_controller=$repo_root/src/net/at_controller.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
     "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig"
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
