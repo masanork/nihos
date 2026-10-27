@@ -93,6 +93,10 @@ SECTIONS
         __photo_fixture_start = .;
         *(.flash.photo.fixture)
         __photo_fixture_end = .;
+        . = ALIGN(4);
+        __license_jis_start = .;
+        *(.flash.license.data)
+        __license_jis_end = .;
         __photo_rodata_end = .;
     } > flash_ui
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }

@@ -1,7 +1,6 @@
 //! Device-local PIN entry model. Single pointer, release-to-activate keys.
 //! Display adapters see only masked length; no logging/storage/serial input.
 const std = @import("std");
-const card = @import("service.zig");
 pub const Key = enum { one, two, three, four, five, six, seven, eight, nine, cancel, zero, erase, submit };
 pub const Rect = struct {
     x: u16,
@@ -87,18 +86,18 @@ pub const Entry = struct {
         // held remains latched until release: a new screen must not consume
         // a contact which began on the previous screen.
     }
-    pub fn sync(self: *Entry, service: *const card.Service) void {
+    pub fn sync(self: *Entry, service: anytype) void {
         const session = if (service.prompt()) |prompt| prompt.session else null;
         if (self.session != session) {
             self.clear();
             self.session = session;
         }
     }
-    pub fn view(self: *Entry, service: *const card.Service) View {
+    pub fn view(self: *Entry, service: anytype) View {
         self.sync(service);
         return .{ .active = self.session != null, .masked_digits = self.length, .remaining = service.remaining, .can_submit = self.session != null and self.length == 4 };
     }
-    fn activate(self: *Entry, service: *card.Service, key: Key) void {
+    fn activate(self: *Entry, service: anytype, key: Key) void {
         switch (key) {
             .cancel => {
                 self.clear();
@@ -135,13 +134,13 @@ pub const Entry = struct {
     }
     /// Every sample, including zero-contact releases, must be delivered.
     /// Multiple contacts, movement off a key, and screen changes disarm it.
-    pub fn touch(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16) void {
+    pub fn touch(self: *Entry, service: anytype, contacts: u8, x: u16, y: u16) void {
         self.deliver(service, contacts, x, y, hit);
     }
-    pub fn touchWide(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16) void {
+    pub fn touchWide(self: *Entry, service: anytype, contacts: u8, x: u16, y: u16) void {
         self.deliver(service, contacts, x, y, demoHit);
     }
-    fn deliver(self: *Entry, service: *card.Service, contacts: u8, x: u16, y: u16, comptime locate: fn (u16, u16) ?Key) void {
+    fn deliver(self: *Entry, service: anytype, contacts: u8, x: u16, y: u16, comptime locate: fn (u16, u16) ?Key) void {
         self.sync(service);
         if (self.contact.sample(self.session != null, contacts, x, y, locate)) |key| self.activate(service, key);
     }

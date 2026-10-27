@@ -105,22 +105,35 @@ pub const portrait_bytes = portrait_width * portrait_height * 2;
 /// All four fields and portrait on one screen; unusually long fields are
 /// explicitly marked with an ellipsis and reported as truncated.
 pub inline fn overview(comptime section: ?[]const u8, frame: []u8, attributes: input.Attributes, portrait: ?[]const u8) !Paint {
+    return overviewDocument(section, frame, .{ .name = attributes.name, .address = attributes.address, .birth_date = attributes.birth_date, .detail = attributes.gender }, portrait);
+}
+pub inline fn licenseOverview(comptime section: ?[]const u8, frame: []u8, info: @import("../card/license.zig").Info, portrait: ?[]const u8) !Paint {
+    return overviewDocument(section, frame, .{ .name = info.name, .address = info.address, .birth_date = info.birth_date, .detail = info.number, .expiration = info.expiration, .external_missing = info.missing }, portrait);
+}
+const Document = struct { name: []const u8, address: []const u8, birth_date: []const u8, detail: []const u8, expiration: ?[]const u8 = null, external_missing: u32 = 0 };
+inline fn overviewDocument(comptime section: ?[]const u8, frame: []u8, attributes: Document, portrait: ?[]const u8) !Paint {
     if (frame.len != 720 * 1280 * 2 or (portrait != null and portrait.?.len != portrait_bytes)) return error.Invalid;
     for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
     const canvas = Canvas{ .frame = frame };
-    _ = try canvas.wrapped(section, "マイナンバーカード", 24, 64, 24, 28, 1);
-    _ = try canvas.wrapped(section, "読取結果・署名検証は未実施", 24, 104, 16, 42, 1);
-    const labels = [_][]const u8{ "氏名", "生年月日", "性別（記録値）", "住所" };
-    const positions = [_]usize{ 164, 324, 416, 528 };
+    _ = try canvas.wrapped(section, if (attributes.expiration != null) "運転免許証" else "マイナンバーカード", 24, 64, 24, 28, 1);
+    _ = try canvas.wrapped(section, if (attributes.expiration != null) "交付時の記録・署名検証は未実施" else "読取結果・署名検証は未実施", 24, 104, 16, 42, 1);
+    const labels = [_][]const u8{ "氏名", "生年月日", if (attributes.expiration != null) "免許証番号" else "性別（記録値）", "住所" };
+    const positions = [_]usize{ 164, 324, 416, if (attributes.expiration != null) 552 else 528 };
     for (labels, positions) |label, y| _ = try canvas.wrapped(section, label, 24, y, 16, 28, 1);
-    var report = Paint{ .shown = 15 };
-    const values = [_][]const u8{ attributes.name, attributes.birth_date, attributes.gender, attributes.address };
-    const ys = [_]usize{ 192, 352, 444, 560 };
+    var report = Paint{ .shown = if (attributes.expiration != null) 31 else 15, .missing = attributes.external_missing };
+    const values = [_][]const u8{ attributes.name, attributes.birth_date, attributes.detail, attributes.address };
+    const ys = [_]usize{ 192, 352, 444, if (attributes.expiration != null) 584 else 560 };
     const sizes = [_]usize{ 32, 32, 24, 24 };
     const columns = [_]usize{ 13, 13, 18, 28 };
-    const rows = [_]usize{ 2, 1, 1, 6 };
+    const rows = [_]usize{ if (attributes.expiration != null) 3 else 2, 1, 1, 6 };
     for (values, ys, sizes, columns, rows) |value, y, size, count, lines| {
         const part = try canvas.wrapped(section, value, 24, y, size, count, lines);
+        report.missing += part.missing;
+        report.truncated = report.truncated or part.truncated;
+    }
+    if (attributes.expiration) |value| {
+        _ = try canvas.wrapped(section, "有効期限", 24, 492, 16, 6, 1);
+        const part = try canvas.wrapped(section, value, 136, 486, 24, 12, 1);
         report.missing += part.missing;
         report.truncated = report.truncated or part.truncated;
     }
@@ -132,8 +145,23 @@ pub inline fn overview(comptime section: ?[]const u8, frame: []u8, attributes: i
             frame[target + 1] = pixels[source + 1];
         };
     } else _ = try canvas.wrapped(section, "顔写真 未表示", 480, 280, 16, 12, 2);
-    _ = try canvas.wrapped(section, if (report.truncated) "長い項目は省略しています" else "タップで閉じて消去", 24, 1120, 16, 42, 1);
+    _ = try canvas.wrapped(section, if (report.truncated) "長い項目は省略しています" else if (attributes.external_missing != 0) "外字は□で表示・タップで消去" else "タップで閉じて消去", 24, 1120, 16, 42, 1);
     return report;
+}
+pub inline fn notice(comptime section: ?[]const u8, frame: []u8, title: []const u8, detail: []const u8) !void {
+    if (frame.len != 720 * 1280 * 2) return error.Invalid;
+    for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    const canvas = Canvas{ .frame = frame };
+    _ = try canvas.wrapped(section, title, 24, 240, 24, 28, 3);
+    _ = try canvas.wrapped(section, detail, 24, 420, 24, 28, 6);
+}
+pub inline fn licensePinHeader(comptime section: ?[]const u8, frame: []u8, index: u8) !void {
+    if (frame.len != 720 * 1280 * 2 or index < 1 or index > 2) return error.Invalid;
+    for (0..280 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    const canvas = Canvas{ .frame = frame };
+    _ = try canvas.wrapped(section, "IC運転免許証", 84, 106, 24, 24, 1);
+    _ = try canvas.wrapped(section, if (index == 1) "免許証の暗証番号１" else "写真用の暗証番号２", 84, 190, 24, 24, 1);
+    _ = try canvas.wrapped(section, "暗証番号は保存しません", 84, 245, 16, 32, 1);
 }
 pub inline fn preview(comptime section: ?[]const u8, frame: []u8, portrait: []const u8) !void {
     var name: [26 * 3]u8 = undefined;
@@ -243,33 +271,35 @@ test "dense result pages and the real PIN view fit dedicated SRAM with exact rep
     }
 }
 
-test "one-screen worst-case fields and synthetic portrait fit SRAM with repeated-row reuse" {
+test "both card overviews fit SRAM with maximum fields and a synthetic portrait" {
     const sparse = @import("keypad_plan.zig");
     const frame = try std.testing.allocator.alloc(u8, sparse.frame_bytes);
     defer std.testing.allocator.free(frame);
-    var name: [26 * 3]u8 = undefined;
+    var name: [36 * 3]u8 = undefined;
     var address: [168 * 3]u8 = undefined;
-    for (0..26) |i| @memcpy(name[i * 3 ..][0..3], "東");
+    for (0..36) |i| @memcpy(name[i * 3 ..][0..3], "東");
     for (0..168) |i| @memcpy(address[i * 3 ..][0..3], "都");
     var portrait: [portrait_bytes]u8 = undefined;
     for (0..portrait_height) |y| for (0..portrait_width) |x| {
         std.mem.writeInt(u16, portrait[(y * portrait_width + x) * 2 ..][0..2], @intCast((x * 317 + y * 113) & 65535), .little);
     };
-    const painted = try overview(null, frame, .{ .name = &name, .address = &address, .birth_date = "19900101", .gender = "1" }, &portrait);
-    try std.testing.expect(!painted.truncated and painted.missing == 0 and painted.shown == 15);
-    var spans: [1600]sparse.Segment = undefined;
-    const plan = try sparse.buildOverview(frame, &spans);
-    var lower: usize = 2 * sparse.textureStride() + plan.len * 64;
-    var upper: usize = 0;
-    var previous: [2][]const u8 = .{ &.{}, &.{} };
-    for (plan) |span| if (span.kind == .pixels) {
-        const pixels = frame[span.offset..][0 .. span.words * 8];
-        const group: usize = if (span.offset % 1440 >= 912 and span.offset / 1440 >= 192 and span.offset / 1440 < 448) 1 else 0;
-        if (!std.mem.eql(u8, previous[group], pixels)) {
-            if (pixels.len <= 188 * 1024 - upper) upper += pixels.len else lower += pixels.len;
-        }
-        previous[group] = pixels;
-    };
-    try std.testing.expect(plan.len <= 1280);
-    try std.testing.expect(lower <= 128 * 1024);
+    for ([_]bool{ false, true }) |is_license| {
+        const painted = if (is_license) try licenseOverview(null, frame, .{ .name = &name, .address = address[0 .. 40 * 3], .birth_date = "19900101", .number = "000000000000", .expiration = "20300101", .missing = 0 }, &portrait) else try overview(null, frame, .{ .name = name[0 .. 26 * 3], .address = &address, .birth_date = "19900101", .gender = "1" }, &portrait);
+        try std.testing.expect(!painted.truncated and painted.missing == 0 and painted.shown == (if (is_license) @as(u32, 31) else 15));
+        var spans: [1600]sparse.Segment = undefined;
+        const plan = try sparse.buildOverview(frame, &spans);
+        var lower: usize = 2 * sparse.textureStride() + plan.len * 64;
+        var upper: usize = 0;
+        var previous: [2][]const u8 = .{ &.{}, &.{} };
+        for (plan) |span| if (span.kind == .pixels) {
+            const pixels = frame[span.offset..][0 .. span.words * 8];
+            const group: usize = if (span.offset % 1440 >= 912 and span.offset / 1440 >= 192 and span.offset / 1440 < 448) 1 else 0;
+            if (!std.mem.eql(u8, previous[group], pixels)) {
+                if (pixels.len <= 188 * 1024 - upper) upper += pixels.len else lower += pixels.len;
+            }
+            previous[group] = pixels;
+        };
+        try std.testing.expect(plan.len <= 1280);
+        try std.testing.expect(lower <= 128 * 1024);
+    }
 }

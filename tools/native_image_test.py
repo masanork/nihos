@@ -11,6 +11,26 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_automatic_card_flash_functions_require_explicit_profile_and_bounded_span(self):
+        boot = [('psram.probe', 0x40000120, 0x40000920),
+                ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
+        allowed = ('card_auto.run', 'card.license.Parser(.flash.photo).decode',
+                   'card.service.ServiceType(true,.flash.photo).take',
+                   'card.wire_policy.PolicyType(true).allow')
+        for name in allowed:
+            functions = boot + [(name, 0x40090000, 0x40090100)]
+            MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120,
+                0x4ff00000, 0x4ff28000, photo_span=(0x40090000, 0x40090100), automatic_cards=True)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120,
+                    0x4ff00000, 0x4ff28000, photo_span=(0x40090000, 0x40090100))
+        for name, stop in (('card_auto.run', 0x40090104), ('arbitrary.run', 0x40090100),
+                           ('card.service.ServiceType(false,null).take', 0x40090100)):
+            with self.subTest(name=name, stop=stop), self.assertRaises(ValueError):
+                MODULE.audit_boot_functions(boot + [(name, 0x40090000, stop)],
+                    0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                    photo_span=(0x40090000, 0x40090100), automatic_cards=True)
+
     def test_keypad_pools_are_opt_in_exact_rw_nonexecuting_nobits(self):
         for name, (address, size) in MODULE.UI_POOLS.items():
             MODULE.audit_ui_pool(name, 8, 3, address, size, True)

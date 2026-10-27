@@ -67,6 +67,13 @@ def check_jpki(log):
 def check_authenticated_owner(log, image, evidence):
     storage = image.get('keypad_storage', {}) if image else {}
     text = image.get('card_text', {}) if image else {}
+    if image and image.get('automatic_cards'):
+        boot = fixed_record(log, 'NIHOS_NATIVE_CARD_AUTO_BOOT', ('selftest','error_code','stack_used','erased'))
+        if (evidence != 'physical-device' or storage.get('ui_mode') != 'runtime' or text.get('executable') is not True or text.get('writable') is not False or
+                log.count('NIHOS_NATIVE_USB_MODE enabled=1') != 1 or boot['selftest'] != 1 or boot['error_code'] or not 0 < boot['stack_used'] < 12224 or boot['erased'] != 1 or
+                any(marker in log for marker in ('NIHOS_NATIVE_USB ', 'NIHOS_NATIVE_JPKI_MODE', 'NIHOS_NATIVE_CARD_CHECK_START'))):
+            raise ValueError('incomplete automatic-card owner preparation')
+        return {'scope':'automatic card owner; no boot USB/JPKI probe', **boot}
     ready = fixed_record(log, 'NIHOS_NATIVE_CARD_READ_READY', ('remaining_before', 'verifies', 'preflight_cut'))
     if (evidence != 'physical-device' or storage.get('ui_mode') != 'runtime' or storage.get('font_bytes', 0) <= 0 or
             text.get('writable') is not False or text.get('executable') is not True or
@@ -116,6 +123,8 @@ def repeated_records(log, marker, names):
     found = re.findall(pattern + r"(?:\n|$)", log)
     if len(found) != log.count(marker + " "):
         raise ValueError("missing/duplicate/malformed " + marker)
+    if len(names) == 1:
+        found = [(value,) for value in found]
     return [dict(zip(names, (int(value, 16) for value in row))) for row in found]
 
 

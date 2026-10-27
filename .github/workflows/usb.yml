@@ -46,7 +46,7 @@ jobs:
   native-usb:
     name: Host checks and device build configurations
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Check out source
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -74,8 +74,8 @@ jobs:
       - name: Compile PIN-free probes, keypad and local card-read images
         # Build/image audit only. GitHub runners provide no Tab5/card evidence.
         run: |
-          for feature in disabled usb jpki card touch keypad card-read card-photo; do
-            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0 NIHOS_NATIVE_TOUCH_CHECK=0
+          for feature in disabled usb jpki card touch keypad card-read card-photo card-auto card-auto-probe; do
+            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0 NIHOS_NATIVE_TOUCH_CHECK=0 NIHOS_NATIVE_CARD_AUTO_PROBE=0
             case "$feature" in
               usb) export NIHOS_NATIVE_USB=1 ;;
               jpki) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_JPKI=1 ;;
@@ -84,6 +84,8 @@ jobs:
               keypad) export NIHOS_NATIVE_DISPLAY=8 ;;
               card-read) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=9 ;;
               card-photo) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=10 ;;
+              card-auto) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=11 ;;
+              card-auto-probe) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=11 NIHOS_NATIVE_CARD_AUTO_PROBE=1 ;;
             esac
             sh tools/build-native.sh device integer
             destination="build/usb-ci/$feature"

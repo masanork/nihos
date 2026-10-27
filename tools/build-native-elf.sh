@@ -74,6 +74,7 @@ display_tile_cpp=0
 keypad_demo=false
 card_read=false
 card_photo=false
+card_auto=false
 photo_cpp=0
 card_read_cpp=0
 keypad_cpp=0
@@ -86,11 +87,21 @@ case "$display" in
     4) display=true; display_scanout=true; display_white=true; display_pattern=true ;;
     5) display=true; display_scanout=true; display_white=true; display_sram=true ;;
     6) display=true; display_scanout=true; display_sram=true; display_tile=true; display_tile_cpp=1 ;;
+    11) display=true; display_scanout=true; display_sram=true; card_read=true; card_photo=true; card_auto=true; photo_cpp=1; card_read_cpp=1; keypad_cpp=1 ;;
     10) display=true; display_scanout=true; display_sram=true; card_read=true; card_photo=true; photo_cpp=1; card_read_cpp=1; keypad_cpp=1 ;;
     9) display=true; display_scanout=true; display_sram=true; card_read=true; card_read_cpp=1; keypad_cpp=1 ;;
     8) display=true; display_scanout=true; display_sram=true; keypad_demo=true; keypad_cpp=1 ;;
-    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6, 8, 9 or 10" >&2; exit 1 ;;
+    *) echo "NIHOS_NATIVE_DISPLAY must be 0, 1, 2, 3, 4, 5, 6, 8, 9, 10 or 11" >&2; exit 1 ;;
 esac
+auto_probe=${NIHOS_NATIVE_CARD_AUTO_PROBE:-0}
+case "$auto_probe" in
+    0) auto_probe=false ;;
+    1) auto_probe=true ;;
+    *) echo "NIHOS_NATIVE_CARD_AUTO_PROBE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$auto_probe" = true ] && [ "$card_auto" != true ]; then
+    echo "Automatic card probe requires DISPLAY=11" >&2; exit 1
+fi
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
     echo "Native display preparation requires the physical-device profile" >&2
@@ -147,6 +158,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const card_check = %s;\n' "$card_check"
     printf 'pub const touch_check = %s;\n' "$touch_check"
     printf 'pub const keypad_demo = %s;\npub const card_read = %s;\npub const card_photo = %s;\n' "$keypad_demo" "$card_read" "$card_photo"
+    printf 'pub const card_auto = %s;\npub const card_auto_probe = %s;\n' "$card_auto" "$auto_probe"
     printf 'pub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = false;\n' "$display_sram" "$display_tile"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then

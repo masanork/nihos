@@ -38,6 +38,8 @@ noinline fn execute(encoded: []const u8) linksection(".flash.photo") bool {
     return status == 0 and intact;
 }
 pub noinline fn prepare() linksection(".flash.text.card") !void {
+    if (lease != null) return error.PhotoBusy;
+    report = .{};
     // CPU0 is still the live bootstrap task after scheduler qualification.
     // Register the lease with that existing owner; never forge a generation
     // or close its task ledger while the foreground is running.
