@@ -217,3 +217,35 @@ volume rootのみを実装し、選択済みpartition領域をtrusted ownerか�
 現在の8 KiB littlefs workspaceには収まらないため、置換前に別途admissionが必要である。
 clean power-on、実カードFatFs mount、永続SQLite、書込み・電断耐性の合格を追加したものではない。
 [58ケースのhost結果とRV32 layout](../measurements/2026-10-28-fatfs-vfs-host.md)にsource一致の記録を保存した。
+
+## Copy-only RPC v2とbroker親領域（2026-10-28）
+
+[vfs_rpc.zig](../../src/fs/vfs_rpc.zig)は64-bit offset/generation、511 B path、4 KiB応答を持つ。
+既存の32-bit / 512 B littlefs RPCを変更せず、version 2の別channelとして実装した。
+principalはkernel側のendpoint bindingから受け取り、messageに自己申告のprincipalやpointerを入れない。
+request/reply各2 slotで、応答creditがない場合はbackendを呼ばない。
+large messageはpointer形式のring copyでowner/clientの専用frameへコピーし、値返却の大きなtemporaryを避ける。
+
+[vfs_memory.zig](../../src/fs/vfs_memory.zig)で、disk、C Backend、VFSを含むRPC owner、queueを128 B境界で
+単一64 KiB external parentへ配置する。現RV32型では使用38,656 Bで、broker chargeは65,536 B。
+VFS開発profileのexternal枠524,288 Bを変更せず、`.vfs` ownerへ親領域をadmitしてpinする。
+client frameは4,696 Bを別accountへ8,192 B chargeする。完全なVM payload等との同時peak合格ではない。
+resident通知28 Bとparent coordinator 72 B、および追加global/controlはbulk領域とは別に保持する。
+固定DMA staging / descriptorは従来の内部SRAMを使い、FS parentをDMAへ直接渡さない。
+
+kernelが停止済みと保証するclientのexit通知だけを受け付け、epoch付き32-bit CASで古い通知を拒否する。
+read取消はactive sequenceにだけ作用し、同期backendがfence済みで戻るまで待って応答をscrubする。
+`-125`は応答公開の取消であり、controller abortやrollbackの保証ではない。
+exit時はactive dispatchが戻ってからFDを閉じ、未実行requestと未読replyをdrainする。
+別clientへのrebindはroot/fileの世代とendpoint epochを更新し、sequenceとticketの循環を許さない。
+endpoint exitだけで、同じapplication account内の他taskのmemoryを回収してはならない。
+
+service parentのpinを外せるのは、RPC shutdownとprivate FS destroyの両方が成功した後だけとする。
+どちらかがBusyならpinとchargeを保持する。quarantineで同期callbackが戻らなければ、この回収経路へ進まない。
+成功時はwhole parentをclearし、unpin後に通常free、またはclosing ownerのreaperへ渡す。
+
+hostでは実FatFs、実VFS/RPC、生成済みdevelopment policyを使う実brokerを接続した。
+sector callback中のexit/cancel注入、client pagesの回収、service親領域の保持、再bind後の読取りと
+4 GiB超offsetを確認する。native kernelのtask stop/wakeup、IRQ配置、controller abortとの連動、
+最終image placementと8 KiB task stackの検証はまだ行っていない。
+[69 scenarioとbroker admissionの記録](../measurements/2026-10-28-fatfs-rpc-host.md)にraw hashとtarget layoutを保存した。

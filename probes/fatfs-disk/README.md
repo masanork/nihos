@@ -91,8 +91,49 @@ disabled pending those measurements and a runtime integration.
 
 All code here still requires a single serialized owner, immutable mounted media
 and a caller that pins the destination/workspaces through synchronous completion.
-The backend must not return from an unproved DMA fence. Actual broker/RPC kill and
-cancel paths, hardware card-detect notification, simultaneous filesystem routing,
+The backend must not return from an unproved DMA fence. Native kernel/wakeup and
+controller-abort integration, hardware card-detect notification, simultaneous filesystem routing,
 subtree capabilities, persistent SQLite, writable media, power-loss recovery and
 clean physical power-on are separate gates. No serial/device operations occur in
 either runner.
+
+## Copy-only RPC v2 and broker-owned parent
+
+The companion runner now also connects `src/fs/vfs_rpc.zig` to the real guarded
+Backend and unchanged development memory broker. RPC v2 has 64-bit offsets and
+generation tokens, 511-byte paths and 4 KiB replies; legacy 32-bit/512-byte storage
+RPC remains separate. A channel is bound to a kernel-supplied identity, never a
+principal in message bytes. One producer and one owner exchange copied messages
+through two-slot request/reply rings. Reply credit is reserved before dispatch.
+Pointer-form ring copies keep full-size messages out of return-value temporaries.
+
+The workspace layout aligns disk, C Backend, RPC owner (including VFS) and queues
+to 128 bytes inside one 64 KiB external `.vfs` broker parent. Its pin spans FS
+initialization, dispatch, endpoint shutdown and private-FS destruction. The parent
+is scrubbed and unpinned only after both shutdown calls succeed; a closing owner's
+reaper waits while teardown is busy. Notifications and parent-coordinator metadata
+live outside this bulk parent. Client request/reply frames belong to a separate
+client lease and are copied before use; they may be reclaimed once that client is
+stopped. The test closes a one-actor client account, not an app with live siblings.
+
+The resident notification contract uses 32-bit atomics: stopped-client epochs
+and exact active-read tickets reject stale events. Cancellation waits for the
+synchronous backend to return quiescent, then scrubs the reply and returns -125.
+It does not abort DMA or promise that the mount remains healthy. A stopped client
+causes queued work and unread replies to be discarded before owner-side FD cleanup.
+Rebind requires a drained endpoint and a new epoch; counters never wrap into old
+identities. Actual scheduler stop/wakeup and IRQ residency/linkage remain unconnected.
+
+In all five media fixtures, a sector callback injects cancel/exit while the RPC
+dispatch is active. The real broker rejects early service-parent free/retire,
+reclaims the stopped client's separate pages, retains the service pin, and recovers
+all pages after endpoint/FS teardown. A new client rejects old handles and reads
+again. exFAT also reads a marker above 4 GiB through RPC. These are host callback
+events, not native task-kill or hardware DMA timing evidence. RV32 compilation
+instantiates the actual RPC, notification and parent reserve/retire paths.
+
+The candidate layout uses 38,656 bytes within the charged 65,536-byte parent.
+Client frames are 4,696 bytes (8,192 bytes charged separately); notification state
+is 28 bytes and parent-coordinator metadata is 72 bytes on RV32. These counts do
+not admit the final native code/rodata, globals, task stacks or complete workload.
+The existing native littlefs fixture stays on its original protocol and layout.

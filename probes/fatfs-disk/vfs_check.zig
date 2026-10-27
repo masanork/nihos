@@ -1,5 +1,5 @@
 const std = @import("std");
-const adapter = @import("fatfs_backend");
+const adapter = @import("storage_vfs").fatfs;
 const api = adapter.vfs;
 extern fn host_backend_session() *adapter.Session;
 extern fn host_backend_epoch() u64;

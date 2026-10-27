@@ -49,7 +49,7 @@ jobs:
       - name: Read-only littlefs host and fault checks
         run: sh tools/run-storage-host-test.sh
 
-      - name: Read-only guarded FatFs and VFS integration (host only)
+      - name: Guarded FatFs VFS/RPC and broker lifetime checks (host only)
         run: python3 tools/check-fatfs-backend.py
 
       - name: Retain FatFs disk bridge JSON evidence
