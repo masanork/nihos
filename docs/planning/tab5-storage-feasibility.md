@@ -408,3 +408,12 @@ zero. The append-only index pool still exhausts without cleaning, and whole-obje
 CRC on every read needs range-based replacement before SQLite partial I/O.
 This advances the host model gate without qualifying an experimental SD volume,
 changing the 2 MiB store envelope or providing a persistent SQLite VFS.
+
+The [range-checksum follow-up](../measurements/2026-10-27-store-range-checksum.md)
+replaces that whole-object scan with checksums per 4 KiB payload page in the
+experimental version 2 format. A cold one-byte read requires 12 KiB including
+its leaf and checksum table, even for a 4,157,441 B object. The RV32 descriptor
+remains 8,272 B, excluding stack/backend memory. Explicit full-object verification
+is available; cold corruption outside a requested range is deferred until read
+or scrubbed. Cleaner, reader pins, streaming/partial writes and target durability
+remain separate gates; the append-only index still exhausts without GC.
