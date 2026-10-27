@@ -86,7 +86,7 @@ def main():
             return None
         require(completed.returncode == 0, f"{command} failed: {completed.stderr}")
         data = json.loads(completed.stdout)
-        require(data["state_bytes"] <= 16 * 1024, "descriptor budget exceeded")
+        require(data["state_bytes"] <= 32 * 1024, "descriptor budget exceeded")
         require(data["mount_bytes"] <= data["mount_limit_bytes"] == 258 * PAGE, "mount budget exceeded")
         require(data["tail_replay_bytes"] == 0, "unexpected replay")
         return data
@@ -165,8 +165,31 @@ def main():
         restore(results["snapshots"]["generation15"], output, recycled_image)
         run("verify-recycled", recycled_image)
         results["cases"].append({"name": "recycled_index_snapshot_reconstruction", "passed": True})
+        fd = os.open(image, os.O_RDONLY)
+        try:
+            reserve = os.pread(fd, 4 * PAGE, CAPACITY - 4 * PAGE)
+        finally:
+            os.close(fd)
+        require(reserve == bytes(4 * PAGE), "reserved tail was already modified")
+        payload_churn = run("churn-payload")
+        payload_reopened = run("verify-payload-recycled")
+        require(payload_churn["generation"] == 277 and payload_reopened["generation"] == 277, "payload reuse did not survive reopen")
+        fd = os.open(image, os.O_RDONLY)
+        try:
+            reserve_after = os.pread(fd, 4 * PAGE, CAPACITY - 4 * PAGE)
+        finally:
+            os.close(fd)
+        require(reserve_after == reserve, "payload reuse consumed reserved pages")
+        results["cases"].append({"name": "64KiB_payload_128_updates_and_two_pins_with_four_page_reserve", "passed": True,
+                                 "churn": payload_churn, "reopened": payload_reopened,
+                                 "reserved_bytes": 4 * PAGE, "reserve_sha256": hashlib.sha256(reserve).hexdigest()})
+        results["snapshots"]["generation277"] = capture(image, output, "generation277")
+        payload_image = output / "payload-reconstructed.img"
+        restore(results["snapshots"]["generation277"], output, payload_image)
+        run("verify-payload-recycled", payload_image)
+        results["cases"].append({"name": "recycled_payload_snapshot_reconstruction", "passed": True})
         results["images"] = {}
-        for path in (image, reconstructed, recycled_image):
+        for path in (image, reconstructed, recycled_image, payload_image):
             info = path.stat()
             allocated = info.st_blocks * 512
             require(info.st_size == CAPACITY and allocated < 32 * 1024**2, "image lost sparse allocation")

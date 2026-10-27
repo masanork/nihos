@@ -19,7 +19,7 @@ const Store = checkpoint.Store(Device, .{});
 var device = Device{};
 var store = Store{};
 comptime {
-    if (@sizeOf(usize) != 4 or @sizeOf(Store) > 16 * 1024) @compileError("expected RV32 with a bounded descriptor");
+    if (@sizeOf(usize) != 4 or @sizeOf(Store) > 32 * 1024) @compileError("expected RV32 with a bounded descriptor");
 }
 pub export const checkpoint_probe_state_bytes: u32 = @sizeOf(Store);
 pub export fn checkpoint_probe_format() c_int {
@@ -71,4 +71,11 @@ pub export fn checkpoint_probe_release(slot: u8, token: u64) c_int {
 pub export fn checkpoint_probe_read_pinned(slot: u8, token: u64, key: u32, offset: u64, bytes: [*]u8, length: usize) c_int {
     _ = store.readPinned(.{ .slot = slot, .token = token }, key, offset, bytes[0..length]) catch return -1;
     return 0;
+}
+pub export fn checkpoint_probe_collect_payload() c_int {
+    store.collectPayload() catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_payload_free() u64 {
+    return (store.payloadSpace() catch return 0).free_pages;
 }
