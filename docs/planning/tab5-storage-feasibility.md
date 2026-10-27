@@ -515,3 +515,15 @@ state and excluding stacks/backend/OS cache. This does not reduce the planned
 2 MiB SQLite envelope or 512 KiB cache candidate. Allocator/OOM integration,
 real store-full and broader I/O faults, generic VFS/native integration and
 physical SD power-loss remain promotion gates; WAL is still omitted.
+
+The [cache/bounded-allocation host follow-up](../measurements/2026-10-28-sqlite-cache-bounded.md)
+keeps the 512 KiB cache candidate: on a 652 KiB DB it reduced sync calls from
+164 to 12 and writes from 4,008 to 3,590 versus a 32 KiB target. A ZERO_MALLOC
+build uses a fixed 512 KiB external page cache, one 64 KiB small-object parent
+and at most one 16 KiB buddy block for an 8 KiB scratch request. The host cache
+holds 120 header-inclusive cells, with 480 KiB of page data. All 300 injected
+malloc/realloc failures returned the parent and recovered old or new SQL state;
+82 COMMIT-success cases remained new despite later verification OOM. This is
+host-only and leaves the native allocator ABI/profile unchanged. Keep the
+2 MiB SQLite and 2 MiB store envelopes until native placement, global metadata,
+stack/combined peaks and broader SQL/store-full/device faults are measured.
