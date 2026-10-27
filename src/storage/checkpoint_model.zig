@@ -2,12 +2,13 @@
 //! Index and payload pages are reclaimed by reachability without relocation.
 //! There is no replay log. Payload checksums are verified on demand.
 const std = @import("std");
+pub const extent_map = @import("extent_map.zig");
 pub const page_bytes = 4096;
 pub const crc_offset = page_bytes - 4;
 pub const leaf_entries = (crc_offset - 32) / 32;
 pub const root_magic: u32 = 0x4e494332;
 pub const leaf_magic: u32 = 0x4e494c32;
-pub const version: u32 = 3;
+pub const version: u32 = extent_map.version;
 pub const checksum_magic: u32 = 0x4e495332;
 pub const checksums_per_page = (crc_offset - 32) / 4;
 pub fn dataPages(length: u64) u64 {
@@ -28,13 +29,14 @@ pub const Config = struct {
 };
 pub const SearchBudget = struct { leaf_visits: u16 = 8, bitmap_pages: u32 = 1024 };
 pub const SearchResult = union(enum) { pending, found: u64, no_space, space: PayloadSpace };
-pub const Value = struct { first: u64, length: u64, checksum: u32 };
+pub const Kind = enum(u32) { blob, mapped };
+pub const Value = struct { first: u64, length: u64, checksum: u32, kind: Kind = .blob, high_water: u64 = 0 };
 pub const Reader = struct { slot: u8, token: u64 };
 pub const Stream = struct { token: u64 };
 pub const PatchProgress = struct { consumed: usize = 0, done: bool = false, need_input: bool = false };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
 pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
-pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired, InvalidStream, IncompleteStream };
+pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired, InvalidStream, IncompleteStream, NotMapped };
 
 pub fn Store(comptime Device: type, comptime config: Config) type {
     const data_start = config.payload_start_page orelse (2 + @as(u64, config.index_pages));
@@ -57,6 +59,8 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         };
         const Pin = struct { root: Root = .{}, token: u64 = 0 };
         const CachedLeaf = struct { ref: Ref = .{}, bytes: [page_bytes]u8 = @splat(0) };
+        const MapFrame = struct { ref: extent_map.Ref, base: u64, level: u8, next: u16 = 0 };
+        const MapCache = struct { valid: bool = false, root: u64 = 0, checksum: u32 = 0, length: u64 = 0, base: u64 = 0, ref: extent_map.Ref = .{} };
         const Patch = struct { source: Value, offset: u64, length: u64 };
         const Writer = struct {
             token: u64 = 0,
@@ -74,7 +78,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             table: [page_bytes]u8 = @splat(0),
         };
         const Search = struct {
-            phase: enum { idle, mark, scan, done } = .idle,
+            phase: enum { idle, mark, objects, tree, scan, done } = .idle,
             wanted: ?u64 = null,
             result: SearchResult = .pending,
             start: u64 = data_start,
@@ -83,6 +87,11 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             leaf: u16 = 0,
             bit: u32 = 0,
             run: u64 = 0,
+            view_root: u16 = 0,
+            entry: u16 = 0,
+            mapped: Value = .{ .first = 0, .length = 0, .checksum = 0 },
+            frames: [extent_map.max_height + 1]MapFrame = @splat(.{ .ref = .{}, .base = 0, .level = 0 }),
+            depth: u8 = 0,
             space: PayloadSpace = .{ .usable_pages = data_end - data_start, .reserved_pages = config.payload_reserve_pages, .free_pages = 0, .largest_run = 0 },
         };
         pub const max_objects = config.leaf_pages * leaf_entries;
@@ -102,6 +111,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         readers: [config.reader_slots]Pin = @splat(.{}),
         next_reader: u64 = 1,
         cache: [page_bytes]u8 = @splat(0),
+        map_buffer: [page_bytes]u8 = @splat(0),
+        map_cache: MapCache = .{},
+        map_reads: u64 = 0,
+        map_hits: u64 = 0,
         occupancy: [config.payload_window_bytes]u8 = @splat(0),
         leaf_cache: [config.leaf_cache_pages]CachedLeaf = @splat(.{}),
         search: Search = .{},
@@ -122,6 +135,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.device.read(page * page_bytes, bytes) catch return self.ioFailure();
         }
         fn writePage(self: *Self, page: u64, bytes: *const [page_bytes]u8) Error!void {
+            if (self.map_cache.ref.page == page) self.map_cache.valid = false;
             // Physical pages can be recycled for another logical leaf. Drop
             // every matching cached page before attempting any write to it.
             for (&self.leaf_cache) |*entry| if (entry.ref.page == page) {
@@ -296,14 +310,57 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                 return err;
             };
             self.search_leaf_reads +|= @intCast(self.metadata_reads - before);
-            for (0..leaf_entries) |entry| {
-                const value = try decodeEntry(root, self.cache[32 + entry * 32 ..][0..32]) orelse continue;
+            // Searches exclude an active stream. Hold this immutable object
+            // leaf across tree steps; ordinary reads never use writer.table.
+            self.writer.table = self.cache;
+            self.search.entry = 0;
+            self.search.phase = .objects;
+        }
+        fn markObjects(self: *Self) Error!void {
+            const root = self.searchRoot(self.search.view_root) orelse return self.corruption();
+            while (self.search.entry < leaf_entries) {
+                const entry = self.search.entry;
+                self.search.entry += 1;
+                const value = try decodeEntry(root, self.writer.table[32 + entry * 32 ..][0..32]) orelse continue;
                 if (value.length == 0) continue;
+                if (value.kind == .mapped) {
+                    self.search.mapped = value;
+                    self.search.depth = 1;
+                    self.search.frames[0] = .{ .ref = .{ .page = value.first, .checksum = value.checksum }, .base = 0, .level = try extent_map.height(value.length) };
+                    self.search.phase = .tree;
+                    return;
+                }
                 const last = value.first + dataPages(value.length) + checksumPages(value.length);
                 const first_overlap = @max(self.search.start, value.first);
                 const last_overlap = @min(self.search.end, last);
                 if (first_overlap < last_overlap) self.markRange(@intCast(first_overlap - self.search.start), @intCast(last_overlap - self.search.start));
             }
+            self.search.phase = .mark;
+        }
+        fn markPhysicalPage(self: *Self, page: u64) void {
+            if (page >= self.search.start and page < self.search.end) self.markRange(@intCast(page - self.search.start), @intCast(page + 1 - self.search.start));
+        }
+        fn markTreeStep(self: *Self) Error!void {
+            const frame = &self.search.frames[self.search.depth - 1];
+            const ref = try self.loadMap(frame.ref, frame.level, frame.base, self.search.mapped);
+            self.markPhysicalPage(ref.page);
+            const count = try extent_map.count(frame.level, frame.base, self.search.mapped.length);
+            if (frame.level == 0) {
+                for (0..count) |i| self.markPhysicalPage(extent_map.data(&self.map_buffer, i).page);
+                self.search.depth -= 1;
+            } else {
+                while (frame.next < count) {
+                    const index = frame.next;
+                    frame.next += 1;
+                    const child = extent_map.child(&self.map_buffer, index);
+                    if (!child.data.intersects(self.search.start, self.search.end) and !child.nodes.intersects(self.search.start, self.search.end)) continue;
+                    self.search.frames[self.search.depth] = .{ .ref = child, .level = frame.level - 1, .base = frame.base + index * extent_map.capacity(frame.level - 1) };
+                    self.search.depth += 1;
+                    return;
+                }
+                self.search.depth -= 1;
+            }
+            if (self.search.depth == 0) self.search.phase = .objects;
         }
         fn occupied(self: *const Self, offset: usize) bool {
             return self.occupancy[offset / 8] & (@as(u8, 1) << @as(u3, @intCast(offset % 8))) != 0;
@@ -317,6 +374,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         /// Drop cached immutable metadata, e.g. before a forced cold integrity
         /// check. Cache hits are still CRC/identity/bounds checked in RAM.
         pub fn dropMetadataCache(self: *Self) void {
+            self.map_cache.valid = false;
             for (&self.leaf_cache) |*entry| entry.ref = .{};
         }
         fn startWindow(self: *Self) void {
@@ -394,6 +452,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                     if (self.step_leaf_visits == budget.leaf_visits) return .pending;
                     self.step_leaf_visits += 1;
                     const index = self.search.leaf;
+                    self.search.view_root = self.search.root;
                     const root = self.searchRoot(self.search.root);
                     self.search.leaf += 1;
                     if (self.search.leaf == config.leaf_pages) {
@@ -401,6 +460,12 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                         self.search.root += 1;
                     }
                     if (root) |view| if (view.refs[index].page != 0) try self.markLeaf(view, index);
+                },
+                .objects => try self.markObjects(),
+                .tree => {
+                    if (self.step_leaf_visits == budget.leaf_visits) return .pending;
+                    self.step_leaf_visits += 1;
+                    try self.markTreeStep();
                 },
                 .scan => {
                     if (self.search.bit == self.search.end - self.search.start) {
@@ -456,19 +521,24 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             const first = std.mem.readInt(u64, bytes[8..16], .little);
             const length = std.mem.readInt(u64, bytes[16..24], .little);
             const checksum = std.mem.readInt(u32, bytes[24..28], .little);
-            if (std.mem.readInt(u32, bytes[4..8], .little) != 0 or std.mem.readInt(u32, bytes[28..32], .little) != 0) return error.Corrupt;
+            const kind_number = std.mem.readInt(u32, bytes[28..32], .little);
+            if (std.mem.readInt(u32, bytes[4..8], .little) != 0 or kind_number > 1) return error.Corrupt;
+            const kind: Kind = @fromBackingInt(@intCast(kind_number));
             if (state == 0) {
-                if (first != 0 or length != 0 or checksum != 0) return error.Corrupt;
+                if (first != 0 or length != 0 or checksum != 0 or kind != .blob) return error.Corrupt;
                 return null;
             }
             if (state != 1) return error.Corrupt;
             if (length == 0) {
-                if (first != 0 or checksum != 0) return error.Corrupt;
+                if (first != 0 or checksum != 0 or kind != .blob) return error.Corrupt;
+            } else if (kind == .mapped) {
+                _ = try extent_map.height(length);
+                if (root.payload_next > std.math.maxInt(u32) or first < data_start or first >= root.payload_next) return error.Corrupt;
             } else {
                 const pages = dataPages(length) + checksumPages(length);
                 if (first < data_start or first > root.payload_next or pages > root.payload_next - first) return error.Corrupt;
             }
-            return .{ .first = first, .length = length, .checksum = checksum };
+            return .{ .first = first, .length = length, .checksum = checksum, .kind = kind, .high_water = root.payload_next };
         }
 
         fn loadLeaf(self: *Self, root: *const Root, index: usize) Error!void {
@@ -533,6 +603,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                 std.mem.writeInt(u64, self.cache[offset + 8 ..][0..8], item.first, .little);
                 std.mem.writeInt(u64, self.cache[offset + 16 ..][0..8], item.length, .little);
                 std.mem.writeInt(u32, self.cache[offset + 24 ..][0..4], item.checksum, .little);
+                std.mem.writeInt(u32, self.cache[offset + 28 ..][0..4], @backingInt(item.kind), .little);
             }
             std.mem.writeInt(u32, self.cache[0..4], leaf_magic, .little);
             std.mem.writeInt(u32, self.cache[4..8], version, .little);
@@ -735,6 +806,184 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             _ = try self.appendStream(bytes[0..n]);
             return .{ .done = self.writer.received == self.writer.length };
         }
+        fn loadMap(self: *Self, ref: extent_map.Ref, level: u8, base: u64, value: Value) Error!extent_map.Ref {
+            self.map_cache.valid = false;
+            self.map_reads +|= 1;
+            try self.readPage(ref.page, &self.map_buffer);
+            return extent_map.validate(&self.map_buffer, ref, level, base, value.length, .{ .start = data_start, .end = value.high_water }) catch return self.corruption();
+        }
+        fn mapPath(self: *Self, value: Value, logical: u64, path: *[extent_map.max_height + 1]extent_map.Ref) Error!extent_map.Data {
+            var level = extent_map.height(value.length) catch return self.corruption();
+            var base: u64 = 0;
+            var ref = extent_map.Ref{ .page = value.first, .checksum = value.checksum };
+            while (true) {
+                ref = try self.loadMap(ref, level, base, value);
+                path[level] = ref;
+                if (level == 0) {
+                    self.map_cache = .{ .valid = true, .root = value.first, .checksum = value.checksum, .length = value.length, .base = base, .ref = ref };
+                    return extent_map.data(&self.map_buffer, @intCast(logical - base));
+                }
+                const index = (logical - base) / extent_map.capacity(level - 1);
+                ref = extent_map.child(&self.map_buffer, @intCast(index));
+                base += index * extent_map.capacity(level - 1);
+                level -= 1;
+            }
+        }
+        fn mappedData(self: *Self, value: Value, logical: u64) Error!extent_map.Data {
+            if (self.map_cache.valid and self.map_cache.root == value.first and self.map_cache.checksum == value.checksum and self.map_cache.length == value.length and
+                logical >= self.map_cache.base and logical - self.map_cache.base < extent_map.leaf_entries)
+            {
+                _ = extent_map.validate(&self.map_buffer, self.map_cache.ref, 0, self.map_cache.base, value.length, .{ .start = data_start, .end = value.high_water }) catch return self.corruption();
+                self.map_hits +|= 1;
+                return extent_map.data(&self.map_buffer, @intCast(logical - self.map_cache.base));
+            }
+            var path: [extent_map.max_height + 1]extent_map.Ref = undefined;
+            return self.mapPath(value, logical, &path);
+        }
+        fn readMapped(self: *Self, value: Value, offset: u64, destination: []u8) Error!usize {
+            if (offset >= value.length or destination.len == 0) return 0;
+            const n: usize = @intCast(@min(destination.len, value.length - offset));
+            var position: usize = 0;
+            var buffer: [page_bytes]u8 = undefined;
+            while (position < n) {
+                const logical = offset + position;
+                const ref = try self.mappedData(value, logical / page_bytes);
+                try self.readPage(ref.page, &buffer);
+                if (std.hash.Crc32.hash(&buffer) != ref.checksum) return self.corruption();
+                const within: usize = @intCast(logical % page_bytes);
+                const count = @min(page_bytes - within, n - position);
+                @memcpy(destination[position..][0..count], buffer[within..][0..count]);
+                position += count;
+            }
+            return n;
+        }
+        pub fn mapMetadataPages(length: u64) Error!u64 {
+            if (length == 0) return 0;
+            const height = extent_map.height(length) catch return error.InvalidArgument;
+            var total: u64 = 0;
+            for (0..@as(usize, height) + 1) |level| {
+                const capacity = extent_map.capacity(@intCast(level));
+                const count = dataPages(length) / capacity + @intFromBool(dataPages(length) % capacity != 0);
+                total += count;
+            }
+            return total;
+        }
+        pub fn promoteMapped(self: *Self, key: u32) Error!void {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            const source = try self.checkedLookup(&self.staged, key) orelse return error.NotFound;
+            if (source.kind == .mapped or source.length == 0) return;
+            if (data_end > std.math.maxInt(u32)) return error.InvalidArgument;
+            try self.preflight();
+            const total = try mapMetadataPages(source.length);
+            const first = try self.findPayload(total);
+            self.invalidateSearch();
+            self.map_cache.valid = false;
+            const height = try extent_map.height(source.length);
+            const bound = @max(self.staged.payload_next, first + total);
+            const limits = extent_map.Limits{ .start = data_start, .end = bound };
+            var offsets: [extent_map.max_height + 1]u64 = @splat(0);
+            var cursor: u64 = 0;
+            var root = extent_map.Ref{};
+            var loaded_table: ?u64 = null;
+            for (0..@as(usize, height) + 1) |level_index| {
+                const level: u8 = @intCast(level_index);
+                offsets[level] = cursor;
+                const capacity = extent_map.capacity(level);
+                const nodes = dataPages(source.length) / capacity + @intFromBool(dataPages(source.length) % capacity != 0);
+                for (0..@intCast(nodes)) |node| {
+                    const base = node * capacity;
+                    try extent_map.init(&self.map_buffer, level, base, source.length);
+                    const used = try extent_map.count(level, base, source.length);
+                    for (0..used) |i| {
+                        if (level == 0) {
+                            const logical = base + i;
+                            const table = logical / checksums_per_page;
+                            if (loaded_table != table) {
+                                try self.readPage(source.first + dataPages(source.length) + table, &self.writer.table);
+                                if (!pageValid(&self.writer.table) or std.mem.readInt(u32, self.writer.table[0..4], .little) != checksum_magic or
+                                    std.mem.readInt(u32, self.writer.table[4..8], .little) != version or
+                                    std.mem.readInt(u64, self.writer.table[8..16], .little) != source.first or
+                                    std.mem.readInt(u64, self.writer.table[16..24], .little) != source.length or
+                                    std.mem.readInt(u64, self.writer.table[24..32], .little) != table) return self.corruption();
+                                loaded_table = table;
+                            }
+                            const entry: usize = @intCast(logical % checksums_per_page);
+                            extent_map.setData(&self.map_buffer, i, .{ .page = source.first + logical, .checksum = std.mem.readInt(u32, self.writer.table[32 + entry * 4 ..][0..4], .little) });
+                        } else {
+                            const physical = first + offsets[level - 1] + node * extent_map.children + i;
+                            try self.readPage(physical, &self.writer.table);
+                            const expected = extent_map.Ref{ .page = physical, .checksum = std.mem.readInt(u32, self.writer.table[crc_offset..][0..4], .little) };
+                            const child_base = base + i * extent_map.capacity(level - 1);
+                            const ref = extent_map.validate(&self.writer.table, expected, level - 1, child_base, source.length, limits) catch return self.corruption();
+                            extent_map.setChild(&self.map_buffer, i, ref);
+                        }
+                    }
+                    const physical = first + cursor;
+                    root = extent_map.seal(&self.map_buffer, physical, level, base, source.length, limits) catch return self.corruption();
+                    try self.writePage(physical, &self.map_buffer);
+                    cursor += 1;
+                }
+            }
+            self.staged.payload_next = bound;
+            _ = try self.checkedLookup(&self.staged, key);
+            try self.replace(key, .{ .first = root.page, .length = source.length, .checksum = root.checksum, .kind = .mapped }, true);
+        }
+        pub fn mappedPatchPages(length: u64) Error!u64 {
+            return 2 + @as(u64, extent_map.height(length) catch return error.InvalidArgument);
+        }
+        fn mappedSource(self: *Self, key: u32, offset: u64, bytes: []const u8) Error!Value {
+            try self.transaction();
+            if (self.writer.token != 0) return error.Busy;
+            const value = try self.checkedLookup(&self.staged, key) orelse return error.NotFound;
+            if (value.kind != .mapped) return error.NotMapped;
+            if (bytes.len == 0 or offset >= value.length or bytes.len > value.length - offset or bytes.len > page_bytes - offset % page_bytes) return error.InvalidArgument;
+            try self.preflight();
+            return value;
+        }
+        pub fn patchMappedPage(self: *Self, key: u32, offset: u64, bytes: []const u8) Error!void {
+            const value = try self.mappedSource(key, offset, bytes);
+            const first = try self.findPayload(try mappedPatchPages(value.length));
+            return self.patchMappedAt(key, offset, bytes, value, first);
+        }
+        pub fn patchMappedPagePrepared(self: *Self, key: u32, offset: u64, bytes: []const u8) Error!void {
+            const value = try self.mappedSource(key, offset, bytes);
+            if (self.search.phase != .done or self.search.wanted != try mappedPatchPages(value.length)) return error.SearchRequired;
+            const first = switch (self.search.result) {
+                .found => |first| first,
+                else => return error.SearchRequired,
+            };
+            return self.patchMappedAt(key, offset, bytes, value, first);
+        }
+        fn patchMappedAt(self: *Self, key: u32, offset: u64, bytes: []const u8, value: Value, first: u64) Error!void {
+            self.invalidateSearch();
+            var path: [extent_map.max_height + 1]extent_map.Ref = undefined;
+            const logical = offset / page_bytes;
+            const original = try self.mapPath(value, logical, &path);
+            try self.readPage(original.page, &self.writer.data);
+            if (std.hash.Crc32.hash(&self.writer.data) != original.checksum) return self.corruption();
+            const within: usize = @intCast(offset % page_bytes);
+            @memcpy(self.writer.data[within..][0..bytes.len], bytes);
+            const data_crc = std.hash.Crc32.hash(&self.writer.data);
+            try self.writePage(first, &self.writer.data);
+            const height = try extent_map.height(value.length);
+            const bound = @max(self.staged.payload_next, first + try mappedPatchPages(value.length));
+            var updated = extent_map.Ref{};
+            for (0..@as(usize, height) + 1) |level_index| {
+                const level: u8 = @intCast(level_index);
+                const base = logical / extent_map.capacity(level) * extent_map.capacity(level);
+                _ = try self.loadMap(path[level], level, base, value);
+                if (level == 0) extent_map.setData(&self.map_buffer, @intCast(logical - base), .{ .page = first, .checksum = data_crc }) else {
+                    const index = (logical - base) / extent_map.capacity(level - 1);
+                    extent_map.setChild(&self.map_buffer, @intCast(index), updated);
+                }
+                updated = extent_map.seal(&self.map_buffer, first + 1 + level, level, base, value.length, .{ .start = data_start, .end = bound }) catch return self.corruption();
+                try self.writePage(updated.page, &self.map_buffer);
+            }
+            self.staged.payload_next = bound;
+            _ = try self.checkedLookup(&self.staged, key);
+            try self.replace(key, .{ .first = updated.page, .length = value.length, .checksum = updated.checksum, .kind = .mapped }, true);
+        }
         pub fn remove(self: *Self, key: u32) Error!void {
             try self.transaction();
             if (self.writer.token != 0) return error.Busy;
@@ -766,6 +1015,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             return self.readValue(value, offset, destination);
         }
         fn readValue(self: *Self, value: Value, offset: u64, destination: []u8) Error!usize {
+            if (value.kind == .mapped) return self.readMapped(value, offset, destination);
             if (offset >= value.length or destination.len == 0) return 0;
             const n: usize = @intCast(@min(destination.len, value.length - offset));
             var position: usize = 0;
@@ -811,6 +1061,12 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         /// pages they touch; callers can request this pass for cold corruption.
         pub fn verify(self: *Self, key: u32) Error!void {
             const value = try self.get(key);
+            if (value.kind == .mapped) {
+                var buffer: [page_bytes]u8 = undefined;
+                var position: u64 = 0;
+                while (position < value.length) position += try self.readMapped(value, position, &buffer);
+                return;
+            }
             var crc = std.hash.Crc32.init();
             var buffer: [page_bytes]u8 = undefined;
             var position: u64 = 0;

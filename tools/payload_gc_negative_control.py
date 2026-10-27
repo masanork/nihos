@@ -25,7 +25,7 @@ def main():
             raise RuntimeError(f"{name} mutation is not unique")
         directory = output / name
         directory.mkdir()
-        for filename in ("payload_gc_test.zig", "model_media.zig"):
+        for filename in ("payload_gc_test.zig", "model_media.zig", "extent_map.zig"):
             shutil.copy2(repo / "src/storage" / filename, directory / filename)
         mutant = original.replace(needle, replacement)
         (directory / "checkpoint_model.zig").write_text(mutant)

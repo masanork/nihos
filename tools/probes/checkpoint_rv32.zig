@@ -136,3 +136,11 @@ pub export fn checkpoint_probe_patch_step(bytes: [*]const u8, length: usize) c_i
     const progress = cached_store.stepPatch(stream, bytes[0..length]) catch return -1;
     return if (progress.done) 1 else 0;
 }
+pub export fn checkpoint_probe_map_promote(key: u32) c_int {
+    cached_store.promoteMapped(key) catch return -1;
+    return 0;
+}
+pub export fn checkpoint_probe_map_patch(key: u32, offset: u64, bytes: [*]const u8, length: usize) c_int {
+    cached_store.patchMappedPagePrepared(key, offset, bytes[0..length]) catch return -1;
+    return 0;
+}

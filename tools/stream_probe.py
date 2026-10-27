@@ -138,8 +138,65 @@ def main():
             os.close(fd)
         run("verify-new", rebuilt)
         result["cases"].append({"name": "compact_range_reconstruction_reopens_patched_object", "passed": True})
+        promoted = run("promote-map")
+        run("verify-map-old")
+        require(promoted["writes"] == promoted["map_metadata_pages"] + 2, "promotion copied payload")
+        result["cases"].append({"name": "map_promotion_shares_existing_33MiB_payload", "passed": True, "promotion": promoted})
+        kill_ready("mapped-patch-wait", 5)
+        mapped = run("verify-map-new")
+        root_only = run("collect-map")
+        run("verify-map-new")
+        mapped_patch = next(item["readiness"] for item in result["commands"] if item["command"] == "mapped-patch-wait")
+        legacy_patch = next(item["readiness"] for item in result["commands"] if item["command"] == "patch-wait")
+        require(mapped_patch["writes"] < legacy_patch["writes"], "extent map did not reduce patch writes")
+        result["cases"].append({"name": "mapped_patch_changes_two_pages_and_survives_ack_kill", "passed": True,
+                                 "patch": mapped_patch, "reopened": mapped, "collected": root_only,
+                                 "legacy_write_bytes": legacy_patch["writes"] * PAGE,
+                                 "mapped_write_bytes": mapped_patch["writes"] * PAGE})
+        fd = os.open(image, os.O_RDONLY)
+        try:
+            # The previous payload range is shared unchanged. Save only the
+            # newly appended map/data pages, not another large payload copy.
+            for item in ranges:
+                if item["file"] != "payload.bin":
+                    continue
+                digest = hashlib.sha256()
+                position = 0
+                while position < item["bytes"]:
+                    data = os.pread(fd, min(65536, item["bytes"] - position), item["offset"] + position)
+                    require(data, "short shared range read")
+                    digest.update(data)
+                    position += len(data)
+                require(digest.hexdigest() == item["sha256"], "shared payload was rewritten")
+            metadata_hash = copy_range(fd, 0, 258 * PAGE, output / "mapped-metadata.bin")
+            extension_offset = PAYLOAD_START + 2 * extent_bytes
+            extension_bytes = root_only["payload_high_water_pages"] * PAGE - 2 * extent_bytes
+            require(extension_bytes > 0, "missing map extension")
+            extension_hash = copy_range(fd, extension_offset, extension_bytes, output / "map-pages.bin")
+        finally:
+            os.close(fd)
+        mapped_ranges = [{"file": "mapped-metadata.bin", "offset": 0, "bytes": 258 * PAGE, "sha256": metadata_hash},
+                         next(item for item in ranges if item["file"] == "payload.bin"),
+                         {"file": "map-pages.bin", "offset": extension_offset, "bytes": extension_bytes, "sha256": extension_hash}]
+        result["mapped_snapshot"] = {"capacity": CAPACITY, "ranges": mapped_ranges, "omitted_bytes": "zero sparse holes"}
+        mapped_image = output / "mapped-reconstructed.img"
+        create_image(mapped_image)
+        fd = os.open(mapped_image, os.O_RDWR)
+        try:
+            for item in mapped_ranges:
+                position = 0
+                with (output / item["file"]).open("rb") as source_file:
+                    while data := source_file.read(65536):
+                        require(os.pwrite(fd, data, item["offset"] + position) == len(data), "short mapped restore")
+                        position += len(data)
+                require(position == item["bytes"], "mapped range length mismatch")
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        run("verify-map-new", mapped_image)
+        result["cases"].append({"name": "mapped_range_snapshot_reuses_unchanged_payload_file", "passed": True})
         result["images"] = {path.name: {"bytes": path.stat().st_size, "allocated_bytes": path.stat().st_blocks * 512}
-                            for path in (image, rebuilt)}
+                            for path in (image, rebuilt, mapped_image)}
         require(all(info["bytes"] == CAPACITY and info["allocated_bytes"] < 256 * 1024**2 for info in result["images"].values()), "image lost sparse allocation")
         result["passed"] = True
     finally:
