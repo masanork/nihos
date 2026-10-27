@@ -24,12 +24,15 @@ pub const Config = struct {
     reader_slots: u8 = 2,
     payload_reserve_pages: u32 = 0,
     payload_window_bytes: u16 = 4096,
+    leaf_cache_pages: u16 = 0,
 };
+pub const SearchBudget = struct { leaf_visits: u16 = 8, bitmap_pages: u32 = 1024 };
+pub const SearchResult = union(enum) { pending, found: u64, no_space, space: PayloadSpace };
 pub const Value = struct { first: u64, length: u64, checksum: u32 };
 pub const Reader = struct { slot: u8, token: u64 };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
 pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
-pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader };
+pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired };
 
 pub fn Store(comptime Device: type, comptime config: Config) type {
     const data_start = config.payload_start_page orelse (2 + @as(u64, config.index_pages));
@@ -37,7 +40,8 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
     if (config.leaf_pages == 0 or config.leaf_pages > 128 or config.index_pages < config.leaf_pages or
         Device.capacity % page_bytes != 0 or data_start < 2 + @as(u64, config.index_pages) or
         config.payload_reserve_pages >= capacity_pages or data_start >= capacity_pages - config.payload_reserve_pages or
-        config.payload_window_bytes == 0 or config.payload_window_bytes > 16384) @compileError("invalid experimental checkpoint geometry");
+        config.payload_window_bytes == 0 or config.payload_window_bytes > 16384 or
+        config.leaf_cache_pages > config.leaf_pages) @compileError("invalid experimental checkpoint geometry");
     const data_end = capacity_pages - config.payload_reserve_pages;
     return struct {
         const Self = @This();
@@ -50,8 +54,22 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             refs: [config.leaf_pages]Ref = @splat(.{}),
         };
         const Pin = struct { root: Root = .{}, token: u64 = 0 };
+        const CachedLeaf = struct { ref: Ref = .{}, bytes: [page_bytes]u8 = @splat(0) };
+        const Search = struct {
+            phase: enum { idle, mark, scan, done } = .idle,
+            wanted: ?u64 = null,
+            result: SearchResult = .pending,
+            start: u64 = data_start,
+            end: u64 = data_start,
+            root: u16 = 0,
+            leaf: u16 = 0,
+            bit: u32 = 0,
+            run: u64 = 0,
+            space: PayloadSpace = .{ .usable_pages = data_end - data_start, .reserved_pages = config.payload_reserve_pages, .free_pages = 0, .largest_run = 0 },
+        };
         pub const max_objects = config.leaf_pages * leaf_entries;
         pub const reader_limit = config.reader_slots;
+        pub const metadata_cache_pages = config.leaf_cache_pages;
         pub const index_pool_pages = config.index_pages;
         // Current + retained disk root + staged transaction + reader snapshots.
         pub const max_protected_index_pages = (3 + @as(u32, config.reader_slots)) * config.leaf_pages;
@@ -67,6 +85,12 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         next_reader: u64 = 1,
         cache: [page_bytes]u8 = @splat(0),
         occupancy: [config.payload_window_bytes]u8 = @splat(0),
+        leaf_cache: [config.leaf_cache_pages]CachedLeaf = @splat(.{}),
+        search: Search = .{},
+        metadata_reads: u64 = 0,
+        metadata_hits: u64 = 0,
+        step_leaf_visits: u16 = 0,
+        step_bitmap_pages: u32 = 0,
         search_windows: u32 = 0,
         search_leaf_reads: u32 = 0,
         ready: bool = false,
@@ -78,11 +102,17 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.device.read(page * page_bytes, bytes) catch return self.ioFailure();
         }
         fn writePage(self: *Self, page: u64, bytes: *const [page_bytes]u8) Error!void {
+            // Physical pages can be recycled for another logical leaf. Drop
+            // every matching cached page before attempting any write to it.
+            for (&self.leaf_cache) |*entry| if (entry.ref.page == page) {
+                entry.ref = .{};
+            };
             self.device.write(page * page_bytes, bytes) catch return self.ioFailure();
         }
         fn ioFailure(self: *Self) Error {
             self.faulted = true;
             self.in_transaction = false;
+            self.invalidateSearch();
             return error.Io;
         }
         fn usable(self: *Self) Error!void {
@@ -155,12 +185,14 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             try self.usable();
             if (self.in_transaction) return error.Busy;
             if (self.current.generation == std.math.maxInt(u64)) return error.GenerationExhausted;
+            self.invalidateSearch();
             self.staged = self.current;
             self.staged.generation += 1;
             self.in_transaction = true;
         }
         pub fn rollback(self: *Self) Error!void {
             try self.transaction();
+            self.invalidateSearch();
             self.in_transaction = false;
         }
 
@@ -169,6 +201,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             try self.usable();
             if (self.next_reader == std.math.maxInt(u64)) return error.GenerationExhausted;
             for (&self.readers, 0..) |*reader, i| if (reader.token == 0) {
+                self.invalidateSearch();
                 reader.* = .{ .root = self.current, .token = self.next_reader };
                 self.next_reader += 1;
                 return .{ .slot = @intCast(i), .token = reader.token };
@@ -183,6 +216,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             // Allow resource release after an I/O/integrity fault as well.
             if (!self.ready) return error.NotReady;
             _ = try self.readerRoot(reader);
+            self.invalidateSearch();
             self.readers[reader.slot].token = 0;
         }
         fn rootReferences(root: *const Root, page: u64) bool {
@@ -233,85 +267,163 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             }
             while (cursor < end) : (cursor += 1) self.occupancy[cursor / 8] |= @as(u8, 1) << @as(u3, @intCast(cursor % 8));
         }
-        fn markRoot(self: *Self, root: *const Root, start: u64, end: u64) Error!void {
-            for (root.refs, 0..) |ref, index| {
-                if (ref.page == 0) continue;
-                self.search_leaf_reads +|= 1;
-                self.loadLeaf(root, index) catch |err| {
-                    if (err == error.Corrupt) return self.corruption();
-                    return err;
-                };
-                for (0..leaf_entries) |entry| {
-                    const value = try decodeEntry(root, self.cache[32 + entry * 32 ..][0..32]) orelse continue;
-                    if (value.length == 0) continue;
-                    const last = value.first + dataPages(value.length) + checksumPages(value.length);
-                    const overlap_start = @max(start, value.first);
-                    const overlap_end = @min(end, last);
-                    if (overlap_start < overlap_end) self.markRange(@intCast(overlap_start - start), @intCast(overlap_end - start));
-                }
+        fn markLeaf(self: *Self, root: *const Root, index: usize) Error!void {
+            const before = self.metadata_reads;
+            self.loadLeaf(root, index) catch |err| {
+                if (err == error.Corrupt) return self.corruption();
+                return err;
+            };
+            self.search_leaf_reads +|= @intCast(self.metadata_reads - before);
+            for (0..leaf_entries) |entry| {
+                const value = try decodeEntry(root, self.cache[32 + entry * 32 ..][0..32]) orelse continue;
+                if (value.length == 0) continue;
+                const last = value.first + dataPages(value.length) + checksumPages(value.length);
+                const first_overlap = @max(self.search.start, value.first);
+                const last_overlap = @min(self.search.end, last);
+                if (first_overlap < last_overlap) self.markRange(@intCast(first_overlap - self.search.start), @intCast(last_overlap - self.search.start));
             }
-        }
-        fn markWindow(self: *Self, start: u64, end: u64) Error!void {
-            self.search_windows +|= 1;
-            @memset(&self.occupancy, 0);
-            try self.markRoot(&self.current, start, end);
-            try self.markRoot(&self.retained, start, end);
-            if (self.in_transaction) try self.markRoot(&self.staged, start, end);
-            for (&self.readers) |*reader| if (reader.token != 0) try self.markRoot(&reader.root, start, end);
         }
         fn occupied(self: *const Self, offset: usize) bool {
             return self.occupancy[offset / 8] & (@as(u8, 1) << @as(u3, @intCast(offset % 8))) != 0;
         }
-        fn findPayload(self: *Self, pages: u64) Error!u64 {
-            self.search_windows = 0;
-            self.search_leaf_reads = 0;
-            if (pages == 0) return 0;
-            if (pages > data_end - data_start) return error.NoSpace;
-            // Never rewind high-water marks. A tail beyond every protected
-            // root's high-water mark needs no bitmap scan.
-            var tail = @max(self.current.payload_next, self.retained.payload_next);
-            if (self.in_transaction) tail = @max(tail, self.staged.payload_next);
-            for (&self.readers) |*reader| if (reader.token != 0) {
-                tail = @max(tail, reader.root.payload_next);
-            };
-            if (pages <= data_end - tail) return tail;
-            var start: u64 = data_start;
-            var run: u64 = 0;
-            while (start < data_end) {
-                const end = start + @min(self.occupancy.len * 8, data_end - start);
-                try self.markWindow(start, end);
-                for (0..@intCast(end - start)) |offset| {
-                    run = if (self.occupied(offset)) 0 else run + 1;
-                    if (run == pages) return start + offset + 1 - run;
-                }
-                start = end;
-            }
-            return error.NoSpace;
+        fn invalidateSearch(self: *Self) void {
+            self.search.phase = .idle;
         }
-        /// Exact union statistics, scanning fixed-size bitmap windows. This
-        /// may read metadata for every window; it is not a bounded-time API.
-        pub fn payloadSpace(self: *Self) Error!PayloadSpace {
-            try self.usable();
+        pub fn cancelPayloadSearch(self: *Self) void {
+            self.invalidateSearch();
+        }
+        /// Drop cached immutable metadata, e.g. before a forced cold integrity
+        /// check. Cache hits are still CRC/identity/bounds checked in RAM.
+        pub fn dropMetadataCache(self: *Self) void {
+            for (&self.leaf_cache) |*entry| entry.ref = .{};
+        }
+        fn startWindow(self: *Self) void {
+            self.search_windows +|= 1;
+            self.search.end = self.search.start + @min(self.occupancy.len * 8, data_end - self.search.start);
+            self.search.root = 0;
+            self.search.leaf = 0;
+            self.search.bit = 0;
+            self.search.phase = .mark;
+            @memset(&self.occupancy, 0);
+        }
+        fn startSearch(self: *Self, wanted: ?u64) void {
+            self.search = .{ .wanted = wanted };
             self.search_windows = 0;
             self.search_leaf_reads = 0;
-            var result = PayloadSpace{ .usable_pages = data_end - data_start, .reserved_pages = config.payload_reserve_pages, .free_pages = 0, .largest_run = 0 };
-            var start: u64 = data_start;
-            var run: u64 = 0;
-            while (start < data_end) {
-                const end = start + @min(self.occupancy.len * 8, data_end - start);
-                try self.markWindow(start, end);
-                for (0..@intCast(end - start)) |offset| {
-                    if (self.occupied(offset)) {
-                        run = 0;
-                    } else {
-                        run += 1;
-                        result.free_pages += 1;
-                        result.largest_run = @max(result.largest_run, run);
-                    }
+            if (wanted) |pages| {
+                if (pages == 0) {
+                    self.search.phase = .done;
+                    self.search.result = .{ .found = 0 };
+                    return;
                 }
-                start = end;
+                if (pages > data_end - data_start) {
+                    self.search.phase = .done;
+                    self.search.result = .no_space;
+                    return;
+                }
+                var tail = @max(self.current.payload_next, self.retained.payload_next);
+                if (self.in_transaction) tail = @max(tail, self.staged.payload_next);
+                for (&self.readers) |*reader| if (reader.token != 0) {
+                    tail = @max(tail, reader.root.payload_next);
+                };
+                if (pages <= data_end - tail) {
+                    self.search.phase = .done;
+                    self.search.result = .{ .found = tail };
+                    return;
+                }
             }
-            return result;
+            self.startWindow();
+        }
+        pub fn beginPayloadSearch(self: *Self, pages: u64) Error!void {
+            try self.transaction();
+            self.startSearch(pages);
+        }
+        pub fn beginPayloadSpace(self: *Self) Error!void {
+            try self.usable();
+            self.startSearch(null);
+        }
+        fn searchRoot(self: *Self, index: u16) ?*const Root {
+            return switch (index) {
+                0 => &self.current,
+                1 => &self.retained,
+                2 => if (self.in_transaction) &self.staged else null,
+                else => if (self.readers[index - 3].token != 0) &self.readers[index - 3].root else null,
+            };
+        }
+        /// Work-unit limits, not a wall-clock guarantee. Every root/leaf slot
+        /// costs one visit, including cache hits and absent references.
+        pub fn stepPayloadSearch(self: *Self, budget: SearchBudget) Error!SearchResult {
+            try self.usable();
+            if (budget.leaf_visits == 0 or budget.leaf_visits > 64 or budget.bitmap_pages == 0 or budget.bitmap_pages > 4096) return error.InvalidArgument;
+            if (self.search.phase == .idle) return error.InvalidSearch;
+            self.step_leaf_visits = 0;
+            self.step_bitmap_pages = 0;
+            while (true) switch (self.search.phase) {
+                .idle => unreachable,
+                .done => return self.search.result,
+                .mark => {
+                    if (self.search.root == 3 + @as(u16, config.reader_slots)) {
+                        self.search.phase = .scan;
+                        continue;
+                    }
+                    if (self.step_leaf_visits == budget.leaf_visits) return .pending;
+                    self.step_leaf_visits += 1;
+                    const index = self.search.leaf;
+                    const root = self.searchRoot(self.search.root);
+                    self.search.leaf += 1;
+                    if (self.search.leaf == config.leaf_pages) {
+                        self.search.leaf = 0;
+                        self.search.root += 1;
+                    }
+                    if (root) |view| if (view.refs[index].page != 0) try self.markLeaf(view, index);
+                },
+                .scan => {
+                    if (self.search.bit == self.search.end - self.search.start) {
+                        if (self.search.end == data_end) {
+                            self.search.result = if (self.search.wanted != null) .no_space else .{ .space = self.search.space };
+                            self.search.phase = .done;
+                        } else {
+                            self.search.start = self.search.end;
+                            self.startWindow();
+                        }
+                        continue;
+                    }
+                    if (self.step_bitmap_pages == budget.bitmap_pages) return .pending;
+                    self.step_bitmap_pages += 1;
+                    const offset = self.search.bit;
+                    self.search.bit += 1;
+                    if (self.occupied(offset)) {
+                        self.search.run = 0;
+                    } else {
+                        self.search.run += 1;
+                        self.search.space.free_pages += 1;
+                        self.search.space.largest_run = @max(self.search.space.largest_run, self.search.run);
+                        if (self.search.wanted) |pages| if (self.search.run == pages) {
+                            self.search.result = .{ .found = self.search.start + offset + 1 - pages };
+                            self.search.phase = .done;
+                        };
+                    }
+                },
+            };
+        }
+        fn findPayload(self: *Self, pages: u64) Error!u64 {
+            if (self.search.phase != .done or self.search.wanted != pages) self.startSearch(pages);
+            while (true) switch (try self.stepPayloadSearch(.{})) {
+                .pending => {},
+                .found => |first| return first,
+                .no_space => return error.NoSpace,
+                .space => unreachable,
+            };
+        }
+        /// Blocking compatibility wrapper. Services should begin/step the scan
+        /// themselves and yield between steps before using putPrepared.
+        pub fn payloadSpace(self: *Self) Error!PayloadSpace {
+            try self.beginPayloadSpace();
+            while (true) switch (try self.stepPayloadSearch(.{})) {
+                .pending => {},
+                .space => |space| return space,
+                else => unreachable,
+            };
         }
 
         fn decodeEntry(root: *const Root, bytes: []const u8) Error!?Value {
@@ -340,7 +452,19 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
                 self.cache = @splat(0);
                 return;
             }
-            try self.readPage(ref.page, &self.cache);
+            var hit = false;
+            if (index < config.leaf_cache_pages) {
+                const entry = &self.leaf_cache[index];
+                if (entry.ref.page == ref.page and entry.ref.checksum == ref.checksum) {
+                    self.cache = entry.bytes;
+                    self.metadata_hits +|= 1;
+                    hit = true;
+                }
+            }
+            if (!hit) {
+                self.metadata_reads +|= 1;
+                try self.readPage(ref.page, &self.cache);
+            }
             if (!pageValid(&self.cache) or std.mem.readInt(u32, self.cache[crc_offset..][0..4], .little) != ref.checksum or
                 std.mem.readInt(u32, self.cache[0..4], .little) != leaf_magic or
                 std.mem.readInt(u32, self.cache[4..8], .little) != version or
@@ -349,6 +473,11 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             const leaf_epoch = std.mem.readInt(u64, self.cache[16..24], .little);
             if (leaf_epoch == 0 or leaf_epoch > root.generation) return error.Corrupt;
             for (0..leaf_entries) |i| _ = try decodeEntry(root, self.cache[32 + i * 32 ..][0..32]);
+            // Retained/staged variants never evict the current logical leaf.
+            // Every hit still passed the CRC, identity and root-bound checks.
+            if (!hit and index < config.leaf_cache_pages and self.current.refs[index].page == ref.page and self.current.refs[index].checksum == ref.checksum) {
+                self.leaf_cache[index] = .{ .ref = ref, .bytes = self.cache };
+            }
         }
 
         fn lookup(self: *Self, root: *const Root, key: u32) Error!?Value {
@@ -358,10 +487,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
         fn checkedLookup(self: *Self, root: *const Root, key: u32) Error!?Value {
             return self.lookup(root, key) catch |err| {
-                if (err == error.Corrupt) {
-                    self.faulted = true;
-                    self.in_transaction = false;
-                }
+                if (err == error.Corrupt) return self.corruption();
                 return err;
             };
         }
@@ -402,6 +528,25 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             const tables = checksumPages(data.len);
             try self.preflight();
             const first = try self.findPayload(pages + tables);
+            return self.putAt(key, data, first);
+        }
+        /// Consume a completed allocation search without silently doing more
+        /// search work. Payload writing itself is still synchronous.
+        pub fn putPrepared(self: *Self, key: u32, data: []const u8) Error!void {
+            try self.transaction();
+            try validKey(key);
+            try self.preflight();
+            if (self.search.phase != .done or self.search.wanted != dataPages(data.len) + checksumPages(data.len)) return error.SearchRequired;
+            const first = switch (self.search.result) {
+                .found => |first| first,
+                else => return error.SearchRequired,
+            };
+            return self.putAt(key, data, first);
+        }
+        fn putAt(self: *Self, key: u32, data: []const u8, first: u64) Error!void {
+            self.invalidateSearch();
+            const pages = dataPages(data.len);
+            const tables = checksumPages(data.len);
             const existed = try self.checkedLookup(&self.staged, key) != null;
             var position: usize = 0;
             for (0..@intCast(tables)) |table| {
@@ -434,11 +579,13 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             try self.transaction();
             try validKey(key);
             try self.preflight();
+            self.invalidateSearch();
             if (try self.checkedLookup(&self.staged, key) == null) return error.NotFound;
             try self.replace(key, null, true);
         }
         pub fn commit(self: *Self) Error!void {
             try self.transaction();
+            self.invalidateSearch();
             self.device.sync() catch return self.ioFailure();
             try self.publish(&self.staged);
             self.retained = self.current;
@@ -493,6 +640,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         fn corruption(self: *Self) Error {
             self.faulted = true;
             self.in_transaction = false;
+            self.invalidateSearch();
             return error.Corrupt;
         }
 

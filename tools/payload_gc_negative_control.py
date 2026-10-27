@@ -14,20 +14,20 @@ def main():
     output = Path(tempfile.mkdtemp(prefix="negative-payload.", dir=repo / "build/store-payload-gc"))
     original = (repo / "src/storage/checkpoint_model.zig").read_text()
     variants = (
-        ("reader", "            for (&self.readers) |*reader| if (reader.token != 0) try self.markRoot(&reader.root, start, end);\n",
+        ("reader", "                else => if (self.readers[index - 3].token != 0) &self.readers[index - 3].root else null,", "                else => null,",
          "a pinned payload view stays valid", "PAYLOAD_PIN_COUNTEREXAMPLE error=Corrupt"),
-        ("retained", "            try self.markRoot(&self.retained, start, end);\n",
+        ("retained", "                1 => &self.retained,", "                1 => null,",
          "the retained disk payload survives", "PAYLOAD_RETAINED_COUNTEREXAMPLE error=Corrupt"),
     )
     results = []
-    for name, needle, test_filter, marker in variants:
+    for name, needle, replacement, test_filter, marker in variants:
         if original.count(needle) != 1:
             raise RuntimeError(f"{name} mutation is not unique")
         directory = output / name
         directory.mkdir()
         for filename in ("payload_gc_test.zig", "model_media.zig"):
             shutil.copy2(repo / "src/storage" / filename, directory / filename)
-        mutant = original.replace(needle, "")
+        mutant = original.replace(needle, replacement)
         (directory / "checkpoint_model.zig").write_text(mutant)
         (directory / "mutation.diff").write_text("".join(difflib.unified_diff(original.splitlines(True), mutant.splitlines(True), fromfile="source", tofile="mutant")))
         command = [sys.argv[1], "test", str(directory / "payload_gc_test.zig"), "--test-filter", test_filter]

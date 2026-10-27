@@ -6,7 +6,7 @@ const expect = std.testing.expect;
 const expectError = std.testing.expectError;
 const page = checkpoint.page_bytes;
 const Backend = media.Media(14 * page);
-const Store = checkpoint.Store(Backend, .{ .leaf_pages = 1, .index_pages = 4, .payload_reserve_pages = 2 });
+const Store = checkpoint.Store(Backend, .{ .leaf_pages = 1, .index_pages = 4, .payload_reserve_pages = 2, .leaf_cache_pages = 1 });
 
 fn put(store: anytype, data: []const u8) !void {
     try store.begin();

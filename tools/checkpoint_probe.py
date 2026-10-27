@@ -86,7 +86,7 @@ def main():
             return None
         require(completed.returncode == 0, f"{command} failed: {completed.stderr}")
         data = json.loads(completed.stdout)
-        require(data["state_bytes"] <= 32 * 1024, "descriptor budget exceeded")
+        require(data["state_bytes"] <= 640 * 1024, "descriptor plus metadata cache budget exceeded")
         require(data["mount_bytes"] <= data["mount_limit_bytes"] == 258 * PAGE, "mount budget exceeded")
         require(data["tail_replay_bytes"] == 0, "unexpected replay")
         return data
