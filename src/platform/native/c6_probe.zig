@@ -307,7 +307,10 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
     report.stage = 4;
     try host.enableFunction();
     // Factory ESP-Hosted gates its INIT event on the scratch-7 datapath bit.
-    try host.writeByte(1, 0x8c, 1);
+    // Scratch-7 is a host->slave doorbell, not a stable configuration byte.
+    // The peer can clear it before RAW readback; require a successful R5,
+    // then use the INIT event as acknowledgement instead of byte equality.
+    try host.writeDoorbell(1, 0x8c, 1);
     report.stage = 11;
     const started = clock.counter() orelse return error.Clock;
     hosted_client.begin(join, started);

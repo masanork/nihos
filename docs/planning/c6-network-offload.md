@@ -29,7 +29,8 @@ ESP-Hostedには内部transport経由のC6 OTAがあるため、外部UARTだけ
 - 既存C6用Hosted modeも実装：INIT/版確認、Wi-Fi RPC、P4 DHCP Offer/ACK検証。
   C6更新を伴わず、AP設定はRAMへ指定。専用native imageのビルド・監査と
   ホスト試験を実施。[記録](../measurements/2026-10-27-c6-hosted-station-build.md)。
-  現在USBデバイスが不在のため、AP/IPの実機成功はまだない。
+  実機でC6のSDIO/RPC・Hosted 1.4.1識別まで通過。保存APがreason 201で見つからず、
+  AP設定を確認中。[実機記録](../measurements/2026-10-27-c6-hosted-device.md)。IP取得は未達。
 - ホスト試験対象：改行・NUL・偽のOKを含むTCP/BLE混在データ、容量超過、
   不正ヘッダ、途中切断、遅延応答、古いtokenの拒否。
 - 未実装：IRQ駆動SDIOサービス、microSDとの共有調停、socket/BLEリソース表、アプリ接続。

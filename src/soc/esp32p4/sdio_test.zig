@@ -10,6 +10,7 @@ const Model = struct {
     touches: usize = 0,
     irq_error: u32 = 0,
     r5_error: u32 = 0,
+    self_clear: bool = false,
     dma_error: u32 = 0,
     no_data: bool = false,
     fail_prepare: bool = false,
@@ -48,6 +49,7 @@ const Model = struct {
                 const address = (argument >> 9) & 0x1ffff;
                 if (address >= self.cccr.len) break :blk self.r5_error;
                 if (argument & (1 << 31) != 0) self.cccr[address] = @truncate(argument);
+                if (self.self_clear and address == 0x8c) self.cccr[address] = 0;
                 break :blk self.cccr[address] | self.r5_error;
             },
             53 => self.r5_error,
@@ -130,6 +132,19 @@ test "R5 failure poisons the host and no subsequent transaction reaches hardware
     const touches = model.touches;
     try std.testing.expectError(error.Retired, host.readByte(0, 0));
     try std.testing.expectEqual(touches, model.touches);
+}
+
+test "self-clearing doorbell accepts a cleared byte but preserves R5 validation" {
+    var model: Model = .{};
+    var host = try setup(&model);
+    model.self_clear = true;
+    model.r5_error = 0x1000; // IO current state is not an R5 error bit.
+    try host.writeDoorbell(1, 0x8c, 1);
+    try std.testing.expect(!host.faulted);
+    try std.testing.expectEqual(@as(u8, 0), try host.readByte(1, 0x8c));
+    model.r5_error = 0x100;
+    try std.testing.expectError(error.Response, host.writeDoorbell(1, 0x8c, 1));
+    try std.testing.expect(host.faulted);
 }
 
 test "DMA transfers preserve byte counts, direction and descriptor address" {

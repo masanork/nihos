@@ -183,6 +183,14 @@ pub fn Controller(comptime IO: type) type {
             }
         }
 
+        /// Write a self-clearing event register. R5 errors are still fatal;
+        /// the protocol owner must obtain its acknowledgement from the peer.
+        pub fn writeDoorbell(self: *Self, function: u8, address: u32, value: u8) Error!void {
+            const argument = try argument52(function, address, value);
+            if (!self.selected) return error.NotReady;
+            _ = try self.command(52, argument, null);
+        }
+
         pub fn enableFunction(self: *Self) Error!void {
             errdefer self.faulted = true;
             try self.writeByte(0, 2, (try self.readByte(0, 2)) | 2);
