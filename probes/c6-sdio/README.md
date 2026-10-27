@@ -190,7 +190,10 @@ SDIO mode tag is reported as 255 (unknown), not proof of streaming mode.
 Protocol/DMA/counter errors stop the experiment. This profile still needs
 physical validation, including partial FIFO reads, coherency and cold boot.
 
-Preserve the actual P4 firmware/layout/OTA selection before starting a device
-run. Use only a verified spare application slot and restore its previous image
-and OTA metadata afterward; do not flash the generated loader/table over the
-device. This fixture has not been executed on physical hardware yet.
+Confirm the actual P4 firmware/layout/OTA selection before a device run. A spare
+application slot can isolate the experiment; the user's factory-only development
+layout was tested by replacing its factory app under their authorization, with
+no full-flash backup per their explicit instruction. Do not flash the generated
+loader/table over the device. The [physical run](../../docs/measurements/2026-10-27-c6-hosted-device.md)
+identified C6 Hosted 1.4.1 and exercised Wi-Fi RPCs, then failed to find the saved
+AP (reason 201). No physical DHCP/IP pass has been obtained yet.
