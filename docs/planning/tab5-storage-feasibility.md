@@ -451,3 +451,14 @@ while all four saved generations were byte-identical. This supports the planned
 Blocking compatibility wrappers still exist; a native service must yield between
 steps and place the cache in its PSRAM budget. Streaming/partial writes, full I/O
 latency, target placement and physical durability remain separate gates.
+
+The [fixed-buffer streaming follow-up](../measurements/2026-10-27-store-streaming.md)
+adds declared-length streams, staged finish, cancellation and incremental fixed-
+length range replacement. A 33 MiB + 17 B object passed separate-process checks
+using a 4 KiB input buffer; private writer buffers add 8 KiB plus scalar state.
+The RV32 state is 27,104 B uncached or 553,440 B with the 512 KiB metadata cache.
+This addresses whole-object input RAM, not random-write amplification: replacing
+20 B still wrote 34,652,160 B including sidecars and root/leaf metadata. A paged
+extent map with immutable range sharing is a prerequisite for practical large-DB
+partial writes. Native cancellation/ownership, placement, target durability and
+SQLite integration remain open.
