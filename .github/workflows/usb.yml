@@ -10,6 +10,8 @@ on:
       - 'probes/usb*/**'
       - 'probes/photo/**'
       - 'tools/*photo*'
+      - 'tools/*auto*'
+      - 'tools/generate-jis0208.py'
       - 'tools/bootstrap-openjpeg.sh'
       - 'tools/build-native*.sh'
       - 'tools/run-static-analysis.sh'
@@ -26,6 +28,8 @@ on:
       - 'probes/usb*/**'
       - 'probes/photo/**'
       - 'tools/*photo*'
+      - 'tools/*auto*'
+      - 'tools/generate-jis0208.py'
       - 'tools/bootstrap-openjpeg.sh'
       - 'tools/build-native*.sh'
       - 'tools/run-static-analysis.sh'
@@ -100,6 +104,11 @@ jobs:
                build/native-device/loader/config/sdkconfig.h \
                build/native-device/loader/partition_table/partition-table.bin \
                "$destination/"
+            case "$feature" in
+              card-photo|card-auto|card-auto-probe)
+                cp build/native-device/photo-manifest.json "$destination/"
+                ;;
+            esac
           done
 
       - name: Retain source-bound compile evidence
