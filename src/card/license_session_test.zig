@@ -28,6 +28,11 @@ test "pinned synthetic signatures bind the full fixed files including padding an
         const key = trust.lookup(&pins, signed.signature.key_id).?;
         var request = crypto.Request{ .modulus = key.modulus, .exponent = key.exponent, .signature = signed.signature.value, .data = signed.data.ptr, .length = signed.data.len };
         try crypto.verify(&request);
+        if (myna) {
+            workspace[26] = 1; // Literal WEF02 paired with an FF-encoded WEF03.
+            try t.expectError(error.Malformed, records.Parser(null).envelope(&workspace, true));
+            workspace[26] = 255;
+        }
         for ([_]usize{ 0, 880, 962, if (myna) 5844 else 2966 }) |offset| {
             workspace[offset] ^= 1;
             try t.expectError(error.InvalidSignature, crypto.verify(&request));
@@ -183,7 +188,17 @@ test "myna extended tag encodings reject duplicate, mixed, truncated and history
         raw[0] = 0xe8;
         try t.expectError(error.Malformed, P.myna(&raw));
     }
-    var iterator = records.ExtendedIterator{ .bytes = &.{ 1, 0, 0, 255, 1, 0 } };
-    _ = try iterator.next();
+    var iterator = records.ExtendedIterator{ .bytes = &.{ 1, 0, 0 }, .encoding = .ff };
     try t.expectError(error.Malformed, iterator.next());
+}
+
+test "literal RFU FF is not mistaken for an extended photo tag" {
+    var raw: [5845]u8 = undefined;
+    mynaFixture(&raw, true);
+    const prefix: usize = 9 + 14 + 3;
+    std.mem.copyBackwards(u8, raw[prefix + 9 ..][0..19], raw[prefix..][0..19]);
+    @memcpy(raw[prefix..][0..9], "\xff\x07" ++ "0000000");
+    const info = try records.Parser(null).myna(&raw);
+    try t.expectEqual(records.TagEncoding.literal, info.encoding);
+    try t.expectEqual(@as(usize, 16), info.portrait.len);
 }
