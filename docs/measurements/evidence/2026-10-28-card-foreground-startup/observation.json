@@ -1,0 +1,22 @@
+{
+  "runtime_source_commit": "787610a292e5078091a903f95854d21288f563d1",
+  "observation_seconds": 600,
+  "requested_jobs": 2,
+  "requested_removals": 2,
+  "capture_exit_status": 1,
+  "completion_marker": false,
+  "reason": "Requested job/removal count not reached",
+  "counts": {
+    "TRAP": 0,
+    "FAIL": 0,
+    "CARD_AUTO_DETECTED ": 0,
+    "CARD_AUTO_REMOVED ": 0,
+    "CARD_AUTO_PROMPT ": 0
+  },
+  "warm_reset": true,
+  "post_capture_reset": false,
+  "post_capture_flash_verify": false,
+  "optical_flicker": "awaiting user observation",
+  "credential_read": "not attempted",
+  "boot_log_sha256": "faaa59933f5e8fe586ae229b555d7b43e22410a449be15aadea314fc8d932b78"
+}

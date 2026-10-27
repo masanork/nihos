@@ -168,7 +168,7 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
             raise ValueError('display refresh timing does not match the selected profile')
     if 'NIHOS_NATIVE_DISPLAY_LAYOUT ' in log:
         layout = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_LAYOUT', ('logical_width', 'logical_height', 'rotation'))
-        if layout != dict(zip(('logical_width', 'logical_height', 'rotation'), (720, 1280, 0) if mode in (6, 7) else (1280, 720, 1))):
+        if layout != dict(zip(('logical_width', 'logical_height', 'rotation'), (720, 1280, 0) if mode in (6, 7, 8, 9, 10, 11) else (1280, 720, 1))):
             raise ValueError('unexpected display composition/rotation')
     console = None
     console_style = None
