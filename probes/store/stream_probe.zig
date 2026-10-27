@@ -5,6 +5,7 @@ const file_media = @import("file_media");
 const Device = file_media.Media(16 * 1024 * 1024 * 1024);
 const Store = model.Store(Device, .{ .index_pages = 256, .payload_start_page = Device.capacity / model.page_bytes - 32768, .payload_reserve_pages = 16, .leaf_cache_pages = 128 });
 const length: u64 = 33 * 1024 * 1024 + 17;
+const short_length = length - 4096 - 13;
 const patch_offset = model.checksums_per_page * model.page_bytes - 5;
 const replacement = "STREAMING-PATCH-TEST";
 const mapped_replacement = "MAPPED-PAGE-CHANGED!";
@@ -55,6 +56,35 @@ fn verify(store: *Store, change: []const u8) !void {
     }
     try store.verify(1);
 }
+fn verifyResized(store: *Store, expected_length: u64) !void {
+    if ((try store.get(1)).length != expected_length) return error.BadLength;
+    var buffer: [4096]u8 = undefined;
+    var offset: u64 = 0;
+    while (offset < expected_length) {
+        const n = try store.read(1, offset, &buffer);
+        if (n == 0) return error.BadRead;
+        for (buffer[0..n], 0..) |byte, i| {
+            const position = offset + i;
+            const expected = if (position >= short_length) 0 else if (position >= patch_offset and position < patch_offset + mapped_replacement.len) mapped_replacement[@intCast(position - patch_offset)] else value(position);
+            if (byte != expected) return error.ResizedPayload;
+        }
+        offset += n;
+    }
+    try store.verify(1);
+}
+fn resizePrepared(store: *Store, size: u64, scratch: *model.ResizeScratch) !void {
+    try store.begin();
+    const pages = try store.mappedResizePages(1, size, scratch);
+    if (pages != 3) return error.UnexpectedResizeCost;
+    try store.beginPayloadSearch(pages);
+    while (true) switch (try store.stepPayloadSearch(.{})) {
+        .pending => {},
+        .found => break,
+        else => return error.BadSearch,
+    };
+    try store.resizeMappedPrepared(1, size, scratch);
+    try store.commit();
+}
 fn waitForKill(io: std.Io) !void {
     var byte: [1]u8 = undefined;
     _ = try std.Io.File.stdin().readStreaming(io, &.{&byte});
@@ -64,7 +94,7 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(init.arena.allocator());
     if (args.len != 3) return error.Usage;
     const command = args[1];
-    const known = [_][]const u8{ "format", "seed", "verify-old", "patch", "patch-wait", "verify-new", "cancel", "stage-wait", "finish-wait", "promote-map", "verify-map-old", "mapped-patch-wait", "verify-map-new", "collect-map" };
+    const known = [_][]const u8{ "format", "seed", "verify-old", "patch", "patch-wait", "verify-new", "cancel", "stage-wait", "finish-wait", "promote-map", "verify-map-old", "mapped-patch-wait", "verify-map-new", "collect-map", "resize-cycle", "verify-resized" };
     var valid = false;
     for (known) |name| if (std.mem.eql(u8, command, name)) {
         valid = true;
@@ -142,6 +172,27 @@ pub fn main(init: std.process.Init) !void {
     } else if (std.mem.eql(u8, command, "verify-map-new")) {
         if ((store.generation() != 5 and store.generation() != 6) or (try store.get(1)).kind != .mapped) return error.BadGeneration;
         try verify(&store, mapped_replacement);
+    } else if (std.mem.eql(u8, command, "resize-cycle")) {
+        if (store.generation() != 6) return error.BadGeneration;
+        const reader = try store.pin();
+        var scratch = model.ResizeScratch{};
+        try resizePrepared(&store, short_length, &scratch);
+        try verifyResized(&store, short_length);
+        try resizePrepared(&store, length, &scratch);
+        try verifyResized(&store, length);
+        var old: [4096]u8 = undefined;
+        var offset: u64 = short_length;
+        while (offset < length) {
+            const n = try store.readPinned(reader, 1, offset, &old);
+            if (n == 0) return error.BadRead;
+            for (old[0..n], 0..) |byte, i| if (byte != value(offset + i)) return error.OldReaderChanged;
+            offset += n;
+        }
+        try store.release(reader);
+        try store.collectPayload();
+    } else if (std.mem.eql(u8, command, "verify-resized")) {
+        if (store.generation() != 9) return error.BadGeneration;
+        try verifyResized(&store, length);
     } else if (std.mem.eql(u8, command, "collect-map")) {
         if (store.generation() != 5) return error.BadGeneration;
         try store.collectPayload();
