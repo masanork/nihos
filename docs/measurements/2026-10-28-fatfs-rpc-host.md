@@ -57,5 +57,5 @@ Zig Debug / ReleaseSafe各238件、Python 184件、format / ZLint / ShellCheck�
 policy上限まで320 Bだった。これは新RPCをlinkしない既存profileの回帰結果であり、
 新RPCを実機搭載できる余裕があるという証明ではない。
 
-native task stop/wakeup、IRQ resident配置、controller abortとの結合、最終link・8 KiB task stackの検証は残る。
+native task stop/wakeup、IRQ resident配置、controller abortとの結合、最終link・task stackの検証は残る。
 clean power-onと実カードFatFs、永続SQLite、書込み・電断耐性は引き続き未確認である。

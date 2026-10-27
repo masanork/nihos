@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import struct
 import sys
+from fatfs_native_profile import SOURCES
 
 
 def sha(path):
@@ -35,15 +36,20 @@ def functions(path):
 
 
 def main(directory, source, littlefs=None):
+    fatfs_native = 'pub const fatfs_native = true;' in (directory / 'native_options.zig').read_text()
     objects = {name: {'sha256': sha(directory / name), 'functions': functions(directory / name)}
                for name in ('sql_sqlite3.o', 'sql_session.o', 'sql_vfs.o')}
     if littlefs is not None:
         for name in ('sql_lfs.o', 'sql_lfs_util.o', 'sql_lfs_reader.o', 'sql_storage_api.o'):
             objects[name] = {'sha256': sha(directory / name), 'functions': functions(directory / name)}
-    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text():
+    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text() and not fatfs_native:
         objects['sql_storage_runtime.o'] = {'sha256': sha(directory / 'sql_storage_runtime.o'), 'functions': functions(directory / 'sql_storage_runtime.o')}
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
         objects['sql_broker_runtime.o'] = {'sha256': sha(directory / 'sql_broker_runtime.o'), 'functions': functions(directory / 'sql_broker_runtime.o')}
+    if fatfs_native:
+        for name in ('guard', 'unicode', 'backend', 'disk', 'fixture', 'fixture_disk'):
+            file = 'sql_fat_' + name + '.o'
+            objects[file] = {'sha256': sha(directory / file), 'functions': functions(directory / file)}
     profile_path = Path(__file__).resolve().parents[1] / 'src/kernel/size_pool.zig'
     matches = re.findall(r'sqlite_probe = Config\{ \.counts = \.\{([^}]+)\}', profile_path.read_text())
     if len(matches) != 1:
@@ -55,6 +61,12 @@ def main(directory, source, littlefs=None):
               'purpose': 'explicit native SQLite Flash function allowlist; not attestation',
               'objects': objects, 'sqlite_source_sha256': sha(source / 'sqlite3.c'),
               'allowed_functions': sorted(set().union(*(set(item['functions']) for item in objects.values())))}
+    if fatfs_native:
+        root = Path(__file__).resolve().parents[1]
+        fixture = json.loads((directory / 'fatfs-fixture-manifest.json').read_text())
+        result['fatfs_native'] = {'version': 1, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
+            'sources': {path: sha(root / path) for path in SOURCES}}
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.runFatFsTasks'})
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
         root = Path(__file__).resolve().parents[1]
         result['broker'] = {'version': 2, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),
@@ -105,7 +117,7 @@ def main(directory, source, littlefs=None):
                              'api_source_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_littlefs.c'),
                              'api_header_sha256': sha(Path(__file__).resolve().parents[1] / 'include/nihos_storage.h'),
                              'api_internal_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_internal.h')}
-    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text():
+    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text() and not fatfs_native:
         root = Path(__file__).resolve().parents[1]
         result['littlefs']['service'] = {'version': 3, 'ipc_start': '0x48004000', 'ipc_bytes': 8192,
                                         'clock_group': 1, 'clock_channel': 0,

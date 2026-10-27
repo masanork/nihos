@@ -11,6 +11,7 @@ from pathlib import Path
 import struct
 import sys
 import re
+import fatfs_native_profile
 
 SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF28000
 SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
@@ -51,9 +52,10 @@ FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
 
 
 SQL_START, SQL_END = 0x40020000, 0x400C0000
+FATFS_SQL_END = 0x400D0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, sql_end=SQL_END):
     if name == ".flash.sqlpad":
         require(allow_sql and kind == 1 and flags == 2 and 0x40010020 < address < SQL_START and address + size == SQL_START,
                 "invalid SQLite Flash padding")
@@ -61,7 +63,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False):
     if name in SQL_SECTIONS:
         require(allow_sql and kind == 1 and (flags == 6 if name == ".flash.sqltext" else (flags & 7 == 2 and flags & ~50 == 0)),
                 "unapproved/mutable SQLite Flash section")
-        require(SQL_START <= address < address + size <= SQL_END and
+        require(SQL_START <= address < address + size <= sql_end and
                 (name != ".flash.sqltext" or address == SQL_START), "invalid SQLite Flash extent")
         return
     expected = FLASH_SECTIONS.get(name)
@@ -273,8 +275,8 @@ def audit_stack_layout(symbols, sizes, allocated):
             "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768)}
 
 
-def decode_stack_sizes(data, functions):
-    """LLVM static C frames, not a recursive call-graph/whole-stack bound."""
+def stack_size_rows(data, functions):
+    """LLVM static frames; this is not a whole-call-stack bound."""
     names = {}
     for name, address, _ in functions:
         names.setdefault(address, []).append(name)
@@ -296,6 +298,11 @@ def decode_stack_sizes(data, functions):
         require(address in names and value <= 0xffffffff, "unknown C stack function/size")
         rows.append({"address": hex(address), "functions": sorted(names[address]), "bytes": value})
     require(rows, "empty C static stack metadata")
+    return rows
+
+
+def decode_stack_sizes(data, functions):
+    rows = stack_size_rows(data, functions)
     return {"records": len(rows), "maximum_reported_frame_bytes": max(row["bytes"] for row in rows),
             "largest_frames": sorted(rows, key=lambda row: row["bytes"], reverse=True)[:10],
             "recursive_or_Zig_call_graph_bound": False}
@@ -331,6 +338,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     boot_code = None
     sql_sections = {}
     allow_sql = mode == "sqlite"
+    fatfs_native = (sqlite_manifest or {}).get('fatfs_native')
+    if fatfs_native is not None:
+        require(allow_sql, 'native FatFs requires SQLite mapped profile')
+        fatfs_native_profile.validate_profile(fatfs_native)
+    sql_end = FATFS_SQL_END if fatfs_native is not None else SQL_END
     require(not allow_sql or (sqlite_manifest is not None and sqlite_manifest.get("schema") == 1 and
                              sqlite_manifest.get("allowed_functions")), "missing SQLite object manifest")
     for section in sections:
@@ -347,7 +359,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                 audit_high_section(name, section_type, flags, address, size, profile)
             in_sram = low <= address and address + size <= high
             if not in_sram and not in_stacks and not in_high:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, sql_end)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
                 if name in SQL_SECTIONS:
@@ -388,7 +400,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
         text_start, sql_code = sql_sections[".flash.sqltext"]
         ro_start, sql_ro = sql_sections[".flash.sqlrodata"]
         text_end, ro_end = text_start + len(sql_code), ro_start + len(sql_ro)
-        require(ro_start == text_end and text_end % 16 == 0 and ro_end <= SQL_END, "invalid SQLite code/rodata ordering")
+        require(ro_start == text_end and text_end % 16 == 0 and ro_end <= sql_end, "invalid SQLite code/rodata ordering")
         expected_symbols = {"__flash_sql_text_start": text_start, "__flash_sql_text_end": text_end,
                             "__flash_sql_rodata_start": ro_start, "__flash_sql_rodata_end": ro_end}
         require(all(symbols.get(key) == value for key, value in expected_symbols.items()), "SQLite linker symbols differ")
@@ -418,6 +430,12 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
                       if string(names, section[0]) == ".stack_sizes"]
         require(len(stack_data) == 1, "missing/duplicate C stack metadata")
         sql_report["static_c_stack"] = decode_stack_sizes(stack_data[0], functions)
+        if fatfs_native is not None:
+            require(profile == 'device' and 'broker' in sqlite_manifest and 'service' not in sqlite_manifest.get('littlefs', {}),
+                    'native FatFs requires exclusive broker/storage phase')
+            sql_report['fatfs_native'] = fatfs_native_profile.audit(fatfs_native, symbols, symbol_sizes, low, high,
+                ro_start, sql_ro, stack_size_rows(stack_data[0], functions), sqlite_manifest['objects'])
+            sql_report['static_c_stack']['includes_zig'] = True
         sql_payload = flash_tables + bytes((-len(flash_tables)) % 4) + sql_pad + sql_code + sql_ro
         sql_payload += bytes((-len(sql_payload)) % 4)
         sql_report["padding_bytes"] = len(sql_pad)

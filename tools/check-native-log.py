@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import zlib
 
 
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
@@ -13,6 +14,39 @@ REBIND_FIELDS = ("rebound", "replacement_owner", "old_epoch_rejected", "old_repl
 CANCEL_FIELDS = ("forced_exit", "inflight_completed", "discarded_requests", "discarded_responses")
 SERVICE_FIELDS = ("status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared")
 STORAGE_API_FIELDS = ('status', 'opens', 'closes', 'cancelled', 'rejected', 'read_calls', 'workspace_bytes', 'used_bytes', 'cleared')
+
+
+FATFS_FIELDS = ('version', 'source', 'status', 'fixture_id', 'parent_used', 'parent_charged',
+                'requests', 'replies', 'forced_exit', 'cancelled', 'discarded_requests', 'discarded_replies',
+                'rebound', 'stale_epoch', 'stale_handle', 'stale_reply', 'stale_exit', 'bytes', 'crc',
+                'owner_stack', 'client_stack', 'parent_cleared', 'recovered')
+
+
+def check_fatfs_native(log, image, evidence):
+    config = (image or {}).get('sqlite', {}).get('fatfs_native')
+    marker = 'NIHOS_NATIVE_FATFS_RPC'
+    if config is None:
+        if marker in log:
+            raise ValueError('FatFs fixture record without bound image')
+        return None
+    if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
+        raise ValueError('native FatFs task record requires physical device evidence')
+    if config.get('source') != 'embedded sparse/RLE FAT12 fixture; not SD FatFs' or config.get('version') != 1:
+        raise ValueError('unknown native FatFs fixture source/version')
+    record = fixed_record(log, marker, FATFS_FIELDS)
+    expected = dict.fromkeys(FATFS_FIELDS, 1)
+    expected.update(fixture_id=config['fixture']['fixture_id'], parent_used=38656, parent_charged=65536,
+                    requests=8, replies=6, bytes=24, crc=zlib.crc32(b'nihos read-only fixture\n'))
+    for key, value in expected.items():
+        if key in ('owner_stack', 'client_stack'):
+            if not 0 < record[key] < 3920:
+                raise ValueError('FatFs worker stack guard not preserved')
+        elif record[key] != value:
+            raise ValueError('incomplete native FatFs fixture gate: ' + key)
+    order = ('NIHOS_NATIVE_BROKER ', 'NIHOS_NATIVE_IO_LIFETIMES ', marker + ' ', 'NIHOS_NATIVE_FP_PASS ')
+    if not all(part in log for part in order) or any(log.index(a) >= log.index(b) for a, b in zip(order, order[1:])):
+        raise ValueError('native FatFs task phases out of order')
+    return {**record, 'input_source': config['source'], 'physical_sd_fatfs_qualified': False}
 
 
 def check_storage_api(record, storage):
@@ -734,9 +768,10 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     io_lifetimes = check_io_lifetimes(log, image, evidence, sdmmc)
     sd_removal = check_sd_removal(log, image, evidence, sdmmc)
     boot_capture = check_boot_capture(log, image, evidence)
+    fatfs_native = check_fatfs_native(log, image, evidence)
     return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "high_sram": high_sram, "page_lease": page_lease,
-            "broker": broker, "io_lifetimes": io_lifetimes, "sd_removal": sd_removal, "boot_capture": boot_capture,
+            "fatfs_native": fatfs_native, "broker": broker, "io_lifetimes": io_lifetimes, "sd_removal": sd_removal, "boot_capture": boot_capture,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,
             "qualification": qualification, "sdmmc": sdmmc, "sdmmc_stages": sdmmc_stages, "sdmmc_sweeps": sdmmc_sweeps,
             "image_elf_sha256": image["elf_sha256"] if image is not None else None,

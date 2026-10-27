@@ -301,7 +301,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     while (true) {
         _ = tasks.service(1);
         if (tasks.ipi.done()) {
-            if (options.storage_service) runStorageTasks(1);
+            if (options.storage_service and !options.fatfs_native) runStorageTasks(1);
             tasks.floating.quiesce(1);
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
@@ -313,6 +313,10 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
                 while (!broker_runtime.done()) {
                     _ = tasks.service(1);
                     if (tasks.calls.yieldNow() != 0) fail("broker peer yield");
+                }
+                if (options.fatfs_native) {
+                    while (!storage_runtime.ready()) asm volatile ("nop");
+                    runStorageTasks(1);
                 }
             }
             while (true) asm volatile ("wfi");
@@ -492,7 +496,8 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (options.broker and external_bytes != 32 * 1024 * 1024) fail("broker PSRAM geometry");
     if (options.high_sram and !tasks.memory.high.init(external_bytes)) fail("high SRAM initialization");
     const sd_crc = if (options.sdmmc) runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null) else 0;
-    if (options.storage_service) storage_runtime.init();
+    if (options.storage_service and !options.fatfs_native) storage_runtime.init();
+    if (options.fatfs_native) @import("sdmmc_probe.zig").runtimeEnd();
     prepareTasks(0);
     startCpu1();
     if (options.high_sram) tasks.memory.high.ownerExchange();
@@ -547,7 +552,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 print("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
-                if (options.storage_service) {
+                if (options.storage_service and !options.fatfs_native) {
                     runStorageTasks(0);
                     const report = storage_runtime.finish();
                     logger.record("NIHOS_NATIVE_STORAGE_SERVICE", null, .{ "status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared", "forced_exit", "inflight_completed", "discarded_requests", "discarded_responses", "rebound", "replacement_owner", "old_epoch_rejected", "old_reply_rejected", "old_handle_rejected", "old_exit_rejected", "replacement_exit", "replacement_bytes", "replacement_crc" }, &report);
@@ -601,12 +606,20 @@ export fn nih_native_main() callconv(.c) noreturn {
                     const b = broker_runtime.finish();
                     logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses", "io_clock_acquired", "io_clock_released" }, &b);
                     runIoLifetimes(sd_crc);
+                    if (options.fatfs_native) runFatFsTasks();
                 }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
             }
         }
     }
+}
+
+noinline fn runFatFsTasks() linksection(".flash.text.storage") void {
+    storage_runtime.init();
+    runStorageTasks(0);
+    const report = storage_runtime.finish();
+    logger.record("NIHOS_NATIVE_FATFS_RPC", null, @import("fatfs_service_abi.zig").fields, &report);
 }
 
 fn memoryReport(hart: u32) void {

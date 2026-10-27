@@ -35,7 +35,7 @@ pub fn IoLeases(comptime capacity: usize) type {
 
         pub fn retain(self: *Self, principal: u32, mount: Reference, file: Reference, buffer_lease: u64) Error!Handle {
             if (buffer_lease == 0) return error.InvalidArgument;
-            for (self.slots) |slot| {
+            for (&self.slots) |slot| {
                 if (slot.request) |request| {
                     if (request.buffer_lease == buffer_lease) return error.Busy;
                 }
@@ -124,7 +124,7 @@ pub fn IoLeases(comptime capacity: usize) type {
         }
 
         pub fn holdsFile(self: *const Self, file: Reference) bool {
-            for (self.slots) |slot| {
+            for (&self.slots) |slot| {
                 if (slot.request) |request| {
                     if (same(request.file, file)) return true;
                 }
@@ -133,7 +133,7 @@ pub fn IoLeases(comptime capacity: usize) type {
         }
 
         pub fn holdsMount(self: *const Self, mount: Reference) bool {
-            for (self.slots) |slot| {
+            for (&self.slots) |slot| {
                 if (slot.request) |request| {
                     if (same(request.mount, mount)) return true;
                 }
@@ -142,7 +142,7 @@ pub fn IoLeases(comptime capacity: usize) type {
         }
 
         pub fn deviceBusy(self: *const Self) bool {
-            for (self.slots) |slot| {
+            for (&self.slots) |slot| {
                 if (slot.request) |request| {
                     if (request.stage == .active or request.stage == .stopping) return true;
                 }

@@ -59,6 +59,20 @@ jobs:
           sh tools/build-native.sh device compiled
           sh tools/build-native.sh device sqlite
 
+      - name: Link and audit native FatFs RPC fixture (no device execution)
+        env:
+          NIHOS_NATIVE_FATFS_RPC: '1'
+          NIHOS_NATIVE_COLD_FLASH: '1'
+          NIHOS_NATIVE_MEMORY_BROKER: '1'
+          NIHOS_NATIVE_HIGH_SRAM: '1'
+          NIHOS_NATIVE_SDMMC: '1'
+          NIHOS_NATIVE_SDMMC_PROFILE: '2'
+          NIHOS_NATIVE_STORAGE: '1'
+          NIHOS_NATIVE_STORAGE_SERVICE: '1'
+        run: |
+          sh tools/build-native-elf.sh device build/native-fatfs-fixture sqlite
+          python3 tools/check-fatfs-native-input.py build/native-fatfs-fixture/fatfs-fixture-manifest.json
+
       - name: Retain native evidence
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -66,6 +80,9 @@ jobs:
           name: native-boot-evidence
           path: |
             build/native-*/image-audit.json
+            build/native-*/fatfs-link-audit.json
+            build/native-*/fatfs-fixture-manifest.json
+            build/native-*/c-decode-*/result.json
             build/native-*/sqlite-manifest.json
             build/native-*/native-layout.ld
             build/native-*/loader/bootloader/bootloader.elf

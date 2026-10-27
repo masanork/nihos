@@ -1,5 +1,6 @@
 //! Internal C-shaped link boundary for the separately compiled service object.
-pub const Report = extern struct {
+pub const Report = if (@import("native_options").fatfs_native) @import("fatfs_service_abi.zig").Report else LegacyReport;
+const LegacyReport = extern struct {
     status: u32 = 0,
     requests: u32 = 0,
     responses: u32 = 0,
@@ -36,6 +37,10 @@ extern fn nih_storage_runtime_init() callconv(.c) void;
 extern fn nih_storage_runtime_poll(u32) callconv(.c) void;
 extern fn nih_storage_runtime_finished() callconv(.c) u32;
 extern fn nih_storage_runtime_finish(*Report) callconv(.c) void;
+extern fn nih_storage_runtime_ready() callconv(.c) u32;
+pub fn ready() bool {
+    return nih_storage_runtime_ready() == 1;
+}
 pub fn init() void {
     nih_storage_runtime_init();
 }

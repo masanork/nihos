@@ -99,7 +99,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             if (caps.max_transfer == 0 or caps.max_transfer > standard_limits.io_bytes or
                 caps.max_path_bytes == 0 or caps.max_path_bytes > standard_limits.path_bytes) return error.TooLarge;
             if (policy.writable and !caps.write_at) return error.Unsupported;
-            for (self.mounts) |slot| {
+            for (&self.mounts) |slot| {
                 if (slot.binding) |binding| {
                     if (binding.backend == backend) return error.Busy;
                 }
@@ -148,7 +148,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
             try validatePath(path, binding.capabilities.max_path_bytes);
             const index = try self.freeSlot(); // Check capacity before any backend call; no re-entry is allowed.
             var file_count: usize = 0;
-            for (self.handles) |slot| {
+            for (&self.handles) |slot| {
                 if (slot.resource) |resource| {
                     if (resource.object == .file) file_count += 1;
                 }
@@ -158,7 +158,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
                 observeError(binding, err);
                 return err;
             };
-            for (self.handles) |slot| {
+            for (&self.handles) |slot| {
                 const resource = slot.resource orelse continue;
                 if (!sameMount(resource.mount, parent.mount)) continue;
                 switch (resource.object) {
@@ -259,7 +259,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
         pub fn unmount(self: *Self, handle: Mount) Error!void {
             const binding = try self.activeMount(handle);
             if (self.requests.holdsMount(reference(handle)) or self.requests.deviceBusy()) return error.Busy;
-            for (self.handles) |slot| {
+            for (&self.handles) |slot| {
                 if (slot.resource) |resource| {
                     if (sameMount(resource.mount, handle)) return error.Busy;
                 }
@@ -363,7 +363,7 @@ pub fn Vfs(comptime Backend: type, comptime mount_limit: usize, comptime handle_
         }
 
         fn freeSlot(self: *Self) Error!usize {
-            for (self.handles, 0..) |slot, index| {
+            for (&self.handles, 0..) |slot, index| {
                 if (slot.resource == null and !slot.retired) return index;
             }
             return error.NoHandles;
