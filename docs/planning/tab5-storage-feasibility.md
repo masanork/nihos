@@ -502,3 +502,16 @@ time, excluding stacks, client and backend buffers. The existing native
 read-only RPC reservation/ABI and separate VFS work remain unchanged. The next
 gate is a host SQLite VFS adapter with actual journal/recovery tests, followed
 by native placement, exit hooks, DMA quiescence and physical SD qualification.
+
+The [real-SQLite managed-VFS host follow-up](../measurements/2026-10-28-sqlite-store-vfs.md)
+now runs SQLite 3.54.1 with 4 KiB pages, PERSIST/FULL and a spill-inducing
+8-page cache over the copied service. It qualifies only two preallocated
+DB/journal slots and one connection lifetime. A detached DB was new after
+DB sync, while reopening its original image with a hot journal restored the
+old transaction; commit-ack loss preserved the new one. A sync-omission
+negative control exposed false COMMIT success. The host SQLite allocation
+peak was 193,232 B, separate from the unchanged 596,640 B fixed store/service
+state and excluding stacks/backend/OS cache. This does not reduce the planned
+2 MiB SQLite envelope or 512 KiB cache candidate. Allocator/OOM integration,
+real store-full and broader I/O faults, generic VFS/native integration and
+physical SD power-loss remain promotion gates; WAL is still omitted.
