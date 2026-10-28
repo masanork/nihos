@@ -2,6 +2,8 @@
 //! the font task is the sole library owner. Queues outlive both endpoints.
 const std = @import("std");
 const options = @import("native_options");
+pub const raster = @import("native_raster.zig");
+const lease = @import("raster_lease");
 const protocol = @import("font_protocol");
 const calls = @import("task_calls.zig");
 const ring = @import("spsc_ring");
@@ -77,6 +79,31 @@ var hold_start: u64 = 0;
 var hold_runtime: u64 = 0;
 var expected: [16]u32 = @splat(0);
 var submitted: protocol.Request = .{ .id = 0, .operation = .stop };
+var held: lease.Lease = .{};
+var last_lease: lease.Lease = .{};
+var held_id: u32 = 0;
+var held_since: u64 = 0;
+var pending_release: u32 = 0;
+var release_id: u32 = 0;
+var pixel_hashes: [5]u32 = @splat(0);
+pub fn pixelHash(index: usize) u32 {
+    return pixel_hashes[index];
+}
+fn digest(bytes: []const u8) u32 {
+    var value: u32 = 2166136261;
+    for (bytes) |byte| value = (value ^ byte) *% 16777619;
+    return value;
+}
+fn drawHash(reply: *const protocol.Reply, pixels: []const u8) u32 {
+    var value: u32 = 2166136261;
+    for (reply.output.glyphs[0..reply.output.count]) |g| {
+        for ([_]u32{ g.id, @bitCast(g.x_advance), @bitCast(g.y_advance) }) |word| value = (value ^ word) *% 16777619;
+        const end = g.pixel_offset + g.width * g.height;
+        if (end > pixels.len) nih_native_task_failed();
+        for (pixels[g.pixel_offset..end]) |byte| value = (value ^ byte) *% 16777619;
+    }
+    return value;
+}
 var active_operation: protocol.Operation = .render_matrix;
 var text_results: [5]protocol.Reply = @splat(.{ .id = 0, .operation = .render_text, .retained = 0 });
 
@@ -88,6 +115,7 @@ pub fn bind(client: calls.Handle, worker: calls.Handle) bool {
     if (bound) return false;
     requests = Requests.init(.{}, client, worker, request_data, request_space) orelse return false;
     replies = Replies.init(.{}, worker, client, reply_data, reply_space) orelse return false;
+    raster.bind((@as(u32, worker.slot) << 16) | worker.generation, (@as(u32, client.slot) << 16) | client.generation);
     bound = true;
     return true;
 }
@@ -114,9 +142,14 @@ pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *pro
                 0 => .ok,
                 1 => .render_failed,
                 2 => .output_full,
+                3 => .raster_unavailable,
                 else => nih_native_task_failed(),
             };
             if ((runs == 1) != (reply.outcome == .ok)) nih_native_task_failed();
+            if (runs == 1 and output.raster_bytes != 0) {
+                const value = raster.publish(output.raster_bytes) catch nih_native_task_failed();
+                reply.raster_token = value.token;
+            } else if (!raster.empty()) raster.discard() catch nih_native_task_failed();
         }
         sendReply(reply);
         if (active_operation == .render_text) {
@@ -126,19 +159,34 @@ pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *pro
             metrics.copied_outputs += 1;
         }
     }
-    const received = switch (requests.receive()) {
-        .item => |item| item,
-        else => nih_native_task_failed(),
-    };
-    if (received.space_notification != 0) nih_native_task_failed();
-    state.accept(received.value) catch nih_native_task_failed();
-    metrics.received += 1;
-    if (received.value.operation != .stop) {
-        active_operation = received.value.operation;
-        job.* = .{ .operation = @backingInt(active_operation), .render = received.value.render };
-        return received.value.id;
+    // SAFETY: receive assigns the union before its .item payload is used.
+    var received: Requests.ReceiveResult = undefined;
+    while (true) {
+        received = requests.receive();
+        const item = switch (received) {
+            .item => |value| value,
+            else => nih_native_task_failed(),
+        };
+        if (item.space_notification != 0) nih_native_task_failed();
+        if (item.value.operation != .release_raster) break;
+        raster.release(item.value.lease) catch nih_native_task_failed();
+        sendReply(.{ .id = item.value.id, .operation = .release_raster, .retained = retained, .raster_token = item.value.lease });
     }
-    sendReply(.{ .id = received.value.id, .operation = .stop, .retained = retained });
+    if (!raster.empty()) nih_native_task_failed();
+    state.accept(received.item.value) catch nih_native_task_failed();
+    metrics.received += 1;
+    if (received.item.value.operation != .stop) {
+        active_operation = received.item.value.operation;
+        job.* = .{ .operation = @backingInt(active_operation), .render = received.item.value.render };
+        if (active_operation == .render_text) {
+            if (raster.create()) |bytes| {
+                job.raster = bytes.ptr;
+                job.capacity = @intCast(bytes.len);
+            } else |_| {}
+        }
+        return received.item.value.id;
+    }
+    sendReply(.{ .id = received.item.value.id, .operation = .stop, .retained = retained });
     // A distinct, never-reused terminal bit acknowledges both the copy and
     // the channel's space notification. Queue-empty precedes that notification
     // and is insufficient to authorize destruction of the worker endpoint.
@@ -163,6 +211,14 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             .empty => break,
             else => nih_native_task_failed(),
         };
+        if (reply.operation == .release_raster) {
+            if (pending_release == 0 or reply.raster_token != pending_release or reply.id != release_id) nih_native_task_failed();
+            if (raster.read(last_lease)) |_| nih_native_task_failed() else |_| {
+                raster.metrics.stale_rejected += 1;
+            }
+            pending_release = 0;
+            continue;
+        }
         if (reply.id != metrics.replies + 1 or reply.id > metrics.sent or reply.retained != 65792) nih_native_task_failed();
         if (reply.id <= 4) {
             if (reply.operation != .render_matrix or reply.runs != 16) nih_native_task_failed();
@@ -176,12 +232,48 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             reply.output.validate() catch nih_native_task_failed();
             if (reply.output.outcome != @backingInt(reply.outcome)) nih_native_task_failed();
             text_results[reply.id - 5] = reply;
+            if (reply.outcome == .ok and reply.output.raster_bytes != 0) {
+                held = .{ .token = reply.raster_token, .bytes = reply.output.raster_bytes };
+                held_id = reply.id;
+                held_since = ticks;
+                const bytes = raster.read(held) catch nih_native_task_failed();
+                if (drawHash(&reply, bytes) != reply.hashes[0]) nih_native_task_failed();
+                pixel_hashes[reply.id - 5] = digest(bytes);
+                if (raster.release(held.token)) |_| nih_native_task_failed() else |_| {
+                    raster.metrics.foreign_rejected += 1;
+                }
+                if (last_lease.token != 0) {
+                    if (raster.read(last_lease)) |_| nih_native_task_failed() else |_| {
+                        raster.metrics.stale_rejected += 1;
+                    }
+                }
+            } else if (reply.raster_token != 0) nih_native_task_failed();
             if (reply.outcome == .ok) metrics.text_success += 1 else metrics.text_failed += 1;
         } else if (reply.id != 10 or reply.operation != .stop or reply.runs != 0) nih_native_task_failed();
         metrics.replies += 1;
         if (reply.operation == .stop and calls.notify(replies.producer, terminal_ack) != 0) nih_native_task_failed();
     }
-    if (metrics.sent == 10 or !waiting) return;
+    if (held.token != 0) {
+        const bytes = raster.read(held) catch nih_native_task_failed();
+        if (digest(bytes) != pixel_hashes[held_id - 5]) nih_native_task_failed();
+        if (ticks - held_since < 2) return;
+        raster.metrics.held_ticks += @intCast(ticks - held_since);
+        raster.retire(held) catch nih_native_task_failed();
+        if (raster.read(held)) |_| nih_native_task_failed() else |_| {
+            raster.metrics.stale_rejected += 1;
+        }
+        pending_release = held.token;
+        release_id = held_id;
+        last_lease = held;
+        held = .{};
+        submitted = .{ .id = release_id, .operation = .release_raster, .lease = pending_release };
+        switch (requests.trySend(submitted)) {
+            .sent => {},
+            else => nih_native_task_failed(),
+        }
+        return;
+    }
+    if (pending_release != 0 or metrics.sent == 10 or !waiting) return;
     if (!holding) {
         holding = true;
         hold_start = ticks;
@@ -212,5 +304,6 @@ pub fn report() Report {
 pub fn finished() bool {
     return bound and state.stopped and state.active == null and metrics.sent == 10 and metrics.received == 10 and
         metrics.replies == 10 and metrics.waits == 10 and metrics.blocked_ticks >= 20 and metrics.stop_ack == 1 and metrics.terminal_gap == 1 and metrics.copied_inputs == 5 and metrics.copied_outputs == 5 and metrics.text_success == 3 and metrics.text_failed == 2 and
+        raster.empty() and raster.metrics.created == 5 and raster.metrics.reclaimed == 3 and raster.metrics.discarded == 2 and pending_release == 0 and
         requests.ring.countApprox() == 0 and replies.ring.countApprox() == 0;
 }

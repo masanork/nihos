@@ -25,7 +25,7 @@ session = session.replace("                s->valid[slot] = n;", """#ifdef PROBE
 session = session.replace("        if (file) { fclose(file); file = nullptr; }", "        input = nullptr;")
 assert "FILE" not in session and "fread" not in session and "fopen" not in session
 session = session.replace('bool draw(bool vertical, unsigned pixels, uint32_t *hash_out)',
-                          'bool draw(bool vertical, unsigned pixels, uint32_t *hash_out, const GraphicsRender *request = nullptr, GraphicsOutput *output = nullptr)')
+                          'bool draw(bool vertical, unsigned pixels, uint32_t *hash_out, const GraphicsRender *request = nullptr, GraphicsOutput *output = nullptr, uint8_t *raster = nullptr, unsigned capacity = 0)')
 session = session.replace('ruby < 2;', 'ruby < (request && !request->ruby_length ? 1u : 2u);')
 needle = '            hb_buffer_add_utf8(buffer, ruby ?'
 start = session.index(needle)
@@ -42,10 +42,20 @@ session = session.replace('                unsigned gid = info[i].codepoint;',
                           '                if(output && output->count==16) { output->outcome=2;good=false;break; }\n                unsigned gid = info[i].codepoint;')
 session = session.replace('                FT_Bitmap &bm = face->glyph->bitmap;', """                FT_Bitmap &bm = face->glyph->bitmap;
                 if(output) {
+                    if(bm.pitch==INT32_MIN || bm.width>256 || bm.rows>256 || bm.pixel_mode!=FT_PIXEL_MODE_GRAY || bm.num_grays!=256 ||
+                       (unsigned)(bm.pitch<0?-bm.pitch:bm.pitch)<bm.width || bm.width*bm.rows>capacity-output->raster_bytes) {
+                        output->outcome=2;good=false;break;
+                    }
+                    unsigned offset=output->raster_bytes;
+                    for(unsigned row=0;row<bm.rows;row++) {
+                        unsigned source=bm.pitch>=0?row:bm.rows-1-row;
+                        memcpy(raster+offset+row*bm.width,bm.buffer+source*(unsigned)(bm.pitch<0?-bm.pitch:bm.pitch),bm.width);
+                    }
+                    output->raster_bytes+=bm.width*bm.rows;
                     GraphicsGlyph &g=output->glyphs[output->count++];
                     g={gid,info[i].cluster,ruby,px,pos[i].x_advance,pos[i].y_advance,
                        pos[i].x_offset,pos[i].y_offset,face->glyph->bitmap_left,
-                       face->glyph->bitmap_top,bm.width,bm.rows};
+                       face->glyph->bitmap_top,bm.width,bm.rows,offset};
                 }""")
 session = session.replace('        if (good) *hash_out = hash;',
                           '        if(!good && output) { unsigned reason=output->outcome==2?2u:1u;*output={};output->outcome=reason; }\n        if (good) *hash_out = hash;')
@@ -147,10 +157,11 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
             graphics_output={};
             Session &target=job.render.font?second:first;
             graphics_result.stage=2;
-            success=target.openMemory(inputs->fonts[job.render.font],inputs->lengths[job.render.font]);
+            success=job.raster && target.openMemory(inputs->fonts[job.render.font],inputs->lengths[job.render.font]);
             uint32_t hash=0;
             graphics_result.stage=10;
-            success=success && target.draw(job.render.vertical!=0,job.render.pixels,&hash,&job.render,&graphics_output);
+            success=success && target.draw(job.render.vertical!=0,job.render.pixels,&hash,&job.render,&graphics_output,job.raster,job.capacity);
+            if(!job.raster)graphics_output.outcome=3;
             if(!success && graphics_output.outcome==0) { graphics_output={};graphics_output.outcome=1; }
             if(success) { graphics_result.runs=1;graphics_result.hashes[0]=hash; }
         } else {

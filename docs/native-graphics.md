@@ -76,21 +76,21 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 106,624 B | 106,752 B |
-| Remaining primary SRAM heap | 57,216 B | 57,088 B |
-| Static reservations including stack/data regions | 229,504 B | 229,632 B |
-| Application image | 11,568,896 B | 11,570,352 B |
+| Primary static span | 111,360 B | 111,616 B |
+| Remaining primary SRAM heap | 52,480 B | 52,224 B |
+| Static reservations including stack/data regions | 234,240 B | 234,496 B |
+| Application image | 11,573,648 B | 11,575,088 B |
 
-Graphics code/RO occupy 560,864 B in Flash. TTF inputs occupy 10,821,312 B,
+Graphics code/RO occupy 561,072 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
-Private initialized data/BSS occupy 20,700 B within the 32 KiB region. These
+Private initialized data/BSS occupy 20,764 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
 caches and application routing. The two fixed transport queues reserve
-3,072 B in primary SRAM. Glyph metadata adds 1,536 B to the queues. Compared
-with the prior owned-text fixture, primary static grows by 7,040 B (emulator)
-or 6,912 B (device), including validation and retained qualification snapshots.
-The C++ packet adds 776 populated B inside the already reserved library region.
-No further stack or library SRAM region is reserved.
+3,200 B in primary SRAM, including tokens/metadata but no bitmap bytes.
+Relative to the metadata-only fixture, primary static grows by 4,736 B
+(emulator) or 4,864 B (device). The private packet grows from 776 to 844 B;
+no further stack or library SRAM region is reserved. Raster storage is demand
+PSRAM, separately accounted below.
 
 ## Ownership and execution
 
@@ -116,21 +116,24 @@ records the earlier active-idle experiment. The
 [request/wait receipt](measurements/2026-10-28-native-font-request-wait.json)
 records the first queued matrix endpoint. The
 [text-request receipt](measurements/2026-10-28-native-font-text-requests.json)
-adds owned UTF-8 inputs. The current
+adds owned UTF-8 inputs. The
 [glyph-metadata receipt](measurements/2026-10-28-native-font-glyph-metadata.json)
-records owned output on that live task:
+records copied metrics. The current
+[raster-lease receipt](measurements/2026-10-28-native-font-raster-leases.json)
+adds borrowed pixels on that live task:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
-- The timer captures the font task 6,409 times, including 6,392 during
-  shaping/rasterization stages; bootstrap advances 12,657 times.
+- The timer captures the font task 6,410 times, including 6,393 during
+  shaping/rasterization stages; bootstrap advances 13,556 times.
   Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
-- Stack watermark/frame observation reaches 17,312 B, leaving 15,440 B above
+- Stack watermark/frame observation reaches 17,344 B, leaving 15,408 B above
   that observation and the 16 B guard in a 32 KiB reservation. This is not a
   worst-case or native IO call-chain bound.
-- Two clients peak at 1,310,976 B of actual buddy backing. Closing clients
+- Font-span backing for two clients peaks at 1,310,976 B; raster charge is
+  accounted separately. Closing clients
   leaves 65,792 B of HarfBuzz backing; task-ledger retirement then restores
   CPU0's original 16,022,848 B of free heap.
 - Other-task/dispatch operations are rejected; the owning task also rejects
@@ -176,7 +179,22 @@ offsets, bitmap bearings and dimensions match the
 [host glyph reference](measurements/2026-10-28-font-glyph-host.json) for all 33
 successful glyphs. After publication the worker poisons its reusable packet;
 consumer snapshots remain valid after library close and task retirement.
-Replies now contain usable metrics; actual bitmap bytes are still absent.
+The [A8 lease decision](adr/0047-borrowed-a8-raster-leases.md) now supplies
+actual pixel bytes through an owner/token-checked const view. Each successful
+request retains its tightly packed A8 prefix across two real ticks, reconstructs
+the original draw digest, then retires and releases it through a control
+message. Three rasters contain 9,773 bytes in total. Each logical 16 KiB buffer
+charges 32 KiB of actual task-owned PSRAM; all three releases and two failure
+discards restore raster charge to zero. Eight stale/retired-token lookups and
+three foreign frees are rejected. A read view must never be kept after retire.
+Only one raster may be outstanding in this fixture.
+
+The [host raster reference](measurements/2026-10-28-font-raster-host.json)
+records the same pixel digests and offsets. The following host atlas arranges
+individual glyph masks in cells, with successful requests 5, 8 and 9 as rows;
+it does not apply paragraph/ruby placement or present on a native display.
+
+![Host A8 glyph atlas](measurements/2026-10-28-font-raster-atlas.png)
 Multiple applications still need a broker or distinct client channels;
 concurrent producers, cancellation and service restart remain unqualified.
 
