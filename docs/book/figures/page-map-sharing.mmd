@@ -1,0 +1,11 @@
+flowchart TB
+    accTitle: 更新したページとmapの経路だけを新しくする
+    accDescr: 旧rootと旧leafはA、B、Cを参照し、新rootと新leafはA、新しいB、Cを参照する。AとCは共有し、旧rootやreaderが参照するBを先に回収しない。
+    O["旧root"] --> OL["旧leaf"]
+    N["新root"] --> NL["新leaf"]
+    OL --> A["data A\n共有"]
+    OL --> B["旧data B"]
+    OL --> C["data C\n共有"]
+    NL --> A
+    NL --> BN["新data B"]
+    NL --> C

@@ -102,6 +102,15 @@ storage are open. See [ADR 0044](adr/0044-c6-sdio-boot-transport.md) and the
   service, not a library entered concurrently by arbitrary applications. SMP
   placement is a scheduler decision rather than a permanent CPU1 assignment.
 
+The storage design contracts are specified in
+[`planning/filesystem-vfs.md`](planning/filesystem-vfs.md) and
+[`planning/sqlite-integration.md`](planning/sqlite-integration.md).
+OS VFS and SQLite VFS have separate responsibilities. Filesystem read support,
+general file saves, and writable SQLite are qualified independently, with
+explicit mount generations, durability profiles, and uncertain write outcomes.
+The plans define required behavior and acceptance gates; they do not establish
+implemented filesystem support or physical storage qualification.
+
 ## Bring-up order
 
 1. Host ABI and data-structure tests.
