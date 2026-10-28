@@ -84,3 +84,12 @@ The host archive now explicitly includes Zig compiler-rt, retaining stack
 checks. A cross-compiled Linux x86-64 archive contains the weak helper definition,
 and all 109 local host scenarios passed again. This changes only the host probe
 link configuration; native flags and images are unaffected.
+
+Linux host, formal and independent FatFs CI then passed at `340a2ac`. The card
+build matrix caught stale source fingerprints in the three shipped UI manifests
+after the native merge. These fingerprints were refreshed without changing
+pixels, descriptor metadata, function allowlists or dependency sets. The keypad
+generator now reproduces the complete existing source dependency list. Atlas
+and lossless compressed-font regeneration preserved the exact payload hashes.
+A host regression detects all nine original source mismatches, then passes
+with the refreshed manifests (381 Python tests in total).
