@@ -65,4 +65,14 @@ controller quiescenceと世代上限をまとめて確認するgateを追加し�
 hostで各拒否条件と実ownerのquarantineを確認し、既存SD抜去構成のnative ELF監査を通した。
 このgateは新しいFatFs SD sessionの公開、probe/bind/mountをまだ実装していない。
 
+### 新sessionの入口
+
+FatFs opt-in build向けに、既存controllerの停止確認後に新しいcard sessionを開始し、
+sector数と単調増加するgenerationを返す内部owner APIを追加した。終了時はgenerationの一致、
+未完了I/Oなし、通知windowが閉じていること、controllerの完全なquiescenceを要求する。
+初期化失敗時はcontrollerの停止を未確認とし、再試行を拒否する。
+既存FatFs fixture構成と既存SD抜去構成のnative ELF監査を通した。
+FatFs構成のELF SHA-256は`336d7976f0a1d31b01e77ebe4f0f55f6b7796b15b5aab1b897ff583f67e1d280`。
+入口そのものの実機実行、volume probe/bind/mount、caller側のFS teardownはまだ未接続である。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。
