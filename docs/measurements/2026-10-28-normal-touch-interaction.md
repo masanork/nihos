@@ -2,8 +2,8 @@
 
 2026-10-28 JST. These checkpoints extend the [idle check](2026-10-28-normal-touch-idle.md).
 The final main-integrated candidate remains unqualified, and the PR stays draft.
-The user deferred further device tests. Its interrupted restoration must be
-completed when USB access returns.
+The user deferred further device tests. Its interrupted restoration was completed
+and verified after USB reconnection; that recovery does not qualify the capture.
 
 ## Initial normal-image interaction
 
@@ -83,8 +83,13 @@ under `/private/tmp/nihos-normal-touch-input/build/touch-qualification/`.
 `6126f70e6fd3137c7fd7f8d0b645e83101d37fd2935e905462ebf2e81aa90ecb`.
 The recovery script is `restore-final.py` there. It verifies chip/MAC, boot bytes,
 backup hash and current candidate app before restoring; changed device contents
-cause it to stop without writing. It has been syntax-checked and has not run on
-hardware. On reconnection, restoration takes priority over more tests.
+cause it to stop without writing. At 17:15 JST the device was reconnected. The
+script matched the candidate and boot bytes, restored the full saved app and
+verified it, and confirmed boot bytes were unchanged. The
+[recovery receipt](evidence/2026-10-28-normal-touch-main-interrupted/restore-result.json)
+supersedes the earlier incomplete-restoration state; the interrupted receipt
+above is retained as a snapshot of the original failure. The device now has the
+saved prior app, not the touch candidate. No additional operator test is implied.
 
 Remaining device gates are the exact final candidate's visible view switching,
 four quadrants, outside taps, long hold, drag-out-return, multiple-contact

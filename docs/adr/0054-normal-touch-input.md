@@ -92,11 +92,11 @@ actions alongside connected Wi-Fi/NTP, RTC/IMU and finite devices; its maximum
 read time was 14281 us versus 19963 us before batching. Those two candidates
 were verified restored. The final main-integrated candidate booted and
 identified touch but lost USB during capture; post-capture identity verification
-and restoration are incomplete. Operator tests were subsequently deferred at
-the user's request. It is not qualified by the earlier candidates. Before landing:
+is incomplete. Operator tests were subsequently deferred at the user's request.
+After USB reconnection, the saved app was restored and verified, with unchanged
+boot bytes. The interrupted capture remains unqualified. Before landing:
 
-1. Restore the saved app after USB reconnection, first checking chip, boot and
-   candidate identity; retain the interrupted attempt. Then rediscover the
+1. Retain the interrupted attempt and its verified recovery. Rediscover the
    device and coordinate exclusive write ownership. Back up the
    actual app and verify retained loader identity before installing. Verify the
    exact candidate bytes before and after capture; restore and verify the prior
