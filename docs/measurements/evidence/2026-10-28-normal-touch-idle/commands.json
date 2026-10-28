@@ -1,0 +1,14 @@
+[
+  {
+    "seconds": 82.209175375,
+    "command": ":audio\n"
+  },
+  {
+    "seconds": 129.747953083,
+    "command": ":mic\n"
+  },
+  {
+    "seconds": 162.46557866700002,
+    "command": ":rs485-loopback\n"
+  }
+]
