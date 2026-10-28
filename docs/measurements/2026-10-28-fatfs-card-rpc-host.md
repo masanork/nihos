@@ -36,3 +36,6 @@ hostのexitは通知注入で、native kernelのtask停止を実行した証拠�
 callback/ROM/未提供frameが残るため総stack上限も未資格である。
 native trialでは`--wait-for-card`により、候補の前照合後もROM downloadで待ち、
 operatorのcard交換確認後だけ起動する。実機引継ぎと別カードの準備が次の条件となる。
+
+この記録の保存後に行った[実exFAT上のnative VFS/RPC試験](2026-10-28-fatfs-card-rpc-physical.md)は、
+同じ固定候補で1回のwarm USB resetを通過した。実機結果はその別記録に保持する。
