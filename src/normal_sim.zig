@@ -3,6 +3,7 @@ const std = @import("std");
 const console = @import("console.zig");
 const boot = @import("graphics/boot_graphics.zig");
 const pointer = @import("input/pointer.zig");
+const controller = @import("touch_sim.zig");
 const Text = console.Grid(console.raster.columns, console.raster.rows);
 var model: console.boot.Model = .{};
 var stream: pointer.Stream = .{};
@@ -33,8 +34,18 @@ var view: View = .{};
 pub export fn normal_view(out: *View) void {
     view.details = @intFromBool(model.details);
     view.failed = @intFromBool(model.failure_latched);
-    view.overflow = queue.overflows;
-    view.queued = @intCast(queue.length);
+    if (controller.selected != 0) {
+        const counts = controller.service.eventSnapshot();
+        view.down = counts.down;
+        view.move = counts.move;
+        view.up = counts.up;
+        view.cancel = counts.cancel;
+        view.overflow = counts.overflow;
+        view.queued = counts.queued;
+    } else {
+        view.overflow = queue.overflows;
+        view.queued = @intCast(queue.length);
+    }
     out.* = view;
 }
 pub export fn normal_reset(selected_palette: u32) bool {
@@ -71,7 +82,9 @@ fn enqueue(event: pointer.Event) void {
 }
 pub export fn normal_drain() bool {
     var changed = false;
-    while (queue.pop()) |event| {
+    while (if (controller.selected != 0) controller.service.pop() else queue.pop()) |event| {
+        view.last_x = event.x;
+        view.last_y = event.y;
         if (!model.failure_latched and button.observe(event, pointer.view_button)) {
             if (model.onKey(if (model.details) .splash else .escape)) {
                 view.accepted +|= 1;
@@ -81,12 +94,25 @@ pub export fn normal_drain() bool {
     }
     return changed;
 }
+pub export fn normal_controller_reset(panel: u32, slots: u8) bool {
+    return controller.reset(panel, slots);
+}
+pub export fn normal_controller_report(contacts: u8, x: u16, y: u16, sparse: bool, at: u64, dispatch: bool) bool {
+    if (!controller.report(contacts, x, y, sparse)) return false;
+    controller.poll(at);
+    return if (dispatch) normal_drain() else false;
+}
 pub export fn normal_touch(contacts: u8, x: u16, y: u16, at: u64, dispatch: bool) bool {
-    if (stream.fresh(contacts, x, y, at)) |event| enqueue(event);
+    if (controller.selected != 0) {
+        if (!controller.report(contacts, x, y, false)) return false;
+        controller.poll(at);
+    } else if (stream.fresh(contacts, x, y, at)) |event| enqueue(event);
     return if (dispatch) normal_drain() else false;
 }
 pub export fn normal_tick(at: u64, dispatch: bool) bool {
-    if (stream.tick(at)) |event| enqueue(event);
+    if (controller.selected != 0) {
+        controller.poll(at);
+    } else if (stream.tick(at)) |event| enqueue(event);
     return if (dispatch) normal_drain() else false;
 }
 pub export fn normal_action(action: u32, count: u32) bool {
