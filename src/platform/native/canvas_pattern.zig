@@ -1,7 +1,7 @@
 //! Private boot-time scanout fixture. The display owner supplies its frame.
 const canvas = @import("canvas");
 const std = @import("std");
-const expected_checksum: u32 = 0x549e3481;
+pub const expected_checksum: u32 = 0x549e3481;
 
 fn checksum(frame: []const u8, stride: usize) u32 {
     var result: u32 = 0x811c9dc5;
