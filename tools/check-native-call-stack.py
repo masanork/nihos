@@ -15,6 +15,7 @@ import runpy
 import struct
 import subprocess
 import riscv_stack_flow
+import riscv_jump_tables
 
 
 def require(ok, reason):
@@ -158,6 +159,7 @@ def main():
     parser.add_argument('--objdump', required=True)
     parser.add_argument('--root', action='append', default=[])
     parser.add_argument('--require-closed', action='store_true')
+    parser.add_argument('--resolve-jump-tables', action='store_true')
     parser.add_argument('--candidate-edge', action='append', default=[], metavar='CALLER:CALLEE')
     parser.add_argument('--derive-frames', action='store_true', help='derive missing local SP bounds from binary CFG; preserves unresolved transfers')
     args = parser.parse_args()
@@ -174,6 +176,15 @@ def main():
         found = [at for at in nodes if name in nodes[at]['names']]
         require(len(found) == 1, 'missing/ambiguous root: ' + name)
         root_addresses.append(found[0])
+    reachable = set()
+    pending = list(root_addresses)
+    while pending:
+        at = pending.pop()
+        if at in reachable:
+            continue
+        reachable.add(at)
+        pending.extend(edges.get(at, ()))
+    tables = riscv_jump_tables.resolve(nodes, unknown, output, riscv_jump_tables.readonly_regions(data), reachable) if args.resolve_jump_tables else None
     derivations = riscv_stack_flow.derive_missing(nodes, edges, root_addresses, output) if args.derive_frames else []
     results = [analyze(nodes, edges, unknown, at) for at in root_addresses]
     result = {'schema': 1, 'evidence': 'static structural call-chain inventory; no execution or whole-stack qualification',
@@ -181,7 +192,8 @@ def main():
         'disassembly_sha256': hashlib.sha256(output.encode()).hexdigest(),
         'objdump_version': subprocess.check_output([args.objdump, '--version'], text=True).splitlines()[0],
         'sp_flow_analyzer_sha256': hashlib.sha256(Path(riscv_stack_flow.__file__).read_bytes()).hexdigest(),
-        'candidate_edges': candidate_edges, 'frame_derivations': derivations, 'roots': results, 'whole_call_stack_qualified': False}
+        'jump_table_analyzer_sha256': hashlib.sha256(Path(riscv_jump_tables.__file__).read_bytes()).hexdigest(),
+        'jump_tables': tables, 'candidate_edges': candidate_edges, 'frame_derivations': derivations, 'roots': results, 'whole_call_stack_qualified': False}
     args.report.write_text(json.dumps(result, indent=2) + '\n')
     for row in results:
         print(row['root']['functions'][0] + ': known structural sum=' + str(row['known_frames_on_largest_structural_chain_bytes']) +

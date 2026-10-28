@@ -61,7 +61,9 @@ def target(operands):
     return int(row[1], 16)
 
 
-def local_sp_bound(start, code, decoded):
+def local_sp_bound(start, code, decoded, nonreturning=None):
+    nonreturning = nonreturning or {}
+    dependencies = []
     end = start + len(code)
     pending = deque([(start, 0)])
     seen = {}
@@ -104,10 +106,20 @@ def local_sp_bound(start, code, decoded):
             require(depth % 16 == 0, 'misaligned SP at ABI call')
             # The full call graph separately retains unresolved call targets.
             calls += 1
+            try:
+                destination = target(annotated)
+            except ValueError:
+                destination = None
+            if destination in nonreturning:
+                dependencies.append({'call_site': hex(pc), 'target': hex(destination),
+                    'callee_code_sha256': nonreturning[destination]['code_sha256']})
+                continue
         pending.append((pc + width, depth))
     return {'local_sp_decrease_bytes': maximum, 'visited_instructions': len(seen),
             'balanced_returns': returns, 'tail_or_trap_sinks': sinks, 'calls_assumed_to_restore_sp': calls,
             'code_sha256': hashlib.sha256(code).hexdigest(),
+            'normal_return_impossible_under_call_abi': returns == 0 and sinks == 0,
+            'nonreturning_call_dependencies': dependencies,
             'callee_stacks_proven': False, 'stack_memory_footprint_proven': False}
 
 
@@ -121,19 +133,26 @@ def derive_missing(nodes, edges, roots, text):
             continue
         reached.add(at)
         pending.extend(edges.get(at, ()))
-    results = []
-    for at in sorted(reached):
-        node = nodes[at]
-        if node['frame'] is not None:
-            continue
-        row = {'address': hex(at), 'functions': node['names']}
-        try:
-            proof = local_sp_bound(at, node['code'], decoded)
-        except ValueError as error:
-            row.update(derived=False, reason=str(error))
-        else:
-            node['frame'] = proof['local_sp_decrease_bytes']
-            node['frame_provenance'] = 'binary CFG local SP delta; not a full memory-footprint bound'
-            row.update(derived=True, **proof)
-        results.append(row)
-    return results
+    results, summaries = {}, {}
+    unresolved = {at for at in reached if nodes[at]['frame'] is None}
+    while unresolved:
+        progress = False
+        for at in sorted(unresolved):
+            node = nodes[at]
+            row = {'address': hex(at), 'functions': node['names']}
+            try:
+                proof = local_sp_bound(at, node['code'], decoded, summaries)
+            except ValueError as error:
+                row.update(derived=False, reason=str(error))
+            else:
+                node['frame'] = proof['local_sp_decrease_bytes']
+                node['frame_provenance'] = 'binary CFG local SP delta; not a full memory-footprint bound'
+                if proof['normal_return_impossible_under_call_abi']:
+                    summaries[at] = proof
+                row.update(derived=True, **proof)
+                unresolved.remove(at)
+                progress = True
+            results[at] = row
+        if not progress:
+            break
+    return [results[at] for at in sorted(results)]
