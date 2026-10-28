@@ -1,0 +1,8 @@
+{
+  "prior_card_profile_version": 3,
+  "old_physical_report_matches": true,
+  "new_physical_run": false,
+  "prior_elf_sha256": "4c3d1968ffee44d0fa8641f77dd375386b78928d7d62c5ea03d3d7d32e8f33ee",
+  "prior_log_sha256": "83682c6a5533f76274858116e49a539c478173500a711f3e668e8a4d305b9e9b",
+  "prior_results_sha256": "8a67f4709de9d2e0b14da47171f72c28a615b0df91ad54396f45415d8ed1ea4c"
+}
