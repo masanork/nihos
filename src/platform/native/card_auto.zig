@@ -542,7 +542,29 @@ pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksecti
             halt();
         };
     }
-    halt();
+    notice(clock, panel, "画面切替テスト", "カード・PIN入力は不要です。タップで画面を切り替えます。") catch |err| {
+        log.sceneFailure(13, @errorName(err));
+        halt();
+    };
+    log.sceneReady();
+    exerciseWait(clock, 180) catch halt();
+    var contact = card.Contact{ .held = true };
+    var next: usize = 0;
+    while (true) {
+        const sample = touch.?.sample(&bus) catch halt();
+        if (sample == .fresh) {
+            const point = sample.fresh;
+            if (contact.sample(true, point.contacts, point.x, point.y, anyTap) != null) {
+                exerciseStep(clock, panel, next) catch |err| {
+                    log.sceneFailure(13, @errorName(err));
+                    halt();
+                };
+                next = (next + 1) % 6;
+                contact = .{ .held = true };
+            }
+        }
+        if (!bus.pins.delay(20_000)) halt();
+    }
 }
 noinline fn exerciseWait(clock: timer.Timer, frames: u32) linksection(".flash.photo") !void {
     const target = display.snapshot().frames + frames;

@@ -53,7 +53,7 @@ def main():
                     if line.startswith(('NIHOS_NATIVE_CARD_SCENE ', 'NIHOS_NATIVE_CARD_SCENE_HANDOFF ', 'NIHOS_NATIVE_CARD_AUTO_DISPLAY ')) and line not in announced:
                         print(line, flush=True)
                         announced.add(line)
-                if ('NIHOS_NATIVE_CARD_SCENE step=0000000c\n' in text or 'NIHOS_NATIVE_FAIL ' in text) and finished is None:
+                if ('NIHOS_NATIVE_CARD_SCENE_READY manual=00000001\n' in text or 'NIHOS_NATIVE_FAIL ' in text) and finished is None:
                     finished = time.monotonic()
                 if finished is not None and time.monotonic() - finished > 2:
                     break
@@ -63,7 +63,7 @@ def main():
         if result.returncode:
             raise SystemExit('Scene exercise failed; evidence retained; no post-failure reset')
         (args.output / 'exclusive-complete.json').write_text(json.dumps({'card_free': True, 'scenes': 12, 'exclusive_descriptor_held': True, 'post_reset': False}) + '\n')
-        print('Scene evidence passed; synthetic wait screen left on the device', flush=True)
+        print('Scene evidence passed; tap to advance synthetic scenes; card/PIN operations remain disabled', flush=True)
 
 
 if __name__ == '__main__':

@@ -1045,7 +1045,9 @@ const AutoLog = struct {
     pub fn sceneFailure(_: AutoLog, step: u32, name: []const u8) void {
         const handoff = display_service.runtime.sceneSnapshot();
         logger.record("NIHOS_NATIVE_CARD_SCENE_FAILURE", null, .{ "stage", "error_code", "updates", "max_pause_us" }, &handoff);
-        const status = asm volatile ("csrr %[value],mstatus" : [value] "=r" (-> u32));
+        const status = asm volatile ("csrr %[value],mstatus"
+            : [value] "=r" (-> u32),
+        );
         logger.record("NIHOS_NATIVE_CARD_SCENE_CONTEXT", null, .{ "step", "irq_enabled" }, &.{ .step = step, .irq_enabled = (status & 8) >> 3 });
         const scanout = display_service.runtime.snapshot();
         logger.record("NIHOS_NATIVE_CARD_SCENE_SCANOUT", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &scanout);
@@ -1053,6 +1055,11 @@ const AutoLog = struct {
         print("NIHOS_NATIVE_FAIL scene exercise ");
         print(name);
         print("\n");
+    }
+    pub fn sceneReady(_: AutoLog) void {
+        const ready = struct { manual: u32 }{ .manual = 1 };
+        logger.record("NIHOS_NATIVE_CARD_SCENE_READY", null, .{"manual"}, &ready);
+        notice();
     }
     pub fn finish(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_DONE", null, .{ "job", "kind", "fault", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "shown", "missing", "truncated", "cleanup", "erased", "verification", "changes" }, report);

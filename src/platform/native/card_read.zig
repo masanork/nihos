@@ -132,7 +132,7 @@ pub fn emergency() bool {
 fn frame() []u8 {
     return @as([*]u8, @ptrFromInt(0x48030000))[0 .. 720 * 1280 * 2];
 }
-fn redraw(clock: timer.Timer, panel: u32) !void {
+noinline fn redraw(clock: timer.Timer, panel: u32) linksection(".flash.text.card") !void {
     const report = display.replace(clock, panel);
     // replace owns/stops the shared timer; resume foreground timing.
     clock.start();

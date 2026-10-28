@@ -16,7 +16,10 @@ def check_transitions(log):
     steps = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE', ('step',))
     changes = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE_HANDOFF', ('updates', 'max_pause_us'))
     screens = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_AUTO_DISPLAY', ('swaps', 'panel_starts', 'backlight_offs', 'frames', 'backlight', 'fault'))
-    if [s['step'] for s in steps] != list(range(13)) or len(changes) != 13 or len(screens) != 14:
+    ready = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CARD_SCENE_READY', ('manual',))
+    if ready['manual'] != 1 or log.index('NIHOS_NATIVE_CARD_SCENE_READY ') < log.index('NIHOS_NATIVE_CARD_SCENE step=0000000c'):
+        raise ValueError('missing manual scene screen after exercise')
+    if [s['step'] for s in steps] != list(range(13)) or len(changes) != 13 or len(screens) != 15:
         raise ValueError('incomplete scene exercise')
     if any(marker in log for marker in ('NIHOS_NATIVE_CARD_AUTO_DETECTED ', 'NIHOS_NATIVE_CARD_AUTO_SELECTED ',
                                         'NIHOS_NATIVE_CARD_AUTO_PROMPT ', 'NIHOS_NATIVE_CARD_AUTO_RESULT ',

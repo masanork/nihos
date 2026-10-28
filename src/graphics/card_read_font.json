@@ -8,6 +8,7 @@
   "allowed_functions": [
     "card_read.prepare",
     "card_read.run",
+    "card_read.redraw",
     "keypad_display.prepare",
     "keypad_display.stage",
     "keypad_display.bind",
@@ -19,8 +20,8 @@
     "display_runtime.replaceCard"
   ],
   "sources": {
-    "tools/boot-graphics/generate-card-read-font.py": "acbd426ad7fea49e4de1fb4483e172dfcd0d440f2c1d9706493dc42a83a74168",
-    "src/platform/native/card_read.zig": "6dda1426966340784928a29ade00cbdf6a700fabf4a280cd663c2aa6ce5d573b",
+    "tools/boot-graphics/generate-card-read-font.py": "04aa9c301da18b4e5f23251e1c081b10695444c549f4d4b2f80aeb408df63a5f",
+    "src/platform/native/card_read.zig": "bc68f5f9edfa2aa04583cfd9690db94ac4daee6ceab8cf0a2542a3176ec89ff3",
     "src/platform/native/keypad_display.zig": "065ac439f6b4e9762115d6a8f2c6c902dd683a89b5d09639374d104f5d1a0ace",
     "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
     "src/platform/native/display_runtime.zig": "25ed976a3d94317ac587732e34ac15f4ef67d781ca74ea6594d001ef73a9a953",
