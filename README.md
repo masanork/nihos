@@ -255,3 +255,9 @@ local PCM statistics after DMA ownership returns, then clears the buffer.
 A separate `NIHOS_NATIVE_MICROPHONE_MUTED=1` build is the all-zero control.
 See [ADR 0050](docs/adr/0050-native-finite-microphone-input.md) for the finite
 input boundary and remaining acoustic/streaming gates.
+
+A finite UART1/RS485 foundation probe is opt-in with
+`NIHOS_NATIVE_RS485=1 sh tools/build-native.sh device`. Its default mode is
+internal UART loopback with external transmit disabled; it does not establish
+RS485 wire support. See [ADR 0051](docs/adr/0051-native-rs485-bounded-exchange.md)
+for the timeout control and separate-adapter peer test.
