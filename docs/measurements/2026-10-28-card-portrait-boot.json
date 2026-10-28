@@ -2,7 +2,7 @@
   "schema": 1,
   "implementation": "c79179ecc3de554ec48e5ef0cd308c4ca27df482",
   "base": "c54d9dd",
-  "scope": "host and image qualification; no hardware writes or card/PIN operations",
+  "scope": "host/image qualification plus separate physical card-free warm-reset evidence; no card/PIN operations",
   "source_sha256": {
     "probes/display_notice/capacity-replay.c": "6271cbea022b1f7467be646c953a5d367a354b2fe44d4d3cd378497becf4732c",
     "src/board/tab5/keypad_sparse.h": "9b9989da693f564c36c49455a8403589c278323e84fa0c34f23f6cf93547c2eb",
@@ -194,6 +194,7 @@
     "static_analysis": true,
     "existing_rv32_elf_profiles": 6
   },
-  "physical_qualification": false,
-  "native_font_worker_integration": false
+  "physical_qualification": "machine checks passed; optical and cold-power qualification pending",
+  "native_font_worker_integration": false,
+  "physical_evidence": "evidence/2026-10-28-card-portrait-boot/qualification.json"
 }

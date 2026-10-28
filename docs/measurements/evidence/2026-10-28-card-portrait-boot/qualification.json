@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "runtime_source": "c79179e",
+  "checker_source": "2338c56fe65f2be8fd531c04fcdec4e1ba40c358",
+  "evidence": "physical ESP32-P4 rev1.3 warm USB reset; no power-cycle qualification",
+  "image_sha256": "100c6238e3b75324470ed31485b988955a7d1229fb08a9a6a3a0e50abe243718",
+  "elf_sha256": "c1bf02c5874bfd3c442dcb72e70250b313ae0f71e645b8fbd833b1a38eff9d64",
+  "write_ownership": "global owner file + nonblocking flock + serial exclusive + TIOCEXCL, held across identity/write/verify/capture",
+  "prior_app_verified": true,
+  "flash_ranges_verified_before_boot": 3,
+  "rom_boots": 1,
+  "boot_stages": [
+    {
+      "stage": 1,
+      "frames": 2,
+      "checked": 1,
+      "mismatches": 0
+    },
+    {
+      "stage": 2,
+      "frames": 118,
+      "checked": 1,
+      "mismatches": 0
+    }
+  ],
+  "actual_pixel_checks": 15,
+  "mismatches": 0,
+  "automatic_scene_transitions": 12,
+  "boot_handoffs": 1,
+  "panel_starts": 1,
+  "backlight_offs": 0,
+  "max_scene_pause_us": 15526,
+  "card_operations": 0,
+  "credential_submissions": 0,
+  "optical_confirmation": "pending user observation",
+  "native_shutdown_reclamation_qualified": false,
+  "original_capture_validation": "rejected because generic boot-header recognizer did not know the two audited progress records; original failure retained privately",
+  "revalidation": "same frozen log and image pass corrected finite header policy; no firmware change or post-capture reset",
+  "current_installation": "card-free synthetic scene exercise; authenticated reader not restored",
+  "serial_lease_released": true,
+  "raw_evidence": "/Users/masanork/Documents/Codex/2026-10-28/nihos-card-portrait-boot/physical-02",
+  "files": {
+    "boot.log": "743ca31868fcc911d87733c62852807b08cd02b58883f7eff111b66e853d16a7",
+    "report.json": "0316a8e33d66727c273dac874c95f57d7565a203262b8e00eff0c1dbefb862ab",
+    "image-audit.json": "c33505e13373c04e4bd004fb5b4d4a9602f2342dd4a711cb827a52cc52118614"
+  },
+  "capture_started_utc": "2026-10-28T04:41:25Z",
+  "lease_released_utc": "2026-10-28T04:47:21Z",
+  "serial_log_format": "raw captured CRLF preserved; checker normalizes line endings when reading"
+}

@@ -1,6 +1,6 @@
 # カード版の縦組み起動画面
 
-実装: `c79179e`。ベースは `c54d9dd` にカード表示のベースSRAM割当変更を取り込んだもの。実機への書込み・カード操作は行っていない。
+実装: `c79179e`。ベースは `c54d9dd` にカード表示のベースSRAM割当変更を取り込んだもの。ESP32-P4 rev1.3でカード通信のないwarm-reset試験を1回行い、起動・待機を含む15回の全画素比較で不一致0を確認した。目視確認は別途保留。
 
 [実際の描画コードによるプレビュー](2026-10-28-card-portrait-boot.png) / [画像・ソース・検査結果](2026-10-28-card-portrait-boot.json)
 
@@ -37,7 +37,25 @@ DISPLAY=9/10/11では、基盤のPSRAM・ボード・タスクの検査後、カ
 | カードなし画面遷移 DISPLAY=11 | 57,728B | 合格 |
 | 自動検知・読取 DISPLAY=11 | 50,048B | 合格 |
 
-上記はビルド・イメージ検査。新候補の実機表示、起動中のDMA継続、点滅・行ずれ、冷起動は未検証。以前のカード表示の実機結果を、この候補の結果として扱わない。調査用にheap assertionを緩めた別ELFも作ったが、表の合格画像は全て元の48KiB assertionで再ビルド・検査している。調査用ELFは書込み対象ではない。
+上記の表はビルド・イメージ検査。下記の実機試験と区別する。調査用にheap assertionを緩めた別ELFも作ったが、表の合格画像と実際に書き込んだ候補は元の48KiB assertionでビルド・検査したもの。調査用ELFは書き込んでいない。
+
+## カード通信なしの実機試験
+
+別のリソース計測がポートを取得していた最初の試行は、排他取得で停止し、書込み・リセットとも行わなかった。その計測の3回完了と元のファームウェアへの復元・照合、ポート解放を確認してから、本試験の所有権を取得した。global owner記録・flock・serial exclusive・TIOCEXCLを、機体確認から書込み・照合・captureまで保持した。
+
+機体はESP32-P4 rev1.3、factory領域1MiB、OTA選択領域なし。元の読取版のアプリSHA-256 `b9ae2f715ccb8081eb5300687eb354471d23ff23982530c200129d9aef69041a` を照合した。新候補はELF SHA-256 `c1bf02c5874bfd3c442dcb72e70250b313ae0f71e645b8fbd833b1a38eff9d64`、アプリSHA-256 `100c6238e3b75324470ed31485b988955a7d1229fb08a9a6a3a0e50abe243718`。bootloader・partition table・appの3領域を照合した直後にwarm resetしてcaptureした。
+
+- スプラッシュ、待機の2画面と、既存の13回のDMA実画素比較は全て不一致0。
+- 起動handoff 1回と、自動のPIN・券面・詳細・通知の12遷移を確認。
+- パネル初期化1回、バックライト消灯0回、表示fault 0。最大video pauseは15,526µs。
+- 表示領域は実際の貸出値 `0x4ff40000..0x4ff60000` と `0x4ff6e000..0x4ff9d000`。固定の旧アドレスを前提にせず検査に合格。
+- カード操作・PIN送信0。画像はread_enabled=falseかつscene_exercise=trueで、カード通信の関数がリンクされていないことをイメージ検査済み。
+
+最初のログ検査は、新設した2つの `NIHOS_NATIVE_CARD_BOOT` 進行記録を未承認のboot headerとして拒否した。検査ツールを `2338c56` で修正し、同じ凍結ログ・同じイメージを再検証して合格した。許可するのは画像で宣言された2記録と既存boot headerの順序だけで、追加ROM banner、余分な記録、別firmwareのheaderは引き続き拒否する。回帰テスト243件と静的検査に合格。元の拒否記録も私有のcapture一式に保持している。再検証のための再書込み・再起動は行っていない。
+
+[boot log](evidence/2026-10-28-card-portrait-boot/boot.log) / [image audit](evidence/2026-10-28-card-portrait-boot/image-audit.json) / [検証結果](evidence/2026-10-28-card-portrait-boot/report.json) / [証拠の条件とhash](evidence/2026-10-28-card-portrait-boot/qualification.json)
+
+現在はカード通信のないテスト画面を残し、後続resetなしでシリアル排他を解放した。通常の読取版にはまだ切り替えていない。目視による点滅・行ずれ・欠け、冷起動、表示終了時のnative SRAM返却は、このcaptureでの合格範囲に含めない。
 
 ## 再生成と残る統合
 
