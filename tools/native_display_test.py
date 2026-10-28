@@ -100,6 +100,25 @@ class NativeFastDisplayEvidenceTests(unittest.TestCase):
             with self.subTest(old=old), self.assertRaises(ValueError):
                 self.check(FAST_LOG.replace(old, new))
 
+    def test_canvas_fixture_requires_portrait_and_checksum_receipt(self):
+        old = 'NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=00000500 logical_height=000002d0 rotation=00000001'
+        new = ('NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=000002d0 logical_height=00000500 rotation=00000000\n'
+               'NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a')
+        self.assertIn(old, FAST_LOG)
+        log = FAST_LOG.replace(old, new)
+        report = DISPLAY.check(log, FAST_IMAGE, 2, 80, canvas_demo=True)
+        self.assertEqual(report['canvas']['checksum'], 0x549e3481)
+        self.assertEqual(report['optical_evidence'], 'not evaluated by this checker')
+        for changed in (log.replace('checksum=549e3481', 'checksum=549e3480'),
+                        log.replace('checksum=549e3481 frames=0000005a', 'checksum=549e3481 frames=00000059'),
+                        log.replace('NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a\n', ''),
+                        log + 'NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a\n',
+                        log.replace('rotation=00000000', 'rotation=00000001')):
+            with self.subTest(changed=changed[-100:]), self.assertRaises(ValueError):
+                DISPLAY.check(changed, FAST_IMAGE, 2, 80, canvas_demo=True)
+        with self.assertRaises(ValueError):
+            DISPLAY.check(log, FAST_IMAGE, 2, 80)
+
 
 CARD_EVIDENCE = ROOT / 'docs/measurements/evidence/2026-10-28-card-foreground-startup'
 CARD_LOG = (CARD_EVIDENCE / 'fixed-boot.log').read_text()
