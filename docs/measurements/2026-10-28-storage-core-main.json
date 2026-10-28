@@ -124,5 +124,18 @@
     "cold OFF/ON",
     "writable SD sync and persistent SQLite/WAL/power loss"
   ],
-  "python_tests": 279
+  "python_tests": 279,
+  "rebase": {
+    "previous_head": "595ef4d2dca170452e43ab4f89356392dd6d4241",
+    "base_commit": "9fb91c21c6d3124ce2b68235e5f275d6acf9ca38",
+    "storage_patch_unchanged": true,
+    "validation": {
+      "root_tests_debug": 570,
+      "root_tests_safe": 570,
+      "ccid_tests_each": 1,
+      "python_tests": 286,
+      "static_analysis": "passed; includes both storage RV32 probes and six native ELF links"
+    },
+    "previous_results": "top-level measurements describe the pre-rebase candidate; this section records the current base"
+  }
 }
