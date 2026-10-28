@@ -40,7 +40,7 @@ Card traces and PIN privacy restrictions are unchanged.
 | Physical I2C, touch, display or reader access | Not performed |
 
 The macOS arm64 host source/compiler identity is
-`4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42`.
+`877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba`.
 The [receipt](evidence/2026-10-28-touch-controller-host/source-witness.json)
 and [normal report](evidence/2026-10-28-touch-controller-host/normal-report.json)
 bind results to the host libraries and runtime sources. The regression log and
@@ -62,7 +62,8 @@ the last slot, and all ten contacts are covered.
 
 ## Base-image memory comparison
 
-Baseline is main `add4e7e`; candidate and baseline were built with identical
+Baseline is main `add4e7e`; the candidate also includes the subsequent
+linear-mask main change `d4de0ce`. Candidate and baseline were built with identical
 options in separate worktrees. Both audited SRAM layouts are unchanged,
 including primary static bytes, stacks, heap and service SRAM extents.
 

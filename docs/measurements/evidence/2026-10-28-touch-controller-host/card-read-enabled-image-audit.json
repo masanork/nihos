@@ -11,7 +11,7 @@
     "transfer_helpers": 0
   },
   "entry": "0x4ff00000",
-  "elf_sha256": "e0158a472d1823e851adb79e774a1277ddc4744057456d03b9795ad7572493a2",
+  "elf_sha256": "6c0d3c33d579447b4cab9702d0ee99c1d7dff8f3f1597689a1fed31666da6f79",
   "memory": {
     "profile": "device",
     "origin": "0x4ff00000",
@@ -331,7 +331,7 @@
     "writable": false,
     "executable": true
   },
-  "image_sha256": "00f41546772432d468a39cd1a2d03d56ee967b11c3713b3c7ecd25e02773c1cd",
+  "image_sha256": "14d8c7a782b34cd8846d607483a6e81a5ea6b755ba8415c81ac466f205b5fd2a",
   "image_bytes": 823264,
   "image_segments": [
     {

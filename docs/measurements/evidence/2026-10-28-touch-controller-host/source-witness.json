@@ -1,5 +1,5 @@
 {
-  "identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+  "identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
   "sources": {
     "probes/card_sim/retire_hal.h": "237b3afc94330d89265cd8b1aab2bc99816f34ca54d905e454f875b78adf940d",
     "probes/card_sim/scanout.c": "8bbaa93bec1b624aff05916f28c759d6dac28030c0c149254b82f32cb49c9831",
@@ -109,7 +109,7 @@
     "src/graphics/boot/provenance.toml": "a76e3dbfdb9326c646df8df5bf24bb52f015f7d26f6cab099e2f46afca7f16be",
     "src/graphics/boot_graphics.zig": "8085bafa3fb00765c3dbd3d5e07c7e617f78789f9dacf1d8cc458fdedd3f4b99",
     "src/graphics/card_auto_font.bin": "f219b4c91143977a726c80d5e45cb0dc074feb64d59c14d0527d4b41fc6aa082",
-    "src/graphics/card_auto_font.json": "a9db1372d45dac03dabb6e896704ad35c49ea36657bde72c293e6ff565f55bee",
+    "src/graphics/card_auto_font.json": "3498ef371e01c710c55379c76b0f34fdbcd1dbd4f9ba79eae5dc1a15883ca429",
     "src/graphics/card_boot/BIZ-UD-Gothic-OFL.txt": "e753d7155d53c747d037a445e584c8ecfca6dd79846db610417e282a736b28bc",
     "src/graphics/card_boot/BIZ-UD-Mincho-OFL.txt": "ef0ed524b3bd012f37015e986809eed6f67905456ebfc1ebd7fcc2765282ee01",
     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
@@ -119,11 +119,11 @@
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
     "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
     "src/graphics/card_read_font.bin": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54",
-    "src/graphics/card_read_font.json": "ce658d25f0bda59837367d964bdf402684a72845b19b42a7922c74387ede70bd",
+    "src/graphics/card_read_font.json": "331d1e6751c2447cd451336b6a0bb2cb73cc46280e4727131ae4d2f2db7f2b77",
     "src/graphics/card_read_result.zig": "0c0ed61d0103d003e59a37ddc1fa29b85a879fae876a0c0bdddbed611171161a",
     "src/graphics/card_splash.zig": "3a64893ec36be58c425137d61180abff80b3c1208645bba28004649011968d75",
     "src/graphics/keypad_atlas.bin": "abff8f6a880dfdcb954c5f25a9fb5bb9de8a8380b07602e339801daf467662e5",
-    "src/graphics/keypad_atlas.json": "2d71292d739faacbdb17937e06e1309edfa0e10b9089b422cea52956840a7fab",
+    "src/graphics/keypad_atlas.json": "a32be3696b54a68989c90863e6950b4a8fc8d43f4b2f475b699facfda7b5fc8f",
     "src/graphics/keypad_atlas.zig": "5db05e2c42b6796a8c90639cd38996a3df7eef51cb7ff9fc663f50c9ae022342",
     "src/graphics/keypad_atlas_plan.bin": "2177561d5f883c0786ebaab9f2e96bd5f10b61cc2faa8ea76132e8c24896e047",
     "src/graphics/keypad_atlas_test.zig": "ba1808de34bdbb68601363f32d1e9054ee77a5b220261aa726b6be074e9f32b3",
@@ -131,7 +131,7 @@
     "src/graphics/photo_fixture.jp2": "ac00ba096edd24e9dcdc7bac5a30b21483b83e5af92674310c777d20158a252a",
     "src/graphics/photo_fixture.rgb565": "f1369b0a11eec5d95f609f96b1fad61dd764ed89b9cc9da9e271ed148b309a1a",
     "src/graphics/photo_fixture.zig": "0307339167dfba04a44d3c69336088897b227419c5405cf5741bd200bd649beb",
-    "src/graphics/surface.zig": "8dc9b747d5341a7573e6e86b29f5949c043604474b6f84a7c8e090927f297260",
+    "src/graphics/surface.zig": "256fabbd87f1d42d4cbc1eae630ed6164ce5fbe19ea503e8a798d2402ca2063d",
     "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
     "src/input/pointer.zig": "b41098302814b3b77a843474e8c0a85a6ad0025f9f9edb18d974ff41e7aed5e4",
     "src/input/touch_service.zig": "dbe261836dab4d89c75c270997f48d123032e55d6974f18f2e660dae311fc8d4",
@@ -267,8 +267,8 @@
     "arm64"
   ],
   "artifacts": {
-    "render-4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42.dylib": "42efc6f4f80a7e6651a1d7d4bd9482d4349eee75ff161678a364ac39ee36497d",
-    "scanout-4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42.dylib": "e888ac13dca6fadb428e4645bf3e6bf309911db972a550fd4712876d6519b0c5"
+    "render-877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba.dylib": "9d43d26bebd96a37510d9558887510e201b11c15d74d69ae00377df533ca93cc",
+    "scanout-877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba.dylib": "f1a479d5ca5f3c5af91665e2eb04ae2cea45aede0ee267d65e9a0804e329192e"
   },
   "scope": "host execution; register boundary modeled; not ESP32-P4 timing or panel qualification"
 }
