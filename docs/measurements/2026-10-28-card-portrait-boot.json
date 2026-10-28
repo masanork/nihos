@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "implementation": "c79179ecc3de554ec48e5ef0cd308c4ca27df482",
+  "base": "c54d9dd",
+  "scope": "host and image qualification; no hardware writes or card/PIN operations",
+  "source_sha256": {
+    "probes/display_notice/capacity-replay.c": "6271cbea022b1f7467be646c953a5d367a354b2fe44d4d3cd378497becf4732c",
+    "src/board/tab5/keypad_sparse.h": "9b9989da693f564c36c49455a8403589c278323e84fa0c34f23f6cf93547c2eb",
+    "src/card.zig": "0381de7afffd3ad58689d1e3fcad9d04b8bf7dbe5191299719bf995ebcea92b5",
+    "src/card_boot_preview.zig": "3c53faa62c91c2112f519cc239b7afb50d602ee4716dbdfce63c9a6235c792b4",
+    "src/graphics/card_auto_font.json": "36755a68af71fd745e7889f095bfd32ae74a6a3980edb4dcde9c091d51123221",
+    "src/graphics/card_boot/BIZ-UD-Gothic-OFL.txt": "e753d7155d53c747d037a445e584c8ecfca6dd79846db610417e282a736b28bc",
+    "src/graphics/card_boot/BIZ-UD-Mincho-OFL.txt": "ef0ed524b3bd012f37015e986809eed6f67905456ebfc1ebd7fcc2765282ee01",
+    "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
+    "src/graphics/card_boot/manifest.json": "a101f4c9dbd801134b2a35b5330b55ffb2292ba97d16d8791fddc6e053738cf1",
+    "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
+    "src/graphics/card_read_font.json": "d0f3f356b4f321e34bbd31b35fc733f6db9ff9d327a322c4183883f6281feb39",
+    "src/graphics/card_splash.zig": "3a64893ec36be58c425137d61180abff80b3c1208645bba28004649011968d75",
+    "src/graphics/keypad_atlas.json": "c9822ef696b46e7f2b75029fa924c87a8687f8e499376b254f4b7abe42548f65",
+    "src/graphics/keypad_plan.zig": "bc0e78d9ab99c4cf928273fb189666f4d3f0316a5642f9edfe55ba30807fc0cb",
+    "src/graphics/surface.zig": "8dc9b747d5341a7573e6e86b29f5949c043604474b6f84a7c8e090927f297260",
+    "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
+    "src/platform/native/display_runtime.zig": "36726979b728fc1294099b8285b52d2f505c9a4518cd29ec87cf0270a7ce60b4",
+    "src/platform/native/esp32p4.ld": "c5db7a86f25b7675f143c5bca6960f61d4fae75709f8fc8183eeba9bc4759137",
+    "src/platform/native/keypad_display.zig": "024fbe355539a2e68bad21d3ad4bd07c73bc17676f6f82ef19908724df96f2d3",
+    "src/platform/native/main.zig": "1ac313a17f33e2e239b19bc46d810319208810f7c59a87fee15d86a445f2e7c6",
+    "src/root.zig": "e4af0180ead27f901d4c1ad56a58d85ac53ef196c69a44d8193a432da22e6c8e",
+    "tools/boot-graphics/generate-card-read-font.py": "b3bf12304de14b4d4836208159c855d4746c5a78c393ae15b26b1c671a0ddefc",
+    "tools/check-native-display-log.py": "c95631e06d20acf98ebb38f5ed16ce41869a35957feef66b607c1cf5ac4e1c8f",
+    "tools/check-native-image.py": "4c37a774f283503195cf4c12e6788986dc7bc8d3f357efc1cd563f0405a588e0",
+    "tools/check-native-scene-log.py": "8790e9d83234cbd21abb315ea57d0685814d228aef34b9025fa5f74a0f5b4993",
+    "tools/design/card-splash-assets.py": "8b575516f7dc2f2ddb9f23b8c8b4da1c92103725442138bd6dce014d2c719224",
+    "tools/design/preview-card-boot.py": "83b8bb13b6a056882eb1d1303cc0cdde6c2cc80f74800174597d04f40fabd42b",
+    "tools/design/shape-mask.cpp": "4d8a1d8b475326a668419e0a0ac810955491d7c744a640c2ffdfb0c87252e700",
+    "tools/native-photo-manifest.py": "1212bf1f6f71fe13114ec3b87c337b3cfa605cad8dc7b87dc3b1a7455620899c",
+    "tools/native_notice_test.py": "cf70caab371510c06e9443b70a2f7ff82711ffb58b14f8e0676aba5966fb7caa",
+    "tools/native_scene_test.py": "6ac7ca1b6c226696cbe901b23caa8bccc94d8baddae65d6770bc5cb3be1fba15"
+  },
+  "raster": {
+    "scope": "host raster and plan; production C capacity replay is checked separately",
+    "nodes": 735,
+    "descriptor_bytes": 47040,
+    "pixel_bytes": 206344,
+    "dynamic_texture_bytes": 0,
+    "estimated_scanout_bytes": 253384,
+    "frame_sha256": "9f0390cbcd50a2432b44b92e669607de0a53e07ad29ba9edca1ae0b83691ba0e",
+    "png_sha256": "1445761a766daca17b731f8fe1cee67ed6004ebe3b75de6304a7a1ae8cc64fd5"
+  },
+  "profiles": [
+    {
+      "profile": "keypad",
+      "heap_bytes": 59712,
+      "elf_sha256": "50af8afd79af5579b7aba7551708c5219548331aa8f7b07628010ce0ceb76095",
+      "image_sha256": "e2c13dc6429270ad4b91911cfcac10fdc628c6dcb83ca7227d52be46b869fdc7",
+      "service_sram": [
+        {
+          "name": "service.free0",
+          "origin": "0x4ff40000",
+          "end": "0x4ff60000",
+          "bytes": 131072
+        },
+        {
+          "name": "service.free1",
+          "origin": "0x4ff6e000",
+          "end": "0x4ff9f000",
+          "bytes": 200704
+        }
+      ],
+      "allocation": "base-free-sram-v1",
+      "card_boot": null,
+      "audit_sha256": "ef10f1d54c2f784f49bc414f3e530e625f08c63cf046f62db7883eed0e4f5261"
+    },
+    {
+      "profile": "reader",
+      "heap_bytes": 50048,
+      "elf_sha256": "5d85acb88bfed40e076ef63fc091a6ba13ebff98a019ebc0db7b84c6e11fc1b0",
+      "image_sha256": "60176813d0975c78a93b7be405c13f567fdc20af913954e8950b981a472c1ae0",
+      "service_sram": [
+        {
+          "name": "service.free0",
+          "origin": "0x4ff40000",
+          "end": "0x4ff60000",
+          "bytes": 131072
+        },
+        {
+          "name": "service.free1",
+          "origin": "0x4ff6e000",
+          "end": "0x4ff9f000",
+          "bytes": 200704
+        }
+      ],
+      "allocation": "base-free-sram-v1",
+      "card_boot": {
+        "schema": 1,
+        "source": "sparse-sram-v1",
+        "paper": 6436,
+        "mask_bytes": 17930,
+        "mask_sha256": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6"
+      },
+      "audit_sha256": "edbcee7a2187e469e787f52809af01f3461cc330a47f9d437f919602e9571657"
+    },
+    {
+      "profile": "portrait",
+      "heap_bytes": 49536,
+      "elf_sha256": "b0c47281edd6e5da58cf06b92d6f56d877c866a4719d8aab57278598845f3319",
+      "image_sha256": "ab41475624209b6e7d8dc5f81179f8ffb4e051f3c3a15763f90b2f1a3ba836df",
+      "service_sram": [
+        {
+          "name": "service.free0",
+          "origin": "0x4ff40000",
+          "end": "0x4ff60000",
+          "bytes": 131072
+        },
+        {
+          "name": "service.free1",
+          "origin": "0x4ff6e000",
+          "end": "0x4ff9f000",
+          "bytes": 200704
+        }
+      ],
+      "allocation": "base-free-sram-v1",
+      "card_boot": {
+        "schema": 1,
+        "source": "sparse-sram-v1",
+        "paper": 6436,
+        "mask_bytes": 17930,
+        "mask_sha256": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6"
+      },
+      "audit_sha256": "5f7dcf4de9c5752c70a5b84ac4e8c9c135f24d4b5791bd902cdcbf3326081acf"
+    },
+    {
+      "profile": "scene",
+      "heap_bytes": 57728,
+      "elf_sha256": "c1bf02c5874bfd3c442dcb72e70250b313ae0f71e645b8fbd833b1a38eff9d64",
+      "image_sha256": "100c6238e3b75324470ed31485b988955a7d1229fb08a9a6a3a0e50abe243718",
+      "service_sram": [
+        {
+          "name": "service.free0",
+          "origin": "0x4ff40000",
+          "end": "0x4ff60000",
+          "bytes": 131072
+        },
+        {
+          "name": "service.free1",
+          "origin": "0x4ff6e000",
+          "end": "0x4ff9f000",
+          "bytes": 200704
+        }
+      ],
+      "allocation": "base-free-sram-v1",
+      "card_boot": {
+        "schema": 1,
+        "source": "sparse-sram-v1",
+        "paper": 6436,
+        "mask_bytes": 17930,
+        "mask_sha256": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6"
+      },
+      "audit_sha256": "c33505e13373c04e4bd004fb5b4d4a9602f2342dd4a711cb827a52cc52118614"
+    },
+    {
+      "profile": "automatic",
+      "heap_bytes": 50048,
+      "elf_sha256": "b1c59c95cbf5dddad78a3d1cd5c1b20158b4319bc44d56b0250924a7e87fca36",
+      "image_sha256": "f98aaaea21fd361185627e1d706708a1d6e513cc83cc262059212c6b1e9307d5",
+      "service_sram": [
+        {
+          "name": "service.free0",
+          "origin": "0x4ff40000",
+          "end": "0x4ff60000",
+          "bytes": 131072
+        },
+        {
+          "name": "service.free1",
+          "origin": "0x4ff6e000",
+          "end": "0x4ff9f000",
+          "bytes": 200704
+        }
+      ],
+      "allocation": "base-free-sram-v1",
+      "card_boot": {
+        "schema": 1,
+        "source": "sparse-sram-v1",
+        "paper": 6436,
+        "mask_bytes": 17930,
+        "mask_sha256": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6"
+      },
+      "audit_sha256": "dee141977010d699b4a0f003190f4afc8321ce41e376a551a05f50608555f0e0"
+    }
+  ],
+  "checks": {
+    "python_tests": 242,
+    "zig_debug": true,
+    "zig_release_safe": true,
+    "static_analysis": true,
+    "existing_rv32_elf_profiles": 6
+  },
+  "physical_qualification": false,
+  "native_font_worker_integration": false
+}
