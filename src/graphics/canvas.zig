@@ -1,6 +1,6 @@
 //! Small, allocation-free RGB565LE canvas. Not an SDL or M5GFX implementation.
 const std = @import("std");
-const surface = @import("surface.zig");
+const surface = @import("surface");
 
 pub const Rect = struct { x: i32, y: i32, width: u32, height: u32 };
 pub const Image = struct { bytes: []const u8, width: u32, height: u32, stride: usize };
