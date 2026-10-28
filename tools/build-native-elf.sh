@@ -337,7 +337,7 @@ fi
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     --dep scheduler --dep task_control --dep tick_clock --dep timer_group \
-    --dep remote_events --dep spsc_ring --dep spsc_channel --dep font_protocol --dep raster_lease --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
+    --dep remote_events --dep spsc_ring --dep spsc_channel --dep font_protocol --dep raster_lease --dep surface --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
     -Mnative_tasks="$repo_root/src/arch/riscv32/native_tasks.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mscheduler="$repo_root/src/kernel/scheduler.zig" \
@@ -355,6 +355,8 @@ fi
     -Mfont_protocol="$repo_root/src/graphics/font_protocol.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mraster_lease="$repo_root/src/graphics/raster_lease.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Msurface="$repo_root/src/graphics/surface.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Msoftware_ipi="$repo_root/src/soc/esp32p4/software_ipi.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

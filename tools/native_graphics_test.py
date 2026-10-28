@@ -80,6 +80,17 @@ class NativeGraphicsTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, "raster lease"):
                 LOG.validate_raster({**good, key: value})
 
+    def test_surface_requires_reference_pixels_and_untouched_guards(self):
+        good = dict(zip(LOG.SURFACE_FIELDS, [3, 33, 5, 3, 6, 65536, 0]))
+        texts = [{"id": 5, "surface_hash": 123}, {"id": 6, "surface_hash": 0}]
+        reference = {"frames": [{"id": 5, "surface_hash": 123}]}
+        LOG.validate_surface(good, texts, reference)
+        for key, value in [("clipped", 0), ("guards", 0), ("rejected", 0), ("live_charge", 65536)]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_surface({**good, key: value}, texts, reference)
+        with self.assertRaisesRegex(ValueError, "RGB565"):
+            LOG.validate_surface(good, [{"id": 5, "surface_hash": 124}], reference)
+
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)
         AUDIT.audit_flash_section(".flash.graphrodata", 1, 50, AUDIT.GRAPH_START + 64, 32, allow_graphics=True)
