@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "c18c1caf8681c46d02ef32e7223660fbffb2e84b",
+  "evidence": "physical-device; one warm USB reset",
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "candidate": {
+    "image_sha256": "0e3fd0f4e672a48677ee12e58f7214a1f8bfc273f561c283420f118e9365e73b",
+    "elf_sha256": "a22cc0709db92c6af81ff81ec3dfe1d9f2693af1b0a26fa784387c187f73fd3f",
+    "image_bytes": 850016
+  },
+  "result": {
+    "status": 1,
+    "generation": 3,
+    "sectors": 247808000,
+    "kind": 4,
+    "partition": 1,
+    "first": 32768,
+    "count": 247775232,
+    "bytes": 140,
+    "crc": 1402425328,
+    "repeated_crc": 1402425328,
+    "file_name_crc": 4209426177,
+    "reads": 9,
+    "destroyed": 1,
+    "charged": 32768,
+    "cleared": 1,
+    "recovered": 1,
+    "stack": {
+      "used": 3200,
+      "preserved": 1
+    },
+    "source": "physical SD prefix read twice; inserted FAT/exFAT card; no littlefs boot probe",
+    "comparison": "same file prefix read twice; no external content oracle",
+    "native_rpc_over_sd_qualified": false
+  },
+  "complete": {
+    "passed": true,
+    "restored": true,
+    "exclusive_serial": true,
+    "kernel_exclusive_serial": true,
+    "removal_fixture_run": false,
+    "reset_baseline_reused": false,
+    "serial_reopens": 0,
+    "same_serial_descriptor": true,
+    "electrical_removal_operator_confirmed": false,
+    "power_on_reset_observed": false,
+    "fatfs_card_run": true,
+    "original_firmware_reset_deferred": true
+  },
+  "backup": {
+    "flash_sha256": "5e8de5fe117f8738053471eada32cf1cb19bb7aec760af5e4d88792f3cb5065e",
+    "bytes": 16777216
+  },
+  "restored": {
+    "verified": true,
+    "sha256": "5e8de5fe117f8738053471eada32cf1cb19bb7aec760af5e4d88792f3cb5065e"
+  },
+  "private_bundle": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-candidate",
+  "artifacts": {
+    "physical-boot1.log": "ca7913a68ef16a6c09c13ecdd24c4d854de9d1919dec8b5406506983769dc11d",
+    "physical-results.json": "ab99e71a0e48ddd6514316874c435dba4aaf7e62cf2f742a12080c413590c3c6",
+    "physical-complete.json": "1ea41b9cc40589aaa08d332ceb3697e2470bf8bf9723a58ebc853d2afefb95f3",
+    "physical-device.json": "1ab5c94f902b6eb46129d955cb6e308a5200a0d9d9b285e81e82f39abc6abd5a",
+    "physical-backup.json": "e8b6ca0a9ae20ade02dd21405be300445392b76b3916bc8e6d3b2364e28d2aa5",
+    "physical-restored.json": "cff04b77e91190c5b36c1f87600732989e25c2a280e420fe8bf76319bb3327e1",
+    "physical-image-audit.json": "f7171125355cb77c9388594281ad4903b68c2c853a223e6fa7c81aa005ab7da2",
+    "physical-sqlite-manifest.json": "f8d22181a7eff338de37e4ed1c052023b81ce21973586b080f0d3a1165dc87a3",
+    "physical-native_options.zig": "330bc02cef4f1a2e209493ca5b326cc905a97e9a265c5ea9bcec31dcde592fc1",
+    "physical-verify-candidate-before.log": "6aac4dedbe0a679d5b7fc45c2eaa5e7129676ebdd16ff9a9e795e00d8c2812be",
+    "physical-verify-candidate-after.log": "6aac4dedbe0a679d5b7fc45c2eaa5e7129676ebdd16ff9a9e795e00d8c2812be",
+    "physical-verify-restored-full-flash.log": "41a7ef9ae8bfbec4d59851f7e78070f8afa83d3e228fa9f8731eae411a66bd96",
+    "swap-timeout.log": "ded97e5aa8a6d7e179a78d643efbc43e9988dc32c45b33b31c07fa612791d12d",
+    "swap-timeout-restored.json": "763a773bc071bb357f8ae11e57923347d91bd8c38a061d739c19ce893a6b81d9",
+    "serial-preflight-failure.json": "03b51805b854ee15ff9b2dc6faf16a1c7c03ebaa463cfa43df3c749822886a06",
+    "inserted-qualification-bundle.json": "ed9c4dc01b728737eb438de0a8e70a96f6173be7029a1aec9fcd1288128352e9",
+    "physical-negative-controls.json": "7bea57bd4c4a7acf38ab03f546e9aa3679f05749f730fdc7c118016bca72ffe8"
+  },
+  "python_tests": 235,
+  "prior_swap_attempt": {
+    "result": "operator acknowledgement missed 300-second deadline; no replacement card read",
+    "source_commit": "0470e5936fe65746bab27fafaa441311f23acd91",
+    "restored": {
+      "verified": true,
+      "sha256": "25765d4033d132316064d67c5a204373ef2cea5dba2389bef68a1368a88ff9e1"
+    }
+  },
+  "baseline_drift_between_attempts": {
+    "observed": true,
+    "changed_erase_block_ranges": [
+      [
+        "0x10000",
+        "0x29000"
+      ],
+      [
+        "0x87000",
+        "0xbd000"
+      ]
+    ],
+    "cause": "not established; each attempt restores its own immediately preceding backup"
+  },
+  "limitations": [
+    "same prefix read twice, no external content oracle",
+    "only this exFAT input physically read",
+    "native VFS/RPC over SD and FS cancellation/removal not qualified",
+    "no clean POR, writable FS, persistent SQLite, power-loss recovery",
+    "original firmware reset deferred until original card returned"
+  ]
+}
