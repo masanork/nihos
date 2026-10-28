@@ -9,5 +9,6 @@ export fn nih_canvas_probe(out: [*]u8, src: [*]const u8, palette: *const [256]u1
     c.blitIndexed8Scaled(.{ .bytes = src[0..4], .width = 2, .height = 2, .stride = 2 }, palette, .{ .x = 0, .y = 0, .width = 8, .height = 8 }) catch return false;
     c.blitMask(.{ .bytes = src[0..4], .width = 2, .height = 2, .stride = 2 }, 0, 0, 0xffff) catch return false;
     c.blitRgb565(.{ .bytes = src[0..4], .width = 2, .height = 1, .stride = 4 }, 0, 0) catch return false;
+    c.blitRgb565Scaled(.{ .bytes = src[0..4], .width = 2, .height = 1, .stride = 4 }, .{ .x = 0, .y = 0, .width = 8, .height = 8 }) catch return false;
     return true;
 }

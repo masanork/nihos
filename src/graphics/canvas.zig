@@ -110,8 +110,17 @@ pub const Canvas = struct {
     }
     /// Nearest-neighbour indexed image into a destination rectangle.
     pub fn blitIndexed8Scaled(self: Canvas, image: Image, palette: *const [256]u16, dest: Rect) Error!void {
-        if (!validImage(image, 1) or image.width == 0 or image.height == 0) return error.InvalidImage;
-        if (overlaps(self.target.bytes, image.bytes) or overlaps(self.target.bytes, std.mem.asBytes(palette))) return error.Aliased;
+        if (overlaps(self.target.bytes, std.mem.asBytes(palette))) return error.Aliased;
+        try self.scale(image, palette, dest);
+    }
+    /// Nearest-neighbour RGB565LE image into a destination rectangle.
+    pub fn blitRgb565Scaled(self: Canvas, image: Image, dest: Rect) Error!void {
+        try self.scale(image, null, dest);
+    }
+    fn scale(self: Canvas, image: Image, palette: ?*const [256]u16, dest: Rect) Error!void {
+        const bpp: usize = if (palette == null) 2 else 1;
+        if (!validImage(image, bpp) or image.width == 0 or image.height == 0) return error.InvalidImage;
+        if (overlaps(self.target.bytes, image.bytes)) return error.Aliased;
         if (dest.width == 0 or dest.height == 0) return;
         const area = intersect(self.clip, bounds(dest));
         if (area.left >= area.right or area.top >= area.bottom) return;
@@ -119,7 +128,8 @@ pub const Canvas = struct {
             const sy: usize = @intCast(@divFloor(@as(u64, @intCast(@as(i64, @intCast(dy)) - dest.y)) * image.height, dest.height));
             for (@as(usize, @intCast(area.left))..@as(usize, @intCast(area.right))) |dx| {
                 const sx: usize = @intCast(@divFloor(@as(u64, @intCast(@as(i64, @intCast(dx)) - dest.x)) * image.width, dest.width));
-                const color = palette[image.bytes[sy * image.stride + sx]];
+                const source = sy * image.stride + sx * bpp;
+                const color = if (palette) |p| p[image.bytes[source]] else std.mem.readInt(u16, image.bytes[source..][0..2], .little);
                 std.mem.writeInt(u16, self.target.bytes[dy * self.target.stride + dx * 2 ..][0..2], color, .little);
             }
         }
@@ -242,6 +252,37 @@ test "indexed nearest scaling respects clipping and padding" {
     const before = out;
     try std.testing.expectError(error.InvalidImage, c.blitIndexed8Scaled(.{ .bytes = &.{}, .width = 0, .height = 0, .stride = 0 }, &palette, .{ .x = 0, .y = 0, .width = 0, .height = 0 }));
     try std.testing.expectEqualSlices(u8, &before, &out);
+}
+
+test "scaled RGB and indexed images agree across clips and ratios" {
+    const indices = [_]u8{ 0, 1, 2, 0xee, 3, 4, 5, 0xee };
+    const pixels = [_]u8{ 0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0xee, 0xee, 0x44, 0x44, 0x55, 0x55, 0x66, 0x66, 0xee, 0xee };
+    var palette: [256]u16 = @splat(0);
+    for (0..6) |i| palette[i] = @intCast((i + 1) * 0x1111);
+    const indexed = Image{ .bytes = &indices, .width = 3, .height = 2, .stride = 4 };
+    const rgb = Image{ .bytes = &pixels, .width = 3, .height = 2, .stride = 8 };
+    const destinations = [_]Rect{
+        .{ .x = 0, .y = 0, .width = 3, .height = 2 },
+        .{ .x = -2, .y = -1, .width = 9, .height = 7 },
+        .{ .x = 1, .y = 1, .width = 1, .height = 1 },
+        .{ .x = 4, .y = 2, .width = 0, .height = 7 },
+        .{ .x = std.math.maxInt(i32), .y = 0, .width = std.math.maxInt(u32), .height = 1 },
+    };
+    for (destinations) |dest| {
+        var a: [48]u8 = @splat(0xa5);
+        var b = a;
+        const ca = Canvas.init(&a, 5, 4, 12).?.clipped(.{ .x = 1, .y = 0, .width = 3, .height = 3 });
+        const cb = Canvas.init(&b, 5, 4, 12).?.clipped(.{ .x = 1, .y = 0, .width = 3, .height = 3 });
+        try ca.blitIndexed8Scaled(indexed, &palette, dest);
+        try cb.blitRgb565Scaled(rgb, dest);
+        try std.testing.expectEqualSlices(u8, &a, &b);
+    }
+    var out: [16]u8 = @splat(0xa5);
+    const c = Canvas.init(&out, 2, 2, 8).?;
+    const dest = Rect{ .x = 0, .y = 0, .width = 2, .height = 2 };
+    try std.testing.expectError(error.InvalidImage, c.blitRgb565Scaled(.{ .bytes = &pixels, .width = 3, .height = 2, .stride = 5 }, dest));
+    try std.testing.expectError(error.Aliased, c.blitRgb565Scaled(.{ .bytes = out[0..8], .width = 2, .height = 2, .stride = 4 }, dest));
+    try std.testing.expect(std.mem.allEqual(u8, &out, 0xa5));
 }
 
 test "overlapping scroll preserves source pixels and row padding" {
