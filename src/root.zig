@@ -31,6 +31,7 @@ pub const task_control = @import("kernel/task_control.zig");
 pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const console = @import("console.zig");
+pub const font_stack_lifetime = @import("graphics/font_stack_lifetime.zig");
 pub const text_context = @import("graphics/text_context.zig");
 pub const ruby_layout = @import("graphics/ruby_layout.zig");
 pub const japanese_break = @import("graphics/japanese_break.zig");
@@ -98,6 +99,7 @@ test {
     _ = japanese_break;
     _ = ruby_layout;
     _ = text_context;
+    _ = font_stack_lifetime;
     _ = console;
     _ = tab5_boot_i2c;
     _ = tab5_display;

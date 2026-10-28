@@ -464,7 +464,9 @@ pub fn runGraphics(device: timer_group.Timer) ?graphics.Report {
             owner.graphics_task = null;
             owner.phase = .complete;
             device.disarm();
-            return graphics.finish();
+            const result = graphics.finish() orelse return null;
+            if (!graphics.stack.reaped(.{ .acknowledged = graphics.exchange.finished(), .exited = snapshot.state == .exited, .cleaned = memory.reusable.taskCleaned(0, key(handle)), .reaped = owner.graphics_task == null })) return null;
+            return result;
         }
         if (calls.yieldNow() != 0) return null;
     }

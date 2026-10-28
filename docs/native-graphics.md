@@ -452,3 +452,29 @@ tests, static analysis/six default links, both profile audits and exact-image
 native emulator execution. The four frame/glyph/A8 references remain byte-for-
 byte unchanged, and final PSRAM capacity returns to 16,022,848 B. Device execution,
 reclaim of the fixed font regions and a restartable production service remain open.
+
+## Font stack bank reuse
+
+[ADR 0055](adr/0055-font-stack-bank-loans.md) separates the 32 KiB font stack
+lifetime from the other 32 KiB of library writable state. A one-shot stack gate
+permits a different shared Surface consumer to draw into that same bank before
+font startup and after terminal ACK, worker EXIT, resource cleanup and reap.
+It refuses active, stale and premature reuse. Font preparation restores the
+stack guard pattern. Before/after scratch pixels must match an independent host
+reference; all existing font and final PSRAM checks remain required.
+
+The stack bank remains a reserved address span, available through this adapter
+when inactive; primary heap capacity does not grow by 32 KiB. The library region
+stays exclusive and fonts remain one-shot. This is native emulator qualification,
+separate from a general broker allocator, restart support or physical Tab5 reuse.
+See the source/image/log receipt
+[`2026-10-28-native-stack-loan.json`](measurements/2026-10-28-native-stack-loan.json).
+
+
+The stack-loan candidate passes 255 Zig and 193 Python tests, static analysis,
+six default links, both image/loader audits and exact native emulator execution.
+Both pre/post scratch digests equal 1,907,333,006; font glyph/A8/four-frame and
+source/queue results are unchanged. Device primary heap is 49,152 B, emulator
+49,408 B, and frontend Flash 14,890 B. The lease/probe code consumes 1,152 B of
+device SRAM relative to the queue-only stage; the 48 KiB floor still holds.
+This is not a 32 KiB primary-heap gain. PSRAM charges/recovery remain unchanged.

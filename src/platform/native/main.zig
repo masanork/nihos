@@ -678,6 +678,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_GRAPHICS_QUEUE", null, .{ "capacity", "metadata_bytes", "payload_bytes", "binding_rejected", "full_rejected", "detached", "live_payloads", "closed_rejected", "requests_metadata", "replies_metadata", "request_payload", "reply_payload" }, &queues);
                     const archive = tasks.graphics.exchange.archive_metrics;
                     logger.record("NIHOS_NATIVE_GRAPHICS_ARCHIVE", null, .{ "logical_bytes", "charge", "live_charge", "before", "after" }, &archive);
+                    tasks.graphics.stack.scratch();
+                    graphicsReport(null);
                     print("NIHOS_NATIVE_GRAPHICS_PASS\n");
                 }
                 while (true) {
@@ -793,9 +795,14 @@ fn stackReport(hart: u32) void {
 
 // Only immutable completed qualification records are emitted here. The SRAM
 // caller gates CPU0 bootstrap/MIE; task reaping and archive retirement stay SRAM.
-noinline fn graphicsReport(result: *const tasks.graphics.Report) linksection(".flash.text.render") void {
-    logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, result);
-    logger.record("NIHOS_NATIVE_GRAPHICS_CLIENTS", null, .{ "client_cycles", "idle_retained", "idle_captures", "idle_progress" }, result);
+noinline fn graphicsReport(result: ?*const tasks.graphics.Report) linksection(".flash.text.render") void {
+    const completed = result orelse {
+        const stack_loan = tasks.graphics.stack.metrics;
+        logger.record("NIHOS_NATIVE_GRAPHICS_STACK_LOAN", null, .{ "bytes", "loans", "guards", "busy", "stale", "premature", "returned", "before_hash", "after_hash", "paint_pc", "start", "end" }, &stack_loan);
+        return;
+    };
+    logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, completed);
+    logger.record("NIHOS_NATIVE_GRAPHICS_CLIENTS", null, .{ "client_cycles", "idle_retained", "idle_captures", "idle_progress" }, completed);
     const exchange = tasks.graphics.exchange.report();
     logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes" }, &exchange);
     const raster = tasks.graphics.exchange.raster.metrics;

@@ -635,3 +635,27 @@ PSRAM for SRAM headroom, without adding a bootstrap root or changing packet,
 glyph, text, canvas or stack capacity. The fixed 64 KiB font stack/library SRAM
 remains reserved. Reuse the existing runtime-text host reference unchanged:
 all glyphs, A8 bytes and four RGB565 passes must still match.
+
+## Font stack bank loans
+
+[ADR 0055](../../docs/adr/0055-font-stack-bank-loans.md) adds an instance/generation
+safety gate for the fixed 32 KiB font stack bank. A shared Surface consumer draws
+into that same SRAM bank before font startup and again after terminal ACK, worker
+cleanup and scheduler reap. Font admission resets the stack pattern in between.
+A live font frame excludes scratch claims; stale scratch tickets and premature
+font return fail before any overwrite. Pure scratch paint uses private RX Flash;
+the gate, scheduler hook and all IRQ paths remain SRAM.
+
+Reproduce the independent scalar RGB565 reference with:
+
+```sh
+python3 probes/graphics/stack_loan_reference.py build/stack-loan-reference
+```
+
+The native smoke adds bank-address, before/after pixel and ownership-control
+records and keeps every prior font/source/queue/heap check. This is whole-bank
+reuse, not additional primary heap capacity or a second page allocator. The
+library's separate 32 KiB writable region remains exclusive; it cannot safely
+restart merely by clearing globals. Physical reuse and broker integration are
+still separate gates. Native font stack size and both existing memory caps remain
+unchanged.
