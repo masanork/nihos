@@ -1,7 +1,7 @@
 //! Target-compilation contract only. Callers must supply exclusive heap ranges.
 const dev = @import("development_memory");
 var manager: dev.Manager = .{};
-export const nih_broker_metadata_bytes: u32 = @sizeOf(dev.Manager);
+pub export const nih_broker_metadata_bytes: u32 = @sizeOf(dev.Manager);
 export fn nih_broker_compile_contract(internal: [*]u8, external: [*]u8) u32 {
     if (!manager.init(&.{.{ .memory = internal[0..dev.internal_bytes] }}, &.{.{ .memory = external[0..dev.external_bytes] }}, dev.policy)) return 0;
     const owner = manager.open(.ime, .{ .internal = 8192, .external = 2097152 }) catch return 0;
