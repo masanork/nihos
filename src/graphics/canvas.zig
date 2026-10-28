@@ -140,6 +140,18 @@ pub const Canvas = struct {
         if (overlaps(self.target.bytes, image.bytes)) return error.Aliased;
         const area = intersect(self.clip, bounds(.{ .x = x, .y = y, .width = image.width, .height = image.height }));
         if (area.left >= area.right or area.top >= area.bottom) return;
+        if (palette == null) {
+            const sx: usize = @intCast(area.left - x);
+            const dx: usize = @intCast(area.left);
+            const bytes: usize = @intCast((area.right - area.left) * 2);
+            for (@as(usize, @intCast(area.top))..@as(usize, @intCast(area.bottom))) |dy| {
+                const sy: usize = @intCast(@as(i64, @intCast(dy)) - y);
+                const source = sy * image.stride + sx * 2;
+                const target = dy * self.target.stride + dx * 2;
+                @memcpy(self.target.bytes[target..][0..bytes], image.bytes[source..][0..bytes]);
+            }
+            return;
+        }
         for (@as(usize, @intCast(area.top))..@as(usize, @intCast(area.bottom))) |dy| {
             const sy: usize = @intCast(@as(i64, @intCast(dy)) - y);
             for (@as(usize, @intCast(area.left))..@as(usize, @intCast(area.right))) |dx| {
@@ -283,6 +295,54 @@ test "scaled RGB and indexed images agree across clips and ratios" {
     try std.testing.expectError(error.InvalidImage, c.blitRgb565Scaled(.{ .bytes = &pixels, .width = 3, .height = 2, .stride = 5 }, dest));
     try std.testing.expectError(error.Aliased, c.blitRgb565Scaled(.{ .bytes = out[0..8], .width = 2, .height = 2, .stride = 4 }, dest));
     try std.testing.expect(std.mem.allEqual(u8, &out, 0xa5));
+}
+
+test "scaled indexed image matches independent division reference" {
+    const pixels = [_]u8{ 1, 2, 3, 0xff, 4, 5, 6, 0xff };
+    var palette: [256]u16 = @splat(0);
+    for (0..7) |i| palette[i] = @intCast(i * 0x101);
+    var prng = std.Random.DefaultPrng.init(0xe33a);
+    const random = prng.random();
+    for (0..2000) |_| {
+        var result: [72]u8 = @splat(0xa5);
+        var expected = result;
+        const dest = Rect{ .x = random.intRangeAtMost(i32, -8, 6), .y = random.intRangeAtMost(i32, -8, 6), .width = random.intRangeAtMost(u32, 1, 15), .height = random.intRangeAtMost(u32, 1, 15) };
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -4, 6), .y = random.intRangeAtMost(i32, -4, 6), .width = random.intRangeAtMost(u32, 0, 10), .height = random.intRangeAtMost(u32, 0, 10) };
+        try Canvas.init(&result, 5, 6, 12).?.clipped(clip).blitIndexed8Scaled(.{ .bytes = &pixels, .width = 3, .height = 2, .stride = 4 }, &palette, dest);
+        for (0..6) |y| for (0..5) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            if (px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height or px < dest.x or px >= @as(i64, dest.x) + dest.width or py < dest.y or py >= @as(i64, dest.y) + dest.height) continue;
+            const sx: usize = @intCast(@divFloor((px - dest.x) * 3, dest.width));
+            const sy: usize = @intCast(@divFloor((py - dest.y) * 2, dest.height));
+            std.mem.writeInt(u16, expected[y * 12 + x * 2 ..][0..2], palette[pixels[sy * 4 + sx]], .little);
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &result);
+    }
+}
+
+test "clipped RGB row copies match pixel reference" {
+    const source = [_]u8{ 1, 2, 3, 4, 5, 6, 0xee, 0xee, 7, 8, 9, 10, 11, 12, 0xee, 0xee };
+    var prng = std.Random.DefaultPrng.init(0x2d67);
+    const random = prng.random();
+    for (0..2000) |_| {
+        var actual: [72]u8 = @splat(0xa5);
+        var expected = actual;
+        const x0 = random.intRangeAtMost(i32, -5, 6);
+        const y0 = random.intRangeAtMost(i32, -5, 6);
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -4, 6), .y = random.intRangeAtMost(i32, -4, 6), .width = random.intRangeAtMost(u32, 0, 10), .height = random.intRangeAtMost(u32, 0, 10) };
+        try Canvas.init(&actual, 5, 6, 12).?.clipped(clip).blitRgb565(.{ .bytes = &source, .width = 3, .height = 2, .stride = 8 }, x0, y0);
+        for (0..6) |y| for (0..5) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            const sx = px - x0;
+            const sy = py - y0;
+            if (px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height or sx < 0 or sx >= 3 or sy < 0 or sy >= 2) continue;
+            const from: usize = @intCast(sy * 8 + sx * 2);
+            @memcpy(expected[y * 12 + x * 2 ..][0..2], source[from..][0..2]);
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
 }
 
 test "overlapping scroll preserves source pixels and row padding" {
