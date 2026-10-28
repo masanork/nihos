@@ -551,3 +551,21 @@ test "a retained T1 unicast is replaced at T2 and only the selected server renew
     try std.testing.expectEqual(.bound, v4.phase);
     try std.testing.expectEqual(@as(u64, 3_600_000_101), v4.expires_at);
 }
+
+test "DHCP carries resolver address into a lease and preserves it on renewal" {
+    var v4 = dhcp.Client{ .mac = mac, .xid = 0x1234 };
+    var packet: [342]u8 = @splat(0);
+    try v4.receiveAt(try serverPacket(v4, 2, &packet), 10);
+    _ = try v4.packet(&packet);
+    v4.sent(20);
+    _ = try serverPacket(v4, 5, &packet);
+    dhcpNumber(&packet, 6, 0xc0a80701);
+    try v4.receiveAt(&packet, 30);
+    try std.testing.expectEqual(@as(u32, 0xc0a80701), v4.lease.?.dns);
+    v4.requestRenewal(100);
+    _ = try v4.packet(&packet);
+    v4.sent(101);
+    _ = try serverPacket(v4, 5, &packet);
+    try v4.receiveAt(&packet, 102);
+    try std.testing.expectEqual(@as(u32, 0xc0a80701), v4.lease.?.dns);
+}

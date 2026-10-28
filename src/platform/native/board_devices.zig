@@ -185,9 +185,12 @@ pub fn imuSnapshot() ImuReport {
 
 /// For a future settings/time service, never called implicitly during boot.
 pub fn setCalendar(value: rtc.DateTime) !void {
+    return setCalendarSection(value, null);
+}
+fn setCalendarSection(value: rtc.DateTime, comptime section: ?[]const u8) !void {
     if (!active) return error.NotStarted;
     report.rtc_valid = 0;
-    try rtc.set(&bus, value);
+    try rtc.setSection(&bus, value, section);
     job = 0;
     next = 0;
 }
@@ -223,4 +226,29 @@ pub const ServiceReport = extern struct { available: u32, requested: u32, i2s_ow
 pub fn serviceSnapshot() ServiceReport {
     const workspace = @import("device_workspace.zig");
     return .{ .available = if (options.devices) 7 else 0, .requested = requestedMask(), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
+}
+
+pub const TimeResult = extern struct { applied: u32 = 0, failures: u32 = 0, error_code: u32 = 0, unix_high: u32 = 0, unix_low: u32 = 0 };
+var time_result: TimeResult = .{};
+pub noinline fn applyNetworkTime(unix_us: u64, received: u64) linksection(".flash.text.time") void {
+    const now = clock.counter() orelse return;
+    if (!active or now < received or now - received > 5_000_000) return;
+    const seconds = (unix_us + now - received) / 1_000_000;
+    const value = rtc.fromUnixSection(seconds, ".flash.text.time") catch {
+        time_result.failures +|= 1;
+        time_result.error_code = 1;
+        return;
+    };
+    setCalendarSection(value, ".flash.text.time") catch |err| {
+        time_result.failures +|= 1;
+        time_result.error_code = @intFromError(err);
+        return;
+    };
+    time_result.applied +|= 1;
+    time_result.error_code = 0;
+    time_result.unix_high = @truncate(seconds >> 32);
+    time_result.unix_low = @truncate(seconds);
+}
+pub fn timeSnapshot() TimeResult {
+    return time_result;
 }

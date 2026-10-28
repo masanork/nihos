@@ -1,0 +1,27 @@
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041138 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000000 bus_uv=00000000 shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000000 imu_initialized=00000000 errors=00000000 samples=00000001
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000020 ticks0=0000000f ticks1=0000000f
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041142 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000006
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000014c ticks0=00000204 ticks1=00000204
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26102808 rtc_raw_time=00033118 year=000007ea month=0000000a day=0000001c hour=00000003 minute=0000001f second=00000012 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000000b
+NIHOS_NATIVE_NTP phase=00000001 attempts=00000001 replies=00000001 rejected=00000000 failures=00000000 server=85f3eef4 stratum=00000001 rtt_us=00017a1c unix_high=00000000 unix_low=6ae16c86
+NIHOS_NATIVE_RTC_SYNC applied=00000001 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=6ae16c86
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000278 ticks0=000003f9 ticks1=000003f9
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26102808 rtc_raw_time=00033124 year=000007ea month=0000000a day=0000001c hour=00000003 minute=0000001f second=00000018 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000010
+NIHOS_NATIVE_NTP phase=00000001 attempts=00000001 replies=00000001 rejected=00000000 failures=00000000 server=85f3eef4 stratum=00000001 rtt_us=00017a1c unix_high=00000000 unix_low=6ae16c86
+NIHOS_NATIVE_RTC_SYNC applied=00000001 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=6ae16c86
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000003a4 ticks0=000005ed ticks1=000005ed
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26102808 rtc_raw_time=00033128 year=000007ea month=0000000a day=0000001c hour=00000003 minute=0000001f second=0000001c ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000015
+NIHOS_NATIVE_NTP phase=00000001 attempts=00000001 replies=00000001 rejected=00000000 failures=00000000 server=85f3eef4 stratum=00000001 rtt_us=00017a1c unix_high=00000000 unix_low=6ae16c86
+NIHOS_NATIVE_RTC_SYNC applied=00000001 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=6ae16c86
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000004d1 ticks0=000007e2 ticks1=000007e2

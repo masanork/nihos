@@ -1,0 +1,13 @@
+{
+  "scope": "UTC RTC advances across warm reset with NTP code absent; cold power-cycle unqualified",
+  "rtc_first_unix": 1793158406,
+  "rtc_last_unix": 1793158426,
+  "ui_final": {
+    "frames": 1232,
+    "ticks0": 2017,
+    "ticks1": 2017
+  },
+  "image_sha256": "09fe70863df2abf002fc7d0c04931a801249d41fc16354f58a822552088cd2b8",
+  "raw_serial_sha256": "6a66c71a011d9d47c76fb70f4a4ebc295c99220e43b2594d5bd54c5c9231a547",
+  "restored": true
+}

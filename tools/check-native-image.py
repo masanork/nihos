@@ -57,6 +57,29 @@ def audit_device_functions(functions, span):
     require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])), 'overlapping/unaccounted device Flash bytes')
     return {name: {'start': hex(address), 'end': hex(stop)} for address, stop, name in selected}
 
+TIME_ENGINE = 'sntp.Engine(".flash.text.time"[0..16]).'
+TIME_CALENDAR = 'rtc.Calendar(".flash.text.time"[0..16]).'
+TIME_FUNCTIONS = {'main.serviceTime', 'board_devices.applyNetworkTime', 'network_service.timePoll', 'network_service.step'} | {
+    TIME_ENGINE + name for name in ('disconnect', 'bind', 'fail', 'tx', 'route', 'query', 'udp', 'sent', 'receive', 'datagram', 'acceptTime', 'take', 'snapshot', 'timestamp', 'skipName', 'dnsAnswer', 'validMac', 'unicast', 'sum16')
+} | {TIME_CALENDAR + name for name in ('fromUnix', 'toUnix')}
+TIME_GENERIC = {TIME_CALENDAR + name for name in ('set', 'writeStopped')}
+
+def time_function(name):
+    return name in TIME_FUNCTIONS or any(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in TIME_GENERIC)
+
+
+def audit_time_functions(functions, span):
+    start, end = span
+    require(0x40000120 < start < end <= 0x40010000 and start % 16 == 0, 'invalid network/time Flash extent')
+    selected = sorted((address, stop, name) for name, address, stop in functions if start <= address < end)
+    require(selected and selected[0][0] == start and selected[-1][1] == end and
+            all(start <= address < stop <= end and time_function(name) for address, stop, name in selected), 'unapproved network/time Flash function')
+    names = [name for _, _, name in selected]
+    require(len(names) == len(set(names)) and TIME_FUNCTIONS.issubset(names) and
+            all(sum(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) is not None for name in names) == 1 for prefix in TIME_GENERIC), 'missing/duplicate network/time Flash function')
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])), 'overlapping/unaccounted network/time Flash bytes')
+    return {name: {'start': hex(address), 'end': hex(stop)} for address, stop, name in selected}
+
 
 SQL_START, SQL_END = 0x40020000, 0x400C0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
@@ -83,7 +106,10 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False):
+    if name == '.flash.time':
+        require(allow_time and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid network/time foreground Flash section')
+        return
     if name == '.flash.devices':
         require(allow_devices and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid device foreground Flash section')
         return
@@ -122,13 +148,16 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if ROM_SYMBOLS.get(name) == address:
+            continue
+        if time_span is not None and time_span[0] <= address < stop <= time_span[1]:
+            require(time_function(name), 'unapproved network/time Flash function: ' + name)
             continue
         if device_span is not None and device_span[0] <= address < stop <= device_span[1]:
             require(device_function(name), 'unapproved device Flash function: ' + name)
@@ -277,6 +306,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     flash_found = set()
     flash_tables = None
     boot_code = None
+    time_code = b''
+    time_start = None
+    allow_time = any(string(names, section[0]) == '.flash.time' and section[5] for section in sections)
+    require(not allow_time or (mode == 'integer' and profile == 'device' and keypad_manifest is None), 'invalid network/time Flash profile')
     device_code = b''
     device_start = None
     allow_devices = any(string(names, section[0]) == '.flash.devices' and section[5] for section in sections)
@@ -308,9 +341,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
                 ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
             if not in_sram and not in_stacks and not in_ui:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name == '.flash.time':
+                    time_start, time_code = address, elf[offset:offset + size]
                 if name == '.flash.devices':
                     device_start, device_code = address, elf[offset:offset + size]
                 if name == '.flash.card':
@@ -348,7 +383,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()), "missing mapped Flash sections")
     ui_report = None
     ui_payload = None
     if allow_ui:
@@ -458,7 +493,14 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     if device_span:
         require(device_start == (boot_end + 15) & ~15 and symbols.get('__flash_devices_start') == device_start and symbols.get('__flash_devices_end') == device_span[1], 'invalid device foreground symbols')
         device_functions = audit_device_functions(functions, device_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span)
+    time_span = None if time_start is None else (time_start, time_start + len(time_code))
+    time_functions = None
+    require(symbols.get('__native_network', 0) == int(allow_time), 'network profile marker differs from time section')
+    if time_span:
+        preceding_end = device_span[1] if device_span else boot_end
+        require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
+        time_functions = audit_time_functions(functions, time_span)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -529,6 +571,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report["photo_codec"] = photo_report
         if keypad_manifest.get("automatic_cards"):
             report["automatic_cards"] = keypad_manifest["automatic_cards"]
+    if time_span:
+        report['time_text'] = {'start': hex(time_start), 'end': hex(time_span[1]), 'bytes': len(time_code), 'sha256': hashlib.sha256(time_code).hexdigest(), 'functions': time_functions, 'foreground_only': True, 'writable': False, 'executable': True}
     if device_span:
         report['device_text'] = {'start': hex(device_start), 'end': hex(device_span[1]), 'bytes': len(device_code), 'sha256': hashlib.sha256(device_code).hexdigest(), 'functions': device_functions, 'foreground_only': True, 'writable': False, 'executable': True}
     if card_span:
@@ -545,6 +589,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         first_payload += bytes(card_start - boot_end) + card_code
     if device_span:
         first_payload += bytes(device_start - boot_end) + device_code
+    if time_span:
+        preceding_end = device_span[1] if device_span else boot_end
+        first_payload += bytes(time_start - preceding_end) + time_code
     first_length = 256 + ((len(first_payload) + 3) & ~3)
     for index in range(image[1]):
         address, length = struct.unpack_from("<II", image, position)

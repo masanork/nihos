@@ -2,7 +2,7 @@
 //! No persistent storage, address conflict detection or general IPv4 stack.
 const std = @import("std");
 pub const Error = error{ Capacity, Malformed, Rejected, InvalidLease, LeaseExpired, Clock };
-pub const Lease = struct { ip: u32, mask: u32, gateway: u32, server: u32, seconds: u32 };
+pub const Lease = struct { ip: u32, mask: u32, gateway: u32, dns: u32 = 0, server: u32, seconds: u32 };
 pub const Client = struct {
     mac: [6]u8,
     xid: u32,
@@ -175,6 +175,7 @@ pub const Client = struct {
         var server: ?u32 = null;
         var mask: ?u32 = null;
         var gateway: ?u32 = null;
+        var dns: ?u32 = null;
         var seconds: ?u32 = null;
         var renewal: ?u32 = null;
         var rebind: ?u32 = null;
@@ -211,6 +212,12 @@ pub const Client = struct {
                     if (gateway != null or count < 4 or count % 4 != 0) return error.Malformed;
                     gateway = get32(value[0..4]);
                 },
+                6 => {
+                    if (dns != null or count < 4 or count % 4 != 0) return error.Malformed;
+                    const selected_dns = get32(value[0..4]);
+                    if (!unicast(selected_dns)) return error.InvalidLease;
+                    dns = selected_dns;
+                },
                 51 => {
                     if (seconds != null or count != 4) return error.Malformed;
                     seconds = get32(value);
@@ -243,7 +250,7 @@ pub const Client = struct {
             self.request_started = null;
         } else if ((self.phase == .request or self.maintaining()) and kind == 5) {
             if (address != self.offered) return error.InvalidLease;
-            const lease = Lease{ .ip = address, .mask = mask orelse if (self.lease) |old| old.mask else return error.InvalidLease, .gateway = gateway orelse if (self.lease) |old| old.gateway else return error.InvalidLease, .server = selected, .seconds = seconds orelse return error.InvalidLease };
+            const lease = Lease{ .ip = address, .mask = mask orelse if (self.lease) |old| old.mask else return error.InvalidLease, .gateway = gateway orelse if (self.lease) |old| old.gateway else return error.InvalidLease, .dns = dns orelse if (self.lease) |old| old.dns else 0, .server = selected, .seconds = seconds orelse return error.InvalidLease };
             const host = ~lease.mask;
             if (lease.mask == 0 or host < 3 or host & (host +% 1) != 0 or lease.seconds == 0 or !unicast(lease.gateway) or
                 address & lease.mask != lease.gateway & lease.mask or address & host == 0 or address & host == host or

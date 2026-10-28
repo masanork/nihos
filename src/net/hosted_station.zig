@@ -4,6 +4,7 @@ const std = @import("std");
 pub const wire = @import("hosted.zig");
 pub const ble = @import("ble_hci.zig");
 pub const dhcp = @import("dhcp.zig");
+pub const sntp = @import("sntp.zig");
 pub const ipv6 = @import("ipv6.zig");
 pub const Join = union(enum) { disabled, saved, network: struct { ssid: []const u8, password: []const u8 } };
 /// Owned, bounded provider boundary. JSON is only the initial provider; a later
