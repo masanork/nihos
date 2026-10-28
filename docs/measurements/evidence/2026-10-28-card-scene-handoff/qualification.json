@@ -18,9 +18,10 @@
   "fault": 0,
   "max_video_pause_us": 15897,
   "cold_power_cycle": "not evaluated",
-  "optical_result": "pending user observation after drain fix",
+  "optical_result": "user confirmed correct rendering after drain fix",
   "superseded_optical_result": {
     "source_commit": "c44206c",
     "result": "user confirmed no flicker but reported whole-screen line shifts and missing content"
-  }
+  },
+  "optical_evidence": "optical-confirmation.json"
 }
