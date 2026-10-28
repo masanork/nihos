@@ -1,0 +1,1128 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "scope": "four serialized client cycles on one native font-task lifetime; local P4 emulator, not a public request service",
+  "base_commit": "90dc031661965b0b6cb27c0f0d0202c71091aa72",
+  "prior_receipt": {
+    "path": "docs/measurements/2026-10-28-native-graphics.json",
+    "sha256": "17f291780416d03f76b3cb285de7f81aee4d2dd8e992f025e65112a3ad6ece60"
+  },
+  "native_result": {
+    "status": "pass",
+    "evidence": "esp32p4-emulator-native-image",
+    "rtos_linked": false,
+    "graphics": {
+      "status": 1,
+      "owner": 65539,
+      "runs": 16,
+      "library_pc": 1073886920,
+      "heap_before": 16022848,
+      "heap_after": 16022848,
+      "raw_peak": 1310976,
+      "retained": 65792,
+      "stack_low": 1341579280,
+      "stack_high": 1341612032,
+      "observed_used": 16992,
+      "captures": 6376,
+      "render_captures": 6360,
+      "bootstrap_progress": 6379,
+      "record_peak": 694,
+      "controller_bytes": 17224,
+      "allocations": 21,
+      "releases": 20,
+      "foreign_rejected": 6378,
+      "irq_rejected": 6377,
+      "forged_rejected": 1,
+      "client_cycles": 4,
+      "idle_retained": 65792,
+      "idle_captures": 4,
+      "idle_progress": 4
+    },
+    "hashes": [
+      1728955693,
+      127264623,
+      3802936562,
+      2720744390,
+      1636795626,
+      1483075906,
+      2072818531,
+      863961824,
+      41314477,
+      2150160734,
+      3827649753,
+      3029469629,
+      1662331729,
+      1389973151,
+      4053443032,
+      198040621
+    ],
+    "baseline": {
+      "schema": 1,
+      "backend": "native-sram",
+      "evidence": "emulator",
+      "mode": "integer",
+      "storage": null,
+      "storage_stack": null,
+      "qualification": null,
+      "sdmmc": null,
+      "sdmmc_stages": [],
+      "sdmmc_sweeps": [],
+      "image_elf_sha256": "d15b5f072b7c102502ee80568fd24040da4dde3fae09ce59baf56013eae4e302",
+      "flash_records": [
+        {
+          "hart": 0,
+          "start": 1073807392,
+          "end": 1073811150,
+          "bytes": 3758,
+          "initial": 2836804764,
+          "final": 2836804764,
+          "checks": 7516,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1073807392,
+          "end": 1073811150,
+          "bytes": 3758,
+          "initial": 2836804764,
+          "final": 2836804764,
+          "checks": 7516,
+          "confirmed": 1
+        }
+      ],
+      "flash_boot": {
+        "start": 1073742112,
+        "end": 1073746790,
+        "probe": 1073742234,
+        "mapping": 1073745576,
+        "completed": 1
+      },
+      "cpu_clock": null,
+      "sqlite": null,
+      "stacks": [
+        {
+          "hart": 0,
+          "start": 1341521920,
+          "end": 1341579264,
+          "boot_start": 1341521920,
+          "boot_end": 1341530112,
+          "irq_start": 1341538304,
+          "irq_end": 1341546496,
+          "task_start": 1341554688,
+          "task_end": 1341566976,
+          "boot_frame": 1341528720,
+          "irq_sp": 1341546208,
+          "task0_frame": 1341558304,
+          "task1_frame": 1341562400,
+          "task2_frame": 1341566784,
+          "frames": 1054,
+          "zeroed": 20480,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1341521920,
+          "end": 1341579264,
+          "boot_start": 1341530112,
+          "boot_end": 1341538304,
+          "irq_start": 1341546496,
+          "irq_end": 1341554688,
+          "task_start": 1341566976,
+          "task_end": 1341579264,
+          "boot_frame": 1341537840,
+          "irq_sp": 1341554400,
+          "task0_frame": 1341570592,
+          "task1_frame": 1341574688,
+          "task2_frame": 1341579072,
+          "frames": 1054,
+          "zeroed": 20480,
+          "confirmed": 1
+        }
+      ],
+      "rounds": 300,
+      "samples": 31,
+      "psram": {
+        "status": 1,
+        "configuration": 3328,
+        "identity": 207,
+        "bytes": 33554432,
+        "transactions": 4,
+        "mapped": 33554432,
+        "allocatable": 0
+      },
+      "psram_supply": {
+        "programmed": 1,
+        "calibrated": 0,
+        "dref": 6,
+        "mul": 5,
+        "control": 384,
+        "analog": 1719664640,
+        "settled": 1
+      },
+      "psram_io": {
+        "status": 1,
+        "mr0": 40,
+        "mr4": 64,
+        "mr8": 11,
+        "addresses": 25,
+        "passes": 2,
+        "reads": 50,
+        "writes": 50,
+        "transactions": 113
+      },
+      "psram_fast": null,
+      "psram_mapping": {
+        "status": 1,
+        "failure": 0,
+        "line_bytes": 64,
+        "last_address": 0,
+        "last_actual": 0,
+        "last_expected": 0,
+        "bytes": 33554432,
+        "entries": 1024,
+        "cpu_checks": 36,
+        "command_checks": 36,
+        "transactions": 72,
+        "syncs": 5
+      },
+      "psram_smp": {
+        "status": 1,
+        "rounds": 64,
+        "owner_checks": 3072,
+        "peer_checks": 3072,
+        "command_checks": 48,
+        "syncs": 1
+      },
+      "cpu0_progress": 4207314,
+      "cpu1_progress": 2166725,
+      "cpu0_interrupts": 899,
+      "cpu1_interrupts": 898,
+      "tasks": [
+        {
+          "hart": 0,
+          "progress": [
+            441856,
+            436736
+          ],
+          "timer_captures": [
+            301,
+            301
+          ],
+          "switches": 910,
+          "calls": 17,
+          "reaped": 3,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        },
+        {
+          "hart": 1,
+          "progress": [
+            441856,
+            436736
+          ],
+          "timer_captures": [
+            301,
+            300
+          ],
+          "switches": 909,
+          "calls": 17,
+          "reaped": 3,
+          "sleeps": 2,
+          "elapsed_ticks": 898
+        }
+      ],
+      "ipi_idle": [
+        {
+          "hart": 0,
+          "sent": 64,
+          "received": 64,
+          "ipis": 66,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 65,
+          "entries": 64,
+          "returns": 64,
+          "pending_before_wfi": 1,
+          "self_ipi": 1,
+          "timer_start": 900,
+          "timer_end": 900,
+          "queued": 0
+        },
+        {
+          "hart": 1,
+          "sent": 64,
+          "received": 64,
+          "ipis": 66,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 65,
+          "entries": 65,
+          "returns": 65,
+          "pending_before_wfi": 1,
+          "self_ipi": 1,
+          "timer_start": 900,
+          "timer_end": 900,
+          "queued": 0
+        }
+      ],
+      "floating": [
+        {
+          "hart": 0,
+          "checks0": 0,
+          "checks1": 0,
+          "checks2": 0,
+          "timer": 0,
+          "calls": 0,
+          "ipi": 0,
+          "saves": 0,
+          "restores": 0,
+          "initial": 0,
+          "app_timer": 0,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "checks0": 0,
+          "checks1": 0,
+          "checks2": 0,
+          "timer": 0,
+          "calls": 0,
+          "ipi": 0,
+          "saves": 0,
+          "restores": 0,
+          "initial": 0,
+          "app_timer": 0,
+          "confirmed": 1
+        }
+      ],
+      "memory": [
+        {
+          "hart": 0,
+          "start": 1341351680,
+          "end": 1341387648,
+          "capacity": 35840,
+          "used": 448,
+          "free": 35392,
+          "checks0": 441857,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1341387648,
+          "end": 1341423616,
+          "capacity": 35840,
+          "used": 448,
+          "free": 35392,
+          "checks0": 441857,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        }
+      ],
+      "external_memory": [
+        {
+          "hart": 0,
+          "start": 1208156160,
+          "end": 1224835072,
+          "capacity": 16678784,
+          "used": 16678784,
+          "free": 0,
+          "checks0": 441857,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1224835072,
+          "end": 1241513984,
+          "capacity": 16678784,
+          "used": 16678784,
+          "free": 0,
+          "checks0": 441857,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        }
+      ],
+      "heaps": [
+        {
+          "hart": 0,
+          "start": 1208156288,
+          "end": 1224703552,
+          "metadata": 524288,
+          "capacity": 16022848,
+          "free": 16022848,
+          "live": 0,
+          "allocations": 13764,
+          "frees": 13764,
+          "rejected": 13,
+          "checks0": 441857,
+          "checks1": 436737,
+          "levels": 18,
+          "max_steps": 56,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1224835200,
+          "end": 1241382464,
+          "metadata": 524288,
+          "capacity": 16022848,
+          "free": 16022848,
+          "live": 0,
+          "allocations": 13764,
+          "frees": 13764,
+          "rejected": 13,
+          "checks0": 441857,
+          "checks1": 436737,
+          "levels": 18,
+          "max_steps": 56,
+          "confirmed": 1
+        }
+      ],
+      "task_resources": [
+        {
+          "hart": 0,
+          "opened": 7,
+          "closed": 6,
+          "completed": 6,
+          "reclaimed": 10,
+          "reuses": 3,
+          "owned": 0,
+          "pending": 0,
+          "stale": 3,
+          "full": 3,
+          "forced": 1,
+          "pool_objects": 18,
+          "pool_rejected": 6,
+          "slab_objects": 120,
+          "slab_frees": 24,
+          "slab_rejected": 27,
+          "object_moves": 8,
+          "object_inplace": 4,
+          "object_rejected": 8,
+          "object_copy_bytes": 4208,
+          "c_probes": 2
+        },
+        {
+          "hart": 1,
+          "opened": 7,
+          "closed": 6,
+          "completed": 6,
+          "reclaimed": 10,
+          "reuses": 3,
+          "owned": 0,
+          "pending": 0,
+          "stale": 3,
+          "full": 3,
+          "forced": 1,
+          "pool_objects": 18,
+          "pool_rejected": 6,
+          "slab_objects": 120,
+          "slab_frees": 24,
+          "slab_rejected": 27,
+          "object_moves": 8,
+          "object_inplace": 4,
+          "object_rejected": 8,
+          "object_copy_bytes": 4208,
+          "c_probes": 2
+        }
+      ],
+      "external_registered_bytes": 33357568,
+      "external_allocatable_bytes": 32045696
+    },
+    "limits": [
+      "No physical Tab5 evidence",
+      "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
+      "Four client cycles share one live library task; final task exit retires HB state without attempting service restart",
+      "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"
+    ],
+    "artifacts_sha256": {
+      "nihos-native.elf": "d15b5f072b7c102502ee80568fd24040da4dde3fae09ce59baf56013eae4e302",
+      "nihos-native.bin": "6d1af44490d41e00c6015fa7efdcca59153060a8fbc6ca00285935e027cbd9e3",
+      "nihos-native-flash.bin": "0da558576ab1576adb268b980f902954729f834c354f6d6a657751175957f98e",
+      "emulator.log": "66f5cca104c6a94b73755e40e6ca5f0488a3c164f18927e741f7787bd554bdc1",
+      "image-audit.json": "6215b2d4d46e077cd178962cce7f3cf2bed21780d0c27de703b278d4a791878a",
+      "graphics-manifest.json": "8f3cd37e0b33a3741f14206923476fc226b43200569600f4e019337ecda8715d"
+    },
+    "host_reference_sha256": "ab2e37012fcc54853bd3fae2841655a8258eca38855fb42026bb4c4347ea40ed"
+  },
+  "total_draw_cases": 64,
+  "profiles": {
+    "emulator": {
+      "memory": {
+        "profile": "emulator",
+        "origin": "0x4ff20000",
+        "end": "0x4ff48000",
+        "bytes": 163840,
+        "total_bytes": 286720,
+        "regions": [
+          {
+            "name": "resident",
+            "origin": "0x4ff20000",
+            "end": "0x4ff48000",
+            "bytes": 163840
+          },
+          {
+            "name": "stacks",
+            "origin": "0x4ff60000",
+            "end": "0x4ff6e000",
+            "bytes": 57344
+          },
+          {
+            "name": "graphics-stack",
+            "origin": "0x4ff6e000",
+            "end": "0x4ff76000",
+            "bytes": 32768
+          },
+          {
+            "name": "graphics-data",
+            "origin": "0x4ff78000",
+            "end": "0x4ff80000",
+            "bytes": 32768
+          }
+        ]
+      },
+      "primary_static_bytes": 91904,
+      "sram_reserved_bytes": 214784,
+      "heap": {
+        "start": "0x4ff36700",
+        "end": "0x4ff48000",
+        "bytes": 71936,
+        "owner_count": 2,
+        "granule_bytes": 64,
+        "external_bytes": 0
+      },
+      "image_bytes": 11557008,
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 4936
+        },
+        {
+          "address": "0x4ff20000",
+          "bytes": 60584
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 11447232
+        },
+        {
+          "address": "0x4ff2eca8",
+          "bytes": 24020
+        },
+        {
+          "address": "0x4ff34a80",
+          "bytes": 1360
+        },
+        {
+          "address": "0x4ff78000",
+          "bytes": 18756
+        }
+      ],
+      "loader": {
+        "elf_sha256": "ea1409292f3f9afde5fbf07d86db315659cd3237f93bdc61d6c102e4626f1884",
+        "allocated": [
+          {
+            "address": "0x4ffaefc0",
+            "bytes": 12498
+          },
+          {
+            "address": "0x4ffb5fc0",
+            "bytes": 272
+          },
+          {
+            "address": "0x4ffb60d0",
+            "bytes": 80
+          },
+          {
+            "address": "0x4ffb6120",
+            "bytes": 12
+          },
+          {
+            "address": "0x4ffb612c",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ffac2c0",
+            "bytes": 3010
+          }
+        ],
+        "nearest_higher_address": "0x4ffac2c0",
+        "gap_bytes": 410304,
+        "regions_checked": [
+          {
+            "name": "resident",
+            "gap_below": null,
+            "gap_above": 410304
+          },
+          {
+            "name": "stacks",
+            "gap_below": null,
+            "gap_above": 254656
+          },
+          {
+            "name": "graphics-stack",
+            "gap_below": null,
+            "gap_above": 221888
+          },
+          {
+            "name": "graphics-data",
+            "gap_below": null,
+            "gap_above": 180928
+          }
+        ]
+      },
+      "loader_config": {
+        "l2_bytes": 131072,
+        "line_bytes": 64,
+        "profile": "emulator",
+        "stack_source_window": {
+          "origin": "0x4ff20000",
+          "end": "0x4ffaefc0"
+        },
+        "config_sha256": "77e3976fc57fdb756dea34588025c9abc0190a6d9d1882c680416c51e74287a9"
+      },
+      "graphics": {
+        "text_start": "0x40020000",
+        "text_end": "0x40083f90",
+        "text_bytes": 409488,
+        "rodata_bytes": 150912,
+        "fonts_bytes": 10821328,
+        "fonts": [
+          {
+            "family": "gothic",
+            "name": "BIZUDGothic-Regular.ttf",
+            "bytes": 4667380,
+            "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0",
+            "start": "0x400a8d10",
+            "end": "0x4051c504"
+          },
+          {
+            "family": "mincho",
+            "name": "BIZUDMincho-Regular.ttf",
+            "bytes": 6153932,
+            "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2",
+            "start": "0x4051c510",
+            "end": "0x40afabdc"
+          }
+        ],
+        "payload_sha256": "6bd54282a21a16e9f8a87119477ec3f0acc3210f77631e4ea429f0b1e12cb159",
+        "padding_bytes": 61744,
+        "static_data_bytes": 18756,
+        "static_bss_bytes": 1168,
+        "stack_bytes": 32768,
+        "ram_reserved_bytes": 32768,
+        "static_occupied_span_bytes": 19984,
+        "image_offset": 131072
+      },
+      "evidence": "native P4 emulator boot",
+      "artifacts_sha256": {
+        "nihos-native.elf": "d15b5f072b7c102502ee80568fd24040da4dde3fae09ce59baf56013eae4e302",
+        "nihos-native.bin": "6d1af44490d41e00c6015fa7efdcca59153060a8fbc6ca00285935e027cbd9e3",
+        "nihos-native-flash.bin": "0da558576ab1576adb268b980f902954729f834c354f6d6a657751175957f98e",
+        "image-audit.json": "6215b2d4d46e077cd178962cce7f3cf2bed21780d0c27de703b278d4a791878a",
+        "graphics-manifest.json": "8f3cd37e0b33a3741f14206923476fc226b43200569600f4e019337ecda8715d",
+        "graphics_payload.o": "6bd54282a21a16e9f8a87119477ec3f0acc3210f77631e4ea429f0b1e12cb159",
+        "graphics_fonts.o": "232fc5552b3911b05575389a52402e0d038a671c4e7ae4387f88d70b679c5500",
+        "graphics/generated/link_oracle.cpp": "95576a17a3b72239195cf28bddaf66940f5ede5c845e08266f5de69714506d4c",
+        "graphics/build/ft/libfreetype.a": "43ca170a73fffe69bf5229e3daa454b22bd3719bd53b53becb5e1ad698ecf41a",
+        "graphics/build/hb/libharfbuzz.a": "70336937845d0b4fc52badb40136350cf320065f99af818c2b60c152304e8da9"
+      }
+    },
+    "device": {
+      "memory": {
+        "profile": "device",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840,
+        "total_bytes": 286720,
+        "regions": [
+          {
+            "name": "resident",
+            "origin": "0x4ff00000",
+            "end": "0x4ff28000",
+            "bytes": 163840
+          },
+          {
+            "name": "stacks",
+            "origin": "0x4ff60000",
+            "end": "0x4ff6e000",
+            "bytes": 57344
+          },
+          {
+            "name": "graphics-stack",
+            "origin": "0x4ff6e000",
+            "end": "0x4ff76000",
+            "bytes": 32768
+          },
+          {
+            "name": "graphics-data",
+            "origin": "0x4ff78000",
+            "end": "0x4ff80000",
+            "bytes": 32768
+          }
+        ]
+      },
+      "primary_static_bytes": 92160,
+      "sram_reserved_bytes": 215040,
+      "heap": {
+        "start": "0x4ff16800",
+        "end": "0x4ff28000",
+        "bytes": 71680,
+        "owner_count": 2,
+        "granule_bytes": 64,
+        "external_bytes": 0
+      },
+      "image_bytes": 11558448,
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 6196
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 59324
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 11447232
+        },
+        {
+          "address": "0x4ff0e7bc",
+          "bytes": 22784
+        },
+        {
+          "address": "0x4ff140c0",
+          "bytes": 2668
+        },
+        {
+          "address": "0x4ff14b40",
+          "bytes": 1360
+        },
+        {
+          "address": "0x4ff78000",
+          "bytes": 18756
+        }
+      ],
+      "loader": {
+        "elf_sha256": "720376ce3680b980cca9d1dea34de1632774c934cbe9f536626b8a0877a1e6ac",
+        "allocated": [
+          {
+            "address": "0x4ff2cbd0",
+            "bytes": 12498
+          },
+          {
+            "address": "0x4ff33bd0",
+            "bytes": 272
+          },
+          {
+            "address": "0x4ff33ce0",
+            "bytes": 80
+          },
+          {
+            "address": "0x4ff33d30",
+            "bytes": 12
+          },
+          {
+            "address": "0x4ff33d3c",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff2abd0",
+            "bytes": 3010
+          }
+        ],
+        "nearest_higher_address": "0x4ff2abd0",
+        "gap_bytes": 11216,
+        "regions_checked": [
+          {
+            "name": "resident",
+            "gap_below": null,
+            "gap_above": 11216
+          },
+          {
+            "name": "stacks",
+            "gap_below": 176396,
+            "gap_above": null
+          },
+          {
+            "name": "graphics-stack",
+            "gap_below": 233740,
+            "gap_above": null
+          },
+          {
+            "name": "graphics-data",
+            "gap_below": 274700,
+            "gap_above": null
+          }
+        ]
+      },
+      "loader_config": {
+        "l2_bytes": 131072,
+        "line_bytes": 64,
+        "profile": "device",
+        "stack_source_window": {
+          "origin": "0x4ff40000",
+          "end": "0x4ffa0000"
+        },
+        "config_sha256": "2dd594d3a8cd6c2b202a0fde3ff46c3eca2770a8201fd442b91d5e8e8cbfc60f"
+      },
+      "graphics": {
+        "text_start": "0x40020000",
+        "text_end": "0x40083f90",
+        "text_bytes": 409488,
+        "rodata_bytes": 150912,
+        "fonts_bytes": 10821328,
+        "fonts": [
+          {
+            "family": "gothic",
+            "name": "BIZUDGothic-Regular.ttf",
+            "bytes": 4667380,
+            "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0",
+            "start": "0x400a8d10",
+            "end": "0x4051c504"
+          },
+          {
+            "family": "mincho",
+            "name": "BIZUDMincho-Regular.ttf",
+            "bytes": 6153932,
+            "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2",
+            "start": "0x4051c510",
+            "end": "0x40afabdc"
+          }
+        ],
+        "payload_sha256": "6bd54282a21a16e9f8a87119477ec3f0acc3210f77631e4ea429f0b1e12cb159",
+        "padding_bytes": 61556,
+        "static_data_bytes": 18756,
+        "static_bss_bytes": 1168,
+        "stack_bytes": 32768,
+        "ram_reserved_bytes": 32768,
+        "static_occupied_span_bytes": 19984,
+        "image_offset": 131072
+      },
+      "evidence": "build and structural audits only; no hardware access",
+      "artifacts_sha256": {
+        "nihos-native.elf": "16c85259aa33fa27189cc809b354b90f81afc3772690b30c3dee5b30bb5bdd05",
+        "nihos-native.bin": "49618d0635a184849b2899e290d6bd763af41c1759501d8db45db617c5710e63",
+        "nihos-native-flash.bin": "40fa38425cf607b10f73413ee7d4dcdf85715e02bdfabb5d92240f9970c689a7",
+        "image-audit.json": "5410176b133c9ede27666b17459a0aa7c545c1fba5211984b48ee24a2d123d5c",
+        "graphics-manifest.json": "8f3cd37e0b33a3741f14206923476fc226b43200569600f4e019337ecda8715d",
+        "graphics_payload.o": "6bd54282a21a16e9f8a87119477ec3f0acc3210f77631e4ea429f0b1e12cb159",
+        "graphics_fonts.o": "232fc5552b3911b05575389a52402e0d038a671c4e7ae4387f88d70b679c5500",
+        "graphics/generated/link_oracle.cpp": "95576a17a3b72239195cf28bddaf66940f5ede5c845e08266f5de69714506d4c",
+        "graphics/build/ft/libfreetype.a": "43ca170a73fffe69bf5229e3daa454b22bd3719bd53b53becb5e1ad698ecf41a",
+        "graphics/build/hb/libharfbuzz.a": "70336937845d0b4fc52badb40136350cf320065f99af818c2b60c152304e8da9"
+      }
+    }
+  },
+  "source_sha256": {
+    "build.zig": "7dc234f86af07b4ed609d4032c24f31f321cbbc5a31c4cb18a6b2496514fbe9b",
+    "docs/adr/0043-opt-in-native-font-fixture.md": "4eba5a06a873eba6419ad22fab6e0aefc9e17160667e7d2fe372ea37834d38f6",
+    "docs/graphics-font-worker.md": "26a2d0e81808cf2c3bd8dc39ff7637aa79d53e801f55f9963790ae1aebae0e69",
+    "docs/native-graphics.md": "12f66eb7f74762ba22c1b1056da557a18259f0e79ff43c9ff317f062e5b10b1a",
+    "include/nihos/platform_abi.h": "89ed8c4a5bcb6c8804bac32ee741eea8a1d1c727400808443fcf2790ff5eb209",
+    "include/nihos_allocator.h": "3856d4def5e5d0544d1b442af264c42f8b790427e0f8c93977942a5d1d7ca23c",
+    "include/nihos_c_strings.h": "4c32f8dfbb5e981ca015f70d13ea8ecec4296ccf5b58a682cb8271e51de8c6d4",
+    "include/nihos_sqlite_session.h": "2194bbccd5470064d2e7c75f74eb88d076fdfea2028b69aa210437c0b2979201",
+    "include/nihos_storage_probe.h": "24369dd57c59d7ce6a40a4b7d5e158905a38468c5dfc9a79523d6be47f232a41",
+    "ports/esp32p4-native/CMakeLists.txt": "aea388e544cc5d57f66bdfd5a4fb022be167f750dd3684063b9ef9b03e9292ca",
+    "ports/esp32p4-native/main/CMakeLists.txt": "1b07b2a81841a6e12fc589126fca551dfa39cd6db0646f802740972b48a2cf1b",
+    "ports/esp32p4-native/partitions-graphics.csv": "6a6292b01af34cc678c1a2732fd7178c00f47d128df037171e6a647923ad2a93",
+    "ports/esp32p4-native/sdkconfig.defaults": "514fa424ea989dd2ebff9c57e4b9c4d8f78b3c411f5287ac89ba1780348502b2",
+    "probes/graphics/CMakeLists.txt": "121d9ff9a65476516a024cddb90ca4572cb79e916bcf34a7712e25a012c9f890",
+    "probes/graphics/README.md": "4910311a866ddac095c7e910ade0d7e103ba9659c5c2b4fc79ec27a9c205534a",
+    "probes/graphics/backing_test.cpp": "83f7a7bb89f954ac1dee202099930bdf15f8dab11c88a12445517e81d4932bcd",
+    "probes/graphics/buddy_backing.h": "fc05e93582b3f0bdff20a97363872961e9547fd458ce9f56c4b7ff7ca3ea65b9",
+    "probes/graphics/buddy_backing.zig": "d282978ba38eae75f53a4bb7763730173baea6849351331c9ec1006f9805c536",
+    "probes/graphics/buddy_driver.cpp": "b8b4f2fb82a2119e3d7d73de5e3ca9508a24d75eb64ae2ff89cafc5d883f1bd7",
+    "probes/graphics/elf32_layout.h": "342b1a7b271eb0ca34edd2c67fab6f6e91138e89652b686d22d922ff08f872ec",
+    "probes/graphics/fetch_sources.py": "25c39395ce9186414f49cfa43bb6badd734d0cf642657abb158badf1969fb92e",
+    "probes/graphics/font_probe.cpp": "264a20a1ecd23859af290128eef89e8adf4cc572d25f52a6e6342b82a908993e",
+    "probes/graphics/ft_noenv.h": "5938a5e02ebc0303cd4024aad13fc1757d54dfb01365ae82840e87b55047e254",
+    "probes/graphics/ft_noio.c": "77a3e688b481056e7f495e6a3ebddbe3bbd10f4fef0e81020f78622e1539626c",
+    "probes/graphics/generate_link_oracle.py": "ce606054166e19afe178ab53ff7b6d430876e728c4f14a90b1c87dd10fa6675d",
+    "probes/graphics/hb_config.h": "70806235b812f5008c86bd9c066f2ea71110faf8b310f5a0a402ce10f3521e89",
+    "probes/graphics/isa_image.h": "135141de97db19deaa29f7a221a9ac31a6cdd5d47de1a161ae5136b0bc2d3ff1",
+    "probes/graphics/isa_stack_runner.cpp": "f655dda4023f30fef56ac68dac59f8410bd7667847a1aa260a61744ae8e2476b",
+    "probes/graphics/lazy_pool.cpp": "601fb7584915091d2cd7e3d903f21a83d7f8ba237bb2b71a5472ed57a04acdb7",
+    "probes/graphics/lazy_pool.h": "906331f2dff1367a0c3a797be5b8f5c7a5a48c3e331a1937f55efc610839bce1",
+    "probes/graphics/link_host_main.cpp": "71d55e89d45b7c1f530306b67bc96267cd3f9a9acdd2c6f136225578a5ac6ae4",
+    "probes/graphics/link_oracle.h": "f81ec7e87d695236806a44593c8da975c2953e57204d829e270c9d3339d713f8",
+    "probes/graphics/metadata_size.cpp": "ef75a613fa5b1b4ab9711ecd6eb1c4334589edf7e75263644a0d92fa398a68cf",
+    "probes/graphics/native_payload.py": "358079f0dca40c5ce5b2f517378f6596273c02629366ac02dfcd5249f3b2f48e",
+    "probes/graphics/patches/freetype-autofit-map-error.patch": "7581c3a1e0d4582cfbf4bd57e3ebef5c48e80edcea7228ad06f77332efcbc328",
+    "probes/graphics/pool_test.cpp": "9ff0043532ccdfba306b66ec7ea932dd51cd785bd3e50910c8dfe10eaf421976",
+    "probes/graphics/report.py": "c039f0267be46a64444eaa21c84ff887a474a1bb4da65f10a49bc7ce1433a415",
+    "probes/graphics/run_rv32_study.py": "2b3389891bb0d8022aa29554deba9f316250695fb5def4435c656bb7b8393a72",
+    "probes/graphics/rv32_link.ld": "8086dbb59fa980c7e3a45654f657714bf2ec36d07f857bd6e1fc052034b4b57f",
+    "probes/graphics/rv32_toolchain.cmake": "e79cbd6957c2d882db7db95ef611a3d145db624576de65be92a4a58ec8ee9127",
+    "probes/graphics/sources.json": "4651ffc4e5aee444552194e0d49986f94c6b45b1c9413114953a3e79518f20a6",
+    "probes/graphics/unicorn-requirements.txt": "c1a3d9963a1a25f50b4041c71fd7eaa01919f421bed4ec1348871025617bc66a",
+    "probes/graphics/worker/link.ld": "8caddc33030b08b85b0a2eabe175e2bbe947844fd341ffe5af776f7583f06014",
+    "probes/graphics/worker/oracle.h": "92d544107b9e581c793697ca19315ac17fd28b852a78001d9a2a7cb1ddd5b473",
+    "probes/graphics/worker/runner.cpp": "a3ef2dea77437fe173315dd89da990a2fdee7477569447cf3702d9c6974d4098",
+    "probes/graphics/worker/runtime.zig": "349fe99ae0b53c36542010cbd08f68bd806c7d0cd11a664e9f3575005a2bd9bd",
+    "probes/graphics/worker/study.py": "0db41a4898aa282bbffeb1e95a4b35b3b489959224ba316d7db3d597e23245bc",
+    "provenance.toml": "cb30df1a255e0e10b15065320bc30b53ee684e9d5f7d10920d5c9ade1a4214b9",
+    "src/arch/riscv32/compiled_fp.zig": "0d9a0a0ec193485f2d4778b4fa38d693e1f5f30f61952430e05205822798999d",
+    "src/arch/riscv32/context.zig": "df609e59f1dc77bda712a49ea1458313ef0ff2141745ae2699ab0ab9cd55a105",
+    "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
+    "src/arch/riscv32/cpu1_tasks.zig": "4089f66529aae794c78a9d6cdadedaaaf589686c653d77ee1d56467a11c033dd",
+    "src/arch/riscv32/duplex_scenario.zig": "aa42ab702780d37aadcfa1aadfe0a59b0520878a575a0fd67f45cb12f1f101d1",
+    "src/arch/riscv32/fpu.S": "440e60f02a42a138784eaf52348871f43e5afb437d15c1b20fbddb82e0b5fd37",
+    "src/arch/riscv32/idle.zig": "42868da738fd3fa6efef68ce2c5fcffb52a5f28b8f08a1a1f861dd651e2e1204",
+    "src/arch/riscv32/ipc_scenario.zig": "8de20da789d6e438dd383763de8feeb7a44c59c9e94153de0d41b352cb3f3465",
+    "src/arch/riscv32/lifecycle_test.zig": "5eb5aa2cab826c865c9e46e36adb86455fb440047e6a7d57700e29ad35534ca2",
+    "src/arch/riscv32/native_floating.zig": "25ba2da8ebd772fc6ac06264c8944b06cd7b823e973ab00f2f89aee1d4c2d472",
+    "src/arch/riscv32/native_graphics.zig": "ce21f7aeb901fe5bf31e591086256db1563c135382c7f2b4c73393161b8d84a5",
+    "src/arch/riscv32/native_ipi.zig": "985662dad59fb62d8f28923986e385f78e9a300d8382de5b4bb92f5fd3228026",
+    "src/arch/riscv32/native_tasks.zig": "0b5fbeb709a273c8e07fd955751155bae14c534ff585ff9a13b36b69cfe6d1e9",
+    "src/arch/riscv32/native_trap.zig": "5e64d942152d260bfbb4a360a84f0879b73923dc05830a39157c8527019379a7",
+    "src/arch/riscv32/preemption_test.zig": "cdd317010cdb54685440d7216db5b59e96e69a0129074999dd9deefbe7594863",
+    "src/arch/riscv32/remote_scenario.zig": "f9354fe0be442001d116b9d297558c35f546060e517cbaf5649f46c361ec7301",
+    "src/arch/riscv32/task_calls.zig": "b561c6341f5e35da17368b51302b0b051f1688426912a376a57bcc443d37cb2c",
+    "src/arch/riscv32/task_runtime.zig": "35dce3ec89e5c112b9c04ac8353a135f748b74bdcd2c6a6917b78f792f4419a7",
+    "src/arch/riscv32/trap.zig": "7b5b093c50b205e618c0ac4a16b94d9ed785828170a0635b5c2b358b61628000",
+    "src/arch/riscv32/trap_entry.S": "f66727322072079e2af68be99d7b7ab85e2a51529d2ef953fddc568665258c17",
+    "src/board/tab5/boot_i2c.zig": "9d75b2eab81e9f359e7f39e34c0d54deb2b91dccbf593fbc602ae6df0cc51a54",
+    "src/board/tab5/dcs.zig": "5b68afee81e946c4f592389f51c02f0a20cbbf731c6953243425b08d0fd71450",
+    "src/board/tab5/display.zig": "2da98294e46993c1a221376c81457aa50961b18ff8b1f672644bbffaf3210a2c",
+    "src/board/tab5/keyboard.zig": "0c6acc07b6d0feb4cfacc1f2fd42f44aa4a3266241ed29c479d4981d70f1b541",
+    "src/board/tab5/native_pads.c": "2073f795192eed5cce37c5b41a96e538b47aa6922aef0484ae81383018e6927b",
+    "src/board/tab5/native_scanout.c": "328fa6986666a2166503cb8a6d3720d268cb25c2d6218b74cd3ce0a8bcb7d59e",
+    "src/board/tab5/panel_data/ili9881c.bin": "12be71fded85fb0e2f1ffd93c3669543ff40fa5b0f82f8a7077484fa47fee7c8",
+    "src/board/tab5/panel_data/manifest.json": "32d58565c76009b34133a1cc10213064bd5d8549174166b54bc550b358b61e39",
+    "src/board/tab5/panel_data/st7121.bin": "4c55e2c115ca0014d36315b22cf7dd35ff6aa82a724c7c623b4e0bfd206dd892",
+    "src/board/tab5/panel_data/st7123.bin": "40d77dbcf5486a25678ae372b211a52a3079c035b976aae5cff8386e1aceb90f",
+    "src/board/tab5/panels.zig": "df78a9adeb0b945fb6f3ad40f0893d307a2b4c9bceacffe275e2ceafc274897b",
+    "src/board/tab5/provenance.toml": "2e190c20679c542a441bf9038b67ce7909f29329df17db34ffd3c9cd6e3b984f",
+    "src/board/tab5/scanout_state.zig": "4bad04a018246caa5764240e98c3d7bd32e71caee94bab95909da2eff290d6ac",
+    "src/compat/c_strings.c": "cfadeb90d036f48878e30b47d36f6338d29e97f3f94625fe290362765ae05025",
+    "src/console.zig": "a85c6ba6f2b1ab7143a942cd977afb6119b4b0e1691508c71673b69971f7b262",
+    "src/console/ascii.zig": "3e5946d719f9298a11e292e522ee874ff381c09f553724d37b57347b280ba3ac",
+    "src/console/diagnostic_keys.zig": "fd83b37082751bfe3e28befe9a6e7304762e56b4b591b79684cd7896f55a01b8",
+    "src/console/session.zig": "99ec4c5624d52a4b19505d94b2ca331840e69ec13e07599b42e297cd00a5b227",
+    "src/console/session_input.zig": "6b57769dc2b89da9f787bea4e6821102c67145468691787d791de9a9c1ae39db",
+    "src/console/snapshot.zig": "936068cbdfb6bfac1f840eee66fe386a5e131a580974ca14e08cfc3334209ff2",
+    "src/diagnostics/boot_journal.zig": "b4679a36e030f84236e174a48ce817c068b03ba2c5a864f8c8a3a8ba4324a432",
+    "src/diagnostics/boot_state.zig": "c181282054593e7d8e199395e8c0e29f65545daec227e56d1ce821261460665c",
+    "src/diagnostics/record.zig": "f338f148837f877d703bfc7f5c78a6ca66af685b7bd7a6ad08244cdeae091387",
+    "src/graphics/ascii/JetBrainsMono-OFL.txt": "c1ab7c666206842a02b35b30770dac0d7a10156ed401c9defc3f02a754d89e90",
+    "src/graphics/ascii/README.md": "4a14b10f430f4c9f8ed98560f1315ee73cf46a38c548958085b269b760cc2b50",
+    "src/graphics/ascii/SourceCodePro-LICENSE.md": "0b2c3168605cb4f3ba54cf3cf2003f67ff894c66484c75702007f23eda92c353",
+    "src/graphics/ascii/basic.bin": "028050a3eaf7597f298b733d7c30d420265dc641ffe1405ce3d097de00d703d3",
+    "src/graphics/ascii/fonts.json": "2a3b503cae93e2d12ea1f1325b87c0f2631076a351ec0efa353969a6a5e0338a",
+    "src/graphics/ascii/jetbrains.rle": "1b58c92e6063b2260e41fd5e20e62ad2f949df458280bffd5cab405f39c3dc31",
+    "src/graphics/ascii/jetbrains.zig": "1046097c46c929b730dc3b7a3376d073b11b8cfb98c5681d7c351e3335a9daa2",
+    "src/graphics/ascii/source_code.rle": "be2a5d9f455ed235a73758dfc97701205851a484cb4045773166e89a014b9725",
+    "src/graphics/ascii/source_code.zig": "bbb864beb1d72f3de0c09fad0a8cfdf868c9f5675b6e476551f1781e966405d8",
+    "src/graphics/ascii_console.zig": "179da6093d7523132c0abfdf4ee96c556364185916e0488edeb13f7f6e02b1ea",
+    "src/graphics/boot/OFL.txt": "d8b8eea77c2821908e78f8eabbe4a005757d643f4e87dca6588a23fe90d47cbe",
+    "src/graphics/boot/README.md": "5a1e92b245b25d68be7aa8ef3e9f9a9e06c332976aad7d7ff0fb482f6a975ec1",
+    "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
+    "src/graphics/boot/masks.rle": "ae55b084604465897eb857074c6a11088f38d59f62a645bae82ee42d42968087",
+    "src/graphics/boot/provenance.toml": "a76e3dbfdb9326c646df8df5bf24bb52f015f7d26f6cab099e2f46afca7f16be",
+    "src/graphics/boot_graphics.zig": "8085bafa3fb00765c3dbd3d5e07c7e617f78789f9dacf1d8cc458fdedd3f4b99",
+    "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
+    "src/kernel/arena.zig": "67cb3baa4e700e51c31949d4b007fe68eb1b80927aa3ddf0bd5a0b487a6a3b54",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "src/kernel/buddy_heap_test.zig": "f446c24804ac5eaff0dcfc56b19bae42721613becf2918546a3a61bc142b6022",
+    "src/kernel/c_allocator.zig": "31b4dbe99768202990246ae440d815329b43107fed094a9b157e8e74b75673e8",
+    "src/kernel/c_allocator_test.zig": "6c2de72aaa4e21816158ec9fb18559cad794f1955bdebad402a793058626cf85",
+    "src/kernel/core_arena.zig": "b7ae72da52d9c0d2c6a5fe53fa34939cd31fd479f5abc1935dd6a5708ad8f847",
+    "src/kernel/extent_groups.zig": "611c96a6eeb7937405da9c5831e9b6dcac2088cb0a617a4f996611357a463217",
+    "src/kernel/fp_vectors.zig": "63c2a8ab28f30dbb032cbbf32051f1576641921f408bd5b7953de17facf3525a",
+    "src/kernel/park.zig": "2d13bf34a5d40238e47b4fad4ab5b66859ef6210a6e0c23517d10e384bc008f5",
+    "src/kernel/remote_events.zig": "fb5582e30da560fdeaf42eb8a08ea9b75757793126597fae5c4dfe7e017413f2",
+    "src/kernel/remote_events_test.zig": "05bc4659d4704d56f143c8de58723a6258633a996775b609eb2ec22fee0c4ce2",
+    "src/kernel/scheduler.zig": "54a84902c2e857fa47a29dda39cf71c5edbc5e5c951f496bc5c0920f8a229a55",
+    "src/kernel/size_pool.zig": "f29b0809accdfa0a302ee6d397f73200efbb38e132e5c9b36daf31451e3b8b31",
+    "src/kernel/size_pool_test.zig": "09633b26b8bb73ed4481d908c4de12e67a7c641a9f2fb15b79908cf4ee6d20b5",
+    "src/kernel/slab.zig": "a8ffb87f89c60ee60056bc669c838b2cf59079c4005962a2ae70596b7b411794",
+    "src/kernel/slab_test.zig": "4a3ea1b362c3e23975a95e08401f3a8afab291d0b825bd15fa3f451ef8d519d0",
+    "src/kernel/spsc_channel.zig": "2ad51f26e8ae29d3d7f1c9e66fd1012bb59c2be36f21c146416ee24452681817",
+    "src/kernel/spsc_channel_test.zig": "1a2e2c9d635015cb654d99efbbfb3fad8e473b573e5b85b6c2426502e7104d96",
+    "src/kernel/spsc_ring.zig": "6d8a9fd63e853dfd84bd39d44717fa25519ea38e21fd730296ee33e2f1bb28ba",
+    "src/kernel/task_call_numbers.inc": "2560a143af2308bfd94f44bf22cc104a213bcc3a56826e46195d49bd349d0e40",
+    "src/kernel/task_control.zig": "0f15f3005f5293082ef6c9bd9f9a0b4eaca8c99f0962a01459fd2e72e7f69571",
+    "src/kernel/task_control_test.zig": "f737a460b2416c1481dd7b34b6a5e5ec21b42f5d07fe901850157d62f38608dc",
+    "src/kernel/task_pools_test.zig": "072798ea7e6d12814c6fcb5b375d8499ce69b58a08f07ac4aab8d6fbc4f8a769",
+    "src/kernel/task_resources.zig": "0e4e30d80ff193cc35f175e93fbd48e5b71d7193c88ff79782a41e64e5918694",
+    "src/kernel/task_resources_test.zig": "fd8c3a21a9b92cb2e298be03fef26448d571a1d8c3e89547e5ae4c3d2b971e84",
+    "src/kernel/tick_clock.zig": "7bc43c23f3ee31aba3ff618a98cec7d982ef75daddc5cf3f0d97047a17917c7c",
+    "src/kernel/tick_counter.zig": "0aec17698c2e4dff66496a430798c3a06f4da406cc543cab0944c1a0dff89085",
+    "src/platform/abi.zig": "ee4bed75417238b7e933e81647f8d0144c1795ddaf70dc7bfda153ad4896c208",
+    "src/platform/espidf_main.zig": "3d506e673edf45ee0f534c270a338bed3fd6302407966b784fb7e9592ab43e9c",
+    "src/platform/native/cpu_boot.zig": "6d8d6e5455e5b65dcf6af064aa1bcba16516849331be0af7d1a2b0037ea825d0",
+    "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
+    "src/platform/native/diagnostic_ui.zig": "768dc182ab0a1c7ae44417d9370558f3d1412de82e03359f51de0e9a5f281126",
+    "src/platform/native/display_probe.zig": "6974028ab6008a6f54c13f6dc41c1d22dbb44e7c6c8e6da3b12cdf838d6fe7f9",
+    "src/platform/native/display_runtime.zig": "b85bc2101f32ac29f32d8e1c1803aeaacd316b112e9b69c88e6d938b8b35e704",
+    "src/platform/native/display_service.zig": "5233bee41928966f77796effb8fe5792e1112b688f4c0aeb123baf81490e6832",
+    "src/platform/native/esp32p4.ld": "47a60cf6165ded2373e766f6e6b71353e62be040187e5c90efd19a53582adf12",
+    "src/platform/native/external_layout.zig": "484c5c82a3b92686ff3409358be9bcd20367e84b4c014d5159ea5cbf9cb4efa7",
+    "src/platform/native/flash_records.zig": "5565e748e4e7a9e6e9bd35f40a53edc103ba7553c78f70b5da7a1db811f1c141",
+    "src/platform/native/heap.zig": "1d46626523aab39bdcd653e16a60ccb66e5583eff016125e4703de3ba29db8e8",
+    "src/platform/native/main.zig": "9f9b703a20702b1a4fa8b77ed2c6fc98733ff27388c066837233dffe405c3a87",
+    "src/platform/native/memory.zig": "272769c9140bad0542cef18a4ec03d33c395fe25a78dee8b5f05b520ac43ee29",
+    "src/platform/native/psram.zig": "3c2748cf5ff576f68b36455fd9f108472f00fb0b300409a50a8196e32a7e1a08",
+    "src/platform/native/psram_memory.zig": "a57f78961f95b2c0cc6e782964169537de5e67c96febe0ca44cf531efb0e90ac",
+    "src/platform/native/sdmmc_probe.zig": "f3005d7b7fa034be577df24a75aace85aeba61fa9314572073734ed40bfb0d04",
+    "src/platform/native/sqlite_probe.zig": "95cfce174817e7b024ed63ccfa36d18c9688e6492c5422415663d28c1fe29311",
+    "src/platform/native/stack_layout.zig": "89277ab57dbaa5f5d4a51f056ef54b5d2f298b1a5178b45cc844deb6d2e49806",
+    "src/platform/native/stacks.zig": "c98b592e176e8868b2189cefcd2339573e54ac0fbceb881c33d4e1d600339d56",
+    "src/platform/native/start.S": "0ccc825d46d9efd0ce2220aac836b5b42534dde7ae7e92016d9c2d4447118896",
+    "src/root.zig": "9cc5f5c5d3b2e5297960bec6f071acb1686e309601acdc961bf884cfdf8000b9",
+    "src/services/sqlite_session.c": "211f35d173cd7f185cf7c01470f7d47fb2134cda24070e0f5b3e32a25ef6c82b",
+    "src/soc/esp32p4/cpu_clock.zig": "577b4f0f8a0d044556047fc4b9e30f6f1ed68abb9805c61fef202fe0cd601d00",
+    "src/soc/esp32p4/psram.zig": "c4a3cbed9576a5546ad1282303811547d72e4e087e954da9fe85ff99c9f7c826",
+    "src/soc/esp32p4/psram_mapping.zig": "32351f5bf166dbc3ad6e2d203a9b53edfc819d5006360e179e8abaeff888984f",
+    "src/soc/esp32p4/psram_mapping_test.zig": "a2b694e572433c5b3b49bf6328834ca52f6589b20f0581809a7107f0d9151177",
+    "src/soc/esp32p4/psram_mpll.zig": "ef8223cdf9abf9f1b7ef245c3b08ab98ee7d8162a75eaa70e574abc49fe9f9c5",
+    "src/soc/esp32p4/psram_supply.zig": "e53a6e2c40b602adb79da90600fb24f95b17df80da6763a1ccfea090e7e0a4ef",
+    "src/soc/esp32p4/psram_test.zig": "e2adb99bb598739e449099bc98b9e9292d9f42cc5c3462493f1f6befe36da98c",
+    "src/soc/esp32p4/psram_tuning.zig": "c8f2ea359756abf78028f55004db69b1df110805552fb48448fe0efea4bf2313",
+    "src/soc/esp32p4/sdmmc.zig": "5c878d32b0a72a2d7dbb708399777ed0f2f43939856ef25db489f4aee66d97ea",
+    "src/soc/esp32p4/software_ipi.zig": "dbe7dafacad21c5acab4fd7772be95fb125f3f2c1ce3ad1cdd500e6c304f8117",
+    "src/soc/esp32p4/timer_group.zig": "24a821031bde77b15ca366760be29a47edb9dda58dc9907f9e7a987aae3ff07f",
+    "src/storage/block.zig": "e2d348ccd20957fa2e461b3b13e9ea270b17cb49605ca2935a953c75c09eb4c7",
+    "tools/bootstrap-esp-emu.sh": "0f6726224cf6815262e080a781caf6560a59a5cf7946f09b857ba3db0efb9e13",
+    "tools/bootstrap-littlefs.sh": "17169f4acd205731303391aab7609225216e569938a829139a76907b4207de55",
+    "tools/bootstrap-sqlite.sh": "907c16ff87258798d6ea0cbb76f8115eb807d7f579f326a6d50637a6eee0d890",
+    "tools/bootstrap-tlc.sh": "18be9907dd2d29b491be0eb3475589e03a05d500f14160267885c00f5e225e60",
+    "tools/bootstrap-zig.sh": "131d24fa3ec1d35e0c84aad30eb49f3feedf667472dfebad7383c2447fe3dfe4",
+    "tools/bootstrap-zlint.sh": "ac801ee6c64aeef2d8c17a2e29ca94dd09eb3fd19b64c9091d2eb2481922fe5a",
+    "tools/build-native-elf.sh": "55231be1684c448f59cda78d78046d3566e5c56e6eb2a715a057be32ee64bec3",
+    "tools/build-native-graphics-payload.sh": "ca7caa05ffc9c080210198d2631b01e7c8cfd366342b67bc091a8cbb1ded7e5a",
+    "tools/build-native.sh": "fef14c08affa3a590a9fa2dd77992399b519df9ea6d8bb75ca197b0d30d029ab",
+    "tools/check-native-boot-smoke.py": "974bf3eed6e2b270c15eb8a773b7dbe847f00710d7de642941848eaa227a9e1a",
+    "tools/check-native-display-log.py": "3bf9ef0bed55b2d9da3a150df71ac3c372e95457fef63833efb10decb6796580",
+    "tools/check-native-graphics.py": "7ed8f61a1b2d0fd978592d136734d4b1768e75a285befb8d74b1946805670516",
+    "tools/check-native-image.py": "88f979b9d89a127dd76236a60e8cf670f861676cb4c9d76fe7bb92d2ab08beef",
+    "tools/check-native-log.py": "715522de6c37690192d02b9a17ef8595c1211efca095ad0dbf990c295a8090f5",
+    "tools/check-riscv32-arch.sh": "bf38d209a2d965d25af24f3242d35d75c5efa92870ab8d04811a4c4770df4f87",
+    "tools/graphics_sources_test.py": "66f9458dd9ba46aba1afc0d1c65d19087ef2351f7ee77ae595b834a32ab6538b",
+    "tools/native-sqlite-manifest.py": "ffb69fbadaf78da629095c612774d2b01633aeb2f72ff07bfb04f4d90a018e8e",
+    "tools/native_graphics_test.py": "2b8f1b6bd6235954267717118a01547776ad54ac28d117de6b83234f114e686b",
+    "tools/run-native-graphics-smoke.sh": "0dfba81d77473fa451c5f8d0abc6eaef2fe85a7e4592dd5b80213195585bb885",
+    "tools/run-static-analysis.sh": "a77cc4219a221136f0c1e2feda52206a296f182bf940b8ce1a0ba89a9840a7ff"
+  },
+  "source_fingerprint": "f8dd4fc5f373285c0309947deaabfafe039fac0112475730be4d9c149f48648d",
+  "prepared_sources": {
+    "witness_sha256": "4b60eaf03162b30744a6d40e703d6f1a7fb91c8de018f30abc4f92b03bc2fa78",
+    "file_count": 4728,
+    "patched_aflatin_sha256": "9a1153baaa80888da4fb7086d75e324049250da5c7e02990ec99c7ea2198e373",
+    "concurrent_probe": {
+      "status": "pass",
+      "processes": 2,
+      "source_files": 4729,
+      "all_file_mtimes_unchanged": true,
+      "local_oom_patch_present": true
+    },
+    "policy": "cross-process preparation lock; reuse verifies full content and never restores archives under a compiler; changed cache fails without repair"
+  },
+  "host": {
+    "sanitizers": "ASan detect_stack_use_after_return=1; UBSan halt_on_error=1",
+    "auto_1024": {
+      "rc": 0,
+      "stage": 100,
+      "runs": 16,
+      "pool_peak": 1441792,
+      "raw_peak": 1442048,
+      "retained": 65792,
+      "hashes": [
+        1728955693,
+        127264623,
+        3802936562,
+        2720744390,
+        1636795626,
+        1483075906,
+        2072818531,
+        863961824,
+        41314477,
+        2150160734,
+        3827649753,
+        3029469629,
+        1662331729,
+        1389973151,
+        4053443032,
+        198040621
+      ],
+      "controller_bytes": 25744,
+      "record_capacity": 1024,
+      "record_peak": 694,
+      "record_failures": 0,
+      "allocation_failures": 0
+    },
+    "auto_512": {
+      "rc": 20,
+      "stage": 90,
+      "runs": 1,
+      "pool_peak": 1376256,
+      "raw_peak": 1376512,
+      "retained": 65792,
+      "hashes": [
+        1728955693
+      ],
+      "controller_bytes": 13456,
+      "record_capacity": 512,
+      "record_peak": 512,
+      "record_failures": 2,
+      "allocation_failures": 2
+    },
+    "auto_512_exit_code": 20,
+    "artifact_sha256": {
+      "auto-1024.json": "9612a1ae5a50cd140cf0587c98bfa0420695a2d721edf7ffb378b94bc48b02da",
+      "auto-1024.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "auto-512.json": "2929c3ee872687b460fe94f55037424939ee57e63a06f36a98cbc0ca6b5ad917",
+      "auto-512.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "build-1024.log": "29a6825d98be90b47c66eff1f864ed4584ac041f792369b093b5e51ef3dcdee1",
+      "build-512.log": "b954f8ff5b3227eb4607c29b7f7e8cc3746d1ac59ba4f6db1fe5685c8fa829f1",
+      "concurrent-sources.json": "5efab9c8ec45050e19ce6e7d632b63f8ac8bd25403ed5c7515530fac315ded6b",
+      "configure-1024.log": "02eaf6ad952a5128f03a8128069b2cca680770fbfb7b70b7ea4a0a64966166f0",
+      "configure-512.log": "af68576857f988c6e5c979656263245f7292683a25ad137bf1b611b4058d447f"
+    }
+  },
+  "rejected_attempt": {
+    "directory": "build/native-emulator-graphics/attempt-client-cycles-unreported",
+    "reason": "native execution completed but omitted new idle metrics; final checker rejects missing NIHOS_NATIVE_GRAPHICS_CLIENTS record",
+    "artifact_sha256": {
+      "base-smoke.json": "b4377d8f6fa8a2891ff30aa9edb9e3c1971ba77c0120f3bcb73dfb0fb897d582",
+      "bootloader.elf": "ea1409292f3f9afde5fbf07d86db315659cd3237f93bdc61d6c102e4626f1884",
+      "checker.log": "b7b5cbd1cbc12b00aad85258d3582ff77d390ce7f23306ec5c00d67ae35801b7",
+      "emulator.log": "380af60117fd6ee97bdb7cd8bbc744f9417ddf22515e6963106efcd2a41d03e8",
+      "graphics-manifest.json": "06f2c125e4b343b0d54f973cab675048d9e797e3643df09957e2d174d566aa04",
+      "image-audit.json": "343bbb28c992bcbd8ad8b04844c80d9fdc1cce2b4a8b14a62859d3922ccb48ef",
+      "nihos-native-flash.bin": "aea48454a58443c375039fccdcbdfbde9f18cc88a08281ef991128f103f8de6f",
+      "nihos-native.bin": "f5285afae2c62acf5050b01d34a806f361833c8a36e3734734fe5c26cb0c887d",
+      "nihos-native.elf": "3501655b4edc32eb3f52964fefcd4badb144fa1cf81b6f0a3e5caf3f8ff0719f",
+      "partition-table.bin": "3d2823faa69057aef2e36f3fc1e1a022d1366c16bc4cbce3ac1b38332de392a6",
+      "sdkconfig.h": "77e3976fc57fdb756dea34588025c9abc0190a6d9d1882c680416c51e74287a9"
+    }
+  },
+  "validation": {
+    "host_unit_tests": "zig build test passed",
+    "tool_unit_tests": "168 passed, including changed/missing/added source-cache refusal and impossible idle metrics",
+    "static_analysis": "Zig format/ZLint, shellcheck, 21 architecture tests and six default native ELF audits passed",
+    "static_log_sha256": "7018183c500a51c6dc99cd15f1650f508cb592a4442921570adbb7ecdbddeca5",
+    "native_graphics": "exact captured image and log passed the native graphics checker",
+    "source_cache_after_builds": "witness verified after both profile builds and sanitized host builds"
+  },
+  "limits": [
+    "No physical Tab5 evidence",
+    "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
+    "Four client cycles share one live library task; final task exit retires HB state without attempting service restart",
+    "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds",
+    "Active idle gate is a test-only busy wait; no sleeping work queue or application request API",
+    "Client cancellation, service restart, SD/VFS font reads and physical Tab5 remain pending",
+    "Added 64 KiB internal SRAM reservation remains fixed in the opt-in image, even with zero clients",
+    "All client cycles use two pinned fonts and the same finite case matrix; no arbitrary-font bound",
+    "No main merge, push or firmware write"
+  ]
+}

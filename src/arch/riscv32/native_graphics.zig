@@ -54,6 +54,10 @@ pub const Report = struct {
     foreign_rejected: u32 = 0,
     irq_rejected: u32 = 0,
     forged_rejected: u32 = 0,
+    client_cycles: u32 = 0,
+    idle_retained: u32 = 0,
+    idle_captures: u32 = 0,
+    idle_progress: u32 = 0,
 };
 var report_state: Report = .{};
 var group: ?heap.Group = null;
@@ -94,7 +98,9 @@ pub fn capture(frame: *const context.IntegerContext, timer: bool) void {
     if (min_frame == 0 or address < min_frame) min_frame = address;
     if (timer) {
         report_state.captures += 1;
-        if (@as(*const volatile u32, &graphics_result.stage).* >= 10 and @as(*const volatile u32, &graphics_result.stage).* < 100) report_state.render_captures += 1;
+        const stage = @as(*const volatile u32, &graphics_result.stage).*;
+        if (stage >= 10 and stage < 26) report_state.render_captures += 1;
+        if (stage == 50) report_state.idle_captures += 1;
     }
     if (initialized) {
         if (backingAcquire(65536) != null or backingRelease(@ptrFromInt(1)) != -1) nih_native_task_failed();
@@ -103,11 +109,29 @@ pub fn capture(frame: *const context.IntegerContext, timer: bool) void {
 }
 pub fn progress() void {
     report_state.bootstrap_progress += 1;
+    if (@as(*const volatile u32, &graphics_result.stage).* == 50) report_state.idle_progress += 1;
     if (initialized) {
         const before = heap.availableBytes() orelse nih_native_task_failed();
         if (backingAcquire(65536) != null or backingRelease(@ptrFromInt(1)) != -1 or heap.availableBytes() != before) nih_native_task_failed();
         report_state.foreign_rejected += 1;
     }
+}
+// All client faces/caches are closed, while service-owned HB state remains live.
+// Stay on the same task/stack and require a real timer and bootstrap progress
+// before the next client cycle. No task exit or allocator initialization here.
+fn serviceIdle(cycle: u32, retained: u32) callconv(.c) void {
+    if (!caller() or cycle != report_state.client_cycles + 1 or retained == 0 or
+        (cycle != 1 and retained != report_state.idle_retained)) nih_native_task_failed();
+    report_state.client_cycles = cycle;
+    report_state.idle_retained = retained;
+    const captures = @as(*const volatile u32, &report_state.idle_captures).*;
+    const progress_before = @as(*const volatile u32, &report_state.idle_progress).*;
+    while (@as(*const volatile u32, &report_state.idle_captures).* == captures or
+        @as(*const volatile u32, &report_state.idle_progress).* == progress_before)
+    {
+        asm volatile ("nop" ::: .{ .memory = true });
+    }
+    if (!caller() or heap.availableBytes() != report_state.heap_before - retained) nih_native_task_failed();
 }
 pub fn entry(_: u32) callconv(.c) i32 {
     const inputs = Inputs{
@@ -138,7 +162,9 @@ pub fn finish() ?Report {
     report_state.heap_after = @intCast(heap.availableBytes() orelse return null);
     if (report_state.status != 1 or report_state.heap_after != report_state.heap_before or
         report_state.captures == 0 or report_state.render_captures == 0 or report_state.bootstrap_progress == 0 or
-        report_state.foreign_rejected == 0 or report_state.irq_rejected == 0 or report_state.forged_rejected != 1 or !guardsValid()) return null;
+        report_state.foreign_rejected == 0 or report_state.irq_rejected == 0 or report_state.forged_rejected != 1 or report_state.client_cycles != 4 or
+        report_state.idle_retained != report_state.retained or report_state.idle_captures < 4 or
+        report_state.idle_progress < 4 or !guardsValid()) return null;
     return report_state;
 }
 pub fn hashes() [16]u32 {
@@ -182,6 +208,7 @@ fn maxExtent() callconv(.c) usize {
 }
 comptime {
     if (options.graphics) {
+        @export(&serviceIdle, .{ .name = "nih_graphics_service_idle" });
         @export(&backingInit, .{ .name = "nih_graphics_backing_init" });
         @export(&backingAcquire, .{ .name = "nih_graphics_backing_acquire" });
         @export(&backingRelease, .{ .name = "nih_graphics_backing_release" });
