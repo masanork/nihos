@@ -84,6 +84,12 @@ calendar; it is not an authentication claim. `tools/check-native-time.py` checks
 successful sync, unavailable-AP controls and no-NTP retention, with exact
 image/ELF/options/log identity and verified restoration.
 
+A [connected device follow-up](../measurements/2026-10-28-connected-devices.md)
+observed one failed NTP request and a successful delayed retry while Wi-Fi stayed
+acquired and microphone/audio/internal UART operations completed. Its explicit
+`recovered-sync` verifier retains the failed attempt; normal `sync` remains
+strict about clean first-attempt evidence. The native runtime was unchanged.
+
 Six-hour natural resynchronization, long-duration drift, cold battery/power
 retention, VLF recovery and authenticated network time remain separate gates.
 
