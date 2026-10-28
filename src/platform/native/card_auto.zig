@@ -10,6 +10,7 @@ const display = @import("display_service").runtime;
 const renderer = @import("display_service").keypad;
 const photo = @import("photo_runtime.zig");
 const options = @import("native_options");
+extern fn nih_display_scene_mismatches(u32) callconv(.c) u32;
 const Service = card.ServiceType(true, ".flash.photo");
 const License = card.LicenseRecord.Parser(".flash.photo");
 const LicenceSession = card.LicenseSession.Session(".flash.photo");
@@ -536,6 +537,12 @@ pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksecti
             log.sceneFailure(@intCast(step + 1), @errorName(err));
             halt();
         };
+        const differences = nih_display_scene_mismatches(0x48030000);
+        log.scenePixels(@intCast(step + 1), differences);
+        if (differences != 0) {
+            log.sceneFailure(@intCast(step + 1), "PixelsMismatch");
+            halt();
+        }
         log.scene(@intCast(step + 1));
         exerciseWait(clock, 90) catch |err| {
             log.sceneFailure(@intCast(step + 1), @errorName(err));
@@ -546,6 +553,12 @@ pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksecti
         log.sceneFailure(13, @errorName(err));
         halt();
     };
+    const differences = nih_display_scene_mismatches(0x48030000);
+    log.scenePixels(13, differences);
+    if (differences != 0) {
+        log.sceneFailure(13, "PixelsMismatch");
+        halt();
+    }
     log.sceneReady();
     exerciseWait(clock, 180) catch halt();
     var contact = card.Contact{ .held = true };
@@ -599,6 +612,10 @@ noinline fn exerciseStep(clock: timer.Timer, panel: u32, step: usize) linksectio
             }
             try exerciseWait(clock, 8);
         }
+        // Dynamic textures are copied separately into SRAM. Materialize the
+        // same final synthetic count in PSRAM for an independent pixel replay.
+        if (!card.PinScreen.paintRead(".flash.rodata.card_pin", frame(), 1440, .{ .active = true, .masked_digits = 4, .remaining = 3, .can_submit = true })) return error.Image;
+        try card.ResultScreen.licensePinHeader(".flash.keypad.auto_font", frame(), renderer.pin_kind);
     } else if (phase == 2 or phase == 4) {
         try photo.prepare();
         for (photo.pixels(), 0..) |*byte, index| byte.* = @truncate(index * 17 + step);

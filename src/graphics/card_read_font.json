@@ -26,10 +26,10 @@
     "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
     "src/platform/native/display_runtime.zig": "25ed976a3d94317ac587732e34ac15f4ef67d781ca74ea6594d001ef73a9a953",
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
-    "src/board/tab5/native_scanout.c": "0ce2fe301a2438acf7332bd155bc052e85b2709e21566111ae17529f751d226b",
+    "src/board/tab5/native_scanout.c": "06842dbfabfc7d6cc8a62b16f35ed7e351429ea25fbec89546227cacfcee4d99",
     "src/board/tab5/keypad_sparse.h": "994e982c3410fa4d734dae5212ff3cc6ea5a5fd433fd417aba0b0596cc06ddca",
     "src/board/tab5/notice_sparse.h": "8519a6b95ee7552426790a836bc309cf8e68a3b9a24dba7eb940f29b75aa2498",
-    "src/board/tab5/scanout_retire.h": "13e4601712d1afb2ad6cb22aed09eeee7f9d8c5bd4bd3110a5b955738fd4bf3d"
+    "src/board/tab5/scanout_retire.h": "0b00ac2cbcb9fd0ded106dd03c9cafc1c5afdbe4892ef6241ecb1bab6c763a36"
   },
   "scene_handoff": "dma-eof-panel-held-v1"
 }

@@ -19,9 +19,12 @@ def fixture():
     display = ('swaps', 'panel_starts', 'backlight_offs', 'frames', 'backlight', 'fault')
     result = record('CARD_AUTO_DISPLAY', display, (0, 1, 0, 32, 1, 0))
     for step in range(13):
+        if step:
+            result += record('CARD_SCENE_PIXELS', ('step', 'mismatches'), (step, 0))
         result += record('CARD_SCENE', ('step',), (step,))
         result += record('CARD_SCENE_HANDOFF', ('updates', 'max_pause_us'), (step, 1000 if step else 0))
         result += record('CARD_AUTO_DISPLAY', display, (0, 1, 0, 32 + step * 100, 1, 0))
+    result += record('CARD_SCENE_PIXELS', ('step', 'mismatches'), (13, 0))
     result += record('CARD_SCENE_READY', ('manual',), (1,))
     result += record('CARD_AUTO_DISPLAY', display, (1, 1, 0, 1300, 1, 0))
     return result
@@ -57,6 +60,8 @@ class NativeSceneTests(unittest.TestCase):
             self.assertIn(old, log)
             with self.subTest(old=old), self.assertRaises(ValueError):
                 C.check_transitions(log.replace(old, new))
+        with self.assertRaises(ValueError):
+            C.check_transitions(log.replace('mismatches=00000000', 'mismatches=00000001'))
         with self.assertRaises(ValueError):
             C.check_transitions(log + record('CARD_SCENE', ('step',), (12,)))
 

@@ -16,6 +16,9 @@ def check_transitions(log):
     steps = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE', ('step',))
     changes = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE_HANDOFF', ('updates', 'max_pause_us'))
     screens = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_AUTO_DISPLAY', ('swaps', 'panel_starts', 'backlight_offs', 'frames', 'backlight', 'fault'))
+    pixels = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE_PIXELS', ('step', 'mismatches'))
+    if [p['step'] for p in pixels] != list(range(1, 14)) or any(p['mismatches'] for p in pixels):
+        raise ValueError('missing or mismatched actual DMA pixels')
     ready = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CARD_SCENE_READY', ('manual',))
     if ready['manual'] != 1 or log.index('NIHOS_NATIVE_CARD_SCENE_READY ') < log.index('NIHOS_NATIVE_CARD_SCENE step=0000000c'):
         raise ValueError('missing manual scene screen after exercise')
@@ -41,7 +44,7 @@ def check_transitions(log):
                    f'NIHOS_NATIVE_CARD_SCENE_HANDOFF updates={i:08x}')
         if log.index(markers[0]) >= log.index(markers[1]):
             raise ValueError('out-of-order scene evidence')
-    return {'steps': steps, 'handoffs': changes, 'screens': screens,
+    return {'steps': steps, 'handoffs': changes, 'screens': screens, 'pixels': pixels,
             'card_operations': 'none in this audited profile', 'optical_evidence': 'requires separate user observation'}
 
 

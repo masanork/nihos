@@ -1061,6 +1061,9 @@ const AutoLog = struct {
         logger.record("NIHOS_NATIVE_CARD_SCENE_READY", null, .{"manual"}, &ready);
         notice();
     }
+    pub fn scenePixels(_: AutoLog, step: u32, mismatches: u32) void {
+        logger.record("NIHOS_NATIVE_CARD_SCENE_PIXELS", null, .{ "step", "mismatches" }, &.{ .step = step, .mismatches = mismatches });
+    }
     pub fn finish(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_DONE", null, .{ "job", "kind", "fault", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "shown", "missing", "truncated", "cleanup", "erased", "verification", "changes" }, report);
     }

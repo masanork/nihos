@@ -7,8 +7,12 @@
 #define SCANOUT_RETIRE_FENCE() ((void)0)
 static struct { struct { uint32_t val; } chen0; } DW_GDMA;
 static struct { struct { uint32_t val; } out; } GPIO;
-static unsigned MIPI_DSI_BRIDGE, MIPI_DSI_HOST;
+static unsigned MIPI_DSI_BRIDGE;
+static struct { struct { uint32_t val; } vid_pkt_status; } MIPI_DSI_HOST;
 static bool video_enabled;
+static unsigned fifo;
+static bool fifo_stuck, lane_stuck;
+#define MIPI_DSI_LL_CLOCK_LANE_STATE_LP 0
 static bool dma_owned, ui_enabled, notice_enabled, pause_requested, stuck;
 static uint32_t fault, completions, backlight_offs;
 static unsigned restarts, disabled, stopped_domains;
@@ -28,7 +32,19 @@ static void dw_gdma_ll_channel_enable(void *io, unsigned channel, bool on) {
 static void mipi_dsi_brg_ll_enable_interrupt(void *io, uint32_t mask, bool on) {
     (void)io; assert(mask == UINT32_MAX && !on);
 }
-static void mipi_dsi_host_ll_enable_video_mode(void *io, bool on) { (void)io; assert(!on); video_enabled = false; }
+static uint32_t mipi_dsi_brg_ll_get_fifo_depth(void *io) {
+    (void)io; assert(video_enabled);
+    if (fifo && !fifo_stuck) --fifo;
+    if (!fifo) MIPI_DSI_HOST.vid_pkt_status.val = 5;
+    return fifo;
+}
+static void mipi_dsi_host_ll_enable_video_mode(void *io, bool on) {
+    (void)io; assert(!on);
+    if (GPIO.out.val) assert(!fifo && MIPI_DSI_HOST.vid_pkt_status.val == 5);
+    video_enabled = false;
+}
+static void mipi_dsi_host_ll_set_clock_lane_state(void *io, unsigned state) { (void)io; assert(state == MIPI_DSI_LL_CLOCK_LANE_STATE_LP && !video_enabled); }
+static bool mipi_dsi_phy_ll_are_lanes_stopped(void *io, unsigned lanes) { (void)io; assert(lanes == 2); return !lane_stuck; }
 static void mipi_dsi_brg_ll_enable_dpi_output(void *io, bool on) { (void)io; assert(!on && !video_enabled); }
 static void mipi_dsi_brg_ll_enable(void *io, bool on) { (void)io; assert(!on); }
 static void mipi_dsi_ll_enable_dpi_clock(unsigned id, bool on) { assert(id == 0 && !on); }
@@ -39,6 +55,7 @@ static void dw_gdma_ll_enable_bus_clock(unsigned id, bool on) { assert(id == 0 &
 static void active(void) {
     dma_owned = ui_enabled = notice_enabled = true;
     video_enabled = true;
+    fifo = 4; fifo_stuck = lane_stuck = false; MIPI_DSI_HOST.vid_pkt_status.val = 0;
     pause_requested = stuck = false; fault = 0; completions = 2;
     backlight_offs = restarts = disabled = stopped_domains = 0;
     GPIO.out.val = 1u << 22; DW_GDMA.chen0.val = 1;
@@ -63,6 +80,12 @@ int main(void) {
     fault = 8; nih_display_backlight(true);
     assert(!GPIO.out.val && backlight_offs == 1);
     assert(!nih_display_scanout_stop() && dma_owned);
+    active(); fifo_stuck = true;
+    assert(nih_display_scanout_pause_request() && !complete_dma_frame());
+    assert(dma_owned && video_enabled && !stopped_domains && !nih_display_scanout_paused());
+    active(); lane_stuck = true;
+    assert(nih_display_scanout_pause_request() && !complete_dma_frame());
+    assert(dma_owned && !video_enabled && !stopped_domains && !nih_display_scanout_paused());
     active(); fault = 4;
     assert(!nih_display_scanout_pause_request());
     nih_display_backlight(true); assert(!GPIO.out.val);

@@ -352,7 +352,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     fi
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" -DNIH_NATIVE_CARD_SCENE_EXERCISE="$scene_exercise" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
             -I "$native_boot_dir/loader/config" \

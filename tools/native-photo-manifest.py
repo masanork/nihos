@@ -23,7 +23,7 @@ def main():
     paths += [ROOT/p for p in ('src/card/service.zig','src/card/surface.zig','src/card/wire_policy.zig','src/platform/native/photo_runtime.zig','src/platform/native/display_service.zig','src/platform/native/display_probe.zig','src/graphics/photo_fixture.zig','src/graphics/photo_fixture.jp2','tools/build-native.sh','tools/build-native-elf.sh','tools/build-photo-codec.sh','tools/bootstrap-openjpeg.sh')]
     paths += [ROOT/'src/platform/native/foreground_timer.zig']
     if automatic:
-        paths += [ROOT/p for p in ('src/board/tab5/notice_sparse.h','src/board/tab5/native_scanout.c','src/board/tab5/keypad_sparse.h','tools/build-native-elf.sh')]
+        paths += [ROOT/p for p in ('src/board/tab5/notice_sparse.h','src/board/tab5/native_scanout.c','src/board/tab5/keypad_sparse.h','src/board/tab5/scene_pixels.h','tools/build-native-elf.sh')]
         paths += [ROOT/p for p in ('src/card/license.zig','src/card/jis0208.zig','src/card/jis0208.bin','src/card/jis0208.json','src/card/presence.zig','src/card/ccid_owner.zig','src/card/pin_entry.zig','src/platform/native/card_auto.zig','src/platform/native/main.zig','src/graphics/card_read_result.zig')]
     if automatic:
         paths += [ROOT/p for p in ('src/card/license_session.zig','src/card/license_record.zig','src/card/license_crypto.zig','src/card/license_trust.zig','src/card/license_trust.bin','src/card/license_trust.json','src/card/fixtures/license-rsa.bin','probes/card_crypto/link.zig','probes/card_crypto/stack.S')]
