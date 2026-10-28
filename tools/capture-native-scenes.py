@@ -50,7 +50,7 @@ def main():
                     raw.flush()
                 text = data.decode('ascii', errors='replace').replace('\r', '')
                 for line in text.splitlines():
-                    if line.startswith(('NIHOS_NATIVE_CARD_SCENE ', 'NIHOS_NATIVE_CARD_SCENE_HANDOFF ', 'NIHOS_NATIVE_CARD_AUTO_DISPLAY ')) and line not in announced:
+                    if line.startswith(('NIHOS_NATIVE_CARD_SCENE ', 'NIHOS_NATIVE_CARD_SCENE_HANDOFF ', 'NIHOS_NATIVE_CARD_SCENE_PIXELS ', 'NIHOS_NATIVE_CARD_SCENE_FAILURE ', 'NIHOS_NATIVE_CARD_SCENE_CONTEXT ', 'NIHOS_NATIVE_CARD_SCENE_SCANOUT ', 'NIHOS_NATIVE_CARD_AUTO_DISPLAY ')) and line not in announced:
                         print(line, flush=True)
                         announced.add(line)
                 if ('NIHOS_NATIVE_CARD_SCENE_READY manual=00000001\n' in text or 'NIHOS_NATIVE_FAIL ' in text) and finished is None:

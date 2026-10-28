@@ -31,9 +31,27 @@ static bool stop_dma(bool blank) {
         if (!(DW_GDMA.chen0.val & 1)) {
             const int __DECLARE_RCC_ATOMIC_ENV = 0;
             (void)__DECLARE_RCC_ATOMIC_ENV;
+            if (!blank) {
+                // DMA EOF means all pixels have entered the bridge, not that
+                // the panel has received them. Drain both producer FIFOs before
+                // changing modes, or the old tail precedes the new frame.
+                unsigned drain;
+                for (drain = 0; drain < 100000; ++drain) {
+                    if (!mipi_dsi_brg_ll_get_fifo_depth(&MIPI_DSI_BRIDGE) &&
+                        (MIPI_DSI_HOST.vid_pkt_status.val & 5u) == 5u) break;
+                }
+                if (drain == 100000) return false;
+            }
             // The host must stop consuming DPI before its clock/data source
             // is retired. Otherwise a warm update latches dpi_buff_pld_under.
             mipi_dsi_host_ll_enable_video_mode(&MIPI_DSI_HOST, false);
+            if (!blank) {
+                mipi_dsi_host_ll_set_clock_lane_state(&MIPI_DSI_HOST, MIPI_DSI_LL_CLOCK_LANE_STATE_LP);
+                unsigned stopped;
+                for (stopped = 0; stopped < 100000; ++stopped)
+                    if (mipi_dsi_phy_ll_are_lanes_stopped(&MIPI_DSI_HOST, 2)) break;
+                if (stopped == 100000) return false;
+            }
             mipi_dsi_brg_ll_enable_interrupt(&MIPI_DSI_BRIDGE, UINT32_MAX, false);
             mipi_dsi_brg_ll_enable_dpi_output(&MIPI_DSI_BRIDGE, false);
             mipi_dsi_brg_ll_enable(&MIPI_DSI_BRIDGE, false);

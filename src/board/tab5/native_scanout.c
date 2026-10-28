@@ -439,3 +439,4 @@ uint32_t nih_display_scanout_poll(void) {
 }
 
 #include "scanout_retire.h"
+#include "scene_pixels.h"
