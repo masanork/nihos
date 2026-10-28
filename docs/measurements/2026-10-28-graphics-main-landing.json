@@ -13,7 +13,8 @@
     "internal_heap_bytes": 49280,
     "primary_static_bytes": 114560,
     "warm_resets": 3,
-    "write_verified_before_each_capture_and_after_series": true
+    "write_verified_before_each_capture_and_after_series": true,
+    "candidate_source_commit": "2dc124d27d18474657edb2469dc56f5a5b484e84"
   },
   "normal": {
     "artifacts_sha256": {
@@ -53,5 +54,13 @@
     "evidence/2026-10-28-graphics-main-landing/graphics-boot-3.log": "10149fbe5547dbeed517634069faf2bfc1ef26994aee93b58c5690a0f7bf95d9",
     "evidence/2026-10-28-graphics-main-landing/normal-physical.log": "4ded1b85b0c864f453c87cced0d781eabed6d1b6ee9d47268f9f09b6e2198ea0",
     "evidence/2026-10-28-graphics-main-landing/normal-report.json": "ad1e51159c70995326bb7574ccc5dd273973b7e2bbfec098c8984b9441fc9aa9"
+  },
+  "hardware": {
+    "exclusive_write_and_serial_lease": true,
+    "original_flash_bytes": 16777216,
+    "original_flash_backup_sha256": "023af13c7e6ed58d8d1b92116c32b5ee2ebcfe624232919b57e082dda2d5a1cc",
+    "restored_and_verified": true,
+    "restored_boot": "original card-scene image resumed; different readiness marker",
+    "normal_receipt_sha256": "01b5b3b549901999869dd3a4752930d492b85a8d05b36b009b556e6468e71fe8"
   }
 }
