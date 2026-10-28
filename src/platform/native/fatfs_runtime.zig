@@ -10,6 +10,12 @@ const calls = @import("task_calls");
 const Owner = rpc.Owner(adapter.Backend);
 const A = std.atomic.Value(u32);
 const Report = @import("fatfs_service_abi.zig").Report;
+const options = @import("native_options");
+const card = @import("fatfs_card_abi.zig");
+extern fn nih_storage_fatfs_session_begin(*u32) callconv(.c) u32;
+extern fn nih_storage_fatfs_session_end(u32) callconv(.c) u32;
+extern fn nih_fatfs_card_bytes() callconv(.c) u32;
+extern fn nih_fatfs_card_read(*anyopaque, u32, u32, u32, *card.Report) callconv(.c) c_int;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
@@ -57,6 +63,31 @@ fn state() *State {
 }
 fn manager() *dev.Manager {
     return @import("broker_runtime.zig").manager();
+}
+fn cardAttempt(out: *card.Report) callconv(.c) u32 {
+    var generation: u32 = 0;
+    const sectors = nih_storage_fatfs_session_begin(&generation);
+    if (sectors == 0) return 0;
+    const account = manager().open(.vfs, .{ .external = 32768 }) catch fail();
+    check(nih_fatfs_card_bytes() <= 32768);
+    const lease = manager().alloc(account, .external, 32768, 128) catch fail();
+    const held = manager().pin(account, lease) catch fail();
+    const result = nih_fatfs_card_read(held.bytes.ptr, @intCast(held.bytes.len), sectors, generation, out);
+    check(result >= 0); // Unproved teardown must retain the pin/session.
+    check(nih_storage_fatfs_session_end(generation) == 1);
+    @memset(held.bytes, 0);
+    out.charged = lease.charged;
+    out.cleared = 1;
+    manager().unpin(held.token) catch fail();
+    manager().free(account, lease) catch fail();
+    manager().beginClose(account) catch fail();
+    check((manager().reclaimOne(account) catch fail()) == .complete);
+    check(manager().stats(.external).free == dev.external_bytes);
+    out.recovered = 1;
+    return @intCast(result);
+}
+comptime {
+    if (options.fatfs_sd) @export(&cardAttempt, .{ .name = "nih_fatfs_card_attempt" });
 }
 fn owner() *Owner {
     return @ptrCast(@alignCast(state().parent.?.borrow.?.bytes.ptr + state().layout.?.endpoint));

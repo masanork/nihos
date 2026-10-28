@@ -22,6 +22,30 @@ def config():
 
 
 class NativeFatFsImageChecks(unittest.TestCase):
+    def test_card_source_identity_is_required_in_addition_to_fixture(self):
+        c = config()
+        c['card'] = {'version':1,'source':PROFILE.CARD_SOURCE,'charged':32768,
+                     'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}
+        PROFILE.validate_profile(c)
+        for key in c['card']:
+            bad=copy.deepcopy(c);bad['card'][key]=0
+            with self.subTest(key=key),self.assertRaises((ValueError,TypeError)):
+                PROFILE.validate_profile(bad)
+    def test_card_records_require_read_consistency_teardown_and_source(self):
+        c=config();c['card']={'version':1,'source':PROFILE.CARD_SOURCE,'charged':32768,
+                             'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}
+        image={'sqlite':{'fatfs_native':c},'memory':{'profile':'device'}}
+        values=dict.fromkeys(LOG.CARD_FIELDS,1)
+        values.update(sectors=4096,first=0,count=2048,partition=0,bytes=24,crc=42,repeated_crc=42,charged=32768)
+        record=line('NIHOS_NATIVE_FATFS_CARD',values)
+        log='NIHOS_NATIVE_FATFS_RPC x\nNIHOS_FATFS_SD_READY\n'+record+'\nNIHOS_NATIVE_FATFS_CARD_STACK used=00001000 preserved=00000001\nNIHOS_NATIVE_FP_PASS floating=0\n'
+        self.assertFalse(LOG.check_fatfs_card(log,image,'physical-device')['native_rpc_over_sd_qualified'])
+        for key in ('status','generation','count','bytes','reads','destroyed','charged','cleared','recovered','repeated_crc'):
+            bad=log.replace(record,line('NIHOS_NATIVE_FATFS_CARD',{**values,key:0}))
+            with self.subTest(key=key),self.assertRaises(ValueError):LOG.check_fatfs_card(bad,image,'physical-device')
+        for audit,evidence in ((None,'physical-device'),(image,'emulator')):
+            with self.assertRaises(ValueError):LOG.check_fatfs_card(log,audit,evidence)
+        with self.assertRaises(ValueError):LOG.check_fatfs_card(log+record+'\n',image,'physical-device')
     def test_log_flash_window_requires_complete_physical_fixture_profile(self):
         spans = dict(text_start=0x40020000, text_end=0x400ae300,
                      rodata_start=0x400ae300, rodata_end=0x400c4e80)

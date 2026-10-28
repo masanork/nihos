@@ -75,4 +75,26 @@ sector数と単調増加するgenerationを返す内部owner APIを追加した�
 FatFs構成のELF SHA-256は`336d7976f0a1d31b01e77ebe4f0f55f6b7796b15b5aab1b897ff583f67e1d280`。
 入口そのものの実機実行、volume probe/bind/mount、caller側のFS teardownはまだ未接続である。
 
+### 読取り専用の実カード候補
+
+`NIHOS_NATIVE_FATFS_SD=1`を既存`FATFS_RPC=1`構成へ追加すると、組込みfixtureの終了後に
+`NIHOS_FATFS_SD_READY`で待つ。既存littlefsカードからFAT/exFATカードへの交換完了をoperatorが通知し、
+runnerのprivate出力に`card-inserted.json`（`operator_confirmed: true`）をatomicに作成した後だけ、
+USBの`S`を受けて新sessionを開始する。交換前からprobeを繰り返す経路にはしない。
+
+probe→選択viewのbind→guarded FatFs mountを接続した。rootを最大64 entry調べ、
+hidden/system/directoryを除く非empty・1 MiB以下のfileを1つ選び、最大4 KiBを2回読む。
+file名はCRCのみ、内容はCRCとbyte数のみを記録する。この比較は同一prefixの自己整合性であり、
+外部の既知content hashとの一致ではない。実カードをnative VFS/RPCへ接続した資格にも数えない。
+
+workspaceは`.vfs`へ32 KiBを課金してpinし、FS destroy・disk detach・世代一致のsession終了後だけ
+clear/unpin/freeする。boot stackのpaintとguardも別recordで確認する。
+card pipeline、source profile、cleanup recordが欠けた結果は採取側で拒否する。
+hostでは5形式について各3回の正常読取りと3位置のI/O失敗後のteardownを検査した。
+native候補のlink/配置監査も通したが、この段階ではまだ実カードで実行していない。
+
+このcandidateはカード交換を伴う1回の起動として採取する。Flashは16 MiB全面のdigest一致まで復元し、
+別カードが残っている間は元firmwareへのresetを保留してROM download状態を保つ。
+元のカードへ戻してから通常起動する。カードのformatや書込みは含まない。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。

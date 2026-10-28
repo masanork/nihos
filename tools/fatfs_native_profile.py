@@ -4,6 +4,11 @@ import re
 import struct
 
 SOURCE = 'embedded sparse/RLE FAT12 fixture; not SD FatFs'
+CARD_SOURCE = 'physical SD prefix read twice; operator card swap after embedded fixture'
+CARD_SOURCES = ('src/platform/native/fatfs_card.c', 'src/platform/native/fatfs_card_abi.zig',
+    'include/nihos_fatfs_card.h', 'src/storage/fatfs_volume.c', 'include/nihos_fatfs_volume.h',
+    'src/platform/native/fatfs_disk.c', 'src/platform/native/sdmmc_probe.zig',
+    'src/fs/sdmmc_owner.zig', 'include/nihos_storage_io.h')
 IMAGE_SHA256 = '297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d'
 SOURCES = (
     'src/platform/native/fatfs_runtime.zig', 'src/platform/native/fatfs_service_abi.zig',
@@ -52,6 +57,13 @@ def validate_profile(config):
             f.get('image_bytes') == 1048576 and f.get('fixture_id') == int(IMAGE_SHA256[:8], 16) and
             f.get('upstream') == UPSTREAM and f.get('payload_bytes') == 3942 and f.get('index_entries') == 31,
             'unapproved immutable fixture/upstream')
+    card = config.get('card')
+    if card is not None:
+        require(isinstance(card,dict) and card.get('version') == 1 and card.get('source') == CARD_SOURCE and card.get('charged') == 32768,
+                'unapproved physical card profile')
+        sources = card.get('sources', {})
+        require(isinstance(sources,dict) and set(sources) == set(CARD_SOURCES) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}',x)
+                for x in sources.values()), 'incomplete physical card sources')
     return f
 
 
@@ -108,6 +120,13 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
                 'nih_fatfs_backend_mount', 'nih_fatfs_backend_lookup', 'nih_fatfs_backend_read',
                 'nih_fatfs_backend_destroy', 'nih_fatfs_guard_open', 'f_open', 'f_read'}
     require(required.issubset(symbols), 'missing actual FSD/FatFs functions')
+    card_symbols = {'nih_fatfs_card_attempt', 'nih_fatfs_card_read', 'nih_fatfs_volume_probe',
+                    'nih_fatfs_native_read', 'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end'}
+    if config.get('card') is not None:
+        require(card_symbols.issubset(symbols), 'missing actual SD card pipeline')
+    else:
+        require('nih_fatfs_card_attempt' not in symbols and 'nih_fatfs_card_read' not in symbols,
+                'card pipeline without source profile')
     require(not {'f_write', 'f_mkfs', 'f_unlink', 'f_rename', 'f_truncate', 'f_mkdir'}.intersection(symbols),
             'FatFs write API linked')
     frames = audit_zig_frames(stack_rows, objects, symbols)
