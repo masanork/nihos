@@ -128,11 +128,17 @@ def main():
                 latest = inspect(frozen)
                 if any(latest['artifacts'][key]['sha256'] != receipt['artifacts'][key]['sha256'] for key in receipt['artifacts']):
                     raise RuntimeError('retained candidate changed before install; no write')
-            except BaseException:
+            except BaseException as error:
                 # Only reset the same verified device; no candidate write started.
+                reset_done = False
                 if identity_verified and port.is_open:
                     port.baudrate = 115200
                     HardReset(port, uses_usb=True)()
+                    reset_done = True
+                (out / 'prewrite-failure.json').write_text(json.dumps({
+                    'error': str(error), 'identity_verified': identity_verified,
+                    'candidate_write_started': False, 'reset_after_failure': reset_done,
+                }, indent=2) + '\n')
                 raise
             restored = False
 
