@@ -1,0 +1,54 @@
+[
+  {
+    "action": "reset",
+    "profile": "base"
+  },
+  {
+    "action": "ready",
+    "automatic": true
+  },
+  {
+    "action": "insert_classic",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "confirm",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "digit",
+    "automatic": true
+  },
+  {
+    "action": "confirm",
+    "automatic": true
+  }
+]
