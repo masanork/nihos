@@ -10,13 +10,22 @@
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
     "src/graphics/card_pin.rle": "55c7d6d438067c8cdb935d1142d331455fdb813b1be143a1e9b02392a6484340",
     "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
-    "src/graphics/keypad_plan.zig": "705807426ad678d78fcd120c4556a80d81654886c85d624e76c400265fa0e856",
+    "src/graphics/keypad_plan.zig": "bc0e78d9ab99c4cf928273fb189666f4d3f0316a5642f9edfe55ba30807fc0cb",
     "src/card_pin_preview.zig": "70097056c8ba0106185424cd4e80f2d5accf88316ac250ffae4d2b955712491a",
     "tools/boot-graphics/generate-keypad-atlas.py": "6a5fb39ce09aad110d2deb6f2e3a10179000175826e11b0f2f7bf70fec93cabf",
-    "src/platform/native/esp32p4.ld": "f4cc5b2ddbb8b9120df2c33b232e9eb6002cdedfd76a38a9b2896e8bc691ede0",
+    "src/platform/native/esp32p4.ld": "c5db7a86f25b7675f143c5bca6960f61d4fae75709f8fc8183eeba9bc4759137",
     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
     "src/platform/native/dma_memory.zig": "bdd0d0c4ebf00445cdbee1233a059d1f49c31dddcd24f8edc785d488cc8b99b1",
-    "src/platform/native/memory.zig": "21d285e8d71be9443866d346db3713e036e601e033784236eeb099351c1a88b7"
+    "src/platform/native/memory.zig": "21d285e8d71be9443866d346db3713e036e601e033784236eeb099351c1a88b7",
+    "src/graphics/surface.zig": "8dc9b747d5341a7573e6e86b29f5949c043604474b6f84a7c8e090927f297260",
+    "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
+    "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
+    "src/platform/native/main.zig": "1ac313a17f33e2e239b19bc46d810319208810f7c59a87fee15d86a445f2e7c6",
+    "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
+    "src/graphics/card_splash.zig": "3a64893ec36be58c425137d61180abff80b3c1208645bba28004649011968d75",
+    "src/graphics/card_boot/manifest.json": "a101f4c9dbd801134b2a35b5330b55ffb2292ba97d16d8791fddc6e053738cf1",
+    "tools/design/card-splash-assets.py": "8b575516f7dc2f2ddb9f23b8c8b4da1c92103725442138bd6dce014d2c719224",
+    "tools/design/shape-mask.cpp": "4d8a1d8b475326a668419e0a0ac810955491d7c744a640c2ffdfb0c87252e700"
   }
 }

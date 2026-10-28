@@ -65,6 +65,11 @@ SECTIONS
         __flash_records_start = .;
         KEEP(*(.flash.rodata.records))
         *(.flash.rodata.boot_graphics)
+        . = ALIGN(16);
+        __card_boot_masks_start = .;
+        *(.flash.rodata.card_boot.mask)
+        __card_boot_masks_end = .;
+        *(.flash.rodata.card_boot.meta)
         *(.flash.rodata.display)
         *(.flash.rodata.card_pin)
         *(.flash.rodata.bmi270)

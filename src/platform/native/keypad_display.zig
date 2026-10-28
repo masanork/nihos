@@ -9,6 +9,7 @@ pub var overview_frame = false;
 pub var demo_frame = false;
 pub var pin_kind: u8 = 0;
 pub var notice_frame = false;
+pub var scene_paper: u16 = card.PinScreen.paper_color;
 extern fn nih_display_keypad_configure(*const plan.Config) callconv(.c) bool;
 extern fn nih_display_keypad_buffer() callconv(.c) u32;
 extern fn nih_display_keypad_publish(u32, u32) callconv(.c) bool;
@@ -100,9 +101,9 @@ pub noinline fn stage(frame: []u8) linksection(if (options.card_read) ".flash.te
             if (options.card_auto and pin_kind != 0) try card.ResultScreen.licensePinHeader(".flash.keypad.auto_font", frame, pin_kind);
         }
         const out = @as([*]plan.Segment, @ptrFromInt(plan.scratch_start))[0..plan.planCapacity()];
-        break :runtime if (overview_frame) try plan.buildOverview(frame, out) else if (static_frame) try plan.buildStatic(frame, out) else try plan.build(frame, out);
+        break :runtime if (overview_frame) try plan.buildOverview(frame, out) else if (static_frame) try plan.buildStaticColor(frame, out, scene_paper) else try plan.build(frame, out);
     } else card.KeypadAtlas.segments(".flash.keypad");
-    const descriptor_start = low_start + 2 * plan.textureStride();
+    const descriptor_start = low_start + (if (static_frame) @as(usize, 0) else 2 * plan.textureStride());
     const descriptor_bytes = spans.len * 64;
     if (descriptor_bytes > low_end - descriptor_start) return error.Lease;
     const dots = card.PinScreen.dots_rect;
@@ -120,11 +121,11 @@ pub noinline fn stage(frame: []u8) linksection(if (options.card_read) ".flash.te
         .label_y = label.y,
         .label_width = label.width,
         .label_height = if (static_frame) 0 else label.height,
-        .paper = card.PinScreen.paper_color,
+        .paper = scene_paper,
         .keys = card.PinScreen.key_color,
         .accent = card.PinScreen.accent_color,
         .scratch = low_start,
-        .stride = @intCast(plan.textureStride()),
+        .stride = if (static_frame) 0 else @intCast(plan.textureStride()),
         .capacity = @intCast(plan.planCapacity()),
         .pixels = if (options.card_read) 0x48030000 else @intFromPtr(&atlas.pixels),
         .pixels_bytes = if (options.card_read) frame.len else atlas.pixels.len,
@@ -142,7 +143,7 @@ pub noinline fn stage(frame: []u8) linksection(if (options.card_read) ".flash.te
 pub noinline fn bind(staged: *const Staged) linksection(if (options.card_read) ".flash.text.card" else ".text") !Prepared {
     if (!static_frame and (!paintTextures(0, 0) or !paintTextures(1, 0))) return error.Image;
     if (!nih_display_keypad_configure(&staged.config)) return error.Plan;
-    if (nih_rom_cache_writeback(1 << 4, low_start, @intCast(2 * plan.textureStride())) != 0) return error.Cache;
+    if (staged.config.stride != 0 and nih_rom_cache_writeback(1 << 4, low_start, 2 * staged.config.stride) != 0) return error.Cache;
     return staged.prepared;
 }
 pub noinline fn prepare(clock: timer.Timer, frame: []u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !Prepared {

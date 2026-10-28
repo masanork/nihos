@@ -13,6 +13,8 @@ NATIVE = DISPLAY.NATIVE
 
 def check_transitions(log):
     log = log.replace('\r', '')
+    boot = DISPLAY.check_card_boot(log, True) if 'NIHOS_NATIVE_CARD_BOOT ' in log else None
+    offset = 1 if boot else 0
     steps = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE', ('step',))
     changes = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_SCENE_HANDOFF', ('updates', 'max_pause_us'))
     screens = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_AUTO_DISPLAY', ('swaps', 'panel_starts', 'backlight_offs', 'frames', 'backlight', 'fault'))
@@ -36,12 +38,12 @@ def check_transitions(log):
             raise ValueError('scene reset, blackout, fault or frame counter reset')
         previous = screen['frames']
     for i, change in enumerate(changes):
-        if change['updates'] != i or not 0 <= change['max_pause_us'] < 200_000 or (i and not change['max_pause_us']):
+        if change['updates'] != i + offset or not 0 <= change['max_pause_us'] < 200_000 or ((i or offset) and not change['max_pause_us']):
             raise ValueError('invalid scene handoff progress/timing')
         if i and (change['max_pause_us'] < changes[i - 1]['max_pause_us'] or screens[i + 1]['frames'] <= screens[i]['frames']):
             raise ValueError('scene handoff/frame progress regressed')
         markers = (f'NIHOS_NATIVE_CARD_SCENE step={i:08x}',
-                   f'NIHOS_NATIVE_CARD_SCENE_HANDOFF updates={i:08x}')
+                   f'NIHOS_NATIVE_CARD_SCENE_HANDOFF updates={i + offset:08x}')
         if log.index(markers[0]) >= log.index(markers[1]):
             raise ValueError('out-of-order scene evidence')
     return {'steps': steps, 'handoffs': changes, 'screens': screens, 'pixels': pixels,
