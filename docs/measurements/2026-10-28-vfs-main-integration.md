@@ -78,3 +78,9 @@ default PIE configuration. The host library modules now explicitly use PIC;
 native flags and sanitizer checks are unchanged. The independent FAT/exFAT
 CI passed 201 cases with its source hashes and artifact SHA-256 verified.
 Final CI must still be evaluated for the updated PR head.
+
+The next Linux link exposed the archive's missing `__zig_probe_stack` helper.
+The host archive now explicitly includes Zig compiler-rt, retaining stack
+checks. A cross-compiled Linux x86-64 archive contains the weak helper definition,
+and all 109 local host scenarios passed again. This changes only the host probe
+link configuration; native flags and images are unaffected.

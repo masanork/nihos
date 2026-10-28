@@ -60,7 +60,7 @@ def main():
     # Keep every Zig module relocatable rather than disabling PIE at the link.
     host_target += ['-fPIC']
     library = work / 'vfs-check.a'
-    run([zig, 'build-lib', *host_target, '-O', 'ReleaseSafe', '--dep', 'storage_vfs', '--dep', 'sdmmc',
+    run([zig, 'build-lib', '-fcompiler-rt', *host_target, '-O', 'ReleaseSafe', '--dep', 'storage_vfs', '--dep', 'sdmmc',
          '-Mroot=' + str(PROBE / 'host_library.zig'), *host_target, '-O', 'ReleaseSafe',
          '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'), *host_target, '-O', 'ReleaseSafe',
          '-Msdmmc=' + str(ROOT / 'src/soc/esp32p4/sdmmc.zig'), '-femit-bin=' + str(library)])
