@@ -1,0 +1,87 @@
+{
+  "scope": "normal single-contact down/up and alternating view actions; optical correctness and negative gestures require operator evidence",
+  "touch_final": {
+    "status": 1,
+    "panel": 3,
+    "width": 720,
+    "height": 1280,
+    "slots": 10,
+    "polls": 10383,
+    "fresh": 9471,
+    "errors": 0,
+    "error_code": 0,
+    "max_poll_us": 19963
+  },
+  "pointer_final": {
+    "down": 4,
+    "move": 0,
+    "up": 4,
+    "cancel": 0,
+    "multi": 0,
+    "overflow": 0,
+    "quadrants": 2,
+    "queued": 0
+  },
+  "touch_actions": [
+    {
+      "sequence": 1,
+      "source": 5,
+      "action": 1,
+      "modifiers": 0,
+      "usage": 1,
+      "accepted": 1,
+      "view": 1,
+      "stage": 0,
+      "frames": 1957
+    },
+    {
+      "sequence": 2,
+      "source": 5,
+      "action": 2,
+      "modifiers": 0,
+      "usage": 1,
+      "accepted": 1,
+      "view": 0,
+      "stage": 0,
+      "frames": 2130
+    },
+    {
+      "sequence": 3,
+      "source": 5,
+      "action": 1,
+      "modifiers": 0,
+      "usage": 1,
+      "accepted": 1,
+      "view": 1,
+      "stage": 0,
+      "frames": 2835
+    },
+    {
+      "sequence": 4,
+      "source": 5,
+      "action": 2,
+      "modifiers": 0,
+      "usage": 1,
+      "accepted": 1,
+      "view": 0,
+      "stage": 0,
+      "frames": 2871
+    }
+  ],
+  "ui_first": {
+    "frames": 32,
+    "ticks0": 16,
+    "ticks1": 16
+  },
+  "ui_final": {
+    "frames": 21973,
+    "ticks0": 36595,
+    "ticks1": 36595
+  },
+  "all_quadrants_observed": false,
+  "evidence": "physical-device serial capture",
+  "commit": "4c90636d4514964ea629a38ec2e69346690e6d50",
+  "image_sha256": "2cbb530b12a4b41bca58f40744bdccbe9f06996e8e5341985d0cffa4ba59486b",
+  "serial_sha256": "ba49a48cffc71fa105fb0b3c7e8b2e04dfa837d001d17ec54c21f78605d0b3df",
+  "restored": true
+}

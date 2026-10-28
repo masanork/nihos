@@ -75,7 +75,7 @@ pub fn poll(bus: anytype, clock: anytype, now: u64) void {
         report.status = 1;
         return;
     }
-    const sample = device.?.sample(bus) catch {
+    const sample = device.?.sampleBatched(bus) catch {
         failed(4, now);
         return;
     };
