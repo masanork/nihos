@@ -1,0 +1,6 @@
+In file included from /private/tmp/nihos-card-host-emulator/src/board/tab5/native_pads.c:7:
+In file included from /Users/masanork/esp32/esp-idf-v5.4.4/components/hal/esp32p4/include/hal/gpio_ll.h:34:
+/Users/masanork/esp32/esp-idf-v5.4.4/components/hal/platform_port/include/hal/assert.h:8:10: fatal error: 'sdkconfig.h' file not found
+    8 | #include "sdkconfig.h"
+      |          ^~~~~~~~~~~~~
+1 error generated.

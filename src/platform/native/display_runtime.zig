@@ -58,7 +58,7 @@ pub noinline fn onInterrupt() void {
     state.observe(event & 1 != 0, event & 10, event & 4 != 0);
     nih_display_backlight(state.backlight);
 }
-pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0, font_low: u32 = 0, font_low_bytes: u32 = 0, pixel_bytes: u32 = 0 };
+pub const Report = struct { status: u32 = 2, stage: u32 = 0, error_code: u32 = 0, panel: u32 = 0, commands: u32 = 0, last_command: u32 = 0, frames: u32 = 0, fault: u32 = 0, event: u32 = 0, backlight: u32 = 0, dpi_mhz: u32 = 10, lane_mbps: u32 = 0, cleanup: u32 = 0, dsi_error0: u32 = 0, dsi_error1: u32 = 0, dma_error: u32 = 0, bridge_error: u32 = 0, start_code: u32 = 0, prime_depth: u32 = 0, bl_latch: u32 = 0, bl_enable: u32 = 0, bl_level: u32 = 0, bl_mux: u32 = 0, bl_matrix: u32 = 0, white: u32 = 0, sram: u32 = 0, source: u32 = 0, dma_source: u32 = 0, dma_control: u32 = 0, word: u32 = 0, lease_start: u32 = 0, lease_bytes: u32 = 0, nodes: u32 = 0, font_low: u32 = 0, font_low_bytes: u32 = 0, pixel_bytes: u32 = 0, pool0_start: u32 = 0, pool0_bytes: u32 = 0, pool1_start: u32 = 0, pool1_bytes: u32 = 0 };
 pub fn snapshot() Report {
     const previous = asm volatile ("csrrci %[previous], mstatus, 8"
         : [previous] "=r" (-> u32),
@@ -170,6 +170,11 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         report.font_low = prepared.font_low;
         report.font_low_bytes = prepared.font_low_bytes;
         report.pixel_bytes = prepared.pixel_bytes;
+        const renderer = @import("keypad_display.zig");
+        report.pool0_start = renderer.low_start;
+        report.pool0_bytes = renderer.low_end - renderer.low_start;
+        report.pool1_start = renderer.high_start;
+        report.pool1_bytes = renderer.high_end - renderer.high_start;
     } else if (white) @memset(frame, 0xff) else if (!paint(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, if (options.console_live) .display else .ready)) return error.Image;
     if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
     if (options.display_tile) {
@@ -253,7 +258,9 @@ pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern
         report.bridge_error = nih_display_diagnostic(3);
         running = false;
         const stopped = nih_display_scanout_stop();
-        report.cleanup = if (stopped) 1 else 2;
+        const erased = stopped and wipePools();
+        const released = if (erased and (options.keypad_demo or options.card_read)) @import("keypad_display.zig").release() else erased;
+        report.cleanup = if (released) 1 else 2;
         if (stopped and powered) {
             if (phy_started) nih_display_phy_stop() else nih_display_phy_power_off();
         }
@@ -265,7 +272,7 @@ pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern
 /// Foreground-only scene replacement. Retire DMA before clearing any retained
 /// result pixels, then rebuild under masked local IRQs. No personal framebuffer
 /// is modified while the display DMA borrows it.
-pub fn replace(clock: timer_group.Timer, panel: u32) Report {
+pub noinline fn replace(clock: timer_group.Timer, panel: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") Report {
     if ((options.card_read or options.keypad_demo) and running) return replaceCard(clock, panel) catch |err| {
         scene_error = switch (err) {
             error.Timer => 1,
@@ -274,6 +281,9 @@ pub fn replace(clock: timer_group.Timer, panel: u32) Report {
             error.Scanout => 4,
             else => 5,
         };
+        // Capacity rejection precedes retirement and all live-SRAM writes.
+        // The caller still decides whether its privacy policy must end the job.
+        if (scene_stage == 1 and err == error.Lease) return .{ .error_code = 10 };
         // Never leave a private result visible or reuse possibly borrowed
         // SRAM after an unsuccessful handoff.
         const clean = emergency();
@@ -363,18 +373,23 @@ pub noinline fn presentNotice(clock: timer_group.Timer, panel: u32) linksection(
         if (result.status != 1) return error.Scanout;
     }
 }
-fn wipePools() bool {
+noinline fn wipePools() linksection(if (options.card_read) ".flash.text.card" else ".text") bool {
+    if (!options.keypad_demo and !options.card_read) return true;
     const std = @import("std");
-    for ([_][2]usize{ .{ 0x4ff40000, 0x20000 }, .{ 0x4ff70000, 0x2f000 } }) |span| {
-        std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(span[0]))[0..span[1]]);
-        if (nih_rom_cache_writeback(1 << 4, @intCast(span[0]), @intCast(span[1])) != 0) return false;
+    const renderer = @import("keypad_display.zig");
+    for ([_][2]u32{ .{ renderer.low_start, renderer.low_end }, .{ renderer.high_start, renderer.high_end } }) |span| {
+        if (span[0] == span[1]) continue;
+        const length = span[1] - span[0];
+        std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(span[0]))[0..length]);
+        if (nih_rom_cache_writeback(1 << 4, span[0], length) != 0) return false;
     }
     return true;
 }
 pub fn emergency() bool {
     running = false;
     const clean = nih_display_scanout_stop() and wipePools();
+    const released = if (clean and (options.keypad_demo or options.card_read)) @import("keypad_display.zig").release() else clean;
     const std = @import("std");
     std.crypto.secureZero(u8, @as([*]u8, @ptrFromInt(board.framebuffer))[0..board.frame_bytes]);
-    return nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) == 0 and clean;
+    return nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) == 0 and released;
 }

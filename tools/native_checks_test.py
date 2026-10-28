@@ -157,6 +157,21 @@ class NativeSQLiteLogTests(unittest.TestCase):
 
 
 class NativeLogTests(unittest.TestCase):
+    def test_two_card_boot_progress_records_require_the_audited_profile(self):
+        boot = 'ESP-ROM:esp32p4\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n'
+        first = 'NIHOS_NATIVE_CARD_BOOT stage=00000001 frames=00000002 checked=00000001 mismatches=00000000\n'
+        second = first.replace('stage=00000001', 'stage=00000002').replace('frames=00000002', 'frames=00000004')
+        auto = 'NIHOS_NATIVE_CARD_AUTO_BOOT selftest=00000001\n'
+        MODULE.check_boot_headers(boot + first + second, False, True)
+        MODULE.check_boot_headers(boot + first + second + auto, True, True)
+        with self.assertRaises(ValueError):
+            MODULE.check_boot_headers(boot + first + second + auto, True)
+        for changed in (boot + first + auto, boot + first + second + first + auto,
+                        boot + auto + first + second, boot + first + second + auto + boot,
+                        boot + first + second + auto + 'NIHOS_C6_BOOT backend=other\n'):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                MODULE.check_boot_headers(changed, True, True)
+
     def test_automatic_selftest_header_does_not_admit_foreign_or_repeated_boots(self):
         boot='ESP-ROM:esp32p4\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n'
         auxiliary='NIHOS_NATIVE_CARD_AUTO_BOOT selftest=00000001\n'

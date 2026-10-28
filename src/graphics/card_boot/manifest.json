@@ -1,0 +1,242 @@
+{
+  "fonts": {
+    "BIZUDGothic-Regular.ttf": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0",
+    "BIZUDMincho-Regular.ttf": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2"
+  },
+  "renderer": {
+    "freetype": "2.14.3",
+    "harfbuzz": "15.0.0"
+  },
+  "encoding": "A4 run length; upper nibble coverage, lower nibble count minus one",
+  "bytes": 17930,
+  "sha256": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
+  "glyphs": [
+    {
+      "text": "NIHOS  /  CARD READER",
+      "pixels": 18,
+      "vertical": false,
+      "width": 189,
+      "height": 17,
+      "offset": 0,
+      "length": 1415
+    },
+    {
+      "text": "丹穂",
+      "pixels": 108,
+      "vertical": true,
+      "width": 105,
+      "height": 204,
+      "offset": 1415,
+      "length": 3241
+    },
+    {
+      "text": "にほす",
+      "pixels": 19,
+      "vertical": false,
+      "width": 54,
+      "height": 17,
+      "offset": 4656,
+      "length": 343
+    },
+    {
+      "text": "墨",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 32,
+      "offset": 4999,
+      "length": 339
+    },
+    {
+      "text": "之",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 31,
+      "offset": 5338,
+      "length": 269
+    },
+    {
+      "text": "江",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 33,
+      "offset": 5607,
+      "length": 305
+    },
+    {
+      "text": "岸",
+      "pixels": 36,
+      "vertical": true,
+      "width": 35,
+      "height": 33,
+      "offset": 5912,
+      "length": 299
+    },
+    {
+      "text": "野",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 32,
+      "offset": 6211,
+      "length": 440
+    },
+    {
+      "text": "榛",
+      "pixels": 36,
+      "vertical": true,
+      "width": 36,
+      "height": 33,
+      "offset": 6651,
+      "length": 528
+    },
+    {
+      "text": "丹",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 32,
+      "offset": 7179,
+      "length": 322
+    },
+    {
+      "text": "穂",
+      "pixels": 36,
+      "vertical": true,
+      "width": 36,
+      "height": 33,
+      "offset": 7501,
+      "length": 547
+    },
+    {
+      "text": "所",
+      "pixels": 36,
+      "vertical": true,
+      "width": 35,
+      "height": 33,
+      "offset": 8048,
+      "length": 388
+    },
+    {
+      "text": "経",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 34,
+      "offset": 8436,
+      "length": 530
+    },
+    {
+      "text": "迹",
+      "pixels": 36,
+      "vertical": true,
+      "width": 35,
+      "height": 33,
+      "offset": 8966,
+      "length": 497
+    },
+    {
+      "text": "葉",
+      "pixels": 36,
+      "vertical": true,
+      "width": 36,
+      "height": 33,
+      "offset": 9463,
+      "length": 380
+    },
+    {
+      "text": "寐",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 33,
+      "offset": 9843,
+      "length": 485
+    },
+    {
+      "text": "我",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 32,
+      "offset": 10328,
+      "length": 471
+    },
+    {
+      "text": "八",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 29,
+      "offset": 10799,
+      "length": 248
+    },
+    {
+      "text": "氷",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 32,
+      "offset": 11047,
+      "length": 391
+    },
+    {
+      "text": "而",
+      "pixels": 36,
+      "vertical": true,
+      "width": 34,
+      "height": 32,
+      "offset": 11438,
+      "length": 386
+    },
+    {
+      "text": "将",
+      "pixels": 36,
+      "vertical": true,
+      "width": 35,
+      "height": 33,
+      "offset": 11824,
+      "length": 478
+    },
+    {
+      "text": "居",
+      "pixels": 36,
+      "vertical": true,
+      "width": 33,
+      "height": 32,
+      "offset": 12302,
+      "length": 314
+    },
+    {
+      "text": "万葉集　巻十六・三八〇一",
+      "pixels": 17,
+      "vertical": false,
+      "width": 204,
+      "height": 17,
+      "offset": 12616,
+      "length": 961
+    },
+    {
+      "text": "素のハードウェアを、色づける。",
+      "pixels": 26,
+      "vertical": false,
+      "width": 374,
+      "height": 24,
+      "offset": 13577,
+      "length": 2340
+    },
+    {
+      "text": "カード機能を準備しています",
+      "pixels": 21,
+      "vertical": false,
+      "width": 270,
+      "height": 20,
+      "offset": 15917,
+      "length": 2013
+    }
+  ],
+  "surface_origin": "fe84f47:src/graphics/surface.zig; blend helper inlined for foreground composition",
+  "scope": "fixed boot text only; not native font-worker integration"
+}
