@@ -1,0 +1,13 @@
+--- a/src/autofit/aflatin.c
++++ b/src/autofit/aflatin.c
+@@ -1162,8 +1162,8 @@
+       af_latin_metrics_check_digits( metrics, face );
+     }
+ 
+-    af_reverse_character_map_new( &metrics->root.reverse_charmap,
+-                                  &metrics->root );
++    error = af_reverse_character_map_new( &metrics->root.reverse_charmap,
++                                          &metrics->root );
+ 
+   Exit:
+     face->charmap = oldmap;

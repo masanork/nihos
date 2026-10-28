@@ -46,6 +46,8 @@ cpu=generic_rv32+m+a+c+zicsr+zifencei
 compiled=false
 sqlite=false
 sqlite_cpp=0
+graphics=false
+graphics_cpp=0
 abi=ilp32
 qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
 case "$qualification" in
@@ -56,9 +58,10 @@ esac
 case "$mode" in
     integer) floating=false; fp_asm=0 ;;
     sqlite) floating=false; fp_asm=0; sqlite=true; sqlite_cpp=1 ;;
+    graphics) floating=false; fp_asm=0; graphics=true; graphics_cpp=1 ;;
     floating) floating=true; fp_asm=1 ;;
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
-    *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
+    *) echo "mode must be integer, floating, compiled, sqlite or graphics" >&2; exit 1 ;;
 esac
 usb=${NIHOS_NATIVE_USB:-0}
 case "$usb" in
@@ -286,6 +289,9 @@ fi
 if [ "$rs485" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ]; }; then
     echo "RS485 requires the normal native integer device display/console boot" >&2; exit 1
 fi
+if [ "$graphics" = true ] && { [ "$display" = true ] || [ "$console" = true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$usb" = true ] || [ "$sdmmc" = true ]; }; then
+    echo "GRAPHICS is an isolated offscreen qualification profile; display/device/network/storage combinations are unsupported" >&2; exit 1
+fi
 mkdir -p "$build_dir"
 native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
@@ -296,7 +302,7 @@ if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 {
@@ -317,6 +323,8 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const card_auto = %s;\npub const card_auto_probe = %s;\n' "$card_auto" "$auto_probe"
     printf 'pub const card_scene_exercise = %s;\n' "$scene_exercise"
     printf 'pub const usb = %s;\npub const jpki = %s;\n' "$usb" "$jpki"
+    printf 'pub const graphics = %s;\n' "$graphics"
+    if [ "$graphics" = true ]; then python3 "$repo_root/probes/graphics/generate_text_cases.py" --zig; fi
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
@@ -331,6 +339,10 @@ set -- "$build_dir/c_allocator.o"
     -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_CARD_READ="$card_read_cpp" \
     -o "$build_dir/base_sram.o" "$repo_root/src/platform/native/base_sram.c"
 set -- "$@" "$build_dir/base_sram.o"
+if [ "$graphics" = true ]; then
+    sh "$repo_root/tools/build-native-graphics-payload.sh" "$build_dir"
+    set -- "$@" "$build_dir/graphics_payload.o" "$build_dir/graphics_fonts.o"
+fi
 if [ "$display" = true ] || [ "$psram_200" = true ]; then
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
     headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
@@ -519,7 +531,7 @@ fi
     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
-    -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" --gc-sections \
+    -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
@@ -558,7 +570,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mccid="$repo_root/src/usb/ccid.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep ccid -Mcard="$repo_root/src/card.zig" \
+    --dep ccid --dep surface -Mcard="$repo_root/src/card.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mjpki="$repo_root/src/usb/jpki.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -589,7 +601,7 @@ fi
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     --dep scheduler --dep task_control --dep tick_clock --dep timer_group \
-    --dep remote_events --dep spsc_ring --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
+    --dep remote_events --dep spsc_ring --dep spsc_mailbox --dep spsc_channel --dep text_context --dep font_stack_lifetime --dep raster_lease --dep surface --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
     -Mnative_tasks="$repo_root/src/arch/riscv32/native_tasks.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mscheduler="$repo_root/src/kernel/scheduler.zig" \
@@ -601,6 +613,18 @@ fi
     -Mremote_events="$repo_root/src/kernel/remote_events.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mspsc_mailbox="$repo_root/src/kernel/spsc_mailbox.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mspsc_channel="$repo_root/src/kernel/spsc_channel.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mraster_lease="$repo_root/src/graphics/raster_lease.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Msurface="$repo_root/src/graphics/surface.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mfont_stack_lifetime="$repo_root/src/graphics/font_stack_lifetime.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mtext_context="$repo_root/src/graphics/text_context.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Msoftware_ipi="$repo_root/src/soc/esp32p4/software_ipi.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

@@ -1,0 +1,1950 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "scope": "task-only borrowed-buffer rendering in an exact two-function mapped Flash span; SRAM ownership/context/timer/trap/allocator boundaries and final post-paint stack guards",
+  "base_commit": "dfe1a3678afb5f8bd3e686dbdb1cbdec0ea468cf",
+  "prior_receipt": {
+    "path": "docs/measurements/2026-10-28-native-kinsoku.json",
+    "sha256": "a248e7ec63cafd2acb53ca29b34482edbdc8ca1025fd107257b1d0a808226fc7"
+  },
+  "native_result": {
+    "status": "pass",
+    "evidence": "esp32p4-emulator-native-image",
+    "rtos_linked": false,
+    "graphics": {
+      "status": 1,
+      "owner": 65539,
+      "runs": 16,
+      "library_pc": 1073887294,
+      "heap_before": 16018752,
+      "heap_after": 16018752,
+      "raw_peak": 1310976,
+      "retained": 65792,
+      "stack_low": 1341579280,
+      "stack_high": 1341612032,
+      "observed_used": 17264,
+      "captures": 6410,
+      "render_captures": 6393,
+      "bootstrap_progress": 12620,
+      "record_peak": 694,
+      "controller_bytes": 17224,
+      "allocations": 31,
+      "releases": 30,
+      "foreign_rejected": 12619,
+      "irq_rejected": 6451,
+      "forged_rejected": 1,
+      "client_cycles": 9,
+      "idle_retained": 65792,
+      "idle_captures": 0,
+      "idle_progress": 6216
+    },
+    "exchange": {
+      "sent": 10,
+      "received": 10,
+      "replies": 10,
+      "waits": 10,
+      "blocked_ticks": 20,
+      "idle_runtime": 0,
+      "stop_ack": 1,
+      "terminal_gap": 1,
+      "copied_inputs": 5,
+      "text_success": 3,
+      "text_failed": 2,
+      "copied_outputs": 5,
+      "queue_bytes": 3200
+    },
+    "raster": {
+      "created": 5,
+      "discarded": 2,
+      "published": 3,
+      "reclaimed": 3,
+      "live_charge": 0,
+      "peak_charge": 32768,
+      "held_ticks": 6,
+      "stale_rejected": 8,
+      "foreign_rejected": 3
+    },
+    "placement": {
+      "paint_pc": 1085255366,
+      "draw_pc": 1085257670,
+      "frames": 3,
+      "draws": 99,
+      "context_checks": 6,
+      "irq_rejected": 7336,
+      "active_ticks": 6,
+      "flash_ticks": 4,
+      "trap_pc": 1085255702
+    },
+    "surface": {
+      "frames": 3,
+      "blits": 33,
+      "clipped": 5,
+      "guards": 3,
+      "rejected": 6,
+      "peak_charge": 65536,
+      "live_charge": 0
+    },
+    "wrap": {
+      "frames": 3,
+      "clusters": 33,
+      "lines": 9,
+      "wrapped_runs": 3,
+      "transitions": 4,
+      "clipped": 0
+    },
+    "policy": {
+      "frames": 3,
+      "spans": 30,
+      "joined": 3,
+      "lines": 10,
+      "transitions": 5,
+      "clipped": 0
+    },
+    "archive": {
+      "logical_bytes": 2736,
+      "charge": 4096,
+      "live_charge": 0,
+      "before": 16022848,
+      "after": 16022848
+    },
+    "texts": [
+      {
+        "id": 5,
+        "runs": 1,
+        "hash": 1592489383,
+        "outcome": 0,
+        "glyph_count": 10,
+        "pixel_bytes": 3441,
+        "pixel_hash": 3500984140,
+        "surface_hash": 1529476020,
+        "wrap_hash": 1101736308,
+        "policy_hash": 1101736308,
+        "glyphs": [
+          {
+            "glyph_id": 4248,
+            "cluster": 0,
+            "run": 0,
+            "pixels": 24,
+            "x_advance": 1536,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 3,
+            "top": 19,
+            "width": 18,
+            "height": 21,
+            "pixel_offset": 0
+          },
+          {
+            "glyph_id": 4686,
+            "cluster": 3,
+            "run": 0,
+            "pixels": 24,
+            "x_advance": 1536,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 21,
+            "width": 24,
+            "height": 23,
+            "pixel_offset": 378
+          },
+          {
+            "glyph_id": 2916,
+            "cluster": 6,
+            "run": 0,
+            "pixels": 24,
+            "x_advance": 1536,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 20,
+            "width": 24,
+            "height": 22,
+            "pixel_offset": 930
+          },
+          {
+            "glyph_id": 419,
+            "cluster": 9,
+            "run": 0,
+            "pixels": 24,
+            "x_advance": 1536,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 19,
+            "width": 22,
+            "height": 20,
+            "pixel_offset": 1458
+          },
+          {
+            "glyph_id": 4471,
+            "cluster": 12,
+            "run": 0,
+            "pixels": 24,
+            "x_advance": 1536,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 21,
+            "width": 24,
+            "height": 23,
+            "pixel_offset": 1898
+          },
+          {
+            "glyph_id": 2348,
+            "cluster": 15,
+            "run": 0,
+            "pixels": 24,
+            "x_advance": 1536,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 20,
+            "width": 24,
+            "height": 22,
+            "pixel_offset": 2450
+          },
+          {
+            "glyph_id": 416,
+            "cluster": 0,
+            "run": 1,
+            "pixels": 12,
+            "x_advance": 768,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 10,
+            "width": 10,
+            "height": 10,
+            "pixel_offset": 2978
+          },
+          {
+            "glyph_id": 432,
+            "cluster": 3,
+            "run": 1,
+            "pixels": 12,
+            "x_advance": 768,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 10,
+            "width": 11,
+            "height": 11,
+            "pixel_offset": 3078
+          },
+          {
+            "glyph_id": 456,
+            "cluster": 6,
+            "run": 1,
+            "pixels": 12,
+            "x_advance": 768,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 10,
+            "width": 12,
+            "height": 11,
+            "pixel_offset": 3199
+          },
+          {
+            "glyph_id": 393,
+            "cluster": 9,
+            "run": 1,
+            "pixels": 12,
+            "x_advance": 768,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 10,
+            "width": 11,
+            "height": 10,
+            "pixel_offset": 3331
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "runs": 0,
+        "hash": 0,
+        "outcome": 1,
+        "glyph_count": 0,
+        "pixel_bytes": 0,
+        "pixel_hash": 0,
+        "surface_hash": 0,
+        "wrap_hash": 0,
+        "policy_hash": 0,
+        "glyphs": []
+      },
+      {
+        "id": 7,
+        "runs": 0,
+        "hash": 0,
+        "outcome": 2,
+        "glyph_count": 0,
+        "pixel_bytes": 0,
+        "pixel_hash": 0,
+        "surface_hash": 0,
+        "wrap_hash": 0,
+        "policy_hash": 0,
+        "glyphs": []
+      },
+      {
+        "id": 8,
+        "runs": 1,
+        "hash": 1716706472,
+        "outcome": 0,
+        "glyph_count": 11,
+        "pixel_bytes": 4558,
+        "pixel_hash": 1348858277,
+        "surface_hash": 2840879048,
+        "wrap_hash": 3872015324,
+        "policy_hash": 3230547268,
+        "glyphs": [
+          {
+            "glyph_id": 4138,
+            "cluster": 0,
+            "run": 0,
+            "pixels": 32,
+            "x_advance": 0,
+            "y_advance": -2048,
+            "x_offset": -1024,
+            "y_offset": -1920,
+            "left": 0,
+            "top": 28,
+            "width": 31,
+            "height": 31,
+            "pixel_offset": 0
+          },
+          {
+            "glyph_id": 2652,
+            "cluster": 3,
+            "run": 0,
+            "pixels": 32,
+            "x_advance": 0,
+            "y_advance": -2048,
+            "x_offset": -1024,
+            "y_offset": -1920,
+            "left": 2,
+            "top": 28,
+            "width": 29,
+            "height": 31,
+            "pixel_offset": 961
+          },
+          {
+            "glyph_id": 429,
+            "cluster": 6,
+            "run": 0,
+            "pixels": 32,
+            "x_advance": 0,
+            "y_advance": -2048,
+            "x_offset": -1024,
+            "y_offset": -1792,
+            "left": 1,
+            "top": 20,
+            "width": 29,
+            "height": 17,
+            "pixel_offset": 1860
+          },
+          {
+            "glyph_id": 2986,
+            "cluster": 9,
+            "run": 0,
+            "pixels": 32,
+            "x_advance": 0,
+            "y_advance": -2048,
+            "x_offset": -1024,
+            "y_offset": -1792,
+            "left": 0,
+            "top": 27,
+            "width": 31,
+            "height": 30,
+            "pixel_offset": 2353
+          },
+          {
+            "glyph_id": 388,
+            "cluster": 12,
+            "run": 0,
+            "pixels": 32,
+            "x_advance": 0,
+            "y_advance": -2048,
+            "x_offset": -1024,
+            "y_offset": -1792,
+            "left": 7,
+            "top": 26,
+            "width": 16,
+            "height": 29,
+            "pixel_offset": 3283
+          },
+          {
+            "glyph_id": 11952,
+            "cluster": 15,
+            "run": 0,
+            "pixels": 32,
+            "x_advance": 0,
+            "y_advance": -2048,
+            "x_offset": -1024,
+            "y_offset": -1728,
+            "left": 22,
+            "top": 26,
+            "width": 9,
+            "height": 9,
+            "pixel_offset": 3747
+          },
+          {
+            "glyph_id": 413,
+            "cluster": 0,
+            "run": 1,
+            "pixels": 16,
+            "x_advance": 0,
+            "y_advance": -1024,
+            "x_offset": -512,
+            "y_offset": -896,
+            "left": 3,
+            "top": 13,
+            "width": 11,
+            "height": 14,
+            "pixel_offset": 3828
+          },
+          {
+            "glyph_id": 379,
+            "cluster": 3,
+            "run": 1,
+            "pixels": 16,
+            "x_advance": 0,
+            "y_advance": -1024,
+            "x_offset": -512,
+            "y_offset": -960,
+            "left": 3,
+            "top": 14,
+            "width": 10,
+            "height": 15,
+            "pixel_offset": 3982
+          },
+          {
+            "glyph_id": 386,
+            "cluster": 6,
+            "run": 1,
+            "pixels": 16,
+            "x_advance": 0,
+            "y_advance": -1024,
+            "x_offset": -512,
+            "y_offset": -832,
+            "left": 2,
+            "top": 13,
+            "width": 12,
+            "height": 14,
+            "pixel_offset": 4132
+          },
+          {
+            "glyph_id": 11989,
+            "cluster": 9,
+            "run": 1,
+            "pixels": 16,
+            "x_advance": 0,
+            "y_advance": -1024,
+            "x_offset": -512,
+            "y_offset": -960,
+            "left": 6,
+            "top": 13,
+            "width": 9,
+            "height": 12,
+            "pixel_offset": 4300
+          },
+          {
+            "glyph_id": 379,
+            "cluster": 12,
+            "run": 1,
+            "pixels": 16,
+            "x_advance": 0,
+            "y_advance": -1024,
+            "x_offset": -512,
+            "y_offset": -960,
+            "left": 3,
+            "top": 14,
+            "width": 10,
+            "height": 15,
+            "pixel_offset": 4408
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "runs": 1,
+        "hash": 1905604948,
+        "outcome": 0,
+        "glyph_count": 12,
+        "pixel_bytes": 1774,
+        "pixel_hash": 3544451899,
+        "surface_hash": 587290586,
+        "wrap_hash": 3917300124,
+        "policy_hash": 3332983756,
+        "glyphs": [
+          {
+            "glyph_id": 2497,
+            "cluster": 0,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 1024,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 14,
+            "width": 16,
+            "height": 16,
+            "pixel_offset": 0
+          },
+          {
+            "glyph_id": 3212,
+            "cluster": 3,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 1024,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 14,
+            "width": 16,
+            "height": 16,
+            "pixel_offset": 256
+          },
+          {
+            "glyph_id": 413,
+            "cluster": 6,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 1024,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 2,
+            "top": 14,
+            "width": 12,
+            "height": 15,
+            "pixel_offset": 512
+          },
+          {
+            "glyph_id": 384,
+            "cluster": 9,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 1024,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 14,
+            "width": 15,
+            "height": 15,
+            "pixel_offset": 692
+          },
+          {
+            "glyph_id": 415,
+            "cluster": 12,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 1024,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 14,
+            "width": 15,
+            "height": 15,
+            "pixel_offset": 917
+          },
+          {
+            "glyph_id": 98,
+            "cluster": 15,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 1024,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 4,
+            "width": 5,
+            "height": 6,
+            "pixel_offset": 1142
+          },
+          {
+            "glyph_id": 35,
+            "cluster": 18,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 512,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 13,
+            "width": 8,
+            "height": 14,
+            "pixel_offset": 1172
+          },
+          {
+            "glyph_id": 36,
+            "cluster": 19,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 512,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 13,
+            "width": 8,
+            "height": 14,
+            "pixel_offset": 1284
+          },
+          {
+            "glyph_id": 37,
+            "cluster": 20,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 512,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 13,
+            "width": 8,
+            "height": 14,
+            "pixel_offset": 1396
+          },
+          {
+            "glyph_id": 19,
+            "cluster": 21,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 512,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 1,
+            "top": 13,
+            "width": 4,
+            "height": 14,
+            "pixel_offset": 1508
+          },
+          {
+            "glyph_id": 20,
+            "cluster": 22,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 512,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 13,
+            "width": 7,
+            "height": 14,
+            "pixel_offset": 1564
+          },
+          {
+            "glyph_id": 21,
+            "cluster": 23,
+            "run": 0,
+            "pixels": 16,
+            "x_advance": 512,
+            "y_advance": 0,
+            "x_offset": 0,
+            "y_offset": 0,
+            "left": 0,
+            "top": 13,
+            "width": 8,
+            "height": 14,
+            "pixel_offset": 1662
+          }
+        ]
+      }
+    ],
+    "hashes": [
+      1728955693,
+      127264623,
+      3802936562,
+      2720744390,
+      1636795626,
+      1483075906,
+      2072818531,
+      863961824,
+      41314477,
+      2150160734,
+      3827649753,
+      3029469629,
+      1662331729,
+      1389973151,
+      4053443032,
+      198040621
+    ],
+    "baseline": {
+      "schema": 1,
+      "backend": "native-sram",
+      "evidence": "emulator",
+      "mode": "integer",
+      "storage": null,
+      "storage_stack": null,
+      "qualification": null,
+      "sdmmc": null,
+      "sdmmc_stages": [],
+      "sdmmc_sweeps": [],
+      "image_elf_sha256": "e894f469861265c7d1dc2e7ebb8cd156fc434e0fb9314ccb1a9983e04fb460aa",
+      "flash_records": [
+        {
+          "hart": 0,
+          "start": 1073807392,
+          "end": 1073812764,
+          "bytes": 5372,
+          "initial": 4260328336,
+          "final": 4260328336,
+          "checks": 10744,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1073807392,
+          "end": 1073812764,
+          "bytes": 5372,
+          "initial": 4260328336,
+          "final": 4260328336,
+          "checks": 10744,
+          "confirmed": 1
+        }
+      ],
+      "flash_boot": {
+        "start": 1073742112,
+        "end": 1073746778,
+        "probe": 1073742234,
+        "mapping": 1073745576,
+        "completed": 1
+      },
+      "cpu_clock": null,
+      "sqlite": null,
+      "stacks": [
+        {
+          "hart": 0,
+          "start": 1341521920,
+          "end": 1341579264,
+          "boot_start": 1341521920,
+          "boot_end": 1341530112,
+          "irq_start": 1341538304,
+          "irq_end": 1341546496,
+          "task_start": 1341554688,
+          "task_end": 1341566976,
+          "boot_frame": 1341528336,
+          "irq_sp": 1341546208,
+          "task0_frame": 1341558304,
+          "task1_frame": 1341562400,
+          "task2_frame": 1341566784,
+          "frames": 1054,
+          "zeroed": 20480,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1341521920,
+          "end": 1341579264,
+          "boot_start": 1341530112,
+          "boot_end": 1341538304,
+          "irq_start": 1341546496,
+          "irq_end": 1341554688,
+          "task_start": 1341566976,
+          "task_end": 1341579264,
+          "boot_frame": 1341537840,
+          "irq_sp": 1341554400,
+          "task0_frame": 1341570592,
+          "task1_frame": 1341574688,
+          "task2_frame": 1341579072,
+          "frames": 1054,
+          "zeroed": 20480,
+          "confirmed": 1
+        }
+      ],
+      "rounds": 300,
+      "samples": 31,
+      "psram": {
+        "status": 1,
+        "configuration": 3328,
+        "identity": 207,
+        "bytes": 33554432,
+        "transactions": 4,
+        "mapped": 33554432,
+        "allocatable": 0
+      },
+      "psram_supply": {
+        "programmed": 1,
+        "calibrated": 0,
+        "dref": 6,
+        "mul": 5,
+        "control": 384,
+        "analog": 1719664640,
+        "settled": 1
+      },
+      "psram_io": {
+        "status": 1,
+        "mr0": 40,
+        "mr4": 64,
+        "mr8": 11,
+        "addresses": 25,
+        "passes": 2,
+        "reads": 50,
+        "writes": 50,
+        "transactions": 113
+      },
+      "psram_fast": null,
+      "psram_mapping": {
+        "status": 1,
+        "failure": 0,
+        "line_bytes": 64,
+        "last_address": 0,
+        "last_actual": 0,
+        "last_expected": 0,
+        "bytes": 33554432,
+        "entries": 1024,
+        "cpu_checks": 36,
+        "command_checks": 36,
+        "transactions": 72,
+        "syncs": 5
+      },
+      "psram_smp": {
+        "status": 1,
+        "rounds": 64,
+        "owner_checks": 3072,
+        "peer_checks": 3072,
+        "command_checks": 48,
+        "syncs": 1
+      },
+      "cpu0_progress": 4206878,
+      "cpu1_progress": 2166725,
+      "cpu0_interrupts": 899,
+      "cpu1_interrupts": 899,
+      "tasks": [
+        {
+          "hart": 0,
+          "progress": [
+            441820,
+            436736
+          ],
+          "timer_captures": [
+            301,
+            301
+          ],
+          "switches": 910,
+          "calls": 17,
+          "reaped": 3,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        },
+        {
+          "hart": 1,
+          "progress": [
+            441856,
+            436736
+          ],
+          "timer_captures": [
+            301,
+            301
+          ],
+          "switches": 910,
+          "calls": 17,
+          "reaped": 3,
+          "sleeps": 2,
+          "elapsed_ticks": 899
+        }
+      ],
+      "ipi_idle": [
+        {
+          "hart": 0,
+          "sent": 64,
+          "received": 64,
+          "ipis": 66,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 65,
+          "entries": 64,
+          "returns": 64,
+          "pending_before_wfi": 1,
+          "self_ipi": 1,
+          "timer_start": 900,
+          "timer_end": 900,
+          "queued": 0
+        },
+        {
+          "hart": 1,
+          "sent": 64,
+          "received": 64,
+          "ipis": 66,
+          "delivered": 64,
+          "woken": 64,
+          "rejected": 0,
+          "from_idle": 65,
+          "entries": 65,
+          "returns": 65,
+          "pending_before_wfi": 1,
+          "self_ipi": 1,
+          "timer_start": 900,
+          "timer_end": 900,
+          "queued": 0
+        }
+      ],
+      "floating": [
+        {
+          "hart": 0,
+          "checks0": 0,
+          "checks1": 0,
+          "checks2": 0,
+          "timer": 0,
+          "calls": 0,
+          "ipi": 0,
+          "saves": 0,
+          "restores": 0,
+          "initial": 0,
+          "app_timer": 0,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "checks0": 0,
+          "checks1": 0,
+          "checks2": 0,
+          "timer": 0,
+          "calls": 0,
+          "ipi": 0,
+          "saves": 0,
+          "restores": 0,
+          "initial": 0,
+          "app_timer": 0,
+          "confirmed": 1
+        }
+      ],
+      "memory": [
+        {
+          "hart": 0,
+          "start": 1341370880,
+          "end": 1341397248,
+          "capacity": 26240,
+          "used": 448,
+          "free": 25792,
+          "checks0": 441821,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1341397248,
+          "end": 1341423616,
+          "capacity": 26240,
+          "used": 448,
+          "free": 25792,
+          "checks0": 441857,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        }
+      ],
+      "external_memory": [
+        {
+          "hart": 0,
+          "start": 1208156160,
+          "end": 1224835072,
+          "capacity": 16678784,
+          "used": 16678784,
+          "free": 0,
+          "checks0": 441821,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1224835072,
+          "end": 1241513984,
+          "capacity": 16678784,
+          "used": 16678784,
+          "free": 0,
+          "checks0": 441857,
+          "checks1": 436737,
+          "rejected": 3,
+          "confirmed": 1
+        }
+      ],
+      "heaps": [
+        {
+          "hart": 0,
+          "start": 1208156288,
+          "end": 1224703552,
+          "metadata": 524288,
+          "capacity": 16022848,
+          "free": 16022848,
+          "live": 0,
+          "allocations": 13763,
+          "frees": 13763,
+          "rejected": 13,
+          "checks0": 441821,
+          "checks1": 436737,
+          "levels": 18,
+          "max_steps": 56,
+          "confirmed": 1
+        },
+        {
+          "hart": 1,
+          "start": 1224835200,
+          "end": 1241382464,
+          "metadata": 524288,
+          "capacity": 16022848,
+          "free": 16022848,
+          "live": 0,
+          "allocations": 13764,
+          "frees": 13764,
+          "rejected": 13,
+          "checks0": 441857,
+          "checks1": 436737,
+          "levels": 18,
+          "max_steps": 56,
+          "confirmed": 1
+        }
+      ],
+      "task_resources": [
+        {
+          "hart": 0,
+          "opened": 7,
+          "closed": 6,
+          "completed": 6,
+          "reclaimed": 10,
+          "reuses": 3,
+          "owned": 0,
+          "pending": 0,
+          "stale": 3,
+          "full": 3,
+          "forced": 1,
+          "pool_objects": 18,
+          "pool_rejected": 6,
+          "slab_objects": 120,
+          "slab_frees": 24,
+          "slab_rejected": 27,
+          "object_moves": 8,
+          "object_inplace": 4,
+          "object_rejected": 8,
+          "object_copy_bytes": 4208,
+          "c_probes": 2
+        },
+        {
+          "hart": 1,
+          "opened": 7,
+          "closed": 6,
+          "completed": 6,
+          "reclaimed": 10,
+          "reuses": 3,
+          "owned": 0,
+          "pending": 0,
+          "stale": 3,
+          "full": 3,
+          "forced": 1,
+          "pool_objects": 18,
+          "pool_rejected": 6,
+          "slab_objects": 120,
+          "slab_frees": 24,
+          "slab_rejected": 27,
+          "object_moves": 8,
+          "object_inplace": 4,
+          "object_rejected": 8,
+          "object_copy_bytes": 4208,
+          "c_probes": 2
+        }
+      ],
+      "external_registered_bytes": 33357568,
+      "external_allocatable_bytes": 32045696
+    },
+    "limits": [
+      "No physical Tab5 evidence",
+      "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
+      "Four matrix and five bounded text jobs share one live task; no service restart",
+      "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"
+    ],
+    "artifacts_sha256": {
+      "nihos-native.elf": "e894f469861265c7d1dc2e7ebb8cd156fc434e0fb9314ccb1a9983e04fb460aa",
+      "nihos-native.bin": "897992da80e74961baa21743a211f170d7570a31222d53f5ee1b476415a82797",
+      "nihos-native-flash.bin": "e13f7144d5acd0ce803117213dce42168290c8622caa99efee929ccf6e47050d",
+      "emulator.log": "b12bd2f0fc912a3ced315f5e2bf07dd44e91fb86879f8647514f0f0a6b1a2a98",
+      "emulator-stderr.log": "55ff6c6cf050e8b15e9ba800243693e1c07397bed8b4634c874918e97da9ee60",
+      "image-audit.json": "f745ec726e0dd6e566ab9150b00e07b0f8e2442ef21e8a90c09ee7475035b231",
+      "graphics-manifest.json": "3059696fea18829887c28d09709bd7f557e792db7ccda4675d08aed9808ce464"
+    },
+    "policy_reference_sha256": "289a666db8038f03a1500624e9ecc80a59e8bb53103df779ed05d22f6200653a",
+    "wrap_reference_sha256": "937e65b787fb8e10654c7031db1bcbb730281d39793de84430eb45b5c6593d86",
+    "surface_reference_sha256": "4f823bfedf7cf990bad225e7126534bffe75d7b70bb1adf8e1784e793d38b4b2",
+    "text_reference_sha256": "327ba47df6554032427369795910428f7d6089dd60d1810499d686bfff9e3f51",
+    "host_reference_sha256": "ab2e37012fcc54853bd3fae2841655a8258eca38855fb42026bb4c4347ea40ed"
+  },
+  "profiles": {
+    "emulator": {
+      "memory": {
+        "profile": "emulator",
+        "origin": "0x4ff20000",
+        "end": "0x4ff48000",
+        "bytes": 163840,
+        "total_bytes": 286720,
+        "regions": [
+          {
+            "name": "resident",
+            "origin": "0x4ff20000",
+            "end": "0x4ff48000",
+            "bytes": 163840
+          },
+          {
+            "name": "stacks",
+            "origin": "0x4ff60000",
+            "end": "0x4ff6e000",
+            "bytes": 57344
+          },
+          {
+            "name": "graphics-stack",
+            "origin": "0x4ff6e000",
+            "end": "0x4ff76000",
+            "bytes": 32768
+          },
+          {
+            "name": "graphics-data",
+            "origin": "0x4ff78000",
+            "end": "0x4ff80000",
+            "bytes": 32768
+          }
+        ]
+      },
+      "primary_static_bytes": 111104,
+      "sram_reserved_bytes": 233984,
+      "heap": {
+        "start": "0x4ff3b200",
+        "end": "0x4ff48000",
+        "bytes": 52736,
+        "owner_count": 2,
+        "granule_bytes": 64,
+        "external_bytes": 0
+      },
+      "image_bytes": 11576048,
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 4924
+        },
+        {
+          "address": "0x4ff20000",
+          "bytes": 60596
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 11450720
+        },
+        {
+          "address": "0x4ff2ecb4",
+          "bytes": 39252
+        },
+        {
+          "address": "0x4ff38640",
+          "bytes": 1680
+        },
+        {
+          "address": "0x4ff78000",
+          "bytes": 18756
+        }
+      ],
+      "loader": {
+        "elf_sha256": "ea1409292f3f9afde5fbf07d86db315659cd3237f93bdc61d6c102e4626f1884",
+        "allocated": [
+          {
+            "address": "0x4ffaefc0",
+            "bytes": 12498
+          },
+          {
+            "address": "0x4ffb5fc0",
+            "bytes": 272
+          },
+          {
+            "address": "0x4ffb60d0",
+            "bytes": 80
+          },
+          {
+            "address": "0x4ffb6120",
+            "bytes": 12
+          },
+          {
+            "address": "0x4ffb612c",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ffac2c0",
+            "bytes": 3010
+          }
+        ],
+        "nearest_higher_address": "0x4ffac2c0",
+        "gap_bytes": 410304,
+        "regions_checked": [
+          {
+            "name": "resident",
+            "gap_below": null,
+            "gap_above": 410304
+          },
+          {
+            "name": "stacks",
+            "gap_below": null,
+            "gap_above": 254656
+          },
+          {
+            "name": "graphics-stack",
+            "gap_below": null,
+            "gap_above": 221888
+          },
+          {
+            "name": "graphics-data",
+            "gap_below": null,
+            "gap_above": 180928
+          }
+        ]
+      },
+      "loader_config": {
+        "l2_bytes": 131072,
+        "line_bytes": 64,
+        "profile": "emulator",
+        "stack_source_window": {
+          "origin": "0x4ff20000",
+          "end": "0x4ffaefc0"
+        },
+        "config_sha256": "77e3976fc57fdb756dea34588025c9abc0190a6d9d1882c680416c51e74287a9"
+      },
+      "flash_records": {
+        "start": "0x40010020",
+        "end": "0x4001151c",
+        "bytes": 5372,
+        "fnv1a": 4260328336,
+        "executable": false,
+        "writable": false,
+        "image_offset": 65568
+      },
+      "graphics": {
+        "render": {
+          "start": "0x40afae80",
+          "end": "0x40afb980",
+          "bytes": 2816,
+          "sha256": "5c207d9873b6569441baa61f14321d79e182d2c9db577dc60ea6318d06b86af8",
+          "functions": {
+            "native_surface.paint": {
+              "start": "0x40afae80",
+              "end": "0x40afb7b4"
+            },
+            "native_surface.draw": {
+              "start": "0x40afb7b4",
+              "end": "0x40afb980"
+            }
+          },
+          "resident": {
+            "heap.allocTask": {
+              "start": "0x4ff2630a",
+              "end": "0x4ff263f6"
+            },
+            "heap.freeTask": {
+              "start": "0x4ff235e2",
+              "end": "0x4ff23660"
+            },
+            "native_surface.compose": {
+              "start": "0x4ff2593e",
+              "end": "0x4ff25e16"
+            },
+            "native_surface.contextAllowed": {
+              "start": "0x4ff263f6",
+              "end": "0x4ff2649a"
+            },
+            "native_surface.captureTimer": {
+              "start": "0x4ff361b2",
+              "end": "0x4ff3622e"
+            },
+            "nih_native_trap": {
+              "start": "0x4ff20100",
+              "end": "0x4ff201f8"
+            },
+            "nih_native_dispatch": {
+              "start": "0x4ff343ee",
+              "end": "0x4ff34f22"
+            }
+          }
+        },
+        "text_start": "0x40020000",
+        "text_end": "0x40084230",
+        "text_bytes": 410160,
+        "rodata_bytes": 150912,
+        "fonts_bytes": 10821328,
+        "fonts": [
+          {
+            "family": "gothic",
+            "name": "BIZUDGothic-Regular.ttf",
+            "bytes": 4667380,
+            "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0",
+            "start": "0x400a8fb0",
+            "end": "0x4051c7a4"
+          },
+          {
+            "family": "mincho",
+            "name": "BIZUDMincho-Regular.ttf",
+            "bytes": 6153932,
+            "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2",
+            "start": "0x4051c7b0",
+            "end": "0x40afae7c"
+          }
+        ],
+        "payload_sha256": "e94db3295adc280becc1337f443500202f5df05e083c816b9d7086fd71193932",
+        "padding_bytes": 60132,
+        "static_data_bytes": 18756,
+        "static_bss_bytes": 2008,
+        "stack_bytes": 32768,
+        "ram_reserved_bytes": 32768,
+        "static_occupied_span_bytes": 20824,
+        "image_offset": 131072
+      },
+      "evidence": "full native emulator boot/task/timer execution",
+      "primary_sram_recovered_bytes": 3328,
+      "image_size_change_bytes": -528,
+      "artifacts_sha256": {
+        "nihos-native.elf": "e894f469861265c7d1dc2e7ebb8cd156fc434e0fb9314ccb1a9983e04fb460aa",
+        "nihos-native.bin": "897992da80e74961baa21743a211f170d7570a31222d53f5ee1b476415a82797",
+        "nihos-native-flash.bin": "e13f7144d5acd0ce803117213dce42168290c8622caa99efee929ccf6e47050d",
+        "image-audit.json": "f745ec726e0dd6e566ab9150b00e07b0f8e2442ef21e8a90c09ee7475035b231",
+        "graphics-manifest.json": "3059696fea18829887c28d09709bd7f557e792db7ccda4675d08aed9808ce464",
+        "graphics_payload.o": "e94db3295adc280becc1337f443500202f5df05e083c816b9d7086fd71193932",
+        "graphics_fonts.o": "232fc5552b3911b05575389a52402e0d038a671c4e7ae4387f88d70b679c5500",
+        "native_options.zig": "9bc656d3be4e3248de3cce14f5376f26eef9e41d1b0661d5286734a9727525f5",
+        "graphics/generated/link_oracle.cpp": "69c007c05ed23792189fc6a15708a07f4e1dc8f38d2bc164f7ac5777214400ed",
+        "graphics/build/ft/libfreetype.a": "43ca170a73fffe69bf5229e3daa454b22bd3719bd53b53becb5e1ad698ecf41a",
+        "graphics/build/hb/libharfbuzz.a": "70336937845d0b4fc52badb40136350cf320065f99af818c2b60c152304e8da9"
+      }
+    },
+    "device": {
+      "memory": {
+        "profile": "device",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840,
+        "total_bytes": 286720,
+        "regions": [
+          {
+            "name": "resident",
+            "origin": "0x4ff00000",
+            "end": "0x4ff28000",
+            "bytes": 163840
+          },
+          {
+            "name": "stacks",
+            "origin": "0x4ff60000",
+            "end": "0x4ff6e000",
+            "bytes": 57344
+          },
+          {
+            "name": "graphics-stack",
+            "origin": "0x4ff6e000",
+            "end": "0x4ff76000",
+            "bytes": 32768
+          },
+          {
+            "name": "graphics-data",
+            "origin": "0x4ff78000",
+            "end": "0x4ff80000",
+            "bytes": 32768
+          }
+        ]
+      },
+      "primary_static_bytes": 111360,
+      "sram_reserved_bytes": 234240,
+      "heap": {
+        "start": "0x4ff1b300",
+        "end": "0x4ff28000",
+        "bytes": 52480,
+        "owner_count": 2,
+        "granule_bytes": 64,
+        "external_bytes": 0
+      },
+      "image_bytes": 11577504,
+      "image_segments": [
+        {
+          "address": "0x40000020",
+          "bytes": 6184
+        },
+        {
+          "address": "0x4ff00000",
+          "bytes": 59336
+        },
+        {
+          "address": "0x40010020",
+          "bytes": 11450720
+        },
+        {
+          "address": "0x4ff0e7c8",
+          "bytes": 40708
+        },
+        {
+          "address": "0x4ff18700",
+          "bytes": 1680
+        },
+        {
+          "address": "0x4ff78000",
+          "bytes": 18756
+        }
+      ],
+      "loader": {
+        "elf_sha256": "720376ce3680b980cca9d1dea34de1632774c934cbe9f536626b8a0877a1e6ac",
+        "allocated": [
+          {
+            "address": "0x4ff2cbd0",
+            "bytes": 12498
+          },
+          {
+            "address": "0x4ff33bd0",
+            "bytes": 272
+          },
+          {
+            "address": "0x4ff33ce0",
+            "bytes": 80
+          },
+          {
+            "address": "0x4ff33d30",
+            "bytes": 12
+          },
+          {
+            "address": "0x4ff33d3c",
+            "bytes": 4536
+          },
+          {
+            "address": "0x4ff2abd0",
+            "bytes": 3010
+          }
+        ],
+        "nearest_higher_address": "0x4ff2abd0",
+        "gap_bytes": 11216,
+        "regions_checked": [
+          {
+            "name": "resident",
+            "gap_below": null,
+            "gap_above": 11216
+          },
+          {
+            "name": "stacks",
+            "gap_below": 176396,
+            "gap_above": null
+          },
+          {
+            "name": "graphics-stack",
+            "gap_below": 233740,
+            "gap_above": null
+          },
+          {
+            "name": "graphics-data",
+            "gap_below": 274700,
+            "gap_above": null
+          }
+        ]
+      },
+      "loader_config": {
+        "l2_bytes": 131072,
+        "line_bytes": 64,
+        "profile": "device",
+        "stack_source_window": {
+          "origin": "0x4ff40000",
+          "end": "0x4ffa0000"
+        },
+        "config_sha256": "2dd594d3a8cd6c2b202a0fde3ff46c3eca2770a8201fd442b91d5e8e8cbfc60f"
+      },
+      "flash_records": {
+        "start": "0x40010020",
+        "end": "0x400115d8",
+        "bytes": 5560,
+        "fnv1a": 1815458882,
+        "executable": false,
+        "writable": false,
+        "image_offset": 65568
+      },
+      "graphics": {
+        "render": {
+          "start": "0x40afae80",
+          "end": "0x40afb980",
+          "bytes": 2816,
+          "sha256": "764d14e11903c900303bc4a34685d12146b1395880c00b3461bb29cbb7f55cd7",
+          "functions": {
+            "native_surface.paint": {
+              "start": "0x40afae80",
+              "end": "0x40afb7b4"
+            },
+            "native_surface.draw": {
+              "start": "0x40afb7b4",
+              "end": "0x40afb980"
+            }
+          },
+          "resident": {
+            "heap.allocTask": {
+              "start": "0x4ff06332",
+              "end": "0x4ff0641e"
+            },
+            "heap.freeTask": {
+              "start": "0x4ff0360a",
+              "end": "0x4ff03688"
+            },
+            "native_surface.compose": {
+              "start": "0x4ff05966",
+              "end": "0x4ff05e3e"
+            },
+            "native_surface.contextAllowed": {
+              "start": "0x4ff0641e",
+              "end": "0x4ff064c2"
+            },
+            "native_surface.captureTimer": {
+              "start": "0x4ff16260",
+              "end": "0x4ff162dc"
+            },
+            "nih_native_trap": {
+              "start": "0x4ff00100",
+              "end": "0x4ff001f8"
+            },
+            "nih_native_dispatch": {
+              "start": "0x4ff1449c",
+              "end": "0x4ff14fd0"
+            }
+          }
+        },
+        "text_start": "0x40020000",
+        "text_end": "0x40084230",
+        "text_bytes": 410160,
+        "rodata_bytes": 150912,
+        "fonts_bytes": 10821328,
+        "fonts": [
+          {
+            "family": "gothic",
+            "name": "BIZUDGothic-Regular.ttf",
+            "bytes": 4667380,
+            "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0",
+            "start": "0x400a8fb0",
+            "end": "0x4051c7a4"
+          },
+          {
+            "family": "mincho",
+            "name": "BIZUDMincho-Regular.ttf",
+            "bytes": 6153932,
+            "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2",
+            "start": "0x4051c7b0",
+            "end": "0x40afae7c"
+          }
+        ],
+        "payload_sha256": "e94db3295adc280becc1337f443500202f5df05e083c816b9d7086fd71193932",
+        "padding_bytes": 59944,
+        "static_data_bytes": 18756,
+        "static_bss_bytes": 2008,
+        "stack_bytes": 32768,
+        "ram_reserved_bytes": 32768,
+        "static_occupied_span_bytes": 20824,
+        "image_offset": 131072
+      },
+      "evidence": "structural image audit only; no hardware access",
+      "primary_sram_recovered_bytes": 3328,
+      "image_size_change_bytes": -528,
+      "artifacts_sha256": {
+        "nihos-native.elf": "dceef6759c98b120aeefac7c022fe667218317c2e50694527a54e552dd505edb",
+        "nihos-native.bin": "833a90a3b9c8aee9a039b4126e47d2217639c313c04c8daca5c6902c03fb772c",
+        "nihos-native-flash.bin": "09fa3269d9b8247d1741892a8363971f66b47a745cf92bbc871670e6c3e882c1",
+        "image-audit.json": "5a903658dd2fc91250cd11e3c5663b1ae971d45f84c78b2519c1bc71baad0008",
+        "graphics-manifest.json": "3059696fea18829887c28d09709bd7f557e792db7ccda4675d08aed9808ce464",
+        "graphics_payload.o": "e94db3295adc280becc1337f443500202f5df05e083c816b9d7086fd71193932",
+        "graphics_fonts.o": "232fc5552b3911b05575389a52402e0d038a671c4e7ae4387f88d70b679c5500",
+        "native_options.zig": "43609c59aa0cf1c57238909afd382883c520bc6ddd63ebb2900a119ee0814137",
+        "graphics/generated/link_oracle.cpp": "69c007c05ed23792189fc6a15708a07f4e1dc8f38d2bc164f7ac5777214400ed",
+        "graphics/build/ft/libfreetype.a": "43ca170a73fffe69bf5229e3daa454b22bd3719bd53b53becb5e1ad698ecf41a",
+        "graphics/build/hb/libharfbuzz.a": "70336937845d0b4fc52badb40136350cf320065f99af818c2b60c152304e8da9"
+      }
+    }
+  },
+  "placement": {
+    "flash_functions": [
+      "native_surface.paint",
+      "native_surface.draw"
+    ],
+    "flash_code_bytes": 2816,
+    "resident_functions": {
+      "heap.allocTask": {
+        "start": "0x4ff2630a",
+        "end": "0x4ff263f6"
+      },
+      "heap.freeTask": {
+        "start": "0x4ff235e2",
+        "end": "0x4ff23660"
+      },
+      "native_surface.compose": {
+        "start": "0x4ff2593e",
+        "end": "0x4ff25e16"
+      },
+      "native_surface.contextAllowed": {
+        "start": "0x4ff263f6",
+        "end": "0x4ff2649a"
+      },
+      "native_surface.captureTimer": {
+        "start": "0x4ff361b2",
+        "end": "0x4ff3622e"
+      },
+      "nih_native_trap": {
+        "start": "0x4ff20100",
+        "end": "0x4ff201f8"
+      },
+      "nih_native_dispatch": {
+        "start": "0x4ff343ee",
+        "end": "0x4ff34f22"
+      }
+    },
+    "context_contract": "CPU0 bootstrap consumer identity with MIE enabled before and after paint",
+    "post_paint_stack_guards": "bootstrap and IRQ bottom guards checked after each of three paints, before successful context-check accounting",
+    "irq_path": "SRAM context test and fixed internal metrics only; no borrowed pixels, Flash table or PSRAM access",
+    "runtime": {
+      "paint_pc": 1085255366,
+      "draw_pc": 1085257670,
+      "frames": 3,
+      "draws": 99,
+      "context_checks": 6,
+      "irq_rejected": 7336,
+      "active_ticks": 6,
+      "flash_ticks": 4,
+      "trap_pc": 1085255702
+    },
+    "loader": "render span follows unchanged fonts in the same second contiguous mapping; all mapped bytes compared to ELF",
+    "image_audit": "exact two-symbol RX/non-writable extent, contiguous bounds, linker symbol binding and required SRAM helper extents",
+    "assembly_change": "add existing trap .type/.size ELF metadata; no instruction or context-frame ABI edits"
+  },
+  "memory": {
+    "primary_sram_recovered_bytes": 3328,
+    "device_primary_heap_bytes": 52480,
+    "emulator_primary_heap_bytes": 52736,
+    "device_headroom_above_floor_bytes": 3328,
+    "primary_heap_floor_bytes": 49152,
+    "fixed_extra_sram_reservations": 65536,
+    "fixed_regions_and_task_quotas": "unchanged",
+    "additional_psram_allocations": 0,
+    "archive": {
+      "logical_bytes": 2736,
+      "charge": 4096,
+      "live_charge": 0,
+      "before": 16022848,
+      "after": 16022848
+    },
+    "raster": {
+      "created": 5,
+      "discarded": 2,
+      "published": 3,
+      "reclaimed": 3,
+      "live_charge": 0,
+      "peak_charge": 32768,
+      "held_ticks": 6,
+      "stale_rejected": 8,
+      "foreign_rejected": 3
+    },
+    "canvas": {
+      "frames": 3,
+      "blits": 33,
+      "clipped": 5,
+      "guards": 3,
+      "rejected": 6,
+      "peak_charge": 65536,
+      "live_charge": 0
+    },
+    "font_span_peak": 1310976,
+    "service_retained": 65792,
+    "font_stack_observed_bytes": 17264,
+    "combined_psram_peak": "not measured; separately observed font/raster/canvas peaks must not be summed as simultaneous peak",
+    "net_delta": "outlining/placement, added context/timer/stack guards and resulting code/alignment changes together; moved code bytes are not the net SRAM delta"
+  },
+  "regression_references": {
+    "policy_reference": {
+      "path": "docs/measurements/2026-10-28-kinsoku-reference.json",
+      "sha256": "289a666db8038f03a1500624e9ecc80a59e8bb53103df779ed05d22f6200653a"
+    },
+    "wrap_regression_reference": {
+      "path": "docs/measurements/2026-10-28-wrap-reference.json",
+      "sha256": "937e65b787fb8e10654c7031db1bcbb730281d39793de84430eb45b5c6593d86"
+    },
+    "unwrapped_regression_reference": {
+      "path": "docs/measurements/2026-10-28-surface-reference.json",
+      "sha256": "4f823bfedf7cf990bad225e7126534bffe75d7b70bb1adf8e1784e793d38b4b2"
+    }
+  },
+  "source_sha256": {
+    "build.zig": "7dc234f86af07b4ed609d4032c24f31f321cbbc5a31c4cb18a6b2496514fbe9b",
+    "docs/adr/0043-opt-in-native-font-fixture.md": "4eba5a06a873eba6419ad22fab6e0aefc9e17160667e7d2fe372ea37834d38f6",
+    "docs/adr/0044-native-font-request-waits.md": "68d56a2c82bc109be8f0a86074ff26eb342c13b965776e75aef47aa407721bd4",
+    "docs/adr/0045-owned-font-text-requests.md": "b9a2bcfb543e37ae528af12b4289f5c25e3f04018a602376821285a20ebb45d4",
+    "docs/adr/0046-owned-glyph-metadata.md": "99541fb15c304dcbbf4db0bf1da40cd2fac122d72b0602672180bbf5a64e9b7a",
+    "docs/adr/0047-borrowed-a8-raster-leases.md": "6a9f48283eaec16b69cfae06408e9ed665e3161b7dd5b7ea5b30053bcb28b1a5",
+    "docs/adr/0048-borrowed-rgb565-surfaces.md": "1483342ca81084cbbf233871634a311d91d3aaa7b9a6038fd15789df480ce5ac",
+    "docs/adr/0049-bounded-cluster-flow.md": "36d5815b1916d69e993c157ac15ac3058e3a97883c387eb556bd30ba0ef2bae4",
+    "docs/adr/0050-basic-japanese-break-policy.md": "83f71f498c1fc194e9a17777bdf6db3f99f8d2724fdbe804a8d796b340acd5e4",
+    "docs/adr/0051-task-only-flash-rendering.md": "615bd35c76422be9389de00463cc6c0e9c40756143a041dd5d4a33653dccec09",
+    "docs/graphics-font-worker.md": "0f2185582ff3384a9330c77d84c3c628c56bb12260df6a3f34a453fffdfe2c55",
+    "docs/native-graphics.md": "6c4e28b45ce4ccdfc8d3b73a573c87c42824c4172cddbf00c0f2f388788e626f",
+    "include/nihos/platform_abi.h": "89ed8c4a5bcb6c8804bac32ee741eea8a1d1c727400808443fcf2790ff5eb209",
+    "include/nihos_allocator.h": "3856d4def5e5d0544d1b442af264c42f8b790427e0f8c93977942a5d1d7ca23c",
+    "include/nihos_c_strings.h": "4c32f8dfbb5e981ca015f70d13ea8ecec4296ccf5b58a682cb8271e51de8c6d4",
+    "include/nihos_sqlite_session.h": "2194bbccd5470064d2e7c75f74eb88d076fdfea2028b69aa210437c0b2979201",
+    "include/nihos_storage_probe.h": "24369dd57c59d7ce6a40a4b7d5e158905a38468c5dfc9a79523d6be47f232a41",
+    "ports/esp32p4-native/CMakeLists.txt": "aea388e544cc5d57f66bdfd5a4fb022be167f750dd3684063b9ef9b03e9292ca",
+    "ports/esp32p4-native/main/CMakeLists.txt": "1b07b2a81841a6e12fc589126fca551dfa39cd6db0646f802740972b48a2cf1b",
+    "ports/esp32p4-native/partitions-graphics.csv": "6a6292b01af34cc678c1a2732fd7178c00f47d128df037171e6a647923ad2a93",
+    "ports/esp32p4-native/sdkconfig.defaults": "514fa424ea989dd2ebff9c57e4b9c4d8f78b3c411f5287ac89ba1780348502b2",
+    "probes/graphics/CMakeLists.txt": "fbb1a3ca99b944f3a7d39d0963d0247ffec10a53179f1e093db502d2ee3201dc",
+    "probes/graphics/README.md": "9e3660000a61f87b634a27defb0704f33d0af2a14391b0b9bd797dd93113dccf",
+    "probes/graphics/backing_test.cpp": "83f7a7bb89f954ac1dee202099930bdf15f8dab11c88a12445517e81d4932bcd",
+    "probes/graphics/buddy_backing.h": "fc05e93582b3f0bdff20a97363872961e9547fd458ce9f56c4b7ff7ca3ea65b9",
+    "probes/graphics/buddy_backing.zig": "d282978ba38eae75f53a4bb7763730173baea6849351331c9ec1006f9805c536",
+    "probes/graphics/buddy_driver.cpp": "b8b4f2fb82a2119e3d7d73de5e3ca9508a24d75eb64ae2ff89cafc5d883f1bd7",
+    "probes/graphics/elf32_layout.h": "342b1a7b271eb0ca34edd2c67fab6f6e91138e89652b686d22d922ff08f872ec",
+    "probes/graphics/fetch_sources.py": "25c39395ce9186414f49cfa43bb6badd734d0cf642657abb158badf1969fb92e",
+    "probes/graphics/font_probe.cpp": "264a20a1ecd23859af290128eef89e8adf4cc572d25f52a6e6342b82a908993e",
+    "probes/graphics/ft_noenv.h": "5938a5e02ebc0303cd4024aad13fc1757d54dfb01365ae82840e87b55047e254",
+    "probes/graphics/ft_noio.c": "77a3e688b481056e7f495e6a3ebddbe3bbd10f4fef0e81020f78622e1539626c",
+    "probes/graphics/generate_link_oracle.py": "40b929b28530fb58abea09610fdd2051981fb98c3b996fe664d38637766d2a12",
+    "probes/graphics/generate_text_cases.py": "8aba2d0733b75fd6ecce733990082cd264b52589361aa71555c21f348e125f99",
+    "probes/graphics/hb_config.h": "70806235b812f5008c86bd9c066f2ea71110faf8b310f5a0a402ce10f3521e89",
+    "probes/graphics/isa_image.h": "135141de97db19deaa29f7a221a9ac31a6cdd5d47de1a161ae5136b0bc2d3ff1",
+    "probes/graphics/isa_stack_runner.cpp": "f655dda4023f30fef56ac68dac59f8410bd7667847a1aa260a61744ae8e2476b",
+    "probes/graphics/kinsoku_reference.py": "f347c908fa689fde3f889e85cc5c82b30bd1f5b43cf9d27cc45f707602af78c1",
+    "probes/graphics/lazy_pool.cpp": "601fb7584915091d2cd7e3d903f21a83d7f8ba237bb2b71a5472ed57a04acdb7",
+    "probes/graphics/lazy_pool.h": "906331f2dff1367a0c3a797be5b8f5c7a5a48c3e331a1937f55efc610839bce1",
+    "probes/graphics/link_host_main.cpp": "71d55e89d45b7c1f530306b67bc96267cd3f9a9acdd2c6f136225578a5ac6ae4",
+    "probes/graphics/link_oracle.h": "29742cc75201cbf27021fdddfde158265980dfa8e5f0365bfeb20c9b27293cc9",
+    "probes/graphics/metadata_size.cpp": "ef75a613fa5b1b4ab9711ecd6eb1c4334589edf7e75263644a0d92fa398a68cf",
+    "probes/graphics/native_payload.py": "831e6278cbba9742b149dc7008698acd1cefa47b891c8869f7d471360783b0e3",
+    "probes/graphics/patches/freetype-autofit-map-error.patch": "7581c3a1e0d4582cfbf4bd57e3ebef5c48e80edcea7228ad06f77332efcbc328",
+    "probes/graphics/pool_test.cpp": "9ff0043532ccdfba306b66ec7ea932dd51cd785bd3e50910c8dfe10eaf421976",
+    "probes/graphics/report.py": "c039f0267be46a64444eaa21c84ff887a474a1bb4da65f10a49bc7ce1433a415",
+    "probes/graphics/run_rv32_study.py": "2b3389891bb0d8022aa29554deba9f316250695fb5def4435c656bb7b8393a72",
+    "probes/graphics/rv32_link.ld": "8086dbb59fa980c7e3a45654f657714bf2ec36d07f857bd6e1fc052034b4b57f",
+    "probes/graphics/rv32_toolchain.cmake": "e79cbd6957c2d882db7db95ef611a3d145db624576de65be92a4a58ec8ee9127",
+    "probes/graphics/sources.json": "4651ffc4e5aee444552194e0d49986f94c6b45b1c9413114953a3e79518f20a6",
+    "probes/graphics/surface_reference.py": "dd8dacdab8c7c8b88c20a56b453f38bf3534b91033736c724f0507a4772c4c20",
+    "probes/graphics/text_cases.json": "00306091daecc1c13504f7aa6fd9d1c2738eed24b38650871ad17849ad084dee",
+    "probes/graphics/text_host_main.cpp": "bde9c745d92a4ffe255036fc734925fe05a65e8f503878256705131d947d9123",
+    "probes/graphics/unicorn-requirements.txt": "c1a3d9963a1a25f50b4041c71fd7eaa01919f421bed4ec1348871025617bc66a",
+    "probes/graphics/worker/link.ld": "8caddc33030b08b85b0a2eabe175e2bbe947844fd341ffe5af776f7583f06014",
+    "probes/graphics/worker/oracle.h": "92d544107b9e581c793697ca19315ac17fd28b852a78001d9a2a7cb1ddd5b473",
+    "probes/graphics/worker/runner.cpp": "a3ef2dea77437fe173315dd89da990a2fdee7477569447cf3702d9c6974d4098",
+    "probes/graphics/worker/runtime.zig": "349fe99ae0b53c36542010cbd08f68bd806c7d0cd11a664e9f3575005a2bd9bd",
+    "probes/graphics/worker/study.py": "0db41a4898aa282bbffeb1e95a4b35b3b489959224ba316d7db3d597e23245bc",
+    "provenance.toml": "cb30df1a255e0e10b15065320bc30b53ee684e9d5f7d10920d5c9ade1a4214b9",
+    "src/arch/riscv32/compiled_fp.zig": "0d9a0a0ec193485f2d4778b4fa38d693e1f5f30f61952430e05205822798999d",
+    "src/arch/riscv32/context.zig": "df609e59f1dc77bda712a49ea1458313ef0ff2141745ae2699ab0ab9cd55a105",
+    "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
+    "src/arch/riscv32/cpu1_tasks.zig": "4089f66529aae794c78a9d6cdadedaaaf589686c653d77ee1d56467a11c033dd",
+    "src/arch/riscv32/duplex_scenario.zig": "aa42ab702780d37aadcfa1aadfe0a59b0520878a575a0fd67f45cb12f1f101d1",
+    "src/arch/riscv32/fpu.S": "440e60f02a42a138784eaf52348871f43e5afb437d15c1b20fbddb82e0b5fd37",
+    "src/arch/riscv32/idle.zig": "42868da738fd3fa6efef68ce2c5fcffb52a5f28b8f08a1a1f861dd651e2e1204",
+    "src/arch/riscv32/ipc_scenario.zig": "8de20da789d6e438dd383763de8feeb7a44c59c9e94153de0d41b352cb3f3465",
+    "src/arch/riscv32/lifecycle_test.zig": "5eb5aa2cab826c865c9e46e36adb86455fb440047e6a7d57700e29ad35534ca2",
+    "src/arch/riscv32/native_floating.zig": "25ba2da8ebd772fc6ac06264c8944b06cd7b823e973ab00f2f89aee1d4c2d472",
+    "src/arch/riscv32/native_font_exchange.zig": "e11d43f25f59ab4942134c612845e7c01491115f48fe5c82586f6a4350287f34",
+    "src/arch/riscv32/native_graphics.zig": "1ed2dcf924cffc1f91533dc91c0246a865cc1c8ef225049a56bdf2fa78bd7a7c",
+    "src/arch/riscv32/native_ipi.zig": "985662dad59fb62d8f28923986e385f78e9a300d8382de5b4bb92f5fd3228026",
+    "src/arch/riscv32/native_raster.zig": "9a1f8f3135493da41d07fd28168ebf6292394efdcc90ddd20a596158413540e2",
+    "src/arch/riscv32/native_surface.zig": "b5dfc3e3785ff306ab453a1eae13e8dc7cd4fe601d5dd27c26e4c7c18ecf89ed",
+    "src/arch/riscv32/native_tasks.zig": "202a80947017daf2b344ffe4e64ff1d431f2aae9e4d4667932fa744a8cde036c",
+    "src/arch/riscv32/native_trap.zig": "5e64d942152d260bfbb4a360a84f0879b73923dc05830a39157c8527019379a7",
+    "src/arch/riscv32/preemption_test.zig": "cdd317010cdb54685440d7216db5b59e96e69a0129074999dd9deefbe7594863",
+    "src/arch/riscv32/remote_scenario.zig": "f9354fe0be442001d116b9d297558c35f546060e517cbaf5649f46c361ec7301",
+    "src/arch/riscv32/task_calls.zig": "b561c6341f5e35da17368b51302b0b051f1688426912a376a57bcc443d37cb2c",
+    "src/arch/riscv32/task_runtime.zig": "35dce3ec89e5c112b9c04ac8353a135f748b74bdcd2c6a6917b78f792f4419a7",
+    "src/arch/riscv32/trap.zig": "7b5b093c50b205e618c0ac4a16b94d9ed785828170a0635b5c2b358b61628000",
+    "src/arch/riscv32/trap_entry.S": "f66727322072079e2af68be99d7b7ab85e2a51529d2ef953fddc568665258c17",
+    "src/board/tab5/boot_i2c.zig": "9d75b2eab81e9f359e7f39e34c0d54deb2b91dccbf593fbc602ae6df0cc51a54",
+    "src/board/tab5/dcs.zig": "5b68afee81e946c4f592389f51c02f0a20cbbf731c6953243425b08d0fd71450",
+    "src/board/tab5/display.zig": "2da98294e46993c1a221376c81457aa50961b18ff8b1f672644bbffaf3210a2c",
+    "src/board/tab5/keyboard.zig": "0c6acc07b6d0feb4cfacc1f2fd42f44aa4a3266241ed29c479d4981d70f1b541",
+    "src/board/tab5/native_pads.c": "2073f795192eed5cce37c5b41a96e538b47aa6922aef0484ae81383018e6927b",
+    "src/board/tab5/native_scanout.c": "328fa6986666a2166503cb8a6d3720d268cb25c2d6218b74cd3ce0a8bcb7d59e",
+    "src/board/tab5/panel_data/ili9881c.bin": "12be71fded85fb0e2f1ffd93c3669543ff40fa5b0f82f8a7077484fa47fee7c8",
+    "src/board/tab5/panel_data/manifest.json": "32d58565c76009b34133a1cc10213064bd5d8549174166b54bc550b358b61e39",
+    "src/board/tab5/panel_data/st7121.bin": "4c55e2c115ca0014d36315b22cf7dd35ff6aa82a724c7c623b4e0bfd206dd892",
+    "src/board/tab5/panel_data/st7123.bin": "40d77dbcf5486a25678ae372b211a52a3079c035b976aae5cff8386e1aceb90f",
+    "src/board/tab5/panels.zig": "df78a9adeb0b945fb6f3ad40f0893d307a2b4c9bceacffe275e2ceafc274897b",
+    "src/board/tab5/provenance.toml": "2e190c20679c542a441bf9038b67ce7909f29329df17db34ffd3c9cd6e3b984f",
+    "src/board/tab5/scanout_state.zig": "4bad04a018246caa5764240e98c3d7bd32e71caee94bab95909da2eff290d6ac",
+    "src/compat/c_strings.c": "cfadeb90d036f48878e30b47d36f6338d29e97f3f94625fe290362765ae05025",
+    "src/console.zig": "a85c6ba6f2b1ab7143a942cd977afb6119b4b0e1691508c71673b69971f7b262",
+    "src/console/ascii.zig": "3e5946d719f9298a11e292e522ee874ff381c09f553724d37b57347b280ba3ac",
+    "src/console/diagnostic_keys.zig": "fd83b37082751bfe3e28befe9a6e7304762e56b4b591b79684cd7896f55a01b8",
+    "src/console/session.zig": "99ec4c5624d52a4b19505d94b2ca331840e69ec13e07599b42e297cd00a5b227",
+    "src/console/session_input.zig": "6b57769dc2b89da9f787bea4e6821102c67145468691787d791de9a9c1ae39db",
+    "src/console/snapshot.zig": "936068cbdfb6bfac1f840eee66fe386a5e131a580974ca14e08cfc3334209ff2",
+    "src/diagnostics/boot_journal.zig": "b4679a36e030f84236e174a48ce817c068b03ba2c5a864f8c8a3a8ba4324a432",
+    "src/diagnostics/boot_state.zig": "c181282054593e7d8e199395e8c0e29f65545daec227e56d1ce821261460665c",
+    "src/diagnostics/record.zig": "f338f148837f877d703bfc7f5c78a6ca66af685b7bd7a6ad08244cdeae091387",
+    "src/graphics/ascii/JetBrainsMono-OFL.txt": "c1ab7c666206842a02b35b30770dac0d7a10156ed401c9defc3f02a754d89e90",
+    "src/graphics/ascii/README.md": "4a14b10f430f4c9f8ed98560f1315ee73cf46a38c548958085b269b760cc2b50",
+    "src/graphics/ascii/SourceCodePro-LICENSE.md": "0b2c3168605cb4f3ba54cf3cf2003f67ff894c66484c75702007f23eda92c353",
+    "src/graphics/ascii/basic.bin": "028050a3eaf7597f298b733d7c30d420265dc641ffe1405ce3d097de00d703d3",
+    "src/graphics/ascii/fonts.json": "2a3b503cae93e2d12ea1f1325b87c0f2631076a351ec0efa353969a6a5e0338a",
+    "src/graphics/ascii/jetbrains.rle": "1b58c92e6063b2260e41fd5e20e62ad2f949df458280bffd5cab405f39c3dc31",
+    "src/graphics/ascii/jetbrains.zig": "1046097c46c929b730dc3b7a3376d073b11b8cfb98c5681d7c351e3335a9daa2",
+    "src/graphics/ascii/source_code.rle": "be2a5d9f455ed235a73758dfc97701205851a484cb4045773166e89a014b9725",
+    "src/graphics/ascii/source_code.zig": "bbb864beb1d72f3de0c09fad0a8cfdf868c9f5675b6e476551f1781e966405d8",
+    "src/graphics/ascii_console.zig": "179da6093d7523132c0abfdf4ee96c556364185916e0488edeb13f7f6e02b1ea",
+    "src/graphics/boot/OFL.txt": "d8b8eea77c2821908e78f8eabbe4a005757d643f4e87dca6588a23fe90d47cbe",
+    "src/graphics/boot/README.md": "5a1e92b245b25d68be7aa8ef3e9f9a9e06c332976aad7d7ff0fb482f6a975ec1",
+    "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
+    "src/graphics/boot/masks.rle": "ae55b084604465897eb857074c6a11088f38d59f62a645bae82ee42d42968087",
+    "src/graphics/boot/provenance.toml": "a76e3dbfdb9326c646df8df5bf24bb52f015f7d26f6cab099e2f46afca7f16be",
+    "src/graphics/boot_graphics.zig": "8085bafa3fb00765c3dbd3d5e07c7e617f78789f9dacf1d8cc458fdedd3f4b99",
+    "src/graphics/font_protocol.zig": "c55f01b19fdf042356e6aeaefc72852b5747513e9846ea3d8d49d3102342e8e3",
+    "src/graphics/japanese_break.zig": "697dc28fbab3aa3f7a9355128f699488c7c9f8cd61522ab66c4d34feb4dca5ce",
+    "src/graphics/line_layout.zig": "b48ba478e28c99f60cd66537b0789f17712bc0fda491fa1765226397f333e821",
+    "src/graphics/raster_lease.zig": "c3f94beb94dfce2d0f2103f5f1b40c1822d984ad021d169dc3e1b79c78f22a48",
+    "src/graphics/surface.zig": "7b600503d9c7847901842cabe4b87939e801d0c7f672dae5108e916749f86f33",
+    "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
+    "src/kernel/arena.zig": "67cb3baa4e700e51c31949d4b007fe68eb1b80927aa3ddf0bd5a0b487a6a3b54",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "src/kernel/buddy_heap_test.zig": "f446c24804ac5eaff0dcfc56b19bae42721613becf2918546a3a61bc142b6022",
+    "src/kernel/c_allocator.zig": "31b4dbe99768202990246ae440d815329b43107fed094a9b157e8e74b75673e8",
+    "src/kernel/c_allocator_test.zig": "6c2de72aaa4e21816158ec9fb18559cad794f1955bdebad402a793058626cf85",
+    "src/kernel/core_arena.zig": "b7ae72da52d9c0d2c6a5fe53fa34939cd31fd479f5abc1935dd6a5708ad8f847",
+    "src/kernel/extent_groups.zig": "611c96a6eeb7937405da9c5831e9b6dcac2088cb0a617a4f996611357a463217",
+    "src/kernel/fp_vectors.zig": "63c2a8ab28f30dbb032cbbf32051f1576641921f408bd5b7953de17facf3525a",
+    "src/kernel/park.zig": "2d13bf34a5d40238e47b4fad4ab5b66859ef6210a6e0c23517d10e384bc008f5",
+    "src/kernel/remote_events.zig": "fb5582e30da560fdeaf42eb8a08ea9b75757793126597fae5c4dfe7e017413f2",
+    "src/kernel/remote_events_test.zig": "05bc4659d4704d56f143c8de58723a6258633a996775b609eb2ec22fee0c4ce2",
+    "src/kernel/scheduler.zig": "54a84902c2e857fa47a29dda39cf71c5edbc5e5c951f496bc5c0920f8a229a55",
+    "src/kernel/size_pool.zig": "f29b0809accdfa0a302ee6d397f73200efbb38e132e5c9b36daf31451e3b8b31",
+    "src/kernel/size_pool_test.zig": "09633b26b8bb73ed4481d908c4de12e67a7c641a9f2fb15b79908cf4ee6d20b5",
+    "src/kernel/slab.zig": "a8ffb87f89c60ee60056bc669c838b2cf59079c4005962a2ae70596b7b411794",
+    "src/kernel/slab_test.zig": "4a3ea1b362c3e23975a95e08401f3a8afab291d0b825bd15fa3f451ef8d519d0",
+    "src/kernel/spsc_channel.zig": "2ad51f26e8ae29d3d7f1c9e66fd1012bb59c2be36f21c146416ee24452681817",
+    "src/kernel/spsc_channel_test.zig": "1a2e2c9d635015cb654d99efbbfb3fad8e473b573e5b85b6c2426502e7104d96",
+    "src/kernel/spsc_ring.zig": "6d8a9fd63e853dfd84bd39d44717fa25519ea38e21fd730296ee33e2f1bb28ba",
+    "src/kernel/task_call_numbers.inc": "2560a143af2308bfd94f44bf22cc104a213bcc3a56826e46195d49bd349d0e40",
+    "src/kernel/task_control.zig": "0f15f3005f5293082ef6c9bd9f9a0b4eaca8c99f0962a01459fd2e72e7f69571",
+    "src/kernel/task_control_test.zig": "f737a460b2416c1481dd7b34b6a5e5ec21b42f5d07fe901850157d62f38608dc",
+    "src/kernel/task_pools_test.zig": "072798ea7e6d12814c6fcb5b375d8499ce69b58a08f07ac4aab8d6fbc4f8a769",
+    "src/kernel/task_resources.zig": "0e4e30d80ff193cc35f175e93fbd48e5b71d7193c88ff79782a41e64e5918694",
+    "src/kernel/task_resources_test.zig": "fd8c3a21a9b92cb2e298be03fef26448d571a1d8c3e89547e5ae4c3d2b971e84",
+    "src/kernel/tick_clock.zig": "7bc43c23f3ee31aba3ff618a98cec7d982ef75daddc5cf3f0d97047a17917c7c",
+    "src/kernel/tick_counter.zig": "0aec17698c2e4dff66496a430798c3a06f4da406cc543cab0944c1a0dff89085",
+    "src/platform/abi.zig": "ee4bed75417238b7e933e81647f8d0144c1795ddaf70dc7bfda153ad4896c208",
+    "src/platform/espidf_main.zig": "3d506e673edf45ee0f534c270a338bed3fd6302407966b784fb7e9592ab43e9c",
+    "src/platform/native/cpu_boot.zig": "6d8d6e5455e5b65dcf6af064aa1bcba16516849331be0af7d1a2b0037ea825d0",
+    "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
+    "src/platform/native/diagnostic_ui.zig": "768dc182ab0a1c7ae44417d9370558f3d1412de82e03359f51de0e9a5f281126",
+    "src/platform/native/display_probe.zig": "6974028ab6008a6f54c13f6dc41c1d22dbb44e7c6c8e6da3b12cdf838d6fe7f9",
+    "src/platform/native/display_runtime.zig": "b85bc2101f32ac29f32d8e1c1803aeaacd316b112e9b69c88e6d938b8b35e704",
+    "src/platform/native/display_service.zig": "5233bee41928966f77796effb8fe5792e1112b688f4c0aeb123baf81490e6832",
+    "src/platform/native/esp32p4.ld": "75bc1630a5631ec3e4ebfdc6602465675cb226e787e095e7f5553627a3bf0b51",
+    "src/platform/native/external_layout.zig": "484c5c82a3b92686ff3409358be9bcd20367e84b4c014d5159ea5cbf9cb4efa7",
+    "src/platform/native/flash_records.zig": "5565e748e4e7a9e6e9bd35f40a53edc103ba7553c78f70b5da7a1db811f1c141",
+    "src/platform/native/heap.zig": "1d46626523aab39bdcd653e16a60ccb66e5583eff016125e4703de3ba29db8e8",
+    "src/platform/native/main.zig": "410ddd80bb98612b45b8a7557a8170b4ba42d6288d4dd6657d9dce5083366923",
+    "src/platform/native/memory.zig": "272769c9140bad0542cef18a4ec03d33c395fe25a78dee8b5f05b520ac43ee29",
+    "src/platform/native/psram.zig": "3c2748cf5ff576f68b36455fd9f108472f00fb0b300409a50a8196e32a7e1a08",
+    "src/platform/native/psram_memory.zig": "a57f78961f95b2c0cc6e782964169537de5e67c96febe0ca44cf531efb0e90ac",
+    "src/platform/native/sdmmc_probe.zig": "f3005d7b7fa034be577df24a75aace85aeba61fa9314572073734ed40bfb0d04",
+    "src/platform/native/sqlite_probe.zig": "95cfce174817e7b024ed63ccfa36d18c9688e6492c5422415663d28c1fe29311",
+    "src/platform/native/stack_layout.zig": "89277ab57dbaa5f5d4a51f056ef54b5d2f298b1a5178b45cc844deb6d2e49806",
+    "src/platform/native/stacks.zig": "c98b592e176e8868b2189cefcd2339573e54ac0fbceb881c33d4e1d600339d56",
+    "src/platform/native/start.S": "26191c6c0ed9f06a4306aec361c454a2d1d771fe437ab6a987f5c1b21267b318",
+    "src/root.zig": "c5b5afd82900465722348a26d54637cbd8896dd3891bec77fa7220161875493f",
+    "src/services/sqlite_session.c": "211f35d173cd7f185cf7c01470f7d47fb2134cda24070e0f5b3e32a25ef6c82b",
+    "src/soc/esp32p4/cpu_clock.zig": "577b4f0f8a0d044556047fc4b9e30f6f1ed68abb9805c61fef202fe0cd601d00",
+    "src/soc/esp32p4/psram.zig": "c4a3cbed9576a5546ad1282303811547d72e4e087e954da9fe85ff99c9f7c826",
+    "src/soc/esp32p4/psram_mapping.zig": "32351f5bf166dbc3ad6e2d203a9b53edfc819d5006360e179e8abaeff888984f",
+    "src/soc/esp32p4/psram_mapping_test.zig": "a2b694e572433c5b3b49bf6328834ca52f6589b20f0581809a7107f0d9151177",
+    "src/soc/esp32p4/psram_mpll.zig": "ef8223cdf9abf9f1b7ef245c3b08ab98ee7d8162a75eaa70e574abc49fe9f9c5",
+    "src/soc/esp32p4/psram_supply.zig": "e53a6e2c40b602adb79da90600fb24f95b17df80da6763a1ccfea090e7e0a4ef",
+    "src/soc/esp32p4/psram_test.zig": "e2adb99bb598739e449099bc98b9e9292d9f42cc5c3462493f1f6befe36da98c",
+    "src/soc/esp32p4/psram_tuning.zig": "c8f2ea359756abf78028f55004db69b1df110805552fb48448fe0efea4bf2313",
+    "src/soc/esp32p4/sdmmc.zig": "5c878d32b0a72a2d7dbb708399777ed0f2f43939856ef25db489f4aee66d97ea",
+    "src/soc/esp32p4/software_ipi.zig": "dbe7dafacad21c5acab4fd7772be95fb125f3f2c1ce3ad1cdd500e6c304f8117",
+    "src/soc/esp32p4/timer_group.zig": "24a821031bde77b15ca366760be29a47edb9dda58dc9907f9e7a987aae3ff07f",
+    "src/storage/block.zig": "e2d348ccd20957fa2e461b3b13e9ea270b17cb49605ca2935a953c75c09eb4c7",
+    "tools/bootstrap-esp-emu.sh": "0f6726224cf6815262e080a781caf6560a59a5cf7946f09b857ba3db0efb9e13",
+    "tools/bootstrap-littlefs.sh": "17169f4acd205731303391aab7609225216e569938a829139a76907b4207de55",
+    "tools/bootstrap-sqlite.sh": "907c16ff87258798d6ea0cbb76f8115eb807d7f579f326a6d50637a6eee0d890",
+    "tools/bootstrap-tlc.sh": "18be9907dd2d29b491be0eb3475589e03a05d500f14160267885c00f5e225e60",
+    "tools/bootstrap-zig.sh": "131d24fa3ec1d35e0c84aad30eb49f3feedf667472dfebad7383c2447fe3dfe4",
+    "tools/bootstrap-zlint.sh": "ac801ee6c64aeef2d8c17a2e29ca94dd09eb3fd19b64c9091d2eb2481922fe5a",
+    "tools/build-native-elf.sh": "aa0228cbd4ee8a929e1ac18d521cf86ef75ae60c3c0bb77da42fc55c747604d0",
+    "tools/build-native-graphics-payload.sh": "ca7caa05ffc9c080210198d2631b01e7c8cfd366342b67bc091a8cbb1ded7e5a",
+    "tools/build-native.sh": "fef14c08affa3a590a9fa2dd77992399b519df9ea6d8bb75ca197b0d30d029ab",
+    "tools/check-native-boot-smoke.py": "974bf3eed6e2b270c15eb8a773b7dbe847f00710d7de642941848eaa227a9e1a",
+    "tools/check-native-display-log.py": "3bf9ef0bed55b2d9da3a150df71ac3c372e95457fef63833efb10decb6796580",
+    "tools/check-native-graphics.py": "bc46a74374d58115db135109f6fda791e68652f49ef0c17a785581a6db02acc6",
+    "tools/check-native-image.py": "f29147b289ba081dd6d05f862272b60ea3a0ad3d2ae7bd70f8a3722488f3b9cd",
+    "tools/check-native-log.py": "715522de6c37690192d02b9a17ef8595c1211efca095ad0dbf990c295a8090f5",
+    "tools/check-riscv32-arch.sh": "bf38d209a2d965d25af24f3242d35d75c5efa92870ab8d04811a4c4770df4f87",
+    "tools/graphics_sources_test.py": "66f9458dd9ba46aba1afc0d1c65d19087ef2351f7ee77ae595b834a32ab6538b",
+    "tools/kinsoku_reference_test.py": "42636336a868930eee5e21e16e20c0519fafac641a8384952b283d1bad0e65e3",
+    "tools/line_layout_reference_test.py": "2f68ebaf279d55d45aa67bee7ca6aecc7dbd7f927c6bb97346977c2a64e00fee",
+    "tools/native-sqlite-manifest.py": "ffb69fbadaf78da629095c612774d2b01633aeb2f72ff07bfb04f4d90a018e8e",
+    "tools/native_graphics_test.py": "e395478a1f11d4ed791a38d953bf79639c2bae1f4d52ccb72a9ca302d5ef8092",
+    "tools/run-native-graphics-smoke.sh": "2070fe427f1402367090baf9e62b074b83b7910f82cf11933e5f8eb9daf547ec",
+    "tools/run-static-analysis.sh": "a77cc4219a221136f0c1e2feda52206a296f182bf940b8ce1a0ba89a9840a7ff"
+  },
+  "source_fingerprint": "70087207b1012d20b31a30c78f54df652df24314dc1cd78f141f7feec81a49e9",
+  "failed_attempts": {
+    "artifacts_sha256": {
+      "attempt-render-symbol-metadata": {
+        "build/attempt-render-symbol-metadata/nihos-native.elf": "2b35f1f5b9daf9109393fc84beb562665d92789aa7f3bac112d2011631cff403",
+        "build/attempt-render-symbol-metadata/render-placement-smoke.log": "4133d9152dad70d2260735fd23868dfa3490db32af544bf7c36843d1ccae7953"
+      },
+      "attempt-render-mixed-log": {
+        "build/attempt-render-mixed-log/emulator.log": "98ba0accdf4bc06b849029a1d1581e9a5a89b8b290f118c5c5f7536d4e33ac61",
+        "build/attempt-render-mixed-log/graphics-manifest.json": "87067fe91c3c1d9e20fe4d3726b2201a789054f9944d34e702f6a9c207b1759f",
+        "build/attempt-render-mixed-log/image-audit.json": "4a496591a8a1a8d7c5d7884cae40ee62d07fb5ec336faf996c379d309c3b2732",
+        "build/attempt-render-mixed-log/nihos-native-flash.bin": "3a2b9c142470f378193c6ea91b5551ffff0d0761d4aaed1ddc3e830a79f2831c",
+        "build/attempt-render-mixed-log/nihos-native.bin": "0eda56ade031cb7bc399a035cb465ffe83519e26534c7b00ac132e0cc58dff6b",
+        "build/attempt-render-mixed-log/nihos-native.elf": "1f9694573e12feee4dff57d95b5720d178dafb2b6a6688ce7011b32340344efe",
+        "build/attempt-render-mixed-log/render-placement-smoke.log": "4d3cecb69852566603aadc82b68eafdbd3beac40bf84978e081dfb04d86ad90b"
+      }
+    },
+    "symbol_metadata": "first structural audit rejected missing complete trap function metadata, while trap code itself remained SRAM; .type/.size fixes extent observability",
+    "mixed_log": "a native execution emitted PASS, but emulator diagnostic text split the CRT pass record; unchanged strict parser rejected it",
+    "remedy": "separate UART stdout and emulator stderr raw captures, retain and digest-bind both; no filtering or relaxed pass matcher",
+    "qualification": "failed attempts are unqualified; saved artifacts identify representative failure evidence, not a complete source snapshot"
+  },
+  "validation": {
+    "host_unit_tests": "zig build test passed; shared pixel/cluster/Japanese policy primitives unchanged",
+    "tool_unit_tests": "184 passed, including renderer exact function/resident bounds, permissions, linker symbols and execution/preemption negative controls",
+    "native_execution": "exact P4 native emulator image passed full boot/SMP/task/heap/FP baseline and all graphics checks; 4 interrupted Flash PCs across 6 active-call timer captures, 99 glyph draws",
+    "regressions": "all matrix, copied text/glyph, A8, unwrapped, cluster-only and prohibition results match prior receipt; no reference images/glyph data regenerated",
+    "cleanup": "all canvas/raster/diagnostic archive charges return to zero; original CPU0 free heap restored",
+    "static_analysis": "Zig format/ZLint, shellcheck, 21 architecture tests and six default native ELF audits passed",
+    "static_log_sha256": "7018183c500a51c6dc99cd15f1650f508cb592a4442921570adbb7ecdbddeca5",
+    "python_log_sha256": "45ebfeabbf6d8cfac10573c250e6b876f942e9be59a3481be5e7158f56ae7c83",
+    "zig_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "emulator_build_log_sha256": "e06f2d6c50f106c556a60f39115006c56142939bf4c3fbbc7fcb897ef0f9ab05",
+    "device_build_log_sha256": "ca15fd966cc56397c49edfa70ba9935625f82f8f9b01c04e2ddb4905f2b681e8",
+    "raw_capture_sha256": {
+      "emulator.log": "b12bd2f0fc912a3ced315f5e2bf07dd44e91fb86879f8647514f0f0a6b1a2a98",
+      "emulator-stderr.log": "55ff6c6cf050e8b15e9ba800243693e1c07397bed8b4634c874918e97da9ee60"
+    }
+  },
+  "limits": [
+    "No physical Tab5 evidence",
+    "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
+    "Four matrix and five bounded text jobs share one live task; no service restart",
+    "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds",
+    "Flash mappings/caches must stay active throughout rendering; no cache-off rendering or production Flash-write/renderer exclusion protocol is qualified",
+    "Fixed SRAM font stack/library regions remain reserved while idle; placement does not establish on-demand internal SRAM lifetime",
+    "Exact two functions and critical SRAM extents are structurally checked; not a whole-program call-graph, privilege/isolation or arbitrary-font stack bound",
+    "Finite fixture uses a CPU0 bootstrap consumer and canonical source maps; no arbitrary application routing, native dynamic source preparation or native font storage",
+    "No ruby-base association, production paragraph/kinsoku completeness, scanout or physical cache/latency qualification",
+    "Device profile is build-only; no hardware write, remote push, main integration or firmware publication"
+  ]
+}

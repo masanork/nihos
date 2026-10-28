@@ -230,3 +230,16 @@ pub fn report(hart: u32) Report {
 pub fn externalReport(hart: u32) Report {
     return external.report(hart);
 }
+
+/// Calling owner's live boot arena; never reads a peer's mutable allocator.
+pub fn localUsage() ?struct { capacity: u32, free: u32 } {
+    const core = currentHart();
+    if (core >= 2 or @atomicLoad(u32, &internal.prepared, .acquire) != 1) return null;
+    const previous = asm volatile ("csrrci %[previous], mstatus, 8"
+        : [previous] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const pool = &internal.owners[core].pool;
+    return .{ .capacity = @intCast(pool.arena.memory.len), .free = @intCast(pool.remaining()) };
+}

@@ -83,6 +83,14 @@ def audit_time_functions(functions, span):
 
 SQL_START, SQL_END = 0x40020000, 0x400C0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
+GRAPH_START, GRAPH_END = 0x40020000, 0x40C00000
+GRAPH_SECTIONS = {".flash.graphtext", ".flash.graphrodata", ".flash.graphfonts", ".flash.graphpad", ".flash.graphrender"}
+RENDER_FUNCTIONS = {"native_surface.checkSource", "native_font_stack.paint", "main.graphicsReport", "native_font_exchange.sourceHash", "native_font_exchange.drawHash", "native_font_exchange.stageText", "native_surface.verify", "native_surface.prepare", "native_surface.paint", "native_surface.draw"}
+RENDER_RESIDENT = {"native_font_stack.scratch", "native_font_stack.reaped", "native_font_exchange.releaseArchive", "native_surface.stage", "native_surface.verifySource", "native_surface.compose", "native_surface.contextAllowed", "native_surface.captureTimer",
+                   "nih_native_dispatch", "nih_native_trap", "heap.allocTask", "heap.freeTask"}
+GRAPH_RAM_LOW, GRAPH_RAM_HIGH = 0x4FF78000, 0x4FF80000
+GRAPH_STACK_LOW, GRAPH_STACK_HIGH = 0x4FF6E000, 0x4FF76000
+
 PHOTO_SECTIONS = {".flash.photo", ".flash.photo.rodata"}
 UI_SECTIONS = {".flash.uipad", ".flash.ui"}
 UI_POOLS = {".keypad.low": (0x4ff40000, 128 * 1024), ".keypad.high": (0x4ff70000, 188 * 1024)}
@@ -128,7 +136,15 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, allow_graphics=False):
+    if name in GRAPH_SECTIONS:
+        readonly = flags & 7 == 2 and flags & ~50 == 0
+        require(allow_graphics and kind == 1 and (flags == 6 if name in (".flash.graphtext", ".flash.graphrender") else readonly), "unapproved graphics Flash section")
+        if name == ".flash.graphpad":
+            require(0x40010020 < address < GRAPH_START and address + size == GRAPH_START, "invalid graphics Flash padding")
+        else:
+            require(GRAPH_START <= address < address + size <= GRAPH_END, "invalid graphics Flash extent")
+        return
     if name == '.flash.time':
         require(allow_time and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid network/time foreground Flash section')
         return
@@ -170,7 +186,82 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None):
+def audit_graphics_sram(name, kind, flags, address, size):
+    require(flags == 3, "graphics SRAM must be writable non-executable")
+    if name == ".graphics.stack":
+        require(kind == 8 and address == GRAPH_STACK_LOW and size == 32768, "invalid graphics stack")
+    else:
+        require(name in (".graphics.data", ".graphics.bss") and kind == (1 if name == ".graphics.data" else 8) and
+                GRAPH_RAM_LOW <= address < address + size <= GRAPH_RAM_HIGH, "invalid graphics SRAM data")
+
+
+def audit_render(section, functions):
+    low, data = section
+    high = low + len(data)
+    require(low % 4 == 0 and 0 < len(data) <= 16384, "invalid rendering Flash extent")
+    selected = [(name, start, end) for name, start, end in functions if low <= start < high or start < low < end]
+    require(len(selected) == len(RENDER_FUNCTIONS) and {n for n, _, _ in selected} == RENDER_FUNCTIONS,
+            "unexpected/missing rendering Flash function")
+    selected.sort(key=lambda item: item[1])
+    require(selected[0][1] == low and all(low <= start < end <= high for _, start, end in selected) and
+            0 <= high - selected[-1][2] < 16 and
+            all(0 <= right[1] - left[2] < 16 for left, right in zip(selected, selected[1:])),
+            "overlapping/unaccounted rendering Flash function extent")
+    resident = {name: {"start": hex(start), "end": hex(end)} for name, start, end in functions if name in RENDER_RESIDENT}
+    require(set(resident) == RENDER_RESIDENT and all(0x4ff00000 <= int(f["start"], 16) < int(f["end"], 16) <= 0x4ff48000 for f in resident.values()),
+            "renderer guard/allocator/trap helper must remain SRAM")
+    return {"start": hex(low), "end": hex(high), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+            "functions": {name: {"start": hex(start), "end": hex(end)} for name, start, end in selected},
+            "resident": resident}
+
+
+def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
+    require(manifest and manifest.get("schema") == 1 and manifest.get("allowed_functions"), "missing graphics object manifest")
+    require(set(sections) == GRAPH_SECTIONS | {".graphics.data", ".graphics.bss", ".graphics.stack"}, "missing graphics sections")
+    text, ro, fonts, pad = (sections[n] for n in (".flash.graphtext", ".flash.graphrodata", ".flash.graphfonts", ".flash.graphpad"))
+    require(text[0] == GRAPH_START and text[0] + len(text[1]) == ro[0] and
+            0 <= fonts[0] - ro[0] - len(ro[1]) < 16 and fonts[0] % 16 == 0, "noncontiguous graphics Flash layout")
+    require(pad[0] == 0x40010020 + ((len(tables) + 3) & ~3) and not any(pad[1]) and
+            pad[0] + len(pad[1]) == GRAPH_START, "nonzero/noncontiguous graphics padding")
+    require(symbols.get("__graphics_font_stack_bottom") == GRAPH_STACK_LOW and symbols.get("__graphics_font_stack_top") == GRAPH_STACK_HIGH,
+            "graphics stack symbols differ")
+    require(symbols.get("__graphics_bss_start") == sections[".graphics.bss"][0] and symbols.get("__graphics_bss_end") == sections[".graphics.bss"][0] + sections[".graphics.bss"][2], "graphics BSS zeroing bounds differ")
+    require(not {"malloc", "calloc", "realloc", "free", "__getreent"}.intersection(symbols), "unprefixed graphics C runtime")
+    for name in ("memcpy", "memset", "memmove", "memcmp", "__udivdi3"):
+        require(name not in symbols or any(low <= symbols[name] < high and 0x4ff00000 <= low < high <= 0x4ff48000 for _, low, high in functions), "kernel helper redirected to graphics Flash")
+    selected = {name: {"start": hex(low), "end": hex(high)} for name, low, high in functions if GRAPH_START <= low < high <= ro[0]}
+    require({"graphics_font_link_probe", "nih_gfx_study_malloc"}.issubset(selected), "missing graphics functions")
+    require(GRAPH_RAM_LOW <= symbols.get("graphics_output", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_output") == 844, "graphics output ABI/data placement differs")
+    require(GRAPH_RAM_LOW <= symbols.get("graphics_result", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_result") == 124, "graphics result ABI/data placement differs")
+    render = sections[".flash.graphrender"]
+    require(render[0] == (fonts[0] + len(fonts[1]) + 3) & ~3, "noncontiguous rendering Flash layout")
+    render_report = audit_render(render, functions)
+    require(symbols.get("__flash_render_start") == render[0] and symbols.get("__flash_render_end") == render[0] + len(render[1]) and
+            symbols.get("__flash_graphics_end") == render[0] + len(render[1]), "rendering Flash symbols differ")
+    queue_metadata = {}
+    for name in ("requests", "replies"):
+        symbol = "native_font_exchange." + name
+        address = symbols.get(symbol, 0)
+        require(0x4ff00000 <= address < address + 384 <= 0x4ff48000 and sizes.get(symbol) == 384,
+                "queue metadata must remain bounded internal SRAM")
+        queue_metadata[name] = {"start": hex(address), "end": hex(address + 384), "bytes": 384}
+    inputs = []
+    for item in manifest["fonts"]:
+        low, high = (symbols.get("nih_graphics_" + item["family"] + suffix, 0) for suffix in ("_start", "_end"))
+        require(fonts[0] <= low < high <= fonts[0] + len(fonts[1]) and high - low == item["bytes"], "font extent differs")
+        require(hashlib.sha256(fonts[1][low - fonts[0]:high - fonts[0]]).hexdigest() == item["sha256"], "font bytes differ from pinned source")
+        inputs.append({**item, "start": hex(low), "end": hex(high)})
+    payload = tables + bytes((-len(tables)) % 4) + pad[1] + text[1] + ro[1] + bytes(fonts[0] - ro[0] - len(ro[1])) + fonts[1]
+    payload += bytes(render[0] - fonts[0] - len(fonts[1])) + render[1]
+    payload += bytes((-len(payload)) % 4)
+    return {"render": render_report, "queue_metadata": queue_metadata, "text_start": hex(text[0]), "text_end": hex(ro[0]), "text_bytes": len(text[1]),
+            "rodata_bytes": len(ro[1]), "fonts_bytes": len(fonts[1]), "fonts": inputs,
+            "functions": selected, "payload_sha256": manifest["payload_sha256"], "padding_bytes": len(pad[1]),
+            "static_data_bytes": sections[".graphics.data"][2], "static_bss_bytes": sections[".graphics.bss"][2],
+            "stack_bytes": 32768, "ram_reserved_bytes": 32768}, (text[0], ro[0]), payload
+
+
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, render_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
@@ -185,7 +276,13 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             require(device_function(name), 'unapproved device Flash function: ' + name)
             continue
         if sql_span is not None and sql_span[0] <= address < stop <= sql_span[1]:
-            require(name in sql_functions, "non-manifest function in SQLite Flash: " + name)
+            require(name in sql_functions, "non-manifest function in mapped library Flash: " + name)
+            continue
+        if render_span is not None and render_span[0] <= address < stop <= render_span[1]:
+            require(name in RENDER_FUNCTIONS, "unapproved rendering Flash function: " + name)
+            continue
+        if render_span is not None and render_span[0] <= address < stop <= render_span[1]:
+            require(name in RENDER_FUNCTIONS, "unapproved rendering Flash function: " + name)
             continue
         if card_span is not None and card_span[0] <= address < stop <= card_span[1]:
             require(any(name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in card_functions), 'unapproved card foreground function: ' + name)
@@ -337,6 +434,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     allow_devices = any(string(names, section[0]) == '.flash.devices' and section[5] for section in sections)
     require(not allow_devices or (mode == 'integer' and profile == 'device' and keypad_manifest is None), 'invalid device Flash profile')
     sql_sections = {}
+    graph_sections = {}
     allow_sql = mode == "sqlite"
     allow_ui = keypad_manifest is not None
     allow_photo = allow_ui and keypad_manifest.get("codec") is not None
@@ -346,12 +444,15 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     photo_sections = {}
     ui_sections = {}
     ui_pools = []
+    allow_graphics = mode == "graphics"
     require(not allow_sql or (sqlite_manifest is not None and sqlite_manifest.get("schema") == 1 and
                              sqlite_manifest.get("allowed_functions")), "missing SQLite object manifest")
     for section in sections:
         name_id, section_type, flags, address, offset, size, link, _, _, stride = section
         name = string(names, name_id)
         if flags & 2 and size:  # SHF_ALLOC
+            require(section_type not in (14, 15, 16) and name not in (".ctors", ".dtors") and flags & 0x400 == 0,
+                    "native CRT does not support dynamic initializers or TLS")
             if name == ".heap":
                 require(section_type == 8 and flags & 7 == 3, "heap must be writable NOBITS")
             in_stacks = name == ".stacks"
@@ -362,8 +463,13 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             if in_ui:
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
                 ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
-            if not in_sram and not in_stacks and not in_ui:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time)
+            in_graphics_ram = name in (".graphics.data", ".graphics.bss", ".graphics.stack")
+            if in_graphics_ram:
+                require(allow_graphics, "unapproved graphics SRAM reservation")
+                audit_graphics_sram(name, section_type, flags, address, size)
+                graph_sections[name] = (address, elf[offset:offset+size] if section_type == 1 else b"", size)
+            if not in_sram and not in_stacks and not in_graphics_ram and not in_ui:
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, allow_graphics)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
                 if name == '.flash.time':
@@ -378,6 +484,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     sql_sections[name] = (address, elf[offset:offset + size])
                 if name in UI_SECTIONS:
                     ui_sections[name] = (address, elf[offset:offset + size])
+                if name in GRAPH_SECTIONS:
+                    graph_sections[name] = (address, elf[offset:offset + size])
                 if name == ".flash.appdesc":
                     audit_app_descriptor(elf[offset:offset + size])
                 if name == ".flash.rodata":
@@ -405,7 +513,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()), "missing mapped Flash sections")
     service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
@@ -510,6 +618,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     boot_end = boot_start + len(boot_code)
     require(symbols.get("__flash_boot_start") == boot_start and symbols.get("__flash_boot_end") == boot_end,
             "Flash boot symbols differ from section")
+    graph_report, graph_payload = None, None
+    if allow_graphics:
+        graph_report, sql_span, graph_payload = audit_graphics(graph_sections, symbols, symbol_sizes, functions, sqlite_manifest, flash_tables)
     card_span = None if card_start is None else (card_start, card_start + len(card_code))
     if card_span:
         require(card_start == (boot_end + 15) & ~15 and symbols.get('__flash_card_start') == card_start and symbols.get('__flash_card_end') == card_span[1], 'invalid card foreground symbols')
@@ -542,7 +653,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get("card_boot") else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql or allow_graphics else (), card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get("card_boot") else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -621,6 +732,13 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report['device_text'] = {'start': hex(device_start), 'end': hex(device_span[1]), 'bytes': len(device_code), 'sha256': hashlib.sha256(device_code).hexdigest(), 'functions': device_functions, 'foreground_only': True, 'writable': False, 'executable': True}
     if card_span:
         report['card_text'] = {'start': hex(card_start), 'end': hex(card_span[1]), 'bytes': len(card_code), 'sha256': hashlib.sha256(card_code).hexdigest(), 'writable': False, 'executable': True}
+    if allow_graphics:
+        report["graphics"] = graph_report
+        report["memory"]["regions"] += [{"name": "graphics-stack", "origin": hex(GRAPH_STACK_LOW), "end": hex(GRAPH_STACK_HIGH), "bytes": 32768},
+                                         {"name": "graphics-data", "origin": hex(GRAPH_RAM_LOW), "end": hex(GRAPH_RAM_HIGH), "bytes": 32768}]
+        report["memory"]["total_bytes"] += 65536
+        report["graphics"]["static_occupied_span_bytes"] = symbols["__graphics_bss_end"] - GRAPH_RAM_LOW
+        report["sram_reserved_bytes"] += 65536
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,
@@ -650,10 +768,14 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             require(data[256:256 + len(first_payload)] == first_payload, "Flash boot/card bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
-            mapped_length = len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
+            mapped_length = len(graph_payload) if allow_graphics else len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
             require((low <= address and address + length <= high) or
+                    (allow_graphics and address == GRAPH_RAM_LOW and length == (graph_sections[".graphics.data"][2] + 3) & ~3) or
                     (address == FLASH_SECTIONS[".flash.appdesc"][0] and length == first_length) or
                     (address == flash_start and length == mapped_length), "unexpected image load range")
+            if allow_graphics and address == GRAPH_RAM_LOW:
+                require(data[:graph_sections[".graphics.data"][2]] == graph_sections[".graphics.data"][1] and
+                        not any(data[graph_sections[".graphics.data"][2]:]), "graphics SRAM initializer differs from ELF")
             if address in (FLASH_SECTIONS[".flash.appdesc"][0], flash_start):
                 require(address % 65536 == position % 65536, "Flash image/MMU offset mismatch")
                 mapped.append(address)
@@ -665,6 +787,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 if allow_ui:
                     require(data == ui_payload, 'merged keypad image bytes differ from ELF')
                     report['keypad_storage']['image_offset'] = position + SQL_START - flash_start
+                if allow_graphics:
+                    require(data == graph_payload, "merged records/graphics image bytes differ from ELF")
+                    report["graphics"]["image_offset"] = position + GRAPH_START - flash_start
                 report["flash_records"]["image_offset"] = position
             image_segments.append({"address": hex(address), "bytes": length})
         position += length
@@ -708,7 +833,7 @@ def audit_loader(report, elf):
             "nearest_higher_address": hex(min(higher)), "gap_bytes": min(higher) - high, "regions_checked": gaps}
 
 
-def audit_loader_config(text, profile):
+def audit_loader_config(text, profile, report=None):
     values = dict(re.findall(r"^#define CONFIG_(CACHE_L2_CACHE_SIZE|CACHE_L2_CACHE_LINE_SIZE|ESP32P4_SELECTS_REV_LESS_V3) (\S+)$", text, re.M))
     require(int(values.get("CACHE_L2_CACHE_SIZE", "0"), 0) == 0x20000 and
             int(values.get("CACHE_L2_CACHE_LINE_SIZE", "0"), 0) == 64,
@@ -720,6 +845,9 @@ def audit_loader_config(text, profile):
     supported_low = 0x4ff40000 if profile == "device" else 0x4ff00000 + 0x20000
     supported_high = 0x4ffc0000 - 0x20000 if profile == "device" else 0x4ffaefc0
     require(supported_low <= STACK_LOW < STACK_HIGH <= supported_high, "stack bank outside source-supported SRAM")
+    if report is not None and "graphics" in report:
+        for start, end in [(GRAPH_STACK_LOW, GRAPH_STACK_HIGH), (GRAPH_RAM_LOW, GRAPH_RAM_HIGH)]:
+            require(supported_low <= start < end <= supported_high, "graphics reservation outside source-supported SRAM")
     return {"l2_bytes": 0x20000, "line_bytes": 64, "profile": profile,
             "stack_source_window": {"origin": hex(supported_low), "end": hex(supported_high)},
             "config_sha256": hashlib.sha256(text.encode()).hexdigest()}
@@ -741,12 +869,12 @@ def main():
                 require(all(hashlib.sha256((Path(sys.argv[9]).parent/name).read_bytes()).hexdigest()==obj['sha256'] for name,obj in manifest['codec']['objects'].items()), 'photo object differs from manifest')
             require(all(hashlib.sha256((root / name).read_bytes()).hexdigest() == digest for name, digest in manifest['sources'].items()), 'keypad generated source hashes differ')
         if len(sys.argv) >= 5:
-            require(sys.argv[4] in ("integer", "floating", "compiled", "sqlite"), "invalid FP mode")
+            require(sys.argv[4] in ("integer", "floating", "compiled", "sqlite", "graphics"), "invalid FP mode")
             require(report["fp_assembly_linked"] == (sys.argv[4] in ("floating", "compiled")), "FP assembly differs from requested mode")
         if len(sys.argv) >= 7:
             report["loader"] = audit_loader(report, Path(sys.argv[6]).read_bytes())
         if len(sys.argv) >= 8:
-            report["loader_config"] = audit_loader_config(Path(sys.argv[7]).read_text(), sys.argv[5])
+            report["loader_config"] = audit_loader_config(Path(sys.argv[7]).read_text(), sys.argv[5], report)
             if 'keypad_storage' in report:
                 window = report['loader_config']['stack_source_window']
                 require(all(int(window['origin'], 16) <= int(pool['origin'], 16) < int(pool['end'], 16) <= int(window['end'], 16) for pool in report['keypad_storage']['pools']), 'keypad pool outside source-supported SRAM')
