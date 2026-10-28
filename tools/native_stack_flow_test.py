@@ -72,6 +72,26 @@ class NativeStackFlowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'leaves body'):
             run([(word(0x00000097), 'auipc ra,0'), (word(0x000080e7), 'jalr ra')])
 
+    def test_terminal_call_is_derived_only_after_binary_nonreturn_summary(self):
+        caller = addi_sp(-16) + word(0x00000097) + word(0x000080e7)
+        callee = word(0x0000006f)
+        nodes = {BASE: {'names': ['caller'], 'frame': None, 'code': caller},
+                 BASE + 0x100: {'names': ['callee'], 'frame': None, 'code': callee}}
+        text = '40000000: addi sp,sp,-16\n40000004: auipc ra,0\n40000008: jalr ra # 40000100 <callee>\n40000100: j 40000100 <loop>'
+        results = FLOW.derive_missing(nodes, {BASE: {BASE+0x100}}, [BASE], text)
+        self.assertTrue(all(row['derived'] for row in results))
+        self.assertEqual(nodes[BASE]['frame'], 16)
+        self.assertTrue(results[0]['normal_return_impossible_under_call_abi'])
+        self.assertEqual(results[0]['nonreturning_call_dependencies'][0]['callee_code_sha256'], results[1]['code_sha256'])
+        # A normal-return path, unknown tail or trap does not establish noreturn.
+        for body, instruction in [(b'\x82\x80', 'ret'), (word(0x1000006f), 'j 40000200 <outside>'), (b'\x00\x00', 'unimp')]:
+            nodes[BASE]['frame'] = None
+            nodes[BASE+0x100].update(frame=None, code=body)
+            changed = text.replace('j 40000100 <loop>', instruction)
+            result = FLOW.derive_missing(nodes, {BASE: {BASE+0x100}}, [BASE], changed)
+            self.assertFalse(result[0]['derived'])
+            self.assertIsNone(nodes[BASE]['frame'])
+
     def test_callee_assumption_and_context_boundary_are_explicit(self):
         r = run([(word(0x100000ef), 'jal 40000100 <callee>'), (b'\x82\x80', 'ret')])
         self.assertEqual(r['calls_assumed_to_restore_sp'], 1)

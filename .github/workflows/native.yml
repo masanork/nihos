@@ -75,7 +75,7 @@ jobs:
           . "$IDF_PATH/export.sh" >/dev/null
           python3 tools/check-native-call-stack.py build/native-fatfs-fixture/nihos-native.elf \
             build/native-fatfs-fixture/call-stack.json --objdump riscv32-esp-elf-objdump \
-            --derive-frames --candidate-edge disk_read:nih_fatfs_fixture_read
+            --derive-frames --candidate-edge disk_read:nih_fatfs_fixture_read --resolve-jump-tables
 
       - name: Retain native evidence
         if: always()

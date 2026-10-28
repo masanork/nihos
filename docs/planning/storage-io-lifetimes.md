@@ -284,3 +284,11 @@ worker4,096 Bからguard16 Bとこの128 Bを除き、通常処理のSP予算は
 動的SP、矛盾するjoin、未対応命令等は拒否し、callがSPを復元するという仮定を明示する。
 fixture callbackを候補edgeに含めても、target排他性を証明した扱いにせず未解決表示を維持する。
 [SP解析と残るgate](../measurements/2026-10-28-fatfs-sp-flow.md)の通り、総stack合格はまだ出していない。
+
+## 通常復帰不能なcalleeとjump table（2026-10-28）
+
+機械語CFGのreturn/exitの有無とcode hashを使い、関数名やnoreturn宣言に依存せずに
+末尾callを解析する。jump tableはrange guardの単一入口とreadonly table全targetの関数内復帰を確認する。
+未提供frameは0、未解決transferのfunctionは4まで減ったが、callback / ecall / ROM境界が残る。
+[CFG確認と採取runnerの専有](../measurements/2026-10-28-fatfs-cfg-resolution.md)に、
+実ELFの改変負例と、kernel排他を実際の第二openerで確認してから採取する条件を記録した。

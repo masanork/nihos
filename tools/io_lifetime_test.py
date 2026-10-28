@@ -266,6 +266,17 @@ class PassiveCaptureTests(unittest.TestCase):
         port.open()
         self.assertEqual(events, [('configure', {'force_update': True}), 'dtr', 'rts', 'flush'])
 
+    def test_exit_reset_requires_known_device_and_no_unrestored_write(self):
+        from types import SimpleNamespace
+        for changed, restored, identity, opened, expected in (
+                (False,False,True,True,True), (True,True,True,True,True),
+                (True,False,True,True,False), (False,False,False,True,False),
+                (False,False,True,False,False)):
+            calls=[]; port=SimpleNamespace(is_open=opened,baudrate=0)
+            result=RUNNER.reset_on_safe_exit(port,changed,restored,identity,lambda:calls.append('reset'))
+            self.assertEqual(result,expected)
+            self.assertEqual(bool(calls),expected)
+
     def test_reset_baseline_identity_hashes_and_three_runs_are_required(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
