@@ -22,6 +22,9 @@ pub const columns = Layout(default_face).columns;
 pub const rows = Layout(default_face).rows;
 pub const Palette = enum(u32) { neutral, green, blue, forest, matrix };
 pub const Colors = struct { foreground: u16, accent: u16, background: u16 = 0x1082 };
+// The diagnostic view switch stays quiet beside the splash and log content.
+const control_border: u16 = 0x3186; // RGB565 dark gray, approximately #303030.
+const control_foreground: u16 = 0x528a; // Approximately #505050.
 pub fn colors(palette: Palette) Colors {
     return .{ .foreground = switch (palette) {
         .neutral => 0xe71c,
@@ -77,7 +80,7 @@ pub fn paintControl(comptime section: ?[]const u8, frame: []u8, stride: usize, b
     const selected = colors(palette);
     for (bounds.left..bounds.right) |x| for (bounds.top..bounds.bottom) |y| {
         const border = x < bounds.left + 2 or x + 2 >= bounds.right or y < bounds.top + 2 or y + 2 >= bounds.bottom;
-        pixel(frame, stride, y, 1279 - x, if (border) selected.accent else selected.background);
+        pixel(frame, stride, y, 1279 - x, if (border) control_border else selected.background);
     };
     const Store = if (section) |name| struct {
         const masks linksection(name) = @embedFile("ascii/basic.bin").*;
@@ -90,7 +93,7 @@ pub fn paintControl(comptime section: ?[]const u8, frame: []u8, stride: usize, b
         const bits = Store.masks[(@as(usize, byte) - 32) * 8 ..][0..8];
         for (0..16) |y| for (0..16) |x| {
             if (bits[y / 2] & (@as(u8, 1) << @as(u3, @intCast(x / 2))) != 0)
-                pixel(frame, stride, start_y + y, 1279 - (start_x + index * 16 + x), selected.foreground);
+                pixel(frame, stride, start_y + y, 1279 - (start_x + index * 16 + x), control_foreground);
         };
     }
     return true;
@@ -365,7 +368,7 @@ test "touch control rotates with the console and preserves bounds, row padding a
     const bounds = Damage{ .left = 1120, .top = 16, .right = 1264, .bottom = 80 };
     try std.testing.expect(paintControl(null, frame, stride, bounds, "LOGS", .neutral));
     const corner = (1279 - bounds.left) * stride + bounds.top * 2;
-    try std.testing.expectEqual(colors(.neutral).accent, std.mem.readInt(u16, frame[corner..][0..2], .little));
+    try std.testing.expectEqual(@as(u16, 0x3186), std.mem.readInt(u16, frame[corner..][0..2], .little));
     try std.testing.expect(std.mem.allEqual(u8, backing[0..64], 0xa5));
     try std.testing.expect(std.mem.allEqual(u8, backing[64 + size ..], 0xa5));
     for (0..1280) |row| try std.testing.expect(std.mem.allEqual(u8, frame[row * stride + 1440 ..][0..8], 0xa5));
