@@ -31,7 +31,15 @@ def disable_hangup(port):
 def claim_kernel_exclusive(port):
     # Request kernel exclusion as well as the advisory POSIX flock, then
     # verify enforcement on this host/device class and both serial aliases.
-    fcntl.ioctl(port.fd, termios.TIOCEXCL)
+    claimed_here = True
+    try:
+        fcntl.ioctl(port.fd, termios.TIOCEXCL)
+    except OSError as error:
+        if error.errno != errno.EBUSY:
+            raise
+        # Some Darwin serial drivers report EBUSY when this same descriptor
+        # already holds exclusion. Verify both aliases again rather than infer.
+        claimed_here = False
     # A successful ioctl alone is insufficient on some host/device classes.
     # Verify denial of a second opener that ignores advisory flock.
     paths = {port.port}
@@ -45,11 +53,13 @@ def claim_kernel_exclusive(port):
         except OSError as error:
             if error.errno == errno.EBUSY:
                 continue
-            fcntl.ioctl(port.fd, termios.TIOCNXCL)
+            if claimed_here:
+                fcntl.ioctl(port.fd, termios.TIOCNXCL)
             raise
         else:
             os.close(probe)
-            fcntl.ioctl(port.fd, termios.TIOCNXCL)
+            if claimed_here:
+                fcntl.ioctl(port.fd, termios.TIOCNXCL)
             raise RuntimeError('Kernel serial exclusion was not enforced; no device commands permitted')
 
 
@@ -61,8 +71,20 @@ def capture_serial_class(base, passive_configure=disable_hangup, exclusive_confi
             super()._reconfigure_port(*args, **kwargs)
             if getattr(self, "exclusive", False):
                 exclusive_configure(self)
+                self._kernel_exclusive_claimed = True
             if self.passive_open:
                 passive_configure(self)
+
+        def close(self):
+            try:
+                if getattr(self, '_kernel_exclusive_claimed', False) and getattr(self, 'fd', None) is not None:
+                    try:
+                        fcntl.ioctl(self.fd, termios.TIOCNXCL)
+                    except OSError:
+                        pass  # Descriptor close is still required after disconnect.
+            finally:
+                self._kernel_exclusive_claimed = False
+                super().close()
 
         def _update_dtr_state(self):
             if not self.passive_open:
