@@ -43,6 +43,13 @@ pub fn irqSource() u32 {
     return nih_display_dma_irq_source();
 }
 pub fn onInterrupt() void {
+    // Bootstrap/foreground pollers share this path with CLIC18. A poll must
+    // not itself be interrupted by another DMA completion/cache transaction.
+    const previous = asm volatile ("csrrci %[value],mstatus,8"
+        : [value] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
     if (!running) return;
     const event = nih_display_scanout_poll();
     if (event != 0) last_event = event;

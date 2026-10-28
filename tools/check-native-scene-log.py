@@ -46,6 +46,8 @@ def check(log, image):
     profile = image.get('automatic_cards', {})
     if profile.get('scene_exercise') is not True or profile.get('read_enabled') is not False:
         raise ValueError('audited card-free exercise image required')
+    if 'NIHOS_NATIVE_TRAP' in log or 'NIHOS_NATIVE_FAIL' in log:
+        raise ValueError('native trap/failure during scene exercise')
     return {'display': DISPLAY.check(log, image, 11, 80), 'exercise': check_transitions(log)}
 
 
