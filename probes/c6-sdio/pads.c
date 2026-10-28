@@ -63,6 +63,7 @@ void nih_c6_pads_init(void) {
     input_signal(SD_CARD_DETECT_N_2_PAD_IN_IDX, GPIO_MATRIX_CONST_ZERO_INPUT);
     input_signal(SD_CARD_WRITE_PRT_2_PAD_IN_IDX, GPIO_MATRIX_CONST_ZERO_INPUT);
     input_signal(SD_CARD_INT_N_2_PAD_IN_IDX, GPIO_MATRIX_CONST_ONE_INPUT);
+#if !NIH_NATIVE_SHARED_SDMMC
     const int __DECLARE_RCC_ATOMIC_ENV = 0;
     (void)__DECLARE_RCC_ATOMIC_ENV;
     sdmmc_ll_enable_bus_clock(&SDMMC, true);
@@ -70,6 +71,7 @@ void nih_c6_pads_init(void) {
     sdmmc_ll_set_clock_div(&SDMMC, 4);
     sdmmc_ll_select_clk_source(&SDMMC, SDMMC_CLK_SRC_PLL160M);
     sdmmc_ll_init_phase_delay(&SDMMC);
+#endif
 }
 
 void nih_c6_fourbit_pins(void) {

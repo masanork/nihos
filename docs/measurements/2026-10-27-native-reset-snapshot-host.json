@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "evidence": "host-tests-and-static-native-image-audit",
+  "hardware_executed": false,
+  "serial_opened": false,
+  "flash_written": false,
+  "clean_power_on_qualified": false,
+  "image": {
+    "image_sha256": "93f71241f6ce7a00bef88888960166da1e20222940c99b3c6636669b1e830dbd",
+    "elf_sha256": "ea95ad174ecd7c53106050a1b11602d9adb068c1dc214d2cb76f1a4d230edc03",
+    "image_bytes": 822048,
+    "primary_static_bytes": 106176
+  },
+  "resident_policy_limit": 106496,
+  "resident_policy_headroom": 320,
+  "baseline_resident_headroom": 8512,
+  "build_directory": "/private/tmp/nihos-vfs-native/build/cold-reset-snapshot",
+  "io_lifetimes": {
+    "version": 1,
+    "qualification": true,
+    "sources": {
+      "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+      "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+      "src/fs/sdmmc_owner.zig": "eac6e5a5483653d278fd668bf28c062e2ebae5f3ffba1dc9c43d5e120aaae10f",
+      "src/soc/esp32p4/sdmmc.zig": "179f78299aa811f0b21a564e1e687c69c400ae826ba687e9ff1f082d24d1b957",
+      "src/platform/native/sdmmc_probe.zig": "f9a0b99737d116ed34af629b1e62619aa52c9bf0a819db6d1c4551b59f9f0c57",
+      "src/platform/native/main.zig": "4860e653c1a3e11dbe767bd13b8dda4d3c02c5caf84ab79458203bc9b0d0a5ac",
+      "src/diagnostics/record.zig": "882a6288a08840af138cf190fd125353c0ed5b7cbfe1c15f56fcc6085c85132f",
+      "include/nihos_storage_io.h": "702b83fcbe1d5eeb3e06cac6c8b5047830842a88a3691bdc949eb330a51b8274"
+    },
+    "removal_test": false,
+    "capture_handshake": true,
+    "capture_format": 2,
+    "capture_sources": {
+      "probes/sdmmc/pads.c": "cf5acec7c43bf283531daca1d4d994e510dfecf36e5313e41398e7c05416f15c",
+      "src/platform/native/esp32p4.ld": "0792520cb6a0ba4681093fb4b468e8675ab09fa33439ffca22c77fddb33a60eb",
+      "src/soc/esp32p4/reset_capture.zig": "7e3ee65d8e204ec05ee5df71d5e2f2d2825b9887920df40d7e700a596a3db3df"
+    }
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4",
+    "nih_rom_reset_reason": "0x4fc00018",
+    "nih_rom_saved_pc": "0x4ff3fff8"
+  },
+  "artifact_sha256": {
+    "image-audit.json": "44f1ef7d71e96ac952accef419a74d3f184ddbef46bb89b7f1f0bd0a1d5efe13",
+    "sqlite-manifest.json": "4b2828e94c1ce166f43dd032693a7f6557727e948c7687caa36ee5c0ff3c4b57",
+    "native_options.zig": "46363e4faa76904b4fadf0438621abd8ce0f4b452451cde5dd74c4f0b55d4265"
+  },
+  "host_checks": {
+    "zig_debug": 200,
+    "zig_release_safe": 200,
+    "python": 184,
+    "fmt": true,
+    "zlint": true,
+    "shellcheck": true,
+    "standard_native_elf_audits": 6,
+    "capture_image_audit": true
+  },
+  "entry_disassembly_review": {
+    "snapshot_first_mmio_read": "0x4ff0109e",
+    "rom_reason_call": "0x4ff01160",
+    "first_watchdog_write": "0x4ff01178",
+    "conclusion": "snapshot reads precede native WDT and timer writes; assembly CRT and loader already ran"
+  },
+  "limitations": [
+    "New capture format has not run on hardware",
+    "Saved PCs are raw ROM data without a freshness or validity guarantee",
+    "No ROM or loader failure location is established",
+    "Watchdog reset 0x07 remains rejected for clean power-on"
+  ]
+}

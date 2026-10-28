@@ -17,10 +17,12 @@
     "usb_probe.Device.scrub",
     "usb_probe.Device.powerCut",
     "display_runtime.start",
-    "display_runtime.replaceCard"
+    "display_runtime.replaceCard",
+    "main.resourceReport",
+    "main.stackReport"
   ],
   "sources": {
-    "tools/boot-graphics/generate-card-read-font.py": "b3bf12304de14b4d4836208159c855d4746c5a78c393ae15b26b1c671a0ddefc",
+    "tools/boot-graphics/generate-card-read-font.py": "e69d4b4c4c5987fbd4e9289c9b3b58d033de854a0f0137332067a7e5ee60e321",
     "src/platform/native/card_read.zig": "bc68f5f9edfa2aa04583cfd9690db94ac4daee6ceab8cf0a2542a3176ec89ff3",
     "src/platform/native/keypad_display.zig": "024fbe355539a2e68bad21d3ad4bd07c73bc17676f6f82ef19908724df96f2d3",
     "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
@@ -30,33 +32,37 @@
     "src/board/tab5/keypad_sparse.h": "6d8365cc71444553b427a50543d1f490a65a071241636e4dc76fca473f0de025",
     "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
     "src/board/tab5/scanout_retire.h": "0b00ac2cbcb9fd0ded106dd03c9cafc1c5afdbe4892ef6241ecb1bab6c763a36",
-    "tools/font_codec.py": "e7a8c94eba2570f5c74ae056e4ee75ba8c2650096e0cde77910691b2f5044bfd",
-    "tools/boot-graphics/compress-card-font.py": "8853e744220179777db1d44073431f31c85524a311054d867f44849951c6f5e9",
-    "src/graphics/card_read_result.zig": "0c0ed61d0103d003e59a37ddc1fa29b85a879fae876a0c0bdddbed611171161a",
-    "src/platform/native/esp32p4.ld": "c5db7a86f25b7675f143c5bca6960f61d4fae75709f8fc8183eeba9bc4759137",
+    "src/platform/native/esp32p4.ld": "f79469fe9f823c6ed473372e875377490c58a4f5172f11ddc1ddc2b31e90b8a5",
     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
     "src/platform/native/dma_memory.zig": "bdd0d0c4ebf00445cdbee1233a059d1f49c31dddcd24f8edc785d488cc8b99b1",
-    "src/platform/native/memory.zig": "21d285e8d71be9443866d346db3713e036e601e033784236eeb099351c1a88b7",
+    "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
     "src/graphics/card_boot/manifest.json": "a101f4c9dbd801134b2a35b5330b55ffb2292ba97d16d8791fddc6e053738cf1",
     "src/graphics/surface.zig": "256fabbd87f1d42d4cbc1eae630ed6164ce5fbe19ea503e8a798d2402ca2063d",
     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
-    "src/platform/native/main.zig": "8b0fad2541eebdff3dc6eb257e226974e07a4be6a740654abe7ea8fcc7759463",
+    "src/platform/native/main.zig": "c2174d53735cb850a86a1298bf3edcdbe3356d5caaf8e6ad98ddf75b43a375b4",
     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
     "src/graphics/keypad_plan.zig": "bc0e78d9ab99c4cf928273fb189666f4d3f0316a5642f9edfe55ba30807fc0cb",
-    "src/graphics/card_splash.zig": "3a64893ec36be58c425137d61180abff80b3c1208645bba28004649011968d75",
+    "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
     "tools/design/card-splash-assets.py": "8b575516f7dc2f2ddb9f23b8c8b4da1c92103725442138bd6dce014d2c719224",
-    "tools/design/shape-mask.cpp": "4d8a1d8b475326a668419e0a0ac810955491d7c744a640c2ffdfb0c87252e700"
+    "tools/design/shape-mask.cpp": "4d8a1d8b475326a668419e0a0ac810955491d7c744a640c2ffdfb0c87252e700",
+    "tools/font_codec.py": "e7a8c94eba2570f5c74ae056e4ee75ba8c2650096e0cde77910691b2f5044bfd",
+    "tools/boot-graphics/compress-card-font.py": "8853e744220179777db1d44073431f31c85524a311054d867f44849951c6f5e9",
+    "src/graphics/card_read_result.zig": "0c0ed61d0103d003e59a37ddc1fa29b85a879fae876a0c0bdddbed611171161a"
   },
   "scene_handoff": "dma-eof-panel-held-v1",
-  "font_encoding": "row12-v1",
-  "font_raw_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54",
   "card_boot": {
     "schema": 1,
     "source": "sparse-sram-v1",
     "paper": 6436,
     "mask_bytes": 17930,
     "mask_sha256": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6"
-  }
+  },
+  "diagnostic_reports": [
+    "main.resourceReport",
+    "main.stackReport"
+  ],
+  "font_encoding": "row12-v1",
+  "font_raw_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54"
 }

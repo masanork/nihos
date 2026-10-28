@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import struct
 import sys
+from fatfs_native_profile import SOURCES, CARD_SOURCES, CARD_SOURCE, CARD_SOURCE_INSERTED, CARD_SOURCE_RPC
 
 
 def sha(path):
@@ -35,11 +36,24 @@ def functions(path):
 
 
 def main(directory, source, littlefs=None):
+    fatfs_native = 'pub const fatfs_native = true;' in (directory / 'native_options.zig').read_text()
+    fatfs_sd = 'pub const fatfs_sd = true;' in (directory / 'native_options.zig').read_text()
+    card_direct = 'pub const fatfs_sd_direct = true;' in (directory / 'native_options.zig').read_text()
+    card_rpc = 'pub const fatfs_sd_rpc = true;' in (directory / 'native_options.zig').read_text()
     objects = {name: {'sha256': sha(directory / name), 'functions': functions(directory / name)}
                for name in ('sql_sqlite3.o', 'sql_session.o', 'sql_vfs.o')}
     if littlefs is not None:
-        for name in ('sql_lfs.o', 'sql_lfs_util.o', 'sql_lfs_reader.o'):
+        for name in ('sql_lfs.o', 'sql_lfs_util.o', 'sql_lfs_reader.o', 'sql_storage_api.o'):
             objects[name] = {'sha256': sha(directory / name), 'functions': functions(directory / name)}
+    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text() and not fatfs_native:
+        objects['sql_storage_runtime.o'] = {'sha256': sha(directory / 'sql_storage_runtime.o'), 'functions': functions(directory / 'sql_storage_runtime.o')}
+    if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
+        objects['sql_broker_runtime.o'] = {'sha256': sha(directory / 'sql_broker_runtime.o'), 'functions': functions(directory / 'sql_broker_runtime.o')}
+    if fatfs_native:
+        units = ('guard', 'unicode', 'backend', 'disk', 'fixture', 'fixture_disk') + (('volume','native_disk','card') if fatfs_sd else ())
+        for name in units:
+            file = 'sql_fat_' + name + '.o'
+            objects[file] = {'sha256': sha(directory / file), 'functions': functions(directory / file)}
     profile_path = Path(__file__).resolve().parents[1] / 'src/kernel/size_pool.zig'
     matches = re.findall(r'sqlite_probe = Config\{ \.counts = \.\{([^}]+)\}', profile_path.read_text())
     if len(matches) != 1:
@@ -51,12 +65,81 @@ def main(directory, source, littlefs=None):
               'purpose': 'explicit native SQLite Flash function allowlist; not attestation',
               'objects': objects, 'sqlite_source_sha256': sha(source / 'sqlite3.c'),
               'allowed_functions': sorted(set().union(*(set(item['functions']) for item in objects.values())))}
+    if fatfs_native:
+        root = Path(__file__).resolve().parents[1]
+        fixture = json.loads((directory / 'fatfs-fixture-manifest.json').read_text())
+        result['fatfs_native'] = {'version': 3, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
+            'sources': {path: sha(root / path) for path in SOURCES}}
+        if fatfs_sd:
+            result['fatfs_native']['card'] = {'version':4 if card_rpc else 2, 'mode':'inserted' if card_direct else 'swap',
+                **({'rpc':True,'cancel_relay':True} if card_rpc else {}),
+                'source':CARD_SOURCE_RPC if card_rpc else CARD_SOURCE_INSERTED if card_direct else CARD_SOURCE,
+                'charged':65536 if card_rpc else 32768,
+                'sources':{path:sha(root/path) for path in CARD_SOURCES}}
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
+            'main.runFatFsTasks', 'main.runSqlProbe', 'main.resourceReport', 'sdmmc_probe.freshCardSession',
+            'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end',
+            'sdmmc_probe.beginFatFsSession', 'sdmmc_probe.endFatFsSession'})
+        if fatfs_sd:
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.runFatFsCard'})
+    if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
+        root = Path(__file__).resolve().parents[1]
+        result['broker'] = {'version': 2, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),
+                            'runtime_sha256': sha(root / 'src/platform/native/broker_runtime.zig'),
+                            'core_sha256': sha(root / 'src/kernel/memory_broker.zig'),
+                            'sd_adapter_sha256': sha(root / 'src/platform/native/sdmmc_probe.zig')}
+    if 'pub const cold_flash = true;' in (directory / 'native_options.zig').read_text():
+        root = Path(__file__).resolve().parents[1]
+        policy_path = Path(__file__).with_name('native-cold-policy.json')
+        cold = json.loads(policy_path.read_text())
+        result['cold_flash'] = {
+            'version': cold['version'], 'functions': sorted(cold['functions']),
+            'resident': cold['resident'], 'baseline_bytes': cold['baseline_bytes'],
+            'resident_limit': cold['resident_limit'],
+            'sources': {path: sha(root / path) for path in sorted(set(cold['functions'].values()))},
+            'policy_sha256': sha(policy_path),
+        }
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | set(cold['functions']))
     if littlefs is not None:
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'sdmmc_probe.ownedRead'})
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
+            'sdmmc.Controller(sdmmc_probe.Bus).' + name for name in
+            ('prepare', 'identify', 'stopDma', 'releaseDma', 'readSector')})
+        if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'sdmmc_probe.qualifyLifetimes', 'main.runIoLifetimes'})
+        root = Path(__file__).resolve().parents[1]
+        result['io_lifetimes'] = {'version': 1, 'qualification': 'pub const broker = true;' in (directory / 'native_options.zig').read_text(), 'sources': {
+            name: sha(root / name) for name in (
+                'src/fs/io_leases.zig', 'src/fs/io_stop.zig', 'src/fs/sdmmc_owner.zig',
+                'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
+                'src/platform/native/main.zig', 'src/diagnostics/record.zig',
+                'include/nihos_storage_io.h')}}
+        result['io_lifetimes']['removal_test'] = 'pub const sd_removal = true;' in (directory / 'native_options.zig').read_text()
+        result['io_lifetimes']['capture_handshake'] = 'pub const cold_capture = true;' in (directory / 'native_options.zig').read_text()
+        if result['io_lifetimes']['capture_handshake']:
+            result['io_lifetimes']['capture_format'] = 2
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.captureBoot'})
+            result['io_lifetimes']['capture_sources'] = {name: sha(root / name) for name in (
+                'probes/sdmmc/pads.c', 'src/platform/native/esp32p4.ld', 'src/soc/esp32p4/reset_capture.zig')}
+        if result['io_lifetimes']['removal_test']:
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
+                'sdmmc_probe.qualifyRemoval', 'sdmmc_probe.freshCardSession', 'sdmmc_probe.operatorMarker'})
         result['littlefs'] = {'revision': '6cb4e86540eca0d9ba62500a298385c9d863c8be',
-                             'read_only': True, 'no_malloc': True,
+                             'read_only': True, 'no_malloc': True, 'api_version': 1, 'workspace_bytes': 8192,
                              'shared_span': 'SQLite mapped code and rodata',
                              'sources': {name: sha(littlefs / name) for name in ('lfs.c', 'lfs.h', 'lfs_util.c', 'lfs_util.h', 'LICENSE.md')},
-                             'adapter_sha256': sha(Path(__file__).resolve().parents[1] / 'probes/storage/littlefs_ro.c')}
+                             'adapter_sha256': sha(Path(__file__).resolve().parents[1] / 'probes/storage/littlefs_ro.c'),
+                             'api_source_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_littlefs.c'),
+                             'api_header_sha256': sha(Path(__file__).resolve().parents[1] / 'include/nihos_storage.h'),
+                             'api_internal_sha256': sha(Path(__file__).resolve().parents[1] / 'src/services/storage_internal.h')}
+    if littlefs is not None and 'pub const storage_service = true;' in (directory / 'native_options.zig').read_text() and not fatfs_native:
+        root = Path(__file__).resolve().parents[1]
+        result['littlefs']['service'] = {'version': 3, 'ipc_start': '0x48004000', 'ipc_bytes': 8192,
+                                        'clock_group': 1, 'clock_channel': 0,
+                                        'runtime_sha256': sha(root / 'src/platform/native/storage_runtime.zig'),
+                                        'protocol_sha256': sha(root / 'src/kernel/storage_rpc.zig')}
+    if card_direct:
+        result.pop('littlefs',None)  # Not executed or claimed in inserted-card boots.
     (directory / 'sqlite-manifest.json').write_text(json.dumps(result, indent=2) + '\n')
 
 

@@ -1,0 +1,7232 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff00000",
+  "elf_sha256": "116a084a9dc20352402a417fd595fdd1827884d5d95da635f26608ce8bed2486",
+  "memory": {
+    "profile": "device",
+    "origin": "0x4ff00000",
+    "end": "0x4ff28000",
+    "bytes": 163840,
+    "total_bytes": 557056,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      },
+      {
+        "name": "high_sram_a",
+        "origin": "0x4ff40000",
+        "end": "0x4ff60000",
+        "bytes": 131072
+      },
+      {
+        "name": "high_sram_b",
+        "origin": "0x4ff6e000",
+        "end": "0x4ffa0000",
+        "bytes": 204800
+      }
+    ]
+  },
+  "sram_reserved_bytes": 163776,
+  "primary_static_bytes": 106432,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000",
+    "task_side_trap_bytes": 128,
+    "ordinary_sp_budget_bytes": 3952
+  },
+  "heap": {
+    "start": "0x4ff19fc0",
+    "end": "0x4ff28000",
+    "bytes": 57408,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x40003296",
+    "bytes": 12662,
+    "sha256": "f2ba98994d7002c71fa6629435541caad73696d0707aab0113db7af399df7295",
+    "functions": {
+      "sdmmc": {
+        "name": "sdmmc_probe.run",
+        "start": "0x400011d6",
+        "end": "0x40003296"
+      },
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000d00"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_84",
+        "start": "0x40000d00",
+        "end": "0x400011d6"
+      }
+    },
+    "image_offset": 288
+  },
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x400115b6",
+    "bytes": 5526,
+    "fnv1a": 3866427555,
+    "executable": false,
+    "writable": false,
+    "image_offset": 65568
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 12662
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 5526
+    },
+    {
+      "name": ".flash.sqlpad",
+      "address": "0x400115b8",
+      "bytes": 59976
+    },
+    {
+      "name": ".flash.sqltext",
+      "address": "0x40020000",
+      "bytes": 580608
+    },
+    {
+      "name": ".flash.sqlrodata",
+      "address": "0x400adc00",
+      "bytes": 92956
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff00000",
+      "bytes": 86582
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff15240",
+      "bytes": 5080
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff16640",
+      "bytes": 7888
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff18580",
+      "bytes": 6720
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".high_sram_a",
+      "address": "0x4ff40000",
+      "bytes": 131072
+    },
+    {
+      "name": ".high_sram_b",
+      "address": "0x4ff6e000",
+      "bytes": 204800
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff19fc0",
+      "bytes": 57408
+    }
+  ],
+  "high_sram": {
+    "version": 1,
+    "tested_bytes": 335872,
+    "heap_bytes": 212992,
+    "guard_bytes": 16384,
+    "dma_reserve_bytes": 32768,
+    "future_stack_reserve_bytes": 73728,
+    "page_bytes": 4096,
+    "temporary_psram": {
+      "start": "0x48030000",
+      "bytes": 8388608
+    }
+  },
+  "sqlite": {
+    "pool_quotas": [
+      24,
+      12,
+      64,
+      64,
+      64,
+      4,
+      8,
+      12,
+      8,
+      1
+    ],
+    "text_start": "0x40020000",
+    "text_end": "0x400adc00",
+    "rodata_start": "0x400adc00",
+    "rodata_end": "0x400c471c",
+    "text_bytes": 580608,
+    "rodata_bytes": 92956,
+    "functions": {
+      "fatfs_runtime.cardRpcReport": {
+        "start": "0x4009d1b8",
+        "end": "0x4009d1f0"
+      },
+      "fatfs_runtime.fail": {
+        "start": "0x4009d206",
+        "end": "0x4009d40e"
+      },
+      "fatfs_runtime.check": {
+        "start": "0x4009d1f0",
+        "end": "0x4009d206"
+      },
+      "fatfs_runtime.cardAttempt": {
+        "start": "0x4009d40e",
+        "end": "0x4009d6c8"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).open": {
+        "start": "0x4009edb4",
+        "end": "0x4009f000"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).alloc": {
+        "start": "0x4009e47a",
+        "end": "0x4009e94c"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).pin": {
+        "start": "0x4009e014",
+        "end": "0x4009e47a"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).free": {
+        "start": "0x4009decc",
+        "end": "0x4009e014"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).reclaimOne": {
+        "start": "0x4009d900",
+        "end": "0x4009daac"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).stats": {
+        "start": "0x4009d6c8",
+        "end": "0x4009d900"
+      },
+      "kernel.memory_broker.Broker(52,7680,64,16,32).release": {
+        "start": "0x4009daac",
+        "end": "0x4009dc28"
+      },
+      "kernel.page_pool.Pool(4096,7680,64).free": {
+        "start": "0x4009dc28",
+        "end": "0x4009dd08"
+      },
+      "kernel.page_pool.Pool(4096,52,64).free": {
+        "start": "0x4009dd08",
+        "end": "0x4009dde0"
+      },
+      "kernel.page_pool.Pool(4096,7680,64).address": {
+        "start": "0x400a485e",
+        "end": "0x400a48aa"
+      },
+      "kernel.page_pool.Pool(4096,7680,64).mark": {
+        "start": "0x4009dde0",
+        "end": "0x4009de54"
+      },
+      "kernel.page_pool.Pool(4096,52,64).address": {
+        "start": "0x400a480a",
+        "end": "0x400a485e"
+      },
+      "kernel.page_pool.Pool(4096,52,64).mark": {
+        "start": "0x4009de54",
+        "end": "0x4009decc"
+      },
+      "kernel.page_pool.Pool(4096,7680,64).alloc": {
+        "start": "0x4009e94c",
+        "end": "0x4009eb84"
+      },
+      "kernel.page_pool.Pool(4096,52,64).alloc": {
+        "start": "0x4009eb84",
+        "end": "0x4009edb4"
+      },
+      "fatfs_runtime.nih_storage_runtime_finish": {
+        "start": "0x4009f000",
+        "end": "0x4009f174"
+      },
+      "fatfs_runtime.stage": {
+        "start": "0x4009f174",
+        "end": "0x4009f2a6"
+      },
+      "fatfs_runtime.nih_storage_task_entry": {
+        "start": "0x4009f2a6",
+        "end": "0x4009f2d2"
+      },
+      "fatfs_runtime.runClient": {
+        "start": "0x400a02f8",
+        "end": "0x400a09ca"
+      },
+      "fatfs_runtime.serve": {
+        "start": "0x4009f2d2",
+        "end": "0x400a02f8"
+      },
+      "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).grantRoot": {
+        "start": "0x400a11ae",
+        "end": "0x400a1284"
+      },
+      "fatfs_runtime.newClient": {
+        "start": "0x400a1698",
+        "end": "0x400a1770"
+      },
+      "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step": {
+        "start": "0x400a13f6",
+        "end": "0x400a1698"
+      },
+      "fatfs_runtime.reapClient": {
+        "start": "0x400a1284",
+        "end": "0x400a13f6"
+      },
+      "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).detachQuiescent": {
+        "start": "0x400a0f16",
+        "end": "0x400a1058"
+      },
+      "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).unmount": {
+        "start": "0x400a284e",
+        "end": "0x400a2976"
+      },
+      "fatfs_runtime.send": {
+        "start": "0x400a0c56",
+        "end": "0x400a0e70"
+      },
+      "fatfs_runtime.receive": {
+        "start": "0x400a09ca",
+        "end": "0x400a0c56"
+      },
+      "mem.span__func_6": {
+        "start": "0x400a0e70",
+        "end": "0x400a0e98"
+      },
+      "kernel.spsc_ring.SpscRing(fs.vfs_rpc.Response,2).tryPushFrom": {
+        "start": "0x400a0e98",
+        "end": "0x400a0f16"
+      },
+      "fs.io_leases.IoLeases(16).deviceBusy": {
+        "start": "0x400a1058",
+        "end": "0x400a11ae"
+      },
+      "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).cleanup": {
+        "start": "0x400a25d4",
+        "end": "0x400a284e"
+      },
+      "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch": {
+        "start": "0x400a1770",
+        "end": "0x400a1bb8"
+      },
+      "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).readAt": {
+        "start": "0x400a1d66",
+        "end": "0x400a1fda"
+      },
+      "fs.vfs_rpc.status": {
+        "start": "0x400a1fda",
+        "end": "0x400a200a"
+      },
+      "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close": {
+        "start": "0x400a1bb8",
+        "end": "0x400a1d66"
+      },
+      "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt": {
+        "start": "0x400a200a",
+        "end": "0x400a2542"
+      },
+      "fs.fatfs_backend.Backend.open": {
+        "start": "0x400a2542",
+        "end": "0x400a25d4"
+      },
+      "fatfs_runtime.nih_fatfs_fixture_after_read": {
+        "start": "0x400a2976",
+        "end": "0x400a2a2a"
+      },
+      "fatfs_runtime.nih_storage_runtime_poll": {
+        "start": "0x400a2a2a",
+        "end": "0x400a2a3a"
+      },
+      "fatfs_runtime.nih_storage_runtime_finished": {
+        "start": "0x400a2a3a",
+        "end": "0x400a2a5e"
+      },
+      "fatfs_runtime.nih_storage_runtime_init": {
+        "start": "0x400a2a5e",
+        "end": "0x400a2ad8"
+      },
+      "broker_runtime.nih_broker_runtime_finish": {
+        "start": "0x400a2ad8",
+        "end": "0x400a2e1a"
+      },
+      "broker_runtime.stage": {
+        "start": "0x400a2e1a",
+        "end": "0x400a2f58"
+      },
+      "broker_runtime.fail": {
+        "start": "0x400a2f58",
+        "end": "0x400a30a0"
+      },
+      "broker_runtime.nih_broker_runtime_done": {
+        "start": "0x400a30a0",
+        "end": "0x400a30c4"
+      },
+      "broker_runtime.nih_broker_task_entry": {
+        "start": "0x400a30c4",
+        "end": "0x400a333a"
+      },
+      "broker_runtime.exchange": {
+        "start": "0x400a333a",
+        "end": "0x400a34f4"
+      },
+      "broker_runtime.nih_broker_runtime_poll": {
+        "start": "0x400a34f4",
+        "end": "0x400a41d0"
+      },
+      "broker_runtime.nih_broker_runtime_init": {
+        "start": "0x400a41d0",
+        "end": "0x400a4780"
+      },
+      "broker_runtime.nih_broker_io_issued": {
+        "start": "0x400a4780",
+        "end": "0x400a47f0"
+      },
+      "broker_runtime.nih_broker_task_failed": {
+        "start": "0x400a47f0",
+        "end": "0x400a480a"
+      },
+      "sqlite3SafetyCheckOk": {
+        "start": "0x40020000",
+        "end": "0x4002004c"
+      },
+      "sqlite3VdbeDelete": {
+        "start": "0x400200da",
+        "end": "0x400201b6"
+      },
+      "sqlite3DeleteTrigger": {
+        "start": "0x4002004c",
+        "end": "0x400200c0"
+      },
+      "sqlite3DeleteTable": {
+        "start": "0x400200c0",
+        "end": "0x400200da"
+      },
+      "sqlite3SafetyCheckSickOrOk": {
+        "start": "0x4002a2c2",
+        "end": "0x4002a306"
+      },
+      "sqlite3DeleteTriggerStep": {
+        "start": "0x40050e76",
+        "end": "0x40050f08"
+      },
+      "sqlite3DbFreeNN": {
+        "start": "0x4002b84c",
+        "end": "0x4002b894"
+      },
+      "sqlite3ExprDeleteNN": {
+        "start": "0x400439cc",
+        "end": "0x40043ac0"
+      },
+      "sqlite3IdListDelete": {
+        "start": "0x4004397a",
+        "end": "0x400439cc"
+      },
+      "deleteTable": {
+        "start": "0x40050bf0",
+        "end": "0x40050d86"
+      },
+      "releaseMemArray": {
+        "start": "0x40032d1e",
+        "end": "0x40032da8"
+      },
+      "sqlite3DbNNFreeNN": {
+        "start": "0x40032cd8",
+        "end": "0x40032d1e"
+      },
+      "vdbeFreeOpArray": {
+        "start": "0x40032da8",
+        "end": "0x40032e0c"
+      },
+      "sqlite3Malloc": {
+        "start": "0x400202d6",
+        "end": "0x400203e8"
+      },
+      "sqlite3Realloc": {
+        "start": "0x40020432",
+        "end": "0x4002059c"
+      },
+      "sqlite3StrAppend64": {
+        "start": "0x400229d6",
+        "end": "0x40022a10"
+      },
+      "sqlite3VdbeIntValue": {
+        "start": "0x40025966",
+        "end": "0x40025a08"
+      },
+      "sqlite3VdbeRealValue": {
+        "start": "0x40025924",
+        "end": "0x40025966"
+      },
+      "sqlite3ValueText": {
+        "start": "0x40025a08",
+        "end": "0x40025a36"
+      },
+      "sqlite3AppendOneUtf8Character": {
+        "start": "0x40022c34",
+        "end": "0x40022cd2"
+      },
+      "printfTempBuf": {
+        "start": "0x40022a38",
+        "end": "0x40022a9e"
+      },
+      "sqlite3StrAppendchar64": {
+        "start": "0x40022cd2",
+        "end": "0x40022d4c"
+      },
+      "sqlite3StrAccumEnlarge": {
+        "start": "0x40022ae0",
+        "end": "0x40022c34"
+      },
+      "powerOfTen": {
+        "start": "0x4002bcfc",
+        "end": "0x4002be86"
+      },
+      "sqlite3Fp10Convert2": {
+        "start": "0x4002ba18",
+        "end": "0x4002bcfc"
+      },
+      "enlargeAndAppend": {
+        "start": "0x40022e40",
+        "end": "0x40022e86"
+      },
+      "sqlite3StrAccumSetError": {
+        "start": "0x40022a9e",
+        "end": "0x40022ae0"
+      },
+      "sqlite3DbRealloc": {
+        "start": "0x4002b8e0",
+        "end": "0x4002b93a"
+      },
+      "sqlite3RecordErrorOffsetOfExpr": {
+        "start": "0x40022dea",
+        "end": "0x40022e12"
+      },
+      "sqlite3DbFree": {
+        "start": "0x40022e34",
+        "end": "0x40022e40"
+      },
+      "sqlite3StrAccumFinish": {
+        "start": "0x40022e86",
+        "end": "0x40022eaa"
+      },
+      "strAccumFinishRealloc": {
+        "start": "0x4002b9a0",
+        "end": "0x4002ba18"
+      },
+      "sqlite3FindDbName": {
+        "start": "0x400235f4",
+        "end": "0x40023694"
+      },
+      "sqlite3LockAndPrepare": {
+        "start": "0x40027f6a",
+        "end": "0x400280b4"
+      },
+      "sqlite3PagerUnrefNotNull": {
+        "start": "0x4002c25a",
+        "end": "0x4002c284"
+      },
+      "sqlite3OsCurrentTimeInt64": {
+        "start": "0x40032fee",
+        "end": "0x400330a6"
+      },
+      "sqlite3VdbeExec": {
+        "start": "0x40035d88",
+        "end": "0x4003d82e"
+      },
+      "sqlite3OomFault": {
+        "start": "0x400264b8",
+        "end": "0x40026528"
+      },
+      "sqlite3VdbeMemGrow": {
+        "start": "0x40034db6",
+        "end": "0x40034ef8"
+      },
+      "sqlite3VdbeTransferError": {
+        "start": "0x4003352a",
+        "end": "0x400335e4"
+      },
+      "sqlite3VdbeError": {
+        "start": "0x400345b4",
+        "end": "0x400345fa"
+      },
+      "vdbeReleaseAndSetInt64": {
+        "start": "0x4003585e",
+        "end": "0x4003589a"
+      },
+      "sqlite3VdbeMemSetStr": {
+        "start": "0x40025d8a",
+        "end": "0x40026092"
+      },
+      "vdbeMemClearExternAndSetNull": {
+        "start": "0x40034cf8",
+        "end": "0x40034d38"
+      },
+      "invokeProfileCallback": {
+        "start": "0x40025744",
+        "end": "0x400257c6"
+      },
+      "apiHandleError": {
+        "start": "0x40034c64",
+        "end": "0x40034cbc"
+      },
+      "sqlite3Reprepare": {
+        "start": "0x40026638",
+        "end": "0x40026752"
+      },
+      "sqlite3DbStrDup": {
+        "start": "0x40026752",
+        "end": "0x400267a0"
+      },
+      "columnMem": {
+        "start": "0x400268fa",
+        "end": "0x4002693e"
+      },
+      "columnMallocFailure": {
+        "start": "0x4002693e",
+        "end": "0x4002696a"
+      },
+      "sqlite3VdbeReset": {
+        "start": "0x400257c6",
+        "end": "0x4002582c"
+      },
+      "sqlite3ErrorFinish": {
+        "start": "0x4002c3a4",
+        "end": "0x4002c400"
+      },
+      "sqlite3DbMallocRaw": {
+        "start": "0x40027e68",
+        "end": "0x40027e88"
+      },
+      "columnName": {
+        "start": "0x40026a20",
+        "end": "0x40026b22"
+      },
+      "sqlite3VdbeFinalize": {
+        "start": "0x40027a9c",
+        "end": "0x40027ad2"
+      },
+      "sqlite3LeaveMutexAndCloseZombie": {
+        "start": "0x4002554a",
+        "end": "0x40025744"
+      },
+      "sqlite3ErrorWithMsg": {
+        "start": "0x40024478",
+        "end": "0x4002454c"
+      },
+      "sqlite3MallocZero": {
+        "start": "0x4002454c",
+        "end": "0x4002457c"
+      },
+      "findBtree": {
+        "start": "0x4002457c",
+        "end": "0x4002464c"
+      },
+      "sqlite3DbMallocZero": {
+        "start": "0x400268c2",
+        "end": "0x400268f2"
+      },
+      "sqlite3VMPrintf": {
+        "start": "0x4002c348",
+        "end": "0x4002c3a4"
+      },
+      "sqlite3RowSetClear": {
+        "start": "0x400265fc",
+        "end": "0x40026638"
+      },
+      "sqlite3ParseObjectInit": {
+        "start": "0x40026fec",
+        "end": "0x40027052"
+      },
+      "sqlite3OpenTempDatabase": {
+        "start": "0x4002734e",
+        "end": "0x400273d4"
+      },
+      "sqlite3ParseObjectReset": {
+        "start": "0x40027a14",
+        "end": "0x40027a9c"
+      },
+      "btreeBeginTrans": {
+        "start": "0x4002c400",
+        "end": "0x4002c99c"
+      },
+      "sqlite3BtreeSetPageSize": {
+        "start": "0x4002af2e",
+        "end": "0x4002afe8"
+      },
+      "sqlite3BtreeBeginTrans": {
+        "start": "0x40024baa",
+        "end": "0x40024c12"
+      },
+      "backupOnePage": {
+        "start": "0x40024c12",
+        "end": "0x40024d8c"
+      },
+      "sqlite3BtreeUpdateMeta": {
+        "start": "0x40024d8c",
+        "end": "0x40024dee"
+      },
+      "newDatabase": {
+        "start": "0x4002c9f2",
+        "end": "0x4002cad4"
+      },
+      "sqlite3ResetAllSchemasOfConnection": {
+        "start": "0x40024dee",
+        "end": "0x40024e9a"
+      },
+      "sqlite3PagerWrite": {
+        "start": "0x40024e9a",
+        "end": "0x40024edc"
+      },
+      "sqlite3PagerCommitPhaseOne": {
+        "start": "0x40024edc",
+        "end": "0x40025018"
+      },
+      "sqlite3BtreeCommitPhaseTwo": {
+        "start": "0x4002505a",
+        "end": "0x4002512a"
+      },
+      "sqlite3BtreeCommitPhaseOne": {
+        "start": "0x4002512a",
+        "end": "0x400253b4"
+      },
+      "sqlite3PagerSync": {
+        "start": "0x40025018",
+        "end": "0x4002505a"
+      },
+      "pagerOpenSavepoint": {
+        "start": "0x4002fb7c",
+        "end": "0x4002fc5e"
+      },
+      "sqlite3SchemaClear": {
+        "start": "0x40041ab4",
+        "end": "0x40041baa"
+      },
+      "sqlite3VtabUnlock": {
+        "start": "0x40032f68",
+        "end": "0x40032fb4"
+      },
+      "sqlite3CollapseDatabaseArray": {
+        "start": "0x40050b32",
+        "end": "0x40050bf0"
+      },
+      "pagerWriteLargeSector": {
+        "start": "0x4002fdc8",
+        "end": "0x4002ff16"
+      },
+      "subjournalPageIfRequired": {
+        "start": "0x4002fc5e",
+        "end": "0x4002fdc8"
+      },
+      "pager_write": {
+        "start": "0x4002ff16",
+        "end": "0x400300e6"
+      },
+      "pagerFlushOnCommit": {
+        "start": "0x4002e6bc",
+        "end": "0x4002e76a"
+      },
+      "writeSuperJournal": {
+        "start": "0x4003047c",
+        "end": "0x40030678"
+      },
+      "syncJournal": {
+        "start": "0x40030678",
+        "end": "0x40030838"
+      },
+      "sqlite3PcacheDirtyList": {
+        "start": "0x40030838",
+        "end": "0x4003095e"
+      },
+      "pager_write_pagelist": {
+        "start": "0x4003095e",
+        "end": "0x40030aa8"
+      },
+      "sqlite3PcacheMakeClean": {
+        "start": "0x4002ed10",
+        "end": "0x4002ed5c"
+      },
+      "pager_truncate": {
+        "start": "0x4002dacc",
+        "end": "0x4002dbac"
+      },
+      "pager_write_changecounter": {
+        "start": "0x40030aa8",
+        "end": "0x40030b1a"
+      },
+      "pager_end_transaction": {
+        "start": "0x4002de3c",
+        "end": "0x4002e0c4"
+      },
+      "getPageError": {
+        "start": "0x4002ed5c",
+        "end": "0x4002ed64"
+      },
+      "getPageNormal": {
+        "start": "0x4002ed64",
+        "end": "0x4002eff2"
+      },
+      "sqlite3BitvecDestroy": {
+        "start": "0x4002e652",
+        "end": "0x4002e6bc"
+      },
+      "btreeEndTransaction": {
+        "start": "0x40030b52",
+        "end": "0x40030c94"
+      },
+      "finalDbSize": {
+        "start": "0x40030c94",
+        "end": "0x40030d3e"
+      },
+      "saveCursorsOnList": {
+        "start": "0x40030fd6",
+        "end": "0x4003102e"
+      },
+      "incrVacuumStep": {
+        "start": "0x40030d6c",
+        "end": "0x40030fd6"
+      },
+      "sqlite3PagerRollback": {
+        "start": "0x4002f138",
+        "end": "0x4002f1ce"
+      },
+      "sqlite3BtreeRollback": {
+        "start": "0x40025496",
+        "end": "0x4002554a"
+      },
+      "sqlite3BtreeTripAllCursors": {
+        "start": "0x40032c18",
+        "end": "0x40032cd8"
+      },
+      "btreeGetPage": {
+        "start": "0x4002ce4a",
+        "end": "0x4002ce9c"
+      },
+      "releasePageOne": {
+        "start": "0x4002ce9c",
+        "end": "0x4002ced2"
+      },
+      "connectionIsBusy": {
+        "start": "0x4009c6c8",
+        "end": "0x4009c6ee"
+      },
+      "sqlite3RollbackAll": {
+        "start": "0x4003361c",
+        "end": "0x4003376a"
+      },
+      "sqlite3CloseSavepoints": {
+        "start": "0x4003376a",
+        "end": "0x400337a2"
+      },
+      "sqlite3BtreeClose": {
+        "start": "0x400342c2",
+        "end": "0x400343d0"
+      },
+      "functionDestroy": {
+        "start": "0x4009c71e",
+        "end": "0x4009c758"
+      },
+      "sqlite3HashClear": {
+        "start": "0x400490e8",
+        "end": "0x40049166"
+      },
+      "sqlite3VtabEponymousTableClear": {
+        "start": "0x4004ba70",
+        "end": "0x4004baa8"
+      },
+      "sqlite3VtabModuleUnref": {
+        "start": "0x40032fb4",
+        "end": "0x40032fee"
+      },
+      "sqlite3ValueFree": {
+        "start": "0x40025b24",
+        "end": "0x40025b5a"
+      },
+      "sqlite3VdbeHalt": {
+        "start": "0x400330a6",
+        "end": "0x4003352a"
+      },
+      "vdbeMemClear": {
+        "start": "0x40034cbc",
+        "end": "0x40034cf8"
+      },
+      "sqlite3VdbeMemExpandBlob": {
+        "start": "0x40025880",
+        "end": "0x400258de"
+      },
+      "sqlite3ValueBytes": {
+        "start": "0x400258de",
+        "end": "0x40025924"
+      },
+      "valueBytes": {
+        "start": "0x40034f2e",
+        "end": "0x40034f4a"
+      },
+      "sqlite3MemRealValueNoRC": {
+        "start": "0x40035270",
+        "end": "0x40035288"
+      },
+      "memIntValue": {
+        "start": "0x4003549e",
+        "end": "0x400354c4"
+      },
+      "valueToText": {
+        "start": "0x40034f4a",
+        "end": "0x40034ff2"
+      },
+      "sqlite3VdbeMemMakeWriteable": {
+        "start": "0x40025acc",
+        "end": "0x40025b24"
+      },
+      "vdbeMemAddTerminator": {
+        "start": "0x400351fe",
+        "end": "0x4003524c"
+      },
+      "setResultStrOrError": {
+        "start": "0x40025bc0",
+        "end": "0x40025ca6"
+      },
+      "invokeValueDestructor": {
+        "start": "0x40025b7e",
+        "end": "0x40025bc0"
+      },
+      "sqlite3VdbeMemSetText": {
+        "start": "0x400356a2",
+        "end": "0x4003585e"
+      },
+      "sqlite3VdbeMemTranslate": {
+        "start": "0x4003589a",
+        "end": "0x40035d88"
+      },
+      "sqlite3VdbeMemSetDouble": {
+        "start": "0x40025d18",
+        "end": "0x40025d8a"
+      },
+      "sqlite3VdbeMemZeroTerminateIfAble": {
+        "start": "0x40026170",
+        "end": "0x400261fe"
+      },
+      "sqlite3RCStrUnref": {
+        "start": "0x40033fb0",
+        "end": "0x40034022"
+      },
+      "sqlite3VdbeMemCopy": {
+        "start": "0x400262ae",
+        "end": "0x4002631e"
+      },
+      "sqlite3VdbeMemSetZeroBlob": {
+        "start": "0x400263a0",
+        "end": "0x400263f0"
+      },
+      "sqlite3ErrorMsg": {
+        "start": "0x400272ba",
+        "end": "0x4002734e"
+      },
+      "sqlite3TransferBindings": {
+        "start": "0x40026b22",
+        "end": "0x40026b6e"
+      },
+      "sqlite3VdbeValueListFree": {
+        "start": "0x40042b02",
+        "end": "0x40042b0a"
+      },
+      "sqlite3BtreeNext": {
+        "start": "0x4004006c",
+        "end": "0x400400c4"
+      },
+      "getCellInfo": {
+        "start": "0x4003119e",
+        "end": "0x400311e4"
+      },
+      "sqlite3VdbeMemFromBtreeZeroOffset": {
+        "start": "0x4003e010",
+        "end": "0x4003e052"
+      },
+      "sqlite3BtreeFirst": {
+        "start": "0x40040efe",
+        "end": "0x40040f40"
+      },
+      "sqlite3GetVarint32": {
+        "start": "0x4003dfae",
+        "end": "0x4003e010"
+      },
+      "sqlite3VdbeSerialGet": {
+        "start": "0x4003e092",
+        "end": "0x4003e1ba"
+      },
+      "createAggContext": {
+        "start": "0x400267a0",
+        "end": "0x4002681c"
+      },
+      "sqlite3VListNameToNum": {
+        "start": "0x4004b4a6",
+        "end": "0x4004b50a"
+      },
+      "sqlite3VdbeMemMove": {
+        "start": "0x4003d8be",
+        "end": "0x4003d906"
+      },
+      "sqlite3VdbeExpandSql": {
+        "start": "0x40026b7e",
+        "end": "0x40026eb2"
+      },
+      "sqlite3GetToken": {
+        "start": "0x40028336",
+        "end": "0x400289c0"
+      },
+      "sqlite3GetInt32": {
+        "start": "0x40049f1e",
+        "end": "0x4004a07a"
+      },
+      "applyNumericAffinity": {
+        "start": "0x40026efc",
+        "end": "0x40026fec"
+      },
+      "sqlite3MemRealValueRC": {
+        "start": "0x40035288",
+        "end": "0x400352f8"
+      },
+      "sqlite3RealSameAsInt": {
+        "start": "0x40042ef6",
+        "end": "0x40042f60"
+      },
+      "sqlite3Atoi64": {
+        "start": "0x400354c4",
+        "end": "0x400356a2"
+      },
+      "sqlite3VdbeIntegerAffinity": {
+        "start": "0x40042d60",
+        "end": "0x40042e10"
+      },
+      "sqlite3LocateTable": {
+        "start": "0x40027052",
+        "end": "0x400272ba"
+      },
+      "sqlite3ColumnIndex": {
+        "start": "0x400273d4",
+        "end": "0x400274aa"
+      },
+      "sqlite3VdbeCreate": {
+        "start": "0x400274cc",
+        "end": "0x40027546"
+      },
+      "sqlite3VdbeAddOp4Int": {
+        "start": "0x40027546",
+        "end": "0x40027594"
+      },
+      "sqlite3VdbeAddOpList": {
+        "start": "0x40027594",
+        "end": "0x40027646"
+      },
+      "sqlite3VdbeChangeP4": {
+        "start": "0x40027646",
+        "end": "0x400276ac"
+      },
+      "sqlite3VdbeMakeReady": {
+        "start": "0x400276ac",
+        "end": "0x40027a14"
+      },
+      "sqlite3MPrintf": {
+        "start": "0x400274aa",
+        "end": "0x400274cc"
+      },
+      "sqlite3ReadSchema": {
+        "start": "0x4004b820",
+        "end": "0x4004b86a"
+      },
+      "sqlite3FindTable": {
+        "start": "0x4002aa1e",
+        "end": "0x4002ad0a"
+      },
+      "findElementWithHash": {
+        "start": "0x400494d4",
+        "end": "0x4004957e"
+      },
+      "sqlite3JsonVtabRegister": {
+        "start": "0x4004b8ba",
+        "end": "0x4004b922"
+      },
+      "addModuleArgument": {
+        "start": "0x40050aaa",
+        "end": "0x40050b32"
+      },
+      "vtabCallConstructor": {
+        "start": "0x4004b184",
+        "end": "0x4004b4a6"
+      },
+      "sqlite3PragmaVtabRegister": {
+        "start": "0x4004b86a",
+        "end": "0x4004b8ba"
+      },
+      "sqlite3BtreeOpen": {
+        "start": "0x4003e886",
+        "end": "0x4003f3e0"
+      },
+      "dbMallocRawFinish": {
+        "start": "0x4002b970",
+        "end": "0x4002b9a0"
+      },
+      "sqlite3VdbeAddOp3": {
+        "start": "0x4004b50a",
+        "end": "0x4004b550"
+      },
+      "addOp4IntSlow": {
+        "start": "0x4004b682",
+        "end": "0x4004b6be"
+      },
+      "growOpArray": {
+        "start": "0x4004b5a4",
+        "end": "0x4004b682"
+      },
+      "vdbeChangeP4Full": {
+        "start": "0x4004b6be",
+        "end": "0x4004b746"
+      },
+      "freeP4": {
+        "start": "0x40032e0c",
+        "end": "0x40032f02"
+      },
+      "resolveP2Values": {
+        "start": "0x4004b746",
+        "end": "0x4004b820"
+      },
+      "exprListDeleteNN": {
+        "start": "0x40050f7e",
+        "end": "0x40050fe2"
+      },
+      "accessPayload": {
+        "start": "0x400311e4",
+        "end": "0x400315f8"
+      },
+      "btreeRestoreCursorPosition": {
+        "start": "0x400430c6",
+        "end": "0x40043142"
+      },
+      "saveAllCursors": {
+        "start": "0x40030d3e",
+        "end": "0x40030d6c"
+      },
+      "patternCompare": {
+        "start": "0x40027b44",
+        "end": "0x40027e68"
+      },
+      "sqlite3Utf8Read": {
+        "start": "0x40050e10",
+        "end": "0x40050e76"
+      },
+      "sqlite3Prepare": {
+        "start": "0x4004971e",
+        "end": "0x40049af4"
+      },
+      "sqlite3ResetOneSchema": {
+        "start": "0x4003e5be",
+        "end": "0x4003e648"
+      },
+      "sqlite3VtabCreateModule": {
+        "start": "0x4004b988",
+        "end": "0x4004ba70"
+      },
+      "sqlite3RunParser": {
+        "start": "0x400289c0",
+        "end": "0x40028f06"
+      },
+      "keywordCode": {
+        "start": "0x40051976",
+        "end": "0x40051aac"
+      },
+      "getToken": {
+        "start": "0x40051aac",
+        "end": "0x40051b1c"
+      },
+      "yyGrowStack": {
+        "start": "0x40051b1c",
+        "end": "0x40051bd6"
+      },
+      "yy_reduce": {
+        "start": "0x40051c2a",
+        "end": "0x40053f22"
+      },
+      "yyStackOverflow": {
+        "start": "0x40051bd6",
+        "end": "0x40051c2a"
+      },
+      "yy_destructor": {
+        "start": "0x40053f22",
+        "end": "0x4005401c"
+      },
+      "sqlite3BinaryCompareCollSeq": {
+        "start": "0x40050fe2",
+        "end": "0x4005102c"
+      },
+      "sqlite3ValueFromExpr": {
+        "start": "0x40029016",
+        "end": "0x40029090"
+      },
+      "valueFromExpr": {
+        "start": "0x40051366",
+        "end": "0x40051772"
+      },
+      "sqlite3Initialize": {
+        "start": "0x400290aa",
+        "end": "0x40029340"
+      },
+      "sqlite3InsertBuiltinFuncs": {
+        "start": "0x400932ee",
+        "end": "0x4009338e"
+      },
+      "pagerStress": {
+        "start": "0x400448d2",
+        "end": "0x40044972"
+      },
+      "sqlite3Close": {
+        "start": "0x40029908",
+        "end": "0x40029aac"
+      },
+      "sqlite3VtabDisconnect": {
+        "start": "0x4009c6ee",
+        "end": "0x4009c71e"
+      },
+      "callFinaliser": {
+        "start": "0x400344fe",
+        "end": "0x4003457a"
+      },
+      "sqliteDefaultBusyCallback": {
+        "start": "0x40029c1c",
+        "end": "0x40029c7e"
+      },
+      "createFunctionApi": {
+        "start": "0x40029c7e",
+        "end": "0x40029dea"
+      },
+      "sqlite3CreateFunc": {
+        "start": "0x40029dea",
+        "end": "0x40029fee"
+      },
+      "sqlite3FindFunction": {
+        "start": "0x4002a0b4",
+        "end": "0x4002a260"
+      },
+      "sqlite3InvalidFunction": {
+        "start": "0x4002a260",
+        "end": "0x4002a2c2"
+      },
+      "matchQuality": {
+        "start": "0x4009c758",
+        "end": "0x4009c7b4"
+      },
+      "sqlite3HashInsert": {
+        "start": "0x40049306",
+        "end": "0x400494d4"
+      },
+      "sqlite3FunctionSearch": {
+        "start": "0x4009be5c",
+        "end": "0x4009bea6"
+      },
+      "openDatabase": {
+        "start": "0x4002a3fc",
+        "end": "0x4002a7f2"
+      },
+      "sqlite3BinaryCompare": {
+        "start": "0x40044c82",
+        "end": "0x40044cb2"
+      },
+      "createCollation": {
+        "start": "0x4002a7f2",
+        "end": "0x4002a97c"
+      },
+      "nocaseCollatingFunc": {
+        "start": "0x4009c7b4",
+        "end": "0x4009c7e4"
+      },
+      "rtrimCollFunc": {
+        "start": "0x4009c7e4",
+        "end": "0x4009c84e"
+      },
+      "sqlite3ParseUri": {
+        "start": "0x4008f060",
+        "end": "0x4008f516"
+      },
+      "sqlite3SchemaGet": {
+        "start": "0x4008efb8",
+        "end": "0x4008f060"
+      },
+      "sqlite3SetTextEncoding": {
+        "start": "0x400491a0",
+        "end": "0x400491fc"
+      },
+      "sqlite3RegisterPerConnectionBuiltinFunctions": {
+        "start": "0x4009c84e",
+        "end": "0x4009c886"
+      },
+      "sqlite3AutoLoadExtensions": {
+        "start": "0x4009c886",
+        "end": "0x4009c90c"
+      },
+      "sqlite3FindCollSeq": {
+        "start": "0x40049232",
+        "end": "0x40049306"
+      },
+      "sqlite3Init": {
+        "start": "0x4002a97c",
+        "end": "0x4002aa1e"
+      },
+      "sqlite3ColumnType": {
+        "start": "0x4002ada8",
+        "end": "0x4002adec"
+      },
+      "sqlite3IsRowid": {
+        "start": "0x4002ad0a",
+        "end": "0x4002ada8"
+      },
+      "sqlite3InitOne": {
+        "start": "0x40041baa",
+        "end": "0x40041f1e"
+      },
+      "pager_reset": {
+        "start": "0x4002d59a",
+        "end": "0x4002d5ba"
+      },
+      "pcache1Free": {
+        "start": "0x4002f1ce",
+        "end": "0x4002f26c"
+      },
+      "sqlite3PagerSetPagesize": {
+        "start": "0x4002ced2",
+        "end": "0x4002cff8"
+      },
+      "sqlite3AtoF": {
+        "start": "0x4002b1f8",
+        "end": "0x4002b4c8"
+      },
+      "sqlite3LogEstFromDouble": {
+        "start": "0x4002afe8",
+        "end": "0x4002b070"
+      },
+      "sqlite3LogEstToInt": {
+        "start": "0x4002b070",
+        "end": "0x4002b150"
+      },
+      "sqlite3LogEst": {
+        "start": "0x4002b150",
+        "end": "0x4002b1f8"
+      },
+      "sqlite3BitvecClear": {
+        "start": "0x400328a4",
+        "end": "0x40032992"
+      },
+      "sqlite3BitvecSet": {
+        "start": "0x4002e212",
+        "end": "0x4002e3e8"
+      },
+      "sqlite3BitvecTestNotNull": {
+        "start": "0x4002e454",
+        "end": "0x4002e4e2"
+      },
+      "getSafetyLevel": {
+        "start": "0x4008e284",
+        "end": "0x4008e382"
+      },
+      "sqlite3DecOrHexToI64": {
+        "start": "0x4002b638",
+        "end": "0x4002b750"
+      },
+      "measureAllocationSize": {
+        "start": "0x4002b894",
+        "end": "0x4002b8e0"
+      },
+      "dbReallocFinish": {
+        "start": "0x4002b93a",
+        "end": "0x4002b970"
+      },
+      "memdbClose": {
+        "start": "0x4002be86",
+        "end": "0x4002bf10"
+      },
+      "memdbRead": {
+        "start": "0x4002bf10",
+        "end": "0x4002bf9e"
+      },
+      "memdbWrite": {
+        "start": "0x4002bf9e",
+        "end": "0x4002c0cc"
+      },
+      "memdbTruncate": {
+        "start": "0x4002c0cc",
+        "end": "0x4002c0ec"
+      },
+      "memdbSync": {
+        "start": "0x4002c0ec",
+        "end": "0x4002c0f0"
+      },
+      "memdbFileSize": {
+        "start": "0x4002c0f0",
+        "end": "0x4002c0fe"
+      },
+      "memdbLock": {
+        "start": "0x4002c0fe",
+        "end": "0x4002c164"
+      },
+      "memdbUnlock": {
+        "start": "0x4002c164",
+        "end": "0x4002c192"
+      },
+      "memdbFileControl": {
+        "start": "0x4002c192",
+        "end": "0x4002c204"
+      },
+      "memdbDeviceCharacteristics": {
+        "start": "0x4002c204",
+        "end": "0x4002c20c"
+      },
+      "memdbFetch": {
+        "start": "0x4002c20c",
+        "end": "0x4002c24e"
+      },
+      "memdbUnfetch": {
+        "start": "0x4002c24e",
+        "end": "0x4002c25a"
+      },
+      "sqlite3PcacheRelease": {
+        "start": "0x4002c284",
+        "end": "0x4002c2e0"
+      },
+      "pcacheManageDirtyList": {
+        "start": "0x4002c2e0",
+        "end": "0x4002c348"
+      },
+      "querySharedCacheTableLock": {
+        "start": "0x4002c99c",
+        "end": "0x4002c9f2"
+      },
+      "sqlite3PagerSharedLock": {
+        "start": "0x4002cb0c",
+        "end": "0x4002ce4a"
+      },
+      "pagerLockDb": {
+        "start": "0x4002cff8",
+        "end": "0x4002d04c"
+      },
+      "zeroPage": {
+        "start": "0x4002f3d8",
+        "end": "0x4002f4ac"
+      },
+      "btreeInvokeBusyHandler": {
+        "start": "0x4002cad4",
+        "end": "0x4002cb0c"
+      },
+      "pagerPagecount": {
+        "start": "0x4002d5ba",
+        "end": "0x4002d624"
+      },
+      "pagerUnlockDb": {
+        "start": "0x4002d55c",
+        "end": "0x4002d59a"
+      },
+      "pagerSyncHotJournal": {
+        "start": "0x4002d04c",
+        "end": "0x4002d080"
+      },
+      "pager_playback": {
+        "start": "0x4002d080",
+        "end": "0x4002d55c"
+      },
+      "pager_unlock": {
+        "start": "0x4002d624",
+        "end": "0x4002d71e"
+      },
+      "pagerUnlockAndRollback": {
+        "start": "0x4002f096",
+        "end": "0x4002f138"
+      },
+      "pcache1Alloc": {
+        "start": "0x4002f320",
+        "end": "0x4002f3d8"
+      },
+      "sqlite3PcacheSetPageSize": {
+        "start": "0x4002f26c",
+        "end": "0x4002f320"
+      },
+      "pagerIsSuperJrnlName": {
+        "start": "0x4002e1a2",
+        "end": "0x4002e212"
+      },
+      "readSuperJournal": {
+        "start": "0x4002d71e",
+        "end": "0x4002d8de"
+      },
+      "readJournalHdr": {
+        "start": "0x4002d8de",
+        "end": "0x4002dacc"
+      },
+      "pager_playback_one_page": {
+        "start": "0x4002dbac",
+        "end": "0x4002de3c"
+      },
+      "freeSuperJournal": {
+        "start": "0x4002e0c4",
+        "end": "0x4002e110"
+      },
+      "setSectorSize": {
+        "start": "0x4002e110",
+        "end": "0x4002e164"
+      },
+      "sqlite3PcacheTruncate": {
+        "start": "0x4002e76a",
+        "end": "0x4002e7fc"
+      },
+      "releaseAllSavepoints": {
+        "start": "0x4002e5d2",
+        "end": "0x4002e652"
+      },
+      "read32bits": {
+        "start": "0x4002e164",
+        "end": "0x4002e1a2"
+      },
+      "sqlite3PagerLookup": {
+        "start": "0x4002e3e8",
+        "end": "0x4002e42a"
+      },
+      "backupUpdate": {
+        "start": "0x4002e57c",
+        "end": "0x4002e5d2"
+      },
+      "sqlite3PcacheMakeDirty": {
+        "start": "0x4002e42a",
+        "end": "0x4002e454"
+      },
+      "memjrnlFreeChunks": {
+        "start": "0x4002ecb2",
+        "end": "0x4002ed10"
+      },
+      "sqlite3PcacheFetchFinish": {
+        "start": "0x4002e4e2",
+        "end": "0x4002e516"
+      },
+      "pcacheFetchFinishWithInit": {
+        "start": "0x4002e516",
+        "end": "0x4002e57c"
+      },
+      "memjrnlClose": {
+        "start": "0x4002e7fc",
+        "end": "0x4002e812"
+      },
+      "memjrnlRead": {
+        "start": "0x4002e812",
+        "end": "0x4002e91e"
+      },
+      "memjrnlWrite": {
+        "start": "0x4002e91e",
+        "end": "0x4002ebf4"
+      },
+      "memjrnlTruncate": {
+        "start": "0x4002ebf4",
+        "end": "0x4002eca2"
+      },
+      "memjrnlSync": {
+        "start": "0x4002eca2",
+        "end": "0x4002eca6"
+      },
+      "memjrnlFileSize": {
+        "start": "0x4002eca6",
+        "end": "0x4002ecb2"
+      },
+      "sqlite3PcacheDrop": {
+        "start": "0x4002f050",
+        "end": "0x4002f096"
+      },
+      "addToSavepointBitvecs": {
+        "start": "0x4002eff2",
+        "end": "0x4002f050"
+      },
+      "decodeFlags": {
+        "start": "0x4002f4ac",
+        "end": "0x4002f608"
+      },
+      "cellSizePtrTableLeaf": {
+        "start": "0x4002f608",
+        "end": "0x4002f6e0"
+      },
+      "btreeParseCellPtr": {
+        "start": "0x4002f6e0",
+        "end": "0x4002f880"
+      },
+      "cellSizePtr": {
+        "start": "0x4002f972",
+        "end": "0x4002f9e2"
+      },
+      "cellSizePtrIdxLeaf": {
+        "start": "0x4002f880",
+        "end": "0x4002f8fc"
+      },
+      "btreeParseCellPtrIndex": {
+        "start": "0x4002f8fc",
+        "end": "0x4002f972"
+      },
+      "cellSizePtrNoPayload": {
+        "start": "0x4002f9e2",
+        "end": "0x4002f9fc"
+      },
+      "btreeParseCellPtrNoPayload": {
+        "start": "0x4002f9fc",
+        "end": "0x4002fa2c"
+      },
+      "btreeParseCellAdjustSizeForOverflow": {
+        "start": "0x4002fa2c",
+        "end": "0x4002fa5e"
+      },
+      "sqlite3GetVarint": {
+        "start": "0x4002fa5e",
+        "end": "0x4002fb7c"
+      },
+      "sqlite3JournalOpen": {
+        "start": "0x400300e6",
+        "end": "0x4003016c"
+      },
+      "pagerAddPageToRollbackJournal": {
+        "start": "0x4003016c",
+        "end": "0x400302ac"
+      },
+      "writeJournalHdr": {
+        "start": "0x400302ac",
+        "end": "0x4003047c"
+      },
+      "sqlite3PagerExclusiveLock": {
+        "start": "0x40030b1a",
+        "end": "0x40030b52"
+      },
+      "ptrmapGet": {
+        "start": "0x40031762",
+        "end": "0x40031872"
+      },
+      "allocateBtreePage": {
+        "start": "0x40031872",
+        "end": "0x4003202a"
+      },
+      "relocatePage": {
+        "start": "0x4003202a",
+        "end": "0x400322ba"
+      },
+      "saveCursorPosition": {
+        "start": "0x4003102e",
+        "end": "0x40031094"
+      },
+      "btreeReleaseAllCursorPages": {
+        "start": "0x40031094",
+        "end": "0x400310e8"
+      },
+      "saveCursorKey": {
+        "start": "0x400310e8",
+        "end": "0x4003119e"
+      },
+      "copyPayload": {
+        "start": "0x400315f8",
+        "end": "0x40031638"
+      },
+      "getOverflowPage": {
+        "start": "0x40031638",
+        "end": "0x40031762"
+      },
+      "btreeGetUnusedPage": {
+        "start": "0x400322ba",
+        "end": "0x4003232c"
+      },
+      "sqlite3PcacheMove": {
+        "start": "0x40032810",
+        "end": "0x400328a4"
+      },
+      "setChildPtrmaps": {
+        "start": "0x4003232c",
+        "end": "0x40032422"
+      },
+      "ptrmapPut": {
+        "start": "0x40032422",
+        "end": "0x400325a2"
+      },
+      "modifyPagePointer": {
+        "start": "0x400325a2",
+        "end": "0x40032810"
+      },
+      "ptrmapPutOvflPtr": {
+        "start": "0x40032a9e",
+        "end": "0x40032b46"
+      },
+      "btreeInitPage": {
+        "start": "0x40032992",
+        "end": "0x40032a9e"
+      },
+      "btreeCellSizeCheck": {
+        "start": "0x40032b46",
+        "end": "0x40032c18"
+      },
+      "freeP4FuncCtx": {
+        "start": "0x40032f02",
+        "end": "0x40032f36"
+      },
+      "freeP4Mem": {
+        "start": "0x40032f36",
+        "end": "0x40032f68"
+      },
+      "sqlite3VdbeFrameRestore": {
+        "start": "0x40033cd8",
+        "end": "0x40033d52"
+      },
+      "closeCursorsInFrame": {
+        "start": "0x40033d52",
+        "end": "0x40033da2"
+      },
+      "sqlite3VdbeFreeCursorNN": {
+        "start": "0x40033e10",
+        "end": "0x40033f5c"
+      },
+      "sqlite3VdbeDeleteAuxData": {
+        "start": "0x40033da2",
+        "end": "0x40033e10"
+      },
+      "sqlite3VdbeEnter": {
+        "start": "0x400335e4",
+        "end": "0x4003361c"
+      },
+      "vdbeFkError": {
+        "start": "0x4003457a",
+        "end": "0x400345b4"
+      },
+      "vdbeCommit": {
+        "start": "0x400337a2",
+        "end": "0x40033cd8"
+      },
+      "vdbeCloseStatement": {
+        "start": "0x400346ea",
+        "end": "0x400347ec"
+      },
+      "sqlite3VtabImportErrmsg": {
+        "start": "0x4003469a",
+        "end": "0x400346ea"
+      },
+      "sqlite3OsOpenMalloc": {
+        "start": "0x400345fa",
+        "end": "0x4003469a"
+      },
+      "sqlite3VdbeSorterReset": {
+        "start": "0x40034022",
+        "end": "0x400341e8"
+      },
+      "freeCursorWithCache": {
+        "start": "0x40033f5c",
+        "end": "0x40033fb0"
+      },
+      "vdbeMergeEngineFree": {
+        "start": "0x400341e8",
+        "end": "0x40034232"
+      },
+      "vdbePmaReaderClear": {
+        "start": "0x40034232",
+        "end": "0x4003426e"
+      },
+      "vdbeIncrFree": {
+        "start": "0x4003426e",
+        "end": "0x400342c2"
+      },
+      "sqlite3PagerClose": {
+        "start": "0x400343d0",
+        "end": "0x400344fe"
+      },
+      "sqlite3BtreeSavepoint": {
+        "start": "0x400347ec",
+        "end": "0x40034b76"
+      },
+      "sqlite3VtabSavepoint": {
+        "start": "0x40034b76",
+        "end": "0x40034c64"
+      },
+      "sqlite3VdbeMemFinalize": {
+        "start": "0x40034d38",
+        "end": "0x40034db6"
+      },
+      "sqlite3DbReallocOrFree": {
+        "start": "0x40034ef8",
+        "end": "0x40034f2e"
+      },
+      "sqlite3VdbeMemStringify": {
+        "start": "0x40034ff2",
+        "end": "0x400351fe"
+      },
+      "sqlite3VdbeMemClearAndResize": {
+        "start": "0x4003524c",
+        "end": "0x40035270"
+      },
+      "sqlite3MemRealValueRCSlowPath": {
+        "start": "0x400352f8",
+        "end": "0x4003544e"
+      },
+      "sqlite3DbStrNDup": {
+        "start": "0x4003544e",
+        "end": "0x4003549e"
+      },
+      "sqlite3SubInt64": {
+        "start": "0x4003d96e",
+        "end": "0x4003da34"
+      },
+      "sqlite3BtreeTableMoveto": {
+        "start": "0x4003f7a4",
+        "end": "0x4003fb22"
+      },
+      "sqlite3VdbeRecordCompareWithSkip": {
+        "start": "0x400414f0",
+        "end": "0x40041a86"
+      },
+      "sqlite3VdbeHandleMovedCursor": {
+        "start": "0x4003df64",
+        "end": "0x4003dfae"
+      },
+      "out2PrereleaseWithClear": {
+        "start": "0x40042c80",
+        "end": "0x40042cac"
+      },
+      "sqlite3VdbeBooleanValue": {
+        "start": "0x4003dec0",
+        "end": "0x4003defe"
+      },
+      "allocateCursor": {
+        "start": "0x4003e6e8",
+        "end": "0x4003e806"
+      },
+      "vdbeSorterFlushPMA": {
+        "start": "0x40047d8c",
+        "end": "0x40047ed6"
+      },
+      "vdbeMergeEngineNew": {
+        "start": "0x40048910",
+        "end": "0x40048972"
+      },
+      "vdbeMergeEngineLevel0": {
+        "start": "0x4004880e",
+        "end": "0x40048910"
+      },
+      "vdbeIncrMergerNew": {
+        "start": "0x40049058",
+        "end": "0x400490e8"
+      },
+      "computeNumericType": {
+        "start": "0x40042cdc",
+        "end": "0x40042d60"
+      },
+      "sqlite3BtreeIndexMoveto": {
+        "start": "0x4003fb22",
+        "end": "0x4004006c"
+      },
+      "sqlite3BtreePrevious": {
+        "start": "0x400400c4",
+        "end": "0x400400fa"
+      },
+      "btreeLast": {
+        "start": "0x40044972",
+        "end": "0x400449c2"
+      },
+      "sqlite3BtreeRowCountEst": {
+        "start": "0x4003e412",
+        "end": "0x4003e462"
+      },
+      "sqlite3VdbeMemSetRowSet": {
+        "start": "0x40042252",
+        "end": "0x40042320"
+      },
+      "sqlite3RowSetTest": {
+        "start": "0x400423de",
+        "end": "0x4004253e"
+      },
+      "applyAffinity": {
+        "start": "0x4003db94",
+        "end": "0x4003dc1e"
+      },
+      "moveToRoot": {
+        "start": "0x4004343a",
+        "end": "0x400435d0"
+      },
+      "btreeCursor": {
+        "start": "0x40043cd0",
+        "end": "0x40043d92"
+      },
+      "sqlite3BtreeGetMeta": {
+        "start": "0x4003e648",
+        "end": "0x4003e686"
+      },
+      "sqlite3FkClearTriggerCache": {
+        "start": "0x4003e686",
+        "end": "0x4003e6e8"
+      },
+      "sqlite3VdbeFinishMoveto": {
+        "start": "0x4003defe",
+        "end": "0x4003df64"
+      },
+      "sqlite3VtabCallCreate": {
+        "start": "0x40042a32",
+        "end": "0x40042b02"
+      },
+      "filterHash": {
+        "start": "0x40042b0a",
+        "end": "0x40042c80"
+      },
+      "sqlite3BtreeClearTable": {
+        "start": "0x4003e806",
+        "end": "0x4003e886"
+      },
+      "growVTrans": {
+        "start": "0x4004b0fe",
+        "end": "0x4004b184"
+      },
+      "sqlite3RowSetInsert": {
+        "start": "0x40042320",
+        "end": "0x4004237c"
+      },
+      "sqlite3VdbeFindIndexKey": {
+        "start": "0x40040f40",
+        "end": "0x40041350"
+      },
+      "sqlite3InitCallback": {
+        "start": "0x40041f1e",
+        "end": "0x40042160"
+      },
+      "sqlite3VdbeMemShallowCopy": {
+        "start": "0x4003d906",
+        "end": "0x4003d96e"
+      },
+      "sqlite3AnalysisLoad": {
+        "start": "0x40042160",
+        "end": "0x40042252"
+      },
+      "sqlite3VdbeFrameMemDel": {
+        "start": "0x4004253e",
+        "end": "0x4004254c"
+      },
+      "sqlite3VdbeAllocUnpackedRecord": {
+        "start": "0x400400fa",
+        "end": "0x4004013a"
+      },
+      "sqlite3RunVacuum": {
+        "start": "0x4004254c",
+        "end": "0x40042a32"
+      },
+      "vdbeMergeEngineStep": {
+        "start": "0x40048f0a",
+        "end": "0x40049058"
+      },
+      "sqlite3RowSetNext": {
+        "start": "0x4004237c",
+        "end": "0x400423de"
+      },
+      "sqlite3BtreeBeginStmt": {
+        "start": "0x4003e59c",
+        "end": "0x4003e5be"
+      },
+      "sqlite3MemCompare": {
+        "start": "0x4003dd58",
+        "end": "0x4003dec0"
+      },
+      "sqlite3MulInt64": {
+        "start": "0x4003da34",
+        "end": "0x4003db94"
+      },
+      "sqlite3VdbeIdxRowid": {
+        "start": "0x400413d8",
+        "end": "0x400414f0"
+      },
+      "sqlite3BtreeInsert": {
+        "start": "0x4004025e",
+        "end": "0x40040ad0"
+      },
+      "sqlite3BtreeDelete": {
+        "start": "0x40040ad0",
+        "end": "0x40040efe"
+      },
+      "sqlite3VdbeRecordUnpack": {
+        "start": "0x4004013a",
+        "end": "0x4004025e"
+      },
+      "sqlite3BtreeCreateTable": {
+        "start": "0x4003f3e0",
+        "end": "0x4003f6a4"
+      },
+      "vdbeIndexKeyCompare": {
+        "start": "0x40041350",
+        "end": "0x400413d8"
+      },
+      "vdbeSorterSort": {
+        "start": "0x40047c4e",
+        "end": "0x40047d8c"
+      },
+      "sqlite3VdbeMemCast": {
+        "start": "0x4003dc1e",
+        "end": "0x4003dd58"
+      },
+      "sqlite3IntFloatCompare": {
+        "start": "0x4003f6a4",
+        "end": "0x4003f7a4"
+      },
+      "sqlite3PutVarint": {
+        "start": "0x4003e3d6",
+        "end": "0x4003e412"
+      },
+      "checkList": {
+        "start": "0x4004a0da",
+        "end": "0x4004a2e4"
+      },
+      "checkAppendMsg": {
+        "start": "0x4004a2e4",
+        "end": "0x4004a37a"
+      },
+      "freePage2": {
+        "start": "0x4004422e",
+        "end": "0x40044598"
+      },
+      "sqlite3BtreeCount": {
+        "start": "0x4003e462",
+        "end": "0x4003e59c"
+      },
+      "sqlite3RootPageMoved": {
+        "start": "0x40041a86",
+        "end": "0x40041ab4"
+      },
+      "sqlite3FreeIndex": {
+        "start": "0x4004a07a",
+        "end": "0x4004a0da"
+      },
+      "vdbeMergeEngineInit": {
+        "start": "0x4004869e",
+        "end": "0x4004880e"
+      },
+      "checkPtrmap": {
+        "start": "0x4004a37a",
+        "end": "0x4004a40a"
+      },
+      "checkTreePage": {
+        "start": "0x4004a40a",
+        "end": "0x4004aa4e"
+      },
+      "vdbeColumnFromOverflow": {
+        "start": "0x4003e1ba",
+        "end": "0x4003e3d6"
+      },
+      "sqlite3Get8byte": {
+        "start": "0x4003e052",
+        "end": "0x4003e092"
+      },
+      "sqlite3VdbeLogAbort": {
+        "start": "0x4003d82e",
+        "end": "0x4003d8be"
+      },
+      "vdbeClrCopy": {
+        "start": "0x40042cac",
+        "end": "0x40042cdc"
+      },
+      "sqlite3VdbeMemNumerify": {
+        "start": "0x40042e10",
+        "end": "0x40042ef6"
+      },
+      "sqlite3BlobCompare": {
+        "start": "0x40042f8a",
+        "end": "0x4004301c"
+      },
+      "vdbeCompareMemString": {
+        "start": "0x40042f60",
+        "end": "0x40042f8a"
+      },
+      "sqlite3VdbeMemFromBtree": {
+        "start": "0x40043210",
+        "end": "0x40043318"
+      },
+      "sqlite3VdbeSerialGet7": {
+        "start": "0x40043318",
+        "end": "0x4004336e"
+      },
+      "sqlite3BtreeOffset": {
+        "start": "0x4004336e",
+        "end": "0x400433ba"
+      },
+      "putVarint64": {
+        "start": "0x400433ba",
+        "end": "0x4004343a"
+      },
+      "moveToParent": {
+        "start": "0x400435d0",
+        "end": "0x40043622"
+      },
+      "moveToChild": {
+        "start": "0x40043622",
+        "end": "0x40043730"
+      },
+      "fkTriggerDelete": {
+        "start": "0x400437fc",
+        "end": "0x4004386c"
+      },
+      "clearDatabasePage": {
+        "start": "0x40043e26",
+        "end": "0x40044068"
+      },
+      "pageReinit": {
+        "start": "0x400445f4",
+        "end": "0x40044614"
+      },
+      "sqlite3VdbeRecordCompare": {
+        "start": "0x40044a8a",
+        "end": "0x40044a94"
+      },
+      "vdbeRecordCompareString": {
+        "start": "0x40044b82",
+        "end": "0x40044c82"
+      },
+      "vdbeRecordCompareInt": {
+        "start": "0x40044a94",
+        "end": "0x40044b82"
+      },
+      "getAndInitPage": {
+        "start": "0x40043730",
+        "end": "0x400437fc"
+      },
+      "indexCellCompare": {
+        "start": "0x40044a20",
+        "end": "0x40044a8a"
+      },
+      "btreeNext": {
+        "start": "0x40044cb2",
+        "end": "0x40044dfa"
+      },
+      "moveToLeftmost": {
+        "start": "0x40044dfa",
+        "end": "0x40044e5e"
+      },
+      "btreePrevious": {
+        "start": "0x40044e5e",
+        "end": "0x40044fa2"
+      },
+      "btreeOverwriteCell": {
+        "start": "0x40044fa2",
+        "end": "0x40045020"
+      },
+      "invalidateIncrblobCursors": {
+        "start": "0x40043ddc",
+        "end": "0x40043e26"
+      },
+      "btreeMoveto": {
+        "start": "0x40043142",
+        "end": "0x40043210"
+      },
+      "btreeComputeFreeSpace": {
+        "start": "0x40045020",
+        "end": "0x400451f8"
+      },
+      "allocateSpace": {
+        "start": "0x40046cca",
+        "end": "0x40046e36"
+      },
+      "balance": {
+        "start": "0x40045308",
+        "end": "0x40046802"
+      },
+      "clearCellOverflow": {
+        "start": "0x40044068",
+        "end": "0x400441f4"
+      },
+      "dropCell": {
+        "start": "0x400451f8",
+        "end": "0x40045308"
+      },
+      "insertCell": {
+        "start": "0x4004755c",
+        "end": "0x400476e0"
+      },
+      "sqlite3BtreeSetCacheSize": {
+        "start": "0x40044614",
+        "end": "0x40044690"
+      },
+      "sqlite3SetString": {
+        "start": "0x40049166",
+        "end": "0x400491a0"
+      },
+      "sqlite3BtreeCommit": {
+        "start": "0x400491fc",
+        "end": "0x40049232"
+      },
+      "corruptSchema": {
+        "start": "0x400495b6",
+        "end": "0x400496b6"
+      },
+      "sqlite3GetUInt32": {
+        "start": "0x400496b6",
+        "end": "0x4004971e"
+      },
+      "sqlite3FindIndex": {
+        "start": "0x40049af4",
+        "end": "0x40049b6a"
+      },
+      "sqlite3DefaultRowEst": {
+        "start": "0x40049cfe",
+        "end": "0x40049d98"
+      },
+      "analysisLoader": {
+        "start": "0x40049be8",
+        "end": "0x40049cfe"
+      },
+      "sqlite3RowSetDelete": {
+        "start": "0x4004ab3a",
+        "end": "0x4004ab5c"
+      },
+      "rowSetEntryAlloc": {
+        "start": "0x4004ab5c",
+        "end": "0x4004abaa"
+      },
+      "rowSetEntrySort": {
+        "start": "0x4004abaa",
+        "end": "0x4004acc0"
+      },
+      "rowSetTreeToList": {
+        "start": "0x4004ad04",
+        "end": "0x4004ad3a"
+      },
+      "rowSetListToTree": {
+        "start": "0x4004acc0",
+        "end": "0x4004ad04"
+      },
+      "execSqlF": {
+        "start": "0x4004ad98",
+        "end": "0x4004adf6"
+      },
+      "sqlite3BtreeSetSpillSize": {
+        "start": "0x4004adf6",
+        "end": "0x4004aea0"
+      },
+      "sqlite3BtreeSetPagerFlags": {
+        "start": "0x4004aea0",
+        "end": "0x4004af2c"
+      },
+      "execSql": {
+        "start": "0x4004af2c",
+        "end": "0x4004b016"
+      },
+      "sqlite3BtreeSetAutoVacuum": {
+        "start": "0x4004b016",
+        "end": "0x4004b04a"
+      },
+      "sqlite3BtreeCopyFile": {
+        "start": "0x4004b04a",
+        "end": "0x4004b0fe"
+      },
+      "vdbeCompareMemStringWithEncodingChange": {
+        "start": "0x4004301c",
+        "end": "0x400430c6"
+      },
+      "sqlite3SrcListDelete": {
+        "start": "0x4004386c",
+        "end": "0x4004397a"
+      },
+      "clearSelect": {
+        "start": "0x40043b56",
+        "end": "0x40043c36"
+      },
+      "sqlite3WindowDelete": {
+        "start": "0x40043ac0",
+        "end": "0x40043b56"
+      },
+      "sqlite3WithDelete": {
+        "start": "0x40043c36",
+        "end": "0x40043c86"
+      },
+      "cteClear": {
+        "start": "0x40043c86",
+        "end": "0x40043cd0"
+      },
+      "allocateTempSpace": {
+        "start": "0x40043d92",
+        "end": "0x40043ddc"
+      },
+      "btreePageLookup": {
+        "start": "0x400441f4",
+        "end": "0x4004422e"
+      },
+      "btreeSetHasContent": {
+        "start": "0x40044598",
+        "end": "0x400445f4"
+      },
+      "memdbOpen": {
+        "start": "0x40044690",
+        "end": "0x40044876"
+      },
+      "memdbAccess": {
+        "start": "0x40044876",
+        "end": "0x4004487e"
+      },
+      "memdbFullPathname": {
+        "start": "0x4004487e",
+        "end": "0x400448a2"
+      },
+      "memdbDlOpen": {
+        "start": "0x400448a2",
+        "end": "0x400448a8"
+      },
+      "memdbDlError": {
+        "start": "0x400448a8",
+        "end": "0x400448ae"
+      },
+      "memdbDlSym": {
+        "start": "0x400448ae",
+        "end": "0x400448b4"
+      },
+      "memdbDlClose": {
+        "start": "0x400448b4",
+        "end": "0x400448ba"
+      },
+      "memdbRandomness": {
+        "start": "0x400448ba",
+        "end": "0x400448c0"
+      },
+      "memdbSleep": {
+        "start": "0x400448c0",
+        "end": "0x400448c6"
+      },
+      "memdbGetLastError": {
+        "start": "0x400448c6",
+        "end": "0x400448cc"
+      },
+      "memdbCurrentTimeInt64": {
+        "start": "0x400448cc",
+        "end": "0x400448d2"
+      },
+      "moveToRightmost": {
+        "start": "0x400449c2",
+        "end": "0x40044a20"
+      },
+      "btreeOverwriteContent": {
+        "start": "0x40046802",
+        "end": "0x400468bc"
+      },
+      "btreeOverwriteOverflowCell": {
+        "start": "0x400468bc",
+        "end": "0x40046a10"
+      },
+      "freeSpace": {
+        "start": "0x40046a10",
+        "end": "0x40046cca"
+      },
+      "copyNodeContent": {
+        "start": "0x400472c2",
+        "end": "0x4004737a"
+      },
+      "rebuildPage": {
+        "start": "0x4004737a",
+        "end": "0x4004755c"
+      },
+      "computeCellSize": {
+        "start": "0x40047986",
+        "end": "0x400479b6"
+      },
+      "editPage": {
+        "start": "0x400476e0",
+        "end": "0x40047986"
+      },
+      "defragmentPage": {
+        "start": "0x40046f6c",
+        "end": "0x400472c2"
+      },
+      "pageFindSlot": {
+        "start": "0x40046e36",
+        "end": "0x40046f6c"
+      },
+      "pageFreeArray": {
+        "start": "0x400479b6",
+        "end": "0x40047b0a"
+      },
+      "pageInsertArray": {
+        "start": "0x40047b0a",
+        "end": "0x40047c4e"
+      },
+      "vdbeSorterCompareReal": {
+        "start": "0x4004811a",
+        "end": "0x400481da"
+      },
+      "vdbeSorterCompareInt": {
+        "start": "0x40047f46",
+        "end": "0x40048022"
+      },
+      "vdbeSorterCompareText": {
+        "start": "0x40048022",
+        "end": "0x4004811a"
+      },
+      "vdbeSorterCompare": {
+        "start": "0x400481da",
+        "end": "0x40048220"
+      },
+      "vdbeSorterMerge": {
+        "start": "0x40047ed6",
+        "end": "0x40047f46"
+      },
+      "vdbePmaWriterInit": {
+        "start": "0x40048488",
+        "end": "0x4004850a"
+      },
+      "vdbePmaWriteBlob": {
+        "start": "0x4004850a",
+        "end": "0x400485e0"
+      },
+      "vdbePmaWriterFinish": {
+        "start": "0x400485e0",
+        "end": "0x4004869e"
+      },
+      "vdbeSorterOpenTempFile": {
+        "start": "0x40048428",
+        "end": "0x40048488"
+      },
+      "vdbeSorterCompareTail": {
+        "start": "0x40048220",
+        "end": "0x40048266"
+      },
+      "vdbeSorterFinishRealCompare": {
+        "start": "0x40048308",
+        "end": "0x400483ce"
+      },
+      "vdbeSorterCompareRealInt": {
+        "start": "0x40048266",
+        "end": "0x40048308"
+      },
+      "vdbeSorterGetReal": {
+        "start": "0x400483ce",
+        "end": "0x40048428"
+      },
+      "vdbePmaReaderNext": {
+        "start": "0x40048b2e",
+        "end": "0x40048d32"
+      },
+      "vdbePmaReaderSeek": {
+        "start": "0x40048972",
+        "end": "0x40048a8c"
+      },
+      "vdbePmaReadVarint": {
+        "start": "0x40048a8c",
+        "end": "0x40048b2e"
+      },
+      "vdbePmaReadBlob": {
+        "start": "0x40048d32",
+        "end": "0x40048f0a"
+      },
+      "insertElement": {
+        "start": "0x4004957e",
+        "end": "0x400495b6"
+      },
+      "sqlite3DbIsNamed": {
+        "start": "0x40049b6a",
+        "end": "0x40049be8"
+      },
+      "decodeIntArray": {
+        "start": "0x40049d98",
+        "end": "0x40049f1e"
+      },
+      "checkRef": {
+        "start": "0x4004aa4e",
+        "end": "0x4004aab2"
+      },
+      "checkProgress": {
+        "start": "0x4004aab2",
+        "end": "0x4004ab04"
+      },
+      "btreeHeapInsert": {
+        "start": "0x4004ab04",
+        "end": "0x4004ab3a"
+      },
+      "rowSetNDeepTree": {
+        "start": "0x4004ad3a",
+        "end": "0x4004ad98"
+      },
+      "growOp3": {
+        "start": "0x4004b550",
+        "end": "0x4004b5a4"
+      },
+      "pragmaLocate": {
+        "start": "0x4004b922",
+        "end": "0x4004b988"
+      },
+      "pragmaVtabConnect": {
+        "start": "0x4004baa8",
+        "end": "0x4004bc70"
+      },
+      "pragmaVtabBestIndex": {
+        "start": "0x4004bc70",
+        "end": "0x4004bd32"
+      },
+      "pragmaVtabDisconnect": {
+        "start": "0x4004bd32",
+        "end": "0x4004bd46"
+      },
+      "pragmaVtabOpen": {
+        "start": "0x4004bd46",
+        "end": "0x4004bd88"
+      },
+      "pragmaVtabClose": {
+        "start": "0x4004bd88",
+        "end": "0x4004bdac"
+      },
+      "pragmaVtabCursorClear": {
+        "start": "0x4004bffa",
+        "end": "0x4004c03c"
+      },
+      "pragmaVtabFilter": {
+        "start": "0x4004bdac",
+        "end": "0x4004bf40"
+      },
+      "pragmaVtabNext": {
+        "start": "0x4004bf40",
+        "end": "0x4004bf96"
+      },
+      "pragmaVtabEof": {
+        "start": "0x4004bf96",
+        "end": "0x4004bf9e"
+      },
+      "pragmaVtabColumn": {
+        "start": "0x4004bf9e",
+        "end": "0x4004bfee"
+      },
+      "pragmaVtabRowid": {
+        "start": "0x4004bfee",
+        "end": "0x4004bffa"
+      },
+      "jsonEachConnect": {
+        "start": "0x4004c03c",
+        "end": "0x4004c0c2"
+      },
+      "jsonEachBestIndex": {
+        "start": "0x4004c0c2",
+        "end": "0x4004c18c"
+      },
+      "jsonEachDisconnect": {
+        "start": "0x4004c18c",
+        "end": "0x4004c1a4"
+      },
+      "jsonEachOpen": {
+        "start": "0x4004c1a4",
+        "end": "0x4004c208"
+      },
+      "jsonEachClose": {
+        "start": "0x4004c208",
+        "end": "0x4004c22e"
+      },
+      "jsonEachCursorReset": {
+        "start": "0x4004c8fe",
+        "end": "0x4004c972"
+      },
+      "jsonEachFilter": {
+        "start": "0x4004c22e",
+        "end": "0x4004c460"
+      },
+      "jsonArgIsJsonb": {
+        "start": "0x4004c9bc",
+        "end": "0x4004ca8a"
+      },
+      "jsonLookupStep": {
+        "start": "0x4004cc60",
+        "end": "0x4004d230"
+      },
+      "jsonConvertTextToBlob": {
+        "start": "0x4004ca8a",
+        "end": "0x4004cb52"
+      },
+      "jsonEachMalformedInput": {
+        "start": "0x4004cb52",
+        "end": "0x4004cb98"
+      },
+      "jsonAppendRaw": {
+        "start": "0x4004d230",
+        "end": "0x4004d29a"
+      },
+      "jsonbPayloadSize": {
+        "start": "0x4004d29a",
+        "end": "0x4004d3c6"
+      },
+      "jsonEachNext": {
+        "start": "0x4004c460",
+        "end": "0x4004c66c"
+      },
+      "jsonSkipLabel": {
+        "start": "0x4004f1e0",
+        "end": "0x4004f224"
+      },
+      "jsonAppendPathName": {
+        "start": "0x4004f224",
+        "end": "0x4004f2ea"
+      },
+      "jsonEachEof": {
+        "start": "0x4004c66c",
+        "end": "0x4004c67a"
+      },
+      "jsonEachColumn": {
+        "start": "0x4004c67a",
+        "end": "0x4004c8f2"
+      },
+      "jsonReturnFromBlob": {
+        "start": "0x4004f444",
+        "end": "0x4004f902"
+      },
+      "jsonEachPathLength": {
+        "start": "0x4004f384",
+        "end": "0x4004f444"
+      },
+      "jsonEachRowid": {
+        "start": "0x4004c8f2",
+        "end": "0x4004c8fe"
+      },
+      "jsonParseReset": {
+        "start": "0x4004c972",
+        "end": "0x4004c9bc"
+      },
+      "jsonbValidityCheck": {
+        "start": "0x4004d3c6",
+        "end": "0x4004d7ec"
+      },
+      "jsonTranslateTextToBlob": {
+        "start": "0x4004db6a",
+        "end": "0x4004e6ce"
+      },
+      "json5Whitespace": {
+        "start": "0x4004e6ce",
+        "end": "0x4004e89a"
+      },
+      "jsonBadPathError": {
+        "start": "0x4004cb98",
+        "end": "0x4004cc60"
+      },
+      "jsonBlobMakeEditable": {
+        "start": "0x4004ec06",
+        "end": "0x4004ec5a"
+      },
+      "jsonbArrayCount": {
+        "start": "0x4004ef06",
+        "end": "0x4004ef5e"
+      },
+      "jsonLabelCompare": {
+        "start": "0x4004eddc",
+        "end": "0x4004ee0e"
+      },
+      "jsonBlobAppendNode": {
+        "start": "0x4004e89a",
+        "end": "0x4004e974"
+      },
+      "jsonCreateEditSubstructure": {
+        "start": "0x4004ee58",
+        "end": "0x4004ef06"
+      },
+      "jsonBlobEdit": {
+        "start": "0x4004ec5a",
+        "end": "0x4004eddc"
+      },
+      "jsonAfterEditSizeAdjust": {
+        "start": "0x4004ee0e",
+        "end": "0x4004ee58"
+      },
+      "jsonStringExpandAndAppend": {
+        "start": "0x4004f02e",
+        "end": "0x4004f078"
+      },
+      "jsonIs4Hex": {
+        "start": "0x4004d7ec",
+        "end": "0x4004d832"
+      },
+      "jsonUnescapeOneChar": {
+        "start": "0x4004d832",
+        "end": "0x4004dac4"
+      },
+      "sqlite3Utf8ReadLimited": {
+        "start": "0x4004db12",
+        "end": "0x4004db6a"
+      },
+      "jsonHexToInt4": {
+        "start": "0x4004dac4",
+        "end": "0x4004db12"
+      },
+      "jsonBlobAppendOneByte": {
+        "start": "0x4004eae4",
+        "end": "0x4004eb04"
+      },
+      "jsonBlobChangePayloadSize": {
+        "start": "0x4004e974",
+        "end": "0x4004eae4"
+      },
+      "jsonBlobExpandAndAppendNode": {
+        "start": "0x4004eb04",
+        "end": "0x4004eb6c"
+      },
+      "jsonBlobExpand": {
+        "start": "0x4004eb6c",
+        "end": "0x4004ebca"
+      },
+      "jsonBlobExpandAndAppendOneByte": {
+        "start": "0x4004ebca",
+        "end": "0x4004ec06"
+      },
+      "jsonLabelCompareEscaped": {
+        "start": "0x4004ef5e",
+        "end": "0x4004f02e"
+      },
+      "jsonStringGrow": {
+        "start": "0x4004f078",
+        "end": "0x4004f1e0"
+      },
+      "jsonPrintf": {
+        "start": "0x4004f2ea",
+        "end": "0x4004f384"
+      },
+      "jsonTranslateBlobToText": {
+        "start": "0x4004f902",
+        "end": "0x40050250"
+      },
+      "jsonReturnString": {
+        "start": "0x40050250",
+        "end": "0x4005038c"
+      },
+      "jsonAppendCharExpand": {
+        "start": "0x40050834",
+        "end": "0x40050870"
+      },
+      "jsonAppendRawNZ": {
+        "start": "0x4005038c",
+        "end": "0x400503f4"
+      },
+      "jsonAppendChar": {
+        "start": "0x400503f4",
+        "end": "0x4005042e"
+      },
+      "jsonAppendString": {
+        "start": "0x400504e2",
+        "end": "0x400507c8"
+      },
+      "jsonStringTooDeep": {
+        "start": "0x400507c8",
+        "end": "0x40050834"
+      },
+      "jsonAppendControlChar": {
+        "start": "0x4005042e",
+        "end": "0x400504e2"
+      },
+      "jsonStringTerminate": {
+        "start": "0x40050870",
+        "end": "0x400508d2"
+      },
+      "jsonReturnStringAsBlob": {
+        "start": "0x400508d2",
+        "end": "0x40050946"
+      },
+      "jsonCacheInsert": {
+        "start": "0x40050946",
+        "end": "0x40050a2a"
+      },
+      "jsonCacheDeleteGeneric": {
+        "start": "0x40050a2a",
+        "end": "0x40050a70"
+      },
+      "jsonParseFree": {
+        "start": "0x40050a70",
+        "end": "0x40050aaa"
+      },
+      "sqlite3DeleteColumnNames": {
+        "start": "0x40050d86",
+        "end": "0x40050e10"
+      },
+      "upsertDelete": {
+        "start": "0x40050f08",
+        "end": "0x40050f7e"
+      },
+      "sqlite3ExprCollSeq": {
+        "start": "0x4005102c",
+        "end": "0x400511a4"
+      },
+      "sqlite3GetCollSeq": {
+        "start": "0x400511a4",
+        "end": "0x40051366"
+      },
+      "sqlite3AffinityType": {
+        "start": "0x40051772",
+        "end": "0x400518ee"
+      },
+      "sqlite3HexToBlob": {
+        "start": "0x400518ee",
+        "end": "0x40051976"
+      },
+      "parserStackRealloc": {
+        "start": "0x4005401c",
+        "end": "0x40054070"
+      },
+      "sqlite3PExpr": {
+        "start": "0x40055930",
+        "end": "0x400559da"
+      },
+      "sqlite3SrcListAppend": {
+        "start": "0x4005a92a",
+        "end": "0x4005aa08"
+      },
+      "sqlite3RenameTokenMap": {
+        "start": "0x4005aa08",
+        "end": "0x4005aa58"
+      },
+      "sqlite3WithPush": {
+        "start": "0x40063f62",
+        "end": "0x40063fa8"
+      },
+      "tokenExpr": {
+        "start": "0x400559da",
+        "end": "0x40055ade"
+      },
+      "sqlite3EndTransaction": {
+        "start": "0x40054568",
+        "end": "0x400545f2"
+      },
+      "sqlite3MultiValues": {
+        "start": "0x4005a466",
+        "end": "0x4005a6fc"
+      },
+      "sqlite3EndTable": {
+        "start": "0x40054bde",
+        "end": "0x400553ca"
+      },
+      "sqlite3SelectNew": {
+        "start": "0x4005a2ba",
+        "end": "0x4005a3ec"
+      },
+      "attachWithToSelect": {
+        "start": "0x4005a05c",
+        "end": "0x4005a08a"
+      },
+      "sqlite3MultiValuesEnd": {
+        "start": "0x4005a3ec",
+        "end": "0x4005a466"
+      },
+      "sqlite3ExprListAppendVector": {
+        "start": "0x4005c87e",
+        "end": "0x4005c9aa"
+      },
+      "sqlite3AddNotNull": {
+        "start": "0x40055b1e",
+        "end": "0x40055b80"
+      },
+      "sqlite3ExprIdToTrueFalse": {
+        "start": "0x40055ade",
+        "end": "0x40055b1e"
+      },
+      "sqlite3ExprListAppend": {
+        "start": "0x4005a6fc",
+        "end": "0x4005a738"
+      },
+      "sqlite3ExprListSetName": {
+        "start": "0x4005a738",
+        "end": "0x4005a7aa"
+      },
+      "sqlite3ExprListAppendNew": {
+        "start": "0x40088062",
+        "end": "0x400880b8"
+      },
+      "sqlite3ExprFunction": {
+        "start": "0x4005e00c",
+        "end": "0x4005e0c0"
+      },
+      "sqlite3ExprAlloc": {
+        "start": "0x4005db1e",
+        "end": "0x4005dbe8"
+      },
+      "sqlite3ExprAttachSubtrees": {
+        "start": "0x4005df96",
+        "end": "0x4005e00c"
+      },
+      "sqlite3PExprIs": {
+        "start": "0x4005e2d4",
+        "end": "0x4005e340"
+      },
+      "sqlite3CreateForeignKey": {
+        "start": "0x40056bb4",
+        "end": "0x40056f2c"
+      },
+      "sqlite3FinishCoding": {
+        "start": "0x40054070",
+        "end": "0x40054452"
+      },
+      "sqlite3UpsertNew": {
+        "start": "0x4005d9d4",
+        "end": "0x4005da84"
+      },
+      "sqlite3JoinType": {
+        "start": "0x4005aa88",
+        "end": "0x4005ab88"
+      },
+      "sqlite3ExprInt32": {
+        "start": "0x4005dbe8",
+        "end": "0x4005dc4c"
+      },
+      "sqlite3Select": {
+        "start": "0x400576e8",
+        "end": "0x4005a05c"
+      },
+      "parserAddExprIdListTerm": {
+        "start": "0x4005e57a",
+        "end": "0x4005e5e8"
+      },
+      "sqlite3FinishTrigger": {
+        "start": "0x400619ac",
+        "end": "0x40061d00"
+      },
+      "sqlite3PExprIsNull": {
+        "start": "0x4005e260",
+        "end": "0x4005e2d4"
+      },
+      "sqlite3ExprAddCollateToken": {
+        "start": "0x4005df28",
+        "end": "0x4005df96"
+      },
+      "sqlite3DropIndex": {
+        "start": "0x4005e5e8",
+        "end": "0x4005e7f6"
+      },
+      "sqlite3ExprAnd": {
+        "start": "0x4005e1c0",
+        "end": "0x4005e260"
+      },
+      "sqlite3CreateView": {
+        "start": "0x40057502",
+        "end": "0x400576e8"
+      },
+      "sqlite3SrcListIndexedBy": {
+        "start": "0x4005a8b2",
+        "end": "0x4005a8fa"
+      },
+      "sqlite3SrcListAppendFromTerm": {
+        "start": "0x4005a152",
+        "end": "0x4005a2ba"
+      },
+      "sqlite3SrcListAppendList": {
+        "start": "0x4005b562",
+        "end": "0x4005b5f4"
+      },
+      "exprNodeIsConstant": {
+        "start": "0x40068e1c",
+        "end": "0x40068f50"
+      },
+      "sqlite3SelectWalkFail": {
+        "start": "0x40068f50",
+        "end": "0x40068f5a"
+      },
+      "sqlite3WalkExprNN": {
+        "start": "0x40068444",
+        "end": "0x400684f2"
+      },
+      "sqlite3PExprAddSelect": {
+        "start": "0x4005e448",
+        "end": "0x4005e472"
+      },
+      "sqlite3WindowAttach": {
+        "start": "0x4005e182",
+        "end": "0x4005e1c0"
+      },
+      "sqlite3ExprAddFunctionOrderBy": {
+        "start": "0x4005e0c0",
+        "end": "0x4005e182"
+      },
+      "sqlite3DropTable": {
+        "start": "0x400571ac",
+        "end": "0x40057502"
+      },
+      "sqlite3TriggerInsertStep": {
+        "start": "0x400622c4",
+        "end": "0x4006237e"
+      },
+      "addArgumentToVtab": {
+        "start": "0x400908d0",
+        "end": "0x40090918"
+      },
+      "disableLookaside": {
+        "start": "0x40054ba6",
+        "end": "0x40054bde"
+      },
+      "sqlite3AlterBeginAddColumn": {
+        "start": "0x4006304e",
+        "end": "0x4006322a"
+      },
+      "sqlite3AddColumn": {
+        "start": "0x400553ca",
+        "end": "0x400557c8"
+      },
+      "sqlite3AlterRenameColumn": {
+        "start": "0x400636f8",
+        "end": "0x40063962"
+      },
+      "sqlite3IdListAppend": {
+        "start": "0x4005da84",
+        "end": "0x4005db1e"
+      },
+      "sqlite3AlterAddConstraint": {
+        "start": "0x40063b18",
+        "end": "0x40063c7a"
+      },
+      "sqlite3DeleteFrom": {
+        "start": "0x4005ab88",
+        "end": "0x4005b446"
+      },
+      "sqlite3WindowAlloc": {
+        "start": "0x40064282",
+        "end": "0x40064384"
+      },
+      "parserDoubleLinkSelect": {
+        "start": "0x4005a08a",
+        "end": "0x4005a152"
+      },
+      "sqlite3TriggerSelectStep": {
+        "start": "0x400623f4",
+        "end": "0x40062460"
+      },
+      "sqlite3TriggerDeleteStep": {
+        "start": "0x4006237e",
+        "end": "0x400623f4"
+      },
+      "sqlite3SrcListFuncArgs": {
+        "start": "0x4005a8fa",
+        "end": "0x4005a92a"
+      },
+      "sqlite3AddReturning": {
+        "start": "0x4005b446",
+        "end": "0x4005b562"
+      },
+      "sqlite3DropTrigger": {
+        "start": "0x40062460",
+        "end": "0x40062544"
+      },
+      "sqlite3DequoteNumber": {
+        "start": "0x40064384",
+        "end": "0x400644c0"
+      },
+      "sqlite3WindowAssemble": {
+        "start": "0x40064226",
+        "end": "0x40064282"
+      },
+      "sqlite3WithAdd": {
+        "start": "0x40064032",
+        "end": "0x40064162"
+      },
+      "sqlite3AlterDropColumn": {
+        "start": "0x4006322a",
+        "end": "0x400636f8"
+      },
+      "sqlite3TriggerUpdateStep": {
+        "start": "0x40062190",
+        "end": "0x400622c4"
+      },
+      "sqlite3AlterSetNotNull": {
+        "start": "0x40063a52",
+        "end": "0x40063b18"
+      },
+      "sqlite3ExprListSetSpan": {
+        "start": "0x4005a7aa",
+        "end": "0x4005a7e8"
+      },
+      "sqlite3VtabBeginParse": {
+        "start": "0x40063e78",
+        "end": "0x40063f62"
+      },
+      "sqlite3VtabFinishParse": {
+        "start": "0x40063c7a",
+        "end": "0x40063e78"
+      },
+      "sqlite3Analyze": {
+        "start": "0x400627e6",
+        "end": "0x4006292c"
+      },
+      "sqlite3ExprSetHeightAndFlags": {
+        "start": "0x4005e340",
+        "end": "0x4005e40e"
+      },
+      "sqlite3WindowChain": {
+        "start": "0x40064162",
+        "end": "0x40064226"
+      },
+      "sqlite3CteNew": {
+        "start": "0x40063fa8",
+        "end": "0x40064032"
+      },
+      "sqlite3AddCheckConstraint": {
+        "start": "0x40056ada",
+        "end": "0x40056bb4"
+      },
+      "sqlite3Vacuum": {
+        "start": "0x4005e7f6",
+        "end": "0x4005e8fc"
+      },
+      "sqlite3AlterRenameTable": {
+        "start": "0x4006292c",
+        "end": "0x40062c64"
+      },
+      "sqlite3AlterFinishAddColumn": {
+        "start": "0x40062c64",
+        "end": "0x4006304e"
+      },
+      "sqlite3AlterDropConstraint": {
+        "start": "0x40063962",
+        "end": "0x40063a52"
+      },
+      "sqlite3CreateIndex": {
+        "start": "0x40055df2",
+        "end": "0x40056ada"
+      },
+      "sqlite3Reindex": {
+        "start": "0x40062544",
+        "end": "0x400627e6"
+      },
+      "codeAttach": {
+        "start": "0x4008edca",
+        "end": "0x4008efb8"
+      },
+      "sqlite3BeginTrigger": {
+        "start": "0x40061d00",
+        "end": "0x40062190"
+      },
+      "sqlite3Pragma": {
+        "start": "0x4005e8fc",
+        "end": "0x400619ac"
+      },
+      "sqlite3Insert": {
+        "start": "0x4005c9aa",
+        "end": "0x4005d9d4"
+      },
+      "sqlite3BeginTransaction": {
+        "start": "0x40054452",
+        "end": "0x40054568"
+      },
+      "sqlite3ExprAssignVarNumber": {
+        "start": "0x4005dc4c",
+        "end": "0x4005df28"
+      },
+      "sqlite3SrcListShiftJoinType": {
+        "start": "0x4005a826",
+        "end": "0x4005a8b2"
+      },
+      "sqlite3AddDefaultValue": {
+        "start": "0x400557c8",
+        "end": "0x40055930"
+      },
+      "sqlite3AddCollateType": {
+        "start": "0x40056f2c",
+        "end": "0x40056ffa"
+      },
+      "sqlite3AddGenerated": {
+        "start": "0x40056ffa",
+        "end": "0x400571ac"
+      },
+      "sqlite3StartTable": {
+        "start": "0x400546ba",
+        "end": "0x40054ba6"
+      },
+      "sqlite3AddPrimaryKey": {
+        "start": "0x40055b80",
+        "end": "0x40055df2"
+      },
+      "sqlite3Savepoint": {
+        "start": "0x400545f2",
+        "end": "0x400546ba"
+      },
+      "sqlite3NameFromToken": {
+        "start": "0x4005aa58",
+        "end": "0x4005aa88"
+      },
+      "sqlite3ExprListToValues": {
+        "start": "0x4005e472",
+        "end": "0x4005e57a"
+      },
+      "sqlite3Update": {
+        "start": "0x4005b5f4",
+        "end": "0x4005c87e"
+      },
+      "sqlite3Expr": {
+        "start": "0x4005a7e8",
+        "end": "0x4005a826"
+      },
+      "sqlite3ExprUnmapAndDelete": {
+        "start": "0x4005e40e",
+        "end": "0x4005e448"
+      },
+      "sqlite3GetVdbe": {
+        "start": "0x400644c0",
+        "end": "0x400644e8"
+      },
+      "sqlite3OpenTable": {
+        "start": "0x4006457a",
+        "end": "0x40064640"
+      },
+      "sqlite3ExprCode": {
+        "start": "0x400644e8",
+        "end": "0x4006457a"
+      },
+      "realAuthCheck": {
+        "start": "0x40068b58",
+        "end": "0x40068bc0"
+      },
+      "sqlite3TwoPartName": {
+        "start": "0x4006b53a",
+        "end": "0x4006b5a0"
+      },
+      "sqlite3CheckObjectName": {
+        "start": "0x4006b5a0",
+        "end": "0x4006b714"
+      },
+      "sqlite3CodeVerifySchema": {
+        "start": "0x40069dd6",
+        "end": "0x40069dfc"
+      },
+      "sqlite3ForceNotReadOnly": {
+        "start": "0x4006b714",
+        "end": "0x4006b782"
+      },
+      "sqlite3BeginWriteOperation": {
+        "start": "0x4006b782",
+        "end": "0x4006b7d4"
+      },
+      "sqlite3OpenSchemaTable": {
+        "start": "0x4006b7d4",
+        "end": "0x4006b862"
+      },
+      "sqlite3ShadowTableName": {
+        "start": "0x4006b8ce",
+        "end": "0x4006b95a"
+      },
+      "sqlite3ResolveSelfReference": {
+        "start": "0x4006be62",
+        "end": "0x4006bf06"
+      },
+      "sqlite3ColumnSetExpr": {
+        "start": "0x4006bf06",
+        "end": "0x4006bf74"
+      },
+      "estimateIndexWidth": {
+        "start": "0x4006bf74",
+        "end": "0x4006bfcc"
+      },
+      "convertToWithoutRowidTable": {
+        "start": "0x4006b9f2",
+        "end": "0x4006be62"
+      },
+      "sqlite3NestedParse": {
+        "start": "0x4006c4cc",
+        "end": "0x4006c59a"
+      },
+      "sqlite3ChangeCookie": {
+        "start": "0x4006c59a",
+        "end": "0x4006c5bc"
+      },
+      "sqlite3VdbeAddParseSchemaOp": {
+        "start": "0x4006c5bc",
+        "end": "0x4006c668"
+      },
+      "sqlite3ResultSetOfSelect": {
+        "start": "0x4006bfcc",
+        "end": "0x4006c0d6"
+      },
+      "sqlite3TableAffinity": {
+        "start": "0x4006c0d6",
+        "end": "0x4006c294"
+      },
+      "createTableStmt": {
+        "start": "0x4006c294",
+        "end": "0x4006c4cc"
+      },
+      "sqlite3DequoteToken": {
+        "start": "0x40071b62",
+        "end": "0x40071bb4"
+      },
+      "sqlite3Dequote": {
+        "start": "0x40071bb4",
+        "end": "0x40071c0a"
+      },
+      "sqlite3DbSpanDup": {
+        "start": "0x40071c0a",
+        "end": "0x40071c4c"
+      },
+      "exprDup": {
+        "start": "0x4006ae4c",
+        "end": "0x4006b0c4"
+      },
+      "sqlite3FuncAuth": {
+        "start": "0x40068abc",
+        "end": "0x40068afa"
+      },
+      "sqlite3RenameExprUnmap": {
+        "start": "0x40071c4c",
+        "end": "0x40071ca6"
+      },
+      "sqlite3IsTrueOrFalse": {
+        "start": "0x40070bc4",
+        "end": "0x40070c3a"
+      },
+      "sqlite3HasExplicitNulls": {
+        "start": "0x40071f5a",
+        "end": "0x40071fbc"
+      },
+      "fixExprCb": {
+        "start": "0x400724f2",
+        "end": "0x40072548"
+      },
+      "fixSelectCb": {
+        "start": "0x40072548",
+        "end": "0x40072686"
+      },
+      "sqlite3WalkWinDefnDummyCallback": {
+        "start": "0x40068772",
+        "end": "0x40068774"
+      },
+      "sqlite3FixSrcList": {
+        "start": "0x4007203c",
+        "end": "0x40072078"
+      },
+      "sqlite3LocateTableItem": {
+        "start": "0x4007073e",
+        "end": "0x40070782"
+      },
+      "sqlite3SrcListLookup": {
+        "start": "0x40071fbc",
+        "end": "0x4007203c"
+      },
+      "sqlite3AllocateIndexObject": {
+        "start": "0x40072078",
+        "end": "0x400720fa"
+      },
+      "sqlite3LocateCollSeq": {
+        "start": "0x40064984",
+        "end": "0x400649e0"
+      },
+      "isDupColumn": {
+        "start": "0x4006c668",
+        "end": "0x4006c6de"
+      },
+      "recomputeColumnsNotIndexed": {
+        "start": "0x4006c796",
+        "end": "0x4006c818"
+      },
+      "sqlite3RefillIndex": {
+        "start": "0x400720fa",
+        "end": "0x400724f2"
+      },
+      "sqlite3ColumnSetColl": {
+        "start": "0x400713ba",
+        "end": "0x40071460"
+      },
+      "sqlite3CodeVerifyNamedSchema": {
+        "start": "0x40072a86",
+        "end": "0x40072b10"
+      },
+      "viewGetColumnNames": {
+        "start": "0x40070c3a",
+        "end": "0x40070e9e"
+      },
+      "sqlite3ClearStatTables": {
+        "start": "0x40072b10",
+        "end": "0x40072b9a"
+      },
+      "sqlite3FkDropTable": {
+        "start": "0x40072b9a",
+        "end": "0x40072cdc"
+      },
+      "sqlite3CodeDropTable": {
+        "start": "0x40072cdc",
+        "end": "0x40072f02"
+      },
+      "sqlite3RenameExprlistUnmap": {
+        "start": "0x40071ee2",
+        "end": "0x40071f5a"
+      },
+      "sqlite3WalkSelect": {
+        "start": "0x400684f2",
+        "end": "0x40068652"
+      },
+      "sqlite3SelectDup": {
+        "start": "0x4006a574",
+        "end": "0x4006a75a"
+      },
+      "sqlite3ExprListDup": {
+        "start": "0x4006a79c",
+        "end": "0x4006a8ee"
+      },
+      "sqlite3ExprListDeleteGeneric": {
+        "start": "0x400731e8",
+        "end": "0x400731f4"
+      },
+      "sqlite3ParserAddCleanup": {
+        "start": "0x40069620",
+        "end": "0x40069682"
+      },
+      "sqlite3SelectPrep": {
+        "start": "0x4006ee94",
+        "end": "0x4006ef68"
+      },
+      "sameSrcAlias": {
+        "start": "0x400731f4",
+        "end": "0x4007326c"
+      },
+      "sqlite3GenerateColumnNames": {
+        "start": "0x4007326c",
+        "end": "0x40073466"
+      },
+      "multiSelectByMerge": {
+        "start": "0x4007912e",
+        "end": "0x40079928"
+      },
+      "sqlite3ExprImpliesNonNullRow": {
+        "start": "0x40069146",
+        "end": "0x400691fc"
+      },
+      "unsetJoinExpr": {
+        "start": "0x40073466",
+        "end": "0x40073530"
+      },
+      "compoundHasDifferentAffinities": {
+        "start": "0x400788e0",
+        "end": "0x40078958"
+      },
+      "renumberCursors": {
+        "start": "0x40078958",
+        "end": "0x400789ac"
+      },
+      "sqlite3SrcItemAttachSubquery": {
+        "start": "0x40070782",
+        "end": "0x40070836"
+      },
+      "sqlite3DeleteTableGeneric": {
+        "start": "0x400789ac",
+        "end": "0x400789b4"
+      },
+      "sqlite3SrcListEnlarge": {
+        "start": "0x400789b4",
+        "end": "0x40078af8"
+      },
+      "sqlite3SetJoinExpr": {
+        "start": "0x40071618",
+        "end": "0x4007169a"
+      },
+      "substSelect": {
+        "start": "0x40078af8",
+        "end": "0x40078c74"
+      },
+      "recomputeColumnsUsed": {
+        "start": "0x40078c74",
+        "end": "0x40078cc6"
+      },
+      "agginfoPersistExprCb": {
+        "start": "0x40078620",
+        "end": "0x400786ec"
+      },
+      "sqlite3SelectWalkNoop": {
+        "start": "0x4007169a",
+        "end": "0x4007169e"
+      },
+      "unionWithLimitOne": {
+        "start": "0x40079928",
+        "end": "0x4007997c"
+      },
+      "sqlite3VdbeExplain": {
+        "start": "0x400695a0",
+        "end": "0x40069620"
+      },
+      "existsToJoin": {
+        "start": "0x40073530",
+        "end": "0x400736ca"
+      },
+      "propagateConstants": {
+        "start": "0x400736ca",
+        "end": "0x4007378a"
+      },
+      "heightOfSelect": {
+        "start": "0x4007a392",
+        "end": "0x4007a3fc"
+      },
+      "pushDownWhereTerms": {
+        "start": "0x400739ae",
+        "end": "0x40073bd4"
+      },
+      "disableUnusedSubqueryResultColumns": {
+        "start": "0x40073bd4",
+        "end": "0x40073d06"
+      },
+      "fromClauseTermCanBeCoroutine": {
+        "start": "0x40073d06",
+        "end": "0x40073dd0"
+      },
+      "isSelfJoinView": {
+        "start": "0x40073dd0",
+        "end": "0x40073e74"
+      },
+      "sqlite3ExprListCompare": {
+        "start": "0x4006828c",
+        "end": "0x40068310"
+      },
+      "sqlite3KeyInfoFromExprList": {
+        "start": "0x40073e74",
+        "end": "0x40073efe"
+      },
+      "computeLimitRegisters": {
+        "start": "0x40073efe",
+        "end": "0x4007407e"
+      },
+      "disallowAggregatesInOrderByCb": {
+        "start": "0x40078404",
+        "end": "0x40078434"
+      },
+      "sqlite3WalkExprList": {
+        "start": "0x40068652",
+        "end": "0x400686a0"
+      },
+      "exprListAppendList": {
+        "start": "0x40078434",
+        "end": "0x4007856c"
+      },
+      "selectWindowRewriteEList": {
+        "start": "0x4007856c",
+        "end": "0x400785ee"
+      },
+      "countOfViewOptimization": {
+        "start": "0x4007378a",
+        "end": "0x400739ae"
+      },
+      "selectInnerLoop": {
+        "start": "0x40075fda",
+        "end": "0x40076738"
+      },
+      "sqlite3LogEstAdd": {
+        "start": "0x4007997c",
+        "end": "0x400799de"
+      },
+      "sqlite3ExprIsInteger": {
+        "start": "0x40069362",
+        "end": "0x4006945a"
+      },
+      "multiSelectByMergeKeyInfo": {
+        "start": "0x400799ec",
+        "end": "0x40079aba"
+      },
+      "sqlite3KeyInfoAlloc": {
+        "start": "0x400648f8",
+        "end": "0x40064984"
+      },
+      "multiSelectCollSeq": {
+        "start": "0x40079aba",
+        "end": "0x40079b0c"
+      },
+      "sqlite3SrcListAssignCursors": {
+        "start": "0x400706d4",
+        "end": "0x4007073e"
+      },
+      "sqlite3WindowExtraAggFuncDepth": {
+        "start": "0x400785ee",
+        "end": "0x4007860e"
+      },
+      "sqlite3WalkerDepthIncrease": {
+        "start": "0x4007860e",
+        "end": "0x40078618"
+      },
+      "sqlite3WalkerDepthDecrease": {
+        "start": "0x40078618",
+        "end": "0x40078620"
+      },
+      "sqlite3WindowCodeInit": {
+        "start": "0x4007407e",
+        "end": "0x40074346"
+      },
+      "sqlite3WhereBegin": {
+        "start": "0x40074346",
+        "end": "0x4007547a"
+      },
+      "agginfoFree": {
+        "start": "0x40076fb2",
+        "end": "0x40076fee"
+      },
+      "sqlite3ExprAnalyzeAggList": {
+        "start": "0x40076fee",
+        "end": "0x40077064"
+      },
+      "havingToWhere": {
+        "start": "0x40077064",
+        "end": "0x400770a4"
+      },
+      "analyzeAggregate": {
+        "start": "0x40087af2",
+        "end": "0x40087dac"
+      },
+      "minMaxQuery": {
+        "start": "0x400770a4",
+        "end": "0x4007717e"
+      },
+      "analyzeAggFuncArgs": {
+        "start": "0x4007717e",
+        "end": "0x4007723e"
+      },
+      "sqlite3VdbeChangeToNoop": {
+        "start": "0x4006a75a",
+        "end": "0x4006a79c"
+      },
+      "sqlite3WindowCodeStep": {
+        "start": "0x4007547a",
+        "end": "0x40075fda"
+      },
+      "sqlite3VdbeResolveLabel": {
+        "start": "0x400676ec",
+        "end": "0x40067714"
+      },
+      "sqlite3WhereEnd": {
+        "start": "0x40076738",
+        "end": "0x40076fb2"
+      },
+      "sqlite3ExprNullRegisterRange": {
+        "start": "0x4007723e",
+        "end": "0x400772aa"
+      },
+      "sqlite3SelectDeleteGeneric": {
+        "start": "0x400799de",
+        "end": "0x400799ec"
+      },
+      "isSimpleCount": {
+        "start": "0x40077d34",
+        "end": "0x40077d9e"
+      },
+      "optimizeAggregateUseOfIndexedExpr": {
+        "start": "0x400772aa",
+        "end": "0x400772ec"
+      },
+      "sqlite3TableLock": {
+        "start": "0x40064676",
+        "end": "0x4006469a"
+      },
+      "sqlite3KeyInfoOfIndex": {
+        "start": "0x400647c6",
+        "end": "0x400648c8"
+      },
+      "explainSimpleCount": {
+        "start": "0x40077d9e",
+        "end": "0x40077df4"
+      },
+      "sqlite3GetTempRange": {
+        "start": "0x400669ac",
+        "end": "0x400669f4"
+      },
+      "sqlite3ExprCodeExprList": {
+        "start": "0x400669f4",
+        "end": "0x40066b60"
+      },
+      "aggregateConvertIndexedExprRefToColumn": {
+        "start": "0x400772ec",
+        "end": "0x40077348"
+      },
+      "sqlite3ExprSkipCollateAndLikely": {
+        "start": "0x40065b1c",
+        "end": "0x40065b4a"
+      },
+      "sqlite3ExprToRegister": {
+        "start": "0x40067834",
+        "end": "0x40067884"
+      },
+      "updateAccumulator": {
+        "start": "0x40077348",
+        "end": "0x400777d4"
+      },
+      "finalizeAggFunctions": {
+        "start": "0x400777d4",
+        "end": "0x40077ace"
+      },
+      "sqlite3ExprIfFalse": {
+        "start": "0x40067956",
+        "end": "0x40067cf8"
+      },
+      "resetAccumulator": {
+        "start": "0x40077ace",
+        "end": "0x40077c7e"
+      },
+      "fixDistinctOpenEph": {
+        "start": "0x40077c7e",
+        "end": "0x40077d34"
+      },
+      "sqlite3WhereMinMaxOptEarlyOut": {
+        "start": "0x40077df4",
+        "end": "0x40077e48"
+      },
+      "generateSortTail": {
+        "start": "0x40077e48",
+        "end": "0x4007835a"
+      },
+      "sqlite3ExprListIsConstant": {
+        "start": "0x40087fe4",
+        "end": "0x40088062"
+      },
+      "sqlite3ExprAffinity": {
+        "start": "0x40067fd0",
+        "end": "0x40068086"
+      },
+      "sqlite3SelectWrongNumTermsError": {
+        "start": "0x4006f11a",
+        "end": "0x4006f16c"
+      },
+      "sqlite3ExprListAppendGrow": {
+        "start": "0x400880b8",
+        "end": "0x40088134"
+      },
+      "sqlite3TriggersExist": {
+        "start": "0x40088134",
+        "end": "0x4008815e"
+      },
+      "sqlite3FkRequired": {
+        "start": "0x4008815e",
+        "end": "0x4008826e"
+      },
+      "sqlite3IsReadOnly": {
+        "start": "0x4008826e",
+        "end": "0x40088380"
+      },
+      "sqlite3MaterializeView": {
+        "start": "0x40088380",
+        "end": "0x4008847a"
+      },
+      "sqlite3ResolveExprNames": {
+        "start": "0x4006c818",
+        "end": "0x4006c8de"
+      },
+      "sqlite3VdbeSetP4KeyInfo": {
+        "start": "0x4006469a",
+        "end": "0x400646f4"
+      },
+      "sqlite3ExprCodeGetColumnOfTable": {
+        "start": "0x400687fa",
+        "end": "0x40068974"
+      },
+      "computeIndexAffStr": {
+        "start": "0x400841bc",
+        "end": "0x40084296"
+      },
+      "sqlite3OpenTableAndIndices": {
+        "start": "0x4008847a",
+        "end": "0x40088602"
+      },
+      "sqlite3GenerateRowDelete": {
+        "start": "0x40088674",
+        "end": "0x40088958"
+      },
+      "sqlite3VtabMakeWritable": {
+        "start": "0x40088602",
+        "end": "0x40088674"
+      },
+      "autoIncrementEnd": {
+        "start": "0x4008ae52",
+        "end": "0x4008af56"
+      },
+      "sqlite3CodeChangeCount": {
+        "start": "0x40088958",
+        "end": "0x400889ca"
+      },
+      "sqlite3DeleteReturning": {
+        "start": "0x4008af56",
+        "end": "0x4008af9a"
+      },
+      "sqlite3ExprReferencesUpdatedColumn": {
+        "start": "0x4008af9a",
+        "end": "0x4008aff8"
+      },
+      "updateVirtualTable": {
+        "start": "0x4008aff8",
+        "end": "0x4008b534"
+      },
+      "sqlite3VdbeAppendP4": {
+        "start": "0x400648c8",
+        "end": "0x400648f8"
+      },
+      "updateFromSelect": {
+        "start": "0x4008b534",
+        "end": "0x4008b772"
+      },
+      "sqlite3FkOldmask": {
+        "start": "0x40088c9c",
+        "end": "0x40088d6c"
+      },
+      "sqlite3TriggerColmask": {
+        "start": "0x40088bf6",
+        "end": "0x40088c9c"
+      },
+      "sqlite3TableColumnToStorage": {
+        "start": "0x40065ce2",
+        "end": "0x40065d3e"
+      },
+      "sqlite3ComputeGeneratedColumns": {
+        "start": "0x4008b772",
+        "end": "0x4008b960"
+      },
+      "sqlite3CodeRowTrigger": {
+        "start": "0x40088d6c",
+        "end": "0x4008914a"
+      },
+      "sqlite3GenerateConstraintChecks": {
+        "start": "0x4008b960",
+        "end": "0x4008ca42"
+      },
+      "sqlite3FkCheck": {
+        "start": "0x4008914a",
+        "end": "0x400895ac"
+      },
+      "sqlite3GenerateRowIndexDelete": {
+        "start": "0x400895ac",
+        "end": "0x400896c8"
+      },
+      "sqlite3CompleteInsertion": {
+        "start": "0x4008ca42",
+        "end": "0x4008cbe8"
+      },
+      "sqlite3FkActions": {
+        "start": "0x400896c8",
+        "end": "0x40089d26"
+      },
+      "sqlite3ExprForVectorField": {
+        "start": "0x400801d4",
+        "end": "0x40080266"
+      },
+      "xferOptimization": {
+        "start": "0x4008cf4c",
+        "end": "0x4008d97c"
+      },
+      "autoIncBegin": {
+        "start": "0x4008d97c",
+        "end": "0x4008da80"
+      },
+      "sqlite3ResolveExprListNames": {
+        "start": "0x4006c8de",
+        "end": "0x4006c9e4"
+      },
+      "readsTable": {
+        "start": "0x4008da80",
+        "end": "0x4008db56"
+      },
+      "sqlite3UpsertAnalyzeTarget": {
+        "start": "0x4008db56",
+        "end": "0x4008dd74"
+      },
+      "sqlite3ColumnExprAuth": {
+        "start": "0x40068a76",
+        "end": "0x40068abc"
+      },
+      "sqlite3ExprCodeFactorable": {
+        "start": "0x4006b13a",
+        "end": "0x4006b1ac"
+      },
+      "sqlite3ExprCodeTarget": {
+        "start": "0x400649e0",
+        "end": "0x40065b1c"
+      },
+      "sqlite3ExprDeleteGeneric": {
+        "start": "0x40069682",
+        "end": "0x4006968e"
+      },
+      "destroyRootPage": {
+        "start": "0x40073102",
+        "end": "0x400731e8"
+      },
+      "sqlite3VdbeSetNumCols": {
+        "start": "0x4007835a",
+        "end": "0x40078404"
+      },
+      "returnSingleText": {
+        "start": "0x4008dedc",
+        "end": "0x4008df2a"
+      },
+      "setPragmaResultColumnNames": {
+        "start": "0x4008df2a",
+        "end": "0x4008dfd6"
+      },
+      "sqlite3VdbeMultiLoad": {
+        "start": "0x4008e382",
+        "end": "0x4008e448"
+      },
+      "getLockingMode": {
+        "start": "0x4008e00a",
+        "end": "0x4008e07e"
+      },
+      "sqlite3VdbeLoadString": {
+        "start": "0x40064640",
+        "end": "0x40064676"
+      },
+      "sqlite3FkLocateIndex": {
+        "start": "0x4008a25c",
+        "end": "0x4008a4a4"
+      },
+      "getAutoVacuum": {
+        "start": "0x4008e07e",
+        "end": "0x4008e148"
+      },
+      "sqlite3RegisterLikeFunctions": {
+        "start": "0x4008e51a",
+        "end": "0x4008e5ba"
+      },
+      "pragmaFunclistLine": {
+        "start": "0x4008e448",
+        "end": "0x4008e51a"
+      },
+      "changeTempStorage": {
+        "start": "0x4008e19c",
+        "end": "0x4008e284"
+      },
+      "returnSingleInt": {
+        "start": "0x4008dfd6",
+        "end": "0x4008e00a"
+      },
+      "setAllPagerFlags": {
+        "start": "0x4008e148",
+        "end": "0x4008e19c"
+      },
+      "integrityCheckResultRow": {
+        "start": "0x4008e5ba",
+        "end": "0x4008e60e"
+      },
+      "sqlite3ExprCodeLoadIndexColumn": {
+        "start": "0x40072990",
+        "end": "0x400729e2"
+      },
+      "sqlite3ColumnDefault": {
+        "start": "0x40068974",
+        "end": "0x400689d6"
+      },
+      "sqlite3ExprIfTrue": {
+        "start": "0x4006b1ac",
+        "end": "0x4006b53a"
+      },
+      "sqlite3GenerateIndexKey": {
+        "start": "0x40072686",
+        "end": "0x40072814"
+      },
+      "sqlite3ReadOnlyShadowTables": {
+        "start": "0x4006b8a2",
+        "end": "0x4006b8ce"
+      },
+      "triggerStepAllocate": {
+        "start": "0x4008e7aa",
+        "end": "0x4008e880"
+      },
+      "sqlite3SrcListDup": {
+        "start": "0x4006a8ee",
+        "end": "0x4006aaa2"
+      },
+      "triggerSpanDup": {
+        "start": "0x4008e880",
+        "end": "0x4008e8c0"
+      },
+      "sqlite3DropTriggerPtr": {
+        "start": "0x40072f92",
+        "end": "0x40073102"
+      },
+      "analyzeDatabase": {
+        "start": "0x4008f654",
+        "end": "0x4008f6e0"
+      },
+      "sqlite3FindDb": {
+        "start": "0x4006b862",
+        "end": "0x4006b8a2"
+      },
+      "analyzeTable": {
+        "start": "0x4008f6e0",
+        "end": "0x4008f782"
+      },
+      "sqlite3IsShadowTableOf": {
+        "start": "0x4006b95a",
+        "end": "0x4006b9f2"
+      },
+      "isAlterableTable": {
+        "start": "0x4009041a",
+        "end": "0x400904ba"
+      },
+      "renameReloadSchema": {
+        "start": "0x400904ba",
+        "end": "0x40090530"
+      },
+      "renameTestSchema": {
+        "start": "0x40090530",
+        "end": "0x400905aa"
+      },
+      "isRowidAlias": {
+        "start": "0x400905aa",
+        "end": "0x400905f8"
+      },
+      "isRealTable": {
+        "start": "0x400905f8",
+        "end": "0x40090650"
+      },
+      "renameFixQuotes": {
+        "start": "0x40090650",
+        "end": "0x40090696"
+      },
+      "alterFindTable": {
+        "start": "0x40090696",
+        "end": "0x40090760"
+      },
+      "alterFindCol": {
+        "start": "0x40090760",
+        "end": "0x40090834"
+      },
+      "alterRtrimConstraint": {
+        "start": "0x40090834",
+        "end": "0x400908d0"
+      },
+      "sqlite3MarkAllShadowTablesOf": {
+        "start": "0x400710fe",
+        "end": "0x400711c6"
+      },
+      "sqlite3WithDeleteGeneric": {
+        "start": "0x40090918",
+        "end": "0x40090920"
+      },
+      "windowFind": {
+        "start": "0x4006ecd8",
+        "end": "0x4006ed36"
+      },
+      "sqlite3WindowOffsetExpr": {
+        "start": "0x40090920",
+        "end": "0x4009099e"
+      },
+      "lockTable": {
+        "start": "0x400646f4",
+        "end": "0x400647c6"
+      },
+      "sqlite3IndexedExprLookup": {
+        "start": "0x40065b4a",
+        "end": "0x40065ce2"
+      },
+      "sqlite3ExprCodeTemp": {
+        "start": "0x400662e8",
+        "end": "0x400663e6"
+      },
+      "exprComputeOperands": {
+        "start": "0x400661ea",
+        "end": "0x400662e8"
+      },
+      "codeCompare": {
+        "start": "0x400663e6",
+        "end": "0x4006649e"
+      },
+      "exprCodeTargetAndOr": {
+        "start": "0x4006649e",
+        "end": "0x4006660c"
+      },
+      "sqlite3ExprCodeIN": {
+        "start": "0x40066ff4",
+        "end": "0x400676ec"
+      },
+      "exprCodeBetween": {
+        "start": "0x40067714",
+        "end": "0x40067834"
+      },
+      "sqlite3ExprTruthValue": {
+        "start": "0x40066150",
+        "end": "0x4006618c"
+      },
+      "sqlite3CodeSubselect": {
+        "start": "0x40066d3e",
+        "end": "0x40066ff4"
+      },
+      "codeInteger": {
+        "start": "0x40065fe4",
+        "end": "0x40066150"
+      },
+      "codeReal": {
+        "start": "0x4006618c",
+        "end": "0x400661ea"
+      },
+      "exprVectorRegister": {
+        "start": "0x40068bc0",
+        "end": "0x40068c72"
+      },
+      "exprCodeVector": {
+        "start": "0x40067884",
+        "end": "0x40067956"
+      },
+      "setDoNotMergeFlagOnCopy": {
+        "start": "0x40067cf8",
+        "end": "0x40067d40"
+      },
+      "sqlite3ExprCodeRunJustOnce": {
+        "start": "0x4006660c",
+        "end": "0x4006676e"
+      },
+      "exprPartidxExprLookup": {
+        "start": "0x40065e70",
+        "end": "0x40065f70"
+      },
+      "sqlite3ExprCodeGetColumn": {
+        "start": "0x40065f70",
+        "end": "0x40065fe4"
+      },
+      "exprCodeInlineFunction": {
+        "start": "0x4006676e",
+        "end": "0x4006696e"
+      },
+      "sqlite3ExprCodeGeneratedColumn": {
+        "start": "0x40065d3e",
+        "end": "0x40065e70"
+      },
+      "sqlite3ExprFunctionUsable": {
+        "start": "0x4006696e",
+        "end": "0x400669ac"
+      },
+      "sqlite3VtabOverloadFunction": {
+        "start": "0x40066b60",
+        "end": "0x40066c46"
+      },
+      "sqlite3VdbeAddFunctionCall": {
+        "start": "0x40066c46",
+        "end": "0x40066d3e"
+      },
+      "exprNodeCanReturnSubtype": {
+        "start": "0x400683b4",
+        "end": "0x40068436"
+      },
+      "sqlite3ExprCompare": {
+        "start": "0x40067d40",
+        "end": "0x40067fd0"
+      },
+      "sqlite3ExprCodeCopy": {
+        "start": "0x40068794",
+        "end": "0x400687fa"
+      },
+      "sqlite3ExprCanReturnSubtype": {
+        "start": "0x40068086",
+        "end": "0x400680c8"
+      },
+      "sqlite3ExprCanBeNull": {
+        "start": "0x40068cbe",
+        "end": "0x40068d3c"
+      },
+      "sqlite3CompareAffinity": {
+        "start": "0x40068d3c",
+        "end": "0x40068d82"
+      },
+      "sqlite3ExprSimplifiedAndOr": {
+        "start": "0x40068d82",
+        "end": "0x40068e1c"
+      },
+      "sqlite3ExprImpliesExpr": {
+        "start": "0x40068fd0",
+        "end": "0x40069146"
+      },
+      "sqlite3ExprCheckIN": {
+        "start": "0x4006968e",
+        "end": "0x40069712"
+      },
+      "exprINAffinity": {
+        "start": "0x40069712",
+        "end": "0x400697e0"
+      },
+      "sqlite3FindInIndex": {
+        "start": "0x400697e0",
+        "end": "0x40069da0"
+      },
+      "sqlite3VectorFieldSubexpr": {
+        "start": "0x40068c72",
+        "end": "0x40068cbe"
+      },
+      "resizeResolveLabel": {
+        "start": "0x4006ad6e",
+        "end": "0x4006adf8"
+      },
+      "exprCompareVariable": {
+        "start": "0x400680c8",
+        "end": "0x400681ce"
+      },
+      "sqlite3WindowCompare": {
+        "start": "0x400681ce",
+        "end": "0x4006828c"
+      },
+      "sqlite3VdbeGetBoundValue": {
+        "start": "0x40068352",
+        "end": "0x400683b4"
+      },
+      "sqlite3VdbeReprepareOnBind": {
+        "start": "0x40068310",
+        "end": "0x40068352"
+      },
+      "sqlite3WalkExpr": {
+        "start": "0x40068436",
+        "end": "0x40068444"
+      },
+      "walkWindowList": {
+        "start": "0x400686a0",
+        "end": "0x40068772"
+      },
+      "sqlite3SelectPopWith": {
+        "start": "0x40068774",
+        "end": "0x40068794"
+      },
+      "columnDefaultUncommonCase": {
+        "start": "0x400689d6",
+        "end": "0x40068a76"
+      },
+      "authFunctions": {
+        "start": "0x40068afa",
+        "end": "0x40068b58"
+      },
+      "exprNodeIsConstantFunction": {
+        "start": "0x40068f5a",
+        "end": "0x40068fd0"
+      },
+      "exprImpliesNotNull": {
+        "start": "0x400691fc",
+        "end": "0x40069362"
+      },
+      "impliesNotNullRow": {
+        "start": "0x4006945a",
+        "end": "0x40069558"
+      },
+      "bothImplyNotNullRow": {
+        "start": "0x40069558",
+        "end": "0x400695a0"
+      },
+      "sqlite3VectorErrorMsg": {
+        "start": "0x40069da0",
+        "end": "0x40069dd6"
+      },
+      "sqlite3CodeRhsOfIN": {
+        "start": "0x40069ea0",
+        "end": "0x4006a574"
+      },
+      "sqlite3SetHasNullFlag": {
+        "start": "0x40069dfc",
+        "end": "0x40069ea0"
+      },
+      "gatherSelectWindowsCallback": {
+        "start": "0x4006acc8",
+        "end": "0x4006acf4"
+      },
+      "gatherSelectWindowsSelectCallback": {
+        "start": "0x4006acf4",
+        "end": "0x4006acfe"
+      },
+      "sqlite3WithDup": {
+        "start": "0x4006aaa2",
+        "end": "0x4006ab4c"
+      },
+      "sqlite3WindowDup": {
+        "start": "0x4006abca",
+        "end": "0x4006acc8"
+      },
+      "sqlite3IdListDup": {
+        "start": "0x4006ab4c",
+        "end": "0x4006abca"
+      },
+      "sqlite3WindowLink": {
+        "start": "0x4006acfe",
+        "end": "0x4006ad6e"
+      },
+      "sqlite3ProgressCheck": {
+        "start": "0x4006adf8",
+        "end": "0x4006ae4c"
+      },
+      "dupedExprSize": {
+        "start": "0x4006b0c4",
+        "end": "0x4006b13a"
+      },
+      "resizeIndexObject": {
+        "start": "0x4006c6de",
+        "end": "0x4006c796"
+      },
+      "sqlite3ColumnsFromExprList": {
+        "start": "0x400708b4",
+        "end": "0x40070bc4"
+      },
+      "sqlite3SubqueryColumnTypes": {
+        "start": "0x40070e9e",
+        "end": "0x400710fe"
+      },
+      "identPut": {
+        "start": "0x40071a4a",
+        "end": "0x40071b62"
+      },
+      "resolveSelectStep": {
+        "start": "0x4006de92",
+        "end": "0x4006e332"
+      },
+      "resolveExprStep": {
+        "start": "0x4006c9e4",
+        "end": "0x4006de92"
+      },
+      "notValidImpl": {
+        "start": "0x4006e332",
+        "end": "0x4006e3ac"
+      },
+      "exprProbability": {
+        "start": "0x4006e3ac",
+        "end": "0x4006e41c"
+      },
+      "sqlite3MatchEName": {
+        "start": "0x4006e614",
+        "end": "0x4006e778"
+      },
+      "sqlite3IdListIndex": {
+        "start": "0x4006e778",
+        "end": "0x4006e7ce"
+      },
+      "extendFJMatch": {
+        "start": "0x4006e7ce",
+        "end": "0x4006e82e"
+      },
+      "isValidSchemaTableName": {
+        "start": "0x4006e82e",
+        "end": "0x4006e974"
+      },
+      "resolveAlias": {
+        "start": "0x4006e974",
+        "end": "0x4006ea80"
+      },
+      "resolveSetExprSubtypeArg": {
+        "start": "0x4006e41c",
+        "end": "0x4006e48a"
+      },
+      "sqlite3ExprColUsed": {
+        "start": "0x4006ea80",
+        "end": "0x4006eb18"
+      },
+      "sqlite3AuthRead": {
+        "start": "0x4006eb18",
+        "end": "0x4006ebac"
+      },
+      "exprRefToSrcList": {
+        "start": "0x4006ed36",
+        "end": "0x4006edb2"
+      },
+      "selectRefEnter": {
+        "start": "0x4006edb2",
+        "end": "0x4006ee70"
+      },
+      "selectRefLeave": {
+        "start": "0x4006ee70",
+        "end": "0x4006ee94"
+      },
+      "sqlite3WindowUpdate": {
+        "start": "0x4006e48a",
+        "end": "0x4006e614"
+      },
+      "resolveOrderGroupBy": {
+        "start": "0x4006ef68",
+        "end": "0x4006f11a"
+      },
+      "selectCheckOnClausesExpr": {
+        "start": "0x40071856",
+        "end": "0x40071932"
+      },
+      "selectCheckOnClausesSelect": {
+        "start": "0x40071932",
+        "end": "0x400719a4"
+      },
+      "resolveCompoundOrderBy": {
+        "start": "0x4006f16c",
+        "end": "0x4006f3e6"
+      },
+      "incrAggDepth": {
+        "start": "0x4006ebea",
+        "end": "0x4006ec08"
+      },
+      "sqlite3ExprAddCollateString": {
+        "start": "0x4006ebac",
+        "end": "0x4006ebea"
+      },
+      "sqlite3AuthReadCol": {
+        "start": "0x4006ec08",
+        "end": "0x4006ecd8"
+      },
+      "sqlite3ExprWalkNoop": {
+        "start": "0x4006f3e6",
+        "end": "0x4006f3ea"
+      },
+      "convertCompoundSelectToSubquery": {
+        "start": "0x4006f3ea",
+        "end": "0x4006f538"
+      },
+      "selectExpander": {
+        "start": "0x4006f538",
+        "end": "0x400706d4"
+      },
+      "selectAddSubqueryTypeInfo": {
+        "start": "0x4007169e",
+        "end": "0x40071712"
+      },
+      "resolveRemoveWindowsCb": {
+        "start": "0x40071838",
+        "end": "0x40071856"
+      },
+      "resolveAsName": {
+        "start": "0x40071712",
+        "end": "0x40071778"
+      },
+      "sqlite3ResolveOrderGroupBy": {
+        "start": "0x40071778",
+        "end": "0x40071838"
+      },
+      "resolveOrderByTermToExprList": {
+        "start": "0x400719a4",
+        "end": "0x40071a4a"
+      },
+      "sqlite3IndexedByLookup": {
+        "start": "0x40070836",
+        "end": "0x400708b4"
+      },
+      "tableAndColumnIndex": {
+        "start": "0x40071460",
+        "end": "0x4007151e"
+      },
+      "sqlite3CreateColumnExpr": {
+        "start": "0x4007151e",
+        "end": "0x40071618"
+      },
+      "sqlite3ExprDataType": {
+        "start": "0x400711c6",
+        "end": "0x400712ec"
+      },
+      "columnTypeImpl": {
+        "start": "0x400712ec",
+        "end": "0x400713ba"
+      },
+      "renameUnmapExprCb": {
+        "start": "0x40071ca6",
+        "end": "0x40071ce0"
+      },
+      "renameUnmapSelectCb": {
+        "start": "0x40071ce0",
+        "end": "0x40071e02"
+      },
+      "renameWalkWith": {
+        "start": "0x40071e02",
+        "end": "0x40071ee2"
+      },
+      "sqlite3UniqueConstraint": {
+        "start": "0x40072814",
+        "end": "0x40072928"
+      },
+      "sqlite3ExprIfFalseDup": {
+        "start": "0x40072928",
+        "end": "0x40072990"
+      },
+      "sqlite3HaltConstraint": {
+        "start": "0x400729e2",
+        "end": "0x40072a86"
+      },
+      "sqlite3TriggerList": {
+        "start": "0x40072f02",
+        "end": "0x40072f92"
+      },
+      "propagateConstantExprRewrite": {
+        "start": "0x4007a13e",
+        "end": "0x4007a1be"
+      },
+      "findConstInWhere": {
+        "start": "0x4007a04c",
+        "end": "0x4007a13e"
+      },
+      "sqlite3ExprIsSingleTableConstraint": {
+        "start": "0x4007a428",
+        "end": "0x4007a4e2"
+      },
+      "exprNodeIsConstantOrGroupBy": {
+        "start": "0x4007a4f8",
+        "end": "0x4007a5be"
+      },
+      "substExpr": {
+        "start": "0x40078db4",
+        "end": "0x400790ea"
+      },
+      "sqlite3WhereSplit": {
+        "start": "0x4007a5be",
+        "end": "0x4007a64c"
+      },
+      "whereClauseInsert": {
+        "start": "0x4007e26e",
+        "end": "0x4007e3a0"
+      },
+      "exprAnalyze": {
+        "start": "0x4007e3a0",
+        "end": "0x4007fd38"
+      },
+      "sqlite3WhereAddLimit": {
+        "start": "0x4007a64c",
+        "end": "0x4007a76a"
+      },
+      "whereInfoFree": {
+        "start": "0x4007e206",
+        "end": "0x4007e26e"
+      },
+      "exprNodeIsDeterministic": {
+        "start": "0x400806aa",
+        "end": "0x400806ca"
+      },
+      "isDistinctRedundant": {
+        "start": "0x4007a76a",
+        "end": "0x4007a97a"
+      },
+      "whereLoopAddVirtual": {
+        "start": "0x40080bbc",
+        "end": "0x40081334"
+      },
+      "whereLoopAddBtree": {
+        "start": "0x40081334",
+        "end": "0x400819f8"
+      },
+      "whereLoopAddOr": {
+        "start": "0x400819f8",
+        "end": "0x40081d2a"
+      },
+      "whereLoopClear": {
+        "start": "0x40081d2a",
+        "end": "0x40081d76"
+      },
+      "wherePathSolver": {
+        "start": "0x4007a97a",
+        "end": "0x4007b24c"
+      },
+      "whereInterstageHeuristic": {
+        "start": "0x4007b24c",
+        "end": "0x4007b2aa"
+      },
+      "whereReverseScanOrder": {
+        "start": "0x4007b2aa",
+        "end": "0x4007b314"
+      },
+      "whereOmitNoopJoin": {
+        "start": "0x4007b314",
+        "end": "0x4007b54e"
+      },
+      "whereScanNext": {
+        "start": "0x400807e6",
+        "end": "0x40080a86"
+      },
+      "whereScanInit": {
+        "start": "0x4008073c",
+        "end": "0x400807e6"
+      },
+      "whereCheckIfBloomFilterIsUseful": {
+        "start": "0x4007b54e",
+        "end": "0x4007b618"
+      },
+      "sqlite3WhereMalloc": {
+        "start": "0x4007b96e",
+        "end": "0x4007b9b8"
+      },
+      "sqlite3IndexBloomable": {
+        "start": "0x4007b9b8",
+        "end": "0x4007ba10"
+      },
+      "whereAddIndexedExpr": {
+        "start": "0x4007b618",
+        "end": "0x4007b7a2"
+      },
+      "wherePartIdxExpr": {
+        "start": "0x4007b7a2",
+        "end": "0x4007b96e"
+      },
+      "sqlite3ConstructBloomFilter": {
+        "start": "0x4007c1ee",
+        "end": "0x4007c598"
+      },
+      "constructAutomaticIndex": {
+        "start": "0x4007ba10",
+        "end": "0x4007c1ee"
+      },
+      "sqlite3WhereExplainOneScan": {
+        "start": "0x4007c598",
+        "end": "0x4007c61c"
+      },
+      "sqlite3WhereCodeOneLoopStart": {
+        "start": "0x4007c61c",
+        "end": "0x4007e206"
+      },
+      "windowExprGtZero": {
+        "start": "0x40085980",
+        "end": "0x400859ce"
+      },
+      "windowCheckValue": {
+        "start": "0x400859ce",
+        "end": "0x40085b96"
+      },
+      "windowAggFinal": {
+        "start": "0x40085b96",
+        "end": "0x40085d3a"
+      },
+      "windowReturnOneRow": {
+        "start": "0x40085d3a",
+        "end": "0x400863c6"
+      },
+      "windowIfNewPeer": {
+        "start": "0x400863c6",
+        "end": "0x400864aa"
+      },
+      "windowCodeOp": {
+        "start": "0x400864aa",
+        "end": "0x4008687e"
+      },
+      "windowCodeRangeTest": {
+        "start": "0x4008687e",
+        "end": "0x40086b8e"
+      },
+      "codeDistinct": {
+        "start": "0x40087096",
+        "end": "0x40087242"
+      },
+      "pushOntoSorter": {
+        "start": "0x40087242",
+        "end": "0x400875ce"
+      },
+      "sqlite3WhereRightJoinLoop": {
+        "start": "0x4008762c",
+        "end": "0x40087a14"
+      },
+      "translateColumnToCopy": {
+        "start": "0x40084450",
+        "end": "0x400844f6"
+      },
+      "sqlite3WhereAddExplainText": {
+        "start": "0x400844f6",
+        "end": "0x400848fc"
+      },
+      "havingToWhereExprCb": {
+        "start": "0x40087a14",
+        "end": "0x40087af2"
+      },
+      "aggregateIdxEprRefToColCallback": {
+        "start": "0x40087f88",
+        "end": "0x40087fe4"
+      },
+      "selectWindowRewriteExprCb": {
+        "start": "0x400786ec",
+        "end": "0x400788b4"
+      },
+      "selectWindowRewriteSelectCb": {
+        "start": "0x400788b4",
+        "end": "0x400788e0"
+      },
+      "srclistRenumberCursors": {
+        "start": "0x40078cc6",
+        "end": "0x40078d68"
+      },
+      "renumberCursorsCb": {
+        "start": "0x40078d68",
+        "end": "0x40078db4"
+      },
+      "recomputeColumnsUsedExpr": {
+        "start": "0x400790ea",
+        "end": "0x4007912e"
+      },
+      "generateOutputSubroutine": {
+        "start": "0x40079b0c",
+        "end": "0x4007a04c"
+      },
+      "constInsert": {
+        "start": "0x4007a1be",
+        "end": "0x4007a2be"
+      },
+      "propagateConstantExprRewriteOne": {
+        "start": "0x4007a2be",
+        "end": "0x4007a392"
+      },
+      "heightOfExprList": {
+        "start": "0x4007a3fc",
+        "end": "0x4007a428"
+      },
+      "exprSelectWalkTableConstant": {
+        "start": "0x4007a4e2",
+        "end": "0x4007a4f8"
+      },
+      "whereAddLimitExpr": {
+        "start": "0x400805f8",
+        "end": "0x400806aa"
+      },
+      "sqlite3WhereFindTerm": {
+        "start": "0x400806ca",
+        "end": "0x4008073c"
+      },
+      "whereLoopIsNoBetter": {
+        "start": "0x40084004",
+        "end": "0x40084030"
+      },
+      "wherePathSatisfiesOrderBy": {
+        "start": "0x400837de",
+        "end": "0x40084004"
+      },
+      "sqlite3WhereExprListUsage": {
+        "start": "0x4007ff60",
+        "end": "0x4007ffc4"
+      },
+      "whereIndexedExprCleanup": {
+        "start": "0x4008417c",
+        "end": "0x400841bc"
+      },
+      "termCanDriveIndex": {
+        "start": "0x4008287c",
+        "end": "0x40082910"
+      },
+      "whereLoopResize": {
+        "start": "0x40081d76",
+        "end": "0x40081df6"
+      },
+      "sqlite3WhereExplainBloomFilter": {
+        "start": "0x40084296",
+        "end": "0x40084450"
+      },
+      "codeEqualityTerm": {
+        "start": "0x40084a92",
+        "end": "0x40084b26"
+      },
+      "filterPullDown": {
+        "start": "0x40084c78",
+        "end": "0x40084dd0"
+      },
+      "codeExprOrVector": {
+        "start": "0x40084b26",
+        "end": "0x40084bee"
+      },
+      "disableTerm": {
+        "start": "0x40084bee",
+        "end": "0x40084c78"
+      },
+      "whereExprIsReady": {
+        "start": "0x400852b6",
+        "end": "0x4008532e"
+      },
+      "sqlite3ExprCoveredByIndex": {
+        "start": "0x40082c9e",
+        "end": "0x40082cf0"
+      },
+      "codeAllEqualityTerms": {
+        "start": "0x40084dd0",
+        "end": "0x40084ff8"
+      },
+      "updateRangeAffinityStr": {
+        "start": "0x40084ff8",
+        "end": "0x40085062"
+      },
+      "codeApplyAffinity": {
+        "start": "0x40085062",
+        "end": "0x40085100"
+      },
+      "codeDeferredSeek": {
+        "start": "0x40085100",
+        "end": "0x400851ec"
+      },
+      "whereLoopIsOneRow": {
+        "start": "0x4008527c",
+        "end": "0x400852b6"
+      },
+      "whereApplyPartialIndexConstraints": {
+        "start": "0x400851ec",
+        "end": "0x4008527c"
+      },
+      "sqlite3WhereClauseClear": {
+        "start": "0x40085904",
+        "end": "0x40085980"
+      },
+      "sqlite3WhereExprUsageNN": {
+        "start": "0x4007ffc4",
+        "end": "0x40080030"
+      },
+      "exprSelectUsage": {
+        "start": "0x4007fd38",
+        "end": "0x4007ff60"
+      },
+      "exprMightBeIndexed": {
+        "start": "0x40080030",
+        "end": "0x4008009a"
+      },
+      "termIsEquivalence": {
+        "start": "0x4008009a",
+        "end": "0x40080158"
+      },
+      "exprCommute": {
+        "start": "0x40080158",
+        "end": "0x400801d4"
+      },
+      "sqlite3ExprIsLikeOperator": {
+        "start": "0x4008059e",
+        "end": "0x400805f8"
+      },
+      "sqlite3WhereExprUsageFull": {
+        "start": "0x40080266",
+        "end": "0x40080474"
+      },
+      "exprMightBeIndexed2": {
+        "start": "0x40080474",
+        "end": "0x40080568"
+      },
+      "sqlite3ExprCompareSkip": {
+        "start": "0x40080568",
+        "end": "0x4008059e"
+      },
+      "whereScanInitIndexExpr": {
+        "start": "0x40080a86",
+        "end": "0x40080aac"
+      },
+      "sqlite3IndexAffinityOk": {
+        "start": "0x40080b56",
+        "end": "0x40080bbc"
+      },
+      "indexInAffinityOk": {
+        "start": "0x40080aac",
+        "end": "0x40080b56"
+      },
+      "freeIndexInfo": {
+        "start": "0x40081df6",
+        "end": "0x40081e5e"
+      },
+      "whereLoopAddVirtualOne": {
+        "start": "0x40081e5e",
+        "end": "0x40082386"
+      },
+      "whereUsablePartialIndex": {
+        "start": "0x40082910",
+        "end": "0x400829e8"
+      },
+      "whereLoopOutputAdjust": {
+        "start": "0x400829e8",
+        "end": "0x40082c10"
+      },
+      "whereIsCoveringIndex": {
+        "start": "0x40082c10",
+        "end": "0x40082c9e"
+      },
+      "whereLoopInsert": {
+        "start": "0x40082386",
+        "end": "0x400825cc"
+      },
+      "whereLoopAddBtreeIndex": {
+        "start": "0x40082cf0",
+        "end": "0x400835ee"
+      },
+      "whereOrInsert": {
+        "start": "0x400825cc",
+        "end": "0x4008268e"
+      },
+      "whereLoopClearUnion": {
+        "start": "0x4008280c",
+        "end": "0x4008287c"
+      },
+      "whereLoopCheaperProperSubset": {
+        "start": "0x4008275a",
+        "end": "0x4008280c"
+      },
+      "whereLoopFindLesser": {
+        "start": "0x4008268e",
+        "end": "0x4008275a"
+      },
+      "columnIsGoodIndexCandidate": {
+        "start": "0x400835ee",
+        "end": "0x40083642"
+      },
+      "exprNodePatternLengthEst": {
+        "start": "0x40083642",
+        "end": "0x400836ce"
+      },
+      "whereIsCoveringIndexWalkCallback": {
+        "start": "0x400836ce",
+        "end": "0x4008379e"
+      },
+      "exprIdxCover": {
+        "start": "0x4008379e",
+        "end": "0x400837de"
+      },
+      "wherePathMatchSubqueryOB": {
+        "start": "0x40084030",
+        "end": "0x4008417c"
+      },
+      "explainAppendTerm": {
+        "start": "0x400848fc",
+        "end": "0x40084a92"
+      },
+      "codeINTerm": {
+        "start": "0x4008532e",
+        "end": "0x40085812"
+      },
+      "sqlite3ExprNeedsNoAffinityChange": {
+        "start": "0x40085866",
+        "end": "0x40085904"
+      },
+      "adjustOrderByCol": {
+        "start": "0x40085812",
+        "end": "0x40085866"
+      },
+      "windowReadPeerValues": {
+        "start": "0x40086b8e",
+        "end": "0x40086c26"
+      },
+      "windowAggStep": {
+        "start": "0x40086c26",
+        "end": "0x40087094"
+      },
+      "noopStepFunc": {
+        "start": "0x40087094",
+        "end": "0x40087096"
+      },
+      "makeSorterRecord": {
+        "start": "0x400875ce",
+        "end": "0x4008762c"
+      },
+      "findOrCreateAggInfoColumn": {
+        "start": "0x40087dac",
+        "end": "0x40087ee2"
+      },
+      "sqlite3ArrayAllocate": {
+        "start": "0x40087ee2",
+        "end": "0x40087f88"
+      },
+      "triggersReallyExist": {
+        "start": "0x400889ca",
+        "end": "0x40088b1a"
+      },
+      "fkParentIsModified": {
+        "start": "0x40088b60",
+        "end": "0x40088bf6"
+      },
+      "checkColumnOverlap": {
+        "start": "0x40088b1a",
+        "end": "0x40088b60"
+      },
+      "getRowTrigger": {
+        "start": "0x40089d26",
+        "end": "0x4008a1c4"
+      },
+      "sqlite3CodeRowTriggerDirect": {
+        "start": "0x4008a4a4",
+        "end": "0x4008a562"
+      },
+      "sqlite3ProcessReturningSubqueries": {
+        "start": "0x4008a562",
+        "end": "0x4008a5ce"
+      },
+      "fkLookupParent": {
+        "start": "0x4008a61e",
+        "end": "0x4008aa5c"
+      },
+      "fkScanChildren": {
+        "start": "0x4008aa5c",
+        "end": "0x4008ad7a"
+      },
+      "sqlite3UpsertDup": {
+        "start": "0x4008a1c4",
+        "end": "0x4008a25c"
+      },
+      "sqlite3ReturningSubqueryCorrelated": {
+        "start": "0x4008a5ce",
+        "end": "0x4008a5fe"
+      },
+      "sqlite3ReturningSubqueryVarSelect": {
+        "start": "0x4008a5fe",
+        "end": "0x4008a61e"
+      },
+      "exprTableRegister": {
+        "start": "0x4008ad7a",
+        "end": "0x4008ae52"
+      },
+      "checkConstraintExprNode": {
+        "start": "0x4008cbe8",
+        "end": "0x4008cc1c"
+      },
+      "exprColumnFlagUnion": {
+        "start": "0x4008cc1c",
+        "end": "0x4008cc50"
+      },
+      "sqlite3UpsertDoUpdate": {
+        "start": "0x4008ccc4",
+        "end": "0x4008cf4c"
+      },
+      "sqlite3RowidConstraint": {
+        "start": "0x4008cc50",
+        "end": "0x4008ccc4"
+      },
+      "xferCompatibleIndex": {
+        "start": "0x4008dd74",
+        "end": "0x4008de60"
+      },
+      "xferCompatibleCheck": {
+        "start": "0x4008de60",
+        "end": "0x4008deba"
+      },
+      "xferCheckRowid": {
+        "start": "0x4008deba",
+        "end": "0x4008dedc"
+      },
+      "likeFunc": {
+        "start": "0x4008e60e",
+        "end": "0x4008e7aa"
+      },
+      "attachFunc": {
+        "start": "0x4008e8c0",
+        "end": "0x4008edca"
+      },
+      "detachFunc": {
+        "start": "0x4008f516",
+        "end": "0x4008f654"
+      },
+      "openStatTable": {
+        "start": "0x4008f782",
+        "end": "0x4008f902"
+      },
+      "analyzeOneTable": {
+        "start": "0x4008f902",
+        "end": "0x400900fc"
+      },
+      "loadAnalysis": {
+        "start": "0x400900fc",
+        "end": "0x40090146"
+      },
+      "statInit": {
+        "start": "0x40090146",
+        "end": "0x40090216"
+      },
+      "statAccumDestructor": {
+        "start": "0x40090216",
+        "end": "0x40090222"
+      },
+      "statPush": {
+        "start": "0x40090222",
+        "end": "0x400902dc"
+      },
+      "statGet": {
+        "start": "0x400902dc",
+        "end": "0x4009041a"
+      },
+      "versionFunc": {
+        "start": "0x4009099e",
+        "end": "0x400909b8"
+      },
+      "compileoptionusedFunc": {
+        "start": "0x400909b8",
+        "end": "0x400909f2"
+      },
+      "compileoptiongetFunc": {
+        "start": "0x400909f2",
+        "end": "0x40090a40"
+      },
+      "trimFunc": {
+        "start": "0x40090a40",
+        "end": "0x40090c40"
+      },
+      "contextMalloc": {
+        "start": "0x4009338e",
+        "end": "0x4009340e"
+      },
+      "minmaxFunc": {
+        "start": "0x40090c40",
+        "end": "0x40090d34"
+      },
+      "minmaxStep": {
+        "start": "0x40090d34",
+        "end": "0x40090dfe"
+      },
+      "minMaxFinalize": {
+        "start": "0x40090dfe",
+        "end": "0x40090e08"
+      },
+      "minMaxValueFinalize": {
+        "start": "0x4009340e",
+        "end": "0x40093480"
+      },
+      "minMaxValue": {
+        "start": "0x40090e08",
+        "end": "0x40090e12"
+      },
+      "typeofFunc": {
+        "start": "0x40090e12",
+        "end": "0x40090e4c"
+      },
+      "subtypeFunc": {
+        "start": "0x40090e4c",
+        "end": "0x40090e6e"
+      },
+      "lengthFunc": {
+        "start": "0x40090e6e",
+        "end": "0x40090f24"
+      },
+      "bytelengthFunc": {
+        "start": "0x40090f24",
+        "end": "0x40091020"
+      },
+      "instrFunc": {
+        "start": "0x40091020",
+        "end": "0x4009120a"
+      },
+      "printfFunc": {
+        "start": "0x4009120a",
+        "end": "0x4009128a"
+      },
+      "unicodeFunc": {
+        "start": "0x4009128a",
+        "end": "0x400912ce"
+      },
+      "charFunc": {
+        "start": "0x400912ce",
+        "end": "0x4009142e"
+      },
+      "absFunc": {
+        "start": "0x4009142e",
+        "end": "0x40091550"
+      },
+      "roundFunc": {
+        "start": "0x40091550",
+        "end": "0x400916e6"
+      },
+      "upperFunc": {
+        "start": "0x400916e6",
+        "end": "0x400917ec"
+      },
+      "lowerFunc": {
+        "start": "0x400917ec",
+        "end": "0x400918e6"
+      },
+      "hexFunc": {
+        "start": "0x400918e6",
+        "end": "0x4009199e"
+      },
+      "unhexFunc": {
+        "start": "0x4009199e",
+        "end": "0x40091b78"
+      },
+      "concatFunc": {
+        "start": "0x40091b78",
+        "end": "0x40091b8a"
+      },
+      "concatFuncCore": {
+        "start": "0x40093480",
+        "end": "0x40093616"
+      },
+      "concatwsFunc": {
+        "start": "0x40091b8a",
+        "end": "0x40091bec"
+      },
+      "randomFunc": {
+        "start": "0x40091bec",
+        "end": "0x40091c4a"
+      },
+      "randomBlob": {
+        "start": "0x40091c4a",
+        "end": "0x40091cc8"
+      },
+      "nullifFunc": {
+        "start": "0x40091cc8",
+        "end": "0x40091d14"
+      },
+      "sourceidFunc": {
+        "start": "0x40091d14",
+        "end": "0x40091d2e"
+      },
+      "errlogFunc": {
+        "start": "0x40091d2e",
+        "end": "0x40091d6a"
+      },
+      "unistrFunc": {
+        "start": "0x40091d6a",
+        "end": "0x4009202a"
+      },
+      "quoteFunc": {
+        "start": "0x4009202a",
+        "end": "0x400921d0"
+      },
+      "last_insert_rowid": {
+        "start": "0x400921d0",
+        "end": "0x40092228"
+      },
+      "changes": {
+        "start": "0x40092228",
+        "end": "0x40092280"
+      },
+      "total_changes": {
+        "start": "0x40092280",
+        "end": "0x400922d8"
+      },
+      "replaceFunc": {
+        "start": "0x400922d8",
+        "end": "0x400925c4"
+      },
+      "zeroblobFunc": {
+        "start": "0x400925c4",
+        "end": "0x40092614"
+      },
+      "substrFunc": {
+        "start": "0x40092614",
+        "end": "0x40092912"
+      },
+      "sumStep": {
+        "start": "0x40092912",
+        "end": "0x40092a9e"
+      },
+      "kahanBabuskaNeumaierStepInt64": {
+        "start": "0x40093754",
+        "end": "0x400937e2"
+      },
+      "kahanBabuskaNeumaierInit": {
+        "start": "0x40093616",
+        "end": "0x400936a4"
+      },
+      "kahanBabuskaNeumaierStep": {
+        "start": "0x400936a4",
+        "end": "0x40093754"
+      },
+      "sumFinalize": {
+        "start": "0x40092a9e",
+        "end": "0x40092b92"
+      },
+      "sumInverse": {
+        "start": "0x40092b92",
+        "end": "0x40092ccc"
+      },
+      "totalFinalize": {
+        "start": "0x40092ccc",
+        "end": "0x40092d6e"
+      },
+      "avgFinalize": {
+        "start": "0x40092d6e",
+        "end": "0x40092e3e"
+      },
+      "countStep": {
+        "start": "0x40092e3e",
+        "end": "0x40092ea0"
+      },
+      "countFinalize": {
+        "start": "0x40092ea0",
+        "end": "0x40092efa"
+      },
+      "countInverse": {
+        "start": "0x40092efa",
+        "end": "0x40092f5c"
+      },
+      "groupConcatStep": {
+        "start": "0x40092f5c",
+        "end": "0x4009310a"
+      },
+      "groupConcatFinalize": {
+        "start": "0x4009310a",
+        "end": "0x4009315c"
+      },
+      "groupConcatValue": {
+        "start": "0x4009315c",
+        "end": "0x400931a4"
+      },
+      "groupConcatInverse": {
+        "start": "0x400931a4",
+        "end": "0x40093270"
+      },
+      "signFunc": {
+        "start": "0x40093270",
+        "end": "0x400932ee"
+      },
+      "renameColumnFunc": {
+        "start": "0x400937e2",
+        "end": "0x40093daa"
+      },
+      "renameParseSql": {
+        "start": "0x40094f92",
+        "end": "0x400950e0"
+      },
+      "renameColumnExprCb": {
+        "start": "0x400950e0",
+        "end": "0x4009513e"
+      },
+      "renameColumnSelectCb": {
+        "start": "0x4009513e",
+        "end": "0x40095160"
+      },
+      "renameResolveTrigger": {
+        "start": "0x40095198",
+        "end": "0x40095446"
+      },
+      "renameColumnElistNames": {
+        "start": "0x40095446",
+        "end": "0x400954e0"
+      },
+      "renameColumnIdlistNames": {
+        "start": "0x400954e0",
+        "end": "0x4009554e"
+      },
+      "renameWalkTrigger": {
+        "start": "0x4009554e",
+        "end": "0x4009562e"
+      },
+      "renameEditSql": {
+        "start": "0x4009562e",
+        "end": "0x40095904"
+      },
+      "renameColumnParseError": {
+        "start": "0x40095904",
+        "end": "0x400959bc"
+      },
+      "renameParseCleanup": {
+        "start": "0x400959bc",
+        "end": "0x40095a44"
+      },
+      "renameTableFunc": {
+        "start": "0x40093daa",
+        "end": "0x40094292"
+      },
+      "renameTableExprCb": {
+        "start": "0x40095a44",
+        "end": "0x40095a7e"
+      },
+      "renameTableSelectCb": {
+        "start": "0x40095a7e",
+        "end": "0x40095b08"
+      },
+      "renameTableTest": {
+        "start": "0x40094292",
+        "end": "0x40094498"
+      },
+      "dropColumnFunc": {
+        "start": "0x40094498",
+        "end": "0x40094680"
+      },
+      "getConstraintToken": {
+        "start": "0x40095b08",
+        "end": "0x40095ba0"
+      },
+      "renameQuotefixFunc": {
+        "start": "0x40094680",
+        "end": "0x400948de"
+      },
+      "renameQuotefixExprCb": {
+        "start": "0x40095ba0",
+        "end": "0x40095bd2"
+      },
+      "dropConstraintFunc": {
+        "start": "0x400948de",
+        "end": "0x40094c2c"
+      },
+      "skipCreateTable": {
+        "start": "0x40095bd2",
+        "end": "0x40095c64"
+      },
+      "quotedCompare": {
+        "start": "0x40095c9e",
+        "end": "0x40095d82"
+      },
+      "getConstraint": {
+        "start": "0x40095d82",
+        "end": "0x40095e52"
+      },
+      "errorMPrintf": {
+        "start": "0x40095e52",
+        "end": "0x40095ec8"
+      },
+      "failConstraintFunc": {
+        "start": "0x40094c2c",
+        "end": "0x40094c8e"
+      },
+      "addConstraintFunc": {
+        "start": "0x40094c8e",
+        "end": "0x40094e36"
+      },
+      "getWhitespace": {
+        "start": "0x40095c64",
+        "end": "0x40095c9e"
+      },
+      "findConstraintFunc": {
+        "start": "0x40094e36",
+        "end": "0x40094f92"
+      },
+      "renameTokenFind": {
+        "start": "0x40095160",
+        "end": "0x40095198"
+      },
+      "row_numberStepFunc": {
+        "start": "0x40095ec8",
+        "end": "0x40095efe"
+      },
+      "row_numberValueFunc": {
+        "start": "0x40095efe",
+        "end": "0x40095f58"
+      },
+      "dense_rankStepFunc": {
+        "start": "0x40095f58",
+        "end": "0x40095f86"
+      },
+      "dense_rankValueFunc": {
+        "start": "0x40095f86",
+        "end": "0x40095ff8"
+      },
+      "rankStepFunc": {
+        "start": "0x40095ff8",
+        "end": "0x4009603a"
+      },
+      "rankValueFunc": {
+        "start": "0x4009603a",
+        "end": "0x4009609a"
+      },
+      "percent_rankStepFunc": {
+        "start": "0x4009609a",
+        "end": "0x400960d0"
+      },
+      "percent_rankValueFunc": {
+        "start": "0x400960d0",
+        "end": "0x4009617e"
+      },
+      "percent_rankInvFunc": {
+        "start": "0x4009617e",
+        "end": "0x400961b0"
+      },
+      "cume_distStepFunc": {
+        "start": "0x400961b0",
+        "end": "0x400961e6"
+      },
+      "cume_distValueFunc": {
+        "start": "0x400961e6",
+        "end": "0x40096266"
+      },
+      "cume_distInvFunc": {
+        "start": "0x40096266",
+        "end": "0x40096298"
+      },
+      "ntileStepFunc": {
+        "start": "0x40096298",
+        "end": "0x40096328"
+      },
+      "ntileValueFunc": {
+        "start": "0x40096328",
+        "end": "0x4009648c"
+      },
+      "ntileInvFunc": {
+        "start": "0x4009648c",
+        "end": "0x400964be"
+      },
+      "last_valueStepFunc": {
+        "start": "0x400964be",
+        "end": "0x4009652c"
+      },
+      "last_valueFinalizeFunc": {
+        "start": "0x4009652c",
+        "end": "0x4009657c"
+      },
+      "last_valueValueFunc": {
+        "start": "0x4009657c",
+        "end": "0x400965be"
+      },
+      "last_valueInvFunc": {
+        "start": "0x400965be",
+        "end": "0x40096600"
+      },
+      "nth_valueStepFunc": {
+        "start": "0x40096600",
+        "end": "0x40096766"
+      },
+      "nth_valueFinalizeFunc": {
+        "start": "0x40096766",
+        "end": "0x400967b6"
+      },
+      "noopValueFunc": {
+        "start": "0x400967b6",
+        "end": "0x400967b8"
+      },
+      "first_valueStepFunc": {
+        "start": "0x400967b8",
+        "end": "0x4009681a"
+      },
+      "first_valueFinalizeFunc": {
+        "start": "0x4009681a",
+        "end": "0x4009686a"
+      },
+      "juliandayFunc": {
+        "start": "0x4009686a",
+        "end": "0x400968c2"
+      },
+      "isDate": {
+        "start": "0x40097a74",
+        "end": "0x40098c96"
+      },
+      "computeJD": {
+        "start": "0x40098c96",
+        "end": "0x40098e90"
+      },
+      "unixepochFunc": {
+        "start": "0x400968c2",
+        "end": "0x40096986"
+      },
+      "dateFunc": {
+        "start": "0x40096986",
+        "end": "0x40096b36"
+      },
+      "computeYMD": {
+        "start": "0x40099358",
+        "end": "0x40099526"
+      },
+      "timeFunc": {
+        "start": "0x40096b36",
+        "end": "0x40096d54"
+      },
+      "computeHMS": {
+        "start": "0x40099526",
+        "end": "0x40099604"
+      },
+      "datetimeFunc": {
+        "start": "0x40096d54",
+        "end": "0x4009710e"
+      },
+      "strftimeFunc": {
+        "start": "0x4009710e",
+        "end": "0x400977c2"
+      },
+      "timediffFunc": {
+        "start": "0x400977c2",
+        "end": "0x40097a50"
+      },
+      "ctimeFunc": {
+        "start": "0x40097a50",
+        "end": "0x40097a5c"
+      },
+      "ctimestampFunc": {
+        "start": "0x40097a5c",
+        "end": "0x40097a68"
+      },
+      "cdateFunc": {
+        "start": "0x40097a68",
+        "end": "0x40097a74"
+      },
+      "sqlite3NotPureFunc": {
+        "start": "0x40098e90",
+        "end": "0x40098f28"
+      },
+      "setDateTimeToCurrent": {
+        "start": "0x40098f28",
+        "end": "0x40098fa8"
+      },
+      "getDigits": {
+        "start": "0x40099218",
+        "end": "0x400992d0"
+      },
+      "parseHhMmSs": {
+        "start": "0x40098fa8",
+        "end": "0x40099218"
+      },
+      "computeFloor": {
+        "start": "0x400992d0",
+        "end": "0x40099358"
+      },
+      "jsonRemoveFunc": {
+        "start": "0x40099604",
+        "end": "0x400996f0"
+      },
+      "jsonParseFuncArg": {
+        "start": "0x4009a7a0",
+        "end": "0x4009ab04"
+      },
+      "jsonReturnParse": {
+        "start": "0x4009ab04",
+        "end": "0x4009abd8"
+      },
+      "jsonArrayFunc": {
+        "start": "0x400996f0",
+        "end": "0x400997c2"
+      },
+      "jsonAppendSeparator": {
+        "start": "0x4009abd8",
+        "end": "0x4009ac2c"
+      },
+      "jsonAppendSqlValue": {
+        "start": "0x4009ac2c",
+        "end": "0x4009adca"
+      },
+      "jsonSetFunc": {
+        "start": "0x400997c2",
+        "end": "0x4009980a"
+      },
+      "jsonWrongNumArgs": {
+        "start": "0x4009adca",
+        "end": "0x4009ae12"
+      },
+      "jsonInsertIntoBlob": {
+        "start": "0x4009ae12",
+        "end": "0x4009b1ae"
+      },
+      "jsonArrayLengthFunc": {
+        "start": "0x4009980a",
+        "end": "0x4009990c"
+      },
+      "jsonErrorFunc": {
+        "start": "0x4009990c",
+        "end": "0x40099a1e"
+      },
+      "jsonExtractFunc": {
+        "start": "0x40099a1e",
+        "end": "0x40099e38"
+      },
+      "jsonObjectFunc": {
+        "start": "0x40099e38",
+        "end": "0x4009a020"
+      },
+      "jsonPatchFunc": {
+        "start": "0x4009a020",
+        "end": "0x4009a0ec"
+      },
+      "jsonMergePatch": {
+        "start": "0x4009b1ae",
+        "end": "0x4009b5b2"
+      },
+      "jsonPrettyFunc": {
+        "start": "0x4009a0ec",
+        "end": "0x4009a196"
+      },
+      "jsonTranslateBlobToPrettyText": {
+        "start": "0x4009b5b2",
+        "end": "0x4009b980"
+      },
+      "jsonQuoteFunc": {
+        "start": "0x4009a196",
+        "end": "0x4009a1f6"
+      },
+      "jsonReplaceFunc": {
+        "start": "0x4009a1f6",
+        "end": "0x4009a21c"
+      },
+      "jsonTypeFunc": {
+        "start": "0x4009a21c",
+        "end": "0x4009a2f0"
+      },
+      "jsonValidFunc": {
+        "start": "0x4009a2f0",
+        "end": "0x4009a43e"
+      },
+      "jsonArrayStep": {
+        "start": "0x4009a43e",
+        "end": "0x4009a508"
+      },
+      "jsonArrayFinal": {
+        "start": "0x4009a508",
+        "end": "0x4009a512"
+      },
+      "jsonArrayCompute": {
+        "start": "0x4009b9b0",
+        "end": "0x4009bb2c"
+      },
+      "jsonArrayValue": {
+        "start": "0x4009a512",
+        "end": "0x4009a51c"
+      },
+      "jsonGroupInverse": {
+        "start": "0x4009a51c",
+        "end": "0x4009a610"
+      },
+      "jsonObjectStep": {
+        "start": "0x4009a610",
+        "end": "0x4009a78c"
+      },
+      "jsonObjectFinal": {
+        "start": "0x4009a78c",
+        "end": "0x4009a796"
+      },
+      "jsonObjectCompute": {
+        "start": "0x4009bb2c",
+        "end": "0x4009be5c"
+      },
+      "jsonObjectValue": {
+        "start": "0x4009a796",
+        "end": "0x4009a7a0"
+      },
+      "jsonPrettyIndent": {
+        "start": "0x4009b980",
+        "end": "0x4009b9b0"
+      },
+      "sqlite3MemMalloc": {
+        "start": "0x4009bea6",
+        "end": "0x4009beaa"
+      },
+      "sqlite3MemFree": {
+        "start": "0x4009beaa",
+        "end": "0x4009beac"
+      },
+      "sqlite3MemRealloc": {
+        "start": "0x4009beac",
+        "end": "0x4009beb0"
+      },
+      "sqlite3MemSize": {
+        "start": "0x4009beb0",
+        "end": "0x4009beb4"
+      },
+      "sqlite3MemRoundup": {
+        "start": "0x4009beb4",
+        "end": "0x4009beb6"
+      },
+      "sqlite3MemInit": {
+        "start": "0x4009beb6",
+        "end": "0x4009beba"
+      },
+      "sqlite3MemShutdown": {
+        "start": "0x4009beba",
+        "end": "0x4009bebc"
+      },
+      "pcache1Init": {
+        "start": "0x4009bebc",
+        "end": "0x4009bf14"
+      },
+      "pcache1Shutdown": {
+        "start": "0x4009bf14",
+        "end": "0x4009bf2a"
+      },
+      "pcache1Create": {
+        "start": "0x4009bf2a",
+        "end": "0x4009bff0"
+      },
+      "pcache1ResizeHash": {
+        "start": "0x4009c1d2",
+        "end": "0x4009c29c"
+      },
+      "pcache1Destroy": {
+        "start": "0x4009c11c",
+        "end": "0x4009c1aa"
+      },
+      "pcache1Cachesize": {
+        "start": "0x4009bff0",
+        "end": "0x4009c03e"
+      },
+      "pcache1EnforceMaxPage": {
+        "start": "0x4009c29c",
+        "end": "0x4009c32c"
+      },
+      "pcache1Pagecount": {
+        "start": "0x4009c03e",
+        "end": "0x4009c042"
+      },
+      "pcache1Fetch": {
+        "start": "0x4009c042",
+        "end": "0x4009c086"
+      },
+      "pcache1FetchStage2": {
+        "start": "0x4009c390",
+        "end": "0x4009c634"
+      },
+      "pcache1Unpin": {
+        "start": "0x4009c086",
+        "end": "0x4009c0b6"
+      },
+      "pcache1RemoveFromHash": {
+        "start": "0x4009c32c",
+        "end": "0x4009c360"
+      },
+      "pcache1Rekey": {
+        "start": "0x4009c0b6",
+        "end": "0x4009c0f2"
+      },
+      "pcache1Truncate": {
+        "start": "0x4009c0f2",
+        "end": "0x4009c11c"
+      },
+      "pcache1TruncateUnsafe": {
+        "start": "0x4009c634",
+        "end": "0x4009c6c8"
+      },
+      "pcache1Shrink": {
+        "start": "0x4009c1aa",
+        "end": "0x4009c1d2"
+      },
+      "pcache1FreePage": {
+        "start": "0x4009c360",
+        "end": "0x4009c390"
+      },
+      "authorize": {
+        "start": "0x4009cb02",
+        "end": "0x4009cb18"
+      },
+      "lock_owner": {
+        "start": "0x4009cd24",
+        "end": "0x4009cdac"
+      },
+      "progress": {
+        "start": "0x4009cdac",
+        "end": "0x4009cdd8"
+      },
+      "allocate": {
+        "start": "0x4009ce3e",
+        "end": "0x4009ceb0"
+      },
+      "native_add": {
+        "start": "0x4009d124",
+        "end": "0x4009d160"
+      },
+      "release": {
+        "start": "0x4009ceb0",
+        "end": "0x4009cf3a"
+      },
+      "resize": {
+        "start": "0x4009cf3a",
+        "end": "0x4009d016"
+      },
+      "size_of": {
+        "start": "0x4009d016",
+        "end": "0x4009d052"
+      },
+      "round_up": {
+        "start": "0x4009d052",
+        "end": "0x4009d092"
+      },
+      "initialize_allocator": {
+        "start": "0x4009d092",
+        "end": "0x4009d0da"
+      },
+      "shutdown_allocator": {
+        "start": "0x4009d0da",
+        "end": "0x4009d124"
+      },
+      "deny_open": {
+        "start": "0x4009d176",
+        "end": "0x4009d17a"
+      },
+      "deny_path": {
+        "start": "0x4009d17a",
+        "end": "0x4009d17e"
+      },
+      "no_random": {
+        "start": "0x4009d17e",
+        "end": "0x4009d1a0"
+      },
+      "no_sleep": {
+        "start": "0x4009d1a0",
+        "end": "0x4009d1a4"
+      },
+      "fixed_time": {
+        "start": "0x4009d1a4",
+        "end": "0x4009d1b8"
+      },
+      "get_ldnumber": {
+        "start": "0x400a4904",
+        "end": "0x400a494e"
+      },
+      "mount_volume": {
+        "start": "0x400a494e",
+        "end": "0x400a4dc6"
+      },
+      "find_volume": {
+        "start": "0x400a6596",
+        "end": "0x400a66ea"
+      },
+      "ld_16": {
+        "start": "0x400a66ea",
+        "end": "0x400a66fc"
+      },
+      "ld_64": {
+        "start": "0x400a66fc",
+        "end": "0x400a6738"
+      },
+      "ld_32": {
+        "start": "0x400a5052",
+        "end": "0x400a5070"
+      },
+      "clst2sect": {
+        "start": "0x400a549a",
+        "end": "0x400a54c8"
+      },
+      "move_window": {
+        "start": "0x400a6738",
+        "end": "0x400a6788"
+      },
+      "follow_path": {
+        "start": "0x400a4ec4",
+        "end": "0x400a4fb8"
+      },
+      "init_alloc_info": {
+        "start": "0x400a4fb8",
+        "end": "0x400a5012"
+      },
+      "ld_clust": {
+        "start": "0x400a5012",
+        "end": "0x400a5052"
+      },
+      "dir_sdi": {
+        "start": "0x400a57da",
+        "end": "0x400a5886"
+      },
+      "create_name": {
+        "start": "0x400a69a8",
+        "end": "0x400a6cfa"
+      },
+      "dir_find": {
+        "start": "0x400a6cfa",
+        "end": "0x400a6eea"
+      },
+      "validate": {
+        "start": "0x400a5240",
+        "end": "0x400a5292"
+      },
+      "get_fat": {
+        "start": "0x400a5292",
+        "end": "0x400a549a"
+      },
+      "dir_read": {
+        "start": "0x400a5942",
+        "end": "0x400a5a84"
+      },
+      "get_fileinfo": {
+        "start": "0x400a5a84",
+        "end": "0x400a5d4e"
+      },
+      "dir_next": {
+        "start": "0x400a5d4e",
+        "end": "0x400a5e1a"
+      },
+      "pick_lfn": {
+        "start": "0x400a7268",
+        "end": "0x400a731e"
+      },
+      "load_xdir": {
+        "start": "0x400a7108",
+        "end": "0x400a7268"
+      },
+      "sum_sfn": {
+        "start": "0x400a70e0",
+        "end": "0x400a7108"
+      },
+      "put_utf": {
+        "start": "0x400a735c",
+        "end": "0x400a7458"
+      },
+      "relative_name": {
+        "start": "0x400a5efa",
+        "end": "0x400a5f9c"
+      },
+      "parents": {
+        "start": "0x400a5fba",
+        "end": "0x400a61a8"
+      },
+      "tick": {
+        "start": "0x400a61a8",
+        "end": "0x400a61da"
+      },
+      "identity_of": {
+        "start": "0x400a61da",
+        "end": "0x400a6290"
+      },
+      "lookup_result": {
+        "start": "0x400a5f9c",
+        "end": "0x400a5fba"
+      },
+      "chain": {
+        "start": "0x400a6290",
+        "end": "0x400a64e8"
+      },
+      "is_end": {
+        "start": "0x400a7458",
+        "end": "0x400a74a4"
+      },
+      "check_fs": {
+        "start": "0x400a6788",
+        "end": "0x400a68b8"
+      },
+      "test_gpt_header": {
+        "start": "0x400a68b8",
+        "end": "0x400a697e"
+      },
+      "crc32": {
+        "start": "0x400a697e",
+        "end": "0x400a69a8"
+      },
+      "tchar2uni": {
+        "start": "0x400a6eea",
+        "end": "0x400a6fb4"
+      },
+      "xname_sum": {
+        "start": "0x400a6fb4",
+        "end": "0x400a7012"
+      },
+      "cmp_lfn": {
+        "start": "0x400a7012",
+        "end": "0x400a70e0"
+      },
+      "xdir_sum": {
+        "start": "0x400a731e",
+        "end": "0x400a735c"
+      },
+      "match": {
+        "start": "0x400a7798",
+        "end": "0x400a77c2"
+      },
+      "health": {
+        "start": "0x400a77c2",
+        "end": "0x400a77ee"
+      },
+      "volume": {
+        "start": "0x400a77ee",
+        "end": "0x400a78f2"
+      },
+      "result": {
+        "start": "0x400a78f2",
+        "end": "0x400a7946"
+      },
+      "le32": {
+        "start": "0x400a8bba",
+        "end": "0x400a8be8"
+      },
+      "begin": {
+        "start": "0x400a7acc",
+        "end": "0x400a7b42"
+      },
+      "drop": {
+        "start": "0x400a7b42",
+        "end": "0x400a7b70"
+      },
+      "nih_ro_identity_key": {
+        "start": "0x400a7b70",
+        "end": "0x400a7b78"
+      },
+      "matches": {
+        "start": "0x400a8ca6",
+        "end": "0x400a8cca"
+      },
+      "discover": {
+        "start": "0x400a8434",
+        "end": "0x400a86e6"
+      },
+      "boot": {
+        "start": "0x400a86e6",
+        "end": "0x400a8b9c"
+      },
+      "signature": {
+        "start": "0x400a8b9c",
+        "end": "0x400a8bba"
+      },
+      "supported": {
+        "start": "0x400a8be8",
+        "end": "0x400a8c0c"
+      },
+      "le16": {
+        "start": "0x400a8c0c",
+        "end": "0x400a8c1a"
+      },
+      "le64": {
+        "start": "0x400a8c1a",
+        "end": "0x400a8c48"
+      },
+      "power2": {
+        "start": "0x400a8c48",
+        "end": "0x400a8c56"
+      },
+      "overlaps": {
+        "start": "0x400a9016",
+        "end": "0x400a902a"
+      },
+      "crc": {
+        "start": "0x400a902a",
+        "end": "0x400a9064"
+      },
+      "high_sram.init": {
+        "start": "0x400ad57e",
+        "end": "0x400ad912"
+      },
+      "high_sram.ownerExchange": {
+        "start": "0x400ad2ac",
+        "end": "0x400ad57e"
+      },
+      "main.runIoLifetimes": {
+        "start": "0x400a9332",
+        "end": "0x400a9398"
+      },
+      "main.runFatFsTasks": {
+        "start": "0x400a920c",
+        "end": "0x400a9332"
+      },
+      "sdmmc_probe.qualifyLifetimes": {
+        "start": "0x400a9398",
+        "end": "0x400a9ca4"
+      },
+      "sdmmc_probe.ownedRead": {
+        "start": "0x400aa0f6",
+        "end": "0x400aa6f6"
+      },
+      "sdmmc.Controller(sdmmc_probe.Bus).prepare": {
+        "start": "0x400a9f94",
+        "end": "0x400aa0f6"
+      },
+      "sdmmc.Controller(sdmmc_probe.Bus).identify": {
+        "start": "0x400a9ca4",
+        "end": "0x400a9f94"
+      },
+      "sdmmc.Controller(sdmmc_probe.Bus).stopDma": {
+        "start": "0x400aa79a",
+        "end": "0x400aa862"
+      },
+      "sdmmc.Controller(sdmmc_probe.Bus).releaseDma": {
+        "start": "0x400aa6f6",
+        "end": "0x400aa79a"
+      },
+      "heap.lifecycleProbe": {
+        "start": "0x400ab350",
+        "end": "0x400ab598"
+      },
+      "heap.poolProbe": {
+        "start": "0x400aba12",
+        "end": "0x400abb7a"
+      },
+      "heap.slabProbe": {
+        "start": "0x400ab598",
+        "end": "0x400aba12"
+      },
+      "heap.objectsProbe": {
+        "start": "0x400abb7a",
+        "end": "0x400ac3a6"
+      },
+      "heap.growProbe": {
+        "start": "0x400ac3a6",
+        "end": "0x400ac4c2"
+      },
+      "heap.finish": {
+        "start": "0x400ac718",
+        "end": "0x400ac9e2"
+      },
+      "high_sram.finish": {
+        "start": "0x400ac4c2",
+        "end": "0x400ac718"
+      },
+      "sqlite_probe.run": {
+        "start": "0x400ac9e2",
+        "end": "0x400ad2ac"
+      },
+      "sdmmc.Controller(sdmmc_probe.Bus).readSector": {
+        "start": "0x400aa862",
+        "end": "0x400aadfa"
+      },
+      "high_sram.vmProbe": {
+        "start": "0x400ad912",
+        "end": "0x400adbce"
+      },
+      "sdmmc_probe.beginFatFsSession": {
+        "start": "0x400aadfa",
+        "end": "0x400ab26c"
+      },
+      "sdmmc_probe.endFatFsSession": {
+        "start": "0x400ab26c",
+        "end": "0x400ab350"
+      },
+      "nih_storage_fatfs_session_begin": {
+        "start": "0x400aadfa",
+        "end": "0x400ab26c"
+      },
+      "nih_fatfs_card_bytes": {
+        "start": "0x400a8c7e",
+        "end": "0x400a8c86"
+      },
+      "nih_fatfs_card_read": {
+        "start": "0x400a9064",
+        "end": "0x400a920c"
+      },
+      "nih_storage_fatfs_session_end": {
+        "start": "0x400ab26c",
+        "end": "0x400ab350"
+      },
+      "nih_fatfs_fixture_read": {
+        "start": "0x400a827e",
+        "end": "0x400a8372"
+      },
+      "nih_fatfs_card_mount": {
+        "start": "0x400a8d74",
+        "end": "0x400a9016"
+      },
+      "nih_fatfs_card_path": {
+        "start": "0x400a8cca",
+        "end": "0x400a8cf2"
+      },
+      "nih_fatfs_card_backend": {
+        "start": "0x400a8c86",
+        "end": "0x400a8ca6"
+      },
+      "nih_fatfs_card_reads": {
+        "start": "0x400a8cf2",
+        "end": "0x400a8d0e"
+      },
+      "nih_fatfs_card_destroy": {
+        "start": "0x400a8d0e",
+        "end": "0x400a8d74"
+      },
+      "nih_fatfs_backend_close": {
+        "start": "0x400a7de0",
+        "end": "0x400a7e50"
+      },
+      "nih_fatfs_backend_read": {
+        "start": "0x400a7c3c",
+        "end": "0x400a7de0"
+      },
+      "nih_fatfs_backend_lookup": {
+        "start": "0x400a7946",
+        "end": "0x400a7acc"
+      },
+      "nih_fatfs_backend_open": {
+        "start": "0x400a7b78",
+        "end": "0x400a7c3c"
+      },
+      "nih_fatfs_card_rpc_report": {
+        "start": "0x4009d1b8",
+        "end": "0x4009d1f0"
+      },
+      "nih_storage_runtime_finish": {
+        "start": "0x4009f000",
+        "end": "0x4009f174"
+      },
+      "nih_storage_task_entry": {
+        "start": "0x4009f2a6",
+        "end": "0x4009f2d2"
+      },
+      "nih_fatfs_fixture_after_read": {
+        "start": "0x400a2976",
+        "end": "0x400a2a2a"
+      },
+      "nih_storage_runtime_poll": {
+        "start": "0x400a2a2a",
+        "end": "0x400a2a3a"
+      },
+      "nih_storage_runtime_finished": {
+        "start": "0x400a2a3a",
+        "end": "0x400a2a5e"
+      },
+      "nih_storage_runtime_init": {
+        "start": "0x400a2a5e",
+        "end": "0x400a2ad8"
+      },
+      "nih_broker_runtime_finish": {
+        "start": "0x400a2ad8",
+        "end": "0x400a2e1a"
+      },
+      "nih_broker_runtime_done": {
+        "start": "0x400a30a0",
+        "end": "0x400a30c4"
+      },
+      "nih_broker_task_entry": {
+        "start": "0x400a30c4",
+        "end": "0x400a333a"
+      },
+      "nih_broker_runtime_poll": {
+        "start": "0x400a34f4",
+        "end": "0x400a41d0"
+      },
+      "nih_broker_runtime_init": {
+        "start": "0x400a41d0",
+        "end": "0x400a4780"
+      },
+      "nih_broker_io_issued": {
+        "start": "0x400a4780",
+        "end": "0x400a47f0"
+      },
+      "nih_broker_task_failed": {
+        "start": "0x400a47f0",
+        "end": "0x400a480a"
+      },
+      "nih_fatfs_card_attempt": {
+        "start": "0x4009d40e",
+        "end": "0x4009d6c8"
+      },
+      "sqlite3_log": {
+        "start": "0x4002312a",
+        "end": "0x400231c4"
+      },
+      "sqlite3_vfs_find": {
+        "start": "0x400201b6",
+        "end": "0x400201ea"
+      },
+      "sqlite3_vfs_register": {
+        "start": "0x400201ea",
+        "end": "0x4002026c"
+      },
+      "sqlite3_soft_heap_limit64": {
+        "start": "0x4002026c",
+        "end": "0x400202d6"
+      },
+      "sqlite3_free": {
+        "start": "0x400203e8",
+        "end": "0x40020432"
+      },
+      "sqlite3_str_vappendf": {
+        "start": "0x4002059c",
+        "end": "0x400229d6"
+      },
+      "sqlite3_str_append": {
+        "start": "0x40022a10",
+        "end": "0x40022a38"
+      },
+      "sqlite3_str_appendchar": {
+        "start": "0x40022d4c",
+        "end": "0x40022db4"
+      },
+      "sqlite3_str_appendf": {
+        "start": "0x40022e12",
+        "end": "0x40022e34"
+      },
+      "sqlite3_str_reset": {
+        "start": "0x40022eaa",
+        "end": "0x40022ef8"
+      },
+      "sqlite3_str_appendall": {
+        "start": "0x40022db4",
+        "end": "0x40022dea"
+      },
+      "sqlite3_str_free": {
+        "start": "0x40022ef8",
+        "end": "0x40022f60"
+      },
+      "sqlite3_str_new": {
+        "start": "0x40022f60",
+        "end": "0x40022fac"
+      },
+      "sqlite3_vmprintf": {
+        "start": "0x40022fac",
+        "end": "0x4002301a"
+      },
+      "sqlite3_mprintf": {
+        "start": "0x4002301a",
+        "end": "0x4002303e"
+      },
+      "sqlite3_vsnprintf": {
+        "start": "0x4002303e",
+        "end": "0x400230ac"
+      },
+      "sqlite3_snprintf": {
+        "start": "0x400230ac",
+        "end": "0x4002312a"
+      },
+      "sqlite3_randomness": {
+        "start": "0x400231c4",
+        "end": "0x4002355a"
+      },
+      "sqlite3_stricmp": {
+        "start": "0x4002355a",
+        "end": "0x4002359a"
+      },
+      "sqlite3_strnicmp": {
+        "start": "0x4002359a",
+        "end": "0x400235f4"
+      },
+      "sqlite3_step": {
+        "start": "0x400236a6",
+        "end": "0x40024026"
+      },
+      "sqlite3_column_int64": {
+        "start": "0x40024026",
+        "end": "0x40024060"
+      },
+      "sqlite3_reset": {
+        "start": "0x40024060",
+        "end": "0x400240ec"
+      },
+      "sqlite3_exec": {
+        "start": "0x400240ec",
+        "end": "0x400243b8"
+      },
+      "sqlite3_finalize": {
+        "start": "0x400243b8",
+        "end": "0x40024478"
+      },
+      "sqlite3_file_control": {
+        "start": "0x4002adec",
+        "end": "0x4002af2e"
+      },
+      "sqlite3_prepare_v2": {
+        "start": "0x40023694",
+        "end": "0x400236a6"
+      },
+      "sqlite3_column_text": {
+        "start": "0x4002696a",
+        "end": "0x4002699e"
+      },
+      "sqlite3_errmsg": {
+        "start": "0x40027e88",
+        "end": "0x40027f6a"
+      },
+      "sqlite3_backup_step": {
+        "start": "0x4002464c",
+        "end": "0x40024baa"
+      },
+      "sqlite3_backup_finish": {
+        "start": "0x400253b4",
+        "end": "0x40025496"
+      },
+      "sqlite3_value_blob": {
+        "start": "0x4002582c",
+        "end": "0x40025880"
+      },
+      "sqlite3_value_dup": {
+        "start": "0x40025a36",
+        "end": "0x40025acc"
+      },
+      "sqlite3_result_blob": {
+        "start": "0x40025b5a",
+        "end": "0x40025b7e"
+      },
+      "sqlite3_result_error_nomem": {
+        "start": "0x4002647a",
+        "end": "0x400264b8"
+      },
+      "sqlite3_result_blob64": {
+        "start": "0x40025ca6",
+        "end": "0x40025d18"
+      },
+      "sqlite3_result_int": {
+        "start": "0x40026092",
+        "end": "0x400260bc"
+      },
+      "sqlite3_result_int64": {
+        "start": "0x400260bc",
+        "end": "0x400260de"
+      },
+      "sqlite3_result_text64": {
+        "start": "0x400260de",
+        "end": "0x40026170"
+      },
+      "sqlite3_result_value": {
+        "start": "0x400261fe",
+        "end": "0x400262ae"
+      },
+      "sqlite3_result_zeroblob64": {
+        "start": "0x4002631e",
+        "end": "0x400263a0"
+      },
+      "sqlite3_result_error_code": {
+        "start": "0x400263f0",
+        "end": "0x4002647a"
+      },
+      "sqlite3_result_str": {
+        "start": "0x40026528",
+        "end": "0x400265fc"
+      },
+      "sqlite3_set_auxdata": {
+        "start": "0x4002681c",
+        "end": "0x400268c2"
+      },
+      "sqlite3_column_count": {
+        "start": "0x400268f2",
+        "end": "0x400268fa"
+      },
+      "sqlite3_column_value": {
+        "start": "0x4002699e",
+        "end": "0x400269e2"
+      },
+      "sqlite3_column_type": {
+        "start": "0x400269e2",
+        "end": "0x40026a20"
+      },
+      "sqlite3_stmt_readonly": {
+        "start": "0x40026b6e",
+        "end": "0x40026b7e"
+      },
+      "sqlite3_value_numeric_type": {
+        "start": "0x40026eb2",
+        "end": "0x40026efc"
+      },
+      "sqlite3_set_authorizer": {
+        "start": "0x40027ad2",
+        "end": "0x40027b44"
+      },
+      "sqlite3_declare_vtab": {
+        "start": "0x400280b4",
+        "end": "0x40028336"
+      },
+      "sqlite3_vtab_config": {
+        "start": "0x40028f06",
+        "end": "0x40029016"
+      },
+      "sqlite3_threadsafe": {
+        "start": "0x40029090",
+        "end": "0x40029094"
+      },
+      "sqlite3_initialize": {
+        "start": "0x40029094",
+        "end": "0x400290aa"
+      },
+      "sqlite3_os_init": {
+        "start": "0x4009d160",
+        "end": "0x4009d172"
+      },
+      "sqlite3_config": {
+        "start": "0x400293d8",
+        "end": "0x4002961c"
+      },
+      "sqlite3_shutdown": {
+        "start": "0x40029340",
+        "end": "0x400293d8"
+      },
+      "sqlite3_os_end": {
+        "start": "0x4009d172",
+        "end": "0x4009d176"
+      },
+      "sqlite3_db_release_memory": {
+        "start": "0x4002961c",
+        "end": "0x400296c6"
+      },
+      "sqlite3_db_config": {
+        "start": "0x400296c6",
+        "end": "0x40029814"
+      },
+      "sqlite3_last_insert_rowid": {
+        "start": "0x40029814",
+        "end": "0x40029862"
+      },
+      "sqlite3_changes64": {
+        "start": "0x40029862",
+        "end": "0x400298b0"
+      },
+      "sqlite3_total_changes64": {
+        "start": "0x400298b0",
+        "end": "0x400298fe"
+      },
+      "sqlite3_close": {
+        "start": "0x400298fe",
+        "end": "0x40029908"
+      },
+      "sqlite3_busy_handler": {
+        "start": "0x40029aac",
+        "end": "0x40029b18"
+      },
+      "sqlite3_progress_handler": {
+        "start": "0x40029b18",
+        "end": "0x40029b98"
+      },
+      "sqlite3_busy_timeout": {
+        "start": "0x40029b98",
+        "end": "0x40029c1c"
+      },
+      "sqlite3_overload_function": {
+        "start": "0x40029fee",
+        "end": "0x4002a0b4"
+      },
+      "sqlite3_errcode": {
+        "start": "0x4002a306",
+        "end": "0x4002a364"
+      },
+      "sqlite3_limit": {
+        "start": "0x4002a364",
+        "end": "0x4002a3f0"
+      },
+      "sqlite3_open": {
+        "start": "0x4002a3f0",
+        "end": "0x4002a3fc"
+      },
+      "sqlite3_free_filename": {
+        "start": "0x4002b4c8",
+        "end": "0x4002b530"
+      },
+      "sqlite3_uri_parameter": {
+        "start": "0x4002b530",
+        "end": "0x4002b5d2"
+      },
+      "sqlite3_uri_boolean": {
+        "start": "0x4002b5d2",
+        "end": "0x4002b604"
+      },
+      "sqlite3_uri_int64": {
+        "start": "0x4002b604",
+        "end": "0x4002b638"
+      },
+      "sqlite3_compileoption_used": {
+        "start": "0x4002b750",
+        "end": "0x4002b84c"
+      },
+      "nih_sqlite_session_open": {
+        "start": "0x4009c90c",
+        "end": "0x4009cb02"
+      },
+      "nih_sqlite_session_eval": {
+        "start": "0x4009cb18",
+        "end": "0x4009cd24"
+      },
+      "nih_sqlite_session_close": {
+        "start": "0x4009cdd8",
+        "end": "0x4009ce3e"
+      },
+      "f_mount": {
+        "start": "0x400a48aa",
+        "end": "0x400a4904"
+      },
+      "disk_status": {
+        "start": "0x400a8164",
+        "end": "0x400a8182"
+      },
+      "disk_initialize": {
+        "start": "0x400a8182",
+        "end": "0x400a818a"
+      },
+      "f_open": {
+        "start": "0x400a4dc6",
+        "end": "0x400a4ec4"
+      },
+      "f_read": {
+        "start": "0x400a5070",
+        "end": "0x400a5240"
+      },
+      "disk_read": {
+        "start": "0x400a818a",
+        "end": "0x400a827e"
+      },
+      "f_close": {
+        "start": "0x400a54c8",
+        "end": "0x400a54e8"
+      },
+      "f_lseek": {
+        "start": "0x400a54e8",
+        "end": "0x400a5722"
+      },
+      "f_opendir": {
+        "start": "0x400a5722",
+        "end": "0x400a57da"
+      },
+      "f_closedir": {
+        "start": "0x400a5886",
+        "end": "0x400a58a6"
+      },
+      "f_readdir": {
+        "start": "0x400a58a6",
+        "end": "0x400a5942"
+      },
+      "ff_oem2uni": {
+        "start": "0x400a74f2",
+        "end": "0x400a7524"
+      },
+      "nih_fatfs_guard_open": {
+        "start": "0x400a5e1a",
+        "end": "0x400a5efa"
+      },
+      "nih_fatfs_guard_directory": {
+        "start": "0x400a64e8",
+        "end": "0x400a6596"
+      },
+      "ff_uni2oem": {
+        "start": "0x400a74a4",
+        "end": "0x400a74f2"
+      },
+      "ff_wtoupper": {
+        "start": "0x400a7524",
+        "end": "0x400a75ce"
+      },
+      "nih_fatfs_backend_bytes": {
+        "start": "0x400a75ce",
+        "end": "0x400a75d6"
+      },
+      "nih_fatfs_backend_init": {
+        "start": "0x400a75d6",
+        "end": "0x400a76ba"
+      },
+      "nih_fatfs_disk_arm": {
+        "start": "0x400a8048",
+        "end": "0x400a8088"
+      },
+      "nih_fatfs_disk_retain": {
+        "start": "0x400a80fa",
+        "end": "0x400a8130"
+      },
+      "nih_fatfs_backend_mount": {
+        "start": "0x400a76ba",
+        "end": "0x400a7798"
+      },
+      "nih_fatfs_backend_destroy": {
+        "start": "0x400a7e50",
+        "end": "0x400a7f20"
+      },
+      "nih_fatfs_disk_release": {
+        "start": "0x400a8130",
+        "end": "0x400a8164"
+      },
+      "nih_fatfs_disk_detach": {
+        "start": "0x400a80aa",
+        "end": "0x400a80fa"
+      },
+      "nih_fatfs_disk_bind": {
+        "start": "0x400a7f3e",
+        "end": "0x400a8048"
+      },
+      "nih_fatfs_volume_probe": {
+        "start": "0x400a8372",
+        "end": "0x400a8434"
+      },
+      "nih_fatfs_native_read": {
+        "start": "0x400a8c56",
+        "end": "0x400a8c7e"
+      }
+    },
+    "object_manifest_sha256": "0c7a85f3b9114a41359c82cd60a968fe10d7f676685b94903b1da6e428144a37",
+    "text_sha256": "95ca32cf97559eec8c143d321c2fe2223aab350378a6bc7f7fdb5276aeec188a",
+    "rodata_sha256": "fc79cdc774a9f87dad87afde9fe42c6e17b506af22490bcce38725d00afebba7",
+    "static_c_stack": {
+      "records": 1606,
+      "maximum_reported_frame_bytes": 1248,
+      "largest_frames": [
+        {
+          "address": "0x400a4dc6",
+          "functions": [
+            "f_open"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x400a61da",
+          "functions": [
+            "identity_of"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x400a5722",
+          "functions": [
+            "f_opendir"
+          ],
+          "bytes": 1152
+        },
+        {
+          "address": "0x400a58a6",
+          "functions": [
+            "f_readdir"
+          ],
+          "bytes": 1152
+        },
+        {
+          "address": "0x400a5fba",
+          "functions": [
+            "parents"
+          ],
+          "bytes": 784
+        },
+        {
+          "address": "0x4002312a",
+          "functions": [
+            "sqlite3_log"
+          ],
+          "bytes": 768
+        },
+        {
+          "address": "0x400819f8",
+          "functions": [
+            "whereLoopAddOr"
+          ],
+          "bytes": 736
+        },
+        {
+          "address": "0x400289c0",
+          "functions": [
+            "sqlite3RunParser"
+          ],
+          "bytes": 704
+        },
+        {
+          "address": "0x40041ab4",
+          "functions": [
+            "sqlite3SchemaClear"
+          ],
+          "bytes": 592
+        },
+        {
+          "address": "0x400a34f4",
+          "functions": [
+            "broker_runtime.nih_broker_runtime_poll",
+            "nih_broker_runtime_poll"
+          ],
+          "bytes": 496
+        }
+      ],
+      "recursive_or_Zig_call_graph_bound": false,
+      "includes_zig": true
+    },
+    "fatfs_native": {
+      "version": 3,
+      "source": "embedded sparse/RLE FAT12 fixture; not SD FatFs",
+      "fixture": {
+        "schema": 1,
+        "source": "embedded sparse/RLE FAT12 fixture; not SD FatFs",
+        "image_sha256": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+        "image_bytes": 1048576,
+        "fixture_id": 696070325,
+        "payload_bytes": 3942,
+        "index_entries": 31,
+        "fixture": {
+          "format": "fat12",
+          "fs_type": 1,
+          "image_bytes": 1048576,
+          "cluster_bytes": 512,
+          "fragment_first_cluster": 11,
+          "fat_byte": 512,
+          "volume_byte": 0,
+          "data_byte": 20480,
+          "big_size": 0,
+          "alias": "LONGFI~1.TXT",
+          "empty_alias": "LONGEM~1.TXT",
+          "root_cluster": 0,
+          "child_cluster": 6,
+          "child_entry_byte": 5824
+        },
+        "header": "/private/tmp/nihos-vfs-native/build/native-rpc-stop-final/fatfs-input-7jeb75go/fatfs_fixture_data.h",
+        "header_sha256": "15d4572d9b8eb57b3cfdd06c1a2b9448091f82255536eaf83f936493fb5121f9",
+        "source_directory": "/private/tmp/nihos-vfs-native/build/native-rpc-stop-final/fatfs-input-7jeb75go/upstream/source",
+        "image": "/private/tmp/nihos-vfs-native/build/native-rpc-stop-final/fatfs-input-7jeb75go/fat12.img",
+        "upstream": {
+          "ff.c": "3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250",
+          "diskio.h": "1c2b29f53e061c55d43b2e412c3a61320b2621bac7561a05e275514baa44785a",
+          "ffunicode.c": "3f1632c1f1e64b0b683b0d7e51341b9870728f398604869dd8211f1819509a8e",
+          "ff.h": "42920ae4d6080bfc2a72d92a9969b5e94eeaff070e5e71d90da9ab6d7d8e158e"
+        },
+        "sources": {
+          "tools/build-fatfs-native-input.py": "5f7f6278f0c7c1b99742c04ed0df739599fdd3f29366cc68df8a1d99f0b63dd3",
+          "probes/fatfs-disk/make_fixture.c": "b667a04a4b9a8be880d75f3eeb88c58aa091d22d08bd26ea3135e6fce117b5ef",
+          "probes/fatfs-disk/host_disk.c": "d20bdd888dc96cd73a87bf60cf81c0e846c84693c4356cdc5b317d8416236436",
+          "probes/fatfs-disk/host_disk.h": "cd884e13b6b8e6ad2a2b6d10fd4f2c7d8ad6a193fa36d26df9b20492b370af90",
+          "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+          "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1"
+        }
+      },
+      "flash_end": "0x400d0000",
+      "c_no_inline": true,
+      "sources": {
+        "src/platform/native/fatfs_runtime.zig": "7e5266e2db89e657b0942487ee3bc17175ecf693a39ef3e392b16426089e2ee5",
+        "src/platform/native/fatfs_service_abi.zig": "e6018b7fda243e98465cdd6f07bda7c72e6a0f3e03ab9ad91ddfb0225b729817",
+        "src/platform/native/fatfs_fixture.c": "ddc413fd0fffcdab36bbf08ebf7db33590443fa476b6651284c74cd6deb33d95",
+        "src/platform/native/fatfs_fixture_disk.c": "cdaaa28cf0a9591d4ddcc18db02ec8539a8ff44ed3742ac60a72cfbfb19fb8c7",
+        "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
+        "src/platform/native/storage_service_abi.zig": "74fa28ad88ce71cc916370f56930c0eae1c4c31b94c577ee3d21f157ab440b17",
+        "src/platform/native/start.S": "8ccc0915494b4080bddb24a5d86edf19791040fb58891cb50583430c72703084",
+        "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
+        "src/platform/native/stack_layout.zig": "89277ab57dbaa5f5d4a51f056ef54b5d2f298b1a5178b45cc844deb6d2e49806",
+        "src/platform/native/main.zig": "981dfdb9111f5cb463f335bf5e360615b7bd8fc8315d37c7e89f2d4cb8a14987",
+        "src/platform/native/esp32p4.ld": "c7eb0bbd9c08dc138e83884a351b6e6692d73506b4ba026568583c06225c5616",
+        "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
+        "src/storage/fatfs_disk.c": "e83dca42ee5720810a1014f7f46d1739166ab8ecddb1619108087b24502296b4",
+        "include/nihos_fatfs_backend.h": "079dbba8774195a11fe16b0cb768229fc8b7c9249812072a76ca9e231ceef864",
+        "include/nihos_fatfs_disk.h": "491af2bebd64753428390d063b3932f4e8cd1b0af05e4acf812934cfb35c3626",
+        "src/storage_vfs.zig": "c63e12c5cd5ac6b0b3e1a131d019875e952f0bb81d2606712e1f5c87d9808703",
+        "src/fs/vfs.zig": "5ea2acc47d4de2325b5ea7a2b4874b7d38950be417f974e2391cde8973a5c499",
+        "src/fs/fatfs_backend.zig": "45c0415cc576cb4e4645dcf4a5684f2d3d3f7b6900a2ba88a26cec22b8fee566",
+        "src/fs/vfs_rpc.zig": "ed539c25b086e19f4fdfe40f98295e7bcad74f615bafb28a6310c0aff3fd0cef",
+        "src/fs/vfs_memory.zig": "56d3155e5cba971794412b66e72184b89fa15179d53ddb2d9a9d5345d474bbcb",
+        "src/fs/io_leases.zig": "a1ffddfb54df132f22890a5cf5bfece784a7c646d1c1dfb125351ea483e50683",
+        "src/fs/io_stop.zig": "5e4a2e07946d38d90d9b61305fe764d06e64f45b1e4c636d2ed27b071fe2fa71",
+        "src/kernel/event_latch.zig": "a68eae43d35240781017d712eb55f389dba2ef1e47052da277b74d3c30ce7904",
+        "src/kernel/spsc_ring.zig": "bfdd052265942ee54fa58f5c46fa167f141632958933f5bef40956dbb6fbf0b4",
+        "src/kernel/memory_broker.zig": "d65d17e3aaaeb97530bf7797c44acdd9c867a89d71c9c1c5b2925b207e18d396",
+        "src/kernel/page_pool.zig": "761a36f0fbfcec6d4a6cd4862936b195d5709c40467c32d2867c2e69713cbae2",
+        "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+        "src/arch/riscv32/native_tasks.zig": "f747ec1fd1be2db82e640d79d4de993df84a5a8048faa6aba2bf204fe503894c",
+        "probes/fatfs-disk/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+        "probes/fatfs-disk/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+        "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+        "tools/build-native-elf.sh": "4e12b4eb7dd5ac07c7fcf8fa1c09cb41bbf767a0443e57ad160cd12e7abce1fa",
+        "tools/build-fatfs-native-input.py": "5f7f6278f0c7c1b99742c04ed0df739599fdd3f29366cc68df8a1d99f0b63dd3",
+        "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1",
+        "tools/native-sqlite-manifest.py": "a883f369269bb7d4fe7ca1578b5c7a5964f215aabe60a29f68dc4da7b5267196",
+        "tools/check-native-image.py": "f23e88860bea53b5903fb096f453d3617344b5510320465af9a268b5c7b448bb",
+        "tools/fatfs_native_profile.py": "a3c9eeec4f42465f4a39b6c97e221d625de0008492e20760de4189d1ec563116"
+      },
+      "card": {
+        "version": 4,
+        "mode": "inserted",
+        "rpc": true,
+        "cancel_relay": true,
+        "source": "physical SD native VFS/RPC tasks; cancellation and client stop after fenced sector read",
+        "charged": 65536,
+        "sources": {
+          "src/platform/native/fatfs_card.c": "9565b9136e4656c2c12bc91a70ca1f391fff2dd0ba99daa822edd648ef9dad47",
+          "src/platform/native/fatfs_card_abi.zig": "51563e1e98e3a175b173dd4eeade88bd3d8cc9abe6571e2aa76a47e2ecb3e4b9",
+          "include/nihos_fatfs_card.h": "5bfd4910066f0db5284f7fac766328d8462ce2d3c55308592fe19fcf7894ef4c",
+          "src/storage/fatfs_volume.c": "c40b79ebca7a7cdc72e75ba05d4c038d7f6090918fc513fbddc9823ff3cef677",
+          "include/nihos_fatfs_volume.h": "cc36d1e7fd702f34b146be9c6515b23a7a27c0201f82c1815321b867244c4fb5",
+          "src/platform/native/fatfs_disk.c": "3a5e3427df79c9f08692b546c9569b7ec45363c35501702d9b407615e67b3a7e",
+          "src/platform/native/sdmmc_probe.zig": "68610ff3a156d80441411d1001147471e830d2eaa984478170f72bcda393ec97",
+          "src/fs/sdmmc_owner.zig": "046c19250dea7795c000f961213311df0ae17a0d232e3b3ff8fbd337f4c024c9",
+          "include/nihos_storage_io.h": "2aca48f432bdb6791054395bfb64cedd0a1cd66c5d52fc5377fc7e93a09d3274"
+        },
+        "workspace_bytes": 26104,
+        "rpc_parent_used": 44928
+      },
+      "resident_hooks": {
+        "nih_storage_runtime_ready": "0x4ff008ca",
+        "nih_storage_register": "0x4ff00844",
+        "nih_storage_pending": "0x4ff00818",
+        "nih_storage_task_exited": "0x4ff0073e",
+        "nih_storage_cancel_requested": "0x4ff007fc",
+        "nih_storage_cleanup_ready": "0x4ff007e0",
+        "nih_storage_retired": "0x4ff007b4",
+        "nih_fatfs_read_ticket": "0x4ff00710",
+        "nih_fatfs_read_cancelled": "0x4ff006be"
+      },
+      "embedded_image_sha256": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "control_bytes": 432,
+      "control_reserve_bytes": 32768,
+      "control_start": "0x48008000",
+      "parent_bytes": 65536,
+      "client_frame_bytes": 4696,
+      "static_zig_frames": {
+        "records": 75,
+        "ceiling_bytes": 1024,
+        "maximum_bytes": 496,
+        "largest": [
+          {
+            "address": "0x400a34f4",
+            "functions": [
+              "broker_runtime.nih_broker_runtime_poll",
+              "nih_broker_runtime_poll"
+            ],
+            "bytes": 496
+          },
+          {
+            "address": "0x4009f2d2",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "bytes": 320
+          },
+          {
+            "address": "0x4009e47a",
+            "functions": [
+              "kernel.memory_broker.Broker(52,7680,64,16,32).alloc"
+            ],
+            "bytes": 240
+          },
+          {
+            "address": "0x400a30c4",
+            "functions": [
+              "broker_runtime.nih_broker_task_entry",
+              "nih_broker_task_entry"
+            ],
+            "bytes": 240
+          },
+          {
+            "address": "0x4009d40e",
+            "functions": [
+              "fatfs_runtime.cardAttempt",
+              "nih_fatfs_card_attempt"
+            ],
+            "bytes": 208
+          },
+          {
+            "address": "0x400a41d0",
+            "functions": [
+              "broker_runtime.nih_broker_runtime_init",
+              "nih_broker_runtime_init"
+            ],
+            "bytes": 192
+          },
+          {
+            "address": "0x400a02f8",
+            "functions": [
+              "fatfs_runtime.runClient"
+            ],
+            "bytes": 176
+          },
+          {
+            "address": "0x400a2ad8",
+            "functions": [
+              "broker_runtime.nih_broker_runtime_finish",
+              "nih_broker_runtime_finish"
+            ],
+            "bytes": 128
+          },
+          {
+            "address": "0x400a1698",
+            "functions": [
+              "fatfs_runtime.newClient"
+            ],
+            "bytes": 112
+          },
+          {
+            "address": "0x4009daac",
+            "functions": [
+              "kernel.memory_broker.Broker(52,7680,64,16,32).release"
+            ],
+            "bytes": 96
+          }
+        ]
+      },
+      "task_stack_contract": {
+        "worker_bytes": 4096,
+        "guard_bytes": 16,
+        "trap_context_bytes": 128,
+        "ordinary_sp_budget_bytes": 3952
+      },
+      "whole_call_stack_qualified": false,
+      "physical_task_run_qualified": false
+    },
+    "padding_bytes": 59976,
+    "image_offset": 131072
+  },
+  "io_lifetimes": {
+    "version": 1,
+    "qualification": true,
+    "sources": {
+      "src/fs/io_leases.zig": "a1ffddfb54df132f22890a5cf5bfece784a7c646d1c1dfb125351ea483e50683",
+      "src/fs/io_stop.zig": "5e4a2e07946d38d90d9b61305fe764d06e64f45b1e4c636d2ed27b071fe2fa71",
+      "src/fs/sdmmc_owner.zig": "046c19250dea7795c000f961213311df0ae17a0d232e3b3ff8fbd337f4c024c9",
+      "src/soc/esp32p4/sdmmc.zig": "179f78299aa811f0b21a564e1e687c69c400ae826ba687e9ff1f082d24d1b957",
+      "src/platform/native/sdmmc_probe.zig": "68610ff3a156d80441411d1001147471e830d2eaa984478170f72bcda393ec97",
+      "src/platform/native/main.zig": "981dfdb9111f5cb463f335bf5e360615b7bd8fc8315d37c7e89f2d4cb8a14987",
+      "src/diagnostics/record.zig": "882a6288a08840af138cf190fd125353c0ed5b7cbfe1c15f56fcc6085c85132f",
+      "include/nihos_storage_io.h": "2aca48f432bdb6791054395bfb64cedd0a1cd66c5d52fc5377fc7e93a09d3274"
+    },
+    "removal_test": false,
+    "capture_handshake": false
+  },
+  "broker": {
+    "version": 2,
+    "metadata_start": "0x4ff73000",
+    "metadata_reserve": 16384,
+    "metadata_bytes": 12912,
+    "internal_bytes": 212992,
+    "internal_floor": 65536,
+    "external_start": "0x48200000",
+    "external_bytes": 31457280,
+    "external_floor": 8912896,
+    "ipc_start": "0x48008000",
+    "ipc_bytes": 32768,
+    "resident_hooks": [
+      "nih_broker_peer_quiet",
+      "nih_broker_quiet",
+      "nih_broker_ready",
+      "nih_broker_register",
+      "nih_broker_task_exited",
+      "nih_broker_pending",
+      "nih_broker_cleanup_ready",
+      "nih_broker_round",
+      "nih_broker_reaped",
+      "nih_broker_cancel_requested"
+    ],
+    "source": {
+      "version": 2,
+      "profile_sha256": "b59fcc52a7dcff3ba5ea0843316f0b0b0ff5ed1e085014c2ea78f39fbe427d6f",
+      "runtime_sha256": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
+      "core_sha256": "d65d17e3aaaeb97530bf7797c44acdd9c867a89d71c9c1c5b2925b207e18d396",
+      "sd_adapter_sha256": "68610ff3a156d80441411d1001147471e830d2eaa984478170f72bcda393ec97"
+    }
+  },
+  "cold_flash": {
+    "version": 1,
+    "start": "0x400ab350",
+    "end": "0x400adbce",
+    "bytes": 10366,
+    "functions": {
+      "heap.lifecycleProbe": {
+        "start": "0x400ab350",
+        "bytes": 584
+      },
+      "heap.slabProbe": {
+        "start": "0x400ab598",
+        "bytes": 1146
+      },
+      "heap.poolProbe": {
+        "start": "0x400aba12",
+        "bytes": 360
+      },
+      "heap.objectsProbe": {
+        "start": "0x400abb7a",
+        "bytes": 2092
+      },
+      "heap.growProbe": {
+        "start": "0x400ac3a6",
+        "bytes": 284
+      },
+      "high_sram.finish": {
+        "start": "0x400ac4c2",
+        "bytes": 598
+      },
+      "heap.finish": {
+        "start": "0x400ac718",
+        "bytes": 714
+      },
+      "sqlite_probe.run": {
+        "start": "0x400ac9e2",
+        "bytes": 2250
+      },
+      "high_sram.ownerExchange": {
+        "start": "0x400ad2ac",
+        "bytes": 722
+      },
+      "high_sram.init": {
+        "start": "0x400ad57e",
+        "bytes": 916
+      },
+      "high_sram.vmProbe": {
+        "start": "0x400ad912",
+        "bytes": 700
+      }
+    },
+    "resident": {
+      "nih_native_start": "0x4ff00000",
+      "nih_native_dispatch": "0x4ff0fa80",
+      "native_tasks.service": "0x4ff0aba2",
+      "native_tasks.maintain": "0x4ff10e04",
+      "heap.cleanupOne": "0x4ff0affa",
+      "heap.allocTask": "0x4ff05e64",
+      "heap.freeTask": "0x4ff07232",
+      "heap.openPool": "0x4ff06428",
+      "heap.allocPool": "0x4ff047e4",
+      "heap.closePool": "0x4ff04698",
+      "heap.allocObject": "0x4ff086c0",
+      "heap.freeObject": "0x4ff07a22",
+      "heap.reallocObject": "0x4ff07ab2"
+    },
+    "baseline_primary_bytes": 114688,
+    "primary_bytes": 106432,
+    "recovered_bytes": 8256,
+    "old_heap_bytes": 57408,
+    "source": {
+      "version": 1,
+      "functions": [
+        "heap.finish",
+        "heap.growProbe",
+        "heap.lifecycleProbe",
+        "heap.objectsProbe",
+        "heap.poolProbe",
+        "heap.slabProbe",
+        "high_sram.finish",
+        "high_sram.init",
+        "high_sram.ownerExchange",
+        "high_sram.vmProbe",
+        "sqlite_probe.run"
+      ],
+      "resident": [
+        "nih_native_start",
+        "nih_native_dispatch",
+        "native_tasks.service",
+        "native_tasks.maintain",
+        "heap.cleanupOne",
+        "heap.allocTask",
+        "heap.freeTask",
+        "heap.openPool",
+        "heap.allocPool",
+        "heap.closePool",
+        "heap.allocObject",
+        "heap.freeObject",
+        "heap.reallocObject"
+      ],
+      "baseline_bytes": 114688,
+      "resident_limit": 106496,
+      "sources": {
+        "src/platform/native/heap.zig": "4bd25d0e702107a59d415cfd06fb8bf48148c12b68d54a4a832f86836d891931",
+        "src/platform/native/high_sram.zig": "28f32b83a71b46399157e1e4039335eaaa8bb81748caf37d1b11ad07d48de499",
+        "src/platform/native/sqlite_probe.zig": "5b1baac96ea2587a899ec42d42afe870079ba19a15a7df4aa0be83e6c99a6dbd"
+      },
+      "policy_sha256": "817639e1a7138b4360e97e339ac420648d25e777e2fcbceb39efed0bd26025ce"
+    },
+    "irq_call_graph_proven": false
+  },
+  "image_sha256": "63440a974a9b7a89983e12f9d2bdfd312efc2d3ec3057ba0f1e83ad313235e67",
+  "image_bytes": 851648,
+  "image_segments": [
+    {
+      "address": "0x40000020",
+      "bytes": 12920
+    },
+    {
+      "address": "0x4ff00000",
+      "bytes": 52600
+    },
+    {
+      "address": "0x40010020",
+      "bytes": 739068
+    },
+    {
+      "address": "0x4ff0cd78",
+      "bytes": 33984
+    },
+    {
+      "address": "0x4ff15240",
+      "bytes": 5080
+    },
+    {
+      "address": "0x4ff16640",
+      "bytes": 7888
+    }
+  ],
+  "loader": {
+    "elf_sha256": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+    "allocated": [
+      {
+        "address": "0x4ff2cbd0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ff33bd0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ff33ce0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ff33d30",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ff33d3c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ff2abd0",
+        "bytes": 3010
+      }
+    ],
+    "nearest_higher_address": "0x4ff2abd0",
+    "gap_bytes": 11216,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 11216
+      },
+      {
+        "name": "stacks",
+        "gap_below": 176396,
+        "gap_above": null
+      },
+      {
+        "name": "high_sram_a",
+        "gap_below": 45324,
+        "gap_above": null
+      },
+      {
+        "name": "high_sram_b",
+        "gap_below": 233740,
+        "gap_above": null
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "device",
+    "stack_source_window": {
+      "origin": "0x4ff40000",
+      "end": "0x4ffa0000"
+    },
+    "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+  }
+}

@@ -1,0 +1,3016 @@
+{
+  "schema": 1,
+  "evidence": "static structural call-chain inventory; no execution or whole-stack qualification",
+  "elf_sha256": "4c3d1968ffee44d0fa8641f77dd375386b78928d7d62c5ea03d3d7d32e8f33ee",
+  "analyzer_sha256": "6cb270a82bd21cf9c81798174460ccad3edd9936286b94fee8100a03840e9269",
+  "disassembly_sha256": "d5516833e710600ff8b501b05e4be423f10d53a60f09fac38e3629d19fcddc78",
+  "objdump_version": "GNU objdump (crosstool-NG esp-14.2.0_20260121) 2.43.1",
+  "sp_flow_analyzer_sha256": "4d60a8fecc872eb3745543a02c83285f717aa210fbfaa178d78483df9940188c",
+  "jump_table_analyzer_sha256": "3fc908ef140bb60612c9bf2a11da65d1011c7507d86a216deeea44c591f687b8",
+  "jump_tables": {
+    "resolved": [
+      {
+        "function": [
+          "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+        ],
+        "site": "0x400a1d34",
+        "guard": "0x400a1d1a",
+        "index_maximum": 10,
+        "table_start": "0x400bb080",
+        "table_entries": 11,
+        "table_sha256": "f9802fe43a063993ee304ee3171fbac11fa90f6c80f75b9aba3b03dd5405a3ab",
+        "targets": [
+          "0x400a1c8a",
+          "0x400a1d36",
+          "0x400a1d3a",
+          "0x400a1d3e",
+          "0x400a1d42",
+          "0x400a1d46",
+          "0x400a1d4a",
+          "0x400a1d4e",
+          "0x400a1d52",
+          "0x400a1d56",
+          "0x400a1d5c"
+        ],
+        "function_code_sha256": "a831e48dd4e73f47fc12fbfc9c289e4cba979e23f5d3e04d049a07e34dab89fe",
+        "dispatch_code_sha256": "4024645ebc4a5b02d74235c8ecd56c331fc9c6f5cf780b88d1973e6c8023ffe0",
+        "normal_call_abi_assumed": true,
+        "interprocedural_stack_qualified": false
+      },
+      {
+        "function": [
+          "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+        ],
+        "site": "0x400a23da",
+        "guard": "0x400a23c2",
+        "index_maximum": 10,
+        "table_start": "0x400bb0ac",
+        "table_entries": 11,
+        "table_sha256": "3608f89f6b443c06dd85b98daff2e011872c99513756ab07b198689e2fb5df4d",
+        "targets": [
+          "0x400a238c",
+          "0x400a23dc",
+          "0x400a23ee",
+          "0x400a2468",
+          "0x400a246c",
+          "0x400a2470",
+          "0x400a2478",
+          "0x400a2480",
+          "0x400a2488",
+          "0x400a2490",
+          "0x400a2496"
+        ],
+        "function_code_sha256": "d8b7f3ef1d1b5471152243f07f01a942a033cc5b85634c37081d07ebe079e38a",
+        "dispatch_code_sha256": "a683b6bdadd221e07198eb0d5ba07ceacecadff15e300efcf6059bdd589b63ce",
+        "normal_call_abi_assumed": true,
+        "interprocedural_stack_qualified": false
+      },
+      {
+        "function": [
+          "fs.fatfs_backend.Backend.open"
+        ],
+        "site": "0x400a2588",
+        "guard": "0x400a2572",
+        "index_maximum": 10,
+        "table_start": "0x400bb0d8",
+        "table_entries": 11,
+        "table_sha256": "480ca5f3ea02a69255fb0fd6e14d8fd063f6453dc58244937bacd5a6795818bb",
+        "targets": [
+          "0x400a258a",
+          "0x400a259e",
+          "0x400a25a2",
+          "0x400a25a6",
+          "0x400a25aa",
+          "0x400a25ae",
+          "0x400a25b2",
+          "0x400a25b6",
+          "0x400a25ba",
+          "0x400a25be",
+          "0x400a25c4"
+        ],
+        "function_code_sha256": "60699f81e67b29a94f5981071c6940f3fcc52c467ea8c6aec08a173dad5dc094",
+        "dispatch_code_sha256": "77623312ba62e809a76c82764d4ccc9ec5d8b0d271f55802ff03fe151c108ab2",
+        "normal_call_abi_assumed": true,
+        "interprocedural_stack_qualified": false
+      },
+      {
+        "function": [
+          "result"
+        ],
+        "site": "0x400a7920",
+        "guard": "0x400a790a",
+        "index_maximum": 13,
+        "table_start": "0x400c35dc",
+        "table_entries": 14,
+        "table_sha256": "9c19a9782d01fdf3bc8357eb0a6ac15e9adcdd6a0c37ea5e84061ea7f124069f",
+        "targets": [
+          "0x400a7922",
+          "0x400a792a",
+          "0x400a792e",
+          "0x400a793a",
+          "0x400a793c"
+        ],
+        "function_code_sha256": "4d4f4dacecd26d763f4130700956803c8bfcfa017da8a348b04865e2ddf2eb6c",
+        "dispatch_code_sha256": "00906d020a5c92af6a18baee3606faa15c22163520f44ea08968687c74530924",
+        "normal_call_abi_assumed": true,
+        "interprocedural_stack_qualified": false
+      },
+      {
+        "function": [
+          "ff_wtoupper"
+        ],
+        "site": "0x400a7590",
+        "guard": "0x400a757e",
+        "index_maximum": 8,
+        "table_start": "0x400c3208",
+        "table_entries": 9,
+        "table_sha256": "59378c26fb442181b26352b69310e724c8d0dad633003135c7a3d51abea5501a",
+        "targets": [
+          "0x400a7592",
+          "0x400a759e",
+          "0x400a75a4",
+          "0x400a75a8",
+          "0x400a75ac",
+          "0x400a75b2",
+          "0x400a75bc",
+          "0x400a75c0",
+          "0x400a75c4"
+        ],
+        "function_code_sha256": "6f5bd991d984f5ec1dd60eef03e3542bee0a66ff9e545492220e8cd672431454",
+        "dispatch_code_sha256": "76d0c5396c902b3830e2df6ee448ed1b0239f22399133edd2ae95f2ac4292539",
+        "normal_call_abi_assumed": true,
+        "interprocedural_stack_qualified": false
+      }
+    ],
+    "unresolved": [
+      {
+        "functions": [
+          "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_20"
+        ],
+        "site": "0x4ff03788",
+        "reason": "missing adjacent unsigned range guard"
+      }
+    ]
+  },
+  "candidate_edges": [
+    {
+      "caller": "disk_read",
+      "callee": "nih_fatfs_native_read",
+      "call_site": "0x400a823a",
+      "target_exclusivity_proven": false
+    }
+  ],
+  "frame_derivations": [
+    {
+      "address": "0x400a9c9c",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).identify"
+      ],
+      "derived": false,
+      "reason": "control flow leaves body or missing disassembly"
+    },
+    {
+      "address": "0x400a9f8c",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).prepare"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 32,
+      "visited_instructions": 123,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 4,
+      "code_sha256": "7ded81d2829e48ef39e8904726fbacaa8378643e79897daafbe639436e69f825",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x400aa0ee",
+      "functions": [
+        "sdmmc_probe.ownedRead"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 192,
+      "visited_instructions": 453,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 16,
+      "code_sha256": "6c49e50665771ad1714fac24cab7980450be7b476a91a8ac0fcf81d3ddbe3c35",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x400aa684",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).releaseDma"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 32,
+      "visited_instructions": 56,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 4,
+      "code_sha256": "ed893b7123c0bdb7c5875b7c66ad99306d5e82271486ee04d0c0816150f4e4c5",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x400aa728",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).stopDma"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 71,
+      "balanced_returns": 2,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 2,
+      "code_sha256": "1626d7d33e721c05c60bcbbc3aece6867eea3be855e442647371adf86c1a7aed",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x400aad88",
+      "functions": [
+        "nih_storage_fatfs_session_begin",
+        "sdmmc_probe.beginFatFsSession"
+      ],
+      "derived": false,
+      "reason": "control flow leaves body or missing disassembly"
+    },
+    {
+      "address": "0x400ab1fa",
+      "functions": [
+        "nih_storage_fatfs_session_end",
+        "sdmmc_probe.endFatFsSession"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 79,
+      "balanced_returns": 3,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "f2ea58a7fc2cbf0b686d609af2ccb749aaffd27ddacde1589032da20384595b5",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff001c2",
+      "functions": [
+        "nih_riscv_task_call"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 0,
+      "visited_instructions": 5,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "f7ce32ea7386fe5f1e48de7740908248de6ceddb41c5a6402acaa96ef5970db8",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff00ae8",
+      "functions": [
+        "nih_sdmmc_power_off"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 114,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "69575c08a3cbefafc88764633cfd428ea14b46c6cee56535f2a5cd72cff32d20",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff00c5e",
+      "functions": [
+        "nih_sdmmc_power_on"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 132,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "303b98cd27cee1c655ae743c94f6cae11b46b8cc268f44cccbfc8adf78c41754",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff00e2c",
+      "functions": [
+        "nih_sdmmc_clock_init"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 93,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "568a986cfd9144bf9e87349d9de473ee8fab8e52d6c7716fb6166e1cb2a22f73",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff0104c",
+      "functions": [
+        "nih_sqlite_stack_paint"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 0,
+      "visited_instructions": 9,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "eade748dd1691b8350589f7aeae8d9d25009d8884ee1b94592a6c9f772f24481",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff035fa",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).pollClearControlled__func_18"
+      ],
+      "derived": false,
+      "reason": "control flow leaves body or missing disassembly"
+    },
+    {
+      "address": "0x4ff036ba",
+      "functions": [
+        "sdmmc_probe.Bus.delay"
+      ],
+      "derived": false,
+      "reason": "control flow leaves body or missing disassembly"
+    },
+    {
+      "address": "0x4ff03758",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_20"
+      ],
+      "derived": false,
+      "reason": "unresolved branch/jump target"
+    },
+    {
+      "address": "0x4ff03b10",
+      "functions": [
+        "io_leases.IoLeases(1).take"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 80,
+      "visited_instructions": 139,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 1,
+      "calls_assumed_to_restore_sp": 1,
+      "code_sha256": "b6ec2ececff60b5f1ac7a63a2238664e69b678aaaf61f9846ea4913f6b00943b",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff03cba",
+      "functions": [
+        "io_leases.IoLeases(1).removeMount"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 41,
+      "balanced_returns": 2,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "952c002c1be66eff8f8378862e71ba6761dd07cfe84f1c8bcb0e1735cbdd3103",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff03d2a",
+      "functions": [
+        "io_leases.IoLeases(1).cancel"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 52,
+      "balanced_returns": 4,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "d63505f8023e78245c52394e509b3e58eba3b14ab090506659c0ced321a9b2dc",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff03dac",
+      "functions": [
+        "sdmmc_probe.Bus.finishDma"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 32,
+      "visited_instructions": 51,
+      "balanced_returns": 2,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 2,
+      "code_sha256": "2262fb903da3b7565eb5373a3446e4565bcb4ec29fac64b7549ee80667e58765",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff03e36",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_22"
+      ],
+      "derived": false,
+      "reason": "control flow leaves body or missing disassembly"
+    },
+    {
+      "address": "0x4ff040d8",
+      "functions": [
+        "sdmmc_probe.Bus.prepareDma"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 32,
+      "visited_instructions": 62,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 4,
+      "code_sha256": "19a0463bb75a38c753ddba1e73b180b05aa38b776487ad6074e1713ae136b046",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff0418a",
+      "functions": [
+        "sdmmc.Controller(sdmmc_probe.Bus).pollClearControlled__func_23"
+      ],
+      "derived": false,
+      "reason": "control flow leaves body or missing disassembly"
+    },
+    {
+      "address": "0x4ff0d65e",
+      "functions": [
+        "main.print"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 32,
+      "visited_instructions": 32,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 2,
+      "code_sha256": "5ca2afeb9b6d49ab95e4181d4a2750a153035021013481d9ca61a58211813364",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff0d6ae",
+      "functions": [
+        "main.fail"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 25,
+      "balanced_returns": 0,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 3,
+      "code_sha256": "ca9b7293aa435688b0d13850c80c29f4ea755e5797a6a31a44c181dd4755890b",
+      "normal_return_impossible_under_call_abi": true,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff0f582",
+      "functions": [
+        "nih_storage_read",
+        "sdmmc_probe.nih_storage_read"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 21,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 1,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "73216ffe2ff4c3db1a3f218f8ba6390dd11c0a90fc4189a0fd69913c8a3e6a3d",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff0f640",
+      "functions": [
+        "main.hex"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 60,
+      "balanced_returns": 0,
+      "tail_or_trap_sinks": 1,
+      "calls_assumed_to_restore_sp": 7,
+      "code_sha256": "e3188a3facc7278a3db74aeb2b3831c4bd011dd57a9bc3f349d73eb11a13ffc4",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff0f7a6",
+      "functions": [
+        "main.nih_native_task_failed",
+        "nih_native_task_failed"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 24,
+      "balanced_returns": 0,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 4,
+      "code_sha256": "99a717b8fe1579eb0711c008166f6fddd138ea861bd24420fea1b1e00e2a3356",
+      "normal_return_impossible_under_call_abi": true,
+      "nonreturning_call_dependencies": [
+        {
+          "call_site": "0x4ff0f7f0",
+          "target": "0x4ff0d6ae",
+          "callee_code_sha256": "ca9b7293aa435688b0d13850c80c29f4ea755e5797a6a31a44c181dd4755890b"
+        }
+      ],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff12992",
+      "functions": [
+        "compiler_rt.strlen",
+        "strlen"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 14,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "02435865b32bd63c130ea23377460b1f6d7e108fe35a9f1e319c2e14f3db6ba9",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff129b4",
+      "functions": [
+        "compiler_rt.memcmp",
+        "memcmp"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 21,
+      "balanced_returns": 2,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "770b87c38a0aa4cd8c9b2a17b8440ec9a05c07f53e72ab70074da6abc7d597db",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff129e2",
+      "functions": [
+        "compiler_rt.fastMemset",
+        "memset"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 64,
+      "balanced_returns": 3,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "63915ec7250759dcc576756ef0dd03248a2f08a21395a4e3688e53e71fde1c3d",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff12ab8",
+      "functions": [
+        "compiler_rt.memmove.memmoveFast",
+        "memmove"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 32,
+      "visited_instructions": 197,
+      "balanced_returns": 1,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "7d2bf0b867ddb353e1060fc568ca7e1a50f4738e73052a8f370506d3cd189c26",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff12d4a",
+      "functions": [
+        "compiler_rt.memcpy.memcpyFast",
+        "memcpy"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 107,
+      "balanced_returns": 3,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "fe057b7eeecea9c0b5249486b5a63d66af69a41726c5e9967dbf030dd90afadb",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff14a78",
+      "functions": [
+        "__udivdi3",
+        "compiler_rt.int.__udivdi3"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 10,
+      "balanced_returns": 0,
+      "tail_or_trap_sinks": 1,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "77d5a4351dacce5314c7c8ae9e474c3ad71f44ad9ce03727cdec02479d6d0787",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    },
+    {
+      "address": "0x4ff14ae6",
+      "functions": [
+        "__udivmoddi4",
+        "compiler_rt.int.__udivmoddi4"
+      ],
+      "derived": true,
+      "local_sp_decrease_bytes": 16,
+      "visited_instructions": 360,
+      "balanced_returns": 3,
+      "tail_or_trap_sinks": 0,
+      "calls_assumed_to_restore_sp": 0,
+      "code_sha256": "1422fc295bd0ff18e7efef38881d35007d761471f815a92c56c0fe2dcf2d8cc5",
+      "normal_return_impossible_under_call_abi": false,
+      "nonreturning_call_dependencies": [],
+      "callee_stacks_proven": false,
+      "stack_memory_footprint_proven": false
+    }
+  ],
+  "roots": [
+    {
+      "root": {
+        "address": "0x4009f2a6",
+        "functions": [
+          "fatfs_runtime.nih_storage_task_entry",
+          "nih_storage_task_entry"
+        ],
+        "frame_bytes": 16
+      },
+      "reachable_functions": 172,
+      "known_frames_on_largest_structural_chain_bytes": 3280,
+      "structural_chain": [
+        {
+          "address": "0x4009f2a6",
+          "functions": [
+            "fatfs_runtime.nih_storage_task_entry",
+            "nih_storage_task_entry"
+          ],
+          "frame_bytes": 16
+        },
+        {
+          "address": "0x4009f2d2",
+          "functions": [
+            "fatfs_runtime.serve"
+          ],
+          "frame_bytes": 320
+        },
+        {
+          "address": "0x400a13f6",
+          "functions": [
+            "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a1770",
+          "functions": [
+            "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch"
+          ],
+          "frame_bytes": 96
+        },
+        {
+          "address": "0x400a200a",
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+          ],
+          "frame_bytes": 96
+        },
+        {
+          "address": "0x400a7946",
+          "functions": [
+            "nih_fatfs_backend_lookup"
+          ],
+          "frame_bytes": 80
+        },
+        {
+          "address": "0x400a5e1a",
+          "functions": [
+            "nih_fatfs_guard_open"
+          ],
+          "frame_bytes": 80
+        },
+        {
+          "address": "0x400a5fba",
+          "functions": [
+            "parents"
+          ],
+          "frame_bytes": 784
+        },
+        {
+          "address": "0x400a5722",
+          "functions": [
+            "f_opendir"
+          ],
+          "frame_bytes": 1152
+        },
+        {
+          "address": "0x400a4ec4",
+          "functions": [
+            "follow_path"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a6cfa",
+          "functions": [
+            "dir_find"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a5942",
+          "functions": [
+            "dir_read"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a7108",
+          "functions": [
+            "load_xdir"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a5d4e",
+          "functions": [
+            "dir_next"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a5292",
+          "functions": [
+            "get_fat"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a6738",
+          "functions": [
+            "move_window"
+          ],
+          "frame_bytes": 16
+        },
+        {
+          "address": "0x400a818a",
+          "functions": [
+            "disk_read"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a8c4e",
+          "functions": [
+            "nih_fatfs_native_read"
+          ],
+          "frame_bytes": 16
+        },
+        {
+          "address": "0x4ff0f582",
+          "functions": [
+            "nih_storage_read",
+            "sdmmc_probe.nih_storage_read"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x400aa0ee",
+          "functions": [
+            "sdmmc_probe.ownedRead"
+          ],
+          "frame_bytes": 192,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x4ff03b10",
+          "functions": [
+            "io_leases.IoLeases(1).take"
+          ],
+          "frame_bytes": 80,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x4ff129e2",
+          "functions": [
+            "compiler_rt.fastMemset",
+            "memset"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        }
+      ],
+      "missing_frames": [
+        {
+          "address": "0x400a9c9c",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).identify"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x400aad88",
+          "functions": [
+            "nih_storage_fatfs_session_begin",
+            "sdmmc_probe.beginFatFsSession"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff035fa",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).pollClearControlled__func_18"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff036ba",
+          "functions": [
+            "sdmmc_probe.Bus.delay"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff03758",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_20"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff03e36",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_22"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff0418a",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).pollClearControlled__func_23"
+          ],
+          "frame_bytes": null
+        }
+      ],
+      "unresolved_transfers": [
+        {
+          "address": "0x4009d206",
+          "functions": [
+            "fatfs_runtime.fail"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x4009d21c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -452(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d228",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -464(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d234",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -476(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d240",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -488(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d24c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -500(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d258",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -512(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d264",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -524(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d270",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -536(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d27c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -548(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d288",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -560(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d294",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -572(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2a0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -584(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2ac",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -596(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2b8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -608(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2c4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -620(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2d0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -632(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2dc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -644(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2e8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -656(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2f4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -668(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d300",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -680(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d30c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -692(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d318",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -704(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d324",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -716(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d330",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -728(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d33c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -740(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d348",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -752(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d354",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -764(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d36e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -790(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d382",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -810(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d396",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -830(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3aa",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -850(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3be",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -870(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3d2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -890(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3e6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -910(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3f8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -928(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d402",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -938(ra) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x4009f174",
+          "functions": [
+            "fatfs_runtime.stage"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x4009f18a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -306(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f196",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -318(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1a2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -330(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1ae",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -342(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1ba",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -354(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1c6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -366(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1d2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -378(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1de",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -390(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1ea",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -402(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1f6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -414(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f202",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -426(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f20e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -438(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f21a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -450(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f226",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -462(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f232",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -474(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f23e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -486(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f24a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -498(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f256",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -510(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f272",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -538(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f28e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -566(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f2a2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr -586(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x400a2e1a",
+          "functions": [
+            "broker_runtime.stage"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x400a2e30",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 552(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e3c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 540(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e48",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 528(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e54",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 516(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e60",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 504(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e6c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 492(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e78",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 480(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e84",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 468(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e90",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 456(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e9c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 444(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ea8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 432(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2eb4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 420(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ec0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 408(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ecc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 396(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ed8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 384(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ee4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 372(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ef0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 360(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2efc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 348(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f08",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 336(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f24",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 308(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f40",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 280(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f54",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr 260(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x400a61a8",
+          "functions": [
+            "tick"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x400a61b6",
+              "kind": "indirect-transfer",
+              "instruction": "jalr a1"
+            }
+          ]
+        },
+        {
+          "address": "0x400a818a",
+          "functions": [
+            "disk_read"
+          ],
+          "frame_bytes": 32,
+          "sites": [
+            {
+              "pc": "0x400a823a",
+              "kind": "indirect-transfer",
+              "instruction": "jalr a3",
+              "candidate_callees": [
+                "nih_fatfs_native_read"
+              ]
+            }
+          ]
+        },
+        {
+          "address": "0x400a842c",
+          "functions": [
+            "discover"
+          ],
+          "frame_bytes": 224,
+          "sites": [
+            {
+              "pc": "0x400a845c",
+              "kind": "indirect-transfer",
+              "instruction": "jalr s5"
+            },
+            {
+              "pc": "0x400a864a",
+              "kind": "indirect-transfer",
+              "instruction": "jalr s5"
+            }
+          ]
+        },
+        {
+          "address": "0x400aa684",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).releaseDma"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x400aa6ca",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr -738(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x400aa6e0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr -760(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x400aa702",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003f4",
+              "instruction": "jalr -778(ra) # 4fc003f4 <nih_rom_cache_writeback>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff001c2",
+          "functions": [
+            "nih_riscv_task_call"
+          ],
+          "frame_bytes": 0,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff001c8",
+              "kind": "syscall-stack-boundary",
+              "instruction": "ecall"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff03758",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_20"
+          ],
+          "frame_bytes": null,
+          "sites": [
+            {
+              "pc": "0x4ff03788",
+              "kind": "indirect-transfer",
+              "instruction": "jr a0"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff03dac",
+          "functions": [
+            "sdmmc_probe.Bus.finishDma"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff03dec",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr 1532(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x4ff03e00",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr 1512(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff040d8",
+          "functions": [
+            "sdmmc_probe.Bus.prepareDma"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff04136",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003f4",
+              "instruction": "jalr 706(ra) # 4fc003f4 <nih_rom_cache_writeback>"
+            },
+            {
+              "pc": "0x4ff04148",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr 672(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x4ff0415a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003f4",
+              "instruction": "jalr 670(ra) # 4fc003f4 <nih_rom_cache_writeback>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff0d65e",
+          "functions": [
+            "main.print"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff0d680",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1576(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0d698",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1600(ra) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff0f640",
+          "functions": [
+            "main.hex"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff0f662",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1546(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f676",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1566(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f68a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1586(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f69e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1606(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6b2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1626(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6c6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1646(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6da",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1666(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6f4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr -1692(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        }
+      ],
+      "recursive_functions": [],
+      "graph_closed": false,
+      "whole_call_stack_qualified": false
+    },
+    {
+      "root": {
+        "address": "0x4009f2d2",
+        "functions": [
+          "fatfs_runtime.serve"
+        ],
+        "frame_bytes": 320
+      },
+      "reachable_functions": 166,
+      "known_frames_on_largest_structural_chain_bytes": 3264,
+      "structural_chain": [
+        {
+          "address": "0x4009f2d2",
+          "functions": [
+            "fatfs_runtime.serve"
+          ],
+          "frame_bytes": 320
+        },
+        {
+          "address": "0x400a13f6",
+          "functions": [
+            "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a1770",
+          "functions": [
+            "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch"
+          ],
+          "frame_bytes": 96
+        },
+        {
+          "address": "0x400a200a",
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+          ],
+          "frame_bytes": 96
+        },
+        {
+          "address": "0x400a7946",
+          "functions": [
+            "nih_fatfs_backend_lookup"
+          ],
+          "frame_bytes": 80
+        },
+        {
+          "address": "0x400a5e1a",
+          "functions": [
+            "nih_fatfs_guard_open"
+          ],
+          "frame_bytes": 80
+        },
+        {
+          "address": "0x400a5fba",
+          "functions": [
+            "parents"
+          ],
+          "frame_bytes": 784
+        },
+        {
+          "address": "0x400a5722",
+          "functions": [
+            "f_opendir"
+          ],
+          "frame_bytes": 1152
+        },
+        {
+          "address": "0x400a4ec4",
+          "functions": [
+            "follow_path"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a6cfa",
+          "functions": [
+            "dir_find"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a5942",
+          "functions": [
+            "dir_read"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a7108",
+          "functions": [
+            "load_xdir"
+          ],
+          "frame_bytes": 48
+        },
+        {
+          "address": "0x400a5d4e",
+          "functions": [
+            "dir_next"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a5292",
+          "functions": [
+            "get_fat"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a6738",
+          "functions": [
+            "move_window"
+          ],
+          "frame_bytes": 16
+        },
+        {
+          "address": "0x400a818a",
+          "functions": [
+            "disk_read"
+          ],
+          "frame_bytes": 32
+        },
+        {
+          "address": "0x400a8c4e",
+          "functions": [
+            "nih_fatfs_native_read"
+          ],
+          "frame_bytes": 16
+        },
+        {
+          "address": "0x4ff0f582",
+          "functions": [
+            "nih_storage_read",
+            "sdmmc_probe.nih_storage_read"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x400aa0ee",
+          "functions": [
+            "sdmmc_probe.ownedRead"
+          ],
+          "frame_bytes": 192,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x4ff03b10",
+          "functions": [
+            "io_leases.IoLeases(1).take"
+          ],
+          "frame_bytes": 80,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x4ff129e2",
+          "functions": [
+            "compiler_rt.fastMemset",
+            "memset"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        }
+      ],
+      "missing_frames": [
+        {
+          "address": "0x400a9c9c",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).identify"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x400aad88",
+          "functions": [
+            "nih_storage_fatfs_session_begin",
+            "sdmmc_probe.beginFatFsSession"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff035fa",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).pollClearControlled__func_18"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff036ba",
+          "functions": [
+            "sdmmc_probe.Bus.delay"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff03758",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_20"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff03e36",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_22"
+          ],
+          "frame_bytes": null
+        },
+        {
+          "address": "0x4ff0418a",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).pollClearControlled__func_23"
+          ],
+          "frame_bytes": null
+        }
+      ],
+      "unresolved_transfers": [
+        {
+          "address": "0x4009d206",
+          "functions": [
+            "fatfs_runtime.fail"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x4009d21c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -452(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d228",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -464(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d234",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -476(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d240",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -488(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d24c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -500(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d258",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -512(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d264",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -524(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d270",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -536(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d27c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -548(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d288",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -560(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d294",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -572(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2a0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -584(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2ac",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -596(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2b8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -608(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2c4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -620(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2d0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -632(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2dc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -644(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2e8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -656(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2f4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -668(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d300",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -680(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d30c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -692(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d318",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -704(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d324",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -716(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d330",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -728(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d33c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -740(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d348",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -752(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d354",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -764(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d36e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -790(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d382",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -810(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d396",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -830(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3aa",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -850(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3be",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -870(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3d2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -890(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3e6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -910(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3f8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -928(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d402",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -938(ra) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x4009f174",
+          "functions": [
+            "fatfs_runtime.stage"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x4009f18a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -306(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f196",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -318(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1a2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -330(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1ae",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -342(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1ba",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -354(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1c6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -366(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1d2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -378(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1de",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -390(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1ea",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -402(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f1f6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -414(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f202",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -426(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f20e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -438(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f21a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -450(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f226",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -462(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f232",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -474(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f23e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -486(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f24a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -498(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f256",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -510(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f272",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -538(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f28e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -566(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009f2a2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr -586(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x400a2e1a",
+          "functions": [
+            "broker_runtime.stage"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x400a2e30",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 552(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e3c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 540(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e48",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 528(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e54",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 516(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e60",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 504(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e6c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 492(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e78",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 480(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e84",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 468(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e90",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 456(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2e9c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 444(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ea8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 432(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2eb4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 420(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ec0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 408(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ecc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 396(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ed8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 384(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ee4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 372(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2ef0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 360(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2efc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 348(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f08",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 336(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f24",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 308(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f40",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr 280(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x400a2f54",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr 260(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x400a61a8",
+          "functions": [
+            "tick"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x400a61b6",
+              "kind": "indirect-transfer",
+              "instruction": "jalr a1"
+            }
+          ]
+        },
+        {
+          "address": "0x400a818a",
+          "functions": [
+            "disk_read"
+          ],
+          "frame_bytes": 32,
+          "sites": [
+            {
+              "pc": "0x400a823a",
+              "kind": "indirect-transfer",
+              "instruction": "jalr a3",
+              "candidate_callees": [
+                "nih_fatfs_native_read"
+              ]
+            }
+          ]
+        },
+        {
+          "address": "0x400a842c",
+          "functions": [
+            "discover"
+          ],
+          "frame_bytes": 224,
+          "sites": [
+            {
+              "pc": "0x400a845c",
+              "kind": "indirect-transfer",
+              "instruction": "jalr s5"
+            },
+            {
+              "pc": "0x400a864a",
+              "kind": "indirect-transfer",
+              "instruction": "jalr s5"
+            }
+          ]
+        },
+        {
+          "address": "0x400aa684",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).releaseDma"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x400aa6ca",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr -738(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x400aa6e0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr -760(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x400aa702",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003f4",
+              "instruction": "jalr -778(ra) # 4fc003f4 <nih_rom_cache_writeback>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff001c2",
+          "functions": [
+            "nih_riscv_task_call"
+          ],
+          "frame_bytes": 0,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff001c8",
+              "kind": "syscall-stack-boundary",
+              "instruction": "ecall"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff03758",
+          "functions": [
+            "sdmmc.Controller(sdmmc_probe.Bus).commandControlled__func_20"
+          ],
+          "frame_bytes": null,
+          "sites": [
+            {
+              "pc": "0x4ff03788",
+              "kind": "indirect-transfer",
+              "instruction": "jr a0"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff03dac",
+          "functions": [
+            "sdmmc_probe.Bus.finishDma"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff03dec",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr 1532(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x4ff03e00",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr 1512(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff040d8",
+          "functions": [
+            "sdmmc_probe.Bus.prepareDma"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff04136",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003f4",
+              "instruction": "jalr 706(ra) # 4fc003f4 <nih_rom_cache_writeback>"
+            },
+            {
+              "pc": "0x4ff04148",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003e4",
+              "instruction": "jalr 672(ra) # 4fc003e4 <nih_rom_cache_invalidate>"
+            },
+            {
+              "pc": "0x4ff0415a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc003f4",
+              "instruction": "jalr 670(ra) # 4fc003f4 <nih_rom_cache_writeback>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff0d65e",
+          "functions": [
+            "main.print"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff0d680",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1576(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0d698",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1600(ra) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff0f640",
+          "functions": [
+            "main.hex"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff0f662",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1546(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f676",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1566(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f68a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1586(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f69e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1606(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6b2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1626(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6c6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1646(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6da",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1666(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6f4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr -1692(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        }
+      ],
+      "recursive_functions": [],
+      "graph_closed": false,
+      "whole_call_stack_qualified": false
+    },
+    {
+      "root": {
+        "address": "0x400a02f8",
+        "functions": [
+          "fatfs_runtime.runClient"
+        ],
+        "frame_bytes": 176
+      },
+      "reachable_functions": 15,
+      "known_frames_on_largest_structural_chain_bytes": 320,
+      "structural_chain": [
+        {
+          "address": "0x400a02f8",
+          "functions": [
+            "fatfs_runtime.runClient"
+          ],
+          "frame_bytes": 176
+        },
+        {
+          "address": "0x400a09ca",
+          "functions": [
+            "fatfs_runtime.receive"
+          ],
+          "frame_bytes": 64
+        },
+        {
+          "address": "0x4009d206",
+          "functions": [
+            "fatfs_runtime.fail"
+          ],
+          "frame_bytes": 16
+        },
+        {
+          "address": "0x4ff0f7a6",
+          "functions": [
+            "main.nih_native_task_failed",
+            "nih_native_task_failed"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x4ff0d6ae",
+          "functions": [
+            "main.fail"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        },
+        {
+          "address": "0x4ff0d65e",
+          "functions": [
+            "main.print"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+        }
+      ],
+      "missing_frames": [],
+      "unresolved_transfers": [
+        {
+          "address": "0x4009d206",
+          "functions": [
+            "fatfs_runtime.fail"
+          ],
+          "frame_bytes": 16,
+          "sites": [
+            {
+              "pc": "0x4009d21c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -452(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d228",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -464(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d234",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -476(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d240",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -488(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d24c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -500(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d258",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -512(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d264",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -524(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d270",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -536(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d27c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -548(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d288",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -560(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d294",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -572(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2a0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -584(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2ac",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -596(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2b8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -608(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2c4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -620(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2d0",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -632(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2dc",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -644(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2e8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -656(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d2f4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -668(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d300",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -680(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d30c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -692(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d318",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -704(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d324",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -716(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d330",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -728(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d33c",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -740(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d348",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -752(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d354",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -764(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d36e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -790(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d382",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -810(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d396",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -830(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3aa",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -850(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3be",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -870(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3d2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -890(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3e6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -910(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d3f8",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -928(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4009d402",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -938(ra) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff001c2",
+          "functions": [
+            "nih_riscv_task_call"
+          ],
+          "frame_bytes": 0,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff001c8",
+              "kind": "syscall-stack-boundary",
+              "instruction": "ecall"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff0d65e",
+          "functions": [
+            "main.print"
+          ],
+          "frame_bytes": 32,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff0d680",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1576(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0d698",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1600(ra) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        },
+        {
+          "address": "0x4ff0f640",
+          "functions": [
+            "main.hex"
+          ],
+          "frame_bytes": 16,
+          "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+          "sites": [
+            {
+              "pc": "0x4ff0f662",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1546(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f676",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1566(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f68a",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1586(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f69e",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1606(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6b2",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1626(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6c6",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1646(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6da",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jalr -1666(ra) # 4fc00054 <nih_rom_putc>"
+            },
+            {
+              "pc": "0x4ff0f6f4",
+              "kind": "unmeasured-target",
+              "target": "0x4fc00054",
+              "instruction": "jr -1692(t1) # 4fc00054 <nih_rom_putc>"
+            }
+          ]
+        }
+      ],
+      "recursive_functions": [],
+      "graph_closed": false,
+      "whole_call_stack_qualified": false
+    }
+  ],
+  "whole_call_stack_qualified": false
+}

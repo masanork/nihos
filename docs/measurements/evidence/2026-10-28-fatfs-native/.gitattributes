@@ -1,0 +1,2 @@
+# Preserve serial capture bytes, including mixed ROM CRLF / fixture LF output.
+*.log -text whitespace=cr-at-eol,-blank-at-eof

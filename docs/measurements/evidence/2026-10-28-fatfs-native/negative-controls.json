@@ -1,0 +1,42 @@
+[
+  {
+    "case": "forced_exit",
+    "rejected": true,
+    "reason": "incomplete broker retirement, lease or recovery qualification"
+  },
+  {
+    "case": "cancelled",
+    "rejected": true,
+    "reason": "incomplete SD stop, quarantine or cache/descriptor handback qualification"
+  },
+  {
+    "case": "stale_handle",
+    "rejected": true,
+    "reason": "incomplete native FatFs fixture gate: stale_handle"
+  },
+  {
+    "case": "stale_epoch",
+    "rejected": true,
+    "reason": "incomplete native FatFs fixture gate: stale_epoch"
+  },
+  {
+    "case": "parent_cleared",
+    "rejected": true,
+    "reason": "incomplete native FatFs fixture gate: parent_cleared"
+  },
+  {
+    "case": "recovered",
+    "rejected": true,
+    "reason": "incomplete high SRAM read/write, lease or guard qualification"
+  },
+  {
+    "case": "stack_overflow",
+    "rejected": true,
+    "reason": "FatFs worker stack guard not preserved"
+  },
+  {
+    "case": "changed_sqlite_span",
+    "rejected": true,
+    "reason": "SQLite spans differ from audited image"
+  }
+]

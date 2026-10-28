@@ -455,7 +455,7 @@ comptime {
     C.exportSymbols();
 }
 
-noinline fn growProbe(lease: Objects, old: Object, length: usize) Object {
+noinline fn growProbe(lease: Objects, old: Object, length: usize) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") Object {
     const next = (reallocObject(lease, old, length) catch nih_native_task_failed()) orelse nih_native_task_failed();
     if (interrupts() != 8 or next.cell.bytes.len != length) nih_native_task_failed();
     if (next.cell.bytes.ptr == old.cell.bytes.ptr) {
@@ -467,7 +467,7 @@ noinline fn growProbe(lease: Objects, old: Object, length: usize) Object {
     return next;
 }
 
-noinline fn objectsProbe(worker: u32) ObjectState {
+noinline fn objectsProbe(worker: u32) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") ObjectState {
     const core = hart();
     const c_retained = nih_c_allocator_probe() orelse nih_native_task_failed();
     _ = @atomicRmw(u32, &resources[core].c_probes, .Add, 1, .monotonic);
@@ -534,7 +534,7 @@ noinline fn validSlabCell(bytes: []u8, expected: u8) bool {
     return true;
 }
 
-noinline fn slabProbe(lease: Slab) Cell {
+noinline fn slabProbe(lease: Slab) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") Cell {
     const core = hart();
     // SAFETY: The tested prefix is filled before reads; replacements stay inside it.
     var cells: [16]Cell = undefined;
@@ -572,7 +572,7 @@ noinline fn slabProbe(lease: Slab) Cell {
     return cells[0];
 }
 
-noinline fn poolProbe(pool: Pool) void {
+noinline fn poolProbe(pool: Pool) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     const copy = pool;
     const first = allocPool(pool, 7, 1) catch nih_native_task_failed();
     const second = allocPool(copy, 33, 32) catch nih_native_task_failed();
@@ -591,7 +591,7 @@ noinline fn poolProbe(pool: Pool) void {
 }
 
 /// Fixture tasks retain a monotonic pool and a slab at exit/termination.
-pub noinline fn lifecycleProbe() void {
+pub noinline fn lifecycleProbe() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     const core = hart();
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return;
     const disabled = mask();
@@ -683,6 +683,24 @@ pub fn availableBytes() ?usize {
 pub fn resourceReport(core: u32) ResourceReport {
     const ledger = &resources[core].ledger;
     return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected, .slab_objects = resources[core].slab_objects, .slab_frees = resources[core].slab_frees, .slab_rejected = resources[core].slab_rejected, .object_moves = resources[core].object_moves, .object_inplace = resources[core].object_inplace, .object_rejected = resources[core].object_rejected, .object_copy_bytes = resources[core].object_copy_bytes, .c_probes = resources[core].c_probes };
+}
+
+/// CPU0 only, after both bootstraps published completion and CPU1 parked.
+/// All validation precedes revocation; no payload is touched by retirement.
+pub fn canRetire() bool {
+    for (0..2) |core| {
+        if (@atomicLoad(u32, &prepared[core], .acquire) != 1 or
+            @atomicLoad(u32, &reports[core].confirmed, .acquire) != 1 or
+            resources[core].ledger.owned() != 0 or resources[core].ledger.pending() != null or
+            owners[core].heap.live != 0 or owners[core].heap.free_bytes != owners[core].heap.payload.len) return false;
+    }
+    return true;
+}
+pub fn retire() void {
+    for (0..2) |core| {
+        resources[core].c_pools = @splat(null);
+        @atomicStore(u32, &prepared[core], 2, .release);
+    }
 }
 
 fn hart() u32 {
@@ -824,7 +842,7 @@ pub noinline fn probe(argument: u32) void {
     owner.checks[worker] +%= 1;
 }
 
-pub noinline fn finish() bool {
+pub noinline fn finish() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") bool {
     const core = hart();
     if (core >= 2) return false;
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return true;

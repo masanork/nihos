@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "source_commit": "0195804e36a50d000532ffff0f335b494fc0ce44",
+  "evidence": "host-build-and-structural-audit",
+  "physical_runs": 0,
+  "hardware_status": "user travelling; Tab5 unavailable this turn",
+  "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-native-cold-flash-host-candidate",
+  "archive_files": 55,
+  "image": {
+    "bytes": 814400,
+    "sha256": "bf0445458396564e18b3b1c8a57e1b24780becb05804e3569432bbf24a4a3044",
+    "elf_sha256": "f30d42ffecd5e52f6d995469e36442c133487f527dca6606370b38662ae7d5e0"
+  },
+  "comparison": {
+    "same_source_options": {
+      "off": "resident-final/native_options.zig",
+      "on": "candidate/native_options.zig"
+    },
+    "before_primary_bytes": 114688,
+    "after_primary_bytes": 104320,
+    "resident_headroom_bytes": 10368,
+    "before_old_heap_bytes": 49152,
+    "after_old_heap_bytes": 59520,
+    "broker_layout_unchanged": true,
+    "stacks_unchanged": true,
+    "high_sram_reservations_unchanged": true,
+    "added_allowed_functions": [
+      "heap.finish",
+      "heap.growProbe",
+      "heap.lifecycleProbe",
+      "heap.objectsProbe",
+      "heap.poolProbe",
+      "heap.slabProbe",
+      "high_sram.finish",
+      "high_sram.init",
+      "high_sram.ownerExchange",
+      "high_sram.vmProbe",
+      "sqlite_probe.run"
+    ],
+    "elf_before": "c87dd776e676d6b99cf9ec2a1deba270b9f48f127d9c3fa74ca6eb64a5ec1741",
+    "elf_after": "f30d42ffecd5e52f6d995469e36442c133487f527dca6606370b38662ae7d5e0",
+    "physical_runs": 0
+  },
+  "cold_flash": {
+    "version": 1,
+    "start": "0x400a5c9c",
+    "end": "0x400a852a",
+    "bytes": 10382,
+    "functions": {
+      "high_sram.finish": {
+        "start": "0x400a5c9c",
+        "bytes": 598
+      },
+      "heap.finish": {
+        "start": "0x400a5ef2",
+        "bytes": 714
+      },
+      "sqlite_probe.run": {
+        "start": "0x400a61bc",
+        "bytes": 2250
+      },
+      "heap.lifecycleProbe": {
+        "start": "0x400a6a86",
+        "bytes": 584
+      },
+      "heap.slabProbe": {
+        "start": "0x400a6cce",
+        "bytes": 1146
+      },
+      "heap.poolProbe": {
+        "start": "0x400a7148",
+        "bytes": 360
+      },
+      "heap.objectsProbe": {
+        "start": "0x400a72b0",
+        "bytes": 2090
+      },
+      "heap.growProbe": {
+        "start": "0x400a7ada",
+        "bytes": 284
+      },
+      "high_sram.ownerExchange": {
+        "start": "0x400a7bf6",
+        "bytes": 722
+      },
+      "high_sram.init": {
+        "start": "0x400a7ec8",
+        "bytes": 934
+      },
+      "high_sram.vmProbe": {
+        "start": "0x400a826e",
+        "bytes": 700
+      }
+    },
+    "resident": {
+      "nih_native_start": "0x4ff00000",
+      "nih_native_dispatch": "0x4ff0f3da",
+      "native_tasks.service": "0x4ff09c50",
+      "native_tasks.maintain": "0x4ff1075e",
+      "heap.cleanupOne": "0x4ff0a0a8",
+      "heap.allocTask": "0x4ff03300",
+      "heap.freeTask": "0x4ff076d8",
+      "heap.openPool": "0x4ff031e0",
+      "heap.allocPool": "0x4ff05a12",
+      "heap.closePool": "0x4ff058c6",
+      "heap.allocObject": "0x4ff08954",
+      "heap.freeObject": "0x4ff07970",
+      "heap.reallocObject": "0x4ff07c00"
+    },
+    "baseline_primary_bytes": 114688,
+    "primary_bytes": 104320,
+    "recovered_bytes": 10368,
+    "old_heap_bytes": 59520,
+    "source": {
+      "version": 1,
+      "functions": [
+        "heap.finish",
+        "heap.growProbe",
+        "heap.lifecycleProbe",
+        "heap.objectsProbe",
+        "heap.poolProbe",
+        "heap.slabProbe",
+        "high_sram.finish",
+        "high_sram.init",
+        "high_sram.ownerExchange",
+        "high_sram.vmProbe",
+        "sqlite_probe.run"
+      ],
+      "resident": [
+        "nih_native_start",
+        "nih_native_dispatch",
+        "native_tasks.service",
+        "native_tasks.maintain",
+        "heap.cleanupOne",
+        "heap.allocTask",
+        "heap.freeTask",
+        "heap.openPool",
+        "heap.allocPool",
+        "heap.closePool",
+        "heap.allocObject",
+        "heap.freeObject",
+        "heap.reallocObject"
+      ],
+      "baseline_bytes": 114688,
+      "resident_limit": 106496,
+      "sources": {
+        "src/platform/native/heap.zig": "4bd25d0e702107a59d415cfd06fb8bf48148c12b68d54a4a832f86836d891931",
+        "src/platform/native/high_sram.zig": "28f32b83a71b46399157e1e4039335eaaa8bb81748caf37d1b11ad07d48de499",
+        "src/platform/native/sqlite_probe.zig": "5b1baac96ea2587a899ec42d42afe870079ba19a15a7df4aa0be83e6c99a6dbd"
+      },
+      "policy_sha256": "817639e1a7138b4360e97e339ac420648d25e777e2fcbceb39efed0bd26025ce"
+    },
+    "irq_call_graph_proven": false
+  },
+  "broker": {
+    "version": 2,
+    "metadata_start": "0x4ff73000",
+    "metadata_reserve": 16384,
+    "metadata_bytes": 12912,
+    "internal_bytes": 212992,
+    "internal_floor": 65536,
+    "external_start": "0x48200000",
+    "external_bytes": 31457280,
+    "external_floor": 8912896,
+    "ipc_start": "0x48008000",
+    "ipc_bytes": 32768,
+    "resident_hooks": [
+      "nih_broker_peer_quiet",
+      "nih_broker_quiet",
+      "nih_broker_ready",
+      "nih_broker_register",
+      "nih_broker_task_exited",
+      "nih_broker_pending",
+      "nih_broker_cleanup_ready",
+      "nih_broker_round",
+      "nih_broker_reaped",
+      "nih_broker_cancel_requested"
+    ],
+    "source": {
+      "version": 2,
+      "profile_sha256": "b59fcc52a7dcff3ba5ea0843316f0b0b0ff5ed1e085014c2ea78f39fbe427d6f",
+      "runtime_sha256": "94e8bc8170225ed19c61b783097e644b05b56e7b94e99cfd746e6a4f84b5a363",
+      "core_sha256": "7d1a6db5e26b06c7e49e7542f922a9fe70507c4b32c24d2541a9c920a5035b97",
+      "sd_adapter_sha256": "b3f3fd8017fec12946dcea62b60055e9e1e7aebbd8e476c7b348fa83c940532f"
+    }
+  },
+  "host": {
+    "zig_debug": 184,
+    "zig_release_safe": 184,
+    "python": 168,
+    "new_python_tests": 10,
+    "native_elf_links": 6,
+    "paired_broker_elf_builds": 2,
+    "format_zlint_shellcheck": true,
+    "broker_rv32_compile": true,
+    "loader_elf_and_cache_config_audited": true
+  },
+  "qualification": {
+    "command": "/Users/masanork/.espressif/python_env/idf5.4_py3.9_env/bin/python /Users/masanork/Documents/Codex/2026-10-27/nihos-native-cold-flash-host-candidate/run.py --port PORT --output NEW_DIRECTORY",
+    "writes": {
+      "loader": "0x2000",
+      "app": "0x10000"
+    },
+    "partition_table": "verify only, 0x8000",
+    "fresh_idf_reference": true,
+    "reset_boots": 3,
+    "post_pass_seconds_each": 10,
+    "same_exclusive_descriptor": true,
+    "physical_runs_completed": 0
+  },
+  "limitations": [
+    "cold placement disabled by default pending physical qualification",
+    "specified functions and resident roots audited; complete transitive IRQ/cache-off call graph not proven",
+    "no target execution or latency/stack measurements for this image",
+    "broker payload quotas unchanged; recovered resident headroom not automatically lent to applications",
+    "boot-time broker replacement, 16-task expansion and concurrent wireless/IME workloads remain future work"
+  ]
+}

@@ -51,6 +51,7 @@ for family, filename in [("gothic", "BIZUDGothic-Regular.ttf"), ("mincho", "BIZU
 asm = OUT / "graphics/fonts.S"
 asm.write_text("".join(assembly))
 subprocess.run([PREFIX + "gcc", "-c", "-march=rv32imac_zicsr_zifencei", "-mabi=ilp32", str(asm), "-o", str(OUT / "graphics_fonts.o")], check=True)
+sys.path.insert(0, str(ROOT / "tools"))
 spec = importlib.util.spec_from_file_location("native_manifest", ROOT / "tools/native-sqlite-manifest.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

@@ -1,6 +1,8 @@
 //! Native C6 transport fixture and shared CPU0-only DMA/pad support.
 //! Exclusive, polling SDMMC ownership before CPU1 release, no filesystem/NVS IO.
 const std = @import("std");
+const options = @import("native_options");
+pub const shared_api = @import("shared_sdmmc_abi.zig");
 const sd = @import("sdio");
 const pipe = @import("c6_sdio");
 const control = @import("at_controller");
@@ -21,11 +23,18 @@ var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 var clock_failed = false;
 pub const Bus = struct {
+    pub const shared_host = @hasDecl(options, "normal_storage") and options.normal_storage;
+    lease: shared_api.Lease = .{},
     clock: timers.Timer = timers.Timer.fromGroup(0x500c2000, 0).?,
-    pub fn read(_: Bus, offset: usize) u32 {
+    pub fn ownsSlot(self: Bus, slot: u32) bool {
+        return slot == 1 and shared_api.owns(self.lease);
+    }
+    pub fn read(self: Bus, offset: usize) u32 {
+        if (shared_host) return shared_api.read(self.lease, offset);
         return @as(*volatile u32, @ptrFromInt(sd.base + offset)).*;
     }
-    pub fn write(_: Bus, offset: usize, value: u32) void {
+    pub fn write(self: Bus, offset: usize, value: u32) void {
+        if (shared_host) return shared_api.write(self.lease, offset, value);
         @as(*volatile u32, @ptrFromInt(sd.base + offset)).* = value;
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
     }
@@ -47,7 +56,8 @@ pub const Bus = struct {
     pub fn fourBitPins(_: Bus) void {
         nih_c6_fourbit_pins();
     }
-    pub fn prepareDma(_: Bus, writing: bool, source: []const u8, length: usize) ?u32 {
+    pub fn prepareDma(self: Bus, writing: bool, source: []const u8, length: usize) ?u32 {
+        if (shared_host and !self.ownsSlot(1)) return null;
         if (length == 0 or length > 512 or length % 4 != 0) return null;
         // CPU0 display IRQs also use the ROM cache command engine. Serialize
         // only these private 512/64-byte cache operations, never SDIO waits.
@@ -68,7 +78,8 @@ pub const Bus = struct {
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
         return @intFromPtr(&dma_descriptor);
     }
-    pub fn finishDma(_: Bus, writing: bool, destination: []u8) bool {
+    pub fn finishDma(self: Bus, writing: bool, destination: []u8) bool {
+        if (shared_host and !self.ownsSlot(1)) return false;
         const previous = maskCache();
         defer restoreCache(previous);
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
@@ -80,7 +91,24 @@ pub const Bus = struct {
         }
         return true;
     }
+    pub fn releaseDma(_: Bus) bool {
+        return releaseDmaBuffer();
+    }
 };
+fn releaseDmaBuffer() bool {
+    const previous = maskCache();
+    defer restoreCache(previous);
+    asm volatile ("fence iorw,iorw" ::: .{ .memory = true });
+    if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_data), 512) != 0 or
+        nih_rom_cache_invalidate(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
+    dma_descriptor = @splat(0);
+    if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&dma_descriptor), 64) != 0) return false;
+    asm volatile ("fence iorw,iorw" ::: .{ .memory = true });
+    return true;
+}
+pub fn releaseNormalDma() u32 {
+    return @intFromBool(releaseDmaBuffer());
+}
 
 fn maskCache() u32 {
     return asm volatile ("csrrci %[previous], mstatus, 8"

@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "638e04cb88f1bc195c1d03914eb7b7d58bca65cb",
+  "hardware_executed": false,
+  "evidence": "host actual card/FatFs/VFS/RPC/broker/controller MMIO model; native compile/link/image audit",
+  "host_scenarios": 109,
+  "linked_cases": [
+    {
+      "name": "fat12:card-rpc-linked-cancel",
+      "observed": {
+        "mode": "card-rpc-linked-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "fat12:card-rpc-linked-exit",
+      "observed": {
+        "mode": "card-rpc-linked-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "fat16:card-rpc-linked-cancel",
+      "observed": {
+        "mode": "card-rpc-linked-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "fat16:card-rpc-linked-exit",
+      "observed": {
+        "mode": "card-rpc-linked-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "fat32:card-rpc-linked-cancel",
+      "observed": {
+        "mode": "card-rpc-linked-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "fat32:card-rpc-linked-exit",
+      "observed": {
+        "mode": "card-rpc-linked-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-linked-cancel",
+      "observed": {
+        "mode": "card-rpc-linked-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 24,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-linked-exit",
+      "observed": {
+        "mode": "card-rpc-linked-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 24,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "exfat:card-rpc-linked-cancel",
+      "observed": {
+        "mode": "card-rpc-linked-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    },
+    {
+      "name": "exfat:card-rpc-linked-exit",
+      "observed": {
+        "mode": "card-rpc-linked-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0,
+        "linked_commands": 1,
+        "linked_fences": 1,
+        "linked_unpublished": 1
+      }
+    }
+  ],
+  "source_fingerprints": {
+    "backend_direct": 49,
+    "disk_pipeline": 24
+  },
+  "rv32_card_workspace_bytes": 26104,
+  "card_rpc_parent": {
+    "used": 44928,
+    "charged": 65536,
+    "client_frames_charged_separately": 8192,
+    "controller_dma_staging": "unchanged resident SRAM"
+  },
+  "native_build": {
+    "image_bytes": 851648,
+    "image_sha256": "63440a974a9b7a89983e12f9d2bdfd312efc2d3ec3057ba0f1e83ad313235e67",
+    "elf_sha256": "116a084a9dc20352402a417fd595fdd1827884d5d95da635f26608ce8bed2486",
+    "card_profile_version": 4,
+    "immutable_card_mode": 3,
+    "cancel_relay_enabled": true,
+    "controller_abort_qualified": false,
+    "resident_hooks": {
+      "nih_fatfs_read_ticket": "0x4ff00710",
+      "nih_fatfs_read_cancelled": "0x4ff006be"
+    },
+    "primary_static_bytes": 106432,
+    "sram_reserved_bytes": 163776,
+    "embedded_config_link_regression_passed": true,
+    "whole_call_stack_qualified": false
+  },
+  "zig_tests": "Debug and ReleaseSafe passed; final runs cached",
+  "zig_new_properties": [
+    "stale relay cannot stop or finish a reused SD ticket",
+    "completion relay preserves removal priority",
+    "stale/nonread/closed RPC source rejected; exact stopped-client read relayed"
+  ],
+  "quarantine_cases": "reset/FSM/descriptor/cache failure, with and without relay: 8 cases keep block-owner lease",
+  "python_tests": 237,
+  "fmt_zlint_changed_zig_files": 9,
+  "private_build": "/Users/masanork/Documents/Codex/2026-10-28/nihos-rpc-sd-stop-host-build",
+  "negative_controls": {
+    "name": "poll_relay_omitted_but_completion_relay_kept",
+    "rejected": true,
+    "exit_code": -6,
+    "reason": [
+      "expected 0, found 1",
+      "Zig VFS integration: TestExpectedEqual",
+      "thread 24543069 panic: RPC to controller stop relay failed"
+    ],
+    "expected_property": "controller aborts before finishDma publishes bytes; logical late cancellation alone is insufficient",
+    "source_sha256": "5e4a2e07946d38d90d9b61305fe764d06e64f45b1e4c636d2ed27b071fe2fa71",
+    "mutant_sha256": "7f87614b4d750c88ed77b2896728ebf1a5dfefbd28738b76242c5b9630774c64",
+    "scope": "host actual C/FatFs/RPC/broker/controller model; no hardware execution"
+  },
+  "image_controls": {
+    "old_card_v3_elf_audit_passed": true,
+    "negative_controls": [
+      {
+        "name": "new_relay_image_cannot_hide_behind_old_profile",
+        "rejected": true,
+        "reason": "native FatFs: read relay differs from image"
+      },
+      {
+        "name": "old_image_cannot_claim_relay_by_metadata",
+        "rejected": true,
+        "reason": "native FatFs: read relay differs from image"
+      }
+    ],
+    "new_image_bytes": 851648,
+    "new_elf_sha256": "116a084a9dc20352402a417fd595fdd1827884d5d95da635f26608ce8bed2486",
+    "new_image_sha256": "63440a974a9b7a89983e12f9d2bdfd312efc2d3ec3057ba0f1e83ad313235e67",
+    "new_resident_read_hooks": {
+      "nih_fatfs_read_ticket": "0x4ff00710",
+      "nih_fatfs_read_cancelled": "0x4ff006be"
+    }
+  },
+  "legacy_replay": {
+    "prior_card_profile_version": 3,
+    "old_physical_report_matches": true,
+    "new_physical_run": false,
+    "prior_elf_sha256": "4c3d1968ffee44d0fa8641f77dd375386b78928d7d62c5ea03d3d7d32e8f33ee",
+    "prior_log_sha256": "83682c6a5533f76274858116e49a539c478173500a711f3e668e8a4d305b9e9b",
+    "prior_results_sha256": "8a67f4709de9d2e0b14da47171f72c28a615b0df91ad54396f45415d8ed1ea4c"
+  },
+  "artifacts": {
+    "build.json": "315e49faf40b054bb03f8eba50c321f9c1c4c529994c3dfb0bd177620ab3fcba",
+    "disk-results.json": "24af6291405900ed7e5a60f51a399c3cb0b30ebdc7ddfcb65cfb5a1efeeddbd4",
+    "embedded-link-audit.json": "2c795a1910b1f63b13fd61d8972b70c0ac62383be8d9f0bd64747dff8d1d89f6",
+    "host-results.json": "79cd3a45e69676a1b4d6789c1548e3a29569d970fa22522e39a86913671604b5",
+    "image-audit.json": "f83089260fefbdd36e36e7df0d2cf19069135b80f144b5ff74ade66f1ec29e1c",
+    "image-controls.json": "6537a3beb685553d102ed007d88e79ac8b0be2c646fcdfb3c8d5cc7ac061b3d8",
+    "legacy-replay.json": "4e3fe92165053dd44fcf42cab439439076cfcc1eb1c93332f1ed9579d5599ecb",
+    "negative-controls.json": "4a993728cc1e1952cbe5adece937edde5808337d144cce01a62f33eac2df8216",
+    "sqlite-manifest.json": "5428f73d0fe4480e6aa509ae15347dfddae9f08180d1f0b3599d123849d65904"
+  },
+  "limits": [
+    "Host MMIO model is not device execution, DMA timing, weak-memory or electrical-removal evidence",
+    "Host exit is a stopped-actor notification injection, not an actual native kernel task stop in this integration test",
+    "Existing native workload cancellation/client-stop gate remains after fenced sector read; this binary has no new post-CMD17 abort qualification phase",
+    "After device completion, RPC cancellation may only scrub the reply; no rollback guarantee",
+    "Physical mounted-card removal and card-detect IRQ registration remain separate work",
+    "No full stack bound, writable filesystem, persistent SQLite, clean POR or power-loss qualification"
+  ]
+}
