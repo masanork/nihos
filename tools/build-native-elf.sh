@@ -519,7 +519,8 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    -Mpointer_input="$repo_root/src/input/pointer.zig" \
     -Mdevice_control="$repo_root/src/device/control.zig" \
     -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -Mtab5_bmi270="$repo_root/src/board/tab5/bmi270.zig" \
@@ -544,7 +545,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep device_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
+    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep cpu_clock --dep timer_group -Mcpu_boot="$repo_root/src/platform/native/cpu_boot.zig" \
