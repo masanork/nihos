@@ -97,3 +97,34 @@ suppression and an ordinary tap afterward, under connected device work. GT911,
 ST7123, cold cycling, acoustic quality, IRQ input and external RS485 remain
 separate qualification work. The excerpts contain selected first/last records,
 not the full hashed private logs.
+
+## Normal-only follow-up after the gray-control main landing
+
+Main `76697c4` landed the normal pointer/control and gray styling separately.
+It intentionally excluded shared-reader batching because card-photo exceeded
+the SRAM floor. The initial PR #20 CI also stopped earlier at stale declared
+`main.zig` hashes in the three UI manifests. Updating those declarations after
+verifying the unchanged pixel/font bytes exposed the same card-photo linker
+failure locally. The [failure excerpt](evidence/2026-10-28-normal-touch-burst/shared-batching-card-photo-failure.log)
+is retained as a diagnostic, not a qualified image/source receipt. The main
+landing already contains the matching manifest updates and gray styling; this
+follow-up preserves both.
+
+Code `e1a454f` leaves `Device.sample` as the original per-record reader and adds
+`Device.sampleBatched` for the normal board service only. Unused methods are not
+linked into card images. The
+[same-profile normal comparison](evidence/2026-10-28-normal-touch-burst/normal-only-layout-comparison.json)
+measures 58368 → 58176 static heap bytes against main `76697c4`: **192 additional
+static SRAM bytes**. The receipt's complete source set matches the code commit.
+This normal-only candidate has build evidence, not new physical qualification.
+The earlier 14.281 ms observation remains scoped to attempt-03.
+
+The [affected-image build report](evidence/2026-10-28-normal-touch-burst/normal-only-builds.json)
+retains image/ELF/audit identities and heaps: keypad 59712, card-read 50048,
+card-photo 49536, automatic-card 50048, card-auto-probe 55680 and card-scene
+57728 bytes. All six complete loader/image audits pass
+without lowering the 49152-byte heap floor or changing auditor permissions.
+Full build audits remain in `build/touch-manifest-check/`. Debug and ReleaseSafe
+each pass 413 tests; Python passes 264; static analysis and six RV32 audited
+links pass. The new panel tests preserve explicit release and no-report behavior
+for ST7121, ST7123 and GT911 at the host-model boundary.
