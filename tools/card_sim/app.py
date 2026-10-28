@@ -70,7 +70,8 @@ def create_server(sim, port, normal=None):
                 return
             try:
                 size = int(self.headers.get('Content-Length', '0'))
-                if not 0 < size <= 131072:
+                limit = 1048576 if self.path == '/normal/replay' else 131072
+                if not 0 < size <= limit:
                     raise ValueError('invalid request length')
                 data = json.loads(self.rfile.read(size))
                 with LOCK:

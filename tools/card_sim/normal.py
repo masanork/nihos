@@ -5,6 +5,8 @@ if __package__:
 else:
     from backend import build, digest, FRAME_BYTES, LOCK
 
+TRACE_LIMIT = 4096
+
 
 class View(C.Structure):
     _fields_ = [(name, C.c_uint32) for name in ('details', 'accepted', 'down', 'move', 'up',
@@ -46,7 +48,8 @@ class NormalSimulator:
         view = self.view()
         return {'application': 'normal', 'view': {**view, 'phase': 'logs' if view['details'] else 'splash'},
                 'displayed_phase': self.active_phase, 'status': self.status, 'palette': self.palette,
-                'time_us': self.now, 'pixel_sha256': digest(self.front), 'source_identity': self.identity,
+                'time_us': self.now, 'pixel_sha256': self.front_sha, 'source_identity': self.identity,
+                'trace_full': len(self.trace) >= TRACE_LIMIT,
                 'metrics': {'frames': self.frames, 'publications': self.publications, 'pending': int(self.pending),
                             'mismatches': view['mismatches']},
                 'scope': 'production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification'}
@@ -59,11 +62,12 @@ class NormalSimulator:
             self.palette = palette
             self.now = self.frames = self.publications = 0
             self.front = bytes(FRAME_BYTES)
+            self.front_sha = digest(self.front)
             self.active_phase = None
             self.pending = False
             self.status = 0
-            self._present(True)
             self.trace = [{'action': 'reset', 'application': 'normal', 'palette': palette}]
+            self._present(True)
             return self.state()
 
     def _present(self, automatic):
@@ -80,6 +84,7 @@ class NormalSimulator:
         self.frames += 1
         if self.pending and not self.view()['mismatches']:
             self.front = self.candidate
+            self.front_sha = digest(self.front)
             self.active_phase = 'logs' if self.view()['details'] else 'splash'
             self.publications += 1
             self.pending = False
@@ -92,7 +97,7 @@ class NormalSimulator:
             self.integer(dt_us, 0, 60000000)
             if type(dispatch) is not bool or type(automatic) is not bool:
                 raise ValueError('invalid normal-UI sample policy')
-            if self.pending:
+            if self.pending or len(self.trace) >= TRACE_LIMIT:
                 return self.state()
             self.now += dt_us
             changed = self.zig.normal_touch(contacts, x, y, self.now, dispatch)
@@ -108,6 +113,8 @@ class NormalSimulator:
                 raise ValueError('invalid frame policy')
             if name == 'reset':
                 return self.reset(kwargs.get('palette', 4))
+            if len(self.trace) >= TRACE_LIMIT:
+                return self.state()
             if name == 'eof':
                 self.trace.append({'action': name})
                 return self.eof()
@@ -154,7 +161,7 @@ class NormalSimulator:
         return self.action(name, automatic)
 
     def replay(self, trace):
-        if not isinstance(trace, list) or len(trace) > 4096:
+        if not isinstance(trace, list) or len(trace) > TRACE_LIMIT:
             raise ValueError('expected at most 4096 normal-UI events')
         # A normal-UI trace is explicitly typed. Card/PIN traces never gain
         # coordinate replay support through this separate endpoint.

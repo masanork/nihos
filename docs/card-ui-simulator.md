@@ -74,7 +74,11 @@ traces are a separate format, explicitly marked `application: normal`, and save
 portrait coordinates, contact counts, time deltas and queue dispatch policy.
 They replay through the real input model, including rejected gestures, rather
 than directly assigning a view. A normal trace is rejected by the card endpoint.
-HTTP request logging is disabled. This tool is for synthetic inputs.
+Normal recording stops at 4096 events and exposes `trace_full`; further input
+is withheld until reset, so a saved trace remains complete and replayable.
+The normal replay endpoint accepts up to 1 MiB for that bounded stream. Card
+request limits remain unchanged. HTTP request logging is disabled. This tool
+is for synthetic inputs.
 
 ## Base-image SRAM budget
 
@@ -116,9 +120,10 @@ The default headless run checks fourteen card contracts: full fixture lifecycle,
 EOF atomicity, touch release/drag/multicontact, capacity rollback, three bounded
 retirement failures, cache rejection, pixel corruption as a negative control,
 base templates, deterministic semantic replay, result controls/drag rejection
-and My Number dismissal. Nine normal-UI contracts cover view roundtrip,
+and My Number dismissal. Ten normal-UI contracts cover view roundtrip,
 rejected/stale contacts, queue overflow, frame boundaries, scrolling/palettes,
-raw-input replay, a pixel negative control/repair and a synthetic failure.
+raw-input replay, bounded trace capture, a pixel negative control/repair and a
+synthetic failure.
 HTTP regressions additionally check actual frame bytes, trace replay,
 normal/card format separation, stale-frame rejection and origin policy.
 The regular host CI gate runs these and retains headless evidence artifacts.
