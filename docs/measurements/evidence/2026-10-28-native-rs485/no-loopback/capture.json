@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-28T00:26:27.443609+00:00",
+  "app_sha256": "c305b9487f6ba49221d366b38dc0f728322eb18f431ff5a6474ebafa4787311a",
+  "scope": "internal UART1 no-loopback timeout control; external RS485 unqualified",
+  "restored": true,
+  "written": true,
+  "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+  "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+  "seconds": 35.040990583,
+  "serial_sha256": "7c603efffa5559e4e2d65c57ed01fa761c4662a9da12d4b49cb7a7172cbb51ad",
+  "native_fail": false
+}

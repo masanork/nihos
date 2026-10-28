@@ -155,3 +155,11 @@ revision = "ES7210 datasheet rev2.0, February 2018"
 license = "Vendor datasheet; reference-only, not redistributed"
 status = "reference-only"
 use = "Independent finite ADC control, TDM framing and power-down sequencing from section 7; no external ES7210 driver source imported or linked. Board routing is from the pinned M5Tab5-UserDemo reference."
+
+[[source]]
+name = "M5Stack Tab5 RS485 schematic reference"
+url = "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/1132/Tab5_Schematics_PDF.pdf"
+revision = "Five-page Altium PDF, metadata 2025-06-09, page 4 U18/J7"
+license = "Vendor schematic; reference-only, not redistributed"
+status = "reference-only"
+use = "GPIO20/21/34 mapping, tied /RE and DE, DIR pulldown and J7 signal identities for independent UART1/RS485 fixture; no external RS485 driver source imported"
