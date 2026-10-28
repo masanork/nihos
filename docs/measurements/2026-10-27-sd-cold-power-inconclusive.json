@@ -1,0 +1,354 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "evidence": "physical-device-plus-operator-sequence",
+  "firmware_commit": "c6e3190",
+  "harness_commit": "29cb736",
+  "image": {
+    "image_sha256": "781686c2563d3deb809cbd4ffb244eabeb866ce97bfef17fe5998ac06e9e08ae",
+    "elf_sha256": "f4c6918bcbafcfc2bd3cd38f0d392d7461e11f35aa3e4b90975ab33ef5aab891",
+    "image_bytes": 821904,
+    "primary_static_bytes": 105920
+  },
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "operator": {
+    "supply": {
+      "battery_attached": true
+    },
+    "off_attempt": {
+      "user_text": "2回押したよ",
+      "recorded_utc": "2026-10-27T09:51:56.129731+00:00"
+    },
+    "off_observation": {
+      "serial_ports": [],
+      "recorded_utc": "2026-10-27T09:51:56.130128+00:00"
+    },
+    "on_attempt": {
+      "user_text": "押したよ",
+      "recorded_utc": "2026-10-27T09:55:19.133092+00:00"
+    }
+  },
+  "reset_runs": [
+    {
+      "run": 1,
+      "log_sha256": "7546ef9babb5042c8662dd0a10eb7985d681e7f440a9b3ab203ac2824b8e2bf1",
+      "boot_capture": {
+        "cpu0": 23,
+        "ack": 1
+      },
+      "io_lifetimes": {
+        "version": 1,
+        "status": 1,
+        "normal_reads": 2,
+        "cancelled": 1,
+        "removed": 1,
+        "stale_rejected": 3,
+        "idle_denied": 1,
+        "fences": 2,
+        "unpublished": 2,
+        "crc": 2418206781,
+        "ctrl": 0,
+        "dma_mode": 0,
+        "dma_fsm": 0,
+        "irq_mask": 0,
+        "dma_mask": 0,
+        "descriptor": 0,
+        "descriptor_word": 0
+      }
+    },
+    {
+      "run": 2,
+      "log_sha256": "20d3fb71217b0085613698dd438efeaced7f7ed39073a3468554605e5bec2b07",
+      "boot_capture": {
+        "cpu0": 23,
+        "ack": 1
+      },
+      "io_lifetimes": {
+        "version": 1,
+        "status": 1,
+        "normal_reads": 2,
+        "cancelled": 1,
+        "removed": 1,
+        "stale_rejected": 3,
+        "idle_denied": 1,
+        "fences": 2,
+        "unpublished": 2,
+        "crc": 2418206781,
+        "ctrl": 0,
+        "dma_mode": 0,
+        "dma_fsm": 0,
+        "irq_mask": 0,
+        "dma_mask": 0,
+        "descriptor": 0,
+        "descriptor_word": 0
+      }
+    },
+    {
+      "run": 3,
+      "log_sha256": "3cdd6899abf7e6632c51106c4931b76dc61412722a18c8a9785cdcd4cb2d856f",
+      "boot_capture": {
+        "cpu0": 23,
+        "ack": 1
+      },
+      "io_lifetimes": {
+        "version": 1,
+        "status": 1,
+        "normal_reads": 2,
+        "cancelled": 1,
+        "removed": 1,
+        "stale_rejected": 3,
+        "idle_denied": 1,
+        "fences": 2,
+        "unpublished": 2,
+        "crc": 2418206781,
+        "ctrl": 0,
+        "dma_mode": 0,
+        "dma_fsm": 0,
+        "irq_mask": 0,
+        "dma_mask": 0,
+        "descriptor": 0,
+        "descriptor_word": 0
+      }
+    }
+  ],
+  "button_off_on": {
+    "startup_workload_passed": true,
+    "clean_power_on_qualified": false,
+    "observed_reset_reason": 7,
+    "expected_power_on_reason": 1,
+    "rejection": "Latched reset reason is missing, mixed, or not power-on",
+    "boot_capture": {
+      "cpu0": 7,
+      "ack": 1
+    },
+    "io_lifetimes": {
+      "version": 1,
+      "status": 1,
+      "normal_reads": 2,
+      "cancelled": 1,
+      "removed": 1,
+      "stale_rejected": 3,
+      "idle_denied": 1,
+      "fences": 2,
+      "unpublished": 2,
+      "crc": 2418206781,
+      "ctrl": 0,
+      "dma_mode": 0,
+      "dma_fsm": 0,
+      "irq_mask": 0,
+      "dma_mask": 0,
+      "descriptor": 0,
+      "descriptor_word": 0
+    },
+    "sdmmc": {
+      "status": 1,
+      "stage": 4,
+      "command": 0,
+      "interrupts": 0,
+      "response": 0,
+      "commands": 3303,
+      "sectors_low": 30867456,
+      "sectors_high": 0,
+      "reads": 3096,
+      "crc0": 2418206781,
+      "crc1": 3179004831,
+      "crc_middle": 3336005110,
+      "crc_last": 3336005110,
+      "bus_bits": 4,
+      "clock_khz": 20000,
+      "writes": 0,
+      "error_code": 0,
+      "host_status": 0,
+      "data_words": 128,
+      "dma": 1
+    },
+    "storage": {
+      "status": 2,
+      "error_code": 0,
+      "passes": 2,
+      "block_size": 4096,
+      "block_count": 3858432,
+      "entries": 4,
+      "files": 3,
+      "directories": 1,
+      "directory_digest": 1089067206,
+      "file_bytes": 10752,
+      "file_crc": 2285195711,
+      "file_name_digest": 860118251,
+      "reads": 188,
+      "denied_writes": 0
+    },
+    "storage_service": {
+      "status": 1,
+      "requests": 62,
+      "responses": 63,
+      "queue_full": 1,
+      "rejected": 8,
+      "bytes": 10752,
+      "crc": 2285195711,
+      "owner": 16842755,
+      "exit_seen": 1,
+      "released": 1,
+      "stale_rejected": 1,
+      "owner_stack": 3328,
+      "client_stack": 1920,
+      "peer_polls": 5461,
+      "elapsed_us": 144570,
+      "clock_ok": 1,
+      "fs_cleared": 1,
+      "ipc_cleared": 1,
+      "forced_exit": 1,
+      "inflight_completed": 1,
+      "discarded_requests": 2,
+      "discarded_responses": 2,
+      "rebound": 1,
+      "replacement_owner": 16842756,
+      "old_epoch_rejected": 1,
+      "old_reply_rejected": 1,
+      "old_handle_rejected": 2,
+      "old_exit_rejected": 1,
+      "replacement_exit": 1,
+      "replacement_bytes": 10752,
+      "replacement_crc": 2285195711
+    },
+    "sqlite": {
+      "status": 1,
+      "owner": 1,
+      "sessions": 2,
+      "queries": 26,
+      "open_pc": 1074383124,
+      "text_start": 1073872896,
+      "text_end": 1074438656,
+      "rodata_start": 1074438656,
+      "rodata_end": 1074516736,
+      "heap_before": 16022848,
+      "heap_after": 16022848,
+      "stack_low": 1341521936,
+      "stack_high": 1341530112,
+      "painted_to": 1341528928,
+      "observed_used": 6552,
+      "mie": 8,
+      "class_peaks": {
+        "c8": 20,
+        "c16": 10,
+        "c32": 22,
+        "c64": 23,
+        "c128": 16,
+        "c256": 3,
+        "c512": 6,
+        "c1024": 8,
+        "c2048": 3,
+        "c4096": 0
+      }
+    },
+    "broker": {
+      "status": 1,
+      "old_api_denied": 4,
+      "metadata": 12912,
+      "internal_bytes": 212992,
+      "internal_free": 212992,
+      "external_bytes": 31457280,
+      "external_free": 31457280,
+      "internal_floor": 65536,
+      "external_floor": 8912896,
+      "requested4": 4194304,
+      "charged4": 4194304,
+      "requested8": 8388608,
+      "charged8": 8388608,
+      "client": 327681,
+      "replacement": 393217,
+      "requests": 16,
+      "responses": 15,
+      "rejected": 8,
+      "exits": 4,
+      "reaped": 4,
+      "pin_waited": 4,
+      "borrow_completed": 4,
+      "stale_identity": 3,
+      "stale_lease": 2,
+      "guards": 16384,
+      "recovered": 1,
+      "client_stack": 448,
+      "forced_client": 458753,
+      "after_forced": 524289,
+      "forced_exit": 1,
+      "io_issued": 1,
+      "io_completed": 1,
+      "io_bytes": 512,
+      "io_crc": 2418206781,
+      "expected_crc": 2418206781,
+      "pinned_after_kill": 1,
+      "completion_after_exit": 1,
+      "discarded_responses": 1,
+      "io_clock_acquired": 1,
+      "io_clock_released": 1
+    },
+    "log_sha256": "14cc981cbd16b675a9026bf3c4fbc85782f04a2aedb37d1db8590a026dd5d75d"
+  },
+  "restoration": {
+    "verified": true,
+    "bytes": 16777216,
+    "backup_sha256": "a7385ecc9562578c8d84286e300f77040c76f2bbd54c79117f4f02d1f37dd8e5",
+    "method": "esptool verify_flash 0 full private backup, digest matched"
+  },
+  "failed_or_inconclusive_attempts": [
+    {
+      "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-sd-manual-qualification-candidate/power-physical-1",
+      "reason": "USB reset 0x17; not power-on",
+      "candidate_write_started": true,
+      "restoration": {
+        "verified": true,
+        "sha256": "fbef6cdd19d1b815d1e70da8904d03e4f0e7d7568122e2bac96166916384d58e"
+      },
+      "power_log_sha256": "3f0c0386a44b49af4e054f916af6ae1c9ceae7f76102d06c1c638b0fedbbccd9",
+      "boot1_log_sha256": "e9299a6e1f4c5ddfdeb217207580879ed15f9109728f71c745c0e08c20303d8a"
+    },
+    {
+      "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-cold-passive-capture-candidate/power-physical-2",
+      "reason": "Early ROM/startup output missing after enumeration",
+      "candidate_write_started": true,
+      "restoration": {
+        "verified": true,
+        "sha256": "fbef6cdd19d1b815d1e70da8904d03e4f0e7d7568122e2bac96166916384d58e"
+      },
+      "power_log_sha256": "fc88db07198053a9e4ee74aacc36d5872b8a404b50172c56f04a8243ffe58ad3"
+    },
+    {
+      "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-cold-handshake-candidate/power-physical-3",
+      "reason": "CRLF wait marker was not acknowledged; serial disconnected; automatic restoration failed and separate recovery succeeded",
+      "candidate_write_started": true,
+      "restoration": {
+        "verified": true,
+        "sha256": "e2a90ff41173bb6efb60e503905c0dd933b21555c04ddf70896704422e17b800",
+        "separate_recovery_descriptor": true
+      },
+      "boot1_log_sha256": "38f32f2fa8edea73c2450de982d22eccad800ce557e801e6a06a15b1cd871f14"
+    },
+    {
+      "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-cold-crlf-capture-candidate/power-physical-4",
+      "reason": "Serial occupied by another session; aborted before candidate write",
+      "candidate_write_started": false,
+      "restoration": null
+    },
+    {
+      "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-cold-crlf-capture-candidate/power-physical-5",
+      "reason": "Latched reset reason 0x07; workload passed but clean power-on rejected",
+      "candidate_write_started": true,
+      "restoration": {
+        "verified": true,
+        "sha256": "a7385ecc9562578c8d84286e300f77040c76f2bbd54c79117f4f02d1f37dd8e5"
+      },
+      "power_log_sha256": "c9efd94855151e57f7f72a04ffd994daa05f8b29fd57db1600e0a5ae45882405",
+      "boot1_log_sha256": "4c34538bfaaca13a1cb7d4193e9060c63e2ce4e4f8562ade16c1f229dd60997b"
+    }
+  ],
+  "raw_archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-cold-watchdog-fixed-candidate/power-physical-6",
+  "full_supply_removal_test": {
+    "performed": false,
+    "reason": "Operator cannot remove battery now; no further hand operations requested"
+  },
+  "causality_limit": "Moving TG0 MWDT shutdown before capture wait did not remove reason 0x07. Precise stage/cause remains unresolved; do not claim the cold-boot fault fixed."
+}

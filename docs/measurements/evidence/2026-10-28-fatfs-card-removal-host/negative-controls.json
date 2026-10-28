@@ -1,0 +1,22 @@
+{
+  "source_commit": "372c510",
+  "prior_disk_source_sha256": "5f551db505838930bfd1f214c659133060b1de909f278067cb198f12c047417e",
+  "negative_controls": [
+    {
+      "name": "prior_disk_bridge_loses_removed_result",
+      "rejected": true,
+      "exit_code": 1,
+      "reason": "/private/tmp/nihos-vfs-native/probes/fatfs-disk/check_disk.c:118: disk.state == (fail_result == NIH_STORAGE_READ_REMOVED ? NIH_FATFS_REMOVED : NIH_FATFS_IO_FAILED) && !disk.busy"
+    },
+    {
+      "name": "prior_disk_bridge_leaves_rpc_mount_faulted_instead_of_removed",
+      "rejected": true,
+      "exit_code": 1,
+      "reason": [
+        "Zig VFS integration: TestExpectedEqual",
+        "/private/tmp/nihos-vfs-native/probes/fatfs-disk/backend_check.c:209: nih_check_rpc() == 0"
+      ]
+    }
+  ],
+  "scope": "host replay against actual prior disk implementation; no hardware executed"
+}

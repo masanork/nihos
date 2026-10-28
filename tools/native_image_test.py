@@ -115,6 +115,38 @@ class NativeInstructionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.audit_boot_functions(functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000)
 
+    def test_high_banks_reject_loadable_executable_shifted_and_emulator_layouts(self):
+        for name, (low, high) in MODULE.HIGH_BANKS.items():
+            MODULE.audit_high_section(name, 8, 3, low, high-low, 'device')
+            for kind, flags, address, size, profile in ((1,3,low,high-low,'device'),
+                    (8,7,low,high-low,'device'), (8,2,low,high-low,'device'),
+                    (8,3,low+4096,high-low,'device'), (8,3,low,high-low-4096,'device'),
+                    (8,3,low,high-low,'emulator')):
+                with self.subTest(name=name, profile=profile, flags=flags), self.assertRaises(ValueError):
+                    MODULE.audit_high_section(name,kind,flags,address,size,profile)
+
+    def test_high_bank_pair_and_linker_symbols_are_required_together(self):
+        symbols = {}
+        sections = []
+        for name,(low,high) in MODULE.HIGH_BANKS.items():
+            symbols['__'+name[1:]+'_start'] = low
+            symbols['__'+name[1:]+'_end'] = high
+            sections.append({'name':name,'address':hex(low),'bytes':high-low})
+        self.assertEqual(MODULE.audit_high_layout(symbols,sections)['heap_bytes'],208*1024)
+        for bad in ([],sections[:1],sections+sections):
+            with self.assertRaises(ValueError): MODULE.audit_high_layout(symbols,bad)
+        for key in symbols:
+            with self.assertRaises(ValueError): MODULE.audit_high_layout({**symbols,key:0},sections)
+
+    def test_loader_collision_checks_include_both_high_banks(self):
+        report = {'memory':{'origin':'0x4ff00000','end':'0x4ff28000','regions':[
+            {'name':name,'origin':hex(low),'end':hex(high)} for name,(low,high) in MODULE.HIGH_BANKS.items()]}}
+        for low,high in MODULE.HIGH_BANKS.values():
+            for address in (low-4,low,high-4):
+                for kind in (1,8):
+                    with self.subTest(address=hex(address),kind=kind),self.assertRaises(ValueError):
+                        MODULE.audit_loader(report,loader_elf([(kind,2,address,16)]))
+
     def test_stack_symbols_array_and_section_have_exact_reservations(self):
         base = 0x4ff60000
         symbols = {"__stacks_start": base, "__stacks_end": base + 57344,
@@ -134,6 +166,22 @@ class NativeInstructionTests(unittest.TestCase):
         for bad in ([], sections + sections, [{**sections[0], "bytes": 57328}]):
             with self.assertRaisesRegex(ValueError, "stack"):
                 MODULE.audit_stack_layout(symbols, sizes, bad)
+
+    def test_task_side_trap_reserve_is_accounted_before_irq_stack_switch(self):
+        base = 0x4ff60000
+        symbols = {"__stacks_start": base, "__stacks_end": base + 57344,
+                   "__task_stacks_start": base + 32768, "__task_stacks_end": base + 57344,
+                   "native_tasks.stacks": base + 32768, "nih_native_task_context_bytes": 128}
+        for prefix, offset in (("stack0", 0), ("stack1", 8192), ("irq_stack0", 16384), ("irq_stack1", 24576)):
+            symbols["__" + prefix + "_bottom"] = base + offset
+            symbols["__" + prefix + "_top"] = base + offset + 8192
+        sizes = {"native_tasks.stacks": 24576}
+        sections = [{"name": ".stacks", "address": hex(base), "bytes": 57344}]
+        result = MODULE.audit_stack_layout(symbols, sizes, sections)
+        self.assertEqual(result['ordinary_sp_budget_bytes'], 4096 - 16 - 128)
+        for value in (0, 64, 129, 256):
+            with self.assertRaises(ValueError):
+                MODULE.audit_stack_layout({**symbols, 'nih_native_task_context_bytes': value}, sizes, sections)
 
     def test_stack_bank_is_non_executable_unloaded_and_bounded(self):
         MODULE.audit_stack_section(8, 3, 0x4ff60000, 57344)
@@ -184,6 +232,43 @@ class NativeInstructionTests(unittest.TestCase):
         for values in cases:
             with self.subTest(functions=values), self.assertRaises(ValueError):
                 check(values)
+
+    def test_sd_boot_move_requires_one_exact_named_extent_and_no_hidden_code(self):
+        base = [("psram.probe", 0x40000120, 0x40000920),
+                ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
+        moved = ("sdmmc_probe.run", 0x40001120, 0x40003920)
+        def check(functions, span=(0x40001120, 0x40003920)):
+            return MODULE.audit_boot_functions(functions, 0x40000120, 0x40003920,
+                                                0x4ff20000, 0x4ff48000, sdmmc_span=span)
+        self.assertEqual(check(base + [moved])["sdmmc"]["start"], "0x40001120")
+        for values, span in [(base + [moved], None), (base, (0x40001120, 0x40003920)),
+                             (base + [moved], (0x40001122, 0x40003920)),
+                             (base + [moved, ("hidden_irq", 0x40001130, 0x40001140)], (0x40001120, 0x40003920)),
+                             (base + [moved, moved], (0x40001120, 0x40003920)),
+                             (base + [("sdmmc_probe.run", 0x40001140, 0x40003920)], (0x40001140, 0x40003920))]:
+            with self.subTest(functions=values, span=span), self.assertRaises(ValueError):
+                check(values, span)
+
+    def test_sd_runtime_callbacks_and_dma_buffers_remain_internal_and_aligned(self):
+        low, high = 0x4ff00000, 0x4ff28000
+        symbols = {"nih_storage_read":low + 128, "nih_storage_controller_begin":low + 256,
+                   "nih_storage_controller_end":low + 384,
+                   "sdmmc_probe.dma_data":low + 512, "sdmmc_probe.dma_descriptor":low + 1024}
+        sizes = {"sdmmc_probe.dma_data":512,"sdmmc_probe.dma_descriptor":64}
+        MODULE.audit_sdmmc_resident(symbols, sizes, low, high)
+        for name in symbols:
+            for address in (0x40001120,0x48004000,high):
+                with self.subTest(name=name,address=address),self.assertRaises(ValueError):
+                    MODULE.audit_sdmmc_resident({**symbols,name:address},sizes,low,high)
+        for name in sizes:
+            for address in (low + 1, high - 64):
+                if address == high - 64 and sizes[name] == 64:continue
+                with self.subTest(name=name,address=address),self.assertRaises(ValueError):
+                    MODULE.audit_sdmmc_resident({**symbols,name:address},sizes,low,high)
+            with self.subTest(name=name),self.assertRaises(ValueError):
+                MODULE.audit_sdmmc_resident(symbols,{**sizes,name:sizes[name]+4},low,high)
+            changed=symbols.copy();del changed[name]
+            with self.assertRaises(ValueError):MODULE.audit_sdmmc_resident(changed,sizes,low,high)
 
     def test_descriptor_must_select_the_audited_mmu_page_size(self):
         data = bytearray(256)

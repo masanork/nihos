@@ -1,0 +1,23 @@
+{
+  "source_commit": "fa05531cc80c5c74098f3a6130bf07d52f5c452b",
+  "scope": "native build and image audit only; no mounted-card abort qualification workload and no device execution",
+  "artifacts": {
+    "embedded/fatfs-link-audit.json": "7316aa7cca13228499d2e0658331409562a5e352e777540c58848e1afdf57dfb",
+    "embedded/native-layout.ld": "977f9d012e8121eeb3a1c7f22538a6c12878ec48b56fbbbc9c5ea2f3a8e6a877",
+    "embedded/native_options.zig": "34c05c48820f35c3d620f66d74d31c4bd3542148ef4ec9d01d563fc3c283f226",
+    "embedded/nihos-native.elf": "6e35726b52de1b7a84df99076fe9650652f4928503dbfd823092bf043f32bb02",
+    "embedded/sqlite-manifest.json": "998aed2198f95ec048cced0a4273bd06139581a68dcf4d4b7fc3c38f87760516",
+    "image-audit.json": "421b2c77b99e1c5f74c4c59a2e8f2cc7b03da009168e6d378f7a6f6a02b11792",
+    "loader/bootloader.bin": "5f1565c93f3bea4fe29cd9f26f4e66343e4fdd26cea31bb6ec9a5966a84f1355",
+    "loader/bootloader.elf": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+    "loader/loader-sdkconfig.h": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6",
+    "loader/partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+    "native-layout.ld": "977f9d012e8121eeb3a1c7f22538a6c12878ec48b56fbbbc9c5ea2f3a8e6a877",
+    "native_options.zig": "de6af6a23727027668a61b988b2d3b289b2fc79012b4de0b26f20fb463f87408",
+    "nihos-native.bin": "e8bce73b136392db2e30acb78528bd8fb3aacc58f776f44f987985bed2e2c6df",
+    "nihos-native.elf": "fda7e623cf0a6ef07264813b6b5de207465caaeed25f67ff5006e4291b6a2b3e",
+    "source.tar": "d4ef543f32a55c22520bbcbeb109ed3975e8a90f0791f0b5f4ffc321eff0c960",
+    "sqlite-manifest.json": "5e7778f40c5bfe92e4eb7526326a5732e3caf8bfd749f606cefa4f29cd04ff87"
+  },
+  "embedded_regression": "Embedded FatFs RPC configuration ELF/frame audit; no SD card filesystem phase"
+}

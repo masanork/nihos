@@ -59,7 +59,7 @@ fn interrupts() u32 {
     ) & 8;
 }
 
-pub noinline fn run() Report {
+pub noinline fn run() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") Report {
     var report = Report{
         .text_start = @intFromPtr(&__flash_sql_text_start),
         .text_end = @intFromPtr(&__flash_sql_text_end),

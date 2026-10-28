@@ -1,7 +1,10 @@
 # Unified log store for SQLite pages and blobs
 
-Status: planning proposal, not an accepted ADR (2026-10-26). Nothing in this
-document is implemented or qualified merely by being described here.
+Status: planning proposal, revised for Tab5 scope on 2026-10-27; not an accepted
+ADR. The common engine is an experimental direction, not a prerequisite for
+the first useful development/learning release. See the
+[Tab5 feasibility and budget](tab5-storage-feasibility.md) for memory limits,
+release scope and promotion gates.
 
 ## Motivation
 
@@ -23,6 +26,34 @@ copy-on-write/checkpoint ideas from other filesystems. It is **not** a claim to
 implement those filesystems, nor a plan to clone WinFS. Existing littlefs and
 FAT/exFAT ideas remain fallbacks and interoperability options pending tests.
 
+## First delivery scope
+
+Tab5 can support a bounded common-log experiment, but the complete feature
+set below is a longer-term program. Qualify a single-writer SD implementation
+with bounded map caches, recovery and GC before adding SQLite persistence.
+Keep existing filesystem adapters behind VFS so development/learning workflows
+do not depend on completion of a new filesystem. Existing adapters also need
+writable durability tests; current read-only qualification is not sufficient.
+
+The initial store has no user-retained snapshot history, multiwriter API,
+WAL, batch-atomic optimization, cross-blob/SQL atomic transaction or NOR
+backend. Read-version pins and crash-safe cleaning remain correctness
+requirements. SQLite starts with ordinary rollback-journal semantics; blob
+bytes become durable before their reference is committed in SQLite.
+
+A flat RAM map is only a bounded host-model step. Large SD volumes require
+an on-media map and bounded cached pages before promotion. Do not preallocate
+an entry for every card sector or promise full-volume replay at normal boot.
+Store geometry and space reserves remain candidates until fault, memory and
+latency tests pass. Boot and recovery remain independent of SD and SQLite.
+
+The development target budgets Wi-Fi/TLS, two BLE links and shared kana/kanji
+input together with storage. The [machine-readable profile](tab5-development-profile.json)
+reserves 144 KiB internal stacks, 48 KiB DMA, 224 KiB internal heap and 2 MiB
+PSRAM for bounded IME caches/workspace, leaving 8.5 MiB PSRAM headroom.
+Immutable dictionary/font assets stay on Flash/SD. Large user files use extent
+mapping; SQLite pages and small internal metadata keep their own update units.
+
 ## Current baseline and compatibility
 
 - [Architecture](../architecture.md) currently proposes littlefs for internal
@@ -34,8 +65,10 @@ FAT/exFAT ideas remain fallbacks and interoperability options pending tests.
 - [ADR 0040](../adr/0040-bounded-single-owner-sqlite-session.md) qualifies
   only a bounded **in-memory**, single-owner SQLite host prototype with a
   no-I/O VFS. Its 1024-byte database pages and other limits are prototype
-  parameters, not persistent-store decisions. Native SQLite linking,
-  persistent VFS, media I/O, and physical power-failure qualification are open.
+  parameters, not persistent-store decisions. A later, unmerged native
+  qualification snapshot is described in the [Tab5 assessment](tab5-storage-feasibility.md).
+  Neither that snapshot nor this planning note qualifies writable SQLite VFS
+  or physical power-failure durability.
 
 Design and measurements must distinguish a host model, emulator execution,
 ESP-IDF-hosted hardware work, and genuine native/physical durability evidence.
@@ -102,8 +135,10 @@ order between data persistence and publication of new roots. Recovery must
 select the latest **valid, durable** checkpoint and replay only fully
 committed, valid records; it must not treat an unchecked log tail as committed.
 
-Start with a bounded in-memory index rebuilt from the log, then add compact
-persistent page/object maps and checkpoint summaries if mount time demands it.
+Start with a bounded in-memory index for the host model. Before a usable
+large-volume SD gate, add persistent page/object maps, a bounded map cache and
+checkpoint summaries that limit tail replay. Full media scanning is an explicit
+repair path rather than the normal mount algorithm.
 The format needs an explicit version, endianness, extent bounds and upgrade
 policy. Never make SQLite responsible for mounting, recovering or GC'ing the
 store itself; this avoids a boot/recovery dependency cycle.
@@ -147,8 +182,14 @@ wal-index/shared-memory and locking semantics (or a deliberately constrained
 exclusive single-owner configuration), and add WAL reset/reuse and checkpoint
 write patterns. Do not promise an arbitrary SQLite file plus unrelated blob
 are atomically committed merely because SQLite batch atomic writes are on.
+The [WAL candidate](tab5-storage-feasibility.md#wal-candidate-after-durable-vfs-qualification)
+uses 4 KiB DB pages, a 512 KiB suggested page cache and 32–64 KiB volatile
+wal-index inside the SQLite envelope. It distinguishes a 1,024-frame checkpoint
+trigger from a broker-enforced 4,096-frame quota and retains the current
+rollback-journal qualification baseline. Neither a retained-file size pragma
+nor a PASSIVE checkpoint provides a hard growth/time bound.
 
-## Blob API and cross-object transactions
+## Blob API and later cross object transactions
 
 Support blobs directly, without wrapping the whole SD card in a littlefs
 image. Initial operations can be:
@@ -166,7 +207,7 @@ because no reference is found in the latest DB page map: older snapshots and
 in-flight readers may retain them. Define a safe reachability/retention policy
 before automatic reclamation.
 
-**Later:** expose a store-level coordinator that stages DB page changes and
+**Deferred beyond the initial store:** expose a store-level coordinator that stages DB page changes and
 blob versions under one `StoreTxId`, publishes exactly one commit root, and
 can rollback both. SQLite's pager/VFS transaction boundaries must be
 coordinated explicitly; cross-object atomicity does **not** emerge from merely
@@ -208,22 +249,30 @@ This is an aspiration, **not a working SQLite API**.
 
 ## Proposed delivery gates
 
+Development/learning applications can ship through qualified filesystem
+adapters while the store passes these gates. The concrete memory/recovery
+criteria and promotion decision are in the [Tab5 assessment](tab5-storage-feasibility.md#delivery-and-acceptance).
+No device should be reformatted to evaluate this proposal implicitly.
+
 1. **Specify observable invariants.** Record geometry, publication order,
    `sync`, recovery, space reserve, error and removal semantics; build a
    deterministic memory/file-backed media model and fault injector.
-2. **Standalone Zig store.** Append and read blobs/files, truncate/delete,
-   rebuild the object map at mount, and recover committed changes after
-   interrupted writes. Initially bounded data size and no long-lived snapshots.
-3. **Checkpoint and cleaning.** Alternate/rotate checkpoint roots, add
-   snapshot generation selection and crash-safe segment cleaning; measure
-   write amplification and recovery time under retention/near-full workloads.
+2. **Standalone Zig host model.** Append and read blobs/files, truncate/delete,
+   rebuild a bounded object map, and recover committed changes after interrupted
+   writes. Test data limits are explicit fixture parameters, not SD capacity
+   promises. No long-lived user snapshots.
+3. **Bounded SD index, checkpoint and cleaning.** Add the on-media map and
+   bounded cache, alternate/rotate checkpoint roots and limit tail replay.
+   Qualify crash-safe cleaning with active reader pins and near-full workloads.
+   User-retained history remains deferred. Measure write amplification,
+   recovery time, GC pauses and peak memory before promoting the volume.
 4. **SQLite persistent VFS on host/microSD.** Preserve ordinary SQLite
    journal correctness first. Test transactions, rollback, reopening,
    `PRAGMA integrity_check`, schema/data stress and interrupted operations.
 5. **Optional atomic-batch VFS and coordinated blobs.** Compare journaled
    and batch-atomic modes with identical crash tests and write amplification.
    Implement cross-blob/SQL commits only after SQLite boundaries are proved.
-6. **Internal-NOR backend.** Integrate safe Flash guards, bounded native
+6. **Later internal-NOR backend.** Integrate safe Flash guards, bounded native
    service resources and partition protection; prove boot and recovery with
    the SD card absent. Physical-device qualification is a release gate.
 

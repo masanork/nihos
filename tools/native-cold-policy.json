@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "baseline_bytes": 114688,
+  "resident_limit": 106496,
+  "functions": {
+    "heap.finish": "src/platform/native/heap.zig",
+    "heap.growProbe": "src/platform/native/heap.zig",
+    "heap.lifecycleProbe": "src/platform/native/heap.zig",
+    "heap.objectsProbe": "src/platform/native/heap.zig",
+    "heap.poolProbe": "src/platform/native/heap.zig",
+    "heap.slabProbe": "src/platform/native/heap.zig",
+    "high_sram.finish": "src/platform/native/high_sram.zig",
+    "high_sram.init": "src/platform/native/high_sram.zig",
+    "high_sram.ownerExchange": "src/platform/native/high_sram.zig",
+    "high_sram.vmProbe": "src/platform/native/high_sram.zig",
+    "sqlite_probe.run": "src/platform/native/sqlite_probe.zig"
+  },
+  "resident": [
+    "nih_native_start",
+    "nih_native_dispatch",
+    "native_tasks.service",
+    "native_tasks.maintain",
+    "heap.cleanupOne",
+    "heap.allocTask",
+    "heap.freeTask",
+    "heap.openPool",
+    "heap.allocPool",
+    "heap.closePool",
+    "heap.allocObject",
+    "heap.freeObject",
+    "heap.reallocObject"
+  ]
+}
