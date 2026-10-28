@@ -797,7 +797,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     } else {
                         startDisplay(timer(0), display_panel, false);
                         showDiagnosticSnapshot();
-                        if (options.card_auto) @import("card_auto.zig").run(timer(0), display_panel, AutoLog{}) else if (options.card_read) @import("card_read.zig").run(timer(0), display_panel, CardReadLog{});
+                        if (options.card_scene_exercise) @import("card_auto.zig").exercise(timer(0), display_panel, AutoLog{}) else if (options.card_auto) @import("card_auto.zig").run(timer(0), display_panel, AutoLog{}) else if (options.card_read) @import("card_read.zig").run(timer(0), display_panel, CardReadLog{});
                         if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                         if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                     }
@@ -1036,9 +1036,39 @@ const AutoLog = struct {
     }
     pub fn prompt(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_PROMPT", null, .{ "job", "kind", "pin_index", "pin1_remaining", "pin2_remaining", "pin1_verifies", "pin2_verifies" }, report);
+        notice();
     }
     pub fn result(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_RESULT", null, .{ "job", "kind", "state", "fault", "sw", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "photo_error", "shown", "missing", "truncated", "cleanup", "verification", "changes" }, report);
+        notice();
+    }
+    pub fn scene(_: AutoLog, step: u32) void {
+        logger.record("NIHOS_NATIVE_CARD_SCENE", null, .{"step"}, &.{ .step = step });
+        const current = display_service.runtime.sceneSnapshot();
+        logger.record("NIHOS_NATIVE_CARD_SCENE_HANDOFF", null, .{ "updates", "max_pause_us" }, &current);
+        notice();
+    }
+    pub fn sceneFailure(_: AutoLog, step: u32, name: []const u8) void {
+        const handoff = display_service.runtime.sceneSnapshot();
+        logger.record("NIHOS_NATIVE_CARD_SCENE_FAILURE", null, .{ "stage", "error_code", "updates", "max_pause_us" }, &handoff);
+        const status = asm volatile ("csrr %[value],mstatus"
+            : [value] "=r" (-> u32),
+        );
+        logger.record("NIHOS_NATIVE_CARD_SCENE_CONTEXT", null, .{ "step", "irq_enabled" }, &.{ .step = step, .irq_enabled = (status & 8) >> 3 });
+        const scanout = display_service.runtime.snapshot();
+        logger.record("NIHOS_NATIVE_CARD_SCENE_SCANOUT", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &scanout);
+        notice();
+        print("NIHOS_NATIVE_FAIL scene exercise ");
+        print(name);
+        print("\n");
+    }
+    pub fn sceneReady(_: AutoLog) void {
+        const ready = struct { manual: u32 }{ .manual = 1 };
+        logger.record("NIHOS_NATIVE_CARD_SCENE_READY", null, .{"manual"}, &ready);
+        notice();
+    }
+    pub fn scenePixels(_: AutoLog, step: u32, mismatches: u32) void {
+        logger.record("NIHOS_NATIVE_CARD_SCENE_PIXELS", null, .{ "step", "mismatches" }, &.{ .step = step, .mismatches = mismatches });
     }
     pub fn finish(_: AutoLog, report: *const @import("card_auto.zig").Report) void {
         logger.record("NIHOS_NATIVE_CARD_AUTO_DONE", null, .{ "job", "kind", "fault", "pin1_verifies", "pin2_verifies", "fields", "photo_decoded", "shown", "missing", "truncated", "cleanup", "erased", "verification", "changes" }, report);

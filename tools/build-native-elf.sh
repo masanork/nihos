@@ -209,6 +209,15 @@ esac
 if [ "$auto_probe" = true ] && [ "$card_auto" != true ]; then
     echo "Automatic card probe requires DISPLAY=11" >&2; exit 1
 fi
+scene_exercise=${NIHOS_NATIVE_CARD_SCENE_EXERCISE:-0}
+case "$scene_exercise" in
+    0) scene_exercise=false ;;
+    1) scene_exercise=true ;;
+    *) echo "NIHOS_NATIVE_CARD_SCENE_EXERCISE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$scene_exercise" = true ] && { [ "$card_auto" != true ] || [ "$auto_probe" != true ]; }; then
+    echo "Card scene exercise requires DISPLAY=11 and CARD_AUTO_PROBE=1; no card operations" >&2; exit 1
+fi
 if [ "$display_scanout" = true ]; then display_boot_cpp=1; fi
 if [ "$display_tile" = true ]; then display_tile_cpp=1; fi
 if [ "$display" = true ] && [ "$profile" != device ]; then
@@ -298,6 +307,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const touch_check = %s;\n' "$touch_check"
     printf 'pub const keypad_demo = %s;\npub const card_read = %s;\npub const card_photo = %s;\n' "$keypad_demo" "$card_read" "$card_photo"
     printf 'pub const card_auto = %s;\npub const card_auto_probe = %s;\n' "$card_auto" "$auto_probe"
+    printf 'pub const card_scene_exercise = %s;\n' "$scene_exercise"
     printf 'pub const usb = %s;\npub const jpki = %s;\n' "$usb" "$jpki"
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
@@ -366,7 +376,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     fi
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" -DNIH_NATIVE_CARD_SCENE_EXERCISE="$scene_exercise" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
             -I "$native_boot_dir/loader/config" \

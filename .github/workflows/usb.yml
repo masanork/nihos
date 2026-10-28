@@ -104,8 +104,8 @@ jobs:
       - name: Compile PIN-free probes, keypad and local card-read images
         # Build/image audit only. GitHub runners provide no Tab5/card evidence.
         run: |
-          for feature in disabled usb jpki card touch keypad card-read card-photo card-auto card-auto-probe; do
-            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0 NIHOS_NATIVE_TOUCH_CHECK=0 NIHOS_NATIVE_CARD_AUTO_PROBE=0
+          for feature in disabled usb jpki card touch keypad card-read card-photo card-auto card-auto-probe card-scene; do
+            export NIHOS_NATIVE_USB=0 NIHOS_NATIVE_JPKI=0 NIHOS_NATIVE_DISPLAY=0 NIHOS_NATIVE_CARD_CHECK=0 NIHOS_NATIVE_TOUCH_CHECK=0 NIHOS_NATIVE_CARD_AUTO_PROBE=0 NIHOS_NATIVE_CARD_SCENE_EXERCISE=0
             case "$feature" in
               usb) export NIHOS_NATIVE_USB=1 ;;
               jpki) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_JPKI=1 ;;
@@ -116,6 +116,7 @@ jobs:
               card-photo) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=10 ;;
               card-auto) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=11 ;;
               card-auto-probe) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=11 NIHOS_NATIVE_CARD_AUTO_PROBE=1 ;;
+              card-scene) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=11 NIHOS_NATIVE_CARD_AUTO_PROBE=1 NIHOS_NATIVE_CARD_SCENE_EXERCISE=1 ;;
             esac
             sh tools/build-native.sh device integer
             destination="build/usb-ci/$feature"
@@ -131,7 +132,7 @@ jobs:
                build/native-device/loader/partition_table/partition-table.bin \
                "$destination/"
             case "$feature" in
-              card-photo|card-auto|card-auto-probe)
+              card-photo|card-auto|card-auto-probe|card-scene)
                 cp build/native-device/photo-manifest.json "$destination/"
                 ;;
             esac
