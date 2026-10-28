@@ -20,6 +20,24 @@ def complete():
 
 
 class KeypadTests(unittest.TestCase):
+    def test_relocated_display_leases_must_stay_inside_base_free_domains(self):
+        low = 0x4ff48000
+        lease = {'nodes': 100, 'lease_start': low + 0x1000, 'lease_bytes': 6400}
+        font = lease['lease_start'] + lease['lease_bytes']
+        storage = {'font_low': font, 'font_low_bytes': low + 96 * 1024 - font, 'pixel_bytes': 10000}
+        memory = {'pool0_start': low, 'pool0_bytes': 96 * 1024, 'pool1_start': 0x4ff82000, 'pool1_bytes': 116 * 1024}
+        audit = {'allocation': 'base-free-sram-v1', 'writable': False, 'executable': False,
+                 'ui_mode': 'runtime', 'font_bytes': 357358,
+                 'pools': [{'name': 'service.free0', 'origin': hex(low), 'end': '0x4ff60000'},
+                           {'name': 'service.free1', 'origin': '0x4ff80000', 'end': '0x4ff9f000'}]}
+        CHECK.DISPLAY.check_keypad_storage(lease, storage, audit, True, memory)
+        for bad in (None, {**memory, 'pool0_start': low - 64},
+                    {**memory, 'pool1_start': 0x4ff78000},
+                    {**memory, 'pool1_bytes': 200 * 1024},
+                    {**memory, 'pool1_start': low, 'pool1_bytes': 4096}):
+            with self.subTest(memory=bad), self.assertRaises(ValueError):
+                CHECK.DISPLAY.check_keypad_storage(lease, storage, audit, True, bad)
+
     def test_sram_receipt_matches_audited_banks_and_descriptor_bounds(self):
         lease = {'nodes': 637, 'lease_start': 0x4ff46c80, 'lease_bytes': 637 * 64}
         font_low = lease['lease_start'] + lease['lease_bytes']

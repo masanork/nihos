@@ -31,8 +31,6 @@ MEMORY {
 #endif
 #elif NIH_NATIVE_KEYPAD
     flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
-    keypad_low (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
-    keypad_high (rw) : ORIGIN = 0x4ff70000, LENGTH = 188K
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
@@ -77,14 +75,17 @@ SECTIONS
         __flash_records_start = .;
         KEEP(*(.flash.rodata.records))
         *(.flash.rodata.boot_graphics)
+        . = ALIGN(16);
+        __card_boot_masks_start = .;
+        *(.flash.rodata.card_boot.mask)
+        __card_boot_masks_end = .;
+        *(.flash.rodata.card_boot.meta)
         *(.flash.rodata.display)
         *(.flash.rodata.card_pin)
         *(.flash.rodata.bmi270)
         __flash_records_end = .;
     } > flash_records
 #if NIH_NATIVE_KEYPAD
-    .keypad.low (NOLOAD) : { __keypad_low_start = .; KEEP(*(.keypad.low.anchor)) . = ORIGIN(keypad_low) + LENGTH(keypad_low); __keypad_low_end = .; } > keypad_low
-    .keypad.high (NOLOAD) : { __keypad_high_start = .; KEEP(*(.keypad.high.anchor)) . = ORIGIN(keypad_high) + LENGTH(keypad_high); __keypad_high_end = .; } > keypad_high
     .flash.uipad : ALIGN(4) {
         KEEP(*(.flash.keypad.pad))
         . = ORIGIN(flash_records) + LENGTH(flash_records);
@@ -225,6 +226,21 @@ SECTIONS
         . = ORIGIN(ram) + LENGTH(ram);
         __heap_end = .;
     } > ram
+#if !NIH_NATIVE_HIGH_SRAM
+    /* Free service SRAM belongs to the base, not to a card application.
+     * The SDK/loader-supported high RW window starts at 0x4ff40000.
+     * Retain the top 4 KiB guard used by the high-SRAM qualification. */
+    __service_sram0_start = MAX(ORIGIN(ram) + LENGTH(ram), 0x4ff40000);
+    __service_sram0_end = ORIGIN(stack_ram);
+#if NIH_NATIVE_GRAPHICS
+    __service_sram1_start = ORIGIN(graphics_ram) + LENGTH(graphics_ram);
+#else
+    __service_sram1_start = ORIGIN(stack_ram) + LENGTH(stack_ram);
+#endif
+    __service_sram1_end = 0x4ff9f000;
+    ASSERT(__service_sram0_start < __service_sram0_end, "no low service SRAM")
+    ASSERT(__service_sram1_start < __service_sram1_end, "no high service SRAM")
+#endif
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
     ASSERT(SIZEOF(.flash.boot) > 0, "missing Flash boot code")

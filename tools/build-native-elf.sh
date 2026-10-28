@@ -458,6 +458,12 @@ if [ "$broker" = true ]; then
     fi
     set -- "$@" "$build_dir/sql_broker_runtime.o"
 fi
+if [ "$high_sram" != true ]; then
+    "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+        -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_CARD_READ="$card_read_cpp" \
+        -o "$build_dir/base_sram.o" "$repo_root/src/platform/native/base_sram.c"
+    set -- "$@" "$build_dir/base_sram.o"
+fi
 if [ "$display" = true ] || [ "$psram_200" = true ]; then
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
     headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"

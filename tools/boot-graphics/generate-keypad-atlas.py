@@ -11,7 +11,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ('src/graphics/card_pin.zig', 'src/graphics/card_pin.rle',
            'src/graphics/card_pin_assets.zig', 'src/graphics/keypad_plan.zig',
-           'src/card_pin_preview.zig', 'tools/boot-graphics/generate-keypad-atlas.py')
+           'src/card_pin_preview.zig', 'tools/boot-graphics/generate-keypad-atlas.py',
+           'src/platform/native/dma_memory.zig', 'src/platform/native/memory.zig', 'src/platform/native/base_sram.c', 'src/platform/native/sram_pool.h', 'src/platform/native/esp32p4.ld')
 
 
 def main():

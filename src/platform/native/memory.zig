@@ -7,6 +7,7 @@ pub const reusable = @import("heap.zig");
 const options = @import("native_options");
 pub const high = if (options.high_sram) @import("high_sram.zig") else struct {};
 pub const stacks = @import("stacks.zig");
+pub const dma = @import("dma_memory.zig");
 
 extern var __heap_start: u8;
 extern var __heap_end: u8;
