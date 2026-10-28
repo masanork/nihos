@@ -20,6 +20,7 @@ pub const core_arena = @import("kernel/core_arena.zig");
 pub const buddy_heap = @import("kernel/buddy_heap.zig");
 pub const task_resources = @import("kernel/task_resources.zig");
 pub const scheduler = @import("kernel/scheduler.zig");
+pub const spsc_mailbox = @import("kernel/spsc_mailbox.zig");
 pub const spsc_ring = @import("kernel/spsc_ring.zig");
 pub const spsc_channel = @import("kernel/spsc_channel.zig");
 pub const remote_events = @import("kernel/remote_events.zig");
@@ -76,6 +77,8 @@ test {
     _ = @import("kernel/buddy_heap_test.zig");
     _ = scheduler;
     _ = spsc_ring;
+    _ = spsc_mailbox;
+    _ = @import("kernel/spsc_mailbox_test.zig");
     _ = spsc_channel;
     _ = @import("kernel/spsc_channel_test.zig");
     _ = remote_events;

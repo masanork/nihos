@@ -426,3 +426,29 @@ new footprint decision. Evidence is bound in
 ![Host reference of edited source and following ruby](measurements/2026-10-28-runtime-text-horizontal.png)
 
 This preview is a host reference, not an LCD capture.
+
+## Demand-owned queue payload follow-up
+
+[ADR 0054](adr/0054-demand-owned-font-queue-storage.md) moves the single-flight
+Request/Reply payload copies into the task-owned archive. Channel descriptors
+and atomics remain SRAM; binding precedes admission and detachment follows
+terminal ACK, worker cleanup and reap. Both endpoint tasks use CPU0. A queue's
+empty state is not used as a lifetime proof. The generic multi-slot ring and
+all prior output/reference checks remain unchanged.
+
+The archive is now 4,496 B charged at 8 KiB during use, while permanent channel
+metadata drops from 3,200 to 768 B. Allocation and retirement still use the same
+two bootstrap roots. The stack/library 64 KiB region is still resident. Native
+smoke requires SRAM/PSRAM address evidence and binding/full/closed rejection
+controls, with all heap bytes returned. Source/image/log measurements are in
+[`2026-10-28-native-queue-storage.json`](measurements/2026-10-28-native-queue-storage.json).
+
+
+The final queue-storage candidate reduces device primary static SRAM by 1,152 B
+(net of extra lifetime/qualification code), leaving a 50,304 B primary heap
+versus the previous 49,152 B. Emulator heap is 50,432 B. Frontend Flash is
+16,048 B, leaving 336 B below the existing cap. It passed 253 Zig and 192 Python
+tests, static analysis/six default links, both profile audits and exact-image
+native emulator execution. The four frame/glyph/A8 references remain byte-for-
+byte unchanged, and final PSRAM capacity returns to 16,022,848 B. Device execution,
+reclaim of the fixed font regions and a restartable production service remain open.

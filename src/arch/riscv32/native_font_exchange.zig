@@ -1,5 +1,6 @@
 //! CPU0 qualification transport. Bootstrap is the sole client dispatcher;
-//! the font task is the sole library owner. Queues outlive both endpoints.
+//! the font task is the sole library owner. SRAM queue descriptors outlive both
+//! endpoints; copied payload slots live in the bootstrap PSRAM archive until reap.
 const std = @import("std");
 const options = @import("native_options");
 pub const composer = @import("native_surface.zig");
@@ -7,11 +8,11 @@ pub const raster = @import("native_raster.zig");
 const lease = @import("raster_lease");
 const protocol = @import("text_context").protocol;
 const calls = @import("task_calls.zig");
-const ring = @import("spsc_ring");
+const mailbox = @import("spsc_mailbox");
 const channel = @import("spsc_channel");
 extern fn nih_native_task_failed() callconv(.c) noreturn;
-const Requests = channel.SpscChannel(ring.SpscRing(protocol.Request, 2), RequestEvents);
-const Replies = channel.SpscChannel(ring.SpscRing(protocol.Reply, 2), ReplyEvents);
+const Requests = channel.SpscChannel(mailbox.SpscMailbox(protocol.Request), RequestEvents);
+const Replies = channel.SpscChannel(mailbox.SpscMailbox(protocol.Reply), ReplyEvents);
 const request_data = 0x100;
 const request_space = 0x200;
 const reply_data = 0x400;
@@ -115,7 +116,7 @@ const Snapshot = struct {
 };
 // Qualification archives only successful glyphs; failed packets are validated
 // before discarding their empty storage. Nothing here crosses the IPC queue.
-const Archive = struct { glyphs: [3][16]protocol.Glyph, texts: [5]Snapshot, source: composer.Context, source_ready: bool };
+const Archive = struct { glyphs: [3][16]protocol.Glyph, texts: [5]Snapshot, source: composer.Context, source_ready: bool, request_slot: protocol.Request, reply_slot: protocol.Reply };
 var archive: ?*Archive = null;
 var archive_allocation: ?@import("native_memory").reusable.Allocation = null;
 pub const ArchiveReport = struct { logical_bytes: u32 = @sizeOf(Archive), charge: u32 = 0, live_charge: u32 = 0, before: u32 = 0, after: u32 = 0 };
@@ -133,15 +134,35 @@ pub fn prepareArchive() bool {
     archive_metrics.live_charge = archive_metrics.charge;
     return true;
 }
-pub fn releaseArchive() bool {
+pub const QueueReport = struct { capacity: u32 = 1, metadata_bytes: u32 = @sizeOf(Requests) + @sizeOf(Replies), payload_bytes: u32 = @sizeOf(protocol.Request) + @sizeOf(protocol.Reply), binding_rejected: u32 = 0, full_rejected: u32 = 0, detached: u32 = 0, live_payloads: u32 = 0, closed_rejected: u32 = 0, requests_metadata: u32 = 0, replies_metadata: u32 = 0, request_payload: u32 = 0, reply_payload: u32 = 0 };
+pub var queue_metrics: QueueReport = .{};
+// Caller has reaped the font worker after terminal ACK; no endpoint may run again.
+pub noinline fn releaseArchive() bool {
+    if (!composer.contextAllowed() or !finished()) return false;
+    const storage = archive orelse return false;
+    // Last stop packets remain initialized. Prove full rejection without losing
+    // either owned copy, after both endpoints have stopped using these slots.
+    if (!requests.ring.tryPush(storage.request_slot) or requests.ring.tryPush(storage.request_slot)) return false;
+    queue_metrics.full_rejected += 1;
+    if ((requests.ring.tryPop() orelse return false).operation != .stop) return false;
+    if (!replies.ring.tryPush(storage.reply_slot) or replies.ring.tryPush(storage.reply_slot)) return false;
+    queue_metrics.full_rejected += 1;
+    if ((replies.ring.tryPop() orelse return false).operation != .stop) return false;
+    if ((requests.ring.detachAfterQuiescence() orelse return false) != &storage.request_slot or
+        (replies.ring.detachAfterQuiescence() orelse return false) != &storage.reply_slot) return false;
+    queue_metrics.detached = 2;
+    queue_metrics.live_payloads = 0;
     const heap = @import("native_memory").reusable;
     const allocation = archive_allocation orelse return false;
     heap.freeTask(allocation) catch return false;
     archive_allocation = null;
     archive = null;
+    if (requests.ring.tryPush(submitted) or requests.ring.tryPop() != null or replies.ring.tryPop() != null) return false;
+    queue_metrics.closed_rejected = 3;
     archive_metrics.live_charge = 0;
     archive_metrics.after = @intCast(heap.availableBytes() orelse return false);
-    return archive_metrics.before == archive_metrics.after;
+    return archive_metrics.before == archive_metrics.after and composer.contextAllowed() and
+        @import("native_memory").stacks.bootGuardsIntact(0);
 }
 pub fn textResults() []const Snapshot {
     return if (archive) |storage| storage.texts[0 .. metrics.text_success + metrics.text_failed] else &.{};
@@ -152,6 +173,15 @@ pub fn bind(client: calls.Handle, worker: calls.Handle) bool {
     requests = Requests.init(.{}, client, worker, request_data, request_space) orelse return false;
     replies = Replies.init(.{}, worker, client, reply_data, reply_space) orelse return false;
     raster.bind((@as(u32, worker.slot) << 16) | worker.generation, (@as(u32, client.slot) << 16) | client.generation);
+    const storage = archive orelse return false;
+    if (!requests.ring.bindStorage(&storage.request_slot) or !replies.ring.bindStorage(&storage.reply_slot)) return false;
+    if (requests.ring.bindStorage(&storage.request_slot) or replies.ring.bindStorage(&storage.reply_slot)) return false;
+    queue_metrics.binding_rejected = 2;
+    queue_metrics.live_payloads = 2;
+    queue_metrics.requests_metadata = @intFromPtr(&requests);
+    queue_metrics.replies_metadata = @intFromPtr(&replies);
+    queue_metrics.request_payload = @intFromPtr(&storage.request_slot);
+    queue_metrics.reply_payload = @intFromPtr(&storage.reply_slot);
     bound = true;
     return true;
 }
