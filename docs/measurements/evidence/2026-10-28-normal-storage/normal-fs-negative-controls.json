@@ -1,0 +1,138 @@
+{
+  "passed": true,
+  "hardware_executed": false,
+  "elf_sha256": "f0aa4f99acb9188cba4d08129b0af8505bcb09a3b06beee72887222ecdfa85c7",
+  "image_sha256": "5f59fd32e2da18ae138e9c4752b89dd463596f7512714e7251e8c55cd5a7b422",
+  "profile": {
+    "profile": [
+      1,
+      65536,
+      32768,
+      1073872896,
+      1074135040,
+      4096,
+      0,
+      1
+    ],
+    "manifest_sha256": "58db1de0156c31c7662928423a730935f97c0c95463304860484eaf215b9a90c",
+    "text_start": "0x40020000",
+    "text_bytes": 42496,
+    "text_sha256": "667d43c9498a5c100e38df0e60d8264943ee723ffe14a57e2798cf85bd0b73eb",
+    "rodata_start": "0x4002a600",
+    "rodata_bytes": 10660,
+    "rodata_sha256": "ebd181aef92e818162e664195e91da4cc022d74845a02e48da403c7b03a3fa45",
+    "parent_bytes": 65536,
+    "worker_stack_bytes": 4096,
+    "foreground_only": true,
+    "read_only": true,
+    "static_frames": {
+      "records": 139,
+      "maximum_bytes": 1248,
+      "largest": [
+        {
+          "address": "0x400204ce",
+          "functions": [
+            "nih_normal_fs_begin",
+            "normal_fs.nih_normal_fs_begin"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x4002634c",
+          "functions": [
+            "f_open"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x40027760",
+          "functions": [
+            "identity_of"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x40026ca8",
+          "functions": [
+            "f_opendir"
+          ],
+          "bytes": 1152
+        },
+        {
+          "address": "0x40026e2c",
+          "functions": [
+            "f_readdir"
+          ],
+          "bytes": 1152
+        },
+        {
+          "address": "0x40027540",
+          "functions": [
+            "parents"
+          ],
+          "bytes": 784
+        },
+        {
+          "address": "0x40020270",
+          "functions": [
+            "nih_normal_fs_submit",
+            "normal_fs.nih_normal_fs_submit"
+          ],
+          "bytes": 560
+        },
+        {
+          "address": "0x40029936",
+          "functions": [
+            "discover"
+          ],
+          "bytes": 224
+        },
+        {
+          "address": "0x40024cc2",
+          "functions": [
+            "nih_storage_read",
+            "normal_fs.nih_storage_read"
+          ],
+          "bytes": 176
+        },
+        {
+          "address": "0x400209ca",
+          "functions": [
+            "nih_normal_fs_task",
+            "normal_fs.nih_normal_fs_task"
+          ],
+          "bytes": 160
+        }
+      ]
+    },
+    "whole_call_stack_qualified": false,
+    "image_offset": 131072
+  },
+  "cases": [
+    {
+      "name": "edited-source-sidecar",
+      "rejected": true,
+      "reason": "ordinary FS linked input identity mismatch"
+    },
+    {
+      "name": "edited-object-sidecar",
+      "rejected": true,
+      "reason": "ordinary FS linked input identity mismatch"
+    },
+    {
+      "name": "smaller-parent-claim",
+      "rejected": true,
+      "reason": "invalid ordinary FS profile"
+    },
+    {
+      "name": "expanded-function-sidecar",
+      "rejected": true,
+      "reason": "ordinary FS linked input identity mismatch"
+    },
+    {
+      "name": "missing-service-sidecar",
+      "rejected": true,
+      "reason": "ordinary FS section/manifest mismatch"
+    }
+  ]
+}

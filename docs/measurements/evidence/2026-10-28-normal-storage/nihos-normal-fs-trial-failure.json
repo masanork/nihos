@@ -1,0 +1,33 @@
+{
+  "candidate_image_sha256": "f8c51d4581ee8ae1770d4bc41c6bd666a538375d703008fb86bd8943e839576f",
+  "passed": false,
+  "filesystem": [
+    {
+      "status": 1,
+      "epoch": 1,
+      "kind": 0,
+      "requests": 0,
+      "completed": 0,
+      "bytes": 0,
+      "crc": 0,
+      "eof": 0,
+      "error_code": 0,
+      "reads": 0,
+      "yields": 0
+    },
+    {
+      "status": 4,
+      "epoch": 1,
+      "kind": 0,
+      "requests": 0,
+      "completed": 0,
+      "bytes": 0,
+      "crc": 0,
+      "eof": 0,
+      "error_code": 0,
+      "reads": 1,
+      "yields": 1
+    }
+  ],
+  "scope": "normal mount/read acceptance incomplete; original Flash subsequently restored"
+}

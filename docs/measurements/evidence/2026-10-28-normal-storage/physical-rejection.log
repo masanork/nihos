@@ -1,0 +1,14 @@
+NIHOS_NATIVE_BOOT_HEALTH cpu0_ticks=00000001 cpu1_ticks=00000001 ipi0=00000001 ipi1=00000001
+NIHOS_NATIVE_NETWORK phase=00000002 station=00000000 error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00000000 tx=00000000 polls=00000001 max_poll_us=00000032 renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000020 ticks0=00000010 ticks1=00000010
+NIHOS_NORMAL_FS status=00000001 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=00000000 reads=00000000 yields=00000000
+NIHOS_NORMAL_FS status=00000004 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=fffffefa reads=00000001 yields=00000001
+NIHOS_NORMAL_FS status=00000001 epoch=00000002 kind=00000000 requests=00000001 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=00000000 reads=00000001 yields=00000001
+NIHOS_NORMAL_FS status=00000004 epoch=00000002 kind=00000000 requests=00000001 completed=00000001 bytes=00000000 crc=00000000 eof=00000000 error_code=fffffefa reads=00000002 yields=00000002
+NIHOS_DEVICE_REQUEST kind=00000005 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00000390 tx=000000b2 polls=00000159 max_poll_us=00001c1e renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000014d ticks0=00000205 ticks1=00000205
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=0000049e tx=000000b2 polls=00000407 max_poll_us=00001c1e renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000279 ticks0=000003f9 ticks1=000003f9
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000004b1 tx=000000c3 polls=00000693 max_poll_us=00001c1e renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000003a5 ticks0=000005ee ticks1=000005ee
