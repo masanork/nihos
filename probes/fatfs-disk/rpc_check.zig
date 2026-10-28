@@ -4,6 +4,8 @@ const rpc = support.rpc;
 const dev = support.development;
 const mem = support.memory;
 const adapter = support.fatfs;
+const block_owner = support.block_owner;
+const sd = @import("sdmmc");
 const Owner = rpc.Owner(adapter.Backend);
 const equal = std.testing.expectEqual;
 const expect = std.testing.expect;
@@ -39,6 +41,86 @@ fn newClient() !void {
 var notifications: rpc.Notifications = .{};
 var backend: ?adapter.Backend = null;
 var event_seen: u32 = 0;
+var linked_commands: u32 = 0;
+var linked_fences: u32 = 0;
+var linked_unpublished: u32 = 0;
+const ReadSource = struct {
+    ticket: u32,
+    pub fn cancelled(self: @This()) bool {
+        return notifications.readCancelled(self.ticket);
+    }
+};
+const DmaBus = struct {
+    kind: u32,
+    owner: *block_owner.ReadOwner,
+    issued: u32 = 0,
+    stopped: u32 = 0,
+    released: u32 = 0,
+    copied: u32 = 0,
+    descriptor: u32 = 0,
+    pub fn read(self: *@This(), offset: usize) u32 {
+        return switch (offset) {
+            sd.regs.interrupts => (1 << 2) | (1 << 3),
+            sd.regs.response => 0x900,
+            sd.regs.descriptor => self.descriptor,
+            else => 0,
+        };
+    }
+    pub fn write(self: *@This(), offset: usize, value: u32) void {
+        if (offset == sd.regs.descriptor) self.descriptor = value;
+        if (offset == sd.regs.dma_mode and value == 0) self.stopped += 1;
+        if (offset == sd.regs.command and value & 63 == 17) {
+            self.issued += 1;
+            std.debug.assert(self.owner.busy());
+            event(if (self.kind == 7) 1 else 2) catch @panic("linked stop notification failed");
+            std.debug.assert(self.owner.busy() and parent.?.borrow != null);
+        }
+    }
+    pub fn delay(_: *@This(), _: u32) void {}
+    pub fn prepareDma(_: *@This(), _: u32) ?u32 {
+        return 0x4ff1_0000;
+    }
+    pub fn finishDma(self: *@This(), output: *[512]u8, _: u32) bool {
+        self.copied += 1;
+        @memset(output, 0x42);
+        return true;
+    }
+    pub fn releaseDma(self: *@This()) bool {
+        std.debug.assert(self.stopped != 0 and self.descriptor == 0);
+        self.released += 1;
+        return true;
+    }
+};
+fn linkedRead(kind: u32) !i32 {
+    var io = block_owner.ReadOwner{};
+    var bus = DmaBus{ .kind = kind, .owner = &io };
+    var controller = sd.Controller(*DmaBus){ .io = &bus, .poll_limit = 4, .rca = 1 << 16, .sectors = 8 };
+    var signal = block_owner.Signal{};
+    const target = signal.begin().?;
+    const source = ReadSource{ .ticket = notifications.activeReadTicket() };
+    try expect(source.ticket != 0 and !source.cancelled());
+    const relay = block_owner.CancelRelay(ReadSource){ .target = target, .source = source };
+    var output: [512]u8 = @splat(0xa5);
+    try expectError(error.Cancelled, io.read(&controller, 0, &output, target.ticket, relay));
+    try equal(@as(u32, 1), bus.issued);
+    try equal(@as(u32, 1), bus.stopped);
+    try equal(@as(u32, 1), bus.released);
+    try equal(@as(u32, 0), bus.copied);
+    try expect(controller.faulted and controller.quiescence.complete() and !io.busy());
+    try equal(@as(u32, 0), signal.active());
+    try expect(!signal.stop(target.ticket, 1));
+    for (output) |byte| try equal(@as(u8, 0xa5), byte);
+    linked_commands += 1;
+    linked_fences += 1;
+    linked_unpublished += 1;
+    return -2;
+}
+export fn nih_rpc_linked_read(kind: u32) callconv(.c) i32 {
+    return linkedRead(kind) catch |err| {
+        host_test_failure(@errorName(err).ptr);
+        @panic("RPC to controller stop relay failed");
+    };
+}
 fn endpoint() *Owner {
     return @ptrCast(@alignCast(parent.?.borrow.?.bytes.ptr + layout.?.endpoint));
 }
@@ -144,7 +226,7 @@ fn check() !void {
     read_request.offset = if (host_rpc_kind() == 6) 0 else 512;
     read_request.length = if (host_rpc_kind() == 6) 1 else 4096;
     try publish(read_request);
-    if (host_rpc_kind() == 2) {
+    if (host_rpc_kind() == 2 or host_rpc_kind() == 8) {
         read_request = request(4, .read, file);
         read_request.length = 1;
         try publish(read_request);
@@ -153,15 +235,24 @@ fn check() !void {
     if (host_rpc_kind() == 6) try equal(@as(c_int, 1), host_card_remove()) else host_rpc_arm(host_rpc_kind());
     try expect(endpoint().step(queues()));
     try equal(@as(u32, if (host_rpc_kind() == 6) 0 else 1), event_seen);
+    if (host_rpc_kind() == 8) {
+        try expect(!endpoint().alive);
+        try equal(@as(u32, 1), endpoint().discarded_requests);
+        try equal(@as(u32, 2), endpoint().discarded_responses);
+        try equal(rpc.api.State.faulted, (try endpoint().core.queryMount(endpoint().mount.?)).state);
+        try expect(!endpoint().rebind(queues(), 43));
+        return;
+    }
     if (host_rpc_kind() >= 4) {
+        const cancelled = host_rpc_kind() == 4 or host_rpc_kind() == 7;
         if (host_rpc_kind() == 6) try equal(before_fault, host_backend_reads()) else try expect(host_backend_reads() > before_fault);
         try receive(2);
         try equal(@as(i32, 0), clientFrames().response.status);
         try receive(3);
-        try equal(@as(i32, if (host_rpc_kind() == 4) -125 else -5), clientFrames().response.status);
+        try equal(@as(i32, if (cancelled) -125 else -5), clientFrames().response.status);
         try equal(@as(u32, 0), clientFrames().response.length);
         for (clientFrames().response.data) |byte| try equal(@as(u8, 0), byte);
-        const state = if (host_rpc_kind() == 4) rpc.api.State.faulted else rpc.api.State.removed;
+        const state = if (cancelled) rpc.api.State.faulted else rpc.api.State.removed;
         try equal(state, (try endpoint().core.queryMount(endpoint().mount.?)).state);
         // Neither a cached file read nor a new open can reuse this mount.
         const before = host_backend_reads();
@@ -170,14 +261,14 @@ fn check() !void {
         try publish(read_request);
         try expect(endpoint().step(queues()));
         try receive(4);
-        try equal(@as(i32, if (host_rpc_kind() == 4) -5 else -9), clientFrames().response.status);
+        try equal(@as(i32, if (cancelled) -5 else -9), clientFrames().response.status);
         open_request = request(5, .open, root);
         open_request.path_length = 8;
         @memcpy(open_request.path[0..8], "Memo.txt");
         try publish(open_request);
         try expect(endpoint().step(queues()));
         try receive(5);
-        try equal(@as(i32, if (host_rpc_kind() == 4) -5 else -9), clientFrames().response.status);
+        try equal(@as(i32, if (cancelled) -5 else -9), clientFrames().response.status);
         try equal(before, host_backend_reads());
         try expect(notifications.notifyExit(42, 1));
         try stoppedClient();
@@ -260,6 +351,10 @@ export fn nih_rpc_metric(which: u32) callconv(.c) u32 {
         1 => mem.parent_bytes,
         2 => @sizeOf(Owner),
         3 => @sizeOf(rpc.Queues),
-        else => @sizeOf(rpc.Notifications),
+        4 => @sizeOf(rpc.Notifications),
+        5 => linked_commands,
+        6 => linked_fences,
+        7 => linked_unpublished,
+        else => 0,
     });
 }

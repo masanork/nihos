@@ -41,6 +41,8 @@ def main():
               ROOT / 'src/fs/io_leases.zig', ROOT / 'src/root.zig', ROOT / 'tools/check-fatfs-backend.py',
               ROOT / 'src/storage_vfs.zig', ROOT / 'src/fs/vfs_rpc.zig', ROOT / 'src/fs/vfs_rpc_test.zig',
               ROOT / 'src/fs/vfs_memory.zig', ROOT / 'src/fs/io_stop.zig', ROOT / 'src/kernel/spsc_ring.zig',
+              ROOT / 'src/fs/sdmmc_owner.zig', ROOT / 'src/fs/sdmmc_owner_test.zig',
+              ROOT / 'src/soc/esp32p4/sdmmc.zig',
               ROOT / 'src/kernel/memory_broker.zig', ROOT / 'src/kernel/page_pool.zig', ROOT / 'src/kernel/development_memory.zig',
               ROOT / 'docs/planning/tab5-development-profile.json',
               ROOT / 'tools/run-static-analysis.sh', ROOT / '.github/workflows/ci.yml']
@@ -55,9 +57,10 @@ def main():
         arch = {'arm64': 'aarch64', 'x86_64': 'x86_64'}[platform.machine()]
         host_target = ['-target', arch + '-macos.' + run(['xcrun', '--sdk', 'macosx', '--show-sdk-version']).strip()]
     library = work / 'vfs-check.a'
-    run([zig, 'build-lib', *host_target, '-O', 'ReleaseSafe', '--dep', 'storage_vfs',
+    run([zig, 'build-lib', *host_target, '-O', 'ReleaseSafe', '--dep', 'storage_vfs', '--dep', 'sdmmc',
          '-Mroot=' + str(PROBE / 'host_library.zig'), *host_target, '-O', 'ReleaseSafe',
-         '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'), '-femit-bin=' + str(library)])
+         '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'), *host_target, '-O', 'ReleaseSafe',
+         '-Msdmmc=' + str(ROOT / 'src/soc/esp32p4/sdmmc.zig'), '-femit-bin=' + str(library)])
     cc = shlex.split(os.environ.get('CC', 'cc'))
     binary = work / 'backend-check'
     flags = ['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
@@ -113,7 +116,8 @@ def main():
         for mode in ('vfs', 'selected-vfs', 'io', 'removed'):
             probe(row, mode, mode)
         for mode in ('rpc-cancel', 'rpc-exit', 'card-rpc-cancel', 'card-rpc-exit',
-                     'card-rpc-transport-cancel', 'card-rpc-transport-remove', 'card-rpc-idle-remove'):
+                     'card-rpc-transport-cancel', 'card-rpc-transport-remove', 'card-rpc-idle-remove',
+                     'card-rpc-linked-cancel', 'card-rpc-linked-exit'):
             probe(row, mode, mode)
         if fixture['fs_type'] == 4:
             probe(row, 'rpc-large', 'rpc-large')

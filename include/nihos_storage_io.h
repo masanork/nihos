@@ -20,6 +20,12 @@ enum { NIH_STORAGE_READ_OK = 0, NIH_STORAGE_READ_IO = -1,
 uint32_t nih_storage_io_active(void);
 uint32_t nih_storage_io_stop(uint32_t ticket, uint32_t reason);
 void nih_storage_io_removed(void);
+/* Opt-in SD VFS/RPC adapter. Ordinary owner captures the current read ticket
+ * once and samples only that resident notification window. A closed/stale
+ * ticket returns 0. These hooks neither touch PSRAM nor stop/free hardware;
+ * the block owner relays to its exact I/O ticket and proves the fence. */
+uint32_t nih_fatfs_read_ticket(void);
+uint32_t nih_fatfs_read_cancelled(uint32_t ticket);
 /* Trusted ordinary owner, opt-in native FatFs fixture only. Begin returns a
  * 512-byte sector count and publishes its nonzero generation on success; zero
  * leaves generation unchanged. End is called after filesystem/disk teardown;

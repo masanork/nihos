@@ -95,7 +95,8 @@ def check_fatfs_native(log, image, evidence):
     if not all(part in log for part in order) or any(log.index(a) >= log.index(b) for a, b in zip(order, order[1:])):
         raise ValueError('native FatFs task phases out of order')
     return {**record, 'input_source': config['card']['source'] if config.get('card',{}).get('rpc') else config['source'],
-            'physical_sd_fatfs_qualified':config.get('card',{}).get('rpc',False)}
+            'physical_sd_fatfs_qualified':config.get('card',{}).get('rpc',False),
+            **({'controller_abort_qualified':False} if config.get('card',{}).get('cancel_relay') else {})}
 
 
 def check_storage_api(record, storage):

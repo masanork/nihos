@@ -71,8 +71,8 @@ def main(directory, source, littlefs=None):
         result['fatfs_native'] = {'version': 3, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': {path: sha(root / path) for path in SOURCES}}
         if fatfs_sd:
-            result['fatfs_native']['card'] = {'version':3 if card_rpc else 2, 'mode':'inserted' if card_direct else 'swap',
-                **({'rpc':True} if card_rpc else {}),
+            result['fatfs_native']['card'] = {'version':4 if card_rpc else 2, 'mode':'inserted' if card_direct else 'swap',
+                **({'rpc':True,'cancel_relay':True} if card_rpc else {}),
                 'source':CARD_SOURCE_RPC if card_rpc else CARD_SOURCE_INSERTED if card_direct else CARD_SOURCE,
                 'charged':65536 if card_rpc else 32768,
                 'sources':{path:sha(root/path) for path in CARD_SOURCES}}

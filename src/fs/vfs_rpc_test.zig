@@ -2,6 +2,7 @@ const std = @import("std");
 const rpc = @import("vfs_rpc.zig");
 const memory = @import("vfs_memory.zig");
 const broker = @import("../kernel/memory_broker.zig");
+const stop = @import("io_stop.zig");
 const equal = std.testing.expectEqual;
 const expect = std.testing.expect;
 const expectError = std.testing.expectError;
@@ -42,6 +43,53 @@ const Fake = struct {
     }
 };
 const Service = rpc.Owner(Fake);
+test "read cancellation source rejects idle nonread and reused RPC windows" {
+    const Source = struct {
+        notifications: *rpc.Notifications,
+        ticket: u32,
+        pub fn cancelled(self: @This()) bool {
+            return self.notifications.readCancelled(self.ticket);
+        }
+    };
+    var notification = rpc.Notifications{};
+    var fake = Fake{};
+    var service = Service{ .notifications = &notification, .client = 42 };
+    _ = try service.start(&fake);
+    try equal(@as(u32, 0), notification.activeReadTicket());
+    try expect(!notification.readCancelled(0));
+    const nonread = notification.signal.begin().?;
+    try equal(@as(u32, 0), notification.activeReadTicket());
+    try expect(!notification.readCancelled(nonread.ticket));
+    _ = nonread.finishReason();
+    notification.readable.store(true, .monotonic);
+    notification.sequence.store(7, .monotonic);
+    const first = notification.signal.begin().?;
+    const source = Source{ .notifications = &notification, .ticket = notification.activeReadTicket() };
+    try equal(first.ticket, source.ticket);
+    try expect(!notification.cancelRead(41, 1, 7));
+    try expect(!notification.cancelRead(42, 2, 7));
+    try expect(!notification.cancelRead(42, 1, 8));
+    try expect(!source.cancelled());
+    try expect(notification.cancelRead(42, 1, 7));
+    try expect(source.cancelled());
+    try equal(stop.Reason.cancelled, first.finishReason());
+    try expect(!source.cancelled());
+    notification.sequence.store(8, .monotonic);
+    const next = notification.signal.begin().?;
+    var device = stop.Signal{};
+    const io = device.begin().?;
+    const stale = stop.CancelRelay(Source){ .target = io, .source = source };
+    try equal(stop.Reason.none, stale.stopReason());
+    try expect(!notification.cancelRead(42, 1, 7));
+    const current = stop.CancelRelay(Source){ .target = io, .source = .{ .notifications = &notification, .ticket = next.ticket } };
+    try expect(notification.notifyExit(42, 1));
+    try expect(!source.cancelled());
+    try equal(stop.Reason.none, stale.stopReason());
+    try equal(stop.Reason.cancelled, current.stopReason());
+    try equal(stop.Reason.cancelled, current.finishReason());
+    _ = next.finishReason();
+    try expect(!current.source.cancelled());
+}
 fn open(service: *Service, queues: *rpc.Queues, root: rpc.Token) !rpc.Token {
     var request = rpc.Request{ .epoch = 1, .sequence = 1, .operation = 3, .token = root, .path_length = 1 };
     request.path[0] = 'a';

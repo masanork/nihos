@@ -23,6 +23,7 @@ const FaultBus = struct {
     fail_release: bool,
     stopped: u32 = 0,
     releases: u32 = 0,
+    issued: bool = false,
     pub fn read(self: *@This(), offset: usize) u32 {
         return switch (offset) {
             sd.regs.interrupts => (1 << 2) | (1 << 3),
@@ -35,6 +36,7 @@ const FaultBus = struct {
     }
     pub fn write(self: *@This(), offset: usize, value: u32) void {
         if (offset == sd.regs.dma_mode and value == 0) self.stopped += 1;
+        if (offset == sd.regs.command and value & 63 == 17) self.issued = true;
     }
     pub fn delay(_: *@This(), _: u32) void {}
     pub fn prepareDma(_: *@This(), _: u32) ?u32 {
@@ -99,18 +101,28 @@ test "block owner publishes failed reads only after quiescence" {
 
 test "unproved reset idle descriptor or cache handback quarantines the actual block owner" {
     const owner_module = bridge;
-    for (0..4) |fault| {
-        var model = FaultBus{ .stall_stop = fault == 0, .stall_fsm = fault == 1, .descriptor_stuck = fault == 2, .fail_release = fault == 3 };
-        var controller = sd.Controller(*FaultBus){ .io = &model, .poll_limit = 4, .rca = 1 << 16, .sectors = 8 };
-        var owner = owner_module.ReadOwner{};
-        var signal = owner_module.Signal{};
-        var data: [512]u8 = @splat(0xa5);
-        const control = signal.begin().?;
-        try std.testing.expectError(error.Quarantined, owner.read(&controller, 0, &data, control.ticket, control));
-        try std.testing.expect(owner.busy() and controller.cleanup_failed);
-        try std.testing.expect(!controller.quiescence.complete());
-        try std.testing.expectError(error.Controller, controller.prepare());
-        try std.testing.expectError(error.Controller, controller.readSector(0, &data));
-        if (fault < 2) try std.testing.expectEqual(@as(u32, 0), model.releases);
+    const Source = struct {
+        model: *FaultBus,
+        enabled: bool,
+        pub fn cancelled(self: @This()) bool {
+            return self.enabled and self.model.issued;
+        }
+    };
+    for ([_]bool{ false, true }) |linked| {
+        for (0..4) |fault| {
+            var model = FaultBus{ .stall_stop = fault == 0, .stall_fsm = fault == 1, .descriptor_stuck = fault == 2, .fail_release = fault == 3 };
+            var controller = sd.Controller(*FaultBus){ .io = &model, .poll_limit = 4, .rca = 1 << 16, .sectors = 8 };
+            var owner = owner_module.ReadOwner{};
+            var signal = owner_module.Signal{};
+            var data: [512]u8 = @splat(0xa5);
+            const control = signal.begin().?;
+            const relay = bridge.CancelRelay(Source){ .target = control, .source = .{ .model = &model, .enabled = linked } };
+            try std.testing.expectError(error.Quarantined, owner.read(&controller, 0, &data, control.ticket, relay));
+            try std.testing.expect(owner.busy() and controller.cleanup_failed);
+            try std.testing.expect(!controller.quiescence.complete());
+            try std.testing.expectError(error.Controller, controller.prepare());
+            try std.testing.expectError(error.Controller, controller.readSector(0, &data));
+            if (fault < 2) try std.testing.expectEqual(@as(u32, 0), model.releases);
+        }
     }
 }

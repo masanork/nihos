@@ -44,6 +44,27 @@ callback中はdestroyとbroker親領域のretireを拒否する。
 5形式のreply clear、不健全mountへのrebind拒否、旧世代通知拒否と全回収を確認する。
 RPCの取消通知をcontroller stopへ自動中継する実装や、mount中の実抜去の資格を意味しない。
 
+## RPC取消と発行中SD ticketの結合
+
+SD VFS/RPC opt-inでは、ordinary ownerがsector readごとにRPCのactive read ticketを一度だけ捕捉する。
+residentな`nih_fatfs_read_ticket/read_cancelled`はreadの通知windowと停止済みclientのbindingだけを見る。
+open/close、終了済みwindow、別ticketの通知は中継しない。
+`CancelRelay`はcontroller待機・copy前とcompletion時にそのsourceを調べ、捕捉したSD ticketへだけ取消を送る。
+古いrelayは次のSD ticketを止めたり、そのcompletion windowを閉じたりできない。
+IRQ側では引き続きresident atomicへの通知だけを行い、FS、PSRAM、MMIO停止や回収には触れない。
+
+RPC取消と停止済みclientのいずれでも、発行済みのreadは通常ownerによるcontroller停止・descriptor切離し・
+cache返却とlease回収を終えてからCへ失敗を返す。取消に伴うmount失効後は同じmountへ再bindしない。
+停止が証明できない場合はQuarantinedのまま保持し、native fixtureは通常のFS失敗へ戻らず停止する。
+完成済みsectorより後の取消は従来どおりRPC replyをclearするだけの場合もあり、rollbackを保証しない。
+
+hostでは実card/FatFs/VFS/RPCとdevelopment brokerから実SD controllerのMMIO modelまで接続し、
+CMD17発行点でRPC取消またはclient停止だけを通知して、device停止、非公開buffer、回収まで検査する。
+reset/FSM/descriptor/cache返却失敗をrelayあり/なしの両方で検査し、lease保持を確認する。
+card profile v4、immutable mode3とresident hook 2関数を監査し、旧profile v3/mode2の再検査も維持する。
+既存native workloadの通知点はsector fence後のままなので、この候補の静的relay有効flagから
+実転送途中abortの合格を導かない。判定結果にも`controller_abort_qualified=false`を付ける。
+
 ## 停止の条件
 
 1. peripheralとIDMACのinterrupt maskを0にし、controllerのinterrupt enableも落とす。

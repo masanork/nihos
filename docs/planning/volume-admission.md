@@ -162,4 +162,11 @@ RPCの応答取消とcontrollerの停止通知は別物であり、このhost試
 nativeのRPC取消からcontroller stopへの連動、siliconでの発行後abort、mount中の実抜去は
 このhost結合とnative compile/link監査だけでは資格にしない。
 
+後続のSD RPC構成では、RPC read ticketをcaptured source、SD ticketをtargetとする
+ordinary-ownerの`CancelRelay`を接続した。clientの停止済み通知も同じreadの停止へ中継する。
+resident hookは2関数で、IRQからFSやcontrollerへ再入しない。
+hostは結果の二重注入に加え、実controller modelへRPC通知だけを送る取消・exit経路も検査する。
+[RPCとSD停止の結合記録](../measurements/2026-10-28-rpc-sd-stop-host.md)に、旧ticket拒否と
+停止失敗時のquarantineを保存する。既存native workloadのfence後通知を、転送中abortの資格へ転用しない。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。

@@ -40,6 +40,14 @@ noinline fn runStorage(workspace: *[8192]u8, sectors: u32, report: *StorageRepor
     if (first > stack.low + 160) stack.confirmed = 1;
 }
 var active_controller: ?*sd.Controller(Bus) = null;
+extern fn nih_fatfs_read_ticket() callconv(.c) u32;
+extern fn nih_fatfs_read_cancelled(u32) callconv(.c) u32;
+const ReadCancellation = struct {
+    ticket: u32,
+    pub inline fn cancelled(self: @This()) bool {
+        return self.ticket != 0 and nih_fatfs_read_cancelled(self.ticket) != 0;
+    }
+};
 pub export fn nih_storage_read(lba: u32, destination: *block.Sector) callconv(.c) i32 {
     if (!options.storage) return -1;
     const controller = active_controller orelse return -1;
@@ -48,7 +56,14 @@ pub export fn nih_storage_read(lba: u32, destination: *block.Sector) callconv(.c
 // Normal owner context, mapped Flash with caches enabled; IRQs never call it.
 noinline fn ownedRead(controller: *sd.Controller(Bus), lba: u32, destination: *[512]u8) linksection(".flash.text.storage") i32 {
     const control = beginIo() orelse return if (io_signal.removed.load(.acquire)) -3 else -1;
-    io_owner.read(controller, lba, destination, control.ticket, control) catch |err| {
+    const result = if (options.fatfs_sd_rpc)
+        io_owner.read(controller, lba, destination, control.ticket, storage_io.CancelRelay(ReadCancellation){
+            .target = control,
+            .source = .{ .ticket = nih_fatfs_read_ticket() },
+        })
+    else
+        io_owner.read(controller, lba, destination, control.ticket, control);
+    result catch |err| {
         // Do not return into FS/client cleanup with a lease still retained.
         // This boot fixture has no recovery owner: stop the qualification.
         if (err == error.Quarantined) nih_native_task_failed();
