@@ -21,8 +21,10 @@ now blends those pixels into RGB565 with clipping before release.
 and vertical runs without splitting equal shaping clusters, reusing the same
 canvas. A [basic Japanese prohibition subset](adr/0050-basic-japanese-break-policy.md)
 now constrains source boundaries, with native offscreen digests and host
-negative controls. Complete Japanese line-breaking policy and automatic ruby
-association remain pending. [Task-only rendering placement](adr/0051-task-only-flash-rendering.md)
+negative controls. [Explicit group-ruby layout](adr/0052-anchored-group-ruby.md)
+now binds source ranges and follows the parent through horizontal/vertical flow.
+Complete Japanese line breaking, ruby spacing/overhang and dynamic native
+annotation construction remain pending. [Task-only rendering placement](adr/0051-task-only-flash-rendering.md)
 now puts the two borrowed-buffer paint/draw functions in mapped Flash; the
 ownership/context wrapper and all task/allocator/interrupt helpers remain SRAM.
 Fixed font stack/library regions and PSRAM charges are unchanged. Native
@@ -126,7 +128,8 @@ this study.
 
 These gates precede native service integration. Bounded cluster flow is now
 qualified for the pinned texts, but complete Japanese line-breaking policy,
-ruby-base association/placement, paragraph pagination, caret/selection and SDL remain
+full ruby typography/dynamic annotation input, paragraph pagination, caret/selection
+and SDL remain
 separate framework work. Shaping independent body/ruby runs does not implement
 those features.
 

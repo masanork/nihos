@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "evidence": "independent batch host reference; no native display",
+  "frames": [
+    {
+      "id": 5,
+      "ruby_hash": 3324092116,
+      "control_hash": 1133423604,
+      "clipped": 0,
+      "groups": 1,
+      "moved": 1,
+      "wide": 0,
+      "units": 4,
+      "joins": 0,
+      "lines": 3,
+      "logical": [
+        {
+          "index": 0,
+          "inline_offset": 0,
+          "block_offset": 2048
+        },
+        {
+          "index": 1,
+          "inline_offset": 1536,
+          "block_offset": 2048
+        },
+        {
+          "index": 2,
+          "inline_offset": 3072,
+          "block_offset": 2048
+        },
+        {
+          "index": 3,
+          "inline_offset": 4608,
+          "block_offset": 2048
+        },
+        {
+          "index": 4,
+          "inline_offset": 0,
+          "block_offset": 4096
+        },
+        {
+          "index": 5,
+          "inline_offset": 1536,
+          "block_offset": 4096
+        },
+        {
+          "index": 6,
+          "inline_offset": 768,
+          "block_offset": 384
+        },
+        {
+          "index": 7,
+          "inline_offset": 1536,
+          "block_offset": 384
+        },
+        {
+          "index": 8,
+          "inline_offset": 2304,
+          "block_offset": 384
+        },
+        {
+          "index": 9,
+          "inline_offset": 3072,
+          "block_offset": 384
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "ruby_hash": 2320867100,
+      "control_hash": 3176199132,
+      "clipped": 0,
+      "groups": 1,
+      "moved": 1,
+      "wide": 1,
+      "units": 5,
+      "joins": 1,
+      "lines": 4,
+      "logical": [
+        {
+          "index": 0,
+          "inline_offset": 512,
+          "block_offset": 2560
+        },
+        {
+          "index": 1,
+          "inline_offset": 2560,
+          "block_offset": 2560
+        },
+        {
+          "index": 2,
+          "inline_offset": 0,
+          "block_offset": 5120
+        },
+        {
+          "index": 3,
+          "inline_offset": 2048,
+          "block_offset": 5120
+        },
+        {
+          "index": 4,
+          "inline_offset": 0,
+          "block_offset": 7680
+        },
+        {
+          "index": 5,
+          "inline_offset": 2048,
+          "block_offset": 7680
+        },
+        {
+          "index": 6,
+          "inline_offset": 0,
+          "block_offset": 896
+        },
+        {
+          "index": 7,
+          "inline_offset": 1024,
+          "block_offset": 896
+        },
+        {
+          "index": 8,
+          "inline_offset": 2048,
+          "block_offset": 896
+        },
+        {
+          "index": 9,
+          "inline_offset": 3072,
+          "block_offset": 896
+        },
+        {
+          "index": 10,
+          "inline_offset": 4096,
+          "block_offset": 896
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "ruby_hash": 3332983756,
+      "control_hash": 3332983756,
+      "clipped": 0,
+      "groups": 0,
+      "moved": 0,
+      "wide": 0,
+      "units": 12,
+      "joins": 1,
+      "lines": 2,
+      "logical": [
+        {
+          "index": 0,
+          "inline_offset": 0,
+          "block_offset": 0
+        },
+        {
+          "index": 1,
+          "inline_offset": 1024,
+          "block_offset": 0
+        },
+        {
+          "index": 2,
+          "inline_offset": 2048,
+          "block_offset": 0
+        },
+        {
+          "index": 3,
+          "inline_offset": 3072,
+          "block_offset": 0
+        },
+        {
+          "index": 4,
+          "inline_offset": 0,
+          "block_offset": 2048
+        },
+        {
+          "index": 5,
+          "inline_offset": 1024,
+          "block_offset": 2048
+        },
+        {
+          "index": 6,
+          "inline_offset": 2048,
+          "block_offset": 2048
+        },
+        {
+          "index": 7,
+          "inline_offset": 2560,
+          "block_offset": 2048
+        },
+        {
+          "index": 8,
+          "inline_offset": 3072,
+          "block_offset": 2048
+        },
+        {
+          "index": 9,
+          "inline_offset": 3584,
+          "block_offset": 2048
+        },
+        {
+          "index": 10,
+          "inline_offset": 4096,
+          "block_offset": 2048
+        },
+        {
+          "index": 11,
+          "inline_offset": 4608,
+          "block_offset": 2048
+        }
+      ]
+    }
+  ],
+  "source_sha256": "46aa7117b9c277fbdcc49f3aa212eb009614cb27e38c5271f7b2cdc47bb853ab",
+  "cases_sha256": "00306091daecc1c13504f7aa6fd9d1c2738eed24b38650871ad17849ad084dee",
+  "annotations_sha256": "8674613dae33ae225331340ea491536e7b835eb2c01923ec3253d012e393c0e2",
+  "raster_reference_sha256": "327ba47df6554032427369795910428f7d6089dd60d1810499d686bfff9e3f51",
+  "composition_source_sha256": "f347c908fa689fde3f889e85cc5c82b30bd1f5b43cf9d27cc45f707602af78c1",
+  "input_sha256": {
+    "build/graphics-raster-host/raster-5.bin": "49302c562867a41d74db3740485e6a297bea3bcf4110874cb35ca6f0d9dc604b",
+    "build/graphics-raster-host/raster-8.bin": "e2a4cc0d63f89cea517a558f312b88a2488ba409b8e06504f0c3f1a1f119cbf6",
+    "build/graphics-raster-host/raster-9.bin": "dd6f6d1efc62aa68370c797556f8a4a957eb172f6ae88cd083d1a6ad0ff3d8ab"
+  },
+  "limits": [
+    "centered reserved-width group ruby only; no overhang/distribution or full JLREQ/JIS claim"
+  ]
+}

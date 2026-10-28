@@ -10,8 +10,8 @@ the emulated P4 peripheral rather than a host instruction hook. This remains
 emulator evidence, not physical timing or visible display evidence. The
 fixture hashes glyph IDs, advances and raster pixels; it does not present a
 framebuffer. A bounded cluster-flow primitive places wrapped runs, with a basic
-Japanese prohibition map now constraining breaks. Full paragraph/ruby layout
-remains pending.
+Japanese prohibition map now constraining breaks. Explicit group ruby now follows
+its base ranges. Full paragraph/ruby typography remains pending.
 
 ## Run
 
@@ -84,13 +84,14 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 111,104 B | 111,360 B |
-| Remaining primary SRAM heap | 52,736 B | 52,480 B |
-| Static reservations including stack/data regions | 233,984 B | 234,240 B |
-| Application image | 11,576,048 B | 11,577,504 B |
+| Primary static span | 112,768 B | 112,896 B |
+| Remaining primary SRAM heap | 51,072 B | 50,944 B |
+| Static reservations including stack/data regions | 235,648 B | 235,776 B |
+| Application image | 11,581,696 B | 11,583,152 B |
 
 Font-library code/RO occupy 561,072 B in Flash; the separate renderer adds
-2,816 B of RX code. TTF inputs occupy 10,821,312 B,
+6,860 B of RX code including the bounded group-ruby planner. TTF inputs occupy
+10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
 Private initialized data/BSS occupy 20,764 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
@@ -141,13 +142,15 @@ that consumer with bounded horizontal/vertical wrapping and archive retirement.
 The [basic-prohibition receipt](measurements/2026-10-28-native-kinsoku.json) adds
 source-boundary policy and a third composition pass. The
 [render-placement receipt](measurements/2026-10-28-native-render-placement.json)
-then moves the task-only paint/draw code to Flash. The current run records:
+then moves the task-only paint/draw code to Flash. The
+[group-ruby receipt](measurements/2026-10-28-native-group-ruby.json) adds explicit
+base/ruby ranges and a fourth pass. The current run records:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
 - The timer captures the font task 6,410 times, including 6,393 during
-  shaping/rasterization stages; bootstrap advances 12,620 times.
+  shaping/rasterization stages; bootstrap advances 12,354 times.
   Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
 - Stack watermark/frame observation reaches 17,264 B, leaving 15,488 B above
@@ -230,7 +233,7 @@ checks and six invalid-operation rejections pass without modifying results.
 Each guarded canvas logically occupies 38,464 B and charges 65,536 B of
 consumer-owned PSRAM; all canvas charge returns to zero before raster release.
 These costs are separate from font backing and the raster lease. The device
-profile now retains 52,480 B of primary heap, above the unchanged 48 KiB floor.
+profile now retains 50,944 B of primary heap, above the unchanged 48 KiB floor.
 The first link hit that floor; reducing duplicate diagnostic archives recovered
 space without changing queued replies or disabling compiler safety checks.
 
@@ -263,8 +266,8 @@ cluster. This greedy policy does not implement kinsoku, word segmentation,
 bidi, contextual reshaping at breaks or paragraph pagination. The independently
 placed ruby run does not yet follow the wrapped body or identify its base.
 
-The complete diagnostic archive now allocates 2,736 B in bootstrap-owned PSRAM
-(2,496 B glyphs plus 240 B snapshots/hashes, actual buddy charge 4,096 B),
+The complete diagnostic archive now allocates 2,756 B in bootstrap-owned PSRAM
+(2,496 B glyphs plus 260 B snapshots/hashes, actual buddy charge 4,096 B),
 retains copied results through worker retirement, and frees after logging. The
 accessor exposes only the initialized prefix and returns an empty slice after
 free. This archive plus the temporary canvas fit the bootstrap's existing two-root quota.
@@ -311,7 +314,7 @@ helpers to remain SRAM functions. The assembly trap now has explicit ELF
 function/size metadata so its complete extent can be audited. Source-level
 context/return ABI and stack/heap reservations are unchanged.
 
-The two Flash functions occupy 2,816 B. Outlining and the resulting code/alignment
+At the placement-only stage, the two Flash functions occupied 2,816 B. Outlining and the resulting code/alignment
 changes recover 3,328 B of primary SRAM on both revision profiles, including
 post-paint bootstrap/IRQ stack-guard checks. Device primary heap grows from
 49,152 to 52,480 B (51.25 KiB), leaving 3.25 KiB above the retained 48 KiB floor.
@@ -322,7 +325,7 @@ Before and after paint, the SRAM wrapper requires the CPU0 bootstrap consumer's
 active task identity and MIE enabled. After each paint it also verifies the
 bootstrap and IRQ stack guards. A separate timer hook rejects entry with
 MIE clear using only internal state; it reads no borrowed pixels or Flash table.
-The native receipt records in-range paint/draw PC samples and timer captures
+The placement-only receipt records in-range paint/draw PC samples and timer captures
 inside the rendering Flash span (four Flash PC captures across six active-call
 timer captures, with 7,336 IRQ entry rejections), followed by unchanged matrix/
 raster/all three
@@ -333,7 +336,43 @@ The call requires active Flash mappings/caches. This fixture has no runtime
 Flash-write/cache-off phase. Physical behavior and a production update/render
 exclusion protocol remain unqualified; this change does not permit rendering
 while its mapping is unavailable. Fixed font stack/library SRAM remains reserved
-while idle. This stage changes placement rather than adding ruby association.
+while idle. That stage changed placement before adding the association below.
+
+The [anchored group-ruby decision](adr/0052-anchored-group-ruby.md) adds a shared
+allocation-free planner taking explicit body/ruby UTF-8 byte ranges. It validates
+sorted/disjoint body ranges, contiguous complete ruby coverage, whole cluster
+endpoints and supported run order/direction. A returned plan owns its logical
+26.6 glyph positions and updated flow by value; failures publish no partial
+plan and do not mutate the caller's flow.
+
+Each annotation reserves the larger of parent and ruby advances and centers the
+shorter sequence. Basic prohibitions join neighboring body units before placement.
+The parent/ruby unit moves intact to a new row/column; multiple explicit ranges
+are supported. The caller chooses cross separation and line/column spacing.
+This policy implements unbreakable centered group ruby, without JIS distribution,
+neighbor overhang, jukugo adjustment or automatic semantic reading generation.
+
+The fourth native pass reuses the same canvas/A8 lease. `日本語` is annotated
+with `にほんご`, and `東京` with the wider `とうきょう`. Preoccupied cursors force
+both groups onto the next line/column. Three frame digests match the independent
+batch reference: two annotated/moved groups, one wider ruby, 21 body units,
+two prohibition joins, nine cursor lines/columns and zero clipped glyphs.
+Fixed-origin controls differ on both annotated frames; the no-ruby frame matches
+the prior prohibition output exactly. The prior three-pass hashes remain intact.
+
+![Ruby follows its horizontal parent](measurements/2026-10-28-ruby-horizontal.png)
+![Wider ruby follows its vertical parent](measurements/2026-10-28-ruby-vertical.png)
+
+These are host reference previews, not LCD captures. The native fixture still
+uses canonical source maps/annotation metadata; constructing them from dynamic
+native document/IO input is unqualified. Native Plan(16) is 172 B with 320 B of
+bounded scratch units, used only during planning. These object sizes are not a
+stack call-chain maximum. Bootstrap/IRQ guards pass after all three paints;
+132 glyph draws execute in the existing two-function RX span, with four Flash
+PC captures during seven active-call timer captures. No new heap allocation,
+stack reservation or quota is added. Larger plan capacities need their own
+workspace/stack budget. The device primary heap retains 50,944 B (49.75 KiB),
+1.75 KiB above the unchanged floor. Fixed font stack/library SRAM remains resident.
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls

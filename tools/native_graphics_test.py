@@ -121,7 +121,7 @@ class NativeGraphicsTests(unittest.TestCase):
         graphics = {"render": {"start": "0x40b00000", "end": "0x40b00100", "functions": {
             "native_surface.paint": {"start": "0x40b00000", "end": "0x40b00080"},
             "native_surface.draw": {"start": "0x40b00080", "end": "0x40b00100"}}}}
-        good = dict(zip(LOG.PLACEMENT_FIELDS, [0x40b00004, 0x40b00084, 3, 99, 6, 100, 3, 2, 0x40b00010]))
+        good = dict(zip(LOG.PLACEMENT_FIELDS, [0x40b00004, 0x40b00084, 3, 132, 6, 100, 3, 2, 0x40b00010]))
         LOG.validate_placement(good, graphics)
         for field, value in (("paint_pc", 0x4ff20000), ("draw_pc", 0x40b00004), ("frames", 2),
                              ("draws", 98), ("context_checks", 5), ("irq_rejected", 0), ("active_ticks", 0),
@@ -129,8 +129,23 @@ class NativeGraphicsTests(unittest.TestCase):
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                 LOG.validate_placement({**good, field: value}, graphics)
 
+    def test_ruby_requires_parent_movement_reserved_width_pixels_and_control(self):
+        record = dict(zip(LOG.RUBY_FIELDS, [3, 2, 2, 1, 21, 2, 9, 0, 172, 320]))
+        texts = [{"id": 5, "ruby_hash": 123}, {"id": 6, "ruby_hash": 0}]
+        reference = {"frames": [{"id": 5, "ruby_hash": 123, "groups": 2, "moved": 2, "control_hash": 456}]}
+        LOG.validate_ruby(record, texts, reference)
+        for field in LOG.RUBY_FIELDS:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                LOG.validate_ruby({**record, field: record[field] + 1}, texts, reference)
+        with self.assertRaisesRegex(ValueError, "reference"):
+            LOG.validate_ruby(record, [{"id": 5, "ruby_hash": 456}], reference)
+        bad = copy.deepcopy(reference)
+        bad["frames"][0]["control_hash"] = 123
+        with self.assertRaisesRegex(ValueError, "control"):
+            LOG.validate_ruby(record, texts, bad)
+
     def test_archive_releases_full_charge_after_logging(self):
-        good = dict(zip(LOG.ARCHIVE_FIELDS, [2736, 4096, 0, 16022848, 16022848]))
+        good = dict(zip(LOG.ARCHIVE_FIELDS, [2756, 4096, 0, 16022848, 16022848]))
         LOG.validate_archive(good, {"heap_before": 16018752})
         for key in LOG.ARCHIVE_FIELDS:
             with self.subTest(key=key), self.assertRaises(ValueError):
