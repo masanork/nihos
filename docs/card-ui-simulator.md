@@ -7,6 +7,9 @@ model: it stores a count, never the numeric values.
 
 The normal UI uses the production splash, incremental console renderer,
 boot-state model, pointer rotation, stream, queue and release-gated button.
+Optional controller modes execute the same foreground touch service and
+`Touch.Device.identify/sampleBatched` driver as the normal firmware, against
+a bounded synthetic register bus.
 Its boot checkpoints and log messages are synthetic. It models a host frame
 boundary, not the normal firmware's PSRAM/DMA/cache or interrupt behavior.
 
@@ -35,7 +38,28 @@ multiple contacts, missing reports and queue overflow cannot complete a click.
 Escape/Ctrl-L also use the production boot-state actions. Add synthetic log
 lines to exercise scrolling and compare incremental pixels with full repaint.
 The queue checkbox/drain and simulated time controls allow rejected gestures
-to be reproduced. Corrupt a log pixel to establish a negative control; the
+to be reproduced. Choose GT911, ST7121 or ST7123 to pass canvas input through
+controller registers, driver identification/decoding and the foreground service.
+Changing controller or slot count resets the fixture. Direct input remains
+available for testing the pointer layer independently.
+
+Controller mode begins at virtual time 1 second, performs production device
+identification, then honors the production 33,333-us polling gate. The browser
+spaces controller samples by at least that interval in virtual time; HTTP traces
+may use shorter intervals to test throttling and pending register reports.
+These are deterministic schedule inputs, not measured latency. The synthetic
+clock does not measure bus transfer duration. A complete Sitronix register
+snapshot consumes the fixture's fresh flag; GT911 consumes it only after a
+successful production ACK write. This does not qualify real IRQ/report persistence.
+
+For Sitronix, choose 1, 9 or 10 slots and optionally place contacts in the last
+slots to exercise both burst boundaries. Fault injection covers status/data
+NACKs, a failed second burst, GT911 ACK failure, invalid coordinates and ST712x
+reset reports. Errors cancel a held contact and latch the production service
+stopped. Clearing injection alone cannot revive it; reset restarts identification.
+An unchanged report never synthesizes release. A time jump can cancel stale
+input. Communication/reader counters are visible separately from pixel mismatches.
+ Corrupt a log pixel to establish a negative control; the
 candidate is rejected by the oracle and full redraw can repair it.
 
 Choose **待受へ**, then place a synthetic traditional licence or My Number Card.
@@ -72,6 +96,9 @@ Card events contain count changes, erase/cancel/confirm, result controls and
 fault settings. Card replay rejects coordinates and numeric keys. Normal UI
 traces are a separate format, explicitly marked `application: normal`, and save
 portrait coordinates, contact counts, time deltas and queue dispatch policy.
+Controller traces also retain the chosen device/slot count, sparse placement
+and injected faults; replay runs device identification, register reads, ACK and
+service polling again.
 They replay through the real input model, including rejected gestures, rather
 than directly assigning a view. A normal trace is rejected by the card endpoint.
 Normal recording stops at 4096 events and exposes `trace_full`; further input
@@ -120,10 +147,11 @@ The default headless run checks fourteen card contracts: full fixture lifecycle,
 EOF atomicity, touch release/drag/multicontact, capacity rollback, three bounded
 retirement failures, cache rejection, pixel corruption as a negative control,
 base templates, deterministic semantic replay, result controls/drag rejection
-and My Number dismissal. Ten normal-UI contracts cover view roundtrip,
+and My Number dismissal. Fifteen normal-UI contracts cover view roundtrip,
 rejected/stale contacts, queue overflow, frame boundaries, scrolling/palettes,
 raw-input replay, bounded trace capture, a pixel negative control/repair and a
-synthetic failure.
+synthetic failure, plus controller roundtrips, missing/throttled reports,
+communication failures, sparse burst boundaries, and service queue/replay.
 HTTP regressions additionally check actual frame bytes, trace replay,
 normal/card format separation, stale-frame rejection and origin policy.
 The regular host CI gate runs these and retains headless evidence artifacts.
@@ -141,8 +169,8 @@ Normal reports, a typed trace, source receipt and landscape `splash.png` and
 
 | Layer | Executes | Does not qualify |
 | --- | --- | --- |
-| This host simulator | Production splash, compressed font decoder, PIN/result renderers, touch contact/count model, presence gate, SRAM allocator, sparse C builders, publication/retirement policy, pixel checker | RV32 ABI/CPU timing, interrupts, cache coherency, physical DMA/MIPI, optical flicker, touch controller, USB/CCID/APDU, card data decoding or signature verification |
-| Normal UI host mode | Production normal splash, console incremental/full raster, gray control, boot-state actions, pointer rotation/stream/queue/button | Native application-owner scheduling, PSRAM placement/scanout, cache/DMA/interrupt behavior, actual boot/device status and latency |
+| This host simulator | Production splash, compressed font decoder, PIN/result renderers, touch contact/count model, presence gate, SRAM allocator, sparse C builders, publication/retirement policy, pixel checker | RV32 ABI/CPU timing, interrupts, cache coherency, physical DMA/MIPI, optical flicker, physical touch controller, USB/CCID/APDU, card data decoding or signature verification |
+| Normal UI host mode | Production normal splash, console incremental/full raster, gray control, boot-state actions, pointer rotation/stream/queue/button, normal foreground touch service and controller driver over synthetic registers | Full application-owner scheduling, physical I2C/IRQ/report behavior, PSRAM placement/scanout, cache/DMA/interrupt behavior, actual boot/device status and latency |
 | ESP-EMU native smoke | Actual RV32 application image, emulated CPU/SMP/timer behavior | Complete Tab5 board, display, USB reader or card interoperability |
 | Physical Tab5 | Candidate-specific device behavior | Anything outside that candidate and measured scenario |
 

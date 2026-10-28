@@ -1,0 +1,48 @@
+{
+  "application": "normal",
+  "view": {
+    "details": 1,
+    "accepted": 1,
+    "down": 2,
+    "move": 0,
+    "up": 1,
+    "cancel": 1,
+    "overflow": 0,
+    "queued": 0,
+    "last_x": 1200,
+    "last_y": 48,
+    "failed": 0,
+    "log_lines": 0,
+    "mismatches": 0,
+    "phase": "logs"
+  },
+  "displayed_phase": "logs",
+  "status": 0,
+  "palette": 4,
+  "time_us": 1133332,
+  "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+  "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+  "trace_full": false,
+  "controller": {
+    "name": "st7123",
+    "slots": 10,
+    "status": 2,
+    "polls": 3,
+    "fresh": 3,
+    "errors": 1,
+    "error_code": 4,
+    "transfers": 14,
+    "report_reads": 8,
+    "report_bytes": 273,
+    "max_read": 63,
+    "acknowledgments": 0,
+    "fault": 3
+  },
+  "metrics": {
+    "frames": 2,
+    "publications": 2,
+    "pending": 0,
+    "mismatches": 0
+  },
+  "scope": "production UI and foreground touch service/controller driver; synthetic register bus and frame boundary; no physical I2C, IRQ, DMA or timing qualification"
+}
