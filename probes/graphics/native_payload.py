@@ -19,7 +19,7 @@ assert data[:6] == b"\x7fELF\x01\x01" and struct.unpack_from("<HH", data, 16) ==
 off = struct.unpack_from("<I", data, 32)[0]
 step, count = struct.unpack_from("<HH", data, 46)
 sections = [struct.unpack_from("<10I", data, off + i * step) for i in range(count)]
-keep = {"graphics_font_link_probe", "graphics_result", "graphics_execution_pc"}
+keep = {"graphics_font_link_probe", "graphics_result", "graphics_execution_pc", "graphics_output"}
 renames = {}
 for s in sections:
     if s[1] != 2:

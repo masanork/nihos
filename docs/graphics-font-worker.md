@@ -11,8 +11,10 @@ the scheduler, and an explicit terminal acknowledgment precedes EXIT. The
 [request-boundary decision](adr/0044-native-font-request-waits.md) limits this to
 one dispatcher. The [owned-text extension](adr/0045-owned-font-text-requests.md)
 now copies bounded UTF-8 body/ruby inputs and render settings, and isolates a
-missing-glyph failure. Replies remain digests; application routing, glyph-buffer
-ownership, cancellation and service restart remain unqualified. Native filesystem input and physical
+missing-glyph failure. [Owned glyph metadata](adr/0046-owned-glyph-metadata.md)
+now survives face close, source-buffer poisoning and task retirement, with atomic capacity
+failure. Actual bitmap ownership, application routing, cancellation and service
+restart remain unqualified. Native filesystem input and physical
 qualification remain pending. The sections below retain the design and earlier
 ISA evidence that led to that fixture.
 

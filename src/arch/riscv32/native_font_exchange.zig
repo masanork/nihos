@@ -1,5 +1,6 @@
 //! CPU0 qualification transport. Bootstrap is the sole client dispatcher;
 //! the font task is the sole library owner. Queues outlive both endpoints.
+const std = @import("std");
 const options = @import("native_options");
 const protocol = @import("font_protocol");
 const calls = @import("task_calls.zig");
@@ -35,7 +36,7 @@ const RequestEvents = struct {
 const ReplyEvents = struct {
     pub const Handle = calls.Handle;
     pub fn post(_: *ReplyEvents, target: Handle, bits: u32) i32 {
-        if (bits == reply_space and metrics.sent == 9 and metrics.replies == 8) {
+        if (bits == reply_space and metrics.sent == 10 and metrics.replies == 9) {
             // Force a task switch after the final reply slot is released but
             // before its space notification. Queue-empty alone cannot permit
             // worker EXIT: the client still needs a live notification target.
@@ -61,6 +62,7 @@ pub const Report = struct {
     copied_inputs: u32 = 0,
     text_success: u32 = 0,
     text_failed: u32 = 0,
+    copied_outputs: u32 = 0,
     queue_bytes: u32 = @sizeOf(Requests) + @sizeOf(Replies),
 };
 var metrics: Report = .{};
@@ -76,10 +78,10 @@ var hold_runtime: u64 = 0;
 var expected: [16]u32 = @splat(0);
 var submitted: protocol.Request = .{ .id = 0, .operation = .stop };
 var active_operation: protocol.Operation = .render_matrix;
-var text_results: [4]protocol.Reply = @splat(.{ .id = 0, .operation = .render_text, .retained = 0 });
+var text_results: [5]protocol.Reply = @splat(.{ .id = 0, .operation = .render_text, .retained = 0 });
 
-pub fn textResults() [4]protocol.Reply {
-    return text_results;
+pub fn textResults() []const protocol.Reply {
+    return &text_results;
 }
 
 pub fn bind(client: calls.Handle, worker: calls.Handle) bool {
@@ -98,13 +100,31 @@ fn sendReply(reply: protocol.Reply) void {
 }
 
 /// Font task only: publish a complete copied result, then block on requests.
-pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *protocol.Job) u32 {
+pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *protocol.Job, output: *protocol.Output) u32 {
     if (!bound) nih_native_task_failed();
     if (completed != 0) {
         state.complete(completed) catch nih_native_task_failed();
         if ((active_operation == .render_matrix and runs != 16) or
             (active_operation == .render_text and (runs > 1 or (runs == 0 and hashes[0] != 0)))) nih_native_task_failed();
-        sendReply(.{ .id = completed, .operation = active_operation, .hashes = hashes, .runs = runs, .retained = retained, .outcome = if (runs == 0) .render_failed else .ok });
+        var reply = protocol.Reply{ .id = completed, .operation = active_operation, .hashes = hashes, .runs = runs, .retained = retained };
+        if (active_operation == .render_text) {
+            output.validate() catch nih_native_task_failed();
+            reply.output = output.*;
+            reply.outcome = switch (output.outcome) {
+                0 => .ok,
+                1 => .render_failed,
+                2 => .output_full,
+                else => nih_native_task_failed(),
+            };
+            if ((runs == 1) != (reply.outcome == .ok)) nih_native_task_failed();
+        }
+        sendReply(reply);
+        if (active_operation == .render_text) {
+            // Reply slots own their metadata. Reuse/retirement of the C++
+            // buffer cannot change any result retained by the dispatcher.
+            @memset(std.mem.asBytes(output), 0xa5);
+            metrics.copied_outputs += 1;
+        }
     }
     const received = switch (requests.receive()) {
         .item => |item| item,
@@ -149,17 +169,19 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             if (reply.id == 1) expected = reply.hashes else {
                 for (reply.hashes, expected) |actual, reference| if (actual != reference) nih_native_task_failed();
             }
-        } else if (reply.id <= 8) {
+        } else if (reply.id <= 9) {
             if (reply.operation != .render_text or reply.runs > 1 or
-                reply.outcome != (if (reply.id == 6) protocol.Outcome.render_failed else protocol.Outcome.ok) or
-                reply.runs != (if (reply.id == 6) @as(u32, 0) else 1)) nih_native_task_failed();
+                reply.outcome != (if (reply.id == 6) protocol.Outcome.render_failed else if (reply.id == 7) protocol.Outcome.output_full else protocol.Outcome.ok) or
+                reply.runs != (if (reply.id == 6 or reply.id == 7) @as(u32, 0) else 1)) nih_native_task_failed();
+            reply.output.validate() catch nih_native_task_failed();
+            if (reply.output.outcome != @backingInt(reply.outcome)) nih_native_task_failed();
             text_results[reply.id - 5] = reply;
             if (reply.outcome == .ok) metrics.text_success += 1 else metrics.text_failed += 1;
-        } else if (reply.id != 9 or reply.operation != .stop or reply.runs != 0) nih_native_task_failed();
+        } else if (reply.id != 10 or reply.operation != .stop or reply.runs != 0) nih_native_task_failed();
         metrics.replies += 1;
         if (reply.operation == .stop and calls.notify(replies.producer, terminal_ack) != 0) nih_native_task_failed();
     }
-    if (metrics.sent == 9 or !waiting) return;
+    if (metrics.sent == 10 or !waiting) return;
     if (!holding) {
         holding = true;
         hold_start = ticks;
@@ -171,7 +193,7 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
     metrics.blocked_ticks += @intCast(ticks - hold_start);
     holding = false;
     metrics.sent += 1;
-    submitted = .{ .id = metrics.sent, .operation = if (metrics.sent <= 4) .render_matrix else if (metrics.sent <= 8) .render_text else .stop };
+    submitted = .{ .id = metrics.sent, .operation = if (metrics.sent <= 4) .render_matrix else if (metrics.sent <= 9) .render_text else .stop };
     if (options.graphics) {
         inline for (options.font_text_cases, 0..) |item, index| {
             if (metrics.sent == index + 5) submitted.render = protocol.Render.init(item.font, item.pixels, item.vertical, item.hinting, item.body, item.ruby) catch nih_native_task_failed();
@@ -188,7 +210,7 @@ pub fn report() Report {
 }
 
 pub fn finished() bool {
-    return bound and state.stopped and state.active == null and metrics.sent == 9 and metrics.received == 9 and
-        metrics.replies == 9 and metrics.waits == 9 and metrics.blocked_ticks >= 18 and metrics.stop_ack == 1 and metrics.terminal_gap == 1 and metrics.copied_inputs == 4 and metrics.text_success == 3 and metrics.text_failed == 1 and
+    return bound and state.stopped and state.active == null and metrics.sent == 10 and metrics.received == 10 and
+        metrics.replies == 10 and metrics.waits == 10 and metrics.blocked_ticks >= 20 and metrics.stop_ack == 1 and metrics.terminal_gap == 1 and metrics.copied_inputs == 5 and metrics.copied_outputs == 5 and metrics.text_success == 3 and metrics.text_failed == 2 and
         requests.ring.countApprox() == 0 and replies.ring.countApprox() == 0;
 }

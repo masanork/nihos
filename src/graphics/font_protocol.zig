@@ -1,6 +1,6 @@
 //! Experimental, pointer-free qualification protocol. One client dispatcher
 //! owns submission; a single font task owns library state. This finite render
-//! matrix is not a paragraph, glyph-buffer or application session API.
+//! workload is not a paragraph, raster-buffer or application session API.
 const std = @import("std");
 
 pub const Operation = enum(u32) { render_matrix, render_text, stop };
@@ -34,7 +34,41 @@ pub const Render = extern struct {
 };
 // Private synchronous bridge into C++; this pointer never comes from a client.
 pub const Job = extern struct { operation: u32, render: Render };
-pub const Outcome = enum(u32) { ok, render_failed };
+pub const Outcome = enum(u32) { ok, render_failed, output_full };
+pub const Glyph = extern struct {
+    id: u32 = 0,
+    cluster: u32 = 0,
+    run: u32 = 0,
+    pixels: u32 = 0,
+    x_advance: i32 = 0,
+    y_advance: i32 = 0,
+    x_offset: i32 = 0,
+    y_offset: i32 = 0,
+    left: i32 = 0,
+    top: i32 = 0,
+    width: u32 = 0,
+    height: u32 = 0,
+};
+pub const Output = extern struct {
+    outcome: u32 = 1,
+    count: u32 = 0,
+    glyphs: [16]Glyph = @splat(.{}),
+
+    pub fn validate(self: *const Output) error{InvalidOutput}!void {
+        if (self.outcome > 2 or self.count > self.glyphs.len) return error.InvalidOutput;
+        if (self.outcome != 0) {
+            if (self.count != 0 or !std.mem.allEqual(u8, std.mem.asBytes(&self.glyphs), 0)) return error.InvalidOutput;
+            return;
+        }
+        if (self.count == 0) return error.InvalidOutput;
+        for (self.glyphs[0..self.count]) |g| {
+            if (g.id == 0 or g.run > 1 or g.cluster >= (if (g.run == 0) @as(u32, 128) else 64) or
+                g.pixels < 6 or g.pixels > 32 or g.width > 256 or g.height > 256) return error.InvalidOutput;
+        }
+        // Unused slots are cleared, so a future shorter reply exposes no old data.
+        if (!std.mem.allEqual(u8, std.mem.sliceAsBytes(self.glyphs[self.count..]), 0)) return error.InvalidOutput;
+    }
+};
 pub const Request = struct { id: u32, operation: Operation, render: Render = .{} };
 pub const Reply = struct {
     id: u32,
@@ -43,6 +77,7 @@ pub const Reply = struct {
     hashes: [16]u32 = @splat(0),
     retained: u32,
     outcome: Outcome = .ok,
+    output: Output = .{},
 };
 
 pub const State = struct {
@@ -109,4 +144,24 @@ test "bounded payload owns bytes and rejects invalid UTF-8 and settings without 
     try std.testing.expectEqual(@as(usize, 216), @sizeOf(Render));
     try std.testing.expectEqual(@as(usize, 220), @sizeOf(Job));
     try state.accept(.{ .id = 1, .operation = .render_text, .render = render });
+}
+
+test "glyph output bounds and failed output forbid partial or stale publication" {
+    try std.testing.expectEqual(@as(usize, 48), @sizeOf(Glyph));
+    try std.testing.expectEqual(@as(usize, 776), @sizeOf(Output));
+    var output: Output = .{};
+    try output.validate();
+    output.count = 1;
+    output.glyphs[0] = .{ .id = 4, .pixels = 24, .width = 20, .height = 22, .x_advance = 1536, .top = 21 };
+    try std.testing.expectError(error.InvalidOutput, output.validate());
+    output.outcome = 0;
+    try output.validate();
+    output.count = 17;
+    try std.testing.expectError(error.InvalidOutput, output.validate());
+    output.count = 1;
+    output.glyphs[1].id = 99;
+    try std.testing.expectError(error.InvalidOutput, output.validate());
+    output.glyphs[1] = .{};
+    output.glyphs[0].run = 2;
+    try std.testing.expectError(error.InvalidOutput, output.validate());
 }

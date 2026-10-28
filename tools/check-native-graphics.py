@@ -15,8 +15,10 @@ FIELDS = ("status", "owner", "runs", "library_pc", "heap_before", "heap_after", 
           "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected",
           "client_cycles", "idle_retained", "idle_captures", "idle_progress")
 
-EXCHANGE_FIELDS = ("sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "queue_bytes")
-TEXT_FIELDS = ("id", "runs", "hash", "outcome")
+EXCHANGE_FIELDS = ("sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes")
+TEXT_FIELDS = ("id", "runs", "hash", "outcome", "glyph_count")
+GLYPH_FIELDS = ("request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height")
+SIGNED_GLYPH_FIELDS = ("x_advance", "y_advance", "x_offset", "y_offset", "left", "top")
 
 
 def validate(record, hashes, graphics, expected, exchange, texts, expected_texts):
@@ -32,18 +34,22 @@ def validate(record, hashes, graphics, expected, exchange, texts, expected_texts
             not 512 < q["record_peak"] <= 1024 or q["controller_bytes"] != 17224 or
             q["allocations"] <= 1 or q["releases"] + 1 != q["allocations"] or
             not q["foreign_rejected"] or not q["irq_rejected"] or q["forged_rejected"] != 1 or
-            q["client_cycles"] != 8 or q["idle_retained"] != q["retained"] or
+            q["client_cycles"] != 9 or q["idle_retained"] != q["retained"] or
             not 0 <= q["idle_captures"] <= q["captures"] - q["render_captures"] or
-            not 9 <= q["idle_progress"] <= q["bootstrap_progress"]):
+            not 10 <= q["idle_progress"] <= q["bootstrap_progress"]):
         raise ValueError("incomplete native font ownership/preemption/recovery evidence")
-    if (any(exchange[n] != 9 for n in ("sent", "received", "replies", "waits")) or
-            exchange["blocked_ticks"] < 18 or exchange["idle_runtime"] != 0 or exchange["stop_ack"] != 1 or exchange["terminal_gap"] != 1 or
-            exchange["copied_inputs"] != 4 or exchange["text_success"] != 3 or exchange["text_failed"] != 1 or
+    if (any(exchange[n] != 10 for n in ("sent", "received", "replies", "waits")) or
+            exchange["blocked_ticks"] < 20 or exchange["idle_runtime"] != 0 or exchange["stop_ack"] != 1 or exchange["terminal_gap"] != 1 or
+            exchange["copied_inputs"] != 5 or exchange["copied_outputs"] != 5 or exchange["text_success"] != 3 or exchange["text_failed"] != 2 or
             not 512 <= exchange["queue_bytes"] <= 4096):
         raise ValueError("incomplete blocking font transport/shutdown evidence")
     if len(hashes) != 16 or hashes != expected:
         raise ValueError("native glyph/position/raster hashes differ from host reference")
-    if [r["id"] for r in texts] != [5, 6, 7, 8] or texts != expected_texts:
+    if any(t["glyph_count"] != len(t["glyphs"]) or t["glyph_count"] > 16 or
+           (t["outcome"] == 0 and not t["glyph_count"]) or
+           (t["outcome"] != 0 and (t["glyph_count"] or t["hash"] or t["runs"])) for t in texts):
+        raise ValueError("invalid or partial native glyph output")
+    if [r["id"] for r in texts] != [5, 6, 7, 8, 9] or texts != expected_texts:
         raise ValueError("native text results differ from independent host requests")
     return q
 
@@ -57,6 +63,19 @@ def check(log, image, manifest, reference, text_reference):
     q.update(base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_CLIENTS", FIELDS[-4:]))
     exchange = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_EXCHANGE", EXCHANGE_FIELDS)
     texts = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_TEXT", TEXT_FIELDS)
+    for text in texts:
+        text["glyphs"] = []
+    for row in base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_GLYPH", GLYPH_FIELDS):
+        target = next((t for t in texts if t["id"] == row["request"]), None)
+        if target is None or row["index"] != len(target["glyphs"]) or row["index"] >= 16:
+            raise ValueError("missing/reordered/overflowed glyph output")
+        glyph = {name: row[name] for name in GLYPH_FIELDS[2:]}
+        for name in SIGNED_GLYPH_FIELDS:
+            if glyph[name] >= 1 << 31:
+                glyph[name] -= 1 << 32
+        target["glyphs"].append(glyph)
+    if any(t["glyph_count"] != len(t["glyphs"]) for t in texts):
+        raise ValueError("incomplete glyph output")
     rows = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_HASH", ("index", "hash"))
     if [r["index"] for r in rows] != list(range(16)):
         raise ValueError("missing/reordered native font hash cases")
@@ -79,7 +98,7 @@ def check(log, image, manifest, reference, text_reference):
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
             "graphics": q, "exchange": exchange, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
-                       "Four matrix and four bounded text jobs share one live task; no service restart",
+                       "Four matrix and five bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
 
 
@@ -89,7 +108,7 @@ def main():
     output.unlink(missing_ok=True)
     image_path, manifest_path = directory / "image-audit.json", directory / "graphics-manifest.json"
     reference_path = ROOT / "docs/measurements/2026-10-28-graphics-hinting-stack.json"
-    text_reference_path = ROOT / "docs/measurements/2026-10-28-font-text-host.json"
+    text_reference_path = ROOT / "docs/measurements/2026-10-28-font-glyph-host.json"
     image = json.loads(image_path.read_text())
     result = check((directory / "emulator.log").read_text(), image, json.loads(manifest_path.read_text()), json.loads(reference_path.read_text()), json.loads(text_reference_path.read_text()))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
@@ -99,7 +118,7 @@ def main():
     result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: copied UTF-8 jobs, isolated glyph failure/recovery, blocking waits, hashes and heap recovery passed")
+    print("Native graphics: owned glyph metadata, atomic capacity failure, blocking waits, hashes and heap recovery passed")
 
 
 if __name__ == "__main__":

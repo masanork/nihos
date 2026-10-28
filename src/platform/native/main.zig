@@ -674,10 +674,14 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, &result);
                     logger.record("NIHOS_NATIVE_GRAPHICS_CLIENTS", null, .{ "client_cycles", "idle_retained", "idle_captures", "idle_progress" }, &result);
                     const exchange = tasks.graphics.exchange.report();
-                    logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "queue_bytes" }, &exchange);
-                    for (tasks.graphics.exchange.textResults()) |reply| {
-                        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)) };
-                        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome" }, &text_result);
+                    logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes" }, &exchange);
+                    for (tasks.graphics.exchange.textResults()) |*reply| {
+                        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)), .glyph_count = reply.output.count };
+                        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome", "glyph_count" }, &text_result);
+                        for (reply.output.glyphs[0..reply.output.count], 0..) |g, index| {
+                            const glyph = .{ .request = reply.id, .index = @as(u32, @intCast(index)), .glyph_id = g.id, .cluster = g.cluster, .run = g.run, .pixels = g.pixels, .x_advance = @as(u32, @bitCast(g.x_advance)), .y_advance = @as(u32, @bitCast(g.y_advance)), .x_offset = @as(u32, @bitCast(g.x_offset)), .y_offset = @as(u32, @bitCast(g.y_offset)), .left = @as(u32, @bitCast(g.left)), .top = @as(u32, @bitCast(g.top)), .width = g.width, .height = g.height };
+                            logger.record("NIHOS_NATIVE_GRAPHICS_GLYPH", null, .{ "request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height" }, &glyph);
+                        }
                     }
                     const hashes = tasks.graphics.hashes();
                     for (hashes, 0..) |hash, index| {
