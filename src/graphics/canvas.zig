@@ -48,6 +48,35 @@ pub const Canvas = struct {
             }
         }
     }
+    /// One pixel wide, inclusive endpoints; canonical major-axis rounding.
+    pub fn line(self: Canvas, x0: i32, y0: i32, x1: i32, y1: i32, color: u16) void {
+        if (self.clip.left >= self.clip.right or self.clip.top >= self.clip.bottom) return;
+        const ax: i64 = x0;
+        const ay: i64 = y0;
+        const bx: i64 = x1;
+        const by: i64 = y1;
+        const horizontal = @abs(bx - ax) >= @abs(by - ay);
+        var major0 = if (horizontal) ax else ay;
+        var minor0 = if (horizontal) ay else ax;
+        var major1 = if (horizontal) bx else by;
+        var minor1 = if (horizontal) by else bx;
+        if (major0 > major1) {
+            std.mem.swap(i64, &major0, &major1);
+            std.mem.swap(i64, &minor0, &minor1);
+        }
+        const lo = @max(major0, if (horizontal) self.clip.left else self.clip.top);
+        const hi = @min(major1, (if (horizontal) self.clip.right else self.clip.bottom) - 1);
+        if (lo > hi) return;
+        const length: i128 = major1 - major0;
+        var pos = lo;
+        while (pos <= hi) : (pos += 1) {
+            const minor: i64 = if (length == 0) minor0 else @intCast(@as(i128, minor0) + @divFloor(@as(i128, minor1 - minor0) * (pos - major0) + @divFloor(length, 2), length));
+            const x = if (horizontal) pos else minor;
+            const y = if (horizontal) minor else pos;
+            if (x < self.clip.left or x >= self.clip.right or y < self.clip.top or y >= self.clip.bottom) continue;
+            std.mem.writeInt(u16, self.target.bytes[@as(usize, @intCast(y)) * self.target.stride + @as(usize, @intCast(x)) * 2 ..][0..2], color, .little);
+        }
+    }
     /// Copies RGB565LE or converts one-byte palette indices to RGB565LE.
     /// Source and palette must not alias any part of the target buffer.
     pub fn blitRgb565(self: Canvas, image: Image, x: i32, y: i32) Error!void {
@@ -56,6 +85,22 @@ pub const Canvas = struct {
     pub fn blitIndexed8(self: Canvas, image: Image, palette: *const [256]u16, x: i32, y: i32) Error!void {
         if (overlaps(self.target.bytes, std.mem.asBytes(palette))) return error.Aliased;
         try self.copy(image, x, y, palette);
+    }
+    /// Nearest-neighbour indexed image into a destination rectangle.
+    pub fn blitIndexed8Scaled(self: Canvas, image: Image, palette: *const [256]u16, dest: Rect) Error!void {
+        if (!validImage(image, 1) or image.width == 0 or image.height == 0) return error.InvalidImage;
+        if (overlaps(self.target.bytes, image.bytes) or overlaps(self.target.bytes, std.mem.asBytes(palette))) return error.Aliased;
+        if (dest.width == 0 or dest.height == 0) return;
+        const area = intersect(self.clip, bounds(dest));
+        if (area.left >= area.right or area.top >= area.bottom) return;
+        for (@as(usize, @intCast(area.top))..@as(usize, @intCast(area.bottom))) |dy| {
+            const sy: usize = @intCast(@divFloor(@as(u64, @intCast(@as(i64, @intCast(dy)) - dest.y)) * image.height, dest.height));
+            for (@as(usize, @intCast(area.left))..@as(usize, @intCast(area.right))) |dx| {
+                const sx: usize = @intCast(@divFloor(@as(u64, @intCast(@as(i64, @intCast(dx)) - dest.x)) * image.width, dest.width));
+                const color = palette[image.bytes[sy * image.stride + sx]];
+                std.mem.writeInt(u16, self.target.bytes[dy * self.target.stride + dx * 2 ..][0..2], color, .little);
+            }
+        }
     }
     fn copy(self: Canvas, image: Image, x: i32, y: i32, palette: ?*const [256]u16) Error!void {
         const bpp: usize = if (palette == null) 2 else 1;
@@ -145,4 +190,34 @@ test "indexed and RGB image copies clip and reject invalid or aliased inputs bef
     const rgb = [_]u8{ 0x78, 0x56, 0xef, 0xbe };
     try c.blitRgb565(.{ .bytes = &rgb, .width = 2, .height = 1, .stride = 4 }, 1, 1);
     try std.testing.expectEqualSlices(u8, &rgb, target[10..14]);
+}
+test "lines are clipped, endpoint order independent and bounded for extreme coordinates" {
+    var a: [50]u8 = @splat(0);
+    var b = a;
+    const c = Canvas.init(&a, 5, 5, 10).?;
+    const d = Canvas.init(&b, 5, 5, 10).?;
+    c.clipped(.{ .x = 1, .y = 1, .width = 3, .height = 3 }).line(-2, -2, 7, 7, 0xffff);
+    d.clipped(.{ .x = 1, .y = 1, .width = 3, .height = 3 }).line(7, 7, -2, -2, 0xffff);
+    try std.testing.expectEqualSlices(u8, &a, &b);
+    for (0..5) |y| for (0..5) |x| {
+        try std.testing.expectEqual(@as(u16, if (x == y and x >= 1 and x <= 3) 0xffff else 0), std.mem.readInt(u16, a[(y * 5 + x) * 2 ..][0..2], .little));
+    };
+    c.line(std.math.minInt(i32), 2, std.math.maxInt(i32), 2, 0x1234);
+    for (0..5) |x| try std.testing.expectEqual(@as(u16, 0x1234), std.mem.readInt(u16, a[(10 + x) * 2 ..][0..2], .little));
+}
+test "indexed nearest scaling respects clipping and padding" {
+    var out: [36]u8 = @splat(0xaa);
+    const c = Canvas.init(&out, 4, 3, 12).?;
+    var palette: [256]u16 = @splat(0);
+    palette[1] = 0x1111;
+    palette[2] = 0x2222;
+    const pixels = [_]u8{ 1, 2, 2, 1 };
+    const img = Image{ .bytes = &pixels, .width = 2, .height = 2, .stride = 2 };
+    try c.blitIndexed8Scaled(img, &palette, .{ .x = -1, .y = 0, .width = 4, .height = 3 });
+    try std.testing.expectEqualSlices(u8, &.{ 0x11, 0x11, 0x22, 0x22, 0x22, 0x22, 0xaa, 0xaa }, out[0..8]);
+    try std.testing.expectEqualSlices(u8, &.{ 0x22, 0x22, 0x11, 0x11, 0x11, 0x11, 0xaa, 0xaa }, out[24..32]);
+    try std.testing.expect(std.mem.allEqual(u8, out[8..12], 0xaa));
+    const before = out;
+    try std.testing.expectError(error.InvalidImage, c.blitIndexed8Scaled(.{ .bytes = &.{}, .width = 0, .height = 0, .stride = 0 }, &palette, .{ .x = 0, .y = 0, .width = 0, .height = 0 }));
+    try std.testing.expectEqualSlices(u8, &before, &out);
 }
