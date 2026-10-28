@@ -113,6 +113,7 @@ class NativeFastDisplayEvidenceTests(unittest.TestCase):
                         log.replace('checksum=549e3481 frames=0000005a', 'checksum=549e3481 frames=00000059'),
                         log.replace('NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a\n', ''),
                         log + 'NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a\n',
+                        log.replace('NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a\n', '') + 'NIHOS_NATIVE_CANVAS_PATTERN checksum=549e3481 frames=0000005a\n',
                         log.replace('rotation=00000000', 'rotation=00000001')):
             with self.subTest(changed=changed[-100:]), self.assertRaises(ValueError):
                 DISPLAY.check(changed, FAST_IMAGE, 2, 80, canvas_demo=True)

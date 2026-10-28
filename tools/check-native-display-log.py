@@ -204,7 +204,8 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
     canvas = None
     if canvas_demo:
         canvas = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CANVAS_PATTERN', ('checksum', 'frames'))
-        if layout is None or canvas['checksum'] != 0x549e3481 or canvas['frames'] != screen['frames']:
+        if (layout is None or canvas['checksum'] != 0x549e3481 or canvas['frames'] != screen['frames'] or
+                not log.index('NIHOS_NATIVE_DISPLAY_LAYOUT ') < log.index('NIHOS_NATIVE_CANVAS_PATTERN ') < log.index('NIHOS_NATIVE_DISPLAY_IRQ_PASS ')):
             raise ValueError('canvas framebuffer evidence mismatch')
     elif 'NIHOS_NATIVE_CANVAS_PATTERN ' in log:
         raise ValueError('unexpected canvas fixture evidence')
