@@ -75,6 +75,19 @@ pub const Notifications = struct {
             self.sequence.load(.acquire) != sequence or !self.readable.load(.acquire)) return false;
         return self.signal.stop(ticket, 1);
     }
+    /// Capture once in the ordinary owner before starting a device operation.
+    /// No client pointers or PSRAM are inspected; open/close have no read ticket.
+    pub inline fn activeReadTicket(self: *const @This()) u32 {
+        const ticket = self.signal.active();
+        return if (self.readable.load(.acquire)) ticket else 0;
+    }
+    /// A matching stopped-client notice also cancels its current read. Reject
+    /// a closed/reused window instead of forwarding an old notice to new I/O.
+    pub inline fn readCancelled(self: *const @This(), ticket: u32) bool {
+        const word = self.signal.word.load(.acquire);
+        if (ticket == 0 or word >> 2 != ticket or !self.readable.load(.acquire)) return false;
+        return word & 3 != 0 or self.binding.load(.acquire) & 1 != 0 or self.signal.removed.load(.acquire);
+    }
 };
 
 fn status(err: api.Error) i32 {
@@ -202,8 +215,9 @@ pub fn Owner(comptime Backend: type) type {
             self.rebind_ready = clean and (self.core.queryMount(self.mount.?) catch return).state == .mounted;
         }
         /// Each backend return must imply quiescence, even on error. Cancellation
-        /// defers to that return, then scrubs the copied reply; it does not abort
-        /// the controller or assert rollback. Unproved native fences never return.
+        /// defers to that return, then scrubs the copied reply. An opt-in block
+        /// owner may relay the captured read cancellation to its exact device
+        /// ticket; RPC itself performs no MMIO or rollback. Unproved fences never return.
         pub fn step(self: *Self, queues: *Queues) bool {
             if (!self.alive or self.in_step) return false;
             if (self.notifications.exited(self.epoch)) {

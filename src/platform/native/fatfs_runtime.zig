@@ -102,8 +102,18 @@ comptime {
         @export(&cardAttempt, .{ .name = "nih_fatfs_card_attempt" });
         @export(&card_mode, .{ .name = "nih_fatfs_card_mode" });
     }
+    if (options.fatfs_sd_rpc) {
+        @export(&readTicket, .{ .name = "nih_fatfs_read_ticket" });
+        @export(&readCancelled, .{ .name = "nih_fatfs_read_cancelled" });
+    }
 }
-const card_mode: u32 linksection(".rodata.fatfs_config") = if (options.fatfs_sd_rpc) 2 else @intFromBool(options.fatfs_sd_direct);
+const card_mode: u32 linksection(".rodata.fatfs_config") = if (options.fatfs_sd_rpc) 3 else @intFromBool(options.fatfs_sd_direct);
+fn readTicket() linksection(".iram1.storage_hooks") callconv(.c) u32 {
+    return notifications.activeReadTicket();
+}
+fn readCancelled(ticket: u32) linksection(".iram1.storage_hooks") callconv(.c) u32 {
+    return @intFromBool(notifications.readCancelled(ticket));
+}
 fn owner() *Owner {
     return @ptrCast(@alignCast(state().parent.?.borrow.?.bytes.ptr + state().layout.?.endpoint));
 }

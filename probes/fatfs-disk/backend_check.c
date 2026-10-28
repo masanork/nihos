@@ -30,6 +30,7 @@ extern int nih_check_rpc(void);
 extern int nih_rpc_finish(void);
 extern void nih_rpc_event(uint32_t);
 extern uint32_t nih_rpc_metric(uint32_t);
+extern int32_t nih_rpc_linked_read(uint32_t);
 void host_rpc_arm(uint32_t kind) { rpc_event = kind; }
 uint32_t host_rpc_kind(void) { return rpc_kind; }
 int32_t nih_storage_read(uint32_t lba, uint8_t sector[512]) {
@@ -40,7 +41,9 @@ int32_t nih_storage_read(uint32_t lba, uint8_t sector[512]) {
     uint64_t end = offset + 512 < patch_offset + patch_size ? offset + 512 : patch_offset + patch_size;
     if (patch_size && begin < end) memcpy(sector + (begin - offset), patch + (begin - patch_offset), (size_t)(end - begin));
     if (rpc_event) {
-        uint32_t event = rpc_event; rpc_event = 0; nih_rpc_event(event);
+        uint32_t event = rpc_event; rpc_event = 0;
+        if (event==7 || event==8) return nih_rpc_linked_read(event);
+        nih_rpc_event(event);
         if (event==4) return NIH_STORAGE_READ_CANCELLED;
         if (event==5) return NIH_STORAGE_READ_REMOVED;
     }
@@ -163,7 +166,8 @@ int main(int argc, char **argv) {
     rpc_kind = (!strcmp(mode,"rpc-cancel") || !strcmp(mode,"card-rpc-cancel")) ? 1 :
                (!strcmp(mode,"rpc-exit") || !strcmp(mode,"card-rpc-exit")) ? 2 : !strcmp(mode,"rpc-large") ? 3 :
                !strcmp(mode,"card-rpc-transport-cancel") ? 4 : !strcmp(mode,"card-rpc-transport-remove") ? 5 :
-               !strcmp(mode,"card-rpc-idle-remove") ? 6 : 0;
+               !strcmp(mode,"card-rpc-idle-remove") ? 6 : !strcmp(mode,"card-rpc-linked-cancel") ? 7 :
+               !strcmp(mode,"card-rpc-linked-exit") ? 8 : 0;
     uint32_t bytes = nih_fatfs_backend_bytes();
     if (rpc_kind) {
         uintptr_t disk_address, fs_address;
@@ -256,6 +260,7 @@ int main(int argc, char **argv) {
         free(workspace);
     }
     CHECK(close(image) == 0);
-    printf("{\"mode\":\"%s\",\"checks\":%u,\"observed\":%d,\"sector_reads\":%u,\"backend_bytes\":%u,\"rpc_used\":%u,\"rpc_charged\":%u,\"volume_probe_reads\":%u}\n",
-        mode,checks,observed,calls,bytes,rpc_kind ? nih_rpc_metric(0) : 0,rpc_kind ? nih_rpc_metric(1) : 0,probe_reads);
+    printf("{\"mode\":\"%s\",\"checks\":%u,\"observed\":%d,\"sector_reads\":%u,\"backend_bytes\":%u,\"rpc_used\":%u,\"rpc_charged\":%u,\"volume_probe_reads\":%u,\"linked_commands\":%u,\"linked_fences\":%u,\"linked_unpublished\":%u}\n",
+        mode,checks,observed,calls,bytes,rpc_kind ? nih_rpc_metric(0) : 0,rpc_kind ? nih_rpc_metric(1) : 0,probe_reads,
+        rpc_kind ? nih_rpc_metric(5) : 0,rpc_kind ? nih_rpc_metric(6) : 0,rpc_kind ? nih_rpc_metric(7) : 0);
 }

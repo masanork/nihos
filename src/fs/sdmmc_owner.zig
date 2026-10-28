@@ -2,6 +2,7 @@
 //! destination until return; the permanent ledger additionally quarantines a
 //! failed controller transaction. It never converts a timeout into a fence.
 pub const Signal = @import("io_stop.zig").Signal;
+pub const CancelRelay = @import("io_stop.zig").CancelRelay;
 const io = @import("io_leases.zig");
 pub const Error = error{ Busy, Exhausted, Quarantined, ReadFailed, Cancelled, Removed };
 pub const ReadOwner = struct {

@@ -38,6 +38,7 @@ UPSTREAM = {
 }
 HOOKS = ('nih_storage_runtime_ready', 'nih_storage_register', 'nih_storage_pending',
          'nih_storage_task_exited', 'nih_storage_cancel_requested', 'nih_storage_cleanup_ready', 'nih_storage_retired')
+READ_HOOKS = ('nih_fatfs_read_ticket', 'nih_fatfs_read_cancelled')
 WORDS = {'bound_epoch': 4, 'bounds': 16, 'cancel_requested': 4, 'cleanup': 4, 'enabled': 4,
          'flags': 8, 'handles': 8, 'inflight': 4, 'io_armed': 4, 'notifications': 28,
          'ready': 4, 'retired': 4, 'stale_exits': 4}
@@ -61,10 +62,12 @@ def validate_profile(config):
             'unapproved immutable fixture/upstream')
     card = config.get('card')
     if card is not None:
-        require(isinstance(card,dict) and card.get('version') in (1,2,3),
+        require(isinstance(card,dict) and card.get('version') in (1,2,3,4),
                 'unapproved physical card profile')
         rpc = card.get('rpc',False)
-        require(type(rpc) is bool and (not rpc or card['version']==3), 'invalid card RPC profile')
+        require(type(rpc) is bool and (not rpc or card['version'] in (3,4)), 'invalid card RPC profile')
+        relay = card.get('cancel_relay',False)
+        require(type(relay) is bool and relay==(card['version']==4) and (not relay or rpc), 'invalid card cancellation relay profile')
         require(card.get('charged')==(65536 if rpc else 32768), 'invalid card parent charge')
         mode = card.get('mode','swap')
         expected_source = CARD_SOURCE_RPC if rpc else CARD_SOURCE_INSERTED if mode=='inserted' else CARD_SOURCE
@@ -100,7 +103,10 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
     fixture = validate_profile(config)
     if config['version'] >= 3:
         require(symbols.get('nih_native_task_context_bytes') == 128, 'missing/changed task-side trap reserve')
-    for name in HOOKS:
+    relay = config.get('card',{}).get('cancel_relay',False)
+    hooks = HOOKS + (READ_HOOKS if relay else ())
+    require(all((name in symbols)==relay for name in READ_HOOKS), 'read relay differs from image')
+    for name in hooks:
         require(low <= symbols.get(name, 0) < high, 'IRQ hook outside SRAM: ' + name)
     for name, size in WORDS.items():
         matches = [key for key in symbols if re.fullmatch('fatfs_runtime[.]' + name + r'(?:[.]\d+)?', key)]
@@ -140,7 +146,7 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
         if config['card']['version']>=2:
             at=symbols.get('nih_fatfs_card_mode',0)
             require(sizes.get('nih_fatfs_card_mode')==4 and ro_start<=at<at+4<=ro_start+len(rodata), 'missing card mode descriptor')
-            expected_mode=2 if config['card'].get('rpc') else int(config['card']['mode']=='inserted')
+            expected_mode=3 if relay else 2 if config['card'].get('rpc') else int(config['card']['mode']=='inserted')
             require(struct.unpack_from('<I',rodata,at-ro_start)[0]==expected_mode, 'card mode differs from image')
         if config['card'].get('rpc'):
             at=symbols.get('nih_fatfs_card_workspace_bytes',0)
@@ -158,7 +164,7 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
             'FatFs write API linked')
     frames = audit_zig_frames(stack_rows, objects, symbols)
     audit_guard_frames(stack_rows)
-    return {**config, 'resident_hooks': {name: hex(symbols[name]) for name in HOOKS},
+    return {**config, 'resident_hooks': {name: hex(symbols[name]) for name in hooks},
             'embedded_image_sha256': hashlib.sha256(decoded).hexdigest(),
             'control_bytes': layout[3], 'control_reserve_bytes': layout[2], 'control_start': hex(layout[1]),
             'parent_bytes': layout[4], 'client_frame_bytes': layout[5],

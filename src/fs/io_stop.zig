@@ -48,6 +48,27 @@ pub const Signal = struct {
         return false;
     }
 };
+/// Ordinary-owner adapter: sample a captured upstream cancellation source and
+/// publish only to this exact device ticket. Source.cancelled() must read only
+/// resident words in native use. A stale adapter cannot stop a newer transfer.
+/// Device stop/fence/descriptor/cache cleanup still belongs to the controller.
+pub fn CancelRelay(comptime Source: type) type {
+    return struct {
+        target: Signal.Control,
+        source: Source,
+        inline fn forward(self: @This()) void {
+            if (self.source.cancelled()) _ = self.target.signal.stop(self.target.ticket, 1);
+        }
+        pub inline fn stopReason(self: @This()) Reason {
+            self.forward();
+            return self.target.stopReason();
+        }
+        pub inline fn finishReason(self: @This()) Reason {
+            self.forward();
+            return self.target.finishReason();
+        }
+    };
+}
 inline fn decode(value: u32) Reason {
     return switch (value & 3) {
         0 => .none,
@@ -91,4 +112,37 @@ test "removal between transfers prevents issuing a new operation" {
     var idle_signal = Signal{};
     idle_signal.remove();
     try std.testing.expect(idle_signal.begin() == null);
+}
+
+test "late relay cannot stop or finish a reused device ticket" {
+    const Source = struct {
+        pub fn cancelled(_: @This()) bool {
+            return true;
+        }
+    };
+    var signal = Signal{};
+    const first = signal.begin().?;
+    try std.testing.expectEqual(Reason.none, first.finishReason());
+    const next = signal.begin().?;
+    const old = CancelRelay(Source){ .target = first, .source = .{} };
+    try std.testing.expectEqual(Reason.removed, old.stopReason());
+    try std.testing.expectEqual(Reason.removed, old.finishReason());
+    try std.testing.expectEqual(next.ticket, signal.active());
+    try std.testing.expectEqual(Reason.none, next.finishReason());
+}
+
+test "relay samples cancellation at completion and preserves removal priority" {
+    const Source = struct {
+        pub fn cancelled(_: @This()) bool {
+            return true;
+        }
+    };
+    var signal = Signal{};
+    const first = CancelRelay(Source){ .target = signal.begin().?, .source = .{} };
+    try std.testing.expectEqual(Reason.cancelled, first.finishReason());
+    const next = CancelRelay(Source){ .target = signal.begin().?, .source = .{} };
+    signal.remove();
+    try std.testing.expectEqual(Reason.removed, next.stopReason());
+    try std.testing.expectEqual(Reason.removed, next.finishReason());
+    try std.testing.expect(signal.begin() == null);
 }

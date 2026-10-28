@@ -22,6 +22,15 @@ def config():
 
 
 class NativeFatFsImageChecks(unittest.TestCase):
+    def test_card_relay_needs_a_versioned_profile_and_rpc(self):
+        c=config();c['card']={'version':4,'mode':'inserted','rpc':True,'cancel_relay':True,
+            'source':PROFILE.CARD_SOURCE_RPC,'charged':65536,'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}
+        PROFILE.validate_profile(c)
+        for key,value in (('version',3),('rpc',False),('cancel_relay',False),('cancel_relay',1)):
+            bad=copy.deepcopy(c);bad['card'][key]=value
+            with self.subTest(key=key,value=value),self.assertRaises(ValueError):PROFILE.validate_profile(bad)
+        bad=copy.deepcopy(c);del bad['card']['cancel_relay']
+        with self.assertRaises(ValueError):PROFILE.validate_profile(bad)
     def test_card_rpc_requires_its_own_input_wire_and_worker_stack_contract(self):
         c=config();c['card']={'version':3,'mode':'inserted','rpc':True,'source':PROFILE.CARD_SOURCE_RPC,
             'charged':65536,'rpc_parent_used':44928,'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}
@@ -34,6 +43,8 @@ class NativeFatFsImageChecks(unittest.TestCase):
         report=line('NIHOS_NATIVE_FATFS_RPC',fields)
         log='NIHOS_NATIVE_BROKER x\nNIHOS_NATIVE_IO_LIFETIMES x\nNIHOS_FATFS_SD_READY\n'+report+'\n'+line('NIHOS_NATIVE_FATFS_CARD',card)+'\n'+line('NIHOS_NATIVE_FATFS_CARD_STACK',dict(used=3200,preserved=1))+'\nNIHOS_NATIVE_FP_PASS floating=0\n'
         self.assertTrue(LOG.check_fatfs_native(log,image,'physical-device')['physical_sd_fatfs_qualified'])
+        c['card'].update(version=4,cancel_relay=True)
+        self.assertFalse(LOG.check_fatfs_native(log,image,'physical-device')['controller_abort_qualified'])
         for key,value in (('source',1),('requests',8),('parent_used',38656),('owner_stack',3920),('bytes',24)):
             bad=log.replace(report,line('NIHOS_NATIVE_FATFS_RPC',{**fields,key:value}))
             with self.subTest(key=key),self.assertRaises(ValueError):LOG.check_fatfs_native(bad,image,'physical-device')
