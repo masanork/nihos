@@ -173,6 +173,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const graphics = %s;\n' "$graphics"
+    if [ "$graphics" = true ]; then python3 "$repo_root/probes/graphics/generate_text_cases.py" --zig; fi
 } >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"

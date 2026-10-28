@@ -3,31 +3,64 @@
 //! matrix is not a paragraph, glyph-buffer or application session API.
 const std = @import("std");
 
-pub const Operation = enum(u32) { render_matrix, stop };
-pub const Request = struct { id: u32, operation: Operation };
+pub const Operation = enum(u32) { render_matrix, render_text, stop };
+pub const Render = extern struct {
+    font: u32 = 0,
+    pixels: u32 = 24,
+    vertical: u32 = 0,
+    hinting: u32 = 0,
+    body_length: u32 = 0,
+    ruby_length: u32 = 0,
+    body: [128]u8 = @splat(0),
+    ruby: [64]u8 = @splat(0),
+
+    pub fn validate(self: *const Render) error{InvalidPayload}!void {
+        if (self.font > 1 or self.vertical > 1 or self.hinting > 2 or
+            (self.pixels != 12 and self.pixels != 16 and self.pixels != 24 and self.pixels != 32) or
+            self.body_length == 0 or self.body_length > self.body.len or self.ruby_length > self.ruby.len)
+            return error.InvalidPayload;
+        if (!std.unicode.utf8ValidateSlice(self.body[0..self.body_length]) or
+            !std.unicode.utf8ValidateSlice(self.ruby[0..self.ruby_length])) return error.InvalidPayload;
+    }
+
+    pub fn init(font: u32, pixels: u32, vertical: u32, hinting: u32, body: []const u8, ruby: []const u8) error{InvalidPayload}!Render {
+        if (body.len > 128 or ruby.len > 64) return error.InvalidPayload;
+        var result: Render = .{ .font = font, .pixels = pixels, .vertical = vertical, .hinting = hinting, .body_length = @intCast(body.len), .ruby_length = @intCast(ruby.len) };
+        @memcpy(result.body[0..body.len], body);
+        @memcpy(result.ruby[0..ruby.len], ruby);
+        try result.validate();
+        return result;
+    }
+};
+// Private synchronous bridge into C++; this pointer never comes from a client.
+pub const Job = extern struct { operation: u32, render: Render };
+pub const Outcome = enum(u32) { ok, render_failed };
+pub const Request = struct { id: u32, operation: Operation, render: Render = .{} };
 pub const Reply = struct {
     id: u32,
     operation: Operation,
     runs: u32 = 0,
     hashes: [16]u32 = @splat(0),
     retained: u32,
+    outcome: Outcome = .ok,
 };
 
 pub const State = struct {
     next_id: u32 = 1,
     active: ?u32 = null,
     stopped: bool = false,
-    pub const Error = error{ Closed, Busy, Sequence, Exhausted };
+    pub const Error = error{ Closed, Busy, Sequence, Exhausted, InvalidPayload };
 
     pub fn accept(self: *State, request: Request) Error!void {
         if (self.stopped) return error.Closed;
         if (self.active != null) return error.Busy;
         if (request.id != self.next_id) return error.Sequence;
+        if (request.operation == .render_text) try request.render.validate();
         // Do not wrap an ID and accidentally accept an old request.
         if (self.next_id == std.math.maxInt(u32)) return error.Exhausted;
         self.next_id += 1;
         switch (request.operation) {
-            .render_matrix => self.active = request.id,
+            .render_matrix, .render_text => self.active = request.id,
             .stop => self.stopped = true,
         }
     }
@@ -56,4 +89,24 @@ test "ID exhaustion fails before changing protocol state" {
     var state: State = .{ .next_id = std.math.maxInt(u32) };
     try std.testing.expectError(error.Exhausted, state.accept(.{ .id = state.next_id, .operation = .render_matrix }));
     try std.testing.expect(state.active == null and !state.stopped);
+}
+
+test "bounded payload owns bytes and rejects invalid UTF-8 and settings without consuming ID" {
+    var text = [_]u8{ 'A', 'B' };
+    const render = try Render.init(0, 24, 0, 1, &text, "");
+    text[0] = 'Z';
+    try std.testing.expectEqualStrings("AB", render.body[0..render.body_length]);
+    var state: State = .{};
+    inline for (.{ .{ "font", 2 }, .{ "pixels", 0 }, .{ "vertical", 2 }, .{ "hinting", 3 }, .{ "body_length", 129 }, .{ "ruby_length", 65 } }) |bad| {
+        var request = Request{ .id = 1, .operation = .render_text, .render = render };
+        @field(request.render, bad[0]) = bad[1];
+        try std.testing.expectError(error.InvalidPayload, state.accept(request));
+        try std.testing.expectEqual(@as(u32, 1), state.next_id);
+    }
+    try std.testing.expectError(error.InvalidPayload, Render.init(0, 24, 0, 0, "\xc0\x80", ""));
+    try std.testing.expectError(error.InvalidPayload, Render.init(0, 24, 0, 0, "", ""));
+    try std.testing.expectError(error.InvalidPayload, Render.init(0, 24, 0, 0, "A", "\xe3\x81"));
+    try std.testing.expectEqual(@as(usize, 216), @sizeOf(Render));
+    try std.testing.expectEqual(@as(usize, 220), @sizeOf(Job));
+    try state.accept(.{ .id = 1, .operation = .render_text, .render = render });
 }

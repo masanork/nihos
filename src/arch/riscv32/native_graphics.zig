@@ -118,12 +118,12 @@ pub fn progress() void {
     }
 }
 // Client memory is gone; only service-owned HB state crosses this wait.
-fn nextRequest(completed: u32, retained: u32) callconv(.c) u32 {
-    if (!caller() or completed > 4 or (completed != 0 and completed != report_state.client_cycles + 1) or
+fn nextRequest(completed: u32, retained: u32, job: *@import("font_protocol").Job) callconv(.c) u32 {
+    if (!caller() or completed > 8 or (completed != 0 and completed != report_state.client_cycles + 1) or
         retained == 0 or (report_state.idle_retained != 0 and retained != report_state.idle_retained)) nih_native_task_failed();
     report_state.client_cycles = completed;
     report_state.idle_retained = retained;
-    const request = exchange.next(completed, retained, graphics_result.hashes, graphics_result.runs);
+    const request = exchange.next(completed, retained, graphics_result.hashes, graphics_result.runs, job);
     if (!caller() or heap.availableBytes() != report_state.heap_before - retained) nih_native_task_failed();
     return request;
 }
@@ -156,8 +156,8 @@ pub fn finish() ?Report {
     report_state.heap_after = @intCast(heap.availableBytes() orelse return null);
     if (report_state.status != 1 or report_state.heap_after != report_state.heap_before or
         report_state.captures == 0 or report_state.render_captures == 0 or report_state.bootstrap_progress == 0 or
-        report_state.foreign_rejected == 0 or report_state.irq_rejected == 0 or report_state.forged_rejected != 1 or report_state.client_cycles != 4 or
-        report_state.idle_retained != report_state.retained or report_state.idle_progress < 5 or
+        report_state.foreign_rejected == 0 or report_state.irq_rejected == 0 or report_state.forged_rejected != 1 or report_state.client_cycles != 8 or
+        report_state.idle_retained != report_state.retained or report_state.idle_progress < 9 or
         !exchange.finished() or !guardsValid()) return null;
     return report_state;
 }
