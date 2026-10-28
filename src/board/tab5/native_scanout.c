@@ -37,6 +37,7 @@ static bool scene_enabled;
 static dw_gdma_link_list_item_t *active_nodes = &descriptor;
 static uint32_t node_count = 1;
 static bool dma_owned;
+bool nih_display_keypad_idle(void) { return !dma_owned; }
 static uint32_t completions;
 static uint32_t fault;
 static uint32_t dsi_error0, dsi_error1, dma_error, bridge_error;
@@ -62,6 +63,14 @@ static bool notice_cache_handoff(uint32_t address, uint32_t bytes) {
 static void notice_publish_fence(void) { __asm__ volatile("fence rw,rw" ::: "memory"); }
 #endif
 #include "notice_sparse.h"
+#if NIH_NATIVE_CARD_AUTO && NIH_NATIVE_CARD_SCENE_EXERCISE
+static bool scene_source_allowed(uint32_t src, uint32_t bytes) {
+    const uint32_t palette = (uint32_t)(uintptr_t)ui_palette;
+    return (src >= palette && src < palette + sizeof(ui_palette) && bytes <= palette + sizeof(ui_palette) - src) ||
+           (src >= ui_low_start && src < ui_low_end && bytes <= ui_low_end - src) ||
+           (src >= ui_high_start && src < ui_high_end && bytes <= ui_high_end - src);
+}
+#endif
 #if NIH_NATIVE_CARD_AUTO
 static uint32_t panel_starts, backlight_offs;
 #endif

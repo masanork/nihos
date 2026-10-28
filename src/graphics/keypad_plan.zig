@@ -70,17 +70,21 @@ fn same(bytes: []const u8, color: u16) bool {
 }
 pub fn build(frame: []const u8, output: []Segment) Error![]Segment {
     if (frame.len != frame_bytes) return error.Malformed;
-    return buildMode(frame, output, true, false);
+    return buildMode(frame, output, true, false, screen.paper_color);
 }
 pub fn buildStatic(frame: []const u8, output: []Segment) Error![]Segment {
     if (frame.len != frame_bytes) return error.Malformed;
-    return buildMode(frame, output, false, false);
+    return buildMode(frame, output, false, false, screen.paper_color);
+}
+pub noinline fn buildStaticColor(frame: []const u8, output: []Segment, paper: u16) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.text.card" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") Error![]Segment {
+    if (frame.len != frame_bytes) return error.Malformed;
+    return @call(.always_inline, buildMode, .{ frame, output, false, false, paper });
 }
 pub fn buildOverview(frame: []const u8, output: []Segment) Error![]Segment {
     if (frame.len != frame_bytes) return error.Malformed;
-    return buildMode(frame, output, false, true);
+    return buildMode(frame, output, false, true, screen.paper_color);
 }
-fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool, comptime split: bool) Error![]Segment {
+fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool, comptime split: bool, paper: u16) Error![]Segment {
     var builder = Builder{ .output = output };
     const label = screen.submitRect();
     const dots = screen.dots_rect;
@@ -88,7 +92,7 @@ fn buildMode(frame: []const u8, output: []Segment, comptime dynamic: bool, compt
         const row = frame[y * 1440 ..][0..1440];
         const base = pixel(row[0..2]);
         if (!same(row[0..8], base)) return error.UnsupportedBase;
-        const kind: Kind = if (dynamic and y >= 1100 and y < 1212) .submit else if (base == screen.paper_color) .paper else if (base == screen.key_color) .keys else return error.UnsupportedBase;
+        const kind: Kind = if (dynamic and y >= 1100 and y < 1212) .submit else if (base == paper) .paper else if (base == screen.key_color) .keys else return error.UnsupportedBase;
         const forced = if (!dynamic) null else if (y >= dots.y and y < dots.y + dots.height) dots else if (y >= label.y and y < label.y + label.height) label else null;
         if (forced) |rect| {
             try builder.add(kind, 0, rect.x / 4);

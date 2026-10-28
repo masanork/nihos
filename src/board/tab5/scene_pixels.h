@@ -21,9 +21,7 @@ SCENE_FOREGROUND uint32_t nih_display_scene_mismatches(uint32_t address) {
             node->ctrl_lo.src_tr_width != DW_GDMA_TRANS_WIDTH_64 ||
             (!fixed && node->ctrl_lo.sinc != DW_GDMA_BURST_MODE_INCREMENT)) return UINT32_MAX;
         const uint32_t bytes = fixed ? 8 : words * 8;
-        if (!((src >= 0x4ff00000 && src < 0x4ff28000 && bytes <= 0x4ff28000 - src) ||
-              (src >= 0x4ff40000 && src < 0x4ff60000 && bytes <= 0x4ff60000 - src) ||
-              (src >= 0x4ff70000 && src < 0x4ff9f000 && bytes <= 0x4ff9f000 - src))) return UINT32_MAX;
+        if (!scene_source_allowed(src, bytes)) return UINT32_MAX;
         const volatile uint64_t *actual = SCENE_ACTUAL(src);
         for (uint32_t n = 0; n < words; ++n)
             if (actual[fixed ? 0 : n] != expected[at + n]) ++mismatches;
