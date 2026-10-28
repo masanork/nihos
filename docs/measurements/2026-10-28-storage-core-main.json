@@ -137,5 +137,18 @@
       "static_analysis": "passed; includes both storage RV32 probes and six native ELF links"
     },
     "previous_results": "top-level measurements describe the pre-rebase candidate; this section records the current base"
+  },
+  "rebase_after_vfs": {
+    "base_commit": "5e54580184b291c93bff47625bef9f46dc4f86bd",
+    "resolved_conflicts": [
+      "preserved storage_rpc and added experimental_storage in src/root.zig",
+      "preserved memory-broker check and added checkpoint checks in static analysis"
+    ],
+    "root_tests_each": 665,
+    "ccid_tests_each": 1,
+    "python_tests": 409,
+    "static_analysis": "passed",
+    "ci_quality_timeout_minutes": 15,
+    "ci_budget_reason": "expanded full host suite; the previous base already took 9m34s of its 10-minute job allowance"
   }
 }
