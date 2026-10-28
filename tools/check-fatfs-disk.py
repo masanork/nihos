@@ -36,6 +36,11 @@ def run(command, timeout=120):
 
 
 def main():
+    inputs = [ROOT / 'include/nihos_fatfs_disk.h', ROOT / 'include/nihos_fatfs_volume.h',
+              ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/storage/fatfs_volume.c',
+              ROOT / 'src/platform/native/fatfs_disk.c', ROOT / 'tools/bootstrap-fatfs.py',
+              ROOT / 'tools/check-fatfs-disk.py', ROOT / 'provenance.toml', *sorted(PROBE.glob('*'))]
+    source_hashes = {str(p.relative_to(ROOT)): sha(p) for p in inputs if p.is_file()}
     parent = ROOT / 'build/fatfs-disk'
     parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix='run-', dir=parent))
@@ -57,14 +62,40 @@ def main():
     run([*cc, *flags, '-DNIHOS_FIXTURE_WRITER=1', PROBE / 'make_fixture.c',
          PROBE / 'host_disk.c', source / 'ff.c', source / 'ffunicode.c', '-o', writer])
     run([*cc, *flags, PROBE / 'check_disk.c', ROOT / 'src/storage/fatfs_disk.c',
+         ROOT / 'src/storage/fatfs_volume.c',
          ROOT / 'src/platform/native/fatfs_disk.c', source / 'ff.c', source / 'ffunicode.c', '-o', reader])
+    volume = work / 'volume-check'
+    run([*cc, *flags, PROBE / 'check_volume.c', ROOT / 'src/storage/fatfs_volume.c', '-o', volume])
     report = {'schema': 1, 'evidence': 'host-only FatFs diskio integration and RV32 compile',
               'passed': False,
               'hardware_executed': False, 'firmware_linked': False,
               'host': platform.platform(), 'compiler': run([*cc, '--version']).splitlines()[0],
               'sanitizers': ['address', 'undefined'], 'fixtures': [],
               'upstream_sha256': {p.name: sha(p) for p in sorted(source.iterdir())},
-              'contract': json.loads(run([reader]))}
+              'contract': json.loads(run([reader])), 'volume_contract': json.loads(run([volume]))}
+    report['volume_negative_controls'] = []
+    original = (ROOT / 'src/storage/fatfs_volume.c').read_text()
+    mutants = (
+        ('partition-range', 'parts[i].count > sectors - parts[i].first', '0'),
+        ('overlap', 'if (parts[j].count &&', 'if (0 &&'),
+        ('ambiguity', 'if (++found > 1) return NIH_VOLUME_AMBIGUOUS;', '++found;'),
+        ('declared-length', 'v->count = total;', 'v->count = container;'),
+        ('exfat-shift', 'p[109] > 15 || ', ''),
+    )
+    for name, old, new in mutants:
+        if original.count(old) != 1:
+            raise RuntimeError('Ambiguous volume negative control: ' + name)
+        mutated, executable = work / ('mutant-' + name + '.c'), work / ('mutant-' + name)
+        mutated.write_text(original.replace(old, new))
+        run([*cc, *flags, PROBE / 'check_volume.c', mutated, '-o', executable])
+        outcome = subprocess.run([executable], capture_output=True, text=True, timeout=15,
+                                 env={**os.environ, 'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1',
+                                      'ASAN_OPTIONS': 'abort_on_error=1:detect_leaks=0'})
+        if outcome.returncode == 0 or not outcome.stderr:
+            raise RuntimeError('Volume regression did not reject mutant: ' + name)
+        report['volume_negative_controls'].append({'case': name, 'rejected': True,
+            'source_sha256': sha(mutated), 'exit_code': outcome.returncode,
+            'reason': outcome.stderr.splitlines()[0]})
     def save():
         (work / 'results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     save()
@@ -100,8 +131,9 @@ def main():
               '-isystem', headers / 'riscv-linux-any',
               f'-I{ROOT / "include"}', f'-I{PROBE}', f'-I{source}', '-c']
     report['rv32_objects'] = {}
-    for path in (ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/platform/native/fatfs_disk.c'):
-        output = work / (path.parent.name + '-fatfs-disk.o')
+    for path in (ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/platform/native/fatfs_disk.c',
+                 ROOT / 'src/storage/fatfs_volume.c'):
+        output = work / (path.parent.name + '-' + path.stem + '.o')
         run([*target, path, '-o', output])
         report['rv32_objects'][str(path.relative_to(ROOT))] = {'sha256': sha(output), 'bytes': output.stat().st_size}
     # Record exact RV32 workspace size from an ELF object, without executing it.
@@ -114,17 +146,17 @@ def main():
     entsize, count = struct.unpack_from('<HH', data, 46)
     bss = [struct.unpack_from('<10I', data, shoff + i * entsize) for i in range(count)]
     report['rv32_workspace_bytes'] = sum(row[5] for row in bss if row[1] == 8 and row[2] & 3 == 3)
-    inputs = [ROOT / 'include/nihos_fatfs_disk.h', ROOT / 'src/storage/fatfs_disk.c',
-              ROOT / 'src/platform/native/fatfs_disk.c', ROOT / 'tools/bootstrap-fatfs.py',
-              ROOT / 'tools/check-fatfs-disk.py', ROOT / 'provenance.toml', *sorted(PROBE.glob('*'))]
-    report['sources'] = {str(p.relative_to(ROOT)): sha(p) for p in inputs if p.is_file()}
+    if any(sha(ROOT / name) != expected for name, expected in source_hashes.items()):
+        raise RuntimeError('Source changed during disk/volume qualification')
+    report['sources'] = source_hashes
     report['limitations'] = [
         'RV32 adapter object compile only; no final firmware placement, memory/stack admission or native FatFs execution',
         'Native callback depends on existing nih_storage_read lease pin and fatal handling of unproved DMA fences',
         'Valid image fixtures only; chain/identity shim from host VFS PR #3 is not linked here',
         'VFS backend, authenticated roots/handles, RPC and mount invalidation of cached FatFs objects remain unconnected',
         'Atomic disk_read publication does not imply atomic f_read or durable storage',
-        'Partition bounds are supplied by a trusted host fixture, not discovered/validated by this adapter',
+        'Read-only volume admission covers superfloppy/MBR primary only; GPT/extended layouts are rejected',
+        'Volume probe requires a stable owner-held card/controller session through bind and mount; no hardware hot-swap detection',
         'No physical removal, clean power-on, writable filesystem, SQLite persistence or power-loss evidence']
     report['passed'] = True
     save()

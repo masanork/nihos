@@ -48,6 +48,33 @@ and is solely for generating private test inputs.
 The disk-only command above tests valid volumes. Its disk epoch alone does not
 reject a stale FatFs `FIL` object. It does not enable a native filesystem mount.
 
+## Owner-side volume admission
+
+`src/storage/fatfs_volume.c` and `include/nihos_fatfs_volume.h` discover a bounded
+512-byte-sector view before disk binding. AUTO accepts a valid superfloppy or
+exactly one supported MBR primary volume. The caller can select physical MBR
+slot 1..4 explicitly. All populated intervals, including unselected types, are
+checked for bounds and overlap before any partition read. GPT protective and
+extended partitions are rejected; no EBR/GPT traversal occurs. FAT12/16/32 and
+the pinned single-FAT exFAT geometry are admitted without trusting type labels
+as proof of valid filesystem contents. The view ends at the VBR-declared length.
+BPB hidden-sector/exFAT PartitionOffset values cannot redirect physical reads.
+
+The probe uses caller-owned 512-byte scratch, at most five synchronous sector
+callbacks and no global state. Returning errors leave output unchanged and clear
+scratch. The owner must hold one unchanged controller/card session across probe,
+bind and mount; the result does not authenticate media or detect a hot swap.
+FatFs mount, bounded chain checks and per-operation budgets remain necessary.
+
+The disk runner includes synthetic layout/error contracts and five compiled
+source mutants (range, overlap, ambiguity, declared length and exFAT shift).
+All five actual images now pass admission before the real FatFs reader runs.
+The Backend runner adds `selected-vfs` cases through the probe, disk bridge,
+guarded FatFs and actual Zig VFS. Existing malformed-volume tests still exercise
+the Backend's own independent checks. The probe is compiled for RV32 but is not
+yet linked or invoked by the native SD owner. See
+[the admission contract](../../docs/planning/volume-admission.md).
+
 ## Guarded Backend and actual Zig VFS integration
 
 `python3 tools/check-fatfs-backend.py` runs the disk tests first, then compiles
@@ -151,3 +178,6 @@ reserved control/parent layout and individual static frame ceilings. The current
 worker stack is 4 KiB. Whole-call-stack and physical scheduler/SD qualification
 remain separate gates. See
 [the native link record](../../docs/measurements/2026-10-28-fatfs-native-link.md).
+The subsequent [three-run Tab5 record](../../docs/measurements/2026-10-28-fatfs-native-physical.md)
+confirms this embedded fixture's actual scheduler stop/rebind/cleanup paths.
+It does not qualify the physical SD FatFs adapter or the new volume probe.

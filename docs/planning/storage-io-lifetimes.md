@@ -308,3 +308,11 @@ ownerの観測stackは2,704 B、replacement clientは352 B。guardとtask側trap
 候補の事前・事後Flash照合、元の16 MiB全面復元、serial解放までを採取単位とする。
 [実機結果と失敗・修正の記録](../measurements/2026-10-28-fatfs-native-physical.md)に候補identity、生ログ、負例を保存した。
 実カードFatFsへの接続とnative exFAT/VFAT、clean POR、書込み、永続SQLite、電断復旧は次のgateとして残す。
+
+## 実カードのvolume選択（2026-10-28、host / RV32 compile）
+
+trusted ownerへ渡していたpartition範囲を、[volume admission](volume-admission.md)で発見・検査する実装を追加した。
+superfloppyとMBR primaryのFAT12/16/32・exFATを扱い、全entryの範囲と重複、候補の一意性、
+VBR geometryを検査してからFS宣言長へ狭めたviewを渡す。GPT/extendedはUnsupportedで止める。
+probe→diskio→guarded FatFs→実Zig VFSのhost経路と、破損layout・検査を外した負例を確認する。
+native SD ownerのsession再生成、専用source profile、最終link/stack、実カードの読取りはまだ接続していない。
