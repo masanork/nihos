@@ -59,4 +59,10 @@ FAT/exFATカード用candidateでは、専用opt-inとsource付きログ契約�
 既存littlefsの判定を無条件に緩めたり、カードをformatして同じ試験に見せたりしない。
 既存controller exportの容量はu32なので、generic probeの2^32-sector境界試験をnative対応容量と同一視しない。
 
+既存の新session準備には、ownerの未完了lease、通知ticket、現sessionの有効状態、
+controller quiescenceと世代上限をまとめて確認するgateを追加した。
+停止未確認やquarantine中はcontroller stateの置換とremoval latchのclearへ進まない。
+hostで各拒否条件と実ownerのquarantineを確認し、既存SD抜去構成のnative ELF監査を通した。
+このgateは新しいFatFs SD sessionの公開、probe/bind/mountをまだ実装していない。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。

@@ -10,6 +10,12 @@ pub const ReadOwner = struct {
     pub fn busy(self: *const @This()) bool {
         return self.requests.holdsMount(.{ .slot = 0, .generation = self.generation });
     }
+    /// Check before replacing controller state or clearing a removal latch.
+    /// Hardware reinitialization and publication of the next generation remain
+    /// the serialized owner's responsibility.
+    pub fn canRestart(self: *const @This(), ticket_active: bool, session_active: bool, quiescent: bool) bool {
+        return !self.busy() and !ticket_active and !session_active and quiescent and self.generation < 0xffff_ffff;
+    }
     pub inline fn read(self: *@This(), controller: anytype, lba: u32, destination: *[512]u8, buffer_lease: u64, control: anytype) Error!void {
         if (self.busy()) return error.Busy;
         const mount = io.Reference{ .slot = 0, .generation = self.generation };
