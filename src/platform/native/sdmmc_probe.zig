@@ -93,6 +93,7 @@ var last_error: u32 = 0;
 // ready flag set only after all SD boot checks succeed.
 var runtime_controller: sd.Controller(Bus) = undefined;
 var runtime_ready = false;
+var runtime_initialized = false;
 const Bus = struct {
     pub const runtime_section = if (options.storage) ".flash.text.storage" else ".text";
     clock: timer_group.Timer,
@@ -236,7 +237,10 @@ pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) linksection
     report.crc1 = checks[1];
     report.crc_middle = checks[2];
     report.crc_last = checks[3];
-    if (options.storage_service) runtime_ready = true;
+    if (options.storage_service) {
+        runtime_initialized = true;
+        runtime_ready = true;
+    }
     report.status = 1;
     report.bus_bits = controller.bus_bits;
     report.clock_khz = controller.clock_khz;
@@ -433,6 +437,51 @@ fn freshCardSession(clock: timer_group.Timer) linksection(".flash.text.storage")
     io_owner.generation += 1;
     io_signal = .{ .next_ticket = next_ticket };
     return true;
+}
+
+/// Starts a separate read-only card session for a future FatFs owner. The
+/// returned sector count belongs to this session only; zero means no session
+/// was published. The caller must serialize probe/bind/mount and end with the
+/// same controller generation before another owner may start.
+fn beginFatFsSession(generation: *u32) linksection(".flash.text.storage") callconv(.c) u32 {
+    if (!options.fatfs_native or !options.storage_service or !runtime_initialized) return 0;
+    const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
+    if (clock.channel.config & (timer_group.counter_enable | timer_group.alarm_enable) != 0 or
+        !io_owner.canRestart(io_signal.active() != 0, runtime_ready or active_controller != null, runtime_controller.quiescence.complete())) return 0;
+    clock.start();
+    clock.disarm();
+    if (!freshCardSession(clock)) {
+        // A failed reset/identify has not established a safe fresh controller.
+        // Keep later starts blocked until an explicit recovery path proves it.
+        runtime_controller.quiescence.device_idle = false;
+        clock.stop();
+        return 0;
+    }
+    if (runtime_controller.sectors == 0 or runtime_controller.sectors > 0xffff_ffff) {
+        clock.stop();
+        return 0;
+    }
+    runtime_ready = true;
+    const sectors = runtimeBegin(clock) orelse return 0;
+    generation.* = @intCast(io_owner.generation);
+    return sectors;
+}
+
+/// Called only after the private filesystem and its disk binding are gone.
+/// A busy or unfenced controller keeps its session and clock for recovery.
+fn endFatFsSession(generation: u32) linksection(".flash.text.storage") callconv(.c) u32 {
+    if (!options.fatfs_native or !runtime_ready or active_controller != &runtime_controller or
+        generation == 0 or generation != io_owner.generation or io_owner.busy() or
+        io_signal.active() != 0 or !runtime_controller.quiescence.complete()) return 0;
+    runtimeEnd();
+    timer_group.Timer.fromGroup(0x500c3000, 0).?.stop();
+    return 1;
+}
+comptime {
+    if (options.fatfs_native) {
+        @export(&beginFatFsSession, .{ .name = "nih_storage_fatfs_session_begin" });
+        @export(&endFatFsSession, .{ .name = "nih_storage_fatfs_session_end" });
+    }
 }
 
 /// Operator-assisted READ-ONLY test. A read error alone is not proof of

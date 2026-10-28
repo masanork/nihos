@@ -66,7 +66,10 @@ def main(directory, source, littlefs=None):
         fixture = json.loads((directory / 'fatfs-fixture-manifest.json').read_text())
         result['fatfs_native'] = {'version': 3, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': {path: sha(root / path) for path in SOURCES}}
-        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.runFatFsTasks'})
+        result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
+            'main.runFatFsTasks', 'sdmmc_probe.freshCardSession',
+            'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end',
+            'sdmmc_probe.beginFatFsSession', 'sdmmc_probe.endFatFsSession'})
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
         root = Path(__file__).resolve().parents[1]
         result['broker'] = {'version': 2, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),
