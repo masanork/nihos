@@ -112,3 +112,15 @@ boot bytes. The interrupted capture remains unqualified. Before landing:
 4. Retain failed attempts and optical/input confirmation separately from serial
    counters. GT911/ST7123, cold power cycling, IRQ input, application routing
    and sustained mixed workload remain separate qualification work.
+
+## Main integration decision, 2026-10-28
+
+The user requested landing the normal UI view control and its subdued gray
+styling on main while further physical testing is unavailable. The checklist
+above remains outstanding physical qualification work, rather than a claim
+established by this integration. Host, emulator and build checks must pass;
+merging does not qualify real contact/release behavior or optical appearance.
+
+The separate Sitronix report-batching optimization is excluded from this
+landing: it exceeded the existing card-photo SRAM budget in CI. The previous
+bounded per-record reader and the 48 KiB minimum heap requirement are retained.
