@@ -93,6 +93,7 @@ fn serviceNetwork() void {
     }
     if (!options.network) return;
     network.poll();
+    serviceTime();
     const now = ui.timer().counter() orelse fail("network report clock");
     const state = network.snapshot();
     if (network_ready and state.ip == 0) {
@@ -1094,3 +1095,15 @@ const AutoLog = struct {
         notice();
     }
 };
+
+var time_report_at: u64 = 0;
+noinline fn serviceTime() linksection(".flash.text.time") void {
+    if (network.takeTime()) |sample| board_devices.applyNetworkTime(sample.unix_us, sample.received);
+    const now = ui.timer().counter() orelse return;
+    if (now < time_report_at) return;
+    time_report_at = now + 5_000_000;
+    const ntp = network.timeSnapshot();
+    logger.record("NIHOS_NATIVE_NTP", null, .{ "phase", "attempts", "replies", "rejected", "failures", "server", "stratum", "rtt_us", "unix_high", "unix_low" }, &ntp);
+    const clock = board_devices.timeSnapshot();
+    logger.record("NIHOS_NATIVE_RTC_SYNC", null, .{ "applied", "failures", "error_code", "unix_high", "unix_low" }, &clock);
+}

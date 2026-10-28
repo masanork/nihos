@@ -1,0 +1,122 @@
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040850 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000000 bus_uv=00000000 shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000000 imu_initialized=00000000 errors=00000000 samples=00000001
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000020 ticks0=0000000f ticks1=0000000f
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040854 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000001 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000005
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000014c ticks0=00000203 ticks1=00000203
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040858 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000000a
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000278 ticks0=000003f7 ticks1=000003f7
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040904 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000000f
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000003a4 ticks0=000005ec ticks1=000005ec
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040908 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000014
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000004d0 ticks0=000007e0 ticks1=000007e0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040914 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=0000004b shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000019
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000005fc ticks0=000009d4 ticks1=000009d4
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040918 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000001e
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000728 ticks0=00000bc8 ticks1=00000bc8
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040924 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000023
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000854 ticks0=00000dbd ticks1=00000dbd
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040928 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000028
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000981 ticks0=00000fb2 ticks1=00000fb2
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040934 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000002d
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000aad ticks0=000011a6 ticks1=000011a6
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040938 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000032
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000bd9 ticks0=0000139b ticks1=0000139b
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040944 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000037
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000d06 ticks0=00001590 ticks1=00001590
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040948 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000003c
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000e32 ticks0=00001784 ticks1=00001784
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00040954 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000042
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000f5e ticks0=00001979 ticks1=00001979
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041000 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000047
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000108a ticks0=00001b6d ticks1=00001b6d
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041004 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000004c
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000011b6 ticks0=00001d61 ticks1=00001d61
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041010 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d8aac shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000051
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000012e2 ticks0=00001f56 ticks1=00001f56
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041014 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000056
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000140e ticks0=0000214a ticks1=0000214a
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041020 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000005b
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000153b ticks0=0000233f ticks1=0000233f
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041024 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d7c06 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000060
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00001667 ticks0=00002533 ticks1=00002533
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041030 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000065
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00001792 ticks0=00002727 ticks1=00002727
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041034 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000006a
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000018bf ticks0=0000291c ticks1=0000291c
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041040 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000006f
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000019eb ticks0=00002b10 ticks1=00002b10
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00041044 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000074
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000001 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00001b17 ticks0=00002d04 ticks1=00002d04

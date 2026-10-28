@@ -1,0 +1,22 @@
+{
+  "kind": "no-ntp-warm-retention",
+  "source_commit": "15b134742984332978eda5e02b84915263b84ae6",
+  "source_dirty": true,
+  "source_files_sha256": "3a5e61e61886db819dd4e19dc5bdc3e58a01def3c25c9867b567a6bd06422b5e",
+  "source_archive_sha256": "00d250e2d2a86a2fb0d343e6c6adac65fc468bcebd411823dc6a175379370229",
+  "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+  "sdk_dirty": false,
+  "app_sha256": "09fe70863df2abf002fc7d0c04931a801249d41fc16354f58a822552088cd2b8",
+  "elf_sha256": "9b4d290687c2f33b9e6e676cba2cdaea289a7cc9c7851e2c5034b5c61bd48c9e",
+  "raw_serial_sha256": "6a66c71a011d9d47c76fb70f4a4ebc295c99220e43b2594d5bd54c5c9231a547",
+  "selected_serial_sha256": "67f6b7e4a30c5fc58da30501c74d38a5b9604a74e67efe79db538ca48c014728",
+  "capture_seconds": 25.015510291,
+  "at": "2026-10-28T03:33:15.626513+00:00",
+  "restored": true,
+  "prior_app_partition_sha256": "b2397b3cf59d4e0b208e462ab5261ab29f0dbec8019dd14dbc4c847be50c207e",
+  "boot_unchanged_sha256": "2abdd2bd47aa470d84bcc46bbd01465d154b99db7985d0a93e096fd98db4a40f",
+  "heap_bytes": 50432,
+  "time_flash_bytes": 0,
+  "raw_capture_private": true,
+  "network_identifiers_and_credentials_withheld": true
+}

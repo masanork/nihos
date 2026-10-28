@@ -11,7 +11,9 @@ extern fn nih_c6_power_enable() callconv(.c) u32;
 extern fn nih_c6_reset(u32) callconv(.c) void;
 var host = sd.Controller(pads.Bus){ .io = .{} };
 var transport = stream.ProfileStream(@TypeOf(host), 64){ .host = &host };
+const TimeClient = hosted.sntp.Engine(".flash.text.time");
 const State = struct {
+    time: TimeClient = .{},
     client: hosted.Client = .{},
     decoder: hosted.wire.Decoder = .{},
     configuration: hosted.Configuration = .{},
@@ -86,6 +88,7 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     startAttempt(now);
 }
 fn startAttempt(now: u64) void {
+    state_storage.time.disconnect();
     pads.useClock(clock);
     nih_c6_pads_init();
     host = .{ .io = .{ .clock = clock } };
@@ -111,6 +114,7 @@ fn collectRenewals() void {
     }
 }
 fn stop(err: anyerror, now: ?u64) void {
+    state_storage.time.disconnect();
     report.disconnect_reason = client.disconnect_reason;
     report.failed_station = @backingInt(client.phase);
     collectRenewals();
@@ -132,7 +136,7 @@ fn stop(err: anyerror, now: ?u64) void {
     phase = .backoff;
     next = now.? +| (seconds * 1_000_000);
 }
-fn step(now: u64) !void {
+noinline fn step(now: u64) linksection(".flash.text.time") !void {
     if (phase == .power_wait) {
         nih_c6_reset(1);
         phase = .reset_wait;
@@ -164,6 +168,10 @@ fn step(now: u64) !void {
         if (frame.interface == 4) state_storage.ble.receiveHosted(frame.packet_type, frame.payload, now);
         try client.receive(frame, clock.counter() orelse return error.Clock);
         collectRenewals();
+        if (frame.interface == 1) {
+            // DHCP expiry/disconnect is processed before exposing the frame.
+            if (client.dhcp_client) |v4| if (v4.lease != null) state_storage.time.receive(frame.payload, now);
+        }
     };
     const stamp = clock.counter() orelse return error.Clock;
     const ble = &state_storage.ble;
@@ -194,6 +202,7 @@ fn step(now: u64) !void {
         if (sent != 0) client.sent(clock.counter() orelse return error.Clock);
         report.tx +|= @intCast(sent);
     } else {
+        if (try timePoll(stamp)) return;
         if (state_storage.ble_length == 0) {
             const command = ble.tx(stamp);
             if (command.len != 0) {
@@ -266,4 +275,39 @@ pub fn configure(join: hosted.Join) !void {
     const now = clock.counter() orelse return error.Clock;
     nih_c6_reset(0);
     startAttempt(now);
+}
+
+/// Called after the station's own tx() maintenance. Shares its monotonic epoch;
+/// DNS/NTP failures stay local and never reset C6 or revoke the DHCP lease.
+noinline fn timePoll(now: u64) linksection(".flash.text.time") !bool {
+    const v4 = client.dhcp_client orelse {
+        state_storage.time.disconnect();
+        return false;
+    };
+    const lease = v4.lease orelse {
+        state_storage.time.disconnect();
+        return false;
+    };
+    state_storage.time.bind(client.mac_address, lease, now);
+    const ethernet = state_storage.time.tx(now);
+    if (ethernet.len == 0) return false;
+    // At most 128 Ethernet bytes. This CPU stack packet is copied by the
+    // existing bounded transport; it is not lent to a DMA engine.
+    var framed: [144]u8 = @splat(0);
+    const packet = try hosted.wire.frame(&framed, 1, client.sequence, ethernet);
+    const sent = try transport.send(packet);
+    if (sent != 0 and sent != packet.len) return error.PartialPacket;
+    if (sent != 0) {
+        client.sequence +%= 1;
+        state_storage.time.sent(clock.counter() orelse return error.Clock);
+        report.tx +|= @intCast(sent);
+    }
+    return true;
+}
+pub fn timeSnapshot() hosted.sntp.Report {
+    return state_storage.time.snapshot();
+}
+pub fn takeTime() ?hosted.sntp.Sample {
+    const now = clock.counter() orelse return null;
+    return state_storage.time.take(now);
 }

@@ -1,6 +1,10 @@
 //! RX8130CE calendar, independently implemented from Epson ETM50E-10.
 //! All APIs require exclusive ownership of the shared board I2C bus.
 const std = @import("std");
+const builtin = @import("builtin");
+fn defaultSection() []const u8 {
+    return if (builtin.object_format == .macho) "__TEXT,__text" else ".text";
+}
 pub const address = 0x32;
 pub const DateTime = struct {
     year: u16,
@@ -10,6 +14,13 @@ pub const DateTime = struct {
     hour: u8,
     minute: u8,
     second: u8,
+    pub fn toUnix(self: DateTime) !u64 {
+        return self.toUnixSection(null);
+    }
+
+    pub inline fn toUnixSection(self: DateTime, comptime section: ?[]const u8) !u64 {
+        return Calendar(section).toUnix(self);
+    }
     pub fn validate(self: DateTime) error{InvalidCalendar}!void {
         if (self.year < 2000 or self.year > 2099 or self.month == 0 or self.month > 12 or self.weekday > 6 or self.hour > 23 or self.minute > 59 or self.second > 59) return error.InvalidCalendar;
         const days = [_]u8{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -17,6 +28,10 @@ pub const DateTime = struct {
         if (self.day == 0 or self.day > max) return error.InvalidCalendar;
     }
 };
+pub fn fromUnix(seconds: u64) !DateTime {
+    return fromUnixSection(seconds, null);
+}
+
 fn bcd(value: u8) error{InvalidCalendar}!u8 {
     if (value & 15 > 9 or value >> 4 > 9) return error.InvalidCalendar;
     return (value >> 4) * 10 + (value & 15);
@@ -49,24 +64,7 @@ pub fn read(bus: anytype) !Sample {
 /// qualify as a running clock. Power/backup initialization is a
 /// separate board policy and is deliberately not inferred by this driver.
 pub fn set(bus: anytype, value: DateTime) !void {
-    try value.validate();
-    const before = try read(bus);
-    // VLF requires full board-selected register/battery initialization per
-    // Epson. A calendar-only write must not clear it and claim recovery.
-    if (before.registers[13] & 2 != 0) return error.NeedsInitialization;
-    const control = before.registers[14];
-    if (control & 0x80 != 0) return error.TestMode;
-    try bus.transfer(address, &.{ 0x1e, control | 0x40 }, &.{});
-    writeStopped(bus, value, control) catch |err| {
-        bus.transfer(address, &.{ 0x1e, control | 0x40 }, &.{}) catch return error.StopFailed;
-        return err;
-    };
-}
-fn writeStopped(bus: anytype, value: DateTime, control: u8) !void {
-    const bytes = [_]u8{ 0x10, encode(value.second), encode(value.minute), encode(value.hour), @as(u8, 1) << value.weekday, encode(value.day), encode(value.month), encode(@intCast(value.year - 2000)) };
-    try bus.transfer(address, &bytes, &.{});
-    try bus.transfer(address, &.{ 0x1e, control & ~@as(u8, 0x40) }, &.{});
-    _ = try (try read(bus)).calendar();
+    return setSection(bus, value, null);
 }
 
 test "RTC rejects low voltage, stopped clocks, corrupt BCD and impossible dates" {
@@ -150,4 +148,107 @@ test "RTC explicit setting preserves control and flags; partial writes leave STO
     bus.regs[13] |= 2;
     try std.testing.expectError(error.NeedsInitialization, set(&bus, date));
     try std.testing.expectEqual(before, bus.writes);
+}
+
+pub inline fn fromUnixSection(seconds: u64, comptime section: ?[]const u8) !DateTime {
+    return Calendar(section).fromUnix(seconds);
+}
+pub inline fn setSection(bus: anytype, value: DateTime, comptime section: ?[]const u8) !void {
+    return Calendar(section).set(bus, value);
+}
+pub fn Calendar(comptime section: ?[]const u8) type {
+    return struct {
+        pub noinline fn toUnix(self: DateTime) linksection(section orelse defaultSection()) !u64 {
+            try self.validate();
+            var days: u64 = 10957; // 2000-01-01 since 1970-01-01.
+            for (2000..self.year) |year| days += if (year % 4 == 0) @as(u64, 366) else 365;
+            const lengths = [_]u8{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+            for (0..self.month - 1) |month| days += lengths[month] + @as(u8, @intFromBool(month == 1 and self.year % 4 == 0));
+            return (days + self.day - 1) * 86400 + @as(u64, self.hour) * 3600 + @as(u64, self.minute) * 60 + self.second;
+        }
+        pub noinline fn fromUnix(seconds: u64) linksection(section orelse defaultSection()) !DateTime {
+            if (seconds < 946684800 or seconds >= 4102444800) return error.InvalidCalendar;
+            const total_days = seconds / 86400;
+            var days = total_days - 10957;
+            var year: u16 = 2000;
+            while (true) : (year += 1) {
+                const count: u64 = if (year % 4 == 0) 366 else 365;
+                if (days < count) break;
+                days -= count;
+            }
+            const lengths = [_]u8{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+            var month: u8 = 1;
+            while (true) : (month += 1) {
+                const count: u64 = lengths[month - 1] + @as(u8, @intFromBool(month == 2 and year % 4 == 0));
+                if (days < count) break;
+                days -= count;
+            }
+            return .{ .year = year, .month = month, .day = @intCast(days + 1), .weekday = @intCast((total_days + 4) % 7), .hour = @intCast(seconds / 3600 % 24), .minute = @intCast(seconds / 60 % 60), .second = @intCast(seconds % 60) };
+        }
+        pub noinline fn set(bus: anytype, value: DateTime) linksection(section orelse defaultSection()) !void {
+            try value.validate();
+            const before = try read(bus);
+            // VLF requires full board-selected register/battery initialization per
+            // Epson. A calendar-only write must not clear it and claim recovery.
+            if (before.registers[13] & 2 != 0) return error.NeedsInitialization;
+            const control = before.registers[14];
+            if (control & 0x80 != 0) return error.TestMode;
+            try bus.transfer(address, &.{ 0x1e, control | 0x40 }, &.{});
+            const stopped = try read(bus);
+            if (stopped.registers[14] & 0xc0 != (control | 0x40) & 0xc0) return error.StopFailed;
+            writeStopped(bus, value, control) catch |err| {
+                bus.transfer(address, &.{ 0x1e, control | 0x40 }, &.{}) catch return error.StopFailed;
+                const failed_sample = read(bus) catch return error.StopFailed;
+                if (failed_sample.registers[14] & 0x40 == 0) return error.StopFailed;
+                return err;
+            };
+        }
+        noinline fn writeStopped(bus: anytype, value: DateTime, control: u8) linksection(section orelse defaultSection()) !void {
+            const bytes = [_]u8{ 0x10, encode(value.second), encode(value.minute), encode(value.hour), @as(u8, 1) << value.weekday, encode(value.day), encode(value.month), encode(@intCast(value.year - 2000)) };
+            try bus.transfer(address, &bytes, &.{});
+            try bus.transfer(address, &.{ 0x1e, control & ~@as(u8, 0x40) }, &.{});
+            const actual = try (try read(bus)).calendar();
+            const expected_seconds = try value.toUnixSection(section);
+            const actual_seconds = try actual.toUnixSection(section);
+            if (actual_seconds < expected_seconds or actual_seconds - expected_seconds > 1) return error.Readback;
+            if (actual.weekday != (try fromUnixSection(actual_seconds, section)).weekday) return error.Readback;
+        }
+    };
+}
+
+test "UTC calendar conversion covers century, leap boundaries and weekdays" {
+    const first: u64 = 946684800;
+    const last: u64 = 4102444799;
+    try std.testing.expectError(error.InvalidCalendar, fromUnix(first - 1));
+    try std.testing.expectError(error.InvalidCalendar, fromUnix(last + 1));
+    for (0..36525) |day| {
+        const seconds = first + @as(u64, day) * 86400;
+        const value = try fromUnix(seconds);
+        try std.testing.expectEqual(seconds, try value.toUnix());
+        try std.testing.expectEqual(@as(u3, @intCast((day + 6) % 7)), value.weekday);
+    }
+    const final = try fromUnix(last);
+    try std.testing.expectEqual(@as(u16, 2099), final.year);
+    try std.testing.expectEqual(@as(u8, 31), final.day);
+    try std.testing.expectEqual(last, try final.toUnix());
+}
+
+test "RTC rejects acknowledged but ignored STOP or calendar writes" {
+    const Bus = struct {
+        regs: [16]u8 = .{ 0, 0, 0, 1, 1, 1, 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        ignore_stop: bool = false,
+        calendar_writes: u32 = 0,
+        fn transfer(self: *@This(), _: u7, write: []const u8, out: []u8) !void {
+            if (out.len != 0) @memcpy(out, &self.regs) else if (write[0] == 0x1e) {
+                if (!self.ignore_stop) self.regs[14] = write[1];
+            } else if (write[0] == 0x10) self.calendar_writes += 1;
+        }
+    };
+    const value = try fromUnix(1800000000);
+    var bus: Bus = .{ .ignore_stop = true };
+    try std.testing.expectError(error.StopFailed, set(&bus, value));
+    try std.testing.expectEqual(@as(u32, 0), bus.calendar_writes);
+    bus.ignore_stop = false;
+    try std.testing.expectError(error.Readback, set(&bus, value));
+    try std.testing.expect(bus.regs[14] & 0x40 != 0);
 }

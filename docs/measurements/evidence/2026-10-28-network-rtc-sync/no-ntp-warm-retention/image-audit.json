@@ -1,0 +1,347 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff00000",
+  "elf_sha256": "9b4d290687c2f33b9e6e676cba2cdaea289a7cc9c7851e2c5034b5c61bd48c9e",
+  "memory": {
+    "profile": "device",
+    "origin": "0x4ff00000",
+    "end": "0x4ff28000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "sram_reserved_bytes": 170752,
+  "primary_static_bytes": 113408,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000"
+  },
+  "heap": {
+    "start": "0x4ff1bb00",
+    "end": "0x4ff28000",
+    "bytes": 50432,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x40001440",
+    "bytes": 4896,
+    "sha256": "de571eaf351bf4b2f040e5ccd38ba3eb675ac579e00ec72788f2e3e1732a9e94",
+    "functions": {
+      "clock": {
+        "name": "cpu_boot.run__func_1",
+        "start": "0x40000f9c",
+        "end": "0x40001440"
+      },
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000b9a"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_192",
+        "start": "0x40000b9a",
+        "end": "0x40000f9c"
+      }
+    },
+    "image_offset": 288
+  },
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x4001d7f6",
+    "bytes": 55254,
+    "fnv1a": 1279383535,
+    "executable": false,
+    "writable": false,
+    "image_offset": 65568
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_get_cpu_ticks": "0x4fc00040",
+    "nih_rom_set_cpu_ticks": "0x4fc00044",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 4896
+    },
+    {
+      "name": ".flash.devices",
+      "address": "0x40001440",
+      "bytes": 9414
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 55254
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff00000",
+      "bytes": 85528
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff14e20",
+      "bytes": 17868
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff19400",
+      "bytes": 2320
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff19d40",
+      "bytes": 7616
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff1bb00",
+      "bytes": 50432
+    }
+  ],
+  "device_text": {
+    "start": "0x40001440",
+    "end": "0x40003906",
+    "bytes": 9414,
+    "sha256": "27631e99f66a988eb7f37632df1f2e8ec608d9ff46833858780390182d7cc3b0",
+    "functions": {
+      "nih_audio_tx_prepare": {
+        "start": "0x40001440",
+        "end": "0x4000187a"
+      },
+      "audio_output": {
+        "start": "0x4000187a",
+        "end": "0x40001980"
+      },
+      "nih_audio_tx_start": {
+        "start": "0x40001980",
+        "end": "0x400019d6"
+      },
+      "nih_audio_tx_status": {
+        "start": "0x400019d6",
+        "end": "0x40001a2a"
+      },
+      "nih_audio_tx_stop": {
+        "start": "0x40001a2a",
+        "end": "0x40001acc"
+      },
+      "nih_microphone_prepare": {
+        "start": "0x40001acc",
+        "end": "0x40001ec2"
+      },
+      "microphone_output": {
+        "start": "0x40001ec2",
+        "end": "0x40001fc2"
+      },
+      "nih_microphone_start": {
+        "start": "0x40001fc2",
+        "end": "0x4000205e"
+      },
+      "nih_microphone_status": {
+        "start": "0x4000205e",
+        "end": "0x40002090"
+      },
+      "nih_microphone_stop": {
+        "start": "0x40002090",
+        "end": "0x40002164"
+      },
+      "nih_rs485_diagnostic": {
+        "start": "0x40002164",
+        "end": "0x4000217e"
+      },
+      "nih_rs485_dir_low": {
+        "start": "0x4000217e",
+        "end": "0x400021ba"
+      },
+      "nih_rs485_open": {
+        "start": "0x400021ba",
+        "end": "0x4000257a"
+      },
+      "rs485_output": {
+        "start": "0x4000257a",
+        "end": "0x400026d6"
+      },
+      "nih_rs485_direction": {
+        "start": "0x400026d6",
+        "end": "0x4000276c"
+      },
+      "nih_rs485_errors": {
+        "start": "0x4000276c",
+        "end": "0x40002784"
+      },
+      "nih_rs485_writable": {
+        "start": "0x40002784",
+        "end": "0x400027b0"
+      },
+      "nih_rs485_readable": {
+        "start": "0x400027b0",
+        "end": "0x400027d4"
+      },
+      "nih_rs485_tx_idle": {
+        "start": "0x400027d4",
+        "end": "0x40002808"
+      },
+      "nih_rs485_write": {
+        "start": "0x40002808",
+        "end": "0x40002840"
+      },
+      "nih_rs485_read": {
+        "start": "0x40002840",
+        "end": "0x40002872"
+      },
+      "nih_rs485_close": {
+        "start": "0x40002872",
+        "end": "0x400029e6"
+      },
+      "nih_rs485_closed": {
+        "start": "0x400029e6",
+        "end": "0x400029fc"
+      },
+      "rs485_probe.poll__func_73": {
+        "start": "0x400029fc",
+        "end": "0x40002c9a"
+      },
+      "microphone_probe.poll__func_72": {
+        "start": "0x40002c9a",
+        "end": "0x400032dc"
+      },
+      "audio_probe.poll__func_71": {
+        "start": "0x400032dc",
+        "end": "0x40003906"
+      }
+    },
+    "foreground_only": true,
+    "writable": false,
+    "executable": true
+  },
+  "image_sha256": "09fe70863df2abf002fc7d0c04931a801249d41fc16354f58a822552088cd2b8",
+  "image_bytes": 175648,
+  "image_segments": [
+    {
+      "address": "0x40000020",
+      "bytes": 14568
+    },
+    {
+      "address": "0x4ff00000",
+      "bytes": 50952
+    },
+    {
+      "address": "0x40010020",
+      "bytes": 55256
+    },
+    {
+      "address": "0x4ff0c708",
+      "bytes": 34576
+    },
+    {
+      "address": "0x4ff14e20",
+      "bytes": 17868
+    },
+    {
+      "address": "0x4ff19400",
+      "bytes": 2320
+    }
+  ],
+  "loader": {
+    "elf_sha256": "acf349b640792e091bd27ef61f8469f5832dbe8b7628f38ce4c72f7f0d70075f",
+    "allocated": [
+      {
+        "address": "0x4ff2cbd0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ff33bd0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ff33ce0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ff33d30",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ff33d3c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ff2abd0",
+        "bytes": 3010
+      }
+    ],
+    "nearest_higher_address": "0x4ff2abd0",
+    "gap_bytes": 11216,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 11216
+      },
+      {
+        "name": "stacks",
+        "gap_below": 176396,
+        "gap_above": null
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "device",
+    "stack_source_window": {
+      "origin": "0x4ff40000",
+      "end": "0x4ffa0000"
+    },
+    "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+  }
+}

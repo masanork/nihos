@@ -11,6 +11,21 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_network_time_code_has_exact_rx_allowlist_and_bounded_extent(self):
+        start = 0x40004000
+        names = sorted(MODULE.TIME_FUNCTIONS) + [prefix + '__func_7' for prefix in sorted(MODULE.TIME_GENERIC)]
+        functions = [(name, start + i*16, start + (i+1)*16) for i, name in enumerate(names)]
+        span = (start, start + len(names)*16)
+        self.assertEqual(len(MODULE.audit_time_functions(functions, span)), len(names))
+        MODULE.audit_flash_section('.flash.time', 1, 6, start, span[1]-start, allow_time=True)
+        for changed in (functions[:-1], [('irq.unapproved', *functions[0][1:])] + functions[1:],
+                        [(functions[0][0], start, start+20)] + functions[1:]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_time_functions(changed, span)
+        for kind, flags, allowed in ((1, 6, False), (8, 6, True), (1, 7, True), (1, 2, True)):
+            with self.assertRaises(ValueError):
+                MODULE.audit_flash_section('.flash.time', kind, flags, start, 64, allow_time=allowed)
+
     def test_device_code_requires_exact_allowlist_rx_extent_and_explicit_profile(self):
         first = 0x40002000
         names = sorted(MODULE.DEVICE_FUNCTIONS) + ['audio_probe.poll__func_1', 'microphone_probe.poll__func_2', 'rs485_probe.poll__func_3']

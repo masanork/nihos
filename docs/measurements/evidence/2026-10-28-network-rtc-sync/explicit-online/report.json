@@ -1,0 +1,21 @@
+{
+  "scope": "public SNTP response correlated and UTC RTC written/read back; unauthenticated wall time",
+  "ntp": {
+    "attempts": 1,
+    "replies": 1,
+    "stratum": 1,
+    "rtt_us": 96796
+  },
+  "ntp_unix": 1793158278,
+  "rtc_written_unix": 1793158278,
+  "rtc_final_unix": 1793158288,
+  "rtc_valid_records": 3,
+  "ui_final": {
+    "frames": 1233,
+    "ticks0": 2018,
+    "ticks1": 2018
+  },
+  "image_sha256": "714b9d30ae33e1530befeafdbf5b36de83c664ca7c714ae81e262f585b1b0e73",
+  "raw_serial_sha256": "acf98759bb437192e2a2029c88c38ebf45a1597d28a1aad0dd44bd81b9d34f9f",
+  "restored": true
+}
