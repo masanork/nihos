@@ -674,7 +674,11 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, &result);
                     logger.record("NIHOS_NATIVE_GRAPHICS_CLIENTS", null, .{ "client_cycles", "idle_retained", "idle_captures", "idle_progress" }, &result);
                     const exchange = tasks.graphics.exchange.report();
-                    logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "queue_bytes" }, &exchange);
+                    logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "queue_bytes" }, &exchange);
+                    for (tasks.graphics.exchange.textResults()) |reply| {
+                        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)) };
+                        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome" }, &text_result);
+                    }
                     const hashes = tasks.graphics.hashes();
                     for (hashes, 0..) |hash, index| {
                         const item = .{ .index = @as(u32, @intCast(index)), .hash = hash };

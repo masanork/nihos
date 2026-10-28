@@ -1,0 +1,173 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "ASan/UBSan host execution of real FT/HB with explicit text-job inputs; no native task or physical evidence",
+  "cases": [
+    {
+      "font": 0,
+      "pixels": 24,
+      "vertical": 0,
+      "hinting": 0,
+      "body": "日本語の描画",
+      "ruby": "にほんご"
+    },
+    {
+      "font": 1,
+      "pixels": 16,
+      "vertical": 1,
+      "hinting": 1,
+      "body": "􏿿",
+      "ruby": ""
+    },
+    {
+      "font": 1,
+      "pixels": 32,
+      "vertical": 1,
+      "hinting": 1,
+      "body": "東京へ行く。",
+      "ruby": "とうきょう"
+    },
+    {
+      "font": 0,
+      "pixels": 16,
+      "vertical": 0,
+      "hinting": 2,
+      "body": "漢字とかな、ABC123",
+      "ruby": ""
+    }
+  ],
+  "cases_sha256": "ace406205053bfd57875bf380c444a4195142ff95ff432d71c3fd368ef10c38c",
+  "texts": [
+    {
+      "id": 5,
+      "runs": 1,
+      "hash": 1592489383,
+      "outcome": 0
+    },
+    {
+      "id": 6,
+      "runs": 0,
+      "hash": 0,
+      "outcome": 1
+    },
+    {
+      "id": 7,
+      "runs": 1,
+      "hash": 1716706472,
+      "outcome": 0
+    },
+    {
+      "id": 8,
+      "runs": 1,
+      "hash": 1905604948,
+      "outcome": 0
+    }
+  ],
+  "matrix_hashes": [
+    1728955693,
+    127264623,
+    3802936562,
+    2720744390,
+    1636795626,
+    1483075906,
+    2072818531,
+    863961824,
+    41314477,
+    2150160734,
+    3827649753,
+    3029469629,
+    1662331729,
+    1389973151,
+    4053443032,
+    198040621
+  ],
+  "input_fonts": [
+    {
+      "name": "BIZUDGothic-Regular.ttf",
+      "bytes": 4667380,
+      "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0"
+    },
+    {
+      "name": "BIZUDMincho-Regular.ttf",
+      "bytes": 6153932,
+      "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2"
+    }
+  ],
+  "host_result": {
+    "rc": 0,
+    "matrix_hashes": [
+      1728955693,
+      127264623,
+      3802936562,
+      2720744390,
+      1636795626,
+      1483075906,
+      2072818531,
+      863961824,
+      41314477,
+      2150160734,
+      3827649753,
+      3029469629,
+      1662331729,
+      1389973151,
+      4053443032,
+      198040621
+    ],
+    "texts": [
+      {
+        "id": 5,
+        "runs": 1,
+        "hash": 1592489383,
+        "outcome": 0
+      },
+      {
+        "id": 6,
+        "runs": 0,
+        "hash": 0,
+        "outcome": 1
+      },
+      {
+        "id": 7,
+        "runs": 1,
+        "hash": 1716706472,
+        "outcome": 0
+      },
+      {
+        "id": 8,
+        "runs": 1,
+        "hash": 1905604948,
+        "outcome": 0
+      }
+    ],
+    "raw_peak": 1442048,
+    "retained": 65792
+  },
+  "source_sha256": {
+    "probes/graphics/generate_link_oracle.py": "7b78bce2112f027208968436a5f453c3de7c155214661c2000e23406ab3cdf80",
+    "probes/graphics/generate_text_cases.py": "215051bdd56c8e60c6b1ddab8988089acd3a526ccda973114d03a72594a9d209",
+    "probes/graphics/text_cases.json": "ace406205053bfd57875bf380c444a4195142ff95ff432d71c3fd368ef10c38c",
+    "probes/graphics/text_host_main.cpp": "454001f7c54c15e976ae50970ed2882ab5e074538ca4eaa0afc038bfe304ab28",
+    "probes/graphics/link_oracle.h": "b1967717c9edcba0e26cffc7f739284486dd65fb8f8f23e17231a74684a2898a",
+    "probes/graphics/font_probe.cpp": "264a20a1ecd23859af290128eef89e8adf4cc572d25f52a6e6342b82a908993e",
+    "probes/graphics/lazy_pool.cpp": "601fb7584915091d2cd7e3d903f21a83d7f8ba237bb2b71a5472ed57a04acdb7",
+    "probes/graphics/lazy_pool.h": "906331f2dff1367a0c3a797be5b8f5c7a5a48c3e331a1937f55efc610839bce1",
+    "probes/graphics/CMakeLists.txt": "fbb1a3ca99b944f3a7d39d0963d0247ffec10a53179f1e093db502d2ee3201dc",
+    "probes/graphics/sources.json": "4651ffc4e5aee444552194e0d49986f94c6b45b1c9413114953a3e79518f20a6"
+  },
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "sanitizers": "ASan detect_stack_use_after_return=1; UBSan halt_on_error=1:print_stacktrace=1",
+  "artifact_sha256": {
+    "build/graphics-text-host/text-result.json": "ffb3a5338c10a3623fc5ea22f942c772072ab8db45ed5a23baf311c90a3e532d",
+    "build/graphics-text-host/text-result.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build/graphics-text-host/configure.log": "02eaf6ad952a5128f03a8128069b2cca680770fbfb7b70b7ea4a0a64966166f0",
+    "build/graphics-text-host/build.log": "011e65c7f18d2c603e0646f2a6270f96dac40c9da08c4912e3981e90f1182e60",
+    "build/graphics-text-host/font-link-oracle": "f62620c2cc414a5d3bcffb035abb87def7db95b8fd13674bc375cda684a034bb",
+    "build/graphics-text-host/link_oracle.cpp": "abe7a0924bc21e464f55ba258926611ab20dd53cf106b4dc914d031468c727b7",
+    "build/graphics-text-host/text_cases.h": "a30d24786f33bebadf1d3a0b7b4aa8507d4af5bc229b3cd29672aba756098e71"
+  },
+  "limits": [
+    "Hashes include glyph IDs, advances and raster bytes; no paragraph/ruby placement or exported glyph buffer",
+    "U+10FFFF intentionally has no glyph and must publish a failure with zero runs/hash",
+    "Host buddy backing and pointers differ from native task-owned heaps"
+  ]
+}

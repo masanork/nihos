@@ -76,19 +76,19 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 96,000 B | 96,256 B |
-| Remaining primary SRAM heap | 67,840 B | 67,584 B |
-| Static reservations including stack/data regions | 218,880 B | 219,136 B |
-| Application image | 11,559,824 B | 11,561,280 B |
+| Primary static span | 99,584 B | 99,840 B |
+| Remaining primary SRAM heap | 64,256 B | 64,000 B |
+| Static reservations including stack/data regions | 222,464 B | 222,720 B |
+| Application image | 11,563,312 B | 11,564,768 B |
 
-Graphics code/RO occupy 560,448 B in Flash. TTF inputs occupy 10,821,312 B,
+Graphics code/RO occupy 560,688 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
 Private initialized data/BSS occupy 19,924 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
 caches and application routing. The two fixed transport queues reserve
-1,152 B in primary SRAM. Transport code/control together add 4,096 B to the
-primary static span versus the prior client-cycle fixture; no further stack
-or library SRAM region is reserved.
+1,536 B in primary SRAM. Owned text payloads add 384 B to the queues and
+3,584 B to the primary static span, including code/control, versus the prior
+request/wait fixture. No further stack or library SRAM region is reserved.
 
 ## Ownership and execution
 
@@ -99,28 +99,31 @@ child handles stay in the task ledger. Root/extent changes are bounded and
 locally IRQ-masked; library work and source copies execute with MIE enabled.
 Other native profiles retain zero extent-group slots.
 
-The fixture runs two open sessions, four body sizes with half-size ruby runs
+The matrix fixture runs two open sessions, four body sizes with half-size ruby runs
 and horizontal/vertical shaping: 16 cases with forced auto-hint per cycle.
 It runs four open/draw/close cycles for both clients on the same live task,
-for 64 cases in total. Only the final close returns through the actual task ABI.
+for 64 cases in total, followed by four text jobs. A text job opens only its
+selected font. The service returns through the actual task ABI after stop.
 Native EXIT closes the ledger; bootstrap drains one extent per cleanup step,
 reaps only after cleanup and checks complete heap recovery.
 
 The initial [single-cycle receipt](measurements/2026-10-28-native-graphics.json)
 records the first native integration. The
 [client-cycle receipt](measurements/2026-10-28-native-graphics-client-cycles.json)
-records the earlier active-idle experiment. The current
+records the earlier active-idle experiment. The
 [request/wait receipt](measurements/2026-10-28-native-font-request-wait.json)
-records queued requests on one live task:
+records the first queued matrix endpoint. The current
+[text-request receipt](measurements/2026-10-28-native-font-text-requests.json)
+adds owned UTF-8 inputs on that live task:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
-- The timer captures the font task 6,371 times, including 6,359 during
-  shaping/rasterization stages; bootstrap advances 11,299 times.
-  Five request waits span ten real scheduler ticks in total, with zero
+- The timer captures the font task 6,400 times, including 6,384 during
+  shaping/rasterization stages; bootstrap advances 14,546 times.
+  Nine request waits span eighteen real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
-- Stack watermark/frame observation reaches 16,980 B, leaving 15,772 B above
+- Stack watermark/frame observation reaches 17,248 B, leaving 15,504 B above
   that observation and the 16 B guard in a 32 KiB reservation. This is not a
   worst-case or native IO call-chain bound.
 - Two clients peak at 1,310,976 B of actual buddy backing. Closing clients
@@ -135,9 +138,10 @@ records queued requests on one live task:
 Closing the last client frees its face and source-cache extents, while
 service-owned HarfBuzz state remains in one backing extent. Every cycle must
 leave exactly the same retained charge and matching native free-heap balance.
-The next cycle reuses that live service state without another backing init,
-task admission or stack paint. All 16 output hashes must match the first
-cycle; the final matrix must also match the independent host reference.
+The next job reuses that live service state without another backing init,
+task admission or stack paint. Each matrix must match the first matrix and
+the independent host reference. Text replies must match a separate sanitized
+host execution using identical input bytes and settings.
 
 With zero clients, the font task receives the next request through a bounded
 channel. Empty receives block in the scheduler; there is no active idle loop
@@ -147,14 +151,24 @@ not whole-system WFI or a physical power/timing measurement.
 
 The [request-boundary decision](adr/0044-native-font-request-waits.md) specifies
 two two-slot SPSC queues, copied IDs/results and one client dispatcher. Four
-render requests produce 64 cases, followed by an ordered stop request. The
+matrix requests produce 64 cases, followed by four bounded text requests and
+an ordered stop request. The
 terminal reply must be copied and its space notification completed before an
 independent acknowledgment permits worker EXIT. A task yield is forced between
 releasing that reply slot and notifying the worker to exercise this lifetime
-window. All five replies, acknowledgments and empty queues are required.
+window. All nine replies, acknowledgments and empty queues are required.
 
-This finite matrix endpoint does not accept application text or expose shared
-face pointers. Multiple applications need a broker or distinct client channels;
+The [owned-text decision](adr/0045-owned-font-text-requests.md) adds body and
+optional ruby arrays copied inline into the queue: 128 and 64 UTF-8 bytes.
+Requests specify font, body size, direction and hinting. The producer poisons
+its original bytes/settings before waking the worker; all four text replies
+still match the [independent host receipt](measurements/2026-10-28-font-text-host.json).
+A deliberately missing U+10FFFF glyph publishes zero runs/hash and a typed
+failure, after which two other text requests succeed. Body/ruby runs are
+shaped and rasterized independently; this is not ruby placement or layout.
+
+Replies currently contain digests, not consumable glyph/raster buffers.
+Multiple applications still need a broker or distinct client channels;
 concurrent producers, cancellation and service restart remain unqualified.
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired

@@ -1,11 +1,12 @@
 //! CPU0 qualification transport. Bootstrap is the sole client dispatcher;
 //! the font task is the sole library owner. Queues outlive both endpoints.
+const options = @import("native_options");
 const protocol = @import("font_protocol");
 const calls = @import("task_calls.zig");
 const ring = @import("spsc_ring");
 const channel = @import("spsc_channel");
 extern fn nih_native_task_failed() callconv(.c) noreturn;
-const Requests = channel.SpscChannel(ring.SpscRing(protocol.Request, 2), calls.EventPort);
+const Requests = channel.SpscChannel(ring.SpscRing(protocol.Request, 2), RequestEvents);
 const Replies = channel.SpscChannel(ring.SpscRing(protocol.Reply, 2), ReplyEvents);
 const request_data = 0x100;
 const request_space = 0x200;
@@ -13,10 +14,28 @@ const reply_data = 0x400;
 const reply_space = 0x800;
 const terminal_ack = 0x1000;
 
+const RequestEvents = struct {
+    pub const Handle = calls.Handle;
+    pub fn post(_: *RequestEvents, target: Handle, bits: u32) i32 {
+        if (bits == request_data and submitted.operation == .render_text) {
+            // The ring has published its own copy; poison caller storage
+            // before waking the worker, so borrowing it cannot pass the test.
+            @memset(&submitted.render.body, 0xff);
+            @memset(&submitted.render.ruby, 0xff);
+            submitted.render.pixels = 0;
+            metrics.copied_inputs += 1;
+        }
+        return calls.notify(target, bits);
+    }
+    pub fn wait(_: *RequestEvents, mask: u32) calls.EventResult {
+        return calls.waitEvents(mask);
+    }
+};
+
 const ReplyEvents = struct {
     pub const Handle = calls.Handle;
     pub fn post(_: *ReplyEvents, target: Handle, bits: u32) i32 {
-        if (bits == reply_space and metrics.sent == 5 and metrics.replies == 4) {
+        if (bits == reply_space and metrics.sent == 9 and metrics.replies == 8) {
             // Force a task switch after the final reply slot is released but
             // before its space notification. Queue-empty alone cannot permit
             // worker EXIT: the client still needs a live notification target.
@@ -39,6 +58,9 @@ pub const Report = struct {
     idle_runtime: u32 = 0,
     stop_ack: u32 = 0,
     terminal_gap: u32 = 0,
+    copied_inputs: u32 = 0,
+    text_success: u32 = 0,
+    text_failed: u32 = 0,
     queue_bytes: u32 = @sizeOf(Requests) + @sizeOf(Replies),
 };
 var metrics: Report = .{};
@@ -52,6 +74,13 @@ var holding = false;
 var hold_start: u64 = 0;
 var hold_runtime: u64 = 0;
 var expected: [16]u32 = @splat(0);
+var submitted: protocol.Request = .{ .id = 0, .operation = .stop };
+var active_operation: protocol.Operation = .render_matrix;
+var text_results: [4]protocol.Reply = @splat(.{ .id = 0, .operation = .render_text, .retained = 0 });
+
+pub fn textResults() [4]protocol.Reply {
+    return text_results;
+}
 
 pub fn bind(client: calls.Handle, worker: calls.Handle) bool {
     if (bound) return false;
@@ -69,12 +98,13 @@ fn sendReply(reply: protocol.Reply) void {
 }
 
 /// Font task only: publish a complete copied result, then block on requests.
-pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32) u32 {
+pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *protocol.Job) u32 {
     if (!bound) nih_native_task_failed();
     if (completed != 0) {
         state.complete(completed) catch nih_native_task_failed();
-        if (runs != 16) nih_native_task_failed();
-        sendReply(.{ .id = completed, .operation = .render_matrix, .hashes = hashes, .runs = runs, .retained = retained });
+        if ((active_operation == .render_matrix and runs != 16) or
+            (active_operation == .render_text and (runs > 1 or (runs == 0 and hashes[0] != 0)))) nih_native_task_failed();
+        sendReply(.{ .id = completed, .operation = active_operation, .hashes = hashes, .runs = runs, .retained = retained, .outcome = if (runs == 0) .render_failed else .ok });
     }
     const received = switch (requests.receive()) {
         .item => |item| item,
@@ -83,7 +113,11 @@ pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32) u32 {
     if (received.space_notification != 0) nih_native_task_failed();
     state.accept(received.value) catch nih_native_task_failed();
     metrics.received += 1;
-    if (received.value.operation == .render_matrix) return received.value.id;
+    if (received.value.operation != .stop) {
+        active_operation = received.value.operation;
+        job.* = .{ .operation = @backingInt(active_operation), .render = received.value.render };
+        return received.value.id;
+    }
     sendReply(.{ .id = received.value.id, .operation = .stop, .retained = retained });
     // A distinct, never-reused terminal bit acknowledges both the copy and
     // the channel's space notification. Queue-empty precedes that notification
@@ -115,11 +149,17 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             if (reply.id == 1) expected = reply.hashes else {
                 for (reply.hashes, expected) |actual, reference| if (actual != reference) nih_native_task_failed();
             }
-        } else if (reply.id != 5 or reply.operation != .stop or reply.runs != 0) nih_native_task_failed();
+        } else if (reply.id <= 8) {
+            if (reply.operation != .render_text or reply.runs > 1 or
+                reply.outcome != (if (reply.id == 6) protocol.Outcome.render_failed else protocol.Outcome.ok) or
+                reply.runs != (if (reply.id == 6) @as(u32, 0) else 1)) nih_native_task_failed();
+            text_results[reply.id - 5] = reply;
+            if (reply.outcome == .ok) metrics.text_success += 1 else metrics.text_failed += 1;
+        } else if (reply.id != 9 or reply.operation != .stop or reply.runs != 0) nih_native_task_failed();
         metrics.replies += 1;
         if (reply.operation == .stop and calls.notify(replies.producer, terminal_ack) != 0) nih_native_task_failed();
     }
-    if (metrics.sent == 5 or !waiting) return;
+    if (metrics.sent == 9 or !waiting) return;
     if (!holding) {
         holding = true;
         hold_start = ticks;
@@ -131,8 +171,13 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
     metrics.blocked_ticks += @intCast(ticks - hold_start);
     holding = false;
     metrics.sent += 1;
-    const request = protocol.Request{ .id = metrics.sent, .operation = if (metrics.sent <= 4) .render_matrix else .stop };
-    switch (requests.trySend(request)) {
+    submitted = .{ .id = metrics.sent, .operation = if (metrics.sent <= 4) .render_matrix else if (metrics.sent <= 8) .render_text else .stop };
+    if (options.graphics) {
+        inline for (options.font_text_cases, 0..) |item, index| {
+            if (metrics.sent == index + 5) submitted.render = protocol.Render.init(item.font, item.pixels, item.vertical, item.hinting, item.body, item.ruby) catch nih_native_task_failed();
+        }
+    }
+    switch (requests.trySend(submitted)) {
         .sent => {},
         else => nih_native_task_failed(),
     }
@@ -143,7 +188,7 @@ pub fn report() Report {
 }
 
 pub fn finished() bool {
-    return bound and state.stopped and state.active == null and metrics.sent == 5 and metrics.received == 5 and
-        metrics.replies == 5 and metrics.waits == 5 and metrics.blocked_ticks >= 10 and metrics.stop_ack == 1 and metrics.terminal_gap == 1 and
+    return bound and state.stopped and state.active == null and metrics.sent == 9 and metrics.received == 9 and
+        metrics.replies == 9 and metrics.waits == 9 and metrics.blocked_ticks >= 18 and metrics.stop_ack == 1 and metrics.terminal_gap == 1 and metrics.copied_inputs == 4 and metrics.text_success == 3 and metrics.text_failed == 1 and
         requests.ring.countApprox() == 0 and replies.ring.countApprox() == 0;
 }

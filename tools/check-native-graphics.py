@@ -15,10 +15,11 @@ FIELDS = ("status", "owner", "runs", "library_pc", "heap_before", "heap_after", 
           "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected",
           "client_cycles", "idle_retained", "idle_captures", "idle_progress")
 
-EXCHANGE_FIELDS = ("sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "queue_bytes")
+EXCHANGE_FIELDS = ("sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "queue_bytes")
+TEXT_FIELDS = ("id", "runs", "hash", "outcome")
 
 
-def validate(record, hashes, graphics, expected, exchange):
+def validate(record, hashes, graphics, expected, exchange, texts, expected_texts):
     q = record
     entry = graphics["functions"]["graphics_font_link_probe"]
     if (q["status"] != 1 or q["runs"] != 16 or q["owner"] >> 24 != 0 or
@@ -31,20 +32,23 @@ def validate(record, hashes, graphics, expected, exchange):
             not 512 < q["record_peak"] <= 1024 or q["controller_bytes"] != 17224 or
             q["allocations"] <= 1 or q["releases"] + 1 != q["allocations"] or
             not q["foreign_rejected"] or not q["irq_rejected"] or q["forged_rejected"] != 1 or
-            q["client_cycles"] != 4 or q["idle_retained"] != q["retained"] or
+            q["client_cycles"] != 8 or q["idle_retained"] != q["retained"] or
             not 0 <= q["idle_captures"] <= q["captures"] - q["render_captures"] or
-            not 5 <= q["idle_progress"] <= q["bootstrap_progress"]):
+            not 9 <= q["idle_progress"] <= q["bootstrap_progress"]):
         raise ValueError("incomplete native font ownership/preemption/recovery evidence")
-    if (any(exchange[n] != 5 for n in ("sent", "received", "replies", "waits")) or
-            exchange["blocked_ticks"] < 10 or exchange["idle_runtime"] != 0 or exchange["stop_ack"] != 1 or exchange["terminal_gap"] != 1 or
+    if (any(exchange[n] != 9 for n in ("sent", "received", "replies", "waits")) or
+            exchange["blocked_ticks"] < 18 or exchange["idle_runtime"] != 0 or exchange["stop_ack"] != 1 or exchange["terminal_gap"] != 1 or
+            exchange["copied_inputs"] != 4 or exchange["text_success"] != 3 or exchange["text_failed"] != 1 or
             not 512 <= exchange["queue_bytes"] <= 4096):
         raise ValueError("incomplete blocking font transport/shutdown evidence")
     if len(hashes) != 16 or hashes != expected:
         raise ValueError("native glyph/position/raster hashes differ from host reference")
+    if [r["id"] for r in texts] != [5, 6, 7, 8] or texts != expected_texts:
+        raise ValueError("native text results differ from independent host requests")
     return q
 
 
-def check(log, image, manifest, reference):
+def check(log, image, manifest, reference, text_reference):
     if image["memory"]["profile"] != "emulator" or "graphics" not in image:
         raise ValueError("this smoke requires an audited emulator graphics image")
     log = log.replace("\\r", "").replace("\r", "")
@@ -52,12 +56,14 @@ def check(log, image, manifest, reference):
     q = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS", FIELDS[:-4])
     q.update(base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_CLIENTS", FIELDS[-4:]))
     exchange = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_EXCHANGE", EXCHANGE_FIELDS)
+    texts = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_TEXT", TEXT_FIELDS)
     rows = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_HASH", ("index", "hash"))
     if [r["index"] for r in rows] != list(range(16)):
         raise ValueError("missing/reordered native font hash cases")
     if log.count("NIHOS_NATIVE_GRAPHICS_PASS\n") != 1 or not (
             log.index("NIHOS_NATIVE_FP_PASS ") < log.index("NIHOS_NATIVE_GRAPHICS ") <
             log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") <
+            log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
             log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
             log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
         raise ValueError("missing or out-of-order native graphics pass")
@@ -67,11 +73,13 @@ def check(log, image, manifest, reference):
     if {f["name"]: (f["bytes"], f["sha256"]) for f in manifest["fonts"]} != pins:
         raise ValueError("native font inputs differ from host reference")
     hashes = [r["hash"] for r in rows]
-    validate(q, hashes, image["graphics"], expected, exchange)
+    if text_reference["cases_sha256"] != hashlib.sha256((ROOT / "probes/graphics/text_cases.json").read_bytes()).hexdigest():
+        raise ValueError("text reference inputs differ from current canonical requests")
+    validate(q, hashes, image["graphics"], expected, exchange, texts, text_reference["texts"])
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
-            "graphics": q, "exchange": exchange, "hashes": hashes, "baseline": baseline,
+            "graphics": q, "exchange": exchange, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
-                       "Four client cycles share one live library task; final task exit retires HB state without attempting service restart",
+                       "Four matrix and four bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
 
 
@@ -81,15 +89,17 @@ def main():
     output.unlink(missing_ok=True)
     image_path, manifest_path = directory / "image-audit.json", directory / "graphics-manifest.json"
     reference_path = ROOT / "docs/measurements/2026-10-28-graphics-hinting-stack.json"
+    text_reference_path = ROOT / "docs/measurements/2026-10-28-font-text-host.json"
     image = json.loads(image_path.read_text())
-    result = check((directory / "emulator.log").read_text(), image, json.loads(manifest_path.read_text()), json.loads(reference_path.read_text()))
+    result = check((directory / "emulator.log").read_text(), image, json.loads(manifest_path.read_text()), json.loads(reference_path.read_text()), json.loads(text_reference_path.read_text()))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     if sha(directory / "nihos-native.elf") != image["elf_sha256"] or sha(directory / "nihos-native.bin") != image["image_sha256"]:
         raise ValueError("captured native image identity differs from audit")
     result["artifacts_sha256"] = {p.name: sha(p) for p in [directory / n for n in ("nihos-native.elf", "nihos-native.bin", "nihos-native-flash.bin", "emulator.log", "image-audit.json", "graphics-manifest.json")]}
+    result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: queued requests/replies, blocked idle with zero runtime, graceful stop, hashes and heap recovery passed")
+    print("Native graphics: copied UTF-8 jobs, isolated glyph failure/recovery, blocking waits, hashes and heap recovery passed")
 
 
 if __name__ == "__main__":
