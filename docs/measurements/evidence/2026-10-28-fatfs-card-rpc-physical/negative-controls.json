@@ -1,0 +1,21 @@
+{
+  "original_replay_matches": true,
+  "log_sha256": "83682c6a5533f76274858116e49a539c478173500a711f3e668e8a4d305b9e9b",
+  "cases": [
+    {
+      "name": "wrong_rpc_source",
+      "rejected": true,
+      "reason": "incomplete native FatFs fixture gate: source"
+    },
+    {
+      "name": "parent_not_cleared",
+      "rejected": true,
+      "reason": "incomplete native FatFs fixture gate: parent_cleared"
+    },
+    {
+      "name": "repeated_card_crc_mismatch",
+      "rejected": true,
+      "reason": "incomplete physical card read/cleanup"
+    }
+  ]
+}

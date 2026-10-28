@@ -17,6 +17,9 @@ fn Schema(comptime marker: []const u8, comptime names: anytype) type {
 }
 
 fn schema(comptime T: type, comptime marker: []const u8, comptime names: anytype) Schema(marker, names) {
+    // fieldIndex scans the struct for each requested field. Larger fixed
+    // records need additional compile-time work; runtime remains one loop.
+    @setEvalBranchQuota(10_000);
     if (@typeInfo(T).@"struct".layout == .@"packed")
         @compileError("record fields require an unpacked struct");
     // SAFETY: All named fields and text bytes are filled at compile time below.

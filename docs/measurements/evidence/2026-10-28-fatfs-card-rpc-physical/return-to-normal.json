@@ -1,0 +1,20 @@
+{
+  "operator_original_card_returned": true,
+  "flash_written": false,
+  "expected_flash_sha256": "4e5c942b9875328516636b8315702c36d3fe9a8199631f04d22cbb11c246a6b9",
+  "verified": true,
+  "reset_sent": true,
+  "exclusive_serial": true,
+  "kernel_exclusive_serial": true,
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "log_sha256": "fd076006414a7132e7f7d6c233931de5bb906311372765fd2527dba8bd2d43b2",
+  "bytes_captured": 11513,
+  "rom_boot_seen": true,
+  "native_boot_seen": true,
+  "native_fp_pass_seen": true,
+  "capture_seconds": 8.755,
+  "serial_released": true
+}

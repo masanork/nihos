@@ -12,11 +12,33 @@ import struct
 import sys
 import re
 import importlib.util
+import fatfs_native_profile
 
 SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF28000
 SRAM_PROFILES = {"device": (SRAM_LOW, SRAM_HIGH, 0),
                  "emulator": (0x4FF20000, 0x4FF48000, 1)}
 STACK_LOW, STACK_HIGH = 0x4FF60000, 0x4FF6E000
+HIGH_BANKS = {".high_sram_a": (0x4ff40000, 0x4ff60000),
+              ".high_sram_b": (0x4ff6e000, 0x4ffa0000)}
+BROKER_CONFIG = (2, 0x4ff73000, 16384, 0x4ff1c000, 0x4ff28000, 0x4ff77000, 0x4ff9f000,
+                 0x48200000, 0x4a000000, 65536, 8912896, 0x48008000, 32768)
+BROKER_HOOKS_V1 = ('nih_broker_peer_quiet', 'nih_broker_quiet', 'nih_broker_ready', 'nih_broker_register',
+                'nih_broker_task_exited', 'nih_broker_pending', 'nih_broker_cleanup_ready', 'nih_broker_round', 'nih_broker_reaped')
+BROKER_HOOKS = BROKER_HOOKS_V1 + ('nih_broker_cancel_requested',)
+
+
+def audit_broker(config, symbols, low, high, heap_start, profile):
+    require(profile == 'device' and len(config) == 56, 'invalid broker device/configuration')
+    values = struct.unpack('<14I', config)
+    require(values[0] in (1, 2) and values[1:13] == BROKER_CONFIG[1:] and 0 < values[13] <= values[2], 'broker ranges/reserves differ from approved layout')
+    require(heap_start <= values[3], 'broker low heap overlaps resident state')
+    hooks = BROKER_HOOKS if values[0] == 2 else BROKER_HOOKS_V1
+    for name in hooks:
+        require(low <= symbols.get(name, 0) < high, 'broker IRQ hook outside resident SRAM: ' + name)
+    return {'version': values[0], 'metadata_start': hex(values[1]), 'metadata_reserve': values[2], 'metadata_bytes': values[13],
+            'internal_bytes': values[4] - values[3] + values[6] - values[5], 'internal_floor': values[9],
+            'external_start': hex(values[7]), 'external_bytes': values[8] - values[7], 'external_floor': values[10],
+            'ipc_start': hex(values[11]), 'ipc_bytes': values[12], 'resident_hooks': list(hooks)}
 ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_get_cpu_ticks": 0x4FC00040,
                "nih_rom_set_cpu_ticks": 0x4FC00044,
@@ -25,6 +47,8 @@ ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_l2_enable": 0x4FC00504,
                "nih_rom_cache_invalidate": 0x4FC003E4,
                "nih_rom_cache_writeback": 0x4FC003F4}
+OPTIONAL_ROM_SYMBOLS = {"nih_rom_reset_reason": 0x4FC00018}
+OPTIONAL_ROM_DATA = {"nih_rom_saved_pc": 0x4FF3FFF8}
 FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.boot": (0x40000120, None),
                   ".flash.rodata": (0x40010020, None)}
@@ -82,6 +106,7 @@ def audit_time_functions(functions, span):
 
 
 SQL_START, SQL_END = 0x40020000, 0x400C0000
+FATFS_SQL_END = 0x400D0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
 PHOTO_SECTIONS = {".flash.photo", ".flash.photo.rodata"}
 UI_SECTIONS = {".flash.uipad", ".flash.ui"}
@@ -106,7 +131,7 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END):
     if name == '.flash.time':
         require(allow_time and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid network/time foreground Flash section')
         return
@@ -133,7 +158,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
     if name in SQL_SECTIONS:
         require(allow_sql and kind == 1 and (flags == 6 if name == ".flash.sqltext" else (flags & 7 == 2 and flags & ~50 == 0)),
                 "unapproved/mutable SQLite Flash section")
-        require(SQL_START <= address < address + size <= SQL_END and
+        require(SQL_START <= address < address + size <= sql_end and
                 (name != ".flash.sqltext" or address == SQL_START), "invalid SQLite Flash extent")
         return
     expected = FLASH_SECTIONS.get(name)
@@ -148,13 +173,13 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
-        if ROM_SYMBOLS.get(name) == address:
+        if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
             continue
         if time_span is not None and time_span[0] <= address < stop <= time_span[1]:
             require(time_function(name), 'unapproved network/time Flash function: ' + name)
@@ -174,15 +199,105 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name == 'photo_runtime.execute' or software, 'unapproved photo codec function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else "clock" if re.fullmatch(r"cpu_boot\.run__func_[0-9]+", name) else None
+        if sdmmc_span is not None and name == "sdmmc_probe.run":
+            require((address, stop) == sdmmc_span, "SDMMC boot function differs from linker extent")
+            role = "sdmmc"
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
         require(role not in found, "duplicate Flash boot role")
         found[role] = {"name": name, "start": hex(address), "end": hex(stop)}
-    require(set(found) in ({"probe", "mapping"}, {"probe", "mapping", "clock"}), "missing approved Flash boot functions")
+    expected_roles = {"probe", "mapping"} | ({"sdmmc"} if sdmmc_span is not None else set())
+    require(set(found) in (expected_roles, expected_roles | {"clock"}), "missing approved Flash boot functions")
     ordered = sorted(found.values(), key=lambda entry: int(entry["start"], 16))
     require(int(ordered[0]["start"], 16) == start and int(ordered[-1]["end"], 16) == end and
-            all(0 <= int(right["start"],16)-int(left["end"],16) <= 16 for left,right in zip(ordered,ordered[1:])),
+            all(0 <= int(right["start"], 16) - int(left["end"], 16) <= 16 for left, right in zip(ordered, ordered[1:])),
             "overlapping/unaccounted Flash boot extent")
     return found
+
+
+def audit_sdmmc_resident(symbols, sizes, low, high):
+    for resident in ("nih_storage_read", "nih_storage_controller_begin", "nih_storage_controller_end"):
+        if resident in symbols:
+            require(low <= symbols[resident] < high, "SD runtime controller callback left SRAM: " + resident)
+    for name, size in (("sdmmc_probe.dma_data", 512), ("sdmmc_probe.dma_descriptor", 64)):
+        require(name in symbols and low <= symbols[name] < symbols[name] + size <= high and
+                sizes.get(name) == size and symbols[name] % 64 == 0, "SD DMA buffer outside aligned internal SRAM")
+
+
+def audit_io_lifetimes(config, symbols, sizes, low, high):
+    require(config.get('version') == 1 and isinstance(config.get('qualification'), bool), 'invalid I/O lifetime manifest')
+    require(isinstance(config.get('removal_test', False), bool) and
+            (not config.get('removal_test') or config['qualification']), 'invalid physical removal profile')
+    require(isinstance(config.get('capture_handshake', False), bool) and
+            (not config.get('capture_handshake') or config['qualification']), 'invalid capture handshake profile')
+    if config.get('capture_handshake'):
+        capture_format = config.get('capture_format', 1)
+        require(type(capture_format) is int and capture_format in (1, 2), 'unknown capture format')
+        require(symbols.get('nih_rom_reset_reason') == OPTIONAL_ROM_SYMBOLS['nih_rom_reset_reason'] and
+                symbols.get('USB_SERIAL_JTAG') == 0x500d2000 and
+                low <= symbols.get('nih_boot_capture_getc', 0) < high, 'invalid capture ROM/input ABI')
+        expected_capture = {'probes/sdmmc/pads.c', 'src/platform/native/esp32p4.ld'}
+        if capture_format == 2:
+            expected_capture.add('src/soc/esp32p4/reset_capture.zig')
+            require(symbols.get('nih_rom_saved_pc') == OPTIONAL_ROM_DATA['nih_rom_saved_pc'], 'invalid saved PC ROM data ABI')
+        require(set(config.get('capture_sources', {})) == expected_capture and
+                all(re.fullmatch('[0-9a-f]{64}', value) for value in config['capture_sources'].values()),
+                'missing capture source identity')
+    expected = {'src/fs/io_leases.zig', 'src/fs/io_stop.zig', 'src/fs/sdmmc_owner.zig',
+                'src/soc/esp32p4/sdmmc.zig', 'src/platform/native/sdmmc_probe.zig',
+                'src/platform/native/main.zig', 'src/diagnostics/record.zig', 'include/nihos_storage_io.h'}
+    require(set(config.get('sources', {})) == expected and all(re.fullmatch('[0-9a-f]{64}', value)
+            for value in config['sources'].values()), 'incomplete I/O lifetime source identity')
+    for name in ('sdmmc_probe.io_owner', 'sdmmc_probe.io_signal'):
+        require(name in symbols and 0 < sizes.get(name, 0) and low <= symbols[name] < symbols[name] + sizes[name] <= high,
+                'I/O lease or notification metadata left resident SRAM: ' + name)
+    if config['qualification']:
+        for name in ('nih_storage_io_active', 'nih_storage_io_stop', 'nih_storage_io_removed'):
+            require(low <= symbols.get(name, 0) < high, 'I/O notification hook left resident SRAM: ' + name)
+    return config
+
+
+def audit_cold_flash(manifest, symbols, functions, low, high, heap_start, sql_span, profile, broker):
+    start, end = symbols.get('__flash_cold_start'), symbols.get('__flash_cold_end')
+    require((start is None) == (end is None), 'partial cold Flash linker extent')
+    if manifest is None:
+        require(start is None or start == end, 'cold Flash code without approved manifest')
+        return None
+    require(isinstance(manifest, dict), 'invalid cold Flash manifest')
+    policy_path = Path(__file__).with_name('native-cold-policy.json')
+    policy = json.loads(policy_path.read_text())
+    require(profile == 'device' and broker is not None and broker.get('version') == 2,
+            'cold Flash placement requires device broker version 2')
+    require(manifest.get('version') == policy['version'] and
+            manifest.get('functions') == sorted(policy['functions']) and
+            manifest.get('resident') == policy['resident'] and
+            manifest.get('baseline_bytes') == policy['baseline_bytes'] and
+            manifest.get('resident_limit') == policy['resident_limit'] and
+            manifest.get('policy_sha256') == hashlib.sha256(policy_path.read_bytes()).hexdigest(),
+            'cold Flash manifest differs from explicit placement policy')
+    sources = manifest.get('sources', {})
+    require(isinstance(sources, dict) and set(sources) == set(policy['functions'].values()) and
+            all(isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value) for value in sources.values()),
+            'missing cold Flash source provenance')
+    require(start is not None and sql_span is not None and sql_span[0] <= start < end <= sql_span[1],
+            'cold Flash extent outside mapped code')
+    rows = sorted((address, stop, name) for name, address, stop in functions if start <= address < end)
+    require(len(rows) == len(policy['functions']) and {row[2] for row in rows} == set(policy['functions']),
+            'cold Flash extent has missing, duplicate or unapproved functions')
+    require(rows[0][0] == start and rows[-1][1] == end and
+            all(address < stop <= end for address, stop, _ in rows) and
+            all(0 <= right[0] - left[1] <= 4 for left, right in zip(rows, rows[1:])),
+            'overlapping or unaccounted cold Flash extent')
+    for name in policy['resident']:
+        require(low <= symbols.get(name, 0) < min(heap_start, high), 'critical callback left resident SRAM: ' + name)
+    resident_bytes = heap_start - low
+    require(0 < resident_bytes <= policy['resident_limit'], 'cold Flash resident headroom below 8 KiB')
+    return {'version': policy['version'], 'start': hex(start), 'end': hex(end), 'bytes': end - start,
+            'functions': {name: {'start': hex(address), 'bytes': stop - address} for address, stop, name in rows},
+            'resident': {name: hex(symbols[name]) for name in policy['resident']},
+            'baseline_primary_bytes': policy['baseline_bytes'], 'primary_bytes': resident_bytes,
+            'recovered_bytes': policy['baseline_bytes'] - resident_bytes,
+            'old_heap_bytes': high - heap_start, 'source': manifest,
+            'irq_call_graph_proven': False}
 
 
 def audit_app_descriptor(data):
@@ -232,6 +347,29 @@ def audit_stack_section(kind, flags, address, size):
             "stacks must be the fixed writable non-executable NOBITS bank")
 
 
+def audit_high_section(name, kind, flags, address, size, profile):
+    low, high = HIGH_BANKS[name]
+    require(profile == "device" and kind == 8 and flags == 3 and
+            address == low and size == high - low,
+            "high SRAM must be a fixed device-only writable non-executable NOBITS bank")
+
+
+def audit_high_layout(symbols, allocated):
+    found = [row for row in allocated if row["name"] in HIGH_BANKS]
+    if not found:
+        require(not any(name.startswith("__high_sram_") for name in symbols), "orphan high SRAM symbols")
+        return None
+    require(len(found) == 2 and {row["name"] for row in found} == set(HIGH_BANKS), "missing/duplicate high SRAM bank")
+    for name, (low, high) in HIGH_BANKS.items():
+        prefix = "__" + name[1:]
+        require(symbols.get(prefix + "_start") == low and symbols.get(prefix + "_end") == high,
+                "high SRAM symbols differ from fixed banks")
+    return {"version": 1, "tested_bytes": 328 * 1024, "heap_bytes": 208 * 1024,
+            "guard_bytes": 16 * 1024, "dma_reserve_bytes": 32 * 1024,
+            "future_stack_reserve_bytes": 72 * 1024, "page_bytes": 4096,
+            "temporary_psram": {"start": "0x48030000", "bytes": 8 * 1024 * 1024}}
+
+
 def audit_stack_layout(symbols, sizes, allocated):
     expected = {"__stacks_start": STACK_LOW, "__stack0_bottom": STACK_LOW,
                 "__stack0_top": STACK_LOW + 8192, "__stack1_bottom": STACK_LOW + 8192,
@@ -245,13 +383,16 @@ def audit_stack_layout(symbols, sizes, allocated):
     stacks = [section for section in allocated if section["name"] == ".stacks"]
     require(len(stacks) == 1 and int(stacks[0]["address"], 16) == STACK_LOW and stacks[0]["bytes"] == STACK_HIGH - STACK_LOW,
             "missing/invalid stack bank section")
+    trap_bytes = symbols.get('nih_native_task_context_bytes')
+    require(trap_bytes is None or trap_bytes == 128, 'invalid task-side trap context reserve')
     return {"start": hex(STACK_LOW), "end": hex(STACK_HIGH), "bytes": STACK_HIGH - STACK_LOW,
             "bootstrap_bytes_per_hart": 8192, "irq_bytes_per_hart": 8192,
-            "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768)}
+            "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768),
+            "task_side_trap_bytes": trap_bytes, "ordinary_sp_budget_bytes": 3952 if trap_bytes is not None else None}
 
 
-def decode_stack_sizes(data, functions):
-    """LLVM static C frames, not a recursive call-graph/whole-stack bound."""
+def stack_size_rows(data, functions):
+    """LLVM static frames; this is not a whole-call-stack bound."""
     names = {}
     for name, address, _ in functions:
         names.setdefault(address, []).append(name)
@@ -273,6 +414,11 @@ def decode_stack_sizes(data, functions):
         require(address in names and value <= 0xffffffff, "unknown C stack function/size")
         rows.append({"address": hex(address), "functions": sorted(names[address]), "bytes": value})
     require(rows, "empty C static stack metadata")
+    return rows
+
+
+def decode_stack_sizes(data, functions):
+    rows = stack_size_rows(data, functions)
     return {"records": len(rows), "maximum_reported_frame_bytes": max(row["bytes"] for row in rows),
             "largest_frames": sorted(rows, key=lambda row: row["bytes"], reverse=True)[:10],
             "recursive_or_Zig_call_graph_bound": False}
@@ -316,6 +462,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     require(not allow_devices or (mode == 'integer' and profile == 'device' and keypad_manifest is None), 'invalid device Flash profile')
     sql_sections = {}
     allow_sql = mode == "sqlite"
+    fatfs_native = (sqlite_manifest or {}).get('fatfs_native')
+    if fatfs_native is not None:
+        require(allow_sql, 'native FatFs requires SQLite mapped profile')
+        fatfs_native_profile.validate_profile(fatfs_native)
+    sql_end = FATFS_SQL_END if fatfs_native is not None else SQL_END
     allow_ui = keypad_manifest is not None
     allow_photo = allow_ui and keypad_manifest.get("codec") is not None
     require(not allow_ui or (mode == 'integer' and profile == 'device' and not allow_sql and keypad_manifest.get('schema') == 1), 'invalid keypad profile/manifest')
@@ -335,13 +486,16 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             in_stacks = name == ".stacks"
             if in_stacks:
                 audit_stack_section(section_type, flags, address, size)
+            in_high = name in HIGH_BANKS
+            if in_high:
+                audit_high_section(name, section_type, flags, address, size, profile)
             in_sram = low <= address and address + size <= high
             in_ui = name in UI_POOLS
             if in_ui:
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
                 ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
-            if not in_sram and not in_stacks and not in_ui:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time)
+            if not in_sram and not in_stacks and not in_ui and not in_high:
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
                 if name == '.flash.time':
@@ -443,7 +597,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         text_start, sql_code = sql_sections[".flash.sqltext"]
         ro_start, sql_ro = sql_sections[".flash.sqlrodata"]
         text_end, ro_end = text_start + len(sql_code), ro_start + len(sql_ro)
-        require(ro_start == text_end and text_end % 16 == 0 and ro_end <= SQL_END, "invalid SQLite code/rodata ordering")
+        require(ro_start == text_end and text_end % 16 == 0 and ro_end <= sql_end, "invalid SQLite code/rodata ordering")
         expected_symbols = {"__flash_sql_text_start": text_start, "__flash_sql_text_end": text_end,
                             "__flash_sql_rodata_start": ro_start, "__flash_sql_rodata_end": ro_end}
         require(all(symbols.get(key) == value for key, value in expected_symbols.items()), "SQLite linker symbols differ")
@@ -465,10 +619,20 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             require({'lfs_mount', 'lfs_unmount', 'lfs_dir_read', 'lfs_file_read', 'nih_storage_probe'}.issubset(sql_funcs), 'missing littlefs reader functions')
             require(not {'lfs_format', 'lfs_file_write', 'lfs_remove', 'lfs_mkdir', 'lfs_rename', 'lfs_file_truncate'}.intersection(symbols), 'littlefs write API linked')
             sql_report['littlefs'] = lfs
+            if 'api_version' in lfs:
+                require(lfs['api_version'] == 1 and lfs.get('workspace_bytes') == 8192, 'invalid file API workspace profile')
+                require({'nih_ro_init', 'nih_ro_mount', 'nih_ro_stat', 'nih_ro_open', 'nih_ro_read_at', 'nih_ro_close',
+                         'nih_ro_release_owner', 'nih_ro_unmount', 'nih_ro_destroy'}.issubset(sql_funcs), 'missing read-only file API functions')
         stack_data = [elf[section[4]:section[4] + section[5]] for section in sections
                       if string(names, section[0]) == ".stack_sizes"]
         require(len(stack_data) == 1, "missing/duplicate C stack metadata")
         sql_report["static_c_stack"] = decode_stack_sizes(stack_data[0], functions)
+        if fatfs_native is not None:
+            require(profile == 'device' and 'broker' in sqlite_manifest and 'service' not in sqlite_manifest.get('littlefs', {}),
+                    'native FatFs requires exclusive broker/storage phase')
+            sql_report['fatfs_native'] = fatfs_native_profile.audit(fatfs_native, symbols, symbol_sizes, low, high,
+                ro_start, sql_ro, stack_size_rows(stack_data[0], functions), sqlite_manifest['objects'])
+            sql_report['static_c_stack']['includes_zig'] = True
         sql_payload = flash_tables + bytes((-len(flash_tables)) % 4) + sql_pad + sql_code + sql_ro
         sql_payload += bytes((-len(sql_payload)) % 4)
         sql_report["padding_bytes"] = len(sql_pad)
@@ -476,6 +640,18 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     boot_end = boot_start + len(boot_code)
     require(symbols.get("__flash_boot_start") == boot_start and symbols.get("__flash_boot_end") == boot_end,
             "Flash boot symbols differ from section")
+    allowed_sql = list(sqlite_manifest["allowed_functions"]) if allow_sql else []
+    service = sqlite_manifest.get('littlefs', {}).get('service') if allow_sql else None
+    if service is not None:
+        require(service.get('version') in (1, 2, 3) and service.get('ipc_start') == '0x48004000' and service.get('ipc_bytes') == 8192 and service.get('clock_group') == 1 and service.get('clock_channel') == 0, 'invalid storage service manifest')
+        require({'nih_storage_task_entry', 'nih_storage_runtime_init', 'nih_storage_runtime_finish'}.issubset(sql_funcs), 'missing storage service functions')
+        hooks = ('nih_storage_cancel_requested',) if service.get('version') in (2, 3) else ()
+        for hook in hooks + ('nih_storage_register', 'nih_storage_pending', 'nih_storage_task_exited', 'nih_storage_cleanup_ready', 'nih_storage_retired'):
+            require(hook in symbols and low <= symbols[hook] < high, 'storage IRQ hook outside internal SRAM')
+    sd_boot = (symbols.get("__flash_sdmmc_boot_start", 0), symbols.get("__flash_sdmmc_boot_end", 0))
+    require(("__flash_sdmmc_boot_start" in symbols) == ("__flash_sdmmc_boot_end" in symbols), "partial SDMMC boot extent")
+    if sd_boot[0] != sd_boot[1]:
+        require(boot_start <= sd_boot[0] < sd_boot[1] == boot_end, "invalid SDMMC boot extent")
     card_span = None if card_start is None else (card_start, card_start + len(card_code))
     if card_span:
         require(card_start == (boot_end + 15) & ~15 and symbols.get('__flash_card_start') == card_start and symbols.get('__flash_card_end') == card_span[1], 'invalid card foreground symbols')
@@ -500,7 +676,12 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None)
+    if sd_boot[0] != sd_boot[1]:
+        audit_sdmmc_resident(symbols, symbol_sizes, low, high)
+    io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None
+    if io_lifetimes is not None:
+        audit_io_lifetimes(io_lifetimes, symbols, symbol_sizes, low, high)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -509,6 +690,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     require(symbols.get("__native_profile") == revision, "ELF profile differs from requested layout")
     for name, address in ROM_SYMBOLS.items():
         require(symbols.get(name) == address, "wrong ROM ABI: " + name)
+    for name, address in (OPTIONAL_ROM_SYMBOLS | OPTIONAL_ROM_DATA).items():
+        if name in symbols:
+            require(symbols[name] == address, "wrong optional ROM ABI: " + name)
     fp_linked = "nih_riscv_fpu_save" in symbols
     if fp_linked:
         required = ["nih_riscv_fpu_restore", "nih_riscv_fpu_snapshot"]
@@ -543,6 +727,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(fp_linked and fp_counts["c"] > 0 and fp_counts["zig"] > 0, "missing compiled C/Zig FP instructions")
     stacks = audit_stack_layout(symbols, symbol_sizes, allocated)
     heap = audit_heap_layout(symbols, allocated, low, high)
+    high_sram = audit_high_layout(symbols, allocated)
     report = {"schema": 1, "backend": "native-sram", "rtos_linked": False,
               "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]), "fp_instructions": fp_counts,
               "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
@@ -557,11 +742,19 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
               "flash_records": {"start": hex(flash_start), "end": hex(flash_start + len(flash_tables)),
                                 "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
                                 "executable": False, "writable": False},
-              "rom_symbols": {name: hex(value) for name, value in ROM_SYMBOLS.items()}, "sections": allocated}
+              "rom_symbols": {name: hex(value) for name, value in (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS | OPTIONAL_ROM_DATA).items() if name in symbols}, "sections": allocated}
+    if high_sram is not None:
+        report["high_sram"] = high_sram
+        report["memory"]["total_bytes"] += high_sram["tested_bytes"]
+        report["memory"]["regions"].extend(
+            {"name": name[1:], "origin": hex(start), "end": hex(stop), "bytes": stop - start}
+            for name, (start, stop) in HIGH_BANKS.items())
     if allow_sql:
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
         report["sqlite"] = sql_report
+        if io_lifetimes is not None:
+            report["io_lifetimes"] = io_lifetimes
     if allow_ui:
         report['keypad_storage'] = ui_report
         report['memory']['regions'].extend(ui_pools)
@@ -577,6 +770,24 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report['device_text'] = {'start': hex(device_start), 'end': hex(device_span[1]), 'bytes': len(device_code), 'sha256': hashlib.sha256(device_code).hexdigest(), 'functions': device_functions, 'foreground_only': True, 'writable': False, 'executable': True}
     if card_span:
         report['card_text'] = {'start': hex(card_start), 'end': hex(card_span[1]), 'bytes': len(card_code), 'sha256': hashlib.sha256(card_code).hexdigest(), 'writable': False, 'executable': True}
+    broker_manifest = sqlite_manifest.get('broker') if allow_sql else None
+    require(('nih_broker_config' in symbols) == (broker_manifest is not None), 'broker configuration/manifest mismatch')
+    if broker_manifest is not None:
+        require(high_sram is not None and broker_manifest.get('version') in (1, 2), 'broker requires audited high SRAM')
+        require({'nih_broker_runtime_init', 'nih_broker_runtime_poll', 'nih_broker_runtime_finish', 'nih_broker_task_entry'}.issubset(sql_funcs), 'missing broker Flash runtime')
+        if broker_manifest['version'] == 2:
+            require('nih_broker_io_issued' in sql_funcs, 'missing broker ordinary-context IO gate')
+        address = symbols['nih_broker_config']
+        offset = address - int(sql_report['rodata_start'], 16)
+        sql_data = sql_sections['.flash.sqlrodata'][1]
+        require(0 <= offset <= len(sql_data) - 56 and symbol_sizes.get('nih_broker_config') == 56, 'broker config outside immutable SQL rodata')
+        require(struct.unpack_from('<I', sql_data, offset)[0] == broker_manifest['version'], 'broker config/manifest version mismatch')
+        report['broker'] = {**audit_broker(sql_data[offset:offset+56], symbols, low, high, symbols['__heap_start'], profile),
+                            'source': broker_manifest}
+    cold = audit_cold_flash(sqlite_manifest.get('cold_flash') if allow_sql else None, symbols, functions,
+                            low, high, symbols['__heap_start'], sql_span, profile, report.get('broker'))
+    if cold is not None:
+        report['cold_flash'] = cold
     if image is None:
         return report
     require(image[0] == 0xE9 and struct.unpack_from("<I", image, 4)[0] == entry,

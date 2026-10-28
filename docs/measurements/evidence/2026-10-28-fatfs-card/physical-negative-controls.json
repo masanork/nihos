@@ -1,0 +1,27 @@
+[
+  {
+    "case": "crc",
+    "rejected": true,
+    "reason": "incomplete physical card read/cleanup"
+  },
+  {
+    "case": "destroyed",
+    "rejected": true,
+    "reason": "incomplete physical card read/cleanup"
+  },
+  {
+    "case": "recovered",
+    "rejected": true,
+    "reason": "incomplete high SRAM read/write, lease or guard qualification"
+  },
+  {
+    "case": "guard",
+    "rejected": true,
+    "reason": "physical card stack margin/guard failed"
+  },
+  {
+    "case": "legacy-claim",
+    "rejected": true,
+    "reason": "inserted card profile cannot claim legacy littlefs qualification"
+  }
+]

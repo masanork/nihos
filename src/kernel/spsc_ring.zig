@@ -52,6 +52,18 @@ pub fn SpscRing(comptime T: type, comptime capacity: usize) type {
             return true;
         }
 
+        /// Pointer form for large copy-only messages. Source outlives this call
+        /// and must not alias ring slots; publication still transfers a copy.
+        pub fn tryPushFrom(self: *Self, item: *const T) bool {
+            const write = self.write.published.load(.monotonic);
+            const read = self.read.published.load(.acquire);
+            if (write -% read == capacity) return false;
+            self.slots[self.write.slot] = item.*;
+            self.write.slot = if (self.write.slot + 1 == capacity) 0 else self.write.slot + 1;
+            self.write.published.store(write +% 1, .release);
+            return true;
+        }
+
         /// Consumer-only. A returned value is copied out before the slot can
         /// be published back to the producer.
         pub fn tryPop(self: *Self) ?T {
@@ -63,6 +75,18 @@ pub fn SpscRing(comptime T: type, comptime capacity: usize) type {
             self.read.slot = if (self.read.slot + 1 == capacity) 0 else self.read.slot + 1;
             self.read.published.store(read +% 1, .release);
             return item;
+        }
+
+        /// Caller-owned output avoids a large return-value temporary. The
+        /// output must not alias ring slots or be published before this call.
+        pub fn tryPopInto(self: *Self, item: *T) bool {
+            const read = self.read.published.load(.monotonic);
+            const write = self.write.published.load(.acquire);
+            if (read == write) return false;
+            item.* = self.slots[self.read.slot];
+            self.read.slot = if (self.read.slot + 1 == capacity) 0 else self.read.slot + 1;
+            self.read.published.store(read +% 1, .release);
+            return true;
         }
 
         /// Diagnostic only: the result can change immediately on the peer.
@@ -143,4 +167,35 @@ test "producer and consumer preserve order across host threads" {
         try std.testing.expect(ordered);
         try std.testing.expect(ring.tryPop() == null);
     }
+}
+
+test "pointer messages preserve full payloads across producer reuse and wrap" {
+    const Message = struct { sequence: u32, data: [4096]u8 };
+    const Ring = SpscRing(Message, 3);
+    var queue = Ring.init();
+    queue.write.published.store(std.math.maxInt(usize) - 1, .monotonic);
+    queue.read.published.store(std.math.maxInt(usize) - 1, .monotonic);
+    const Producer = struct {
+        fn run(target: *Ring) void {
+            var message = Message{ .sequence = 0, .data = @splat(0) };
+            for (0..2000) |sequence| {
+                message.sequence = @intCast(sequence);
+                @memset(&message.data, @truncate(sequence));
+                while (!target.tryPushFrom(&message)) std.atomic.spinLoopHint();
+                @memset(&message.data, 0xa5);
+            }
+        }
+    };
+    const thread = try std.Thread.spawn(.{}, Producer.run, .{&queue});
+    var message = Message{ .sequence = 0, .data = @splat(0) };
+    var valid = true;
+    for (0..2000) |sequence| {
+        while (!queue.tryPopInto(&message)) std.atomic.spinLoopHint();
+        if (message.sequence != sequence) valid = false;
+        for (message.data) |byte| if (byte != @as(u8, @truncate(sequence))) {
+            valid = false;
+        };
+    }
+    thread.join();
+    try std.testing.expect(valid);
 }
