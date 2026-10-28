@@ -4,6 +4,8 @@ extern var __stacks_start: u8;
 extern var __stacks_end: u8;
 extern var __task_stacks_start: u8;
 extern var __task_stacks_end: u8;
+extern var __graphics_font_stack_bottom: u8;
+extern var __graphics_font_stack_top: u8;
 
 const Owner = struct {
     samples: layout.Samples align(64) = .{},
@@ -62,6 +64,17 @@ pub noinline fn begin(core: u32) bool {
 pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
     if (core >= 2 or owners[core].initialized != 1) return false;
     for (guard(core)) |word| if (word != layout.boot_guard) return false;
+    if (@import("native_options").graphics and core == 0 and
+        frame >= @intFromPtr(&__graphics_font_stack_bottom) + 16 and frame <= @intFromPtr(&__graphics_font_stack_top) - 128)
+    {
+        const low = @intFromPtr(&__graphics_font_stack_bottom);
+        const high = @intFromPtr(&__graphics_font_stack_top);
+        if (low != 0x4ff6e000 or high != 0x4ff76000 or frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const irq = layout.interrupt(0).?;
+        const words: *const volatile [4]u32 = @ptrFromInt(low);
+        for (words) |word| if (word != 0x67726166) return false;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
     if (owners[core].confirmed != 0) {
         var sample = layout.Samples{};
         return sample.observe(core, frame, saved_sp, irq_sp);

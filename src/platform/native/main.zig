@@ -669,6 +669,16 @@ export fn nih_native_main() callconv(.c) noreturn {
                         showDiagnosticSnapshot();
                     }
                 }
+                if (options.graphics) {
+                    const result = tasks.runGraphics(timer(0)) orelse fail("native graphics fixture");
+                    logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, &result);
+                    const hashes = tasks.graphics.hashes();
+                    for (hashes, 0..) |hash, index| {
+                        const item = .{ .index = @as(u32, @intCast(index)), .hash = hash };
+                        logger.record("NIHOS_NATIVE_GRAPHICS_HASH", null, .{ "index", "hash" }, &item);
+                    }
+                    print("NIHOS_NATIVE_GRAPHICS_PASS\n");
+                }
                 while (true) {
                     flushDisplayReport();
                     if (options.console_live and !ui.service(&logger)) fail("live diagnostic idle");

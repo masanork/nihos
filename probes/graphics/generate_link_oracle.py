@@ -40,6 +40,9 @@ extern "C" void graphics_source_read_completed();
 static LazyPool pool;
 static bool backing_ready;
 extern "C" { GraphicsResult graphics_result = {}; }
+#ifdef PROBE_NATIVE_OBJECT
+extern "C" { uint32_t graphics_execution_pc = 0; }
+#endif
 static void check(bool good, const char *where) {
     (void)where;
     if (!good) { graphics_result.failure = 1; __builtin_trap(); }
@@ -72,6 +75,9 @@ extern "C" [[noreturn]] void abort() { graphics_result.failure=2;__builtin_trap(
 '''
 suffix = r'''
 extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
+#ifdef PROBE_NATIVE_OBJECT
+    asm volatile("auipc %0, 0" : "=r"(graphics_execution_pc));
+#endif
     graphics_result.magic=0x47524658;graphics_result.stage=1;
     check(!backing_ready && pool.reserved==0,"fresh invocation");
     check(nih_graphics_backing_init(inputs->heap,inputs->heap_bytes)==0,"heap init");
