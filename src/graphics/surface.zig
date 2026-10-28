@@ -19,13 +19,6 @@ pub const Surface = struct {
         return true;
     }
     pub fn blit(self: Surface, mask: Mask, x: i32, y: i32, color: u16) bool {
-        return self.blitWithMode(mask, x, y, color, .encoded);
-    }
-    /// Opt-in sRGB-assumed linear-light composition; panel calibration is separate.
-    pub fn blitLinear(self: Surface, mask: Mask, x: i32, y: i32, color: u16) bool {
-        return self.blitWithMode(mask, x, y, color, .linear_srgb);
-    }
-    fn blitWithMode(self: Surface, mask: Mask, x: i32, y: i32, color: u16, mode: enum { encoded, linear_srgb }) bool {
         if (!valid(self.bytes.len, self.width, self.height, self.stride, 2) or
             !valid(mask.bytes.len, mask.width, mask.height, mask.stride, 1)) return false;
         const source = @intFromPtr(mask.bytes.ptr);
@@ -44,10 +37,32 @@ pub const Surface = struct {
                 if (alpha == 0) continue;
                 const offset = dy * self.stride + dx * 2;
                 const background = @as(u16, self.bytes[offset]) | (@as(u16, self.bytes[offset + 1]) << 8);
-                self.put(offset, if (alpha == 255) color else switch (mode) {
-                    .encoded => blend(background, color, alpha),
-                    .linear_srgb => blendLinear(background, color, alpha),
-                });
+                self.put(offset, if (alpha == 255) color else blend(background, color, alpha));
+            }
+        }
+        return true;
+    }
+    /// Opt-in sRGB-assumed linear-light composition; panel calibration is separate.
+    pub fn blitLinear(self: Surface, mask: Mask, x: i32, y: i32, color: u16) bool {
+        if (!valid(self.bytes.len, self.width, self.height, self.stride, 2) or
+            !valid(mask.bytes.len, mask.width, mask.height, mask.stride, 1)) return false;
+        const source = @intFromPtr(mask.bytes.ptr);
+        const target = @intFromPtr(self.bytes.ptr);
+        if (if (source <= target) target - source < mask.bytes.len else source - target < self.bytes.len) return false;
+        const left = @max(@as(i64, 0), x);
+        const top = @max(@as(i64, 0), y);
+        const right = @min(@as(i64, @intCast(self.width)), @as(i64, x) + @as(i64, @intCast(mask.width)));
+        const bottom = @min(@as(i64, @intCast(self.height)), @as(i64, y) + @as(i64, @intCast(mask.height)));
+        if (left >= right or top >= bottom) return true;
+        for (@as(usize, @intCast(top))..@as(usize, @intCast(bottom))) |dy| {
+            const sy: usize = @intCast(@as(i64, @intCast(dy)) - y);
+            for (@as(usize, @intCast(left))..@as(usize, @intCast(right))) |dx| {
+                const sx: usize = @intCast(@as(i64, @intCast(dx)) - x);
+                const alpha = mask.bytes[sy * mask.stride + sx];
+                if (alpha == 0) continue;
+                const offset = dy * self.stride + dx * 2;
+                const background = @as(u16, self.bytes[offset]) | (@as(u16, self.bytes[offset + 1]) << 8);
+                self.put(offset, if (alpha == 255) color else blendLinear(background, color, alpha));
             }
         }
         return true;
@@ -163,4 +178,17 @@ test "linear light channel matches independent sRGB reference" {
             }
         };
     }
+}
+
+test "linear composition clips and rejects aliased or short masks before writes" {
+    var bytes: [16]u8 = @splat(0x55);
+    const surface = Surface.init(&bytes, 2, 2, 8).?;
+    const invalid = [_]u8{255};
+    try std.testing.expect(!surface.blitLinear(.{ .bytes = invalid[0..], .width = 2, .height = 1, .stride = 2 }, 0, 0, 0));
+    try std.testing.expect(!surface.blitLinear(.{ .bytes = bytes[0..1], .width = 1, .height = 1, .stride = 1 }, 0, 0, 0));
+    try std.testing.expect(std.mem.allEqual(u8, &bytes, 0x55));
+    const mask = [_]u8{ 0, 255 };
+    try std.testing.expect(surface.blitLinear(.{ .bytes = &mask, .width = 2, .height = 1, .stride = 2 }, -1, 0, 0xffff));
+    try std.testing.expectEqualSlices(u8, &.{ 0xff, 0xff }, bytes[0..2]);
+    try std.testing.expect(std.mem.allEqual(u8, bytes[2..], 0x55));
 }
