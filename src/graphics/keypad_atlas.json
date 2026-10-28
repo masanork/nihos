@@ -18,7 +18,7 @@
     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
     "src/platform/native/esp32p4.ld": "bd7bd3e3017a4a1b00358eafdecd6db622800f0e99457ab9e6815a9ba98e1385",
-    "src/graphics/surface.zig": "8dc9b747d5341a7573e6e86b29f5949c043604474b6f84a7c8e090927f297260",
+    "src/graphics/surface.zig": "256fabbd87f1d42d4cbc1eae630ed6164ce5fbe19ea503e8a798d2402ca2063d",
     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
     "src/platform/native/main.zig": "b7125321fce53407e1f30502d21c208888c3d391a509791233cbcc0b790ad679",
