@@ -60,6 +60,40 @@ pub const Device = struct {
         }
         return .{ .fresh = result };
     }
+    /// Normal foreground service only. Card profiles keep the smaller reader.
+    pub fn sampleBatched(self: Device, bus: anytype) !Sample {
+        if (self.panel == .ili9881c) return self.goodix(bus);
+        var flags: [1]u8 = .{0};
+        try bus.transfer(0x55, &.{ 0, 0x10 }, &flags);
+        if (flags[0] & 0x80 != 0) return error.ControllerReset;
+        // No new report must not synthesize a finger-release / PIN key press.
+        if (flags[0] & 8 == 0) return .unchanged;
+        var result = Point{ .contacts = 0 };
+        // Contiguous report registers; nine whole records fit the 64-byte
+        // bus limit. Read every advertised slot, including sparse late fingers.
+        var first: usize = 0;
+        while (first < self.slots) {
+            var chunk: [63]u8 = @splat(0);
+            const count: usize = @min(@as(usize, self.slots) - first, 9);
+            const offset: u8 = @intCast(0x14 + first * 7);
+            try bus.transfer(0x55, &.{ 0, offset }, chunk[0 .. count * 7]);
+            for (0..count) |index| {
+                const record = chunk[index * 7 ..][0..7];
+                if (record[0] & 0x80 == 0) continue;
+                if (record[0] & 0x40 != 0) return error.Malformed;
+                const x = (@as(u16, record[0] & 0x3f) << 8) | record[1];
+                const y = be(record[2..4]);
+                if (x >= self.width or y >= self.height) return error.Geometry;
+                if (result.contacts == 0) {
+                    result.x = x;
+                    result.y = y;
+                }
+                result.contacts += 1;
+            }
+            first += count;
+        }
+        return .{ .fresh = result };
+    }
     fn goodix(self: Device, bus: anytype) !Sample {
         var flags: [1]u8 = .{0};
         try bus.transfer(0x5d, &.{ 0x4e, 0x81 }, &flags);
@@ -99,6 +133,10 @@ const Model = struct {
     count: usize = 0,
     clear: u32 = 0,
     width: u16 = 720,
+    report_reads: usize = 0,
+    report_bytes: usize = 0,
+    max_report_read: usize = 0,
+    fail_report_read: usize = 0,
     pub fn transfer(self: *Model, address: u8, write: []const u8, output: []u8) !void {
         if (write.len == 3) {
             try std.testing.expectEqualSlices(u8, &.{ 0x4e, 0x81, 0 }, write);
@@ -113,8 +151,12 @@ const Model = struct {
                 5 => @memcpy(output, &[_]u8{ @truncate(self.width >> 8), @truncate(self.width), 5, 0, self.slots }),
                 0x10 => output[0] = self.flags,
                 else => {
-                    if (reg < 0x14 or reg > 0x53 or output.len != 7) return error.Register;
-                    @memcpy(output, self.records[reg - 0x14 ..][0..7]);
+                    if (reg < 0x14 or reg > 0x53 or (reg - 0x14) % 7 != 0 or output.len == 0 or output.len > 64 or output.len % 7 != 0 or reg - 0x14 + output.len > self.records.len) return error.Register;
+                    self.report_reads += 1;
+                    if (self.report_reads == self.fail_report_read) return error.Nack;
+                    self.report_bytes += output.len;
+                    self.max_report_read = @max(self.max_report_read, output.len);
+                    @memcpy(output, self.records[reg - 0x14 ..][0..output.len]);
                 },
             }
         } else if (address == 0x5d) {
@@ -136,12 +178,63 @@ test "Sitronix identity, ten-slot reads, explicit release and absent report" {
     const point = (try device.sample(&model)).fresh;
     try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, point);
     try std.testing.expectEqual(@as(usize, 13), model.count);
+    try std.testing.expectEqual(@as(usize, 70), model.report_bytes);
+    try std.testing.expectEqual(@as(usize, 7), model.max_report_read);
     model.records = @splat(0);
     try std.testing.expectEqual(@as(u8, 0), (try device.sample(&model)).fresh.contacts);
     model.flags = 0;
     try std.testing.expect(try device.sample(&model) == .unchanged);
     model.flags = 0x88;
     try std.testing.expectError(error.ControllerReset, device.sample(&model));
+}
+
+test "Sitronix burst boundaries preserve sparse tenth contact and multiple-contact rejection" {
+    var model = Model{};
+    const device = try Device.identify(&model, .st7121);
+    model.records[0] = 0x80;
+    @memcpy(model.records[63..70], &[_]u8{ 0x82, 0xcf, 4, 0xff, 1, 1, 0 });
+    try std.testing.expectEqual(@as(u8, 2), (try device.sampleBatched(&model)).fresh.contacts);
+    try std.testing.expectEqual(@as(usize, 2), model.report_reads);
+    model.records[0] = 0;
+    try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, (try device.sampleBatched(&model)).fresh);
+    model.records[63] = 0x83;
+    try std.testing.expectError(error.Geometry, device.sampleBatched(&model));
+}
+
+test "Sitronix short report batches stay bounded and a failed second burst cannot publish a partial sample" {
+    for ([_]u8{ 1, 9, 10 }) |slots| {
+        var model = Model{ .slots = slots, .firmware = 3 };
+        const device = try Device.identify(&model, .st7123);
+        try std.testing.expectEqual(@as(u8, 0), (try device.sampleBatched(&model)).fresh.contacts);
+        try std.testing.expectEqual(@as(usize, slots) * 7, model.report_bytes);
+        try std.testing.expect(model.max_report_read <= 63);
+        try std.testing.expectEqual(if (slots == 10) @as(usize, 2) else 1, model.report_reads);
+    }
+    var model = Model{ .fail_report_read = 2 };
+    const device = try Device.identify(&model, .st7121);
+    model.records[0] = 0x80;
+    try std.testing.expectError(error.Nack, device.sampleBatched(&model));
+}
+
+test "normal batched reader preserves explicit release and absent-report semantics" {
+    for ([_]Panel{ .st7121, .st7123, .ili9881c }) |panel| {
+        var model = Model{ .firmware = if (panel == .st7123) 3 else 1 };
+        const device = try Device.identify(&model, panel);
+        if (panel == .ili9881c) {
+            model.flags = 0x81;
+            @memcpy(model.records[0..8], &[_]u8{ 0, 0xcf, 2, 0xff, 4, 0, 0, 0 });
+        } else @memcpy(model.records[0..7], &[_]u8{ 0x82, 0xcf, 4, 0xff, 1, 1, 0 });
+        try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, (try device.sampleBatched(&model)).fresh);
+        model.records = @splat(0);
+        if (panel == .ili9881c) model.flags = 0x80;
+        try std.testing.expectEqual(@as(u8, 0), (try device.sampleBatched(&model)).fresh.contacts);
+        model.flags = 0;
+        try std.testing.expect(try device.sampleBatched(&model) == .unchanged);
+        if (panel != .ili9881c) {
+            model.flags = 0x88;
+            try std.testing.expectError(error.ControllerReset, device.sampleBatched(&model));
+        }
+    }
 }
 test "touch malformed geometry or multiple fingers cannot become a single key press" {
     var model = Model{};
