@@ -4,8 +4,8 @@ The normal public device build includes [on-demand speaker, microphone and
 RS485 drivers](adr/0052-default-on-demand-device-drivers.md). It leaves these
 idle until explicitly requested and writes its connected artifacts to
 `build/native-device-network-devices/`. Set `NIHOS_NATIVE_DEVICES=0` for the
-smaller connected image in `build/native-device-network/`. Combined-image
-physical validation is still pending; dedicated probes retain their own profiles.
+smaller connected image in `build/native-device-network/`. The [combined controller exercise](measurements/2026-10-28-default-devices.md)
+has passed; dedicated probes retain their own profiles.
 
 An opt-in [normal-boot networking integration](adr/0045-normal-boot-network-integration.md)
 services factory Hosted Wi-Fi alongside the live display. The initial
