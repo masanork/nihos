@@ -30,6 +30,10 @@ var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
 var decoder: *hosted.wire.Decoder = undefined;
 // SAFETY: begin binds the exclusive PSRAM state before the first active poll.
+// Foreground-only reset templates share the already mapped read-only display tables.
+// Keep large decoder/State defaults out of resident SRAM.
+const initial_state linksection(".flash.rodata.display") = State{};
+// SAFETY: begin binds this before any foreground state access.
 var state_storage: *State = undefined;
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
@@ -74,7 +78,7 @@ pub const Report = extern struct {
 pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storage_bytes]u8) void {
     const state: *State = @ptrCast(backing);
     state_storage = state;
-    state.* = .{};
+    @memcpy(@import("std").mem.asBytes(state), @import("std").mem.asBytes(&initial_state));
     client = &state.client;
     decoder = &state.decoder;
     clock = timer;
@@ -97,8 +101,8 @@ fn startAttempt(now: u64) void {
     host = .{ .io = .{ .clock = clock } };
     host_generation = 0;
     transport = .{ .host = &host };
-    client.* = .{};
-    decoder.* = .{};
+    @memcpy(@import("std").mem.asBytes(client), @import("std").mem.asBytes(&initial_state.client));
+    @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     client.beginDual(configuration.get(), now, true);
@@ -125,8 +129,8 @@ fn stop(err: anyerror, now: ?u64) void {
     report.error_code = @intFromError(err);
     report.failures +|= 1;
     transport.invalidate();
-    client.* = .{};
-    decoder.* = .{};
+    @memcpy(@import("std").mem.asBytes(client), @import("std").mem.asBytes(&initial_state.client));
+    @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     nih_c6_reset(0);

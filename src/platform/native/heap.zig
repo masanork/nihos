@@ -3,7 +3,11 @@ const std = @import("std");
 const buddy = @import("buddy_heap");
 const task_resources = @import("task_resources");
 pub const Key = task_resources.Key;
-const Ledger = task_resources.Resources(buddy, 4, 2);
+const Ledger = if (@import("native_options").graphics)
+    task_resources.ResourcesWithGroups(buddy, 4, 2, 1, 32)
+else
+    task_resources.Resources(buddy, 4, 2);
+pub const Group = Ledger.Group;
 pub const Allocation = buddy.Allocation;
 pub const Pool = Ledger.Pool;
 pub const Slab = Ledger.Slab;
@@ -100,6 +104,51 @@ pub fn openTask(core: u32, key: Key) bool {
 
 pub fn selectTask(core: u32, key: Key) void {
     resources[core].current = key;
+}
+
+pub fn currentIdentity() Error!u32 {
+    return CBackend.identity();
+}
+
+/// Graphics owns a bounded group in the existing heap; never reinitialize it.
+/// Root/child bookkeeping is atomic with respect to this hart's dispatcher.
+pub noinline fn acquireExtent(group: *?Group, raw_bytes: usize, charge: *usize) Error![*]u8 {
+    const core = try CBackend.check();
+    if (raw_bytes < 65536 or raw_bytes & (raw_bytes - 1) != 0) return error.InvalidRequest;
+    const status = mask();
+    defer restore(status);
+    const state = &resources[core];
+    const heap = &owners[core].heap;
+    const before = heap.free_bytes;
+    const fresh = group.* == null;
+    if (fresh) group.* = try state.ledger.openGroup(heap, core, state.current);
+    const live = group.*.?;
+    const allocation = state.ledger.allocExtent(heap, core, state.current, live, raw_bytes - 128, 64) catch |err| {
+        if (fresh) {
+            try state.ledger.closeGroup(heap, core, state.current, live);
+            group.* = null;
+        }
+        return err;
+    };
+    charge.* = before - heap.free_bytes;
+    return allocation.bytes.ptr;
+}
+
+pub noinline fn releaseExtent(group: *?Group, address: usize) Error!usize {
+    const core = try CBackend.check();
+    const status = mask();
+    defer restore(status);
+    const state = &resources[core];
+    const heap = &owners[core].heap;
+    const live = group.* orelse return error.NotReady;
+    const allocation = try state.ledger.extentFromPointer(core, state.current, live, address);
+    const before = heap.free_bytes;
+    try state.ledger.freeExtent(heap, core, state.current, live, allocation);
+    if (try state.ledger.extentCount(core, state.current, live) == 0) {
+        try state.ledger.closeGroup(heap, core, state.current, live);
+        group.* = null;
+    }
+    return heap.free_bytes - before;
 }
 
 pub fn closeTask(core: u32, key: Key) bool {
@@ -844,4 +893,13 @@ pub noinline fn finish() linksection(if (@import("native_options").cold_flash) "
 pub fn report(core: u32) Report {
     if (@atomicLoad(u32, &reports[core].confirmed, .acquire) != 1) return .{};
     return reports[core];
+}
+
+/// Live counters of the calling owner only; not a completed qualification.
+pub fn localUsage() ?struct { capacity: u32, free: u32 } {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return null;
+    const previous = mask();
+    defer restore(previous);
+    return .{ .capacity = @intCast(owners[core].heap.payload.len), .free = @intCast(owners[core].heap.free_bytes) };
 }

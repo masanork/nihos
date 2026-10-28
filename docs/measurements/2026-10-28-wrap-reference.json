@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "evidence": "independent Python software reference, no native display",
+  "width": 192,
+  "height": 96,
+  "stride": 400,
+  "frames": [
+    {
+      "id": 5,
+      "surface_hash": 1529476020,
+      "clipped": 0,
+      "blits": 10
+    },
+    {
+      "id": 8,
+      "surface_hash": 2840879048,
+      "clipped": 4,
+      "blits": 11
+    },
+    {
+      "id": 9,
+      "surface_hash": 587290586,
+      "clipped": 1,
+      "blits": 12
+    }
+  ],
+  "wrapped": [
+    {
+      "id": 5,
+      "wrap_hash": 1101736308,
+      "clipped": 0,
+      "clusters": 10,
+      "lines": 3,
+      "wrapped_runs": 1,
+      "transitions": 1
+    },
+    {
+      "id": 8,
+      "wrap_hash": 3872015324,
+      "clipped": 0,
+      "clusters": 11,
+      "lines": 4,
+      "wrapped_runs": 1,
+      "transitions": 2
+    },
+    {
+      "id": 9,
+      "wrap_hash": 3917300124,
+      "clipped": 0,
+      "clusters": 12,
+      "lines": 2,
+      "wrapped_runs": 1,
+      "transitions": 1
+    }
+  ],
+  "raster_reference_sha256": "327ba47df6554032427369795910428f7d6089dd60d1810499d686bfff9e3f51",
+  "input_sha256": {
+    "build/graphics-raster-host/raster-5.bin": "49302c562867a41d74db3740485e6a297bea3bcf4110874cb35ca6f0d9dc604b",
+    "build/graphics-raster-host/raster-8.bin": "e2a4cc0d63f89cea517a558f312b88a2488ba409b8e06504f0c3f1a1f119cbf6",
+    "build/graphics-raster-host/raster-9.bin": "dd6f6d1efc62aa68370c797556f8a4a957eb172f6ae88cd083d1a6ad0ff3d8ab"
+  },
+  "source_sha256": "dd8dacdab8c7c8b88c20a56b453f38bf3534b91033736c724f0507a4772c4c20"
+}

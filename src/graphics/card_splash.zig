@@ -1,7 +1,7 @@
 //! Fixed TTB inscription using the shared RGB565/A8 surface compositor.
 //! No font worker, allocation or display ownership at boot.
 const std = @import("std");
-const surface = @import("surface.zig");
+const surface = @import("surface");
 const assets = @import("card_boot/assets.zig");
 pub const width = 720;
 pub const height = 1280;

@@ -37,9 +37,10 @@ if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then build_dir="$build_dir-devices"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;
-    floating|compiled|sqlite) build_dir="$build_dir-$mode" ;;
-    *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
+    floating|compiled|sqlite|graphics) build_dir="$build_dir-$mode" ;;
+    *) echo "mode must be integer, floating, compiled, sqlite or graphics" >&2; exit 1 ;;
 esac
+if [ "$mode" = graphics ]; then boot_dir="$build_dir/loader"; fi
 native_sdk=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
 if [ ! -f "$native_sdk/export.sh" ]; then
     echo "ESP-IDF v5.4.4 not found; set NIHOS_IDF_PATH" >&2
@@ -56,6 +57,11 @@ rm -f "$build_dir/image-audit.json" "$build_dir/nihos-native.bin" "$build_dir/ni
 defaults="$repo_root/ports/esp32p4-native/sdkconfig.defaults"
 if [ "$profile" = emulator ]; then
     defaults="$defaults;$repo_root/sdkconfig.emulator.defaults"
+fi
+if [ "$mode" = graphics ]; then
+    printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
+        "$repo_root/ports/esp32p4-native/partitions-graphics.csv" > "$build_dir/graphics.defaults"
+    defaults="$defaults;$build_dir/graphics.defaults"
 fi
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \
@@ -85,6 +91,7 @@ if [ "$mode" = sqlite ]; then set -- "$build_dir/sqlite-manifest.json"; fi
 if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 10 ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" = 11 ]; then set -- --none "$build_dir/photo-manifest.json"; fi
 if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 9 ]; then set -- --none "$repo_root/src/graphics/card_read_font.json"; fi
 if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/graphics/keypad_atlas.json"; fi
+if [ "$mode" = graphics ]; then set -- "$build_dir/graphics-manifest.json"; fi
 if [ "${NIHOS_NATIVE_NORMAL_STORAGE:-0}" = 1 ]; then set -- "$@" --normal-fs "$build_dir/normal-fs-manifest.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
