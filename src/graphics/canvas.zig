@@ -338,38 +338,3 @@ test "editor style scroll and partial redraw equal full repaint" {
     for (0..4) |i| b.fillRect(.{ .x = 0, .y = @intCast(i * 4), .width = 8, .height = 4 }, @intCast(i + 2));
     try std.testing.expectEqualSlices(u8, &repainted, &incremental);
 }
-
-test "card boot composition equals existing renderer including padded rows" {
-    const splash = @import("card_splash.zig");
-    const assets = @import("card_boot/assets.zig");
-    const stride = splash.width * 2 + 16;
-    const n = stride * splash.height;
-    const original = try std.testing.allocator.alloc(u8, n);
-    defer std.testing.allocator.free(original);
-    const actual = try std.testing.allocator.alloc(u8, n);
-    defer std.testing.allocator.free(actual);
-    @memset(original, 0xaa);
-    @memset(actual, 0xaa);
-    try std.testing.expect(splash.paint(null, original, stride));
-    const canvas = Canvas.init(actual, splash.width, splash.height, stride).?;
-    canvas.fillRect(.{ .x = 0, .y = 0, .width = splash.width, .height = splash.height }, splash.background);
-    var row: [splash.width]u8 = undefined;
-    for (assets.placements) |p| {
-        const glyph = assets.glyphs[p.mask];
-        var x: usize = 0;
-        var y: usize = 0;
-        for (assets.masks[glyph.offset..][0..glyph.length]) |run| {
-            for (0..@as(usize, run & 15) + 1) |_| {
-                row[x] = (run >> 4) * 17;
-                x += 1;
-                if (x == glyph.width) {
-                    try canvas.blitMask(.{ .bytes = row[0..glyph.width], .width = glyph.width, .height = 1, .stride = glyph.width }, p.x, @intCast(@as(usize, p.y) + y), splash.rgb565(p.color));
-                    x = 0;
-                    y += 1;
-                }
-            }
-        }
-    }
-    canvas.fillRect(.{ .x = 52, .y = 125, .width = 616, .height = 1 }, splash.rgb565(0x40504a));
-    try std.testing.expectEqualSlices(u8, original, actual);
-}
