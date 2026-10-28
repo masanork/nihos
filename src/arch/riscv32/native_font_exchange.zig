@@ -2,6 +2,7 @@
 //! the font task is the sole library owner. Queues outlive both endpoints.
 const std = @import("std");
 const options = @import("native_options");
+pub const composer = @import("native_surface.zig");
 pub const raster = @import("native_raster.zig");
 const lease = @import("raster_lease");
 const protocol = @import("font_protocol");
@@ -105,9 +106,19 @@ fn drawHash(reply: *const protocol.Reply, pixels: []const u8) u32 {
     return value;
 }
 var active_operation: protocol.Operation = .render_matrix;
-var text_results: [5]protocol.Reply = @splat(.{ .id = 0, .operation = .render_text, .retained = 0 });
+const Snapshot = struct {
+    id: u32 = 0,
+    runs: u32 = 0,
+    hashes: [1]u32 = .{0},
+    outcome: protocol.Outcome = .render_failed,
+    output: struct { count: u32 = 0, raster_bytes: u32 = 0, glyphs: []const protocol.Glyph = &.{} } = .{},
+};
+// Qualification archives only successful glyphs; failed packets are validated
+// before discarding their empty storage. Nothing here crosses the IPC queue.
+var saved_glyphs: [3][16]protocol.Glyph = @splat(@splat(.{}));
+var text_results: [5]Snapshot = @splat(.{});
 
-pub fn textResults() []const protocol.Reply {
+pub fn textResults() []const Snapshot {
     return &text_results;
 }
 
@@ -231,7 +242,14 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
                 reply.runs != (if (reply.id == 6 or reply.id == 7) @as(u32, 0) else 1)) nih_native_task_failed();
             reply.output.validate() catch nih_native_task_failed();
             if (reply.output.outcome != @backingInt(reply.outcome)) nih_native_task_failed();
-            text_results[reply.id - 5] = reply;
+            var glyphs: []const protocol.Glyph = &.{};
+            if (reply.outcome == .ok) {
+                if (metrics.text_success >= saved_glyphs.len) nih_native_task_failed();
+                const archive = saved_glyphs[metrics.text_success][0..reply.output.count];
+                @memcpy(archive, reply.output.glyphs[0..reply.output.count]);
+                glyphs = archive;
+            }
+            text_results[reply.id - 5] = .{ .id = reply.id, .runs = reply.runs, .hashes = .{reply.hashes[0]}, .outcome = reply.outcome, .output = .{ .count = reply.output.count, .raster_bytes = reply.output.raster_bytes, .glyphs = glyphs } };
             if (reply.outcome == .ok and reply.output.raster_bytes != 0) {
                 held = .{ .token = reply.raster_token, .bytes = reply.output.raster_bytes };
                 held_id = reply.id;
@@ -239,6 +257,7 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
                 const bytes = raster.read(held) catch nih_native_task_failed();
                 if (drawHash(&reply, bytes) != reply.hashes[0]) nih_native_task_failed();
                 pixel_hashes[reply.id - 5] = digest(bytes);
+                composer.compose(&reply, bytes);
                 if (raster.release(held.token)) |_| nih_native_task_failed() else |_| {
                     raster.metrics.foreign_rejected += 1;
                 }

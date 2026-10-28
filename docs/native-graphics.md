@@ -76,10 +76,10 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 111,360 B | 111,616 B |
-| Remaining primary SRAM heap | 52,480 B | 52,224 B |
-| Static reservations including stack/data regions | 234,240 B | 234,496 B |
-| Application image | 11,573,648 B | 11,575,088 B |
+| Primary static span | 113,280 B | 113,536 B |
+| Remaining primary SRAM heap | 50,560 B | 50,304 B |
+| Static reservations including stack/data regions | 236,160 B | 236,416 B |
+| Application image | 11,572,848 B | 11,574,288 B |
 
 Graphics code/RO occupy 561,072 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
@@ -87,8 +87,8 @@ Private initialized data/BSS occupy 20,764 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
 caches and application routing. The two fixed transport queues reserve
 3,200 B in primary SRAM, including tokens/metadata but no bitmap bytes.
-Relative to the metadata-only fixture, primary static grows by 4,736 B
-(emulator) or 4,864 B (device). The private packet grows from 776 to 844 B;
+The surface renderer adds a net 1,920 B to primary static relative to the
+raster-only fixture, after compacting qualification snapshots. The private packet grows from 776 to 844 B;
 no further stack or library SRAM region is reserved. Raster storage is demand
 PSRAM, separately accounted below.
 
@@ -118,15 +118,17 @@ records the first queued matrix endpoint. The
 [text-request receipt](measurements/2026-10-28-native-font-text-requests.json)
 adds owned UTF-8 inputs. The
 [glyph-metadata receipt](measurements/2026-10-28-native-font-glyph-metadata.json)
-records copied metrics. The current
+records copied metrics. The
 [raster-lease receipt](measurements/2026-10-28-native-font-raster-leases.json)
-adds borrowed pixels on that live task:
+adds borrowed pixels. The current
+[surface-composition receipt](measurements/2026-10-28-native-surface-composition.json)
+adds a shared RGB565 consumer on that live task:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
 - The timer captures the font task 6,410 times, including 6,393 during
-  shaping/rasterization stages; bootstrap advances 13,556 times.
+  shaping/rasterization stages; bootstrap advances 13,489 times.
   Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
 - Stack watermark/frame observation reaches 17,344 B, leaving 15,408 B above
@@ -197,6 +199,29 @@ it does not apply paragraph/ruby placement or present on a native display.
 ![Host A8 glyph atlas](measurements/2026-10-28-font-raster-atlas.png)
 Multiple applications still need a broker or distinct client channels;
 concurrent producers, cancellation and service restart remain unqualified.
+
+The [shared surface decision](adr/0048-borrowed-rgb565-surfaces.md) defines an
+allocation-free RGB565LE/A8 API with signed placement, clipping, alpha blending,
+non-aliasing and preserved row padding. The native consumer composites all 33
+glyphs into three temporary offscreen surfaces **before** releasing raster
+leases. Five glyphs intersect or fall outside the viewport. Three guard/padding
+checks and six invalid-operation rejections pass without modifying results.
+
+Each guarded canvas logically occupies 38,464 B and charges 65,536 B of
+consumer-owned PSRAM; all canvas charge returns to zero before raster release.
+These costs are separate from font backing and the raster lease. The device
+profile retains 50,304 B of primary heap, above the unchanged 48 KiB floor.
+The first link hit that floor; reducing duplicate diagnostic archives recovered
+space without changing queued replies or disabling compiler safety checks.
+
+The [independent reference](measurements/2026-10-28-surface-reference.json)
+uses per-source-pixel clipping and matches the native padded RGB565 digests.
+These PNGs are reference visualizations with fixed test origins, not native
+LCD captures or a paragraph/ruby layout implementation:
+
+![Horizontal body and ruby runs](measurements/2026-10-28-surface-horizontal.png)
+![Vertical runs clipped to the viewport](measurements/2026-10-28-surface-vertical.png)
+![Negative horizontal origin clipped at the left](measurements/2026-10-28-surface-clipped.png)
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls
