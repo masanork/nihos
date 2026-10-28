@@ -532,45 +532,66 @@ pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksecti
     log.boot(&photo.report);
     log.scene(0);
     for (0..12) |step| {
-        const phase = step % 6;
-        if (phase == 0 or phase == 1) {
-            renderer.static_frame = false;
-            renderer.overview_frame = false;
-            renderer.pin_kind = if (phase == 0) 1 else 2;
-            renderer.read_remaining = 3;
-            redraw(clock, panel) catch halt();
-            // Masked counts only: no credential or touch input exists here.
-            for (1..5) |count| {
-                while (true) {
-                    renderer.update(@intCast(count)) catch |err| {
-                        if (err == error.Busy) continue;
-                        halt();
-                    };
-                    break;
-                }
-                const target = display.snapshot().frames + 8;
-                while (display.snapshot().frames < target) if (!bus.pins.delay(1000)) halt();
-            }
-        } else if (phase == 2 or phase == 4) {
-            photo.prepare() catch halt();
-            for (photo.pixels(), 0..) |*byte, index| byte.* = @truncate(index * 17 + step);
-            _ = card.ResultScreen.automaticOverview(".flash.keypad.auto_font", frame(), .{ .name = "表示テスト", .address = "架空の住所", .birth_date = "19900101", .detail = "000000000000", .expiration = "20300101" }, photo.pixels()) catch halt();
-            card.ResultScreen.resultControls(".flash.keypad.auto_font", frame(), false) catch halt();
-            if (!photo.close()) halt();
-            renderer.static_frame = true;
-            renderer.overview_frame = true;
-            redraw(clock, panel) catch halt();
-        } else if (phase == 3) {
-            _ = card.ResultScreen.licensePage(".flash.keypad.auto_font", frame(), false, &.{.{ .label = "住所", .value = "表示切替テスト", .date = "20260101" }}) catch halt();
-            renderer.static_frame = true;
-            renderer.overview_frame = true;
-            redraw(clock, panel) catch halt();
-        } else notice(clock, panel, AutoCaptions.get(0), AutoCaptions.get(1)) catch halt();
+        exerciseStep(clock, panel, step) catch |err| {
+            log.sceneFailure(@intCast(step + 1), @errorName(err));
+            halt();
+        };
         log.scene(@intCast(step + 1));
-        const target = display.snapshot().frames + 90;
-        while (display.snapshot().frames < target) if (!bus.pins.delay(1000)) halt();
+        exerciseWait(clock, 90) catch |err| {
+            log.sceneFailure(@intCast(step + 1), @errorName(err));
+            halt();
+        };
     }
     halt();
+}
+noinline fn exerciseWait(clock: timer.Timer, frames: u32) linksection(".flash.photo") !void {
+    const target = display.snapshot().frames + frames;
+    const started = clock.counter() orelse return error.Timer;
+    var bus = i2c.Master(Pins){ .pins = .{ .clock = clock } };
+    while (display.snapshot().frames < target) {
+        if (display.snapshot().fault != 0) return error.Scanout;
+        const now = clock.counter() orelse return error.Timer;
+        if (now - started >= @as(u64, frames) * 20_000 + 500_000) return error.FrameProgress;
+        if (!bus.pins.delay(1000)) return error.Timer;
+    }
+}
+noinline fn exerciseStep(clock: timer.Timer, panel: u32, step: usize) linksection(".flash.photo") !void {
+    const phase = step % 6;
+    if (phase == 0 or phase == 1) {
+        renderer.static_frame = false;
+        renderer.overview_frame = false;
+        renderer.pin_kind = if (phase == 0) 1 else 2;
+        renderer.read_remaining = 3;
+        try redraw(clock, panel);
+        // Masked counts only: no credential or touch input exists here.
+        for (1..5) |count| {
+            const started = clock.counter() orelse return error.Timer;
+            while (true) {
+                renderer.update(@intCast(count)) catch |err| {
+                    if (err != error.Busy) return err;
+                    const now = clock.counter() orelse return error.Timer;
+                    if (now - started >= 200_000) return error.TextureProgress;
+                    continue;
+                };
+                break;
+            }
+            try exerciseWait(clock, 8);
+        }
+    } else if (phase == 2 or phase == 4) {
+        try photo.prepare();
+        for (photo.pixels(), 0..) |*byte, index| byte.* = @truncate(index * 17 + step);
+        _ = try card.ResultScreen.automaticOverview(".flash.keypad.auto_font", frame(), .{ .name = "表示テスト", .address = "架空の住所", .birth_date = "19900101", .detail = "000000000000", .expiration = "20300101" }, photo.pixels());
+        try card.ResultScreen.resultControls(".flash.keypad.auto_font", frame(), false);
+        if (!photo.close()) return error.Cleanup;
+        renderer.static_frame = true;
+        renderer.overview_frame = true;
+        try redraw(clock, panel);
+    } else if (phase == 3) {
+        _ = try card.ResultScreen.licensePage(".flash.keypad.auto_font", frame(), false, &.{.{ .label = "住所", .value = "表示切替テスト", .date = "20260101" }});
+        renderer.static_frame = true;
+        renderer.overview_frame = true;
+        try redraw(clock, panel);
+    } else try notice(clock, panel, AutoCaptions.get(0), AutoCaptions.get(1));
 }
 noinline fn selectedJob(clock: timer.Timer, panel: u32, log: anytype) linksection(".flash.photo") !void {
     if (report.kind == 4) report.kind = try selectJob(clock, panel);
