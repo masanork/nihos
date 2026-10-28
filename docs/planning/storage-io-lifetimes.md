@@ -292,3 +292,19 @@ fixture callbackを候補edgeに含めても、target排他性を証明した扱
 未提供frameは0、未解決transferのfunctionは4まで減ったが、callback / ecall / ROM境界が残る。
 [CFG確認と採取runnerの専有](../measurements/2026-10-28-fatfs-cfg-resolution.md)に、
 実ELFの改変負例と、kernel排他を実際の第二openerで確認してから採取する条件を記録した。
+
+## Native FSD/clientの実機通過（2026-10-28）
+
+immutable FAT12 fixtureを使うFSD/clientがTab5の3回のUSB reset起動で通過した。
+kernelの実task停止、read取消、drain、reap/rebind、旧handle/epoch/reply/exit通知の拒否と、
+service parentのclear/unpin/free、client/service accountの全回収を確認した。
+実機で見つかった旧allocator identityとkernel handleの取り違えを修正し、
+引退済みAPIに依存せず、CPU1 endpoint内でkernelの世代付きhandleを照合する。
+
+ownerの観測stackは2,704 B、replacement clientは352 B。guardとtask側trap reserveを保った。
+強制終了した初代clientや未通過経路の最大値、総call stackの上限をこれらの値から推定しない。
+静的image auditの未資格flagはそのまま残し、実行証拠を別記録にする。
+
+候補の事前・事後Flash照合、元の16 MiB全面復元、serial解放までを採取単位とする。
+[実機結果と失敗・修正の記録](../measurements/2026-10-28-fatfs-native-physical.md)に候補identity、生ログ、負例を保存した。
+実カードFatFsへの接続とnative exFAT/VFAT、clean POR、書込み、永続SQLite、電断復旧は次のgateとして残す。
