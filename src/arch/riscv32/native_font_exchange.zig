@@ -86,10 +86,6 @@ var held_id: u32 = 0;
 var held_since: u64 = 0;
 var pending_release: u32 = 0;
 var release_id: u32 = 0;
-var pixel_hashes: [5]u32 = @splat(0);
-pub fn pixelHash(index: usize) u32 {
-    return pixel_hashes[index];
-}
 fn digest(bytes: []const u8) u32 {
     var value: u32 = 2166136261;
     for (bytes) |byte| value = (value ^ byte) *% 16777619;
@@ -111,21 +107,25 @@ const Snapshot = struct {
     runs: u32 = 0,
     hashes: [1]u32 = .{0},
     outcome: protocol.Outcome = .render_failed,
+    pixel_hash: u32 = 0,
+    composition: composer.Result = .{},
     output: struct { count: u32 = 0, raster_bytes: u32 = 0, glyphs: []const protocol.Glyph = &.{} } = .{},
 };
 // Qualification archives only successful glyphs; failed packets are validated
 // before discarding their empty storage. Nothing here crosses the IPC queue.
-const ArchiveGlyphs = [3][16]protocol.Glyph;
-var saved_glyphs: ?*ArchiveGlyphs = null;
+const Archive = struct { glyphs: [3][16]protocol.Glyph, texts: [5]Snapshot };
+var archive: ?*Archive = null;
 var archive_allocation: ?@import("native_memory").reusable.Allocation = null;
-pub const ArchiveReport = struct { logical_bytes: u32 = @sizeOf(ArchiveGlyphs), charge: u32 = 0, live_charge: u32 = 0, before: u32 = 0, after: u32 = 0 };
+pub const ArchiveReport = struct { logical_bytes: u32 = @sizeOf(Archive), charge: u32 = 0, live_charge: u32 = 0, before: u32 = 0, after: u32 = 0 };
 pub var archive_metrics: ArchiveReport = .{};
 pub fn prepareArchive() bool {
     const heap = @import("native_memory").reusable;
     if (archive_allocation != null) return false;
     archive_metrics.before = @intCast(heap.availableBytes() orelse return false);
-    archive_allocation = heap.allocTask(@sizeOf(ArchiveGlyphs), 16) catch return false;
-    saved_glyphs = @ptrCast(@alignCast(archive_allocation.?.bytes.ptr));
+    archive_allocation = heap.allocTask(@sizeOf(Archive), 16) catch return false;
+    archive = @ptrCast(@alignCast(archive_allocation.?.bytes.ptr));
+    // SAFETY: poll fills snapshots in request order; textResults exposes only
+    // the initialized prefix, including after worker retirement.
     archive_metrics.charge = archive_metrics.before - @as(u32, @intCast(heap.availableBytes() orelse return false));
     archive_metrics.live_charge = archive_metrics.charge;
     return true;
@@ -135,15 +135,13 @@ pub fn releaseArchive() bool {
     const allocation = archive_allocation orelse return false;
     heap.freeTask(allocation) catch return false;
     archive_allocation = null;
-    saved_glyphs = null;
+    archive = null;
     archive_metrics.live_charge = 0;
     archive_metrics.after = @intCast(heap.availableBytes() orelse return false);
     return archive_metrics.before == archive_metrics.after;
 }
-var text_results: [5]Snapshot = @splat(.{});
-
 pub fn textResults() []const Snapshot {
-    return if (saved_glyphs != null) &text_results else &.{};
+    return if (archive) |storage| storage.texts[0 .. metrics.text_success + metrics.text_failed] else &.{};
 }
 
 pub fn bind(client: calls.Handle, worker: calls.Handle) bool {
@@ -269,19 +267,19 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             var glyphs: []const protocol.Glyph = &.{};
             if (reply.outcome == .ok) {
                 if (metrics.text_success >= 3) nih_native_task_failed();
-                const archive = saved_glyphs.?[metrics.text_success][0..reply.output.count];
-                @memcpy(archive, reply.output.glyphs[0..reply.output.count]);
-                glyphs = archive;
+                const saved = archive.?.glyphs[metrics.text_success][0..reply.output.count];
+                @memcpy(saved, reply.output.glyphs[0..reply.output.count]);
+                glyphs = saved;
             }
-            text_results[reply.id - 5] = .{ .id = reply.id, .runs = reply.runs, .hashes = .{reply.hashes[0]}, .outcome = reply.outcome, .output = .{ .count = reply.output.count, .raster_bytes = reply.output.raster_bytes, .glyphs = glyphs } };
+            archive.?.texts[reply.id - 5] = .{ .id = reply.id, .runs = reply.runs, .hashes = .{reply.hashes[0]}, .outcome = reply.outcome, .output = .{ .count = reply.output.count, .raster_bytes = reply.output.raster_bytes, .glyphs = glyphs } };
             if (reply.outcome == .ok and reply.output.raster_bytes != 0) {
                 held = .{ .token = reply.raster_token, .bytes = reply.output.raster_bytes };
                 held_id = reply.id;
                 held_since = ticks;
                 const bytes = raster.read(held) catch nih_native_task_failed();
                 if (drawHash(&reply, bytes) != reply.hashes[0]) nih_native_task_failed();
-                pixel_hashes[reply.id - 5] = digest(bytes);
-                composer.compose(&reply, bytes);
+                archive.?.texts[reply.id - 5].pixel_hash = digest(bytes);
+                archive.?.texts[reply.id - 5].composition = composer.compose(&reply, bytes);
                 if (raster.release(held.token)) |_| nih_native_task_failed() else |_| {
                     raster.metrics.foreign_rejected += 1;
                 }
@@ -298,7 +296,7 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
     }
     if (held.token != 0) {
         const bytes = raster.read(held) catch nih_native_task_failed();
-        if (digest(bytes) != pixel_hashes[held_id - 5]) nih_native_task_failed();
+        if (digest(bytes) != archive.?.texts[held_id - 5].pixel_hash) nih_native_task_failed();
         if (ticks - held_since < 2) return;
         raster.metrics.held_ticks += @intCast(ticks - held_since);
         raster.retire(held) catch nih_native_task_failed();

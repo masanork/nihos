@@ -517,3 +517,35 @@ root as the native program. ReleaseSafe checks remain enabled. This removed
 424,728 B of incidental link overhead; the final candidate reran all controls
 and comparisons. The original ELF/map/report remain in the ignored build
 directory and their identities and sizes are recorded in the receipt.
+
+## Native follow-up: basic Japanese break prohibitions
+
+The later [native fixture](../../docs/native-graphics.md) now executes a real P4
+emulator boot/task/timer path, borrowed A8 raster leases and offscreen RGB565
+composition. The [basic-prohibition decision](../../docs/adr/0050-basic-japanese-break-policy.md)
+adds source-boundary policy ahead of cluster placement. It retains the earlier
+unwrapped and cluster-only pixel checks and adds a third pass using the same
+canvas. This remains offscreen evidence, separate from native scanout or Tab5.
+
+Given the pinned host raster captures from the earlier text probe, reproduce
+an independent reference and same-geometry policy-disabled controls with:
+
+```sh
+python3 probes/graphics/kinsoku_reference.py build/kinsoku-reference
+```
+
+The script reads the canonical UTF-8 cases, host glyph metrics and
+`build/graphics-raster-host/raster-{5,8,9}.bin`. It verifies byte counts/pixel
+digests, constructs legal spans using batch connected components, then visits
+each source pixel independently when composing the image. The horizontal
+control starts a line with a comma; the vertical continuation control starts a
+column with a full stop. Both disappear with the basic policy. A separate host
+unit case exposes an opening bracket stranded at line end.
+
+`tools/run-native-graphics-smoke.sh` builds and executes the audited native
+fixture and compares its three prohibition-frame digests with the checked-in
+reference. Runtime source-map generation is host-tested; the finite native
+fixture uses canonical maps prepared at build time, stored in the existing
+mapped Flash display-data span. Production text source/revision binding, full
+Japanese/Unicode line breaking, automatic ruby-base placement and physical
+cache/display validation remain separate work.

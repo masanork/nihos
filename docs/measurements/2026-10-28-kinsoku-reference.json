@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "evidence": "independent batch Python reference; no native display",
+  "frames": [
+    {
+      "id": 5,
+      "policy_hash": 1101736308,
+      "clipped": 0,
+      "spans": 10,
+      "joined": 0,
+      "lines": 3,
+      "transitions": 1,
+      "forbidden_starts": 0,
+      "forbidden_ends": 0,
+      "naive_hash": 1101736308,
+      "naive_forbidden_starts": 0,
+      "naive_forbidden_ends": 0
+    },
+    {
+      "id": 8,
+      "policy_hash": 3230547268,
+      "clipped": 0,
+      "spans": 9,
+      "joined": 2,
+      "lines": 5,
+      "transitions": 3,
+      "forbidden_starts": 0,
+      "forbidden_ends": 0,
+      "naive_hash": 3236834080,
+      "naive_forbidden_starts": 1,
+      "naive_forbidden_ends": 0
+    },
+    {
+      "id": 9,
+      "policy_hash": 3332983756,
+      "clipped": 0,
+      "spans": 11,
+      "joined": 1,
+      "lines": 2,
+      "transitions": 1,
+      "forbidden_starts": 0,
+      "forbidden_ends": 0,
+      "naive_hash": 117401528,
+      "naive_forbidden_starts": 1,
+      "naive_forbidden_ends": 0
+    }
+  ],
+  "raster_reference_sha256": "327ba47df6554032427369795910428f7d6089dd60d1810499d686bfff9e3f51",
+  "cases_sha256": "00306091daecc1c13504f7aa6fd9d1c2738eed24b38650871ad17849ad084dee",
+  "source_sha256": "f347c908fa689fde3f889e85cc5c82b30bd1f5b43cf9d27cc45f707602af78c1",
+  "input_sha256": {
+    "build/graphics-raster-host/raster-5.bin": "49302c562867a41d74db3740485e6a297bea3bcf4110874cb35ca6f0d9dc604b",
+    "build/graphics-raster-host/raster-8.bin": "e2a4cc0d63f89cea517a558f312b88a2488ba409b8e06504f0c3f1a1f119cbf6",
+    "build/graphics-raster-host/raster-9.bin": "dd6f6d1efc62aa68370c797556f8a4a957eb172f6ae88cd083d1a6ad0ff3d8ab"
+  },
+  "profile": "basic explicit character prohibitions; no UAX14/JIS/JLREQ conformance claim"
+}

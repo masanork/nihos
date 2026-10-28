@@ -9,8 +9,9 @@ running FreeType/HarfBuzz on a dedicated CPU0 task. Timer events come from
 the emulated P4 peripheral rather than a host instruction hook. This remains
 emulator evidence, not physical timing or visible display evidence. The
 fixture hashes glyph IDs, advances and raster pixels; it does not present a
-framebuffer. A bounded cluster-flow primitive now places wrapped runs; full
-paragraph/ruby layout remains pending.
+framebuffer. A bounded cluster-flow primitive places wrapped runs, with a basic
+Japanese prohibition map now constraining breaks. Full paragraph/ruby layout
+remains pending.
 
 ## Run
 
@@ -77,10 +78,10 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 113,536 B | 113,792 B |
-| Remaining primary SRAM heap | 50,304 B | 50,048 B |
-| Static reservations including stack/data regions | 236,416 B | 236,672 B |
-| Application image | 11,575,664 B | 11,577,120 B |
+| Primary static span | 114,432 B | 114,688 B |
+| Remaining primary SRAM heap | 49,408 B | 49,152 B |
+| Static reservations including stack/data regions | 237,312 B | 237,568 B |
+| Application image | 11,576,576 B | 11,578,032 B |
 
 Graphics code/RO occupy 561,072 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
@@ -90,7 +91,10 @@ caches and application routing. The two fixed transport queues reserve
 3,200 B in primary SRAM, including tokens/metadata but no bitmap bytes.
 Surface composition added 1,920 B to primary static relative to the
 raster-only fixture. Bounded cluster flow adds another 256 B net, after moving
-the diagnostic glyph archive to demand-allocated PSRAM. The private packet grows from 776 to 844 B;
+the diagnostic glyph archive to demand-allocated PSRAM. The basic prohibition
+pass adds another 896 B net while sharing placement/drawing paths and moving
+immutable boundary maps to the existing mapped Flash display-data span. The
+private packet grows from 776 to 844 B;
 no further stack or library SRAM region is reserved. Raster storage is demand
 PSRAM, separately accounted below.
 
@@ -122,18 +126,19 @@ adds owned UTF-8 inputs. The
 [glyph-metadata receipt](measurements/2026-10-28-native-font-glyph-metadata.json)
 records copied metrics. The
 [raster-lease receipt](measurements/2026-10-28-native-font-raster-leases.json)
-adds borrowed pixels. The current
+adds borrowed pixels. The
 [surface-composition receipt](measurements/2026-10-28-native-surface-composition.json)
 adds a shared RGB565 consumer on that live task. The
 [cluster-flow receipt](measurements/2026-10-28-native-cluster-wrap.json) extends
 that consumer with bounded horizontal/vertical wrapping and archive retirement.
-The current run records:
+The [basic-prohibition receipt](measurements/2026-10-28-native-kinsoku.json) adds
+source-boundary policy and a third composition pass. The current run records:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
 - The timer captures the font task 6,410 times, including 6,393 during
-  shaping/rasterization stages; bootstrap advances 13,386 times.
+  shaping/rasterization stages; bootstrap advances 13,227 times.
   Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
 - Stack watermark/frame observation reaches 17,344 B, leaving 15,408 B above
@@ -216,7 +221,7 @@ checks and six invalid-operation rejections pass without modifying results.
 Each guarded canvas logically occupies 38,464 B and charges 65,536 B of
 consumer-owned PSRAM; all canvas charge returns to zero before raster release.
 These costs are separate from font backing and the raster lease. The device
-profile retains 50,048 B of primary heap, above the unchanged 48 KiB floor.
+profile retains 49,152 B of primary heap, meeting the unchanged 48 KiB floor.
 The first link hit that floor; reducing duplicate diagnostic archives recovered
 space without changing queued replies or disabling compiler safety checks.
 
@@ -249,12 +254,43 @@ cluster. This greedy policy does not implement kinsoku, word segmentation,
 bidi, contextual reshaping at breaks or paragraph pagination. The independently
 placed ruby run does not yet follow the wrapped body or identify its base.
 
-The diagnostic glyph archive now allocates 2,496 B in bootstrap-owned PSRAM
-(actual buddy charge 4,096 B), retains copied results through worker retirement,
-and frees after logging. The accessor returns an empty slice after free. This
-archive plus the temporary canvas fit the bootstrap's existing two-root quota.
+The complete diagnostic archive now allocates 2,736 B in bootstrap-owned PSRAM
+(2,496 B glyphs plus 240 B snapshots/hashes, actual buddy charge 4,096 B),
+retains copied results through worker retirement, and frees after logging. The
+accessor exposes only the initialized prefix and returns an empty slice after
+free. This archive plus the temporary canvas fit the bootstrap's existing two-root quota.
 Its final free restores the original CPU0 heap; it is separate from the
 font-task heap baseline and is not a persistent font-service allocation.
+
+The [basic Japanese break policy](adr/0050-basic-japanese-break-policy.md)
+separates UTF-8 scalar boundaries from shaping and placement. It joins whole
+clusters across prohibited boundaries before the flow cursor places them.
+The supported opening/closing brackets, punctuation, small kana and related
+marks are explicitly listed in the source. This is a basic subset, not full
+JLREQ/JIS/UAX14 conformance, western word breaking or hanging punctuation.
+Overlong indivisible spans fail explicitly without consuming the cursor.
+
+A third native pass uses the same guarded canvas and retained A8 raster. At an
+80 px horizontal width, `な、` moves together to avoid a line starting with the
+comma. In the vertical continuation case, `く。` moves together to avoid a column
+starting with the full stop. The first column has an already occupied 32 px
+prefix, deliberately exercising continuation rather than a fresh paragraph.
+The independent ruby run also joins its small kana. Three native frame digests
+match [the independent reference](measurements/2026-10-28-kinsoku-reference.json):
+30 spans, three joined boundaries, ten occupied lines/columns and five transitions,
+with no clipped glyphs. Host controls with the same geometry and policy disabled
+expose two prohibited starts; an additional host case tests an opening bracket
+at line end. The pinned native cases do not test that opening-bracket behavior.
+
+![Horizontal prohibition reference](measurements/2026-10-28-kinsoku-horizontal.png)
+![Vertical continuation prohibition reference](measurements/2026-10-28-kinsoku-vertical.png)
+
+These are host reference images, not LCD captures. Source-map construction for
+arbitrary UTF-8 is host-tested. The native fixture uses maps prepared at build
+time from canonical inputs, placed in the existing mapped Flash display-data
+span; its real-time source-map preparation and IO path remain unqualified.
+The device build retains exactly the unchanged 48 KiB primary heap floor.
+Future additions need a new budget decision rather than reducing that floor.
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls

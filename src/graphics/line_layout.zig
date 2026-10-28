@@ -17,7 +17,7 @@ pub const Flow = struct {
         return .{ .limit = limit, .step = step, .capacity = capacity };
     }
     /// On error, no span or line is consumed. The caller may retry another box.
-    pub fn place(self: *Flow, advance: i32) Error!Position {
+    pub noinline fn place(self: *Flow, advance: i32) Error!Position {
         if (advance < 0) return error.Advance;
         if (advance > self.limit) return error.SpanTooWide;
         var line = self.line;
@@ -42,7 +42,7 @@ pub const Cluster = struct { end: usize, advance: i32 };
 
 /// Group consecutive equal run/cluster IDs supplied by shaping. Monotone
 /// LTR/TTB axis advances only; grouping is not grapheme or word segmentation.
-pub fn cluster(comptime G: type, glyphs: []const G, start: usize, axis: Axis) Error!Cluster {
+pub noinline fn cluster(comptime G: type, glyphs: []const G, start: usize, axis: Axis) Error!Cluster {
     if (start >= glyphs.len) return error.Order;
     const first = glyphs[start];
     var end = start;
