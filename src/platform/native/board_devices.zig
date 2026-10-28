@@ -104,26 +104,26 @@ fn step() !void {
 pub fn poll() void {
     if (!active) return;
     const now = clock.counter() orelse {
-        if (options.audio and audio_requested) audio.poll(&bus, clock);
-        if (options.microphone and microphone_requested) microphone.poll(&bus, clock);
-        if (options.rs485 and rs485_requested) rs485.poll(clock);
+        if ((options.audio or options.devices) and audio_requested) audio.poll(&bus, clock);
+        if ((options.microphone or options.devices) and microphone_requested) microphone.poll(&bus, clock);
+        if ((options.rs485 or options.devices) and rs485_requested) rs485.poll(clock);
         return;
     };
-    if (options.audio and now >= 10_000_000) {
+    if ((options.audio and now >= 10_000_000) or (options.devices and audio_requested)) {
         if (!audio_requested) {
             audio_requested = true;
             _ = audio.request();
         }
         audio.poll(&bus, clock);
     }
-    if (options.microphone and now >= 10_000_000) {
+    if ((options.microphone and now >= 10_000_000) or (options.devices and microphone_requested)) {
         if (!microphone_requested) {
             microphone_requested = true;
             _ = microphone.request();
         }
         microphone.poll(&bus, clock);
     }
-    if (options.rs485 and now >= 10_000_000) {
+    if ((options.rs485 and now >= 10_000_000) or (options.devices and rs485_requested)) {
         if (!rs485_requested) {
             rs485_requested = true;
             _ = rs485.request();
@@ -190,4 +190,37 @@ pub fn setCalendar(value: rtc.DateTime) !void {
     try rtc.set(&bus, value);
     job = 0;
     next = 0;
+}
+
+/// CPU0 foreground only. Explicit requests never run from an interrupt.
+pub fn requestDevice(kind: u32) bool {
+    if (!options.devices or !active) return false;
+    return switch (kind) {
+        1 => blk: {
+            const accepted = audio.request();
+            audio_requested = audio_requested or accepted;
+            break :blk accepted;
+        },
+        2 => blk: {
+            const accepted = microphone.request();
+            microphone_requested = microphone_requested or accepted;
+            break :blk accepted;
+        },
+        3, 4 => blk: {
+            const accepted = rs485.requestFixture(if (kind == 3) 1 else 2);
+            rs485_requested = rs485_requested or accepted;
+            break :blk accepted;
+        },
+        5 => true,
+        else => false,
+    };
+}
+
+pub fn requestedMask() u32 {
+    return @as(u32, @intFromBool(audio_requested)) | (@as(u32, @intFromBool(microphone_requested)) << 1) | (@as(u32, @intFromBool(rs485_requested)) << 2);
+}
+pub const ServiceReport = extern struct { available: u32, requested: u32, i2s_owner: u32, pinned: u32, workspace: u32 };
+pub fn serviceSnapshot() ServiceReport {
+    const workspace = @import("device_workspace.zig");
+    return .{ .available = if (options.devices) 7 else 0, .requested = requestedMask(), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
 }

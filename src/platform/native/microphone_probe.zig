@@ -1,4 +1,4 @@
-//! Opt-in finite microphone input. Raw PCM never leaves internal SRAM.
+//! Requested finite microphone input. Raw PCM never leaves internal SRAM.
 const options = @import("native_options");
 const codec = @import("tab5_es7210");
 const speaker = @import("tab5_es8388");
@@ -9,9 +9,13 @@ extern fn nih_microphone_status(*model.Status) callconv(.c) void;
 extern fn nih_microphone_stop() callconv(.c) bool;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
-var pcm: [model.bytes]u8 align(64) = @splat(0);
-// Isolate the 16-byte hardware descriptor in its own complete cache line.
-var node: [4]model.Descriptor align(64) = @splat(.{ .control = 0, .buffer = 0 });
+const workspace = @import("device_workspace.zig");
+// Bound only after acquiring the shared I2S lease. Descriptor cache line is
+// disjoint from PCM and occupies the start of the shared 512-byte node area.
+// SAFETY: request binds PCM before the exclusive owner may poll.
+var pcm: *align(64) [model.bytes]u8 = undefined;
+// SAFETY: request binds descriptors before the exclusive owner may poll.
+var node: *align(64) [4]model.Descriptor = undefined;
 var stats: model.Statistics = .{};
 const Input = struct {
     off: bool = false,
@@ -25,13 +29,13 @@ const Input = struct {
         try codec.prepare(bus);
     }
     pub fn prepare(self: *@This()) !void {
-        node[0] = try model.descriptor(@intFromPtr(&node), @intFromPtr(&pcm));
+        node[0] = try model.descriptor(@intFromPtr(node), @intFromPtr(pcm));
         self.returned_ok = false;
-        @memset(&pcm, 0xa5);
-        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&pcm), @sizeOf(@TypeOf(pcm))) != 0 or
-            nih_rom_cache_writeback(1 << 4, @intFromPtr(&node), @sizeOf(@TypeOf(node))) != 0) return error.Cache;
+        @memset(pcm, 0xa5);
+        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(pcm), model.bytes) != 0 or
+            nih_rom_cache_writeback(1 << 4, @intFromPtr(node), 64) != 0) return error.Cache;
         self.stopped_ok = false;
-        if (!nih_microphone_prepare(@intFromPtr(&node))) return error.Hardware;
+        if (!nih_microphone_prepare(@intFromPtr(node))) return error.Hardware;
     }
     pub fn unmute(_: *@This(), bus: anytype) !void {
         if (!options.microphone_muted) try codec.unmute(bus);
@@ -47,7 +51,7 @@ const Input = struct {
         return value;
     }
     pub fn endMatches(_: *@This(), address: u32) bool {
-        return address == @intFromPtr(&node);
+        return address == @intFromPtr(node);
     }
     pub fn shutdown(self: *@This(), bus: anytype) !void {
         self.off = false;
@@ -57,8 +61,8 @@ const Input = struct {
     pub fn stop(self: *@This()) !void {
         if (!nih_microphone_stop()) return error.Busy;
         self.stopped_ok = true;
-        if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(&node), @sizeOf(@TypeOf(node))) != 0 or
-            nih_rom_cache_invalidate(1 << 4, @intFromPtr(&pcm), @sizeOf(@TypeOf(pcm))) != 0) return error.Cache;
+        if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(node), 64) != 0 or
+            nih_rom_cache_invalidate(1 << 4, @intFromPtr(pcm), model.bytes) != 0) return error.Cache;
         const observed: *const volatile model.Descriptor = &node[0];
         if (self.started) {
             if (observed.control & (1 << 31) != 0) return error.Ownership;
@@ -76,22 +80,32 @@ const Input = struct {
     }
     pub fn analyze(_: *@This()) !void {
         const observed: *const volatile model.Descriptor = &node[0];
-        try model.validate(observed.*, @intFromPtr(&pcm));
-        stats = model.analyze(&pcm);
+        try model.validate(observed.*, @intFromPtr(pcm));
+        stats = model.analyze(pcm);
     }
     pub fn erase(_: *@This()) !void {
-        @memset(&pcm, 0);
-        std.mem.doNotOptimizeAway(&pcm);
-        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&pcm), @sizeOf(@TypeOf(pcm))) != 0) return error.Cache;
+        @memset(pcm, 0);
+        std.mem.doNotOptimizeAway(pcm);
+        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(pcm), model.bytes) != 0) return error.Cache;
     }
 };
 const std = @import("std");
 var player = model.Player(Input){ .input = .{} };
 pub fn request() bool {
+    if (!workspace.acquire(.microphone)) return false;
+    pcm = workspace.pcm();
+    node = workspace.descriptors([4]model.Descriptor);
+    stats = .{};
+    player = .{ .input = .{} };
     return player.request();
 }
-pub fn poll(bus: anytype, clock: anytype) void {
+pub noinline fn poll(bus: anytype, clock: anytype) linksection(if (options.devices) ".flash.text.devices" else ".text") void {
+    if (workspace.gate.owner != .microphone or workspace.gate.pinned) return;
     player.poll(bus, clock);
+    if (player.phase == .done or player.phase == .failed) {
+        const report = player.report;
+        _ = workspace.gate.release(.microphone, report.codec_off == 1 and report.stopped == 1 and report.returned == 1 and report.erased == 1);
+    }
 }
 pub fn snapshot() model.Report {
     return player.report;

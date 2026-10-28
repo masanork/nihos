@@ -1,0 +1,289 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff10070
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbc4
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_CPU_CLOCK status=00000001 error_code=00000000 pc=40000fd2 source=00000001 cpll_mhz=00000168 before_mhz=00000059 after_mhz=00000167 mem_mhz=000000b4 apb_mhz=0000005a ctrl0=00000000 ctrl1=00000001 ctrl2=00010000 rom_mhz=00000168
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001440 probe=40000188 mapping=40000bb4 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00008d30 identity=0000a0df bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_LINK core=0000d05d bus=00010001 command=00010001 sctrl=02f7c679 cmd=8cfc0000 ddr=00003023 dll_cache=00000021 dll_command=00000021 dqs0=00010001 dqs1=00010001
+NIHOS_NATIVE_PSRAM_TUNING status=00000001 stage=00000004 phase_mask=0000000f phase=00000000 delay_mask=3fffffc0 delay=00000011 repetitions=00000064 reads=00012da0 writes=00000020 error_code=00000000
+NIHOS_NATIVE_PSRAM_MPLL status=00000001 mhz=00000190 reused=00000001 divider=00000099 error_code=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000001 dref=00000007 mul=00000005 control=00000180 analog=76800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000030 mr4=00000020 mr8=0000004b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=00012e9e
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_BOOT_TIME stage=00000001 elapsed_us=00030820
+NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000003 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=00000000 phy_trim=00000000 phy_status=00000000 scanout=00000000 backlight=00000000
+NIHOS_NATIVE_DISPLAY_PINS initial_pins=00000003 failed_pins=00000000 recovery_pulses=00000000
+NIHOS_NATIVE_BOOT_TIME stage=00000003 elapsed_us=000346d2
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000302 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_DISPLAY_SOURCE sram=00000000 source=48030000 dma_source=48030200 dma_control=001e1b41 word=00000000
+NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=00000500 logical_height=000002d0 rotation=00000001
+NIHOS_NATIVE_DISPLAY_TIMING pixel_hz=04c4b400 refresh_millihz=0000ea4e htotal=00000322 vtotal=0000067f
+NIHOS_NATIVE_DISPLAY_LEASE lease_start=00000000 lease_bytes=00000000 nodes=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000005 elapsed_us=001458e6
+NIHOS_NATIVE_KEYBOARD status=00000002 firmware=00000000 mode=00000000 transactions=00000000 error_code=00000000 sources=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000007 elapsed_us=0015caee
+NIHOS_NATIVE_UI_START frames=0000000a clock_hz=000f4240 sources=00000001 view=00000000 progress=00000009 target=00000055
+Wi-Fi starting (exclusive SDIO, lease maintenance enabled)
+Wi-Fi unconfigured: waiting for settings
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000001 owner_checks=00000030 peer_checks=00000030 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_BOOT_HEALTH cpu0_ticks=00000001 cpu1_ticks=00000001 ipi0=00000001 ipi1=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000004 elapsed_us=0019bbbd
+NIHOS_NATIVE_BOOT_TIME stage=00000006 elapsed_us=001b2ee6
+NIHOS_NATIVE_CONSOLE status=00000001 columns=0000004e rows=0000002b log_bytes=00000800 dropped_low=00000749 input=00000001
+NIHOS_NATIVE_CONSOLE_STYLE cell_width=00000010 cell_height=00000010 palette=00000004 foreground=000007e8 accent=000005a6 background=00001082 font=00000003
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000001f clock_hz=000f4240 sources=00000001 view=00000000 progress=00000018 target=000000ff
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000000 initialized=00000000 stage=00000000 fault=00000000 uploaded=00000000 valid=00000000 samples=00000000 acc_x=00000000 acc_y=00000000 acc_z=00000000 gyr_x=00000000 gyr_y=00000000 gyr_z=00000000 sensor_error=00000000 ready_status=00000000
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034038 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000000 bus_uv=00000000 shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000000 imu_initialized=00000000 errors=00000000 samples=00000001
+NIHOS_NATIVE_NETWORK phase=00000002 station=00000000 error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00000000 tx=00000000 polls=00000001 max_poll_us=00000004 renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000000 commands=00000000 events=00000000 advertisements=00000000 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000020 ticks0=0000000f ticks1=0000000f
+NIHOS_NATIVE_DISPLAY_IRQ_PASS frames=00000020 fault=00000000 event=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000
+NIHOS_NATIVE_UI_SETTLED frames=0000006c progress=000000ff target=000000ff
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=0000134b tx=000000b2 polls=0000013c max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000003 commands=00000006 events=0000005d advertisements=00000057 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000014c ticks0=00000203 ticks1=00000203
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000000 stage=00000005 fault=00000000 uploaded=00001f80 valid=00000000 samples=00000000 acc_x=00000000 acc_y=00000000 acc_z=00000000 gyr_x=00000000 gyr_y=00000000 gyr_z=00000000 sensor_error=00000000 ready_status=00000000
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034042 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000000 errors=00000000 samples=00000005
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=000000be acc_x=00000001 acc_y=00000386 acc_z=ffffe045 gyr_x=00000001 gyr_y=ffffffff gyr_z=00000001 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034046 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000000a
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00003896 tx=000000b2 polls=000003b1 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000003 commands=00000006 events=0000010f advertisements=00000109 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000278 ticks0=000003f8 ticks1=000003f8
+NIHOS_DEVICE_REQUEST kind=00000005 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_DEVICE_REQUEST kind=00000002 accepted=00000001 i2s_owner=00000002 pinned=00000000 workspace=00000600
+NIHOS_DEVICE_REQUEST kind=00000001 accepted=00000000 i2s_owner=00000002 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_MICROPHONE_STAGE code=0000021e
+NIHOS_NATIVE_MICROPHONE_STAGE code=0000021b
+NIHOS_NATIVE_MICROPHONE_STAGE code=0000021d
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000002 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00003100 peak1=00000071 peak2=000000be peak3=000000b0 span0=00003069 span1=00000071 span2=00000047 span3=0000002d
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=00000183 acc_x=00000000 acc_y=00000392 acc_z=ffffe02f gyr_x=fffffff5 gyr_y=00000004 gyr_z=00000000 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034052 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000000f
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00000658 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000003a4 ticks0=000005ed ticks1=000005ed
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000002 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00003100 peak1=00000071 peak2=000000be peak3=000000b0 span0=00003069 span1=00000071 span2=00000047 span3=0000002d
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=0000024b acc_x=00000009 acc_y=00000393 acc_z=ffffe031 gyr_x=fffffff9 gyr_y=fffffffc gyr_z=00000002 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034058 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000015
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=000008ed max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000004d1 ticks0=000007e2 ticks1=000007e2
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000002 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00003100 peak1=00000071 peak2=000000be peak3=000000b0 span0=00003069 span1=00000071 span2=00000047 span3=0000002d
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=00000313 acc_x=fffffff9 acc_y=00000395 acc_z=ffffe03f gyr_x=fffffffe gyr_y=00000000 gyr_z=fffffffb sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034102 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000001a
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00000ba5 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000005fd ticks0=000009d6 ticks1=000009d6
+NIHOS_DEVICE_REQUEST kind=00000005 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_DEVICE_REQUEST kind=00000001 accepted=00000001 i2s_owner=00000001 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO_STAGE code=00000001
+NIHOS_NATIVE_AUDIO_STAGE code=00000002
+NIHOS_NATIVE_AUDIO_STAGE code=00000010
+NIHOS_NATIVE_AUDIO_STAGE code=00000011
+NIHOS_NATIVE_AUDIO_STAGE code=00000012
+NIHOS_NATIVE_AUDIO_STAGE code=00000013
+NIHOS_NATIVE_AUDIO_STAGE code=00000014
+NIHOS_NATIVE_AUDIO_STAGE code=00000015
+NIHOS_NATIVE_AUDIO_STAGE code=0000021e
+NIHOS_NATIVE_AUDIO_STAGE code=0000021b
+NIHOS_NATIVE_AUDIO_STAGE code=0000021d
+NIHOS_NATIVE_AUDIO_STAGE code=0000021a
+NIHOS_DEVICE_REQUEST kind=00000002 accepted=00000000 i2s_owner=00000001 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000003 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00003100 peak1=00000071 peak2=000000be peak3=000000b0 span0=00003069 span1=00000071 span2=00000047 span3=0000002d
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=000003d9 acc_x=00000003 acc_y=0000038e acc_z=ffffe037 gyr_x=fffffff5 gyr_y=00000000 gyr_z=00000007 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034108 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000001f
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00000e2c max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000729 ticks0=00000bcb ticks1=00000bcb
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000003 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00003100 peak1=00000071 peak2=000000be peak3=000000b0 span0=00003069 span1=00000071 span2=00000047 span3=0000002d
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=000004a1 acc_x=0000000b acc_y=00000392 acc_z=ffffe02d gyr_x=fffffff2 gyr_y=00000002 gyr_z=fffffffb sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034112 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d8aac shunt_uv_x10=0000004b shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000024
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=000010c3 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000855 ticks0=00000dbf ticks1=00000dbf
+NIHOS_DEVICE_REQUEST kind=00000005 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_DEVICE_REQUEST kind=00000002 accepted=00000001 i2s_owner=00000002 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_MICROPHONE_STAGE code=0000021e
+NIHOS_NATIVE_MICROPHONE_STAGE code=0000021b
+NIHOS_NATIVE_MICROPHONE_STAGE code=0000021d
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000003 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=00000567 acc_x=00000000 acc_y=0000038c acc_z=ffffe048 gyr_x=fffffffe gyr_y=00000001 gyr_z=00000000 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034118 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000029
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00001353 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000981 ticks0=00000fb3 ticks1=00000fb3
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000003 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=0000062f acc_x=ffffffed acc_y=0000038e acc_z=ffffe042 gyr_x=fffffff5 gyr_y=00000000 gyr_z=00000004 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034122 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000002e
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=000015d4 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000aae ticks0=000011a8 ticks1=000011a8
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000003 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=000006f7 acc_x=00000011 acc_y=000003b2 acc_z=ffffe027 gyr_x=ffffffef gyr_y=00000001 gyr_z=00000000 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034128 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d8aac shunt_uv_x10=0000004b shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000033
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=0000188a max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000bda ticks0=0000139c ticks1=0000139c
+NIHOS_DEVICE_REQUEST kind=00000005 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_DEVICE_REQUEST kind=00000003 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=000007c0 acc_x=ffffffc0 acc_y=0000039b acc_z=ffffe031 gyr_x=fffffff5 gyr_y=00000001 gyr_z=00000005 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034132 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000038
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00001b1f max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000d06 ticks0=00001591 ticks1=00001591
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=00000888 acc_x=0000001f acc_y=000003af acc_z=ffffe039 gyr_x=ffffffec gyr_y=ffffffff gyr_z=00000003 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034138 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000003d
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00001dd6 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000e32 ticks0=00001785 ticks1=00001785
+NIHOS_DEVICE_REQUEST kind=00000003 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=00000950 acc_x=00000026 acc_y=0000038a acc_z=ffffe016 gyr_x=ffffffee gyr_y=fffffffc gyr_z=fffffffd sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034142 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=0000004b shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000042
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00002054 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000f5e ticks0=00001979 ticks1=00001979
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000c fault=00000000 uploaded=00002000 valid=00000001 samples=00000a18 acc_x=0000006a acc_y=0000039a acc_z=ffffe007 gyr_x=ffffffdf gyr_y=00000002 gyr_z=00000005 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034148 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=0000004b shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000047
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=000022fe max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000108a ticks0=00001b6d ticks1=00001b6d
+NIHOS_DEVICE_REQUEST kind=00000005 accepted=00000001 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=00000ae0 acc_x=00000009 acc_y=00000389 acc_z=ffffe050 gyr_x=ffffffff gyr_y=ffffffff gyr_z=00000000 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034152 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=0000004c
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=0000258d max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000011b6 ticks0=00001d62 ticks1=00001d62
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=00000ba9 acc_x=00000009 acc_y=0000039b acc_z=ffffe038 gyr_x=ffffffea gyr_y=fffffffe gyr_z=00000006 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034158 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d85ca shunt_uv_x10=00000032 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000051
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00002823 max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=000012e3 ticks0=00001f57 ticks1=00001f57
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000007 i2s_owner=00000000 pinned=00000000 workspace=00000600
+NIHOS_NATIVE_AUDIO phase=00000007 fault=00000000 dma=0000000b bclk=00040001 fifo=00004000 eof_descriptor=4ff1c170 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001
+NIHOS_NATIVE_AUDIO_IO device=00000000 register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_MICROPHONE phase=00000005 fault=00000000 dma=00000003 end=4ff1bf80 parked=00000001 codec_off=00000001 stopped=00000001 returned=00000001 samples=00000200 erased=00000001
+NIHOS_NATIVE_MICROPHONE_SIGNAL active=0000000f clipped=00000000 peak0=00002300 peak1=00006300 peak2=000001ab peak3=000000ad span0=000023e5 span1=000062a4 span2=000002b5 span3=00000032
+NIHOS_NATIVE_MICROPHONE_IO register=00000000 expected=00000000 actual=00000000 stage=00000000
+NIHOS_NATIVE_RS485_IO stage=00000000 a=00000000 b=00000000 c=00000000
+NIHOS_NATIVE_RS485 phase=00000007 fault=00000000 tx=00000040 rx=00000040 raw=00000000 tx_idle=00000001 dir_low=00000001 stopped=00000001 matched=00000001
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000001 stage=0000000d fault=00000000 uploaded=00002000 valid=00000001 samples=00000c71 acc_x=00000015 acc_y=0000039f acc_z=ffffe02e gyr_x=fffffffa gyr_y=fffffffe gyr_z=00000005 sensor_error=00000000 ready_status=000000d0
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000000 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000003 rtc_raw_date=40080628 rtc_raw_time=00034202 year=00000000 month=00000000 day=00000000 hour=00000000 minute=00000000 second=00000000 ina_present=00000001 bus_uv=007d80e8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000001 errors=00000000 samples=00000056
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=000048e3 tx=000000c3 polls=00002ada max_poll_us=00001b3c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000004 commands=00000007 events=0000015e advertisements=00000157 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=0000140f ticks0=0000214b ticks1=0000214b

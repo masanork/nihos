@@ -1,0 +1,154 @@
+{
+  "scope": "combined native idle/overlap/alternation/repeat controller exercise; audible quality and external RS485 unqualified",
+  "requests": 12,
+  "operations": [
+    {
+      "kind": 1,
+      "result": {
+        "scope": "native finite DMA/codec output progression; audible output not evaluated",
+        "records": 12,
+        "complete_records": 12,
+        "final": {
+          "phase": 7,
+          "fault": 0,
+          "dma": 11,
+          "bclk": 262145,
+          "fifo": 16384,
+          "eof_descriptor": 1341243760,
+          "parked": 1,
+          "codec_off": 1,
+          "stopped": 1,
+          "returned": 1
+        }
+      }
+    },
+    {
+      "kind": 2,
+      "result": {
+        "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+        "muted_control": false,
+        "records": 5,
+        "completed_records": 5,
+        "final": {
+          "phase": 5,
+          "fault": 0,
+          "dma": 3,
+          "end": 1341243264,
+          "parked": 1,
+          "codec_off": 1,
+          "stopped": 1,
+          "returned": 1,
+          "samples": 512,
+          "erased": 1
+        },
+        "signal": {
+          "active": 15,
+          "clipped": 0,
+          "peak0": 12544,
+          "peak1": 113,
+          "peak2": 190,
+          "peak3": 176,
+          "span0": 12393,
+          "span1": 113,
+          "span2": 71,
+          "span3": 45
+        }
+      }
+    },
+    {
+      "kind": 2,
+      "result": {
+        "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+        "muted_control": false,
+        "records": 10,
+        "completed_records": 10,
+        "final": {
+          "phase": 5,
+          "fault": 0,
+          "dma": 3,
+          "end": 1341243264,
+          "parked": 1,
+          "codec_off": 1,
+          "stopped": 1,
+          "returned": 1,
+          "samples": 512,
+          "erased": 1
+        },
+        "signal": {
+          "active": 15,
+          "clipped": 0,
+          "peak0": 8960,
+          "peak1": 25344,
+          "peak2": 427,
+          "peak3": 173,
+          "span0": 9189,
+          "span1": 25252,
+          "span2": 693,
+          "span3": 50
+        }
+      }
+    },
+    {
+      "kind": 3,
+      "result": {
+        "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+        "mode": "loopback",
+        "records": 2,
+        "terminal_records": 2,
+        "final": {
+          "phase": 7,
+          "fault": 0,
+          "tx": 64,
+          "rx": 64,
+          "raw": 0,
+          "tx_idle": 1,
+          "dir_low": 1,
+          "stopped": 1,
+          "matched": 1
+        }
+      }
+    },
+    {
+      "kind": 3,
+      "result": {
+        "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+        "mode": "loopback",
+        "records": 5,
+        "terminal_records": 5,
+        "final": {
+          "phase": 7,
+          "fault": 0,
+          "tx": 64,
+          "rx": 64,
+          "raw": 0,
+          "tx_idle": 1,
+          "dir_low": 1,
+          "stopped": 1,
+          "matched": 1
+        }
+      }
+    }
+  ],
+  "idle_reports": 3,
+  "service_final": {
+    "available": 7,
+    "requested": 7,
+    "i2s_owner": 0,
+    "pinned": 0,
+    "workspace": 1536
+  },
+  "ui_first": {
+    "frames": 32,
+    "ticks0": 15,
+    "ticks1": 15
+  },
+  "ui_final": {
+    "frames": 5135,
+    "ticks0": 8523,
+    "ticks1": 8523
+  },
+  "evidence": "physical-device",
+  "image_sha256": "09fe70863df2abf002fc7d0c04931a801249d41fc16354f58a822552088cd2b8",
+  "serial_sha256": "20c431008b70120222994fb3c7c8de98fc7325c19182ea11a5a72bae28ef8fb5",
+  "restored": true
+}
