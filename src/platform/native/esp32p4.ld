@@ -12,6 +12,7 @@ __native_profile = 0;
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
 __native_network = NIH_NATIVE_NETWORK;
+__native_normal_storage = NIH_NATIVE_NORMAL_STORAGE;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
@@ -29,6 +30,8 @@ MEMORY {
 #else
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
+#elif NIH_NATIVE_NORMAL_STORAGE
+    flash_fs (rx) : ORIGIN = 0x40020000, LENGTH = 256K
 #elif NIH_NATIVE_KEYPAD
     flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
@@ -184,6 +187,25 @@ SECTIONS
         *sql_fat_*.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
+#endif
+#if NIH_NATIVE_NORMAL_STORAGE
+    .flash.fspad : ALIGN(4) {
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.fstext : {
+        __flash_fs_text_start = .;
+        *normal_fs_*.o(.text .text.*)
+        . = ALIGN(128);
+        __flash_fs_text_end = .;
+    } > flash_fs
+    .flash.fsrodata : ALIGN(128) {
+        __flash_fs_rodata_start = .;
+        KEEP(*(.normal_fs.identity))
+        *normal_fs_*.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_fs_rodata_end = .;
+    } > flash_fs
+    .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
 #endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {

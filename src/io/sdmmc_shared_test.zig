@@ -124,6 +124,9 @@ const C6Bus = struct {
         @memset(destination, 0xa5);
         return true;
     }
+    pub fn releaseDma(self: @This()) bool {
+        return self.view.host.io.cache_ok;
+    }
 };
 
 test "real SD and C6 controllers enumerate and alternate DMA without resetting their peer" {

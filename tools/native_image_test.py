@@ -11,6 +11,27 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_normal_filesystem_sections_require_explicit_profile_and_permissions(self):
+        cases = (('.flash.fstext', 0x40020000, 128, 6),
+                 ('.flash.fsrodata', 0x40020080, 128, 2),
+                 ('.flash.fspad', 0x4001fff0, 16, 2))
+        for name, start, size, flags in cases:
+            MODULE.audit_flash_section(name, 1, flags, start, size, allow_fs=True)
+            with self.assertRaises(ValueError):
+                MODULE.audit_flash_section(name, 1, flags, start, size)
+            for kind, changed in ((8, flags), (1, 7)):
+                with self.assertRaises(ValueError):
+                    MODULE.audit_flash_section(name, kind, changed, start, size, allow_fs=True)
+        with self.assertRaises(ValueError):
+            MODULE.audit_flash_section('.flash.fstext', 1, 6, 0x4001ff00, 256, allow_fs=True)
+        boot = [('psram.probe', 0x40000120, 0x40000920), ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
+        fs = [('nih_normal_fs_task', 0x40020000, 0x40020100)]
+        MODULE.audit_boot_functions(boot + fs, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                                   fs_span=(0x40020000, 0x40020100), fs_functions=['nih_normal_fs_task'])
+        with self.assertRaises(ValueError):
+            MODULE.audit_boot_functions(boot + fs, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000,
+                                       fs_span=(0x40020000, 0x40020100))
+
     def test_network_time_code_has_exact_rx_allowlist_and_bounded_extent(self):
         start = 0x40004000
         names = sorted(MODULE.TIME_FUNCTIONS) + [prefix + '__func_7' for prefix in sorted(MODULE.TIME_GENERIC)]

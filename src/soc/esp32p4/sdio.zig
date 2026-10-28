@@ -239,6 +239,18 @@ pub fn Controller(comptime IO: type) type {
             self.io.write(regs.dma_mode, 0);
             self.io.write(regs.ctrl, (self.io.read(regs.ctrl) & ~@as(u32, (1 << 25) | (1 << 5))) | 4);
             try self.clear(regs.ctrl, 4);
+            if (shared) {
+                self.io.write(regs.mask, 0);
+                self.io.write(regs.dma_mask, 0);
+                try self.clear(regs.dma_status, 15 << 13);
+                try self.clear(regs.status, 1 << 9);
+                if (self.io.read(regs.ctrl) & ((1 << 25) | (1 << 5) | 4) != 0 or self.io.read(regs.dma_mode) != 0) return error.Dma;
+            }
+        }
+        fn detachDma(self: *Self) Error!void {
+            if (!shared) return;
+            self.io.write(regs.descriptor, 0);
+            if (self.io.read(regs.descriptor) != 0 or !self.io.releaseDma()) return error.Dma;
         }
 
         fn transfer(self: *Self, address: u32, source: []const u8, destination: []u8, writing: bool) Error!void {
@@ -250,6 +262,9 @@ pub fn Controller(comptime IO: type) type {
             errdefer {
                 self.faulted = true;
                 self.stopDma() catch {
+                    self.cleanup_failed = true;
+                };
+                if (!self.cleanup_failed) self.detachDma() catch {
                     self.cleanup_failed = true;
                 };
             }
@@ -274,6 +289,7 @@ pub fn Controller(comptime IO: type) type {
                 if (self.last_interrupts & (done | data_over) == done | data_over) {
                     try self.stopDma();
                     if (!self.io.finishDma(writing, destination)) return error.Dma;
+                    try self.detachDma();
                     return;
                 }
                 self.io.delay(1);

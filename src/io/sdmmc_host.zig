@@ -24,6 +24,7 @@ pub fn Host(comptime IO: type) type {
         quarantined: bool = false,
         invalid_write: bool = false,
         denied: u32 = 0,
+        contexts: [2]struct { timeout: u32 = 0, threshold: u32 = 0 } = .{ .{}, .{} },
         const Self = @This();
 
         fn matches(self: *const Self, lease: Lease) bool {
@@ -44,6 +45,10 @@ pub fn Host(comptime IO: type) type {
                 self.quarantined = true;
                 return error.Hardware;
             }
+            self.resetContexts();
+        }
+        fn resetContexts(self: *Self) void {
+            for (&self.contexts) |*context| context.* = .{ .timeout = self.io.read(0x14), .threshold = self.io.read(0x4c) };
         }
         pub fn acquire(self: *Self, slot: Slot) Error!Lease {
             if (self.quarantined) return error.Quarantined;
@@ -58,6 +63,9 @@ pub fn Host(comptime IO: type) type {
             const lease = Lease{ .serial = self.serial, .generation = self.generation, .slot = slot };
             self.active = lease;
             self.invalid_write = false;
+            const context = self.contexts[@backingInt(slot)];
+            self.io.write(0x14, context.timeout);
+            self.io.write(0x4c, context.threshold);
             return lease;
         }
         /// Actual hardware/cache proof, including on command/transfer failure.
@@ -83,6 +91,7 @@ pub fn Host(comptime IO: type) type {
             self.active = null;
             self.quarantined = false;
             self.invalid_write = false;
+            self.resetContexts();
         }
         pub fn read(self: *Self, lease: Lease, register: usize) u32 {
             if (!self.owns(lease)) {
@@ -108,6 +117,11 @@ pub fn Host(comptime IO: type) type {
                 (self.io.read(register) & ~mask) | (value & mask)
             else
                 value;
+            switch (register) {
+                0x14 => self.contexts[@backingInt(lease.slot)].timeout = value,
+                0x4c => self.contexts[@backingInt(lease.slot)].threshold = value,
+                else => {},
+            }
             self.io.write(register, merged);
         }
     };
@@ -161,6 +175,7 @@ test "slot views preserve the peer clocks dividers source and width" {
     host.write(card, 0x0c, 0);
     host.write(card, 0x10, 1);
     host.write(card, 0x18, 1);
+    host.write(card, 0x4c, 0x200f0007);
     try std.testing.expectEqual(@as(u32, 0x3201), model.words[2]);
     try std.testing.expectEqual(@as(u32, 4), model.words[3]);
     try std.testing.expectEqual(@as(u32, 3), model.words[4]);
@@ -171,6 +186,12 @@ test "slot views preserve the peer clocks dividers source and width" {
     try std.testing.expectEqual(writes, model.writes);
     try std.testing.expectError(error.StaleLease, host.release(c6));
     try host.release(card);
+    const peer = try host.acquire(.c6);
+    try std.testing.expectEqual(@as(u32, 0), host.read(peer, 0x4c));
+    try host.release(peer);
+    const back = try host.acquire(.card);
+    try std.testing.expectEqual(@as(u32, 0x200f0007), host.read(back, 0x4c));
+    try host.release(back);
 }
 
 test "failed DMA cache handback quarantines both slots until owner recovery" {

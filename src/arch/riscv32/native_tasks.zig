@@ -39,10 +39,12 @@ extern fn nih_broker_reaped() callconv(.c) void;
 extern fn nih_broker_cancel_requested() callconv(.c) u32;
 extern fn nih_broker_task_failed(u32) callconv(.c) noreturn;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
+extern fn nih_normal_fs_task(u32) callconv(.c) i32;
 
+const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
 const normal_boot = @import("native_options").boot_fast;
 const Phase = enum { normal, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete };
-const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol };
+const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol, normal_storage };
 
 const Owner = struct {
     runtime: Runtime = .{},
@@ -216,6 +218,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
             .forced_lifecycle => @intFromPtr(&forced),
             .storage_protocol => if (options.storage_service) @intFromPtr(&nih_storage_task_entry) else 0,
             .broker_protocol => if (options.broker) @intFromPtr(&nih_broker_task_entry) else 0,
+            .normal_storage => if (normal_storage) @intFromPtr(&nih_normal_fs_task) else 0,
         },
         .argument = if (kind == .ipi_protocol or kind == .storage_protocol or kind == .broker_protocol) hart else hart * 4 + index + @intFromBool(kind == .replacement_lifecycle),
         .trampoline = @intFromPtr(&nih_native_task_trampoline),
@@ -228,7 +231,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
         .stack_max = bottom + stack_bytes,
     }) orelse return null;
     if (!memory.reusable.openTask(hart, .{ .slot = handle.slot, .generation = handle.generation })) return null;
-    const bank = if (kind == .forced_lifecycle or kind == .storage_protocol) 0 else floating.prepare(hart, index, handle.generation, handle.slot);
+    const bank = if (kind == .forced_lifecycle or kind == .storage_protocol or kind == .normal_storage) 0 else floating.prepare(hart, index, handle.generation, handle.slot);
     owner.runtime.images[handle.slot].?.floating_context = bank;
     if (bank != 0) owner.runtime.images[handle.slot].?.state = initial_state.floatingReady();
     return handle;
@@ -249,6 +252,7 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
             guard.* = @splat(memory.stacks.layout.worker_guard);
         }
         owner.phase = .normal;
+        if (normal_storage and hart == 0) owner.workers[0] = add(hart, 0, .normal_storage) orelse return false;
         owner.ready = true;
         return true;
     }
@@ -260,6 +264,17 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
 
 pub fn ready(hart: u32) bool {
     return owners[hart].ready;
+}
+
+/// Trusted CPU0 foreground wake; no MMIO/FS work occurs on the IRQ stack.
+pub fn wakeNormalStorage() void {
+    if (!normal_storage) return;
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    _ = owners[0].runtime.policy.notify(owners[0].workers[0], 1);
+    if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
 }
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {

@@ -44,6 +44,7 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     -I "$c6_sdk/components/esp_rom/include" -I "$c6_sdk/components/esp_rom/esp32p4/include" \
     -I "$c6_sdk/components/esp_rom/esp32p4" \
     -o "$build_dir/pads.o" "$repo_root/probes/c6-sdio/pads.c"
+printf 'pub const normal_storage = false;\n' > "$build_dir/c6-options.zig"
 "$zig" build-exe -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
     -fentry=nih_native_start -T "$repo_root/probes/c6-sdio/esp32p4.ld" --gc-sections \
@@ -52,11 +53,13 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mwifi_config="$build_dir/wifi-config.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
-    --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
+    --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Msdio="$repo_root/src/soc/esp32p4/sdio.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mnative_options="$build_dir/c6-options.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mc6_sdio="$repo_root/src/net/c6_sdio.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

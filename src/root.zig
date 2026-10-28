@@ -157,6 +157,7 @@ test {
     _ = @import("audio/tone.zig");
     _ = @import("audio/capture_probe.zig");
     _ = @import("device/control.zig");
+    _ = @import("storage/control.zig");
     _ = @import("input/pointer.zig");
     _ = @import("serial/half_duplex.zig");
     _ = @import("board/tab5/es7210.zig");

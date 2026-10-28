@@ -43,6 +43,26 @@ const Fake = struct {
     }
 };
 const Service = rpc.Owner(Fake);
+test "owner revocation drains live-client requests without fabricating kernel exit" {
+    var notification = rpc.Notifications{};
+    var fake = Fake{};
+    var service = Service{ .notifications = &notification, .client = 42 };
+    var queues = rpc.Queues{};
+    const root = try service.start(&fake);
+    _ = try open(&service, &queues, root);
+    const request = rpc.Request{ .epoch = 1, .sequence = 2, .operation = 4, .token = root, .length = 1 };
+    try expect(queues.requests.tryPushFrom(&request));
+    const active = notification.signal.begin().?;
+    try expectError(error.Busy, service.revoke(&queues));
+    _ = active.finishReason();
+    try service.revoke(&queues);
+    try expect(!notification.exited(1));
+    try expect(!service.alive and service.mount == null);
+    try equal(@as(usize, 0), queues.requests.countApprox());
+    try equal(@as(usize, 0), queues.responses.countApprox());
+    try expect(fake.closes > 0);
+    try service.revoke(&queues);
+}
 test "read cancellation source rejects idle nonread and reused RPC windows" {
     const Source = struct {
         notifications: *rpc.Notifications,
