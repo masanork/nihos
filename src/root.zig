@@ -23,6 +23,7 @@ pub const boot_i2c = @import("board/tab5/boot_i2c.zig");
 pub const version = "0.0.0";
 pub const block_reader = @import("storage/block.zig");
 pub const storage_rpc = @import("kernel/storage_rpc.zig");
+pub const experimental_storage = @import("storage/experimental.zig");
 pub const record_log = @import("diagnostics/record.zig");
 pub const high_sram_layout = @import("platform/native/high_sram_layout.zig");
 pub const native_stack_layout = @import("platform/native/stack_layout.zig");
@@ -78,6 +79,7 @@ pub const c6_sdio = @import("net/c6_sdio.zig");
 pub const esp32p4_sdio = @import("soc/esp32p4/sdio.zig");
 
 test {
+    _ = experimental_storage;
     _ = @import("platform/native/foreground_timer.zig");
     _ = cpu_clock;
     _ = ccid;
