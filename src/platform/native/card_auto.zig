@@ -10,6 +10,7 @@ const display = @import("display_service").runtime;
 const renderer = @import("display_service").keypad;
 const photo = @import("photo_runtime.zig");
 const options = @import("native_options");
+extern fn nih_display_scene_mismatches(u32) callconv(.c) u32;
 const Service = card.ServiceType(true, ".flash.photo");
 const License = card.LicenseRecord.Parser(".flash.photo");
 const LicenceSession = card.LicenseSession.Session(".flash.photo");
@@ -488,7 +489,7 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
                 report = diagnostic();
                 if (report.fault == 0) report.fault = 0x80000000;
                 log.abort(&report);
-                if (!emergency()) halt();
+                if (!recoverLink()) halt();
                 gate.finish();
                 notice(clock, panel, AutoCaptions.get(21), AutoCaptions.get(14)) catch {
                     halt();
@@ -501,11 +502,14 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
                 notice(clock, panel, if (kind == 1) AutoCaptions.get(22) else if (kind == 2) AutoCaptions.get(23) else if (kind == 4) AutoCaptions.get(24) else AutoCaptions.get(25), AutoCaptions.get(26)) catch {
                     halt();
                 };
-            } else if (kind == 1 or kind == 2 or kind == 4) selectedJob(clock, panel, log) catch {
+            } else if (kind == 1 or kind == 2 or kind == 4) selectedJob(clock, panel, log) catch |err| {
                 report = diagnostic();
                 if (report.fault == 0) report.fault = 0x80000000;
                 log.abort(&report);
-                if (!emergency()) halt();
+                // Ordinary card removal may retire its private job and
+                // replace the result with a public frame without a blackout.
+                // Uncertain transport/display failures still fail dark.
+                if (!(if (err == error.Removed or err == error.Disconnected) retireCard() else emergency())) halt();
                 notice(clock, panel, AutoCaptions.get(13), AutoCaptions.get(14)) catch {
                     halt();
                 };
@@ -516,6 +520,117 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
         }
         if (!bus.pins.delay(250_000)) halt();
     }
+}
+/// Finite card-free display exercise. Only synthetic pixels/text are used;
+/// openAutomatic is also compile-time denied in this profile.
+pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksection(".flash.photo") noreturn {
+    clock.start();
+    clock.disarm();
+    var bus = i2c.Master(Pins){ .pins = .{ .clock = clock } };
+    while (display.snapshot().frames < 32) if (!bus.pins.delay(1000)) halt();
+    const initial = display.snapshot();
+    log.refresh(&initial);
+    log.boot(&photo.report);
+    log.scene(0);
+    for (0..12) |step| {
+        exerciseStep(clock, panel, step) catch |err| {
+            log.sceneFailure(@intCast(step + 1), @errorName(err));
+            halt();
+        };
+        const differences = nih_display_scene_mismatches(0x48030000);
+        log.scenePixels(@intCast(step + 1), differences);
+        if (differences != 0) {
+            log.sceneFailure(@intCast(step + 1), "PixelsMismatch");
+            halt();
+        }
+        log.scene(@intCast(step + 1));
+        exerciseWait(clock, 90) catch |err| {
+            log.sceneFailure(@intCast(step + 1), @errorName(err));
+            halt();
+        };
+    }
+    notice(clock, panel, "画面切替テスト", "カード・PIN入力は不要です。タップで画面を切り替えます。") catch |err| {
+        log.sceneFailure(13, @errorName(err));
+        halt();
+    };
+    const differences = nih_display_scene_mismatches(0x48030000);
+    log.scenePixels(13, differences);
+    if (differences != 0) {
+        log.sceneFailure(13, "PixelsMismatch");
+        halt();
+    }
+    log.sceneReady();
+    exerciseWait(clock, 180) catch halt();
+    var contact = card.Contact{ .held = true };
+    var next: usize = 0;
+    while (true) {
+        const sample = touch.?.sample(&bus) catch halt();
+        if (sample == .fresh) {
+            const point = sample.fresh;
+            if (contact.sample(true, point.contacts, point.x, point.y, anyTap) != null) {
+                exerciseStep(clock, panel, next) catch |err| {
+                    log.sceneFailure(13, @errorName(err));
+                    halt();
+                };
+                next = (next + 1) % 6;
+                contact = .{ .held = true };
+            }
+        }
+        if (!bus.pins.delay(20_000)) halt();
+    }
+}
+noinline fn exerciseWait(clock: timer.Timer, frames: u32) linksection(".flash.photo") !void {
+    const target = display.snapshot().frames + frames;
+    const started = clock.counter() orelse return error.Timer;
+    var bus = i2c.Master(Pins){ .pins = .{ .clock = clock } };
+    while (display.snapshot().frames < target) {
+        if (display.snapshot().fault != 0) return error.Scanout;
+        const now = clock.counter() orelse return error.Timer;
+        if (now - started >= @as(u64, frames) * 20_000 + 500_000) return error.FrameProgress;
+        if (!bus.pins.delay(1000)) return error.Timer;
+    }
+}
+noinline fn exerciseStep(clock: timer.Timer, panel: u32, step: usize) linksection(".flash.photo") !void {
+    const phase = step % 6;
+    if (phase == 0 or phase == 1) {
+        renderer.static_frame = false;
+        renderer.overview_frame = false;
+        renderer.pin_kind = if (phase == 0) 1 else 2;
+        renderer.read_remaining = 3;
+        try redraw(clock, panel);
+        // Masked counts only: no credential or touch input exists here.
+        for (1..5) |count| {
+            const started = clock.counter() orelse return error.Timer;
+            while (true) {
+                renderer.update(@intCast(count)) catch |err| {
+                    if (err != error.Busy) return err;
+                    const now = clock.counter() orelse return error.Timer;
+                    if (now - started >= 200_000) return error.TextureProgress;
+                    continue;
+                };
+                break;
+            }
+            try exerciseWait(clock, 8);
+        }
+        // Dynamic textures are copied separately into SRAM. Materialize the
+        // same final synthetic count in PSRAM for an independent pixel replay.
+        if (!card.PinScreen.paintRead(".flash.rodata.card_pin", frame(), 1440, .{ .active = true, .masked_digits = 4, .remaining = 3, .can_submit = true })) return error.Image;
+        try card.ResultScreen.licensePinHeader(".flash.keypad.auto_font", frame(), renderer.pin_kind);
+    } else if (phase == 2 or phase == 4) {
+        try photo.prepare();
+        for (photo.pixels(), 0..) |*byte, index| byte.* = @truncate(index * 17 + step);
+        _ = try card.ResultScreen.automaticOverview(".flash.keypad.auto_font", frame(), .{ .name = "表示テスト", .address = "架空の住所", .birth_date = "19900101", .detail = "000000000000", .expiration = "20300101" }, photo.pixels());
+        try card.ResultScreen.resultControls(".flash.keypad.auto_font", frame(), false);
+        if (!photo.close()) return error.Cleanup;
+        renderer.static_frame = true;
+        renderer.overview_frame = true;
+        try redraw(clock, panel);
+    } else if (phase == 3) {
+        _ = try card.ResultScreen.licensePage(".flash.keypad.auto_font", frame(), false, &.{.{ .label = "住所", .value = "表示切替テスト", .date = "20260101" }});
+        renderer.static_frame = true;
+        renderer.overview_frame = true;
+        try redraw(clock, panel);
+    } else try notice(clock, panel, AutoCaptions.get(0), AutoCaptions.get(1));
 }
 noinline fn selectedJob(clock: timer.Timer, panel: u32, log: anytype) linksection(".flash.photo") !void {
     if (report.kind == 4) report.kind = try selectJob(clock, panel);

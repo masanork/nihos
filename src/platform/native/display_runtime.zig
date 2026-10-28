@@ -21,6 +21,8 @@ extern fn nih_display_scanout_begin(u32, *const panels.Timing, u32, u32, u32) ca
 extern fn nih_display_scene_refresh(u32) callconv(.c) bool;
 extern fn nih_display_scanout_poll() callconv(.c) u32;
 extern fn nih_display_scanout_stop() callconv(.c) bool;
+extern fn nih_display_scanout_pause_request() callconv(.c) bool;
+extern fn nih_display_scanout_paused() callconv(.c) bool;
 extern fn nih_display_backlight(bool) callconv(.c) void;
 extern fn nih_display_pattern_enable(*const panels.Timing) callconv(.c) void;
 extern fn nih_display_dma_irq_source() callconv(.c) u32;
@@ -32,13 +34,24 @@ var state: Scanout = .{};
 var running = false;
 var attempted = false;
 var last_event: u32 = 0;
+var scene_updates: u32 = 0;
+var max_scene_pause_us: u32 = 0;
+var scene_stage: u32 = 0;
+var scene_error: u32 = 0;
 pub fn active() bool {
     return running;
 }
 pub fn irqSource() u32 {
     return nih_display_dma_irq_source();
 }
-pub fn onInterrupt() void {
+pub noinline fn onInterrupt() void {
+    // Bootstrap/foreground pollers share this path with CLIC18. A poll must
+    // not itself be interrupted by another DMA completion/cache transaction.
+    const previous = asm volatile ("csrrci %[value],mstatus,8"
+        : [value] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
     if (!running) return;
     const event = nih_display_scanout_poll();
     if (event != 0) last_event = event;
@@ -55,6 +68,10 @@ pub fn snapshot() Report {
     return .{ .status = if (running and state.fault == 0) 1 else 2, .frames = state.frames, .fault = state.fault, .event = last_event, .backlight = @intFromBool(state.backlight), .dsi_error0 = nih_display_diagnostic(0), .dsi_error1 = nih_display_diagnostic(1), .dma_error = nih_display_diagnostic(2), .bridge_error = nih_display_diagnostic(3) };
 }
 pub const NoticeReport = struct { swaps: u32, panel_starts: u32, backlight_offs: u32, frames: u32, backlight: u32, fault: u32 };
+pub const SceneReport = struct { updates: u32, max_pause_us: u32, stage: u32, error_code: u32 };
+pub fn sceneSnapshot() SceneReport {
+    return .{ .updates = scene_updates, .max_pause_us = max_scene_pause_us, .stage = scene_stage, .error_code = scene_error };
+}
 pub fn noticeSnapshot() NoticeReport {
     const current = snapshot();
     return .{ .swaps = nih_display_diagnostic(15), .panel_starts = nih_display_diagnostic(16), .backlight_offs = nih_display_diagnostic(17), .frames = current.frames, .backlight = current.backlight, .fault = current.fault };
@@ -249,6 +266,19 @@ pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern
 /// result pixels, then rebuild under masked local IRQs. No personal framebuffer
 /// is modified while the display DMA borrows it.
 pub fn replace(clock: timer_group.Timer, panel: u32) Report {
+    if ((options.card_read or options.keypad_demo) and running) return replaceCard(clock, panel) catch |err| {
+        scene_error = switch (err) {
+            error.Timer => 1,
+            error.Timeout => 2,
+            error.Cache => 3,
+            error.Scanout => 4,
+            else => 5,
+        };
+        // Never leave a private result visible or reuse possibly borrowed
+        // SRAM after an unsuccessful handoff.
+        const clean = emergency();
+        return .{ .error_code = 9, .cleanup = if (clean) 1 else 2 };
+    };
     const previous = asm volatile ("csrrci %[value],mstatus,8"
         : [value] "=r" (-> u32),
         :
@@ -263,9 +293,56 @@ pub fn replace(clock: timer_group.Timer, panel: u32) Report {
     attempted = false;
     return start(clock, panel, false, false, true);
 }
+/// Stage solely in PSRAM while the old frame keeps scanning. At EOF retire
+/// DMA/DPI, erase its SRAM, bind the new plan and restart video. The initialized
+/// panel, DSI PHY and backlight stay on throughout ordinary UI transitions.
+noinline fn replaceCard(clock: timer_group.Timer, panel: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") !Report {
+    const renderer = @import("keypad_display.zig");
+    scene_stage = 1;
+    scene_error = 0;
+    if (!running or state.fault != 0) return error.Scanout;
+    const frame = @as([*]u8, @ptrFromInt(board.framebuffer))[0..board.frame_bytes];
+    const staged = try renderer.stage(frame);
+    scene_stage = 2;
+    const previous = asm volatile ("csrrci %[value],mstatus,8"
+        : [value] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    if (!nih_display_scanout_pause_request()) return error.Scanout;
+    const pins = Pins{ .clock = clock };
+    const requested = clock.counter() orelse return error.Timer;
+    while (!nih_display_scanout_paused()) {
+        onInterrupt();
+        if (state.fault != 0) return error.Scanout;
+        const now = clock.counter() orelse return error.Timer;
+        if (now - requested >= 200_000) return error.Timeout;
+    }
+    const paused = clock.counter() orelse return error.Timer;
+    scene_stage = 3;
+    running = false;
+    if (!wipePools()) return error.Cache;
+    scene_stage = 4;
+    const prepared = try renderer.bind(&staged);
+    scene_stage = 5;
+    var selected = panels.timing(panel) orelse return error.Panel;
+    selected.dpi_mhz = if (panel == 1) 60 else 80;
+    const source: u32 = if (options.card_auto and renderer.notice_frame) 5 else 4;
+    if (nih_display_scanout_begin(board.framebuffer, &selected, source, prepared.local_start, prepared.local_bytes) != 0) return error.Scanout;
+    running = true;
+    scene_stage = 6;
+    const resumed = clock.counter() orelse return error.Timer;
+    max_scene_pause_us = @max(max_scene_pause_us, @as(u32, @intCast(@min(resumed - paused, 0xffffffff))));
+    const before = state.frames;
+    try waitFrame(pins, before);
+    try waitFrame(pins, state.frames);
+    scene_updates +|= 1;
+    scene_stage = 7;
+    return snapshot();
+}
 /// Public notices already scan from private SRAM banks. Keep the panel and
 /// backlight running, publish the inactive bank, and await the frame handoff.
-/// PIN/results still use replace(), which retires and wipes retained pixels.
+/// PIN/results use replace()'s frame-boundary handoff and erase retired pixels.
 pub noinline fn presentNotice(clock: timer_group.Timer, panel: u32) linksection(if (options.card_auto) ".flash.photo" else ".text") !void {
     if (options.card_auto and running and nih_display_notice_status() != 0) {
         if (state.fault != 0) return error.Scanout;

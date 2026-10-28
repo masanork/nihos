@@ -1,0 +1,27 @@
+{
+  "runtime_source_commit": "2acb01d0c631999f15513d8fa7601bc601e09b3d",
+  "elf_sha256": "ae798b27f620d6d0558aaf93b2944e2526bdd129619cc45a7401b8ebbe86dbdd",
+  "app_sha256": "413ad2e4021a5e5bf7fb51825904f501c64805dd89fe6135167dcd518122c1a9",
+  "preverify_log_sha256": "fb4efc9000131e4fac47ca1d6166c162f4b0742589e3e21e8f9d57351b8369f4",
+  "boot_log_sha256": "d7ead7d65151daa97c66583c69090fc9007bfeaf9958715de9ed047d610efe7c",
+  "warm_reset": true,
+  "exclusive_descriptor_held": true,
+  "prior_verified": true,
+  "flash_ranges_verified": 3,
+  "card_transport_functions_linked": false,
+  "credential_submissions": 0,
+  "automatic_transitions": 12,
+  "pixel_checks": 13,
+  "mismatched_words": 0,
+  "panel_starts": 1,
+  "backlight_offs": 0,
+  "fault": 0,
+  "max_video_pause_us": 15897,
+  "cold_power_cycle": "not evaluated",
+  "optical_result": "user confirmed correct rendering after drain fix",
+  "superseded_optical_result": {
+    "source_commit": "c44206c",
+    "result": "user confirmed no flicker but reported whole-screen line shifts and missing content"
+  },
+  "optical_evidence": "optical-confirmation.json"
+}
