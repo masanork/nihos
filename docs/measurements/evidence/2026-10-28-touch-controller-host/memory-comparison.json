@@ -35,7 +35,7 @@
       }
     ],
     "baseline_elf_sha256": "44e62e9d1687dd7ded4d95a4727fedd6de57c2515f670e0ea1d8c9e950a09e48",
-    "candidate_elf_sha256": "97318103d03bacff3f5b51ea0f354ee42bef8abb2dc0b351feb81db7a04bf8b5"
+    "candidate_elf_sha256": "9eca5b2d734c019511171ac4c4bdd42d6f04565e55d498498e34593b3c34a423"
   },
   "connected": {
     "heap": {
@@ -73,6 +73,6 @@
       }
     ],
     "baseline_elf_sha256": "739fef0055b9778f938df453abb7d7165e1a71a31e8ae84d28a3b05079b6cccc",
-    "candidate_elf_sha256": "5d099d759a69ebd97cee5328e5d20f1653246bbcde4f20cac28a2da3f0c91a1a"
+    "candidate_elf_sha256": "76dc40add9d1361a966013a9378ec50908a95b14a8dfb0f38fae3177979c826e"
   }
 }

@@ -21,7 +21,7 @@
   "palette": 4,
   "time_us": 1133332,
   "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-  "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+  "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
   "trace_full": false,
   "controller": {
     "name": "st7123",

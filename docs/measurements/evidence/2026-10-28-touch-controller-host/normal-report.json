@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+  "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
   "scope": "production UI and foreground touch service/controller driver; synthetic register bus and frame boundary; no physical I2C, IRQ, DMA or timing qualification",
   "cases": {
     "normal-roundtrip": {
@@ -28,7 +28,7 @@
         "palette": 4,
         "time_us": 40000,
         "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -79,7 +79,7 @@
         "palette": 4,
         "time_us": 1690001,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -130,7 +130,7 @@
         "palette": 4,
         "time_us": 2050001,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -181,7 +181,7 @@
         "palette": 4,
         "time_us": 130000,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -232,7 +232,7 @@
         "palette": 4,
         "time_us": 20000,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -283,7 +283,7 @@
         "palette": 4,
         "time_us": 20000,
         "pixel_sha256": "afc0ace0ed3088863ca1fa35c13fa9ee45157abaa0b9b3ea0107dc2e5dcda20e",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -334,7 +334,7 @@
         "palette": 4,
         "time_us": 1710001,
         "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -385,7 +385,7 @@
         "palette": 4,
         "time_us": 20000,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -436,7 +436,7 @@
         "palette": 4,
         "time_us": 40000,
         "pixel_sha256": "9d01505dc42b681650605871acb49dab5dc2a9dec4559f7c5e4842e921b7c456",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -487,7 +487,7 @@
         "palette": 4,
         "time_us": 0,
         "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "direct",
@@ -538,7 +538,7 @@
         "palette": 4,
         "time_us": 1299997,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "st7123",
@@ -589,7 +589,7 @@
         "palette": 4,
         "time_us": 3200000,
         "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "st7123",
@@ -640,7 +640,7 @@
         "palette": 4,
         "time_us": 1066666,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "st7123",
@@ -691,7 +691,7 @@
         "palette": 4,
         "time_us": 1133332,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "st7123",
@@ -742,7 +742,7 @@
         "palette": 4,
         "time_us": 1466662,
         "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-        "source_identity": "4302e71c9ccbac29a97b061857590efa5a0d15bcac058e62dd5577de61060d42",
+        "source_identity": "877f52b7789275badd22d6f0fa288ab4d6b10fcfb1d0a024b1c9400a29a948ba",
         "trace_full": false,
         "controller": {
           "name": "st7123",
