@@ -17,6 +17,10 @@ if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFI
     export NIHOS_NATIVE_CONSOLE="${NIHOS_NATIVE_CONSOLE:-1}"
     export NIHOS_NATIVE_CONSOLE_LIVE="${NIHOS_NATIVE_CONSOLE_LIVE:-1}"
     export NIHOS_NATIVE_NETWORK="${NIHOS_NATIVE_NETWORK:-1}"
+    # Explicit fixture builds retain their historical single-device profile.
+    if [ "${NIHOS_NATIVE_AUDIO:-0}${NIHOS_NATIVE_MICROPHONE:-0}${NIHOS_NATIVE_RS485:-0}" = 000 ] && [ "${NIHOS_NATIVE_BOOT_TEST:-0}" = 0 ]; then
+        export NIHOS_NATIVE_DEVICES="${NIHOS_NATIVE_DEVICES:-1}"
+    fi
 fi
 build_dir="$repo_root/build/native-$profile"
 if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
@@ -26,6 +30,7 @@ fi
 if [ "${NIHOS_NATIVE_AUDIO:-0}" = 1 ]; then build_dir="$build_dir-audio"; fi
 if [ "${NIHOS_NATIVE_MICROPHONE:-0}" = 1 ]; then build_dir="$build_dir-microphone"; fi
 if [ "${NIHOS_NATIVE_RS485:-0}" = 1 ]; then build_dir="$build_dir-rs485"; fi
+if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then build_dir="$build_dir-devices"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;
@@ -60,6 +65,7 @@ set --
 # Keep that padding inside its ELF load segment instead of generating two
 # separately mapped image segments in the same 64 KiB Flash page.
 case "${NIHOS_NATIVE_DISPLAY:-0}" in 9|10|11) set -- --use_segments ;; esac
+if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then set -- --use_segments; fi
 "$python" -m esptool --chip esp32p4 elf2image \
     "$@" \
     --flash_mode dio --flash_freq 80m --flash_size 16MB \

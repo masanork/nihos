@@ -15,6 +15,8 @@ if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network";
 network_test=${NIHOS_NATIVE_NETWORK_TEST:-0}
 case "$network_test" in 0) network_test=false ;; 1) network_test=true ;; *) echo "NETWORK_TEST must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$network_test" = true ] && [ "$network" != true ]; then echo "NETWORK_TEST requires NETWORK=1" >&2; exit 1; fi
+devices=${NIHOS_NATIVE_DEVICES:-0}
+case "$devices" in 0) devices=false; devices_cpp=0 ;; 1) devices=true; devices_cpp=1 ;; *) echo "DEVICES must be 0 or 1" >&2; exit 1 ;; esac
 audio=${NIHOS_NATIVE_AUDIO:-0}
 case "$audio" in 0) audio=false ;; 1) audio=true ;; *) echo "AUDIO must be 0 or 1" >&2; exit 1 ;; esac
 microphone=${NIHOS_NATIVE_MICROPHONE:-0}
@@ -29,8 +31,9 @@ rs485_test=${NIHOS_NATIVE_RS485_TEST:-loopback}
 case "$rs485_test" in loopback) rs485_mode=1 ;; peer) rs485_mode=2 ;; no-loopback) rs485_mode=3 ;; *) echo "RS485_TEST must be loopback, peer or no-loopback" >&2; exit 1 ;; esac
 if [ "$rs485" != true ] && [ "$rs485_test" != loopback ]; then echo "RS485_TEST requires RS485=1" >&2; exit 1; fi
 if [ "$rs485" = true ] && { [ "$audio" = true ] || [ "$microphone" = true ]; }; then echo "RS485 fixture uses a separate build from audio/microphone fixtures" >&2; exit 1; fi
+if [ "$devices" = true ] && { [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then echo "DEVICES uses on-demand requests; select one standalone fixture instead" >&2; exit 1; fi
 root_opt=safe
-if [ "$network" = true ]; then root_opt=small; fi
+if [ "$network" = true ] || [ "$devices" = true ]; then root_opt=small; fi
 mode=${3:-integer}
 if [ "$profile" = device ]; then default_cpu_mhz=360; else default_cpu_mhz=0; fi
 cpu_mhz=${NIHOS_NATIVE_CPU_MHZ:-$default_cpu_mhz}
@@ -271,6 +274,9 @@ if [ "$storage" = true ] && { [ "$sdmmc" != true ] || [ "$sqlite" != true ]; }; 
 fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
+if [ "$devices" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" != 2 ] || [ "$psram_200" != true ] || [ "$boot_test" != 0 ] || [ "$sdmmc" = true ]; }; then
+    echo "DEVICES requires the normal integer live-console device profile" >&2; exit 1
+fi
 if [ "$audio" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ]; }; then
     echo "AUDIO requires the normal native integer device display/console boot" >&2; exit 1
 fi
@@ -286,16 +292,18 @@ if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
 if [ "$audio" = true ]; then native_boot_dir="$native_boot_dir-audio"; fi
 if [ "$microphone" = true ]; then native_boot_dir="$native_boot_dir-microphone"; fi
 if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
+if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 {
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
+    printf 'pub const devices = %s;\n' "$devices"
     printf 'pub const audio = %s;\n' "$audio"
     printf 'pub const rs485 = %s;\n' "$rs485"
     printf 'pub const rs485_mode: u32 = %s;\n' "$rs485_mode"
@@ -338,7 +346,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
         -I "$idf_path/components/esp_rom/esp32p4" \
         -o "$build_dir/display_pads.o" "$repo_root/src/board/tab5/native_pads.c"
     set -- "$@" "$build_dir/display_pads.o"
-    if [ "$audio" = true ]; then
+    if [ "$audio" = true ] || [ "$devices" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
             -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
@@ -350,7 +358,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
             -o "$build_dir/audio_tx.o" "$repo_root/probes/audio_native/tx.c"
         set -- "$@" "$build_dir/audio_tx.o"
     fi
-    if [ "$microphone" = true ]; then
+    if [ "$microphone" = true ] || [ "$devices" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
             -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
@@ -362,7 +370,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
             -o "$build_dir/microphone_rx.o" "$repo_root/probes/microphone_native/rx.c"
         set -- "$@" "$build_dir/microphone_rx.o"
     fi
-    if [ "$rs485" = true ]; then
+    if [ "$rs485" = true ] || [ "$devices" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
             -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
@@ -511,7 +519,8 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config -Mroot="$repo_root/src/platform/native/main.zig" \
+    -Mdevice_control="$repo_root/src/device/control.zig" \
     -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -Mtab5_bmi270="$repo_root/src/board/tab5/bmi270.zig" \
     -Mhalf_duplex="$repo_root/src/serial/half_duplex.zig" \
@@ -535,7 +544,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
+    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep device_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep cpu_clock --dep timer_group -Mcpu_boot="$repo_root/src/platform/native/cpu_boot.zig" \
