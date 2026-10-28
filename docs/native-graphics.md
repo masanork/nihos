@@ -478,3 +478,27 @@ source/queue results are unchanged. Device primary heap is 49,152 B, emulator
 49,408 B, and frontend Flash 14,890 B. The lease/probe code consumes 1,152 B of
 device SRAM relative to the queue-only stage; the 48 KiB floor still holds.
 This is not a 32 KiB primary-heap gain. PSRAM charges/recovery remain unchanged.
+
+## Pristine library image experiment (host RV32 only)
+
+[ADR 0056](adr/0056-pristine-font-library-image.md) qualifies the next lifecycle
+boundary in standalone host-driven RV32 execution. Restore library initialized
+data plus zero BSS from an exact-ELF template, while retaining kernel heap/owner
+metadata and another user's live allocation. Insufficient-reset negative controls
+are compared with three successful font lifetimes. This does not modify the
+native one-shot stack/queue/font lifecycle or add general library-region loans.
+
+Native restart still needs final-image initializer placement, service/session
+generation changes, complete quiescence and failure handling. Source/artifact
+and host ISA evidence are recorded in
+[`2026-10-28-font-library-restart.json`](measurements/2026-10-28-font-library-restart.json).
+
+
+Three host RV32 library lifetimes (two restarts) pass with all 48 expected matrix
+hashes, a preserved 8 MiB charged peer allocation and final 15,072,576 B standalone
+heap recovery. Controller-only reset reproduces a stale HarfBuzz language-registry
+read at 0xa5a5a5a5; BSS-only restoration after poisoning the bank is refused by
+the freshness guard. There are 199 passing Python tests for the stage. Initialized
+data is 18,756 B; a 714 B sparse-word patch payload is an estimate without header,
+decoder or native footprint qualification. Native e0a2f57 remains the separate
+one-shot baseline; these host checks do not unlock native bank loans or restart.
