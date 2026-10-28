@@ -42,7 +42,7 @@ Python235件、[hostの5形式のread/teardown試験](2026-10-28-fatfs-card-host
 
 元Flash16 MiBをprivateに退避し、候補が触れたerase-aligned範囲を復元後、
 Flash全体のdigest一致を確認した。serialは解放済み。別カードが残っている間は元firmwareへのresetを保留し、
-ROM download状態を維持する。backup本体はrepositoryへ入れない。
+採取終了時点ではROM download状態を維持した。backup本体はrepositoryへ入れない。
 
 2回の試行直前backupのapp領域には相違があり、原因は確定していない。
 各試行はそれぞれの直前snapshotへ戻しており、最後の復元基準はJSONに記載した最後のbackupである。
@@ -51,3 +51,13 @@ ROM download状態を維持する。backup本体はrepositoryへ入れない。
 観測stackは今回通過した経路のpaint値で、総call stack・最大IRQ負荷の上限ではない。
 確認した実カードは今回のexFAT入力1枚である。native FAT12/16/32、native VFS/RPC over SD、
 clean POR、書込み、SQLite永続化と電断復旧は別のgateとして残る。
+
+## 元カード返却後の通常起動
+
+operatorから元カードを戻したとの通知後、再照合の初回はUSB切断で未完了となり、
+再試行では採取直前backupとの全面digest不一致を観測した。
+採取終了後にもFlashが更新されているため、旧backupを再書込みせず、現在のpartition tableとapp headerを
+同じ専有FDで確認して現在のfirmwareへresetした。この通常起動でもFlash書込みは行っていない。
+8秒のログでnative boot、SMP300 round、IPI、最終FP_PASSまで確認し、serialを解放した。
+現在firmwareのsource identityはこの記録では確定しておらず、この起動をexFAT候補の追加合格runに数えない。
+最初のUSB切断、次のdigest不一致、最後の起動の記録をそれぞれ保持した。
