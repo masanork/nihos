@@ -13,6 +13,9 @@ on:
       - 'probes/display_notice/**'
       - 'probes/audio_native/**'
       - 'probes/microphone_native/**'
+      - 'probes/rs485_native/**'
+      - 'tools/check-rs485-shim.py'
+      - 'tools/rs485-peer.py'
       - 'tools/check-audio-shim.py'
       - 'tools/*photo*'
       - 'tools/*auto*'
@@ -39,6 +42,9 @@ on:
       - 'probes/display_notice/**'
       - 'probes/audio_native/**'
       - 'probes/microphone_native/**'
+      - 'probes/rs485_native/**'
+      - 'tools/check-rs485-shim.py'
+      - 'tools/rs485-peer.py'
       - 'tools/check-audio-shim.py'
       - 'tools/*photo*'
       - 'tools/*auto*'
@@ -172,6 +178,22 @@ jobs:
                build/native-device-network-microphone/network-receipt.json \
                build/microphone-shim-check/result.json "$destination/"
             cp build/native-device-network-microphone/licenses/BMI270.txt "$destination/licenses/"
+          done
+
+      - name: Compile finite RS485 internal, peer and timeout-control configurations
+        run: |
+          for mode in loopback peer no-loopback; do
+            NIHOS_NATIVE_RS485=1 NIHOS_NATIVE_RS485_TEST="$mode" sh tools/build-native.sh device
+            python3 tools/check-rs485-shim.py
+            destination="build/usb-ci/rs485-$mode"
+            mkdir -p "$destination/licenses"
+            cp build/native-device-network-rs485/nihos-native.elf \
+               build/native-device-network-rs485/nihos-native.bin \
+               build/native-device-network-rs485/image-audit.json \
+               build/native-device-network-rs485/native_options.zig \
+               build/native-device-network-rs485/network-receipt.json \
+               build/rs485-shim-check/result.json "$destination/"
+            cp build/native-device-network-rs485/licenses/BMI270.txt "$destination/licenses/"
           done
 
       - name: Retain source-bound compile evidence

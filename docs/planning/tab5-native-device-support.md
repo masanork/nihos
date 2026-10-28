@@ -1,6 +1,6 @@
 # Tab5 native device support inventory
 
-2026-10-28, based on main `64c67d6` plus opt-in finite ES7210 input qualification.
+2026-10-28, based on main `2cb9143` plus an opt-in UART1/RS485 foundation probe.
 Presence, a read
 operation and a complete application service are different gates. Hardware
 inventory follows [M5Stack's board documentation](https://docs.m5stack.com/en/core/Tab5).
@@ -23,7 +23,7 @@ pre-merge candidate scope; the merged card candidate has not been retested.
 | SC2356 camera | No native capture service | Sensor setup, MIPI CSI/ISP, DMA and buffer ownership |
 | microSD | Existing bounded native read-only boot fixtures | Runtime filesystem, removal/reinsertion, SDMMC arbitration with C6 |
 | USB-A host / USB-C OTG | Opt-in native USB-A PaSoRi/CCID card profiles landed; earlier candidate read/photo physically confirmed | Merged candidate retest; USB-C role/power and other USB classes |
-| RS485 SIT3088 (TX20/RX21/DIR34) | No native service | UART/DMA, direction switching and loopback with a peer |
+| RS485 SIT3088 (TX20/RX21/DIR34) | Opt-in bounded UART1 exchange foundation; internal loopback physically observed with DIR low and clocks stopped; external path unqualified | External A/B peer and direction timing; reopen/streaming, application service and optional DMA |
 | Buttons / charging / USB power outputs | Hardware power behavior and limited boot expander setup | Debounced input and explicit charger/power policy |
 
 The next useful vertical feature is BLE keyboard input: discover a known
