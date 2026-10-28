@@ -441,6 +441,7 @@ pub fn runGraphics(device: timer_group.Timer) ?graphics.Report {
     context.initialize(frame, .{ .entry = @intFromPtr(&graphics.entry), .argument = 0, .trampoline = @intFromPtr(&nih_native_task_trampoline), .global_pointer = owner.gp });
     const handle = owner.runtime.add(1, .{ .frame = frame, .state = initial_state, .stack_min = graphics.bottom() + 16, .stack_max = graphics.top() }) orelse return null;
     if (!memory.reusable.openTask(0, key(handle))) return null;
+    if (!graphics.exchange.bind(.{ .slot = owner.bootstrap.slot, .generation = owner.bootstrap.generation }, .{ .slot = handle.slot, .generation = handle.generation })) return null;
     owner.graphics_task = handle;
     owner.phase = .graphics;
     if (!refresh(0, device)) return null;
@@ -448,6 +449,8 @@ pub fn runGraphics(device: timer_group.Timer) ?graphics.Report {
     while (true) {
         graphics.progress();
         _ = service(0);
+        const waiting = owner.runtime.policy.snapshot(handle) orelse return null;
+        graphics.exchange.poll(owner.runtime.policy.now(), waiting.runtime_ticks, waiting.state == .waiting);
         const snapshot = owner.runtime.policy.snapshot(handle) orelse return null;
         if (snapshot.state == .exited and memory.reusable.taskCleaned(0, key(handle))) {
             const saved = asm volatile ("csrrci %[result], mstatus, 8"

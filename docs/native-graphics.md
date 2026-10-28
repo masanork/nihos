@@ -76,16 +76,19 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 91,904 B | 92,160 B |
-| Remaining primary SRAM heap | 71,936 B | 71,680 B |
-| Static reservations including stack/data regions | 214,784 B | 215,040 B |
-| Application image | 11,557,008 B | 11,558,448 B |
+| Primary static span | 96,000 B | 96,256 B |
+| Remaining primary SRAM heap | 67,840 B | 67,584 B |
+| Static reservations including stack/data regions | 218,880 B | 219,136 B |
+| Application image | 11,559,824 B | 11,561,280 B |
 
-Graphics code/RO occupy 560,400 B in Flash. TTF inputs occupy 10,821,312 B,
+Graphics code/RO occupy 560,448 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
 Private initialized data/BSS occupy 19,924 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
-caches and future service queues.
+caches and application routing. The two fixed transport queues reserve
+1,152 B in primary SRAM. Transport code/control together add 4,096 B to the
+primary static span versus the prior client-cycle fixture; no further stack
+or library SRAM region is reserved.
 
 ## Ownership and execution
 
@@ -104,18 +107,20 @@ Native EXIT closes the ledger; bootstrap drains one extent per cleanup step,
 reaps only after cleanup and checks complete heap recovery.
 
 The initial [single-cycle receipt](measurements/2026-10-28-native-graphics.json)
-records the first native integration. The current
+records the first native integration. The
 [client-cycle receipt](measurements/2026-10-28-native-graphics-client-cycles.json)
-records repeated use on one live task:
+records the earlier active-idle experiment. The current
+[request/wait receipt](measurements/2026-10-28-native-font-request-wait.json)
+records queued requests on one live task:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
-- The timer captures the font task 6,376 times, including 6,360 during
-  shaping/rasterization stages; bootstrap advances 6,379 times.
-  All four zero-client idle gates also observe a fresh timer capture and
-  bootstrap progress before allowing clients to reopen.
-- Stack watermark/frame observation reaches 16,992 B, leaving 15,760 B above
+- The timer captures the font task 6,371 times, including 6,359 during
+  shaping/rasterization stages; bootstrap advances 11,299 times.
+  Five request waits span ten real scheduler ticks in total, with zero
+  additional font-task runtime while blocked.
+- Stack watermark/frame observation reaches 16,980 B, leaving 15,772 B above
   that observation and the 16 B guard in a 32 KiB reservation. This is not a
   worst-case or native IO call-chain bound.
 - Two clients peak at 1,310,976 B of actual buddy backing. Closing clients
@@ -134,17 +139,30 @@ The next cycle reuses that live service state without another backing init,
 task admission or stack paint. All 16 output hashes must match the first
 cycle; the final matrix must also match the independent host reference.
 
-With zero clients, a test-only idle gate waits for a fresh peripheral timer
-capture and bootstrap progress on every cycle. The service task remains
-preemptible on its existing stack. This active wait is an execution test, not
-a sleeping request queue or a production idle policy. The external emulator
-timeout bounds a missing-interrupt failure.
+With zero clients, the font task receives the next request through a bounded
+channel. Empty receives block in the scheduler; there is no active idle loop
+inside the font worker. Bootstrap deliberately holds each request for two
+real ticks and verifies unchanged worker runtime. This is font-task blocking,
+not whole-system WFI or a physical power/timing measurement.
+
+The [request-boundary decision](adr/0044-native-font-request-waits.md) specifies
+two two-slot SPSC queues, copied IDs/results and one client dispatcher. Four
+render requests produce 64 cases, followed by an ordered stop request. The
+terminal reply must be copied and its space notification completed before an
+independent acknowledgment permits worker EXIT. A task yield is forced between
+releasing that reply slot and notifying the worker to exercise this lifetime
+window. All five replies, acknowledgments and empty queues are required.
+
+This finite matrix endpoint does not accept application text or expose shared
+face pointers. Multiple applications need a broker or distinct client channels;
+concurrent producers, cancellation and service restart remain unqualified.
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls
-the libraries again. It is **not** a public request service, restartable library lifetime or general
-client cancellation. Production integration must retain service-owned state
-across client closes and define safe shutdown/restart separately.
+the libraries again. It is **not** an application-ready font service, restartable
+library lifetime or general client cancellation. Production integration must
+retain service-owned state across client closes and define safe shutdown/restart
+separately.
 
 ## Remaining integration
 

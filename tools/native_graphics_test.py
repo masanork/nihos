@@ -21,21 +21,31 @@ class NativeGraphicsTests(unittest.TestCase):
     def record(self):
         return dict(zip(LOG.FIELDS, [1, 0x10003, 16, 0x40023004, 16 << 20, 16 << 20,
                                     1310976, 65792, 0x4ff6e010, 0x4ff76000, 16928, 12, 8, 14,
-                                    694, 17224, 21, 20, 11, 10, 1, 4, 65792, 4, 4]))
+                                    694, 17224, 21, 20, 11, 10, 1, 4, 65792, 0, 5]))
+
+    def exchange(self):
+        return dict(zip(LOG.EXCHANGE_FIELDS, [5, 5, 5, 5, 10, 0, 1, 1, 1152]))
 
     def test_complete_record_and_hashes_require_cleanup_and_real_render_interrupts(self):
         graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
-        LOG.validate(self.record(), list(range(16)), graphics, list(range(16)))
+        LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), self.exchange())
         for name, value in [("heap_after", 1), ("owner", 0x10010003), ("owner", 1),
                             ("library_pc", 0x4ff20000), ("render_captures", 0), ("captures", 0),
                             ("foreign_rejected", 0), ("irq_rejected", 0), ("forged_rejected", 0),
                             ("observed_used", 32752), ("record_peak", 1025), ("releases", 4),
-                            ("client_cycles", 1), ("idle_retained", 0), ("idle_captures", 0), ("idle_progress", 0),
+                            ("client_cycles", 1), ("idle_retained", 0), ("idle_captures", -1), ("idle_progress", 0),
                             ("idle_captures", 5), ("idle_progress", 15)]:
             with self.subTest(name=name, value=value), self.assertRaisesRegex(ValueError, "ownership"):
-                LOG.validate({**self.record(), name: value}, list(range(16)), graphics, list(range(16)))
+                LOG.validate({**self.record(), name: value}, list(range(16)), graphics, list(range(16)), self.exchange())
         with self.assertRaisesRegex(ValueError, "hashes"):
-            LOG.validate(self.record(), [0] * 16, graphics, list(range(16)))
+            LOG.validate(self.record(), [0] * 16, graphics, list(range(16)), self.exchange())
+
+    def test_transport_requires_real_wait_and_terminal_ack(self):
+        graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
+        for name, value in [("sent", 4), ("received", 4), ("replies", 4), ("waits", 0),
+                            ("blocked_ticks", 9), ("idle_runtime", 1), ("stop_ack", 0), ("terminal_gap", 0), ("queue_bytes", 8192)]:
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "transport"):
+                LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), {**self.exchange(), name: value})
 
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)

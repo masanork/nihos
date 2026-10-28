@@ -5,10 +5,12 @@ evidence is a standalone RV32 ISA fixture, not a running native service.
 
 Update: the separate [native graphics fixture](native-graphics.md) also passes
 native P4 boot/task/timer execution in the emulator and both revision-profile
-image audits. Four close/idle/reopen cycles now share one live task and
-service-owned HB backing; each idle gate requires real timer/peer progress.
-This is a serialized fixture, without an external request queue, cancellation,
-sleeping idle policy or service restart. Native filesystem input and physical
+image audits. Four client cycles now share one live task and service-owned
+HB backing through a bounded request/reply fixture. Empty receives block in
+the scheduler, and an explicit terminal acknowledgment precedes EXIT. The
+[request-boundary decision](adr/0044-native-font-request-waits.md) limits this to
+one dispatcher and a fixed qualification matrix; application routing,
+cancellation and service restart remain unqualified. Native filesystem input and physical
 qualification remain pending. The sections below retain the design and earlier
 ISA evidence that led to that fixture.
 
