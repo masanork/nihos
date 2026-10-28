@@ -262,10 +262,6 @@ noinline fn verifyLicense(raw: []const u8) linksection(".flash.photo") !card.Lic
     const request = card.LicenseCrypto.Request{ .modulus = key.modulus, .exponent = key.exponent, .signature = signed.signature.value, .data = signed.data.ptr, .length = signed.data.len };
     return if (try photo.cryptoExecute(&request)) .valid else .invalid;
 }
-fn resultKey(x: u16, y: u16) ?card.Key {
-    if (y < 1080 or y >= 1280 or x >= 720) return null;
-    return if (x < 240) .erase else if (x < 480) .submit else .cancel;
-}
 noinline fn historyLabel(tag: u8) linksection(".flash.photo") []const u8 {
     return if (tag >= 0xab) AutoCaptions.get(2) else if (tag < 0x60) AutoCaptions.get(3) else if (tag < 0x68) AutoCaptions.get(4) else if (tag < 0x70) AutoCaptions.get(5) else if (tag < 0x78) AutoCaptions.get(6) else if (tag < 0x80) AutoCaptions.get(7) else if (tag < 0x88) AutoCaptions.get(8) else if (tag < 0x90) AutoCaptions.get(9) else AutoCaptions.get(10);
 }
@@ -385,7 +381,7 @@ noinline fn renderResult(clock: timer.Timer, panel: u32) linksection(".flash.pho
 noinline fn waitForDismiss(clock: timer.Timer, panel: u32) linksection(".flash.photo") !void {
     try open(clock); // Only slot status; the authenticated link is already cut.
     var bus = i2c.Master(Pins){ .pins = .{ .clock = clock } };
-    var gesture = card.Contact{ .held = true };
+    var gesture = card.ResultInput.Model{ .mynumber = report.kind == 1 };
     var absent: u8 = 0;
     var page: u32 = 0;
     var next_slot: u64 = 0;
@@ -400,10 +396,10 @@ noinline fn waitForDismiss(clock: timer.Timer, panel: u32) linksection(".flash.p
         const sample = try touch.?.sample(&bus);
         if (sample == .fresh) {
             const point = sample.fresh;
-            const tapped = if (report.kind == 1) gesture.sample(true, point.contacts, point.x, point.y, anyTap) else gesture.sample(true, point.contacts, point.x, point.y, resultKey);
+            const tapped = gesture.sample(point.contacts, point.x, point.y);
             if (tapped) |key| {
-                if (report.kind == 1 or key == .cancel) break;
-                if (key == .erase) {
+                if (key == .close) break;
+                if (key == .basic) {
                     page = 0;
                     try renderResult(clock, panel);
                 } else {

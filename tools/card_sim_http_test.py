@@ -63,3 +63,30 @@ class CardSimulatorHttpTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as caught:
             self.post('/replay', [{'action': 'digit', 'x': 100}])
         self.assertEqual(caught.exception.code, 400)
+
+    def test_normal_ui_rotation_trace_and_domain_separation(self):
+        state = self.post('/normal/action', {'name': 'reset'})
+        self.assertEqual(state['application'], 'normal')
+        self.post('/normal/touch', {'contacts': 1, 'x': 48, 'y': 79})
+        state = self.post('/normal/touch', {'contacts': 0, 'x': 0, 'y': 0})
+        self.assertEqual(state['displayed_phase'], 'logs')
+        self.assertEqual((state['view']['last_x'], state['view']['last_y']), (1200, 48))
+        trace = json.loads(self.get('/normal/trace'))
+        self.assertEqual(trace[0]['application'], 'normal')
+        self.assertIn('x', trace[1])
+        self.assertEqual(self.post('/normal/replay', trace), state)
+        before = self.get('/state')
+        with self.assertRaises(HTTPError) as caught:
+            self.post('/replay', trace)
+        self.assertEqual(caught.exception.code, 400)
+        self.assertEqual(before, self.get('/state'))
+        data = self.get('/normal/frame?sha=' + state['pixel_sha256'])
+        self.assertEqual(hashlib.sha256(data).hexdigest(), state['pixel_sha256'])
+
+    def test_normal_trace_over_legacy_request_limit_can_replay(self):
+        trace = [{'action': 'reset', 'application': 'normal', 'palette': 4}]
+        trace += [{'action': 'pointer', 'contacts': 0, 'x': 0, 'y': 0, 'dt_us': 1} for _ in range(2000)]
+        self.assertGreater(len(json.dumps(trace).encode()), 131072)
+        state = self.post('/normal/replay', trace)
+        self.assertEqual(state['time_us'], 2000)
+        self.assertEqual(state['metrics']['mismatches'], 0)
