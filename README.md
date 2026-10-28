@@ -131,6 +131,19 @@ defined in
 Its emulator and three physical overlap results are recorded in
 [`docs/measurements/2026-10-25-tab5-simultaneous-floating.md`](docs/measurements/2026-10-25-tab5-simultaneous-floating.md).
 
+## Project metrics
+
+![Implementation, test, and tooling source growth](metrics/code-size.svg)
+
+![Host Zig emitted-line coverage](metrics/coverage.svg)
+
+CI tracks source size and host Zig execution coverage. See the
+[measurement scope and local commands](metrics/README.md) and
+[current summary](metrics/summary.md). Host coverage is limited to emitted
+Debug test-binary lines; emulator and physical Tab5 evidence remain separate.
+To compare current local source trees, run
+`python3 tools/metrics.py --compare ../MeOS`.
+
 ## Bootstrap checks
 
 Install the pinned Zig toolchain into the ignored `.tools/` directory:

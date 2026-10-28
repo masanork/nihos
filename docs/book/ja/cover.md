@@ -8,7 +8,7 @@
 
 <p>M5Stack Tab5を実験機にする</p>
 
-<p class="edition">企画検討用の試読版<br>2026年10月26日</p>
+<p class="edition">2026年10月</p>
 
 <p>nihos project</p>
 

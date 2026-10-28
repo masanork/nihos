@@ -1,0 +1,9 @@
+flowchart TB
+    accTitle: 名前とhandleから、媒体上のbyteへ
+    accDescr: VFSはroot、mount、権限とhandleを扱い、backendがfile identityとoffsetからデータ位置を求める。FATのchainと独自storeのpage mapは別の方式で、すべてが一つに統合済みという図ではない。
+    A["アプリ\nroot・path / file handle"] --> V["OS VFS\n権限・mount世代・handle世代"]
+    V --> B["backend\nfile identity ＋ offset"]
+    B --> F["FAT\ncluster chain"]
+    B -.->|"方式の比較"| S["独自store\nobject / page map"]
+    F --> D["block / page I/O\n保存媒体"]
+    S -.-> D

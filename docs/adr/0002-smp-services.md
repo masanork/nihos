@@ -58,6 +58,17 @@ state are the initial durability baseline. WAL, multiple reader connections,
 or `SQLITE_THREADSAFE=2` require separate measurements and VFS fault tests;
 SMP alone does not make them faster or safer.
 
+The detailed design baselines are
+[`../planning/filesystem-vfs.md`](../planning/filesystem-vfs.md) and
+[`../planning/sqlite-integration.md`](../planning/sqlite-integration.md).
+They separate filesystem capabilities, mount policy, and qualified durability
+profiles; define mount/handle lifetime and cancellation; and preserve an unknown
+commit outcome after timeouts or lost replies. General FAT/exFAT write support
+does not qualify a mount for writable SQLite. The initial development profile
+permits one connection and one database; bounded read-only attachments require
+a separately budgeted extension profile.
+These are implementation and validation requirements, not completed features.
+
 ## Staged validation
 
 1. Host-test bounded SPSC ordering, overflow, and wraparound.
