@@ -1150,7 +1150,7 @@ noinline fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bo
     const composition: extern struct { logical_width: u32, logical_height: u32, rotation: u32 } = .{ .logical_width = if (portrait) @as(u32, 720) else 1280, .logical_height = if (portrait) @as(u32, 1280) else 720, .rotation = if (portrait) @as(u32, 0) else 1 };
     logger.record("NIHOS_NATIVE_DISPLAY_LAYOUT", null, .{ "logical_width", "logical_height", "rotation" }, &composition);
     if (options.canvas_demo and screen.status == 1) {
-        const canvas_report = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frames = screen.frames };
+        const canvas_report: extern struct { checksum: u32, frames: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frames = screen.frames };
         logger.record("NIHOS_NATIVE_CANVAS_PATTERN", null, .{ "checksum", "frames" }, &canvas_report);
     }
     const selected = @import("tab5_panels").refreshProfile(display_panel, options.display_hz) orelse fail("display timing");
