@@ -1,0 +1,12 @@
+{
+  "scope": "unavailable AP; no NTP requests or RTC write attempts",
+  "ui_final": {
+    "frames": 6935,
+    "ticks0": 11524,
+    "ticks1": 11524
+  },
+  "rtc_applied": 0,
+  "image_sha256": "714b9d30ae33e1530befeafdbf5b36de83c664ca7c714ae81e262f585b1b0e73",
+  "raw_serial_sha256": "05ba389f575edb9e916768daf6f542107f0559d4c4c5bbe84e854f6efe7cbbcf",
+  "restored": true
+}

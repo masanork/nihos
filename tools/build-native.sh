@@ -65,7 +65,7 @@ set --
 # Keep that padding inside its ELF load segment instead of generating two
 # separately mapped image segments in the same 64 KiB Flash page.
 case "${NIHOS_NATIVE_DISPLAY:-0}" in 9|10|11) set -- --use_segments ;; esac
-if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then set -- --use_segments; fi
+if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ] || [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then set -- --use_segments; fi
 "$python" -m esptool --chip esp32p4 elf2image \
     "$@" \
     --flash_mode dio --flash_freq 80m --flash_size 16MB \

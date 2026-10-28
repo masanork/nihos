@@ -1,0 +1,22 @@
+{
+  "kind": "final-online",
+  "source_commit": "941fbe23a1fff52c353ec02978d41aa6a3046171",
+  "source_dirty": true,
+  "source_files_sha256": "61b0d8310f41d2ac228bbffb97b4769369b724bba756f4bd081cbe4e963a8397",
+  "source_archive_sha256": "15c57ecfdfd348e5f776892381252940b816f9623dcd150b0b9cd3a07c597738",
+  "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+  "sdk_dirty": false,
+  "app_sha256": "86c785d3fa66dfad1e4ac153e526470b6e8dd157aafb5009088d15bf44f2891d",
+  "elf_sha256": "b04fce3720edaaaf836bc740cfbf230a7d4b1e0dde1eb0ab917f75f2b34508e6",
+  "raw_serial_sha256": "24944278d9abf3fb1ca1f704df23aa4521ce236c2e66d405caa1bc61278a778d",
+  "selected_serial_sha256": "db8c7309d17b0c05a304840444201cfebcde722ddd1f18ad6366a8339a27669d",
+  "capture_seconds": 26.536033959,
+  "at": "2026-10-28T03:42:17.254257+00:00",
+  "restored": true,
+  "prior_app_partition_sha256": "b2397b3cf59d4e0b208e462ab5261ab29f0dbec8019dd14dbc4c847be50c207e",
+  "boot_unchanged_sha256": "2abdd2bd47aa470d84bcc46bbd01465d154b99db7985d0a93e096fd98db4a40f",
+  "heap_bytes": 63424,
+  "time_flash_bytes": 22226,
+  "raw_capture_private": true,
+  "network_identifiers_and_credentials_withheld": true
+}
