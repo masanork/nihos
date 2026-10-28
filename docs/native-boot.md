@@ -1,5 +1,11 @@
 # Native Zig boot on ESP32-P4
 
+When configured Wi-Fi obtains an IPv4 lease and DNS, the normal build
+[queries public NTP and synchronizes the RTC in UTC](adr/0053-network-time-to-rtc.md).
+No network time is inferred from the build/host clock. The observed public-NTP
+write/readback and no-NTP warm retention are documented separately from cold
+power-loss and long-duration qualification.
+
 The normal public device build includes [on-demand speaker, microphone and
 RS485 drivers](adr/0052-default-on-demand-device-drivers.md). It leaves these
 idle until explicitly requested and writes its connected artifacts to

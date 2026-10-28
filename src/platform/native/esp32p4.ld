@@ -11,6 +11,7 @@ __native_profile = 0;
 #define NIH_SRAM_ORIGIN 0x4ff00000
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
+__native_network = NIH_NATIVE_NETWORK;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
@@ -51,6 +52,13 @@ SECTIONS
         *rs485_uart.o(.text .text.*)
         *(.flash.text.devices)
         __flash_devices_end = .;
+    } > flash_boot
+#endif
+#if NIH_NATIVE_NETWORK
+    .flash.time : ALIGN(16) {
+        __flash_time_start = .;
+        *(.flash.text.time)
+        __flash_time_end = .;
     } > flash_boot
 #endif
     /* The stock P4 loader maps both segments before entering SRAM.
