@@ -20,16 +20,21 @@
     "display_runtime.replaceCard"
   ],
   "sources": {
-    "tools/boot-graphics/generate-card-read-font.py": "04aa9c301da18b4e5f23251e1c081b10695444c549f4d4b2f80aeb408df63a5f",
+    "tools/boot-graphics/generate-card-read-font.py": "c3fd5b32330e8f076c42d4a164e51c5d01f93779bc103d277bb52fa5d29a1899",
     "src/platform/native/card_read.zig": "bc68f5f9edfa2aa04583cfd9690db94ac4daee6ceab8cf0a2542a3176ec89ff3",
-    "src/platform/native/keypad_display.zig": "065ac439f6b4e9762115d6a8f2c6c902dd683a89b5d09639374d104f5d1a0ace",
+    "src/platform/native/keypad_display.zig": "b94b086a2f58a1eb0e08c088a067447e8f8b5908a9f347e3777fd8f23229a57a",
     "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
-    "src/platform/native/display_runtime.zig": "25ed976a3d94317ac587732e34ac15f4ef67d781ca74ea6594d001ef73a9a953",
+    "src/platform/native/display_runtime.zig": "66c7792d1495711bb244b94eff1328dca17b581c8ad9a8b6a9349d0e09cf8f56",
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
-    "src/board/tab5/native_scanout.c": "06842dbfabfc7d6cc8a62b16f35ed7e351429ea25fbec89546227cacfcee4d99",
-    "src/board/tab5/keypad_sparse.h": "994e982c3410fa4d734dae5212ff3cc6ea5a5fd433fd417aba0b0596cc06ddca",
-    "src/board/tab5/notice_sparse.h": "8519a6b95ee7552426790a836bc309cf8e68a3b9a24dba7eb940f29b75aa2498",
-    "src/board/tab5/scanout_retire.h": "0b00ac2cbcb9fd0ded106dd03c9cafc1c5afdbe4892ef6241ecb1bab6c763a36"
+    "src/board/tab5/native_scanout.c": "33dd82d2b5f91bddba80f841b0db227423d1de17e8d26e3cf2891c2954f017d1",
+    "src/board/tab5/keypad_sparse.h": "abbdf5fe5a46876cf8a14997dbfdf90d100ea9a5abcf152cbc26d4219c46c5f9",
+    "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
+    "src/board/tab5/scanout_retire.h": "0b00ac2cbcb9fd0ded106dd03c9cafc1c5afdbe4892ef6241ecb1bab6c763a36",
+    "src/platform/native/esp32p4.ld": "f4cc5b2ddbb8b9120df2c33b232e9eb6002cdedfd76a38a9b2896e8bc691ede0",
+    "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
+    "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
+    "src/platform/native/dma_memory.zig": "bdd0d0c4ebf00445cdbee1233a059d1f49c31dddcd24f8edc785d488cc8b99b1",
+    "src/platform/native/memory.zig": "21d285e8d71be9443866d346db3713e036e601e033784236eeb099351c1a88b7"
   },
   "scene_handoff": "dma-eof-panel-held-v1"
 }

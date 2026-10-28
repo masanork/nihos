@@ -919,7 +919,10 @@ fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bool) void 
     const rates = .{ .pixel_hz = selected.dpi_mhz * 1_000_000, .refresh_millihz = @import("tab5_panels").refreshMilliHz(selected), .htotal = 720 + selected.hbp + selected.hsw + selected.hfp, .vtotal = 1280 + selected.vbp + selected.vsw + selected.vfp };
     if (options.display_sram or options.psram_200) logger.record("NIHOS_NATIVE_DISPLAY_TIMING", null, .{ "pixel_hz", "refresh_millihz", "htotal", "vtotal" }, &rates);
     logger.record("NIHOS_NATIVE_DISPLAY_LEASE", null, .{ "lease_start", "lease_bytes", "nodes" }, &screen);
-    if (options.keypad_demo or options.card_read) logger.record("NIHOS_NATIVE_KEYPAD_STORAGE", null, .{ "font_low", "font_low_bytes", "pixel_bytes" }, &screen);
+    if (options.keypad_demo or options.card_read) {
+        logger.record("NIHOS_NATIVE_KEYPAD_STORAGE", null, .{ "font_low", "font_low_bytes", "pixel_bytes" }, &screen);
+        logger.record("NIHOS_NATIVE_DISPLAY_MEMORY", null, .{ "pool0_start", "pool0_bytes", "pool1_start", "pool1_bytes" }, &screen);
+    }
     if (screen.status != 1) {
         if (options.card_auto) {
             _ = @import("card_auto.zig").emergency();

@@ -12,6 +12,11 @@
     "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
     "src/graphics/keypad_plan.zig": "705807426ad678d78fcd120c4556a80d81654886c85d624e76c400265fa0e856",
     "src/card_pin_preview.zig": "70097056c8ba0106185424cd4e80f2d5accf88316ac250ffae4d2b955712491a",
-    "tools/boot-graphics/generate-keypad-atlas.py": "d367b701e7d673975b2228a477f74594c7fa6d7484cde5680ec4864adca3576e"
+    "tools/boot-graphics/generate-keypad-atlas.py": "6a5fb39ce09aad110d2deb6f2e3a10179000175826e11b0f2f7bf70fec93cabf",
+    "src/platform/native/esp32p4.ld": "f4cc5b2ddbb8b9120df2c33b232e9eb6002cdedfd76a38a9b2896e8bc691ede0",
+    "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
+    "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
+    "src/platform/native/dma_memory.zig": "bdd0d0c4ebf00445cdbee1233a059d1f49c31dddcd24f8edc785d488cc8b99b1",
+    "src/platform/native/memory.zig": "21d285e8d71be9443866d346db3713e036e601e033784236eeb099351c1a88b7"
   }
 }

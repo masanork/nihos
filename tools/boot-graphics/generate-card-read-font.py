@@ -31,7 +31,7 @@ def main():
         data += struct.pack('<I',code) + image.tobytes()
     destination = ROOT / 'src/graphics/card_read_font.bin'
     destination.write_bytes(data)
-    sources = ('tools/boot-graphics/generate-card-read-font.py', 'src/platform/native/card_read.zig', 'src/platform/native/keypad_display.zig', 'src/platform/native/usb_probe.zig', 'src/platform/native/display_runtime.zig', 'src/graphics/card_pin.zig', 'src/board/tab5/native_scanout.c', 'src/board/tab5/keypad_sparse.h', 'src/board/tab5/notice_sparse.h', 'src/board/tab5/scanout_retire.h')
+    sources = ('tools/boot-graphics/generate-card-read-font.py', 'src/platform/native/card_read.zig', 'src/platform/native/keypad_display.zig', 'src/platform/native/usb_probe.zig', 'src/platform/native/display_runtime.zig', 'src/graphics/card_pin.zig', 'src/board/tab5/native_scanout.c', 'src/board/tab5/keypad_sparse.h', 'src/board/tab5/notice_sparse.h', 'src/board/tab5/scanout_retire.h', 'src/platform/native/dma_memory.zig', 'src/platform/native/memory.zig', 'src/platform/native/base_sram.c', 'src/platform/native/sram_pool.h', 'src/platform/native/esp32p4.ld')
     manifest = {'schema':1, 'ui_mode':'runtime', 'scene_handoff':'dma-eof-panel-held-v1', 'font_bytes':len(data), 'font_sha256':hashlib.sha256(data).hexdigest(),
                 'font_source_sha256':FONT_SHA, 'glyphs':len(chars),
                 'allowed_functions':['card_read.prepare', 'card_read.run', 'card_read.redraw', 'keypad_display.prepare', 'keypad_display.stage', 'keypad_display.bind', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start', 'display_runtime.replaceCard'],

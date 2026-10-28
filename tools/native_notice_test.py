@@ -8,6 +8,26 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class NativeNoticeTest(unittest.TestCase):
+    def test_candidate_capacity_is_checked_before_live_scene_retirement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / 'capacity-replay'
+            subprocess.run([str(ROOT / '.tools/zig-0.17.0/zig'), 'cc', '-std=c17', '-O2', '-UNDEBUG',
+                            '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-fsanitize=undefined',
+                            str(ROOT / 'probes/display_notice/capacity-replay.c'), '-o', str(binary)],
+                           check=True, capture_output=True)
+            result = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
+            self.assertIn('Display capacity replay passed', result.stdout)
+
+    def test_base_free_sram_reservations_competing_owners_and_reuse(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            binary = Path(temporary) / 'sram-replay'
+            subprocess.run([str(ROOT / '.tools/zig-0.17.0/zig'), 'cc', '-std=c17', '-O2', '-UNDEBUG',
+                            '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
+                            str(ROOT / 'probes/display_notice/sram-replay.c'), '-o', str(binary)],
+                           check=True, capture_output=True)
+            result = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
+            self.assertIn('Base SRAM replay passed', result.stdout)
+
     def test_actual_dma_pixels_are_checked_independently_of_backlight_counters(self):
         with tempfile.TemporaryDirectory() as temporary:
             binary = Path(temporary) / 'pixels-replay'

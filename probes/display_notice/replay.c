@@ -18,13 +18,14 @@ static bool ui_runtime = true, dma_owned;
 static uint32_t fault, node_count, source_address;
 static dw_gdma_link_list_item_t descriptor, *active_nodes;
 static uint8_t banks[2][94 * 1024] __attribute__((aligned(64)));
+static const uint32_t ui_high_start = 0x4ff82000, ui_high_end = 0x4ffb1000;
 static uint8_t frame[1843200] __attribute__((aligned(64)));
 static nih_ui_span plan[1280];
 static bool cache_ok = true;
 static unsigned handoffs;
 static void *bank_pointer(uint32_t address) {
-    assert(address >= 0x4ff70000 && address < 0x4ff9f000);
-    return (uint8_t *)banks + address - 0x4ff70000;
+    assert(address >= ui_high_start && address < ui_high_end);
+    return (uint8_t *)banks + address - ui_high_start;
 }
 static const void *input_pointer(uint32_t address) {
     if (address == 0x481f2000) return plan;
@@ -35,7 +36,7 @@ static const void *input_pointer(uint32_t address) {
 #define NOTICE_INPUT(address) input_pointer(address)
 static bool notice_cache_handoff(uint32_t address, uint32_t bytes) {
     assert(bytes == sizeof(banks[0]));
-    assert(address == 0x4ff70000 || address == 0x4ff70000 + sizeof(banks[0]));
+    assert(address == ui_high_start || address == ui_high_start + sizeof(banks[0]));
     ++handoffs; return cache_ok;
 }
 static void notice_publish_fence(void) {}
