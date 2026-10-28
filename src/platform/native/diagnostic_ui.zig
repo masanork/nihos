@@ -1,5 +1,11 @@
 //! CPU0 live UI. All rendering/I2C is outside interrupts; ISR only rearms DMA.
 const options = @import("native_options");
+const pointer = @import("pointer_input");
+extern fn nih_touch_available() callconv(.c) bool;
+extern fn nih_touch_pop(*pointer.Event) callconv(.c) bool;
+var touch_available = false;
+var view_button: pointer.Button = .{};
+var input_started: u64 = 0;
 const console = @import("text_console");
 const board = @import("tab5_display");
 const boot = @import("boot_graphics");
@@ -198,7 +204,13 @@ noinline fn drawDetails() bool {
     const previous = if (options.console_live) 0 else mask();
     console.snapshot.refreshHeader(live_text, &model, journal.dropped);
     if (!options.console_live) restore(previous);
-    return renderer.submit(frame(), 1440, live_text, palette()) and presentDamage();
+    if (!renderer.submit(frame(), 1440, live_text, palette())) return false;
+    if (!paintTouchControl()) return false;
+    if (options.devices and touch_available) {
+        const box = pointer.view_button;
+        renderer.damage.include(box.x, box.y, box.x + box.width, box.y + box.height);
+    }
+    return presentDamage();
 }
 pub noinline fn snapshot() bool {
     if (!options.console) return true;
@@ -231,6 +243,7 @@ pub noinline fn report(log: anytype) void {
 pub noinline fn input(log: anytype) void {
     model.input_sources = console.keys.capability(.serial); // Independent of USB-A host.
     model.input_available = true;
+    input_started = clock.timer().counter() orelse 0;
     var error_code: u32 = 0;
     if (options.keyboard_i2c) {
         nih_keyboard_pads_init();
@@ -267,6 +280,25 @@ noinline fn action(value: console.keys.Action, source: console.keys.Source, modi
 noinline fn poll(now: u64, log: anytype) void {
     if (now - last_input < 10_000 or !model.input_available) return;
     last_input = now;
+    if (options.devices) {
+        const available = nih_touch_available();
+        if (available != touch_available) {
+            touch_available = available;
+            view_button = .{};
+            if (available) model.input_sources |= console.keys.capability(.touch) else model.input_sources &= ~console.keys.capability(.touch);
+            revision +%= 1;
+            if (renderer_ready) renderer.invalidate();
+            const box = pointer.view_button;
+            const input_status: extern struct { available: u32, sources: u32, x: u32, y: u32, width: u32, height: u32 } = .{ .available = @intFromBool(available), .sources = model.input_sources, .x = box.x, .y = box.y, .width = box.width, .height = box.height };
+            log.record("NIHOS_NATIVE_TOUCH_UI", null, .{ "available", "sources", "x", "y", "width", "height" }, &input_status);
+        }
+        for (0..8) |_| {
+            var event: pointer.Event = .{ .kind = .cancel };
+            if (!nih_touch_pop(&event)) break;
+            if (!available or model.failure_latched or event.at < input_started) continue;
+            if (view_button.observe(event, pointer.view_button)) action(if (model.details) .splash else .logs, .touch, 0, 1, log);
+        }
+    }
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
@@ -334,9 +366,9 @@ pub noinline fn service(log: anytype) bool {
             last_render = now;
         } else if (changed) @atomicStore(u32, &dirty, 1, .release);
     } else if (full) {
-        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !present()) return false;
+        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
     } else if (progress != old_progress) {
-        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !present()) return false;
+        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
     }
     shown_revision = revision;
     shown_status = selected;
@@ -385,4 +417,10 @@ pub noinline fn liveReport(log: anytype, comptime ready: bool) void {
 
 pub fn timer() @import("timer_group").Timer {
     return clock.timer();
+}
+
+fn paintTouchControl() bool {
+    if (!options.devices or !touch_available or !model.input_available or model.failure_latched) return true;
+    const box = pointer.view_button;
+    return console.raster.paintControl(".flash.rodata.display", frame(), 1440, .{ .left = box.x, .top = box.y, .right = box.x + box.width, .bottom = box.y + box.height }, if (model.details) "SPLASH" else "LOGS", palette());
 }

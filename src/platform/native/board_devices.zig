@@ -9,6 +9,7 @@ const options = @import("native_options");
 pub const rs485 = @import("rs485_probe.zig");
 pub const microphone = @import("microphone_probe.zig");
 pub const audio = @import("audio_probe.zig");
+pub const touch = @import("normal_touch.zig");
 const timers = @import("timer_group");
 const Bus = i2c.Master(display.probe.Pins);
 // SAFETY: begin binds the bus before active allows poll or setCalendar.
@@ -46,7 +47,8 @@ pub const Report = extern struct {
     samples: u32 = 0,
 };
 var report: Report = .{};
-pub fn begin(timer: timers.Timer) void {
+pub fn begin(timer: timers.Timer, panel: u32) void {
+    if (options.devices) touch.begin(panel);
     clock = timer;
     bus = .{ .pins = .{ .clock = timer } };
     report = .{};
@@ -130,6 +132,7 @@ pub fn poll() void {
         }
         rs485.poll(clock);
     }
+    if (options.devices) touch.poll(&bus, clock, now);
     if (now < next) {
         imu.poll(&bus, clock);
         return;

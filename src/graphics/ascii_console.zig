@@ -68,6 +68,34 @@ pub noinline fn paintFace(comptime section: ?[]const u8, comptime face: Face, fr
     for (0..T.height) |row| for (0..T.width) |col| cell(section, face, frame, stride, grid.cells[row * T.width + col], row, col, 0, L.cell_height, L.margin_y + row * L.cell_height, palette);
     return true;
 }
+/// Small landscape control overlay. Uses the same licensed basic glyph masks
+/// as the console. Reject invalid geometry/text before touching any pixels.
+pub fn paintControl(comptime section: ?[]const u8, frame: []u8, stride: usize, bounds: Damage, label: []const u8, palette: Palette) bool {
+    if (!valid(frame, stride) or bounds.empty() or bounds.right > 1280 or bounds.bottom > 720 or
+        bounds.right - bounds.left < 16 or bounds.bottom - bounds.top < 16 or label.len > (bounds.right - bounds.left) / 16) return false;
+    for (label) |byte| if (byte < 32 or byte > 126) return false;
+    const selected = colors(palette);
+    for (bounds.left..bounds.right) |x| for (bounds.top..bounds.bottom) |y| {
+        const border = x < bounds.left + 2 or x + 2 >= bounds.right or y < bounds.top + 2 or y + 2 >= bounds.bottom;
+        pixel(frame, stride, y, 1279 - x, if (border) selected.accent else selected.background);
+    };
+    const Store = if (section) |name| struct {
+        const masks linksection(name) = @embedFile("ascii/basic.bin").*;
+    } else struct {
+        const masks = @embedFile("ascii/basic.bin").*;
+    };
+    const start_x = bounds.left + (bounds.right - bounds.left - label.len * 16) / 2;
+    const start_y = bounds.top + (bounds.bottom - bounds.top - 16) / 2;
+    for (label, 0..) |byte, index| {
+        const bits = Store.masks[(@as(usize, byte) - 32) * 8 ..][0..8];
+        for (0..16) |y| for (0..16) |x| {
+            if (bits[y / 2] & (@as(u8, 1) << @as(u3, @intCast(x / 2))) != 0)
+                pixel(frame, stride, start_y + y, 1279 - (start_x + index * 16 + x), selected.foreground);
+        };
+    }
+    return true;
+}
+
 noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8, stride: usize, byte: u8, row: usize, col: usize, clip_top: usize, clip_bottom: usize, destination: usize, palette: Palette) void {
     const L = Layout(face);
     const selected = colors(palette);
@@ -325,4 +353,24 @@ test "thin basic face uses the original masks and large faces decode bounded cel
             try std.testing.expectEqual(@as(usize, 450), decoded);
         }
     }
+}
+
+test "touch control rotates with the console and preserves bounds, row padding and guards" {
+    const stride = 1440 + 8;
+    const size = stride * 1280;
+    const backing = try std.testing.allocator.alloc(u8, size + 128);
+    defer std.testing.allocator.free(backing);
+    @memset(backing, 0xa5);
+    const frame = backing[64..][0..size];
+    const bounds = Damage{ .left = 1120, .top = 16, .right = 1264, .bottom = 80 };
+    try std.testing.expect(paintControl(null, frame, stride, bounds, "LOGS", .neutral));
+    const corner = (1279 - bounds.left) * stride + bounds.top * 2;
+    try std.testing.expectEqual(colors(.neutral).accent, std.mem.readInt(u16, frame[corner..][0..2], .little));
+    try std.testing.expect(std.mem.allEqual(u8, backing[0..64], 0xa5));
+    try std.testing.expect(std.mem.allEqual(u8, backing[64 + size ..], 0xa5));
+    for (0..1280) |row| try std.testing.expect(std.mem.allEqual(u8, frame[row * stride + 1440 ..][0..8], 0xa5));
+    const before = std.hash.Wyhash.hash(0, frame);
+    try std.testing.expect(!paintControl(null, frame, stride, .{ .left = 1270, .top = 16, .right = 1300, .bottom = 80 }, "LOGS", .neutral));
+    try std.testing.expect(!paintControl(null, frame, stride, bounds, "TOO LONG FOR CONTROL", .neutral));
+    try std.testing.expectEqual(before, std.hash.Wyhash.hash(0, frame));
 }
