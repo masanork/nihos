@@ -94,8 +94,11 @@ is retained. Stopping video consumption fixed that error. A subsequent candidate
 passed reset/backlight checks and the user confirmed no flicker, but reported
 whole-screen line shifts and missing content. It is an optical failure, not a
 successful display qualification. The tail-drain fix and actual-pixel checks
-were added after that report. The new drain-fixed candidate's optical result
-is still awaiting user confirmation.
+were added after that report. The user then confirmed that the drain-fixed
+candidate displayed correctly, resolving the reported whole-screen line shifts
+and missing content. This is a user-observed optical result, separate from the
+machine-recorded pixel/backlight checks; no further credential submission was
+needed. The earlier failed observations remain preserved.
 
 Host tests replay the production retirement policy, including bridge/host
 draining before shutdown, stuck channel/FIFO/lane ownership retention, and

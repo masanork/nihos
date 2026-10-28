@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-10-28T02:54:26.465324+00:00",
+  "evidence_kind": "user-reported physical optical observation",
+  "runtime_source_commit": "2acb01d0c631999f15513d8fa7601bc601e09b3d",
+  "app_sha256": "413ad2e4021a5e5bf7fb51825904f501c64805dd89fe6135167dcd518122c1a9",
+  "user_statement": "ちゃんと表示されているね",
+  "context": "confirmation after tail-drain fix, 12 synthetic transitions and 13 actual-DMA pixel checks",
+  "optical_result": "correct rendering confirmed after prior whole-screen line shift and missing-content report",
+  "further_credential_submissions": 0,
+  "scope": "card-free synthetic/manual display exercise; real-card transitions and cold power-on remain separate"
+}
