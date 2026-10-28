@@ -52,6 +52,15 @@ content.fillRect(.{ .x = 0, .y = 0, .width = 100, .height = 30 }, 0xffff);
 
 `copyRect`は同一surface内で矩形を移動し、重なりを安全に扱う。sourceはsurface、destinationは現在のclipで切り詰め、移動で空いた画素は変更しない。スクロール後の空白は呼び出し側が明示的に塗る。
 
+たとえば本文領域を16画素上へスクロールする場合、移動してから空いた下端を消し、新しい行を描く。これはメモリ面の操作であり、これだけでは画面へ反映されない。
+
+```zig
+const text_area = canvas.clipped(.{ .x = 16, .y = 40, .width = 600, .height = 320 });
+text_area.copyRect(.{ .x = 16, .y = 56, .width = 600, .height = 304 }, 16, 40);
+text_area.fillRect(.{ .x = 16, .y = 344, .width = 600, .height = 16 }, background);
+// 新しい末尾の行を描き、表示サービスへ更新を通知する。
+```
+
 ## 後続の必須設計と受入条件
 
 - 線、画像転送、A8マスク、パレット画像、重なりコピーの座標・clip・stride・alias・alpha・色空間・丸め・エラーを決める。既存画面の画素一致は設計上の調査材料であり、共通APIや新デザインの合格条件とはしない。
@@ -64,6 +73,6 @@ SDL互換層、文字組版、Wasm runtimeの導入や実機試験は、この�
 
 ## 検証済みの範囲
 
-ホストテストではカード用縦組み起動画面を、実際のassetとcanvasのfill/maskで別に構成し、既存 `card_splash.paint` の出力とpaddingを含めて全バイト比較する。さらに `paintDynamic` のPIN桁数0〜4の表示をcanvasの矩形で再構成し、実装のindicator全画素と比較する。これは実装の動作理解のための過去の比較であり、既存画面のデザインや画素互換を将来の要件とするものではない。DebugとReleaseSafeで検査する。
+ホストテストでは、矩形copyのランダムな位置・clip・重なり2000例を変更前の画素から作る参照結果と比較する。エディタ風の4行はスクロールと部分描画の結果が全体再描画と一致するか確認する（文字やIMEの検証ではない）。カード用縦組み起動画面を、実際のassetとcanvasのfill/maskで別に構成し、既存 `card_splash.paint` の出力とpaddingを含めて全バイト比較する。さらに `paintDynamic` のPIN桁数0〜4の表示をcanvasの矩形で再構成し、実装のindicator全画素と比較する。カードの比較は実装の動作理解のための過去の比較であり、既存画面のデザインや画素互換を将来の要件とするものではない。DebugとReleaseSafeで検査する。
 
 `src/graphics/canvas_compile_probe.zig` は全描画操作を呼ぶコンパイル専用probe。Zig 0.17.0、`riscv32-freestanding-none`、`generic_rv32+m+a+c+zicsr+zifencei`、ReleaseSafeでオブジェクト生成を確認した。オブジェクトは `memcpy` と `memset` を要求する。同じprobeを `zig build-exe -fno-entry -fcompiler-rt` で静的リンクし、未解決シンボルがないことを確認した。entryなしのためlinkerは `_start` 不在を警告する。完全なファームウェアへのリンク、コードサイズ、実行時間、実機描画は確認していない。probeは公開ABIではない。
