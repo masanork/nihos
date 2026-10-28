@@ -33,8 +33,8 @@ SQL_START, SQL_END = 0x40020000, 0x400C0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
 GRAPH_START, GRAPH_END = 0x40020000, 0x40C00000
 GRAPH_SECTIONS = {".flash.graphtext", ".flash.graphrodata", ".flash.graphfonts", ".flash.graphpad", ".flash.graphrender"}
-RENDER_FUNCTIONS = {"main.graphicsReport", "native_font_exchange.sourceHash", "native_font_exchange.drawHash", "native_font_exchange.stageText", "native_surface.verify", "native_surface.prepare", "native_surface.paint", "native_surface.draw"}
-RENDER_RESIDENT = {"native_font_exchange.releaseArchive", "native_surface.stage", "native_surface.verifySource", "native_surface.compose", "native_surface.contextAllowed", "native_surface.captureTimer",
+RENDER_FUNCTIONS = {"native_surface.checkSource", "native_font_stack.paint", "main.graphicsReport", "native_font_exchange.sourceHash", "native_font_exchange.drawHash", "native_font_exchange.stageText", "native_surface.verify", "native_surface.prepare", "native_surface.paint", "native_surface.draw"}
+RENDER_RESIDENT = {"native_font_stack.scratch", "native_font_stack.reaped", "native_font_exchange.releaseArchive", "native_surface.stage", "native_surface.verifySource", "native_surface.compose", "native_surface.contextAllowed", "native_surface.captureTimer",
                    "nih_native_dispatch", "nih_native_trap", "heap.allocTask", "heap.freeTask"}
 GRAPH_RAM_LOW, GRAPH_RAM_HIGH = 0x4FF78000, 0x4FF80000
 GRAPH_STACK_LOW, GRAPH_STACK_HIGH = 0x4FF6E000, 0x4FF76000

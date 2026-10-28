@@ -165,6 +165,14 @@ class NativeGraphicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "control"):
             LOG.validate_ruby(record, texts, bad)
 
+    def test_stack_loan_requires_quiescence_rejections_and_both_pixel_results(self):
+        graphics = {"render": {"functions": {"native_font_stack.paint": {"start": "0x40b00000", "end": "0x40b00100"}}}}
+        good = dict(zip(LOG.STACK_LOAN_FIELDS, [32768, 2, 2, 3, 1, 1, 1, 1907333006, 1907333006, 0x40b00004, 0x4ff6e000, 0x4ff76000]))
+        LOG.validate_stack_loan(good, graphics, {"pixel_hash": 1907333006})
+        for key in LOG.STACK_LOAN_FIELDS:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_stack_loan({**good, key: 0}, graphics, {"pixel_hash": 1907333006})
+
     def test_archive_releases_full_charge_after_logging(self):
         good = dict(zip(LOG.ARCHIVE_FIELDS, [4496, 8192, 0, 16022848, 16022848]))
         LOG.validate_archive(good, {"heap_before": 16014656})

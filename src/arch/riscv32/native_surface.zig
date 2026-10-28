@@ -49,37 +49,40 @@ noinline fn verify(source: *Context, revision: u32, source_hash: u32, probe: boo
         : [pc] "=r" (-> u32),
     );
     if (probe) {
-        if (source.check(revision - 1, source_hash)) |_| nih_native_task_failed() else |err| {
+        if (checkSource(source, revision - 1, source_hash)) |_| nih_native_task_failed() else |err| {
             if (err != error.Revision) nih_native_task_failed();
             source_metrics.stale += 1;
         }
-        if (source.check(revision, source_hash ^ 1)) |_| nih_native_task_failed() else |err| {
+        if (checkSource(source, revision, source_hash ^ 1)) |_| nih_native_task_failed() else |err| {
             if (err != error.ReplySource) nih_native_task_failed();
             source_metrics.wrong_reply += 1;
         }
         source.render.body[0] ^= 1;
-        const changed_body = source.check(revision, source_hash);
+        const changed_body = checkSource(source, revision, source_hash);
         source.render.body[0] ^= 1;
         if (changed_body) |_| nih_native_task_failed() else |err| {
             if (err != error.Integrity) nih_native_task_failed();
             source_metrics.content += 1;
         }
         source.annotation_count ^= 1;
-        const changed_annotations = source.check(revision, source_hash);
+        const changed_annotations = checkSource(source, revision, source_hash);
         source.annotation_count ^= 1;
         if (changed_annotations) |_| nih_native_task_failed() else |err| {
             if (err != error.Integrity) nih_native_task_failed();
             source_metrics.annotations += 1;
         }
         source.body_map[0].allowed = !source.body_map[0].allowed;
-        const changed_map = source.check(revision, source_hash);
+        const changed_map = checkSource(source, revision, source_hash);
         source.body_map[0].allowed = !source.body_map[0].allowed;
         if (changed_map) |_| nih_native_task_failed() else |err| {
             if (err != error.Integrity) nih_native_task_failed();
             source_metrics.map_mutations += 1;
         }
-        source.check(revision, source_hash) catch nih_native_task_failed();
+        checkSource(source, revision, source_hash) catch nih_native_task_failed();
     }
+    return checkSource(source, revision, source_hash);
+}
+noinline fn checkSource(source: *const Context, revision: u32, source_hash: u32) linksection(".flash.text.render") text.Error!void {
     return source.check(revision, source_hash);
 }
 noinline fn prepare(out: *Context, revision: u32, render: protocol.Render, annotations: []const ruby.Annotation) linksection(".flash.text.render") text.Error!void {

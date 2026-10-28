@@ -96,6 +96,21 @@ def validate_archive(record, graphics):
         raise ValueError("incomplete diagnostic archive heap recovery")
 
 
+STACK_LOAN_FIELDS = ("bytes", "loans", "guards", "busy", "stale", "premature", "returned", "before_hash", "after_hash", "paint_pc", "start", "end")
+
+
+def validate_stack_loan(record, graphics, reference):
+    if tuple(record[k] for k in STACK_LOAN_FIELDS[:7]) != (32768, 2, 2, 3, 1, 1, 1):
+        raise ValueError("incomplete stack-bank ownership/reap/reuse evidence")
+    if record["start"] != 0x4ff6e000 or record["end"] != 0x4ff76000:
+        raise ValueError("borrowed stack bank differs from audited reserved region")
+    bounds = graphics["render"]["functions"]["native_font_stack.paint"]
+    if not int(bounds["start"], 16) <= record["paint_pc"] < int(bounds["end"], 16):
+        raise ValueError("stack scratch renderer PC differs from audited Flash function")
+    if record["before_hash"] != reference["pixel_hash"] or record["after_hash"] != reference["pixel_hash"]:
+        raise ValueError("borrowed stack-bank pixels differ from independent reference")
+
+
 QUEUE_FIELDS = ("capacity", "metadata_bytes", "payload_bytes", "binding_rejected", "full_rejected", "detached", "live_payloads", "closed_rejected", "requests_metadata", "replies_metadata", "request_payload", "reply_payload")
 
 
@@ -189,6 +204,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     source = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_SOURCE", SOURCE_FIELDS)
     ruby = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_RUBY", RUBY_FIELDS)
     queues = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_QUEUE", QUEUE_FIELDS)
+    stack_loan = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_STACK_LOAN", STACK_LOAN_FIELDS)
     archive = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_ARCHIVE", ARCHIVE_FIELDS)
     texts = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_TEXT", TEXT_FIELDS)
     for text in texts:
@@ -212,7 +228,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
             log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") < log.index("NIHOS_NATIVE_GRAPHICS_RASTER ") < log.index("NIHOS_NATIVE_GRAPHICS_PLACEMENT ") < log.index("NIHOS_NATIVE_GRAPHICS_SURFACE ") <
             log.index("NIHOS_NATIVE_GRAPHICS_WRAP ") < log.index("NIHOS_NATIVE_GRAPHICS_KINSOKU ") < log.index("NIHOS_NATIVE_GRAPHICS_SOURCE ") < log.index("NIHOS_NATIVE_GRAPHICS_RUBY ") < log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
             log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_QUEUE ") < log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
+            log.index("NIHOS_NATIVE_GRAPHICS_QUEUE ") < log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_STACK_LOAN ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
         raise ValueError("missing or out-of-order native graphics pass")
     profile = next(p for p in reference["profiles"] if p["render_pool_bytes"] == 2048 and p["allocation_records"] == 1024)
     expected = next(m["host"]["hashes"] for m in profile["modes"] if m["hinting"] == "auto")
@@ -235,10 +251,14 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     validate_ruby(ruby, texts, ruby_reference)
     validate_archive(archive, q)
     validate_queues(queues, image, baseline["heaps"][0])
+    stack_ref = json.loads((ROOT / "docs/measurements/2026-10-28-stack-loan-reference.json").read_text())
+    if stack_ref["source_sha256"] != hashlib.sha256((ROOT / "probes/graphics/stack_loan_reference.py").read_bytes()).hexdigest():
+        raise ValueError("stack loan reference differs from source")
+    validate_stack_loan(stack_loan, image["graphics"], stack_ref)
     if archive["after"] != baseline["heaps"][0]["free"]:
         raise ValueError("archive retirement differs from original CPU0 heap")
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
-            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "ruby": ruby, "source": source, "queues": queues, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
+            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "ruby": ruby, "source": source, "queues": queues, "stack_loan": stack_loan, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
                        "Four matrix and five bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
@@ -261,6 +281,7 @@ def main():
     if sha(directory / "nihos-native.elf") != image["elf_sha256"] or sha(directory / "nihos-native.bin") != image["image_sha256"]:
         raise ValueError("captured native image identity differs from audit")
     result["artifacts_sha256"] = {p.name: sha(p) for p in [directory / n for n in ("nihos-native.elf", "nihos-native.bin", "nihos-native-flash.bin", "emulator.log", "emulator-stderr.log", "image-audit.json", "graphics-manifest.json")]}
+    result["stack_loan_reference_sha256"] = sha(ROOT / "docs/measurements/2026-10-28-stack-loan-reference.json")
     result["ruby_reference_sha256"] = sha(ruby_reference_path)
     result["policy_reference_sha256"] = sha(policy_reference_path)
     result["wrap_reference_sha256"] = sha(wrap_reference_path)
@@ -268,7 +289,7 @@ def main():
     result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: demand-owned queue payloads, runtime text/ruby ownership, Flash preemption, reference pixels and complete heap recovery passed")
+    print("Native graphics: exclusive stack-bank reuse, demand-owned queue payloads, runtime text/ruby ownership, Flash preemption, reference pixels and complete heap recovery passed")
 
 
 if __name__ == "__main__":
