@@ -77,7 +77,14 @@
     "swap-timeout-restored.json": "763a773bc071bb357f8ae11e57923347d91bd8c38a061d739c19ce893a6b81d9",
     "serial-preflight-failure.json": "03b51805b854ee15ff9b2dc6faf16a1c7c03ebaa463cfa43df3c749822886a06",
     "inserted-qualification-bundle.json": "ed9c4dc01b728737eb438de0a8e70a96f6173be7029a1aec9fcd1288128352e9",
-    "physical-negative-controls.json": "7bea57bd4c4a7acf38ab03f546e9aa3679f05749f730fdc7c118016bca72ffe8"
+    "physical-negative-controls.json": "7bea57bd4c4a7acf38ab03f546e9aa3679f05749f730fdc7c118016bca72ffe8",
+    "return-to-normal.json": "08bf85a8c467c7cae6b2b0960407d6a050b4934b878a55fc640a4987cf59dd5b",
+    "normal-reset.log": "eaa8e7cba6be89de06c906f7123a7858294d62ae73b97274b1b9c51be0d58b35",
+    "verify-before-normal-reset.log": "98d600454c6097aa975663d780ed371288978ae862c2cbf92f7b4a4bd1061cc1",
+    "attempt1-return-to-normal.json": "0a435042181fda3a875958ac36eabaa58c7489412ca1c25cf80e4f503a632132",
+    "attempt1-verify-before-normal-reset.log": "3e911fb70dcea9eda5f7cb10a2ff9b3ef474cb71fd4f64f79960104abf589b98",
+    "attempt2-return-to-normal.json": "5d2790466049556227c1b591e11870f28722199f3f54edcca7e811f214cc228e",
+    "attempt2-verify-before-normal-reset.log": "4b069b7406c1178d5e42d7b355ac127f397fd423642023c0c88eb150f87a3d3d"
   },
   "python_tests": 235,
   "prior_swap_attempt": {
@@ -107,6 +114,23 @@
     "only this exFAT input physically read",
     "native VFS/RPC over SD and FS cancellation/removal not qualified",
     "no clean POR, writable FS, persistent SQLite, power-loss recovery",
-    "original firmware reset deferred until original card returned"
-  ]
+    "Later normal boot used the then-current firmware; source identity not established and not counted as another exFAT run"
+  ],
+  "return_to_normal": {
+    "operator_original_card_returned": true,
+    "flash_written": false,
+    "expected_flash_sha256": "5e8de5fe117f8738053471eada32cf1cb19bb7aec760af5e4d88792f3cb5065e",
+    "verified": false,
+    "reset_sent": true,
+    "current_firmware_boot_requested": true,
+    "restoration_snapshot_differs": true,
+    "current_partition_verified": true,
+    "current_app_header_sha256": "fd78cee87b47f8e5a162d191d507cb87f016ac99ce9850d0fa30fd4a641d6523",
+    "current_boot_header_checked": true,
+    "log_sha256": "eaa8e7cba6be89de06c906f7123a7858294d62ae73b97274b1b9c51be0d58b35",
+    "bytes_captured": 10543,
+    "rom_boot_seen": true,
+    "native_boot_seen": true,
+    "native_smp_300_ipi_and_final_pass_seen": true
+  }
 }
