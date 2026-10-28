@@ -100,3 +100,30 @@ microphone/audio alternation, rejected overlap, repeated internal UART requests,
 cleanup, continuing display/ticks/sensors/C6, and restoration of the prior image.
 Audible quality, external RS485 peer/wires, cold power-cycle, power consumption
 and long-duration operation remain separate observations.
+
+The combined exercise checker is `python3 tools/check-native-devices.py CAPTURE
+REPORT`. CAPTURE retains `result.json`, `serial.log`, and `candidate/` with the
+image, ELF, options, receipt and retained-loader audit. It rejects mismatched
+image/ELF/options/log hashes, unconfirmed restoration, implicit pre-request
+activity, accepted overlap, pinned/growing storage and missing stable per-run
+cleanup. It reuses the existing finite audio, microphone and internal UART
+checkers for each individual accepted operation. Repeated runs are separated
+at their request acknowledgments rather than treating a legitimate second
+request as an unexpected state reversal.
+
+For this exercise, first observe at least two idle service records, then send
+`:devices`, `:mic` immediately followed by `:audio` (rejected overlap), wait
+12 seconds, `:devices`, `:audio` immediately followed by `:mic` (rejected
+overlap), wait 12 seconds, `:devices`, `:mic`, wait 12 seconds, `:devices`,
+`:rs485-loopback`, wait 12 seconds, `:rs485-loopback`, wait 12 seconds,
+`:devices`, then retain another 12 seconds. Each operation needs two stable
+completion records from the five-second reporting interval. This recipe does
+not request external peer mode.
+
+The connected default, offline default and legacy single-device ELF profiles
+have been checked locally. The offline default image is also generated and
+loader-audited, leaving 95552 primary heap bytes. The Python suite currently
+passes 225 tests. The first combined physical attempt was refused by the
+serial exclusive lock after a concurrent scene session acquired the port;
+no candidate Flash write occurred. Physical ownership must be handed over
+before retrying, even when a momentary port inventory appears empty.
