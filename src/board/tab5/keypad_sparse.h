@@ -4,6 +4,15 @@ typedef struct { uint32_t kind, offset, words, reserved; } nih_ui_span;
 #ifndef UI_INPUT
 #define UI_INPUT(address) ((const void *)(uintptr_t)(address))
 #endif
+#ifndef UI_ADDRESS
+#define UI_ADDRESS(pointer) ((uint32_t)(uintptr_t)(pointer))
+#endif
+#ifndef UI_OUTPUT
+#define UI_OUTPUT(address) ((void *)(uintptr_t)(address))
+#endif
+#ifndef UI_NODE_POINTER
+#define UI_NODE_POINTER(address) ((void *)((uintptr_t)(address) + SOC_NON_CACHEABLE_OFFSET))
+#endif
 #ifndef UI_PUBLISH_FENCE
 #define UI_PUBLISH_FENCE() __asm__ volatile("fence rw,rw" ::: "memory")
 #endif
@@ -93,7 +102,7 @@ static uint32_t ui_node_address(uint32_t index) {
     return start + offset * 64;
 }
 static dw_gdma_link_list_item_t *ui_node(uint32_t index) {
-    return (dw_gdma_link_list_item_t *)((uintptr_t)ui_node_address(index) + SOC_NON_CACHEABLE_OFFSET);
+    return UI_NODE_POINTER(ui_node_address(index));
 }
 bool nih_display_keypad_configure(const nih_ui_config *config) {
     const bool runtime = NIH_NATIVE_CARD_READ && config && config->pixels == 0x48030000 && config->pixels_bytes == 720 * 1280 * 2 &&
@@ -120,9 +129,9 @@ bool nih_display_keypad_configure(const nih_ui_config *config) {
 }
 static uint32_t ui_source(uint32_t kind, uint32_t offset, uint32_t buffer, uint32_t count) {
     switch (kind) {
-        case 0: return (uint32_t)(uintptr_t)&ui_palette[0];
-        case 1: return (uint32_t)(uintptr_t)&ui_palette[1];
-        case 2: return (uint32_t)(uintptr_t)&ui_palette[count == 4 ? 2 : 1];
+        case 0: return UI_ADDRESS(&ui_palette[0]);
+        case 1: return UI_ADDRESS(&ui_palette[1]);
+        case 2: return UI_ADDRESS(&ui_palette[count == 4 ? 2 : 1]);
         case 3: return ui.pixels + offset;
         case 4: return ui.scratch + buffer * ui.stride + offset;
         case 5: return ui.scratch + buffer * ui.stride + 272 * 16 * 2 + offset;
@@ -139,7 +148,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
     ui_dot_count = ui_label_count = ui_submit_count = 0;
     const uint32_t colors[3] = { ui.paper, ui.keys, ui.accent };
     for (uint32_t i = 0; i < 3; ++i) ui_palette[i] = (uint64_t)colors[i] * UINT64_C(0x0001000100010001);
-    if (nih_rom_cache_writeback(1u << 4, (uint32_t)(uintptr_t)ui_palette, sizeof(ui_palette))) return -5;
+    if (nih_rom_cache_writeback(1u << 4, UI_ADDRESS(ui_palette), sizeof(ui_palette))) return -5;
     const nih_ui_span *plan = UI_INPUT(ui.plan);
     uint32_t total = 0;
     uint32_t upper = ui_high_start;
@@ -180,7 +189,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
                 *previous_length = length;
                 uint32_t target;
                 if (!ui_place(length, &upper, &lower, &target)) return -7;
-                uint64_t *dst = (uint64_t *)(uintptr_t)target;
+                uint64_t *dst = UI_OUTPUT(target);
                 for (uint32_t n = 0; n < span.words; ++n) dst[n] = src[n];
                 source = target;
                 *previous_target = source;
@@ -207,7 +216,7 @@ static int32_t ui_build(uint32_t local, uint32_t bytes) {
     if (total != 230400 || (!ui_runtime && atlas_offset != ui.pixels_bytes) || (ui.label_height && ui_dot_count != 16) || ui_label_count != ui.label_height) return -7;
     if (nih_rom_cache_writeback(1u << 4, ui_high_start, upper - ui_high_start) ||
         (lower > local + bytes && nih_rom_cache_writeback(1u << 4, local + bytes, lower - local - bytes))) return -5;
-    active_nodes = ui_node(0); node_count = ui.count; source_address = (uint32_t)(uintptr_t)&ui_palette[0];
+    active_nodes = ui_node(0); node_count = ui.count; source_address = UI_ADDRESS(&ui_palette[0]);
     ui_enabled = true;
     return 0;
 }

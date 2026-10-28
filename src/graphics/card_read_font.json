@@ -27,7 +27,7 @@
     "src/platform/native/display_runtime.zig": "36726979b728fc1294099b8285b52d2f505c9a4518cd29ec87cf0270a7ce60b4",
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
     "src/board/tab5/native_scanout.c": "33dd82d2b5f91bddba80f841b0db227423d1de17e8d26e3cf2891c2954f017d1",
-    "src/board/tab5/keypad_sparse.h": "9b9989da693f564c36c49455a8403589c278323e84fa0c34f23f6cf93547c2eb",
+    "src/board/tab5/keypad_sparse.h": "6d8365cc71444553b427a50543d1f490a65a071241636e4dc76fca473f0de025",
     "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
     "src/board/tab5/scanout_retire.h": "0b00ac2cbcb9fd0ded106dd03c9cafc1c5afdbe4892ef6241ecb1bab6c763a36",
     "src/platform/native/esp32p4.ld": "c5db7a86f25b7675f143c5bca6960f61d4fae75709f8fc8183eeba9bc4759137",
