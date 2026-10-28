@@ -31,6 +31,12 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_module_tests.step);
     const surface_tests = b.addTest(.{ .root_module = surface_module });
     test_step.dependOn(&b.addRunArtifact(surface_tests).step);
+    const canvas_module = b.createModule(.{ .root_source_file = b.path("src/graphics/canvas.zig"), .target = target, .optimize = optimize });
+    canvas_module.addImport("surface", surface_module);
+    const pattern_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/canvas_pattern.zig"), .target = target, .optimize = optimize });
+    pattern_module.addImport("canvas", canvas_module);
+    const pattern_tests = b.addTest(.{ .root_module = pattern_module });
+    test_step.dependOn(&b.addRunArtifact(pattern_tests).step);
     const ccid_tests = b.addTest(.{ .root_module = ccid_module });
     test_step.dependOn(&b.addRunArtifact(ccid_tests).step);
 }
