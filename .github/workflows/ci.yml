@@ -29,6 +29,9 @@ jobs:
       - name: Zig tests (Debug)
         run: .tools/zig-0.17.0/zig build test
 
+      - name: Development memory budget
+        run: python3 -m unittest discover -s tools -p storage_budget_test.py
+
       - name: Zig tests (ReleaseSafe)
         run: .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
 
@@ -45,6 +48,28 @@ jobs:
 
       - name: Read-only littlefs host and fault checks
         run: sh tools/run-storage-host-test.sh
+
+      - name: Guarded FatFs VFS/RPC and broker lifetime checks (host only)
+        run: python3 tools/check-fatfs-backend.py
+
+      - name: Normal FS task with shared SDMMC, faults and negative controls (host only)
+        run: python3 tools/check-normal-fs.py
+
+      - name: Retain normal FS host evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: normal-fs-host
+          path: build/normal-fs/run-*/results.json
+          if-no-files-found: ignore
+
+      - name: Retain FatFs disk bridge JSON evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: fatfs-disk-host
+          path: build/fatfs-disk/run-*/*results.json
+          if-no-files-found: ignore
 
       - name: Native evidence checker regressions
         run: python3 -m unittest discover -s tools -p '*test.py'

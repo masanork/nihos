@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "evidence": "physical-device-plus-operator-confirmation",
+  "source_commit": "b21e114",
+  "image": {
+    "image_sha256": "27450e69561ec58b4286513c9bc7e3a4333e82aa0618a84c2292305b7a6d78d5",
+    "elf_sha256": "73e2abedc7c96630093dc1fdea3f1d706e3aacbbedba0436c17ef513e27bb6b9",
+    "image_bytes": 825280,
+    "primary_static_bytes": 105792
+  },
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "electrical_removal_and_reinsertion_qualified": true,
+  "operator": {
+    "removed": {
+      "confirmed": true,
+      "user_text": "カードを外した",
+      "confirmation_recorded_utc": "2026-10-27T06:18:22.841285+00:00"
+    },
+    "reinserted": {
+      "confirmed": true,
+      "user_text": "カードを戻したよ",
+      "confirmation_recorded_utc": "2026-10-27T06:19:01.030068+00:00"
+    }
+  },
+  "removal": {
+    "version": 1,
+    "status": 1,
+    "before_reads": 5272,
+    "failed_command": 17,
+    "failed_interrupts": 256,
+    "unpublished": 1,
+    "fenced": 1,
+    "idle_denied": 1,
+    "stale_rejected": 2,
+    "reinserted": 1,
+    "after_reads": 2,
+    "crc": 2418206781,
+    "generation_before": 3,
+    "generation_after": 4,
+    "ctrl": 0,
+    "dma_mode": 0,
+    "dma_fsm": 0,
+    "irq_mask": 0,
+    "dma_mask": 0,
+    "descriptor": 0,
+    "descriptor_word": 0
+  },
+  "prior_injected_notifications": {
+    "version": 1,
+    "status": 1,
+    "normal_reads": 2,
+    "cancelled": 1,
+    "removed": 1,
+    "stale_rejected": 3,
+    "idle_denied": 1,
+    "fences": 2,
+    "unpublished": 2,
+    "crc": 2418206781,
+    "ctrl": 0,
+    "dma_mode": 0,
+    "dma_fsm": 0,
+    "irq_mask": 0,
+    "dma_mask": 0,
+    "descriptor": 0,
+    "descriptor_word": 0
+  },
+  "restoration": {
+    "verified": true,
+    "bytes": 16777216,
+    "backup_sha256": "fbef6cdd19d1b815d1e70da8904d03e4f0e7d7568122e2bac96166916384d58e",
+    "method": "esptool verify_flash 0 full private backup, digest matched"
+  },
+  "automation_completion": {
+    "passed": true,
+    "restored": true,
+    "exclusive_serial": true,
+    "removal_fixture_run": true,
+    "serial_reopens": 0,
+    "same_serial_descriptor": true,
+    "electrical_removal_operator_confirmed": false,
+    "power_on_reset_observed": false
+  },
+  "raw_archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-sd-manual-qualification-candidate/removal-physical-2",
+  "artifacts": {
+    "boot1.log": "e7f644ff76afeb3a14a45561d93ad976656d75083ddfd1ceca4e44016d35bffc",
+    "operator.json": "42e2ebe32039b32ef75985552fc9f47d6104d167799d892dbe944d401d950601",
+    "results.json": "247d332fa78d7115b71c96afb6d709020a7ff64ed1104478c06bf8fffec5f540",
+    "complete.json": "ae6affa348d68b4db912728d664bddd66c66792ad9f9743a42f65f525054d8d3",
+    "restored.json": "aadbab24569a997ff722521b7e077e82e32e651b0fce0fe6ae705f60853da2d6",
+    "verify-candidate-before.log": "6bdebe1bcfa8b6a6abde0458ba322a6ca26e10b113c0ff23cf686206b9844065",
+    "verify-candidate-after.log": "6bdebe1bcfa8b6a6abde0458ba322a6ca26e10b113c0ff23cf686206b9844065",
+    "verify-restored-full-flash.log": "67a6cde961a2844967ef44a35188d6dd0e7d5d2c00a802c39391e8f4f0313dba"
+  },
+  "failed_attempts": [
+    {
+      "archive": "/Users/masanork/Documents/Codex/2026-10-27/nihos-sd-manual-qualification-candidate/removal-physical-1",
+      "stage": "Flash backup before candidate write",
+      "reason": "SerialException Errno 6 Device not configured during read_flash",
+      "candidate_write_started": false,
+      "backup_bytes": 0,
+      "runner_log_sha256": "a8fc2f1e3e0fda910018e5e96d8b449f669053aee7f297e8157c51b54d5e5d8a"
+    }
+  ],
+  "limits": [
+    "Read command failed with response timeout after operator card removal; not proof that contact broke mid-DMA beat",
+    "No card-detect IRQ handler; physical removal is confirmed by operator and read failure",
+    "Capacity and LBA0 CRC comparison are fixture checks, not a unique card identifier",
+    "Hardware reset/cache failure injection and full FatFs/VFS/RPC integration remain unqualified",
+    "Power OFF/ON qualification is a separate pending attempt"
+  ]
+}

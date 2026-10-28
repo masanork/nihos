@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "ad8bb03c77f2041f0be8dd040e2596041a20702c",
+  "evidence": "host integration and native image audit; physical SD RPC run pending",
+  "hardware_executed": false,
+  "candidate": {
+    "image-audit.json": "a7dbaa3040c7f79acbd8c81d85f19c25a604cd97b637d38934d82b1ffed9ef10",
+    "native-layout.ld": "977f9d012e8121eeb3a1c7f22538a6c12878ec48b56fbbbc9c5ea2f3a8e6a877",
+    "native_options.zig": "de6af6a23727027668a61b988b2d3b289b2fc79012b4de0b26f20fb463f87408",
+    "nihos-native.bin": "1fabe5ccd0cba6904f35aaee39d914b2680b7e128c4ad59033093479f4a3b9de",
+    "nihos-native.elf": "4c3d1968ffee44d0fa8641f77dd375386b78928d7d62c5ea03d3d7d32e8f33ee",
+    "sqlite-manifest.json": "bdade5c5d7efe225dfe85fded3e5cf633e357170a2b2868ae486a1f5fe01cbf1"
+  },
+  "private_bundle": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-rpc-candidate",
+  "host_scenarios": 84,
+  "card_rpc_cases": [
+    {
+      "name": "fat12:card-rpc-cancel",
+      "observed": {
+        "mode": "card-rpc-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat12:card-rpc-exit",
+      "observed": {
+        "mode": "card-rpc-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat16:card-rpc-cancel",
+      "observed": {
+        "mode": "card-rpc-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat16:card-rpc-exit",
+      "observed": {
+        "mode": "card-rpc-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat32:card-rpc-cancel",
+      "observed": {
+        "mode": "card-rpc-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 32,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat32:card-rpc-exit",
+      "observed": {
+        "mode": "card-rpc-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 32,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-cancel",
+      "observed": {
+        "mode": "card-rpc-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 33,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-exit",
+      "observed": {
+        "mode": "card-rpc-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 33,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "exfat:card-rpc-cancel",
+      "observed": {
+        "mode": "card-rpc-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 27,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "exfat:card-rpc-exit",
+      "observed": {
+        "mode": "card-rpc-exit",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 27,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    }
+  ],
+  "card_lifetime": [
+    {
+      "format": "fat12",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 2
+      }
+    },
+    {
+      "format": "fat16",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 2
+      }
+    },
+    {
+      "format": "fat32",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 4
+      }
+    },
+    {
+      "format": "mbr-fat32",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 4
+      }
+    },
+    {
+      "format": "exfat",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 3
+      }
+    }
+  ],
+  "rv32_card_workspace_bytes": 26104,
+  "card_rpc_parent": {
+    "used": 44928,
+    "charged": 65536,
+    "client_frames_charged_separately": 8192,
+    "controller_dma_staging": "unchanged resident SRAM"
+  },
+  "native_card_profile": {
+    "version": 3,
+    "mode": "inserted",
+    "rpc": true,
+    "source": "physical SD native VFS/RPC tasks; cancellation and client stop after fenced sector read",
+    "charged": 65536,
+    "sources": {
+      "src/platform/native/fatfs_card.c": "16395b23e744c4bf252a192546844e885ef9fce36077ed7550ff0857a4254b89",
+      "src/platform/native/fatfs_card_abi.zig": "51563e1e98e3a175b173dd4eeade88bd3d8cc9abe6571e2aa76a47e2ecb3e4b9",
+      "include/nihos_fatfs_card.h": "4d15fe764ba3cd986d91427a544296c215aff4be67c8b121b7c6184f210e2971",
+      "src/storage/fatfs_volume.c": "c40b79ebca7a7cdc72e75ba05d4c038d7f6090918fc513fbddc9823ff3cef677",
+      "include/nihos_fatfs_volume.h": "cc36d1e7fd702f34b146be9c6515b23a7a27c0201f82c1815321b867244c4fb5",
+      "src/platform/native/fatfs_disk.c": "3a5e3427df79c9f08692b546c9569b7ec45363c35501702d9b407615e67b3a7e",
+      "src/platform/native/sdmmc_probe.zig": "d1ce4fbd6251a12da2865f67ae414789345f267094037d5db46f2ee529a05ad3",
+      "src/fs/sdmmc_owner.zig": "8c4f6203ab13eb9896b6840af071031ac9f6f8776421761c4c2f721f2604bd39",
+      "include/nihos_storage_io.h": "330550ec443364f9f39a61b5bb6ab34a0353185a76327c67d1336783ebca4d82"
+    },
+    "workspace_bytes": 26104,
+    "rpc_parent_used": 44928
+  },
+  "python_tests": 236,
+  "zig_host_tests": "Debug and ReleaseSafe passed (cached)",
+  "artifacts": {
+    "host-results.json": "0612500dfb5c28458ee8c963f5128ff6fc9d34caadb53977953679f3c3c33e06",
+    "image-audit.json": "a7dbaa3040c7f79acbd8c81d85f19c25a604cd97b637d38934d82b1ffed9ef10",
+    "sqlite-manifest.json": "bdade5c5d7efe225dfe85fded3e5cf633e357170a2b2868ae486a1f5fe01cbf1",
+    "qualification-bundle.json": "36bb3d73b19ed51eb761ff398513c212a5f7db56982a6af8b6b7817ed6619cf5",
+    "call-stack.json": "ed7a30bcb582afb3056396768d746736f930f9d729e58a6bda558ab29939bb12"
+  },
+  "limits": [
+    "host exit is a notification injection, not kernel task stop",
+    "native task candidate not physically executed",
+    "RPC cancel/stop gate is AFTER a fenced sector read, not DMA-in-flight abort",
+    "no full call-stack bound",
+    "no filesystem writes, persistent SQLite, clean POR or power-loss qualification"
+  ],
+  "rebuild_comparison": {
+    "allocated_sections_equal": true,
+    "different_sections": [
+      ".debug_line"
+    ],
+    "bitwise_elf_reproducibility_claimed": false
+  }
+}

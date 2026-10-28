@@ -1,0 +1,652 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "base_commit": "f02a1674b87fe195c71b549f6cc325661120529d",
+  "evidence": "local native ELF/image structural audit and host execution; no physical-device execution",
+  "firmware_linked": true,
+  "hardware_executed": false,
+  "physical_flash_written": false,
+  "candidate": {
+    "elf_sha256": "8b2e2969b08b3b3328ee8799529f0bba780d7ba30b0a1823c62c38f2011b85d0",
+    "image_sha256": "6b7e511984d0ff3c83f143d7800d95ac588db092365360378a8df48c5b591065",
+    "image_bytes": 852560,
+    "primary_static_bytes": 106176
+  },
+  "resident_policy_limit": 106496,
+  "resident_policy_remaining": 320,
+  "sql_span": {
+    "text_start": "0x40020000",
+    "text_end": "0x400ade80",
+    "rodata_start": "0x400ade80",
+    "rodata_end": "0x400c4a00",
+    "text_bytes": 581248,
+    "rodata_bytes": 93056
+  },
+  "native": {
+    "version": 1,
+    "source": "embedded sparse/RLE FAT12 fixture; not SD FatFs",
+    "fixture": {
+      "schema": 1,
+      "source": "embedded sparse/RLE FAT12 fixture; not SD FatFs",
+      "image_sha256": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "image_bytes": 1048576,
+      "fixture_id": 696070325,
+      "payload_bytes": 3942,
+      "index_entries": 31,
+      "fixture": {
+        "format": "fat12",
+        "fs_type": 1,
+        "image_bytes": 1048576,
+        "cluster_bytes": 512,
+        "fragment_first_cluster": 11,
+        "fat_byte": 512,
+        "volume_byte": 0,
+        "data_byte": 20480,
+        "big_size": 0,
+        "alias": "LONGFI~1.TXT",
+        "empty_alias": "LONGEM~1.TXT",
+        "root_cluster": 0,
+        "child_cluster": 6,
+        "child_entry_byte": 5824
+      },
+      "header": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/fatfs-input-1xbiu9ez/fatfs_fixture_data.h",
+      "header_sha256": "15d4572d9b8eb57b3cfdd06c1a2b9448091f82255536eaf83f936493fb5121f9",
+      "source_directory": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/fatfs-input-1xbiu9ez/upstream/source",
+      "image": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/fatfs-input-1xbiu9ez/fat12.img",
+      "upstream": {
+        "ff.c": "3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250",
+        "diskio.h": "1c2b29f53e061c55d43b2e412c3a61320b2621bac7561a05e275514baa44785a",
+        "ffunicode.c": "3f1632c1f1e64b0b683b0d7e51341b9870728f398604869dd8211f1819509a8e",
+        "ff.h": "42920ae4d6080bfc2a72d92a9969b5e94eeaff070e5e71d90da9ab6d7d8e158e"
+      },
+      "sources": {
+        "tools/build-fatfs-native-input.py": "5f7f6278f0c7c1b99742c04ed0df739599fdd3f29366cc68df8a1d99f0b63dd3",
+        "probes/fatfs-disk/make_fixture.c": "b667a04a4b9a8be880d75f3eeb88c58aa091d22d08bd26ea3135e6fce117b5ef",
+        "probes/fatfs-disk/host_disk.c": "d20bdd888dc96cd73a87bf60cf81c0e846c84693c4356cdc5b317d8416236436",
+        "probes/fatfs-disk/host_disk.h": "cd884e13b6b8e6ad2a2b6d10fd4f2c7d8ad6a193fa36d26df9b20492b370af90",
+        "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+        "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1"
+      }
+    },
+    "flash_end": "0x400d0000",
+    "c_no_inline": true,
+    "sources": {
+      "src/platform/native/fatfs_runtime.zig": "33e96e6990197890fe52b11ec87ca5586c12e7ae7c1d8c720d3d274c3e680688",
+      "src/platform/native/fatfs_service_abi.zig": "a68335b7120994f27f5109d36a11014ed08762bfadda59845a688c8e51f441f1",
+      "src/platform/native/fatfs_fixture.c": "ddc413fd0fffcdab36bbf08ebf7db33590443fa476b6651284c74cd6deb33d95",
+      "src/platform/native/fatfs_fixture_disk.c": "cdaaa28cf0a9591d4ddcc18db02ec8539a8ff44ed3742ac60a72cfbfb19fb8c7",
+      "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
+      "src/platform/native/storage_service_abi.zig": "74fa28ad88ce71cc916370f56930c0eae1c4c31b94c577ee3d21f157ab440b17",
+      "src/platform/native/main.zig": "ae46ab44ada0acb34436d846645fa80294187b676ff926b45ea4cc7b24720fde",
+      "src/platform/native/esp32p4.ld": "5c4e6b9cbe38e780fcd99cf558e62755273bbca78cfc118c70afe225b206e3fd",
+      "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
+      "src/storage/fatfs_disk.c": "5f551db505838930bfd1f214c659133060b1de909f278067cb198f12c047417e",
+      "include/nihos_fatfs_backend.h": "079dbba8774195a11fe16b0cb768229fc8b7c9249812072a76ca9e231ceef864",
+      "include/nihos_fatfs_disk.h": "47aa7697456bc4c58a1f0b8f024bb1f19cf8648ecdc8fda617d4dae9bf546499",
+      "src/storage_vfs.zig": "9f23cf2a35062726518cd238f2692e8074194844f70357f8c6996afb103346e3",
+      "src/fs/vfs.zig": "5ea2acc47d4de2325b5ea7a2b4874b7d38950be417f974e2391cde8973a5c499",
+      "src/fs/fatfs_backend.zig": "45c0415cc576cb4e4645dcf4a5684f2d3d3f7b6900a2ba88a26cec22b8fee566",
+      "src/fs/vfs_rpc.zig": "5887ae872285fadfe0e1bfd7f0fd4ffd3cb896d5c1d4591fd49980fcf92006c4",
+      "src/fs/vfs_memory.zig": "56d3155e5cba971794412b66e72184b89fa15179d53ddb2d9a9d5345d474bbcb",
+      "src/fs/io_leases.zig": "a1ffddfb54df132f22890a5cf5bfece784a7c646d1c1dfb125351ea483e50683",
+      "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+      "src/kernel/spsc_ring.zig": "bfdd052265942ee54fa58f5c46fa167f141632958933f5bef40956dbb6fbf0b4",
+      "src/kernel/memory_broker.zig": "d65d17e3aaaeb97530bf7797c44acdd9c867a89d71c9c1c5b2925b207e18d396",
+      "src/kernel/page_pool.zig": "761a36f0fbfcec6d4a6cd4862936b195d5709c40467c32d2867c2e69713cbae2",
+      "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+      "src/arch/riscv32/native_tasks.zig": "409ecfb811bad95889b2b22f35a89a3b1b6f805f705a05eaeb6479f7a5d316b1",
+      "probes/fatfs-disk/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+      "probes/fatfs-disk/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+      "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+      "tools/build-native-elf.sh": "159ad83eabd86863997ee0c1a57d9f4ad052ffd1e6dc4591214fc243e5c520f6",
+      "tools/build-fatfs-native-input.py": "5f7f6278f0c7c1b99742c04ed0df739599fdd3f29366cc68df8a1d99f0b63dd3",
+      "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1",
+      "tools/native-sqlite-manifest.py": "3019bd2b358ae9c58df533645cd81b6097df440cc0fb847c9ba3ddc8f3d68ded",
+      "tools/check-native-image.py": "13c3b0304df4bdbf37e180fd24c8ee432e7e9d44d0541b71217156afc170f7d2",
+      "tools/fatfs_native_profile.py": "0133bcb6c389ccc7420dc0c8d085531a885a7f9ccbc23881408b339fe9e249b6"
+    },
+    "resident_hooks": {
+      "nih_storage_runtime_ready": "0x4ff0084a",
+      "nih_storage_register": "0x4ff007c4",
+      "nih_storage_pending": "0x4ff00798",
+      "nih_storage_task_exited": "0x4ff006be",
+      "nih_storage_cancel_requested": "0x4ff0077c",
+      "nih_storage_cleanup_ready": "0x4ff00760",
+      "nih_storage_retired": "0x4ff00734"
+    },
+    "embedded_image_sha256": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+    "control_bytes": 360,
+    "control_reserve_bytes": 32768,
+    "control_start": "0x48008000",
+    "parent_bytes": 65536,
+    "client_frame_bytes": 4696,
+    "static_zig_frames": {
+      "records": 68,
+      "ceiling_bytes": 1024,
+      "maximum_bytes": 496,
+      "largest": [
+        {
+          "address": "0x400a5184",
+          "functions": [
+            "broker_runtime.nih_broker_runtime_poll",
+            "nih_broker_runtime_poll"
+          ],
+          "bytes": 496
+        },
+        {
+          "address": "0x400a0130",
+          "functions": [
+            "fatfs_runtime.serve"
+          ],
+          "bytes": 304
+        },
+        {
+          "address": "0x400a3a8a",
+          "functions": [
+            "kernel.memory_broker.Broker(52,7680,64,16,32).alloc"
+          ],
+          "bytes": 240
+        },
+        {
+          "address": "0x400a4d54",
+          "functions": [
+            "broker_runtime.nih_broker_task_entry",
+            "nih_broker_task_entry"
+          ],
+          "bytes": 240
+        },
+        {
+          "address": "0x400a5e60",
+          "functions": [
+            "broker_runtime.nih_broker_runtime_init",
+            "nih_broker_runtime_init"
+          ],
+          "bytes": 192
+        },
+        {
+          "address": "0x400a106c",
+          "functions": [
+            "fatfs_runtime.runClient"
+          ],
+          "bytes": 144
+        },
+        {
+          "address": "0x400a4768",
+          "functions": [
+            "broker_runtime.nih_broker_runtime_finish",
+            "nih_broker_runtime_finish"
+          ],
+          "bytes": 128
+        },
+        {
+          "address": "0x400a21fe",
+          "functions": [
+            "fatfs_runtime.newClient"
+          ],
+          "bytes": 112
+        },
+        {
+          "address": "0x4009f790",
+          "functions": [
+            "fatfs_runtime.nih_storage_runtime_finish",
+            "nih_storage_runtime_finish"
+          ],
+          "bytes": 96
+        },
+        {
+          "address": "0x4009fcd4",
+          "functions": [
+            "kernel.memory_broker.Broker(52,7680,64,16,32).release"
+          ],
+          "bytes": 96
+        }
+      ]
+    },
+    "whole_call_stack_qualified": false,
+    "physical_task_run_qualified": false
+  },
+  "static_frames": {
+    "records": 1615,
+    "maximum_reported_frame_bytes": 1248,
+    "largest_frames": [
+      {
+        "address": "0x400a6a56",
+        "functions": [
+          "f_open"
+        ],
+        "bytes": 1248
+      },
+      {
+        "address": "0x400a7b04",
+        "functions": [
+          "identity_of"
+        ],
+        "bytes": 1248
+      },
+      {
+        "address": "0x400a73b2",
+        "functions": [
+          "f_opendir"
+        ],
+        "bytes": 1152
+      },
+      {
+        "address": "0x400a78e4",
+        "functions": [
+          "parents"
+        ],
+        "bytes": 784
+      },
+      {
+        "address": "0x4002312a",
+        "functions": [
+          "sqlite3_log"
+        ],
+        "bytes": 768
+      },
+      {
+        "address": "0x400819f8",
+        "functions": [
+          "whereLoopAddOr"
+        ],
+        "bytes": 736
+      },
+      {
+        "address": "0x400289c0",
+        "functions": [
+          "sqlite3RunParser"
+        ],
+        "bytes": 704
+      },
+      {
+        "address": "0x40041ab4",
+        "functions": [
+          "sqlite3SchemaClear"
+        ],
+        "bytes": 592
+      },
+      {
+        "address": "0x400a5184",
+        "functions": [
+          "broker_runtime.nih_broker_runtime_poll",
+          "nih_broker_runtime_poll"
+        ],
+        "bytes": 496
+      },
+      {
+        "address": "0x40089d26",
+        "functions": [
+          "getRowTrigger"
+        ],
+        "bytes": 448
+      }
+    ],
+    "recursive_or_Zig_call_graph_bound": false,
+    "includes_zig": true
+  },
+  "objects": {
+    "sql_sqlite3.o": {
+      "sha256": "387f0f9141ad2889a9b367f804ed2b4b86121fca9b2fb6fb0492b926e9b41e24",
+      "function_count": 1613
+    },
+    "sql_session.o": {
+      "sha256": "ed1d134b6c760e66d2f8f7870f3cc5326746f8902b25874774aec65e14675b08",
+      "function_count": 17
+    },
+    "sql_vfs.o": {
+      "sha256": "21e86a1d2bd0abfc00080f6fb039486d70534f33c29617084bb9401ab20fc936",
+      "function_count": 7
+    },
+    "sql_lfs.o": {
+      "sha256": "358affc2428ccbb8cdcecb57c912fa5bf819fcc5b2f5328334dbbe722f4aa7af",
+      "function_count": 31
+    },
+    "sql_lfs_util.o": {
+      "sha256": "dedc3a3b8a3e2125716cbc010f1203cd488bd9f4c09ee5773ef9ac746b82d1c9",
+      "function_count": 1
+    },
+    "sql_lfs_reader.o": {
+      "sha256": "f1c4fc2bb896bc0c7c8c463f3b8015586309f4f1fbcb359ae43d79ad62c6dc1a",
+      "function_count": 2
+    },
+    "sql_storage_api.o": {
+      "sha256": "765daaf19981e01d8c1f1305b1965f34488718a96c00097268533ae1f2b19768",
+      "function_count": 15
+    },
+    "sql_broker_runtime.o": {
+      "sha256": "0a33268f60cdec738660a0954722bdb8ca09fd36689e59c03e5822439781407c",
+      "function_count": 98
+    },
+    "sql_fat_guard.o": {
+      "sha256": "b76afb4d8a5e13e66d5ce02d29de0b72427c5e66c0ecaf4c44fb65b1e45de565",
+      "function_count": 49
+    },
+    "sql_fat_unicode.o": {
+      "sha256": "40217c8f6e80a40e2ba5f4bb79bc7bc7fb74b6d690335b7e39dc1f8e903e0ff3",
+      "function_count": 3
+    },
+    "sql_fat_backend.o": {
+      "sha256": "80d770706f9d417e06c8f031e238478aa0d197a073c1602cf473cd0f6141a58a",
+      "function_count": 17
+    },
+    "sql_fat_disk.o": {
+      "sha256": "319930448d1d6c1ca19f1e395fc662bf11b094501b836b206321d38977b210d4",
+      "function_count": 12
+    },
+    "sql_fat_fixture.o": {
+      "sha256": "b2412a106dfc1b0741c85044303a6b5776db85ea6177c3dbb5cb7e8d1d61f5f6",
+      "function_count": 3
+    },
+    "sql_fat_fixture_disk.o": {
+      "sha256": "4f0760d7d1e5b80ce6e6d452b0d933310a41c900cad57a84f4e17b5213072c6f",
+      "function_count": 2
+    }
+  },
+  "host_c_decode": {
+    "result": {
+      "evidence": "host C decoder and guarded FatFs; no native task or SD execution",
+      "image_sha256": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "sectors": 2048,
+      "memo_bytes": 24,
+      "invalid_lba_and_null_output_rejected": true,
+      "executable_sha256": "20637f25f3a392b2382fb7eadd02f1ac3f5fd6581833fc8b0bf79cecfcf0ed0b"
+    },
+    "raw": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/c-decode-yun1g5ys/result.json",
+    "raw_sha256": "a5234a4cf95cd9f7bb9f9b82f52b3e85059a134f1daf6b5a5946d323587c4750"
+  },
+  "host_regression": {
+    "raw": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-5dmjaet_/backend-results.json",
+    "raw_sha256": "1b394132df5aea1d5d813668e8a5cc33572ee9629984f54e050fc3b396dccc61",
+    "cases": 69,
+    "passed": true,
+    "image_hashes": [
+      {
+        "format": "fat12",
+        "sha256_before": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+        "sha256_after": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d"
+      },
+      {
+        "format": "fat16",
+        "sha256_before": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80",
+        "sha256_after": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80"
+      },
+      {
+        "format": "fat32",
+        "sha256_before": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28",
+        "sha256_after": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28"
+      },
+      {
+        "format": "mbr-fat32",
+        "sha256_before": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12",
+        "sha256_after": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12"
+      },
+      {
+        "format": "exfat",
+        "sha256_before": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e",
+        "sha256_after": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e"
+      }
+    ],
+    "sources": {
+      "include/nihos_fatfs_disk.h": "47aa7697456bc4c58a1f0b8f024bb1f19cf8648ecdc8fda617d4dae9bf546499",
+      "src/storage/fatfs_disk.c": "5f551db505838930bfd1f214c659133060b1de909f278067cb198f12c047417e",
+      "src/platform/native/fatfs_disk.c": "518fd3a561cfc5aa0b346eacd109e566979eb54dcf55ed77a28444079cf3bb41",
+      "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1",
+      "tools/check-fatfs-disk.py": "b6eba9f2e458939dd7711b62a865b05c26ccc7d84a6f38105d062589faf2e463",
+      "provenance.toml": "47a0f5e7df769d40934c9a859260e8a8753fa6154351ce65427fd1304e6d3a10",
+      "probes/fatfs-disk/README.md": "ddd6e07fef4d88b6784a2cbb27d10290601d8983705344294e4c74d9b9754ebd",
+      "probes/fatfs-disk/backend_check.c": "af57e0cda3fb7a27e9044d832f99e59a5a21d4dba9c7813beb8d75667209719d",
+      "probes/fatfs-disk/check_disk.c": "4297f3aa396923e284fb475d427e85037ceb8fe9865af740eb17a2d24539a802",
+      "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+      "probes/fatfs-disk/host_disk.c": "d20bdd888dc96cd73a87bf60cf81c0e846c84693c4356cdc5b317d8416236436",
+      "probes/fatfs-disk/host_disk.h": "cd884e13b6b8e6ad2a2b6d10fd4f2c7d8ad6a193fa36d26df9b20492b370af90",
+      "probes/fatfs-disk/host_library.zig": "9ce0189ac7690c6f0ececfc89d6dc370da6901154beaeaffb1ee0e8b2eaf4b73",
+      "probes/fatfs-disk/make_fixture.c": "b667a04a4b9a8be880d75f3eeb88c58aa091d22d08bd26ea3135e6fce117b5ef",
+      "probes/fatfs-disk/rpc_check.zig": "d11c331194b75fe908ac1fd56f9081fd5dea1eab00e95ee8c4cfef5512916b17",
+      "probes/fatfs-disk/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+      "probes/fatfs-disk/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+      "probes/fatfs-disk/vfs_check.zig": "a40a6f6b58324d0645754d32071020a8f528f05f8097d42a9c81f1e2d7894842",
+      "probes/fatfs-disk/vfs_rv32.zig": "b2dd5a9e2562eb2928645eadb6c51dfb129dcfbe7d87a1cfc998742fa5a483f5",
+      "include/nihos_fatfs_backend.h": "079dbba8774195a11fe16b0cb768229fc8b7c9249812072a76ca9e231ceef864",
+      "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
+      "src/fs/fatfs_backend.zig": "45c0415cc576cb4e4645dcf4a5684f2d3d3f7b6900a2ba88a26cec22b8fee566",
+      "src/fs/vfs.zig": "5ea2acc47d4de2325b5ea7a2b4874b7d38950be417f974e2391cde8973a5c499",
+      "src/fs/vfs_test.zig": "45b581de786aaf623e2bfd1df574a3e597666980108a467f4e020cf9535031d7",
+      "src/fs/io_leases.zig": "a1ffddfb54df132f22890a5cf5bfece784a7c646d1c1dfb125351ea483e50683",
+      "src/root.zig": "76bc4e8f40bd361dae07ccdcd9cd301283fd24bcd8e4f1b3bca3cf0c82716efd",
+      "tools/check-fatfs-backend.py": "ae3dd4a47e8a10a8154d01785e9694e5f449842bd0a717fc4f48488591d118c7",
+      "src/storage_vfs.zig": "9f23cf2a35062726518cd238f2692e8074194844f70357f8c6996afb103346e3",
+      "src/fs/vfs_rpc.zig": "5887ae872285fadfe0e1bfd7f0fd4ffd3cb896d5c1d4591fd49980fcf92006c4",
+      "src/fs/vfs_rpc_test.zig": "d98c2e800044cb989fa4048fd0e3d9c00b5d5753c39e704c592d5119f18a90de",
+      "src/fs/vfs_memory.zig": "56d3155e5cba971794412b66e72184b89fa15179d53ddb2d9a9d5345d474bbcb",
+      "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+      "src/kernel/spsc_ring.zig": "bfdd052265942ee54fa58f5c46fa167f141632958933f5bef40956dbb6fbf0b4",
+      "src/kernel/memory_broker.zig": "d65d17e3aaaeb97530bf7797c44acdd9c867a89d71c9c1c5b2925b207e18d396",
+      "src/kernel/page_pool.zig": "761a36f0fbfcec6d4a6cd4862936b195d5709c40467c32d2867c2e69713cbae2",
+      "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+      "docs/planning/tab5-development-profile.json": "b59fcc52a7dcff3ba5ea0843316f0b0b0ff5ed1e085014c2ea78f39fbe427d6f",
+      "tools/run-static-analysis.sh": "b697e766f9e0b0b65250c50e66703a0353d22c774c7e747bc090010f7c9403ea",
+      ".github/workflows/ci.yml": "588a33e2cac01f2963268c0595e11ec762a48ac70a024bdc03a36ab8df7c6669"
+    }
+  },
+  "negative_controls": [
+    {
+      "case": "modified embedded payload",
+      "rejected": true,
+      "reason": "native FatFs: invalid RLE run"
+    },
+    {
+      "case": "modified embedded index",
+      "rejected": true,
+      "reason": "native FatFs: invalid sparse index/order/extent"
+    },
+    {
+      "case": "zero control descriptor word 0",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 1",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 2",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 3",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 4",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 5",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 6",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "zero control descriptor word 7",
+      "rejected": true,
+      "reason": "native FatFs: invalid control/parent/client layout"
+    },
+    {
+      "case": "legacy manifest cannot authorize expanded Flash",
+      "rejected": true,
+      "reason": "invalid SQLite Flash extent"
+    },
+    {
+      "case": "missing native sources",
+      "rejected": true,
+      "reason": "native FatFs: incomplete source identity"
+    },
+    {
+      "case": "wrong upstream",
+      "rejected": true,
+      "reason": "native FatFs: unapproved immutable fixture/upstream"
+    }
+  ],
+  "rejected_candidate": {
+    "image_sha256": "8b502f21d44f249a80ed528e8427f1c67b54a937bea6e34b70ae04e595928fe5",
+    "elf_sha256": "ba1aa3641881727289598bfd800bf61c63189373cbd5d9f63840e5567e494602",
+    "static_frames": {
+      "records": 1586,
+      "maximum_reported_frame_bytes": 7008,
+      "largest_frames": [
+        {
+          "address": "0x400a2d9e",
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+          ],
+          "bytes": 7008
+        },
+        {
+          "address": "0x400a3cc4",
+          "functions": [
+            "kernel.memory_broker.Broker(52,7680,64,16,32).alloc"
+          ],
+          "bytes": 5872
+        },
+        {
+          "address": "0x400a3692",
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).unmount"
+          ],
+          "bytes": 3488
+        },
+        {
+          "address": "0x400a0110",
+          "functions": [
+            "fatfs_runtime.nih_storage_task_entry",
+            "nih_storage_task_entry"
+          ],
+          "bytes": 2528
+        },
+        {
+          "address": "0x400a4256",
+          "functions": [
+            "kernel.page_pool.Pool(4096,7680,64).alloc"
+          ],
+          "bytes": 2112
+        },
+        {
+          "address": "0x400a44c2",
+          "functions": [
+            "kernel.page_pool.Pool(4096,52,64).alloc"
+          ],
+          "bytes": 2112
+        },
+        {
+          "address": "0x400a703c",
+          "functions": [
+            "f_open"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x400a8620",
+          "functions": [
+            "nih_fatfs_guard_open"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x400a2904",
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+          ],
+          "bytes": 1216
+        },
+        {
+          "address": "0x400a8068",
+          "functions": [
+            "f_opendir"
+          ],
+          "bytes": 1152
+        }
+      ],
+      "recursive_or_Zig_call_graph_bound": false
+    },
+    "reason": "7008-byte VFS frame and 5872-byte broker frame exceed 4096-byte worker stack",
+    "source_snapshot_before_client_copy_fix": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/fatfs-runtime-before-stack-fix.zig",
+    "source_snapshot_sha256": "ab5d7bca027c37a157348fafd71aecf589a62b917c76796856d18512f7f8ece1",
+    "earlier_client_frame_bytes_observed_in_disassembly": 4320,
+    "hardware_executed": false
+  },
+  "regressions": {
+    "zig_debug": 238,
+    "zig_release_safe": 238,
+    "python": 194,
+    "host_fatfs_scenarios": 69,
+    "format_zlint_shellcheck": true,
+    "native_elf_audits": 6,
+    "remote_ci_executed": false
+  },
+  "legacy_profile": {
+    "image_sha256": "a007161ddddfcbeb8afafd58bc7c500029bac4378905e8e044492301eac89968",
+    "elf_sha256": "7c9efe3280b9efaed6f1a03ed5456d84e149c943d7ac3c760381edea4daedd3d",
+    "image_bytes": 823536,
+    "primary_static_bytes": 106304,
+    "resident_policy_remaining": 192
+  },
+  "raw_artifacts": {
+    "image-audit.json": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/image-audit.json",
+      "sha256": "bcbf9c7f764ece371eb77917ddbaa57dcc3432af8b8adeea3bea5de86e881372"
+    },
+    "fatfs-link-audit.json": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/fatfs-link-audit.json",
+      "sha256": "84fd2d826a9df9065022a50f6eaa3f1333cf52269b937a3de844b47e3e41e389"
+    },
+    "sqlite-manifest.json": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/sqlite-manifest.json",
+      "sha256": "3ea1044ae1300af8b73d8f77147208fb8e94e62d9e419b9faacf7e0cff85493f"
+    },
+    "fatfs-fixture-manifest.json": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/fatfs-fixture-manifest.json",
+      "sha256": "8a23aa061ed5754201c9f2d427acbb6da49e05c7c17c0173f395a6ec1ff9f8e5"
+    },
+    "audit-negative-controls.json": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/audit-negative-controls.json",
+      "sha256": "a406c0cff4aea6ef04d683096facb792c8a538771268c74ce0d8b1748ab1a9e1"
+    },
+    "python-tests.log": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/python-tests.log",
+      "sha256": "b5378c5e650729d6bc4ce1ad3056d9854270f6436840981ae60dd3e961c3944a"
+    },
+    "zig-debug.log": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/zig-debug.log",
+      "sha256": "fcb331943e6999a55aec76c2edb57a079bf35cd3af96583a475ef3dfcc5e648a"
+    },
+    "zig-safe.log": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/zig-safe.log",
+      "sha256": "7702f869b594740d5e8a6193baa34c55274d4fe8b97d001ed1b658245eed2ab1"
+    },
+    "static.log": {
+      "path": "/private/tmp/nihos-vfs-native/build/native-fatfs-rpc/static.log",
+      "sha256": "ea7dd2170d0e0574bb4b32a066650fc13f2dc3a85c0c0dde86fea94aef0efa32"
+    }
+  },
+  "tool_sources": {
+    "tools/check-fatfs-native-input.py": "4934b675f02521c19e3fa51c0a2ea3bbd9f653683b1a828aa1c6ef030963d515",
+    "tools/native_fatfs_test.py": "4feb06bccef5fda5a140ab33ba77003caab7c454603018636686b6742fbafdab",
+    "tools/check-native-log.py": "553dc125a5cef7146daf7f521e7bbcc4ec87c57d3d3063cdfea54174da5c24ff",
+    ".github/workflows/native.yml": "75f4bb44905cb6ce972e0c64a019e7d28d1c9b4b0a48a4be5141644b92929c7a"
+  },
+  "limitations": [
+    "Immutable embedded FAT12 input only; no physical SD FatFs mount or SD FatFs DMA",
+    "Native task stop/cancellation/wakeup/rebind implemented but not physically executed",
+    "Individual static frame ceilings do not establish a whole call-stack/indirect-call/exception bound",
+    "Actual 4096-byte worker stack paint and guards remain unobserved for this candidate",
+    "Clean POR, multiple filesystem routing, persistent SQLite, writes and power-loss recovery remain separate gates"
+  ]
+}

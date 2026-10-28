@@ -29,6 +29,11 @@ on:
       - 'tools/check-card-rv32.sh'
       - 'tools/check-native*.py'
       - 'tools/native*_test.py'
+      - 'tools/normal_fs_*.py'
+      - 'tools/check-normal*.py'
+      - 'probes/normal-fs/**'
+      - 'probes/sdmmc/**'
+      - 'probes/c6-sdio/**'
       - 'ports/esp32p4-native/**'
   pull_request:
     paths:
@@ -58,6 +63,11 @@ on:
       - 'tools/check-card-rv32.sh'
       - 'tools/check-native*.py'
       - 'tools/native*_test.py'
+      - 'tools/normal_fs_*.py'
+      - 'tools/check-normal*.py'
+      - 'probes/normal-fs/**'
+      - 'probes/sdmmc/**'
+      - 'probes/c6-sdio/**'
       - 'ports/esp32p4-native/**'
   workflow_dispatch:
 
@@ -154,10 +164,26 @@ jobs:
              build/native-device-network-devices/nihos-native.bin \
              build/native-device-network-devices/image-audit.json \
              build/native-device-network-devices/native_options.zig \
+             build/native-device-network-devices/normal-fs-manifest.json \
              build/native-device-network-devices/network-receipt.json build/usb-ci/default-connected/
-          NIHOS_NATIVE_DEVICES=0 sh tools/build-native.sh device integer
+          NIHOS_NATIVE_DEVICES=0 NIHOS_NATIVE_NORMAL_STORAGE=0 sh tools/build-native.sh device integer
           mkdir -p build/usb-ci/drivers-disabled
           cp build/native-device-network/image-audit.json build/native-device-network/native_options.zig build/usb-ci/drivers-disabled/
+
+      - name: Compile ordinary read-only FS with C6 and display, and without networking
+        run: |
+          NIHOS_NATIVE_NORMAL_STORAGE=1 sh tools/build-native.sh device integer
+          python3 tools/check-normal-native.py build/native-device-network-devices
+          mkdir -p build/usb-ci/normal-fs
+          cp build/native-device-network-devices/nihos-native.elf \
+             build/native-device-network-devices/nihos-native.bin \
+             build/native-device-network-devices/image-audit.json \
+             build/native-device-network-devices/normal-fs-manifest.json \
+             build/native-device-network-devices/normal-fs-negative-controls.json \
+             build/native-device-network-devices/native_options.zig build/usb-ci/normal-fs/
+          NIHOS_NATIVE_NORMAL_STORAGE=1 NIHOS_NATIVE_NETWORK=0 sh tools/build-native.sh device integer
+          mkdir -p build/usb-ci/normal-fs-no-network
+          cp build/native-device-devices/image-audit.json build/native-device-devices/native_options.zig build/usb-ci/normal-fs-no-network/
 
       - name: Compile opt-in finite native audio probe and reject wrong DMA base
         run: |

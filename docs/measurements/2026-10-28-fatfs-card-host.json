@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "0470e5936fe65746bab27fafaa441311f23acd91",
+  "evidence": "host and native final image audit; physical run pending",
+  "card_pipeline": [
+    {
+      "format": "fat12",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 25584
+      }
+    },
+    {
+      "format": "fat16",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 25584
+      }
+    },
+    {
+      "format": "fat32",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 25584
+      }
+    },
+    {
+      "format": "mbr-fat32",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 25584
+      }
+    },
+    {
+      "format": "exfat",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 25584
+      }
+    }
+  ],
+  "c_sanitizers": [
+    "address",
+    "undefined"
+  ],
+  "python_tests": 234,
+  "candidate_sha256": {
+    "image-audit.json": "3d800f83ffa3dea01413c9a678294101b62a9540ab4541d32c6686dfb0710408",
+    "native-layout.ld": "2ce0c02fa0d6c7f6926d30da697b68ba378517c32f3936e60443cc27a6d09152",
+    "native_options.zig": "3ab1a63a8aba06f7d77026dc0d47cf813e8ad281f31983dfde7da72c1f3fa4fb",
+    "nihos-native.bin": "d2c02dccd669538cdd97a3eb2bed25b38b109f4c823dbc70f491eaa5480ec1e3",
+    "nihos-native.elf": "d1d40f6a558542465d88635bb5e0cee0e86e0b8199078bc05223e69ebbaa16b4",
+    "sqlite-manifest.json": "59fbdbc10b908eebd3a177a553364da7761cfca0de05f18091c0dff115a2a8aa"
+  },
+  "private_bundle": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-candidate",
+  "artifact": {
+    "path": "docs/measurements/evidence/2026-10-28-fatfs-card/host-results.json",
+    "sha256": "df455d03a241086d36dbe57280fa629d7f16315e50a5b0973efd88f0533af06f"
+  },
+  "limits": [
+    "32 KiB charged pinned workspace",
+    "root scan max 64 entries; nonempty regular file <=1 MiB",
+    "prefix <=4096 bytes read twice; self consistency only",
+    "no native RPC over SD qualification",
+    "no writable filesystem or SQLite persistence/power-loss qualification"
+  ]
+}

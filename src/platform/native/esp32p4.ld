@@ -12,17 +12,27 @@ __native_profile = 0;
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
 __native_network = NIH_NATIVE_NETWORK;
+__native_normal_storage = NIH_NATIVE_NORMAL_STORAGE;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
+#if NIH_NATIVE_HIGH_SRAM
+    high_a (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
+    high_b (rw) : ORIGIN = 0x4ff6e000, LENGTH = 200K
+#endif
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
 #if NIH_NATIVE_SQLITE
+#if NIH_NATIVE_FATFS_RPC
+    flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 704K
+#else
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
-#if NIH_NATIVE_KEYPAD
+#elif NIH_NATIVE_NORMAL_STORAGE
+    flash_fs (rx) : ORIGIN = 0x40020000, LENGTH = 256K
+#elif NIH_NATIVE_KEYPAD
     flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
@@ -33,6 +43,9 @@ SECTIONS
     .flash.boot : {
         __flash_boot_start = .;
         *(.flash.text.boot)
+        __flash_sdmmc_boot_start = .;
+        *(.flash.text.sdboot)
+        __flash_sdmmc_boot_end = .;
         __flash_boot_end = .;
     } > flash_boot
 #if NIH_NATIVE_CARD_READ
@@ -146,10 +159,19 @@ SECTIONS
         *sql_lfs.o(.text .text.*)
         *sql_lfs_util.o(.text .text.*)
         *sql_lfs_reader.o(.text .text.*)
-        . = ALIGN(16);
+        *sql_storage_api.o(.text .text.*)
+        *sql_storage_runtime.o(.text .text.*)
+        *sql_broker_runtime.o(.text .text.*)
+        *sql_fat_*.o(.text .text.*)
+        *(.flash.text.storage)
+        . = ALIGN(4);
+        __flash_cold_start = .;
+        *(.flash.text.cold)
+        __flash_cold_end = .;
+        . = ALIGN(128);
         __flash_sql_text_end = .;
     } > flash_sql
-    .flash.sqlrodata : ALIGN(16) {
+    .flash.sqlrodata : ALIGN(128) {
         __flash_sql_rodata_start = .;
         *sql_sqlite3.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_session.o(.rodata .rodata.* .srodata .srodata.*)
@@ -157,8 +179,33 @@ SECTIONS
         *sql_lfs.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_util.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_reader.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_storage_api.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_storage_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        KEEP(*sql_broker_runtime.o(.rodata.fatfs_config))
+        *sql_broker_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        KEEP(*sql_fat_card.o(.rodata.nih_fatfs_card_workspace_bytes))
+        *sql_fat_*.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
+#endif
+#if NIH_NATIVE_NORMAL_STORAGE
+    .flash.fspad : ALIGN(4) {
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.fstext : {
+        __flash_fs_text_start = .;
+        *normal_fs_*.o(.text .text.*)
+        . = ALIGN(128);
+        __flash_fs_text_end = .;
+    } > flash_fs
+    .flash.fsrodata : ALIGN(128) {
+        __flash_fs_rodata_start = .;
+        KEEP(*(.normal_fs.identity))
+        *normal_fs_*.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_fs_rodata_end = .;
+    } > flash_fs
+    .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
 #endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {
@@ -188,11 +235,20 @@ SECTIONS
         __task_stacks_end = .;
         __stacks_end = .;
     } > stack_ram
+#if NIH_NATIVE_HIGH_SRAM
+    .high_sram_a (NOLOAD) : {
+        __high_sram_a_start = .; . += LENGTH(high_a); __high_sram_a_end = .;
+    } > high_a
+    .high_sram_b (NOLOAD) : {
+        __high_sram_b_start = .; . += LENGTH(high_b); __high_sram_b_end = .;
+    } > high_b
+#endif
     .heap (NOLOAD) : ALIGN(64) {
         __heap_start = .;
         . = ORIGIN(ram) + LENGTH(ram);
         __heap_end = .;
     } > ram
+#if !NIH_NATIVE_HIGH_SRAM
     /* Free service SRAM belongs to the base, not to a card application.
      * The SDK/loader-supported high RW window starts at 0x4ff40000.
      * Retain the top 4 KiB guard used by the high-SRAM qualification. */
@@ -206,6 +262,7 @@ SECTIONS
     __service_sram1_end = 0x4ff9f000;
     ASSERT(__service_sram0_start < __service_sram0_end, "no low service SRAM")
     ASSERT(__service_sram1_start < __service_sram1_end, "no high service SRAM")
+#endif
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
     ASSERT(SIZEOF(.flash.boot) > 0, "missing Flash boot code")
@@ -229,3 +286,7 @@ PROVIDE(nih_rom_l2_line_size = 0x4fc003cc);
 PROVIDE(nih_rom_l2_enable = 0x4fc00504);
 PROVIDE(nih_rom_cache_invalidate = 0x4fc003e4);
 PROVIDE(nih_rom_cache_writeback = 0x4fc003f4);
+#if NIH_NATIVE_CAPTURE
+PROVIDE(nih_rom_reset_reason = 0x4fc00018);
+PROVIDE(nih_rom_saved_pc = 0x4ff3fff8);
+#endif

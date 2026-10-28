@@ -16,16 +16,18 @@ cpu=generic_rv32+m+a+c+f+zicsr+zifencei
     "-Mroot=$repo_root/tools/probes/c6-at.zig" \
     "-Mat_controller=$repo_root/src/net/at_controller.zig"
 
+printf 'pub const normal_storage = false;\n' > "$out_dir/network-options.zig"
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/c6-sdio.o" --dep c6_probe --dep timer_group \
     "-Mroot=$repo_root/tools/probes/c6-sdio.zig" \
-    --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
+    --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
     "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
     "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
     "-Mc6_sdio=$repo_root/src/net/c6_sdio.zig" \
     "-Mat_controller=$repo_root/src/net/at_controller.zig" \
     "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
-    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig"
+    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
+    "-Mnative_options=$out_dir/network-options.zig"
 
 # Generate both owner paths without SDK headers, credentials or device access.
 # Exporting begin/poll/snapshot through the probe forces codegen of the live
@@ -37,7 +39,7 @@ for diagnostic in false true; do
         "-Mroot=$repo_root/tools/probes/network-service.zig" \
         --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
         "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
-        --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
+        --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
         "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
         "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
         "-Mc6_sdio=$repo_root/src/net/c6_sdio.zig" \
