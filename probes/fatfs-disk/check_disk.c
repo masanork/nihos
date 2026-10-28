@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _FILE_OFFSET_BITS 64
 #include "nihos_fatfs_disk.h"
+#include "nihos_fatfs_volume.h"
 #include "ff.h"
 #include "diskio.h"
 #include <errno.h>
@@ -154,7 +155,11 @@ static void read_image(const char *path, uint64_t first, unsigned expected_type)
     struct stat info;
     REQUIRE(image >= 0 && fstat(image, &info) == 0 && S_ISREG(info.st_mode) && info.st_size >= 512 && info.st_size % 512 == 0);
     uint64_t total = (uint64_t)info.st_size / 512;
-    bind_disk(total, first, total - first);
+    uint8_t scratch[512];
+    nih_fatfs_volume volume;
+    REQUIRE(nih_fatfs_volume_probe(nih_fatfs_native_read,NULL,total,NIH_VOLUME_AUTO,scratch,&volume)==NIH_VOLUME_OK);
+    REQUIRE(volume.first==first && volume.kind==expected_type && volume.count<=total-first);
+    bind_disk(total, volume.first, volume.count);
     FATFS fs;
     REQUIRE(f_mount(&fs, "", 1) == FR_OK && fs.fs_type == expected_type);
     read_text("Memo.txt", "nihos read-only fixture\n");

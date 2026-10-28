@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _FILE_OFFSET_BITS 64
 #include "nihos_fatfs_backend.h"
+#include "nihos_fatfs_volume.h"
 #include "safety.h"
 #include <fcntl.h>
 #include <inttypes.h>
@@ -16,7 +17,7 @@ static nih_fatfs_disk local_disk;
 static nih_fatfs_disk *disk = &local_disk;
 static nih_fatfs_backend *session;
 static void *workspace;
-static uint64_t epoch = 1, patch_offset, device_total, volume_first;
+static uint64_t epoch = 1, patch_offset, device_total, volume_first, volume_count;
 static uint8_t patch[512];
 static size_t patch_size;
 static uint32_t calls, fail_at;
@@ -50,7 +51,7 @@ int host_backend_rebind(void) {
     if (nih_fatfs_backend_destroy(session,epoch)) return -1;
     ++epoch;
     fail_at = 0;
-    if (nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,device_total,volume_first,device_total-volume_first,epoch)) return -1;
+    if (nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,device_total,volume_first,volume_count,epoch)) return -1;
     session = nih_fatfs_backend_init(workspace,nih_fatfs_backend_bytes(),disk,epoch);
     return session ? nih_fatfs_backend_mount(session,epoch) : -1;
 }
@@ -134,8 +135,17 @@ int main(int argc, char **argv) {
     struct stat info;
     CHECK(image >= 0 && !fstat(image,&info) && S_ISREG(info.st_mode) && info.st_size > 0 && info.st_size % 512 == 0);
     uint64_t total = (uint64_t)info.st_size / 512, first = strtoull(argv[2],NULL,10);
-    device_total = total; volume_first = first;
+    device_total = total; volume_first = first; volume_count = total-first;
     const char *mode = argv[3];
+    uint32_t probe_reads = 0;
+    if (!strcmp(mode,"selected-vfs")) {
+        uint8_t scratch[512];
+        nih_fatfs_volume volume;
+        CHECK(nih_fatfs_volume_probe(nih_fatfs_native_read,NULL,total,NIH_VOLUME_AUTO,scratch,&volume)==NIH_VOLUME_OK);
+        CHECK(volume.first==first && volume.count<=total-first);
+        volume_count = volume.count;
+        probe_reads = volume.reads;
+    }
     rpc_kind = !strcmp(mode,"rpc-cancel") ? 1 : !strcmp(mode,"rpc-exit") ? 2 : !strcmp(mode,"rpc-large") ? 3 : 0;
     uint32_t bytes = nih_fatfs_backend_bytes();
     if (rpc_kind) {
@@ -144,13 +154,13 @@ int main(int argc, char **argv) {
         disk = (nih_fatfs_disk *)disk_address;
         workspace = (void *)fs_address;
     } else workspace = malloc(bytes);
-    CHECK(first < total && nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,total,first,total-first,epoch) == NIH_FATFS_OK);
+    CHECK(first < total && nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,total,first,volume_count,epoch) == NIH_FATFS_OK);
     CHECK(workspace);
     CHECK(!nih_fatfs_backend_init(disk,bytes,disk,epoch));
     CHECK(!nih_fatfs_backend_init((uint8_t *)workspace + 1,bytes,disk,epoch));
     CHECK(!nih_fatfs_backend_init(workspace,bytes - 1,disk,epoch));
     CHECK(!nih_fatfs_backend_init(workspace,bytes,disk,epoch - 1));
-    CHECK(!disk->retained && !calls);
+    CHECK(!disk->retained && calls==probe_reads);
     CHECK(nih_fatfs_disk_arm(disk,epoch,7) == NIH_FATFS_OK);
     CHECK(nih_fatfs_disk_retain(disk,epoch) == NIH_FATFS_OK);
     CHECK(!nih_fatfs_backend_init(workspace,bytes,disk,epoch) && disk->remaining == 7);
@@ -163,7 +173,7 @@ int main(int argc, char **argv) {
     else {
         CHECK(mounted == NIH_FB_OK);
         if (!strcmp(mode,"normal")) normal(argv[4]);
-        else if (!strcmp(mode,"vfs")) CHECK(nih_check_vfs() == 0);
+        else if (!strcmp(mode,"vfs") || !strcmp(mode,"selected-vfs")) CHECK(nih_check_vfs() == 0);
         else if (rpc_kind) CHECK(nih_check_rpc() == 0);
         else if (!strcmp(mode,"large")) {
             uint64_t token = opened("large.bin");
@@ -214,6 +224,6 @@ int main(int argc, char **argv) {
         free(workspace);
     }
     CHECK(close(image) == 0);
-    printf("{\"mode\":\"%s\",\"checks\":%u,\"observed\":%d,\"sector_reads\":%u,\"backend_bytes\":%u,\"rpc_used\":%u,\"rpc_charged\":%u}\n",
-        mode,checks,observed,calls,bytes,rpc_kind ? nih_rpc_metric(0) : 0,rpc_kind ? nih_rpc_metric(1) : 0);
+    printf("{\"mode\":\"%s\",\"checks\":%u,\"observed\":%d,\"sector_reads\":%u,\"backend_bytes\":%u,\"rpc_used\":%u,\"rpc_charged\":%u,\"volume_probe_reads\":%u}\n",
+        mode,checks,observed,calls,bytes,rpc_kind ? nih_rpc_metric(0) : 0,rpc_kind ? nih_rpc_metric(1) : 0,probe_reads);
 }

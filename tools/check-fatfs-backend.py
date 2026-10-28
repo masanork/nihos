@@ -35,6 +35,15 @@ def symbol_size(path, wanted):
 
 
 def main():
+    inputs = [ROOT / 'include/nihos_fatfs_backend.h', ROOT / 'src/storage/fatfs_backend.c',
+              ROOT / 'src/fs/fatfs_backend.zig', ROOT / 'src/fs/vfs.zig', ROOT / 'src/fs/vfs_test.zig',
+              ROOT / 'src/fs/io_leases.zig', ROOT / 'src/root.zig', ROOT / 'tools/check-fatfs-backend.py',
+              ROOT / 'src/storage_vfs.zig', ROOT / 'src/fs/vfs_rpc.zig', ROOT / 'src/fs/vfs_rpc_test.zig',
+              ROOT / 'src/fs/vfs_memory.zig', ROOT / 'src/fs/io_stop.zig', ROOT / 'src/kernel/spsc_ring.zig',
+              ROOT / 'src/kernel/memory_broker.zig', ROOT / 'src/kernel/page_pool.zig', ROOT / 'src/kernel/development_memory.zig',
+              ROOT / 'docs/planning/tab5-development-profile.json',
+              ROOT / 'tools/run-static-analysis.sh', ROOT / '.github/workflows/ci.yml']
+    source_hashes = {str(p.relative_to(ROOT)): sha(p) for p in inputs}
     base_path = Path(run(['python3', ROOT / 'tools/check-fatfs-disk.py'], timeout=120).strip())
     work = base_path.parent
     base = json.loads(base_path.read_text())
@@ -54,7 +63,8 @@ def main():
              '-fsanitize=address,undefined', '-fno-omit-frame-pointer',
              '-I' + str(ROOT / 'include'), '-I' + str(PROBE), '-I' + str(source)]
     run([*cc, *flags, PROBE / 'backend_check.c', ROOT / 'src/storage/fatfs_backend.c',
-         ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/platform/native/fatfs_disk.c',
+         ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/storage/fatfs_volume.c',
+         ROOT / 'src/platform/native/fatfs_disk.c',
          PROBE / 'safety.c', source / 'ffunicode.c', library, '-o', binary])
     report = {'schema': 1, 'passed': False, 'evidence': 'host guarded FatFs, VFS/RPC and actual broker lifetime integration; RV32 compile only',
               'hardware_executed': False, 'firmware_linked': False,
@@ -62,6 +72,8 @@ def main():
               'upstream_sha256': base['upstream_sha256'],
               'disk_contract': {'observed': base['contract'], 'writable_config_rejected': base['writable_config_rejected'],
                                 'forbidden_write_symbols': base['forbidden_write_symbols']},
+              'volume_contract': base['volume_contract'],
+              'volume_negative_controls': base['volume_negative_controls'],
               'base_results': str(base_path), 'base_results_sha256': sha(base_path), 'cases': [], 'fixtures': []}
     def save():
         (work / 'backend-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
@@ -89,7 +101,7 @@ def main():
         fixture, image = row['fixture'], Path(row['image'])
         before = sha(image)
         probe(row, 'identity-and-admission', 'normal', fixture['alias'] or 'LONG FILENAME FOR ALIAS.TXT')
-        for mode in ('vfs', 'io', 'removed'):
+        for mode in ('vfs', 'selected-vfs', 'io', 'removed'):
             probe(row, mode, mode)
         for mode in ('rpc-cancel', 'rpc-exit'):
             probe(row, mode, mode)
@@ -182,18 +194,12 @@ def main():
         raise RuntimeError('RPC parent exceeds its admitted allocation')
     report['rpc_parent'] = {'offsets': offsets, 'used': at, 'charged': 65536,
                             'client_frames_charged_separately': 8192, 'policy': 'unchanged generated development profile'}
-    inputs = [ROOT / 'include/nihos_fatfs_backend.h', ROOT / 'src/storage/fatfs_backend.c',
-              ROOT / 'src/fs/fatfs_backend.zig', ROOT / 'src/fs/vfs.zig', ROOT / 'src/fs/vfs_test.zig',
-              ROOT / 'src/fs/io_leases.zig', ROOT / 'src/root.zig', ROOT / 'tools/check-fatfs-backend.py',
-              ROOT / 'src/storage_vfs.zig', ROOT / 'src/fs/vfs_rpc.zig', ROOT / 'src/fs/vfs_rpc_test.zig',
-              ROOT / 'src/fs/vfs_memory.zig', ROOT / 'src/fs/io_stop.zig', ROOT / 'src/kernel/spsc_ring.zig',
-              ROOT / 'src/kernel/memory_broker.zig', ROOT / 'src/kernel/page_pool.zig', ROOT / 'src/kernel/development_memory.zig',
-              ROOT / 'docs/planning/tab5-development-profile.json',
-              ROOT / 'tools/run-static-analysis.sh', ROOT / '.github/workflows/ci.yml']
-    report['sources'] = {**base['sources'], **{str(p.relative_to(ROOT)): sha(p) for p in inputs}}
+    report['sources'] = {**base['sources'], **source_hashes}
+    if any(sha(ROOT / name) != expected for name, expected in report['sources'].items()):
+        raise RuntimeError('Source changed during Backend/VFS qualification')
     report['limitations'] = ['Host synchronous callback replaces native DMA implementation; no hardware execution',
         'No native firmware link or final layout/stack/memory admission',
-        'Volume root only; trusted selected region, no MBR/GPT discovery',
+        'Volume root only; selected-vfs cases use superfloppy/MBR admission; GPT/extended layouts are rejected',
         'Single owner, immutable mounted media, 16 open files plus one staged guarded lookup',
         'RPC exit/cancel events are injected into a synchronous host callback; no native scheduler/wakeup or IRQ hookup',
         'Read cancellation waits for backend quiescent return and scrubs the reply; it does not abort the controller',
