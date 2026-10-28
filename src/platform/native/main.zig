@@ -1047,6 +1047,8 @@ const AutoLog = struct {
         logger.record("NIHOS_NATIVE_CARD_SCENE_FAILURE", null, .{ "stage", "error_code", "updates", "max_pause_us" }, &handoff);
         const status = asm volatile ("csrr %[value],mstatus" : [value] "=r" (-> u32));
         logger.record("NIHOS_NATIVE_CARD_SCENE_CONTEXT", null, .{ "step", "irq_enabled" }, &.{ .step = step, .irq_enabled = (status & 8) >> 3 });
+        const scanout = display_service.runtime.snapshot();
+        logger.record("NIHOS_NATIVE_CARD_SCENE_SCANOUT", null, .{ "frames", "fault", "event", "dsi_error0", "dsi_error1", "dma_error", "bridge_error" }, &scanout);
         notice();
         print("NIHOS_NATIVE_FAIL scene exercise ");
         print(name);

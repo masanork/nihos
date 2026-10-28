@@ -7,7 +7,8 @@
 #define SCANOUT_RETIRE_FENCE() ((void)0)
 static struct { struct { uint32_t val; } chen0; } DW_GDMA;
 static struct { struct { uint32_t val; } out; } GPIO;
-static unsigned MIPI_DSI_BRIDGE;
+static unsigned MIPI_DSI_BRIDGE, MIPI_DSI_HOST;
+static bool video_enabled;
 static bool dma_owned, ui_enabled, notice_enabled, pause_requested, stuck;
 static uint32_t fault, completions, backlight_offs;
 static unsigned restarts, disabled, stopped_domains;
@@ -27,7 +28,8 @@ static void dw_gdma_ll_channel_enable(void *io, unsigned channel, bool on) {
 static void mipi_dsi_brg_ll_enable_interrupt(void *io, uint32_t mask, bool on) {
     (void)io; assert(mask == UINT32_MAX && !on);
 }
-static void mipi_dsi_brg_ll_enable_dpi_output(void *io, bool on) { (void)io; assert(!on); }
+static void mipi_dsi_host_ll_enable_video_mode(void *io, bool on) { (void)io; assert(!on); video_enabled = false; }
+static void mipi_dsi_brg_ll_enable_dpi_output(void *io, bool on) { (void)io; assert(!on && !video_enabled); }
 static void mipi_dsi_brg_ll_enable(void *io, bool on) { (void)io; assert(!on); }
 static void mipi_dsi_ll_enable_dpi_clock(unsigned id, bool on) { assert(id == 0 && !on); }
 static void dw_gdma_ll_enable_intr_global(void *io, bool on) { (void)io; assert(!on); }
@@ -36,6 +38,7 @@ static void dw_gdma_ll_enable_bus_clock(unsigned id, bool on) { assert(id == 0 &
 #include "../../src/board/tab5/scanout_retire.h"
 static void active(void) {
     dma_owned = ui_enabled = notice_enabled = true;
+    video_enabled = true;
     pause_requested = stuck = false; fault = 0; completions = 2;
     backlight_offs = restarts = disabled = stopped_domains = 0;
     GPIO.out.val = 1u << 22; DW_GDMA.chen0.val = 1;
