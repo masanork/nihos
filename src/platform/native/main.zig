@@ -186,6 +186,11 @@ fn trapFailure(frame: *const tasks.context.IntegerContext, cause: u32, hart: u32
 }
 
 export fn nih_native_task_failed() callconv(.c) noreturn {
+    if (options.fatfs_native) {
+        print("NIHOS_NATIVE_TASK_FAILURE caller=");
+        hex(@returnAddress());
+        print("\n");
+    }
     fail("task invariant");
 }
 

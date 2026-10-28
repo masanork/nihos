@@ -11,6 +11,7 @@ const Owner = rpc.Owner(adapter.Backend);
 const A = std.atomic.Value(u32);
 const Report = @import("fatfs_service_abi.zig").Report;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
+extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_task_identity() callconv(.c) u32;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
 extern fn nih_fatfs_backend_bytes() u32;
@@ -67,8 +68,24 @@ fn queues() *rpc.Queues {
 fn frames() *rpc.ClientFrames {
     return @ptrCast(@alignCast(state().client_lease.?.bytes.ptr));
 }
-fn fail() noreturn {
+noinline fn fail() noreturn {
+    for ("NIHOS_FATFS_FAILURE caller=") |byte| _ = nih_rom_putc(byte);
+    const address = @returnAddress();
+    const digits = "0123456789abcdef";
+    var shift: u5 = 28;
+    while (true) {
+        _ = nih_rom_putc(digits[@as(u4, @truncate(address >> shift))]);
+        if (shift == 0) break;
+        shift -= 4;
+    }
+    _ = nih_rom_putc('\n');
     nih_native_task_failed();
+}
+noinline fn stage(value: u8) void {
+    for ("NIHOS_FATFS_STAGE ") |byte| _ = nih_rom_putc(byte);
+    _ = nih_rom_putc('0' + value / 10);
+    _ = nih_rom_putc('0' + value % 10);
+    _ = nih_rom_putc('\n');
 }
 fn check(ok: bool) void {
     if (!ok) fail();
@@ -120,6 +137,7 @@ pub export fn nih_storage_retired(hart: u32) linksection(".iram1.storage_hooks")
     _ = retired.fetchOr(@as(u32, 1) << @intCast(hart), .release);
 }
 pub export fn nih_storage_runtime_init() callconv(.c) void {
+    stage(10);
     // The previous broker qualification has finished and released every lease.
     check(manager().stats(.external).free == dev.external_bytes);
     state().* = .{};
@@ -177,6 +195,7 @@ const Filesystem = struct {
     }
 };
 noinline fn serve() i32 {
+    stage(20);
     const painted = nih_sqlite_stack_paint(bounds[0].low);
     const s = state();
     while (handles[1].load(.acquire) == 0) wait();
@@ -190,8 +209,10 @@ noinline fn serve() i32 {
     const bytes = s.parent.?.borrow.?.bytes;
     const disk: *anyopaque = @ptrCast(bytes.ptr + s.layout.?.disk);
     check(nih_fatfs_fixture_bind(disk, 1) == 0);
+    stage(21);
     const session = nih_fatfs_backend_init(bytes.ptr + s.layout.?.backend, fs_size, disk, 1) orelse fail();
     check(nih_fatfs_backend_mount(session, 1) == 0);
+    stage(22);
     s.backend = .{ .session = session, .epoch = 1 };
     queues().* = .{};
     owner().* = .{ .notifications = &notifications, .client = client };
@@ -199,11 +220,13 @@ noinline fn serve() i32 {
     newClient();
     bound_epoch.store(1, .release);
     ready.store(1, .release);
+    stage(23);
     signal(1);
     while (owner().alive) {
         if (owner().step(queues())) signal(1) else wait();
     }
     check(io_armed.load(.acquire) == 4 and owner().discarded_requests == 1 and owner().discarded_responses == 1);
+    stage(30);
     check((manager().ownerStats(s.service_owner.?) catch fail()).used.external == memory.parent_bytes);
     s.report.forced_exit = 1;
     s.report.discarded_requests = owner().discarded_requests;
@@ -213,6 +236,7 @@ noinline fn serve() i32 {
     signal(1);
     while (handles[1].load(.acquire) == client) wait();
     check(owner().rebind(queues(), handles[1].load(.acquire)));
+    stage(40);
     newClient();
     s.root = rpc.Token.from(owner().root.?);
     bound_epoch.store(2, .release);
@@ -317,6 +341,7 @@ pub export fn nih_storage_task_entry(hart: u32) callconv(.c) i32 {
     return if (hart == 0) serve() else runClient();
 }
 pub export fn nih_storage_runtime_finish(out: *Report) callconv(.c) void {
+    stage(50);
     const s = state();
     check(retired.load(.acquire) == 3 and s.parent.?.borrow == null);
     // Both actual kernel tasks have been reaped before closing this account.
