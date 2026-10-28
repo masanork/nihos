@@ -64,6 +64,7 @@ def main():
              '-fsanitize=address,undefined', '-fno-omit-frame-pointer',
              '-I' + str(ROOT / 'include'), '-I' + str(PROBE), '-I' + str(source)]
     run([*cc, *flags, PROBE / 'backend_check.c', ROOT / 'src/storage/fatfs_backend.c',
+         ROOT / 'src/platform/native/fatfs_card.c',
          ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/storage/fatfs_volume.c',
          ROOT / 'src/platform/native/fatfs_disk.c',
          PROBE / 'safety.c', source / 'ffunicode.c', library, '-o', binary])
@@ -111,7 +112,7 @@ def main():
         probe(row, 'identity-and-admission', 'normal', fixture['alias'] or 'LONG FILENAME FOR ALIAS.TXT')
         for mode in ('vfs', 'selected-vfs', 'io', 'removed'):
             probe(row, mode, mode)
-        for mode in ('rpc-cancel', 'rpc-exit'):
+        for mode in ('rpc-cancel', 'rpc-exit', 'card-rpc-cancel', 'card-rpc-exit'):
             probe(row, mode, mode)
         if fixture['fs_type'] == 4:
             probe(row, 'rpc-large', 'rpc-large')
@@ -169,7 +170,7 @@ def main():
               '-isystem', headers / 'riscv-linux-any', '-I' + str(ROOT / 'include'),
               '-I' + str(PROBE), '-I' + str(source), '-c']
     report['rv32_objects'] = {}
-    for path in (ROOT / 'src/storage/fatfs_backend.c', PROBE / 'safety.c', source / 'ffunicode.c'):
+    for path in (ROOT / 'src/storage/fatfs_backend.c', ROOT / 'src/platform/native/fatfs_card.c', PROBE / 'safety.c', source / 'ffunicode.c'):
         output = work / ('rv32-' + path.stem + '.o')
         run([*target, path, '-o', output])
         report['rv32_objects'][str(path.relative_to(ROOT))] = {'sha256': sha(output), 'bytes': output.stat().st_size}
@@ -186,6 +187,10 @@ def main():
     report['rv32_workspace_bytes'] = {'disk': base['rv32_workspace_bytes'],
         'backend': symbol_size(layout_object, b'nih_backend_layout'),
         'vfs_one_mount_32_handles': symbol_size(native, b'nih_fatfs_vfs_layout')}
+    card_layout_source, card_layout_object = work / 'card-layout.c', work / 'card-layout.o'
+    card_layout_source.write_text('#include "' + str(ROOT / 'src/platform/native/fatfs_card.c') + '"\nchar nih_card_layout[sizeof(nih_fatfs_card)];\n')
+    run([*target, card_layout_source, '-o', card_layout_object])
+    report['rv32_card_workspace_bytes'] = symbol_size(card_layout_object,b'nih_card_layout')
     report['rpc_layout_bytes'] = {name: symbol_size(native, symbol.encode()) for name,symbol in (
         ('owner_including_vfs', 'nih_fatfs_rpc_layout'), ('queues', 'nih_fatfs_queues_layout'),
         ('notifications_internal', 'nih_fatfs_notifications_layout'), ('request', 'nih_fatfs_request_layout'),
@@ -202,6 +207,12 @@ def main():
         raise RuntimeError('RPC parent exceeds its admitted allocation')
     report['rpc_parent'] = {'offsets': offsets, 'used': at, 'charged': 65536,
                             'client_frames_charged_separately': 8192, 'policy': 'unchanged generated development profile'}
+    card_at = 0
+    for size in (report['rv32_card_workspace_bytes'],8,report['rpc_layout_bytes']['owner_including_vfs'],report['rpc_layout_bytes']['queues']):
+        card_at=(card_at+127)//128*128+size
+    if card_at>65536: raise RuntimeError('Card RPC parent exceeds admitted allocation')
+    report['card_rpc_parent'] = {'used':card_at,'charged':65536,'client_frames_charged_separately':8192,
+                                 'controller_dma_staging':'unchanged resident SRAM'}
     report['sources'] = {**base['sources'], **source_hashes}
     if any(sha(ROOT / name) != expected for name, expected in report['sources'].items()):
         raise RuntimeError('Source changed during Backend/VFS qualification')

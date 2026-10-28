@@ -16,6 +16,13 @@ extern fn nih_storage_fatfs_session_begin(*u32) callconv(.c) u32;
 extern fn nih_storage_fatfs_session_end(u32) callconv(.c) u32;
 extern fn nih_fatfs_card_bytes() callconv(.c) u32;
 extern fn nih_fatfs_card_read(*anyopaque, u32, u32, u32, *card.Report) callconv(.c) c_int;
+const CardContext = opaque {};
+extern fn nih_fatfs_card_mount(*anyopaque, u32, u32, u32, *?*CardContext, *card.Report) callconv(.c) c_int;
+extern fn nih_fatfs_card_backend(*CardContext, u32) callconv(.c) ?*adapter.Session;
+extern fn nih_fatfs_card_path(*CardContext, u32) callconv(.c) ?[*:0]const u8;
+extern fn nih_fatfs_card_destroy(*CardContext, u32) callconv(.c) c_int;
+extern fn nih_fatfs_card_reads(*CardContext, u32) callconv(.c) u32;
+extern fn nih_fatfs_fixture_read(?*anyopaque, u32, [*]u8) callconv(.c) c_int;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
@@ -52,6 +59,10 @@ const State = struct {
     old_file: rpc.Token = .{},
     old_client: u32 = 0,
     next_sequence: u32 = 1,
+    card_context: ?*CardContext = null,
+    card_report: card.Report = .{},
+    path: ?[*:0]const u8 = null,
+    client_painted: u32 = 0,
 };
 comptime {
     if (@sizeOf(State) > 32768) @compileError("native FSD control exceeds retired broker IPC reservation");
@@ -92,7 +103,7 @@ comptime {
         @export(&card_mode, .{ .name = "nih_fatfs_card_mode" });
     }
 }
-const card_mode: u32 linksection(".rodata.fatfs_config") = @intFromBool(options.fatfs_sd_direct);
+const card_mode: u32 linksection(".rodata.fatfs_config") = if (options.fatfs_sd_rpc) 2 else @intFromBool(options.fatfs_sd_direct);
 fn owner() *Owner {
     return @ptrCast(@alignCast(state().parent.?.borrow.?.bytes.ptr + state().layout.?.endpoint));
 }
@@ -190,8 +201,9 @@ pub export fn nih_storage_runtime_finished() callconv(.c) u32 {
 }
 pub export fn nih_storage_runtime_poll(_: u32) callconv(.c) void {}
 
-/// A CPU fixture callback, not an SD/DMA timing claim. The actual client task
-/// must be stopped by CPU1's bootstrap while this owner remains inside read.
+/// Qualification pause after a sector has returned fenced (Flash or SD).
+/// CPU1 stops the client while this owner remains inside read. This hook does
+/// not claim that DMA is still transferring at that point.
 pub export fn nih_fatfs_fixture_after_read() callconv(.c) void {
     const mode = io_armed.load(.acquire);
     if ((mode != 1 and mode != 2) or io_armed.cmpxchgStrong(mode, mode + 2, .acq_rel, .acquire) != null) return;
@@ -232,6 +244,16 @@ fn measure(hart: u32, painted: u32) u32 {
 }
 const Filesystem = struct {
     pub fn destroy(_: @This()) error{Busy}!void {
+        if (options.fatfs_sd_rpc) {
+            const s = state();
+            s.card_report.reads = nih_fatfs_card_reads(s.card_context.?, s.card_report.generation);
+            if (nih_fatfs_card_destroy(s.card_context.?, s.card_report.generation) != 1) return error.Busy;
+            if (nih_storage_fatfs_session_end(s.card_report.generation) != 1) return error.Busy;
+            s.card_context = null;
+            s.path = null;
+            s.card_report.destroyed = 1;
+            return;
+        }
         if (nih_fatfs_backend_destroy(state().backend.?.session, state().backend.?.epoch) != 0) return error.Busy;
     }
 };
@@ -243,18 +265,32 @@ noinline fn serve() i32 {
     const client = handles[1].load(.acquire);
     s.old_client = client;
     s.service_owner = manager().open(.vfs, .{ .external = memory.parent_bytes }) catch fail();
-    const disk_size = nih_fatfs_native_disk_bytes();
-    const fs_size = nih_fatfs_backend_bytes();
+    const disk_size = if (options.fatfs_sd_rpc) nih_fatfs_card_bytes() else nih_fatfs_native_disk_bytes();
+    const fs_size = if (options.fatfs_sd_rpc) 8 else nih_fatfs_backend_bytes();
     s.layout = memory.Layout.make(disk_size, fs_size, @sizeOf(Owner), @sizeOf(rpc.Queues)) catch fail();
     s.parent = memory.Parent.reserve(manager(), s.service_owner.?) catch fail();
     const bytes = s.parent.?.borrow.?.bytes;
     const disk: *anyopaque = @ptrCast(bytes.ptr + s.layout.?.disk);
-    check(nih_fatfs_fixture_bind(disk, 1) == 0);
-    stage(21);
-    const session = nih_fatfs_backend_init(bytes.ptr + s.layout.?.backend, fs_size, disk, 1) orelse fail();
-    check(nih_fatfs_backend_mount(session, 1) == 0);
-    stage(22);
-    s.backend = .{ .session = session, .epoch = 1 };
+    if (options.fatfs_sd_rpc) {
+        // Retain the immutable decoder self-check as an auxiliary input only.
+        check(nih_fatfs_fixture_read(null, 0, bytes.ptr) == 0);
+        var generation: u32 = 0;
+        const sectors = nih_storage_fatfs_session_begin(&generation);
+        check(sectors != 0);
+        check(nih_fatfs_card_mount(disk, disk_size, sectors, generation, &s.card_context, &s.card_report) == 1);
+        s.path = nih_fatfs_card_path(s.card_context.?, generation) orelse fail();
+        s.backend = .{ .session = nih_fatfs_card_backend(s.card_context.?, generation) orelse fail(), .epoch = generation };
+        s.report.version = 2;
+        s.report.source = 2;
+        stage(22);
+    } else {
+        check(nih_fatfs_fixture_bind(disk, 1) == 0);
+        stage(21);
+        const session = nih_fatfs_backend_init(bytes.ptr + s.layout.?.backend, fs_size, disk, 1) orelse fail();
+        check(nih_fatfs_backend_mount(session, 1) == 0);
+        stage(22);
+        s.backend = .{ .session = session, .epoch = 1 };
+    }
     queues().* = .{};
     owner().* = .{ .notifications = &notifications, .client = client };
     s.root = owner().start(&s.backend.?) catch fail();
@@ -273,6 +309,8 @@ noinline fn serve() i32 {
     s.report.discarded_requests = owner().discarded_requests;
     s.report.discarded_replies = owner().discarded_responses;
     reapClient();
+    // CPU1 has stopped the original client and has not yet reused its stack.
+    s.report.client_stack = measure(1, s.client_painted);
     cleanup.store(1, .release);
     signal(1);
     while (handles[1].load(.acquire) == client) wait();
@@ -293,11 +331,15 @@ noinline fn serve() i32 {
     reapClient();
     s.report.parent_used = @intCast(s.layout.?.used);
     s.report.parent_charged = s.parent.?.lease.charged;
-    s.report.fixture_id = nih_fatfs_fixture_id();
+    s.report.fixture_id = if (options.fatfs_sd_rpc) 0 else nih_fatfs_fixture_id();
     const lease = s.parent.?.retire(manager(), owner(), queues(), Filesystem{}) catch fail();
     for (lease.bytes) |byte| check(byte == 0);
     manager().free(s.service_owner.?, lease) catch fail();
     s.report.parent_cleared = 1;
+    if (options.fatfs_sd_rpc) {
+        s.card_report.charged = memory.parent_bytes;
+        s.card_report.cleared = 1;
+    }
     s.report.owner_stack = measure(0, painted);
     s.report.stale_exit = stale_exits.load(.acquire);
     cleanup.store(2, .release);
@@ -334,11 +376,12 @@ fn receive(sequence: u32) *rpc.Response {
 }
 noinline fn runClient() i32 {
     const painted = nih_sqlite_stack_paint(bounds[1].low);
+    state().client_painted = painted;
     while (ready.load(.acquire) == 0) wait();
     check(currentHandle() == handles[1].load(.acquire));
     const s = state();
     if (bound_epoch.load(.acquire) == 1) {
-        send(.open, s.root, "fragment.bin", 0, 0);
+        send(.open, s.root, if (options.fatfs_sd_rpc) std.mem.span(s.path.?) else "fragment.bin", 0, 0);
         const opened = receive(1);
         check(opened.status == 0);
         s.old_file = opened.token;
@@ -349,12 +392,20 @@ noinline fn runClient() i32 {
         for (&cancelled.data) |byte| check(byte == 0);
         s.report.cancelled = 1;
         inflight.store(0, .release);
+        if (options.fatfs_sd_rpc) {
+            send(.close, s.old_file, "", 0, 0);
+            check(receive(3).status == 0);
+            send(.open, s.root, std.mem.span(s.path.?), 0, 0);
+            const reopened = receive(4);
+            check(reopened.status == 0);
+            s.old_file = reopened.token;
+        }
         // Queue a read and a request that must never execute after this exit.
         io_armed.store(2, .release);
-        send(.read, s.old_file, "", 512, 4096);
+        send(.read, s.old_file, "", if (options.fatfs_sd_rpc) 0 else 512, 4096);
         send(.read, s.old_file, "", 0, 1);
         signal(0);
-        _ = receive(3);
+        _ = receive(if (options.fatfs_sd_rpc) 5 else 3);
         fail();
     }
     frames().request = .{ .epoch = 1, .sequence = 1, .operation = 4, .token = s.old_file };
@@ -363,19 +414,30 @@ noinline fn runClient() i32 {
     send(.read, s.old_file, "", 0, 1);
     check(receive(1).status == -9);
     s.report.stale_handle = 1;
-    send(.open, s.root, "Memo.txt", 0, 0);
+    send(.open, s.root, if (options.fatfs_sd_rpc) std.mem.span(s.path.?) else "Memo.txt", 0, 0);
     const opened = receive(2);
     check(opened.status == 0);
     const file = opened.token;
     send(.read, file, "", 0, 4096);
     const read = receive(3);
-    check(read.status == 0 and read.length == "nihos read-only fixture\n".len);
+    check(read.status == 0 and read.length > 0);
     s.report.bytes = read.length;
     s.report.crc = std.hash.Crc32.hash(read.data[0..read.length]);
-    check(s.report.crc == std.hash.Crc32.hash("nihos read-only fixture\n"));
+    if (options.fatfs_sd_rpc) {
+        s.card_report.bytes = read.length;
+        s.card_report.crc = s.report.crc;
+        send(.read, file, "", 0, 4096);
+        const repeated = receive(4);
+        check(repeated.status == 0 and repeated.length == s.card_report.bytes);
+        s.card_report.repeated_crc = std.hash.Crc32.hash(repeated.data[0..repeated.length]);
+        check(s.card_report.crc == s.card_report.repeated_crc);
+    } else {
+        check(read.length == "nihos read-only fixture\n".len);
+        check(s.report.crc == std.hash.Crc32.hash("nihos read-only fixture\n"));
+    }
     send(.close, file, "", 0, 0);
-    check(receive(4).status == 0);
-    s.report.client_stack = measure(1, painted);
+    check(receive(if (options.fatfs_sd_rpc) 5 else 4).status == 0);
+    s.report.client_stack = @max(s.report.client_stack, measure(1, painted));
     return 301;
 }
 pub export fn nih_storage_task_entry(hart: u32) callconv(.c) i32 {
@@ -391,5 +453,16 @@ pub export fn nih_storage_runtime_finish(out: *Report) callconv(.c) void {
     check(manager().stats(.external).free == dev.external_bytes and manager().stats(.internal).free == dev.internal_bytes);
     s.report.recovered = 1;
     s.report.status = 1;
+    if (options.fatfs_sd_rpc) {
+        s.card_report.status = 1;
+        s.card_report.recovered = 1;
+    }
     out.* = s.report;
+}
+fn cardRpcReport(out: *card.Report) callconv(.c) void {
+    check(retired.load(.acquire) == 3);
+    out.* = state().card_report;
+}
+comptime {
+    if (options.fatfs_sd_rpc) @export(&cardRpcReport, .{ .name = "nih_fatfs_card_rpc_report" });
 }

@@ -18,3 +18,4 @@ pub const Report = extern struct {
 };
 pub const fields = .{ "status", "generation", "sectors", "kind", "partition", "first", "count", "bytes", "crc", "repeated_crc", "file_name_crc", "reads", "destroyed", "charged", "cleared", "recovered" };
 pub extern fn nih_fatfs_card_attempt(*Report) callconv(.c) u32;
+pub extern fn nih_fatfs_card_rpc_report(*Report) callconv(.c) void;

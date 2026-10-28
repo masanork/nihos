@@ -6,6 +6,7 @@ import struct
 SOURCE = 'embedded sparse/RLE FAT12 fixture; not SD FatFs'
 CARD_SOURCE = 'physical SD prefix read twice; operator card swap after embedded fixture'
 CARD_SOURCE_INSERTED = 'physical SD prefix read twice; inserted FAT/exFAT card; no littlefs boot probe'
+CARD_SOURCE_RPC = 'physical SD native VFS/RPC tasks; cancellation and client stop after fenced sector read'
 CARD_SOURCES = ('src/platform/native/fatfs_card.c', 'src/platform/native/fatfs_card_abi.zig',
     'include/nihos_fatfs_card.h', 'src/storage/fatfs_volume.c', 'include/nihos_fatfs_volume.h',
     'src/platform/native/fatfs_disk.c', 'src/platform/native/sdmmc_probe.zig',
@@ -60,11 +61,15 @@ def validate_profile(config):
             'unapproved immutable fixture/upstream')
     card = config.get('card')
     if card is not None:
-        require(isinstance(card,dict) and card.get('version') in (1,2) and card.get('charged') == 32768,
+        require(isinstance(card,dict) and card.get('version') in (1,2,3),
                 'unapproved physical card profile')
+        rpc = card.get('rpc',False)
+        require(type(rpc) is bool and (not rpc or card['version']==3), 'invalid card RPC profile')
+        require(card.get('charged')==(65536 if rpc else 32768), 'invalid card parent charge')
         mode = card.get('mode','swap')
-        require(mode in ('swap','inserted') and card.get('source') == (CARD_SOURCE_INSERTED if mode=='inserted' else CARD_SOURCE)
-                and (card['version']==2 or mode=='swap') and (card['version']==1 or 'mode' in card), 'invalid card boot mode/source')
+        expected_source = CARD_SOURCE_RPC if rpc else CARD_SOURCE_INSERTED if mode=='inserted' else CARD_SOURCE
+        require(mode in ('swap','inserted') and (not rpc or mode=='inserted') and card.get('source') == expected_source
+                and (card['version']>=2 or mode=='swap') and (card['version']==1 or 'mode' in card), 'invalid card boot mode/source')
         sources = card.get('sources', {})
         require(isinstance(sources,dict) and set(sources) == set(CARD_SOURCES) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}',x)
                 for x in sources.values()), 'incomplete physical card sources')
@@ -123,6 +128,10 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
                 'nih_fatfs_fixture_after_read', 'nih_fatfs_fixture_read', 'nih_fatfs_fixture_bind',
                 'nih_fatfs_backend_mount', 'nih_fatfs_backend_lookup', 'nih_fatfs_backend_read',
                 'nih_fatfs_backend_destroy', 'nih_fatfs_guard_open', 'f_open', 'f_read'}
+    if config.get('card',{}).get('rpc'):
+        required.remove('nih_fatfs_fixture_bind')
+        required.update({'nih_fatfs_card_mount','nih_fatfs_card_backend','nih_fatfs_card_path',
+                         'nih_fatfs_card_destroy','nih_fatfs_card_reads','nih_fatfs_card_rpc_report'})
     require(required.issubset(symbols), 'missing actual FSD/FatFs functions')
     card_symbols = {'nih_fatfs_card_attempt', 'nih_fatfs_card_read', 'nih_fatfs_volume_probe',
                     'nih_fatfs_native_read', 'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end'}
@@ -131,7 +140,17 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
         if config['card']['version']>=2:
             at=symbols.get('nih_fatfs_card_mode',0)
             require(sizes.get('nih_fatfs_card_mode')==4 and ro_start<=at<at+4<=ro_start+len(rodata), 'missing card mode descriptor')
-            require(struct.unpack_from('<I',rodata,at-ro_start)[0]==(config['card']['mode']=='inserted'), 'card mode differs from image')
+            expected_mode=2 if config['card'].get('rpc') else int(config['card']['mode']=='inserted')
+            require(struct.unpack_from('<I',rodata,at-ro_start)[0]==expected_mode, 'card mode differs from image')
+        if config['card'].get('rpc'):
+            at=symbols.get('nih_fatfs_card_workspace_bytes',0)
+            require(sizes.get('nih_fatfs_card_workspace_bytes')==4 and ro_start<=at<at+4<=ro_start+len(rodata), 'missing card workspace size')
+            cbytes=struct.unpack_from('<I',rodata,at-ro_start)[0]
+            require(0<cbytes<=32768 and 'nih_fatfs_card_rpc_report' in symbols, 'invalid card RPC layout/functions')
+            used=0
+            for size in (cbytes,8,8680,9984):used=(used+127)//128*128+size
+            require(used<=65536,'card RPC parent overflows')
+            config={**config,'card':{**config['card'],'workspace_bytes':cbytes,'rpc_parent_used':used}}
     else:
         require('nih_fatfs_card_attempt' not in symbols and 'nih_fatfs_card_read' not in symbols,
                 'card pipeline without source profile')

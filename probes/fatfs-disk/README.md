@@ -181,3 +181,21 @@ remain separate gates. See
 The subsequent [three-run Tab5 record](../../docs/measurements/2026-10-28-fatfs-native-physical.md)
 confirms this embedded fixture's actual scheduler stop/rebind/cleanup paths.
 It does not qualify the physical SD FatFs adapter or the new volume probe.
+
+## Card context held through RPC teardown
+
+The card helper also exposes a generation-bound mounted context. Backend/path
+accessors are owner-private and remain valid until card_destroy; all VFS/RPC
+references must be drained/revoked first. Stale generations cannot close a new
+context at the same address. Busy destroy retains the context and its backing
+device session/pin. Successful destroy clears the entire C workspace.
+The existing synchronous card_read API now uses these same mount/destroy calls.
+
+The host runner's card-rpc-cancel/card-rpc-exit cases connect volume discovery,
+the mounted card context, guarded FatFs, actual Zig VFS/RPC and development
+broker in all five formats. They inject read cancellation/client-exit notices
+inside a host sector callback, then test drain, rebind, old-handle rejection,
+private FS destruction, parent scrub/unpin and pool recovery. This does not
+stop a native task or exercise DMA timing. The C workspace and RPC queues/owner
+share the admitted 64 KiB service parent; client frames remain separately charged.
+Target sizes come from RV32 layout symbols, not host structure sizes.

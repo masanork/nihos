@@ -109,6 +109,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True, help='New private directory, must not exist')
     parser.add_argument('--power-cycle', action='store_true', help='After three reset runs, wait for an operator power OFF/ON and validate cold boot')
     parser.add_argument('--baseline-results', type=Path, help='For --power-cycle, reuse three validated reset runs of this exact candidate')
+    parser.add_argument('--wait-for-card', action='store_true', help='Inserted-card profile: hold in ROM after image verification until operator acknowledgement')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     # Validate artifacts and source before taking or resetting the device.
@@ -118,6 +119,8 @@ def main():
     removal_test = audit.get('io_lifetimes', {}).get('removal_test') is True
     card_test = audit.get('sqlite',{}).get('fatfs_native',{}).get('card') is not None
     card_direct = audit.get('sqlite',{}).get('fatfs_native',{}).get('card',{}).get('mode')=='inserted'
+    if args.wait_for_card and not card_direct:
+        raise ValueError('--wait-for-card requires an inserted-card profile')
     if card_test and args.baseline_results:
         raise ValueError('Card run requires its own complete boot; cannot reuse reset baseline')
     if (removal_test or card_test) and args.power_cycle:
@@ -258,6 +261,13 @@ def main():
             verify = ['verify_flash', '0x2000', str(out / 'bootloader.bin'), '0x8000', str(out / 'partition-table.bin'),
                       '0x10000', str(out / 'nihos-native.bin')]
             command('verify-candidate-before', verify)
+            if args.wait_for_card:
+                print('NIHOS_FATFS_CARD_PREBOOT_READY',flush=True)
+                deadline=time.monotonic()+600
+                acknowledgement=out/'card-inserted.json'
+                while not (acknowledgement.exists() and json.loads(acknowledgement.read_text()).get('operator_confirmed') is True):
+                    if time.monotonic()>=deadline:raise RuntimeError('Operator card swap acknowledgement timed out before boot')
+                    time.sleep(.2)
             for run in range(1, 1 if baseline is not None else (2 if removal_test or card_test else 4)):
                 port.baudrate = 115200
                 port.dtr = False

@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import struct
 import sys
-from fatfs_native_profile import SOURCES, CARD_SOURCES, CARD_SOURCE, CARD_SOURCE_INSERTED
+from fatfs_native_profile import SOURCES, CARD_SOURCES, CARD_SOURCE, CARD_SOURCE_INSERTED, CARD_SOURCE_RPC
 
 
 def sha(path):
@@ -39,6 +39,7 @@ def main(directory, source, littlefs=None):
     fatfs_native = 'pub const fatfs_native = true;' in (directory / 'native_options.zig').read_text()
     fatfs_sd = 'pub const fatfs_sd = true;' in (directory / 'native_options.zig').read_text()
     card_direct = 'pub const fatfs_sd_direct = true;' in (directory / 'native_options.zig').read_text()
+    card_rpc = 'pub const fatfs_sd_rpc = true;' in (directory / 'native_options.zig').read_text()
     objects = {name: {'sha256': sha(directory / name), 'functions': functions(directory / name)}
                for name in ('sql_sqlite3.o', 'sql_session.o', 'sql_vfs.o')}
     if littlefs is not None:
@@ -70,8 +71,10 @@ def main(directory, source, littlefs=None):
         result['fatfs_native'] = {'version': 3, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': {path: sha(root / path) for path in SOURCES}}
         if fatfs_sd:
-            result['fatfs_native']['card'] = {'version':2, 'mode':'inserted' if card_direct else 'swap',
-                'source':CARD_SOURCE_INSERTED if card_direct else CARD_SOURCE, 'charged':32768,
+            result['fatfs_native']['card'] = {'version':3 if card_rpc else 2, 'mode':'inserted' if card_direct else 'swap',
+                **({'rpc':True} if card_rpc else {}),
+                'source':CARD_SOURCE_RPC if card_rpc else CARD_SOURCE_INSERTED if card_direct else CARD_SOURCE,
+                'charged':65536 if card_rpc else 32768,
                 'sources':{path:sha(root/path) for path in CARD_SOURCES}}
         result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
             'main.runFatFsTasks', 'sdmmc_probe.freshCardSession',

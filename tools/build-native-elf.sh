@@ -93,6 +93,12 @@ fi
 cold_flash=${NIHOS_NATIVE_COLD_FLASH:-0}
 fatfs_native=${NIHOS_NATIVE_FATFS_RPC:-0}
 fatfs_sd=${NIHOS_NATIVE_FATFS_SD:-0}
+fatfs_sd_rpc=${NIHOS_NATIVE_FATFS_SD_RPC:-0}
+case "$fatfs_sd_rpc" in
+    0) fatfs_sd_rpc=false; card_rpc_cpp=0 ;;
+    1) fatfs_sd_rpc=true; card_rpc_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_FATFS_SD_RPC must be 0 or 1" >&2; exit 1 ;;
+esac
 fatfs_sd_direct=${NIHOS_NATIVE_FATFS_SD_DIRECT:-0}
 case "$fatfs_sd_direct" in
     0) fatfs_sd_direct=false ;;
@@ -114,6 +120,9 @@ if [ "$fatfs_sd" = true ] && [ "$fatfs_native" != true ]; then
 fi
 if [ "$fatfs_sd_direct" = true ] && [ "$fatfs_sd" != true ]; then
     echo "Direct card boot requires FATFS_SD=1" >&2; exit 1
+fi
+if [ "$fatfs_sd_rpc" = true ] && [ "$fatfs_sd_direct" != true ]; then
+    echo "Card RPC requires FATFS_SD_DIRECT=1" >&2; exit 1
 fi
 if [ "$fatfs_native" = true ] && { [ "$broker" != true ] || [ "$sd_removal" = true ]; }; then
     echo "Native FatFs RPC fixture requires MEMORY_BROKER=1 and SD_REMOVAL=0" >&2
@@ -147,9 +156,8 @@ mkdir -p "$build_dir"
 "$zig" cc -E -P -x c -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\npub const broker = %s;\npub const cold_flash = %s;\npub const sd_removal = %s;\npub const cold_capture = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" "$broker" "$cold_flash" "$sd_removal" "$cold_capture" > "$build_dir/native_options.next"
-printf 'pub const fatfs_native = %s;\n' "$fatfs_native" >> "$build_dir/native_options.next"
-printf 'pub const fatfs_sd = %s;\n' "$fatfs_sd" >> "$build_dir/native_options.next"
-printf 'pub const fatfs_sd_direct = %s;\n' "$fatfs_sd_direct" >> "$build_dir/native_options.next"
+printf 'pub const fatfs_native = %s;\npub const fatfs_sd = %s;\npub const fatfs_sd_direct = %s;\npub const fatfs_sd_rpc = %s;\n' \
+    "$fatfs_native" "$fatfs_sd" "$fatfs_sd_direct" "$fatfs_sd_rpc" >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -303,6 +311,7 @@ if [ "$sqlite" = true ]; then
                     -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
                     -I "$repo_root/include" -I "$repo_root/probes/fatfs-disk" -I "$fatfs_source" -I "$fixture_include" \
                     -Dnih_ro_open=nih_fatfs_guard_open -Dnih_ro_directory=nih_fatfs_guard_directory -Dnih_ro_status_name=nih_fatfs_guard_status_name \
+                    -DNIH_FATFS_CARD_RPC="$card_rpc_cpp" \
                     "$source" -o "$build_dir/sql_fat_$name.o"
                 set -- "$@" "$build_dir/sql_fat_$name.o"
             done
