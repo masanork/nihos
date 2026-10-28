@@ -1,0 +1,128 @@
+{
+  "source_commit": "ef7eec432d8d0b94a3a5895c692308eefd28d527",
+  "base_commit": "add4e7e21caa4770582da2382dd852168b855044",
+  "sources": {
+    "src/storage/batch_test.zig": "12dfe798f20baa3fff6091b981a46ff2f7a617b2a67a00862157aa4ed1b798c5",
+    "src/storage/checkpoint_model.zig": "ba8b6be417706c2d20a51807598c2baa972768969aab2ba7e40aaee30118f878",
+    "src/storage/checkpoint_model_test.zig": "535d155ed181cc39abb4fcc05a297f4d4a8c7103d56dcd7a972c7207d636c163",
+    "src/storage/checkpoint_service.zig": "e7958c3cc34ee08b141c4d73ae70fb30ab91c58fbf69c7290e69cf7390566d9c",
+    "src/storage/checkpoint_service_test.zig": "0d1c51a8e2de3f74cb0210ec4896b7e72c5f79b290acd8b4109473ae68a2a5da",
+    "src/storage/cow_model.zig": "5acc505ee1755af8813a2e958941468295d5b903c4b43c2038651345f050745d",
+    "src/storage/cow_model_test.zig": "6b35e97f5a1baffe9b8d80094c0d370e14afaaedc3218440afb245093cd3606d",
+    "src/storage/deadline.zig": "97f45c897ff17e9b25f056a2f893b849311379bd37802dc32322f91b81ee118a",
+    "src/storage/dispatch_gate.zig": "5aee69402b1c87cd7e57e318ad9a7957237754dae13a61206ec4ec854121345b",
+    "src/storage/dispatch_gate_test.zig": "140926dea71f6476e6c0c7d6d7c9d9a4fcecad6221a42520e6d7383f8cc658d1",
+    "src/storage/extent_map.zig": "1dd41ff3cf628c7a173375efbd3ef49fcdadc7aa400a2164a8e7da4288d1b3fd",
+    "src/storage/extent_map_test.zig": "9e829c240b2d6a0d8f3b8e5902b3e5b261faa9681dbe7f71e074a939b16737e2",
+    "src/storage/file_media.zig": "0e74ef22381a9b7ce14273f90e652634d31a745fe16fe614708eb91f14114d1c",
+    "src/storage/file_media_test.zig": "da5051f978d2605b92c1649f2a690066db057aab7b898afa848f656e48191418",
+    "src/storage/index_gc_test.zig": "875e04956577ce5c900ef2a1594018f4ab7d55d70b072c26de4c4255f5d8b06f",
+    "src/storage/lifetime_budget.zig": "be1073865a2d09b6e8f7b09d3abc79deba71ac2efa60d20b3e7bb2182ee84474",
+    "src/storage/lifetime_budget_test.zig": "e1e4e5c0fe2fbebdf635cb67674ec040e6f09b01b3af0ea7ec96107a3e2bb428",
+    "src/storage/lifetime_usage_test.zig": "638f3b346b9c97d645376067f97cb951efd738feb976a06db98667ec9bf00320",
+    "src/storage/model_media.zig": "eedede2dc776114b2699ac08a82a0febce2648ae739418aefe1cd124d981b67d",
+    "src/storage/object_pin_test.zig": "f66fb361e228a15994035fa230a63f9436ce22cfce8ac298bb34d89fa693b299",
+    "src/storage/payload_gc_test.zig": "74eb2beec2fbd02e23037ae0eb565727f06bc87630a62cf5bf8ac89c7529e38a",
+    "src/storage/range_checksum_test.zig": "312329956b5d80684ba7715e514c516b24b1f89aa04a48bbeadc24a12644dff5",
+    "src/storage/reader_drain.zig": "8a5e3a3519dddd2258a3fb2806e850fea705d15081fbdf60307b881396de2510",
+    "src/storage/recovery_budget.zig": "6ebc2ad6f58184d85deea30ceaea9473bde8be134c94cc3a01c18a194e335f06",
+    "src/storage/reservation_test.zig": "e3034b80167d510a1c2d1c0097b2afc98d0ef339ac59c1b6fe518fa26a86bb6c",
+    "src/storage/resize_test.zig": "be5c140a4343c5bd2f0fb323582c9a85799a4cbf5477385259bd7496944480e4",
+    "src/storage/scatter_test.zig": "416564f7966d4491403704d4b7f3d2764fdb01a2e2f79ef66eeadf52a381c376",
+    "src/storage/search_cache_test.zig": "5fa40a13a3d5f0d12a0e1ac6985a494f37e931ea896c1cdd5907de8471152299",
+    "src/storage/stream_test.zig": "b0735be992d290497708e1ae965f22726673c255dc0b23275cf2c76a7e20e87a"
+  },
+  "scope": "experimental host-only library; no native boot, allocator, driver or VFS binding",
+  "zig_tests": {
+    "debug": 567,
+    "release_safe": 567
+  },
+  "static_analysis": "pass; fmt, zlint, shellcheck, checkpoint core/service RV32 compilation and six existing native ELF audits",
+  "native_comparison": {
+    "scope": "all SHF_ALLOC sections, including code, mapped data and SRAM; excludes non-loaded ELF debug metadata",
+    "allocated_sections_identical": true,
+    "before_elf_sha256": "dfb7600e9ab39cd8a10bc3c9ef6f0ac8ea6f6c3806bb67f546d8a3a4098186d2",
+    "after_elf_sha256": "cb5b14510497133fb8e03d752fb15ec8c00fe20e051664151dca96e19ddccae4",
+    "sections": {
+      ".flash.appdesc": {
+        "kind": 1,
+        "flags": 2,
+        "address": 1073741856,
+        "bytes": 256,
+        "sha256": "ba050bc8da81c741a05dab4bd0b7a2daa7c0ef13875bca18f040e85fce0ab737"
+      },
+      ".flash.boot": {
+        "kind": 1,
+        "flags": 6,
+        "address": 1073742112,
+        "bytes": 5938,
+        "sha256": "77450946fa60173a10724bfc8d33cadab1c6669559347f91783521a62084c78c"
+      },
+      ".flash.rodata": {
+        "kind": 1,
+        "flags": 2,
+        "address": 1073807392,
+        "bytes": 3424,
+        "sha256": "09308a63913461b835060ad12286d9c4187f15cfd328cf4ac750d84bd8d94459"
+      },
+      ".text": {
+        "kind": 1,
+        "flags": 6,
+        "address": 1341128704,
+        "bytes": 68880,
+        "sha256": "e4332146b54f989bdf67596d2d5f04ca4923f2117aa88de506d6f6044eaf25e0"
+      },
+      ".fp_app": {
+        "kind": 1,
+        "flags": 2,
+        "address": 1341197584,
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      ".rodata": {
+        "kind": 1,
+        "flags": 50,
+        "address": 1341197584,
+        "bytes": 2556,
+        "sha256": "47bc1498cdb36031f4f17b2ce340ef4f03eac195fe02f27d42d15434d69acad5"
+      },
+      ".data": {
+        "kind": 1,
+        "flags": 3,
+        "address": 1341200192,
+        "bytes": 1360,
+        "sha256": "bc67167d13befa23280fdb17b35c67400d1cad8bf7b6296da583de15e8ad7287"
+      },
+      ".bss": {
+        "kind": 8,
+        "flags": 3,
+        "address": 1341201664,
+        "bytes": 3712,
+        "sha256": null
+      },
+      ".stacks": {
+        "kind": 8,
+        "flags": 3,
+        "address": 1341521920,
+        "bytes": 57344,
+        "sha256": null
+      },
+      ".heap": {
+        "kind": 8,
+        "flags": 3,
+        "address": 1341205376,
+        "bytes": 87168,
+        "sha256": null
+      }
+    }
+  },
+  "physical_evidence_applies_to_integration": false,
+  "remaining": [
+    "real SQLite host VFS/fault tool integration",
+    "current-main native fixture and exact-candidate physical qualification",
+    "native service task/IPC and trusted completions",
+    "cold OFF/ON",
+    "writable SD sync and persistent SQLite/WAL/power loss"
+  ],
+  "python_tests": 279
+}
