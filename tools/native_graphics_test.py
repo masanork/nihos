@@ -102,8 +102,23 @@ class NativeGraphicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "reference"):
             LOG.validate_wrap(good, [{"id": 5, "wrap_hash": 124}], reference)
 
+    def test_kinsoku_requires_native_pixels_and_defect_exposing_control(self):
+        good = dict(zip(LOG.POLICY_FIELDS, [3, 30, 3, 10, 5, 0]))
+        texts = [{"id": 5, "policy_hash": 123}, {"id": 6, "policy_hash": 0}]
+        reference = {"frames": [{"id": 5, "policy_hash": 123, "naive_forbidden_starts": 2, "forbidden_starts": 0, "forbidden_ends": 0}]}
+        LOG.validate_policy(good, texts, reference)
+        for key in LOG.POLICY_FIELDS:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_policy({**good, key: good[key] + 1}, texts, reference)
+        with self.assertRaisesRegex(ValueError, "reference"):
+            LOG.validate_policy(good, [{"id": 5, "policy_hash": 124}], reference)
+        bad = copy.deepcopy(reference)
+        bad["frames"][0]["naive_forbidden_starts"] = 0
+        with self.assertRaisesRegex(ValueError, "negative control"):
+            LOG.validate_policy(good, texts, bad)
+
     def test_archive_releases_full_charge_after_logging(self):
-        good = dict(zip(LOG.ARCHIVE_FIELDS, [2496, 4096, 0, 16022848, 16022848]))
+        good = dict(zip(LOG.ARCHIVE_FIELDS, [2736, 4096, 0, 16022848, 16022848]))
         LOG.validate_archive(good, {"heap_before": 16018752})
         for key in LOG.ARCHIVE_FIELDS:
             with self.subTest(key=key), self.assertRaises(ValueError):

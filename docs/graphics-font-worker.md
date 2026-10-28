@@ -19,8 +19,11 @@ and foreign-free checks. The [shared surface consumer](adr/0048-borrowed-rgb565-
 now blends those pixels into RGB565 with clipping before release.
 [Bounded cluster flow](adr/0049-bounded-cluster-flow.md) also wraps horizontal
 and vertical runs without splitting equal shaping clusters, reusing the same
-canvas. Japanese break policy and automatic ruby association remain pending. Native
-presentation, application routing, cancellation, forced termination
+canvas. A [basic Japanese prohibition subset](adr/0050-basic-japanese-break-policy.md)
+now constrains source boundaries, with native offscreen digests and host
+negative controls. Complete Japanese line-breaking policy and automatic ruby
+association remain pending. Native presentation, application routing,
+cancellation, forced termination
 and service restart remain unqualified. Native filesystem input and physical
 qualification remain pending. The sections below retain the design and earlier
 ISA evidence that led to that fixture.
@@ -118,8 +121,8 @@ this study.
    limits or tests; a finite fixture does not certify them.
 
 These gates precede native service integration. Bounded cluster flow is now
-qualified for the pinned texts, but Japanese line-breaking policy, ruby-base
-association/placement, paragraph pagination, caret/selection and SDL remain
+qualified for the pinned texts, but complete Japanese line-breaking policy,
+ruby-base association/placement, paragraph pagination, caret/selection and SDL remain
 separate framework work. Shaping independent body/ruby runs does not implement
 those features.
 

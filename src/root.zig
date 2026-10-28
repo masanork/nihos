@@ -30,6 +30,7 @@ pub const task_control = @import("kernel/task_control.zig");
 pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const console = @import("console.zig");
+pub const japanese_break = @import("graphics/japanese_break.zig");
 pub const line_layout = @import("graphics/line_layout.zig");
 pub const surface = @import("graphics/surface.zig");
 pub const raster_lease = @import("graphics/raster_lease.zig");
@@ -89,6 +90,7 @@ test {
     _ = raster_lease;
     _ = surface;
     _ = line_layout;
+    _ = japanese_break;
     _ = console;
     _ = tab5_boot_i2c;
     _ = tab5_display;
