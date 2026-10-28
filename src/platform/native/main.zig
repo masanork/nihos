@@ -679,9 +679,11 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_GRAPHICS_RASTER", null, .{ "created", "discarded", "published", "reclaimed", "live_charge", "peak_charge", "held_ticks", "stale_rejected", "foreign_rejected" }, &raster);
                     const composition = tasks.graphics.exchange.composer.metrics;
                     logger.record("NIHOS_NATIVE_GRAPHICS_SURFACE", null, .{ "frames", "blits", "clipped", "guards", "rejected", "peak_charge", "live_charge" }, &composition);
+                    const wrapped = tasks.graphics.exchange.composer.wrap_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_WRAP", null, .{ "frames", "clusters", "lines", "wrapped_runs", "transitions", "clipped" }, &wrapped);
                     for (tasks.graphics.exchange.textResults(), 0..) |*reply, text_index| {
-                        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)), .glyph_count = reply.output.count, .pixel_bytes = reply.output.raster_bytes, .pixel_hash = tasks.graphics.exchange.pixelHash(text_index), .surface_hash = tasks.graphics.exchange.composer.hash(text_index) };
-                        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "surface_hash" }, &text_result);
+                        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)), .glyph_count = reply.output.count, .pixel_bytes = reply.output.raster_bytes, .pixel_hash = tasks.graphics.exchange.pixelHash(text_index), .surface_hash = tasks.graphics.exchange.composer.hash(text_index), .wrap_hash = tasks.graphics.exchange.composer.wrapHash(text_index) };
+                        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "surface_hash", "wrap_hash" }, &text_result);
                         for (reply.output.glyphs[0..reply.output.count], 0..) |g, index| {
                             const glyph = .{ .request = reply.id, .index = @as(u32, @intCast(index)), .glyph_id = g.id, .cluster = g.cluster, .run = g.run, .pixels = g.pixels, .x_advance = @as(u32, @bitCast(g.x_advance)), .y_advance = @as(u32, @bitCast(g.y_advance)), .x_offset = @as(u32, @bitCast(g.x_offset)), .y_offset = @as(u32, @bitCast(g.y_offset)), .left = @as(u32, @bitCast(g.left)), .top = @as(u32, @bitCast(g.top)), .width = g.width, .height = g.height, .pixel_offset = g.pixel_offset };
                             logger.record("NIHOS_NATIVE_GRAPHICS_GLYPH", null, .{ "request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height", "pixel_offset" }, &glyph);
@@ -692,6 +694,9 @@ export fn nih_native_main() callconv(.c) noreturn {
                         const item = .{ .index = @as(u32, @intCast(index)), .hash = hash };
                         logger.record("NIHOS_NATIVE_GRAPHICS_HASH", null, .{ "index", "hash" }, &item);
                     }
+                    if (!tasks.graphics.exchange.releaseArchive()) fail("graphics archive release");
+                    const archive = tasks.graphics.exchange.archive_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_ARCHIVE", null, .{ "logical_bytes", "charge", "live_charge", "before", "after" }, &archive);
                     print("NIHOS_NATIVE_GRAPHICS_PASS\n");
                 }
                 while (true) {

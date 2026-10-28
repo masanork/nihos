@@ -16,7 +16,10 @@ now survives face close, source-buffer poisoning and task retirement, with atomi
 failure. [A8 raster leases](adr/0047-borrowed-a8-raster-leases.md) now hold one
 request's task-owned pixels until an acknowledged release, with stale-token
 and foreign-free checks. The [shared surface consumer](adr/0048-borrowed-rgb565-surfaces.md)
-now blends those pixels into RGB565 with clipping before release. Native
+now blends those pixels into RGB565 with clipping before release.
+[Bounded cluster flow](adr/0049-bounded-cluster-flow.md) also wraps horizontal
+and vertical runs without splitting equal shaping clusters, reusing the same
+canvas. Japanese break policy and automatic ruby association remain pending. Native
 presentation, application routing, cancellation, forced termination
 and service restart remain unqualified. Native filesystem input and physical
 qualification remain pending. The sections below retain the design and earlier
@@ -114,9 +117,11 @@ this study.
    Arbitrary fonts, arbitrary sizes and worst-case stack depth need additional
    limits or tests; a finite fixture does not certify them.
 
-These gates precede native service integration. Paragraph wrapping, ruby
-placement, vertical layout, caret/selection and SDL remain separate framework
-work; shaping body/ruby runs does not implement those features.
+These gates precede native service integration. Bounded cluster flow is now
+qualified for the pinned texts, but Japanese line-breaking policy, ruby-base
+association/placement, paragraph pagination, caret/selection and SDL remain
+separate framework work. Shaping independent body/ruby runs does not implement
+those features.
 
 ## Context-execution fixture
 

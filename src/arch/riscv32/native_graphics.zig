@@ -87,6 +87,7 @@ pub fn ownsFrame(frame: u32, saved_sp: u32) bool {
 }
 pub fn prepare() bool {
     if (report_state.stack_low != 0 or top() - bottom() != 32768) return false;
+    if (!exchange.prepareArchive()) return false;
     const words: [*]volatile u32 = @ptrFromInt(bottom());
     for (0..32768 / 4) |index| words[index] = 0x67726166;
     report_state.stack_low = bottom() + 16;

@@ -115,11 +115,35 @@ const Snapshot = struct {
 };
 // Qualification archives only successful glyphs; failed packets are validated
 // before discarding their empty storage. Nothing here crosses the IPC queue.
-var saved_glyphs: [3][16]protocol.Glyph = @splat(@splat(.{}));
+const ArchiveGlyphs = [3][16]protocol.Glyph;
+var saved_glyphs: ?*ArchiveGlyphs = null;
+var archive_allocation: ?@import("native_memory").reusable.Allocation = null;
+pub const ArchiveReport = struct { logical_bytes: u32 = @sizeOf(ArchiveGlyphs), charge: u32 = 0, live_charge: u32 = 0, before: u32 = 0, after: u32 = 0 };
+pub var archive_metrics: ArchiveReport = .{};
+pub fn prepareArchive() bool {
+    const heap = @import("native_memory").reusable;
+    if (archive_allocation != null) return false;
+    archive_metrics.before = @intCast(heap.availableBytes() orelse return false);
+    archive_allocation = heap.allocTask(@sizeOf(ArchiveGlyphs), 16) catch return false;
+    saved_glyphs = @ptrCast(@alignCast(archive_allocation.?.bytes.ptr));
+    archive_metrics.charge = archive_metrics.before - @as(u32, @intCast(heap.availableBytes() orelse return false));
+    archive_metrics.live_charge = archive_metrics.charge;
+    return true;
+}
+pub fn releaseArchive() bool {
+    const heap = @import("native_memory").reusable;
+    const allocation = archive_allocation orelse return false;
+    heap.freeTask(allocation) catch return false;
+    archive_allocation = null;
+    saved_glyphs = null;
+    archive_metrics.live_charge = 0;
+    archive_metrics.after = @intCast(heap.availableBytes() orelse return false);
+    return archive_metrics.before == archive_metrics.after;
+}
 var text_results: [5]Snapshot = @splat(.{});
 
 pub fn textResults() []const Snapshot {
-    return &text_results;
+    return if (saved_glyphs != null) &text_results else &.{};
 }
 
 pub fn bind(client: calls.Handle, worker: calls.Handle) bool {
@@ -244,8 +268,8 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             if (reply.output.outcome != @backingInt(reply.outcome)) nih_native_task_failed();
             var glyphs: []const protocol.Glyph = &.{};
             if (reply.outcome == .ok) {
-                if (metrics.text_success >= saved_glyphs.len) nih_native_task_failed();
-                const archive = saved_glyphs[metrics.text_success][0..reply.output.count];
+                if (metrics.text_success >= 3) nih_native_task_failed();
+                const archive = saved_glyphs.?[metrics.text_success][0..reply.output.count];
                 @memcpy(archive, reply.output.glyphs[0..reply.output.count]);
                 glyphs = archive;
             }

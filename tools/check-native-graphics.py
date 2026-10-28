@@ -16,13 +16,31 @@ FIELDS = ("status", "owner", "runs", "library_pc", "heap_before", "heap_after", 
           "client_cycles", "idle_retained", "idle_captures", "idle_progress")
 
 EXCHANGE_FIELDS = ("sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes")
-TEXT_FIELDS = ("id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "surface_hash")
+TEXT_FIELDS = ("id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "surface_hash", "wrap_hash")
 GLYPH_FIELDS = ("request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height", "pixel_offset")
 SIGNED_GLYPH_FIELDS = ("x_advance", "y_advance", "x_offset", "y_offset", "left", "top")
 
 RASTER_FIELDS = ("created", "discarded", "published", "reclaimed", "live_charge", "peak_charge", "held_ticks", "stale_rejected", "foreign_rejected")
 
 SURFACE_FIELDS = ("frames", "blits", "clipped", "guards", "rejected", "peak_charge", "live_charge")
+
+
+WRAP_FIELDS = ("frames", "clusters", "lines", "wrapped_runs", "transitions", "clipped")
+ARCHIVE_FIELDS = ("logical_bytes", "charge", "live_charge", "before", "after")
+
+
+def validate_wrap(record, texts, reference):
+    if tuple(record[k] for k in WRAP_FIELDS) != (3, 33, 9, 3, 4, 0):
+        raise ValueError("incomplete bounded cluster wrapping evidence")
+    expected = {f["id"]: f["wrap_hash"] for f in reference["wrapped"]}
+    if any(t["wrap_hash"] != expected.get(t["id"], 0) for t in texts):
+        raise ValueError("native wrapped composition differs from independent reference")
+
+
+def validate_archive(record, graphics):
+    if (record["logical_bytes"] != 2496 or record["charge"] != 4096 or record["live_charge"] != 0 or
+            record["before"] != record["after"] or record["after"] != graphics["heap_before"] + record["charge"]):
+        raise ValueError("incomplete diagnostic archive heap recovery")
 
 
 def validate_surface(record, texts, reference):
@@ -77,12 +95,12 @@ def validate(record, hashes, graphics, expected, exchange, texts, expected_texts
             used += glyph["width"] * glyph["height"]
         if used != text["pixel_bytes"] or used > 16384:
             raise ValueError("invalid raster byte count")
-    if [r["id"] for r in texts] != [5, 6, 7, 8, 9] or [{k: v for k, v in t.items() if k != "surface_hash"} for t in texts] != expected_texts:
+    if [r["id"] for r in texts] != [5, 6, 7, 8, 9] or [{k: v for k, v in t.items() if k not in ("surface_hash", "wrap_hash")} for t in texts] != expected_texts:
         raise ValueError("native text results differ from independent host requests")
     return q
 
 
-def check(log, image, manifest, reference, text_reference, surface_reference):
+def check(log, image, manifest, reference, text_reference, surface_reference, wrap_reference):
     if image["memory"]["profile"] != "emulator" or "graphics" not in image:
         raise ValueError("this smoke requires an audited emulator graphics image")
     log = log.replace("\\r", "").replace("\r", "")
@@ -93,6 +111,8 @@ def check(log, image, manifest, reference, text_reference, surface_reference):
     raster = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_RASTER", RASTER_FIELDS)
     validate_raster(raster)
     surface = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_SURFACE", SURFACE_FIELDS)
+    wrap = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_WRAP", WRAP_FIELDS)
+    archive = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_ARCHIVE", ARCHIVE_FIELDS)
     texts = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_TEXT", TEXT_FIELDS)
     for text in texts:
         text["glyphs"] = []
@@ -113,9 +133,9 @@ def check(log, image, manifest, reference, text_reference, surface_reference):
     if log.count("NIHOS_NATIVE_GRAPHICS_PASS\n") != 1 or not (
             log.index("NIHOS_NATIVE_FP_PASS ") < log.index("NIHOS_NATIVE_GRAPHICS ") <
             log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") < log.index("NIHOS_NATIVE_GRAPHICS_RASTER ") < log.index("NIHOS_NATIVE_GRAPHICS_SURFACE ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
+            log.index("NIHOS_NATIVE_GRAPHICS_WRAP ") < log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
             log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
+            log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
         raise ValueError("missing or out-of-order native graphics pass")
     profile = next(p for p in reference["profiles"] if p["render_pool_bytes"] == 2048 and p["allocation_records"] == 1024)
     expected = next(m["host"]["hashes"] for m in profile["modes"] if m["hinting"] == "auto")
@@ -125,10 +145,17 @@ def check(log, image, manifest, reference, text_reference, surface_reference):
     hashes = [r["hash"] for r in rows]
     if text_reference["cases_sha256"] != hashlib.sha256((ROOT / "probes/graphics/text_cases.json").read_bytes()).hexdigest():
         raise ValueError("text reference inputs differ from current canonical requests")
+    if (wrap_reference["raster_reference_sha256"] != hashlib.sha256((ROOT / "docs/measurements/2026-10-28-font-raster-host.json").read_bytes()).hexdigest() or
+            wrap_reference["source_sha256"] != hashlib.sha256((ROOT / "probes/graphics/surface_reference.py").read_bytes()).hexdigest()):
+        raise ValueError("wrapped reference inputs differ from current source")
     validate(q, hashes, image["graphics"], expected, exchange, texts, text_reference["texts"])
     validate_surface(surface, texts, surface_reference)
+    validate_wrap(wrap, texts, wrap_reference)
+    validate_archive(archive, q)
+    if archive["after"] != baseline["heaps"][0]["free"]:
+        raise ValueError("archive retirement differs from original CPU0 heap")
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
-            "graphics": q, "exchange": exchange, "raster": raster, "surface": surface, "texts": texts, "hashes": hashes, "baseline": baseline,
+            "graphics": q, "exchange": exchange, "raster": raster, "surface": surface, "wrap": wrap, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
                        "Four matrix and five bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
@@ -142,17 +169,19 @@ def main():
     reference_path = ROOT / "docs/measurements/2026-10-28-graphics-hinting-stack.json"
     text_reference_path = ROOT / "docs/measurements/2026-10-28-font-raster-host.json"
     surface_reference_path = ROOT / "docs/measurements/2026-10-28-surface-reference.json"
+    wrap_reference_path = ROOT / "docs/measurements/2026-10-28-wrap-reference.json"
     image = json.loads(image_path.read_text())
-    result = check((directory / "emulator.log").read_text(), image, json.loads(manifest_path.read_text()), json.loads(reference_path.read_text()), json.loads(text_reference_path.read_text()), json.loads(surface_reference_path.read_text()))
+    result = check((directory / "emulator.log").read_text(), image, json.loads(manifest_path.read_text()), json.loads(reference_path.read_text()), json.loads(text_reference_path.read_text()), json.loads(surface_reference_path.read_text()), json.loads(wrap_reference_path.read_text()))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     if sha(directory / "nihos-native.elf") != image["elf_sha256"] or sha(directory / "nihos-native.bin") != image["image_sha256"]:
         raise ValueError("captured native image identity differs from audit")
     result["artifacts_sha256"] = {p.name: sha(p) for p in [directory / n for n in ("nihos-native.elf", "nihos-native.bin", "nihos-native-flash.bin", "emulator.log", "image-audit.json", "graphics-manifest.json")]}
+    result["wrap_reference_sha256"] = sha(wrap_reference_path)
     result["surface_reference_sha256"] = sha(surface_reference_path)
     result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: RGB565 composition, clipping/guards, lease release and heap recovery passed")
+    print("Native graphics: cluster wrapping, RGB565 reference pixels and complete heap recovery passed")
 
 
 if __name__ == "__main__":

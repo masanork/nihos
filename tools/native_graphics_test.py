@@ -91,6 +91,24 @@ class NativeGraphicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "RGB565"):
             LOG.validate_surface(good, [{"id": 5, "surface_hash": 124}], reference)
 
+    def test_wrapping_requires_complete_metrics_and_reference_pixels(self):
+        good = dict(zip(LOG.WRAP_FIELDS, [3, 33, 9, 3, 4, 0]))
+        texts = [{"id": 5, "wrap_hash": 123}, {"id": 6, "wrap_hash": 0}]
+        reference = {"wrapped": [{"id": 5, "wrap_hash": 123}]}
+        LOG.validate_wrap(good, texts, reference)
+        for key in LOG.WRAP_FIELDS:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_wrap({**good, key: good[key] + 1}, texts, reference)
+        with self.assertRaisesRegex(ValueError, "reference"):
+            LOG.validate_wrap(good, [{"id": 5, "wrap_hash": 124}], reference)
+
+    def test_archive_releases_full_charge_after_logging(self):
+        good = dict(zip(LOG.ARCHIVE_FIELDS, [2496, 4096, 0, 16022848, 16022848]))
+        LOG.validate_archive(good, {"heap_before": 16018752})
+        for key in LOG.ARCHIVE_FIELDS:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_archive({**good, key: good[key] + 1}, {"heap_before": 16018752})
+
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)
         AUDIT.audit_flash_section(".flash.graphrodata", 1, 50, AUDIT.GRAPH_START + 64, 32, allow_graphics=True)
