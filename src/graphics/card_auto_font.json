@@ -42,7 +42,7 @@
     "src/graphics/surface.zig": "8dc9b747d5341a7573e6e86b29f5949c043604474b6f84a7c8e090927f297260",
     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
-    "src/platform/native/main.zig": "1ac313a17f33e2e239b19bc46d810319208810f7c59a87fee15d86a445f2e7c6",
+    "src/platform/native/main.zig": "8b0fad2541eebdff3dc6eb257e226974e07a4be6a740654abe7ea8fcc7759463",
     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
     "src/graphics/keypad_plan.zig": "bc0e78d9ab99c4cf928273fb189666f4d3f0316a5642f9edfe55ba30807fc0cb",
     "src/graphics/card_splash.zig": "3a64893ec36be58c425137d61180abff80b3c1208645bba28004649011968d75",
