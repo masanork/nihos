@@ -10,6 +10,7 @@ const timer_group = @import("timer_group");
 pub const ipi = @import("native_ipi.zig");
 pub const floating = @import("native_floating.zig");
 pub const memory = @import("native_memory");
+pub const graphics = @import("native_graphics.zig");
 
 const Runtime = runtime_module.Runtime(4, 2);
 const stack_bytes = 4096;
@@ -19,7 +20,7 @@ extern fn nih_native_task_trampoline() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
 const normal_boot = @import("native_options").boot_fast;
-const Phase = enum { normal, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete };
+const Phase = enum { normal, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, graphics };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol };
 
 const Owner = struct {
@@ -39,6 +40,7 @@ const Owner = struct {
     ready: bool = false,
     worker_reaped: [2]bool = .{ false, false },
     timer_interrupts: u32 = 0,
+    graphics_task: ?scheduler.TaskHandle = null,
 };
 
 pub const Report = struct {
@@ -311,6 +313,9 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     for ([_]scheduler.TaskHandle{ owner.bootstrap, owner.workers[0], owner.workers[1], owner.lifecycle }) |handle| {
         if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
     }
+    if (owner.graphics_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
+        total += snapshot.runtime_ticks;
+    };
     if (total != owner.runtime.policy.now()) nih_native_task_failed();
     const current = owner.runtime.policy.current() orelse nih_native_task_failed();
     memory.reusable.selectTask(hart, key(current));
@@ -344,6 +349,8 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    if (@import("native_options").graphics and hart == 0) graphics.exchange.composer.captureTimer(frame.mepc);
+    if (@import("native_options").graphics and owner.graphics_task != null and current.slot == owner.graphics_task.?.slot) graphics.capture(frame, true);
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer, frame.mepc);
     for (owner.workers, 0..) |handle, index| {
         if (!normal_boot and current.slot == handle.slot) owner.captures[index] +%= 1;
@@ -357,6 +364,7 @@ pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnSt
     if (!guardsValid(hart) or !refresh(hart, device)) return null;
     owner.calls +%= 1;
     const current = owner.runtime.policy.current() orelse return null;
+    if (@import("native_options").graphics and owner.graphics_task != null and current.slot == owner.graphics_task.?.slot) graphics.capture(frame, false);
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .calls, frame.mepc);
     const selected = owner.runtime.call(frame, state) orelse return null;
     // Closing is common to every native EXIT caller, independent of fixture
@@ -409,4 +417,57 @@ pub fn service(hart: u32) bool {
         if (calls.yieldNow() != 0) nih_native_task_failed();
     }
     return cleaned != .none or terminated;
+}
+
+/// One-shot post-soak fixture. Only bootstrap enters; fonts never run in IRQ.
+pub fn runGraphics(device: timer_group.Timer) ?graphics.Report {
+    const hart = asm volatile ("csrr %[result], mhartid"
+        : [result] "=r" (-> u32),
+    );
+    const live_status = asm volatile ("csrr %[result], mstatus"
+        : [result] "=r" (-> u32),
+    );
+    if (!@import("native_options").graphics or hart != 0 or live_status & 8 == 0) return null;
+    const owner = &owners[0];
+    const current = owner.runtime.policy.current() orelse return null;
+    if (current.slot != owner.bootstrap.slot or current.generation != owner.bootstrap.generation or
+        owner.phase != .complete or owner.graphics_task != null or !graphics.prepare()) return null;
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    if (status & 8 == 0 or owner.phase != .complete or owner.graphics_task != null) return null;
+    const address = context.initialTaskFrameAddress(graphics.bottom(), 32768) orelse return null;
+    const frame: *context.IntegerContext = @ptrFromInt(address);
+    context.initialize(frame, .{ .entry = @intFromPtr(&graphics.entry), .argument = 0, .trampoline = @intFromPtr(&nih_native_task_trampoline), .global_pointer = owner.gp });
+    const handle = owner.runtime.add(1, .{ .frame = frame, .state = initial_state, .stack_min = graphics.bottom() + 16, .stack_max = graphics.top() }) orelse return null;
+    if (!memory.reusable.openTask(0, key(handle))) return null;
+    if (!graphics.exchange.bind(.{ .slot = owner.bootstrap.slot, .generation = owner.bootstrap.generation }, .{ .slot = handle.slot, .generation = handle.generation })) return null;
+    owner.graphics_task = handle;
+    owner.phase = .graphics;
+    if (!refresh(0, device)) return null;
+    asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    while (true) {
+        graphics.progress();
+        _ = service(0);
+        const waiting = owner.runtime.policy.snapshot(handle) orelse return null;
+        graphics.exchange.poll(owner.runtime.policy.now(), waiting.runtime_ticks, waiting.state == .waiting);
+        const snapshot = owner.runtime.policy.snapshot(handle) orelse return null;
+        if (snapshot.state == .exited and memory.reusable.taskCleaned(0, key(handle))) {
+            const saved = asm volatile ("csrrci %[result], mstatus, 8"
+                : [result] "=r" (-> u32),
+                :
+                : .{ .memory = true });
+            defer if (saved & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+            if (snapshot.exit_code != 0 or !owner.runtime.reap(handle)) return null;
+            owner.completed_runtime_ticks += snapshot.runtime_ticks;
+            owner.graphics_task = null;
+            owner.phase = .complete;
+            device.disarm();
+            const result = graphics.finish() orelse return null;
+            if (!graphics.stack.reaped(.{ .acknowledged = graphics.exchange.finished(), .exited = snapshot.state == .exited, .cleaned = memory.reusable.taskCleaned(0, key(handle)), .reaped = owner.graphics_task == null })) return null;
+            return result;
+        }
+        if (calls.yieldNow() != 0) return null;
+    }
 }

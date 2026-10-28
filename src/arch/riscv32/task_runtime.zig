@@ -3,7 +3,7 @@
 //! Initialization/reaping may also run on the kernel bootstrap stack while
 //! this runtime is quiescent and has no executing task on another core.
 
-const context = @import("context.zig");
+pub const context = @import("context.zig");
 const scheduler = @import("scheduler");
 const task_control = @import("task_control");
 const std = @import("std");

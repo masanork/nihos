@@ -1,0 +1,69 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  esp_emu] Loaded firmware: 11709360 bytes
+[INFO  esp_emu] Network backend: user-mode (smoltcp NAT, 192.168.4.1 -> host loopback)
+[INFO  esp_emu] Loaded ROM ELF: <embedded esp32p4> (256824 bytes)
+[INFO  esp_emu] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 2095 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  machine] PSRAM configured as 32768 KB
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  esp_emu] Loaded application ELF build/native-emulator-graphics/nihos-native.elf: 14527504 bytes
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  esp_emu] Starting emulation (chip=esp32p4, batch_size=50000)
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbc4
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+Assert failed in unpack_load_app, bootloader_utility.c:777 (rom_index < 2)
+[INFO  periph] LP_WDT (RTC watchdog) expired: reset, reason 0x10
+[INFO  machine] Restarting emulator...
+[INFO  machine] PSRAM configured as 32768 KB
+[INFO  machine] ROM ELF: 2095 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  machine] Emulator restarted (chip=esp32p4)
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x10 (CHIP_LP_WDT_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbc4
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+W (6) boot.esp32p4: CPU has been reset by WDT.
+Assert failed in unpack_load_app, bootloader_utility.c:777 (rom_index < 2)
+[INFO  periph] LP_WDT (RTC watchdog) expired: reset, reason 0x10
+[INFO  machine] Restarting emulator...
+[INFO  machine] PSRAM configured as 32768 KB
+[INFO  machine] ROM ELF: 2095 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  machine] Emulator restarted (chip=esp32p4)
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x10 (CHIP_LP_WDT_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbc4
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+W (6) boot.esp32p4: CPU has been reset by WDT.
+Assert failed in unpack_load_app, bootloader_utility.c:777 (rom_index < 2)

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "evidence": "independent host pixels, not native display",
+  "width": 128,
+  "height": 96,
+  "stride": 256,
+  "bytes": 24576,
+  "pixel_hash": 1907333006,
+  "pixels_sha256": "520b1b4f41fe1891f10dc3161ecc700187f14d0ae2073bc83352265b3048ba53",
+  "source_sha256": "c96e0ff28ace51f5200679371656b29f063d20f0fdc148005c1c5e65d9471d0c"
+}

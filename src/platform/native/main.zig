@@ -830,6 +830,19 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                     }
                 }
+                if (options.graphics) {
+                    const result = tasks.runGraphics(timer(0)) orelse fail("native graphics fixture");
+                    if (!tasks.graphics.exchange.composer.contextAllowed()) fail("graphics report context");
+                    graphicsReport(&result);
+                    if (!tasks.graphics.exchange.releaseArchive()) fail("graphics archive release");
+                    const queues = tasks.graphics.exchange.queue_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_QUEUE", null, .{ "capacity", "metadata_bytes", "payload_bytes", "binding_rejected", "full_rejected", "detached", "live_payloads", "closed_rejected", "requests_metadata", "replies_metadata", "request_payload", "reply_payload" }, &queues);
+                    const archive = tasks.graphics.exchange.archive_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_ARCHIVE", null, .{ "logical_bytes", "charge", "live_charge", "before", "after" }, &archive);
+                    tasks.graphics.stack.scratch();
+                    graphicsReport(null);
+                    print("NIHOS_NATIVE_GRAPHICS_PASS\n");
+                }
                 while (true) {
                     flushDisplayReport();
                     if (options.console_live and !ui.service(&logger)) fail("live diagnostic idle");
@@ -864,6 +877,7 @@ fn normalReady() noreturn {
     if (options.console_live) {
         ui.report(&logger);
         ui.liveReport(&logger, true);
+        if (!ui.startSession(&logger)) fail("launcher startup");
     }
     if (options.boot_test != 0) {
         const ready = .{ .wait_us = @as(u32, @intCast((ui.timer().counter() orelse fail("ready clock")) - started)) };
@@ -1136,4 +1150,45 @@ noinline fn serviceTime() linksection(".flash.text.time") void {
     logger.record("NIHOS_NATIVE_NTP", null, .{ "phase", "attempts", "replies", "rejected", "failures", "server", "stratum", "rtt_us", "unix_high", "unix_low" }, &ntp);
     const clock = board_devices.timeSnapshot();
     logger.record("NIHOS_NATIVE_RTC_SYNC", null, .{ "applied", "failures", "error_code", "unix_high", "unix_low" }, &clock);
+}
+
+// Only immutable completed qualification records are emitted here. The SRAM
+// caller gates CPU0 bootstrap/MIE; task reaping and archive retirement stay SRAM.
+noinline fn graphicsReport(result: ?*const tasks.graphics.Report) linksection(".flash.text.render") void {
+    const completed = result orelse {
+        const stack_loan = tasks.graphics.stack.metrics;
+        logger.record("NIHOS_NATIVE_GRAPHICS_STACK_LOAN", null, .{ "bytes", "loans", "guards", "busy", "stale", "premature", "returned", "before_hash", "after_hash", "paint_pc", "start", "end" }, &stack_loan);
+        return;
+    };
+    logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, completed);
+    logger.record("NIHOS_NATIVE_GRAPHICS_CLIENTS", null, .{ "client_cycles", "idle_retained", "idle_captures", "idle_progress" }, completed);
+    const exchange = tasks.graphics.exchange.report();
+    logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes" }, &exchange);
+    const raster = tasks.graphics.exchange.raster.metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_RASTER", null, .{ "created", "discarded", "published", "reclaimed", "live_charge", "peak_charge", "held_ticks", "stale_rejected", "foreign_rejected" }, &raster);
+    const placement = tasks.graphics.exchange.composer.placement;
+    logger.record("NIHOS_NATIVE_GRAPHICS_PLACEMENT", null, .{ "paint_pc", "draw_pc", "frames", "draws", "context_checks", "irq_rejected", "active_ticks", "flash_ticks", "trap_pc" }, &placement);
+    const composition = tasks.graphics.exchange.composer.metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_SURFACE", null, .{ "frames", "blits", "clipped", "guards", "rejected", "peak_charge", "live_charge" }, &composition);
+    const wrapped = tasks.graphics.exchange.composer.wrap_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_WRAP", null, .{ "frames", "clusters", "lines", "wrapped_runs", "transitions", "clipped" }, &wrapped);
+    const policy_result = tasks.graphics.exchange.composer.policy_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_KINSOKU", null, .{ "frames", "spans", "joined", "lines", "transitions", "clipped" }, &policy_result);
+    const source_result = tasks.graphics.exchange.composer.source_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_SOURCE", null, .{ "input_pc", "prepare_pc", "verify_pc", "staged", "maps", "rejected", "edited", "poisoned", "echoed", "stale", "content", "annotations", "map_mutations", "wrong_reply" }, &source_result);
+    const ruby_result = tasks.graphics.exchange.composer.ruby_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_RUBY", null, .{ "frames", "groups", "moved", "wide", "units", "joins", "lines", "clipped", "plan_bytes", "scratch_bytes" }, &ruby_result);
+    for (tasks.graphics.exchange.textResults()) |*reply| {
+        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)), .glyph_count = reply.output.count, .pixel_bytes = reply.output.raster_bytes, .pixel_hash = reply.pixel_hash, .source_hash = reply.source_hash, .surface_hash = reply.composition.surface_hash, .wrap_hash = reply.composition.wrap_hash, .policy_hash = reply.composition.policy_hash, .ruby_hash = reply.composition.ruby_hash };
+        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "source_hash", "surface_hash", "wrap_hash", "policy_hash", "ruby_hash" }, &text_result);
+        for (reply.output.glyphs[0..reply.output.count], 0..) |g, index| {
+            const glyph = .{ .request = reply.id, .index = @as(u32, @intCast(index)), .glyph_id = g.id, .cluster = g.cluster, .run = g.run, .pixels = g.pixels, .x_advance = @as(u32, @bitCast(g.x_advance)), .y_advance = @as(u32, @bitCast(g.y_advance)), .x_offset = @as(u32, @bitCast(g.x_offset)), .y_offset = @as(u32, @bitCast(g.y_offset)), .left = @as(u32, @bitCast(g.left)), .top = @as(u32, @bitCast(g.top)), .width = g.width, .height = g.height, .pixel_offset = g.pixel_offset };
+            logger.record("NIHOS_NATIVE_GRAPHICS_GLYPH", null, .{ "request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height", "pixel_offset" }, &glyph);
+        }
+    }
+    const hashes = tasks.graphics.hashes();
+    for (hashes, 0..) |hash, index| {
+        const item = .{ .index = @as(u32, @intCast(index)), .hash = hash };
+        logger.record("NIHOS_NATIVE_GRAPHICS_HASH", null, .{ "index", "hash" }, &item);
+    }
 }
