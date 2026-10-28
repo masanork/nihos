@@ -100,3 +100,11 @@ observations do not establish contact operation of this normal image. Before lan
 4. Retain failed attempts and optical/input confirmation separately from serial
    counters. GT911/ST7123, cold power cycling, IRQ input, application routing
    and sustained mixed workload remain separate qualification work.
+
+## Main integration decision, 2026-10-28
+
+The user requested landing the normal UI view control and its subdued gray
+styling on main while further physical testing is unavailable. The checklist
+above remains outstanding physical qualification work, rather than a claim
+established by this integration. Host, emulator and build checks must pass;
+merging does not qualify real contact/release behavior or optical appearance.
