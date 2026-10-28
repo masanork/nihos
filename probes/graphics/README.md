@@ -659,3 +659,39 @@ library's separate 32 KiB writable region remains exclusive; it cannot safely
 restart merely by clearing globals. Physical reuse and broker integration are
 still separate gates. Native font stack size and both existing memory caps remain
 unchanged.
+
+## Pristine library image and restart boundary
+
+[ADR 0056](../../docs/adr/0056-pristine-font-library-image.md) tests real RV32
+FreeType/HarfBuzz reinitialization with host Unicorn. It separates the 32 KiB
+library bank from the persistent Zig kernel backing/ledger, keeps another owner's
+8 MiB allocation alive, and compares three font lifetimes against the existing
+sixteen-case sanitized host reference. Controller-only and BSS-only restoration
+are negative controls; the positive path poisons the whole bank then restores an
+ELF-identity-bound initialized-data/zero-BSS template. Kernel ownership is not reset.
+
+With the existing pinned native graphics library archives and Unicorn 2.1.4 venv:
+
+```sh
+NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ sh tools/run-library-restart-probe.sh
+```
+
+Artifacts are isolated under `build/library-restart-final`. The initializer
+admission checks have host unit tests and refuse writes for a live library,
+wrong ELF identity or damaged template. The generated renderer changes only its
+backing-init handshake for this host harness. Native firmware, one-shot gates,
+loader mappings, quotas and physical-device evidence are unchanged. This is
+standalone ISA execution, not a native boot, IRQ or application-service restart.
+
+
+After the ISA runner completes, generate the source/artifact-bound receipt with:
+
+```sh
+python3 probes/graphics/library_restart_report.py build/library-restart-final /path/to/riscv32-esp-elf-g++
+```
+
+The output is `build/library-restart-final/receipt.json`; the checked measurement
+is `docs/measurements/2026-10-28-font-library-restart.json`. The standalone bank
+needs 18,756 B of initialized data and zero BSS/padding. A 714 B sparse-word patch
+payload is only a size estimate, without an implemented format or native decoder.
+The native one-shot firmware is not rebuilt or restarted by this host experiment.
