@@ -42,6 +42,7 @@ static bool backing_ready;
 extern "C" { GraphicsResult graphics_result = {}; }
 #ifdef PROBE_NATIVE_OBJECT
 extern "C" { uint32_t graphics_execution_pc = 0; }
+extern "C" void nih_graphics_service_idle(uint32_t cycle, uint32_t retained);
 #endif
 static void check(bool good, const char *where) {
     (void)where;
@@ -83,16 +84,24 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
     check(nih_graphics_backing_init(inputs->heap,inputs->heap_bytes)==0,"heap init");
     backing_ready=true;
     hb_language_from_string("ja",-1);
-    pool.begin_operation();
     check(inputs->load_mode<=2,"load mode");
     FT_Int32 flags=FT_LOAD_NO_BITMAP;
     if(inputs->load_mode==1)flags|=FT_LOAD_FORCE_AUTOHINT;
     if(inputs->load_mode==2)flags|=FT_LOAD_NO_HINTING|FT_LOAD_NO_AUTOHINT;
+#ifdef PROBE_NATIVE_OBJECT
+    const unsigned cycles=4;
+    uint32_t expected[16]={};
+#else
+    const unsigned cycles=1;
+#endif
+    bool success=true;
+    for(unsigned cycle=0;cycle<cycles;cycle++) {
+    pool.begin_operation();
+    graphics_result.runs=0;
     Session first(1,flags),second(2,flags);
     graphics_result.stage=2;check(first.openMemory(inputs->fonts[0],inputs->lengths[0]),"gothic open");
     graphics_result.stage=3;check(second.openMemory(inputs->fonts[1],inputs->lengths[1]),"mincho open");
     const unsigned sizes[]={12,16,24,32};
-    bool success=true;
     for(unsigned size:sizes)for(unsigned v=0;v<2;v++)for(unsigned family=0;family<2;family++) {
         if(!success)continue;
         graphics_result.stage=10+graphics_result.runs;
@@ -102,7 +111,17 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
     }
     second.close();first.close();
     check(pool.valid() && pool.owner_reserved[1]==0 && pool.owner_reserved[2]==0,"client recovery");
-    graphics_result.pool_peak=(uint32_t)pool.peak;
+#ifdef PROBE_NATIVE_OBJECT
+    check(success && graphics_result.runs==16,"complete client cycle");
+    for(unsigned i=0;i<16;i++) {
+        if(cycle==0)expected[i]=graphics_result.hashes[i];
+        else check(expected[i]==graphics_result.hashes[i],"reopened clients unchanged");
+    }
+    graphics_result.stage=50;
+    nih_graphics_service_idle(cycle+1,(uint32_t)nih_graphics_backing_raw_used());
+#endif
+    if(pool.peak>graphics_result.pool_peak)graphics_result.pool_peak=(uint32_t)pool.peak;
+    }
     graphics_result.raw_peak=(uint32_t)nih_graphics_backing_raw_peak();
     graphics_result.retained=(uint32_t)nih_graphics_backing_raw_used();
     graphics_result.largest_extent=(uint32_t)nih_graphics_backing_largest_extent();

@@ -12,7 +12,8 @@ base = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base)
 FIELDS = ("status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained",
           "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress",
-          "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected")
+          "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected",
+          "client_cycles", "idle_retained", "idle_captures", "idle_progress")
 
 
 def validate(record, hashes, graphics, expected):
@@ -27,7 +28,10 @@ def validate(record, hashes, graphics, expected):
             not 0 < q["render_captures"] <= q["captures"] or q["bootstrap_progress"] < q["captures"] or
             not 512 < q["record_peak"] <= 1024 or q["controller_bytes"] != 17224 or
             q["allocations"] <= 1 or q["releases"] + 1 != q["allocations"] or
-            not q["foreign_rejected"] or not q["irq_rejected"] or q["forged_rejected"] != 1):
+            not q["foreign_rejected"] or not q["irq_rejected"] or q["forged_rejected"] != 1 or
+            q["client_cycles"] != 4 or q["idle_retained"] != q["retained"] or
+            not q["client_cycles"] <= q["idle_captures"] <= q["captures"] - q["render_captures"] or
+            not q["client_cycles"] <= q["idle_progress"] <= q["bootstrap_progress"]):
         raise ValueError("incomplete native font ownership/preemption/recovery evidence")
     if len(hashes) != 16 or hashes != expected:
         raise ValueError("native glyph/position/raster hashes differ from host reference")
@@ -39,13 +43,15 @@ def check(log, image, manifest, reference):
         raise ValueError("this smoke requires an audited emulator graphics image")
     log = log.replace("\\r", "").replace("\r", "")
     baseline = base.check(log, "integer", 32 << 20, image, evidence="emulator")
-    q = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS", FIELDS)
+    q = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS", FIELDS[:-4])
+    q.update(base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_CLIENTS", FIELDS[-4:]))
     rows = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_HASH", ("index", "hash"))
     if [r["index"] for r in rows] != list(range(16)):
         raise ValueError("missing/reordered native font hash cases")
     if log.count("NIHOS_NATIVE_GRAPHICS_PASS\n") != 1 or not (
             log.index("NIHOS_NATIVE_FP_PASS ") < log.index("NIHOS_NATIVE_GRAPHICS ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_HASH ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
+            log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
+            log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
         raise ValueError("missing or out-of-order native graphics pass")
     profile = next(p for p in reference["profiles"] if p["render_pool_bytes"] == 2048 and p["allocation_records"] == 1024)
     expected = next(m["host"]["hashes"] for m in profile["modes"] if m["hinting"] == "auto")
@@ -57,7 +63,7 @@ def check(log, image, manifest, reference):
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
             "graphics": q, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
-                       "One-shot library lifetime; the task ledger reclaims HB service backing after task exit, without attempting library restart",
+                       "Four client cycles share one live library task; final task exit retires HB state without attempting service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
 
 
@@ -75,7 +81,7 @@ def main():
     result["artifacts_sha256"] = {p.name: sha(p) for p in [directory / n for n in ("nihos-native.elf", "nihos-native.bin", "nihos-native-flash.bin", "emulator.log", "image-audit.json", "graphics-manifest.json")]}
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: real timer preemption, task-owned extents, hashes and full heap recovery passed")
+    print("Native graphics: four client cycles, idle service preemption, stable retention, hashes and final heap recovery passed")
 
 
 if __name__ == "__main__":

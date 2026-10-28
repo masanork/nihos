@@ -20,8 +20,8 @@ LOG = load("graphics_log", "check-native-graphics.py")
 class NativeGraphicsTests(unittest.TestCase):
     def record(self):
         return dict(zip(LOG.FIELDS, [1, 0x10003, 16, 0x40023004, 16 << 20, 16 << 20,
-                                    1310976, 65792, 0x4ff6e010, 0x4ff76000, 16928, 10, 8, 12,
-                                    694, 17224, 6, 5, 11, 10, 1]))
+                                    1310976, 65792, 0x4ff6e010, 0x4ff76000, 16928, 12, 8, 14,
+                                    694, 17224, 21, 20, 11, 10, 1, 4, 65792, 4, 4]))
 
     def test_complete_record_and_hashes_require_cleanup_and_real_render_interrupts(self):
         graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
@@ -29,7 +29,9 @@ class NativeGraphicsTests(unittest.TestCase):
         for name, value in [("heap_after", 1), ("owner", 0x10010003), ("owner", 1),
                             ("library_pc", 0x4ff20000), ("render_captures", 0), ("captures", 0),
                             ("foreign_rejected", 0), ("irq_rejected", 0), ("forged_rejected", 0),
-                            ("observed_used", 32752), ("record_peak", 1025), ("releases", 4)]:
+                            ("observed_used", 32752), ("record_peak", 1025), ("releases", 4),
+                            ("client_cycles", 1), ("idle_retained", 0), ("idle_captures", 0), ("idle_progress", 0),
+                            ("idle_captures", 5), ("idle_progress", 15)]:
             with self.subTest(name=name, value=value), self.assertRaisesRegex(ValueError, "ownership"):
                 LOG.validate({**self.record(), name: value}, list(range(16)), graphics, list(range(16)))
         with self.assertRaisesRegex(ValueError, "hashes"):

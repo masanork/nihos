@@ -53,6 +53,13 @@ fonts one contiguous second mapping; descriptor/boot code is the first.
 Audits compare every mapped byte with the ELF and verify both TTF SHA-256
 values. The failed image and log are retained separately.
 
+Source preparation also has a cross-process lock and a content witness. Once
+prepared, subsequent builds verify and reuse the source tree without restoring
+archives or reapplying patches under a compiler. Changed dependencies or a
+modified cache fail explicitly; prepare a fresh generated source cache between
+builds. Two concurrent preparers must return only the same source path, keep
+all file modification times unchanged and retain the local OOM patch.
+
 | Internal SRAM region | Reserved bytes | Purpose |
 | --- | ---: | --- |
 | Existing primary region | 163,840 | Kernel/static data and ordinary heap |
@@ -69,12 +76,12 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 91,392 B | 91,520 B |
-| Remaining primary SRAM heap | 72,448 B | 72,320 B |
-| Static reservations including stack/data regions | 214,272 B | 214,400 B |
-| Application image | 11,556,304 B | 11,557,728 B |
+| Primary static span | 91,904 B | 92,160 B |
+| Remaining primary SRAM heap | 71,936 B | 71,680 B |
+| Static reservations including stack/data regions | 214,784 B | 215,040 B |
+| Application image | 11,557,008 B | 11,558,448 B |
 
-Graphics code/RO occupy 560,320 B in Flash. TTF inputs occupy 10,821,312 B,
+Graphics code/RO occupy 560,400 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
 Private initialized data/BSS occupy 19,924 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
@@ -90,18 +97,25 @@ locally IRQ-masked; library work and source copies execute with MIE enabled.
 Other native profiles retain zero extent-group slots.
 
 The fixture runs two open sessions, four body sizes with half-size ruby runs
-and horizontal/vertical shaping: 16 cases with forced auto-hint. It closes
-both clients and returns through the actual task ABI. Native EXIT closes the
-ledger; bootstrap drains one extent per cleanup step, reaps only after cleanup
-and checks complete heap recovery.
+and horizontal/vertical shaping: 16 cases with forced auto-hint per cycle.
+It runs four open/draw/close cycles for both clients on the same live task,
+for 64 cases in total. Only the final close returns through the actual task ABI.
+Native EXIT closes the ledger; bootstrap drains one extent per cleanup step,
+reaps only after cleanup and checks complete heap recovery.
 
-The [measurement receipt](measurements/2026-10-28-native-graphics.json) records:
+The initial [single-cycle receipt](measurements/2026-10-28-native-graphics.json)
+records the first native integration. The current
+[client-cycle receipt](measurements/2026-10-28-native-graphics-client-cycles.json)
+records repeated use on one live task:
 
-- All 16 hashes match the sanitized host reference. An `auipc` sample inside
-  the C++ entry confirms execution in the whitelisted library function.
-- The timer captures the font task 1,593 times, including 1,589 during
-  shaping/rasterization stages; bootstrap advances 1,596 times.
-- Stack watermark/frame observation reaches 16,928 B, leaving 15,824 B above
+- All 64 cases repeat the same 16-hash matrix, which also matches the
+  sanitized host reference. An `auipc` sample inside the C++ entry confirms
+  execution in the whitelisted library function.
+- The timer captures the font task 6,376 times, including 6,360 during
+  shaping/rasterization stages; bootstrap advances 6,379 times.
+  All four zero-client idle gates also observe a fresh timer capture and
+  bootstrap progress before allowing clients to reopen.
+- Stack watermark/frame observation reaches 16,992 B, leaving 15,760 B above
   that observation and the 16 B guard in a 32 KiB reservation. This is not a
   worst-case or native IO call-chain bound.
 - Two clients peak at 1,310,976 B of actual buddy backing. Closing clients
@@ -111,11 +125,26 @@ The [measurement receipt](measurements/2026-10-28-native-graphics.json) records:
   an invalid address without changing free heap. The 1,024-record controller
   peaks at 694 records.
 
+## Client and service lifetimes
+
+Closing the last client frees its face and source-cache extents, while
+service-owned HarfBuzz state remains in one backing extent. Every cycle must
+leave exactly the same retained charge and matching native free-heap balance.
+The next cycle reuses that live service state without another backing init,
+task admission or stack paint. All 16 output hashes must match the first
+cycle; the final matrix must also match the independent host reference.
+
+With zero clients, a test-only idle gate waits for a fresh peripheral timer
+capture and bootstrap progress on every cycle. The service task remains
+preemptible on its existing stack. This active wait is an execution test, not
+a sleeping request queue or a production idle policy. The external emulator
+timeout bounds a missing-interrupt failure.
+
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls
-the libraries again. It is **not** a restartable font service or general client
-cancellation. A persistent service must keep service-owned state alive across
-client closes and define safe shutdown/restart separately.
+the libraries again. It is **not** a public request service, restartable library lifetime or general
+client cancellation. Production integration must retain service-owned state
+across client closes and define safe shutdown/restart separately.
 
 ## Remaining integration
 
