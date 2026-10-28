@@ -37,6 +37,8 @@ pub noinline fn refreshHeader(grid: anytype, model: *const stages.Model, dropped
         1 => "serial",
         2 => "keyboard",
         3 => "keyboard+serial",
+        17 => "serial+touch",
+        19 => "keyboard+serial+touch",
         else => "available",
     });
     if (model.atSafeCheckpoint()) grid.write(" [PAUSED]");

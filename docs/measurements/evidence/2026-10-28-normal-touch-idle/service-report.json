@@ -1,0 +1,134 @@
+{
+  "audio": {
+    "scope": "native finite DMA/codec output progression; audible output not evaluated",
+    "records": 103,
+    "complete_records": 103,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "dma": 11,
+      "bclk": 262145,
+      "fifo": 16384,
+      "eof_descriptor": 1341235248,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1
+    }
+  },
+  "microphone": {
+    "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+    "muted_control": false,
+    "records": 94,
+    "completed_records": 94,
+    "final": {
+      "phase": 5,
+      "fault": 0,
+      "dma": 3,
+      "end": 1341234752,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1,
+      "samples": 512,
+      "erased": 1
+    },
+    "signal": {
+      "active": 15,
+      "clipped": 0,
+      "peak0": 100,
+      "peak1": 110,
+      "peak2": 83,
+      "peak3": 179,
+      "span0": 161,
+      "span1": 27,
+      "span2": 163,
+      "span3": 44
+    }
+  },
+  "rs485": {
+    "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+    "mode": "loopback",
+    "records": 87,
+    "terminal_records": 87,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "tx": 64,
+      "rx": 64,
+      "raw": 0,
+      "tx_idle": 1,
+      "dir_low": 1,
+      "stopped": 1,
+      "matched": 1
+    }
+  },
+  "time": {
+    "scope": "public SNTP response correlated and UTC RTC written/read back; unauthenticated wall time",
+    "ntp": {
+      "attempts": 1,
+      "replies": 1,
+      "failures": 0,
+      "stratum": 1,
+      "rtt_us": 1346779
+    },
+    "ntp_unix": 1793168505,
+    "rtc_written_unix": 1793168505,
+    "rtc_final_unix": 1793169081,
+    "rtc_valid_records": 120,
+    "ui_final": {
+      "frames": 35753,
+      "ticks0": 59568,
+      "ticks1": 59568
+    }
+  },
+  "touch": {
+    "qualified": false,
+    "reason": "touch not ready, stable, sampled or error-free",
+    "contact_operation": "not observed; operator confirmation absent"
+  },
+  "touch_status_final": {
+    "status": 1,
+    "panel": 3,
+    "width": 720,
+    "height": 1280,
+    "slots": 10,
+    "polls": 17250,
+    "fresh": 0,
+    "errors": 0,
+    "error_code": 0,
+    "max_poll_us": 2453
+  },
+  "pointer_final": {
+    "down": 0,
+    "move": 0,
+    "up": 0,
+    "cancel": 0,
+    "multi": 0,
+    "overflow": 0,
+    "quadrants": 0,
+    "queued": 0
+  },
+  "network_statistics": {
+    "phase": 3,
+    "error_code": 0,
+    "polls": 79912,
+    "max_poll_us": 7056,
+    "renewals": 0,
+    "reconnects": 0,
+    "acquisitions": 1,
+    "failures": 0,
+    "disconnect_reason": 0,
+    "failed_station": 0
+  },
+  "device_service_final": {
+    "available": 7,
+    "requested": 7,
+    "i2s_owner": 0,
+    "pinned": 0,
+    "workspace": 1536
+  },
+  "image_sha256": "2cbb530b12a4b41bca58f40744bdccbe9f06996e8e5341985d0cffa4ba59486b",
+  "serial_sha256": "837c74f26a30f76c73675a7703d0eabf4f7caf18bdbeb65bc69f71ab905d9a15",
+  "scope": "normal touch identification/idle coexistence only; contact/view interaction unqualified"
+}
