@@ -14,6 +14,7 @@ import re
 import runpy
 import struct
 import subprocess
+import riscv_stack_flow
 
 
 def require(ok, reason):
@@ -29,6 +30,7 @@ def elf_functions(data):
     st = sections[h[12]]
     section_names = data[st[4]:st[4] + st[5]]
     functions = []
+    code = {}
     frames = []
     for s in sections:
         if s[1] == 2:
@@ -38,6 +40,9 @@ def elf_functions(data):
                 name, address, size, info, _, index = struct.unpack_from('<IIIBBH', data, p)
                 if name and info & 15 == 2 and index and size:
                     functions.append((strings[name:strings.index(0, name)].decode(), address, address + size))
+                    body = sections[index]
+                    require(body[2] & 4 and body[3] <= address < address + size <= body[3] + body[5], 'function outside executable section')
+                    code[address] = data[body[4] + address - body[3]:body[4] + address - body[3] + size]
         if section_names[s[0]:section_names.index(0, s[0])] == b'.stack_sizes':
             frames.append(data[s[4]:s[4] + s[5]])
     require(functions and len(frames) == 1, 'missing functions or unique static frame section')
@@ -45,7 +50,7 @@ def elf_functions(data):
     rows = module['stack_size_rows'](frames[0], functions)
     nodes = {}
     for name, start, end in functions:
-        node = nodes.setdefault(start, {'names': [], 'end': end, 'frame': None})
+        node = nodes.setdefault(start, {'names': [], 'end': end, 'frame': None, 'code': code[start]})
         require(node['end'] == end, 'conflicting function extents')
         node['names'].append(name)
     for row in rows:
@@ -115,7 +120,8 @@ def analyze(nodes, edges, unknown, root):
         return cache[at]
     total, path = visit(root, ())
     def record(at):
-        return {'address': hex(at), 'functions': nodes[at]['names'], 'frame_bytes': nodes[at]['frame']}
+        return {'address': hex(at), 'functions': nodes[at]['names'], 'frame_bytes': nodes[at]['frame'],
+                **({'frame_provenance': nodes[at]['frame_provenance']} if 'frame_provenance' in nodes[at] else {})}
     missing = [record(at) for at in sorted(reached) if nodes[at]['frame'] is None]
     unresolved = [{**record(at), 'sites': unknown[at]} for at in sorted(reached) if unknown.get(at)]
     return {'root': record(root), 'reachable_functions': len(reached),
@@ -127,6 +133,24 @@ def analyze(nodes, edges, unknown, root):
             'whole_call_stack_qualified': False}
 
 
+
+def add_candidate_edges(nodes, edges, unknown, specifications):
+    """Include possible callees without treating a source-level binding as proof."""
+    result = []
+    for specification in specifications:
+        caller, callee = specification.split(':', 1)
+        parents = [at for at in nodes if caller in nodes[at]['names']]
+        children = [at for at in nodes if callee in nodes[at]['names']]
+        require(len(parents) == len(children) == 1, 'missing/ambiguous candidate edge')
+        parent, child = parents[0], children[0]
+        sites = [s for s in unknown[parent] if s['kind'] == 'indirect-transfer' and s.get('instruction', '').startswith('jalr ')]
+        require(len(sites) == 1, 'candidate edge needs exactly one unresolved indirect call site')
+        edges[parent].add(child)
+        row = {'caller': caller, 'callee': callee, 'call_site': sites[0]['pc'], 'target_exclusivity_proven': False}
+        sites[0].setdefault('candidate_callees', []).append(callee)
+        result.append(row)
+    return result
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('elf', type=Path)
@@ -134,23 +158,30 @@ def main():
     parser.add_argument('--objdump', required=True)
     parser.add_argument('--root', action='append', default=[])
     parser.add_argument('--require-closed', action='store_true')
+    parser.add_argument('--candidate-edge', action='append', default=[], metavar='CALLER:CALLEE')
+    parser.add_argument('--derive-frames', action='store_true', help='derive missing local SP bounds from binary CFG; preserves unresolved transfers')
     args = parser.parse_args()
     args.report.unlink(missing_ok=True)
     data = args.elf.read_bytes()
     nodes = elf_functions(data)
     output = subprocess.check_output([args.objdump, '-d', '--no-show-raw-insn', str(args.elf)], text=True, timeout=60)
     edges, unknown = transfers(output, nodes)
+    candidate_edges = add_candidate_edges(nodes, edges, unknown, args.candidate_edge)
     roots = args.root or ['nih_storage_task_entry', 'fatfs_runtime.serve', 'fatfs_runtime.runClient']
     results = []
+    root_addresses = []
     for name in roots:
         found = [at for at in nodes if name in nodes[at]['names']]
         require(len(found) == 1, 'missing/ambiguous root: ' + name)
-        results.append(analyze(nodes, edges, unknown, found[0]))
+        root_addresses.append(found[0])
+    derivations = riscv_stack_flow.derive_missing(nodes, edges, root_addresses, output) if args.derive_frames else []
+    results = [analyze(nodes, edges, unknown, at) for at in root_addresses]
     result = {'schema': 1, 'evidence': 'static structural call-chain inventory; no execution or whole-stack qualification',
         'elf_sha256': hashlib.sha256(data).hexdigest(), 'analyzer_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'disassembly_sha256': hashlib.sha256(output.encode()).hexdigest(),
         'objdump_version': subprocess.check_output([args.objdump, '--version'], text=True).splitlines()[0],
-        'roots': results, 'whole_call_stack_qualified': False}
+        'sp_flow_analyzer_sha256': hashlib.sha256(Path(riscv_stack_flow.__file__).read_bytes()).hexdigest(),
+        'candidate_edges': candidate_edges, 'frame_derivations': derivations, 'roots': results, 'whole_call_stack_qualified': False}
     args.report.write_text(json.dumps(result, indent=2) + '\n')
     for row in results:
         print(row['root']['functions'][0] + ': known structural sum=' + str(row['known_frames_on_largest_structural_chain_bytes']) +

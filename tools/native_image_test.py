@@ -62,6 +62,22 @@ class NativeInstructionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "stack"):
                 MODULE.audit_stack_layout(symbols, sizes, bad)
 
+    def test_task_side_trap_reserve_is_accounted_before_irq_stack_switch(self):
+        base = 0x4ff60000
+        symbols = {"__stacks_start": base, "__stacks_end": base + 57344,
+                   "__task_stacks_start": base + 32768, "__task_stacks_end": base + 57344,
+                   "native_tasks.stacks": base + 32768, "nih_native_task_context_bytes": 128}
+        for prefix, offset in (("stack0", 0), ("stack1", 8192), ("irq_stack0", 16384), ("irq_stack1", 24576)):
+            symbols["__" + prefix + "_bottom"] = base + offset
+            symbols["__" + prefix + "_top"] = base + offset + 8192
+        sizes = {"native_tasks.stacks": 24576}
+        sections = [{"name": ".stacks", "address": hex(base), "bytes": 57344}]
+        result = MODULE.audit_stack_layout(symbols, sizes, sections)
+        self.assertEqual(result['ordinary_sp_budget_bytes'], 4096 - 16 - 128)
+        for value in (0, 64, 129, 256):
+            with self.assertRaises(ValueError):
+                MODULE.audit_stack_layout({**symbols, 'nih_native_task_context_bytes': value}, sizes, sections)
+
     def test_stack_bank_is_non_executable_unloaded_and_bounded(self):
         MODULE.audit_stack_section(8, 3, 0x4ff60000, 57344)
         for values in ((1, 3, 0x4ff60000, 57344), (8, 7, 0x4ff60000, 57344),

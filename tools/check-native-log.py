@@ -31,7 +31,7 @@ def check_fatfs_native(log, image, evidence):
         return None
     if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
         raise ValueError('native FatFs task record requires physical device evidence')
-    if config.get('source') != 'embedded sparse/RLE FAT12 fixture; not SD FatFs' or config.get('version') not in (1, 2):
+    if config.get('source') != 'embedded sparse/RLE FAT12 fixture; not SD FatFs' or config.get('version') not in (1, 2, 3):
         raise ValueError('unknown native FatFs fixture source/version')
     record = fixed_record(log, marker, FATFS_FIELDS)
     expected = dict.fromkeys(FATFS_FIELDS, 1)

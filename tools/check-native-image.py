@@ -270,9 +270,12 @@ def audit_stack_layout(symbols, sizes, allocated):
     stacks = [section for section in allocated if section["name"] == ".stacks"]
     require(len(stacks) == 1 and int(stacks[0]["address"], 16) == STACK_LOW and stacks[0]["bytes"] == STACK_HIGH - STACK_LOW,
             "missing/invalid stack bank section")
+    trap_bytes = symbols.get('nih_native_task_context_bytes')
+    require(trap_bytes is None or trap_bytes == 128, 'invalid task-side trap context reserve')
     return {"start": hex(STACK_LOW), "end": hex(STACK_HIGH), "bytes": STACK_HIGH - STACK_LOW,
             "bootstrap_bytes_per_hart": 8192, "irq_bytes_per_hart": 8192,
-            "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768)}
+            "worker_bytes": 4096, "workers_per_hart": 3, "worker_start": hex(STACK_LOW + 32768),
+            "task_side_trap_bytes": trap_bytes, "ordinary_sp_budget_bytes": 3952 if trap_bytes is not None else None}
 
 
 def stack_size_rows(data, functions):

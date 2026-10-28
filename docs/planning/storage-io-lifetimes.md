@@ -273,3 +273,14 @@ IRQ→kernel通知の省略と、doorbell ack / latch exchangeの逆転は、待
 最終ELFのcall-chain inventoryは未測定frame、間接transfer、ROM/assembly境界、再帰等を列挙し、
 未解決のgraphを`--require-closed`で拒否する。既知frameの合算だけで4 KiB総stackの合格にしてはならない。
 [host結果と残るstack gate](../measurements/2026-10-28-fatfs-wakeup-host.md)に記録を保存した。
+
+## trap reserveとローカルSP解析（2026-10-28）
+
+native trap入口では専用IRQ stackへ移る前に、task側へinteger context128 Bを保存する。
+worker4,096 Bからguard16 Bとこの128 Bを除き、通常処理のSP予算は3,952 Bとして扱う。
+`NIH_CTX_SIZE`のexport、image auditとnativeのcomptime checkでこの対応を固定する。
+
+最終ELFのCFGから、metadata未提供13関数中12関数のローカルSP増減を確認した。
+動的SP、矛盾するjoin、未対応命令等は拒否し、callがSPを復元するという仮定を明示する。
+fixture callbackを候補edgeに含めても、target排他性を証明した扱いにせず未解決表示を維持する。
+[SP解析と残るgate](../measurements/2026-10-28-fatfs-sp-flow.md)の通り、総stack合格はまだ出していない。

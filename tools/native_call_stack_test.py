@@ -83,6 +83,19 @@ class NativeCallStackTests(unittest.TestCase):
         self.assertEqual(result['known_frames_on_largest_structural_chain_bytes'], 7040)
         self.assertFalse(result['whole_call_stack_qualified'])
 
+    def test_candidate_callback_is_included_without_assuming_exclusivity(self):
+        data = nodes()
+        edges, unknown = MODULE.transfers('40000100: jalr a3\n40000200: ret\n40000300: ret', data)
+        candidates = MODULE.add_candidate_edges(data, edges, unknown, ['root:callee'])
+        result = MODULE.analyze(data, edges, unknown, 0x40000100)
+        self.assertEqual(result['reachable_functions'], 2)
+        self.assertEqual(result['known_frames_on_largest_structural_chain_bytes'], 1280)
+        self.assertFalse(candidates[0]['target_exclusivity_proven'])
+        self.assertFalse(result['graph_closed'])
+        self.assertEqual(result['unresolved_transfers'][0]['sites'][0]['candidate_callees'], ['callee'])
+        for specification in ['missing:callee', 'callee:leaf']:
+            with self.assertRaises(ValueError): MODULE.add_candidate_edges(data, edges, unknown, [specification])
+
     def test_invalid_elf_and_missing_root_fail_closed(self):
         with self.assertRaises(ValueError): MODULE.elf_functions(b'invalid ELF')
         with self.assertRaises(ValueError): MODULE.analyze({}, {}, {}, 0)
