@@ -525,7 +525,8 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
 pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksection(".flash.photo") noreturn {
     clock.start();
     clock.disarm();
-    while (display.snapshot().frames < 32) display.onInterrupt();
+    var bus = i2c.Master(Pins){ .pins = .{ .clock = clock } };
+    while (display.snapshot().frames < 32) if (!bus.pins.delay(1000)) halt();
     const initial = display.snapshot();
     log.refresh(&initial);
     log.boot(&photo.report);
@@ -548,7 +549,7 @@ pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksecti
                     break;
                 }
                 const target = display.snapshot().frames + 8;
-                while (display.snapshot().frames < target) display.onInterrupt();
+                while (display.snapshot().frames < target) if (!bus.pins.delay(1000)) halt();
             }
         } else if (phase == 2 or phase == 4) {
             photo.prepare() catch halt();
@@ -567,7 +568,7 @@ pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksecti
         } else notice(clock, panel, AutoCaptions.get(0), AutoCaptions.get(1)) catch halt();
         log.scene(@intCast(step + 1));
         const target = display.snapshot().frames + 90;
-        while (display.snapshot().frames < target) display.onInterrupt();
+        while (display.snapshot().frames < target) if (!bus.pins.delay(1000)) halt();
     }
     halt();
 }

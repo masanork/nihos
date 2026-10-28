@@ -23,7 +23,7 @@
     "src/platform/native/card_read.zig": "6dda1426966340784928a29ade00cbdf6a700fabf4a280cd663c2aa6ce5d573b",
     "src/platform/native/keypad_display.zig": "065ac439f6b4e9762115d6a8f2c6c902dd683a89b5d09639374d104f5d1a0ace",
     "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
-    "src/platform/native/display_runtime.zig": "a51559fe478273ab37ef4e5ed0f6d2ad8394d76befa1babc7c87bcd8e8460da5",
+    "src/platform/native/display_runtime.zig": "13b5041418a94d6f8776085b8f043afb83397e0123ae758562e1bf50d2b71f46",
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
     "src/board/tab5/native_scanout.c": "0ce2fe301a2438acf7332bd155bc052e85b2709e21566111ae17529f751d226b",
     "src/board/tab5/keypad_sparse.h": "994e982c3410fa4d734dae5212ff3cc6ea5a5fd433fd417aba0b0596cc06ddca",
