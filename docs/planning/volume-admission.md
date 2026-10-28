@@ -63,7 +63,7 @@ FAT/exFATカード用candidateでは、専用opt-inとsource付きログ契約�
 controller quiescenceと世代上限をまとめて確認するgateを追加した。
 停止未確認やquarantine中はcontroller stateの置換とremoval latchのclearへ進まない。
 hostで各拒否条件と実ownerのquarantineを確認し、既存SD抜去構成のnative ELF監査を通した。
-このgateは新しいFatFs SD sessionの公開、probe/bind/mountをまだ実装していない。
+このgate単体ではprobe/bind/mountを行わない。
 
 ### 新sessionの入口
 
