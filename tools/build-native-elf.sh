@@ -201,7 +201,7 @@ if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" 
     echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
 fi
 if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ]; }; then
-    echo "NETWORK requires normal device boot and exclusive SDMMC (SDMMC=0)" >&2; exit 1
+    echo "NETWORK requires normal device boot and SDMMC=0 (standalone qualification is separate)" >&2; exit 1
 fi
 auto_probe=${NIHOS_NATIVE_CARD_AUTO_PROBE:-0}
 case "$auto_probe" in
@@ -369,6 +369,15 @@ if [ "$storage_service" = true ] && { [ "$storage" != true ] || [ "$sdmmc_profil
     echo "Storage service requires STORAGE=1, SDMMC=1, profile=2 and sqlite mode" >&2
     exit 1
 fi
+normal_storage=${NIHOS_NATIVE_NORMAL_STORAGE:-0}
+case "$normal_storage" in
+    0) normal_storage=false; normal_storage_cpp=0 ;;
+    1) normal_storage=true; normal_storage_cpp=1 ;;
+    *) echo "NORMAL_STORAGE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$normal_storage" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$sdmmc" = true ] || [ "$storage" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then
+    echo "NORMAL_STORAGE requires ordinary integer device live-console boot; qualification/finite probes remain separate" >&2; exit 1
+fi
 zig="$repo_root/.tools/zig-0.17.0/zig"
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 if [ "$devices" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" != 2 ] || [ "$psram_200" != true ] || [ "$boot_test" != 0 ] || [ "$sdmmc" = true ]; }; then
@@ -396,10 +405,11 @@ if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 {
+    printf 'pub const normal_storage = %s;\n' "$normal_storage"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
@@ -468,7 +478,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
     headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
     sdmmc_pads=0
-    if [ "$sdmmc" = true ]; then sdmmc_pads=1; fi
+    if [ "$sdmmc" = true ] || [ "$normal_storage" = true ]; then sdmmc_pads=1; fi
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
         -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
         -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SDMMC_PADS="$sdmmc_pads" \
@@ -533,15 +543,23 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
         set -- "$@" "$build_dir/display_scanout.o"
     fi
 fi
-if [ "$sdmmc" = true ] || [ "$network" = true ]; then
-    pad_source="$repo_root/probes/sdmmc/pads.c"
-    if [ "$network" = true ]; then pad_source="$repo_root/probes/c6-sdio/pads.c"; fi
+if [ "$sdmmc" = true ] || [ "$network" = true ] || [ "$normal_storage" = true ]; then
+    pad_kinds=sdmmc
+    if [ "$network" = true ]; then
+        if [ "$normal_storage" = true ]; then pad_kinds="sdmmc c6"; else pad_kinds=c6; fi
+    fi
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
     register_version=hw_ver1
     if [ "$profile" = emulator ]; then register_version=hw_ver3; fi
     headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
+    for pad_kind in $pad_kinds; do
+        pad_name=${pad_kind}_pads
+        pad_family=$pad_kind
+        if [ "$pad_kind" = c6 ]; then pad_family=c6-sdio; fi
+        pad_source="$repo_root/probes/$pad_family/pads.c"
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-        -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
+        -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+        -DNIH_NATIVE_SHARED_SDMMC="$normal_storage_cpp" \
         -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
         -isystem "$headers/riscv-linux-any" \
         -I "$native_boot_dir/loader/config" \
@@ -551,8 +569,9 @@ if [ "$sdmmc" = true ] || [ "$network" = true ]; then
         -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
         -I "$idf_path/components/esp_rom/include" -I "$idf_path/components/esp_rom/esp32p4/include" -I "$idf_path/components/esp_rom/esp32p4/include/esp32p4" \
         -I "$idf_path/components/esp_rom/esp32p4" \
-        -o "$build_dir/sdmmc_pads.o" "$pad_source"
-    set -- "$@" "$build_dir/sdmmc_pads.o"
+        -o "$build_dir/$pad_name.o" "$pad_source"
+    set -- "$@" "$build_dir/$pad_name.o"
+    done
 fi
 
 if [ "$usb" = true ]; then
@@ -698,6 +717,12 @@ if [ "$sqlite" = true ]; then
         python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir"
     fi
 fi
+if [ "$normal_storage" = true ]; then
+    python3 "$repo_root/tools/normal_fs_build.py" "$build_dir" > "$build_dir/normal-fs-build.json"
+    for unit in runtime guard unicode backend disk volume card native_disk strings identity; do
+        set -- "$@" "$build_dir/normal_fs_$unit.o"
+    done
+fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
@@ -709,6 +734,7 @@ fi
     --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \
     -Mdevice_control="$repo_root/src/device/control.zig" \
+    -Mstorage_control="$repo_root/src/storage/control.zig" \
     -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -Mtab5_bmi270="$repo_root/src/board/tab5/bmi270.zig" \
     -Mhalf_duplex="$repo_root/src/serial/half_duplex.zig" \
@@ -720,7 +746,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep timer_group --dep sdio --dep c6_sdio --dep at_controller --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
+    --dep native_options --dep timer_group --dep sdio --dep c6_sdio --dep at_controller --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mnetwork_config="$build_dir/network-config.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
@@ -732,7 +758,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
+    --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep cpu_clock --dep timer_group -Mcpu_boot="$repo_root/src/platform/native/cpu_boot.zig" \

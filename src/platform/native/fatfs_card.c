@@ -56,8 +56,8 @@ int nih_fatfs_card_destroy(nih_fatfs_card *card, uint32_t generation) {
     active_card=NULL;
     return 1;
 }
-int nih_fatfs_card_mount(void *memory, uint32_t bytes, uint32_t sectors,
-    uint32_t generation, nih_fatfs_card **context, nih_fatfs_card_report *out) {
+static int mount_card(void *memory, uint32_t bytes, uint32_t sectors,
+    uint32_t generation, nih_fatfs_card **context, nih_fatfs_card_report *out, int select_file) {
     if (active_card || !memory || (uintptr_t)memory%8 || bytes<sizeof(nih_fatfs_card) ||
         !out || !context || !generation) return 0;
     if (overlaps(memory,sizeof(nih_fatfs_card),out,sizeof *out) ||
@@ -66,8 +66,12 @@ int nih_fatfs_card_mount(void *memory, uint32_t bytes, uint32_t sectors,
     nih_fatfs_card *w=memory;
     memset(w,0,sizeof *w); memset(out,0,sizeof *out);
     out->generation=generation; out->sectors=sectors;
-    if (nih_fatfs_volume_probe(nih_fatfs_native_read,NULL,sectors,NIH_VOLUME_AUTO,
-            w->data,&w->volume)!=NIH_VOLUME_OK) return 0;
+    nih_volume_status volume_status=nih_fatfs_volume_probe(nih_fatfs_native_read,NULL,sectors,NIH_VOLUME_AUTO,
+            w->data,&w->volume);
+    if (volume_status!=NIH_VOLUME_OK) {
+        if (!select_file) out->status=0x100u+(uint32_t)volume_status;
+        return 0;
+    }
     out->kind=w->volume.kind; out->partition=w->volume.partition;
     out->first=(uint32_t)w->volume.first; out->count=(uint32_t)w->volume.count;
     if (nih_fatfs_disk_bind(&w->disk,nih_fatfs_native_read,NULL,sectors,
@@ -78,6 +82,7 @@ int nih_fatfs_card_mount(void *memory, uint32_t bytes, uint32_t sectors,
     if (nih_fatfs_backend_bytes()>sizeof w->backend_memory) goto done;
     w->backend=nih_fatfs_backend_init(w->backend_memory,sizeof w->backend_memory,&w->disk,generation);
     if (!w->backend || nih_fatfs_backend_mount(w->backend,generation)) goto done;
+    if (!select_file) { found=1; goto done; }
     nih_ro_control control={.remaining=8192};
     if (nih_fatfs_disk_arm(&w->disk,generation,NIH_FATFS_READ_BUDGET) ||
         nih_ro_directory(&w->directory,"",&control)!=NIH_RO_OK) goto done;
@@ -103,6 +108,14 @@ done:
     }
     *context=w;
     return 1;
+}
+int nih_fatfs_card_mount(void *memory, uint32_t bytes, uint32_t sectors,
+    uint32_t generation, nih_fatfs_card **context, nih_fatfs_card_report *out) {
+    return mount_card(memory,bytes,sectors,generation,context,out,1);
+}
+int nih_fatfs_card_mount_volume(void *memory, uint32_t bytes, uint32_t sectors,
+    uint32_t generation, nih_fatfs_card **context, nih_fatfs_card_report *out) {
+    return mount_card(memory,bytes,sectors,generation,context,out,0);
 }
 int nih_fatfs_card_read(void *memory, uint32_t bytes, uint32_t sectors,
                        uint32_t generation, nih_fatfs_card_report *out) {

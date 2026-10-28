@@ -2,6 +2,8 @@
 const std = @import("std");
 const options = @import("native_options");
 const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
+const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
+const normal_fs = @import("normal_fs_abi.zig");
 const broker_runtime = if (options.broker) @import("broker_abi.zig") else struct {};
 const timer_group = @import("timer_group");
 const reset_capture = @import("reset_capture");
@@ -35,6 +37,68 @@ export fn nih_device_request(kind: u32) callconv(.c) bool {
     const words: extern struct { kind: u32, accepted: u32, i2s_owner: u32, pinned: u32, workspace: u32 } = .{ .kind = kind, .accepted = @intFromBool(accepted), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
     logger.record("NIHOS_DEVICE_REQUEST", null, .{ "kind", "accepted", "i2s_owner", "pinned", "workspace" }, &words);
     return accepted;
+}
+
+fn storageClient() u32 {
+    const handle = tasks.calls.current() orelse return 0;
+    return (@as(u32, handle.generation) << 16) | handle.slot;
+}
+export fn nih_normal_c6_dma_release() callconv(.c) u32 {
+    return if (options.network and normal_storage) network.releaseDmaForHost() else 1;
+}
+export fn nih_normal_fs_wake() callconv(.c) void {
+    tasks.wakeNormalStorage();
+}
+export fn nih_fs_command(path: [*]const u8, length: u32) callconv(.c) void {
+    if (!normal_storage or length > 512) return;
+    const accepted = normal_fs.submit(storageClient(), path[0..length]);
+    if (!accepted) printBoot("Storage request unavailable or busy.\n");
+}
+var last_storage_status: u32 = 0xffffffff;
+fn serviceStorage() void {
+    if (!normal_storage) return;
+    const completed = normal_fs.poll(storageClient());
+    const report = normal_fs.snapshot();
+    const changed = last_storage_status != @backingInt(report.status);
+    if (!completed and !changed) return;
+    last_storage_status = @backingInt(report.status);
+    const words: extern struct { status: u32, epoch: u32, kind: u32, requests: u32, completed: u32, bytes: u32, crc: u32, eof: u32, error_code: u32, reads: u32, yields: u32 } = .{
+        .status = @backingInt(report.status),
+        .epoch = report.generation,
+        .kind = report.kind,
+        .requests = report.requests,
+        .completed = report.completed,
+        .bytes = report.bytes,
+        .crc = report.crc,
+        .eof = report.eof,
+        .error_code = @bitCast(report.error_code),
+        .reads = report.io_reads,
+        .yields = report.yields,
+    };
+    logger.record("NIHOS_NORMAL_FS", null, .{ "status", "epoch", "kind", "requests", "completed", "bytes", "crc", "eof", "error_code", "reads", "yields" }, &words);
+    if (report.io_error != 0) {
+        const io_words: extern struct { error_code: u32, command: u32, interrupts: u32, dma_status: u32 } = .{ .error_code = report.io_error, .command = report.command, .interrupts = report.interrupts, .dma_status = report.dma_status };
+        logger.record("NIHOS_NORMAL_FS_IO", null, .{ "error_code", "command", "interrupts", "dma_status" }, &io_words);
+    }
+    if (changed) switch (report.status) {
+        .mounted => printBoot("SD ready. :read path reads up to 4096 bytes; :storage refreshes.\n"),
+        .no_card => printBoot("No SD card. Insert a card and enter :storage.\n"),
+        .rejected => printBoot("SD unavailable. Enter :storage to retry.\n"),
+        .no_memory => printBoot("Storage memory unavailable.\n"),
+        .quarantined => printBoot("Storage stopped. Restart to recover.\n"),
+        else => {},
+    };
+    if (completed and report.error_code == 0 and report.bytes != 0) {
+        var preview: [128]u8 = undefined;
+        const count = normal_fs.result(0, &preview);
+        // An arbitrary file must not inject terminal commands into the journal.
+        for (preview[0..count]) |*byte| if ((byte.* < 32 and byte.* != 10 and byte.* != 9) or byte.* >= 127) {
+            byte.* = '.';
+        };
+        print(preview[0..count]);
+        printBoot("\n");
+        if (report.bytes > count or report.eof == 0) printBoot("[preview truncated]\n");
+    }
 }
 
 comptime {
@@ -1016,6 +1080,7 @@ fn normalReady() noreturn {
         const ready = .{ .wait_us = @as(u32, @intCast((ui.timer().counter() orelse fail("ready clock")) - started)) };
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
+    if (normal_storage) normal_fs.begin(storageClient());
     var idle_checked = false;
     while (true) {
         if (options.boot_test != 0 and !idle_checked and (ui.timer().counter() orelse fail("idle clock")) - started >= 200_000) {
@@ -1030,6 +1095,7 @@ fn normalReady() noreturn {
         }
         flushDisplayReport();
         serviceNetwork();
+        serviceStorage();
         if (!ui.service(&logger)) fail("normal console idle");
         tasks.idleOnce(0);
     }

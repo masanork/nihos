@@ -12,6 +12,7 @@ import struct
 import sys
 import re
 import importlib.util
+import normal_fs_manifest as normal_fs_profile
 import fatfs_native_profile
 
 SRAM_LOW, SRAM_HIGH = 0x4FF00000, 0x4FF28000
@@ -153,7 +154,14 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END, allow_fs=False):
+    if name in normal_fs_profile.SECTIONS:
+        require(allow_fs and kind == 1, 'unapproved ordinary FS Flash section')
+        if name == '.flash.fspad':
+            require(flags == 2 and 0x40010020 < address < SQL_START and address + size == SQL_START, 'invalid FS Flash padding')
+        else:
+            require((flags == 6 if name == '.flash.fstext' else flags & 7 == 2 and flags & ~50 == 0) and SQL_START <= address < address + size <= 0x40060000 and (name != '.flash.fstext' or address == SQL_START), 'invalid FS Flash permissions/extent')
+        return
     if name == '.flash.time':
         require(allow_time and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid network/time foreground Flash section')
         return
@@ -195,13 +203,16 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=()):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
+            continue
+        if fs_span is not None and fs_span[0] <= address < stop <= fs_span[1]:
+            require(name in fs_functions, 'non-manifest ordinary FS Flash function: ' + name)
             continue
         if time_span is not None and time_span[0] <= address < stop <= time_span[1]:
             require(time_function(name), 'unapproved network/time Flash function: ' + name)
@@ -446,7 +457,7 @@ def decode_stack_sizes(data, functions):
             "recursive_or_Zig_call_graph_bound": False}
 
 
-def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None):
+def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None, normal_fs_manifest=None):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
     require(high <= STACK_LOW, "stack bank overlaps primary SRAM")
@@ -482,6 +493,13 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     device_start = None
     allow_devices = any(string(names, section[0]) == '.flash.devices' and section[5] for section in sections)
     require(not allow_devices or (mode == 'integer' and profile == 'device' and keypad_manifest is None), 'invalid device Flash profile')
+    fs_sections = {}
+    allow_fs = normal_fs_manifest is not None
+    has_fs = any(string(names, section[0]) in normal_fs_profile.SECTIONS and section[5] for section in sections)
+    require(has_fs == allow_fs, 'ordinary FS section/manifest mismatch')
+    require(not allow_fs or (mode == 'integer' and profile == 'device' and keypad_manifest is None and sqlite_manifest is None), 'invalid ordinary FS image profile')
+    if allow_fs:
+        normal_fs_profile.validate(normal_fs_manifest)
     sql_sections = {}
     allow_sql = mode == "sqlite"
     fatfs_native = (sqlite_manifest or {}).get('fatfs_native')
@@ -517,9 +535,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
                 ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
             if not in_sram and not in_stacks and not in_ui and not in_high:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end, allow_fs=allow_fs)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name in normal_fs_profile.SECTIONS:
+                    fs_sections[name] = (address, elf[offset:offset + size])
                 if name == '.flash.time':
                     time_start, time_code = address, elf[offset:offset + size]
                 if name == '.flash.devices':
@@ -559,7 +579,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()), "missing mapped Flash sections")
     service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
@@ -623,6 +643,35 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(len(sizes)==1, 'missing photo C stack metadata')
         photo_report['static_c_stack'] = decode_stack_sizes(sizes[0],functions)
         require(photo_report['static_c_stack']['maximum_reported_frame_bytes'] <= 8192, 'photo C frame exceeds isolated stack margin')
+    fs_span = None
+    fs_report = None
+    require(symbols.get('__native_normal_storage', 0) == int(allow_fs), 'ordinary FS build/manifest mismatch')
+    if allow_fs:
+        pad_start, pad = fs_sections['.flash.fspad']
+        text_start, code = fs_sections['.flash.fstext']
+        ro_start, data = fs_sections['.flash.fsrodata']
+        require(pad_start == 0x40010020 + ((len(flash_tables) + 3) & ~3) and not any(pad), 'invalid ordinary FS padding bytes')
+        require(text_start == symbols.get('__flash_fs_text_start') == SQL_START and text_start + len(code) == symbols.get('__flash_fs_text_end') == ro_start == symbols.get('__flash_fs_rodata_start') and ro_start + len(data) == symbols.get('__flash_fs_rodata_end'), 'ordinary FS linker extent mismatch')
+        fs_span = (text_start, ro_start)
+        actual = {n for n, a, b in functions if text_start <= a < b <= ro_start}
+        require(normal_fs_profile.REQUIRED.issubset(actual), 'missing ordinary FS runtime functions')
+        require(not any(n.startswith('nih_fs_test') for n in symbols), 'host test hook in native FS image')
+        identity = normal_fs_profile.validate(normal_fs_manifest)
+        at = symbols.get('nih_normal_fs_identity', 0) - ro_start
+        require(0 <= at <= len(data) - len(identity) and symbol_sizes.get('nih_normal_fs_identity') == len(identity) and data[at:at + len(identity)] == identity, 'ordinary FS linked input identity mismatch')
+        require(len(service_sram) == 2 and not any(name.startswith(('high_sram.', 'nih_broker_')) for name in symbols), 'ordinary FS must use the common service SRAM pool')
+        stack_data = [elf[item[4]:item[4] + item[5]] for item in sections if string(names, item[0]) == '.stack_sizes']
+        require(len(stack_data) == 1, 'missing ordinary FS frame metadata')
+        rows = [row for row in stack_size_rows(stack_data[0], functions) if text_start <= int(row['address'], 16) < ro_start]
+        require(rows and max(row['bytes'] for row in rows) <= 3952, 'ordinary FS frame exceeds worker margin')
+        require(not {'f_write','f_mkfs','f_unlink','f_rename','f_truncate','f_sync','f_mkdir','malloc','calloc','realloc','free'}.intersection(symbols), 'mutable filesystem or libc heap linked into ordinary FS')
+        fs_report = {'profile': list(normal_fs_profile.PROFILE), 'manifest_sha256': normal_fs_profile.digest(normal_fs_manifest).hex(),
+                     'text_start': hex(text_start), 'text_bytes': len(code), 'text_sha256': hashlib.sha256(code).hexdigest(),
+                     'rodata_start': hex(ro_start), 'rodata_bytes': len(data), 'rodata_sha256': hashlib.sha256(data).hexdigest(),
+                     'parent_bytes': 65536, 'worker_stack_bytes': 4096, 'foreground_only': True, 'read_only': True,
+                     'static_frames': {'records': len(rows), 'maximum_bytes': max(row['bytes'] for row in rows), 'largest': sorted(rows, key=lambda row: row['bytes'], reverse=True)[:10]}, 'whole_call_stack_qualified': False}
+        fs_payload = flash_tables + bytes((-len(flash_tables)) % 4) + pad + code + data
+        fs_payload += bytes((-len(fs_payload)) % 4)
     sql_span = None
     sql_report = None
     if allow_sql:
@@ -720,7 +769,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else ())
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None
@@ -795,6 +844,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             for name, (start, stop) in HIGH_BANKS.items())
     if service_sram:
         report['service_sram'] = service_sram
+    if allow_fs:
+        report["normal_fs"] = fs_report
     if allow_sql:
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
@@ -863,7 +914,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             require(data[256:256 + len(first_payload)] == first_payload, "Flash boot/card bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
-            mapped_length = len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
+            mapped_length = len(fs_payload) if allow_fs else len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
             require((low <= address and address + length <= high) or
                     (address == FLASH_SECTIONS[".flash.appdesc"][0] and length == first_length) or
                     (address == flash_start and length == mapped_length), "unexpected image load range")
@@ -872,6 +923,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 mapped.append(address)
             if address == flash_start:
                 require(data[:len(flash_tables)] == flash_tables, "mapped Flash bytes differ from ELF")
+                if allow_fs:
+                    require(data == fs_payload, 'merged records/ordinary FS bytes differ from ELF')
+                    report['normal_fs']['image_offset'] = position + SQL_START - flash_start
                 if allow_sql:
                     require(data == sql_payload, "merged records/SQLite image bytes differ from ELF")
                     report["sqlite"]["image_offset"] = position + SQL_START - flash_start
@@ -939,6 +993,14 @@ def audit_loader_config(text, profile):
 
 
 def main():
+    normal_manifest = None
+    if '--normal-fs' in sys.argv:
+        i = sys.argv.index('--normal-fs')
+        require(i == len(sys.argv) - 2, 'normal FS manifest must be the last argument')
+        path = Path(sys.argv[i + 1])
+        normal_manifest = json.loads(path.read_text())
+        normal_fs_profile.verify_files(path.parent, normal_manifest)
+        sys.argv = sys.argv[:i]
     if len(sys.argv) not in (4, 5, 6, 7, 8, 9, 10):
         raise SystemExit("usage: check-native-image.py ELF BIN|--elf-only REPORT.json [MODE [PROFILE [LOADER.elf [CONFIG.h [SQLITE-MANIFEST.json|--none [KEYPAD-MANIFEST.json]]]]]]")
     try:
@@ -946,7 +1008,8 @@ def main():
         report = audit(Path(sys.argv[1]).read_bytes(), image, sys.argv[4] if len(sys.argv) >= 5 else None,
                        sys.argv[5] if len(sys.argv) >= 6 else "device",
                        json.loads(Path(sys.argv[8]).read_text()) if len(sys.argv) >= 9 and sys.argv[8] != '--none' else None,
-                       json.loads(Path(sys.argv[9]).read_text()) if len(sys.argv) == 10 else None)
+                       json.loads(Path(sys.argv[9]).read_text()) if len(sys.argv) == 10 else None,
+                       normal_fs_manifest=normal_manifest)
         if len(sys.argv) == 10:
             manifest = json.loads(Path(sys.argv[9]).read_text())
             root = Path(sys.argv[9]).resolve().parents[2]

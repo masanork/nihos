@@ -268,5 +268,15 @@ pub fn Owner(comptime Backend: type) type {
             self.mount = null;
             self.rebind_ready = false;
         }
+        /// Trusted ordinary owner revokes an endpoint while its client may
+        /// still be alive (for example after media/controller generation
+        /// change). This is NOT a stopped-client notification. No callback or
+        /// device read may remain active, and failure retains the parent.
+        pub fn revoke(self: *Self, queues: *Queues) api.Error!void {
+            if (self.in_step or self.notifications.signal.active() != 0) return error.Busy;
+            if (self.mount == null) return;
+            self.cleanup(queues);
+            try self.shutdown(queues);
+        }
     };
 }

@@ -17,6 +17,12 @@ uint32_t nih_fatfs_card_bytes(void);
  */
 int nih_fatfs_card_mount(void *, uint32_t bytes, uint32_t sectors,
     uint32_t generation, nih_fatfs_card **context, nih_fatfs_card_report *);
+/* Normal service mount: accepts an empty directory and never auto-selects or
+ * reads an arbitrary user file. Identical context/generation/teardown rules.
+ * On volume admission rejection report.status is 0x100 + nih_volume_status;
+ * it is diagnostic, never a successful mount or read marker. */
+int nih_fatfs_card_mount_volume(void *, uint32_t bytes, uint32_t sectors,
+    uint32_t generation, nih_fatfs_card **context, nih_fatfs_card_report *);
 nih_fatfs_backend *nih_fatfs_card_backend(nih_fatfs_card *, uint32_t generation);
 const char *nih_fatfs_card_path(nih_fatfs_card *, uint32_t generation);
 uint32_t nih_fatfs_card_reads(nih_fatfs_card *, uint32_t generation);

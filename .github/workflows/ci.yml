@@ -52,6 +52,17 @@ jobs:
       - name: Guarded FatFs VFS/RPC and broker lifetime checks (host only)
         run: python3 tools/check-fatfs-backend.py
 
+      - name: Normal FS task with shared SDMMC, faults and negative controls (host only)
+        run: python3 tools/check-normal-fs.py
+
+      - name: Retain normal FS host evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: normal-fs-host
+          path: build/normal-fs/run-*/results.json
+          if-no-files-found: ignore
+
       - name: Retain FatFs disk bridge JSON evidence
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
