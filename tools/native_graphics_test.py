@@ -81,7 +81,7 @@ class NativeGraphicsTests(unittest.TestCase):
                 LOG.validate_raster({**good, key: value})
 
     def test_surface_requires_reference_pixels_and_untouched_guards(self):
-        good = dict(zip(LOG.SURFACE_FIELDS, [3, 33, 5, 3, 6, 65536, 0]))
+        good = dict(zip(LOG.SURFACE_FIELDS, [3, 31, 5, 3, 6, 65536, 0]))
         texts = [{"id": 5, "surface_hash": 123}, {"id": 6, "surface_hash": 0}]
         reference = {"frames": [{"id": 5, "surface_hash": 123}]}
         LOG.validate_surface(good, texts, reference)
@@ -92,9 +92,9 @@ class NativeGraphicsTests(unittest.TestCase):
             LOG.validate_surface(good, [{"id": 5, "surface_hash": 124}], reference)
 
     def test_wrapping_requires_complete_metrics_and_reference_pixels(self):
-        good = dict(zip(LOG.WRAP_FIELDS, [3, 33, 9, 3, 4, 0]))
+        good = dict(zip(LOG.WRAP_FIELDS, [3, 31, 8, 2, 3, 0]))
         texts = [{"id": 5, "wrap_hash": 123}, {"id": 6, "wrap_hash": 0}]
-        reference = {"wrapped": [{"id": 5, "wrap_hash": 123}]}
+        reference = {"frames": [{"id": 5, "wrap_hash": 123}]}
         LOG.validate_wrap(good, texts, reference)
         for key in LOG.WRAP_FIELDS:
             with self.subTest(key=key), self.assertRaises(ValueError):
@@ -103,7 +103,7 @@ class NativeGraphicsTests(unittest.TestCase):
             LOG.validate_wrap(good, [{"id": 5, "wrap_hash": 124}], reference)
 
     def test_kinsoku_requires_native_pixels_and_defect_exposing_control(self):
-        good = dict(zip(LOG.POLICY_FIELDS, [3, 30, 3, 10, 5, 0]))
+        good = dict(zip(LOG.POLICY_FIELDS, [3, 28, 3, 9, 4, 0]))
         texts = [{"id": 5, "policy_hash": 123}, {"id": 6, "policy_hash": 0}]
         reference = {"frames": [{"id": 5, "policy_hash": 123, "naive_forbidden_starts": 2, "forbidden_starts": 0, "forbidden_ends": 0}]}
         LOG.validate_policy(good, texts, reference)
@@ -121,7 +121,7 @@ class NativeGraphicsTests(unittest.TestCase):
         graphics = {"render": {"start": "0x40b00000", "end": "0x40b00100", "functions": {
             "native_surface.paint": {"start": "0x40b00000", "end": "0x40b00080"},
             "native_surface.draw": {"start": "0x40b00080", "end": "0x40b00100"}}}}
-        good = dict(zip(LOG.PLACEMENT_FIELDS, [0x40b00004, 0x40b00084, 3, 132, 6, 100, 3, 2, 0x40b00010]))
+        good = dict(zip(LOG.PLACEMENT_FIELDS, [0x40b00004, 0x40b00084, 3, 124, 6, 100, 3, 2, 0x40b00010]))
         LOG.validate_placement(good, graphics)
         for field, value in (("paint_pc", 0x4ff20000), ("draw_pc", 0x40b00004), ("frames", 2),
                              ("draws", 98), ("context_checks", 5), ("irq_rejected", 0), ("active_ticks", 0),
@@ -129,8 +129,29 @@ class NativeGraphicsTests(unittest.TestCase):
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                 LOG.validate_placement({**good, field: value}, graphics)
 
+    def test_runtime_source_requires_preparation_edit_poison_echo_and_rejections(self):
+        names = ("native_font_exchange.stageText", "native_surface.prepare", "native_surface.verify")
+        graphics = {"render": {"functions": {name: {"start": hex(0x40b00000 + i * 16), "end": hex(0x40b00010 + i * 16)} for i, name in enumerate(names)}}}
+        good = dict(zip(LOG.SOURCE_FIELDS, [0x40b00004, 0x40b00014, 0x40b00024, 5, 10, 5, 1, 5, 5, 3, 3, 3, 3, 3]))
+        LOG.validate_source(good, graphics)
+        for key in LOG.SOURCE_FIELDS:
+            bad = {**good, key: 0}
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_source(bad, graphics)
+
+    def test_expected_runtime_edit_is_separate_from_original_native_inputs(self):
+        import json
+        root = Path(__file__).resolve().parents[1] / "probes/graphics"
+        original = json.loads((root / "text_cases.json").read_text())
+        edited = json.loads((root / "runtime_text_cases.json").read_text())
+        annotations = json.loads((root / "runtime_ruby_cases.json").read_text())
+        self.assertEqual(original[0]["body"], "日本語の描画")
+        self.assertEqual(edited[0]["body"], "新日本語")
+        self.assertEqual(edited[1:], original[1:])
+        self.assertEqual([annotations[0][0]["base_start"], annotations[0][0]["base_end"]], [3, 12])
+
     def test_ruby_requires_parent_movement_reserved_width_pixels_and_control(self):
-        record = dict(zip(LOG.RUBY_FIELDS, [3, 2, 2, 1, 21, 2, 9, 0, 172, 320]))
+        record = dict(zip(LOG.RUBY_FIELDS, [3, 2, 2, 1, 19, 2, 8, 0, 172, 320]))
         texts = [{"id": 5, "ruby_hash": 123}, {"id": 6, "ruby_hash": 0}]
         reference = {"frames": [{"id": 5, "ruby_hash": 123, "groups": 2, "moved": 2, "control_hash": 456}]}
         LOG.validate_ruby(record, texts, reference)
@@ -145,7 +166,7 @@ class NativeGraphicsTests(unittest.TestCase):
             LOG.validate_ruby(record, texts, bad)
 
     def test_archive_releases_full_charge_after_logging(self):
-        good = dict(zip(LOG.ARCHIVE_FIELDS, [2756, 4096, 0, 16022848, 16022848]))
+        good = dict(zip(LOG.ARCHIVE_FIELDS, [3336, 4096, 0, 16022848, 16022848]))
         LOG.validate_archive(good, {"heap_before": 16018752})
         for key in LOG.ARCHIVE_FIELDS:
             with self.subTest(key=key), self.assertRaises(ValueError):
@@ -178,23 +199,23 @@ class NativeGraphicsTests(unittest.TestCase):
         fonts = start + 144
         render = fonts + 4
         sections = {".flash.graphtext": (start, bytes(128)), ".flash.graphrodata": (start + 128, bytes(16)),
-                    ".flash.graphfonts": (fonts, b"gm"), ".flash.graphrender": (render, bytes(16)), ".flash.graphpad": (0x40010024, bytes(start - 0x40010024)),
+                    ".flash.graphfonts": (fonts, b"gm"), ".flash.graphrender": (render, bytes(8 * len(AUDIT.RENDER_FUNCTIONS))), ".flash.graphpad": (0x40010024, bytes(start - 0x40010024)),
                     ".graphics.data": (ram, bytes(128), 128), ".graphics.bss": (ram + 128, b"", 1024),
                     ".graphics.stack": (AUDIT.GRAPH_STACK_LOW, b"", 32768)}
         symbols = {"__graphics_font_stack_bottom": AUDIT.GRAPH_STACK_LOW, "__graphics_font_stack_top": AUDIT.GRAPH_STACK_HIGH,
                    "__graphics_bss_start": ram + 128, "__graphics_bss_end": ram + 1152, "graphics_result": ram, "graphics_output": ram + 128,
                    "nih_graphics_gothic_start": fonts, "nih_graphics_gothic_end": fonts + 1,
                    "nih_graphics_mincho_start": fonts + 1, "nih_graphics_mincho_end": fonts + 2,
-                   "__flash_render_start": render, "__flash_render_end": render + 16, "__flash_graphics_end": render + 16}
+                   "__flash_render_start": render, "__flash_render_end": render + 8 * len(AUDIT.RENDER_FUNCTIONS), "__flash_graphics_end": render + 8 * len(AUDIT.RENDER_FUNCTIONS)}
         functions = [("graphics_font_link_probe", start, start + 64), ("nih_gfx_study_malloc", start + 64, start + 128)]
         manifest = {"schema": 1, "allowed_functions": [f[0] for f in functions], "payload_sha256": "fixture",
                     "fonts": [{"family": family, "name": family, "bytes": 1, "sha256": hashlib.sha256(byte).hexdigest()}
                               for family, byte in [("gothic", b"g"), ("mincho", b"m")]]}
-        functions += [("native_surface.paint", render, render + 8), ("native_surface.draw", render + 8, render + 16)]
+        functions += [(name, render + i * 8, render + i * 8 + 8) for i, name in enumerate(sorted(AUDIT.RENDER_FUNCTIONS))]
         functions += [(name, AUDIT.SRAM_LOW + i * 16, AUDIT.SRAM_LOW + i * 16 + 8) for i, name in enumerate(sorted(AUDIT.RENDER_RESIDENT))]
         return sections, symbols, {"graphics_result": 124, "graphics_output": 844}, functions, manifest, b"base"
 
-    def test_rendering_flash_accepts_only_two_functions_and_retains_critical_sram_code(self):
+    def test_rendering_flash_accepts_only_whitelisted_functions_and_retains_critical_sram_code(self):
         good = self.fixture()
         report, _, _ = AUDIT.audit_graphics(*good)
         self.assertEqual(set(report["render"]["functions"]), AUDIT.RENDER_FUNCTIONS)

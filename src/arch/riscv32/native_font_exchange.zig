@@ -5,7 +5,7 @@ const options = @import("native_options");
 pub const composer = @import("native_surface.zig");
 pub const raster = @import("native_raster.zig");
 const lease = @import("raster_lease");
-const protocol = @import("font_protocol");
+const protocol = @import("text_context").protocol;
 const calls = @import("task_calls.zig");
 const ring = @import("spsc_ring");
 const channel = @import("spsc_channel");
@@ -91,7 +91,7 @@ fn digest(bytes: []const u8) u32 {
     for (bytes) |byte| value = (value ^ byte) *% 16777619;
     return value;
 }
-fn drawHash(reply: *const protocol.Reply, pixels: []const u8) u32 {
+noinline fn drawHash(reply: *const protocol.Reply, pixels: []const u8) linksection(".flash.text.render") u32 {
     var value: u32 = 2166136261;
     for (reply.output.glyphs[0..reply.output.count]) |g| {
         for ([_]u32{ g.id, @bitCast(g.x_advance), @bitCast(g.y_advance) }) |word| value = (value ^ word) *% 16777619;
@@ -101,6 +101,7 @@ fn drawHash(reply: *const protocol.Reply, pixels: []const u8) u32 {
     }
     return value;
 }
+var active_source_hash: u32 = 0;
 var active_operation: protocol.Operation = .render_matrix;
 const Snapshot = struct {
     id: u32 = 0,
@@ -108,12 +109,13 @@ const Snapshot = struct {
     hashes: [1]u32 = .{0},
     outcome: protocol.Outcome = .render_failed,
     pixel_hash: u32 = 0,
+    source_hash: u32 = 0,
     composition: composer.Result = .{},
     output: struct { count: u32 = 0, raster_bytes: u32 = 0, glyphs: []const protocol.Glyph = &.{} } = .{},
 };
 // Qualification archives only successful glyphs; failed packets are validated
 // before discarding their empty storage. Nothing here crosses the IPC queue.
-const Archive = struct { glyphs: [3][16]protocol.Glyph, texts: [5]Snapshot };
+const Archive = struct { glyphs: [3][16]protocol.Glyph, texts: [5]Snapshot, source: composer.Context, source_ready: bool };
 var archive: ?*Archive = null;
 var archive_allocation: ?@import("native_memory").reusable.Allocation = null;
 pub const ArchiveReport = struct { logical_bytes: u32 = @sizeOf(Archive), charge: u32 = 0, live_charge: u32 = 0, before: u32 = 0, after: u32 = 0 };
@@ -124,6 +126,7 @@ pub fn prepareArchive() bool {
     archive_metrics.before = @intCast(heap.availableBytes() orelse return false);
     archive_allocation = heap.allocTask(@sizeOf(Archive), 16) catch return false;
     archive = @ptrCast(@alignCast(archive_allocation.?.bytes.ptr));
+    archive.?.source_ready = false;
     // SAFETY: poll fills snapshots in request order; textResults exposes only
     // the initialized prefix, including after worker retirement.
     archive_metrics.charge = archive_metrics.before - @as(u32, @intCast(heap.availableBytes() orelse return false));
@@ -161,7 +164,7 @@ fn sendReply(reply: protocol.Reply) void {
 }
 
 /// Font task only: publish a complete copied result, then block on requests.
-pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *protocol.Job, output: *protocol.Output) u32 {
+pub noinline fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *protocol.Job, output: *protocol.Output) u32 {
     if (!bound) nih_native_task_failed();
     if (completed != 0) {
         state.complete(completed) catch nih_native_task_failed();
@@ -169,6 +172,7 @@ pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *pro
             (active_operation == .render_text and (runs > 1 or (runs == 0 and hashes[0] != 0)))) nih_native_task_failed();
         var reply = protocol.Reply{ .id = completed, .operation = active_operation, .hashes = hashes, .runs = runs, .retained = retained };
         if (active_operation == .render_text) {
+            reply.hashes[1] = active_source_hash;
             output.validate() catch nih_native_task_failed();
             reply.output = output.*;
             reply.outcome = switch (output.outcome) {
@@ -210,6 +214,7 @@ pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *pro
     metrics.received += 1;
     if (received.item.value.operation != .stop) {
         active_operation = received.item.value.operation;
+        active_source_hash = if (active_operation == .render_text) sourceHash(&received.item.value.render) else 0;
         job.* = .{ .operation = @backingInt(active_operation), .render = received.item.value.render };
         if (active_operation == .render_text) {
             if (raster.create()) |bytes| {
@@ -234,7 +239,7 @@ pub fn next(completed: u32, retained: u32, hashes: [16]u32, runs: u32, job: *pro
 
 /// Bootstrap only. Leave the worker waiting for two real ticks before each
 /// request. Timer time must advance without charging the blocked font task.
-pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
+pub noinline fn poll(ticks: u64, runtime: u64, waiting: bool) void {
     while (true) {
         const reply = switch (replies.tryReceive()) {
             .item => |item| blk: {
@@ -262,6 +267,9 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
             if (reply.operation != .render_text or reply.runs > 1 or
                 reply.outcome != (if (reply.id == 6) protocol.Outcome.render_failed else if (reply.id == 7) protocol.Outcome.output_full else protocol.Outcome.ok) or
                 reply.runs != (if (reply.id == 6 or reply.id == 7) @as(u32, 0) else 1)) nih_native_task_failed();
+            if (!archive.?.source_ready) nih_native_task_failed();
+            composer.verifySource(&archive.?.source, reply.id, reply.sourceHash()) catch nih_native_task_failed();
+            composer.source_metrics.echoed += 1;
             reply.output.validate() catch nih_native_task_failed();
             if (reply.output.outcome != @backingInt(reply.outcome)) nih_native_task_failed();
             var glyphs: []const protocol.Glyph = &.{};
@@ -271,7 +279,7 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
                 @memcpy(saved, reply.output.glyphs[0..reply.output.count]);
                 glyphs = saved;
             }
-            archive.?.texts[reply.id - 5] = .{ .id = reply.id, .runs = reply.runs, .hashes = .{reply.hashes[0]}, .outcome = reply.outcome, .output = .{ .count = reply.output.count, .raster_bytes = reply.output.raster_bytes, .glyphs = glyphs } };
+            archive.?.texts[reply.id - 5] = .{ .id = reply.id, .runs = reply.runs, .hashes = .{reply.hashes[0]}, .outcome = reply.outcome, .source_hash = reply.sourceHash(), .output = .{ .count = reply.output.count, .raster_bytes = reply.output.raster_bytes, .glyphs = glyphs } };
             if (reply.outcome == .ok and reply.output.raster_bytes != 0) {
                 held = .{ .token = reply.raster_token, .bytes = reply.output.raster_bytes };
                 held_id = reply.id;
@@ -279,7 +287,7 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
                 const bytes = raster.read(held) catch nih_native_task_failed();
                 if (drawHash(&reply, bytes) != reply.hashes[0]) nih_native_task_failed();
                 archive.?.texts[reply.id - 5].pixel_hash = digest(bytes);
-                archive.?.texts[reply.id - 5].composition = composer.compose(&reply, bytes);
+                archive.?.texts[reply.id - 5].composition = composer.compose(&archive.?.source, &reply, bytes);
                 if (raster.release(held.token)) |_| nih_native_task_failed() else |_| {
                     raster.metrics.foreign_rejected += 1;
                 }
@@ -327,10 +335,9 @@ pub fn poll(ticks: u64, runtime: u64, waiting: bool) void {
     holding = false;
     metrics.sent += 1;
     submitted = .{ .id = metrics.sent, .operation = if (metrics.sent <= 4) .render_matrix else if (metrics.sent <= 9) .render_text else .stop };
-    if (options.graphics) {
-        inline for (options.font_text_cases, 0..) |item, index| {
-            if (metrics.sent == index + 5) submitted.render = protocol.Render.init(item.font, item.pixels, item.vertical, item.hinting, item.body, item.ruby) catch nih_native_task_failed();
-        }
+    if (options.graphics and metrics.sent >= 5 and metrics.sent <= 9) {
+        if (!composer.contextAllowed()) nih_native_task_failed();
+        stageText();
     }
     switch (requests.trySend(submitted)) {
         .sent => {},
@@ -347,4 +354,65 @@ pub fn finished() bool {
         metrics.replies == 10 and metrics.waits == 10 and metrics.blocked_ticks >= 20 and metrics.stop_ack == 1 and metrics.terminal_gap == 1 and metrics.copied_inputs == 5 and metrics.copied_outputs == 5 and metrics.text_success == 3 and metrics.text_failed == 2 and
         raster.empty() and raster.metrics.created == 5 and raster.metrics.reclaimed == 3 and raster.metrics.discarded == 2 and pending_release == 0 and
         requests.ring.countApprox() == 0 and replies.ring.countApprox() == 0;
+}
+
+// A real mutable caller edit: prepend 新, keep 日本語 and drop the old suffix.
+// The font worker and layout must both use these runtime bytes/ranges.
+inline fn editSource(render: *protocol.Render, annotation: *@import("text_context").ruby.Annotation) void {
+    std.mem.copyBackwards(u8, render.body[3..12], render.body[0..9]);
+    @memcpy(render.body[0..3], "新");
+    render.body_length = 12;
+    @memset(render.body[12..], 0);
+    annotation.base.start += 3;
+    annotation.base.end += 3;
+    composer.source_metrics.edited += 1;
+}
+
+// Immutable fixture inputs stay mapped; only the runtime caller copy is edited.
+const Input = struct { font: u32, pixels: u32, vertical: u32, hinting: u32, body: []const u8, reading: []const u8, annotations: []const @import("text_context").ruby.Annotation };
+fn InputAnnotations(comptime index: usize) type {
+    return struct {
+        const value linksection(".flash.rodata.display") = blk: {
+            const source = options.font_ruby_cases[index];
+            var result: [source.len]@import("text_context").ruby.Annotation = @splat(.{ .base = .{ .start = 0, .end = 0 }, .ruby = .{ .start = 0, .end = 0 } });
+            for (source, 0..) |entry, n| result[n] = .{ .base = .{ .start = entry.base_start, .end = entry.base_end }, .ruby = .{ .start = entry.ruby_start, .end = entry.ruby_end } };
+            break :blk result;
+        };
+    };
+}
+const inputs: [options.font_text_cases.len]Input linksection(".flash.rodata.display") = blk: {
+    // SAFETY: every input slot is assigned by the compile-time loop.
+    var result: [options.font_text_cases.len]Input = undefined;
+    for (options.font_text_cases, 0..) |item, i| result[i] = .{ .font = item.font, .pixels = item.pixels, .vertical = item.vertical, .hinting = item.hinting, .body = item.body, .reading = item.ruby, .annotations = &InputAnnotations(i).value };
+    break :blk result;
+};
+// Caller input preparation is task-only, separate from the SRAM transport.
+noinline fn stageText() linksection(".flash.text.render") void {
+    composer.source_metrics.input_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
+    const item = inputs[metrics.sent - 5];
+    submitted.render = protocol.Render.init(item.font, item.pixels, item.vertical, item.hinting, item.body, item.reading) catch nih_native_task_failed();
+    var annotations: [8]@import("text_context").ruby.Annotation = @splat(.{ .base = .{ .start = 0, .end = 0 }, .ruby = .{ .start = 0, .end = 0 } });
+    @memcpy(annotations[0..item.annotations.len], item.annotations);
+    if (metrics.sent == 5) editSource(&submitted.render, &annotations[0]);
+    const previous = if (archive.?.source_ready) archive.?.source.seal else 0;
+    var invalid = submitted.render;
+    invalid.body[0] = 0xff;
+    // SAFETY: stage initializes the full candidate only on success.
+    var candidate: composer.Context = undefined;
+    if (composer.stage(&candidate, metrics.sent, invalid, annotations[0..item.annotations.len])) |_| nih_native_task_failed() else |err| {
+        if (err != error.InvalidPayload) nih_native_task_failed();
+    }
+    if (archive.?.source_ready and archive.?.source.seal != previous) nih_native_task_failed();
+    composer.stage(&candidate, metrics.sent, submitted.render, annotations[0..item.annotations.len]) catch nih_native_task_failed();
+    archive.?.source = candidate;
+    archive.?.source_ready = true;
+    @memset(std.mem.sliceAsBytes(&annotations), 0xff);
+    composer.source_metrics.poisoned += 1;
+}
+
+// Called only by the font task after the SRAM caller/identity gate.
+noinline fn sourceHash(render: *const protocol.Render) linksection(".flash.text.render") u32 {
+    return protocol.renderHash(render);
 }

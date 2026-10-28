@@ -6,7 +6,7 @@ const context = @import("context.zig");
 pub const exchange = @import("native_font_exchange.zig");
 extern fn graphics_font_link_probe(*const Inputs) callconv(.c) c_int;
 extern var graphics_result: FontResult;
-extern var graphics_output: @import("font_protocol").Output;
+extern var graphics_output: @import("text_context").protocol.Output;
 extern var graphics_execution_pc: u32;
 extern var __graphics_font_stack_bottom: u8;
 extern var __graphics_font_stack_top: u8;
@@ -120,7 +120,7 @@ pub fn progress() void {
     }
 }
 // Client memory is gone; only service-owned HB state crosses this wait.
-fn nextRequest(completed: u32, retained: u32, job: *@import("font_protocol").Job) callconv(.c) u32 {
+fn nextRequest(completed: u32, retained: u32, job: *@import("text_context").protocol.Job) callconv(.c) u32 {
     if (!caller() or completed > 9 or (completed != 0 and completed != report_state.client_cycles + 1) or
         retained == 0 or (report_state.idle_retained != 0 and retained != report_state.idle_retained)) nih_native_task_failed();
     report_state.client_cycles = completed;
