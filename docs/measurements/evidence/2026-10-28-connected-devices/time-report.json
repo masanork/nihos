@@ -1,0 +1,22 @@
+{
+  "scope": "one failed SNTP request followed by recovered UTC RTC application",
+  "ntp": {
+    "attempts": 2,
+    "replies": 1,
+    "failures": 1,
+    "stratum": 1,
+    "rtt_us": 105990
+  },
+  "ntp_unix": 1793160377,
+  "rtc_written_unix": 1793160377,
+  "rtc_final_unix": 1793160383,
+  "rtc_valid_records": 18,
+  "ui_final": {
+    "frames": 5134,
+    "ticks0": 8522,
+    "ticks1": 8522
+  },
+  "image_sha256": "381779cd61ffa4a1bb5b7f2f0f676e562ab09c2f021b8bc055a41807c826200a",
+  "raw_serial_sha256": "4864d0e7319e9e97553171f4f47d7397f79399500c73dfe7fae1aab55ffed652",
+  "restored": true
+}
