@@ -18,9 +18,12 @@ static uint32_t fault, node_count = 2;
 static dw_gdma_link_list_item_t nodes[2], *active_nodes = nodes;
 static dw_gdma_link_list_item_t *ui_node(unsigned i) { return &nodes[i]; }
 static uint64_t expected[230400], palette, pixels[20];
+static bool scene_source_allowed(uint32_t a, uint32_t bytes) {
+    return (a == 0x4ff17000 && bytes <= 8) || (a == 0x4ff82000 && bytes <= sizeof(pixels));
+}
 static const volatile uint64_t *actual_pointer(uint32_t a) {
     if (a == 0x4ff17000) return &palette;
-    assert(a == 0x4ff70000); return pixels;
+    assert(a == 0x4ff82000); return pixels;
 }
 static const uint64_t *frame(uint32_t a) { assert(a == 0x48030000); return expected; }
 #define SCENE_ACTUAL(address) actual_pointer(address)
@@ -32,14 +35,14 @@ int main(void) {
     for (unsigned i = 0; i < 230380; ++i) expected[i] = palette;
     for (unsigned i = 0; i < 20; ++i) pixels[i] = expected[230380 + i] = i * 17;
     nodes[0] = (dw_gdma_link_list_item_t){.sar_lo.sar0=0x4ff17000, .block_ts_lo.block_ts=230379, .ctrl_lo={1,3}};
-    nodes[1] = (dw_gdma_link_list_item_t){.sar_lo.sar0=0x4ff70000, .block_ts_lo.block_ts=19, .ctrl_lo={0,3}};
+    nodes[1] = (dw_gdma_link_list_item_t){.sar_lo.sar0=0x4ff82000, .block_ts_lo.block_ts=19, .ctrl_lo={0,3}};
     assert(nih_display_scene_mismatches(0x48030000) == 0);
     pixels[19] ^= 1; assert(nih_display_scene_mismatches(0x48030000) == 1); pixels[19] ^= 1;
     palette ^= 1; assert(nih_display_scene_mismatches(0x48030000) == 230380); palette ^= 1;
     ui_enabled = false; notice_enabled = true;
     assert(nih_display_scene_mismatches(0x48030000) == 0);
     nodes[1].sar_lo.sar0 = 0x48030000; assert(nih_display_scene_mismatches(0x48030000) == UINT32_MAX);
-    nodes[1].sar_lo.sar0 = 0x4ff70000; nodes[1].block_ts_lo.block_ts = 20;
+    nodes[1].sar_lo.sar0 = 0x4ff82000; nodes[1].block_ts_lo.block_ts = 20;
     assert(nih_display_scene_mismatches(0x48030000) == UINT32_MAX);
     nodes[1].block_ts_lo.block_ts = 19; nodes[1].ctrl_lo.src_tr_width = 2;
     assert(nih_display_scene_mismatches(0x48030000) == UINT32_MAX);

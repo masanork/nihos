@@ -161,6 +161,21 @@ ReleaseSafe Zig tests, and the three-language ABI probe. ZLint is pinned and
 checksum-verified by `tools/bootstrap-zlint.sh`; its selected semantic rules
 are warnings-as-errors. This gate requires no target hardware.
 
+For card-screen development without a Tab5, run the local host simulator:
+
+```sh
+python3 tools/card_sim/app.py
+# Open http://127.0.0.1:8711
+python3 tools/card_sim/app.py --headless build/card-sim/evidence
+```
+
+It executes the production Zig rendering/input and C SRAM/DMA publication code
+with synthetic card data and modeled registers. The browser shows pixels
+reconstructed from the DMA descriptors; scenarios cover EOF handoff, capacity
+rollback, stuck retirement, and deliberate pixel corruption. See the
+[card simulator guide](docs/card-ui-simulator.md) for replay, base-image SRAM
+budgets, evidence, and the boundary between host simulation and target emulation.
+
 Run the ESP32-P4 core smoke under the pinned official Espressif emulator with:
 
 ```sh
