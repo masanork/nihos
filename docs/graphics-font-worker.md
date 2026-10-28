@@ -22,7 +22,11 @@ and vertical runs without splitting equal shaping clusters, reusing the same
 canvas. A [basic Japanese prohibition subset](adr/0050-basic-japanese-break-policy.md)
 now constrains source boundaries, with native offscreen digests and host
 negative controls. Complete Japanese line-breaking policy and automatic ruby
-association remain pending. Native presentation, application routing,
+association remain pending. [Task-only rendering placement](adr/0051-task-only-flash-rendering.md)
+now puts the two borrowed-buffer paint/draw functions in mapped Flash; the
+ownership/context wrapper and all task/allocator/interrupt helpers remain SRAM.
+Fixed font stack/library regions and PSRAM charges are unchanged. Native
+presentation, application routing,
 cancellation, forced termination
 and service restart remain unqualified. Native filesystem input and physical
 qualification remain pending. The sections below retain the design and earlier

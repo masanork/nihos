@@ -24,6 +24,28 @@ pub const WrapReport = struct { frames: u32 = 0, clusters: u32 = 0, lines: u32 =
 pub var wrap_metrics: WrapReport = .{};
 pub const PolicyReport = struct { frames: u32 = 0, spans: u32 = 0, joined: u32 = 0, lines: u32 = 0, transitions: u32 = 0, clipped: u32 = 0 };
 pub var policy_metrics: PolicyReport = .{};
+pub const Placement = struct { paint_pc: u32 = 0, draw_pc: u32 = 0, frames: u32 = 0, draws: u32 = 0, context_checks: u32 = 0, irq_rejected: u32 = 0, active_ticks: u32 = 0, flash_ticks: u32 = 0, trap_pc: u32 = 0 };
+pub var placement: Placement = .{};
+var painting: bool = false;
+extern var __flash_render_start: u8;
+extern var __flash_render_end: u8;
+
+// Only the fixture's CPU0 bootstrap consumer may enter, with MIE set. This
+// check and the timer probe remain SRAM code and touch no PSRAM/Flash input.
+noinline fn contextAllowed() bool {
+    const identity = heap.currentIdentity() catch return false;
+    return identity >> 16 == 0;
+}
+pub noinline fn captureTimer(pc: u32) void {
+    if (contextAllowed()) nih_native_task_failed();
+    placement.irq_rejected += 1;
+    if (!@as(*const volatile bool, &painting).*) return;
+    placement.active_ticks += 1;
+    if (pc >= @intFromPtr(&__flash_render_start) and pc < @intFromPtr(&__flash_render_end)) {
+        placement.flash_ticks += 1;
+        placement.trap_pc = pc;
+    }
+}
 // Qualification uses canonical immutable source bytes, not the poisoned caller
 // packet. Native dynamic source-to-boundary preparation remains a separate gate.
 const Maps = struct { body: []const policy.Boundary, ruby: []const policy.Boundary };
@@ -47,8 +69,9 @@ fn digest(bytes: []const u8) u32 {
     for (bytes) |byte| value = (value ^ byte) *% 16777619;
     return value;
 }
-pub fn compose(reply: *const protocol.Reply, pixels: []const u8) Result {
-    var result: Result = .{};
+pub noinline fn compose(reply: *const protocol.Reply, pixels: []const u8) Result {
+    if (!contextAllowed()) nih_native_task_failed();
+    placement.context_checks += 1;
     const before = heap.availableBytes() orelse nih_native_task_failed();
     const allocation = heap.allocTask(stride * height + 64, 16) catch nih_native_task_failed();
     const charge: u32 = @intCast(before - (heap.availableBytes() orelse nih_native_task_failed()));
@@ -57,6 +80,28 @@ pub fn compose(reply: *const protocol.Reply, pixels: []const u8) Result {
     @memset(allocation.bytes, 0xa5);
     const data = allocation.bytes[32..][0 .. stride * height];
     const target = surface.Surface.init(data, width, height, stride) orelse nih_native_task_failed();
+    @as(*volatile bool, &painting).* = true;
+    const result = paint(&target, data, reply, pixels);
+    @as(*volatile bool, &painting).* = false;
+    if (!contextAllowed() or !@import("native_memory").stacks.bootGuardsIntact(0)) nih_native_task_failed();
+    placement.context_checks += 1;
+    for (0..height) |y| if (!std.mem.allEqual(u8, data[y * stride + width * 2 ..][0 .. stride - width * 2], 0xa5)) nih_native_task_failed();
+    if (!std.mem.allEqual(u8, allocation.bytes[0..32], 0xa5) or !std.mem.allEqual(u8, allocation.bytes[32 + stride * height ..], 0xa5)) nih_native_task_failed();
+    metrics.guards += 1;
+    heap.freeTask(allocation) catch nih_native_task_failed();
+    if ((heap.availableBytes() orelse nih_native_task_failed()) != before) nih_native_task_failed();
+    metrics.live_charge = 0;
+    metrics.frames += 1;
+    return result;
+}
+
+// Borrowed buffers only. The SRAM wrapper owns allocation and retirement.
+noinline fn paint(target: *const surface.Surface, data: []u8, reply: *const protocol.Reply, pixels: []const u8) linksection(".flash.text.render") Result {
+    placement.paint_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
+    placement.frames += 1;
+    var result: Result = .{};
     const vertical = reply.id == 8;
     const glyphs = reply.output.glyphs[0..reply.output.count];
     for (0..3) |pass| {
@@ -81,7 +126,7 @@ pub fn compose(reply: *const protocol.Reply, pixels: []const u8) Result {
             for (glyphs[start..group.end]) |g| {
                 const ox: i64 = if (vertical) (if (run == 0) @as(i64, 150) else 178) else if (!wrapped and reply.id == 9) -8 else 8;
                 const oy: i64 = if (vertical) 8 else if (run == 1) 18 else if (reply.id == 9) (if (wrapped) @as(i64, 32) else 80) else 48;
-                const clipped = draw(&target, pixels, &g, px, py, ox, oy);
+                const clipped = draw(target, pixels, &g, px, py, ox, oy);
                 if (prohibited) {
                     if (clipped) policy_metrics.clipped += 1;
                 } else if (wrapped) {
@@ -127,18 +172,15 @@ pub fn compose(reply: *const protocol.Reply, pixels: []const u8) Result {
             }
         }
     }
-    for (0..height) |y| if (!std.mem.allEqual(u8, data[y * stride + width * 2 ..][0 .. stride - width * 2], 0xa5)) nih_native_task_failed();
-    if (!std.mem.allEqual(u8, allocation.bytes[0..32], 0xa5) or !std.mem.allEqual(u8, allocation.bytes[32 + stride * height ..], 0xa5)) nih_native_task_failed();
-    metrics.guards += 1;
-    heap.freeTask(allocation) catch nih_native_task_failed();
-    if ((heap.availableBytes() orelse nih_native_task_failed()) != before) nih_native_task_failed();
-    metrics.live_charge = 0;
-    metrics.frames += 1;
     return result;
 }
 
 // Keep one checked pixel-placement path for all three diagnostic passes.
-noinline fn draw(target: *const surface.Surface, pixels: []const u8, g: *const protocol.Glyph, px: i64, py: i64, ox: i64, oy: i64) bool {
+noinline fn draw(target: *const surface.Surface, pixels: []const u8, g: *const protocol.Glyph, px: i64, py: i64, ox: i64, oy: i64) linksection(".flash.text.render") bool {
+    placement.draw_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
+    placement.draws += 1;
     const x = std.math.cast(i32, ox + @divFloor(px + g.x_offset, 64) + g.left) orelse nih_native_task_failed();
     const y = std.math.cast(i32, oy - @divFloor(py + g.y_offset, 64) - g.top) orelse nih_native_task_failed();
     if (!target.blit(.{ .bytes = pixels[g.pixel_offset..][0 .. g.width * g.height], .width = g.width, .height = g.height, .stride = g.width }, x, y, if (g.run == 0) 0x192b else 0xb9a7)) nih_native_task_failed();

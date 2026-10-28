@@ -549,3 +549,14 @@ fixture uses canonical maps prepared at build time, stored in the existing
 mapped Flash display-data span. Production text source/revision binding, full
 Japanese/Unicode line breaking, automatic ruby-base placement and physical
 cache/display validation remain separate work.
+
+## Renderer placement follow-up
+
+The [task-only rendering decision](../../docs/adr/0051-task-only-flash-rendering.md)
+splits the native SRAM wrapper (context, allocation, guards, free) from two
+explicitly whitelisted RX Flash functions (`native_surface.paint`/`draw`). The
+new span follows the unchanged fonts in the existing second loader mapping.
+The same `tools/run-native-graphics-smoke.sh` command audits both ELF/image
+placement and actual PC/preemption records, then rechecks every matrix, raster,
+unwrapped, wrapped and basic-prohibition digest plus final heap recovery.
+It does not grant cache-off rendering or establish physical cache/latency behavior.

@@ -92,6 +92,11 @@ SECTIONS
     } > flash_graphics
     .flash.graphfonts : ALIGN(16) {
         KEEP(*(.graphics.fonts))
+    } > flash_graphics
+    .flash.graphrender : ALIGN(4) {
+        __flash_render_start = .;
+        *(.flash.text.render)
+        __flash_render_end = .;
         __flash_graphics_end = .;
     } > flash_graphics
     .graphics.data : ALIGN(64) {
