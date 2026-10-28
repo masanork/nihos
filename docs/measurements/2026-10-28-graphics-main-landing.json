@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "evidence": "physical Tab5 warm USB RTS resets and separate host/emulator qualification",
+  "source_commit": "bb8cf9393fc2dc221134fe6d69497bdd7e79643d",
+  "graphics": {
+    "artifacts_sha256": {
+      "nihos-native.elf": "6aa7ae30b6cee881bf3f0a828c8b212e5955695abde5f183b33a32e3fbe2219e",
+      "nihos-native.bin": "659b5d220d8463ce5de8a14d2914a38b330e2828689dbd1c01e82ca0df8b5a96",
+      "nihos-native-flash.bin": "a322e9f1e6f105e1513de56f7247a77c3ce385fc46e1a4727ae56f8ad8e6da4a",
+      "image-audit.json": "4be8906be65da02448aaf57cd5757669ab22a9d147d63c9b9acaf41addc6fdf8"
+    },
+    "internal_heap_bytes": 49280,
+    "primary_static_bytes": 114560,
+    "warm_resets": 3,
+    "write_verified_before_each_capture_and_after_series": true
+  },
+  "normal": {
+    "artifacts_sha256": {
+      "nihos-native.elf": "89c1750c7b2415bf20c6735088b095ec2264718b78c229b71124713ac68db65f",
+      "nihos-native.bin": "a1e91bcf9684a3177b0d861ef58e94542de9920b2724054b3cc66d88fc0939fa",
+      "nihos-native-flash.bin": "8c3eaa20f5f04d062b1295e45f1c1987377f37798499612f0dd2dca39056d29b",
+      "image-audit.json": "42377379bec2cf71759c6420ab97592de482c396442df39370406a5c9d6d439e"
+    },
+    "internal_heap_bytes": 58368,
+    "primary_static_bytes": 105472,
+    "candidate_source_commit": "bb8cf9393fc2dc221134fe6d69497bdd7e79643d",
+    "source_witness_identity_refreshed_after_storage_core_merge": true,
+    "write_verified_before_and_after": true
+  },
+  "checks": {
+    "zig_debug": 697,
+    "zig_release_safe": 697,
+    "python": 446,
+    "normal_headless_cases": 8,
+    "static_analysis": "pass",
+    "host_reference": "matches texts, frames and matrix_hashes",
+    "library_restart": "host-driven RV32 ISA only; three lifetimes and negative controls"
+  },
+  "limits": [
+    "Offscreen font fixture; no optical display qualification",
+    "Warm USB RTS reset; no cold power cycle",
+    "No native font service restart or VFS-loaded font qualification",
+    "SD returns NIH_VOLUME_NOT_FOUND (-262); no successful mount/file read",
+    "No Wi-Fi IP connectivity or physical touch qualification"
+  ],
+  "evidence_files_sha256": {
+    "evidence/2026-10-28-graphics-main-landing/graphics-boot-1.json": "0252e7e38fd0f2758d5b5a5f453d023d459298bd0fb5c8e6ec379ab07784054f",
+    "evidence/2026-10-28-graphics-main-landing/graphics-boot-1.log": "c4b9288f79dbbf4672e1d7c2e0f00dc3e0e7fb00f6f84da3b82b417254d4639f",
+    "evidence/2026-10-28-graphics-main-landing/graphics-boot-2.json": "754f91e25a5a68e4f02cb791090477711adb56f268c450a96b6d1405100111ba",
+    "evidence/2026-10-28-graphics-main-landing/graphics-boot-2.log": "2a9858aa552a388ffddf916187134eb293345f611eb2d9d7a939c9990c846e14",
+    "evidence/2026-10-28-graphics-main-landing/graphics-boot-3.json": "6ce24a5f90160103ad2967a84f43539f71d6e40bd9e11bf237e545be4ce805e6",
+    "evidence/2026-10-28-graphics-main-landing/graphics-boot-3.log": "10149fbe5547dbeed517634069faf2bfc1ef26994aee93b58c5690a0f7bf95d9",
+    "evidence/2026-10-28-graphics-main-landing/normal-physical.log": "4ded1b85b0c864f453c87cced0d781eabed6d1b6ee9d47268f9f09b6e2198ea0",
+    "evidence/2026-10-28-graphics-main-landing/normal-report.json": "ad1e51159c70995326bb7574ccc5dd273973b7e2bbfec098c8984b9441fc9aa9"
+  }
+}

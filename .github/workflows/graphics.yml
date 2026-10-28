@@ -31,7 +31,6 @@ jobs:
       - name: Select pinned RV32 compiler
         shell: bash
         run: |
-          . "$IDF_PATH/export.sh" >/dev/null
           echo "NIHOS_GRAPHICS_RV32_CXX=$(command -v riscv32-esp-elf-g++)" >> "$GITHUB_ENV"
       - name: Fresh sanitized host reference
         run: sh tools/run-graphics-host-reference.sh
