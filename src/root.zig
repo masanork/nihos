@@ -31,6 +31,7 @@ pub const esp32p4_timer_group = @import("soc/esp32p4/timer_group.zig");
 pub const esp32p4_software_ipi = @import("soc/esp32p4/software_ipi.zig");
 pub const esp32p4_psram = @import("soc/esp32p4/psram.zig");
 pub const esp32p4_sdmmc = @import("soc/esp32p4/sdmmc.zig");
+pub const sdmmc_host = @import("io/sdmmc_host.zig");
 pub const esp32p4_psram_supply = @import("soc/esp32p4/psram_supply.zig");
 pub const esp32p4_psram_mapping = @import("soc/esp32p4/psram_mapping.zig");
 pub const page_pool = @import("kernel/page_pool.zig");
@@ -112,6 +113,8 @@ test {
     _ = esp32p4_software_ipi;
     _ = esp32p4_psram;
     _ = esp32p4_sdmmc;
+    _ = sdmmc_host;
+    _ = @import("io/sdmmc_shared_test.zig");
     _ = @import("soc/esp32p4/reset_capture.zig");
     _ = esp32p4_psram_supply;
     _ = esp32p4_psram_mapping;

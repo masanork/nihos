@@ -29,7 +29,7 @@ const start: u32 = 1 << 31;
 const done: u32 = 1 << 2;
 const data_over: u32 = 1 << 3;
 const errors: u32 = 0xbfc2; // response/data timeout, CRC, HLE, FIFO, framing.
-pub const Error = error{ InvalidCommand, Timeout, Controller, Response, Unsupported, InvalidAddress, ShortRead, Cancelled, Removed };
+pub const Error = error{ InvalidCommand, NoOwnership, Timeout, Controller, Response, Unsupported, InvalidAddress, ShortRead, Cancelled, Removed };
 pub const StopReason = enum { none, cancelled, removed };
 pub const Quiescence = struct {
     device_idle: bool = true,
@@ -127,6 +127,10 @@ pub fn Controller(comptime IO: type) type {
             .pointer => |info| info.child,
             else => IO,
         };
+        const shared = @hasDecl(BusType, "shared_host") and BusType.shared_host;
+        fn owns(self: *const Self) bool {
+            return if (shared) self.io.ownsSlot(0) else true;
+        }
         // Native storage owners run with mapped Flash/cache available. IRQs
         // only publish resident flags and never enter these routines.
         const runtime_section = if (@hasDecl(BusType, "runtime_section")) BusType.runtime_section else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text";
@@ -152,10 +156,21 @@ pub fn Controller(comptime IO: type) type {
         }
 
         pub fn prepare(self: *Self) linksection(runtime_section) Error!void {
+            if (shared) return error.NoOwnership;
+            return self.preparePort(true);
+        }
+
+        pub fn prepareShared(self: *Self) linksection(runtime_section) Error!void {
+            if (!shared or !self.owns()) return error.NoOwnership;
+            return self.preparePort(false);
+        }
+
+        fn preparePort(self: *Self, reset: bool) linksection(runtime_section) Error!void {
             // A new initialization must never overwrite quarantined staging.
             if (!self.quiescence.complete()) return error.Controller;
-            self.io.write(regs.ctrl, 7);
-            try self.pollClear(regs.ctrl, 7);
+            const bits: u32 = if (reset) 7 else 6;
+            self.io.write(regs.ctrl, bits);
+            try self.pollClear(regs.ctrl, bits);
             self.io.write(regs.ctrl, 0); // Interrupts and DMA both disabled.
             self.io.write(regs.mask, 0);
             self.io.write(regs.timeout, 0xffff_ffff);
@@ -177,6 +192,7 @@ pub fn Controller(comptime IO: type) type {
 
         fn commandControlled(self: *Self, index: u6, argument: u32, control: anytype) Error![4]u32 {
             // Reject before any register access, including status/FIFO resets.
+            if (!self.owns()) return error.NoOwnership;
             if (!allowed(index)) return error.InvalidCommand;
             if (self.faulted) return error.Controller;
             self.last_command = index;
@@ -317,6 +333,7 @@ pub fn Controller(comptime IO: type) type {
 
         inline fn readTransferControlled(self: *Self, index: u6, argument: u32, length: u32, buffer: *[512]u8, control: anytype) Error!void {
             if (!((index == 17 and length == 512) or (index == 51 and length == 8))) return error.InvalidCommand;
+            if (!self.owns()) return error.NoOwnership;
             if (self.faulted or !self.quiescence.complete()) return error.Controller;
             try checkStop(control);
             self.words_read = 0;
