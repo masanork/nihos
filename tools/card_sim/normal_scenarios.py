@@ -109,10 +109,24 @@ def failure(sim):
     assert sim.state()['metrics']['mismatches'] == 0
 
 
+def bounded_trace(sim):
+    sim.reset()
+    event = {'action': 'pointer', 'contacts': 0, 'x': 0, 'y': 0, 'dt_us': 1}
+    trace = copy.deepcopy(sim.trace) + [event.copy() for _ in range(4095)]
+    state = sim.replay(trace)
+    assert state['trace_full'] and len(sim.trace) == 4096
+    before = copy.deepcopy(state)
+    assert sim.touch(1, 48, 79) == before
+    assert sim.action('append_log', count=1) == before
+    assert sim.replay(copy.deepcopy(sim.trace)) == before
+    assert not sim.reset()['trace_full']
+
+
 CASES = {'normal-roundtrip': roundtrip, 'normal-rejected-gestures': rejected_gestures,
          'normal-stale': stale, 'normal-queue-overflow': queue_overflow,
          'normal-eof-atomicity': eof_atomicity, 'normal-scroll-palettes': scroll_and_palettes,
-         'normal-replay': replay, 'normal-negative-control': negative_control, 'normal-failure': failure}
+         'normal-replay': replay, 'normal-negative-control': negative_control, 'normal-failure': failure,
+         'normal-bounded-trace': bounded_trace}
 
 
 def run(sim, output):

@@ -1,5 +1,5 @@
 {
-  "identity": "13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051",
+  "identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
   "sources": {
     "probes/card_sim/retire_hal.h": "237b3afc94330d89265cd8b1aab2bc99816f34ca54d905e454f875b78adf940d",
     "probes/card_sim/scanout.c": "8bbaa93bec1b624aff05916f28c759d6dac28030c0c149254b82f32cb49c9831",
@@ -251,12 +251,12 @@
     "src/usb/ccid.zig": "f4cd8986d6429e7e77c007551ffe91da48f43e30d6bcdb6e7421ba651e322dd2",
     "src/usb/descriptors.zig": "a069c782000da795815c437b0cf2672357239c233fc7c061320c83e59d0bb9d4",
     "src/usb/jpki.zig": "72c73be16bea70893a71faaa8e01312b27f8aa0be8bb0f15b39ac899343ba976",
-    "tools/card_sim/app.py": "22e9f0a2cf42f6155beb7eed12f450523d5f9a831affa28670b6120448822563",
+    "tools/card_sim/app.py": "97bfb8ba2548c8531821c05147d6db89a4d92ad09f16be76a170c0c2ef10ef57",
     "tools/card_sim/artifacts.py": "f5994fbdbd6edaa7f9a468919c03fe16ec0f5307807cec2921d5cd2ccb75009f",
     "tools/card_sim/backend.py": "319802b94b4f00702bca27f72d58ed9d7dd9cc099d18afc35a150fc6023308b2",
-    "tools/card_sim/index.html": "c5e0ba25231458df6231d73734a10e52720059b4d3e203c5c2facf186bf2bf66",
-    "tools/card_sim/normal.py": "323efe85cd11f6c7db57ac13f27689b62679301ab44281cbea777660d71353fc",
-    "tools/card_sim/normal_scenarios.py": "b8ad109d61006542f961d788a4d9110a6f9e262c593abb4349d925964eca2c2b",
+    "tools/card_sim/index.html": "5ea0534438beb7b801f1e3644a60cfd4c8948bf4167397ef323fba134576403d",
+    "tools/card_sim/normal.py": "faf857947e1e5a30f20fcbef0ff5ebed8fa0c5c4a215388d7f6d188824f17387",
+    "tools/card_sim/normal_scenarios.py": "5f65a7671eb9321a7a31836fdd6e67eadf8127447546536bb1bef42a36c18bbd",
     "tools/card_sim/scenarios.py": "e9563e8c43313e3f7b72739951ff28189fe64d6f2a2b061069daa489cfd33c64",
     "compiler_sha256": "1c5f706db0ed6d55451940f31dc05a6177d05696bc1fa5d853696d04c718b523"
   },
@@ -265,8 +265,8 @@
     "arm64"
   ],
   "artifacts": {
-    "render-13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051.dylib": "062467047c48ece302883cac534d46003ae94d44689aa4682179ddddb14b00ef",
-    "scanout-13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051.dylib": "20dcdcdd65f8bf1e0bae8ae01479bc9e480b34d2d32e6c2dfc35d586c56f92dc"
+    "render-574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c.dylib": "1c99e6588b9ad3cbb679cc4d783175a44617c8cb9cef02dc2bacb63dbb8d756c",
+    "scanout-574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c.dylib": "e9b41ce3ff271936153fabe4150bee645ae3ba79564fac8d773ec7cbf7697b84"
   },
   "scope": "host execution; register boundary modeled; not ESP32-P4 timing or panel qualification"
 }

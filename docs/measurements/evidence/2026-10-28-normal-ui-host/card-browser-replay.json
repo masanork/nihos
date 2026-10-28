@@ -27,7 +27,7 @@
   "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
   "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
   "profile": "base",
-  "source_identity": "13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051",
+  "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
   "base_audit": null,
   "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
 }

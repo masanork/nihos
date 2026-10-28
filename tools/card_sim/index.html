@@ -48,6 +48,7 @@ async function update(s){
  else{if(s.base_audit&&!document.querySelector('option[value="audited"]')){const o=document.createElement('option');o.value='audited';o.textContent='指定したベースイメージの空きSRAM';document.querySelector('#profile').append(o)}document.querySelector('#profile').value=s.profile;values=[['PIN桁数',s.view.count],['カード検出ジョブ',s.view.job],['公開回数',m.publications],['EOF回数',m.frames],['画素不一致（64 bit語）',m.mismatches],['バックライト消灯回数',m.backlight_offs],['DMA所有権',m.dma_owned?'保持':'解放'],['記述子数',m.nodes],['SRAMリース',`${m.low_bytes/1024} + ${m.high_bytes/1024} KiB`],['公開拒否',m.rejections],['故障コード',m.fault],['欠字 / 切詰め',`${s.view.missing} / ${s.view.truncated}`]]}
  document.querySelector('#metrics').replaceChildren(...values.flatMap(([k,v])=>{const a=document.createElement('dt'),b=document.createElement('dd');a.textContent=k;b.textContent=v;return[a,b]}));
  document.querySelector('#identity').textContent=`Source: ${s.source_identity} Pixels: ${s.pixel_sha256}`;
+ if(s.trace_full){document.querySelector('#status').className='bad';document.querySelector('#status').textContent='トレース上限です。操作を保存してからリセットしてください。'}
  if(drawn===s.pixel_sha256)return;
  const r=await fetch(api+'/frame?sha='+s.pixel_sha256);if(r.status===409){await update(await(await fetch(api+'/state')).json());return}if(!r.ok)throw Error('フレームを取得できません');
  const bytes=new DataView(await r.arrayBuffer()),image=ctx.createImageData(canvas.width,canvas.height);

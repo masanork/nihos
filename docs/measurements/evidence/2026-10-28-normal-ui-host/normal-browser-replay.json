@@ -21,7 +21,8 @@
   "palette": 4,
   "time_us": 82474395,
   "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
-  "source_identity": "13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051",
+  "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+  "trace_full": false,
   "metrics": {
     "frames": 5,
     "publications": 5,

@@ -82,3 +82,11 @@ class CardSimulatorHttpTests(unittest.TestCase):
         self.assertEqual(before, self.get('/state'))
         data = self.get('/normal/frame?sha=' + state['pixel_sha256'])
         self.assertEqual(hashlib.sha256(data).hexdigest(), state['pixel_sha256'])
+
+    def test_normal_trace_over_legacy_request_limit_can_replay(self):
+        trace = [{'action': 'reset', 'application': 'normal', 'palette': 4}]
+        trace += [{'action': 'pointer', 'contacts': 0, 'x': 0, 'y': 0, 'dt_us': 1} for _ in range(2000)]
+        self.assertGreater(len(json.dumps(trace).encode()), 131072)
+        state = self.post('/normal/replay', trace)
+        self.assertEqual(state['time_us'], 2000)
+        self.assertEqual(state['metrics']['mismatches'], 0)

@@ -22,15 +22,17 @@ sparse C builders and descriptor/SRAM pixel reconstruction.
 Normal pointer traces contain bounded coordinates, contact count, time delta
 and dispatch policy, with an explicit application marker. Card/PIN traces
 remain semantic and reject coordinates. The HTTP tests verify that a normal
-trace cannot be replayed into the card endpoint.
+trace cannot be replayed into the card endpoint. A normal trace stops at
+4,096 events instead of silently dropping input; its replay endpoint accepts
+the complete bounded trace (up to 1 MiB).
 
 ## Results
 
 | Check | Result |
 | --- | --- |
-| Python regression suite | 277 passed, including 27 simulator/HTTP cases |
+| Python regression suite | 279 passed, including 29 simulator/HTTP cases |
 | Headless card contracts | 14 / 14 |
-| Headless normal-UI contracts | 9 / 9 |
+| Headless normal-UI contracts | 10 / 10 |
 | Zig Debug and ReleaseSafe | Passed |
 | Formatting, ZLint, static analysis and six audited RV32 links | Passed |
 | JavaScript syntax check | Passed |
@@ -39,7 +41,7 @@ trace cannot be replayed into the card endpoint.
 | Physical image installation / qualification | Not performed |
 
 The final host source/compiler identity is
-`13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051`.
+`574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c`.
 The [receipt](evidence/2026-10-28-normal-ui-host/source-witness.json),
 [normal report](evidence/2026-10-28-normal-ui-host/normal-report.json), and
 [card report](evidence/2026-10-28-normal-ui-host/card-report.json) bind these
@@ -49,7 +51,7 @@ separately; they establish build/layout results, not physical acceptance.
 Normal cases cover touch roundtrip, outside/drag/multiple/held contacts, stale
 input, queue overflow and quarantine, a subsequent ordinary tap, manual frame
 publication, five palettes and incremental scrolling, deterministic replay,
-and synthetic failure. Corrupting one log byte produces a nonzero mismatch;
+bounded trace capture and full-size HTTP replay, and synthetic failure. Corrupting one log byte produces a nonzero mismatch;
 the candidate is withheld and full repaint repairs it. Card cases exercise
 result controls, drag/multiple-contact rejection, any-tap dismissal, and
 semantic replay without PIN coordinates.
