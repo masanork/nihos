@@ -18,3 +18,7 @@ sdkconfig.old
 *.swp
 *.swo
 *~
+
+# Python measurement tools
+__pycache__/
+*.pyc

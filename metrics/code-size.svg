@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="340" viewBox="0 0 820 340">
+<rect width="100%" height="100%" fill="white"/>
+<g font-family="system-ui,sans-serif" fill="#344054">
+<text x="65" y="30" font-size="20">nihos source growth</text>
+<text x="65" y="53" font-size="12">Physical lines incl. comments/blanks; dependencies and generated data excluded</text>
+<path d="M65 262.0H790" stroke="#eaecf0"/>
+<text x="55" y="266.0" text-anchor="end" font-size="11">0</text>
+<path d="M65 216.0H790" stroke="#eaecf0"/>
+<text x="55" y="220.0" text-anchor="end" font-size="11">2,711</text>
+<path d="M65 170.0H790" stroke="#eaecf0"/>
+<text x="55" y="174.0" text-anchor="end" font-size="11">5,422</text>
+<path d="M65 124.0H790" stroke="#eaecf0"/>
+<text x="55" y="128.0" text-anchor="end" font-size="11">8,133</text>
+<path d="M65 78.0H790" stroke="#eaecf0"/>
+<text x="55" y="82.0" text-anchor="end" font-size="11">10,844</text>
+<rect x="82.5" y="147.95658348549404" width="55" height="114.04341651450598" fill="#2563eb"><title>2026-10-25: implementation 6,721.0</title></rect>
+<rect x="82.5" y="115.14004315830246" width="55" height="32.81654032719157" fill="#10b981"><title>2026-10-25: tests 1,934.0</title></rect>
+<rect x="82.5" y="94.72727272727275" width="55" height="20.41277043102971" fill="#f59e0b"><title>2026-10-25: tooling 1,203.0</title></rect>
+<text x="110.0" y="286" text-anchor="middle" font-size="11">2026-10-25</text>
+<rect x="65" y="309" width="12" height="12" fill="#2563eb"/>
+<text x="83" y="320" font-size="12">implementation</text>
+<rect x="265" y="309" width="12" height="12" fill="#10b981"/>
+<text x="283" y="320" font-size="12">tests</text>
+<rect x="465" y="309" width="12" height="12" fill="#f59e0b"/>
+<text x="483" y="320" font-size="12">tooling</text>
+</g></svg>
