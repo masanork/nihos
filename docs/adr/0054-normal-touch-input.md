@@ -1,7 +1,7 @@
 # ADR 0054: Normal single-contact touch input
 
 - Date: 2026-10-28
-- Status: implemented locally; normal-image physical qualification pending
+- Status: implemented locally; physical identification/idle checked, contact qualification pending
 - Extends: [ADR 0052](0052-default-on-demand-device-drivers.md)
 
 ## Decision
@@ -78,9 +78,12 @@ The unconfigured-Wi-Fi normal profile also links, and the Python suite passes
 Host previews of both views show the control without obscuring their headings;
 they are not optical device evidence.
 
-At this checkpoint USB serial is absent, so this candidate has not been
-installed or physically qualified. Earlier standalone ST7121/card observations
-do not establish operation of this normal image. Before landing:
+The [600-second normal-image checkpoint](../measurements/2026-10-28-normal-touch-idle.md)
+physically checked ST7121 identification and idle coexistence with connected
+Wi-Fi/NTP, RTC/IMU and finite audio/microphone/internal UART. No contact reports
+or operator confirmation were received, so button/release behavior remains
+unqualified. The prior app was verified restored. Earlier standalone ST7121/card
+observations do not establish contact operation of this normal image. Before landing:
 
 1. Rediscover the device and coordinate exclusive write ownership. Back up the
    actual app and verify retained loader identity before installing. Verify the
