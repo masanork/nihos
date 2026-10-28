@@ -92,11 +92,20 @@ if [ "$cold_capture" = true ] && [ "$broker" != true ]; then
 fi
 cold_flash=${NIHOS_NATIVE_COLD_FLASH:-0}
 fatfs_native=${NIHOS_NATIVE_FATFS_RPC:-0}
+fatfs_sd=${NIHOS_NATIVE_FATFS_SD:-0}
+case "$fatfs_sd" in
+    0) fatfs_sd=false ;;
+    1) fatfs_sd=true ;;
+    *) echo "NIHOS_NATIVE_FATFS_SD must be 0 or 1" >&2; exit 1 ;;
+esac
 case "$fatfs_native" in
     0) fatfs_native=false; fatfs_cpp=0 ;;
     1) fatfs_native=true; fatfs_cpp=1 ;;
     *) echo "NIHOS_NATIVE_FATFS_RPC must be 0 or 1" >&2; exit 1 ;;
 esac
+if [ "$fatfs_sd" = true ] && [ "$fatfs_native" != true ]; then
+    echo "Native SD FatFs requires FATFS_RPC=1" >&2; exit 1
+fi
 if [ "$fatfs_native" = true ] && { [ "$broker" != true ] || [ "$sd_removal" = true ]; }; then
     echo "Native FatFs RPC fixture requires MEMORY_BROKER=1 and SD_REMOVAL=0" >&2
     exit 1
@@ -130,6 +139,7 @@ mkdir -p "$build_dir"
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const storage_service = %s;\npub const high_sram = %s;\npub const broker = %s;\npub const cold_flash = %s;\npub const sd_removal = %s;\npub const cold_capture = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$storage_service" "$high_sram" "$broker" "$cold_flash" "$sd_removal" "$cold_capture" > "$build_dir/native_options.next"
 printf 'pub const fatfs_native = %s;\n' "$fatfs_native" >> "$build_dir/native_options.next"
+printf 'pub const fatfs_sd = %s;\n' "$fatfs_sd" >> "$build_dir/native_options.next"
 if cmp -s "$build_dir/native_options.next" "$build_dir/native_options.zig"; then
     rm "$build_dir/native_options.next"
 else
@@ -263,7 +273,9 @@ if [ "$sqlite" = true ]; then
             cp "$fixture_manifest" "$build_dir/fatfs-fixture-manifest.json"
             fatfs_source=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_directory"])' "$fixture_manifest")
             fixture_include=$(dirname "$fixture_manifest")
-            for name in guard unicode backend disk fixture fixture_disk; do
+            fatfs_units="guard unicode backend disk fixture fixture_disk"
+            if [ "$fatfs_sd" = true ]; then fatfs_units="$fatfs_units volume native_disk card"; fi
+            for name in $fatfs_units; do
                 case "$name" in
                     guard) source="$repo_root/probes/fatfs-disk/safety.c" ;;
                     unicode) source="$fatfs_source/ffunicode.c" ;;
@@ -271,6 +283,9 @@ if [ "$sqlite" = true ]; then
                     disk) source="$repo_root/src/storage/fatfs_disk.c" ;;
                     fixture) source="$repo_root/src/platform/native/fatfs_fixture.c" ;;
                     fixture_disk) source="$repo_root/src/platform/native/fatfs_fixture_disk.c" ;;
+                    volume) source="$repo_root/src/storage/fatfs_volume.c" ;;
+                    native_disk) source="$repo_root/src/platform/native/fatfs_disk.c" ;;
+                    card) source="$repo_root/src/platform/native/fatfs_card.c" ;;
                 esac
                 "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
                     -Oz -fno-inline-functions -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \

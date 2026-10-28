@@ -21,6 +21,33 @@ FATFS_FIELDS = ('version', 'source', 'status', 'fixture_id', 'parent_used', 'par
                 'requests', 'replies', 'forced_exit', 'cancelled', 'discarded_requests', 'discarded_replies',
                 'rebound', 'stale_epoch', 'stale_handle', 'stale_reply', 'stale_exit', 'bytes', 'crc',
                 'owner_stack', 'client_stack', 'parent_cleared', 'recovered')
+CARD_FIELDS = ('status','generation','sectors','kind','partition','first','count','bytes','crc','repeated_crc',
+               'file_name_crc','reads','destroyed','charged','cleared','recovered')
+
+def check_fatfs_card(log, image, evidence):
+    config = (image or {}).get('sqlite',{}).get('fatfs_native',{}).get('card')
+    marker = 'NIHOS_NATIVE_FATFS_CARD'
+    if config is None:
+        if marker in log or 'NIHOS_FATFS_SD_READY' in log:
+            raise ValueError('physical card record without bound source profile')
+        return None
+    if evidence != 'physical-device' or image.get('memory',{}).get('profile')!='device':
+        raise ValueError('card read requires physical evidence')
+    fatfs_native_profile.validate_profile(image['sqlite']['fatfs_native'])
+    r = fixed_record(log,marker,CARD_FIELDS)
+    stack = fixed_record(log,'NIHOS_NATIVE_FATFS_CARD_STACK',('used','preserved'))
+    if stack['preserved']!=1 or not 0<stack['used']<8000:
+        raise ValueError('physical card stack margin/guard failed')
+    if (any(r[k]!=1 for k in ('status','destroyed','cleared','recovered')) or r['generation']==0 or
+        r['kind'] not in (1,2,3,4) or not 0<=r['partition']<=4 or r['charged']!=32768 or
+        not 0<r['count']<=r['sectors']-r['first'] or not 0<r['bytes']<=4096 or
+        r['reads']==0 or r['crc']!=r['repeated_crc']):
+        raise ValueError('incomplete physical card read/cleanup')
+    order = ('NIHOS_NATIVE_FATFS_RPC ', 'NIHOS_FATFS_SD_READY', marker+' ', 'NIHOS_NATIVE_FP_PASS ')
+    if any(part not in log for part in order) or any(log.index(a)>=log.index(b) for a,b in zip(order,order[1:])):
+        raise ValueError('physical card phases out of order')
+    return {**r, 'stack':stack, 'source':config['source'], 'comparison':'same file prefix read twice; no external content oracle',
+            'native_rpc_over_sd_qualified':False}
 
 
 def check_sqlite_spans(record, image, evidence):
@@ -781,7 +808,8 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     sd_removal = check_sd_removal(log, image, evidence, sdmmc)
     boot_capture = check_boot_capture(log, image, evidence)
     fatfs_native = check_fatfs_native(log, image, evidence)
-    return {"schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
+    fatfs_card = check_fatfs_card(log, image, evidence)
+    return {**({'fatfs_card':fatfs_card} if fatfs_card is not None else {}), "schema": 1, "backend": "native-sram", "evidence": evidence, "mode": mode, "storage": storage, "storage_stack": storage_stack,
             "high_sram": high_sram, "page_lease": page_lease,
             "fatfs_native": fatfs_native, "broker": broker, "io_lifetimes": io_lifetimes, "sd_removal": sd_removal, "boot_capture": boot_capture,
             "storage_api": storage_api, "storage_workspace": storage_workspace, "storage_service": service,

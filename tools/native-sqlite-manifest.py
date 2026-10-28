@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import struct
 import sys
-from fatfs_native_profile import SOURCES
+from fatfs_native_profile import SOURCES, CARD_SOURCES, CARD_SOURCE
 
 
 def sha(path):
@@ -37,6 +37,7 @@ def functions(path):
 
 def main(directory, source, littlefs=None):
     fatfs_native = 'pub const fatfs_native = true;' in (directory / 'native_options.zig').read_text()
+    fatfs_sd = 'pub const fatfs_sd = true;' in (directory / 'native_options.zig').read_text()
     objects = {name: {'sha256': sha(directory / name), 'functions': functions(directory / name)}
                for name in ('sql_sqlite3.o', 'sql_session.o', 'sql_vfs.o')}
     if littlefs is not None:
@@ -47,7 +48,8 @@ def main(directory, source, littlefs=None):
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
         objects['sql_broker_runtime.o'] = {'sha256': sha(directory / 'sql_broker_runtime.o'), 'functions': functions(directory / 'sql_broker_runtime.o')}
     if fatfs_native:
-        for name in ('guard', 'unicode', 'backend', 'disk', 'fixture', 'fixture_disk'):
+        units = ('guard', 'unicode', 'backend', 'disk', 'fixture', 'fixture_disk') + (('volume','native_disk','card') if fatfs_sd else ())
+        for name in units:
             file = 'sql_fat_' + name + '.o'
             objects[file] = {'sha256': sha(directory / file), 'functions': functions(directory / file)}
     profile_path = Path(__file__).resolve().parents[1] / 'src/kernel/size_pool.zig'
@@ -66,10 +68,15 @@ def main(directory, source, littlefs=None):
         fixture = json.loads((directory / 'fatfs-fixture-manifest.json').read_text())
         result['fatfs_native'] = {'version': 3, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': {path: sha(root / path) for path in SOURCES}}
+        if fatfs_sd:
+            result['fatfs_native']['card'] = {'version':1, 'source':CARD_SOURCE, 'charged':32768,
+                'sources':{path:sha(root/path) for path in CARD_SOURCES}}
         result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
             'main.runFatFsTasks', 'sdmmc_probe.freshCardSession',
             'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end',
             'sdmmc_probe.beginFatFsSession', 'sdmmc_probe.endFatFsSession'})
+        if fatfs_sd:
+            result['allowed_functions'] = sorted(set(result['allowed_functions']) | {'main.runFatFsCard'})
     if 'pub const broker = true;' in (directory / 'native_options.zig').read_text():
         root = Path(__file__).resolve().parents[1]
         result['broker'] = {'version': 2, 'profile_sha256': sha(root / 'docs/planning/tab5-development-profile.json'),

@@ -36,6 +36,7 @@ def symbol_size(path, wanted):
 
 def main():
     inputs = [ROOT / 'include/nihos_fatfs_backend.h', ROOT / 'src/storage/fatfs_backend.c',
+              ROOT / 'include/nihos_fatfs_card.h', ROOT / 'src/platform/native/fatfs_card.c',
               ROOT / 'src/fs/fatfs_backend.zig', ROOT / 'src/fs/vfs.zig', ROOT / 'src/fs/vfs_test.zig',
               ROOT / 'src/fs/io_leases.zig', ROOT / 'src/root.zig', ROOT / 'tools/check-fatfs-backend.py',
               ROOT / 'src/storage_vfs.zig', ROOT / 'src/fs/vfs_rpc.zig', ROOT / 'src/fs/vfs_rpc_test.zig',
@@ -66,6 +67,11 @@ def main():
          ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/storage/fatfs_volume.c',
          ROOT / 'src/platform/native/fatfs_disk.c',
          PROBE / 'safety.c', source / 'ffunicode.c', library, '-o', binary])
+    card_binary = work / 'card-check'
+    run([*cc, *flags, PROBE / 'card_check.c', ROOT / 'src/platform/native/fatfs_card.c',
+         ROOT / 'src/storage/fatfs_volume.c', ROOT / 'src/storage/fatfs_backend.c',
+         ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/platform/native/fatfs_disk.c',
+         PROBE / 'safety.c', source / 'ffunicode.c', '-o', card_binary])
     report = {'schema': 1, 'passed': False, 'evidence': 'host guarded FatFs, VFS/RPC and actual broker lifetime integration; RV32 compile only',
               'hardware_executed': False, 'firmware_linked': False,
               'c_sanitizers': ['address', 'undefined'], 'zig_mode': 'ReleaseSafe',
@@ -74,6 +80,7 @@ def main():
                                 'forbidden_write_symbols': base['forbidden_write_symbols']},
               'volume_contract': base['volume_contract'],
               'volume_negative_controls': base['volume_negative_controls'],
+              'card_pipeline': [],
               'base_results': str(base_path), 'base_results_sha256': sha(base_path), 'cases': [], 'fixtures': []}
     def save():
         (work / 'backend-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
@@ -100,6 +107,7 @@ def main():
     for row in base['fixtures']:
         fixture, image = row['fixture'], Path(row['image'])
         before = sha(image)
+        report['card_pipeline'].append({'format': fixture['format'], 'observed':json.loads(run([card_binary,image]))})
         probe(row, 'identity-and-admission', 'normal', fixture['alias'] or 'LONG FILENAME FOR ALIAS.TXT')
         for mode in ('vfs', 'selected-vfs', 'io', 'removed'):
             probe(row, mode, mode)

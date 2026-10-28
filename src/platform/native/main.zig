@@ -22,6 +22,7 @@ extern fn nih_rom_reset_reason(u32) callconv(.c) u32;
 extern var nih_rom_saved_pc: [2]u32;
 extern fn nih_boot_capture_getc() callconv(.c) i32;
 extern fn nih_storage_clock_start() callconv(.c) u32;
+extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
 extern fn nih_native_cpu1_start() callconv(.c) void;
 extern var __stack0_bottom: u8;
 extern var __stack0_top: u8;
@@ -612,6 +613,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses", "io_clock_acquired", "io_clock_released" }, &b);
                     runIoLifetimes(sd_crc);
                     if (options.fatfs_native) runFatFsTasks();
+                    if (options.fatfs_sd) runFatFsCard();
                 }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
@@ -625,6 +627,35 @@ noinline fn runFatFsTasks() linksection(".flash.text.storage") void {
     runStorageTasks(0);
     const report = storage_runtime.finish();
     logger.record("NIHOS_NATIVE_FATFS_RPC", null, @import("fatfs_service_abi.zig").fields, &report);
+}
+noinline fn runFatFsCard() linksection(".flash.text.storage") void {
+    const card = @import("fatfs_card_abi.zig");
+    const began = timer(0).counter() orelse fail("card wait clock");
+    var drained: u32 = 0;
+    while (nih_boot_capture_getc() >= 0) {
+        drained += 1;
+        if (drained >= 1024) fail("card stale input flood");
+    }
+    print("NIHOS_FATFS_SD_READY\n");
+    while (nih_boot_capture_getc() != 'S') {
+        const now = timer(0).counter() orelse fail("card wait clock");
+        if (now - began > 300_000_000) fail("FAT/exFAT card swap timeout");
+    }
+    var report = card.Report{};
+    const guard: *volatile [4]u32 = @ptrCast(@alignCast(&__stack0_bottom));
+    var saved: [4]u32 = undefined;
+    for (0..4) |i| saved[i] = guard[i];
+    const low = @intFromPtr(&__stack0_bottom) + 16;
+    const painted = nih_sqlite_stack_paint(low);
+    if (card.nih_fatfs_card_attempt(&report) != 1) fail("FAT/exFAT card read");
+    for (0..4) |i| if (saved[i] != guard[i]) fail("card stack guard");
+    var first = low;
+    while (first < painted and @as(*volatile u32, @ptrFromInt(first)).* == 0x5a7ec319) : (first += 4) {}
+    if (first <= low + 160 or first > painted) fail("card stack margin");
+    const Stack = struct { used: u32, preserved: u32 };
+    const stack = Stack{ .used = @intFromPtr(&__stack0_top) - first, .preserved = 1 };
+    logger.record("NIHOS_NATIVE_FATFS_CARD", null, card.fields, &report);
+    logger.record("NIHOS_NATIVE_FATFS_CARD_STACK", null, .{ "used", "preserved" }, &stack);
 }
 
 fn memoryReport(hart: u32) void {

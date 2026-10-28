@@ -116,7 +116,8 @@ def main():
     validate_bundle(candidate, loader, root)
     audit = json.loads((candidate / 'image-audit.json').read_text())
     removal_test = audit.get('io_lifetimes', {}).get('removal_test') is True
-    if removal_test and args.power_cycle:
+    card_test = audit.get('sqlite',{}).get('fatfs_native',{}).get('card') is not None
+    if (removal_test or card_test) and args.power_cycle:
         raise ValueError('Use separate removal and cold-boot attempts; cold reboot must not repeat the manual removal fixture')
     if args.baseline_results is not None and not args.power_cycle:
         raise ValueError('Reset baseline reuse requires --power-cycle')
@@ -133,6 +134,11 @@ def main():
     for name, expected in audit['io_lifetimes'].get('capture_sources', {}).items():
         if digest(root / name) != expected:
             raise ValueError('Capture source differs from candidate: ' + name)
+    fatfs_profile = audit.get('sqlite',{}).get('fatfs_native',{})
+    for source_map in (fatfs_profile.get('sources',{}),fatfs_profile.get('card',{}).get('sources',{})):
+        for name,expected in source_map.items():
+            if digest(root/name)!=expected:
+                raise ValueError('FatFs source differs from candidate: '+name)
     spec = importlib.util.spec_from_file_location('native_check', root / 'tools/check-native-log.py')
     check = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(check)
@@ -214,6 +220,11 @@ def main():
         restored_ok = False
 
         def reset_if_safe():
+            if card_test:
+                # The replacement card is still inserted. Keep ROM download
+                # mode until the operator returns the original card.
+                if port.is_open: disable_hangup(port)
+                return
             reset_on_safe_exit(port, changed, restored_ok, identity_ok, HardReset(port, uses_usb=True))
 
         reset_guard.callback(reset_if_safe)
@@ -244,7 +255,7 @@ def main():
             verify = ['verify_flash', '0x2000', str(out / 'bootloader.bin'), '0x8000', str(out / 'partition-table.bin'),
                       '0x10000', str(out / 'nihos-native.bin')]
             command('verify-candidate-before', verify)
-            for run in range(1, 1 if baseline is not None else (2 if removal_test else 4)):
+            for run in range(1, 1 if baseline is not None else (2 if removal_test or card_test else 4)):
                 port.baudrate = 115200
                 port.dtr = False
                 port.reset_input_buffer()
@@ -255,17 +266,24 @@ def main():
                 path = out / f'boot{run}.log'
                 announced = set()
                 capture_ack = False
-                while time.monotonic() - began < (360 if removal_test else 180):
+                card_ack = False
+                while time.monotonic() - began < (480 if card_test else 360 if removal_test else 180):
                     raw_log.extend(port.read(max(1, port.in_waiting)))
                     path.write_bytes(raw_log)
                     if not capture_ack and capture_ready(raw_log):
                         port.write(b'G')
                         port.flush()
                         capture_ack = True
-                    for marker in (b'NIHOS_SD_REMOVE_READY', b'NIHOS_SD_INSERT_READY'):
+                    for marker in (b'NIHOS_SD_REMOVE_READY', b'NIHOS_SD_INSERT_READY', b'NIHOS_FATFS_SD_READY'):
                         if marker in raw_log and marker not in announced:
                             print(marker.decode(), flush=True)
                             announced.add(marker)
+                    if card_test and b'NIHOS_FATFS_SD_READY' in announced and not card_ack:
+                        acknowledgement = out / 'card-inserted.json'
+                        if acknowledgement.exists() and json.loads(acknowledgement.read_text()).get('operator_confirmed') is True:
+                            port.write(b'S')
+                            port.flush()
+                            card_ack = True
                     if b'NIHOS_NATIVE_FAIL' in raw_log or b'NIHOS_NATIVE_TRAP' in raw_log:
                         raise RuntimeError(f'Native failure; see {path}')
                     if b'NIHOS_NATIVE_FP_PASS' in raw_log and passed_at is None:
@@ -338,12 +356,13 @@ def main():
                 command('verify-restored-full-flash', ['verify_flash', '0', str(backup)])
                 (out / 'restored.json').write_text(json.dumps({'verified': True, 'sha256': digest(backup)}) + '\n')
                 restored_ok = True
-    expected_runs = 1 if removal_test or baseline is not None else 3 + int(args.power_cycle)
+    expected_runs = 1 if removal_test or card_test or baseline is not None else 3 + int(args.power_cycle)
     (out / 'complete.json').write_text(json.dumps({'passed': len(results) == expected_runs, 'restored': True,
             'exclusive_serial': True, 'kernel_exclusive_serial': True, 'removal_fixture_run': removal_test,
             'reset_baseline_reused': baseline is not None,
             'serial_reopens': serial_reopens, 'same_serial_descriptor': serial_reopens == 0,
-            'electrical_removal_operator_confirmed': False, 'power_on_reset_observed': args.power_cycle}) + '\n')
+            'electrical_removal_operator_confirmed': False, 'power_on_reset_observed': args.power_cycle,
+            **({'fatfs_card_run':True,'original_firmware_reset_deferred':True} if card_test else {})}) + '\n')
 
 
 if __name__ == '__main__':
