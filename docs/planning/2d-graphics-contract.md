@@ -37,7 +37,7 @@ const content = canvas.clipped(.{ .x = 8, .y = 8, .width = 200, .height = 100 })
 content.fillRect(.{ .x = 0, .y = 0, .width = 100, .height = 30 }, 0xffff);
 ```
 
-既存surfaceのA8合成は別APIであり、このclip付きviewには未接続。塗りの画素単位の同期、damage、自動presentはない。未実装の機能を互換APIとして公開しない。
+`blitRgb565`はRGB565LE、`blitIndexed8`は256色のRGB565パレット、`blitMask`はA8被覆を1:1で描く。入力はbyte strideと全行分の容量を持ち、長さ不足・stride不正・入力と描画先の重なりは描画前にエラー。パレットも描画先と重ねない。画面外・clip外は切り捨て、拡大縮小は未対応。A8合成は既存surfaceを呼び、既存のRGB565成分上の整数演算と丸めを維持する（線形光合成ではない）。塗りの画素単位の同期、damage、自動presentはない。未実装の機能を互換APIとして公開しない。
 
 ## 後続の必須設計と受入条件
 
