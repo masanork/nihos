@@ -12,7 +12,6 @@ const A = std.atomic.Value(u32);
 const Report = @import("fatfs_service_abi.zig").Report;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
-extern fn nih_task_identity() callconv(.c) u32;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
 extern fn nih_fatfs_backend_bytes() u32;
 extern fn nih_fatfs_backend_init([*]u8, u32, *anyopaque, u64) ?*adapter.Session;
@@ -100,6 +99,13 @@ fn wait() void {
         .received => {},
         .failed => fail(),
     }
+}
+fn currentHandle() u32 {
+    // Registration and exit notifications use the scheduler's handle namespace.
+    // The legacy C allocator identity is unavailable after broker retirement
+    // and also encodes the CPU, so it cannot authenticate this endpoint.
+    const current = calls.current() orelse fail();
+    return (@as(u32, current.generation) << 16) | current.slot;
 }
 pub export fn nih_storage_runtime_ready() linksection(".iram1.storage_hooks") callconv(.c) u32 {
     return enabled.load(.acquire);
@@ -267,7 +273,7 @@ fn send(operation: rpc.Operation, token: rpc.Token, path: []const u8, offset: u6
     const frame = frames();
     frame.request = .{ .epoch = bound_epoch.load(.acquire), .sequence = state().next_sequence, .operation = @backingInt(operation), .token = token, .offset = offset, .length = length, .path_length = @intCast(path.len) };
     @memcpy(frame.request.path[0..path.len], path);
-    while (!owner().submit(queues(), nih_task_identity(), &frame.request)) wait();
+    while (!owner().submit(queues(), currentHandle(), &frame.request)) wait();
     state().next_sequence += 1;
     state().report.requests += 1;
     signal(0);
@@ -284,7 +290,7 @@ fn receive(sequence: u32) *rpc.Response {
             return &frames().response;
         }
         if (sequence == 2 and inflight.load(.acquire) == 1) {
-            check(notifications.cancelRead(nih_task_identity(), bound_epoch.load(.acquire), sequence));
+            check(notifications.cancelRead(currentHandle(), bound_epoch.load(.acquire), sequence));
             inflight.store(2, .release);
             signal(0);
         }
@@ -294,7 +300,7 @@ fn receive(sequence: u32) *rpc.Response {
 noinline fn runClient() i32 {
     const painted = nih_sqlite_stack_paint(bounds[1].low);
     while (ready.load(.acquire) == 0) wait();
-    check(nih_task_identity() == handles[1].load(.acquire));
+    check(currentHandle() == handles[1].load(.acquire));
     const s = state();
     if (bound_epoch.load(.acquire) == 1) {
         send(.open, s.root, "fragment.bin", 0, 0);
@@ -317,7 +323,7 @@ noinline fn runClient() i32 {
         fail();
     }
     frames().request = .{ .epoch = 1, .sequence = 1, .operation = 4, .token = s.old_file };
-    check(!owner().submit(queues(), nih_task_identity(), &frames().request));
+    check(!owner().submit(queues(), currentHandle(), &frames().request));
     s.report.stale_epoch = 1;
     send(.read, s.old_file, "", 0, 1);
     check(receive(1).status == -9);
