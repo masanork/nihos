@@ -5,6 +5,7 @@ import struct
 
 SOURCE = 'embedded sparse/RLE FAT12 fixture; not SD FatFs'
 CARD_SOURCE = 'physical SD prefix read twice; operator card swap after embedded fixture'
+CARD_SOURCE_INSERTED = 'physical SD prefix read twice; inserted FAT/exFAT card; no littlefs boot probe'
 CARD_SOURCES = ('src/platform/native/fatfs_card.c', 'src/platform/native/fatfs_card_abi.zig',
     'include/nihos_fatfs_card.h', 'src/storage/fatfs_volume.c', 'include/nihos_fatfs_volume.h',
     'src/platform/native/fatfs_disk.c', 'src/platform/native/sdmmc_probe.zig',
@@ -59,8 +60,11 @@ def validate_profile(config):
             'unapproved immutable fixture/upstream')
     card = config.get('card')
     if card is not None:
-        require(isinstance(card,dict) and card.get('version') == 1 and card.get('source') == CARD_SOURCE and card.get('charged') == 32768,
+        require(isinstance(card,dict) and card.get('version') in (1,2) and card.get('charged') == 32768,
                 'unapproved physical card profile')
+        mode = card.get('mode','swap')
+        require(mode in ('swap','inserted') and card.get('source') == (CARD_SOURCE_INSERTED if mode=='inserted' else CARD_SOURCE)
+                and (card['version']==2 or mode=='swap') and (card['version']==1 or 'mode' in card), 'invalid card boot mode/source')
         sources = card.get('sources', {})
         require(isinstance(sources,dict) and set(sources) == set(CARD_SOURCES) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}',x)
                 for x in sources.values()), 'incomplete physical card sources')
@@ -124,6 +128,10 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
                     'nih_fatfs_native_read', 'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end'}
     if config.get('card') is not None:
         require(card_symbols.issubset(symbols), 'missing actual SD card pipeline')
+        if config['card']['version']>=2:
+            at=symbols.get('nih_fatfs_card_mode',0)
+            require(sizes.get('nih_fatfs_card_mode')==4 and ro_start<=at<at+4<=ro_start+len(rodata), 'missing card mode descriptor')
+            require(struct.unpack_from('<I',rodata,at-ro_start)[0]==(config['card']['mode']=='inserted'), 'card mode differs from image')
     else:
         require('nih_fatfs_card_attempt' not in symbols and 'nih_fatfs_card_read' not in symbols,
                 'card pipeline without source profile')

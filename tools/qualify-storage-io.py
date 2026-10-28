@@ -117,6 +117,9 @@ def main():
     audit = json.loads((candidate / 'image-audit.json').read_text())
     removal_test = audit.get('io_lifetimes', {}).get('removal_test') is True
     card_test = audit.get('sqlite',{}).get('fatfs_native',{}).get('card') is not None
+    card_direct = audit.get('sqlite',{}).get('fatfs_native',{}).get('card',{}).get('mode')=='inserted'
+    if card_test and args.baseline_results:
+        raise ValueError('Card run requires its own complete boot; cannot reuse reset baseline')
     if (removal_test or card_test) and args.power_cycle:
         raise ValueError('Use separate removal and cold-boot attempts; cold reboot must not repeat the manual removal fixture')
     if args.baseline_results is not None and not args.power_cycle:
@@ -278,7 +281,7 @@ def main():
                         if marker in raw_log and marker not in announced:
                             print(marker.decode(), flush=True)
                             announced.add(marker)
-                    if card_test and b'NIHOS_FATFS_SD_READY' in announced and not card_ack:
+                    if card_test and not card_direct and b'NIHOS_FATFS_SD_READY' in announced and not card_ack:
                         acknowledgement = out / 'card-inserted.json'
                         if acknowledgement.exists() and json.loads(acknowledgement.read_text()).get('operator_confirmed') is True:
                             port.write(b'S')
@@ -291,7 +294,7 @@ def main():
                     if passed_at and time.monotonic() - passed_at >= 10:
                         break
                 report = check.check(raw_log.decode(errors='replace'), 'sqlite', 32 << 20, audit,
-                                     'physical-device', require_sdmmc_fast=True, require_storage=True)
+                                     'physical-device', require_sdmmc_fast=True, require_storage=not card_direct)
                 if passed_at is None or report['io_lifetimes'] is None:
                     raise RuntimeError('Incomplete lifetime qualification')
                 results.append({'run': run, 'log_sha256': digest(path), 'report': report})

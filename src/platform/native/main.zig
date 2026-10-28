@@ -427,7 +427,7 @@ noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {
         logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
         if (sd.stages[phase].samples != 0) logger.record("NIHOS_NATIVE_SDMMC_SWEEP", null, .{ "index", "samples", "digest" }, &sd.stages[phase]);
     }
-    if (options.storage) {
+    if (options.storage and !options.fatfs_sd_direct) {
         logger.record("NIHOS_NATIVE_STORAGE", null, .{ "status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes" }, &sd.storage);
         logger.record("NIHOS_NATIVE_STORAGE_STACK", null, .{ "low", "high", "painted_to", "used", "confirmed" }, &sd.storage_stack);
         logger.record("NIHOS_NATIVE_STORAGE_API", null, .{ "status", "opens", "closes", "cancelled", "rejected", "read_calls", "workspace_bytes", "used_bytes", "cleared" }, &sd.api);
@@ -630,17 +630,19 @@ noinline fn runFatFsTasks() linksection(".flash.text.storage") void {
 }
 noinline fn runFatFsCard() linksection(".flash.text.storage") void {
     const card = @import("fatfs_card_abi.zig");
-    const began = timer(0).counter() orelse fail("card wait clock");
-    var drained: u32 = 0;
-    while (nih_boot_capture_getc() >= 0) {
-        drained += 1;
-        if (drained >= 1024) fail("card stale input flood");
-    }
-    print("NIHOS_FATFS_SD_READY\n");
-    while (nih_boot_capture_getc() != 'S') {
-        const now = timer(0).counter() orelse fail("card wait clock");
-        if (now - began > 300_000_000) fail("FAT/exFAT card swap timeout");
-    }
+    if (!options.fatfs_sd_direct) {
+        const began = timer(0).counter() orelse fail("card wait clock");
+        var drained: u32 = 0;
+        while (nih_boot_capture_getc() >= 0) {
+            drained += 1;
+            if (drained >= 1024) fail("card stale input flood");
+        }
+        print("NIHOS_FATFS_SD_READY\n");
+        while (nih_boot_capture_getc() != 'S') {
+            const now = timer(0).counter() orelse fail("card wait clock");
+            if (now - began > 300_000_000) fail("FAT/exFAT card swap timeout");
+        }
+    } else print("NIHOS_FATFS_SD_READY\n");
     var report = card.Report{};
     const guard: *volatile [4]u32 = @ptrCast(@alignCast(&__stack0_bottom));
     var saved: [4]u32 = undefined;

@@ -87,8 +87,12 @@ fn cardAttempt(out: *card.Report) callconv(.c) u32 {
     return @intCast(result);
 }
 comptime {
-    if (options.fatfs_sd) @export(&cardAttempt, .{ .name = "nih_fatfs_card_attempt" });
+    if (options.fatfs_sd) {
+        @export(&cardAttempt, .{ .name = "nih_fatfs_card_attempt" });
+        @export(&card_mode, .{ .name = "nih_fatfs_card_mode" });
+    }
 }
+const card_mode: u32 linksection(".rodata.fatfs_config") = @intFromBool(options.fatfs_sd_direct);
 fn owner() *Owner {
     return @ptrCast(@alignCast(state().parent.?.borrow.?.bytes.ptr + state().layout.?.endpoint));
 }

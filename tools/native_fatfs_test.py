@@ -22,6 +22,15 @@ def config():
 
 
 class NativeFatFsImageChecks(unittest.TestCase):
+    def test_inserted_card_mode_requires_its_own_source_and_version(self):
+        c=config();c['card']={'version':2,'mode':'inserted','source':PROFILE.CARD_SOURCE_INSERTED,
+            'charged':32768,'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}
+        PROFILE.validate_profile(c)
+        for key,value in (('version',1),('mode','swap'),('source',PROFILE.CARD_SOURCE)):
+            bad=copy.deepcopy(c);bad['card'][key]=value
+            with self.subTest(key=key),self.assertRaises(ValueError): PROFILE.validate_profile(bad)
+        bad=copy.deepcopy(c);del bad['card']['mode']
+        with self.assertRaises(ValueError):PROFILE.validate_profile(bad)
     def test_card_source_identity_is_required_in_addition_to_fixture(self):
         c = config()
         c['card'] = {'version':1,'source':PROFILE.CARD_SOURCE,'charged':32768,
