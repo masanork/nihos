@@ -14,7 +14,7 @@ def line(marker, values):
 
 
 def config():
-    return {'version': 2, 'source': PROFILE.SOURCE, 'flash_end': '0x400d0000', 'c_no_inline': True,
+    return {'version': 3, 'source': PROFILE.SOURCE, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': dict.fromkeys(PROFILE.SOURCES, 'a' * 64),
             'fixture': {'schema': 1, 'source': PROFILE.SOURCE, 'image_sha256': PROFILE.IMAGE_SHA256,
                 'image_bytes': 1048576, 'fixture_id': int(PROFILE.IMAGE_SHA256[:8], 16),
@@ -42,6 +42,15 @@ class NativeFatFsImageChecks(unittest.TestCase):
         PROFILE.validate_profile(old)
         old['version'] = 2
         with self.assertRaises(ValueError): PROFILE.validate_profile(old)
+
+    def test_version_two_sources_replay_and_new_trap_reserve_is_required(self):
+        old = config(); old['version'] = 2
+        old['sources'] = dict.fromkeys(PROFILE.SOURCES_V2, 'a' * 64)
+        PROFILE.validate_profile(old)
+        old['version'] = 3
+        with self.assertRaises(ValueError): PROFILE.validate_profile(old)
+        with self.assertRaisesRegex(ValueError, 'trap reserve'):
+            PROFILE.audit(config(), {}, {}, 0, 1, 0, b'', [], {})
 
     def test_expanded_flash_requires_explicit_fixture_window(self):
         module = IMAGE.MODULE
@@ -76,7 +85,7 @@ class NativeFatFsImageChecks(unittest.TestCase):
             sizes[key] = size
         for key in symbols:
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'SRAM'):
-                PROFILE.audit(config(), {**symbols, key: 0x40020000}, sizes, 0x4ff00000, 0x4ff28000,
+                PROFILE.audit({**config(), 'version': 2, 'sources': dict.fromkeys(PROFILE.SOURCES_V2, 'a' * 64)}, {**symbols, key: 0x40020000}, sizes, 0x4ff00000, 0x4ff28000,
                               0x400c0000, b'', [], {})
 
     def test_guard_lfn_frame_cannot_be_inlined_back_into_wrapper(self):

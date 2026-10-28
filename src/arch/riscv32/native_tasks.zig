@@ -14,6 +14,11 @@ pub const memory = @import("native_memory");
 
 const Runtime = runtime_module.Runtime(4, 2);
 const stack_bytes = 4096;
+comptime {
+    if (stack_bytes != memory.stacks.layout.worker_bytes or memory.stacks.layout.guard_bytes != 16 or
+        @sizeOf(context.IntegerContext) != memory.stacks.layout.frame_bytes)
+        @compileError("native worker guard/context differs from the audited stack contract");
+}
 pub const period_us = 10_000;
 const initial_state = context.ReturnState{ .mstatus = 0x1880, .mcause = 0 };
 extern fn nih_native_task_trampoline() callconv(.c) void;

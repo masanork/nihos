@@ -9,6 +9,7 @@ SOURCES = (
     'src/platform/native/fatfs_runtime.zig', 'src/platform/native/fatfs_service_abi.zig',
     'src/platform/native/fatfs_fixture.c', 'src/platform/native/fatfs_fixture_disk.c',
     'src/platform/native/broker_runtime.zig', 'src/platform/native/storage_service_abi.zig',
+    'src/platform/native/start.S', 'src/arch/riscv32/context_offsets.inc', 'src/platform/native/stack_layout.zig',
     'src/platform/native/main.zig', 'src/platform/native/esp32p4.ld',
     'src/storage/fatfs_backend.c', 'src/storage/fatfs_disk.c',
     'include/nihos_fatfs_backend.h', 'include/nihos_fatfs_disk.h',
@@ -20,7 +21,8 @@ SOURCES = (
     'tools/build-native-elf.sh', 'tools/build-fatfs-native-input.py', 'tools/bootstrap-fatfs.py',
     'tools/native-sqlite-manifest.py', 'tools/check-native-image.py', 'tools/fatfs_native_profile.py',
 )
-SOURCES_V1 = tuple(path for path in SOURCES if path != 'src/kernel/event_latch.zig')
+SOURCES_V2 = tuple(path for path in SOURCES if path not in ('src/platform/native/start.S', 'src/arch/riscv32/context_offsets.inc', 'src/platform/native/stack_layout.zig'))
+SOURCES_V1 = tuple(path for path in SOURCES_V2 if path != 'src/kernel/event_latch.zig')
 UPSTREAM = {
     'ff.c': '3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250',
     'ff.h': '42920ae4d6080bfc2a72d92a9969b5e94eeaff070e5e71d90da9ab6d7d8e158e',
@@ -40,10 +42,10 @@ def require(ok, reason):
 
 
 def validate_profile(config):
-    require(isinstance(config, dict) and config.get('version') in (1, 2) and config.get('source') == SOURCE and
+    require(isinstance(config, dict) and config.get('version') in (1, 2, 3) and config.get('source') == SOURCE and
             config.get('flash_end') == '0x400d0000' and config.get('c_no_inline') is True, 'invalid fixture profile')
     sources = config.get('sources', {})
-    require(isinstance(sources, dict) and set(sources) == set(SOURCES if config['version'] == 2 else SOURCES_V1) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}', x)
+    require(isinstance(sources, dict) and set(sources) == set({1: SOURCES_V1, 2: SOURCES_V2, 3: SOURCES}[config['version']]) and all(isinstance(x, str) and re.fullmatch('[0-9a-f]{64}', x)
             for x in sources.values()), 'incomplete source identity')
     f = config.get('fixture', {})
     require(isinstance(f, dict) and f.get('schema') == 1 and f.get('source') == SOURCE and f.get('image_sha256') == IMAGE_SHA256 and
@@ -75,6 +77,8 @@ def decode_fixture(payload, index, sectors):
 
 def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objects):
     fixture = validate_profile(config)
+    if config['version'] >= 3:
+        require(symbols.get('nih_native_task_context_bytes') == 128, 'missing/changed task-side trap reserve')
     for name in HOOKS:
         require(low <= symbols.get(name, 0) < high, 'IRQ hook outside SRAM: ' + name)
     for name, size in WORDS.items():
@@ -113,6 +117,8 @@ def audit(config, symbols, sizes, low, high, ro_start, rodata, stack_rows, objec
             'control_bytes': layout[3], 'control_reserve_bytes': layout[2], 'control_start': hex(layout[1]),
             'parent_bytes': layout[4], 'client_frame_bytes': layout[5],
             'static_zig_frames': frames,
+            'task_stack_contract': {'worker_bytes': 4096, 'guard_bytes': 16, 'trap_context_bytes': 128,
+                'ordinary_sp_budget_bytes': 3952} if config['version'] >= 3 else None,
             'whole_call_stack_qualified': False, 'physical_task_run_qualified': False}
 
 
