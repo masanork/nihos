@@ -13,4 +13,6 @@ Darwin arm64、Zig 0.17.0、ReleaseFast、720×480 RGB565、毎回同じ入力�
 
 同じ固定寸法probeをRV32 freestanding・ReleaseSmallで、`render`をエントリにして保持しcompiler-rtと静的リンクした場合、`size`のtextは既存206 B、行単位302 Bだった。候補には`memcpy`がリンクされている。これは小さな専用probe全体の差であり、実アプリの増分、stack、速度やRAM消費ではない。エントリなしでリンクした先行probeは未使用コードを除去し得るため、この比較には使用していない。
 
+packedな全行を一度の`memcpy`にまとめる追加案も試したが、同じホスト条件で中央値0.0102 ms/frameと行単位の0.0100 ms/frameに対し改善が見えなかった。画素のhashは一致した。ホスト値だけではTab5での優劣は決められないため、この追加分岐は採用しなかった。
+
 再測定はまず `git show dd6c8b9:src/graphics/canvas.zig` を一時ファイルへ出力する。Zigの `build-lib -dynamic -O ReleaseFast` で `tools/probes/canvas_blit_bench.zig` をroot、各Canvas版を `canvas` module、現行の `src/graphics/surface.zig` を `surface` moduleとして二つの共有ライブラリにする。`python3 tools/canvas_blit_bench.py BASELINE_LIBRARY CANDIDATE_LIBRARY` は結果のSHA-256が違えば失敗し、交互順序の中央値と範囲を出す。採用前に実機候補で同等のバッファ・負荷・測定境界を固定して計測する。
