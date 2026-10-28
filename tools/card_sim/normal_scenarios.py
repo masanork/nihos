@@ -122,11 +122,103 @@ def bounded_trace(sim):
     assert not sim.reset()['trace_full']
 
 
+def controller_roundtrip(sim):
+    for controller in ('gt911', 'st7121', 'st7123'):
+        state = sim.reset(controller=controller)
+        assert state['controller']['status'] == 1 and state['controller']['transfers'] == 2
+        assert tap(sim)['displayed_phase'] == 'logs'
+        state = tap(sim)
+        assert state['view']['accepted'] == 2 and state['displayed_phase'] == 'splash'
+        bus = state['controller']
+        assert bus['fresh'] == 4 and bus['max_read'] <= 63
+        if controller == 'gt911':
+            assert bus['acknowledgments'] == 4 and bus['report_reads'] == 2
+        else:
+            assert bus['report_reads'] == 8 and bus['report_bytes'] == 280
+        sample(sim); sample(sim, contacts=2); sim.touch(0, 0, 0)
+        assert sim.view()['accepted'] == 2 and sim.view()['cancel'] == 1
+        assert tap(sim)['view']['accepted'] == 3
+
+
+def controller_missing_and_throttle(sim):
+    for controller in ('gt911', 'st7121', 'st7123'):
+        sim.reset(controller=controller); sample(sim)
+        before = sim.state()['controller'].copy()
+        state = sim.action('tick', dt_us=1)
+        assert state['controller'] == before and state['view']['accepted'] == 0
+        # An explicit release waits in the modeled registers until the real
+        # foreground service's 33,333-us poll gate permits another read.
+        sim.touch(0, 0, 0, dt_us=0)
+        assert sim.action('tick', dt_us=33332)['view']['accepted'] == 1
+        sample(sim)
+        state = sim.action('tick', dt_us=1500001)
+        assert state['view']['accepted'] == 1 and state['controller']['fresh'] == 3
+        state = sim.action('tick', dt_us=500001)
+        assert state['view']['cancel'] == 1 and state['view']['up'] == 1
+        sim.touch(0, 0, 0)
+        assert sim.view()['accepted'] == 1
+        assert tap(sim)['view']['accepted'] == 2
+
+
+def controller_faults(sim):
+    for controller in ('gt911', 'st7121', 'st7123'):
+        faults = (1, 2, 4, 5) if controller == 'gt911' else (1, 2, 3, 5, 6)
+        for fault in faults:
+            sim.reset(controller=controller); sample(sim)
+            sim.action('controller_fault', value=fault)
+            sample(sim)  # Fail while a click is armed, including bad geometry.
+            state = sim.touch(0, 0, 0)
+            assert state['controller']['status'] == 2 and state['controller']['errors'] == 1
+            assert state['controller']['error_code'] == 4
+            assert state['controller']['fresh'] == 1 and state['view']['up'] == 0
+            assert state['view']['accepted'] == 0 and state['view']['cancel'] == 1
+            transfers = state['controller']['transfers']
+            sim.action('controller_fault', value=0)
+            tap(sim)
+            assert sim.state()['controller']['transfers'] == transfers  # Native failure latch.
+            assert sim.view()['accepted'] == 0
+            sim.reset(controller=controller)
+            assert tap(sim)['view']['accepted'] == 1
+
+
+def controller_sparse_bursts(sim):
+    for controller in ('st7121', 'st7123'):
+        for slots in (1, 9, 10):
+            sim.reset(controller=controller, slots=slots)
+            sample(sim, sparse=True)
+            state = sim.touch(0, 0, 0)
+            assert state['view']['accepted'] == 1 and state['view']['last_x'] == 1200
+            bus = state['controller']
+            assert bus['report_reads'] == (4 if slots == 10 else 2)
+            assert bus['report_bytes'] == slots * 14 and bus['max_read'] == min(slots, 9) * 7
+        sim.reset(controller=controller)
+        sample(sim, contacts=10, sparse=True); sim.touch(0, 0, 0)
+        assert sim.view()['accepted'] == 0  # Every advertised slot was decoded.
+        assert tap(sim)['view']['accepted'] == 1
+
+
+def controller_queue_and_replay(sim):
+    for controller in ('gt911', 'st7121', 'st7123'):
+        sim.reset(controller=controller); sample(sim, dispatch=False)
+        for x in range(1201, 1210):
+            sample(sim, x, 48, dispatch=False)
+        assert sim.view()['overflow'] == 1
+        sim.action('drain'); sim.touch(0, 0, 0)
+        assert sim.view()['accepted'] == 0
+        tap(sim, automatic=False); sim.action('eof')
+        sim.action('controller_fault', value=1); sample(sim)
+        before, trace = sim.state(), copy.deepcopy(sim.trace)
+        assert sim.replay(trace) == before
+
+
 CASES = {'normal-roundtrip': roundtrip, 'normal-rejected-gestures': rejected_gestures,
          'normal-stale': stale, 'normal-queue-overflow': queue_overflow,
          'normal-eof-atomicity': eof_atomicity, 'normal-scroll-palettes': scroll_and_palettes,
          'normal-replay': replay, 'normal-negative-control': negative_control, 'normal-failure': failure,
-         'normal-bounded-trace': bounded_trace}
+         'normal-bounded-trace': bounded_trace,
+         'controller-roundtrip': controller_roundtrip, 'controller-missing-throttle': controller_missing_and_throttle,
+         'controller-faults': controller_faults, 'controller-sparse-bursts': controller_sparse_bursts,
+         'controller-queue-replay': controller_queue_and_replay}
 
 
 def run(sim, output):

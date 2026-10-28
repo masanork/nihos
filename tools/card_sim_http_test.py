@@ -90,3 +90,29 @@ class CardSimulatorHttpTests(unittest.TestCase):
         state = self.post('/normal/replay', trace)
         self.assertEqual(state['time_us'], 2000)
         self.assertEqual(state['metrics']['mismatches'], 0)
+
+    def test_controller_fault_latch_and_replay(self):
+        self.post('/normal/action', {'name': 'reset', 'controller': 'st7123', 'slots': 10})
+        self.post('/normal/touch', {'contacts': 1, 'x': 48, 'y': 79, 'sparse': True})
+        self.post('/normal/action', {'name': 'controller_fault', 'value': 3})
+        state = self.post('/normal/touch', {'contacts': 0, 'x': 0, 'y': 0})
+        self.assertEqual(state['controller']['status'], 2)
+        self.assertEqual(state['controller']['fresh'], 1)
+        self.assertEqual(state['view']['accepted'], 0)
+        self.assertEqual(state['view']['cancel'], 1)
+        self.assertEqual(state['controller']['max_read'], 63)
+        trace = json.loads(self.get('/normal/trace'))
+        self.assertEqual(self.post('/normal/replay', trace), state)
+        self.assertEqual(state['metrics']['mismatches'], 0)
+
+    def test_invalid_controller_configuration_preserves_state(self):
+        before = self.post('/normal/action', {'name': 'reset', 'controller': 'gt911'})
+        for data in ({'name': 'reset', 'controller': 'gt911', 'slots': 10},
+                     {'name': 'reset', 'controller': 'unknown'}):
+            with self.assertRaises(HTTPError) as caught:
+                self.post('/normal/action', data)
+            self.assertEqual(caught.exception.code, 400)
+            self.assertEqual(json.loads(self.get('/normal/state')), before)
+        with self.assertRaises(HTTPError):
+            self.post('/normal/touch', {'contacts': 1, 'x': 48, 'y': 79, 'sparse': True})
+        self.assertEqual(json.loads(self.get('/normal/state')), before)
