@@ -1,0 +1,20 @@
+{
+  "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+  "mode": "no-loopback",
+  "records": 7,
+  "terminal_records": 5,
+  "final": {
+    "phase": 8,
+    "fault": 4,
+    "tx": 64,
+    "rx": 0,
+    "raw": 0,
+    "tx_idle": 1,
+    "dir_low": 1,
+    "stopped": 1,
+    "matched": 0
+  },
+  "evidence": "physical-device capture",
+  "app_sha256": "c305b9487f6ba49221d366b38dc0f728322eb18f431ff5a6474ebafa4787311a",
+  "serial_sha256": "7c603efffa5559e4e2d65c57ed01fa761c4662a9da12d4b49cb7a7172cbb51ad"
+}

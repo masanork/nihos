@@ -1,0 +1,314 @@
+{
+  "schema": 1,
+  "date_jst": "2026-10-28",
+  "base_commit": "2cb91437d7582152d06687801324b2984dee356a",
+  "scope": "native UART1 internal loopback and timeout-control only; external RS485 not run",
+  "peer_qualification": "not_run_no_identified_peer",
+  "cases": {
+    "loopback": {
+      "attempt": "attempt-03",
+      "source_base_commit": "2cb91437d7582152d06687801324b2984dee356a",
+      "source_dirty": true,
+      "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+      "sdk_dirty": false,
+      "candidate": {
+        "app_sha256": "4c064f5e26587ca8a8dba86cc45a4c07550c78b36a59fa8970375f4377b61609",
+        "app_bytes": 163632,
+        "elf_sha256": "685a6c0c85a45d4570543884f2074571244e49c106f21bfceb252d5899955574",
+        "primary_heap_bytes": 52352,
+        "heap_floor_bytes": 49152,
+        "source_archive_sha256": "0194272a29e40a3a5e9bdb4a385c48bd72d4fd0986435b7195588dbe69a031f0",
+        "native_options_sha256": "3bc0a7e8681ddc3e6eb9c17289e7dccad55d45eabd45511c3866f83d4b6bb3c9"
+      },
+      "capture": {
+        "at": "2026-10-28T00:24:10.676976+00:00",
+        "app_sha256": "4c064f5e26587ca8a8dba86cc45a4c07550c78b36a59fa8970375f4377b61609",
+        "scope": "internal UART1 loopback; external RS485 unqualified",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+        "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+        "seconds": 35.020716916,
+        "serial_sha256": "64de80554b65b733eddeb64b905a536371c740f1bf185cd9261e5dfde31925f3",
+        "native_fail": false
+      },
+      "rs485": {
+        "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+        "mode": "loopback",
+        "records": 7,
+        "terminal_records": 5,
+        "final": {
+          "phase": 7,
+          "fault": 0,
+          "tx": 64,
+          "rx": 64,
+          "raw": 0,
+          "tx_idle": 1,
+          "dir_low": 1,
+          "stopped": 1,
+          "matched": 1
+        },
+        "evidence": "physical-device capture",
+        "app_sha256": "4c064f5e26587ca8a8dba86cc45a4c07550c78b36a59fa8970375f4377b61609",
+        "serial_sha256": "64de80554b65b733eddeb64b905a536371c740f1bf185cd9261e5dfde31925f3"
+      },
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 7,
+        "ready_records": 6,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 8,
+          "acc_x": 25,
+          "acc_y": 1528,
+          "acc_z": -8045,
+          "gyr_x": -10,
+          "gyr_y": 2,
+          "gyr_z": -9,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1008,
+          "acc_x": 15,
+          "acc_y": 1519,
+          "acc_z": -8042,
+          "gyr_x": -10,
+          "gyr_y": -4,
+          "gyr_z": -1,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.997036513933551,
+          "max": 0.9996167431970117
+        },
+        "sample_delta": 1000,
+        "log_sha256": "64de80554b65b733eddeb64b905a536371c740f1bf185cd9261e5dfde31925f3"
+      },
+      "normal_display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 312,
+        "advertisements": 305,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 1833,
+        "ticks0": 3018,
+        "ticks1": 3018
+      },
+      "retained_evidence": {
+        "evidence/2026-10-28-native-rs485/loopback/serial.log": "64de80554b65b733eddeb64b905a536371c740f1bf185cd9261e5dfde31925f3",
+        "evidence/2026-10-28-native-rs485/loopback/capture.json": "90916ff2c012b2946e6d16bbac0257370d69805ebbe44136ed998b396f863020",
+        "evidence/2026-10-28-native-rs485/loopback/image-audit.json": "a0878296d1a5407085e15468517a871c5309ddc499dd8505987e8a9ea4196436",
+        "evidence/2026-10-28-native-rs485/loopback/native_options.zig": "3bc0a7e8681ddc3e6eb9c17289e7dccad55d45eabd45511c3866f83d4b6bb3c9",
+        "evidence/2026-10-28-native-rs485/loopback/rs485-report.json": "a9bd5d34d0c7939e14e35e51258b7b2e76510292a21159e02669e25cdaea63f3",
+        "evidence/2026-10-28-native-rs485/loopback/display-report.json": "969fa4aaf0ab5ad951a0a5c8f661f6fc7c6135d602fee5ad9d5b182dbf016147",
+        "evidence/2026-10-28-native-rs485/loopback/imu-report.json": "3d70c0daf8e5491b2edd92ba02da0615055b36c19c902c6f447a0b0b4529ae52",
+        "evidence/2026-10-28-native-rs485/loopback/verify-before.log": "1684e00928f573c4420ad0d7579dc35ef06bfe1b31e7588041e35b9ac6071210",
+        "evidence/2026-10-28-native-rs485/loopback/verify-after.log": "1684e00928f573c4420ad0d7579dc35ef06bfe1b31e7588041e35b9ac6071210",
+        "evidence/2026-10-28-native-rs485/loopback/verify-restored.log": "cf1894a4082b83c9bc7c9413f6dbbc253f9f2c903e80c351d69f53ed72390837"
+      }
+    },
+    "no-loopback": {
+      "attempt": "attempt-04",
+      "source_base_commit": "2cb91437d7582152d06687801324b2984dee356a",
+      "source_dirty": true,
+      "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+      "sdk_dirty": false,
+      "candidate": {
+        "app_sha256": "c305b9487f6ba49221d366b38dc0f728322eb18f431ff5a6474ebafa4787311a",
+        "app_bytes": 163632,
+        "elf_sha256": "4b39f92764e64d38ad9b63696a35e4c2efc504788f31c6538733d7cfb5985941",
+        "primary_heap_bytes": 52352,
+        "heap_floor_bytes": 49152,
+        "source_archive_sha256": "3e2781673fb97dedbaec3eb027bbe2c4c4a83c7b431fe4f1d3448f0fd5f99b33",
+        "native_options_sha256": "e8bfb966cf830e7aec87c5ef88aa524567ab6af923f34f9a48bdeed058a8daa3"
+      },
+      "capture": {
+        "at": "2026-10-28T00:26:27.443609+00:00",
+        "app_sha256": "c305b9487f6ba49221d366b38dc0f728322eb18f431ff5a6474ebafa4787311a",
+        "scope": "internal UART1 no-loopback timeout control; external RS485 unqualified",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+        "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+        "seconds": 35.040990583,
+        "serial_sha256": "7c603efffa5559e4e2d65c57ed01fa761c4662a9da12d4b49cb7a7172cbb51ad",
+        "native_fail": false
+      },
+      "rs485": {
+        "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+        "mode": "no-loopback",
+        "records": 7,
+        "terminal_records": 5,
+        "final": {
+          "phase": 8,
+          "fault": 4,
+          "tx": 64,
+          "rx": 0,
+          "raw": 0,
+          "tx_idle": 1,
+          "dir_low": 1,
+          "stopped": 1,
+          "matched": 0
+        },
+        "evidence": "physical-device capture",
+        "app_sha256": "c305b9487f6ba49221d366b38dc0f728322eb18f431ff5a6474ebafa4787311a",
+        "serial_sha256": "7c603efffa5559e4e2d65c57ed01fa761c4662a9da12d4b49cb7a7172cbb51ad"
+      },
+      "imu": {
+        "schema": 1,
+        "scope": "native sensor-frame acquisition; no motion/axis/calibration qualification",
+        "records": 7,
+        "ready_records": 6,
+        "first": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 13,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 9,
+          "acc_x": 23,
+          "acc_y": 1524,
+          "acc_z": -8029,
+          "gyr_x": -5,
+          "gyr_y": 2,
+          "gyr_z": -10,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "last": {
+          "chip": 36,
+          "initialized": 1,
+          "stage": 12,
+          "fault": 0,
+          "uploaded": 8192,
+          "valid": 1,
+          "samples": 1009,
+          "acc_x": 18,
+          "acc_y": 1528,
+          "acc_z": -8048,
+          "gyr_x": 2,
+          "gyr_y": -3,
+          "gyr_z": -3,
+          "sensor_error": 0,
+          "ready_status": 208
+        },
+        "observed_acceleration_norm_g": {
+          "min": 0.9969767079143492,
+          "max": 0.999974280265027
+        },
+        "sample_delta": 1000,
+        "log_sha256": "7c603efffa5559e4e2d65c57ed01fa761c4662a9da12d4b49cb7a7172cbb51ad"
+      },
+      "normal_display_core_check_passed": true,
+      "board_i2c_errors": 0,
+      "ble": {
+        "phase": 4,
+        "commands": 7,
+        "events": 294,
+        "advertisements": 287,
+        "malformed": 0,
+        "status": 0,
+        "timeouts": 0
+      },
+      "display_cpu_first": {
+        "frames": 32,
+        "ticks0": 15,
+        "ticks1": 15
+      },
+      "display_cpu_last": {
+        "frames": 1833,
+        "ticks0": 3018,
+        "ticks1": 3018
+      },
+      "retained_evidence": {
+        "evidence/2026-10-28-native-rs485/no-loopback/serial.log": "7c603efffa5559e4e2d65c57ed01fa761c4662a9da12d4b49cb7a7172cbb51ad",
+        "evidence/2026-10-28-native-rs485/no-loopback/capture.json": "4e0a3d835a371515e810a6f4ef7d3bb2d8803a06e2c3ee73df8daa35e99154b0",
+        "evidence/2026-10-28-native-rs485/no-loopback/image-audit.json": "df9775c37bbeef6c536e2f2f31d7316760655a9d5dc4abf627a3a7db5885e932",
+        "evidence/2026-10-28-native-rs485/no-loopback/native_options.zig": "e8bfb966cf830e7aec87c5ef88aa524567ab6af923f34f9a48bdeed058a8daa3",
+        "evidence/2026-10-28-native-rs485/no-loopback/rs485-report.json": "8c00c77a29066bfb05be487e6d3f45e66256d1ecf3f78acbf9cbaa7c0b18f938",
+        "evidence/2026-10-28-native-rs485/no-loopback/display-report.json": "f270a775992e081c931c408f0bec76ab949bfc9c0670e9c25cf81825f95d4727",
+        "evidence/2026-10-28-native-rs485/no-loopback/imu-report.json": "4d09eb4834e383e5de2e8c4e546e982130db91979da676922b545ae57a268486",
+        "evidence/2026-10-28-native-rs485/no-loopback/verify-before.log": "cfdd90de6029af3e040d76d21c3a43ab5bda8956a810ecf7546ca96dac5831e8",
+        "evidence/2026-10-28-native-rs485/no-loopback/verify-after.log": "cfdd90de6029af3e040d76d21c3a43ab5bda8956a810ecf7546ca96dac5831e8",
+        "evidence/2026-10-28-native-rs485/no-loopback/verify-restored.log": "c2fff3a6b32bc22d8920b654ba7eecacb567bfc9ee904c587d4726d054b62097"
+      }
+    }
+  },
+  "failures": [
+    {
+      "attempt": "attempt-01",
+      "reason": "Clock-enabled state rejected as active ownership before any UART transaction; prior image restored",
+      "capture": {
+        "at": "2026-10-28T00:18:43.990719+00:00",
+        "app_sha256": "9245606817268b8099574ce99ece9a6fb6ff68064659b54efb73a88361bcafe3",
+        "scope": "internal UART1 loopback; external RS485 unqualified",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+        "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+        "seconds": 35.031011708,
+        "serial_sha256": "464d1b8f220e071f66e9e68b18e6164eb632d53e14175cb2eb0324f21fbe53ca",
+        "native_fail": false
+      },
+      "retained_log": "evidence/2026-10-28-native-rs485/failures/attempt-01.log",
+      "log_sha256": "464d1b8f220e071f66e9e68b18e6164eb632d53e14175cb2eb0324f21fbe53ca"
+    },
+    {
+      "attempt": "attempt-02",
+      "reason": "Diagnostic localized refusal to reset-default UART1 APB/system gates; status clocks 0x7c7f503f/0x20f80ffe, reset 0; prior image restored",
+      "capture": {
+        "at": "2026-10-28T00:21:10.973891+00:00",
+        "app_sha256": "b7b82c49c9527f9fe8dade98fe9d5034a1a4fd3777d51c52e7f9936fae2d2eaa",
+        "scope": "internal UART1 loopback; external RS485 unqualified",
+        "restored": true,
+        "written": true,
+        "prior_app_partition_sha256": "41cace2fa1130c1820ff21036b628ed1689af836bd59462e914eba0c7857f0ca",
+        "boot_sha256": "53477aab8f462952882db9cc29663c2db5a03948fdd02446c3d8133c316c2a2c",
+        "seconds": 35.040408917,
+        "serial_sha256": "bb2a72867def4c8f6c89b0eaf85d32c3585f3ca89a1825bacb7027dabec74397",
+        "native_fail": false
+      },
+      "retained_log": "evidence/2026-10-28-native-rs485/failures/attempt-02.log",
+      "log_sha256": "bb2a72867def4c8f6c89b0eaf85d32c3585f3ca89a1825bacb7027dabec74397"
+    }
+  ],
+  "source_review_corrections": [
+    "SDK constant-high GPIO matrix input is 0x3f, not 0x3c; use GPIO_MATRIX_CONST_ONE_INPUT directly",
+    "Freestanding UART shim needs stddef.h before SDK header offset assertions and the USB_WRAP alias used by the generic GPIO mux helper"
+  ],
+  "remaining": [
+    "external SIT3088 A/B peer and direction timing",
+    "independent peer-adapter receipt",
+    "termination/bias/cable behavior",
+    "reopen, streaming/application IPC and optional DMA",
+    "cold power-on",
+    "active Wi-Fi AP traffic coexistence"
+  ],
+  "private_artifacts": "/private/tmp/nihos-native-rs485/build/rs485-qualification"
+}

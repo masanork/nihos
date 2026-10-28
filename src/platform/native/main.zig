@@ -68,6 +68,12 @@ fn serviceNetwork() void {
                 const io = board_devices.microphone.ioFailure();
                 logger.record("NIHOS_NATIVE_MICROPHONE_IO", null, .{ "register", "expected", "actual", "stage" }, &io);
             }
+            if (options.rs485) {
+                const io = board_devices.rs485.diagnostic();
+                logger.record("NIHOS_NATIVE_RS485_IO", null, .{ "stage", "a", "b", "c" }, &io);
+                const rs485 = board_devices.rs485.snapshot();
+                logger.record("NIHOS_NATIVE_RS485", null, .{ "phase", "fault", "tx", "rx", "raw", "tx_idle", "dir_low", "stopped", "matched" }, &rs485);
+            }
             const imu = board_devices.imuSnapshot();
             logger.record("NIHOS_NATIVE_IMU", null, .{ "chip", "initialized", "stage", "fault", "uploaded", "valid", "samples", "acc_x", "acc_y", "acc_z", "gyr_x", "gyr_y", "gyr_z", "sensor_error", "ready_status" }, &imu);
             logger.record("NIHOS_NATIVE_DEVICES", null, .{ "rtc_present", "rtc_valid", "rtc_flags", "rtc_control", "rtc_error", "rtc_raw_date", "rtc_raw_time", "year", "month", "day", "hour", "minute", "second", "ina_present", "bus_uv", "shunt_uv_x10", "shunt_negative", "imu_chip", "imu_initialized", "errors", "samples" }, &devices);
