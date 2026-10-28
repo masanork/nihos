@@ -25,7 +25,7 @@ session = session.replace("                s->valid[slot] = n;", """#ifdef PROBE
 session = session.replace("        if (file) { fclose(file); file = nullptr; }", "        input = nullptr;")
 assert "FILE" not in session and "fread" not in session and "fopen" not in session
 session = session.replace('bool draw(bool vertical, unsigned pixels, uint32_t *hash_out)',
-                          'bool draw(bool vertical, unsigned pixels, uint32_t *hash_out, const GraphicsRender *request = nullptr)')
+                          'bool draw(bool vertical, unsigned pixels, uint32_t *hash_out, const GraphicsRender *request = nullptr, GraphicsOutput *output = nullptr)')
 session = session.replace('ruby < 2;', 'ruby < (request && !request->ruby_length ? 1u : 2u);')
 needle = '            hb_buffer_add_utf8(buffer, ruby ?'
 start = session.index(needle)
@@ -37,6 +37,18 @@ session = session[:start] + """            if(request) {
                 hb_buffer_add_utf8(buffer,text,length,0,length);
             } else {
 """ + original + "            }\n" + session[end:]
+session = session.replace('        if (!font) return false;', '        if(output)*output={};\n        if (!font) return false;')
+session = session.replace('                unsigned gid = info[i].codepoint;',
+                          '                if(output && output->count==16) { output->outcome=2;good=false;break; }\n                unsigned gid = info[i].codepoint;')
+session = session.replace('                FT_Bitmap &bm = face->glyph->bitmap;', """                FT_Bitmap &bm = face->glyph->bitmap;
+                if(output) {
+                    GraphicsGlyph &g=output->glyphs[output->count++];
+                    g={gid,info[i].cluster,ruby,px,pos[i].x_advance,pos[i].y_advance,
+                       pos[i].x_offset,pos[i].y_offset,face->glyph->bitmap_left,
+                       face->glyph->bitmap_top,bm.width,bm.rows};
+                }""")
+session = session.replace('        if (good) *hash_out = hash;',
+                          '        if(!good && output) { unsigned reason=output->outcome==2?2u:1u;*output={};output->outcome=reason; }\n        if (good) *hash_out = hash;')
 prefix = r'''
 #include "lazy_pool.h"
 #include "buddy_backing.h"
@@ -53,7 +65,7 @@ extern "C" void graphics_source_read_completed();
 #endif
 static LazyPool pool;
 static bool backing_ready;
-extern "C" { GraphicsResult graphics_result = {}; }
+extern "C" { GraphicsResult graphics_result = {}; GraphicsOutput graphics_output = {}; }
 #ifdef PROBE_NATIVE_OBJECT
 extern "C" { uint32_t graphics_execution_pc = 0; }
 #endif
@@ -115,11 +127,11 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
         graphics_result.stage=50;
         uint32_t request=nih_graphics_next_request(cycle,(uint32_t)nih_graphics_backing_raw_used(),&job);
         if(request==0) {
-            check(cycle==8 && matrices==4,"stop after requested work");
+            check(cycle==9 && matrices==4,"stop after requested work");
             memcpy(graphics_result.hashes,expected,sizeof(expected));graphics_result.runs=16;
             success=true;break;
         }
-        check(request==cycle+1 && cycle<8 && job.operation<=1,"ordered request");
+        check(request==cycle+1 && cycle<9 && job.operation<=1,"ordered request");
         text=job.operation==1;success=true;
         if(text)mode=job.render.hinting;
 #else
@@ -132,12 +144,14 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
         graphics_result.runs=0;memset(graphics_result.hashes,0,sizeof(graphics_result.hashes));
         Session first(1,flags),second(2,flags);
         if(text) {
+            graphics_output={};
             Session &target=job.render.font?second:first;
             graphics_result.stage=2;
             success=target.openMemory(inputs->fonts[job.render.font],inputs->lengths[job.render.font]);
             uint32_t hash=0;
             graphics_result.stage=10;
-            success=success && target.draw(job.render.vertical!=0,job.render.pixels,&hash,&job.render);
+            success=success && target.draw(job.render.vertical!=0,job.render.pixels,&hash,&job.render,&graphics_output);
+            if(!success && graphics_output.outcome==0) { graphics_output={};graphics_output.outcome=1; }
             if(success) { graphics_result.runs=1;graphics_result.hashes[0]=hash; }
         } else {
             graphics_result.stage=2;check(first.openMemory(inputs->fonts[0],inputs->lengths[0]),"gothic open");

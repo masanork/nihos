@@ -40,7 +40,7 @@ Only the generated, digest-bound `graphics_payload.o` function manifest can
 execute in the graphics Flash span starting at `0x40020000`. Read-only tables
 and font inputs follow. Kernel, task/interrupt and allocator code stay in
 primary SRAM. All defined library/libc/compiler-helper globals except the
-three fixture entry/result/PC symbols are renamed into a private namespace.
+four fixture entry/result/PC/output symbols are renamed into a private namespace.
 This prevents a library helper from silently redirecting a kernel call into
 Flash. FreeType's default file/memory entry points remain unsupported;
 callbacks and explicit ownership are mandatory. Dynamic initializers and TLS
@@ -76,19 +76,21 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 99,584 B | 99,840 B |
-| Remaining primary SRAM heap | 64,256 B | 64,000 B |
-| Static reservations including stack/data regions | 222,464 B | 222,720 B |
-| Application image | 11,563,312 B | 11,564,768 B |
+| Primary static span | 106,624 B | 106,752 B |
+| Remaining primary SRAM heap | 57,216 B | 57,088 B |
+| Static reservations including stack/data regions | 229,504 B | 229,632 B |
+| Application image | 11,568,896 B | 11,570,352 B |
 
-Graphics code/RO occupy 560,688 B in Flash. TTF inputs occupy 10,821,312 B,
+Graphics code/RO occupy 560,864 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
-Private initialized data/BSS occupy 19,924 B within the 32 KiB region. These
+Private initialized data/BSS occupy 20,700 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
 caches and application routing. The two fixed transport queues reserve
-1,536 B in primary SRAM. Owned text payloads add 384 B to the queues and
-3,584 B to the primary static span, including code/control, versus the prior
-request/wait fixture. No further stack or library SRAM region is reserved.
+3,072 B in primary SRAM. Glyph metadata adds 1,536 B to the queues. Compared
+with the prior owned-text fixture, primary static grows by 7,040 B (emulator)
+or 6,912 B (device), including validation and retained qualification snapshots.
+The C++ packet adds 776 populated B inside the already reserved library region.
+No further stack or library SRAM region is reserved.
 
 ## Ownership and execution
 
@@ -102,7 +104,7 @@ Other native profiles retain zero extent-group slots.
 The matrix fixture runs two open sessions, four body sizes with half-size ruby runs
 and horizontal/vertical shaping: 16 cases with forced auto-hint per cycle.
 It runs four open/draw/close cycles for both clients on the same live task,
-for 64 cases in total, followed by four text jobs. A text job opens only its
+for 64 cases in total, followed by five text jobs. A text job opens only its
 selected font. The service returns through the actual task ABI after stop.
 Native EXIT closes the ledger; bootstrap drains one extent per cleanup step,
 reaps only after cleanup and checks complete heap recovery.
@@ -112,18 +114,20 @@ records the first native integration. The
 [client-cycle receipt](measurements/2026-10-28-native-graphics-client-cycles.json)
 records the earlier active-idle experiment. The
 [request/wait receipt](measurements/2026-10-28-native-font-request-wait.json)
-records the first queued matrix endpoint. The current
+records the first queued matrix endpoint. The
 [text-request receipt](measurements/2026-10-28-native-font-text-requests.json)
-adds owned UTF-8 inputs on that live task:
+adds owned UTF-8 inputs. The current
+[glyph-metadata receipt](measurements/2026-10-28-native-font-glyph-metadata.json)
+records owned output on that live task:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
-- The timer captures the font task 6,400 times, including 6,384 during
-  shaping/rasterization stages; bootstrap advances 14,546 times.
-  Nine request waits span eighteen real scheduler ticks in total, with zero
+- The timer captures the font task 6,409 times, including 6,392 during
+  shaping/rasterization stages; bootstrap advances 12,657 times.
+  Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
-- Stack watermark/frame observation reaches 17,248 B, leaving 15,504 B above
+- Stack watermark/frame observation reaches 17,312 B, leaving 15,440 B above
   that observation and the 16 B guard in a 32 KiB reservation. This is not a
   worst-case or native IO call-chain bound.
 - Two clients peak at 1,310,976 B of actual buddy backing. Closing clients
@@ -151,23 +155,28 @@ not whole-system WFI or a physical power/timing measurement.
 
 The [request-boundary decision](adr/0044-native-font-request-waits.md) specifies
 two two-slot SPSC queues, copied IDs/results and one client dispatcher. Four
-matrix requests produce 64 cases, followed by four bounded text requests and
-an ordered stop request. The
-terminal reply must be copied and its space notification completed before an
+matrix requests produce 64 cases, followed by five bounded text requests and
+an ordered stop request. The terminal reply must be copied and its space notification completed before an
 independent acknowledgment permits worker EXIT. A task yield is forced between
 releasing that reply slot and notifying the worker to exercise this lifetime
-window. All nine replies, acknowledgments and empty queues are required.
+window. All ten replies, acknowledgments and empty queues are required.
 
 The [owned-text decision](adr/0045-owned-font-text-requests.md) adds body and
 optional ruby arrays copied inline into the queue: 128 and 64 UTF-8 bytes.
 Requests specify font, body size, direction and hinting. The producer poisons
-its original bytes/settings before waking the worker; all four text replies
-still match the [independent host receipt](measurements/2026-10-28-font-text-host.json).
-A deliberately missing U+10FFFF glyph publishes zero runs/hash and a typed
-failure, after which two other text requests succeed. Body/ruby runs are
-shaped and rasterized independently; this is not ruby placement or layout.
+its original bytes/settings before waking the worker; all five text replies
+still match independently executed host output.
+A deliberately missing U+10FFFF glyph and a 17-glyph output overflow publish
+zero runs/hash/glyphs with distinct typed failures, after which two other text
+requests succeed. Body/ruby runs are shaped and rasterized independently; this is not ruby placement or layout.
 
-Replies currently contain digests, not consumable glyph/raster buffers.
+The [owned-glyph decision](adr/0046-owned-glyph-metadata.md) adds up to 16
+copied glyph records. Glyph IDs, byte clusters, run tags, ppem, signed advances/
+offsets, bitmap bearings and dimensions match the
+[host glyph reference](measurements/2026-10-28-font-glyph-host.json) for all 33
+successful glyphs. After publication the worker poisons its reusable packet;
+consumer snapshots remain valid after library close and task retirement.
+Replies now contain usable metrics; actual bitmap bytes are still absent.
 Multiple applications still need a broker or distinct client channels;
 concurrent producers, cancellation and service restart remain unqualified.
 

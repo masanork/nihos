@@ -1,6 +1,42 @@
 [
-  {"font": 0, "pixels": 24, "vertical": 0, "hinting": 0, "body": "日本語の描画", "ruby": "にほんご"},
-  {"font": 1, "pixels": 16, "vertical": 1, "hinting": 1, "body": "􏿿", "ruby": ""},
-  {"font": 1, "pixels": 32, "vertical": 1, "hinting": 1, "body": "東京へ行く。", "ruby": "とうきょう"},
-  {"font": 0, "pixels": 16, "vertical": 0, "hinting": 2, "body": "漢字とかな、ABC123", "ruby": ""}
+  {
+    "font": 0,
+    "pixels": 24,
+    "vertical": 0,
+    "hinting": 0,
+    "body": "日本語の描画",
+    "ruby": "にほんご"
+  },
+  {
+    "font": 1,
+    "pixels": 16,
+    "vertical": 1,
+    "hinting": 1,
+    "body": "􏿿",
+    "ruby": ""
+  },
+  {
+    "font": 0,
+    "pixels": 12,
+    "vertical": 0,
+    "hinting": 0,
+    "body": "AAAAAAAAAAAAAAAAA",
+    "ruby": ""
+  },
+  {
+    "font": 1,
+    "pixels": 32,
+    "vertical": 1,
+    "hinting": 1,
+    "body": "東京へ行く。",
+    "ruby": "とうきょう"
+  },
+  {
+    "font": 0,
+    "pixels": 16,
+    "vertical": 0,
+    "hinting": 2,
+    "body": "漢字とかな、ABC123",
+    "ruby": ""
+  }
 ]

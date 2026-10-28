@@ -11,7 +11,7 @@ def quoted(text):
 
 def generate(kind):
     cases = json.loads(Path(__file__).with_name("text_cases.json").read_text())
-    assert len(cases) == 4
+    assert len(cases) == 5
     rows = []
     for item in cases:
         assert 0 < len(item['body'].encode()) <= 128 and len(item['ruby'].encode()) <= 64
@@ -26,7 +26,7 @@ def generate(kind):
             rows.append('{' + ','.join(values) + '}')
     if kind == "zig":
         return 'pub const font_text_cases = .{\n' + ',\n'.join(rows) + '\n};\n'
-    return 'static const GraphicsRender text_cases[4] = {\n' + ',\n'.join(rows) + '\n};\n'
+    return 'static const GraphicsRender text_cases[5] = {\n' + ',\n'.join(rows) + '\n};\n'
 
 
 if __name__ == '__main__':

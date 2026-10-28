@@ -21,13 +21,15 @@ class NativeGraphicsTests(unittest.TestCase):
     def record(self):
         return dict(zip(LOG.FIELDS, [1, 0x10003, 16, 0x40023004, 16 << 20, 16 << 20,
                                     1310976, 65792, 0x4ff6e010, 0x4ff76000, 16928, 12, 8, 14,
-                                    694, 17224, 21, 20, 11, 10, 1, 8, 65792, 0, 9]))
+                                    694, 17224, 21, 20, 11, 10, 1, 9, 65792, 0, 10]))
 
     def exchange(self):
-        return dict(zip(LOG.EXCHANGE_FIELDS, [9, 9, 9, 9, 18, 0, 1, 1, 4, 3, 1, 1536]))
+        return dict(zip(LOG.EXCHANGE_FIELDS, [10, 10, 10, 10, 20, 0, 1, 1, 5, 3, 2, 5, 3072]))
 
     def texts(self):
-        return [dict(zip(LOG.TEXT_FIELDS, row)) for row in [(5, 1, 11, 0), (6, 0, 0, 1), (7, 1, 22, 0), (8, 1, 33, 0)]]
+        glyph = dict(zip(LOG.GLYPH_FIELDS[2:], [42, 0, 0, 24, 1536, 0, 0, 0, 0, 20, 20, 20]))
+        return [{**dict(zip(LOG.TEXT_FIELDS, row)), "glyphs": [glyph.copy()] if row[1] else []}
+                for row in [(5, 1, 11, 0, 1), (6, 0, 0, 1, 0), (7, 0, 0, 2, 0), (8, 1, 22, 0, 1), (9, 1, 33, 0, 1)]]
 
     def test_complete_record_and_hashes_require_cleanup_and_real_render_interrupts(self):
         graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
@@ -46,7 +48,7 @@ class NativeGraphicsTests(unittest.TestCase):
     def test_transport_requires_real_wait_and_terminal_ack(self):
         graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
         for name, value in [("sent", 4), ("received", 4), ("replies", 4), ("waits", 0),
-                            ("blocked_ticks", 17), ("idle_runtime", 1), ("stop_ack", 0), ("terminal_gap", 0), ("copied_inputs", 0), ("text_failed", 0), ("queue_bytes", 8192)]:
+                            ("blocked_ticks", 19), ("idle_runtime", 1), ("stop_ack", 0), ("terminal_gap", 0), ("copied_inputs", 0), ("copied_outputs", 0), ("text_failed", 0), ("queue_bytes", 8192)]:
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "transport"):
                 LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), {**self.exchange(), name: value}, self.texts(), self.texts())
 
@@ -55,8 +57,21 @@ class NativeGraphicsTests(unittest.TestCase):
         for field, value in [("hash", 123), ("runs", 1), ("outcome", 0), ("id", 7)]:
             bad = self.texts()
             bad[1][field] = value
-            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "text results"):
+            with self.subTest(field=field), self.assertRaises(ValueError):
                 LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), self.exchange(), bad, self.texts())
+
+    def test_glyph_capacity_and_partial_output_are_rejected_even_with_same_reference(self):
+        graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
+        bad = self.texts()
+        bad[0]["glyph_count"] = 17
+        bad[0]["glyphs"] *= 17
+        with self.assertRaisesRegex(ValueError, "partial native glyph"):
+            LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), self.exchange(), bad, bad)
+        bad = self.texts()
+        bad[2]["glyphs"] = bad[0]["glyphs"]
+        bad[2]["glyph_count"] = 1
+        with self.assertRaisesRegex(ValueError, "partial native glyph"):
+            LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), self.exchange(), bad, bad)
 
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)
@@ -80,17 +95,17 @@ class NativeGraphicsTests(unittest.TestCase):
         fonts = start + 144
         sections = {".flash.graphtext": (start, bytes(128)), ".flash.graphrodata": (start + 128, bytes(16)),
                     ".flash.graphfonts": (fonts, b"gm"), ".flash.graphpad": (0x40010024, bytes(start - 0x40010024)),
-                    ".graphics.data": (ram, bytes(128), 128), ".graphics.bss": (ram + 128, b"", 128),
+                    ".graphics.data": (ram, bytes(128), 128), ".graphics.bss": (ram + 128, b"", 1024),
                     ".graphics.stack": (AUDIT.GRAPH_STACK_LOW, b"", 32768)}
         symbols = {"__graphics_font_stack_bottom": AUDIT.GRAPH_STACK_LOW, "__graphics_font_stack_top": AUDIT.GRAPH_STACK_HIGH,
-                   "__graphics_bss_start": ram + 128, "__graphics_bss_end": ram + 256, "graphics_result": ram,
+                   "__graphics_bss_start": ram + 128, "__graphics_bss_end": ram + 1152, "graphics_result": ram, "graphics_output": ram + 128,
                    "nih_graphics_gothic_start": fonts, "nih_graphics_gothic_end": fonts + 1,
                    "nih_graphics_mincho_start": fonts + 1, "nih_graphics_mincho_end": fonts + 2}
         functions = [("graphics_font_link_probe", start, start + 64), ("nih_gfx_study_malloc", start + 64, start + 128)]
         manifest = {"schema": 1, "allowed_functions": [f[0] for f in functions], "payload_sha256": "fixture",
                     "fonts": [{"family": family, "name": family, "bytes": 1, "sha256": hashlib.sha256(byte).hexdigest()}
                               for family, byte in [("gothic", b"g"), ("mincho", b"m")]]}
-        return sections, symbols, {"graphics_result": 124}, functions, manifest, b"base"
+        return sections, symbols, {"graphics_result": 124, "graphics_output": 776}, functions, manifest, b"base"
 
     def test_font_bytes_and_kernel_runtime_namespace_are_bound(self):
         good = self.fixture()
