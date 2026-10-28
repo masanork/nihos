@@ -166,6 +166,8 @@ For card-screen development without a Tab5, run the local host simulator:
 ```sh
 python3 tools/card_sim/app.py
 # Open http://127.0.0.1:8711
+python3 tools/card_sim/app.py --application normal
+# Or select normal UI in the page header
 python3 tools/card_sim/app.py --headless build/card-sim/evidence
 ```
 
@@ -175,6 +177,10 @@ reconstructed from the DMA descriptors; scenarios cover EOF handoff, capacity
 rollback, stuck retirement, and deliberate pixel corruption. See the
 [card simulator guide](docs/card-ui-simulator.md) for replay, base-image SRAM
 budgets, evidence, and the boundary between host simulation and target emulation.
+Normal mode also runs the production splash/log rendering and rotated pointer
+stream through the gray LOGS/SPLASH control. Its input traces reproduce holds,
+drags, multiple contacts and queue overflow. Card result-page controls are
+shared with the native application and work directly inside the canvas.
 
 Run the ESP32-P4 core smoke under the pinned official Espressif emulator with:
 

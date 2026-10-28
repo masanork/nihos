@@ -1,0 +1,77 @@
+{
+  "audio": {
+    "scope": "native finite DMA/codec output progression; audible output not evaluated",
+    "records": 55,
+    "complete_records": 55,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "dma": 11,
+      "bclk": 262145,
+      "fifo": 16384,
+      "eof_descriptor": 1341235248,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1
+    }
+  },
+  "microphone": {
+    "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+    "muted_control": false,
+    "records": 42,
+    "completed_records": 42,
+    "final": {
+      "phase": 5,
+      "fault": 0,
+      "dma": 3,
+      "end": 1341234752,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1,
+      "samples": 512,
+      "erased": 1
+    },
+    "signal": {
+      "active": 15,
+      "clipped": 0,
+      "peak0": 331,
+      "peak1": 105,
+      "peak2": 304,
+      "peak3": 156,
+      "span0": 556,
+      "span1": 25,
+      "span2": 554,
+      "span3": 33
+    }
+  },
+  "rs485": {
+    "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+    "mode": "loopback",
+    "records": 22,
+    "terminal_records": 22,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "tx": 64,
+      "rx": 64,
+      "raw": 0,
+      "tx_idle": 1,
+      "dir_low": 1,
+      "stopped": 1,
+      "matched": 1
+    }
+  },
+  "time": {
+    "scope": "unavailable AP; no NTP requests or RTC write attempts",
+    "ui_final": {
+      "frames": 21973,
+      "ticks0": 36595,
+      "ticks1": 36595
+    },
+    "rtc_applied": 0
+  },
+  "image_sha256": "2cbb530b12a4b41bca58f40744bdccbe9f06996e8e5341985d0cffa4ba59486b",
+  "serial_sha256": "ba49a48cffc71fa105fb0b3c7e8b2e04dfa837d001d17ec54c21f78605d0b3df"
+}

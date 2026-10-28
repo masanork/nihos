@@ -1,0 +1,65 @@
+{
+  "scope": "normal single-contact down/up and alternating view actions; optical correctness and negative gestures require operator evidence",
+  "touch_final": {
+    "status": 1,
+    "panel": 3,
+    "width": 720,
+    "height": 1280,
+    "slots": 10,
+    "polls": 21507,
+    "fresh": 16620,
+    "errors": 0,
+    "error_code": 0,
+    "max_poll_us": 14281
+  },
+  "pointer_final": {
+    "down": 5,
+    "move": 0,
+    "up": 5,
+    "cancel": 0,
+    "multi": 0,
+    "overflow": 0,
+    "quadrants": 2,
+    "queued": 0
+  },
+  "touch_actions": [
+    {
+      "sequence": 1,
+      "source": 5,
+      "action": 1,
+      "modifiers": 0,
+      "usage": 1,
+      "accepted": 1,
+      "view": 1,
+      "stage": 0,
+      "frames": 10239
+    },
+    {
+      "sequence": 2,
+      "source": 5,
+      "action": 2,
+      "modifiers": 0,
+      "usage": 1,
+      "accepted": 1,
+      "view": 0,
+      "stage": 0,
+      "frames": 10422
+    }
+  ],
+  "ui_first": {
+    "frames": 32,
+    "ticks0": 16,
+    "ticks1": 16
+  },
+  "ui_final": {
+    "frames": 44788,
+    "ticks0": 74631,
+    "ticks1": 74631
+  },
+  "all_quadrants_observed": false,
+  "evidence": "physical-device serial capture",
+  "commit": "94c8bde67bdf885abed7950df55a4353d3f033a4",
+  "image_sha256": "d7fcb8eb8f5c1537be87a93694211b7d8a57c9dbc70356c2198c4e5a88c947a0",
+  "serial_sha256": "1c836a99e2fe0efab7b3142af8ca8202c27a4efb7cf8e3b70e9b87f6cde795ce",
+  "restored": true
+}

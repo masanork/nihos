@@ -1,7 +1,7 @@
 # ADR 0054: Normal single-contact touch input
 
 - Date: 2026-10-28
-- Status: implemented locally; physical identification/idle checked, contact qualification pending
+- Status: normal service landed; normal-only batching follow-up in draft review
 - Extends: [ADR 0052](0052-default-on-demand-device-drivers.md)
 
 ## Decision
@@ -19,7 +19,16 @@ another hart. Identification is deferred until one second on the existing
 clock, then polling is limited to approximately 30 Hz. There are no new DMA
 buffers or dynamic allocations. The existing driver's ten-slot bound remains;
 the maximum foreground identification/sample duration is reported for physical
-measurement rather than inferred from the poll frequency.
+measurement rather than inferred from the poll frequency. In the follow-up,
+the normal adapter calls `Device.sampleBatched`; Sitronix reports are
+read in at most two contiguous batches of nine and one whole 7-byte records,
+each within the existing 64-byte transfer bound. Every advertised slot is read,
+including a sparse second finger in the tenth slot. The status read plus these
+batches replace eleven transactions with at most three. This follows the
+contiguous report layout used by the [Espressif driver](https://github.com/espressif/esp-iot-solution/blob/master/components/display/lcd_touch/esp_lcd_touch_st7123/esp_lcd_touch_st7123.c).
+Card/readiness/standalone profiles retain the existing per-record `Device.sample`
+implementation. Applying the larger batched reader to those profiles exceeded
+the card-photo SRAM budget. The normal-only method is not linked into them.
 
 Display panel IDs select GT911 (ILI9881C), ST7123 or ST7121. The portrait
 720x1280 controller coordinates map to the existing landscape raster as
@@ -60,32 +69,45 @@ counters, a four-quadrant bitmask and queued event count. It does not log raw
 touch coordinates. The existing DEVICE_SERVICE bitmap still describes the
 three requestable audio/microphone/UART drivers.
 
-The configured connected candidate leaves 58944 bytes of primary static heap,
-versus 63424 bytes before this change: 4480 additional static SRAM bytes. Its
-approved Flash records occupy 56603 bytes. The 49152-byte minimum static heap,
+The earlier candidate based on main `542e6ac` leaves 58176 bytes of primary static
+heap, versus 62848 bytes in the same-profile main baseline: 4672 additional
+static SRAM bytes. Its approved Flash records occupy 56605 bytes. The
+49152-byte minimum static heap,
 SRAM banks, stacks and image-auditor rules remain unchanged. These are link
 layout results, not physical free-heap, timing or power measurements.
 
+The normal-only follow-up against main `76697c4` adds 192 static SRAM bytes:
+normal static heap is 58368 → 58176 bytes with identical options. Card-photo
+retains 49536 bytes, card-read/automatic-card 50048 bytes, and keypad 59712 bytes.
+All four images pass the unchanged 49152-byte floor and complete loader/image
+audit. These newer build measurements do not qualify physical touch behavior.
+
 ## Validation and physical gate
 
-Host Debug and ReleaseSafe each pass 407 tests, including rotation, explicit
+After the normal-only follow-up, host Debug and ReleaseSafe each pass 413 tests, including rotation, explicit
 release, stale/multiple-contact cancellation, overflow quarantine and rejected
 button gestures. Raster tests check rotated bounds, stride padding and rejected
 input without frame mutation. Static analysis and RV32 links pass. The
 configured connected device image builds and passes its loader/image audit.
-The unconfigured-Wi-Fi normal profile also links, and the Python suite passes
-238 tests.
+The unconfigured-Wi-Fi normal and standalone touch profiles also link and pass
+ELF audits, and the Python suite passes 264 tests.
 Host previews of both views show the control without obscuring their headings;
 they are not optical device evidence.
 
-The [600-second normal-image checkpoint](../measurements/2026-10-28-normal-touch-idle.md)
-physically checked ST7121 identification and idle coexistence with connected
-Wi-Fi/NTP, RTC/IMU and finite audio/microphone/internal UART. No contact reports
-or operator confirmation were received, so button/release behavior remains
-unqualified. The prior app was verified restored. Earlier standalone ST7121/card
-observations do not establish contact operation of this normal image. Before landing:
+The [600-second idle checkpoint](../measurements/2026-10-28-normal-touch-idle.md)
+was followed by [normal touch interaction and batched-read checks](../measurements/2026-10-28-normal-touch-interaction.md).
+An operator confirmed both view directions in the initial candidate. The
+batched candidate then recorded explicit down/up and accepted alternating view
+actions alongside connected Wi-Fi/NTP, RTC/IMU and finite devices; its maximum
+read time was 14281 us versus 19963 us before batching. Those two candidates
+were verified restored. The final main-integrated candidate booted and
+identified touch but lost USB during capture; post-capture identity verification
+is incomplete. Operator tests were subsequently deferred at the user's request.
+After USB reconnection, the saved app was restored and verified, with unchanged
+boot bytes. The interrupted capture remains unqualified. Before landing:
 
-1. Rediscover the device and coordinate exclusive write ownership. Back up the
+1. Retain the interrupted attempt and its verified recovery. Rediscover the
+   device and coordinate exclusive write ownership. Back up the
    actual app and verify retained loader identity before installing. Verify the
    exact candidate bytes before and after capture; restore and verify the prior
    app afterward.
@@ -112,3 +134,13 @@ merging does not qualify real contact/release behavior or optical appearance.
 The separate Sitronix report-batching optimization is excluded from this
 landing: it exceeded the existing card-photo SRAM budget in CI. The previous
 bounded per-record reader and the 48 KiB minimum heap requirement are retained.
+
+## Follow-up scope
+
+The follow-up preserves that main landing, including gray control styling and
+the existing card reader. Only the normal board service chooses the new bounded
+batch method. Its host tests include sparse tenth-slot contacts, second-burst
+failure without a partial sample, 1/9/10-slot bounds, and explicit release/no
+report behavior for all three panel identities. Final-candidate operator and
+negative-gesture tests remain open; the saved app was verified restored after
+the earlier USB interruption.
