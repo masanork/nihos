@@ -55,3 +55,26 @@ The original dirty checkout remains at `196b354`; its status and all recorded
 file hashes match the pre-integration snapshot. It has not been switched,
 reset, stashed or updated. This receipt records local validation before PR CI;
 GitHub results must be checked against the actual PR head before any merge.
+
+## Concurrent card UI update
+
+Main advanced to `542e6ac` (PR #17) during CI. The new card boot/simulator and
+base DMA SRAM pool were merged as `9347514`. That pool is omitted from the
+headless high-SRAM/broker profile: its linker symbols and allocator object
+must not compete with the page broker over the same memory. Normal builds
+retain the pool; their image audit reports two free regions. Both SD and
+embedded VFS audits report no base pool and retain the high-SRAM broker layout.
+The image checker retains the new card function/asset checks and SD resident
+hook checks together.
+
+Revalidation passed 492 Zig tests in each optimization mode, 380 Python tests,
+109 VFS/RPC host scenarios, eleven card UI host scenarios, static/six-link
+checks, all eight normal-boot emulator cases and the 32 MiB integer SMP smoke.
+Default connected, SD VFS/RPC and embedded fixture audits passed again. The
+receipt's `concurrent_main_update` records these new exact artifacts separately.
+
+The first Linux host CI exposed a non-PIC Zig archive linked by the C driver's
+default PIE configuration. The host library modules now explicitly use PIC;
+native flags and sanitizer checks are unchanged. The independent FAT/exFAT
+CI passed 201 cases with its source hashes and artifact SHA-256 verified.
+Final CI must still be evaluated for the updated PR head.
