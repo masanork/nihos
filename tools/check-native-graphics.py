@@ -91,9 +91,28 @@ def validate_wrap(record, texts, reference):
 
 
 def validate_archive(record, graphics):
-    if (record["logical_bytes"] != 3336 or record["charge"] != 4096 or record["live_charge"] != 0 or
+    if (record["logical_bytes"] != 4496 or record["charge"] != 8192 or record["live_charge"] != 0 or
             record["before"] != record["after"] or record["after"] != graphics["heap_before"] + record["charge"]):
         raise ValueError("incomplete diagnostic archive heap recovery")
+
+
+QUEUE_FIELDS = ("capacity", "metadata_bytes", "payload_bytes", "binding_rejected", "full_rejected", "detached", "live_payloads", "closed_rejected", "requests_metadata", "replies_metadata", "request_payload", "reply_payload")
+
+
+def validate_queues(record, image, heap):
+    if tuple(record[k] for k in QUEUE_FIELDS[:8]) != (1, 768, 1160, 2, 2, 2, 0, 3):
+        raise ValueError("incomplete queue storage binding/backpressure/retirement evidence")
+    for name in ("requests", "replies"):
+        audited = image["graphics"]["queue_metadata"][name]
+        address = record[name + "_metadata"]
+        if (address != int(audited["start"], 16) or int(audited["end"], 16) - address != 384 or
+                not int(image["memory"]["origin"], 16) <= address < address + 384 <= int(image["heap"]["start"], 16)):
+            raise ValueError("queue cursor metadata differs from audited static SRAM")
+    request, reply = record["request_payload"], record["reply_payload"]
+    if (not heap["start"] + heap["metadata"] <= request < request + 228 <= heap["end"] or
+            not heap["start"] + heap["metadata"] <= reply < reply + 932 <= heap["end"] or
+            not (request + 228 <= reply or reply + 932 <= request)):
+        raise ValueError("queue payload must use disjoint CPU0 PSRAM storage")
 
 
 def validate_surface(record, texts, reference):
@@ -132,7 +151,7 @@ def validate(record, hashes, graphics, expected, exchange, texts, expected_texts
     if (any(exchange[n] != 10 for n in ("sent", "received", "replies", "waits")) or
             exchange["blocked_ticks"] < 20 or exchange["idle_runtime"] != 0 or exchange["stop_ack"] != 1 or exchange["terminal_gap"] != 1 or
             exchange["copied_inputs"] != 5 or exchange["copied_outputs"] != 5 or exchange["text_success"] != 3 or exchange["text_failed"] != 2 or
-            not 512 <= exchange["queue_bytes"] <= 4096):
+            exchange["queue_bytes"] != 768):
         raise ValueError("incomplete blocking font transport/shutdown evidence")
     if len(hashes) != 16 or hashes != expected:
         raise ValueError("native glyph/position/raster hashes differ from host reference")
@@ -169,6 +188,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     policy = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_KINSOKU", POLICY_FIELDS)
     source = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_SOURCE", SOURCE_FIELDS)
     ruby = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_RUBY", RUBY_FIELDS)
+    queues = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_QUEUE", QUEUE_FIELDS)
     archive = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_ARCHIVE", ARCHIVE_FIELDS)
     texts = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_TEXT", TEXT_FIELDS)
     for text in texts:
@@ -192,7 +212,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
             log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") < log.index("NIHOS_NATIVE_GRAPHICS_RASTER ") < log.index("NIHOS_NATIVE_GRAPHICS_PLACEMENT ") < log.index("NIHOS_NATIVE_GRAPHICS_SURFACE ") <
             log.index("NIHOS_NATIVE_GRAPHICS_WRAP ") < log.index("NIHOS_NATIVE_GRAPHICS_KINSOKU ") < log.index("NIHOS_NATIVE_GRAPHICS_SOURCE ") < log.index("NIHOS_NATIVE_GRAPHICS_RUBY ") < log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
             log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
+            log.index("NIHOS_NATIVE_GRAPHICS_QUEUE ") < log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
         raise ValueError("missing or out-of-order native graphics pass")
     profile = next(p for p in reference["profiles"] if p["render_pool_bytes"] == 2048 and p["allocation_records"] == 1024)
     expected = next(m["host"]["hashes"] for m in profile["modes"] if m["hinting"] == "auto")
@@ -214,10 +234,11 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     validate_source(source, image["graphics"])
     validate_ruby(ruby, texts, ruby_reference)
     validate_archive(archive, q)
+    validate_queues(queues, image, baseline["heaps"][0])
     if archive["after"] != baseline["heaps"][0]["free"]:
         raise ValueError("archive retirement differs from original CPU0 heap")
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
-            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "ruby": ruby, "source": source, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
+            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "ruby": ruby, "source": source, "queues": queues, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
                        "Four matrix and five bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
@@ -247,7 +268,7 @@ def main():
     result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: runtime text/ruby ownership, Flash preemption, reference pixels and complete heap recovery passed")
+    print("Native graphics: demand-owned queue payloads, runtime text/ruby ownership, Flash preemption, reference pixels and complete heap recovery passed")
 
 
 if __name__ == "__main__":

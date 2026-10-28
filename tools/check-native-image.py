@@ -34,7 +34,7 @@ SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
 GRAPH_START, GRAPH_END = 0x40020000, 0x40C00000
 GRAPH_SECTIONS = {".flash.graphtext", ".flash.graphrodata", ".flash.graphfonts", ".flash.graphpad", ".flash.graphrender"}
 RENDER_FUNCTIONS = {"main.graphicsReport", "native_font_exchange.sourceHash", "native_font_exchange.drawHash", "native_font_exchange.stageText", "native_surface.verify", "native_surface.prepare", "native_surface.paint", "native_surface.draw"}
-RENDER_RESIDENT = {"native_surface.stage", "native_surface.verifySource", "native_surface.compose", "native_surface.contextAllowed", "native_surface.captureTimer",
+RENDER_RESIDENT = {"native_font_exchange.releaseArchive", "native_surface.stage", "native_surface.verifySource", "native_surface.compose", "native_surface.contextAllowed", "native_surface.captureTimer",
                    "nih_native_dispatch", "nih_native_trap", "heap.allocTask", "heap.freeTask"}
 GRAPH_RAM_LOW, GRAPH_RAM_HIGH = 0x4FF78000, 0x4FF80000
 GRAPH_STACK_LOW, GRAPH_STACK_HIGH = 0x4FF6E000, 0x4FF76000
@@ -122,6 +122,13 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
     render_report = audit_render(render, functions)
     require(symbols.get("__flash_render_start") == render[0] and symbols.get("__flash_render_end") == render[0] + len(render[1]) and
             symbols.get("__flash_graphics_end") == render[0] + len(render[1]), "rendering Flash symbols differ")
+    queue_metadata = {}
+    for name in ("requests", "replies"):
+        symbol = "native_font_exchange." + name
+        address = symbols.get(symbol, 0)
+        require(0x4ff00000 <= address < address + 384 <= 0x4ff48000 and sizes.get(symbol) == 384,
+                "queue metadata must remain bounded internal SRAM")
+        queue_metadata[name] = {"start": hex(address), "end": hex(address + 384), "bytes": 384}
     inputs = []
     for item in manifest["fonts"]:
         low, high = (symbols.get("nih_graphics_" + item["family"] + suffix, 0) for suffix in ("_start", "_end"))
@@ -131,7 +138,7 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
     payload = tables + bytes((-len(tables)) % 4) + pad[1] + text[1] + ro[1] + bytes(fonts[0] - ro[0] - len(ro[1])) + fonts[1]
     payload += bytes(render[0] - fonts[0] - len(fonts[1])) + render[1]
     payload += bytes((-len(payload)) % 4)
-    return {"render": render_report, "text_start": hex(text[0]), "text_end": hex(ro[0]), "text_bytes": len(text[1]),
+    return {"render": render_report, "queue_metadata": queue_metadata, "text_start": hex(text[0]), "text_end": hex(ro[0]), "text_bytes": len(text[1]),
             "rodata_bytes": len(ro[1]), "fonts_bytes": len(fonts[1]), "fonts": inputs,
             "functions": selected, "payload_sha256": manifest["payload_sha256"], "padding_bytes": len(pad[1]),
             "static_data_bytes": sections[".graphics.data"][2], "static_bss_bytes": sections[".graphics.bss"][2],

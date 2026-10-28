@@ -24,7 +24,7 @@ class NativeGraphicsTests(unittest.TestCase):
                                     694, 17224, 21, 20, 11, 10, 1, 9, 65792, 0, 10]))
 
     def exchange(self):
-        return dict(zip(LOG.EXCHANGE_FIELDS, [10, 10, 10, 10, 20, 0, 1, 1, 5, 3, 2, 5, 3072]))
+        return dict(zip(LOG.EXCHANGE_FIELDS, [10, 10, 10, 10, 20, 0, 1, 1, 5, 3, 2, 5, 768]))
 
     def texts(self):
         glyph = dict(zip(LOG.GLYPH_FIELDS[2:], [42, 0, 0, 24, 1536, 0, 0, 0, 0, 20, 20, 20, 0]))
@@ -166,11 +166,35 @@ class NativeGraphicsTests(unittest.TestCase):
             LOG.validate_ruby(record, texts, bad)
 
     def test_archive_releases_full_charge_after_logging(self):
-        good = dict(zip(LOG.ARCHIVE_FIELDS, [3336, 4096, 0, 16022848, 16022848]))
-        LOG.validate_archive(good, {"heap_before": 16018752})
+        good = dict(zip(LOG.ARCHIVE_FIELDS, [4496, 8192, 0, 16022848, 16022848]))
+        LOG.validate_archive(good, {"heap_before": 16014656})
         for key in LOG.ARCHIVE_FIELDS:
             with self.subTest(key=key), self.assertRaises(ValueError):
-                LOG.validate_archive({**good, key: good[key] + 1}, {"heap_before": 16018752})
+                LOG.validate_archive({**good, key: good[key] + 1}, {"heap_before": 16014656})
+
+    def test_queue_lifetime_and_payload_addresses_are_required(self):
+        good = dict(zip(LOG.QUEUE_FIELDS, [1, 768, 1160, 2, 2, 2, 0, 3, 0x4ff21000, 0x4ff21180, 0x48090000, 0x48090100]))
+        image = {"memory": {"origin": "0x4ff20000"}, "heap": {"start": "0x4ff30000"}, "graphics": {"queue_metadata": {
+            "requests": {"start": "0x4ff21000", "end": "0x4ff21180"}, "replies": {"start": "0x4ff21180", "end": "0x4ff21300"}}}}
+        heap = {"start": 0x48000000, "metadata": 0x80000, "end": 0x49000000}
+        LOG.validate_queues(good, image, heap)
+        for key in LOG.QUEUE_FIELDS:
+            value = 1 if key == "live_payloads" else 0
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.validate_queues({**good, key: value}, image, heap)
+        with self.assertRaisesRegex(ValueError, "disjoint"):
+            LOG.validate_queues({**good, "reply_payload": good["request_payload"]}, image, heap)
+
+    def test_queue_metadata_cannot_move_to_psram_or_grow_silently(self):
+        for name in ("native_font_exchange.requests", "native_font_exchange.replies"):
+            bad = copy.deepcopy(self.fixture())
+            bad[1][name] = 0x48090000
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "queue metadata"):
+                AUDIT.audit_graphics(*bad)
+            bad = copy.deepcopy(self.fixture())
+            bad[2][name] = 512
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "queue metadata"):
+                AUDIT.audit_graphics(*bad)
 
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)
@@ -203,7 +227,7 @@ class NativeGraphicsTests(unittest.TestCase):
                     ".graphics.data": (ram, bytes(128), 128), ".graphics.bss": (ram + 128, b"", 1024),
                     ".graphics.stack": (AUDIT.GRAPH_STACK_LOW, b"", 32768)}
         symbols = {"__graphics_font_stack_bottom": AUDIT.GRAPH_STACK_LOW, "__graphics_font_stack_top": AUDIT.GRAPH_STACK_HIGH,
-                   "__graphics_bss_start": ram + 128, "__graphics_bss_end": ram + 1152, "graphics_result": ram, "graphics_output": ram + 128,
+                   "__graphics_bss_start": ram + 128, "__graphics_bss_end": ram + 1152, "graphics_result": ram, "graphics_output": ram + 128, "native_font_exchange.requests": AUDIT.SRAM_LOW + 0x400, "native_font_exchange.replies": AUDIT.SRAM_LOW + 0x580,
                    "nih_graphics_gothic_start": fonts, "nih_graphics_gothic_end": fonts + 1,
                    "nih_graphics_mincho_start": fonts + 1, "nih_graphics_mincho_end": fonts + 2,
                    "__flash_render_start": render, "__flash_render_end": render + 8 * len(AUDIT.RENDER_FUNCTIONS), "__flash_graphics_end": render + 8 * len(AUDIT.RENDER_FUNCTIONS)}
@@ -213,7 +237,7 @@ class NativeGraphicsTests(unittest.TestCase):
                               for family, byte in [("gothic", b"g"), ("mincho", b"m")]]}
         functions += [(name, render + i * 8, render + i * 8 + 8) for i, name in enumerate(sorted(AUDIT.RENDER_FUNCTIONS))]
         functions += [(name, AUDIT.SRAM_LOW + i * 16, AUDIT.SRAM_LOW + i * 16 + 8) for i, name in enumerate(sorted(AUDIT.RENDER_RESIDENT))]
-        return sections, symbols, {"graphics_result": 124, "graphics_output": 844}, functions, manifest, b"base"
+        return sections, symbols, {"graphics_result": 124, "graphics_output": 844, "native_font_exchange.requests": 384, "native_font_exchange.replies": 384}, functions, manifest, b"base"
 
     def test_rendering_flash_accepts_only_whitelisted_functions_and_retains_critical_sram_code(self):
         good = self.fixture()

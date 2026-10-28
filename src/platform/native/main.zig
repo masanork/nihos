@@ -674,6 +674,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                     if (!tasks.graphics.exchange.composer.contextAllowed()) fail("graphics report context");
                     graphicsReport(&result);
                     if (!tasks.graphics.exchange.releaseArchive()) fail("graphics archive release");
+                    const queues = tasks.graphics.exchange.queue_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_QUEUE", null, .{ "capacity", "metadata_bytes", "payload_bytes", "binding_rejected", "full_rejected", "detached", "live_payloads", "closed_rejected", "requests_metadata", "replies_metadata", "request_payload", "reply_payload" }, &queues);
                     const archive = tasks.graphics.exchange.archive_metrics;
                     logger.record("NIHOS_NATIVE_GRAPHICS_ARCHIVE", null, .{ "logical_bytes", "charge", "live_charge", "before", "after" }, &archive);
                     print("NIHOS_NATIVE_GRAPHICS_PASS\n");

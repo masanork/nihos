@@ -337,7 +337,7 @@ fi
     -Mtimer_group="$repo_root/src/soc/esp32p4/timer_group.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     --dep scheduler --dep task_control --dep tick_clock --dep timer_group \
-    --dep remote_events --dep spsc_ring --dep spsc_channel --dep text_context --dep raster_lease --dep surface --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
+    --dep remote_events --dep spsc_ring --dep spsc_mailbox --dep spsc_channel --dep text_context --dep raster_lease --dep surface --dep software_ipi --dep park --dep native_options --dep fp_vectors --dep native_memory \
     -Mnative_tasks="$repo_root/src/arch/riscv32/native_tasks.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mscheduler="$repo_root/src/kernel/scheduler.zig" \
@@ -349,6 +349,8 @@ fi
     -Mremote_events="$repo_root/src/kernel/remote_events.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mspsc_ring="$repo_root/src/kernel/spsc_ring.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mspsc_mailbox="$repo_root/src/kernel/spsc_mailbox.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mspsc_channel="$repo_root/src/kernel/spsc_channel.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

@@ -616,3 +616,22 @@ interrupts, allocation, guards and retirement. Both the 48 KiB SRAM heap floor a
 Fonts remain immutable Flash fixtures. Persistent native font IO, application
 routing, service restart, full typography and physical LCD/cache validation are
 still separate gates; see [ADR 0053](../../docs/adr/0053-runtime-text-context.md).
+
+## Demand-owned queue payloads
+
+[ADR 0054](../../docs/adr/0054-demand-owned-font-queue-storage.md) replaces the
+serialized native exchange's two inline slots with one borrowed payload slot
+per direction. SRAM retains channel descriptors and release/acquire counters;
+the task-owned PSRAM archive contains the Request/Reply copies. It is bound
+before admission and detached only after terminal ACK, worker cleanup and reap.
+The generic multi-slot SpscRing is unchanged. The same native smoke command now
+requires `NIHOS_NATIVE_GRAPHICS_QUEUE` records binding descriptor addresses to
+ELF SRAM symbols, payload addresses to disjoint CPU0 PSRAM ranges, and proving
+full, duplicate-bind and post-detach rejection before complete heap recovery.
+
+The archive changes from 3,336 B / 4 KiB charged to 4,496 B / 8 KiB charged;
+SRAM channel metadata changes from 3,200 to 768 B. This trades 4 KiB of temporary
+PSRAM for SRAM headroom, without adding a bootstrap root or changing packet,
+glyph, text, canvas or stack capacity. The fixed 64 KiB font stack/library SRAM
+remains reserved. Reuse the existing runtime-text host reference unchanged:
+all glyphs, A8 bytes and four RGB565 passes must still match.
