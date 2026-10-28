@@ -68,7 +68,18 @@ nih_native_start:
     sw zero, 0(t0)
     addi t0, t0, 4
     j 1b
-2:  call .Lsetup_vector
+2:
+#if NIH_NATIVE_GRAPHICS
+    la t0, __graphics_bss_start
+    la t1, __graphics_bss_end
+.Lzero_graphics_bss:
+    bgeu t0, t1, .Lgraphics_bss_ready
+    sw zero, 0(t0)
+    addi t0, t0, 4
+    j .Lzero_graphics_bss
+.Lgraphics_bss_ready:
+#endif
+    call .Lsetup_vector
     call nih_native_main
     j .Lhalt
 
@@ -106,6 +117,7 @@ nih_native_cpu1_start:
 
     .balign 64
     .global nih_native_trap
+    .type nih_native_trap, @function
 nih_native_trap:
     /* Stable integer frame; an opted-in FP bank is stored separately. */
     addi sp, sp, -NIH_CTX_SIZE
@@ -246,6 +258,7 @@ nih_native_trap:
     lw t6, NIH_CTX_T6(sp)
     addi sp, sp, NIH_CTX_SIZE
     mret
+    .size nih_native_trap, .-nih_native_trap
 
     .global nih_native_task_trampoline
 nih_native_task_trampoline:

@@ -18,6 +18,11 @@ ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
+#if NIH_NATIVE_GRAPHICS
+    graphics_stack (rw) : ORIGIN = 0x4ff6e000, LENGTH = 32K
+    graphics_ram (rw) : ORIGIN = 0x4ff78000, LENGTH = 32K
+    flash_graphics (rx) : ORIGIN = 0x40020000, LENGTH = 12M - 128K
+#endif
 #if NIH_NATIVE_HIGH_SRAM
     high_a (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
     high_b (rw) : ORIGIN = 0x4ff6e000, LENGTH = 200K
@@ -187,6 +192,47 @@ SECTIONS
         *sql_fat_*.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
+#endif
+#if NIH_NATIVE_GRAPHICS
+    .flash.graphpad : ALIGN(4) {
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.graphtext : {
+        __flash_graphics_text_start = .;
+        *graphics_payload.o(.text .text.*)
+        . = ALIGN(16);
+        __flash_graphics_text_end = .;
+    } > flash_graphics
+    .flash.graphrodata : ALIGN(16) {
+        *graphics_payload.o(.rodata .rodata.* .srodata .srodata.*)
+        . = ALIGN(16);
+    } > flash_graphics
+    .flash.graphfonts : ALIGN(16) {
+        KEEP(*(.graphics.fonts))
+    } > flash_graphics
+    .flash.graphrender : ALIGN(4) {
+        __flash_render_start = .;
+        *(.flash.text.render)
+        __flash_render_end = .;
+        __flash_graphics_end = .;
+    } > flash_graphics
+    .graphics.data : ALIGN(64) {
+        __graphics_data_start = .;
+        *graphics_payload.o(.data .data.* .sdata .sdata.*)
+        __graphics_data_end = .;
+    } > graphics_ram
+    .graphics.bss (NOLOAD) : ALIGN(64) {
+        __graphics_bss_start = .;
+        *graphics_payload.o(.bss .bss.* .sbss .sbss.* COMMON)
+        . = ALIGN(4);
+        __graphics_bss_end = .;
+    } > graphics_ram
+    .graphics.stack (NOLOAD) : {
+        __graphics_font_stack_bottom = .;
+        . += 32768;
+        __graphics_font_stack_top = .;
+    } > graphics_stack
 #endif
 #if NIH_NATIVE_NORMAL_STORAGE
     .flash.fspad : ALIGN(4) {

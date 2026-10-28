@@ -175,3 +175,38 @@ revision = "Five-page Altium PDF, metadata 2025-06-09, page 4 U18/J7"
 license = "Vendor schematic; reference-only, not redistributed"
 status = "reference-only"
 use = "GPIO20/21/34 mapping, tied /RE and DE, DIR pulldown and J7 signal identities for independent UART1/RS485 fixture; no external RS485 driver source imported"
+
+
+[[source]]
+name = "FreeType (optional graphics probes and native fixture)"
+url = "https://github.com/freetype/freetype"
+revision = "0a0221a1347e2f1e07c395263540026e9a0aa7c7 (2.14.3)"
+license = "FTL selected; alternate GPL-2.0 available upstream"
+status = "build-and-opt-in-native-fixture-dependency"
+use = "Custom memory/stream callbacks; module registry selects autofit, TrueType, sfnt and smooth. Tracked local patch probes/graphics/patches/freetype-autofit-map-error.patch propagates reverse-map initialization failure. Host/ISA probes and isolated native graphics qualification; private library namespace, Flash font fixtures, no runtime font filesystem or MeOS source import. Sources and FTL retained in build cache. See probes/graphics/sources.json."
+sha256 = "11cd478953fc1d382f20a233b8e2aed6c31b47cbf0568c4bdb3334bcc1550698"
+
+[[source]]
+name = "HarfBuzz (optional graphics probes and native fixture)"
+url = "https://github.com/harfbuzz/harfbuzz"
+revision = "35f656a1a2bab548ea7f54a6dd3fba2b09680d14 (15.0.0)"
+license = "MIT"
+status = "build-and-opt-in-native-fixture-dependency"
+use = "Static TrueType shaping with Unicode, GSUB/GPOS and vertical support retained; allocation hooks and reduced features listed in probes/graphics/hb_config.h. Source/COPYING retained in build cache."
+sha256 = "f4d39fc3216d82d01ba2a18ba03a05b69f60510585b764784224a5f51f372a38"
+
+[[source]]
+name = "Morisawa BIZ UD Gothic and Mincho (optional graphics fixtures)"
+url = "https://github.com/googlefonts/morisawa-biz-ud-gothic"
+revision = "Gothic 18934af56b9c003ca58c54bffbf226848cb11032; Mincho c30a6221b1f3d09afae9137ffe73c7cbec649947"
+license = "OFL-1.1"
+status = "host-isa-and-opt-in-native-fixture-assets"
+use = "Unmodified regular TTF fixtures with both OFL notices retained in build cache; URLs and SHA-256 pins in probes/graphics/sources.json. Native graphics qualification embeds the full pinned inputs in an isolated test image; production font filesystem provisioning is pending. No tool in this probe flashes hardware."
+
+[[source]]
+name = "Unicorn Engine (optional RV32 ISA oracle)"
+url = "https://github.com/unicorn-engine/unicorn"
+revision = "2.1.4"
+license = "Component-specific GPL/LGPL core and API notices; Python wheel metadata identifies BSD bindings. See upstream COPYING and COPYING.LGPL2."
+status = "host-test-tool-only"
+use = "Checksum-pinned macOS/Linux wheels in probes/graphics/unicorn-requirements.txt, installed only into ignored build virtualenv. The host runner observes unmodified RV32 SP instruction by instruction. Not linked into native firmware."
