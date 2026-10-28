@@ -1,8 +1,8 @@
 /* Public status messages only. Two banks in the existing upper SRAM pool;
  * the live bank is immutable until the DMA frame-completion handoff. */
 #if NIH_NATIVE_CARD_AUTO
-#define NOTICE_BASE 0x4ff70000u
-#define NOTICE_BYTES (94u * 1024u)
+#define NOTICE_BASE ui_high_start
+#define NOTICE_BYTES (((ui_high_end - ui_high_start) / 2u) & ~63u)
 #ifndef NOTICE_POINTER
 #define NOTICE_POINTER(address) ((void *)((uintptr_t)(address) + SOC_NON_CACHEABLE_OFFSET))
 #endif

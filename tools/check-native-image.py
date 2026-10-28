@@ -111,9 +111,31 @@ SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
 PHOTO_SECTIONS = {".flash.photo", ".flash.photo.rodata"}
 UI_SECTIONS = {".flash.uipad", ".flash.ui"}
 UI_POOLS = {".keypad.low": (0x4ff40000, 128 * 1024), ".keypad.high": (0x4ff70000, 188 * 1024)}
+SERVICE_SRAM_FUNCTIONS = {'nih_base_sram_take', 'nih_base_sram_release', 'base_sram_lock',
+                          'base_sram_unlock', 'base_sram_cpu0', 'nih_sram_pool_init',
+                          'nih_sram_pool_take', 'nih_sram_pool_release', 'nih_display_keypad_fits', 'ui_place',
+                          'keypad_display.acquire', 'keypad_display.release'}
+CARD_BOOT_FUNCTIONS = {'card_boot.paint', 'card_boot.finish', 'card_boot.report', 'main.startDisplay', 'display_runtime.replace', 'display_runtime.wipePools', 'graphics.keypad_plan.buildStaticColor'}
 
 def audit_ui_pool(name, kind, flags, address, size, allowed):
     require(allowed and kind == 8 and flags == 3 and (address, size) == UI_POOLS.get(name), 'invalid keypad SRAM pool')
+
+
+def audit_service_sram(symbols, high, allocated):
+    keys = ['__service_sram' + str(i) + suffix for i in range(2) for suffix in ('_start', '_end')]
+    if not any(key in symbols for key in keys):
+        return []  # Historical evidence uses explicitly reserved keypad pools.
+    require(all(key in symbols for key in keys), 'incomplete base free SRAM symbols')
+    domains = []
+    for i in range(2):
+        start, end = (symbols[keys[2 * i + j]] for j in range(2))
+        require(start % 64 == end % 64 == 0 and start < end and
+                ((start == max(high, 0x4ff40000) and end == STACK_LOW) if i == 0 else
+                 STACK_HIGH <= start < end == 0x4ff9f000), 'invalid base free SRAM extent')
+        require(all(int(s['address'], 16) + s['bytes'] <= start or int(s['address'], 16) >= end
+                    for s in allocated), 'base free SRAM overlaps an allocated section')
+        domains.append({'name': 'service.free' + str(i), 'origin': hex(start), 'end': hex(end), 'bytes': end - start})
+    return domains
 
 
 def audit_ui_assets(start, data, symbols, manifest):
@@ -538,10 +560,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
     require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()), "missing mapped Flash sections")
+    service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
     if allow_ui:
-        require(len(ui_pools) == 2, 'missing keypad SRAM pools')
+        require((len(service_sram) == 2 and not ui_pools) or (not service_sram and len(ui_pools) == 2), 'missing/competing display SRAM source')
         pad_start, pad = ui_sections['.flash.uipad']
         start, data = ui_sections['.flash.ui']
         require(pad_start == 0x40010020 + ((len(flash_tables) + 3) & ~3) and not any(pad), 'invalid keypad Flash padding bytes')
@@ -550,7 +573,18 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         ui_payload = flash_tables + bytes((-len(flash_tables)) % 4) + pad + data
         ui_payload += bytes((-len(ui_payload)) % 4)
         ui_report = {'start': hex(start), 'end': hex(start + len(data)), 'bytes': len(data), 'writable': False, 'executable': False,
-                     'ui_mode': keypad_manifest.get('ui_mode', 'baked'), 'pools': ui_pools}
+                     'ui_mode': keypad_manifest.get('ui_mode', 'baked'), 'pools': service_sram or ui_pools}
+        if service_sram:
+            ui_report['allocation'] = 'base-free-sram-v1'
+        if keypad_manifest.get('card_boot'):
+            boot = keypad_manifest['card_boot']
+            first, last = symbols.get('__card_boot_masks_start', 0), symbols.get('__card_boot_masks_end', 0)
+            require(boot.get('schema') == 1 and boot.get('source') == 'sparse-sram-v1' and boot.get('paper') == 0x1924 and
+                    0x40010020 <= first < last <= 0x40010020 + len(flash_tables) and
+                    last - first == boot.get('mask_bytes') and
+                    hashlib.sha256(flash_tables[first - 0x40010020:last - 0x40010020]).hexdigest() == boot.get('mask_sha256'),
+                    'card boot mask differs from pinned manifest')
+            ui_report['card_boot'] = boot
         ui_report.update({key: value for key, value in keypad_manifest.items() if key in ('font_sha256', 'font_bytes', 'plan_sha256', 'atlas_sha256', 'atlas_bytes', 'nodes')})
     photo_span = None
     photo_report = None
@@ -663,6 +697,14 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(keypad_manifest.get('allowed_functions') == (([] if keypad_manifest.get('automatic_cards') else ['card_read.prepare', 'card_read.run'] + (['card_read.redraw'] if handoff else [])) + ['keypad_display.prepare'] + (['keypad_display.stage', 'keypad_display.bind'] if handoff else []) + ['keypad_display.paintTextures'] + ([] if exercise else ['usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut']) + ['display_runtime.start'] + (['display_runtime.replaceCard'] if handoff else []) + (['photo_runtime.prepare'] + ([] if keypad_manifest.get('automatic_cards', {}).get('read_enabled') is False else ['photo_runtime.decode']) + ['photo_runtime.close'] if allow_photo else [])), 'unapproved foreground manifest')
         for prefix in keypad_manifest['allowed_functions']:
             require(sum(1 for name, address, stop in functions if card_span[0] <= address < stop <= card_span[1] and (name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name))) == 1, 'missing/duplicate card foreground entry: ' + prefix)
+        if service_sram:
+            for name in ('nih_base_sram_take', 'nih_base_sram_release', 'nih_display_keypad_fits'):
+                require(sum(n == name and card_span[0] <= a < b <= card_span[1] for n, a, b in functions) == 1,
+                        'missing/duplicate base SRAM foreground entry: ' + name)
+    if allow_ui and keypad_manifest.get('card_boot'):
+        for name in CARD_BOOT_FUNCTIONS:
+            require(sum(n == name and card_span[0] <= a < b <= card_span[1] for n, a, b in functions) == 1,
+                    'missing/duplicate card boot foreground entry: ' + name)
     device_span = None if device_start is None else (device_start, device_start + len(device_code))
     device_functions = None
     require(symbols.get('__native_devices', 0) == int(allow_devices), 'device profile marker differs from section')
@@ -676,7 +718,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, keypad_manifest.get('allowed_functions', ()) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None
@@ -749,6 +791,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report["memory"]["regions"].extend(
             {"name": name[1:], "origin": hex(start), "end": hex(stop), "bytes": stop - start}
             for name, (start, stop) in HIGH_BANKS.items())
+    if service_sram:
+        report['service_sram'] = service_sram
     if allow_sql:
         require(not {"malloc", "calloc", "realloc", "free", "localtime", "gmtime", "strftime"}.intersection(symbols),
                 "unexpected libc heap/time fallback in native SQLite image")
@@ -852,7 +896,7 @@ def audit_loader(report, elf):
     require(header[1] == 243 and header[10] == 40, "unexpected loader ELF")
     sections = [struct.unpack_from("<10I", elf, header[5] + index * 40) for index in range(header[11])]
     low, high = int(report["memory"]["origin"], 16), int(report["memory"]["end"], 16)
-    regions = report["memory"].get("regions", [{"name": "resident", "origin": hex(low), "end": hex(high)}])
+    regions = report["memory"].get("regions", [{"name": "resident", "origin": hex(low), "end": hex(high)}]) + report.get("service_sram", [])
     allocated = []
     for _, _, flags, address, _, size, *_ in sections:
         if not flags & 2 or not size:

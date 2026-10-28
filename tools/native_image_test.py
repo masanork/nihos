@@ -76,6 +76,19 @@ class NativeInstructionTests(unittest.TestCase):
                 with self.subTest(name=name, flags=flags), self.assertRaises(ValueError):
                     MODULE.audit_ui_pool(name, kind, flags, origin, length, allowed)
 
+    def test_base_free_sram_excludes_primary_stack_and_font_sections(self):
+        symbols = {'__service_sram0_start': 0x4ff48000, '__service_sram0_end': 0x4ff60000,
+                   '__service_sram1_start': 0x4ff80000, '__service_sram1_end': 0x4ff9f000}
+        occupied = [{'address': '0x4ff20000', 'bytes': 160 * 1024},
+                    {'address': '0x4ff60000', 'bytes': 56 * 1024},
+                    {'address': '0x4ff6e000', 'bytes': 32 * 1024},
+                    {'address': '0x4ff78000', 'bytes': 32 * 1024}]
+        self.assertEqual(len(MODULE.audit_service_sram(symbols, 0x4ff48000, occupied)), 2)
+        for changes in ({'__service_sram0_start': 0x4ff40000}, {'__service_sram1_start': 0x4ff70000},
+                        {'__service_sram1_end': 0x4ffa0000}):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                MODULE.audit_service_sram({**symbols, **changes}, 0x4ff48000, occupied)
+
     def test_keypad_assets_require_readonly_flash_and_matching_manifest(self):
         for name, address, size in (('.flash.ui', 0x40020000, 128), ('.flash.uipad', 0x4001fff0, 16)):
             for flags in (2, 50):
