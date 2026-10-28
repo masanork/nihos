@@ -1,0 +1,13 @@
+{
+  "baseline_commit": "76697c4579f74944e30d5db310212eac37ad3e5c",
+  "candidate_code_commit": "e1a454f34f0488e0045af3ce41afc0a364f8e37a",
+  "same_native_options": true,
+  "native_options_sha256": "d25f9aeaac392e542f2e6924bac91cac6050630ac59a7652c0ea4764388be551",
+  "baseline_heap_bytes": 58368,
+  "candidate_heap_bytes": 58176,
+  "additional_static_bytes": 192,
+  "normal_image_sha256": "bacc88cce01d8584c445b437dc5873daa79118928878565e2a01d896a4482c10",
+  "normal_elf_sha256": "5b932624e8eb63e7ed039ccabd8a6f11d43ac5956eb5441a49a759db8340845d",
+  "receipt_sources_match_code_commit": true,
+  "scope": "normal-only batching; link/build evidence, not physical qualification"
+}

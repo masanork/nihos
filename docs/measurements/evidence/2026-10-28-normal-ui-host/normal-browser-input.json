@@ -1,0 +1,123 @@
+[
+  {
+    "action": "reset",
+    "application": "normal",
+    "palette": 4
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 87,
+    "dt_us": 50980600,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 0,
+    "x": 48,
+    "y": 87,
+    "dt_us": 48700,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 87,
+    "dt_us": 20385099,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 0,
+    "x": 48,
+    "y": 87,
+    "dt_us": 50000,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 87,
+    "dt_us": 4481600,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 0,
+    "x": 48,
+    "y": 87,
+    "dt_us": 1716800,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 87,
+    "dt_us": 99599,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 224,
+    "dt_us": 900,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 362,
+    "dt_us": 15899,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 0,
+    "x": 48,
+    "y": 362,
+    "dt_us": 399,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 87,
+    "dt_us": 4643799,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 0,
+    "x": 48,
+    "y": 87,
+    "dt_us": 51000,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "corrupt",
+    "automatic": true
+  },
+  {
+    "action": "retry_frame",
+    "automatic": true
+  }
+]

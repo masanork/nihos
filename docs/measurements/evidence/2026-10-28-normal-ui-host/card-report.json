@@ -1,0 +1,921 @@
+{
+  "schema": 1,
+  "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+  "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value",
+  "cases": {
+    "normal": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "overview",
+          "count": 0,
+          "job": 2,
+          "present": 1,
+          "confirms": 3,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 22,
+          "publications": 23,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 905,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "overview",
+        "status": 0,
+        "pixel_sha256": "b7c925bf0d346e39db24a887b8ad3547fed93bcdd61c962a497278d6e608d683",
+        "sram_sha256": "4ed00bee6a57a02dac73e3d47e4db5b391bc7869e2312335ac2d5360a542b58c",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "eof-atomicity": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "pin1",
+          "count": 1,
+          "job": 1,
+          "present": 1,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 3,
+          "publications": 4,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 631,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "pin1",
+        "status": 0,
+        "pixel_sha256": "a40a8dd878c983f1c6a8e57c00257d191a21cf7bad9198cf39373fd6c8b2154e",
+        "sram_sha256": "68464eda124f3959ebb25ad7cfcd3abb46b564155bc4296dcce8c2aab4a60adb",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "touch-release": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "ready",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 8,
+          "publications": 9,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 89,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "ready",
+        "status": 0,
+        "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
+        "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "capacity-rollback": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "pin1",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 2,
+          "publications": 3,
+          "rejections": 1,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 631,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "pin1",
+        "status": 0,
+        "pixel_sha256": "62a45e9c71ceb1238a63a76fc131db700c0dd084a3b304539a193a1617b0ce74",
+        "sram_sha256": "643138bc55fcf136ae0f10d7acdc190eb241d28806fe6217d133b60f3297707d",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      },
+      "observations": {
+        "before": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 2,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 1,
+            "backlight": 1,
+            "backlight_offs": 0,
+            "fault": 0,
+            "nodes": 89,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "ready",
+          "status": 0,
+          "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
+          "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "rejected": {
+          "view": {
+            "phase": "pin1",
+            "count": 0,
+            "job": 1,
+            "present": 1,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 2,
+            "rejections": 1,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 1,
+            "backlight": 1,
+            "backlight_offs": 0,
+            "fault": 0,
+            "nodes": 89,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "ready",
+          "status": -3,
+          "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
+          "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        }
+      }
+    },
+    "dma-timeout": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "ready",
+          "count": 0,
+          "job": 0,
+          "present": 0,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 1,
+          "publications": 1,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 0,
+          "backlight": 0,
+          "backlight_offs": 1,
+          "fault": 8,
+          "nodes": 735,
+          "low_bytes": 0,
+          "high_bytes": 0
+        },
+        "displayed_phase": "boot",
+        "status": 0,
+        "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+        "sram_sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      },
+      "observations": {
+        "before": {
+          "view": {
+            "phase": "boot",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 0,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 1,
+            "backlight": 1,
+            "backlight_offs": 0,
+            "fault": 0,
+            "nodes": 735,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "boot",
+          "status": 0,
+          "pixel_sha256": "9f0390cbcd50a2432b44b92e669607de0a53e07ad29ba9edca1ae0b83691ba0e",
+          "sram_sha256": "ed37f867bdd2c1182ad8e9026be5cab1c989a673393def463157671080dd12d2",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "retirement_failure": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 1,
+            "dma_owned": 1,
+            "backlight": 0,
+            "backlight_offs": 1,
+            "fault": 8,
+            "nodes": 735,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "boot",
+          "status": -4,
+          "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+          "sram_sha256": "ed37f867bdd2c1182ad8e9026be5cab1c989a673393def463157671080dd12d2",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "shutdown": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 0,
+            "backlight": 0,
+            "backlight_offs": 1,
+            "fault": 8,
+            "nodes": 735,
+            "low_bytes": 0,
+            "high_bytes": 0
+          },
+          "displayed_phase": "boot",
+          "status": 0,
+          "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+          "sram_sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        }
+      }
+    },
+    "fifo-timeout": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "ready",
+          "count": 0,
+          "job": 0,
+          "present": 0,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 1,
+          "publications": 1,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 0,
+          "backlight": 0,
+          "backlight_offs": 1,
+          "fault": 8,
+          "nodes": 735,
+          "low_bytes": 0,
+          "high_bytes": 0
+        },
+        "displayed_phase": "boot",
+        "status": 0,
+        "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+        "sram_sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      },
+      "observations": {
+        "before": {
+          "view": {
+            "phase": "boot",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 0,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 1,
+            "backlight": 1,
+            "backlight_offs": 0,
+            "fault": 0,
+            "nodes": 735,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "boot",
+          "status": 0,
+          "pixel_sha256": "9f0390cbcd50a2432b44b92e669607de0a53e07ad29ba9edca1ae0b83691ba0e",
+          "sram_sha256": "ed37f867bdd2c1182ad8e9026be5cab1c989a673393def463157671080dd12d2",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "retirement_failure": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 1,
+            "dma_owned": 1,
+            "backlight": 0,
+            "backlight_offs": 1,
+            "fault": 8,
+            "nodes": 735,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "boot",
+          "status": -4,
+          "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+          "sram_sha256": "ed37f867bdd2c1182ad8e9026be5cab1c989a673393def463157671080dd12d2",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "shutdown": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 0,
+            "backlight": 0,
+            "backlight_offs": 1,
+            "fault": 8,
+            "nodes": 735,
+            "low_bytes": 0,
+            "high_bytes": 0
+          },
+          "displayed_phase": "boot",
+          "status": 0,
+          "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+          "sram_sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        }
+      }
+    },
+    "lane-timeout": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "ready",
+          "count": 0,
+          "job": 0,
+          "present": 0,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 1,
+          "publications": 1,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 0,
+          "backlight": 0,
+          "backlight_offs": 1,
+          "fault": 8,
+          "nodes": 735,
+          "low_bytes": 0,
+          "high_bytes": 0
+        },
+        "displayed_phase": "boot",
+        "status": 0,
+        "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+        "sram_sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      },
+      "observations": {
+        "before": {
+          "view": {
+            "phase": "boot",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 0,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 1,
+            "backlight": 1,
+            "backlight_offs": 0,
+            "fault": 0,
+            "nodes": 735,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "boot",
+          "status": 0,
+          "pixel_sha256": "9f0390cbcd50a2432b44b92e669607de0a53e07ad29ba9edca1ae0b83691ba0e",
+          "sram_sha256": "ed37f867bdd2c1182ad8e9026be5cab1c989a673393def463157671080dd12d2",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "retirement_failure": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 1,
+            "dma_owned": 1,
+            "backlight": 0,
+            "backlight_offs": 1,
+            "fault": 8,
+            "nodes": 735,
+            "low_bytes": 131072,
+            "high_bytes": 192512
+          },
+          "displayed_phase": "boot",
+          "status": -4,
+          "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+          "sram_sha256": "ed37f867bdd2c1182ad8e9026be5cab1c989a673393def463157671080dd12d2",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        },
+        "shutdown": {
+          "view": {
+            "phase": "ready",
+            "count": 0,
+            "job": 0,
+            "present": 0,
+            "confirms": 0,
+            "missing": 0,
+            "truncated": 0
+          },
+          "metrics": {
+            "frames": 1,
+            "publications": 1,
+            "rejections": 0,
+            "mismatches": 0,
+            "pending": 0,
+            "dma_owned": 0,
+            "backlight": 0,
+            "backlight_offs": 1,
+            "fault": 8,
+            "nodes": 735,
+            "low_bytes": 0,
+            "high_bytes": 0
+          },
+          "displayed_phase": "boot",
+          "status": 0,
+          "pixel_sha256": "8df6d450b5a7cb358b9e8373af9fd9304e5912389c644f6c4bc66068380e88a3",
+          "sram_sha256": "07854d2fef297a06ba81685e660c332de36d5d18d546927d30daad6d7fda1541",
+          "profile": "base",
+          "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+          "base_audit": null,
+          "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+        }
+      }
+    },
+    "cache-rejection": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "pin1",
+          "count": 1,
+          "job": 1,
+          "present": 1,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 2,
+          "publications": 3,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 631,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "pin1",
+        "status": -4,
+        "pixel_sha256": "62a45e9c71ceb1238a63a76fc131db700c0dd084a3b304539a193a1617b0ce74",
+        "sram_sha256": "298b7fbfc2aa0752fe82ac185d3a025f15071f4ff77717610af12a0bae679f55",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "pixel-negative-control": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "boot",
+          "count": 0,
+          "job": 0,
+          "present": 0,
+          "confirms": 0,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 0,
+          "publications": 1,
+          "rejections": 0,
+          "mismatches": 1,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 735,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "boot",
+        "status": -2,
+        "pixel_sha256": "db71f368b8e76fd5f022945f30a62b7a41ba074b74a3ee405e894e5fc2beb59a",
+        "sram_sha256": "7ca70ce7779b1a04ce988294798d5aeb06428c077b529199b2665e4259a7531f",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "base-profiles": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "overview",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 2,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 12,
+          "publications": 13,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 967,
+          "low_bytes": 131072,
+          "high_bytes": 126976
+        },
+        "displayed_phase": "overview",
+        "status": 0,
+        "pixel_sha256": "29bf6c37dacaf5cb069fbb3b3b8fa60aca448f102ac5a3a7b61022a80f5d2cb9",
+        "sram_sha256": "56cdc251d70c3aed4af20c9089e48b7d0d223d9f90c699d88a45d7caa7e08249",
+        "profile": "font",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "deterministic-replay": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "details",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 2,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 13,
+          "publications": 14,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 167,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "details",
+        "status": 0,
+        "pixel_sha256": "63d47326c19797bfcdd08433324913a6db2b9520b31601580fb75d256e8856fb",
+        "sram_sha256": "d9614081e815a84cc569e058e3b44bfaf58b44bc1faaf4476fd03eb3c6c8bf46",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "result-controls": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "ready",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 2,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 16,
+          "publications": 17,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 89,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "ready",
+        "status": 0,
+        "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
+        "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "result-gestures": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "details",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 2,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 13,
+          "publications": 14,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 167,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "details",
+        "status": 0,
+        "pixel_sha256": "63d47326c19797bfcdd08433324913a6db2b9520b31601580fb75d256e8856fb",
+        "sram_sha256": "d9614081e815a84cc569e058e3b44bfaf58b44bc1faaf4476fd03eb3c6c8bf46",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    },
+    "mynumber-dismiss": {
+      "passed": true,
+      "state": {
+        "view": {
+          "phase": "ready",
+          "count": 0,
+          "job": 1,
+          "present": 1,
+          "confirms": 1,
+          "missing": 0,
+          "truncated": 0
+        },
+        "metrics": {
+          "frames": 8,
+          "publications": 9,
+          "rejections": 0,
+          "mismatches": 0,
+          "pending": 0,
+          "dma_owned": 1,
+          "backlight": 1,
+          "backlight_offs": 0,
+          "fault": 0,
+          "nodes": 89,
+          "low_bytes": 131072,
+          "high_bytes": 192512
+        },
+        "displayed_phase": "ready",
+        "status": 0,
+        "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
+        "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
+        "profile": "base",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "base_audit": null,
+        "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+      }
+    }
+  },
+  "overview": {
+    "view": {
+      "phase": "overview",
+      "count": 0,
+      "job": 1,
+      "present": 1,
+      "confirms": 2,
+      "missing": 0,
+      "truncated": 0
+    },
+    "metrics": {
+      "frames": 12,
+      "publications": 13,
+      "rejections": 0,
+      "mismatches": 0,
+      "pending": 0,
+      "dma_owned": 1,
+      "backlight": 1,
+      "backlight_offs": 0,
+      "fault": 0,
+      "nodes": 967,
+      "low_bytes": 131072,
+      "high_bytes": 192512
+    },
+    "displayed_phase": "overview",
+    "status": 0,
+    "pixel_sha256": "29bf6c37dacaf5cb069fbb3b3b8fa60aca448f102ac5a3a7b61022a80f5d2cb9",
+    "sram_sha256": "98bb33e5915417a429e35cb3a3cea477166c9a682bed4eef39196daf42d7c89f",
+    "profile": "base",
+    "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+    "base_audit": null,
+    "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+  },
+  "witness": "source-witness.json",
+  "summary": {
+    "passed": 14,
+    "total": 14,
+    "evidence": "build/card-sim/evidence"
+  }
+}

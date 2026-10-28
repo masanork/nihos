@@ -1,0 +1,373 @@
+{
+  "schema": 1,
+  "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+  "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification",
+  "cases": {
+    "normal-roundtrip": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 0,
+          "accepted": 2,
+          "down": 2,
+          "move": 0,
+          "up": 2,
+          "cancel": 0,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "splash"
+        },
+        "displayed_phase": "splash",
+        "status": 0,
+        "palette": 4,
+        "time_us": 40000,
+        "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 3,
+          "publications": 3,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-rejected-gestures": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 8,
+          "move": 2,
+          "up": 7,
+          "cancel": 1,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 1690001,
+        "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 2,
+          "publications": 2,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-stale": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 2,
+          "move": 0,
+          "up": 1,
+          "cancel": 1,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 2050001,
+        "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 2,
+          "publications": 2,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-queue-overflow": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 2,
+          "move": 8,
+          "up": 1,
+          "cancel": 1,
+          "overflow": 1,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 130000,
+        "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 2,
+          "publications": 2,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-eof-atomicity": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 1,
+          "move": 0,
+          "up": 1,
+          "cancel": 0,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 20000,
+        "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 2,
+          "publications": 2,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-scroll-palettes": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 1,
+          "move": 0,
+          "up": 1,
+          "cancel": 0,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 63,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 20000,
+        "pixel_sha256": "afc0ace0ed3088863ca1fa35c13fa9ee45157abaa0b9b3ea0107dc2e5dcda20e",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 6,
+          "publications": 6,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-replay": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 0,
+          "accepted": 2,
+          "down": 9,
+          "move": 2,
+          "up": 8,
+          "cancel": 1,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 60,
+          "mismatches": 0,
+          "phase": "splash"
+        },
+        "displayed_phase": "splash",
+        "status": 0,
+        "palette": 4,
+        "time_us": 1710001,
+        "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 4,
+          "publications": 4,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-negative-control": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 1,
+          "move": 0,
+          "up": 1,
+          "cancel": 0,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 20000,
+        "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 3,
+          "publications": 3,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-failure": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 1,
+          "accepted": 1,
+          "down": 2,
+          "move": 0,
+          "up": 2,
+          "cancel": 0,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 1200,
+          "last_y": 48,
+          "failed": 1,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "logs"
+        },
+        "displayed_phase": "logs",
+        "status": 0,
+        "palette": 4,
+        "time_us": 40000,
+        "pixel_sha256": "9d01505dc42b681650605871acb49dab5dc2a9dec4559f7c5e4842e921b7c456",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 3,
+          "publications": 3,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    },
+    "normal-bounded-trace": {
+      "passed": true,
+      "state": {
+        "application": "normal",
+        "view": {
+          "details": 0,
+          "accepted": 0,
+          "down": 0,
+          "move": 0,
+          "up": 0,
+          "cancel": 0,
+          "overflow": 0,
+          "queued": 0,
+          "last_x": 0,
+          "last_y": 0,
+          "failed": 0,
+          "log_lines": 0,
+          "mismatches": 0,
+          "phase": "splash"
+        },
+        "displayed_phase": "splash",
+        "status": 0,
+        "palette": 4,
+        "time_us": 0,
+        "pixel_sha256": "5e0f80096c306ce97893ed9fe6b2ed37c50e26912ee2621a0abdcd21212d6b05",
+        "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+        "trace_full": false,
+        "metrics": {
+          "frames": 1,
+          "publications": 1,
+          "pending": 0,
+          "mismatches": 0
+        },
+        "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+      }
+    }
+  },
+  "summary": {
+    "application": "normal",
+    "passed": 10,
+    "total": 10,
+    "evidence": "build/card-sim/evidence/normal"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-28T06:42:51.591623+00:00",
+  "commit": "94c8bde67bdf885abed7950df55a4353d3f033a4",
+  "app_sha256": "d7fcb8eb8f5c1537be87a93694211b7d8a57c9dbc70356c2198c4e5a88c947a0",
+  "elf_sha256": "05f414253abc44afc7fb9f954bcf7c43aadc7ab76a4d52c821c05fd6c6cf9712",
+  "source_archive_sha256": "f246f1d3316d86d072059c828c45a51260df4e3dc2449b74590f4f42b598a37f",
+  "scope": "normal shared-I2C touch with configured network and on-demand devices; optical confirmation recorded separately",
+  "written": true,
+  "restored": true,
+  "prior_app_partition_sha256": "6126f70e6fd3137c7fd7f8d0b645e83101d37fd2935e905462ebf2e81aa90ecb",
+  "boot_sha256": "2abdd2bd47aa470d84bcc46bbd01465d154b99db7985d0a93e096fd98db4a40f",
+  "seconds": 748.353185084,
+  "serial_sha256": "1c836a99e2fe0efab7b3142af8ca8202c27a4efb7cf8e3b70e9b87f6cde795ce",
+  "ready": true
+}
