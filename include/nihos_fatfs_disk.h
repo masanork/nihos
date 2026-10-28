@@ -1,6 +1,7 @@
 #ifndef NIHOS_FATFS_DISK_H
 #define NIHOS_FATFS_DISK_H
 #include <stdint.h>
+#include "nihos_storage_io.h"
 
 /* Trusted single storage owner only. Not an IRQ API or a client syscall.
  * The owner retains this workspace, callback context and device session until
@@ -8,6 +9,9 @@
  * read_sector returns only after DMA is fenced, on success AND on error.
  * An unproved fence must retain/quarantine its resources and must not return
  * into FatFs cleanup (the current native nih_storage_read fails fatally).
+ * Return NIH_STORAGE_READ_REMOVED for a trusted removal result;
+ * this invalidates the binding before any staged bytes are published. Other
+ * nonzero results fault it. Unknown/legacy nonzero results remain I/O errors.
  */
 typedef int (*nih_fatfs_sector_read)(void *context, uint32_t lba, uint8_t sector[512]);
 enum { NIH_FATFS_IO_BYTES = 4096, NIH_FATFS_READ_BUDGET = 8192 };

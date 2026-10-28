@@ -100,7 +100,8 @@ DRESULT disk_read(BYTE drive, BYTE *buffer, LBA_t sector, UINT count) {
         ++disk->reads;
         int failed = disk->read_sector(disk->context, (uint32_t)(disk->first + sector + i),
                                        disk->scratch + i * 512);
-        if (failed && disk->state == NIH_FATFS_READY) disk->state = NIH_FATFS_IO_FAILED;
+        if (failed && disk->state == NIH_FATFS_READY)
+            disk->state = failed == NIH_STORAGE_READ_REMOVED ? NIH_FATFS_REMOVED : NIH_FATFS_IO_FAILED;
         if (disk->state != NIH_FATFS_READY) goto done;
     }
     /* Publish the whole disk_read only after every sector has returned safely.

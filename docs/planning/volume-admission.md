@@ -141,4 +141,25 @@ ELF/image/source profileとworkspace寸法descriptorを監査し、実機証拠�
 Flash16 MiB全体の復元照合を保存した。停止点はDMA fence確認後であり、転送途中のabortや
 mount中の実抜去、native FAT12/16/32、書込み・SQLite永続化・電断復旧は未資格である。
 
+## Mounted cardの抜去とtransport失敗
+
+fencedなsector callbackの結果は0成功、-1汎用I/O失敗、-2取消、-3抜去に分ける。
+旧callbackの未知の非zeroもI/O失敗として拒否する。-3はtrustedな抜去結果の伝達であり、
+電気的抜去を自動観測した証拠ではない。取消/抜去のいずれでも途中までのscratchを公開しない。
+抜去はdisk bindingをremovedへ、その他の失敗はI/O failedへ移す。VFSでのread後も
+mountをremoved/faultedとして保持し、FatFsのcached readも拒否する。
+
+I/O間の抜去通知には、trusted ordinary ownerの`nih_fatfs_card_remove(context,generation)`を用意する。
+旧世代の通知を拒否し、同世代の再通知は許容する。synchronous sector callback内でも
+失効だけを行え、終了までcontext/session/pinを保持する。IRQから直接呼ぶAPIではない。
+residentの通知をordinary ownerへ届ける手順とcard-detect入力の登録は別途必要である。
+
+hostでは5形式でtransport取消・抜去、cached sectorだけで読める状態でのidle抜去を
+実card context→FatFs→VFS/RPC→development brokerへ通し、replyの全clear、以後のread/open拒否、
+不健全なmountへのclient再bind拒否、client停止後の全回収を検査する。
+同addressへ新世代をmountした後の旧通知拒否と、callback中のdestroy拒否も検査する。
+RPCの応答取消とcontrollerの停止通知は別物であり、このhost試験は両方を明示的に注入する。
+nativeのRPC取消からcontroller stopへの連動、siliconでの発行後abort、mount中の実抜去は
+このhost結合とnative compile/link監査だけでは資格にしない。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。

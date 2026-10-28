@@ -15,6 +15,7 @@ extern fn host_rpc_arm(u32) void;
 extern fn host_rpc_kind() u32;
 extern fn host_test_failure([*:0]const u8) void;
 extern fn host_backend_destroy() c_int;
+extern fn host_card_remove() c_int;
 
 // Host-owned stand-in backing for the UNCHANGED generated development policy.
 // No physical address registration or device execution is claimed.
@@ -85,10 +86,10 @@ fn event(kind: u32) !void {
     try expectError(error.Busy, manager.free(service_owner.?, parent.?.lease));
     try expectError(error.Busy, parent.?.retire(&manager, owner, queues(), Filesystem{}));
     try expect(parent.?.borrow != null);
-    if (kind == 1) {
+    if (kind == 1 or kind == 4) {
         try expect(notifications.cancelRead(owner.client, owner.epoch, owner.request.sequence));
         try expect(!notifications.cancelRead(owner.client, owner.epoch, owner.request.sequence + 1));
-    } else {
+    } else if (kind == 2) {
         try expect(notifications.notifyExit(owner.client, owner.epoch));
         try stoppedClient();
     }
@@ -140,17 +141,50 @@ fn check() !void {
     }
     // Leave a valid earlier reply unread while the next operation is active.
     read_request = request(3, .read, file);
-    read_request.offset = 512;
-    read_request.length = 4096;
+    read_request.offset = if (host_rpc_kind() == 6) 0 else 512;
+    read_request.length = if (host_rpc_kind() == 6) 1 else 4096;
     try publish(read_request);
     if (host_rpc_kind() == 2) {
         read_request = request(4, .read, file);
         read_request.length = 1;
         try publish(read_request);
     }
-    host_rpc_arm(host_rpc_kind());
+    const before_fault = host_backend_reads();
+    if (host_rpc_kind() == 6) try equal(@as(c_int, 1), host_card_remove()) else host_rpc_arm(host_rpc_kind());
     try expect(endpoint().step(queues()));
-    try equal(@as(u32, 1), event_seen);
+    try equal(@as(u32, if (host_rpc_kind() == 6) 0 else 1), event_seen);
+    if (host_rpc_kind() >= 4) {
+        if (host_rpc_kind() == 6) try equal(before_fault, host_backend_reads()) else try expect(host_backend_reads() > before_fault);
+        try receive(2);
+        try equal(@as(i32, 0), clientFrames().response.status);
+        try receive(3);
+        try equal(@as(i32, if (host_rpc_kind() == 4) -125 else -5), clientFrames().response.status);
+        try equal(@as(u32, 0), clientFrames().response.length);
+        for (clientFrames().response.data) |byte| try equal(@as(u8, 0), byte);
+        const state = if (host_rpc_kind() == 4) rpc.api.State.faulted else rpc.api.State.removed;
+        try equal(state, (try endpoint().core.queryMount(endpoint().mount.?)).state);
+        // Neither a cached file read nor a new open can reuse this mount.
+        const before = host_backend_reads();
+        read_request = request(4, .read, file);
+        read_request.length = 1;
+        try publish(read_request);
+        try expect(endpoint().step(queues()));
+        try receive(4);
+        try equal(@as(i32, if (host_rpc_kind() == 4) -5 else -9), clientFrames().response.status);
+        open_request = request(5, .open, root);
+        open_request.path_length = 8;
+        @memcpy(open_request.path[0..8], "Memo.txt");
+        try publish(open_request);
+        try expect(endpoint().step(queues()));
+        try receive(5);
+        try equal(@as(i32, if (host_rpc_kind() == 4) -5 else -9), clientFrames().response.status);
+        try equal(before, host_backend_reads());
+        try expect(notifications.notifyExit(42, 1));
+        try stoppedClient();
+        try expect(endpoint().step(queues()));
+        try expect(!endpoint().rebind(queues(), 43));
+        return;
+    }
     if (host_rpc_kind() == 1) {
         try receive(2);
         try receive(3);

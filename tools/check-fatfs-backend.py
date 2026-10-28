@@ -112,7 +112,8 @@ def main():
         probe(row, 'identity-and-admission', 'normal', fixture['alias'] or 'LONG FILENAME FOR ALIAS.TXT')
         for mode in ('vfs', 'selected-vfs', 'io', 'removed'):
             probe(row, mode, mode)
-        for mode in ('rpc-cancel', 'rpc-exit', 'card-rpc-cancel', 'card-rpc-exit'):
+        for mode in ('rpc-cancel', 'rpc-exit', 'card-rpc-cancel', 'card-rpc-exit',
+                     'card-rpc-transport-cancel', 'card-rpc-transport-remove', 'card-rpc-idle-remove'):
             probe(row, mode, mode)
         if fixture['fs_type'] == 4:
             probe(row, 'rpc-large', 'rpc-large')

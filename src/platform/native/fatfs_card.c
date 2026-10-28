@@ -43,6 +43,10 @@ const char *nih_fatfs_card_path(nih_fatfs_card *card, uint32_t generation) {
 uint32_t nih_fatfs_card_reads(nih_fatfs_card *card, uint32_t generation) {
     return matches(card,generation) ? card->disk.reads : 0;
 }
+int nih_fatfs_card_remove(nih_fatfs_card *card, uint32_t generation) {
+    return matches(card,generation) && card->backend &&
+        nih_fatfs_backend_remove(card->backend,generation)==NIH_FB_OK;
+}
 int nih_fatfs_card_destroy(nih_fatfs_card *card, uint32_t generation) {
     if (!matches(card,generation)) return 0;
     if (card->backend) {

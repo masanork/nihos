@@ -39,7 +39,11 @@ int32_t nih_storage_read(uint32_t lba, uint8_t sector[512]) {
     uint64_t begin = offset > patch_offset ? offset : patch_offset;
     uint64_t end = offset + 512 < patch_offset + patch_size ? offset + 512 : patch_offset + patch_size;
     if (patch_size && begin < end) memcpy(sector + (begin - offset), patch + (begin - patch_offset), (size_t)(end - begin));
-    if (rpc_event) { uint32_t event = rpc_event; rpc_event = 0; nih_rpc_event(event); }
+    if (rpc_event) {
+        uint32_t event = rpc_event; rpc_event = 0; nih_rpc_event(event);
+        if (event==4) return NIH_STORAGE_READ_CANCELLED;
+        if (event==5) return NIH_STORAGE_READ_REMOVED;
+    }
     return calls == fail_at ? -1 : 0;
 }
 void host_test_failure(const char *name) { fprintf(stderr,"Zig VFS integration: %s\n",name); }
@@ -54,6 +58,7 @@ int host_backend_destroy(void) {
 }
 void host_backend_fail_after(uint32_t count) { fail_at = calls + count; }
 int host_backend_remove(void) { return nih_fatfs_backend_remove(session, epoch); }
+int host_card_remove(void) { return nih_fatfs_card_remove(card_context,(uint32_t)epoch); }
 int host_backend_disk_remove(void) { return nih_fatfs_disk_invalidate(disk, epoch); }
 int host_backend_rebind(void) {
     if (nih_fatfs_backend_destroy(session,epoch)) return -1;
@@ -154,9 +159,11 @@ int main(int argc, char **argv) {
         volume_count = volume.count;
         probe_reads = volume.reads;
     }
-    int card_rpc=!strcmp(mode,"card-rpc-cancel") || !strcmp(mode,"card-rpc-exit");
+    int card_rpc=!strncmp(mode,"card-rpc-",9);
     rpc_kind = (!strcmp(mode,"rpc-cancel") || !strcmp(mode,"card-rpc-cancel")) ? 1 :
-               (!strcmp(mode,"rpc-exit") || !strcmp(mode,"card-rpc-exit")) ? 2 : !strcmp(mode,"rpc-large") ? 3 : 0;
+               (!strcmp(mode,"rpc-exit") || !strcmp(mode,"card-rpc-exit")) ? 2 : !strcmp(mode,"rpc-large") ? 3 :
+               !strcmp(mode,"card-rpc-transport-cancel") ? 4 : !strcmp(mode,"card-rpc-transport-remove") ? 5 :
+               !strcmp(mode,"card-rpc-idle-remove") ? 6 : 0;
     uint32_t bytes = nih_fatfs_backend_bytes();
     if (rpc_kind) {
         uintptr_t disk_address, fs_address;

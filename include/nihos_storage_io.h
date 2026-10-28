@@ -1,6 +1,13 @@
 #ifndef NIHOS_STORAGE_IO_H
 #define NIHOS_STORAGE_IO_H
 #include <stdint.h>
+/* Fenced synchronous nih_storage_read results. A negative return never proves
+ * electrical removal by itself. REMOVED preserves a trusted removal result;
+ * CANCELLED does not imply that the controller/session is reusable.
+ * Existing consumers may continue treating every nonzero result as failure.
+ * An unproved DMA fence does not return into caller cleanup. */
+enum { NIH_STORAGE_READ_OK = 0, NIH_STORAGE_READ_IO = -1,
+       NIH_STORAGE_READ_CANCELLED = -2, NIH_STORAGE_READ_REMOVED = -3 };
 /* Internal trusted storage-owner hooks, not public syscalls.
  * Resident IRQ code may only publish notifications. The ordinary owner stops
  * DMA, detaches descriptors and hands back caches before releasing its lease.
