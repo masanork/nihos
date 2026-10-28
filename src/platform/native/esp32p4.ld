@@ -10,6 +10,7 @@ __native_profile = 1;
 __native_profile = 0;
 #define NIH_SRAM_ORIGIN 0x4ff00000
 #endif
+__native_devices = NIH_NATIVE_DEVICES;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
@@ -40,6 +41,16 @@ SECTIONS
         __flash_card_start = .;
         *(.flash.text.card)
         __flash_card_end = .;
+    } > flash_boot
+#endif
+#if NIH_NATIVE_DEVICES
+    .flash.devices : ALIGN(16) {
+        __flash_devices_start = .;
+        *audio_tx.o(.text .text.*)
+        *microphone_rx.o(.text .text.*)
+        *rs485_uart.o(.text .text.*)
+        *(.flash.text.devices)
+        __flash_devices_end = .;
     } > flash_boot
 #endif
     /* The stock P4 loader maps both segments before entering SRAM.

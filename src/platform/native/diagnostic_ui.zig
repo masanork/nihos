@@ -27,6 +27,9 @@ var last_input: u64 = 0;
 var sequence: u32 = 0;
 var settled_reported = false;
 var serial = console.keys.Serial{};
+const control = @import("device_control");
+var device_commands: control.Parser = .{};
+extern fn nih_device_request(u32) callconv(.c) bool;
 var bus = i2c.Master(Pins){ .pins = .{ .clock = clock.timer() }, .data_pin = 0, .clock_pin = 1 };
 var keyboard = console.keyboard.Keyboard(@TypeOf(bus)){ .bus = &bus };
 var hardware_ready = false;
@@ -267,6 +270,13 @@ noinline fn poll(now: u64, log: anytype) void {
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
+        if (options.devices) {
+            var command: ?control.Command = null;
+            if (device_commands.feed(@intCast(byte), &command)) {
+                if (command) |value| _ = nih_device_request(@backingInt(value));
+                continue;
+            }
+        }
         if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);
     }
     if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);

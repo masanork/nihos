@@ -14,6 +14,14 @@ const network_config = @import("network_config");
 const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
+export fn nih_device_request(kind: u32) callconv(.c) bool {
+    if (!options.devices) return false;
+    const accepted = board_devices.requestDevice(kind);
+    const workspace = @import("device_workspace.zig");
+    const words: extern struct { kind: u32, accepted: u32, i2s_owner: u32, pinned: u32, workspace: u32 } = .{ .kind = kind, .accepted = @intFromBool(accepted), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
+    logger.record("NIHOS_DEVICE_REQUEST", null, .{ "kind", "accepted", "i2s_owner", "pinned", "workspace" }, &words);
+    return accepted;
+}
 
 comptime {
     if (@sizeOf(tasks.context.IntegerContext) != tasks.memory.stacks.layout.frame_bytes)
@@ -54,13 +62,17 @@ fn serviceNetwork() void {
         if (now >= devices_report_at) {
             devices_report_at = now + 5_000_000;
             const devices = board_devices.snapshot();
-            if (options.audio) {
+            if (options.devices) {
+                const service = board_devices.serviceSnapshot();
+                logger.record("NIHOS_NATIVE_DEVICE_SERVICE", null, .{ "available", "requested", "i2s_owner", "pinned", "workspace" }, &service);
+            }
+            if (options.audio or (options.devices and board_devices.requestedMask() & 1 != 0)) {
                 const audio = board_devices.audio.snapshot();
                 logger.record("NIHOS_NATIVE_AUDIO", null, .{ "phase", "fault", "dma", "bclk", "fifo", "eof_descriptor", "parked", "codec_off", "stopped", "returned" }, &audio);
                 const io = board_devices.audio.ioFailure();
                 logger.record("NIHOS_NATIVE_AUDIO_IO", null, .{ "device", "register", "expected", "actual", "stage" }, &io);
             }
-            if (options.microphone) {
+            if (options.microphone or (options.devices and board_devices.requestedMask() & 2 != 0)) {
                 const mic = board_devices.microphone.snapshot();
                 logger.record("NIHOS_NATIVE_MICROPHONE", null, .{ "phase", "fault", "dma", "end", "parked", "codec_off", "stopped", "returned", "samples", "erased" }, &mic);
                 const signal = board_devices.microphone.signal();
@@ -68,7 +80,7 @@ fn serviceNetwork() void {
                 const io = board_devices.microphone.ioFailure();
                 logger.record("NIHOS_NATIVE_MICROPHONE_IO", null, .{ "register", "expected", "actual", "stage" }, &io);
             }
-            if (options.rs485) {
+            if (options.rs485 or (options.devices and board_devices.requestedMask() & 4 != 0)) {
                 const io = board_devices.rs485.diagnostic();
                 logger.record("NIHOS_NATIVE_RS485_IO", null, .{ "stage", "a", "b", "c" }, &io);
                 const rs485 = board_devices.rs485.snapshot();
@@ -379,7 +391,7 @@ fn trapFailure(frame: *const tasks.context.IntegerContext, cause: u32, hart: u32
 }
 
 export fn nih_microphone_stage(code: u32) callconv(.c) void {
-    if (options.microphone) {
+    if (options.microphone or options.devices) {
         print("NIHOS_NATIVE_MICROPHONE_STAGE code=");
         hex(code);
         print("\n");
@@ -387,7 +399,7 @@ export fn nih_microphone_stage(code: u32) callconv(.c) void {
 }
 
 export fn nih_audio_stage(code: u32) callconv(.c) void {
-    if (!options.audio) return;
+    if (!options.audio and !options.devices) return;
     const stage = .{ .code = code };
     logger.record("NIHOS_NATIVE_AUDIO_STAGE", null, .{"code"}, &stage);
 }

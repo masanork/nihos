@@ -39,7 +39,7 @@ static bool update(void) {
     for (unsigned n = 0; n < 8192; ++n) if (!UART1.reg_update.reg_update) return true;
     return false;
 }
-static void output(unsigned pin, unsigned signal, bool high) {
+static void rs485_output(unsigned pin, unsigned signal, bool high) {
     gpio_ll_set_level(&GPIO, pin, high); // Latch before enabling the output.
     gpio_ll_func_sel(&GPIO, (uint8_t)pin, 1);
     gpio_ll_pullup_dis(&GPIO, pin); gpio_ll_pulldown_dis(&GPIO, pin);
@@ -66,7 +66,7 @@ bool nih_rs485_open(uint32_t mode) {
         UART1.rs485_conf_sync.rs485_en || !uart_ll_is_tx_idle(&UART1) || uart_ll_get_rxfifo_len(&UART1)))
         return failed(2, UART1.conf0_sync.val, UART1.status.val, UART1.int_ena.val);
     owned = true; was_closed = false; peer = mode == 2;
-    output(34, SIG_GPIO_OUT_IDX, false); // /RE and DE tied: low=receive.
+    rs485_output(34, SIG_GPIO_OUT_IDX, false); // /RE and DE tied: low=receive.
     gpio_ll_input_enable(&GPIO, 34);
     if (!nih_rs485_dir_low()) return failed(3, GPIO.out1.val, GPIO.enable1.val, GPIO.in1.val);
     uart_ll_enable_bus_clock(1, true);
@@ -91,7 +91,7 @@ bool nih_rs485_open(uint32_t mode) {
     UART1.conf0_sync.txfifo_rst = 0; UART1.conf0_sync.rxfifo_rst = 0;
     if (!update()) return failed(5, UART1.reg_update.val, UART1.clk_conf.val, HP_SYS_CLKRST.peri_clk_ctrl111.val);
     if (peer) {
-        output(20, UART1_TXD_PAD_OUT_IDX, true);
+        rs485_output(20, UART1_TXD_PAD_OUT_IDX, true);
         gpio_ll_func_sel(&GPIO, 21, 1); gpio_ll_output_disable(&GPIO, 21);
         gpio_ll_input_enable(&GPIO, 21);
         gpio_ll_pullup_dis(&GPIO, 21); gpio_ll_pulldown_dis(&GPIO, 21);

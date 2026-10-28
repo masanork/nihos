@@ -35,7 +35,7 @@ __asm__(".global USB_WRAP\n.set USB_WRAP,0x50080000\n");
 static bool owned;
 extern void nih_audio_stage(uint32_t code);
 static void fence_io(void) { __asm__ volatile("fence iorw,iorw" ::: "memory"); }
-static void output(unsigned pin, unsigned signal) {
+static void audio_output(unsigned pin, unsigned signal) {
     nih_audio_stage(0x200u + pin);
     // GPIO26/27 are also the unused FS-OTG PHY pads. The wrapper clock is
     // temporarily enabled by prepare, so LL can release the analog pad mux.
@@ -117,10 +117,10 @@ bool nih_audio_tx_prepare(uint32_t descriptor) {
     HP_SYS_CLKRST.soc_clk_ctrl1.reg_usb_otg11_sys_clk_en = 1;
     LP_AON_CLKRST.hp_usb_clkrst_ctrl0.usb_otg11_48m_clk_en = 1;
     fence_io();
-    output(30, I2S0_MCLK_PAD_OUT_IDX);
-    output(27, I2S0_O_BCK_PAD_OUT_IDX);
-    output(29, I2S0_O_WS_PAD_OUT_IDX);
-    output(26, I2S0_O_SD_PAD_OUT_IDX);
+    audio_output(30, I2S0_MCLK_PAD_OUT_IDX);
+    audio_output(27, I2S0_O_BCK_PAD_OUT_IDX);
+    audio_output(29, I2S0_O_WS_PAD_OUT_IDX);
+    audio_output(26, I2S0_O_SD_PAD_OUT_IDX);
     LP_AON_CLKRST.hp_usb_clkrst_ctrl0.usb_otg11_48m_clk_en = usb_48m;
     HP_SYS_CLKRST.soc_clk_ctrl1.reg_usb_otg11_sys_clk_en = usb_bus;
     fence_io();
