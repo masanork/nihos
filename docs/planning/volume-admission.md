@@ -134,4 +134,11 @@ ELF/image/source profileとworkspace寸法descriptorを監査し、実機証拠�
 入力・成果物hashと未確認範囲を保存した。実機採取では`--wait-for-card`でROM download状態を保ち、
 候補のFlash照合とoperatorのカード交換確認を終えてから起動する。
 
+その後、実exFATカード1枚、1回のwarm USB resetでこのnative task経路を通過した。
+取消、kernelによるclient停止、queued request/replyの破棄、再bind、旧識別子拒否、
+140 Bの反復readと全資源回収を確認した。
+[実SD VFS/RPC記録](../measurements/2026-10-28-fatfs-card-rpc-physical.md)に採取前後の候補照合と
+Flash16 MiB全体の復元照合を保存した。停止点はDMA fence確認後であり、転送途中のabortや
+mount中の実抜去、native FAT12/16/32、書込み・SQLite永続化・電断復旧は未資格である。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。
