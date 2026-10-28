@@ -50,3 +50,9 @@ content.fillRect(.{ .x = 0, .y = 0, .width = 100, .height = 30 }, 0xffff);
 - ホストでXY相当、ルビ付き文章、indexed frameを走らせ、Tab5で同一候補の表示・入力応答・フレーム時間とメモリを確認する。ホスト一致と実機の可視性・性能は別の証拠として残す。
 
 SDL互換層、文字組版、Wasm runtimeの導入や実機試験は、この文書と最小canvasの実装では完了していない。
+
+## 検証済みの範囲
+
+ホストテストではカード用縦組み起動画面を、実際のassetとcanvasのfill/maskで別に構成し、既存 `card_splash.paint` の出力とpaddingを含めて全バイト比較する。カードPIN・結果画面の比較ではない。DebugとReleaseSafeで検査する。
+
+`src/graphics/canvas_compile_probe.zig` は全描画操作を呼ぶコンパイル専用probe。Zig 0.17.0、`riscv32-freestanding-none`、`generic_rv32+m+a+c+zicsr+zifencei`、ReleaseSafeでオブジェクト生成を確認した。未解決の `memcpy` と `memset` があり、完全なファームウェアへのリンク、コードサイズ、実行時間、実機描画は確認していない。probeは公開ABIではない。
