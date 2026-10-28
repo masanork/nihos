@@ -1,6 +1,7 @@
 //! Finite composition driver, not a paragraph/ruby layout policy or scanout.
 const std = @import("std");
-const policy = @import("japanese_break");
+const ruby = @import("ruby_layout");
+const policy = ruby.policy;
 const layout = policy.layout;
 const options = @import("native_options");
 const surface = @import("surface");
@@ -24,6 +25,23 @@ pub const WrapReport = struct { frames: u32 = 0, clusters: u32 = 0, lines: u32 =
 pub var wrap_metrics: WrapReport = .{};
 pub const PolicyReport = struct { frames: u32 = 0, spans: u32 = 0, joined: u32 = 0, lines: u32 = 0, transitions: u32 = 0, clipped: u32 = 0 };
 pub var policy_metrics: PolicyReport = .{};
+pub const RubyReport = struct { frames: u32 = 0, groups: u32 = 0, moved: u32 = 0, wide: u32 = 0, units: u32 = 0, joins: u32 = 0, lines: u32 = 0, clipped: u32 = 0, plan_bytes: u32 = @sizeOf(ruby.Plan(16)), scratch_bytes: u32 = ruby.scratchBytes(16) };
+pub var ruby_metrics: RubyReport = .{};
+fn AnnotationMap(comptime index: usize) type {
+    return struct {
+        const value linksection(".flash.rodata.display") = blk: {
+            const source = options.font_ruby_cases[index];
+            var result: [source.len]ruby.Annotation = @splat(.{ .base = .{ .start = 0, .end = 0 }, .ruby = .{ .start = 0, .end = 0 } });
+            for (source, 0..) |item, i| result[i] = .{ .base = .{ .start = item.base_start, .end = item.base_end }, .ruby = .{ .start = item.ruby_start, .end = item.ruby_end } };
+            break :blk result;
+        };
+    };
+}
+const annotations: [options.font_text_cases.len][]const ruby.Annotation linksection(".flash.rodata.display") = blk: {
+    var result: [options.font_text_cases.len][]const ruby.Annotation = @splat(&.{});
+    for (0..options.font_text_cases.len) |i| result[i] = &AnnotationMap(i).value;
+    break :blk result;
+};
 pub const Placement = struct { paint_pc: u32 = 0, draw_pc: u32 = 0, frames: u32 = 0, draws: u32 = 0, context_checks: u32 = 0, irq_rejected: u32 = 0, active_ticks: u32 = 0, flash_ticks: u32 = 0, trap_pc: u32 = 0 };
 pub var placement: Placement = .{};
 var painting: bool = false;
@@ -51,9 +69,9 @@ pub noinline fn captureTimer(pc: u32) void {
 const Maps = struct { body: []const policy.Boundary, ruby: []const policy.Boundary };
 // Immutable boundaries use the existing loader-mapped display-data span.
 // Rendering already requires active Flash mappings; no executable kernel code moves.
-fn SourceMap(comptime index: usize, comptime ruby: bool) type {
+fn SourceMap(comptime index: usize, comptime is_ruby: bool) type {
     return struct {
-        const value linksection(".flash.rodata.display") = policy.forText(if (ruby) options.font_text_cases[index].ruby else options.font_text_cases[index].body);
+        const value linksection(".flash.rodata.display") = policy.forText(if (is_ruby) options.font_text_cases[index].ruby else options.font_text_cases[index].body);
     };
 }
 const maps: [options.font_text_cases.len]Maps linksection(".flash.rodata.display") = blk: {
@@ -63,7 +81,7 @@ const maps: [options.font_text_cases.len]Maps linksection(".flash.rodata.display
     }
     break :blk result;
 };
-pub const Result = struct { surface_hash: u32 = 0, wrap_hash: u32 = 0, policy_hash: u32 = 0 };
+pub const Result = struct { surface_hash: u32 = 0, wrap_hash: u32 = 0, policy_hash: u32 = 0, ruby_hash: u32 = 0 };
 fn digest(bytes: []const u8) u32 {
     var value: u32 = 2166136261;
     for (bytes) |byte| value = (value ^ byte) *% 16777619;
@@ -172,6 +190,24 @@ noinline fn paint(target: *const surface.Surface, data: []u8, reply: *const prot
             }
         }
     }
+    var flow = layout.Flow.init((if (vertical) @as(i32, 96) else if (reply.id == 9) @as(i32, 80) else 96) * 64, (if (vertical) @as(i32, 40) else 32) * 64, if (vertical) 4 else 3) catch nih_native_task_failed();
+    if (reply.id != 9) _ = flow.place((if (vertical) @as(i32, 32) else 48) * 64) catch nih_native_task_failed();
+    const planned = ruby.plan(16, protocol.Glyph, glyphs, maps[reply.id - 5].body, maps[reply.id - 5].ruby, annotations[reply.id - 5], if (vertical) .vertical else .horizontal, flow, 26 * 64) catch nih_native_task_failed();
+    if (!target.fill(0xf79e)) nih_native_task_failed();
+    for (glyphs, 0..) |g, i| {
+        const position = planned.positions[i];
+        const px: i64 = if (vertical) -@as(i64, position.block_offset) else position.inline_offset;
+        const py: i64 = if (vertical) -@as(i64, position.inline_offset) else -@as(i64, position.block_offset);
+        if (draw(target, pixels, &g, px, py, if (vertical) 150 else 8, if (vertical) 8 else if (reply.id == 9) @as(i64, 32) else 10)) ruby_metrics.clipped += 1;
+    }
+    ruby_metrics.frames += 1;
+    ruby_metrics.groups += planned.stats.groups;
+    ruby_metrics.moved += planned.stats.moved;
+    ruby_metrics.wide += planned.stats.wide;
+    ruby_metrics.units += planned.stats.units;
+    ruby_metrics.joins += planned.stats.joins;
+    ruby_metrics.lines += planned.flow.lines();
+    result.ruby_hash = digest(data);
     return result;
 }
 

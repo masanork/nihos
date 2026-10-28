@@ -560,3 +560,23 @@ The same `tools/run-native-graphics-smoke.sh` command audits both ELF/image
 placement and actual PC/preemption records, then rechecks every matrix, raster,
 unwrapped, wrapped and basic-prohibition digest plus final heap recovery.
 It does not grant cache-off rendering or establish physical cache/latency behavior.
+
+## Anchored group ruby
+
+The [group-ruby decision](../../docs/adr/0052-anchored-group-ruby.md) adds a
+bounded value planner above shaping. Canonical `ruby_cases.json` binds UTF-8
+body/ruby intervals; the font request/worker glyph ABI is unchanged. Generate
+an independent batch reference from the existing pinned host A8 masks with:
+
+```sh
+python3 probes/graphics/ruby_reference.py build/ruby-reference
+```
+
+Native smoke now adds a fourth pass, moving both annotated groups across a
+continuation boundary and reserving extra advance for the wider vertical ruby.
+The no-ruby case matches the old prohibition frame. Fixed-origin host controls
+expose detached placement, and host tests cover multiple annotations, cluster
+splits, range overlap/coverage, width/block exhaustion and unchanged caller flow.
+All prior hashes, Flash/IRQ/guard evidence and heap recovery remain required.
+This is centered reserved-width group ruby, not full typography or native
+arbitrary-document loading; the native plan capacity remains 16 glyphs.

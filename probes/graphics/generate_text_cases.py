@@ -25,7 +25,13 @@ def generate(kind):
             values += [str(len(item['body'].encode())), str(len(item['ruby'].encode())), quoted(item['body']), quoted(item['ruby'])]
             rows.append('{' + ','.join(values) + '}')
     if kind == "zig":
-        return 'pub const font_text_cases = .{\n' + ',\n'.join(rows) + '\n};\n'
+        annotations = json.loads(Path(__file__).with_name("ruby_cases.json").read_text())
+        assert len(annotations) == len(cases)
+        ruby_rows = []
+        for items in annotations:
+            values = [".{" + ", ".join(f".{key} = @as(u32, {item[key]})" for key in ("base_start", "base_end", "ruby_start", "ruby_end")) + "}" for item in items]
+            ruby_rows.append(".{" + ", ".join(values) + "}")
+        return 'pub const font_text_cases = .{\n' + ',\n'.join(rows) + '\n};\npub const font_ruby_cases = .{\n' + ',\n'.join(ruby_rows) + '\n};\n'
     return 'static const GraphicsRender text_cases[5] = {\n' + ',\n'.join(rows) + '\n};\n'
 
 
