@@ -40,6 +40,26 @@ class KernelSerialExclusiveTests(unittest.TestCase):
             closer.assert_called_once_with(123)
             self.assertEqual(ioctl.call_args_list[-1].args,(99,termios.TIOCNXCL))
 
+    def test_repeated_claim_busy_needs_alias_denial_and_close_releases_claim(self):
+        import errno
+        from unittest.mock import patch
+        port = SimpleNamespace(fd=99,port='/dev/cu.test')
+        busy=OSError(errno.EBUSY,'busy')
+        with patch.object(SERIAL.fcntl,'ioctl',side_effect=busy), patch.object(SERIAL.os,'open',side_effect=busy) as opener:
+            SERIAL.claim_kernel_exclusive(port)
+            self.assertEqual(opener.call_count,2)
+        with patch.object(SERIAL.fcntl,'ioctl',side_effect=busy), patch.object(SERIAL.os,'open',return_value=123), patch.object(SERIAL.os,'close'):
+            with self.assertRaisesRegex(RuntimeError,'not enforced'): SERIAL.claim_kernel_exclusive(port)
+        events=[]
+        class Base:
+            fd=99
+            def close(self): events.append('close')
+        Port=SERIAL.capture_serial_class(Base)
+        instance=Port();instance._kernel_exclusive_claimed=True
+        with patch.object(SERIAL.fcntl,'ioctl',side_effect=lambda *args:events.append('release')):
+            instance.close();instance.close()
+        self.assertEqual(events,['release','close','close'])
+
     def test_claim_precedes_modem_lines_and_passive_open_stays_passive(self):
         events = []
         class Base:
