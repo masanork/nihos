@@ -130,5 +130,8 @@ client frameは別ownerへ8 KiB課金する。policyの上限は増やさない�
 Flash内の旧fixture decoderは補助self-checkとして残すが、実行するfilesystemはSD上のvolumeである。
 ELF/image/source profileとworkspace寸法descriptorを監査し、実機証拠は別記録で扱う。
 実機で合格するまで、前回の直接exFAT読取りをこの新しいtask経路の合格に転用しない。
+[card VFS/RPCのhost検証とnative候補監査](../measurements/2026-10-28-fatfs-card-rpc-host.md)に
+入力・成果物hashと未確認範囲を保存した。実機採取では`--wait-for-card`でROM download状態を保ち、
+候補のFlash照合とoperatorのカード交換確認を終えてから起動する。
 
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。
