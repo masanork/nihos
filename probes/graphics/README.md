@@ -580,3 +580,39 @@ splits, range overlap/coverage, width/block exhaustion and unchanged caller flow
 All prior hashes, Flash/IRQ/guard evidence and heap recovery remain required.
 This is centered reserved-width group ruby, not full typography or native
 arbitrary-document loading; the native plan capacity remains 16 glyphs.
+
+
+## Runtime-owned text context
+
+The next stage replaces the native build-time source maps with
+[`text_context.zig`](../../src/graphics/text_context.zig): bounded owned text,
+annotations, runtime UTF-8/prohibition maps and a diagnostic revision/content
+seal. It prepends 新 to the first caller's 日本語 and drops its old suffix,
+then shifts that group's parent range from 0..9 to 3..12. Submitted caller bytes
+and annotations are poisoned; the worker echoes the source it actually received.
+The consumer rejects stale revisions, source/annotation/map mutations and wrong
+worker echoes before canvas allocation. Invalid preparation preserves the active
+context. This is a serialized qualification context, not a concurrent document API.
+
+With the pinned graphics probe host libraries already built, reproduce the
+independent post-edit shaping/A8 and all four pixel references using:
+
+```sh
+sh tools/run-runtime-text-reference.sh
+```
+
+The arm64 host runner uses ASan/UBSan and `runtime_text_cases.json` /
+`runtime_ruby_cases.json`, independently written post-edit expectations. Native
+Options still contain the original inputs. The checked-in aggregate is
+`docs/measurements/2026-10-28-runtime-text-reference.json`; previews are generated
+under `build/runtime-text-reference`. The same native smoke command compares
+edited output against this aggregate and requires runtime-source rejection/PC
+records. Earlier references above remain historical baselines.
+
+Eight private Flash functions now cover finite input, source checks/hashes,
+completed-record reporting and paint/draw; SRAM retains queue/ownership,
+interrupts, allocation, guards and retirement. Both the 48 KiB SRAM heap floor and
+16 KiB frontend Flash ceiling remain enforced with runtime safety checks enabled.
+Fonts remain immutable Flash fixtures. Persistent native font IO, application
+routing, service restart, full typography and physical LCD/cache validation are
+still separate gates; see [ADR 0053](../../docs/adr/0053-runtime-text-context.md).

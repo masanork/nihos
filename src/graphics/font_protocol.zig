@@ -32,6 +32,14 @@ pub const Render = extern struct {
         return result;
     }
 };
+/// Diagnostic identity of validated active source bytes/settings, not an auth MAC.
+pub inline fn renderHash(render: *const Render) u32 {
+    var value: u32 = 2166136261;
+    for ([_]u32{ render.font, render.pixels, render.vertical, render.hinting, render.body_length, render.ruby_length }) |word| value = (value ^ word) *% 16777619;
+    for (render.body[0..render.body_length]) |byte| value = (value ^ byte) *% 16777619;
+    for (render.ruby[0..render.ruby_length]) |byte| value = (value ^ byte) *% 16777619;
+    return value;
+}
 // Private synchronous bridge into C++; this pointer never comes from a client.
 pub const Job = extern struct { operation: u32, render: Render, raster: ?[*]u8 = null, capacity: u32 = 0 };
 pub const Outcome = enum(u32) { ok, render_failed, output_full, raster_unavailable };
@@ -56,7 +64,7 @@ pub const Output = extern struct {
     raster_bytes: u32 = 0,
     glyphs: [16]Glyph = @splat(.{}),
 
-    pub fn validate(self: *const Output) error{InvalidOutput}!void {
+    pub noinline fn validate(self: *const Output) error{InvalidOutput}!void {
         if (self.outcome > 3 or self.count > self.glyphs.len) return error.InvalidOutput;
         if (self.outcome != 0) {
             if (self.count != 0 or self.raster_bytes != 0 or !std.mem.allEqual(u8, std.mem.asBytes(&self.glyphs), 0)) return error.InvalidOutput;
@@ -85,6 +93,11 @@ pub const Reply = struct {
     outcome: Outcome = .ok,
     output: Output = .{},
     raster_token: u32 = 0,
+    // Matrix jobs use all hashes. Text jobs use [0] for draw output and [1]
+    // for the independently computed Render identity; no packet growth.
+    pub fn sourceHash(self: *const Reply) u32 {
+        return if (self.operation == .render_text) self.hashes[1] else 0;
+    }
 };
 
 pub const State = struct {

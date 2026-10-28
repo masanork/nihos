@@ -5,13 +5,13 @@ pub const layout = @import("line_layout.zig");
 pub const Boundary = packed struct(u8) { allowed: bool = false, scalar_start: bool = false, reserved: u6 = 0 };
 pub const Error = layout.Error || error{ Source, Capacity, HardBreak, Alias };
 
-pub fn noEnd(cp: u21) bool {
+pub inline fn noEnd(cp: u21) bool {
     return switch (cp) {
         '(', '[', '{', 0x2018, 0x201c, 0x3008, 0x300a, 0x300c, 0x300e, 0x3010, 0x3014, 0x3016, 0x3018, 0x301a, 0xff08, 0xff3b, 0xff5b, 0xff62 => true,
         else => false,
     };
 }
-pub fn noStart(cp: u21) bool {
+pub inline fn noStart(cp: u21) bool {
     return switch (cp) {
         ')',
         ']',
@@ -93,7 +93,7 @@ pub fn noStart(cp: u21) bool {
 /// Whole paragraph fragment only. Split CR/LF outside this API. Invalid input
 /// or insufficient output leaves the caller's map unchanged. Paragraph edges
 /// are forced endpoints; an initial closing mark is not silently rewritten.
-pub fn map(text: []const u8, output: []Boundary) Error!void {
+pub inline fn map(text: []const u8, output: []Boundary) Error!void {
     if (text.len == std.math.maxInt(usize) or output.len != text.len + 1) return error.Capacity;
     if (!@inComptime() and text.len != 0) {
         const source = @intFromPtr(text.ptr);
@@ -103,13 +103,14 @@ pub fn map(text: []const u8, output: []Boundary) Error!void {
     if (!std.unicode.utf8ValidateSlice(text)) return error.Source;
     if (std.mem.indexOfAny(u8, text, "\r\n") != null) return error.HardBreak;
     @memset(output, .{});
-    var iterator = (std.unicode.Utf8View.init(text) catch return error.Source).iterator();
+    var offset: usize = 0;
     var previous: ?u21 = null;
-    while (iterator.i < text.len) {
-        const offset = iterator.i;
-        const cp = iterator.nextCodepoint() orelse return error.Source;
+    while (offset < text.len) {
+        const length = std.unicode.utf8ByteSequenceLength(text[offset]) catch return error.Source;
+        const cp = @call(.always_inline, std.unicode.utf8Decode, .{text[offset..][0..length]}) catch return error.Source;
         output[offset] = .{ .scalar_start = true, .allowed = if (previous) |left| !noEnd(left) and !noStart(cp) else true };
         previous = cp;
+        offset += length;
     }
     output[text.len] = .{ .allowed = true, .scalar_start = true };
 }

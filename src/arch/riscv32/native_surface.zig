@@ -1,11 +1,12 @@
 //! Finite composition driver, not a paragraph/ruby layout policy or scanout.
 const std = @import("std");
-const ruby = @import("ruby_layout");
+const text = @import("text_context");
+const ruby = text.ruby;
+pub const Context = text.Context;
 const policy = ruby.policy;
 const layout = policy.layout;
-const options = @import("native_options");
 const surface = @import("surface");
-const protocol = @import("font_protocol");
+const protocol = text.protocol;
 const heap = @import("native_memory").reusable;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 pub const width = 192;
@@ -27,21 +28,66 @@ pub const PolicyReport = struct { frames: u32 = 0, spans: u32 = 0, joined: u32 =
 pub var policy_metrics: PolicyReport = .{};
 pub const RubyReport = struct { frames: u32 = 0, groups: u32 = 0, moved: u32 = 0, wide: u32 = 0, units: u32 = 0, joins: u32 = 0, lines: u32 = 0, clipped: u32 = 0, plan_bytes: u32 = @sizeOf(ruby.Plan(16)), scratch_bytes: u32 = ruby.scratchBytes(16) };
 pub var ruby_metrics: RubyReport = .{};
-fn AnnotationMap(comptime index: usize) type {
-    return struct {
-        const value linksection(".flash.rodata.display") = blk: {
-            const source = options.font_ruby_cases[index];
-            var result: [source.len]ruby.Annotation = @splat(.{ .base = .{ .start = 0, .end = 0 }, .ruby = .{ .start = 0, .end = 0 } });
-            for (source, 0..) |item, i| result[i] = .{ .base = .{ .start = item.base_start, .end = item.base_end }, .ruby = .{ .start = item.ruby_start, .end = item.ruby_end } };
-            break :blk result;
-        };
+pub const SourceReport = struct { input_pc: u32 = 0, prepare_pc: u32 = 0, verify_pc: u32 = 0, staged: u32 = 0, maps: u32 = 0, rejected: u32 = 0, edited: u32 = 0, poisoned: u32 = 0, echoed: u32 = 0, stale: u32 = 0, content: u32 = 0, annotations: u32 = 0, map_mutations: u32 = 0, wrong_reply: u32 = 0 };
+pub var source_metrics: SourceReport = .{};
+pub noinline fn stage(out: *Context, revision: u32, render: protocol.Render, annotations: []const ruby.Annotation) text.Error!void {
+    if (!contextAllowed()) nih_native_task_failed();
+    prepare(out, revision, render, annotations) catch |err| {
+        source_metrics.rejected += 1;
+        return err;
     };
+    if (!@import("native_memory").stacks.bootGuardsIntact(0)) nih_native_task_failed();
+    source_metrics.staged += 1;
+    source_metrics.maps += 2;
 }
-const annotations: [options.font_text_cases.len][]const ruby.Annotation linksection(".flash.rodata.display") = blk: {
-    var result: [options.font_text_cases.len][]const ruby.Annotation = @splat(&.{});
-    for (0..options.font_text_cases.len) |i| result[i] = &AnnotationMap(i).value;
-    break :blk result;
-};
+pub noinline fn verifySource(source: *Context, revision: u32, source_hash: u32) text.Error!void {
+    if (!contextAllowed()) nih_native_task_failed();
+    return verify(source, revision, source_hash, false);
+}
+noinline fn verify(source: *Context, revision: u32, source_hash: u32, probe: bool) linksection(".flash.text.render") text.Error!void {
+    source_metrics.verify_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
+    if (probe) {
+        if (source.check(revision - 1, source_hash)) |_| nih_native_task_failed() else |err| {
+            if (err != error.Revision) nih_native_task_failed();
+            source_metrics.stale += 1;
+        }
+        if (source.check(revision, source_hash ^ 1)) |_| nih_native_task_failed() else |err| {
+            if (err != error.ReplySource) nih_native_task_failed();
+            source_metrics.wrong_reply += 1;
+        }
+        source.render.body[0] ^= 1;
+        const changed_body = source.check(revision, source_hash);
+        source.render.body[0] ^= 1;
+        if (changed_body) |_| nih_native_task_failed() else |err| {
+            if (err != error.Integrity) nih_native_task_failed();
+            source_metrics.content += 1;
+        }
+        source.annotation_count ^= 1;
+        const changed_annotations = source.check(revision, source_hash);
+        source.annotation_count ^= 1;
+        if (changed_annotations) |_| nih_native_task_failed() else |err| {
+            if (err != error.Integrity) nih_native_task_failed();
+            source_metrics.annotations += 1;
+        }
+        source.body_map[0].allowed = !source.body_map[0].allowed;
+        const changed_map = source.check(revision, source_hash);
+        source.body_map[0].allowed = !source.body_map[0].allowed;
+        if (changed_map) |_| nih_native_task_failed() else |err| {
+            if (err != error.Integrity) nih_native_task_failed();
+            source_metrics.map_mutations += 1;
+        }
+        source.check(revision, source_hash) catch nih_native_task_failed();
+    }
+    return source.check(revision, source_hash);
+}
+noinline fn prepare(out: *Context, revision: u32, render: protocol.Render, annotations: []const ruby.Annotation) linksection(".flash.text.render") text.Error!void {
+    source_metrics.prepare_pc = asm volatile ("auipc %[pc], 0"
+        : [pc] "=r" (-> u32),
+    );
+    return Context.initInto(out, revision, render, annotations);
+}
 pub const Placement = struct { paint_pc: u32 = 0, draw_pc: u32 = 0, frames: u32 = 0, draws: u32 = 0, context_checks: u32 = 0, irq_rejected: u32 = 0, active_ticks: u32 = 0, flash_ticks: u32 = 0, trap_pc: u32 = 0 };
 pub var placement: Placement = .{};
 var painting: bool = false;
@@ -50,7 +96,7 @@ extern var __flash_render_end: u8;
 
 // Only the fixture's CPU0 bootstrap consumer may enter, with MIE set. This
 // check and the timer probe remain SRAM code and touch no PSRAM/Flash input.
-noinline fn contextAllowed() bool {
+pub noinline fn contextAllowed() bool {
     const identity = heap.currentIdentity() catch return false;
     return identity >> 16 == 0;
 }
@@ -64,32 +110,16 @@ pub noinline fn captureTimer(pc: u32) void {
         placement.trap_pc = pc;
     }
 }
-// Qualification uses canonical immutable source bytes, not the poisoned caller
-// packet. Native dynamic source-to-boundary preparation remains a separate gate.
-const Maps = struct { body: []const policy.Boundary, ruby: []const policy.Boundary };
-// Immutable boundaries use the existing loader-mapped display-data span.
-// Rendering already requires active Flash mappings; no executable kernel code moves.
-fn SourceMap(comptime index: usize, comptime is_ruby: bool) type {
-    return struct {
-        const value linksection(".flash.rodata.display") = policy.forText(if (is_ruby) options.font_text_cases[index].ruby else options.font_text_cases[index].body);
-    };
-}
-const maps: [options.font_text_cases.len]Maps linksection(".flash.rodata.display") = blk: {
-    var result: [options.font_text_cases.len]Maps = @splat(.{ .body = &.{}, .ruby = &.{} });
-    for (0..options.font_text_cases.len) |i| {
-        result[i] = .{ .body = &SourceMap(i, false).value, .ruby = &SourceMap(i, true).value };
-    }
-    break :blk result;
-};
 pub const Result = struct { surface_hash: u32 = 0, wrap_hash: u32 = 0, policy_hash: u32 = 0, ruby_hash: u32 = 0 };
 fn digest(bytes: []const u8) u32 {
     var value: u32 = 2166136261;
     for (bytes) |byte| value = (value ^ byte) *% 16777619;
     return value;
 }
-pub noinline fn compose(reply: *const protocol.Reply, pixels: []const u8) Result {
+pub noinline fn compose(source: *Context, reply: *const protocol.Reply, pixels: []const u8) Result {
     if (!contextAllowed()) nih_native_task_failed();
     placement.context_checks += 1;
+    verify(source, reply.id, reply.sourceHash(), true) catch nih_native_task_failed();
     const before = heap.availableBytes() orelse nih_native_task_failed();
     const allocation = heap.allocTask(stride * height + 64, 16) catch nih_native_task_failed();
     const charge: u32 = @intCast(before - (heap.availableBytes() orelse nih_native_task_failed()));
@@ -99,7 +129,7 @@ pub noinline fn compose(reply: *const protocol.Reply, pixels: []const u8) Result
     const data = allocation.bytes[32..][0 .. stride * height];
     const target = surface.Surface.init(data, width, height, stride) orelse nih_native_task_failed();
     @as(*volatile bool, &painting).* = true;
-    const result = paint(&target, data, reply, pixels);
+    const result = paint(&target, data, source, reply, pixels);
     @as(*volatile bool, &painting).* = false;
     if (!contextAllowed() or !@import("native_memory").stacks.bootGuardsIntact(0)) nih_native_task_failed();
     placement.context_checks += 1;
@@ -114,7 +144,7 @@ pub noinline fn compose(reply: *const protocol.Reply, pixels: []const u8) Result
 }
 
 // Borrowed buffers only. The SRAM wrapper owns allocation and retirement.
-noinline fn paint(target: *const surface.Surface, data: []u8, reply: *const protocol.Reply, pixels: []const u8) linksection(".flash.text.render") Result {
+noinline fn paint(target: *const surface.Surface, data: []u8, source: *const Context, reply: *const protocol.Reply, pixels: []const u8) linksection(".flash.text.render") Result {
     placement.paint_pc = asm volatile ("auipc %[pc], 0"
         : [pc] "=r" (-> u32),
     );
@@ -136,7 +166,7 @@ noinline fn paint(target: *const surface.Surface, data: []u8, reply: *const prot
         var start: usize = 0;
         while (start < glyphs.len) {
             const run = glyphs[start].run;
-            const boundaries = if (run == 0) maps[reply.id - 5].body else maps[reply.id - 5].ruby;
+            const boundaries = if (run == 0) source.body_map[0 .. source.render.body_length + 1] else source.ruby_map[0 .. source.render.ruby_length + 1];
             const group = (if (prohibited) policy.span(protocol.Glyph, glyphs, start, if (vertical) .vertical else .horizontal, boundaries) else layout.cluster(protocol.Glyph, glyphs, start, if (vertical) .vertical else .horizontal)) catch nih_native_task_failed();
             const position = flows[run].place(group.advance) catch nih_native_task_failed();
             var px: i64 = if (vertical) -@as(i64, position.block_offset) else position.inline_offset;
@@ -190,15 +220,15 @@ noinline fn paint(target: *const surface.Surface, data: []u8, reply: *const prot
             }
         }
     }
-    var flow = layout.Flow.init((if (vertical) @as(i32, 96) else if (reply.id == 9) @as(i32, 80) else 96) * 64, (if (vertical) @as(i32, 40) else 32) * 64, if (vertical) 4 else 3) catch nih_native_task_failed();
+    var flow = layout.Flow.init((if (vertical) @as(i32, 96) else if (reply.id == 9) @as(i32, 80) else 96) * 64, (if (vertical or reply.id == 5) @as(i32, 40) else 32) * 64, if (vertical) 4 else 3) catch nih_native_task_failed();
     if (reply.id != 9) _ = flow.place((if (vertical) @as(i32, 32) else 48) * 64) catch nih_native_task_failed();
-    const planned = ruby.plan(16, protocol.Glyph, glyphs, maps[reply.id - 5].body, maps[reply.id - 5].ruby, annotations[reply.id - 5], if (vertical) .vertical else .horizontal, flow, 26 * 64) catch nih_native_task_failed();
+    const planned = ruby.plan(16, protocol.Glyph, glyphs, source.body_map[0 .. source.render.body_length + 1], source.ruby_map[0 .. source.render.ruby_length + 1], source.annotations[0..source.annotation_count], if (vertical) .vertical else .horizontal, flow, 26 * 64) catch nih_native_task_failed();
     if (!target.fill(0xf79e)) nih_native_task_failed();
     for (glyphs, 0..) |g, i| {
         const position = planned.positions[i];
         const px: i64 = if (vertical) -@as(i64, position.block_offset) else position.inline_offset;
         const py: i64 = if (vertical) -@as(i64, position.inline_offset) else -@as(i64, position.block_offset);
-        if (draw(target, pixels, &g, px, py, if (vertical) 150 else 8, if (vertical) 8 else if (reply.id == 9) @as(i64, 32) else 10)) ruby_metrics.clipped += 1;
+        if (draw(target, pixels, &g, px, py, if (vertical) 150 else 8, if (vertical) 8 else if (reply.id == 9) @as(i64, 32) else 24)) ruby_metrics.clipped += 1;
     }
     ruby_metrics.frames += 1;
     ruby_metrics.groups += planned.stats.groups;

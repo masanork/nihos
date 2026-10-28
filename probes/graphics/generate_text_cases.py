@@ -9,8 +9,8 @@ def quoted(text):
     return '"' + ''.join(f'\\x{byte:02x}' for byte in text.encode()) + '"'
 
 
-def generate(kind):
-    cases = json.loads(Path(__file__).with_name("text_cases.json").read_text())
+def generate(kind, cases_path=None):
+    cases = json.loads((Path(cases_path) if cases_path else Path(__file__).with_name("text_cases.json")).read_text())
     assert len(cases) == 5
     rows = []
     for item in cases:
@@ -40,4 +40,4 @@ if __name__ == '__main__':
         print(generate('zig'), end='')
     else:
         assert sys.argv[1] == '--header'
-        Path(sys.argv[2]).write_text(generate('header'))
+        Path(sys.argv[2]).write_text(generate('header', sys.argv[3] if len(sys.argv) > 3 else None))

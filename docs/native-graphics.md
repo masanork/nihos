@@ -381,6 +381,26 @@ library lifetime or general client cancellation. Production integration must
 retain service-owned state across client closes and define safe shutdown/restart
 separately.
 
+## Runtime text follow-up
+
+[ADR 0053](adr/0053-runtime-text-context.md) supersedes the preceding build-time
+map/source boundary. The native fixture now copies bounded caller text and
+annotations into one PSRAM archive context, builds source maps at runtime, and
+checks revision/content/map metadata against a worker source echo before drawing.
+It edits the first mutable caller source to `新日本語` and shifts the `日本語`
+ruby range to bytes 3..12; native build options retain the old literal. Independent
+sanitized host shaping/A8 and four composition references use separate post-edit
+cases. The earlier measurements and images above describe their earlier commits.
+
+The context owns 556 B; the expanded diagnostic archive remains within its existing
+4 KiB charged allocation. No persistent document or font filesystem lifetime is
+introduced. Source checks and preparation run in audited private Flash functions;
+SRAM gates, queues, interrupt handling, canvas allocation/guards and retirement
+remain resident. Completed-record reporting also moves behind a bootstrap/MIE
+gate into Flash. The 48 KiB SRAM heap floor and 16 KiB frontend ceiling remain
+required with bounds/overflow checks enabled. This remains offscreen emulator
+qualification; native SD font IO and LCD output require their own evidence.
+
 ## Remaining integration
 
 Flash input is a qualification mechanism, not production storage. Native SD
@@ -393,3 +413,16 @@ for these multi-megabyte TTFs.
 Physical cache/PSRAM/SMP/stack behavior, display output, SD input, removal,
 storage-induced latency and repeated service startup remain unqualified.
 No hardware was accessed or firmware published in this stage.
+
+
+The runtime-text candidate passed 249 Zig tests, 190 Python tests, static analysis,
+six default native ELF links, both graphics profile audits and exact-image native
+emulator execution. Its device primary heap is exactly 49,152 B; frontend Flash
+is 16,040 B (344 B below the cap). The archive is 3,336 B within the existing
+4,096 B charge; all PSRAM returns after retirement. Further additions require a
+new footprint decision. Evidence is bound in
+[`2026-10-28-native-runtime-text.json`](measurements/2026-10-28-native-runtime-text.json).
+
+![Host reference of edited source and following ruby](measurements/2026-10-28-runtime-text-horizontal.png)
+
+This preview is a host reference, not an LCD capture.

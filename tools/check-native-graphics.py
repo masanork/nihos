@@ -16,7 +16,7 @@ FIELDS = ("status", "owner", "runs", "library_pc", "heap_before", "heap_after", 
           "client_cycles", "idle_retained", "idle_captures", "idle_progress")
 
 EXCHANGE_FIELDS = ("sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes")
-TEXT_FIELDS = ("id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "surface_hash", "wrap_hash", "policy_hash", "ruby_hash")
+TEXT_FIELDS = ("id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "source_hash", "surface_hash", "wrap_hash", "policy_hash", "ruby_hash")
 GLYPH_FIELDS = ("request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height", "pixel_offset")
 SIGNED_GLYPH_FIELDS = ("x_advance", "y_advance", "x_offset", "y_offset", "left", "top")
 
@@ -34,17 +34,29 @@ def validate_placement(record, graphics):
         bounds = render["functions"][name]
         if not int(bounds["start"], 16) <= record[field] < int(bounds["end"], 16):
             raise ValueError("renderer execution PC differs from audited Flash function")
-    if (record["frames"] != 3 or record["draws"] != 132 or record["context_checks"] != 6 or
+    if (record["frames"] != 3 or record["draws"] != 124 or record["context_checks"] != 6 or
             record["irq_rejected"] < 6 or not 0 < record["flash_ticks"] <= record["active_ticks"] <= record["irq_rejected"] or
             not int(render["start"], 16) <= record["trap_pc"] < int(render["end"], 16)):
         raise ValueError("incomplete task-only Flash rendering/preemption evidence")
+
+
+SOURCE_FIELDS = ("input_pc", "prepare_pc", "verify_pc", "staged", "maps", "rejected", "edited", "poisoned", "echoed", "stale", "content", "annotations", "map_mutations", "wrong_reply")
+
+
+def validate_source(record, graphics):
+    for field, name in (("input_pc", "native_font_exchange.stageText"), ("prepare_pc", "native_surface.prepare"), ("verify_pc", "native_surface.verify")):
+        bounds = graphics["render"]["functions"][name]
+        if not int(bounds["start"], 16) <= record[field] < int(bounds["end"], 16):
+            raise ValueError("runtime source execution outside audited Flash function")
+    if tuple(record[k] for k in SOURCE_FIELDS[3:]) != (5, 10, 5, 1, 5, 5, 3, 3, 3, 3, 3):
+        raise ValueError("incomplete runtime source ownership and rejection evidence")
 
 
 RUBY_FIELDS = ("frames", "groups", "moved", "wide", "units", "joins", "lines", "clipped", "plan_bytes", "scratch_bytes")
 
 
 def validate_ruby(record, texts, reference):
-    if tuple(record[k] for k in RUBY_FIELDS) != (3, 2, 2, 1, 21, 2, 9, 0, 172, 320):
+    if tuple(record[k] for k in RUBY_FIELDS) != (3, 2, 2, 1, 19, 2, 8, 0, 172, 320):
         raise ValueError("incomplete anchored group-ruby evidence")
     expected = {f["id"]: f["ruby_hash"] for f in reference["frames"]}
     if any(t["ruby_hash"] != expected.get(t["id"], 0) for t in texts):
@@ -60,7 +72,7 @@ ARCHIVE_FIELDS = ("logical_bytes", "charge", "live_charge", "before", "after")
 
 
 def validate_policy(record, texts, reference):
-    if tuple(record[k] for k in POLICY_FIELDS) != (3, 30, 3, 10, 5, 0):
+    if tuple(record[k] for k in POLICY_FIELDS) != (3, 28, 3, 9, 4, 0):
         raise ValueError("incomplete basic Japanese prohibition evidence")
     expected = {f["id"]: f["policy_hash"] for f in reference["frames"]}
     if any(t["policy_hash"] != expected.get(t["id"], 0) for t in texts):
@@ -71,21 +83,21 @@ def validate_policy(record, texts, reference):
 
 
 def validate_wrap(record, texts, reference):
-    if tuple(record[k] for k in WRAP_FIELDS) != (3, 33, 9, 3, 4, 0):
+    if tuple(record[k] for k in WRAP_FIELDS) != (3, 31, 8, 2, 3, 0):
         raise ValueError("incomplete bounded cluster wrapping evidence")
-    expected = {f["id"]: f["wrap_hash"] for f in reference["wrapped"]}
+    expected = {f["id"]: f["wrap_hash"] for f in reference["frames"]}
     if any(t["wrap_hash"] != expected.get(t["id"], 0) for t in texts):
         raise ValueError("native wrapped composition differs from independent reference")
 
 
 def validate_archive(record, graphics):
-    if (record["logical_bytes"] != 2756 or record["charge"] != 4096 or record["live_charge"] != 0 or
+    if (record["logical_bytes"] != 3336 or record["charge"] != 4096 or record["live_charge"] != 0 or
             record["before"] != record["after"] or record["after"] != graphics["heap_before"] + record["charge"]):
         raise ValueError("incomplete diagnostic archive heap recovery")
 
 
 def validate_surface(record, texts, reference):
-    if (record["frames"] != 3 or record["blits"] != 33 or record["clipped"] != 5 or
+    if (record["frames"] != 3 or record["blits"] != 31 or record["clipped"] != 5 or
             record["guards"] != 3 or record["rejected"] != 6 or record["peak_charge"] != 65536 or record["live_charge"] != 0):
         raise ValueError("incomplete surface composition/guard evidence")
     expected = {f["id"]: f["surface_hash"] for f in reference["frames"]}
@@ -155,6 +167,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     surface = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_SURFACE", SURFACE_FIELDS)
     wrap = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_WRAP", WRAP_FIELDS)
     policy = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_KINSOKU", POLICY_FIELDS)
+    source = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_SOURCE", SOURCE_FIELDS)
     ruby = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_RUBY", RUBY_FIELDS)
     archive = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_ARCHIVE", ARCHIVE_FIELDS)
     texts = base.repeated_records(log, "NIHOS_NATIVE_GRAPHICS_TEXT", TEXT_FIELDS)
@@ -177,7 +190,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     if log.count("NIHOS_NATIVE_GRAPHICS_PASS\n") != 1 or not (
             log.index("NIHOS_NATIVE_FP_PASS ") < log.index("NIHOS_NATIVE_GRAPHICS ") <
             log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") < log.index("NIHOS_NATIVE_GRAPHICS_RASTER ") < log.index("NIHOS_NATIVE_GRAPHICS_PLACEMENT ") < log.index("NIHOS_NATIVE_GRAPHICS_SURFACE ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_WRAP ") < log.index("NIHOS_NATIVE_GRAPHICS_KINSOKU ") < log.index("NIHOS_NATIVE_GRAPHICS_RUBY ") < log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
+            log.index("NIHOS_NATIVE_GRAPHICS_WRAP ") < log.index("NIHOS_NATIVE_GRAPHICS_KINSOKU ") < log.index("NIHOS_NATIVE_GRAPHICS_SOURCE ") < log.index("NIHOS_NATIVE_GRAPHICS_RUBY ") < log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
             log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
             log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
         raise ValueError("missing or out-of-order native graphics pass")
@@ -187,32 +200,24 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     if {f["name"]: (f["bytes"], f["sha256"]) for f in manifest["fonts"]} != pins:
         raise ValueError("native font inputs differ from host reference")
     hashes = [r["hash"] for r in rows]
-    if text_reference["cases_sha256"] != hashlib.sha256((ROOT / "probes/graphics/text_cases.json").read_bytes()).hexdigest():
-        raise ValueError("text reference inputs differ from current canonical requests")
-    if (wrap_reference["raster_reference_sha256"] != hashlib.sha256((ROOT / "docs/measurements/2026-10-28-font-raster-host.json").read_bytes()).hexdigest() or
-            wrap_reference["source_sha256"] != hashlib.sha256((ROOT / "probes/graphics/surface_reference.py").read_bytes()).hexdigest()):
-        raise ValueError("wrapped reference inputs differ from current source")
+    for key, path in (("cases_sha256", "runtime_text_cases.json"), ("annotations_sha256", "runtime_ruby_cases.json"), ("input_cases_sha256", "text_cases.json"), ("input_annotations_sha256", "ruby_cases.json")):
+        if text_reference[key] != hashlib.sha256((ROOT / "probes/graphics" / path).read_bytes()).hexdigest():
+            raise ValueError("runtime text reference differs from canonical input/edit")
+    for path, digest in text_reference["sources_sha256"].items():
+        if hashlib.sha256((ROOT / path).read_bytes()).hexdigest() != digest:
+            raise ValueError("runtime reference differs from composition source")
     validate(q, hashes, image["graphics"], expected, exchange, texts, text_reference["texts"])
     validate_placement(placement, image["graphics"])
     validate_surface(surface, texts, surface_reference)
     validate_wrap(wrap, texts, wrap_reference)
-    if (policy_reference["raster_reference_sha256"] != hashlib.sha256((ROOT / "docs/measurements/2026-10-28-font-raster-host.json").read_bytes()).hexdigest() or
-            policy_reference["cases_sha256"] != text_reference["cases_sha256"] or
-            policy_reference["source_sha256"] != hashlib.sha256((ROOT / "probes/graphics/kinsoku_reference.py").read_bytes()).hexdigest()):
-        raise ValueError("Japanese prohibition reference differs from source")
     validate_policy(policy, texts, policy_reference)
-    if (ruby_reference["cases_sha256"] != text_reference["cases_sha256"] or
-            ruby_reference["annotations_sha256"] != hashlib.sha256((ROOT / "probes/graphics/ruby_cases.json").read_bytes()).hexdigest() or
-            ruby_reference["raster_reference_sha256"] != policy_reference["raster_reference_sha256"] or
-            ruby_reference["composition_source_sha256"] != policy_reference["source_sha256"] or
-            ruby_reference["source_sha256"] != hashlib.sha256((ROOT / "probes/graphics/ruby_reference.py").read_bytes()).hexdigest()):
-        raise ValueError("ruby reference differs from canonical source/annotations")
+    validate_source(source, image["graphics"])
     validate_ruby(ruby, texts, ruby_reference)
     validate_archive(archive, q)
     if archive["after"] != baseline["heaps"][0]["free"]:
         raise ValueError("archive retirement differs from original CPU0 heap")
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
-            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "ruby": ruby, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
+            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "ruby": ruby, "source": source, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
                        "Four matrix and five bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
@@ -224,11 +229,11 @@ def main():
     output.unlink(missing_ok=True)
     image_path, manifest_path = directory / "image-audit.json", directory / "graphics-manifest.json"
     reference_path = ROOT / "docs/measurements/2026-10-28-graphics-hinting-stack.json"
-    text_reference_path = ROOT / "docs/measurements/2026-10-28-font-raster-host.json"
-    surface_reference_path = ROOT / "docs/measurements/2026-10-28-surface-reference.json"
-    wrap_reference_path = ROOT / "docs/measurements/2026-10-28-wrap-reference.json"
-    policy_reference_path = ROOT / "docs/measurements/2026-10-28-kinsoku-reference.json"
-    ruby_reference_path = ROOT / "docs/measurements/2026-10-28-ruby-reference.json"
+    text_reference_path = ROOT / "docs/measurements/2026-10-28-runtime-text-reference.json"
+    surface_reference_path = ROOT / "docs/measurements/2026-10-28-runtime-text-reference.json"
+    wrap_reference_path = ROOT / "docs/measurements/2026-10-28-runtime-text-reference.json"
+    policy_reference_path = ROOT / "docs/measurements/2026-10-28-runtime-text-reference.json"
+    ruby_reference_path = ROOT / "docs/measurements/2026-10-28-runtime-text-reference.json"
     image = json.loads(image_path.read_text())
     result = check((directory / "emulator.log").read_text(), image, json.loads(manifest_path.read_text()), json.loads(reference_path.read_text()), json.loads(text_reference_path.read_text()), json.loads(surface_reference_path.read_text()), json.loads(wrap_reference_path.read_text()), json.loads(policy_reference_path.read_text()), json.loads(ruby_reference_path.read_text()))
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
@@ -242,7 +247,7 @@ def main():
     result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: anchored group ruby, Flash preemption, reference pixels and complete heap recovery passed")
+    print("Native graphics: runtime text/ruby ownership, Flash preemption, reference pixels and complete heap recovery passed")
 
 
 if __name__ == "__main__":
