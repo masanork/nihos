@@ -90,6 +90,7 @@ SERVICE_SRAM_FUNCTIONS = {'nih_base_sram_take', 'nih_base_sram_release', 'base_s
                           'base_sram_unlock', 'base_sram_cpu0', 'nih_sram_pool_init',
                           'nih_sram_pool_take', 'nih_sram_pool_release', 'nih_display_keypad_fits', 'ui_place',
                           'keypad_display.acquire', 'keypad_display.release'}
+CARD_BOOT_FUNCTIONS = {'card_boot.paint', 'card_boot.finish', 'card_boot.report', 'main.startDisplay', 'display_runtime.replace', 'display_runtime.wipePools', 'graphics.keypad_plan.buildStaticColor'}
 
 def audit_ui_pool(name, kind, flags, address, size, allowed):
     require(allowed and kind == 8 and flags == 3 and (address, size) == UI_POOLS.get(name), 'invalid keypad SRAM pool')
@@ -421,6 +422,15 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                      'ui_mode': keypad_manifest.get('ui_mode', 'baked'), 'pools': service_sram or ui_pools}
         if service_sram:
             ui_report['allocation'] = 'base-free-sram-v1'
+        if keypad_manifest.get('card_boot'):
+            boot = keypad_manifest['card_boot']
+            first, last = symbols.get('__card_boot_masks_start', 0), symbols.get('__card_boot_masks_end', 0)
+            require(boot.get('schema') == 1 and boot.get('source') == 'sparse-sram-v1' and boot.get('paper') == 0x1924 and
+                    0x40010020 <= first < last <= 0x40010020 + len(flash_tables) and
+                    last - first == boot.get('mask_bytes') and
+                    hashlib.sha256(flash_tables[first - 0x40010020:last - 0x40010020]).hexdigest() == boot.get('mask_sha256'),
+                    'card boot mask differs from pinned manifest')
+            ui_report['card_boot'] = boot
         ui_report.update({key: value for key, value in keypad_manifest.items() if key in ('font_sha256', 'font_bytes', 'plan_sha256', 'atlas_sha256', 'atlas_bytes', 'nodes')})
     photo_span = None
     photo_report = None
@@ -515,6 +525,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             for name in ('nih_base_sram_take', 'nih_base_sram_release', 'nih_display_keypad_fits'):
                 require(sum(n == name and card_span[0] <= a < b <= card_span[1] for n, a, b in functions) == 1,
                         'missing/duplicate base SRAM foreground entry: ' + name)
+    if allow_ui and keypad_manifest.get('card_boot'):
+        for name in CARD_BOOT_FUNCTIONS:
+            require(sum(n == name and card_span[0] <= a < b <= card_span[1] for n, a, b in functions) == 1,
+                    'missing/duplicate card boot foreground entry: ' + name)
     device_span = None if device_start is None else (device_start, device_start + len(device_code))
     device_functions = None
     require(symbols.get('__native_devices', 0) == int(allow_devices), 'device profile marker differs from section')
@@ -528,7 +542,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get("card_boot") else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),

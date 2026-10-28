@@ -6,6 +6,7 @@
 #include <string.h>
 #define NIH_NATIVE_CARD_READ 1
 #define UI_FOREGROUND
+#define UI_PUBLISH_FENCE() ((void)0)
 #define SOC_NON_CACHEABLE_OFFSET 0
 #define DW_GDMA_BURST_MODE_FIXED 0
 #define DW_GDMA_BURST_MODE_INCREMENT 1
@@ -16,7 +17,7 @@ static dw_gdma_link_list_item_t descriptor, *active_nodes;
 static uint32_t node_count, source_address;
 static bool dma_owned;
 static uint64_t frame[230400];
-static uint32_t spans[4][4];
+static uint32_t spans[2048][4];
 static const void *input(uint32_t address) {
     if (address == 0x481f2000) return spans;
     if (!address) return NULL;
@@ -35,7 +36,23 @@ SETTER(dw_gdma_ll_lli_set_src_burst_len)
 SETTER(dw_gdma_ll_lli_set_trans_block_size)
 SETTER(dw_gdma_ll_lli_set_next_item_addr)
 #include "../../src/board/tab5/keypad_sparse.h"
-int main(void) {
+int main(int argc, char **argv) {
+    if (argc == 3) {
+        FILE *pixels = fopen(argv[1], "rb"), *segments = fopen(argv[2], "rb");
+        assert(pixels && segments && fread(frame, 1, sizeof(frame), pixels) == sizeof(frame));
+        assert(fgetc(pixels) == EOF); fclose(pixels);
+        const size_t count = fread(spans, sizeof(spans[0]), 2048, segments);
+        assert(count && count <= 1280 && fgetc(segments) == EOF); fclose(segments);
+        assert(nih_display_keypad_memory(0x4ff40000, 0x4ff60000, 0x4ff80000, 0x4ff9f000));
+        const nih_ui_config boot = {.plan=0x481f2000, .count=(uint32_t)count, .capacity=1280,
+            .scratch=0x4ff40000, .stride=0, .pixels=0x48030000, .pixels_bytes=sizeof(frame)};
+        dma_owned = true; ui_enabled = true; ui = boot;
+        assert(nih_display_keypad_fits(&boot, boot.scratch, (uint32_t)count * 64, false));
+        assert(nih_display_keypad_buffer() == UINT32_MAX);
+        puts("Real boot pixels fit font-reserved base SRAM without PIN textures");
+        return 0;
+    }
+    assert(argc == 1);
     /* Each pixel span is 256 B, at portrait rows in the same dedup group. */
     spans[0][2] = 1000;
     spans[1][0] = spans[2][0] = 3;

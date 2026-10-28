@@ -4,6 +4,9 @@ typedef struct { uint32_t kind, offset, words, reserved; } nih_ui_span;
 #ifndef UI_INPUT
 #define UI_INPUT(address) ((const void *)(uintptr_t)(address))
 #endif
+#ifndef UI_PUBLISH_FENCE
+#define UI_PUBLISH_FENCE() __asm__ volatile("fence rw,rw" ::: "memory")
+#endif
 #ifndef UI_FOREGROUND
 #if NIH_NATIVE_CARD_READ
 #define UI_FOREGROUND __attribute__((section(".flash.text.card")))
@@ -97,7 +100,7 @@ bool nih_display_keypad_configure(const nih_ui_config *config) {
                          config->plan == 0x481f2000 && config->count <= (0x48200000 - 0x481f2000) / 16;
     if (dma_owned || !config || config->count == 0 || config->count > config->capacity ||
         config->count > (NIH_NATIVE_CARD_READ ? 1280u : 1024u) || config->scratch != ui_low_start ||
-        config->stride > (ui_low_end - config->scratch) / 2 || !config->stride ||
+        config->stride > (ui_low_end - config->scratch) / 2 || (!config->stride && config->label_height) ||
         (!runtime && (config->plan < 0x40020000 || config->plan >= 0x400c0000 ||
         config->count > (0x400c0000 - config->plan) / 16 || (config->plan & 63) ||
         config->pixels < 0x40020000 || config->pixels >= 0x400c0000 ||
@@ -108,7 +111,7 @@ bool nih_display_keypad_configure(const nih_ui_config *config) {
         config->label_height > 64 ||
         config->label_x > 720 - config->label_width || config->label_y > 1280 - config->label_height ||
         config->paper > 65535 || config->keys > 65535 || config->accent > 65535) return false;
-    const uint32_t bytes = 272 * 16 * 2 + config->label_width * config->label_height * 2;
+    const uint32_t bytes = config->label_height ? 272 * 16 * 2 + config->label_width * config->label_height * 2 : 0;
     if (bytes > config->stride) return false;
     ui = *config;
     ui_runtime = runtime;
@@ -222,12 +225,12 @@ static void ui_activate(void) {
     ui_active = next;
 }
 uint32_t nih_display_keypad_buffer(void) {
-    return ui_enabled && ui_pending == ui_active ? 1u - ui_active : UINT32_MAX;
+    return ui_enabled && ui.label_height && ui_pending == ui_active ? 1u - ui_active : UINT32_MAX;
 }
 bool nih_display_keypad_publish(uint32_t buffer, uint32_t count) {
-    if (!ui_enabled || count > 4 || buffer > 1 || buffer == ui_active || ui_pending != ui_active) return false;
+    if (!ui_enabled || !ui.label_height || count > 4 || buffer > 1 || buffer == ui_active || ui_pending != ui_active) return false;
     ui_pending_count = count;
-    __asm__ volatile("fence rw,rw" ::: "memory");
+    UI_PUBLISH_FENCE();
     ui_pending = buffer;
     return true;
 }

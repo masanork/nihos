@@ -31,6 +31,21 @@ def fixture():
 
 
 class NativeSceneTests(unittest.TestCase):
+    def test_boot_handoff_has_its_own_pixel_and_frame_proof(self):
+        boot = record('CARD_BOOT', ('stage', 'frames', 'checked', 'mismatches'), (1, 2, 1, 0))
+        boot += record('CARD_BOOT', ('stage', 'frames', 'checked', 'mismatches'), (2, 4, 1, 0))
+        log = fixture()
+        for i in reversed(range(13)):
+            log = log.replace(f'updates={i:08x}', f'updates={i + 1:08x}')
+        log = log.replace('max_pause_us=00000000', 'max_pause_us=000003e8')
+        self.assertEqual(C.check_transitions(boot + log)['handoffs'][-1]['updates'], 13)
+        for bad in (boot.replace('checked=00000001', 'checked=00000000'),
+                    boot.replace('mismatches=00000000', 'mismatches=00000001'),
+                    boot.replace('stage=00000002', 'stage=00000001'),
+                    boot.replace('frames=00000004', 'frames=00000002')):
+            with self.assertRaises(ValueError):
+                C.check_transitions(bad + log)
+
     def test_exercise_build_refuses_a_read_enabled_profile(self):
         root = Path(__file__).resolve().parents[1]
         env = {**os.environ, 'NIHOS_NATIVE_NETWORK': '0', 'NIHOS_NATIVE_USB': '1',

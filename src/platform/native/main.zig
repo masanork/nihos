@@ -7,6 +7,7 @@ const native_psram = @import("psram.zig");
 const record_log = @import("record_log");
 const text_console = @import("text_console");
 const display_service = @import("display_service");
+const card_boot = @import("card_boot.zig");
 const ui = display_service.ui;
 const cpu_boot = @import("cpu_boot");
 const network = @import("network_service");
@@ -891,20 +892,11 @@ const ForegroundTimerIo = struct {
     }
 };
 
-fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bool) void {
+noinline fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bool) linksection(if (options.card_read) ".flash.text.card" else ".text") void {
     stageBegin(.display_scanout);
     if (!early and !options.console_live) @import("foreground_timer.zig").retire(ForegroundTimerIo{}, clock);
     const display = display_service.runtime;
-    if (options.card_auto) @import("card_auto.zig").prepare(timer(0), display_panel) catch {
-        fail("automatic card preparation; no PIN sent");
-    } else if (options.card_read) @import("card_read.zig").prepare(timer(0), display_panel) catch |err| {
-        if (options.card_photo and !options.card_auto) CardReadLog.photoPreflight();
-        print("NIHOS_NATIVE_CARD_READ_PREP_FAIL ");
-        print(@errorName(err));
-        print("\n");
-        fail("card read preparation; no PIN sent");
-    };
-    if (options.card_photo and !options.card_auto) CardReadLog.photoPreflight();
+    if (options.card_read) card_boot.paint() catch fail("card boot image");
     const screen = display.start(clock, display_panel, options.display_white, options.display_pattern, options.display_sram);
     if (screen.status == 1) {
         if (early) clearInterruptRoutes(0);
@@ -928,6 +920,27 @@ fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bool) void 
             _ = @import("card_auto.zig").emergency();
         } else if (options.card_read) @import("card_read.zig").abort();
         fail("display scanout startup");
+    }
+    if (options.card_read) {
+        const splash = card_boot.report(1);
+        @call(.always_inline, @TypeOf(logger).record, .{ &logger, "NIHOS_NATIVE_CARD_BOOT", @as(?u32, null), .{ "stage", "frames", "checked", "mismatches" }, &splash });
+        if (splash.mismatches != 0) fail("card splash pixels");
+        card_boot.finish(clock, display_panel) catch |err| {
+            if (options.card_auto) {
+                _ = @import("card_auto.zig").emergency();
+            } else {
+                @import("card_read.zig").abort();
+                _ = display.emergency();
+            }
+            print("NIHOS_NATIVE_CARD_BOOT_FAIL ");
+            print(@errorName(err));
+            print("\n");
+            fail("card boot preparation; no PIN sent");
+        };
+        if (options.card_photo and !options.card_auto) CardReadLog.photoPreflight();
+        const ready = card_boot.report(2);
+        @call(.always_inline, @TypeOf(logger).record, .{ &logger, "NIHOS_NATIVE_CARD_BOOT", @as(?u32, null), .{ "stage", "frames", "checked", "mismatches" }, &ready });
+        if (ready.mismatches != 0) fail("card ready pixels");
     }
     stageComplete(.display_scanout);
 }

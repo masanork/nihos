@@ -272,7 +272,7 @@ pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern
 /// Foreground-only scene replacement. Retire DMA before clearing any retained
 /// result pixels, then rebuild under masked local IRQs. No personal framebuffer
 /// is modified while the display DMA borrows it.
-pub fn replace(clock: timer_group.Timer, panel: u32) Report {
+pub noinline fn replace(clock: timer_group.Timer, panel: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") Report {
     if ((options.card_read or options.keypad_demo) and running) return replaceCard(clock, panel) catch |err| {
         scene_error = switch (err) {
             error.Timer => 1,
@@ -373,7 +373,7 @@ pub noinline fn presentNotice(clock: timer_group.Timer, panel: u32) linksection(
         if (result.status != 1) return error.Scanout;
     }
 }
-fn wipePools() bool {
+noinline fn wipePools() linksection(if (options.card_read) ".flash.text.card" else ".text") bool {
     if (!options.keypad_demo and !options.card_read) return true;
     const std = @import("std");
     const renderer = @import("keypad_display.zig");

@@ -86,6 +86,15 @@ def check_live(log, screen, exercise=False, normal_boot=False):
             'keyboard_escape_seen': any(key['source'] == 2 and key['action'] == 1 and key['accepted'] for key in keys)}
 
 
+def check_card_boot(log, require_pixels=False):
+    stages = NATIVE.repeated_records(log, 'NIHOS_NATIVE_CARD_BOOT', ('stage', 'frames', 'checked', 'mismatches'))
+    if ([s['stage'] for s in stages] != [1, 2] or stages[0]['frames'] < 2 or
+            stages[1]['frames'] <= stages[0]['frames'] or any(s['mismatches'] or s['checked'] not in (0, 1) for s in stages) or
+            (require_pixels and any(s['checked'] != 1 for s in stages))):
+        raise ValueError('incomplete boot handoff or mismatched boot pixels')
+    return stages
+
+
 def check_keypad_storage(lease, storage, audit, runtime=False, memory=None):
     pools = {pool['name']: (int(pool['origin'], 16), int(pool['end'], 16)) for pool in audit.get('pools', [])}
     if audit.get('allocation') == 'base-free-sram-v1':
@@ -109,7 +118,7 @@ def check_keypad_storage(lease, storage, audit, runtime=False, memory=None):
         raise ValueError('missing runtime font audit')
     if (not 1 <= lease['nodes'] <= (1280 if runtime else 1024) or (not runtime and lease['nodes'] != audit.get('nodes')) or
             lease['lease_bytes'] != lease['nodes'] * 64 or lease['lease_start'] % 64 or
-            not low_start < lease['lease_start'] < storage['font_low'] <= low_end or
+            not (low_start if audit.get('card_boot') else low_start + 64) <= lease['lease_start'] < storage['font_low'] <= low_end or
             storage['font_low'] != lease['lease_start'] + lease['lease_bytes'] or
             storage['font_low_bytes'] != low_end - storage['font_low'] or
             not audit.get('atlas_bytes', 0) <= storage['pixel_bytes'] < 720 * 1280 * 2 or
@@ -123,6 +132,8 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
     if mode not in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11) or expected_dpi not in (10, 60, 80):
         raise ValueError('unknown display mode/timing')
     log = log.replace('\r', '')
+    if image.get('keypad_storage', {}).get('card_boot'):
+        check_card_boot(log, image.get('automatic_cards', {}).get('scene_exercise', False))
     core = NATIVE.check(log, 'integer', psram_bytes, image, 'physical-device',
                         require_qualification=not normal_boot and 'NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20, require_normal=normal_boot)
     if 'NIHOS_NATIVE_DISPLAY_IRQ_FAIL' in log:
@@ -145,11 +156,12 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
     if mode in (8, 9, 10, 11) and image.get('keypad_storage', {}).get('allocation') == 'base-free-sram-v1':
         memory = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_MEMORY', ('pool0_start', 'pool0_bytes', 'pool1_start', 'pool1_bytes'))
     if mode in (5, 6, 7, 8, 9, 10, 11):
-        notice = mode == 11 and image.get('automatic_cards', {}).get('notice_scanout') == 'sram-double-bank-v1'
+        boot = image.get('keypad_storage', {}).get('card_boot')
+        notice = not boot and mode == 11 and image.get('automatic_cards', {}).get('notice_scanout') == 'sram-double-bank-v1'
         in_sram = source['source'] == (memory['pool1_start'] if memory else 0x4ff70000) if notice else 0x4ff00000 <= source['source'] < 0x4ff28000
         if (not in_sram or
                 (mode == 5 and source['dma_source'] != source['source']) or
-                source['word'] != (0xf7bdf7bd if mode in (8, 9, 10, 11) else 0xffffffff if mode == 5 else 0x10821082) or
+                source['word'] != (0x19241924 if boot else 0xf7bdf7bd if mode in (8, 9, 10, 11) else 0xffffffff if mode == 5 else 0x10821082) or
                 not source['dma_control'] & (1 << 4)):
             raise ValueError('invalid fixed SRAM source')
     elif source['source'] != 0x48030000:
