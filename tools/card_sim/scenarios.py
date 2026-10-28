@@ -183,6 +183,36 @@ def deterministic(sim):
         raise AssertionError('coordinate replay accepted')
 
 
+def result_controls(sim):
+    sim.reset('base'); classic(sim)
+    assert sim.key('result_next')['displayed_phase'] == 'details'
+    assert sim.key('result_basic')['displayed_phase'] == 'overview'
+    assert sim.key('result_next')['displayed_phase'] == 'details'
+    assert sim.key('result_close')['displayed_phase'] == 'ready'
+    before, trace = sim.state(), copy.deepcopy(sim.trace)
+    assert all(set(event) <= {'action', 'automatic', 'profile', 'value'} for event in trace)
+    assert sim.replay(trace) == before
+
+
+def result_gestures(sim):
+    sim.reset('base'); classic(sim)
+    before = sim.state()['pixel_sha256']
+    sim.touch(1, 350, 1140); sim.touch(1, 350, 900); sim.touch(1, 350, 1140); sim.touch(0, 0, 0)
+    sim.touch(2, 350, 1140); sim.touch(1, 350, 1140); sim.touch(0, 0, 0)
+    sim.touch(1, 350, 500); sim.touch(0, 0, 0)
+    assert sim.state()['pixel_sha256'] == before and sim.state()['displayed_phase'] == 'overview'
+    assert sim.key('result_next')['displayed_phase'] == 'details'
+
+
+def mynumber_dismiss(sim):
+    sim.reset('base'); sim.action('ready'); sim.action('insert_mynumber'); four(sim); sim.key('confirm')
+    sim.touch(1, 100, 300)
+    assert sim.touch(0, 0, 0)['displayed_phase'] == 'ready'
+    assert sim.trace[-1]['action'] == 'result_close'
+    before, trace = sim.state(), copy.deepcopy(sim.trace)
+    assert sim.replay(trace) == before
+
+
 def audited_budget(sim):
     state = sim.reset('audited')
     regions = sim.base_audit['extents']
@@ -206,7 +236,9 @@ CASES = {'normal': normal, 'eof-atomicity': atomic, 'touch-release': gestures,
          'capacity-rollback': capacity, 'dma-timeout': lambda s: retirement_fault(s, 1),
          'fifo-timeout': lambda s: retirement_fault(s, 2), 'lane-timeout': lambda s: retirement_fault(s, 3),
          'cache-rejection': cache_fault, 'pixel-negative-control': corrupt,
-         'base-profiles': profiles, 'deterministic-replay': deterministic}
+         'base-profiles': profiles, 'deterministic-replay': deterministic,
+         'result-controls': result_controls, 'result-gestures': result_gestures,
+         'mynumber-dismiss': mynumber_dismiss}
 
 
 def run(sim, output):

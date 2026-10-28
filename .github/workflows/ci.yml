@@ -49,7 +49,7 @@ jobs:
       - name: Native evidence checker regressions
         run: python3 -m unittest discover -s tools -p '*test.py'
 
-      - name: Card UI host simulation and fault scenarios
+      - name: Tab5 UI host simulation and fault scenarios
         run: python3 tools/card_sim/app.py --headless build/card-sim/evidence
 
       - name: Retain card UI host evidence
