@@ -15,5 +15,5 @@ cp "$build_dir/loader/config/sdkconfig.h" "$build_dir/loader/bootloader/bootload
 emulator=$(sh tools/bootstrap-esp-emu.sh)
 "$emulator" --chip esp32p4 --firmware "$result_dir/nihos-native-flash.bin" \
     --elf "$result_dir/nihos-native.elf" --psram-size 32M --timeout 180s \
-    --exit-on NIHOS_NATIVE_GRAPHICS_PASS > "$result_dir/emulator.log" 2>&1
+    --exit-on NIHOS_NATIVE_GRAPHICS_PASS > "$result_dir/emulator.log" 2> "$result_dir/emulator-stderr.log"
 python3 tools/check-native-graphics.py "$result_dir"

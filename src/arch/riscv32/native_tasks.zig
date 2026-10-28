@@ -349,6 +349,7 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    if (@import("native_options").graphics and hart == 0) graphics.exchange.composer.captureTimer(frame.mepc);
     if (@import("native_options").graphics and owner.graphics_task != null and current.slot == owner.graphics_task.?.slot) graphics.capture(frame, true);
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer, frame.mepc);
     for (owner.workers, 0..) |handle, index| {

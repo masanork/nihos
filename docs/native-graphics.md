@@ -28,6 +28,10 @@ NIHOS_GRAPHICS_RV32_CXX=/path/to/riscv32-esp-elf-g++ \
   sh tools/build-native.sh device graphics
 ```
 
+UART stdout is retained as `case-32M/emulator.log`; emulator diagnostics go to
+`emulator-stderr.log`. Both files are digest-bound in the smoke receipt, so host
+diagnostics cannot split a firmware pass record. No transcript filtering is used.
+
 Neither command opens a serial port or flashes hardware. Normal integer,
 floating, compiled and SQLite configurations retain their partition/layout
 contracts. This separate fixture uses its own loader directory and a **12 MiB
@@ -38,10 +42,12 @@ with the pinned sources and must accompany a separately distributed bundle.
 
 ## Placement and C runtime
 
-Only the generated, digest-bound `graphics_payload.o` function manifest can
-execute in the graphics Flash span starting at `0x40020000`. Read-only tables
-and font inputs follow. Kernel, task/interrupt and allocator code stay in
-primary SRAM. All defined library/libc/compiler-helper globals except the
+The generated, digest-bound `graphics_payload.o` function manifest controls
+font-library execution in the Flash span starting at `0x40020000`. Read-only
+tables and font inputs follow. A separate RX span after the fonts now contains
+exactly `native_surface.paint` and `native_surface.draw`. The SRAM wrapper owns
+context checks, allocation, guards and release. Kernel control, task/interrupt
+and allocator code stay in primary SRAM. All defined library/libc/compiler-helper globals except the
 four fixture entry/result/PC/output symbols are renamed into a private namespace.
 This prevents a library helper from silently redirecting a kernel call into
 Flash. FreeType's default file/memory entry points remain unsupported;
@@ -78,12 +84,13 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 114,432 B | 114,688 B |
-| Remaining primary SRAM heap | 49,408 B | 49,152 B |
-| Static reservations including stack/data regions | 237,312 B | 237,568 B |
-| Application image | 11,576,576 B | 11,578,032 B |
+| Primary static span | 111,104 B | 111,360 B |
+| Remaining primary SRAM heap | 52,736 B | 52,480 B |
+| Static reservations including stack/data regions | 233,984 B | 234,240 B |
+| Application image | 11,576,048 B | 11,577,504 B |
 
-Graphics code/RO occupy 561,072 B in Flash. TTF inputs occupy 10,821,312 B,
+Font-library code/RO occupy 561,072 B in Flash; the separate renderer adds
+2,816 B of RX code. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
 Private initialized data/BSS occupy 20,764 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
@@ -132,16 +139,18 @@ adds a shared RGB565 consumer on that live task. The
 [cluster-flow receipt](measurements/2026-10-28-native-cluster-wrap.json) extends
 that consumer with bounded horizontal/vertical wrapping and archive retirement.
 The [basic-prohibition receipt](measurements/2026-10-28-native-kinsoku.json) adds
-source-boundary policy and a third composition pass. The current run records:
+source-boundary policy and a third composition pass. The
+[render-placement receipt](measurements/2026-10-28-native-render-placement.json)
+then moves the task-only paint/draw code to Flash. The current run records:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
 - The timer captures the font task 6,410 times, including 6,393 during
-  shaping/rasterization stages; bootstrap advances 13,227 times.
+  shaping/rasterization stages; bootstrap advances 12,620 times.
   Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
-- Stack watermark/frame observation reaches 17,344 B, leaving 15,408 B above
+- Stack watermark/frame observation reaches 17,264 B, leaving 15,488 B above
   that observation and the 16 B guard in a 32 KiB reservation. This is not a
   worst-case or native IO call-chain bound.
 - Font-span backing for two clients peaks at 1,310,976 B; raster charge is
@@ -221,7 +230,7 @@ checks and six invalid-operation rejections pass without modifying results.
 Each guarded canvas logically occupies 38,464 B and charges 65,536 B of
 consumer-owned PSRAM; all canvas charge returns to zero before raster release.
 These costs are separate from font backing and the raster lease. The device
-profile retains 49,152 B of primary heap, meeting the unchanged 48 KiB floor.
+profile now retains 52,480 B of primary heap, above the unchanged 48 KiB floor.
 The first link hit that floor; reducing duplicate diagnostic archives recovered
 space without changing queued replies or disabling compiler safety checks.
 
@@ -289,8 +298,42 @@ These are host reference images, not LCD captures. Source-map construction for
 arbitrary UTF-8 is host-tested. The native fixture uses maps prepared at build
 time from canonical inputs, placed in the existing mapped Flash display-data
 span; its real-time source-map preparation and IO path remain unqualified.
-The device build retains exactly the unchanged 48 KiB primary heap floor.
-Future additions need a new budget decision rather than reducing that floor.
+That prohibition-only device build reached the unchanged 48 KiB primary heap
+floor. The following placement change recovers headroom without reducing it.
+
+The [task-only Flash rendering decision](adr/0051-task-only-flash-rendering.md)
+separates the SRAM ownership wrapper from two borrowed-buffer rendering functions.
+A distinct `.flash.graphrender` RX/non-writable span follows the pinned fonts in
+the same second loader mapping. The auditor accepts exactly `native_surface.paint`
+and `native_surface.draw` there, with contiguous function extents, and requires
+the wrapper, context check, timer hook, trap, dispatcher and task alloc/free
+helpers to remain SRAM functions. The assembly trap now has explicit ELF
+function/size metadata so its complete extent can be audited. Source-level
+context/return ABI and stack/heap reservations are unchanged.
+
+The two Flash functions occupy 2,816 B. Outlining and the resulting code/alignment
+changes recover 3,328 B of primary SRAM on both revision profiles, including
+post-paint bootstrap/IRQ stack-guard checks. Device primary heap grows from
+49,152 to 52,480 B (51.25 KiB), leaving 3.25 KiB above the retained 48 KiB floor.
+App image size falls by 528 B
+for both profiles; no PSRAM allocation, quota or fixed SRAM region is enlarged.
+
+Before and after paint, the SRAM wrapper requires the CPU0 bootstrap consumer's
+active task identity and MIE enabled. After each paint it also verifies the
+bootstrap and IRQ stack guards. A separate timer hook rejects entry with
+MIE clear using only internal state; it reads no borrowed pixels or Flash table.
+The native receipt records in-range paint/draw PC samples and timer captures
+inside the rendering Flash span (four Flash PC captures across six active-call
+timer captures, with 7,336 IRQ entry rejections), followed by unchanged matrix/
+raster/all three
+composition-pass hashes and complete final heap recovery. These finite guards
+and observations do not prove a general call graph or privilege boundary.
+
+The call requires active Flash mappings/caches. This fixture has no runtime
+Flash-write/cache-off phase. Physical behavior and a production update/render
+exclusion protocol remain unqualified; this change does not permit rendering
+while its mapping is unavailable. Fixed font stack/library SRAM remains reserved
+while idle. This stage changes placement rather than adding ruby association.
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls

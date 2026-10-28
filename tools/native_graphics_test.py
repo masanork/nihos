@@ -117,6 +117,18 @@ class NativeGraphicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "negative control"):
             LOG.validate_policy(good, texts, bad)
 
+    def test_flash_renderer_requires_in_range_execution_and_real_interrupt_resume(self):
+        graphics = {"render": {"start": "0x40b00000", "end": "0x40b00100", "functions": {
+            "native_surface.paint": {"start": "0x40b00000", "end": "0x40b00080"},
+            "native_surface.draw": {"start": "0x40b00080", "end": "0x40b00100"}}}}
+        good = dict(zip(LOG.PLACEMENT_FIELDS, [0x40b00004, 0x40b00084, 3, 99, 6, 100, 3, 2, 0x40b00010]))
+        LOG.validate_placement(good, graphics)
+        for field, value in (("paint_pc", 0x4ff20000), ("draw_pc", 0x40b00004), ("frames", 2),
+                             ("draws", 98), ("context_checks", 5), ("irq_rejected", 0), ("active_ticks", 0),
+                             ("flash_ticks", 0), ("flash_ticks", 4), ("trap_pc", 0x4ff20000)):
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                LOG.validate_placement({**good, field: value}, graphics)
+
     def test_archive_releases_full_charge_after_logging(self):
         good = dict(zip(LOG.ARCHIVE_FIELDS, [2736, 4096, 0, 16022848, 16022848]))
         LOG.validate_archive(good, {"heap_before": 16018752})
@@ -126,11 +138,16 @@ class NativeGraphicsTests(unittest.TestCase):
 
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)
+        AUDIT.audit_flash_section(".flash.graphrender", 1, 6, AUDIT.GRAPH_START + 128, 16, allow_graphics=True)
+        with self.assertRaises(ValueError):
+            AUDIT.audit_flash_section(".flash.graphrender", 1, 6, AUDIT.GRAPH_START + 128, 16)
         AUDIT.audit_flash_section(".flash.graphrodata", 1, 50, AUDIT.GRAPH_START + 64, 32, allow_graphics=True)
         with self.assertRaises(ValueError):
             AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64)
         for fields in [(".flash.graphrodata", 1, 3, AUDIT.GRAPH_START, 32),
-                       (".flash.graphtext", 1, 7, AUDIT.GRAPH_START, 32)]:
+                       (".flash.graphtext", 1, 7, AUDIT.GRAPH_START, 32),
+                       (".flash.graphrender", 1, 7, AUDIT.GRAPH_START, 32),
+                       (".flash.graphrender", 1, 2, AUDIT.GRAPH_START, 32)]:
             with self.assertRaises(ValueError):
                 AUDIT.audit_flash_section(*fields, allow_graphics=True)
         AUDIT.audit_graphics_sram(".graphics.stack", 8, 3, AUDIT.GRAPH_STACK_LOW, 32768)
@@ -144,19 +161,61 @@ class NativeGraphicsTests(unittest.TestCase):
     def fixture(self):
         start, ram = AUDIT.GRAPH_START, AUDIT.GRAPH_RAM_LOW
         fonts = start + 144
+        render = fonts + 4
         sections = {".flash.graphtext": (start, bytes(128)), ".flash.graphrodata": (start + 128, bytes(16)),
-                    ".flash.graphfonts": (fonts, b"gm"), ".flash.graphpad": (0x40010024, bytes(start - 0x40010024)),
+                    ".flash.graphfonts": (fonts, b"gm"), ".flash.graphrender": (render, bytes(16)), ".flash.graphpad": (0x40010024, bytes(start - 0x40010024)),
                     ".graphics.data": (ram, bytes(128), 128), ".graphics.bss": (ram + 128, b"", 1024),
                     ".graphics.stack": (AUDIT.GRAPH_STACK_LOW, b"", 32768)}
         symbols = {"__graphics_font_stack_bottom": AUDIT.GRAPH_STACK_LOW, "__graphics_font_stack_top": AUDIT.GRAPH_STACK_HIGH,
                    "__graphics_bss_start": ram + 128, "__graphics_bss_end": ram + 1152, "graphics_result": ram, "graphics_output": ram + 128,
                    "nih_graphics_gothic_start": fonts, "nih_graphics_gothic_end": fonts + 1,
-                   "nih_graphics_mincho_start": fonts + 1, "nih_graphics_mincho_end": fonts + 2}
+                   "nih_graphics_mincho_start": fonts + 1, "nih_graphics_mincho_end": fonts + 2,
+                   "__flash_render_start": render, "__flash_render_end": render + 16, "__flash_graphics_end": render + 16}
         functions = [("graphics_font_link_probe", start, start + 64), ("nih_gfx_study_malloc", start + 64, start + 128)]
         manifest = {"schema": 1, "allowed_functions": [f[0] for f in functions], "payload_sha256": "fixture",
                     "fonts": [{"family": family, "name": family, "bytes": 1, "sha256": hashlib.sha256(byte).hexdigest()}
                               for family, byte in [("gothic", b"g"), ("mincho", b"m")]]}
+        functions += [("native_surface.paint", render, render + 8), ("native_surface.draw", render + 8, render + 16)]
+        functions += [(name, AUDIT.SRAM_LOW + i * 16, AUDIT.SRAM_LOW + i * 16 + 8) for i, name in enumerate(sorted(AUDIT.RENDER_RESIDENT))]
         return sections, symbols, {"graphics_result": 124, "graphics_output": 844}, functions, manifest, b"base"
+
+    def test_rendering_flash_accepts_only_two_functions_and_retains_critical_sram_code(self):
+        good = self.fixture()
+        report, _, _ = AUDIT.audit_graphics(*good)
+        self.assertEqual(set(report["render"]["functions"]), AUDIT.RENDER_FUNCTIONS)
+        for mutate in ("missing", "extra", "renamed", "overlap", "overrun", "resident"):
+            bad = copy.deepcopy(good)
+            functions = bad[3]
+            index = next(i for i, f in enumerate(functions) if f[0] == "native_surface.paint")
+            name, low, high = functions[index]
+            if mutate == "missing":
+                functions.pop(index)
+            elif mutate == "extra":
+                functions.append(("unapproved", low, high))
+            elif mutate == "renamed":
+                functions[index] = ("native_surface.unknown", low, high)
+            elif mutate == "overlap":
+                functions[index] = (name, low, high + 2)
+            elif mutate == "overrun":
+                functions[index] = (name, low, high + 32)
+            else:
+                index = next(i for i, f in enumerate(functions) if f[0] == "heap.allocTask")
+                functions[index] = ("heap.allocTask", 0x40018000, 0x40018008)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                AUDIT.audit_graphics(*bad)
+
+    def test_rendering_flash_must_remain_contiguous_and_bound_to_linker_symbols(self):
+        good = self.fixture()
+        for name in ("__flash_render_start", "__flash_render_end", "__flash_graphics_end"):
+            bad = copy.deepcopy(good)
+            bad[1][name] += 4
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "symbols"):
+                AUDIT.audit_graphics(*bad)
+        bad = copy.deepcopy(good)
+        low, data = bad[0][".flash.graphrender"]
+        bad[0][".flash.graphrender"] = (low + 4, data)
+        with self.assertRaisesRegex(ValueError, "noncontiguous"):
+            AUDIT.audit_graphics(*bad)
 
     def test_font_bytes_and_kernel_runtime_namespace_are_bound(self):
         good = self.fixture()

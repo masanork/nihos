@@ -25,6 +25,21 @@ RASTER_FIELDS = ("created", "discarded", "published", "reclaimed", "live_charge"
 SURFACE_FIELDS = ("frames", "blits", "clipped", "guards", "rejected", "peak_charge", "live_charge")
 
 
+PLACEMENT_FIELDS = ("paint_pc", "draw_pc", "frames", "draws", "context_checks", "irq_rejected", "active_ticks", "flash_ticks", "trap_pc")
+
+
+def validate_placement(record, graphics):
+    render = graphics["render"]
+    for field, name in (("paint_pc", "native_surface.paint"), ("draw_pc", "native_surface.draw")):
+        bounds = render["functions"][name]
+        if not int(bounds["start"], 16) <= record[field] < int(bounds["end"], 16):
+            raise ValueError("renderer execution PC differs from audited Flash function")
+    if (record["frames"] != 3 or record["draws"] != 99 or record["context_checks"] != 6 or
+            record["irq_rejected"] < 6 or not 0 < record["flash_ticks"] <= record["active_ticks"] <= record["irq_rejected"] or
+            not int(render["start"], 16) <= record["trap_pc"] < int(render["end"], 16)):
+        raise ValueError("incomplete task-only Flash rendering/preemption evidence")
+
+
 POLICY_FIELDS = ("frames", "spans", "joined", "lines", "transitions", "clipped")
 WRAP_FIELDS = ("frames", "clusters", "lines", "wrapped_runs", "transitions", "clipped")
 ARCHIVE_FIELDS = ("logical_bytes", "charge", "live_charge", "before", "after")
@@ -122,6 +137,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     exchange = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_EXCHANGE", EXCHANGE_FIELDS)
     raster = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_RASTER", RASTER_FIELDS)
     validate_raster(raster)
+    placement = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_PLACEMENT", PLACEMENT_FIELDS)
     surface = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_SURFACE", SURFACE_FIELDS)
     wrap = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_WRAP", WRAP_FIELDS)
     policy = base.fixed_record(log, "NIHOS_NATIVE_GRAPHICS_KINSOKU", POLICY_FIELDS)
@@ -145,7 +161,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
         raise ValueError("missing/reordered native font hash cases")
     if log.count("NIHOS_NATIVE_GRAPHICS_PASS\n") != 1 or not (
             log.index("NIHOS_NATIVE_FP_PASS ") < log.index("NIHOS_NATIVE_GRAPHICS ") <
-            log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") < log.index("NIHOS_NATIVE_GRAPHICS_RASTER ") < log.index("NIHOS_NATIVE_GRAPHICS_SURFACE ") <
+            log.index("NIHOS_NATIVE_GRAPHICS_CLIENTS ") < log.index("NIHOS_NATIVE_GRAPHICS_EXCHANGE ") < log.index("NIHOS_NATIVE_GRAPHICS_RASTER ") < log.index("NIHOS_NATIVE_GRAPHICS_PLACEMENT ") < log.index("NIHOS_NATIVE_GRAPHICS_SURFACE ") <
             log.index("NIHOS_NATIVE_GRAPHICS_WRAP ") < log.index("NIHOS_NATIVE_GRAPHICS_KINSOKU ") < log.index("NIHOS_NATIVE_GRAPHICS_TEXT ") <= log.rindex("NIHOS_NATIVE_GRAPHICS_TEXT ") <
             log.index("NIHOS_NATIVE_GRAPHICS_HASH ") <
             log.index("NIHOS_NATIVE_GRAPHICS_ARCHIVE ") < log.index("NIHOS_NATIVE_GRAPHICS_PASS\n")):
@@ -162,6 +178,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
             wrap_reference["source_sha256"] != hashlib.sha256((ROOT / "probes/graphics/surface_reference.py").read_bytes()).hexdigest()):
         raise ValueError("wrapped reference inputs differ from current source")
     validate(q, hashes, image["graphics"], expected, exchange, texts, text_reference["texts"])
+    validate_placement(placement, image["graphics"])
     validate_surface(surface, texts, surface_reference)
     validate_wrap(wrap, texts, wrap_reference)
     if (policy_reference["raster_reference_sha256"] != hashlib.sha256((ROOT / "docs/measurements/2026-10-28-font-raster-host.json").read_bytes()).hexdigest() or
@@ -173,7 +190,7 @@ def check(log, image, manifest, reference, text_reference, surface_reference, wr
     if archive["after"] != baseline["heaps"][0]["free"]:
         raise ValueError("archive retirement differs from original CPU0 heap")
     return {"status": "pass", "evidence": "esp32p4-emulator-native-image", "rtos_linked": False,
-            "graphics": q, "exchange": exchange, "raster": raster, "surface": surface, "wrap": wrap, "policy": policy, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
+            "graphics": q, "exchange": exchange, "raster": raster, "placement": placement, "surface": surface, "wrap": wrap, "policy": policy, "archive": archive, "texts": texts, "hashes": hashes, "baseline": baseline,
             "limits": ["No physical Tab5 evidence", "Fonts are immutable Flash fixture inputs; no native SD/VFS font reads",
                        "Four matrix and five bounded text jobs share one live task; no service restart",
                        "Stack watermark and trap samples are observations, not arbitrary-font or IO call-chain upper bounds"]}
@@ -194,14 +211,14 @@ def main():
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     if sha(directory / "nihos-native.elf") != image["elf_sha256"] or sha(directory / "nihos-native.bin") != image["image_sha256"]:
         raise ValueError("captured native image identity differs from audit")
-    result["artifacts_sha256"] = {p.name: sha(p) for p in [directory / n for n in ("nihos-native.elf", "nihos-native.bin", "nihos-native-flash.bin", "emulator.log", "image-audit.json", "graphics-manifest.json")]}
+    result["artifacts_sha256"] = {p.name: sha(p) for p in [directory / n for n in ("nihos-native.elf", "nihos-native.bin", "nihos-native-flash.bin", "emulator.log", "emulator-stderr.log", "image-audit.json", "graphics-manifest.json")]}
     result["policy_reference_sha256"] = sha(policy_reference_path)
     result["wrap_reference_sha256"] = sha(wrap_reference_path)
     result["surface_reference_sha256"] = sha(surface_reference_path)
     result["text_reference_sha256"] = sha(text_reference_path)
     result["host_reference_sha256"] = sha(reference_path)
     output.write_text(json.dumps(result, indent=2) + "\n")
-    print("Native graphics: basic Japanese prohibitions, RGB565 reference pixels and complete heap recovery passed")
+    print("Native graphics: task-only Flash rendering/preemption, reference pixels and complete heap recovery passed")
 
 
 if __name__ == "__main__":

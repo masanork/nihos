@@ -677,6 +677,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes" }, &exchange);
                     const raster = tasks.graphics.exchange.raster.metrics;
                     logger.record("NIHOS_NATIVE_GRAPHICS_RASTER", null, .{ "created", "discarded", "published", "reclaimed", "live_charge", "peak_charge", "held_ticks", "stale_rejected", "foreign_rejected" }, &raster);
+                    const placement = tasks.graphics.exchange.composer.placement;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_PLACEMENT", null, .{ "paint_pc", "draw_pc", "frames", "draws", "context_checks", "irq_rejected", "active_ticks", "flash_ticks", "trap_pc" }, &placement);
                     const composition = tasks.graphics.exchange.composer.metrics;
                     logger.record("NIHOS_NATIVE_GRAPHICS_SURFACE", null, .{ "frames", "blits", "clipped", "guards", "rejected", "peak_charge", "live_charge" }, &composition);
                     const wrapped = tasks.graphics.exchange.composer.wrap_metrics;

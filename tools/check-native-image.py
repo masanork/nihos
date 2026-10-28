@@ -32,14 +32,17 @@ FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
 SQL_START, SQL_END = 0x40020000, 0x400C0000
 SQL_SECTIONS = {".flash.sqltext", ".flash.sqlrodata", ".flash.sqlpad"}
 GRAPH_START, GRAPH_END = 0x40020000, 0x40C00000
-GRAPH_SECTIONS = {".flash.graphtext", ".flash.graphrodata", ".flash.graphfonts", ".flash.graphpad"}
+GRAPH_SECTIONS = {".flash.graphtext", ".flash.graphrodata", ".flash.graphfonts", ".flash.graphpad", ".flash.graphrender"}
+RENDER_FUNCTIONS = {"native_surface.paint", "native_surface.draw"}
+RENDER_RESIDENT = {"native_surface.compose", "native_surface.contextAllowed", "native_surface.captureTimer",
+                   "nih_native_dispatch", "nih_native_trap", "heap.allocTask", "heap.freeTask"}
 GRAPH_RAM_LOW, GRAPH_RAM_HIGH = 0x4FF78000, 0x4FF80000
 GRAPH_STACK_LOW, GRAPH_STACK_HIGH = 0x4FF6E000, 0x4FF76000
 
 def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_graphics=False):
     if name in GRAPH_SECTIONS:
         readonly = flags & 7 == 2 and flags & ~50 == 0
-        require(allow_graphics and kind == 1 and (flags == 6 if name == ".flash.graphtext" else readonly), "unapproved graphics Flash section")
+        require(allow_graphics and kind == 1 and (flags == 6 if name in (".flash.graphtext", ".flash.graphrender") else readonly), "unapproved graphics Flash section")
         if name == ".flash.graphpad":
             require(0x40010020 < address < GRAPH_START and address + size == GRAPH_START, "invalid graphics Flash padding")
         else:
@@ -76,6 +79,26 @@ def audit_graphics_sram(name, kind, flags, address, size):
                 GRAPH_RAM_LOW <= address < address + size <= GRAPH_RAM_HIGH, "invalid graphics SRAM data")
 
 
+def audit_render(section, functions):
+    low, data = section
+    high = low + len(data)
+    require(low % 4 == 0 and 0 < len(data) <= 16384, "invalid rendering Flash extent")
+    selected = [(name, start, end) for name, start, end in functions if low <= start < high or start < low < end]
+    require(len(selected) == len(RENDER_FUNCTIONS) and {n for n, _, _ in selected} == RENDER_FUNCTIONS,
+            "unexpected/missing rendering Flash function")
+    selected.sort(key=lambda item: item[1])
+    require(selected[0][1] == low and all(low <= start < end <= high for _, start, end in selected) and
+            0 <= high - selected[-1][2] < 16 and
+            all(0 <= right[1] - left[2] < 16 for left, right in zip(selected, selected[1:])),
+            "overlapping/unaccounted rendering Flash function extent")
+    resident = {name: {"start": hex(start), "end": hex(end)} for name, start, end in functions if name in RENDER_RESIDENT}
+    require(set(resident) == RENDER_RESIDENT and all(0x4ff00000 <= int(f["start"], 16) < int(f["end"], 16) <= 0x4ff48000 for f in resident.values()),
+            "renderer guard/allocator/trap helper must remain SRAM")
+    return {"start": hex(low), "end": hex(high), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+            "functions": {name: {"start": hex(start), "end": hex(end)} for name, start, end in selected},
+            "resident": resident}
+
+
 def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
     require(manifest and manifest.get("schema") == 1 and manifest.get("allowed_functions"), "missing graphics object manifest")
     require(set(sections) == GRAPH_SECTIONS | {".graphics.data", ".graphics.bss", ".graphics.stack"}, "missing graphics sections")
@@ -94,6 +117,11 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
     require({"graphics_font_link_probe", "nih_gfx_study_malloc"}.issubset(selected), "missing graphics functions")
     require(GRAPH_RAM_LOW <= symbols.get("graphics_output", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_output") == 844, "graphics output ABI/data placement differs")
     require(GRAPH_RAM_LOW <= symbols.get("graphics_result", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_result") == 124, "graphics result ABI/data placement differs")
+    render = sections[".flash.graphrender"]
+    require(render[0] == (fonts[0] + len(fonts[1]) + 3) & ~3, "noncontiguous rendering Flash layout")
+    render_report = audit_render(render, functions)
+    require(symbols.get("__flash_render_start") == render[0] and symbols.get("__flash_render_end") == render[0] + len(render[1]) and
+            symbols.get("__flash_graphics_end") == render[0] + len(render[1]), "rendering Flash symbols differ")
     inputs = []
     for item in manifest["fonts"]:
         low, high = (symbols.get("nih_graphics_" + item["family"] + suffix, 0) for suffix in ("_start", "_end"))
@@ -101,15 +129,16 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
         require(hashlib.sha256(fonts[1][low - fonts[0]:high - fonts[0]]).hexdigest() == item["sha256"], "font bytes differ from pinned source")
         inputs.append({**item, "start": hex(low), "end": hex(high)})
     payload = tables + bytes((-len(tables)) % 4) + pad[1] + text[1] + ro[1] + bytes(fonts[0] - ro[0] - len(ro[1])) + fonts[1]
+    payload += bytes(render[0] - fonts[0] - len(fonts[1])) + render[1]
     payload += bytes((-len(payload)) % 4)
-    return {"text_start": hex(text[0]), "text_end": hex(ro[0]), "text_bytes": len(text[1]),
+    return {"render": render_report, "text_start": hex(text[0]), "text_end": hex(ro[0]), "text_bytes": len(text[1]),
             "rodata_bytes": len(ro[1]), "fonts_bytes": len(fonts[1]), "fonts": inputs,
             "functions": selected, "payload_sha256": manifest["payload_sha256"], "padding_bytes": len(pad[1]),
             "static_data_bytes": sections[".graphics.data"][2], "static_bss_bytes": sections[".graphics.bss"][2],
             "stack_bytes": 32768, "ram_reserved_bytes": 32768}, (text[0], ro[0]), payload
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=()):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), render_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
@@ -119,6 +148,9 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if sql_span is not None and sql_span[0] <= address < stop <= sql_span[1]:
             require(name in sql_functions, "non-manifest function in mapped library Flash: " + name)
+            continue
+        if render_span is not None and render_span[0] <= address < stop <= render_span[1]:
+            require(name in RENDER_FUNCTIONS, "unapproved rendering Flash function: " + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else "clock" if re.fullmatch(r"cpu_boot\.run__func_[0-9]+", name) else None
         require(role is not None and start <= address < stop <= end, "unapproved Flash function: " + name)
@@ -356,7 +388,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None):
     graph_report, graph_payload = None, None
     if allow_graphics:
         graph_report, sql_span, graph_payload = audit_graphics(graph_sections, symbols, symbol_sizes, functions, sqlite_manifest, flash_tables)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest["allowed_functions"] if allow_sql or allow_graphics else ())
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest["allowed_functions"] if allow_sql or allow_graphics else (),
+                                          (int(graph_report["render"]["start"], 16), int(graph_report["render"]["end"], 16)) if allow_graphics else None)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
