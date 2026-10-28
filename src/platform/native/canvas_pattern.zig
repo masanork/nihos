@@ -1,6 +1,15 @@
 //! Private boot-time scanout fixture. The display owner supplies its frame.
 const canvas = @import("canvas");
 const std = @import("std");
+const expected_checksum: u32 = 0x549e3481;
+
+fn checksum(frame: []const u8, stride: usize) u32 {
+    var result: u32 = 0x811c9dc5;
+    for (0..1280) |y| for (frame[y * stride ..][0..1440]) |byte| {
+        result = (result ^ byte) *% 0x01000193;
+    };
+    return result;
+}
 
 pub fn paint(frame: []u8, width: usize, height: usize, stride: usize) bool {
     if (width != 720 or height != 1280) return false;
@@ -19,7 +28,7 @@ pub fn paint(frame: []u8, width: usize, height: usize, stride: usize) bool {
     for (760..800) |y| c.blitRgb565(.{ .bytes = &row, .width = 128, .height = 1, .stride = row.len }, 48, @intCast(y)) catch return false;
     c.line(48, 800, 671, 1120, 0xffff);
     c.line(48, 1120, 671, 800, 0xffe0);
-    return true;
+    return checksum(frame, stride) == expected_checksum;
 }
 
 test "pattern paints expected pixels and preserves padding" {
@@ -34,5 +43,8 @@ test "pattern paints expected pixels and preserves padding" {
     try std.testing.expectEqual(@as(u16, 0x07e0), std.mem.readInt(u16, frame[200 * stride + 384 * 2 ..][0..2], .little));
     try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, frame[760 * stride + 48 * 2 ..][0..2], .little));
     try std.testing.expectEqual(@as(u16, 0x0000), std.mem.readInt(u16, frame[760 * stride + 64 * 2 ..][0..2], .little));
+    try std.testing.expectEqual(expected_checksum, checksum(frame, stride));
+    frame[0] ^= 1;
+    try std.testing.expect(checksum(frame, stride) != expected_checksum);
     for (0..1280) |y| try std.testing.expect(std.mem.allEqual(u8, frame[y * stride + 1440 ..][0..16], 0xa5));
 }
