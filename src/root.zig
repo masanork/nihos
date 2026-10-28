@@ -16,6 +16,7 @@ pub const card_pin_graphics = @import("graphics/card_pin.zig");
 pub const keypad_demo = @import("card/keypad_demo.zig");
 pub const keypad_plan = @import("graphics/keypad_plan.zig");
 pub const graphics_surface = @import("surface");
+pub const graphics_canvas = @import("graphics/canvas.zig");
 pub const card_splash = @import("graphics/card_splash.zig");
 pub const usb_host = @import("soc/esp32p4/usb_host.zig");
 pub const usb_descriptors = @import("usb/descriptors.zig");
@@ -95,6 +96,8 @@ test {
     _ = keypad_demo;
     _ = keypad_plan;
     _ = graphics_surface;
+    _ = graphics_canvas;
+    _ = @import("graphics/card_canvas_test.zig");
     _ = card_splash;
     _ = @import("graphics/keypad_atlas_test.zig");
     _ = @import("graphics/card_read_result.zig");
