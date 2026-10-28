@@ -56,6 +56,9 @@ def main():
     if platform.system() == 'Darwin':
         arch = {'arm64': 'aarch64', 'x86_64': 'x86_64'}[platform.machine()]
         host_target = ['-target', arch + '-macos.' + run(['xcrun', '--sdk', 'macosx', '--show-sdk-version']).strip()]
+    # The C driver links this archive into the host's default PIE executable.
+    # Keep every Zig module relocatable rather than disabling PIE at the link.
+    host_target += ['-fPIC']
     library = work / 'vfs-check.a'
     run([zig, 'build-lib', *host_target, '-O', 'ReleaseSafe', '--dep', 'storage_vfs', '--dep', 'sdmmc',
          '-Mroot=' + str(PROBE / 'host_library.zig'), *host_target, '-O', 'ReleaseSafe',
