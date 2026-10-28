@@ -26,6 +26,12 @@ exFATはzero領域、version、sector/cluster shift、単一FAT、FAT/heapの配
 diskioへは`first/count`を渡して未使用tailを除く。BPB hidden sectors / exFAT PartitionOffsetをI/O addressに使わない。
 VFAT LFNの解釈や別名同一性は既存FatFs/guarded Backendの責務で、partition選択には入れない。
 
+複数partitionを発見できることと、複数FSを同時mountできることは別である。
+現diskioの`active`とBackendの`live`は単一owner / drive 0の状態を持つ。
+切替は旧VFS handleの失効、RPC drain、FS destroyとdisk detachの後、新epochで行う。
+同時mountへ広げる際はdrive別のbinding/sessionとmount別の課金・pin・失効範囲を設計し、
+単一globalをpartitionごとに書き換えて実現しない。
+
 ## 資源とsession
 
 scratch512 Bは呼出元が保持し、callbackは既存diskioと同じ「DMA fence確認後だけ戻る」契約を持つ。
