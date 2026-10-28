@@ -1,0 +1,87 @@
+{
+  "audio": {
+    "scope": "native finite DMA/codec output progression; audible output not evaluated",
+    "records": 135,
+    "complete_records": 135,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "dma": 11,
+      "bclk": 262145,
+      "fifo": 16384,
+      "eof_descriptor": 1341235440,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1
+    }
+  },
+  "microphone": {
+    "scope": "finite ES7210 TDM acquisition; no acoustic/slot mapping qualification",
+    "muted_control": false,
+    "records": 132,
+    "completed_records": 132,
+    "final": {
+      "phase": 5,
+      "fault": 0,
+      "dma": 3,
+      "end": 1341234944,
+      "parked": 1,
+      "codec_off": 1,
+      "stopped": 1,
+      "returned": 1,
+      "samples": 512,
+      "erased": 1
+    },
+    "signal": {
+      "active": 15,
+      "clipped": 0,
+      "peak0": 840,
+      "peak1": 118,
+      "peak2": 71,
+      "peak3": 187,
+      "span0": 849,
+      "span1": 118,
+      "span2": 107,
+      "span3": 38
+    }
+  },
+  "rs485": {
+    "scope": "internal UART controller only; external RS485 transceiver/wire unqualified",
+    "mode": "loopback",
+    "records": 130,
+    "terminal_records": 130,
+    "final": {
+      "phase": 7,
+      "fault": 0,
+      "tx": 64,
+      "rx": 64,
+      "raw": 0,
+      "tx_idle": 1,
+      "dir_low": 1,
+      "stopped": 1,
+      "matched": 1
+    }
+  },
+  "time": {
+    "scope": "public SNTP response correlated and UTC RTC written/read back; unauthenticated wall time",
+    "ntp": {
+      "attempts": 1,
+      "replies": 1,
+      "failures": 0,
+      "stratum": 1,
+      "rtt_us": 134228
+    },
+    "ntp_unix": 1793169808,
+    "rtc_written_unix": 1793169808,
+    "rtc_final_unix": 1793170529,
+    "rtc_valid_records": 150,
+    "ui_final": {
+      "frames": 44788,
+      "ticks0": 74631,
+      "ticks1": 74631
+    }
+  },
+  "image_sha256": "d7fcb8eb8f5c1537be87a93694211b7d8a57c9dbc70356c2198c4e5a88c947a0",
+  "serial_sha256": "1c836a99e2fe0efab7b3142af8ca8202c27a4efb7cf8e3b70e9b87f6cde795ce"
+}

@@ -1,7 +1,7 @@
 # ADR 0054: Normal single-contact touch input
 
 - Date: 2026-10-28
-- Status: implemented locally; physical identification/idle checked, contact qualification pending
+- Status: implemented; draft review, final operator tests deferred
 - Extends: [ADR 0052](0052-default-on-demand-device-drivers.md)
 
 ## Decision
@@ -19,7 +19,12 @@ another hart. Identification is deferred until one second on the existing
 clock, then polling is limited to approximately 30 Hz. There are no new DMA
 buffers or dynamic allocations. The existing driver's ten-slot bound remains;
 the maximum foreground identification/sample duration is reported for physical
-measurement rather than inferred from the poll frequency.
+measurement rather than inferred from the poll frequency. Sitronix reports are
+read in at most two contiguous batches of nine and one whole 7-byte records,
+each within the existing 64-byte transfer bound. Every advertised slot is read,
+including a sparse second finger in the tenth slot. The status read plus these
+batches replace eleven transactions with at most three. This follows the
+contiguous report layout used by the [Espressif driver](https://github.com/espressif/esp-iot-solution/blob/master/components/display/lcd_touch/esp_lcd_touch_st7123/esp_lcd_touch_st7123.c).
 
 Display panel IDs select GT911 (ILI9881C), ST7123 or ST7121. The portrait
 720x1280 controller coordinates map to the existing landscape raster as
@@ -60,32 +65,39 @@ counters, a four-quadrant bitmask and queued event count. It does not log raw
 touch coordinates. The existing DEVICE_SERVICE bitmap still describes the
 three requestable audio/microphone/UART drivers.
 
-The configured connected candidate leaves 58944 bytes of primary static heap,
-versus 63424 bytes before this change: 4480 additional static SRAM bytes. Its
-approved Flash records occupy 56603 bytes. The 49152-byte minimum static heap,
+The final candidate based on main `542e6ac` leaves 58176 bytes of primary static
+heap, versus 62848 bytes in the same-profile main baseline: 4672 additional
+static SRAM bytes. Its approved Flash records occupy 56605 bytes. The
+49152-byte minimum static heap,
 SRAM banks, stacks and image-auditor rules remain unchanged. These are link
 layout results, not physical free-heap, timing or power measurements.
 
 ## Validation and physical gate
 
-Host Debug and ReleaseSafe each pass 407 tests, including rotation, explicit
+After main integration, host Debug and ReleaseSafe each pass 412 tests, including rotation, explicit
 release, stale/multiple-contact cancellation, overflow quarantine and rejected
 button gestures. Raster tests check rotated bounds, stride padding and rejected
 input without frame mutation. Static analysis and RV32 links pass. The
 configured connected device image builds and passes its loader/image audit.
-The unconfigured-Wi-Fi normal profile also links, and the Python suite passes
-238 tests.
+The unconfigured-Wi-Fi normal and standalone touch profiles also link and pass
+ELF audits, and the Python suite passes 264 tests.
 Host previews of both views show the control without obscuring their headings;
 they are not optical device evidence.
 
-The [600-second normal-image checkpoint](../measurements/2026-10-28-normal-touch-idle.md)
-physically checked ST7121 identification and idle coexistence with connected
-Wi-Fi/NTP, RTC/IMU and finite audio/microphone/internal UART. No contact reports
-or operator confirmation were received, so button/release behavior remains
-unqualified. The prior app was verified restored. Earlier standalone ST7121/card
-observations do not establish contact operation of this normal image. Before landing:
+The [600-second idle checkpoint](../measurements/2026-10-28-normal-touch-idle.md)
+was followed by [normal touch interaction and batched-read checks](../measurements/2026-10-28-normal-touch-interaction.md).
+An operator confirmed both view directions in the initial candidate. The
+batched candidate then recorded explicit down/up and accepted alternating view
+actions alongside connected Wi-Fi/NTP, RTC/IMU and finite devices; its maximum
+read time was 14281 us versus 19963 us before batching. Those two candidates
+were verified restored. The final main-integrated candidate booted and
+identified touch but lost USB during capture; post-capture identity verification
+and restoration are incomplete. Operator tests were subsequently deferred at
+the user's request. It is not qualified by the earlier candidates. Before landing:
 
-1. Rediscover the device and coordinate exclusive write ownership. Back up the
+1. Restore the saved app after USB reconnection, first checking chip, boot and
+   candidate identity; retain the interrupted attempt. Then rediscover the
+   device and coordinate exclusive write ownership. Back up the
    actual app and verify retained loader identity before installing. Verify the
    exact candidate bytes before and after capture; restore and verify the prior
    app afterward.
