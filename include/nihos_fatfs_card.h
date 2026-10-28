@@ -20,6 +20,12 @@ int nih_fatfs_card_mount(void *, uint32_t bytes, uint32_t sectors,
 nih_fatfs_backend *nih_fatfs_card_backend(nih_fatfs_card *, uint32_t generation);
 const char *nih_fatfs_card_path(nih_fatfs_card *, uint32_t generation);
 uint32_t nih_fatfs_card_reads(nih_fatfs_card *, uint32_t generation);
+/* Trusted serialized owner, never an IRQ call. Rejects stale generations with
+ * 0; 1 invalidates cached filesystem objects without freeing the context or
+ * proving a DMA fence. May be called from its synchronous sector callback;
+ * destroy remains busy until that callback returns. Repeated removal is safe.
+ * The owner must drain/revoke VFS/RPC before destroy and a new session/mount. */
+int nih_fatfs_card_remove(nih_fatfs_card *, uint32_t generation);
 /* Stale identity returns 0 without touching the active card. Busy teardown
  * returns -1 and retains context/session/pin. Success clears the C workspace
  * and invalidates accessors. End the device session and release broker memory

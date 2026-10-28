@@ -47,12 +47,18 @@ pub export fn nih_storage_read(lba: u32, destination: *block.Sector) callconv(.c
 }
 // Normal owner context, mapped Flash with caches enabled; IRQs never call it.
 noinline fn ownedRead(controller: *sd.Controller(Bus), lba: u32, destination: *[512]u8) linksection(".flash.text.storage") i32 {
-    const control = beginIo() orelse return -1;
+    const control = beginIo() orelse return if (io_signal.removed.load(.acquire)) -3 else -1;
     io_owner.read(controller, lba, destination, control.ticket, control) catch |err| {
         // Do not return into FS/client cleanup with a lease still retained.
         // This boot fixture has no recovery owner: stop the qualification.
         if (err == error.Quarantined) nih_native_task_failed();
-        return -1;
+        // Preserve the fenced result across the C disk bridge; legacy callers
+        // still treat any nonzero value as failure. See nihos_storage_io.h.
+        return switch (err) {
+            error.Cancelled => -2,
+            error.Removed => -3,
+            else => -1,
+        };
     };
     return 0;
 }

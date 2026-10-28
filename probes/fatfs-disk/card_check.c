@@ -11,7 +11,7 @@ static int image;
 static unsigned calls,fail_at;
 static nih_fatfs_card *busy_card;
 static uint32_t busy_generation;
-static unsigned busy_seen;
+static unsigned busy_seen,remove_on_read,removal_seen;
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"card check: %s\n",#x); exit(1); } } while(0)
 int32_t nih_storage_read(uint32_t lba,uint8_t bytes[512]) {
     ++calls;
@@ -21,6 +21,14 @@ int32_t nih_storage_read(uint32_t lba,uint8_t bytes[512]) {
         CHECK(nih_fatfs_card_path(busy_card,busy_generation));
         CHECK(nih_fatfs_card_reads(busy_card,busy_generation)>0);
         ++busy_seen;
+        if (remove_on_read) {
+            remove_on_read=0;
+            CHECK(!nih_fatfs_card_remove(busy_card,busy_generation-1));
+            CHECK(nih_fatfs_card_remove(busy_card,busy_generation)==1);
+            CHECK(nih_fatfs_card_remove(busy_card,busy_generation)==1);
+            CHECK(nih_fatfs_card_destroy(busy_card,busy_generation)==-1);
+            ++removal_seen;
+        }
     }
     if (pread(image,bytes,512,(off_t)((uint64_t)lba*512))!=512) return -1;
     return calls==fail_at ? -1 : 0;
@@ -71,17 +79,42 @@ int main(int argc,char **argv) {
     CHECK(nih_fatfs_card_reads(card,7)==0);
     CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,8,&card,&report)==1);
     CHECK(nih_fatfs_card_destroy(card,7)==0 && !nih_fatfs_card_backend(card,7));
-    CHECK(nih_fatfs_card_backend(card,8));
+    backend=nih_fatfs_card_backend(card,8); CHECK(backend);
+    CHECK(!nih_fatfs_card_remove(card,7));
+    CHECK(nih_fatfs_backend_lookup(backend,8,1,"Memo.txt",8,&identity)==0);
+    CHECK(nih_fatfs_backend_open(backend,8,identity,&token)==0);
+    CHECK(nih_fatfs_backend_read(backend,8,token,0,data,sizeof data,&got,&eof)==0 && got==24);
+    before=calls;
+    CHECK(nih_fatfs_backend_read(backend,8,token,0,data,sizeof data,&got,&eof)==0 && got==24 && calls==before);
+    CHECK(nih_fatfs_card_remove(card,8)==1);
+    CHECK(nih_fatfs_card_remove(card,8)==1);
+    memset(data,0xa5,sizeof data);
+    CHECK(nih_fatfs_backend_read(backend,8,token,0,data,sizeof data,&got,&eof)==NIH_FB_REMOVED && !got && calls==before);
+    for (size_t i=0;i<sizeof data;++i) CHECK(data[i]==0xa5);
+    CHECK(nih_fatfs_card_backend(card,8)==backend && nih_fatfs_card_path(card,8));
     CHECK(nih_fatfs_card_destroy(card,8)==1);
+    CHECK(!nih_fatfs_card_remove(card,8));
+    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,9,&card,&report)==1);
+    backend=nih_fatfs_card_backend(card,9); CHECK(backend);
+    CHECK(!nih_fatfs_card_remove(card,8));
+    CHECK(nih_fatfs_backend_lookup(backend,9,1,"Memo.txt",8,&identity)==0);
+    CHECK(nih_fatfs_backend_open(backend,9,identity,&token)==0);
+    busy_card=card;busy_generation=9;remove_on_read=1;
+    memset(data,0xa5,sizeof data);
+    CHECK(nih_fatfs_backend_read(backend,9,token,0,data,sizeof data,&got,&eof)==NIH_FB_REMOVED && !got);
+    CHECK(removal_seen==1 && !remove_on_read);
+    for (size_t i=0;i<sizeof data;++i) CHECK(data[i]==0xa5);
+    busy_card=NULL;
+    CHECK(nih_fatfs_card_destroy(card,9)==1);
     for (uint32_t i=0;i<size;++i) CHECK(((uint8_t *)workspace)[i]==0);
     calls=0;fail_at=1;
-    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,9,&sentinel,&report)==0);
+    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,10,&sentinel,&report)==0);
     CHECK(sentinel==(nih_fatfs_card *)(uintptr_t)1);
     calls=0;
-    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,9,(nih_fatfs_card **)workspace,&report)==0);
-    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,9,&sentinel,workspace)==0);
-    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,9,(nih_fatfs_card **)&report,&report)==0);
+    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,10,(nih_fatfs_card **)workspace,&report)==0);
+    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,10,&sentinel,workspace)==0);
+    CHECK(nih_fatfs_card_mount(workspace,size,(uint32_t)sectors,10,(nih_fatfs_card **)&report,&report)==0);
     CHECK(calls==0);
     free(workspace); CHECK(!close(image));
-    printf("{\"passed\":true,\"successful_reads\":3,\"failed_sector_positions\":3,\"workspace_bytes\":%u,\"lifetime_checked\":true,\"busy_destroy_rejected\":%u}\n",size,busy_seen);
+    printf("{\"passed\":true,\"successful_reads\":3,\"failed_sector_positions\":3,\"workspace_bytes\":%u,\"lifetime_checked\":true,\"busy_destroy_rejected\":%u,\"cached_read_denied\":true,\"callback_removal_checked\":true}\n",size,busy_seen);
 }

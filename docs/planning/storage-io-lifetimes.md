@@ -35,6 +35,15 @@ IRQ側ではFS、allocator、MMIO停止、descriptorやbufferの解放を行わ�
 leaseが返却可能になったことと、同じcontrollerで読取りを続けられることを区別する。
 将来のVFS Backendはabort後のmountを失効させ、再mountを別世代として扱う。
 
+実SD card contextの結合では、fenced readの取消を-2、抜去結果を-3としてC disk bridgeへ渡す。
+idle中のsticky removalも次の発行拒否時に-3を保つ。抜去はFatFs diskをremovedにし、
+その他の非zero結果はI/O failedとする。cached FILに対するreadも再開させない。
+ordinary ownerからの世代付き`nih_fatfs_card_remove`はcontextを解放せず失効だけを行い、
+callback中はdestroyとbroker親領域のretireを拒否する。
+[card抜去・transport失敗のhost結合](../measurements/2026-10-28-fatfs-card-removal-host.md)で
+5形式のreply clear、不健全mountへのrebind拒否、旧世代通知拒否と全回収を確認する。
+RPCの取消通知をcontroller stopへ自動中継する実装や、mount中の実抜去の資格を意味しない。
+
 ## 停止の条件
 
 1. peripheralとIDMACのinterrupt maskを0にし、controllerのinterrupt enableも落とす。

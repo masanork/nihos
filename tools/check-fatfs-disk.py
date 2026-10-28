@@ -37,6 +37,7 @@ def run(command, timeout=120):
 
 def main():
     inputs = [ROOT / 'include/nihos_fatfs_disk.h', ROOT / 'include/nihos_fatfs_volume.h',
+              ROOT / 'include/nihos_storage_io.h',
               ROOT / 'src/storage/fatfs_disk.c', ROOT / 'src/storage/fatfs_volume.c',
               ROOT / 'src/platform/native/fatfs_disk.c', ROOT / 'tools/bootstrap-fatfs.py',
               ROOT / 'tools/check-fatfs-disk.py', ROOT / 'provenance.toml', *sorted(PROBE.glob('*'))]

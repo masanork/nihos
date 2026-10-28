@@ -19,6 +19,7 @@ static nih_fatfs_disk disk;
 static uint64_t epoch;
 static uint32_t calls, fail_at, invalidate_at, last_lba;
 static int image = -1, reenter;
+static int fail_result = NIH_STORAGE_READ_IO;
 
 /* Host replacement for the existing native sector export. Each return is
  * synchronous; the MMIO/lease fence itself is covered by Zig owner tests.
@@ -44,7 +45,7 @@ int32_t nih_storage_read(uint32_t lba, uint8_t buffer[512]) {
     } else memset(buffer, (int)(lba & 255), 512);
     if (calls == invalidate_at) REQUIRE(nih_fatfs_disk_invalidate(&disk, epoch) == NIH_FATFS_OK);
     /* Model an error that writes caller-owned staging before returning. */
-    return calls == fail_at ? -1 : 0;
+    return calls == fail_at ? fail_result : 0;
 }
 
 static void bind_disk(uint64_t device, uint64_t first, uint64_t count) {
@@ -52,6 +53,7 @@ static void bind_disk(uint64_t device, uint64_t first, uint64_t count) {
     REQUIRE(nih_fatfs_disk_bind(&disk, nih_fatfs_native_read, NULL, device, first, count, epoch) == NIH_FATFS_OK);
     REQUIRE(nih_fatfs_disk_arm(&disk, epoch, NIH_FATFS_READ_BUDGET) == NIH_FATFS_OK);
     calls = fail_at = invalidate_at = 0;
+    fail_result = NIH_STORAGE_READ_IO;
 }
 static void unchanged(const uint8_t *bytes, size_t count) {
     for (size_t i = 0; i < count; ++i) REQUIRE(bytes[i] == 0xa5);
@@ -104,13 +106,16 @@ static void contract(void) {
     REQUIRE(disk_initialize(0) & STA_NOINIT);
     detach_disk();
     REQUIRE(nih_fatfs_disk_bind(&disk, nih_fatfs_native_read, NULL, 100, 0, 100, epoch) == NIH_FATFS_STALE);
+    const int results[] = {NIH_STORAGE_READ_IO, NIH_STORAGE_READ_CANCELLED, NIH_STORAGE_READ_REMOVED, 9};
+    for (unsigned kind = 0; kind < sizeof results / sizeof results[0]; ++kind)
     for (uint32_t failing = 1; failing <= 8; ++failing) {
         bind_disk(100, 0, 100);
         fail_at = failing;
+        fail_result = results[kind];
         memset(bytes, 0xa5, sizeof bytes);
         REQUIRE(disk_read(0, bytes, 0, 8) == RES_ERROR && calls == failing);
         unchanged(bytes, sizeof bytes);
-        REQUIRE(disk.state == NIH_FATFS_IO_FAILED && !disk.busy);
+        REQUIRE(disk.state == (fail_result == NIH_STORAGE_READ_REMOVED ? NIH_FATFS_REMOVED : NIH_FATFS_IO_FAILED) && !disk.busy);
         REQUIRE(disk_read(0, bytes, 0, 1) == RES_NOTRDY && calls == failing);
         REQUIRE(disk_initialize(0) & STA_NOINIT);
         detach_disk();
@@ -137,7 +142,7 @@ static void contract(void) {
     epoch = UINT64_MAX;
     detach_disk();
     REQUIRE(nih_fatfs_disk_bind(&disk, nih_fatfs_native_read, NULL, 100, 0, 100, 1) == NIH_FATFS_STALE);
-    printf("{\"kind\":\"contract\",\"checks\":%u,\"workspace_bytes\":%zu}\n", checks, sizeof disk);
+    printf("{\"kind\":\"contract\",\"checks\":%u,\"workspace_bytes\":%zu,\"fenced_result_kinds\":4}\n", checks, sizeof disk);
 }
 
 static void read_text(const char *path, const char *expected) {
