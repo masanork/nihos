@@ -5,12 +5,17 @@ const result = @import("graphics/card_read_result.zig");
 const plan = @import("graphics/keypad_plan.zig");
 const keypad = @import("card/keypad_demo.zig");
 const presence = @import("card/presence.zig");
+const result_input = @import("card/result_input.zig");
+comptime {
+    _ = @import("normal_sim.zig");
+}
 const Phase = enum(u32) { boot, ready, pin1, pin2, overview, details, error_screen };
 const font = if (@import("builtin").os.tag == .macos) "__TEXT,__auto_font" else ".rodata.sim_auto_font";
 var phase: Phase = .boot;
 var model: keypad.Model = .{};
 var gate: presence.Gate = .{};
 var kind: u32 = 2;
+var result_contact: result_input.Model = .{};
 var paint_metrics: result.Paint = .{};
 var portrait: [result.portrait_bytes]u8 = @splat(0);
 pub const View = extern struct { phase: u32, count: u32, job: u32, present: u32, confirms: u32, missing: u32, truncated: u32 };
@@ -22,12 +27,15 @@ pub export fn sim_model_reset() void {
     model = .{};
     gate = .{};
     kind = 2;
+    result_contact = .{};
     for (&portrait, 0..) |*byte, index| byte.* = @truncate(index * 17);
 }
 fn change(next: Phase) void {
+    const starting_result = next == .overview and phase != .overview and phase != .details;
     phase = next;
     model.count = 0;
     model.contact.disarm();
+    if (starting_result) result_contact = .{ .mynumber = kind == 1 };
 }
 /// Semantic fixture actions: 0 ready, 1 classic insert, 2 My Number insert,
 /// 3 remove, 4 details, 5 overview, 6 close. Only generated data is rendered.
@@ -63,6 +71,22 @@ pub export fn sim_action(action: u32) bool {
     return true;
 }
 pub export fn sim_touch(contacts: u8, x: u16, y: u16) u32 {
+    if (phase == .overview or phase == .details) {
+        const selected = result_contact.sample(contacts, x, y) orelse return 0;
+        switch (selected) {
+            .basic => change(.overview),
+            .next => change(.details),
+            .close => {
+                gate.finish();
+                change(.ready);
+            },
+        }
+        return switch (selected) {
+            .basic => 8,
+            .next => 9,
+            .close => 10,
+        };
+    }
     if (phase != .pin1 and phase != .pin2) return 0;
     const effect = model.sample(contacts, x, y) orelse return 0;
     switch (effect) {

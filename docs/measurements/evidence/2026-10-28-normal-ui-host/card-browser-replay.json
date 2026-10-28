@@ -1,0 +1,33 @@
+{
+  "view": {
+    "phase": "ready",
+    "count": 0,
+    "job": 1,
+    "present": 1,
+    "confirms": 2,
+    "missing": 0,
+    "truncated": 0
+  },
+  "metrics": {
+    "frames": 15,
+    "publications": 16,
+    "rejections": 0,
+    "mismatches": 0,
+    "pending": 0,
+    "dma_owned": 1,
+    "backlight": 1,
+    "backlight_offs": 0,
+    "fault": 0,
+    "nodes": 89,
+    "low_bytes": 131072,
+    "high_bytes": 192512
+  },
+  "displayed_phase": "ready",
+  "status": 0,
+  "pixel_sha256": "f7870129e72c64fff8095a0e0002342c8f1310eb6b9bc2acc76052880ed25c0e",
+  "sram_sha256": "04aad754ead7f4f104a67db99bdd11574a494f086e1c7bf5413245fc81be986a",
+  "profile": "base",
+  "source_identity": "13a39f16fd8def52854064c54f20d457a1a013f5e93cef0ae42d284f2d280051",
+  "base_audit": null,
+  "scope": "host simulation; synthetic data; no reader, card, APDU or PIN value"
+}

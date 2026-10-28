@@ -8,6 +8,7 @@ pub const jpki = @import("usb/jpki.zig");
 pub const card_input_support = @import("card/input_support.zig");
 pub const card_service = @import("card/service.zig");
 pub const card_pin_entry = @import("card/pin_entry.zig");
+pub const card_result_input = @import("card/result_input.zig");
 pub const card_ccid_owner = @import("card/ccid_owner.zig");
 pub const tab5_touch = @import("board/tab5/touch.zig");
 pub const tab5_touch_feedback = @import("board/tab5/touch_feedback.zig");
@@ -69,6 +70,7 @@ test {
     _ = card_input_support;
     _ = card_service;
     _ = card_pin_entry;
+    _ = card_result_input;
     _ = card_ccid_owner;
     _ = tab5_touch;
     _ = tab5_touch_feedback;

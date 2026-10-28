@@ -1,60 +1,70 @@
 <!doctype html>
 <html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>nihos · Card UI Lab</title>
+<title>nihos · UI Lab</title>
 <style>
 :root{color-scheme:dark;font:15px/1.6 system-ui,sans-serif;background:#10191e;color:#dfe7ec}*{box-sizing:border-box}
 body{margin:0}header{padding:20px 32px;border-bottom:1px solid #304048;display:flex;align-items:center;gap:22px}h1{font-size:22px;margin:0}small,.muted{color:#9eafb9}
 main{display:grid;grid-template-columns:minmax(300px,480px) minmax(320px,580px);justify-content:center;gap:32px;padding:28px}
+body.normal main{grid-template-columns:minmax(520px,960px) minmax(300px,420px)}body.normal [data-card-only],body:not(.normal) [data-normal-only]{display:none!important}
 .device{background:#050a0d;border:1px solid #435059;border-radius:26px;padding:14px;align-self:start;box-shadow:0 20px 60px #0006}canvas{width:100%;height:auto;display:block;border-radius:12px;touch-action:none;cursor:pointer;background:#000}
 section{padding:18px 0;border-bottom:1px solid #304048}h2{font-size:15px;margin:0 0 10px;color:#9fd3c9}p{margin:6px 0 12px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 button,select,.link{font:inherit;border:1px solid #46575f;border-radius:8px;background:#202e35;color:inherit;padding:7px 12px;cursor:pointer}button:hover,.link:hover{background:#30474f}button.primary{background:#27695f;border-color:#53958a}a{color:#9fd3c9}.link{text-decoration:none;display:inline-block}
 label{display:flex;gap:8px;align-items:center}dl{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin:0;font-size:14px}dt{color:#9eafb9}dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}#status{padding:10px 14px;border:1px solid #3c7567;border-radius:8px;margin:12px 0;overflow-wrap:anywhere}#status.bad{border-color:#d79c68;color:#f8c69e}code{font-size:11px;overflow-wrap:anywhere}input[type=file]{max-width:100%}
-@media(max-width:760px){main{grid-template-columns:1fr;padding:18px;gap:16px}.device{max-width:420px;margin:auto}header{display:block;padding:16px}header small{display:block}}
+@media(max-width:760px){main,body.normal main{grid-template-columns:1fr;padding:18px;gap:16px}.device{max-width:420px;margin:auto}body.normal .device{max-width:100%}header{display:block;padding:16px}header small{display:block}}
 </style>
-<header><h1>nihos <span class="muted">/</span> Card UI Lab</h1><small>Host simulation · 合成データ · 720 × 1280</small></header>
+<header><h1>nihos <span class="muted">/</span> UI Lab</h1><small>Host simulation · 合成データ</small><a href="/?app=normal">通常UI</a><a href="/?app=card">カード画面</a></header>
 <main><div class="device"><canvas id="screen" width="720" height="1280" tabindex="0" aria-label="カード画面。PINキーは入力桁数だけを変更します"></canvas></div>
-<div><p class="muted">実装の描画とタッチ判定、SRAM配置、DMA引継ぎをホスト上で実行します。カード通信と認証は合成シナリオです。PINの数字は保持しません。</p>
+<div><p class="muted" data-card-only>実装の描画とタッチ判定、SRAM配置、DMA引継ぎをホスト上で実行します。カード通信と認証は合成シナリオです。PINの数字は保持しません。</p>
+<p class="muted" data-normal-only>本番のスプラッシュ・ログ描画と、座標変換・入力判定を実行します。右上のLOGS／SPLASHをタッチしてください。ログと起動状態は合成データです。実機DMAやI2Cは動かしません。</p>
 <div id="status" role="status">起動中…</div>
-<section><h2>画面とカード</h2><div class="row">
+<section data-normal-only><h2>通常UI</h2><div class="row"><button data-action="logs">ログへ</button><button data-action="splash">スプラッシュへ</button><button id="append">ログを40行追加</button><button data-action="fail">合成起動エラー</button></div><p><small>画面右上のタッチ、Escapeでログ、Ctrl-Lでスプラッシュ。長押し・ドラッグ・複数指では切り替わりません。</small></p><div class="row"><label><input id="dispatch" type="checkbox" checked>入力キューを処理する</label><button data-action="drain">キューを処理</button><button data-action="tick">無報告で2秒超を進める</button></div></section>
+<section data-card-only><h2>画面とカード</h2><div class="row">
 <button class="primary" data-action="ready">待受へ</button><button data-action="insert_classic">従来型免許証を置く</button><button data-action="insert_mynumber">マイナンバーカードを置く</button><button data-action="remove">カードを外す</button>
 <button data-action="details">詳細</button><button data-action="overview">一覧へ</button><button data-action="close">閉じる</button></div>
-<p><small>PIN画面はタッチで操作できます。数字キーはどれも「1桁追加」です。キーボードの数字 / Backspace / Enter / Escape でも操作できます。実際のPINは入力しないでください。</small></p></section>
+<p><small>PINと結果画面はタッチで操作できます。数字キーはどれも「1桁追加」です。キーボードの数字 / Backspace / Enter / Escape はPIN画面用です。実際のPINは入力しないでください。</small></p></section>
 <section><h2>フレーム境界</h2><div class="row"><label><input id="auto" type="checkbox" checked>操作後にEOFを進める</label><button data-action="eof">EOFを1回進める</button><button data-action="retry_frame">候補画面を再試行</button></div><p><small>自動EOFを外すと、公開待ちの間は旧フレームが保持されます。</small></p></section>
-<section><h2>メモリと故障注入</h2><div class="row"><select id="profile" aria-label="ベースイメージのSRAMプロファイル"><option value="base">通常ベース · 128 + 188 KiB</option><option value="font">フォント常駐ベース · 128 + 124 KiB</option></select><button id="reset">リセット</button></div>
-<div class="row" style="margin-top:10px"><select id="fault" aria-label="故障注入"><option value="0">故障なし</option><option value="1">DMA停止しない</option><option value="2">FIFOが空にならない</option><option value="3">レーンが停止しない</option><option value="4">キャッシュ引継ぎ失敗</option><option value="5">記述子容量不足</option></select><button id="inject">適用</button><button data-action="corrupt">SRAM画素を破損</button><button data-action="shutdown">停止・SRAM解放</button></div></section>
-<section><h2>観測</h2><dl id="metrics"></dl><p><small>画面: DMA記述子から復元 / 比較: CPU描画元との64ビット単位比較。バックライトとEOFはモデル上の状態です。</small></p><code id="identity"></code></section>
-<section><h2>再現用トレース</h2><div class="row"><a class="link" href="/trace" download>操作を保存</a><label>再生 <input id="replay" type="file" accept="application/json,.json"></label></div><p><small>保存するのは桁数変化と画面操作だけです。タッチ座標、数字、カード情報は含みません。</small></p></section>
+<section><h2>環境</h2><div class="row"><select data-card-only id="profile" aria-label="ベースイメージのSRAMプロファイル"><option value="base">通常ベース · 128 + 188 KiB</option><option value="font">フォント常駐ベース · 128 + 124 KiB</option></select><select data-normal-only id="palette" aria-label="ログのパレット"><option value="4">Matrix</option><option value="0">Neutral</option><option value="1">Green</option><option value="2">Blue</option><option value="3">Forest</option></select><button id="reset">リセット</button><button data-normal-only data-action="corrupt">ログ画素を破損</button></div>
+<div data-card-only class="row" style="margin-top:10px"><select id="fault" aria-label="故障注入"><option value="0">故障なし</option><option value="1">DMA停止しない</option><option value="2">FIFOが空にならない</option><option value="3">レーンが停止しない</option><option value="4">キャッシュ引継ぎ失敗</option><option value="5">記述子容量不足</option></select><button id="inject">適用</button><button data-action="corrupt">SRAM画素を破損</button><button data-action="shutdown">停止・SRAM解放</button></div></section>
+<section><h2>観測</h2><dl id="metrics"></dl><p data-card-only><small>画面: DMA記述子から復元 / 比較: CPU描画元との64ビット単位比較。バックライトとEOFはモデル上の状態です。</small></p><p data-normal-only><small>画面: 本番の増分レンダラ / 比較: 全画面再描画とのバイト比較。表示更新の境界はホストモデルで、実機DMA・キャッシュ・時間測定は対象外です。</small></p><code id="identity"></code></section>
+<section><h2>再現用トレース</h2><div class="row"><a id="trace" class="link" href="/trace" download>操作を保存</a><label>再生 <input id="replay" type="file" accept="application/json,.json"></label></div><p><small data-card-only>保存するのは桁数変化と画面操作だけです。タッチ座標、数字、カード情報は含みません。</small><small data-normal-only>通常UIのトレースは座標・接点数・時間差・キュー処理を保存します。カード／PINのトレースとは別形式です。</small></p></section>
 </div></main>
 <script>
-const canvas=document.querySelector('#screen'), ctx=canvas.getContext('2d');
-let queue=Promise.resolve(), drawn='', pressed=false;
-const automatic=()=>document.querySelector('#auto').checked;
-function enqueue(path,data){queue=queue.then(async()=>{const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!response.ok)throw Error('要求を処理できませんでした');await update(await response.json())}).catch(error=>{document.querySelector('#status').textContent=error.message});return queue}
+const normal=new URLSearchParams(location.search).get('app')==='normal', api=normal?'/normal':'';
+document.body.classList.toggle('normal',normal);
+const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d');
+canvas.width=normal?1280:720;canvas.height=normal?720:1280;
+canvas.setAttribute('aria-label',normal?'通常UI。右上のLOGSとSPLASHをタッチ':'カード画面。PINは桁数のみ');
+document.querySelector('#trace').href=api+'/trace';
+let queue=Promise.resolve(),drawn='',lastTime=performance.now();
+const pointers=new Map(),automatic=()=>document.querySelector('#auto').checked;
+function enqueue(path,data){queue=queue.then(async()=>{const r=await fetch(api+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw Error('要求を処理できませんでした');await update(await r.json())}).catch(e=>{document.querySelector('#status').textContent=e.message});return queue}
 async function update(s){
- if(s.base_audit&&!document.querySelector('option[value="audited"]')){const option=document.createElement('option');option.value='audited';option.textContent='指定したベースイメージの空きSRAM';document.querySelector('#profile').append(option)}
- document.querySelector('#profile').value=s.profile;
- const m=s.metrics, bad=s.status<0||m.mismatches||m.fault;
- const labels={'boot':'起動スプラッシュ','ready':'カード待受','pin1':'PIN 1','pin2':'PIN 2','overview':'券面一覧','details':'詳細'};
+ const m=s.metrics,bad=s.status<0||m.mismatches||m.fault;
+ const labels={boot:'起動スプラッシュ',ready:'カード待受',pin1:'PIN 1',pin2:'PIN 2',overview:'券面一覧',details:'詳細',splash:'スプラッシュ',logs:'ログ'};
  document.querySelector('#status').className=bad?'bad':'';
- document.querySelector('#status').textContent=`表示: ${labels[s.displayed_phase]||s.displayed_phase||'なし'} / 候補: ${labels[s.view.phase]||s.view.phase} · ${m.pending?'EOF待ち':bad?'拒否・故障を検出':'同期済み'} (status ${s.status})`;
- const values=[['PIN桁数',s.view.count],['カード検出ジョブ',s.view.job],['公開回数',m.publications],['EOF回数',m.frames],['画素不一致',m.mismatches],['バックライト消灯回数',m.backlight_offs],['DMA所有権',m.dma_owned?'保持':'解放'],['記述子数',m.nodes],['SRAMリース',`${m.low_bytes/1024} + ${m.high_bytes/1024} KiB`],['公開拒否',m.rejections],['故障コード',m.fault],['欠字 / 切詰め',`${s.view.missing} / ${s.view.truncated}`]];
+ document.querySelector('#status').textContent=`表示: ${labels[s.displayed_phase]||s.displayed_phase||'なし'} / 候補: ${labels[s.view.phase]||s.view.phase} · ${bad?'拒否・不一致を検出':m.pending?'EOF待ち':'同期済み'} (status ${s.status})`;
+ let values;
+ if(normal){document.querySelector('#palette').value=String(s.palette);values=[['公開回数',m.publications],['EOF回数',m.frames],['画素不一致（バイト）',m.mismatches],['タッチ切替回数',s.view.accepted],['Down / Move / Up',`${s.view.down} / ${s.view.move} / ${s.view.up}`],['取消 / キュー溢れ',`${s.view.cancel} / ${s.view.overflow}`],['キュー内',s.view.queued],['論理座標',`${s.view.last_x}, ${s.view.last_y}`],['仮想時間',`${(s.time_us/1000000).toFixed(3)} s`],['合成ログ行',s.view.log_lines]]}
+ else{if(s.base_audit&&!document.querySelector('option[value="audited"]')){const o=document.createElement('option');o.value='audited';o.textContent='指定したベースイメージの空きSRAM';document.querySelector('#profile').append(o)}document.querySelector('#profile').value=s.profile;values=[['PIN桁数',s.view.count],['カード検出ジョブ',s.view.job],['公開回数',m.publications],['EOF回数',m.frames],['画素不一致（64 bit語）',m.mismatches],['バックライト消灯回数',m.backlight_offs],['DMA所有権',m.dma_owned?'保持':'解放'],['記述子数',m.nodes],['SRAMリース',`${m.low_bytes/1024} + ${m.high_bytes/1024} KiB`],['公開拒否',m.rejections],['故障コード',m.fault],['欠字 / 切詰め',`${s.view.missing} / ${s.view.truncated}`]]}
  document.querySelector('#metrics').replaceChildren(...values.flatMap(([k,v])=>{const a=document.createElement('dt'),b=document.createElement('dd');a.textContent=k;b.textContent=v;return[a,b]}));
- document.querySelector('#identity').textContent=`Source: ${s.source_identity}\nPixels: ${s.pixel_sha256}`;
+ document.querySelector('#identity').textContent=`Source: ${s.source_identity} Pixels: ${s.pixel_sha256}`;
  if(drawn===s.pixel_sha256)return;
- const response=await fetch('/frame?sha='+s.pixel_sha256);if(response.status===409){await update(await(await fetch('/state')).json());return}if(!response.ok)throw Error('フレームを取得できません');
- const bytes=new DataView(await response.arrayBuffer()), image=ctx.createImageData(720,1280);
- for(let i=0;i<720*1280;i++){const p=bytes.getUint16(i*2,true),j=i*4;image.data[j]=Math.round(((p>>11)&31)*255/31);image.data[j+1]=Math.round(((p>>5)&63)*255/63);image.data[j+2]=Math.round((p&31)*255/31);image.data[j+3]=255}
+ const r=await fetch(api+'/frame?sha='+s.pixel_sha256);if(r.status===409){await update(await(await fetch(api+'/state')).json());return}if(!r.ok)throw Error('フレームを取得できません');
+ const bytes=new DataView(await r.arrayBuffer()),image=ctx.createImageData(canvas.width,canvas.height);
+ for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){const source=normal?(1279-x)*720+y:y*720+x,p=bytes.getUint16(source*2,true),j=(y*canvas.width+x)*4;image.data[j]=Math.round(((p>>11)&31)*255/31);image.data[j+1]=Math.round(((p>>5)&63)*255/63);image.data[j+2]=Math.round((p&31)*255/31);image.data[j+3]=255}
  ctx.putImageData(image,0,0);drawn=s.pixel_sha256;
 }
-document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>enqueue('/action',{name:b.dataset.action,automatic:automatic()}));
-document.querySelector('#reset').onclick=()=>{document.querySelector('#fault').value='0';enqueue('/action',{name:'reset',profile:document.querySelector('#profile').value})};
+for(const b of document.querySelectorAll('[data-action]'))b.onclick=()=>enqueue('/action',{name:b.dataset.action,automatic:automatic()});
+document.querySelector('#reset').onclick=()=>{pointers.clear();lastTime=performance.now();document.querySelector('#fault').value='0';enqueue('/action',normal?{name:'reset',palette:Number(document.querySelector('#palette').value)}:{name:'reset',profile:document.querySelector('#profile').value})};
 document.querySelector('#inject').onclick=()=>enqueue('/action',{name:'fault',value:Number(document.querySelector('#fault').value)});
-function touch(e,contacts){const r=canvas.getBoundingClientRect(),x=Math.min(719,Math.max(0,Math.floor((e.clientX-r.left)*720/r.width))),y=Math.min(1279,Math.max(0,Math.floor((e.clientY-r.top)*1280/r.height)));return enqueue('/touch',{contacts,x,y,automatic:automatic()})}
-canvas.onpointerdown=e=>{e.preventDefault();canvas.focus();if(pressed){touch(e,2);return}pressed=true;canvas.setPointerCapture(e.pointerId);touch(e,1)};
-canvas.onpointermove=e=>{if(pressed&&e.buttons)touch(e,1)};
-canvas.onpointerup=e=>{if(pressed){pressed=false;touch(e,0)}};
-canvas.onpointercancel=e=>{pressed=false;touch(e,2);touch(e,0)};
-document.onkeydown=e=>{if(e.target.matches('select,input,button')||e.repeat)return;const name=/^[0-9]$/.test(e.key)?'digit':({Backspace:'erase',Enter:'confirm',Escape:'cancel'})[e.key];if(name){e.preventDefault();enqueue('/key',{name,automatic:automatic()})}};
+document.querySelector('#append').onclick=()=>enqueue('/action',{name:'append_log',count:40,automatic:automatic()});
+function sample(point,contacts){const r=canvas.getBoundingClientRect(),x=Math.min(canvas.width-1,Math.max(0,Math.floor((point.clientX-r.left)*canvas.width/r.width))),y=Math.min(canvas.height-1,Math.max(0,Math.floor((point.clientY-r.top)*canvas.height/r.height))),now=performance.now();const data={contacts,x:normal?y:x,y:normal?1279-x:y,automatic:automatic()};if(normal){data.dt_us=Math.min(60000000,Math.max(0,Math.floor((now-lastTime)*1000)));data.dispatch=document.querySelector('#dispatch').checked}lastTime=now;return enqueue('/touch',data)}
+canvas.onpointerdown=e=>{e.preventDefault();canvas.focus();pointers.set(e.pointerId,{clientX:e.clientX,clientY:e.clientY});canvas.setPointerCapture(e.pointerId);sample(pointers.values().next().value,Math.min(5,pointers.size))};
+canvas.onpointermove=e=>{if(pointers.has(e.pointerId)){pointers.set(e.pointerId,{clientX:e.clientX,clientY:e.clientY});sample(pointers.values().next().value,Math.min(5,pointers.size))}};
+canvas.onpointerup=e=>{if(pointers.delete(e.pointerId))sample(pointers.size?pointers.values().next().value:e,Math.min(5,pointers.size))};
+canvas.onpointercancel=e=>{pointers.clear();sample(e,2);sample(e,0)};
+canvas.onlostpointercapture=e=>{if(pointers.delete(e.pointerId)){pointers.clear();sample(e,2);sample(e,0)}};
+document.onkeydown=e=>{if(e.target.matches('select,input,button')||e.repeat)return;const name=normal?(e.key==='Escape'?'logs':e.ctrlKey&&e.key.toLowerCase()==='l'?'splash':null):/^[0-9]$/.test(e.key)?'digit':({Backspace:'erase',Enter:'confirm',Escape:'cancel'})[e.key];if(name){e.preventDefault();enqueue('/key',{name,automatic:automatic()})}};
 document.querySelector('#replay').onchange=async e=>{try{await enqueue('/replay',JSON.parse(await e.target.files[0].text()))}catch(_){document.querySelector('#status').textContent='トレースを読み込めませんでした'}};
-queue=fetch('/state').then(r=>r.json()).then(update);
+queue=fetch(api+'/state').then(r=>r.json()).then(update);
 </script></html>
