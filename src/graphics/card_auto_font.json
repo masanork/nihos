@@ -9,23 +9,31 @@
     "card_read.prepare",
     "card_read.run",
     "keypad_display.prepare",
+    "keypad_display.stage",
+    "keypad_display.bind",
     "keypad_display.paintTextures",
     "usb_probe.Device.send",
     "usb_probe.Device.scrub",
     "usb_probe.Device.powerCut",
-    "display_runtime.start"
+    "display_runtime.start",
+    "display_runtime.replaceCard"
   ],
   "sources": {
-    "tools/boot-graphics/generate-card-read-font.py": "039d6e55781ba297a7dd66b9280f4f37f7a2a0b4b7442b974aea6ba0b820f093",
+    "tools/boot-graphics/generate-card-read-font.py": "acbd426ad7fea49e4de1fb4483e172dfcd0d440f2c1d9706493dc42a83a74168",
     "src/platform/native/card_read.zig": "6dda1426966340784928a29ade00cbdf6a700fabf4a280cd663c2aa6ce5d573b",
-    "src/platform/native/keypad_display.zig": "e2f52df98c04fa0fcedb5b1d8b232e448df6ae1db6691a3319e408713dd38f07",
-    "src/platform/native/usb_probe.zig": "eb38d31c1873aaaf91714dff574b47386c8896e8555ab595d9bce5eba46f6cc6",
-    "src/platform/native/display_runtime.zig": "13373de6e2db17cd3900d876a9d82930596b60c4264757204b2442aea28477ea",
+    "src/platform/native/keypad_display.zig": "065ac439f6b4e9762115d6a8f2c6c902dd683a89b5d09639374d104f5d1a0ace",
+    "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
+    "src/platform/native/display_runtime.zig": "a51559fe478273ab37ef4e5ed0f6d2ad8394d76befa1babc7c87bcd8e8460da5",
     "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
+    "src/board/tab5/native_scanout.c": "0ce2fe301a2438acf7332bd155bc052e85b2709e21566111ae17529f751d226b",
+    "src/board/tab5/keypad_sparse.h": "994e982c3410fa4d734dae5212ff3cc6ea5a5fd433fd417aba0b0596cc06ddca",
+    "src/board/tab5/notice_sparse.h": "8519a6b95ee7552426790a836bc309cf8e68a3b9a24dba7eb940f29b75aa2498",
+    "src/board/tab5/scanout_retire.h": "b547cdff7b91f2747520adf6f076204d76737b039b089c858e187affa8c5de6b",
     "tools/font_codec.py": "e7a8c94eba2570f5c74ae056e4ee75ba8c2650096e0cde77910691b2f5044bfd",
     "tools/boot-graphics/compress-card-font.py": "8853e744220179777db1d44073431f31c85524a311054d867f44849951c6f5e9",
     "src/graphics/card_read_result.zig": "0c0ed61d0103d003e59a37ddc1fa29b85a879fae876a0c0bdddbed611171161a"
   },
+  "scene_handoff": "dma-eof-panel-held-v1",
   "font_encoding": "row12-v1",
   "font_raw_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54"
 }

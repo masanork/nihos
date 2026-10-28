@@ -488,7 +488,7 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
                 report = diagnostic();
                 if (report.fault == 0) report.fault = 0x80000000;
                 log.abort(&report);
-                if (!emergency()) halt();
+                if (!recoverLink()) halt();
                 gate.finish();
                 notice(clock, panel, AutoCaptions.get(21), AutoCaptions.get(14)) catch {
                     halt();
@@ -501,11 +501,14 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
                 notice(clock, panel, if (kind == 1) AutoCaptions.get(22) else if (kind == 2) AutoCaptions.get(23) else if (kind == 4) AutoCaptions.get(24) else AutoCaptions.get(25), AutoCaptions.get(26)) catch {
                     halt();
                 };
-            } else if (kind == 1 or kind == 2 or kind == 4) selectedJob(clock, panel, log) catch {
+            } else if (kind == 1 or kind == 2 or kind == 4) selectedJob(clock, panel, log) catch |err| {
                 report = diagnostic();
                 if (report.fault == 0) report.fault = 0x80000000;
                 log.abort(&report);
-                if (!emergency()) halt();
+                // Ordinary card removal may retire its private job and
+                // replace the result with a public frame without a blackout.
+                // Uncertain transport/display failures still fail dark.
+                if (!(if (err == error.Removed or err == error.Disconnected) retireCard() else emergency())) halt();
                 notice(clock, panel, AutoCaptions.get(13), AutoCaptions.get(14)) catch {
                     halt();
                 };
@@ -516,6 +519,57 @@ pub noinline fn run(clock: timer.Timer, panel: u32, log: anytype) linksection(".
         }
         if (!bus.pins.delay(250_000)) halt();
     }
+}
+/// Finite card-free display exercise. Only synthetic pixels/text are used;
+/// openAutomatic is also compile-time denied in this profile.
+pub noinline fn exercise(clock: timer.Timer, panel: u32, log: anytype) linksection(".flash.photo") noreturn {
+    clock.start();
+    clock.disarm();
+    while (display.snapshot().frames < 32) display.onInterrupt();
+    const initial = display.snapshot();
+    log.refresh(&initial);
+    log.boot(&photo.report);
+    log.scene(0);
+    for (0..12) |step| {
+        const phase = step % 6;
+        if (phase == 0 or phase == 1) {
+            renderer.static_frame = false;
+            renderer.overview_frame = false;
+            renderer.pin_kind = if (phase == 0) 1 else 2;
+            renderer.read_remaining = 3;
+            redraw(clock, panel) catch halt();
+            // Masked counts only: no credential or touch input exists here.
+            for (1..5) |count| {
+                while (true) {
+                    renderer.update(@intCast(count)) catch |err| {
+                        if (err == error.Busy) continue;
+                        halt();
+                    };
+                    break;
+                }
+                const target = display.snapshot().frames + 8;
+                while (display.snapshot().frames < target) display.onInterrupt();
+            }
+        } else if (phase == 2 or phase == 4) {
+            photo.prepare() catch halt();
+            for (photo.pixels(), 0..) |*byte, index| byte.* = @truncate(index * 17 + step);
+            _ = card.ResultScreen.automaticOverview(".flash.keypad.auto_font", frame(), .{ .name = "表示テスト", .address = "架空の住所", .birth_date = "19900101", .detail = "000000000000", .expiration = "20300101" }, photo.pixels()) catch halt();
+            card.ResultScreen.resultControls(".flash.keypad.auto_font", frame(), false) catch halt();
+            if (!photo.close()) halt();
+            renderer.static_frame = true;
+            renderer.overview_frame = true;
+            redraw(clock, panel) catch halt();
+        } else if (phase == 3) {
+            _ = card.ResultScreen.licensePage(".flash.keypad.auto_font", frame(), false, &.{.{ .label = "住所", .value = "表示切替テスト", .date = "20260101" }}) catch halt();
+            renderer.static_frame = true;
+            renderer.overview_frame = true;
+            redraw(clock, panel) catch halt();
+        } else notice(clock, panel, AutoCaptions.get(0), AutoCaptions.get(1)) catch halt();
+        log.scene(@intCast(step + 1));
+        const target = display.snapshot().frames + 90;
+        while (display.snapshot().frames < target) display.onInterrupt();
+    }
+    halt();
 }
 noinline fn selectedJob(clock: timer.Timer, panel: u32, log: anytype) linksection(".flash.photo") !void {
     if (report.kind == 4) report.kind = try selectJob(clock, panel);
