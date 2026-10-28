@@ -42,6 +42,33 @@ pub const Device = struct {
         // No new report must not synthesize a finger-release / PIN key press.
         if (flags[0] & 8 == 0) return .unchanged;
         var result = Point{ .contacts = 0 };
+        // At most ten 7-byte records, never overflowing the 64-byte I2C limit.
+        for (0..self.slots) |index| {
+            var record: [7]u8 = @splat(0);
+            const offset: u8 = @intCast(0x14 + index * 7);
+            try bus.transfer(0x55, &.{ 0, offset }, &record);
+            if (record[0] & 0x80 == 0) continue;
+            if (record[0] & 0x40 != 0) return error.Malformed;
+            const x = (@as(u16, record[0] & 0x3f) << 8) | record[1];
+            const y = be(record[2..4]);
+            if (x >= self.width or y >= self.height) return error.Geometry;
+            if (result.contacts == 0) {
+                result.x = x;
+                result.y = y;
+            }
+            result.contacts += 1;
+        }
+        return .{ .fresh = result };
+    }
+    /// Normal foreground service only. Card profiles keep the smaller reader.
+    pub fn sampleBatched(self: Device, bus: anytype) !Sample {
+        if (self.panel == .ili9881c) return self.goodix(bus);
+        var flags: [1]u8 = .{0};
+        try bus.transfer(0x55, &.{ 0, 0x10 }, &flags);
+        if (flags[0] & 0x80 != 0) return error.ControllerReset;
+        // No new report must not synthesize a finger-release / PIN key press.
+        if (flags[0] & 8 == 0) return .unchanged;
+        var result = Point{ .contacts = 0 };
         // Contiguous report registers; nine whole records fit the 64-byte
         // bus limit. Read every advertised slot, including sparse late fingers.
         var first: usize = 0;
@@ -150,9 +177,9 @@ test "Sitronix identity, ten-slot reads, explicit release and absent report" {
     @memcpy(model.records[0..7], &[_]u8{ 0x82, 0xcf, 4, 0xff, 1, 1, 0 });
     const point = (try device.sample(&model)).fresh;
     try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, point);
-    try std.testing.expectEqual(@as(usize, 5), model.count);
+    try std.testing.expectEqual(@as(usize, 13), model.count);
     try std.testing.expectEqual(@as(usize, 70), model.report_bytes);
-    try std.testing.expectEqual(@as(usize, 63), model.max_report_read);
+    try std.testing.expectEqual(@as(usize, 7), model.max_report_read);
     model.records = @splat(0);
     try std.testing.expectEqual(@as(u8, 0), (try device.sample(&model)).fresh.contacts);
     model.flags = 0;
@@ -166,19 +193,19 @@ test "Sitronix burst boundaries preserve sparse tenth contact and multiple-conta
     const device = try Device.identify(&model, .st7121);
     model.records[0] = 0x80;
     @memcpy(model.records[63..70], &[_]u8{ 0x82, 0xcf, 4, 0xff, 1, 1, 0 });
-    try std.testing.expectEqual(@as(u8, 2), (try device.sample(&model)).fresh.contacts);
+    try std.testing.expectEqual(@as(u8, 2), (try device.sampleBatched(&model)).fresh.contacts);
     try std.testing.expectEqual(@as(usize, 2), model.report_reads);
     model.records[0] = 0;
-    try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, (try device.sample(&model)).fresh);
+    try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, (try device.sampleBatched(&model)).fresh);
     model.records[63] = 0x83;
-    try std.testing.expectError(error.Geometry, device.sample(&model));
+    try std.testing.expectError(error.Geometry, device.sampleBatched(&model));
 }
 
 test "Sitronix short report batches stay bounded and a failed second burst cannot publish a partial sample" {
     for ([_]u8{ 1, 9, 10 }) |slots| {
         var model = Model{ .slots = slots, .firmware = 3 };
         const device = try Device.identify(&model, .st7123);
-        try std.testing.expectEqual(@as(u8, 0), (try device.sample(&model)).fresh.contacts);
+        try std.testing.expectEqual(@as(u8, 0), (try device.sampleBatched(&model)).fresh.contacts);
         try std.testing.expectEqual(@as(usize, slots) * 7, model.report_bytes);
         try std.testing.expect(model.max_report_read <= 63);
         try std.testing.expectEqual(if (slots == 10) @as(usize, 2) else 1, model.report_reads);
@@ -186,7 +213,28 @@ test "Sitronix short report batches stay bounded and a failed second burst canno
     var model = Model{ .fail_report_read = 2 };
     const device = try Device.identify(&model, .st7121);
     model.records[0] = 0x80;
-    try std.testing.expectError(error.Nack, device.sample(&model));
+    try std.testing.expectError(error.Nack, device.sampleBatched(&model));
+}
+
+test "normal batched reader preserves explicit release and absent-report semantics" {
+    for ([_]Panel{ .st7121, .st7123, .ili9881c }) |panel| {
+        var model = Model{ .firmware = if (panel == .st7123) 3 else 1 };
+        const device = try Device.identify(&model, panel);
+        if (panel == .ili9881c) {
+            model.flags = 0x81;
+            @memcpy(model.records[0..8], &[_]u8{ 0, 0xcf, 2, 0xff, 4, 0, 0, 0 });
+        } else @memcpy(model.records[0..7], &[_]u8{ 0x82, 0xcf, 4, 0xff, 1, 1, 0 });
+        try std.testing.expectEqualDeep(Point{ .contacts = 1, .x = 719, .y = 1279 }, (try device.sampleBatched(&model)).fresh);
+        model.records = @splat(0);
+        if (panel == .ili9881c) model.flags = 0x80;
+        try std.testing.expectEqual(@as(u8, 0), (try device.sampleBatched(&model)).fresh.contacts);
+        model.flags = 0;
+        try std.testing.expect(try device.sampleBatched(&model) == .unchanged);
+        if (panel != .ili9881c) {
+            model.flags = 0x88;
+            try std.testing.expectError(error.ControllerReset, device.sampleBatched(&model));
+        }
+    }
 }
 test "touch malformed geometry or multiple fingers cannot become a single key press" {
     var model = Model{};
