@@ -53,6 +53,6 @@ SDL互換層、文字組版、Wasm runtimeの導入や実機試験は、この�
 
 ## 検証済みの範囲
 
-ホストテストではカード用縦組み起動画面を、実際のassetとcanvasのfill/maskで別に構成し、既存 `card_splash.paint` の出力とpaddingを含めて全バイト比較する。カードPIN・結果画面の比較ではない。DebugとReleaseSafeで検査する。
+ホストテストではカード用縦組み起動画面を、実際のassetとcanvasのfill/maskで別に構成し、既存 `card_splash.paint` の出力とpaddingを含めて全バイト比較する。さらに `paintDynamic` のPIN桁数0〜4の表示をcanvasの矩形で再構成し、実装のindicator全画素と比較する。確認ボタンの文字とPIN画面全体、結果画面は比較していない。DebugとReleaseSafeで検査する。
 
-`src/graphics/canvas_compile_probe.zig` は全描画操作を呼ぶコンパイル専用probe。Zig 0.17.0、`riscv32-freestanding-none`、`generic_rv32+m+a+c+zicsr+zifencei`、ReleaseSafeでオブジェクト生成を確認した。未解決の `memcpy` と `memset` があり、完全なファームウェアへのリンク、コードサイズ、実行時間、実機描画は確認していない。probeは公開ABIではない。
+`src/graphics/canvas_compile_probe.zig` は全描画操作を呼ぶコンパイル専用probe。Zig 0.17.0、`riscv32-freestanding-none`、`generic_rv32+m+a+c+zicsr+zifencei`、ReleaseSafeでオブジェクト生成を確認した。オブジェクトは `memcpy` と `memset` を要求する。同じprobeを `zig build-exe -fno-entry -fcompiler-rt` で静的リンクし、未解決シンボルがないことを確認した。entryなしのためlinkerは `_start` 不在を警告する。完全なファームウェアへのリンク、コードサイズ、実行時間、実機描画は確認していない。probeは公開ABIではない。

@@ -97,6 +97,7 @@ test {
     _ = keypad_plan;
     _ = graphics_surface;
     _ = graphics_canvas;
+    _ = @import("graphics/card_canvas_test.zig");
     _ = card_splash;
     _ = @import("graphics/keypad_atlas_test.zig");
     _ = @import("graphics/card_read_result.zig");
