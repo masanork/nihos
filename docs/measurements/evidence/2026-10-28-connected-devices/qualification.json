@@ -1,0 +1,29 @@
+{
+  "scope": "configured Wi-Fi/NTP with on-demand audio/microphone/repeated internal UART; external RS485 unqualified",
+  "source_commit": "c54d9dda8ce23856b24435dda9ff389c211c9134",
+  "source_dirty": true,
+  "runtime_source_matches_main": true,
+  "source_files_sha256": "61b0d8310f41d2ac228bbffb97b4769369b724bba756f4bd081cbe4e963a8397",
+  "source_archive_sha256": "1d685d46bed952311f46aca97a0064271e55e08eed9a678929d8a357faef8e8d",
+  "sdk_commit": "296b6eab9445fd720e71aecab961e2d3fbca9944",
+  "sdk_dirty": false,
+  "image_sha256": "381779cd61ffa4a1bb5b7f2f0f676e562ab09c2f021b8bc055a41807c826200a",
+  "elf_sha256": "7c42cf62e6813514dc9552b89540fcac71e598946cf2376203fcab20e24e634c",
+  "raw_serial_sha256": "4864d0e7319e9e97553171f4f47d7397f79399500c73dfe7fae1aab55ffed652",
+  "selected_serial_sha256": "ba1d0f46a5811643edab8a4dd7531e6d42121ac94d012a2750ffe96bd3afa0bd",
+  "capture_seconds": 88.100730875,
+  "at": "2026-10-28T04:04:46.733481+00:00",
+  "heap_bytes": 63424,
+  "restored": true,
+  "prior_app_partition_sha256": "b2397b3cf59d4e0b208e462ab5261ab29f0dbec8019dd14dbc4c847be50c207e",
+  "boot_unchanged_sha256": "2abdd2bd47aa470d84bcc46bbd01465d154b99db7985d0a93e096fd98db4a40f",
+  "private_credentials_and_raw_capture_withheld": true,
+  "unqualified": [
+    "sustained mixed-traffic/load",
+    "external RS485",
+    "audio quality/slot calibration",
+    "optical display",
+    "cold power-cycle",
+    "long-duration drift"
+  ]
+}

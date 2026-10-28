@@ -36,7 +36,41 @@ def log(mode='sync'):
     return result
 
 
+def recovered_log():
+    result = 'ESP-ROM:esp32p4\n'
+    for index, (phase, attempts, replies, failures) in enumerate(((0,0,0,0),(4,1,0,0),(1,1,0,1),(1,2,1,1),(1,2,1,1))):
+        result += record('NIHOS_NATIVE_NETWORK_UI', frames=100+index, ticks0=200+index, ticks1=200+index)
+        result += device(STAMP+index*5)
+        result += record('NIHOS_NATIVE_NETWORK', acquisitions=1, ip=0xc0000201)
+        result += record('NIHOS_NATIVE_NTP', phase=phase, attempts=attempts, replies=replies, rejected=0,
+                         failures=failures, stratum=replies, rtt_us=10000 if replies else 0,
+                         unix_high=0, unix_low=STAMP if replies else 0)
+        result += record('NIHOS_NATIVE_RTC_SYNC', applied=replies, failures=0, error_code=0,
+                         unix_high=0, unix_low=STAMP if replies else 0)
+    return result
+
+
 class NativeTimeTests(unittest.TestCase):
+    def test_recovery_is_explicit_and_retains_exactly_one_failed_request(self):
+        result = CHECK.check(recovered_log(), 'recovered-sync')
+        self.assertEqual(result['ntp']['attempts'], 2)
+        self.assertEqual(result['ntp']['failures'], 1)
+        with self.assertRaises(ValueError):
+            CHECK.check(recovered_log())
+        with self.assertRaises(ValueError):
+            CHECK.check(log(), 'recovered-sync')
+
+    def test_recovery_rejects_hidden_failure_extra_attempt_missing_wait_and_early_write(self):
+        original = recovered_log()
+        for changed in (original.replace('attempts=00000002', 'attempts=00000003'),
+                        original.replace('replies=00000001 rejected=00000000 failures=00000001',
+                                         'replies=00000001 rejected=00000000 failures=00000000'),
+                        original.replace('phase=00000004', 'phase=00000001'),
+                        original.replace('applied=00000000', 'applied=00000001', 1),
+                        original.replace('rtc_error=00000000', 'rtc_error=00000003')):
+            with self.assertRaises(ValueError):
+                CHECK.check(changed, 'recovered-sync')
+
     def test_sync_and_no_network_retention_are_distinct(self):
         result = CHECK.check(log())
         self.assertEqual(result['rtc_written_unix'], STAMP)

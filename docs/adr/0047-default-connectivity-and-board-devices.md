@@ -4,6 +4,12 @@
 - Status: implemented; Wi-Fi, BLE discovery and sensor presence physically observed
 - Extends: [ADR 0046](0046-native-network-lease-lifecycle.md)
 
+Later updates: [ADR 0052](0052-default-on-demand-device-drivers.md) adds default
+on-demand speaker/microphone/RS485, and [ADR 0053](0053-network-time-to-rtc.md)
+adds public NTP write/readback and warm-reset RTC qualification. The original
+RTC/IMU qualification statements below describe this ADR's earlier checkpoint;
+use the [current inventory](../planning/tab5-native-device-support.md) for main.
+
 ## Build and settings boundary
 
 `sh tools/build-native.sh device` now selects the normal integer display,

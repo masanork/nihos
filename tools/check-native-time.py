@@ -58,14 +58,30 @@ def check(log, mode='sync', seconds=180):
     result, applied = ntp[-1], sync[-1]
     stamp = result['unix_high'] << 32 | result['unix_low']
     written = applied['unix_high'] << 32 | applied['unix_low']
-    if (not network[-1]['acquisitions'] or not network[-1]['ip'] or not result['replies'] or
-            result['attempts'] != 1 or any(row['rejected'] or row['failures'] for row in ntp) or
+    recovered = mode == 'recovered-sync'
+    if recovered:
+        pending = [index for index, row in enumerate(ntp) if (row['phase'], row['attempts'], row['replies'], row['failures']) == (4, 1, 0, 0)]
+        failed = [index for index, row in enumerate(ntp) if (row['phase'], row['attempts'], row['replies'], row['failures']) == (1, 1, 0, 1)]
+        finished = [index for index, row in enumerate(ntp) if (row['phase'], row['attempts'], row['replies'], row['failures']) == (1, 2, 1, 1)]
+        if (not pending or not failed or not finished or not pending[0] < failed[0] < finished[0] or
+                any(row['attempts'] > 2 or row['replies'] > 1 or row['failures'] > 1 for row in ntp) or
+                any(a[key] > b[key] for a, b in zip(ntp, ntp[1:]) for key in ('attempts', 'replies', 'failures'))):
+            raise ValueError('missing ordered failed request and recovered reply history')
+        first_reply = re.search(r'^NIHOS_NATIVE_NTP (?=.*\breplies=00000001\b).*$', log.replace('\r', ''), re.M)
+        earlier = rows(log.replace('\r', '')[:first_reply.start()], 'NIHOS_NATIVE_RTC_SYNC', ('applied', 'failures', 'error_code'))
+        if any(row['applied'] or row['failures'] or row['error_code'] for row in earlier):
+            raise ValueError('RTC write before a valid recovered NTP reply')
+    expected_attempts, expected_failures = (2, 1) if recovered else (1, 0)
+    if (not network[-1]['acquisitions'] or not network[-1]['ip'] or result['replies'] != 1 or
+            result['attempts'] != expected_attempts or result['failures'] != expected_failures or
+            any(row['rejected'] or row['failures'] > expected_failures for row in ntp) or
             not 1 <= result['stratum'] <= 15 or not 0 < result['rtt_us'] <= 2_000_000 or
             applied['applied'] != 1 or any(row['failures'] or row['error_code'] for row in sync) or
             not 0 <= written - stamp <= 5 or not written <= utc(valid[-1]) <= written + seconds + 2):
         raise ValueError('missing/mismatched NTP, RTC application, DHCP or cleanup evidence')
-    return {'scope': 'public SNTP response correlated and UTC RTC written/read back; unauthenticated wall time',
-            'ntp': {key: result[key] for key in ('attempts', 'replies', 'stratum', 'rtt_us')},
+    return {'scope': ('one failed SNTP request followed by recovered UTC RTC application' if recovered else
+                      'public SNTP response correlated and UTC RTC written/read back; unauthenticated wall time'),
+            'ntp': {key: result[key] for key in ('attempts', 'replies', 'failures', 'stratum', 'rtt_us')},
             'ntp_unix': stamp, 'rtc_written_unix': written, 'rtc_final_unix': utc(valid[-1]),
             'rtc_valid_records': len(valid), 'ui_final': ui[-1]}
 
@@ -74,7 +90,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('capture', type=Path)
     parser.add_argument('report', type=Path)
-    parser.add_argument('--mode', choices=('sync', 'unavailable', 'retention'), default='sync')
+    parser.add_argument('--mode', choices=('sync', 'recovered-sync', 'unavailable', 'retention'), default='sync')
     args = parser.parse_args()
     root = args.capture
     metadata = json.loads((root / 'result.json').read_text())
