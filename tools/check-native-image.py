@@ -92,7 +92,7 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
         require(name not in symbols or any(low <= symbols[name] < high and 0x4ff00000 <= low < high <= 0x4ff48000 for _, low, high in functions), "kernel helper redirected to graphics Flash")
     selected = {name: {"start": hex(low), "end": hex(high)} for name, low, high in functions if GRAPH_START <= low < high <= ro[0]}
     require({"graphics_font_link_probe", "nih_gfx_study_malloc"}.issubset(selected), "missing graphics functions")
-    require(GRAPH_RAM_LOW <= symbols.get("graphics_output", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_output") == 776, "graphics output ABI/data placement differs")
+    require(GRAPH_RAM_LOW <= symbols.get("graphics_output", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_output") == 844, "graphics output ABI/data placement differs")
     require(GRAPH_RAM_LOW <= symbols.get("graphics_result", 0) < GRAPH_RAM_HIGH and sizes.get("graphics_result") == 124, "graphics result ABI/data placement differs")
     inputs = []
     for item in manifest["fonts"]:

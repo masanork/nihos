@@ -13,15 +13,15 @@ struct GraphicsRender {
     uint32_t font, pixels, vertical, hinting, body_length, ruby_length;
     char body[128], ruby[64];
 };
-struct GraphicsJob { uint32_t operation; GraphicsRender render; };
-static_assert(sizeof(GraphicsRender)==216 && sizeof(GraphicsJob)==220, "text request ABI");
+struct GraphicsJob { uint32_t operation; GraphicsRender render; uint8_t *raster; uint32_t capacity; };
+static_assert(sizeof(GraphicsRender)==216 && sizeof(GraphicsJob)==(sizeof(void*)==4?228:240), "text request ABI");
 struct GraphicsGlyph {
     uint32_t id, cluster, run, pixels;
     int32_t x_advance, y_advance, x_offset, y_offset, left, top;
-    uint32_t width, height;
+    uint32_t width, height, pixel_offset;
 };
-struct GraphicsOutput { uint32_t outcome, count; GraphicsGlyph glyphs[16]; };
-static_assert(sizeof(GraphicsGlyph)==48 && sizeof(GraphicsOutput)==776, "glyph output ABI");
+struct GraphicsOutput { uint32_t outcome, count, raster_bytes; GraphicsGlyph glyphs[16]; };
+static_assert(sizeof(GraphicsGlyph)==52 && sizeof(GraphicsOutput)==844, "glyph output ABI");
 struct GraphicsResult {
     uint32_t magic, stage, failure, runs, hashes[16];
     uint32_t pool_peak, raw_peak, retained, largest_extent, unavailable_calls, runtime_malloc_calls;

@@ -13,8 +13,10 @@ one dispatcher. The [owned-text extension](adr/0045-owned-font-text-requests.md)
 now copies bounded UTF-8 body/ruby inputs and render settings, and isolates a
 missing-glyph failure. [Owned glyph metadata](adr/0046-owned-glyph-metadata.md)
 now survives face close, source-buffer poisoning and task retirement, with atomic capacity
-failure. Actual bitmap ownership, application routing, cancellation and service
-restart remain unqualified. Native filesystem input and physical
+failure. [A8 raster leases](adr/0047-borrowed-a8-raster-leases.md) now hold one
+request's task-owned pixels until an acknowledged release, with stale-token
+and foreign-free checks. Application routing, cancellation, forced termination
+and service restart remain unqualified. Native filesystem input and physical
 qualification remain pending. The sections below retain the design and earlier
 ISA evidence that led to that fixture.
 

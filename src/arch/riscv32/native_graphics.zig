@@ -125,7 +125,7 @@ fn nextRequest(completed: u32, retained: u32, job: *@import("font_protocol").Job
     report_state.client_cycles = completed;
     report_state.idle_retained = retained;
     const request = exchange.next(completed, retained, graphics_result.hashes, graphics_result.runs, job, &graphics_output);
-    if (!caller() or heap.availableBytes() != report_state.heap_before - retained) nih_native_task_failed();
+    if (!caller() or heap.availableBytes() != report_state.heap_before - retained - exchange.raster.liveCharge()) nih_native_task_failed();
     return request;
 }
 pub fn entry(_: u32) callconv(.c) i32 {

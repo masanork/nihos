@@ -6,18 +6,32 @@
 alignas(64) static unsigned char heap[15596992];
 static uint32_t hashes[5], runs[5];
 static GraphicsOutput outputs[5];
+static uint8_t *raster=nullptr;
+static uint32_t pixel_hashes[5];
 extern "C" uint32_t nih_graphics_next_request(uint32_t completed, uint32_t retained, GraphicsJob *job) {
     if(retained!=65792 || completed>9)abort();
     if(completed>=5) {
         runs[completed-5]=graphics_result.runs;
         hashes[completed-5]=graphics_result.hashes[0];
         outputs[completed-5]=graphics_output;
+        if(graphics_output.outcome==0) {
+            uint32_t hash=2166136261u;
+            for(unsigned i=0;i<graphics_output.raster_bytes;i++)hash=(hash^raster[i])*16777619u;
+            pixel_hashes[completed-5]=hash;
+            const char *directory=getenv("NIHOS_GRAPHICS_RASTER_DIR");
+            if(directory) {
+                char path[1024];int n=snprintf(path,sizeof(path),"%s/raster-%u.bin",directory,completed);
+                if(n<0 || (unsigned)n>=sizeof(path))abort();
+                FILE *f=fopen(path,"wb");if(!f || fwrite(raster,1,graphics_output.raster_bytes,f)!=graphics_output.raster_bytes)abort();fclose(f);
+            }
+        }
+        free(raster);raster=nullptr;
         memset(&graphics_output,0xa5,sizeof(graphics_output));
         if(graphics_result.runs>1 || (!graphics_result.runs && graphics_result.hashes[0]))abort();
     }
     if(completed==9)return 0;
     *job={};job->operation=completed<4?0u:1u;
-    if(completed>=4)job->render=text_cases[completed-4];
+    if(completed>=4) { job->render=text_cases[completed-4];raster=(uint8_t*)malloc(16384);if(!raster)abort();job->raster=raster;job->capacity=16384; }
     return completed+1;
 }
 int main(int argc,char **argv) {
@@ -36,11 +50,11 @@ int main(int argc,char **argv) {
     printf("],\"texts\":[");
     for(unsigned i=0;i<5;i++) {
         const GraphicsOutput &o=outputs[i];
-        printf("%s{\"id\":%u,\"runs\":%u,\"hash\":%u,\"outcome\":%u,\"glyph_count\":%u,\"glyphs\":[",i?",":"",i+5,runs[i],hashes[i],o.outcome,o.count);
+        printf("%s{\"id\":%u,\"runs\":%u,\"hash\":%u,\"outcome\":%u,\"glyph_count\":%u,\"pixel_bytes\":%u,\"pixel_hash\":%u,\"glyphs\":[",i?",":"",i+5,runs[i],hashes[i],o.outcome,o.count,o.raster_bytes,pixel_hashes[i]);
         if(o.count>16 || (o.outcome && (o.count || memcmp(o.glyphs,GraphicsOutput{}.glyphs,sizeof(o.glyphs)))))abort();
         for(unsigned n=0;n<o.count;n++) {
             const GraphicsGlyph &g=o.glyphs[n];
-            printf("%s{\"glyph_id\":%u,\"cluster\":%u,\"run\":%u,\"pixels\":%u,\"x_advance\":%d,\"y_advance\":%d,\"x_offset\":%d,\"y_offset\":%d,\"left\":%d,\"top\":%d,\"width\":%u,\"height\":%u}",n?",":"",g.id,g.cluster,g.run,g.pixels,g.x_advance,g.y_advance,g.x_offset,g.y_offset,g.left,g.top,g.width,g.height);
+            printf("%s{\"glyph_id\":%u,\"cluster\":%u,\"run\":%u,\"pixels\":%u,\"x_advance\":%d,\"y_advance\":%d,\"x_offset\":%d,\"y_offset\":%d,\"left\":%d,\"top\":%d,\"width\":%u,\"height\":%u,\"pixel_offset\":%u}",n?",":"",g.id,g.cluster,g.run,g.pixels,g.x_advance,g.y_advance,g.x_offset,g.y_offset,g.left,g.top,g.width,g.height,g.pixel_offset);
         }
         printf("]}");
     }

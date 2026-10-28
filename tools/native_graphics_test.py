@@ -27,9 +27,9 @@ class NativeGraphicsTests(unittest.TestCase):
         return dict(zip(LOG.EXCHANGE_FIELDS, [10, 10, 10, 10, 20, 0, 1, 1, 5, 3, 2, 5, 3072]))
 
     def texts(self):
-        glyph = dict(zip(LOG.GLYPH_FIELDS[2:], [42, 0, 0, 24, 1536, 0, 0, 0, 0, 20, 20, 20]))
+        glyph = dict(zip(LOG.GLYPH_FIELDS[2:], [42, 0, 0, 24, 1536, 0, 0, 0, 0, 20, 20, 20, 0]))
         return [{**dict(zip(LOG.TEXT_FIELDS, row)), "glyphs": [glyph.copy()] if row[1] else []}
-                for row in [(5, 1, 11, 0, 1), (6, 0, 0, 1, 0), (7, 0, 0, 2, 0), (8, 1, 22, 0, 1), (9, 1, 33, 0, 1)]]
+                for row in [(5, 1, 11, 0, 1, 400, 888), (6, 0, 0, 1, 0, 0, 0), (7, 0, 0, 2, 0, 0, 0), (8, 1, 22, 0, 1, 400, 999), (9, 1, 33, 0, 1, 400, 1000)]]
 
     def test_complete_record_and_hashes_require_cleanup_and_real_render_interrupts(self):
         graphics = {"functions": {"graphics_font_link_probe": {"start": "0x40023000", "end": "0x40024000"}}}
@@ -73,6 +73,13 @@ class NativeGraphicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "partial native glyph"):
             LOG.validate(self.record(), list(range(16)), graphics, list(range(16)), self.exchange(), bad, bad)
 
+    def test_raster_leases_require_release_and_stale_owner_rejections(self):
+        good = dict(zip(LOG.RASTER_FIELDS, [5, 2, 3, 3, 0, 32768, 6, 8, 3]))
+        LOG.validate_raster(good)
+        for key, value in [("published", 2), ("reclaimed", 2), ("live_charge", 32768), ("held_ticks", 0), ("stale_rejected", 0), ("foreign_rejected", 0)]:
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "raster lease"):
+                LOG.validate_raster({**good, key: value})
+
     def test_graphics_regions_are_opt_in_and_non_executable(self):
         AUDIT.audit_flash_section(".flash.graphtext", 1, 6, AUDIT.GRAPH_START, 64, allow_graphics=True)
         AUDIT.audit_flash_section(".flash.graphrodata", 1, 50, AUDIT.GRAPH_START + 64, 32, allow_graphics=True)
@@ -105,7 +112,7 @@ class NativeGraphicsTests(unittest.TestCase):
         manifest = {"schema": 1, "allowed_functions": [f[0] for f in functions], "payload_sha256": "fixture",
                     "fonts": [{"family": family, "name": family, "bytes": 1, "sha256": hashlib.sha256(byte).hexdigest()}
                               for family, byte in [("gothic", b"g"), ("mincho", b"m")]]}
-        return sections, symbols, {"graphics_result": 124, "graphics_output": 776}, functions, manifest, b"base"
+        return sections, symbols, {"graphics_result": 124, "graphics_output": 844}, functions, manifest, b"base"
 
     def test_font_bytes_and_kernel_runtime_namespace_are_bound(self):
         good = self.fixture()
