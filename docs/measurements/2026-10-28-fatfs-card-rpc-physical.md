@@ -40,6 +40,12 @@ RPC sourceの改変、parent clear未完了、反復CRC不一致の3負例は全
 backup本体はrepositoryへ入れていない。元カードへの返却確認までは元firmwareのresetを保留し、
 ROM download状態を保つ。
 
+operatorから元カードへの返却通知を受け、同じdevice identityと排他serialを再確認した。
+通常起動の直前にもFlash16 MiB全体を同じsnapshotと照合し、一致後にUSB resetした。
+8.755秒のcaptureでnative boot、SMP300 round、IPI、最終FP_PASSを確認し、serialを解放した。
+この復帰操作でFlash書込みは行っていない。復元した元firmwareの通常起動確認であり、
+SD RPC候補の追加合格runには数えない。
+
 今回の合格は実exFATカード1枚、1回のwarm USB reset、読取り専用の経路に限る。
 DMA転送途中のabort、mount中/転送中の実カード抜去、native FAT12/16/32、clean POR、書込み、
 SQLite永続化、電断復旧は別gateである。stack paintも通過した経路の観測値であり、

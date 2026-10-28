@@ -90,9 +90,26 @@
   "private_bundle": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-rpc-candidate",
   "private_run": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-rpc-physical-1",
   "normal_boot": {
-    "operator_original_card_returned": false,
-    "reset_sent": false,
-    "reason": "Awaiting operator confirmation; original firmware reset deferred while replacement card remains inserted"
+    "operator_original_card_returned": true,
+    "flash_written": false,
+    "expected_flash_sha256": "4e5c942b9875328516636b8315702c36d3fe9a8199631f04d22cbb11c246a6b9",
+    "verified": true,
+    "reset_sent": true,
+    "exclusive_serial": true,
+    "kernel_exclusive_serial": true,
+    "device": {
+      "chip": "ESP32-P4 (revision v1.3)",
+      "mac": "e8:f6:0a:e2:e8:9c"
+    },
+    "log_sha256": "fd076006414a7132e7f7d6c233931de5bb906311372765fd2527dba8bd2d43b2",
+    "bytes_captured": 11513,
+    "rom_boot_seen": true,
+    "native_boot_seen": true,
+    "native_fp_pass_seen": true,
+    "capture_seconds": 8.755,
+    "serial_released": true,
+    "candidate_trial": false,
+    "scope": "Warm boot of the fully verified pre-trial firmware after original-card return; not an additional SD RPC candidate run"
   },
   "artifacts": {
     "backup.json": "647eb27e1e4a5e07592abd67698d59520dca6e91e65acdce536234b5145b1f17",
@@ -103,10 +120,14 @@
     "image-audit.json": "a7dbaa3040c7f79acbd8c81d85f19c25a604cd97b637d38934d82b1ffed9ef10",
     "native_options.zig": "de6af6a23727027668a61b988b2d3b289b2fc79012b4de0b26f20fb463f87408",
     "negative-controls.json": "2e03ecc8c09e0a8d1895e380e173ed74c39b82a2e286a1a18a88571102a42d4d",
+    "normal-reset.log": "fd076006414a7132e7f7d6c233931de5bb906311372765fd2527dba8bd2d43b2",
     "qualification-bundle.json": "36bb3d73b19ed51eb761ff398513c212a5f7db56982a6af8b6b7817ed6619cf5",
     "restored.json": "4614f4858c18eebd600bb4e670a97f4a8d6a8a9d194b4d418d41ad17e4c1247c",
     "results.json": "8a67f4709de9d2e0b14da47171f72c28a615b0df91ad54396f45415d8ed1ea4c",
+    "return-to-normal.json": "d41a55eba743ef00ba2784f4abf36dd8e6489475fa6c8d5960f05bf2481b48db",
+    "return-to-normal.py": "df9acbb1c5cf9bf8b32d3e2a5c68478241e9044e4363b786db0f60ea0a6e8f58",
     "sqlite-manifest.json": "bdade5c5d7efe225dfe85fded3e5cf633e357170a2b2868ae486a1f5fe01cbf1",
+    "verify-before-normal-reset.log": "9c95221cfe6b5e05efc73ac63438d2ea561b10c2dc232c4b0d801557c55bf4cf",
     "verify-candidate-after.log": "1bb70562f5407eaa3ea762e96ea37cb67f86e1fa3b8e6c46de8a2950afc8f8bd",
     "verify-candidate-before.log": "1bb70562f5407eaa3ea762e96ea37cb67f86e1fa3b8e6c46de8a2950afc8f8bd",
     "verify-restored-full-flash.log": "7c517fac85daeda948b003cb709941af567779c70a26abdb75fcf3d38bb8cbad"
