@@ -1,4 +1,5 @@
-//! Native fixture report, never physical SD FatFs or persistence evidence.
+//! Native task fixture report. v1/source1 is embedded Flash; v2/source2 is
+//! the opt-in SD RPC fixture. Neither implies persistence qualification.
 pub const Report = extern struct {
     version: u32 = 1,
     source: u32 = 1,

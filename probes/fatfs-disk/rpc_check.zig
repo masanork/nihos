@@ -14,7 +14,7 @@ extern fn host_backend_reads() u32;
 extern fn host_rpc_arm(u32) void;
 extern fn host_rpc_kind() u32;
 extern fn host_test_failure([*:0]const u8) void;
-extern fn nih_fatfs_backend_destroy(*adapter.Session, u64) c_int;
+extern fn host_backend_destroy() c_int;
 
 // Host-owned stand-in backing for the UNCHANGED generated development policy.
 // No physical address registration or device execution is claimed.
@@ -46,7 +46,7 @@ fn queues() *rpc.Queues {
 }
 const Filesystem = struct {
     pub fn destroy(_: @This()) error{Busy}!void {
-        if (nih_fatfs_backend_destroy(host_backend_session(), host_backend_epoch()) != 0) return error.Busy;
+        if (host_backend_destroy() != 0) return error.Busy;
     }
 };
 fn prepare(disk: u32, fs: u32, disk_address: *usize, fs_address: *usize) !void {

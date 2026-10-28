@@ -2,6 +2,7 @@
 #define _FILE_OFFSET_BITS 64
 #include "nihos_fatfs_backend.h"
 #include "nihos_fatfs_volume.h"
+#include "nihos_fatfs_card.h"
 #include "safety.h"
 #include <fcntl.h>
 #include <inttypes.h>
@@ -17,6 +18,7 @@ static nih_fatfs_disk local_disk;
 static nih_fatfs_disk *disk = &local_disk;
 static nih_fatfs_backend *session;
 static void *workspace;
+static nih_fatfs_card *card_context;
 static uint64_t epoch = 1, patch_offset, device_total, volume_first, volume_count;
 static uint8_t patch[512];
 static size_t patch_size;
@@ -44,6 +46,12 @@ void host_test_failure(const char *name) { fprintf(stderr,"Zig VFS integration: 
 void *host_backend_session(void) { return session; }
 uint64_t host_backend_epoch(void) { return epoch; }
 uint32_t host_backend_reads(void) { return calls; }
+int host_backend_destroy(void) {
+    if (!card_context) return nih_fatfs_backend_destroy(session,epoch);
+    if (nih_fatfs_card_destroy(card_context,(uint32_t)epoch)!=1) return -1;
+    card_context=NULL;
+    return 0;
+}
 void host_backend_fail_after(uint32_t count) { fail_at = calls + count; }
 int host_backend_remove(void) { return nih_fatfs_backend_remove(session, epoch); }
 int host_backend_disk_remove(void) { return nih_fatfs_disk_invalidate(disk, epoch); }
@@ -146,14 +154,29 @@ int main(int argc, char **argv) {
         volume_count = volume.count;
         probe_reads = volume.reads;
     }
-    rpc_kind = !strcmp(mode,"rpc-cancel") ? 1 : !strcmp(mode,"rpc-exit") ? 2 : !strcmp(mode,"rpc-large") ? 3 : 0;
+    int card_rpc=!strcmp(mode,"card-rpc-cancel") || !strcmp(mode,"card-rpc-exit");
+    rpc_kind = (!strcmp(mode,"rpc-cancel") || !strcmp(mode,"card-rpc-cancel")) ? 1 :
+               (!strcmp(mode,"rpc-exit") || !strcmp(mode,"card-rpc-exit")) ? 2 : !strcmp(mode,"rpc-large") ? 3 : 0;
     uint32_t bytes = nih_fatfs_backend_bytes();
     if (rpc_kind) {
         uintptr_t disk_address, fs_address;
-        CHECK(nih_rpc_prepare(sizeof *disk,bytes,&disk_address,&fs_address) == 0);
-        disk = (nih_fatfs_disk *)disk_address;
-        workspace = (void *)fs_address;
+        CHECK(nih_rpc_prepare(card_rpc ? nih_fatfs_card_bytes() : sizeof *disk,card_rpc ? 8 : bytes,&disk_address,&fs_address) == 0);
+        if (card_rpc) workspace=(void *)disk_address;
+        else {
+            disk = (nih_fatfs_disk *)disk_address;
+            workspace = (void *)fs_address;
+        }
     } else workspace = malloc(bytes);
+    int mounted;
+    if (card_rpc) {
+        nih_fatfs_card_report report;
+        CHECK(total<=UINT32_MAX && nih_fatfs_card_mount(workspace,nih_fatfs_card_bytes(),(uint32_t)total,
+            (uint32_t)epoch,&card_context,&report)==1);
+        CHECK(nih_fatfs_card_path(card_context,(uint32_t)epoch));
+        session=nih_fatfs_card_backend(card_context,(uint32_t)epoch);
+        CHECK(session);
+        mounted=NIH_FB_OK;
+    } else {
     CHECK(first < total && nih_fatfs_disk_bind(disk,nih_fatfs_native_read,NULL,total,first,volume_count,epoch) == NIH_FATFS_OK);
     CHECK(workspace);
     CHECK(!nih_fatfs_backend_init(disk,bytes,disk,epoch));
@@ -168,7 +191,9 @@ int main(int argc, char **argv) {
     session = nih_fatfs_backend_init(workspace,bytes,disk,epoch);
     CHECK(session);
     CHECK(!nih_fatfs_backend_init(workspace,bytes,disk,epoch));
-    int mounted = nih_fatfs_backend_mount(session,epoch), observed = mounted;
+    mounted = nih_fatfs_backend_mount(session,epoch);
+    }
+    int observed = mounted;
     if (!strcmp(mode,"bad-volume")) CHECK(mounted == NIH_FB_CORRUPT);
     else {
         CHECK(mounted == NIH_FB_OK);

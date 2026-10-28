@@ -613,7 +613,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses", "io_clock_acquired", "io_clock_released" }, &b);
                     runIoLifetimes(sd_crc);
                     if (options.fatfs_native) runFatFsTasks();
-                    if (options.fatfs_sd) runFatFsCard();
+                    if (options.fatfs_sd and !options.fatfs_sd_rpc) runFatFsCard();
                 }
                 print(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 while (true) asm volatile ("wfi");
@@ -623,10 +623,20 @@ export fn nih_native_main() callconv(.c) noreturn {
 }
 
 noinline fn runFatFsTasks() linksection(".flash.text.storage") void {
+    if (options.fatfs_sd_rpc) print("NIHOS_FATFS_SD_READY\n");
     storage_runtime.init();
     runStorageTasks(0);
     const report = storage_runtime.finish();
     logger.record("NIHOS_NATIVE_FATFS_RPC", null, @import("fatfs_service_abi.zig").fields, &report);
+    if (options.fatfs_sd_rpc) {
+        const card = @import("fatfs_card_abi.zig");
+        var result = card.Report{};
+        card.nih_fatfs_card_rpc_report(&result);
+        logger.record("NIHOS_NATIVE_FATFS_CARD", null, card.fields, &result);
+        const Stack = struct { used: u32, preserved: u32 };
+        const stack = Stack{ .used = @max(report.owner_stack, report.client_stack), .preserved = 1 };
+        logger.record("NIHOS_NATIVE_FATFS_CARD_STACK", null, .{ "used", "preserved" }, &stack);
+    }
 }
 noinline fn runFatFsCard() linksection(".flash.text.storage") void {
     const card = @import("fatfs_card_abi.zig");

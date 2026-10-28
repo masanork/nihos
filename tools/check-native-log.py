@@ -36,18 +36,20 @@ def check_fatfs_card(log, image, evidence):
     fatfs_native_profile.validate_profile(image['sqlite']['fatfs_native'])
     r = fixed_record(log,marker,CARD_FIELDS)
     stack = fixed_record(log,'NIHOS_NATIVE_FATFS_CARD_STACK',('used','preserved'))
-    if stack['preserved']!=1 or not 0<stack['used']<8000:
+    if stack['preserved']!=1 or not 0<stack['used']<(3920 if config.get('rpc') else 8000):
         raise ValueError('physical card stack margin/guard failed')
     if (any(r[k]!=1 for k in ('status','destroyed','cleared','recovered')) or r['generation']==0 or
-        r['kind'] not in (1,2,3,4) or not 0<=r['partition']<=4 or r['charged']!=32768 or
+        r['kind'] not in (1,2,3,4) or not 0<=r['partition']<=4 or r['charged']!=config['charged'] or
         not 0<r['count']<=r['sectors']-r['first'] or not 0<r['bytes']<=4096 or
         r['reads']==0 or r['crc']!=r['repeated_crc']):
         raise ValueError('incomplete physical card read/cleanup')
     order = ('NIHOS_NATIVE_FATFS_RPC ', 'NIHOS_FATFS_SD_READY', marker+' ', 'NIHOS_NATIVE_FP_PASS ')
+    if config.get('rpc'):order=(order[1],order[0],order[2],order[3])
     if any(part not in log for part in order) or any(log.index(a)>=log.index(b) for a,b in zip(order,order[1:])):
         raise ValueError('physical card phases out of order')
     return {**r, 'stack':stack, 'source':config['source'], 'comparison':'same file prefix read twice; no external content oracle',
-            'native_rpc_over_sd_qualified':False}
+            'native_rpc_over_sd_qualified':config.get('rpc',False),
+            'stack_scope':'FSD/client workers maximum' if config.get('rpc') else 'bootstrap owner'}
 
 
 def check_sqlite_spans(record, image, evidence):
@@ -77,16 +79,23 @@ def check_fatfs_native(log, image, evidence):
     expected = dict.fromkeys(FATFS_FIELDS, 1)
     expected.update(fixture_id=config['fixture']['fixture_id'], parent_used=38656, parent_charged=65536,
                     requests=8, replies=6, bytes=24, crc=zlib.crc32(b'nihos read-only fixture\n'))
+    if config.get('card',{}).get('rpc'):
+        card=check_fatfs_card(log,image,evidence)
+        expected.update(version=2,source=2,fixture_id=0,parent_used=config['card']['rpc_parent_used'],
+                        requests=11,replies=9,bytes=card['bytes'],crc=card['crc'])
     for key, value in expected.items():
         if key in ('owner_stack', 'client_stack'):
             if not 0 < record[key] < 3920:
                 raise ValueError('FatFs worker stack guard not preserved')
         elif record[key] != value:
             raise ValueError('incomplete native FatFs fixture gate: ' + key)
+    if config.get('card',{}).get('rpc') and card['stack']['used']!=max(record['owner_stack'],record['client_stack']):
+        raise ValueError('card RPC stack records disagree')
     order = ('NIHOS_NATIVE_BROKER ', 'NIHOS_NATIVE_IO_LIFETIMES ', marker + ' ', 'NIHOS_NATIVE_FP_PASS ')
     if not all(part in log for part in order) or any(log.index(a) >= log.index(b) for a, b in zip(order, order[1:])):
         raise ValueError('native FatFs task phases out of order')
-    return {**record, 'input_source': config['source'], 'physical_sd_fatfs_qualified': False}
+    return {**record, 'input_source': config['card']['source'] if config.get('card',{}).get('rpc') else config['source'],
+            'physical_sd_fatfs_qualified':config.get('card',{}).get('rpc',False)}
 
 
 def check_storage_api(record, storage):

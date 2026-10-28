@@ -22,6 +22,22 @@ def config():
 
 
 class NativeFatFsImageChecks(unittest.TestCase):
+    def test_card_rpc_requires_its_own_input_wire_and_worker_stack_contract(self):
+        c=config();c['card']={'version':3,'mode':'inserted','rpc':True,'source':PROFILE.CARD_SOURCE_RPC,
+            'charged':65536,'rpc_parent_used':44928,'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}
+        image={'sqlite':{'fatfs_native':c},'memory':{'profile':'device'}}
+        fields=dict.fromkeys(LOG.FATFS_FIELDS,1)
+        fields.update(version=2,source=2,fixture_id=0,parent_used=44928,parent_charged=65536,
+                      requests=11,replies=9,bytes=140,crc=42,owner_stack=3200,client_stack=352)
+        card=dict.fromkeys(LOG.CARD_FIELDS,1)
+        card.update(sectors=4096,first=100,count=2048,partition=1,bytes=140,crc=42,repeated_crc=42,charged=65536)
+        report=line('NIHOS_NATIVE_FATFS_RPC',fields)
+        log='NIHOS_NATIVE_BROKER x\nNIHOS_NATIVE_IO_LIFETIMES x\nNIHOS_FATFS_SD_READY\n'+report+'\n'+line('NIHOS_NATIVE_FATFS_CARD',card)+'\n'+line('NIHOS_NATIVE_FATFS_CARD_STACK',dict(used=3200,preserved=1))+'\nNIHOS_NATIVE_FP_PASS floating=0\n'
+        self.assertTrue(LOG.check_fatfs_native(log,image,'physical-device')['physical_sd_fatfs_qualified'])
+        for key,value in (('source',1),('requests',8),('parent_used',38656),('owner_stack',3920),('bytes',24)):
+            bad=log.replace(report,line('NIHOS_NATIVE_FATFS_RPC',{**fields,key:value}))
+            with self.subTest(key=key),self.assertRaises(ValueError):LOG.check_fatfs_native(bad,image,'physical-device')
+        with self.assertRaises(ValueError):LOG.check_fatfs_native(log.replace('used=00000c80','used=00000c7c'),image,'physical-device')
     def test_inserted_card_mode_requires_its_own_source_and_version(self):
         c=config();c['card']={'version':2,'mode':'inserted','source':PROFILE.CARD_SOURCE_INSERTED,
             'charged':32768,'sources':dict.fromkeys(PROFILE.CARD_SOURCES,'b'*64)}

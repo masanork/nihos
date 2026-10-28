@@ -104,4 +104,31 @@ modeはsource mapとimmutable ELF descriptorへ固定し、通常のlegacy試験
 [実カード記録](../measurements/2026-10-28-fatfs-card-physical.md)に候補と前後照合・復元を保存した。
 これは実カードのnative VFS/RPCやFS取消・抜去の資格ではない。
 
+## Card contextとVFS/RPCの寿命
+
+`nih_fatfs_card_mount/backend/path/reads/destroy`を追加し、選択したvolumeのBackendとpathを
+trusted ownerが保持できるようにした。generationが異なるaccessor/destroyは拒否する。
+RPCのdrainとVFS handleの失効・shutdownが済むまでcontextとdevice sessionを保持する。
+busyなdestroyはcontextを残し、成功時だけC workspace全体をclearする。
+output context/reportとworkspaceの重複はI/O前に拒否する。
+
+hostでは実card context→guarded FatFs→実VFS/RPC→実development brokerを結合し、
+5形式でcancel/exit通知、queued request/replyの破棄、旧handle拒否、再bind、pin/課金回収を確認した。
+通知は同期host callback内で注入したもので、kernelがtaskを停止した証拠ではない。
+Backend runnerは既存分を含む84シナリオになった。
+
+`NIHOS_NATIVE_FATFS_SD_RPC=1`（`FATFS_SD_DIRECT=1`ほか従来opt-inとの組合せ）は、
+native owner/client taskを実SD上のcard contextへ接続する追加候補である。
+親64 KiB内にC context26,104 B、RPC owner、queue等を配置し、合計使用44,928 B。
+client frameは別ownerへ8 KiB課金する。policyの上限は増やさない。
+取消後にfileを閉じて開き直し、短いfileでも次のreadでsector callbackが必ず発生するようにする。
+停止・取消の通知点はsector readのDMA fence確認後であり、転送途中のabortの証拠ではない。
+旧clientが停止しstackが再利用される前にpaintを調べ、replacementとの最大使用量を記録する。
+
+この候補ではtask record v2/source2を使い、request11件/reply9件、FS終了後のcontext破棄、
+世代一致のdevice session終了、parent clear/unpin/freeとaccount回収を検査する。
+Flash内の旧fixture decoderは補助self-checkとして残すが、実行するfilesystemはSD上のvolumeである。
+ELF/image/source profileとworkspace寸法descriptorを監査し、実機証拠は別記録で扱う。
+実機で合格するまで、前回の直接exFAT読取りをこの新しいtask経路の合格に転用しない。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。

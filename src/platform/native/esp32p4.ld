@@ -89,6 +89,7 @@ SECTIONS
         *sql_storage_runtime.o(.rodata .rodata.* .srodata .srodata.*)
         KEEP(*sql_broker_runtime.o(.rodata.fatfs_config))
         *sql_broker_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        KEEP(*sql_fat_card.o(.rodata.nih_fatfs_card_workspace_bytes))
         *sql_fat_*.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
