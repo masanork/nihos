@@ -93,3 +93,15 @@ generator now reproduces the complete existing source dependency list. Atlas
 and lossless compressed-font regeneration preserved the exact payload hashes.
 A host regression detects all nine original source mismatches, then passes
 with the refreshed manifests (381 Python tests in total).
+
+The local eleven-profile card build matrix then exposed the unchanged 48 KiB
+heap gate in the portrait profile. Card builds now place only the ordinary
+`main.resourceReport` and `main.stackReport` diagnostics in the existing card
+Flash section. They run after PSRAM initialization; neither is an IRQ or
+cache-off path. Other execution code, heap/stack limits and display geometry
+are unchanged. The explicit two-name `diagnostic_reports` manifest field is
+validated independently by the image checker; historical manifests omit it.
+Five real-ELF negative controls reject missing, hidden, partial, extra and
+reordered declarations. All eleven exact CI card configurations passed local
+image audits, with 50,048 bytes of heap in the portrait profile and 50,560 in
+the full automatic profile. These are build results, not new physical runs.

@@ -1303,7 +1303,7 @@ fn heapReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_HEAP", hart, .{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }, &report);
 }
 
-noinline fn resourceReport(hart: u32) linksection(if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
+noinline fn resourceReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
     const report = tasks.memory.reusable.resourceReport(hart);
     logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes", "c_probes" }, &report);
 }
@@ -1314,7 +1314,7 @@ fn flashReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
 }
 
-fn stackReport(hart: u32) void {
+noinline fn stackReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
     logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
 }
