@@ -33,6 +33,7 @@ var decoder: *hosted.wire.Decoder = undefined;
 // Foreground-only reset templates share the already mapped read-only display tables.
 // Keep large decoder/State defaults out of resident SRAM.
 const initial_state linksection(".flash.rodata.display") = State{};
+// SAFETY: begin binds this before any foreground state access.
 var state_storage: *State = undefined;
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
