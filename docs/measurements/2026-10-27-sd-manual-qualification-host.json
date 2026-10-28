@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "evidence": "host-and-build-only",
+  "base_commit": "70839a1",
+  "physical_removal_run": false,
+  "cold_power_on_run": false,
+  "operator_availability": "awaiting user response",
+  "host_tests": {
+    "zig_debug": 198,
+    "zig_release_safe": 198,
+    "python": 177,
+    "static": "passed; six native ELF audits"
+  },
+  "source_sha256": {
+    "src/platform/native/sdmmc_probe.zig": "f9a0b99737d116ed34af629b1e62619aa52c9bf0a819db6d1c4551b59f9f0c57",
+    "src/platform/native/main.zig": "28eaeefff8332a74808fac1ee87791a13549fd670f74d5638ae980d9bfceaef3",
+    "tools/build-native-elf.sh": "7788740de3b58089edfa28640bb605f74886b3e3cb1ef8cfae997e35100c0598",
+    "tools/check-native-image.py": "a0f1057b4fd75bf3663ca69d0d60ca5fb347674fbdf0397fd179f5cb3d320ee8",
+    "tools/check-native-log.py": "5ba2908a7c4de076639075dd5883a07362b3d8123e2ed2117edb58da391c1199",
+    "tools/qualify-storage-io.py": "f4406baf487ecde9dcbc765f2c42119b3ce19dad9ff12a2fbe9b518ad2fe2d57",
+    "tools/native-sqlite-manifest.py": "505e76a2ba32d968aba945244e5106a0debb40e11b4f4d03743db3756e4fe091",
+    "tools/io_lifetime_test.py": "2db05003c27aaadb862ad7c10fa41a6b45ddfd95b5cc69a27360bf42012ad833"
+  },
+  "candidates": {
+    "operator-removal": {
+      "image_sha256": "27450e69561ec58b4286513c9bc7e3a4333e82aa0618a84c2292305b7a6d78d5",
+      "image_bytes": 825280,
+      "elf_sha256": "73e2abedc7c96630093dc1fdea3f1d706e3aacbbedba0436c17ef513e27bb6b9",
+      "primary_static_bytes": 105792,
+      "io_lifetimes": {
+        "version": 1,
+        "qualification": true,
+        "sources": {
+          "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+          "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+          "src/fs/sdmmc_owner.zig": "eac6e5a5483653d278fd668bf28c062e2ebae5f3ffba1dc9c43d5e120aaae10f",
+          "src/soc/esp32p4/sdmmc.zig": "179f78299aa811f0b21a564e1e687c69c400ae826ba687e9ff1f082d24d1b957",
+          "src/platform/native/sdmmc_probe.zig": "f9a0b99737d116ed34af629b1e62619aa52c9bf0a819db6d1c4551b59f9f0c57",
+          "src/platform/native/main.zig": "28eaeefff8332a74808fac1ee87791a13549fd670f74d5638ae980d9bfceaef3",
+          "src/diagnostics/record.zig": "882a6288a08840af138cf190fd125353c0ed5b7cbfe1c15f56fcc6085c85132f",
+          "include/nihos_storage_io.h": "702b83fcbe1d5eeb3e06cac6c8b5047830842a88a3691bdc949eb330a51b8274"
+        },
+        "removal_test": true
+      }
+    },
+    "normal": {
+      "image_sha256": "436e6aa657e027b6a9f627de3391d0eed373b83189cdccb057d446059c9f4f8e",
+      "image_bytes": 821104,
+      "elf_sha256": "c0fb5b7570f5d526a0cf594c28d3f2c121d2bf214efd68eef4565f8a7baae277",
+      "primary_static_bytes": 105792,
+      "io_lifetimes": {
+        "version": 1,
+        "qualification": true,
+        "sources": {
+          "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+          "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+          "src/fs/sdmmc_owner.zig": "eac6e5a5483653d278fd668bf28c062e2ebae5f3ffba1dc9c43d5e120aaae10f",
+          "src/soc/esp32p4/sdmmc.zig": "179f78299aa811f0b21a564e1e687c69c400ae826ba687e9ff1f082d24d1b957",
+          "src/platform/native/sdmmc_probe.zig": "f9a0b99737d116ed34af629b1e62619aa52c9bf0a819db6d1c4551b59f9f0c57",
+          "src/platform/native/main.zig": "28eaeefff8332a74808fac1ee87791a13549fd670f74d5638ae980d9bfceaef3",
+          "src/diagnostics/record.zig": "882a6288a08840af138cf190fd125353c0ed5b7cbfe1c15f56fcc6085c85132f",
+          "include/nihos_storage_io.h": "702b83fcbe1d5eeb3e06cac6c8b5047830842a88a3691bdc949eb330a51b8274"
+        },
+        "removal_test": false
+      }
+    }
+  }
+}

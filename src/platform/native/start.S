@@ -1,6 +1,8 @@
 /* No ESP-IDF runtime: own stacks, gp, BSS, vectors and machine entry. */
 #include "context_offsets.inc"
 #include "task_call_numbers.inc"
+    .global nih_native_task_context_bytes
+    .set nih_native_task_context_bytes, NIH_CTX_SIZE
     .section .flash.appdesc, "a", @progbits
     .long 0xabcd5432, 0, 0, 0
     .asciz "native-boot-1"
@@ -253,12 +255,14 @@ nih_native_task_trampoline:
     j nih_riscv_task_exit
 
     .global nih_riscv_task_call
+    .type nih_riscv_task_call, @function
 nih_riscv_task_call:
     mv a7, a0
     mv a0, a1
     mv a1, a2
     ecall
     ret
+    .size nih_riscv_task_call, .-nih_riscv_task_call
 
     .global nih_riscv_task_exit
 nih_riscv_task_exit:

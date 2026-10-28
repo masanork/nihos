@@ -1,0 +1,2 @@
+# Raw serial captures retain mixed ROM CRLF and fixture LF bytes for hashing.
+*.log -text whitespace=cr-at-eol,-blank-at-eof

@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "ad8bb03c77f2041f0be8dd040e2596041a20702c",
+  "evidence": "physical-device; one warm USB reset; native VFS/RPC over physical exFAT card",
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "candidate": {
+    "image_sha256": "1fabe5ccd0cba6904f35aaee39d914b2680b7e128c4ad59033093479f4a3b9de",
+    "elf_sha256": "4c3d1968ffee44d0fa8641f77dd375386b78928d7d62c5ea03d3d7d32e8f33ee",
+    "image_bytes": 850864
+  },
+  "fatfs_native": {
+    "version": 2,
+    "source": 2,
+    "status": 1,
+    "fixture_id": 0,
+    "parent_used": 44928,
+    "parent_charged": 65536,
+    "requests": 11,
+    "replies": 9,
+    "forced_exit": 1,
+    "cancelled": 1,
+    "discarded_requests": 1,
+    "discarded_replies": 1,
+    "rebound": 1,
+    "stale_epoch": 1,
+    "stale_handle": 1,
+    "stale_reply": 1,
+    "stale_exit": 1,
+    "bytes": 140,
+    "crc": 1402425328,
+    "owner_stack": 2720,
+    "client_stack": 384,
+    "parent_cleared": 1,
+    "recovered": 1,
+    "input_source": "physical SD native VFS/RPC tasks; cancellation and client stop after fenced sector read",
+    "physical_sd_fatfs_qualified": true
+  },
+  "fatfs_card": {
+    "status": 1,
+    "generation": 3,
+    "sectors": 247808000,
+    "kind": 4,
+    "partition": 1,
+    "first": 32768,
+    "count": 247775232,
+    "bytes": 140,
+    "crc": 1402425328,
+    "repeated_crc": 1402425328,
+    "file_name_crc": 4209426177,
+    "reads": 15,
+    "destroyed": 1,
+    "charged": 65536,
+    "cleared": 1,
+    "recovered": 1,
+    "stack": {
+      "used": 2720,
+      "preserved": 1
+    },
+    "source": "physical SD native VFS/RPC tasks; cancellation and client stop after fenced sector read",
+    "comparison": "same file prefix read twice; no external content oracle",
+    "native_rpc_over_sd_qualified": true,
+    "stack_scope": "FSD/client workers maximum"
+  },
+  "complete": {
+    "passed": true,
+    "restored": true,
+    "exclusive_serial": true,
+    "kernel_exclusive_serial": true,
+    "removal_fixture_run": false,
+    "reset_baseline_reused": false,
+    "serial_reopens": 0,
+    "same_serial_descriptor": true,
+    "electrical_removal_operator_confirmed": false,
+    "power_on_reset_observed": false,
+    "fatfs_card_run": true,
+    "original_firmware_reset_deferred": true
+  },
+  "backup": {
+    "flash_sha256": "4e5c942b9875328516636b8315702c36d3fe9a8199631f04d22cbb11c246a6b9",
+    "bytes": 16777216
+  },
+  "restored": {
+    "verified": true,
+    "sha256": "4e5c942b9875328516636b8315702c36d3fe9a8199631f04d22cbb11c246a6b9"
+  },
+  "private_bundle": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-rpc-candidate",
+  "private_run": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-rpc-physical-1",
+  "normal_boot": {
+    "operator_original_card_returned": true,
+    "flash_written": false,
+    "expected_flash_sha256": "4e5c942b9875328516636b8315702c36d3fe9a8199631f04d22cbb11c246a6b9",
+    "verified": true,
+    "reset_sent": true,
+    "exclusive_serial": true,
+    "kernel_exclusive_serial": true,
+    "device": {
+      "chip": "ESP32-P4 (revision v1.3)",
+      "mac": "e8:f6:0a:e2:e8:9c"
+    },
+    "log_sha256": "fd076006414a7132e7f7d6c233931de5bb906311372765fd2527dba8bd2d43b2",
+    "bytes_captured": 11513,
+    "rom_boot_seen": true,
+    "native_boot_seen": true,
+    "native_fp_pass_seen": true,
+    "capture_seconds": 8.755,
+    "serial_released": true,
+    "candidate_trial": false,
+    "scope": "Warm boot of the fully verified pre-trial firmware after original-card return; not an additional SD RPC candidate run"
+  },
+  "artifacts": {
+    "backup.json": "647eb27e1e4a5e07592abd67698d59520dca6e91e65acdce536234b5145b1f17",
+    "boot1.log": "83682c6a5533f76274858116e49a539c478173500a711f3e668e8a4d305b9e9b",
+    "card-inserted.json": "1dc7fd8548b21cb025429401feadf5d26a98d52d5f27a198e0aeac07eab14977",
+    "complete.json": "1ea41b9cc40589aaa08d332ceb3697e2470bf8bf9723a58ebc853d2afefb95f3",
+    "device.json": "1ab5c94f902b6eb46129d955cb6e308a5200a0d9d9b285e81e82f39abc6abd5a",
+    "image-audit.json": "a7dbaa3040c7f79acbd8c81d85f19c25a604cd97b637d38934d82b1ffed9ef10",
+    "native_options.zig": "de6af6a23727027668a61b988b2d3b289b2fc79012b4de0b26f20fb463f87408",
+    "negative-controls.json": "2e03ecc8c09e0a8d1895e380e173ed74c39b82a2e286a1a18a88571102a42d4d",
+    "normal-reset.log": "fd076006414a7132e7f7d6c233931de5bb906311372765fd2527dba8bd2d43b2",
+    "qualification-bundle.json": "36bb3d73b19ed51eb761ff398513c212a5f7db56982a6af8b6b7817ed6619cf5",
+    "restored.json": "4614f4858c18eebd600bb4e670a97f4a8d6a8a9d194b4d418d41ad17e4c1247c",
+    "results.json": "8a67f4709de9d2e0b14da47171f72c28a615b0df91ad54396f45415d8ed1ea4c",
+    "return-to-normal.json": "d41a55eba743ef00ba2784f4abf36dd8e6489475fa6c8d5960f05bf2481b48db",
+    "return-to-normal.py": "df9acbb1c5cf9bf8b32d3e2a5c68478241e9044e4363b786db0f60ea0a6e8f58",
+    "sqlite-manifest.json": "bdade5c5d7efe225dfe85fded3e5cf633e357170a2b2868ae486a1f5fe01cbf1",
+    "verify-before-normal-reset.log": "9c95221cfe6b5e05efc73ac63438d2ea561b10c2dc232c4b0d801557c55bf4cf",
+    "verify-candidate-after.log": "1bb70562f5407eaa3ea762e96ea37cb67f86e1fa3b8e6c46de8a2950afc8f8bd",
+    "verify-candidate-before.log": "1bb70562f5407eaa3ea762e96ea37cb67f86e1fa3b8e6c46de8a2950afc8f8bd",
+    "verify-restored-full-flash.log": "7c517fac85daeda948b003cb709941af567779c70a26abdb75fcf3d38bb8cbad"
+  },
+  "limits": [
+    "one physical exFAT card and one warm USB reset",
+    "cancellation and client stop after DMA-fenced sector read; no DMA-in-flight abort",
+    "no physical removal while mounted or controller active",
+    "prefix CRC self-consistency; no external known-content oracle",
+    "observed worker stack paint is not a full stack bound",
+    "native FAT12/16/32, clean POR, writable filesystems, persistent SQLite and power-loss recovery remain separate gates"
+  ]
+}

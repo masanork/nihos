@@ -4,6 +4,8 @@ const std = @import("std");
 const core_arena = @import("core_arena");
 const CoreArena = core_arena.CoreArena;
 pub const reusable = @import("heap.zig");
+const options = @import("native_options");
+pub const high = if (options.high_sram) @import("high_sram.zig") else struct {};
 pub const stacks = @import("stacks.zig");
 pub const dma = @import("dma_memory.zig");
 
@@ -205,6 +207,7 @@ noinline fn fill(bytes: []u8, hart: u32, worker: u32) void {
 
 pub noinline fn probe(argument: u32) void {
     internal.probe(argument);
+    if (options.high_sram) high.probe(argument);
     if (@atomicLoad(u32, &external.prepared, .acquire) == 1) {
         external.probe(argument);
         reusable.probe(argument);
@@ -220,7 +223,7 @@ noinline fn valid(bytes: []const u8, hart: u32, worker: u32) bool {
 pub noinline fn finish() bool {
     // Internal completion is the final publication observed by CPU0. It must
     // also cover the slower, full-buffer external verification and report.
-    return reusable.finish() and (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and internal.finish();
+    return reusable.finish() and (@atomicLoad(u32, &external.prepared, .acquire) == 0 or external.finish()) and (!options.high_sram or high.finish(currentHart())) and internal.finish();
 }
 
 pub fn report(hart: u32) Report {
@@ -229,4 +232,25 @@ pub fn report(hart: u32) Report {
 
 pub fn externalReport(hart: u32) Report {
     return external.report(hart);
+}
+
+/// Called by CPU0 only after an explicit CPU1 quiescence acknowledgement.
+/// State 2 is terminal: old allocators cannot prepare or allocate again.
+pub fn retireForBroker() bool {
+    if (!options.high_sram or currentHart() != 0 or interruptEnable() != 8) return false;
+    if (@intFromPtr(&__heap_start) > 0x4ff1c000 or @intFromPtr(&__heap_end) != 0x4ff28000) return false;
+    if (@atomicLoad(u32, &internal.prepared, .acquire) != 1 or
+        @atomicLoad(u32, &external.prepared, .acquire) != 1 or !reusable.canRetire() or !high.canRetire()) return false;
+    for (0..2) |core| {
+        if (@atomicLoad(u32, &internal.reports[core].confirmed, .acquire) != 1 or
+            @atomicLoad(u32, &external.reports[core].confirmed, .acquire) != 1) return false;
+    }
+    @atomicStore(u32, &internal.prepared, 2, .release);
+    @atomicStore(u32, &external.prepared, 2, .release);
+    reusable.retire();
+    high.retire();
+    if (alloc(8, 8) != null or prepareExternal(0x48030000, 0x1fd0000)) return false;
+    if (allocExternal(8, 8)) |_| return false else |err| if (err != error.NotReady) return false;
+    if (reusable.openPool(4096, 64)) |_| return false else |err| if (err != error.NotReady) return false;
+    return true;
 }

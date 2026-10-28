@@ -1,0 +1,263 @@
+{
+  "schema": 1,
+  "evidence": "host-only FatFs diskio integration and RV32 compile",
+  "passed": true,
+  "hardware_executed": false,
+  "firmware_linked": false,
+  "host": "macOS-27.0.1-arm64-arm-64bit",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "sanitizers": [
+    "address",
+    "undefined"
+  ],
+  "fixtures": [
+    {
+      "fixture": {
+        "format": "fat12",
+        "fs_type": 1,
+        "image_bytes": 1048576,
+        "cluster_bytes": 512,
+        "fragment_first_cluster": 11,
+        "fat_byte": 512,
+        "volume_byte": 0,
+        "data_byte": 20480,
+        "big_size": 0,
+        "alias": "LONGFI~1.TXT",
+        "empty_alias": "LONGEM~1.TXT",
+        "root_cluster": 0,
+        "child_cluster": 6,
+        "child_entry_byte": 5824
+      },
+      "sha256_before": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "sha256_after": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "image": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-zsqonodi/fat12.img",
+      "observed": {
+        "kind": "image",
+        "fs_type": 1,
+        "checks": 8236,
+        "sector_reads": 23,
+        "workspace_bytes": 4160
+      }
+    },
+    {
+      "fixture": {
+        "format": "fat16",
+        "fs_type": 2,
+        "image_bytes": 16777216,
+        "cluster_bytes": 512,
+        "fragment_first_cluster": 11,
+        "fat_byte": 512,
+        "volume_byte": 0,
+        "data_byte": 82944,
+        "big_size": 0,
+        "alias": "LONGFI~1.TXT",
+        "empty_alias": "LONGEM~1.TXT",
+        "root_cluster": 0,
+        "child_cluster": 6,
+        "child_entry_byte": 68288
+      },
+      "sha256_before": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80",
+      "sha256_after": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80",
+      "image": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-zsqonodi/fat16.img",
+      "observed": {
+        "kind": "image",
+        "fs_type": 2,
+        "checks": 8236,
+        "sector_reads": 23,
+        "workspace_bytes": 4160
+      }
+    },
+    {
+      "fixture": {
+        "format": "fat32",
+        "fs_type": 3,
+        "image_bytes": 67108864,
+        "cluster_bytes": 512,
+        "fragment_first_cluster": 15,
+        "fat_byte": 16384,
+        "volume_byte": 0,
+        "data_byte": 541184,
+        "big_size": 0,
+        "alias": "LONGFI~1.TXT",
+        "empty_alias": "LONGEM~1.TXT",
+        "root_cluster": 2,
+        "child_cluster": 10,
+        "child_entry_byte": 544448
+      },
+      "sha256_before": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28",
+      "sha256_after": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28",
+      "image": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-zsqonodi/fat32.img",
+      "observed": {
+        "kind": "image",
+        "fs_type": 3,
+        "checks": 8236,
+        "sector_reads": 29,
+        "workspace_bytes": 4160
+      }
+    },
+    {
+      "fixture": {
+        "format": "mbr-fat32",
+        "fs_type": 3,
+        "image_bytes": 67108864,
+        "cluster_bytes": 512,
+        "fragment_first_cluster": 15,
+        "fat_byte": 48640,
+        "volume_byte": 32256,
+        "data_byte": 572928,
+        "big_size": 0,
+        "alias": "LONGFI~1.TXT",
+        "empty_alias": "LONGEM~1.TXT",
+        "root_cluster": 2,
+        "child_cluster": 10,
+        "child_entry_byte": 576192
+      },
+      "sha256_before": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12",
+      "sha256_after": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12",
+      "image": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-zsqonodi/mbr-fat32.img",
+      "observed": {
+        "kind": "image",
+        "fs_type": 3,
+        "checks": 8236,
+        "sector_reads": 29,
+        "workspace_bytes": 4160
+      }
+    },
+    {
+      "fixture": {
+        "format": "exfat",
+        "fs_type": 4,
+        "image_bytes": 6442450944,
+        "cluster_bytes": 4096,
+        "fragment_first_cluster": 62,
+        "fat_byte": 16384,
+        "volume_byte": 0,
+        "data_byte": 6308352,
+        "big_size": 4294975488,
+        "alias": "",
+        "empty_alias": "",
+        "root_cluster": 52,
+        "child_cluster": 57,
+        "child_entry_byte": 0
+      },
+      "sha256_before": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e",
+      "sha256_after": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e",
+      "image": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-zsqonodi/exfat.img",
+      "observed": {
+        "kind": "image",
+        "fs_type": 4,
+        "checks": 36972,
+        "sector_reads": 91,
+        "workspace_bytes": 4160
+      }
+    }
+  ],
+  "upstream_sha256": {
+    "diskio.h": "1c2b29f53e061c55d43b2e412c3a61320b2621bac7561a05e275514baa44785a",
+    "ff.c": "3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250",
+    "ff.h": "42920ae4d6080bfc2a72d92a9969b5e94eeaff070e5e71d90da9ab6d7d8e158e",
+    "ffunicode.c": "3f1632c1f1e64b0b683b0d7e51341b9870728f398604869dd8211f1819509a8e"
+  },
+  "contract": {
+    "kind": "contract",
+    "checks": 352659,
+    "workspace_bytes": 4160,
+    "fenced_result_kinds": 4
+  },
+  "volume_contract": {
+    "cases": 53,
+    "checks": 25836,
+    "maximum_reads": 5,
+    "scratch_bytes": 512
+  },
+  "volume_negative_controls": [
+    {
+      "case": "partition-range",
+      "rejected": true,
+      "source_sha256": "af8a757827db2fd40e84678f078aee2d56486c988c2b8da30c62864d4f462aa8",
+      "exit_code": 1,
+      "reason": "/private/tmp/nihos-vfs-native/probes/fatfs-disk/check_volume.c:47: nih_fatfs_volume_probe(read_sector,&calls,device,selection,scratch,&output)==status"
+    },
+    {
+      "case": "overlap",
+      "rejected": true,
+      "source_sha256": "7945a3fd5075088f603d3cc26449af6edab25374b561b27ed1e752276aea7d33",
+      "exit_code": 1,
+      "reason": "/private/tmp/nihos-vfs-native/probes/fatfs-disk/check_volume.c:47: nih_fatfs_volume_probe(read_sector,&calls,device,selection,scratch,&output)==status"
+    },
+    {
+      "case": "ambiguity",
+      "rejected": true,
+      "source_sha256": "59eebec5ac4dceac4c489c8f1fcf77ba7fecf5953a938001429f41de0ee51a9f",
+      "exit_code": 1,
+      "reason": "/private/tmp/nihos-vfs-native/probes/fatfs-disk/check_volume.c:47: nih_fatfs_volume_probe(read_sector,&calls,device,selection,scratch,&output)==status"
+    },
+    {
+      "case": "declared-length",
+      "rejected": true,
+      "source_sha256": "37c8196c3603eaa663fdebe4128867daf1efe40b04ea72ef1a68784c1486acee",
+      "exit_code": 1,
+      "reason": "/private/tmp/nihos-vfs-native/probes/fatfs-disk/check_volume.c:56: output.first==0 && output.count==2048 && output.container_count==4096 && output.kind==NIH_VOLUME_FAT12"
+    },
+    {
+      "case": "exfat-shift",
+      "rejected": true,
+      "source_sha256": "bbc749099aaaae38ddd7769841dfc3472a36eb64e5478cb35ea0507c6fcb61e7",
+      "exit_code": -6,
+      "reason": "/private/tmp/nihos-vfs-native/build/fatfs-disk/run-zsqonodi/mutant-exfat-shift.c:38:27: runtime error: shift exponent 255 is too large for 32-bit type 'unsigned int'"
+    }
+  ],
+  "forbidden_write_symbols": [],
+  "writable_config_rejected": true,
+  "rv32_objects": {
+    "src/storage/fatfs_disk.c": {
+      "sha256": "a9e7eeba85a9d3862f15612883e227c22ef6b3c1b379383c937ed6112716a883",
+      "bytes": 15740
+    },
+    "src/platform/native/fatfs_disk.c": {
+      "sha256": "c546316fbf09729414e1ff507a2f5d9535a0b558633f07529b1d538fb53b0319",
+      "bytes": 3356
+    },
+    "src/storage/fatfs_volume.c": {
+      "sha256": "a441683e8b3ccc276411d40a374eb64bd194ad993d8d866bdd2d5383453bcaff",
+      "bytes": 21052
+    }
+  },
+  "rv32_workspace_bytes": 4152,
+  "sources": {
+    "include/nihos_fatfs_disk.h": "491af2bebd64753428390d063b3932f4e8cd1b0af05e4acf812934cfb35c3626",
+    "include/nihos_fatfs_volume.h": "cc36d1e7fd702f34b146be9c6515b23a7a27c0201f82c1815321b867244c4fb5",
+    "include/nihos_storage_io.h": "e34fd280378a68cecd884cc1a3176971e563834c14d8fb4f24b351ed35da6935",
+    "src/storage/fatfs_disk.c": "e83dca42ee5720810a1014f7f46d1739166ab8ecddb1619108087b24502296b4",
+    "src/storage/fatfs_volume.c": "c40b79ebca7a7cdc72e75ba05d4c038d7f6090918fc513fbddc9823ff3cef677",
+    "src/platform/native/fatfs_disk.c": "3a5e3427df79c9f08692b546c9569b7ec45363c35501702d9b407615e67b3a7e",
+    "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1",
+    "tools/check-fatfs-disk.py": "99b7c60b2ec3c513a4c1f5acec918e3d41930573b458106241df5d3f734ebf09",
+    "provenance.toml": "47a0f5e7df769d40934c9a859260e8a8753fa6154351ce65427fd1304e6d3a10",
+    "probes/fatfs-disk/README.md": "6e0b4f45327b9f402600f8a99b91e16b14025d76f963ead19d2796949762062b",
+    "probes/fatfs-disk/backend_check.c": "e3956e3e25b6b874f4d287d7756f01d7dcf4622a5bac4aa60ec6c2d04a5aa776",
+    "probes/fatfs-disk/card_check.c": "bb00be1b46ab8d2a76162a29fb15aee34a33b4343177951287029376dc6bc016",
+    "probes/fatfs-disk/check_disk.c": "6bab3764bcdc7bc35927b45c72d0a294b7a85470db1e6451f67a359e6d7e0fe9",
+    "probes/fatfs-disk/check_volume.c": "98063cd587b995c17980de3d3710421479fcc490ef8a24634606b19931324ffe",
+    "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+    "probes/fatfs-disk/host_disk.c": "d20bdd888dc96cd73a87bf60cf81c0e846c84693c4356cdc5b317d8416236436",
+    "probes/fatfs-disk/host_disk.h": "cd884e13b6b8e6ad2a2b6d10fd4f2c7d8ad6a193fa36d26df9b20492b370af90",
+    "probes/fatfs-disk/host_library.zig": "9ce0189ac7690c6f0ececfc89d6dc370da6901154beaeaffb1ee0e8b2eaf4b73",
+    "probes/fatfs-disk/make_fixture.c": "b667a04a4b9a8be880d75f3eeb88c58aa091d22d08bd26ea3135e6fce117b5ef",
+    "probes/fatfs-disk/rpc_check.zig": "f0c35dc07df270f4cff9b2b8501ee83a951863f17b03eaee1a6e061d0edacacf",
+    "probes/fatfs-disk/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+    "probes/fatfs-disk/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+    "probes/fatfs-disk/vfs_check.zig": "a40a6f6b58324d0645754d32071020a8f528f05f8097d42a9c81f1e2d7894842",
+    "probes/fatfs-disk/vfs_rv32.zig": "b2dd5a9e2562eb2928645eadb6c51dfb129dcfbe7d87a1cfc998742fa5a483f5"
+  },
+  "limitations": [
+    "RV32 adapter object compile only; no final firmware placement, memory/stack admission or native FatFs execution",
+    "Native callback depends on existing nih_storage_read lease pin and fatal handling of unproved DMA fences",
+    "Valid image fixtures only; chain/identity shim from host VFS PR #3 is not linked here",
+    "VFS backend, authenticated roots/handles, RPC and mount invalidation of cached FatFs objects remain unconnected",
+    "Atomic disk_read publication does not imply atomic f_read or durable storage",
+    "Read-only volume admission covers superfloppy/MBR primary only; GPT/extended layouts are rejected",
+    "Volume probe requires a stable owner-held card/controller session through bind and mount; no hardware hot-swap detection",
+    "No physical removal, clean power-on, writable filesystem, SQLite persistence or power-loss evidence"
+  ]
+}

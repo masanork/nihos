@@ -1,0 +1,1245 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "base_commit": "e1fc1786a1279d73368ceed5e51f87b08c3a70ff",
+  "evidence": "static binary CFG resolution and host-only serial qualification preparation",
+  "hardware_executed": false,
+  "physical_flash_written": false,
+  "candidate": {
+    "elf_sha256": "1999625336618aab1e9a055eaa9f577c9f7cdf4b6941c10bcf326e080d62a031",
+    "image_sha256": "484e9103459da792adfe0c13ebdd6bc669e15accf6b874d5f170f92391f87161",
+    "image_bytes": 852560,
+    "primary_static_bytes": 106176
+  },
+  "call_stack": {
+    "schema": 1,
+    "evidence": "static structural call-chain inventory; no execution or whole-stack qualification",
+    "elf_sha256": "1999625336618aab1e9a055eaa9f577c9f7cdf4b6941c10bcf326e080d62a031",
+    "analyzer_sha256": "6cb270a82bd21cf9c81798174460ccad3edd9936286b94fee8100a03840e9269",
+    "disassembly_sha256": "39010f2f1b90042d6c13cf86def5dadcfa2da9cf8e6575922c88b410ca72b4ce",
+    "objdump_version": "GNU objdump (crosstool-NG esp-14.2.0_20260121) 2.43.1",
+    "sp_flow_analyzer_sha256": "4d60a8fecc872eb3745543a02c83285f717aa210fbfaa178d78483df9940188c",
+    "jump_table_analyzer_sha256": "3fc908ef140bb60612c9bf2a11da65d1011c7507d86a216deeea44c591f687b8",
+    "jump_tables": {
+      "resolved": [
+        {
+          "function": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+          ],
+          "site": "0x400a289a",
+          "guard": "0x400a2880",
+          "index_maximum": 10,
+          "table_start": "0x400bb400",
+          "table_entries": 11,
+          "table_sha256": "bf0aa44378cfc445e990391c3ef34db104150a898d42b19b50e8fd71980033f3",
+          "targets": [
+            "0x400a27f0",
+            "0x400a289c",
+            "0x400a28a0",
+            "0x400a28a4",
+            "0x400a28a8",
+            "0x400a28ac",
+            "0x400a28b0",
+            "0x400a28b4",
+            "0x400a28b8",
+            "0x400a28bc",
+            "0x400a28c2"
+          ],
+          "function_code_sha256": "806b293131a9ccd6d17059a2313e2f9fa64ba20302b040817be74ef73938af74",
+          "dispatch_code_sha256": "a6f04d7f8c4c1c5827f5598cb89605b9721ee8cca61b8f771c0b58f6afa1938c",
+          "normal_call_abi_assumed": true,
+          "interprocedural_stack_qualified": false
+        },
+        {
+          "function": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+          ],
+          "site": "0x400a2f40",
+          "guard": "0x400a2f28",
+          "index_maximum": 10,
+          "table_start": "0x400bb42c",
+          "table_entries": 11,
+          "table_sha256": "276fff3f5800706b4894d503fd43ea5572cc5120b297b3c08a8867fdbe76b2d9",
+          "targets": [
+            "0x400a2ef2",
+            "0x400a2f42",
+            "0x400a2f54",
+            "0x400a2fce",
+            "0x400a2fd2",
+            "0x400a2fd6",
+            "0x400a2fde",
+            "0x400a2fe6",
+            "0x400a2fee",
+            "0x400a2ff6",
+            "0x400a2ffc"
+          ],
+          "function_code_sha256": "e36fb9d474c632d84832eb718e2ec48ed6806172f7a6f9f8292380c3733915af",
+          "dispatch_code_sha256": "aedbaee88484dce6d824303fb23bfcc736dbd9133796b7383ee8be4b5fde9b14",
+          "normal_call_abi_assumed": true,
+          "interprocedural_stack_qualified": false
+        },
+        {
+          "function": [
+            "fs.fatfs_backend.Backend.open"
+          ],
+          "site": "0x400a30ee",
+          "guard": "0x400a30d8",
+          "index_maximum": 10,
+          "table_start": "0x400bb458",
+          "table_entries": 11,
+          "table_sha256": "5aa29f7e23b0a24df2619e935b6e7fbae1285b8cd0fc5f0e505e97d5df55773e",
+          "targets": [
+            "0x400a30f0",
+            "0x400a3104",
+            "0x400a3108",
+            "0x400a310c",
+            "0x400a3110",
+            "0x400a3114",
+            "0x400a3118",
+            "0x400a311c",
+            "0x400a3120",
+            "0x400a3124",
+            "0x400a312a"
+          ],
+          "function_code_sha256": "d208f5eb7720e3ae355ce5dbd74c5a60856d32f1ff3bc44282e120cd72896541",
+          "dispatch_code_sha256": "3b4d939f31a8e71563f963cad391102065ac023b348bed87ea6a86c051e9a376",
+          "normal_call_abi_assumed": true,
+          "interprocedural_stack_qualified": false
+        },
+        {
+          "function": [
+            "result"
+          ],
+          "site": "0x400a906e",
+          "guard": "0x400a9058",
+          "index_maximum": 13,
+          "table_start": "0x400c3954",
+          "table_entries": 14,
+          "table_sha256": "394ce2bd3d4a722b433e4bb86fff45c6eb45d04e44b868749937d766ba9e82d4",
+          "targets": [
+            "0x400a9070",
+            "0x400a9078",
+            "0x400a907c",
+            "0x400a9088",
+            "0x400a908a"
+          ],
+          "function_code_sha256": "1c2afe4d1457a54e22041b32de59e2dcaf446119b857032a9666880494038c00",
+          "dispatch_code_sha256": "acd65cdd56a6a84d5df5281525316b84f87566f2cbc578581f219f9359951b01",
+          "normal_call_abi_assumed": true,
+          "interprocedural_stack_qualified": false
+        },
+        {
+          "function": [
+            "ff_wtoupper"
+          ],
+          "site": "0x400a8cde",
+          "guard": "0x400a8ccc",
+          "index_maximum": 8,
+          "table_start": "0x400c3580",
+          "table_entries": 9,
+          "table_sha256": "4da1f50560b66199f393187b609ee26447eff5d8a49f4984e31277569d81c7f8",
+          "targets": [
+            "0x400a8ce0",
+            "0x400a8cec",
+            "0x400a8cf2",
+            "0x400a8cf6",
+            "0x400a8cfa",
+            "0x400a8d00",
+            "0x400a8d0a",
+            "0x400a8d0e",
+            "0x400a8d12"
+          ],
+          "function_code_sha256": "8518cdc189f7e07655831717888dce1b385fc29d858cdaee7d611007a18fdfd1",
+          "dispatch_code_sha256": "04a54933dbdf097d7d614dbaf2f75fe648a4699c970e5d12432b4c9f1a68d345",
+          "normal_call_abi_assumed": true,
+          "interprocedural_stack_qualified": false
+        }
+      ],
+      "unresolved": []
+    },
+    "candidate_edges": [
+      {
+        "caller": "disk_read",
+        "callee": "nih_fatfs_fixture_read",
+        "call_site": "0x400a9988",
+        "target_exclusivity_proven": false
+      }
+    ],
+    "frame_derivations": [
+      {
+        "address": "0x4ff001c2",
+        "functions": [
+          "nih_riscv_task_call"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 0,
+        "visited_instructions": 5,
+        "balanced_returns": 1,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "f7ce32ea7386fe5f1e48de7740908248de6ceddb41c5a6402acaa96ef5970db8",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff0105e",
+        "functions": [
+          "nih_sqlite_stack_paint"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 0,
+        "visited_instructions": 9,
+        "balanced_returns": 1,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "eade748dd1691b8350589f7aeae8d9d25009d8884ee1b94592a6c9f772f24481",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff078b4",
+        "functions": [
+          "c_allocator.Adapter(heap.CBackend).identity",
+          "nih_task_identity"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 60,
+        "balanced_returns": 3,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "584909fc30a001be36dfaf88031e3ec32ea8b448aa926d9374ecc986d1ba5a02",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff0d7fa",
+        "functions": [
+          "main.print"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 32,
+        "visited_instructions": 32,
+        "balanced_returns": 1,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 2,
+        "code_sha256": "2cadcf6e405c58c2546c5373b5ffc29608b949625e8452ddf7f2726b8aa15109",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff0d84a",
+        "functions": [
+          "main.fail"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 25,
+        "balanced_returns": 0,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 3,
+        "code_sha256": "15299f3077cd67fa1cd0497e9b851e5d91cc00b7ac9529fa0bbc2fa8b693ecbf",
+        "normal_return_impossible_under_call_abi": true,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff0f942",
+        "functions": [
+          "main.nih_native_task_failed",
+          "nih_native_task_failed"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 9,
+        "balanced_returns": 0,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 1,
+        "code_sha256": "ef7912a75e169a21c42d3c3be54a159d30304f410be8a543f5145bb4e7447183",
+        "normal_return_impossible_under_call_abi": true,
+        "nonreturning_call_dependencies": [
+          {
+            "call_site": "0x4ff0f958",
+            "target": "0x4ff0d84a",
+            "callee_code_sha256": "15299f3077cd67fa1cd0497e9b851e5d91cc00b7ac9529fa0bbc2fa8b693ecbf"
+          }
+        ],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff12afa",
+        "functions": [
+          "compiler_rt.strlen",
+          "strlen"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 14,
+        "balanced_returns": 1,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "02435865b32bd63c130ea23377460b1f6d7e108fe35a9f1e319c2e14f3db6ba9",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff12b1c",
+        "functions": [
+          "compiler_rt.memcmp",
+          "memcmp"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 21,
+        "balanced_returns": 2,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "770b87c38a0aa4cd8c9b2a17b8440ec9a05c07f53e72ab70074da6abc7d597db",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff12b4a",
+        "functions": [
+          "compiler_rt.fastMemset",
+          "memset"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 64,
+        "balanced_returns": 3,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "63915ec7250759dcc576756ef0dd03248a2f08a21395a4e3688e53e71fde1c3d",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff12c20",
+        "functions": [
+          "compiler_rt.memmove.memmoveFast",
+          "memmove"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 32,
+        "visited_instructions": 197,
+        "balanced_returns": 1,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "7d2bf0b867ddb353e1060fc568ca7e1a50f4738e73052a8f370506d3cd189c26",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff12eb2",
+        "functions": [
+          "compiler_rt.memcpy.memcpyFast",
+          "memcpy"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 107,
+        "balanced_returns": 3,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "fe057b7eeecea9c0b5249486b5a63d66af69a41726c5e9967dbf030dd90afadb",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff14be0",
+        "functions": [
+          "__udivdi3",
+          "compiler_rt.int.__udivdi3"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 10,
+        "balanced_returns": 0,
+        "tail_or_trap_sinks": 1,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "77d5a4351dacce5314c7c8ae9e474c3ad71f44ad9ce03727cdec02479d6d0787",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      },
+      {
+        "address": "0x4ff14c4e",
+        "functions": [
+          "__udivmoddi4",
+          "compiler_rt.int.__udivmoddi4"
+        ],
+        "derived": true,
+        "local_sp_decrease_bytes": 16,
+        "visited_instructions": 360,
+        "balanced_returns": 3,
+        "tail_or_trap_sinks": 0,
+        "calls_assumed_to_restore_sp": 0,
+        "code_sha256": "1422fc295bd0ff18e7efef38881d35007d761471f815a92c56c0fe2dcf2d8cc5",
+        "normal_return_impossible_under_call_abi": false,
+        "nonreturning_call_dependencies": [],
+        "callee_stacks_proven": false,
+        "stack_memory_footprint_proven": false
+      }
+    ],
+    "roots": [
+      {
+        "root": {
+          "address": "0x400a0104",
+          "functions": [
+            "fatfs_runtime.nih_storage_task_entry",
+            "nih_storage_task_entry"
+          ],
+          "frame_bytes": 16
+        },
+        "reachable_functions": 126,
+        "known_frames_on_largest_structural_chain_bytes": 3088,
+        "structural_chain": [
+          {
+            "address": "0x400a0104",
+            "functions": [
+              "fatfs_runtime.nih_storage_task_entry",
+              "nih_storage_task_entry"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a0130",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "frame_bytes": 304
+          },
+          {
+            "address": "0x400a1f5c",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a22d6",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a2b70",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a9094",
+            "functions": [
+              "nih_fatfs_backend_lookup"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a7744",
+            "functions": [
+              "nih_fatfs_guard_open"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a78e4",
+            "functions": [
+              "parents"
+            ],
+            "frame_bytes": 784
+          },
+          {
+            "address": "0x400a73b2",
+            "functions": [
+              "f_opendir"
+            ],
+            "frame_bytes": 1152
+          },
+          {
+            "address": "0x400a6b54",
+            "functions": [
+              "follow_path"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a8576",
+            "functions": [
+              "dir_find"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7536",
+            "functions": [
+              "dir_read"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a8984",
+            "functions": [
+              "load_xdir"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7678",
+            "functions": [
+              "dir_next"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a6f22",
+            "functions": [
+              "get_fat"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a7fb4",
+            "functions": [
+              "move_window"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a99d4",
+            "functions": [
+              "nih_fatfs_fixture_read"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a4610",
+            "functions": [
+              "fatfs_runtime.nih_fatfs_fixture_after_read",
+              "nih_fatfs_fixture_after_read"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a00f4",
+            "functions": [
+              "fatfs_runtime.fail"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": 16,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": 16,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": 32,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          }
+        ],
+        "missing_frames": [],
+        "unresolved_transfers": [
+          {
+            "address": "0x400a7ad2",
+            "functions": [
+              "tick"
+            ],
+            "frame_bytes": 16,
+            "sites": [
+              {
+                "pc": "0x400a7ae0",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32,
+            "sites": [
+              {
+                "pc": "0x400a9988",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a3",
+                "candidate_callees": [
+                  "nih_fatfs_fixture_read"
+                ]
+              }
+            ]
+          },
+          {
+            "address": "0x4ff001c2",
+            "functions": [
+              "nih_riscv_task_call"
+            ],
+            "frame_bytes": 0,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+            "sites": [
+              {
+                "pc": "0x4ff001c8",
+                "kind": "syscall-stack-boundary",
+                "instruction": "ecall"
+              }
+            ]
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": 32,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+            "sites": [
+              {
+                "pc": "0x4ff0d81c",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -1988(ra) # 4fc00054 <nih_rom_putc>"
+              },
+              {
+                "pc": "0x4ff0d834",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -2012(ra) # 4fc00054 <nih_rom_putc>"
+              }
+            ]
+          }
+        ],
+        "recursive_functions": [],
+        "graph_closed": false,
+        "whole_call_stack_qualified": false
+      },
+      {
+        "root": {
+          "address": "0x400a0130",
+          "functions": [
+            "fatfs_runtime.serve"
+          ],
+          "frame_bytes": 304
+        },
+        "reachable_functions": 121,
+        "known_frames_on_largest_structural_chain_bytes": 3072,
+        "structural_chain": [
+          {
+            "address": "0x400a0130",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "frame_bytes": 304
+          },
+          {
+            "address": "0x400a1f5c",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a22d6",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a2b70",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a9094",
+            "functions": [
+              "nih_fatfs_backend_lookup"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a7744",
+            "functions": [
+              "nih_fatfs_guard_open"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a78e4",
+            "functions": [
+              "parents"
+            ],
+            "frame_bytes": 784
+          },
+          {
+            "address": "0x400a73b2",
+            "functions": [
+              "f_opendir"
+            ],
+            "frame_bytes": 1152
+          },
+          {
+            "address": "0x400a6b54",
+            "functions": [
+              "follow_path"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a8576",
+            "functions": [
+              "dir_find"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7536",
+            "functions": [
+              "dir_read"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a8984",
+            "functions": [
+              "load_xdir"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7678",
+            "functions": [
+              "dir_next"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a6f22",
+            "functions": [
+              "get_fat"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a7fb4",
+            "functions": [
+              "move_window"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a99d4",
+            "functions": [
+              "nih_fatfs_fixture_read"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a4610",
+            "functions": [
+              "fatfs_runtime.nih_fatfs_fixture_after_read",
+              "nih_fatfs_fixture_after_read"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a00f4",
+            "functions": [
+              "fatfs_runtime.fail"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": 16,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": 16,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": 32,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          }
+        ],
+        "missing_frames": [],
+        "unresolved_transfers": [
+          {
+            "address": "0x400a7ad2",
+            "functions": [
+              "tick"
+            ],
+            "frame_bytes": 16,
+            "sites": [
+              {
+                "pc": "0x400a7ae0",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32,
+            "sites": [
+              {
+                "pc": "0x400a9988",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a3",
+                "candidate_callees": [
+                  "nih_fatfs_fixture_read"
+                ]
+              }
+            ]
+          },
+          {
+            "address": "0x4ff001c2",
+            "functions": [
+              "nih_riscv_task_call"
+            ],
+            "frame_bytes": 0,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+            "sites": [
+              {
+                "pc": "0x4ff001c8",
+                "kind": "syscall-stack-boundary",
+                "instruction": "ecall"
+              }
+            ]
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": 32,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+            "sites": [
+              {
+                "pc": "0x4ff0d81c",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -1988(ra) # 4fc00054 <nih_rom_putc>"
+              },
+              {
+                "pc": "0x4ff0d834",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -2012(ra) # 4fc00054 <nih_rom_putc>"
+              }
+            ]
+          }
+        ],
+        "recursive_functions": [],
+        "graph_closed": false,
+        "whole_call_stack_qualified": false
+      },
+      {
+        "root": {
+          "address": "0x400a106c",
+          "functions": [
+            "fatfs_runtime.runClient"
+          ],
+          "frame_bytes": 144
+        },
+        "reachable_functions": 13,
+        "known_frames_on_largest_structural_chain_bytes": 288,
+        "structural_chain": [
+          {
+            "address": "0x400a106c",
+            "functions": [
+              "fatfs_runtime.runClient"
+            ],
+            "frame_bytes": 144
+          },
+          {
+            "address": "0x400a15b6",
+            "functions": [
+              "fatfs_runtime.receive"
+            ],
+            "frame_bytes": 64
+          },
+          {
+            "address": "0x400a00f4",
+            "functions": [
+              "fatfs_runtime.fail"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": 16,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": 16,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": 32,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound"
+          }
+        ],
+        "missing_frames": [],
+        "unresolved_transfers": [
+          {
+            "address": "0x4ff001c2",
+            "functions": [
+              "nih_riscv_task_call"
+            ],
+            "frame_bytes": 0,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+            "sites": [
+              {
+                "pc": "0x4ff001c8",
+                "kind": "syscall-stack-boundary",
+                "instruction": "ecall"
+              }
+            ]
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": 32,
+            "frame_provenance": "binary CFG local SP delta; not a full memory-footprint bound",
+            "sites": [
+              {
+                "pc": "0x4ff0d81c",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -1988(ra) # 4fc00054 <nih_rom_putc>"
+              },
+              {
+                "pc": "0x4ff0d834",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -2012(ra) # 4fc00054 <nih_rom_putc>"
+              }
+            ]
+          }
+        ],
+        "recursive_functions": [],
+        "graph_closed": false,
+        "whole_call_stack_qualified": false
+      }
+    ],
+    "whole_call_stack_qualified": false
+  },
+  "actual_elf_negative_controls": [
+    {
+      "function": [
+        "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+      ],
+      "case": "foreign-target",
+      "site": "0x400a289a",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+          ],
+          "site": "0x400a289a",
+          "reason": "jump-table target outside function/instruction boundaries or inside dispatch block"
+        }
+      ]
+    },
+    {
+      "function": [
+        "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+      ],
+      "case": "signed-guard",
+      "site": "0x400a289a",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+          ],
+          "site": "0x400a289a",
+          "reason": "missing adjacent unsigned range guard"
+        }
+      ]
+    },
+    {
+      "function": [
+        "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+      ],
+      "case": "foreign-target",
+      "site": "0x400a2f40",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+          ],
+          "site": "0x400a2f40",
+          "reason": "jump-table target outside function/instruction boundaries or inside dispatch block"
+        }
+      ]
+    },
+    {
+      "function": [
+        "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+      ],
+      "case": "signed-guard",
+      "site": "0x400a2f40",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+          ],
+          "site": "0x400a2f40",
+          "reason": "missing adjacent unsigned range guard"
+        }
+      ]
+    },
+    {
+      "function": [
+        "fs.fatfs_backend.Backend.open"
+      ],
+      "case": "foreign-target",
+      "site": "0x400a30ee",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "fs.fatfs_backend.Backend.open"
+          ],
+          "site": "0x400a30ee",
+          "reason": "jump-table target outside function/instruction boundaries or inside dispatch block"
+        }
+      ]
+    },
+    {
+      "function": [
+        "fs.fatfs_backend.Backend.open"
+      ],
+      "case": "signed-guard",
+      "site": "0x400a30ee",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "fs.fatfs_backend.Backend.open"
+          ],
+          "site": "0x400a30ee",
+          "reason": "missing adjacent unsigned range guard"
+        }
+      ]
+    },
+    {
+      "function": [
+        "result"
+      ],
+      "case": "foreign-target",
+      "site": "0x400a906e",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "result"
+          ],
+          "site": "0x400a906e",
+          "reason": "jump-table target outside function/instruction boundaries or inside dispatch block"
+        }
+      ]
+    },
+    {
+      "function": [
+        "result"
+      ],
+      "case": "signed-guard",
+      "site": "0x400a906e",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "result"
+          ],
+          "site": "0x400a906e",
+          "reason": "missing adjacent unsigned range guard"
+        }
+      ]
+    },
+    {
+      "function": [
+        "ff_wtoupper"
+      ],
+      "case": "foreign-target",
+      "site": "0x400a8cde",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "ff_wtoupper"
+          ],
+          "site": "0x400a8cde",
+          "reason": "jump-table target outside function/instruction boundaries or inside dispatch block"
+        }
+      ]
+    },
+    {
+      "function": [
+        "ff_wtoupper"
+      ],
+      "case": "signed-guard",
+      "site": "0x400a8cde",
+      "rejected": true,
+      "reason": [
+        {
+          "functions": [
+            "ff_wtoupper"
+          ],
+          "site": "0x400a8cde",
+          "reason": "missing adjacent unsigned range guard"
+        }
+      ]
+    },
+    {
+      "case": "noreturn-symbol-with-returning-body",
+      "rejected": true,
+      "reason": {
+        "address": "0x4ff0f942",
+        "functions": [
+          "main.nih_native_task_failed",
+          "nih_native_task_failed"
+        ],
+        "derived": false,
+        "reason": "control flow leaves body or missing disassembly"
+      }
+    }
+  ],
+  "strict_gate": {
+    "expected_exit_code": 1,
+    "observed": "fatfs_runtime.nih_storage_task_entry: known structural sum=3088, missing frames=0, unresolved functions=4\nfatfs_runtime.serve: known structural sum=3072, missing frames=0, unresolved functions=4\nfatfs_runtime.runClient: known structural sum=288, missing frames=0, unresolved functions=2\nCall graph is incomplete; whole-stack gate remains open\n"
+  },
+  "regressions": {
+    "python": 230,
+    "format_zlint_shellcheck": true,
+    "native_elf_links": 6,
+    "remote_ci_executed": false
+  },
+  "serial_preparation": {
+    "advisory_lock": true,
+    "kernel_exclusion_requested_and_probed": true,
+    "aliases_checked": [
+      "cu",
+      "tty"
+    ],
+    "pty_ioctl_success_is_not_treated_as_exclusion_proof": true,
+    "physical_port_exclusion_verified": false,
+    "no_prewrite_exit_reset_without_device_identity": true,
+    "no_reset_after_unrestored_write": true
+  },
+  "source_sha256": {
+    "tools/check-native-call-stack.py": "6cb270a82bd21cf9c81798174460ccad3edd9936286b94fee8100a03840e9269",
+    "tools/riscv_stack_flow.py": "4d60a8fecc872eb3745543a02c83285f717aa210fbfaa178d78483df9940188c",
+    "tools/riscv_jump_tables.py": "3fc908ef140bb60612c9bf2a11da65d1011c7507d86a216deeea44c591f687b8",
+    "tools/native_stack_flow_test.py": "6ad4bca8c90498cf811c8020e15e6117b88b81ad44231dba81d1c9d23ffdee69",
+    "tools/native_jump_tables_test.py": "e1cabe5b55a12dd824edd02d7bbffcdd008522a18e3384d5675fb8767cb0a598",
+    "tools/native_serial.py": "9bd018006ecb0586666605fe57d35636e40d46968e0f6434dba38bb5de3a7bf3",
+    "tools/qualify-storage-io.py": "bf25f39001cbdda1b36f76092817c2cfd3729bc9c8e74c0a2b877dab8759c9da",
+    "tools/native_serial_exclusive_test.py": "f9d113ca4cb918225380732b07115bae43bded2b62c4f376782d0f1f67d05d3e",
+    "tools/io_lifetime_test.py": "43d6c9a266cdedb83322cafcf869d5f2dd3cdb7e7423ed0bd7e3cc701f4b60ef",
+    ".github/workflows/native.yml": "19ce9e75ee88747abbf0abd4aff430131fd0d9e694763d5efc13eb69d3b9069d"
+  },
+  "raw_sha256": {
+    "build/fatfs-flow-close/analysis.json": "123cc3cf35db2d0d9fa92b9ea15878d63779f8c590926fdc9909e2c2d335ae10",
+    "build/fatfs-flow-close/native-negative-controls.json": "1ad9368e98c09318d3c404b6cf405828fb4886eddc80a5624c503d1d16a1482c",
+    "build/fatfs-flow-close/python.log": "8d690c8ddf26569373ba2c8d97168cb44cb1410794c89d6c170ac2beb90ee0f7",
+    "build/fatfs-flow-close/static.log": "6efe170df9dbddc2f3b4076f1964d8eff84f12a9dd7aedf5727c4b4892a939ce",
+    "build/fatfs-flow-close/gate.log": "347214f680c782deb47fb1e58e5d977917f42cc83cf124309b488ed6e0e109cf"
+  },
+  "remaining": [
+    "Callback target exclusivity, ecall/IRQ stack switch and ROM stack remain unresolved",
+    "Normal-call ABI is an assumption of local CFG summaries, not an independently proven property",
+    "Static structural sums are not full live-stack or stack-memory-footprint bounds",
+    "Physical task execution, SD FatFs, clean POR, persistent SQLite, writes and power-loss qualification remain separate gates"
+  ]
+}

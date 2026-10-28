@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "evidence": "retained native physical qualification snapshot; not current device state",
+  "qualified_source_commit": "1182a74",
+  "report_commit": "f76ce62",
+  "upstream_status": "qualification commits are local and not merged into origin/main at assessment time",
+  "source_artifact_sha256": {
+    "image-audit.json": "51531995a97136428077a014bff9295f0374d7175bc8549c6806d58762500d6e",
+    "boot1.json": "ea5390af066d4c843b2089cf61eb4ffb71013889d4ebde36d98ca2857a2bb7ea",
+    "final-results.json": "eca2f17c9400d981c50e369a51e36d27eb34f79017ef2c7389c2cac4fd16ad72"
+  },
+  "image": {
+    "image_bytes": 769168,
+    "image_sha256": "dc3f4c70830e0d5a80afccddb5cf1b413d5cb705b8bf31cadde5a7e6a5999475",
+    "elf_sha256": "05f72daa672f60284d18ba85c58be182a80a688057ba0600ff1db080ba7aa628",
+    "primary_static_bytes": 104192
+  },
+  "memory": {
+    "profile": "device",
+    "origin": "0x4ff00000",
+    "end": "0x4ff28000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "internal_heap": {
+    "start": "0x4ff19700",
+    "end": "0x4ff28000",
+    "bytes": 59648,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000"
+  },
+  "loader": {
+    "elf_sha256": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+    "allocated": [
+      {
+        "address": "0x4ff2cbd0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ff33bd0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ff33ce0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ff33d30",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ff33d3c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ff2abd0",
+        "bytes": 3010
+      }
+    ],
+    "nearest_higher_address": "0x4ff2abd0",
+    "gap_bytes": 11216,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 11216
+      },
+      {
+        "name": "stacks",
+        "gap_below": 176396,
+        "gap_above": null
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "device",
+    "stack_source_window": {
+      "origin": "0x4ff40000",
+      "end": "0x4ffa0000"
+    },
+    "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+  },
+  "psram": {
+    "mapped_bytes": 33554432,
+    "reserved_bytes": 196608,
+    "registered_bytes": 33357568,
+    "allocatable_bytes": 32045696,
+    "heaps": [
+      {
+        "hart": 0,
+        "start": 1208156288,
+        "end": 1224703552,
+        "metadata": 524288,
+        "capacity": 16022848,
+        "free": 16022848,
+        "live": 0,
+        "allocations": 10669,
+        "frees": 10669,
+        "rejected": 13,
+        "checks0": 341046,
+        "checks1": 339393,
+        "levels": 18,
+        "max_steps": 56,
+        "confirmed": 1
+      },
+      {
+        "hart": 1,
+        "start": 1224835200,
+        "end": 1241382464,
+        "metadata": 524288,
+        "capacity": 16022848,
+        "free": 16022848,
+        "live": 0,
+        "allocations": 10670,
+        "frees": 10670,
+        "rejected": 13,
+        "checks0": 341185,
+        "checks1": 339393,
+        "levels": 18,
+        "max_steps": 56,
+        "confirmed": 1
+      }
+    ]
+  },
+  "app_partition_bytes": 1048576,
+  "app_partition_remaining_bytes": 279408,
+  "sqlite_flash_span_limit_bytes": 655360,
+  "sqlite_flash_text_bytes": 530944,
+  "sqlite_flash_rodata_bytes": 59008,
+  "sqlite_flash_span_remaining_bytes": 65408,
+  "qualification": "three USB RTS resets, pre/post Flash verification; SD read-only/FS/RPC/EXIT/rebind/SQLite. No writable or power-loss durability qualification."
+}

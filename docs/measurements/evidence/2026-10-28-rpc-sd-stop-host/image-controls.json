@@ -1,0 +1,22 @@
+{
+  "old_card_v3_elf_audit_passed": true,
+  "negative_controls": [
+    {
+      "name": "new_relay_image_cannot_hide_behind_old_profile",
+      "rejected": true,
+      "reason": "native FatFs: read relay differs from image"
+    },
+    {
+      "name": "old_image_cannot_claim_relay_by_metadata",
+      "rejected": true,
+      "reason": "native FatFs: read relay differs from image"
+    }
+  ],
+  "new_image_bytes": 851648,
+  "new_elf_sha256": "116a084a9dc20352402a417fd595fdd1827884d5d95da635f26608ce8bed2486",
+  "new_image_sha256": "63440a974a9b7a89983e12f9d2bdfd312efc2d3ec3057ba0f1e83ad313235e67",
+  "new_resident_read_hooks": {
+    "nih_fatfs_read_ticket": "0x4ff00710",
+    "nih_fatfs_read_cancelled": "0x4ff006be"
+  }
+}
