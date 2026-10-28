@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import sys
 import zlib
+import fatfs_native_profile
 
 
 PSRAM_SIZES = {"0": 0, "4M": 4 << 20, "8M": 8 << 20, "16M": 16 << 20,
@@ -20,6 +21,18 @@ FATFS_FIELDS = ('version', 'source', 'status', 'fixture_id', 'parent_used', 'par
                 'requests', 'replies', 'forced_exit', 'cancelled', 'discarded_requests', 'discarded_replies',
                 'rebound', 'stale_epoch', 'stale_handle', 'stale_reply', 'stale_exit', 'bytes', 'crc',
                 'owner_stack', 'client_stack', 'parent_cleared', 'recovered')
+
+
+def check_sqlite_spans(record, image, evidence):
+    end = 0x400c0000
+    config = (image or {}).get('sqlite', {}).get('fatfs_native')
+    if config is not None:
+        if evidence != 'physical-device' or image.get('memory', {}).get('profile') != 'device':
+            raise ValueError('expanded SQLite Flash requires audited physical fixture')
+        fatfs_native_profile.validate_profile(config)
+        end = int(config['flash_end'], 16)
+    if not (record['text_start'] == 0x40020000 < record['text_end'] <= record['rodata_start'] < record['rodata_end'] <= end):
+        raise ValueError('invalid SQLite Flash spans')
 
 
 def check_fatfs_native(log, image, evidence):
@@ -628,8 +641,7 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
             raise ValueError("missing/duplicate SQLite execution evidence")
         sql_report = dict(zip(sql_names, (int(value, 16) for value in sql_records[0])))
         q = sql_report
-        if not (q["text_start"] == 0x40020000 < q["text_end"] <= q["rodata_start"] < q["rodata_end"] <= 0x400c0000):
-            raise ValueError("invalid SQLite Flash spans")
+        check_sqlite_spans(q, image, evidence)
         runtime_fields = ("owner", "sessions", "queries", "open_pc", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie")
         if psram["status"] == 0:
             if q["status"] != 0 or any(q[name] for name in runtime_fields):

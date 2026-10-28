@@ -22,6 +22,24 @@ def config():
 
 
 class NativeFatFsImageChecks(unittest.TestCase):
+    def test_log_flash_window_requires_complete_physical_fixture_profile(self):
+        spans = dict(text_start=0x40020000, text_end=0x400ae300,
+                     rodata_start=0x400ae300, rodata_end=0x400c4e80)
+        image = {'memory': {'profile': 'device'}, 'sqlite': {'fatfs_native': config()}}
+        LOG.check_sqlite_spans(spans, image, 'physical-device')
+        for audit, evidence in ((None, 'physical-device'), ({}, 'physical-device'),
+                                (image, 'emulator')):
+            with self.subTest(audit=audit, evidence=evidence), self.assertRaises(ValueError):
+                LOG.check_sqlite_spans(spans, audit, evidence)
+        for key in config():
+            bad = copy.deepcopy(image)
+            bad['sqlite']['fatfs_native'][key] = 0
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                LOG.check_sqlite_spans(spans, bad, 'physical-device')
+        with self.assertRaises(ValueError):
+            LOG.check_sqlite_spans({**spans, 'rodata_end': 0x400d0001}, image, 'physical-device')
+        LOG.check_sqlite_spans({**spans, 'rodata_end': 0x400c0000}, None, 'emulator')
+
     def test_profile_pins_image_upstream_sources_and_flash_window(self):
         original = config()
         PROFILE.validate_profile(original)
