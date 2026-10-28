@@ -1,6 +1,6 @@
 # Canvas scanout fixture
 
-Experimental opt-in device fixture; it is not the application-facing display service. With `NIHOS_NATIVE_CANVAS_DEMO=1`, the existing display owner paints a diagnostic color pattern into its private 720×1280 RGB565 PSRAM framebuffer using Canvas before scanout begins. The existing cache writeback and DMA/DSI startup publish that frame. There is no runtime canvas lease, concurrent rendering, present API, input, card data, or live scene change. The fixture bypasses the boot animation and stays separate from the console and card paths.
+Experimental opt-in device fixture; it is not the application-facing display service. With `NIHOS_NATIVE_CANVAS_DEMO=1`, the existing display owner paints a diagnostic color pattern into its private 720×1280 RGB565 PSRAM framebuffer using Canvas before scanout begins. A black-and-white stripe uses the RGB565 row-copy path. The existing cache writeback and DMA/DSI startup publish that frame. There is no runtime canvas lease, concurrent rendering, present API, input, card data, or live scene change. The fixture bypasses the boot animation and stays separate from the console and card paths.
 
 Build using the pinned SDK and Zig:
 
