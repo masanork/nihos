@@ -1,5 +1,6 @@
 //! Finite composition driver, not a paragraph/ruby layout policy or scanout.
 const std = @import("std");
+const layout = @import("line_layout");
 const surface = @import("surface");
 const protocol = @import("font_protocol");
 const heap = @import("native_memory").reusable;
@@ -17,6 +18,12 @@ pub const Report = struct {
     live_charge: u32 = 0,
 };
 pub var metrics: Report = .{};
+pub const WrapReport = struct { frames: u32 = 0, clusters: u32 = 0, lines: u32 = 0, wrapped_runs: u32 = 0, transitions: u32 = 0, clipped: u32 = 0 };
+pub var wrap_metrics: WrapReport = .{};
+var wrap_hashes: [5]u32 = @splat(0);
+pub fn wrapHash(index: usize) u32 {
+    return wrap_hashes[index];
+}
 var hashes: [5]u32 = @splat(0);
 pub fn hash(index: usize) u32 {
     return hashes[index];
@@ -58,6 +65,43 @@ pub fn compose(reply: *const protocol.Reply, pixels: []const u8) void {
     if (target.blit(.{ .bytes = data[0..1], .width = 1, .height = 1, .stride = 1 }, 0, 0, 0)) nih_native_task_failed();
     metrics.rejected += 2;
     if (digest(data) != value) nih_native_task_failed();
+    if (!target.fill(0xf79e)) nih_native_task_failed();
+    const vertical = reply.id == 8;
+    var flows = [_]layout.Flow{
+        layout.Flow.init((if (vertical) @as(i32, 64) else 96) * 64, (if (vertical) @as(i32, 40) else 32) * 64, if (vertical) 3 else 2) catch nih_native_task_failed(),
+        layout.Flow.init(96 * 64, (if (vertical) @as(i32, 40) else 16) * 64, 1) catch nih_native_task_failed(),
+    };
+    var start: usize = 0;
+    const glyphs = reply.output.glyphs[0..reply.output.count];
+    while (start < glyphs.len) {
+        const group = layout.cluster(protocol.Glyph, glyphs, start, if (vertical) .vertical else .horizontal) catch nih_native_task_failed();
+        const run = glyphs[start].run;
+        const position = flows[run].place(group.advance) catch nih_native_task_failed();
+        var px: i64 = if (vertical) -@as(i64, position.block_offset) else position.inline_offset;
+        var py: i64 = if (vertical) -@as(i64, position.inline_offset) else -@as(i64, position.block_offset);
+        for (glyphs[start..group.end]) |g| {
+            const ox: i64 = if (vertical) (if (run == 0) @as(i64, 150) else 178) else 8;
+            const oy: i64 = if (vertical) 8 else if (run == 1) 18 else if (reply.id == 9) 32 else 48;
+            const x = std.math.cast(i32, ox + @divFloor(px + g.x_offset, 64) + g.left) orelse nih_native_task_failed();
+            const y = std.math.cast(i32, oy - @divFloor(py + g.y_offset, 64) - g.top) orelse nih_native_task_failed();
+            px += g.x_advance;
+            py += g.y_advance;
+            if (!target.blit(.{ .bytes = pixels[g.pixel_offset..][0 .. g.width * g.height], .width = g.width, .height = g.height, .stride = g.width }, x, y, if (run == 0) 0x192b else 0xb9a7)) nih_native_task_failed();
+            if (x < 0 or y < 0 or @as(i64, x) + g.width > width or @as(i64, y) + g.height > height) wrap_metrics.clipped += 1;
+        }
+        wrap_metrics.clusters += 1;
+        start = group.end;
+    }
+    for (flows) |flow| {
+        const lines = flow.lines();
+        wrap_metrics.lines += lines;
+        if (lines > 1) {
+            wrap_metrics.wrapped_runs += 1;
+            wrap_metrics.transitions += lines - 1;
+        }
+    }
+    wrap_hashes[reply.id - 5] = digest(data);
+    wrap_metrics.frames += 1;
     for (0..height) |y| if (!std.mem.allEqual(u8, data[y * stride + width * 2 ..][0 .. stride - width * 2], 0xa5)) nih_native_task_failed();
     if (!std.mem.allEqual(u8, allocation.bytes[0..32], 0xa5) or !std.mem.allEqual(u8, allocation.bytes[32 + stride * height ..], 0xa5)) nih_native_task_failed();
     metrics.guards += 1;

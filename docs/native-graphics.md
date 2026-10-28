@@ -9,7 +9,8 @@ running FreeType/HarfBuzz on a dedicated CPU0 task. Timer events come from
 the emulated P4 peripheral rather than a host instruction hook. This remains
 emulator evidence, not physical timing or visible display evidence. The
 fixture hashes glyph IDs, advances and raster pixels; it does not present a
-framebuffer or implement paragraph/ruby layout.
+framebuffer. A bounded cluster-flow primitive now places wrapped runs; full
+paragraph/ruby layout remains pending.
 
 ## Run
 
@@ -76,10 +77,10 @@ including unused library-region capacity. Two clients share those regions.
 
 | Measure | Emulator profile | Device profile, build only |
 | --- | ---: | ---: |
-| Primary static span | 113,280 B | 113,536 B |
-| Remaining primary SRAM heap | 50,560 B | 50,304 B |
-| Static reservations including stack/data regions | 236,160 B | 236,416 B |
-| Application image | 11,572,848 B | 11,574,288 B |
+| Primary static span | 113,536 B | 113,792 B |
+| Remaining primary SRAM heap | 50,304 B | 50,048 B |
+| Static reservations including stack/data regions | 236,416 B | 236,672 B |
+| Application image | 11,575,664 B | 11,577,120 B |
 
 Graphics code/RO occupy 561,072 B in Flash. TTF inputs occupy 10,821,312 B,
 plus 16 B alignment in their section; they account for most of the image.
@@ -87,8 +88,9 @@ Private initialized data/BSS occupy 20,764 B within the 32 KiB region. These
 figures exclude document models, display buffers, native font-filesystem
 caches and application routing. The two fixed transport queues reserve
 3,200 B in primary SRAM, including tokens/metadata but no bitmap bytes.
-The surface renderer adds a net 1,920 B to primary static relative to the
-raster-only fixture, after compacting qualification snapshots. The private packet grows from 776 to 844 B;
+Surface composition added 1,920 B to primary static relative to the
+raster-only fixture. Bounded cluster flow adds another 256 B net, after moving
+the diagnostic glyph archive to demand-allocated PSRAM. The private packet grows from 776 to 844 B;
 no further stack or library SRAM region is reserved. Raster storage is demand
 PSRAM, separately accounted below.
 
@@ -122,13 +124,16 @@ records copied metrics. The
 [raster-lease receipt](measurements/2026-10-28-native-font-raster-leases.json)
 adds borrowed pixels. The current
 [surface-composition receipt](measurements/2026-10-28-native-surface-composition.json)
-adds a shared RGB565 consumer on that live task:
+adds a shared RGB565 consumer on that live task. The
+[cluster-flow receipt](measurements/2026-10-28-native-cluster-wrap.json) extends
+that consumer with bounded horizontal/vertical wrapping and archive retirement.
+The current run records:
 
 - All 64 cases repeat the same 16-hash matrix, which also matches the
   sanitized host reference. An `auipc` sample inside the C++ entry confirms
   execution in the whitelisted library function.
 - The timer captures the font task 6,410 times, including 6,393 during
-  shaping/rasterization stages; bootstrap advances 13,489 times.
+  shaping/rasterization stages; bootstrap advances 13,386 times.
   Ten request waits span twenty real scheduler ticks in total, with zero
   additional font-task runtime while blocked.
 - Stack watermark/frame observation reaches 17,344 B, leaving 15,408 B above
@@ -137,7 +142,8 @@ adds a shared RGB565 consumer on that live task:
 - Font-span backing for two clients peaks at 1,310,976 B; raster charge is
   accounted separately. Closing clients
   leaves 65,792 B of HarfBuzz backing; task-ledger retirement then restores
-  CPU0's original 16,022,848 B of free heap.
+  16,018,752 B while the diagnostic archive remains live. Freeing that archive
+  after logging restores CPU0's original 16,022,848 B.
 - Other-task/dispatch operations are rejected; the owning task also rejects
   an invalid address without changing free heap. The 1,024-record controller
   peaks at 694 records.
@@ -210,7 +216,7 @@ checks and six invalid-operation rejections pass without modifying results.
 Each guarded canvas logically occupies 38,464 B and charges 65,536 B of
 consumer-owned PSRAM; all canvas charge returns to zero before raster release.
 These costs are separate from font backing and the raster lease. The device
-profile retains 50,304 B of primary heap, above the unchanged 48 KiB floor.
+profile retains 50,048 B of primary heap, above the unchanged 48 KiB floor.
 The first link hit that floor; reducing duplicate diagnostic archives recovered
 space without changing queued replies or disabling compiler safety checks.
 
@@ -222,6 +228,33 @@ LCD captures or a paragraph/ruby layout implementation:
 ![Horizontal body and ruby runs](measurements/2026-10-28-surface-horizontal.png)
 ![Vertical runs clipped to the viewport](measurements/2026-10-28-surface-vertical.png)
 ![Negative horizontal origin clipped at the left](measurements/2026-10-28-surface-clipped.png)
+
+The [bounded cluster-flow decision](adr/0049-bounded-cluster-flow.md) adds an
+allocation-free 26.6 cursor and an adapter grouping equal shaping clusters.
+A group moves intact to the next line/column. Capacity/advance errors preserve
+the cursor; unsupported cluster order and cross-axis advances are rejected.
+The native second pass reuses the same canvas before releasing the raster.
+Horizontal bodies wrap at 96 px; the vertical body wraps at 64 px into columns
+moving right to left. Three frames contain 33 clusters, nine occupied lines/
+columns and four transitions, with no clipped glyphs. Independent batch
+reference digests match the complete native padded buffers:
+
+![Wrapped horizontal body](measurements/2026-10-28-wrap-horizontal.png)
+![Wrapped vertical body](measurements/2026-10-28-wrap-vertical.png)
+![Wrapped mixed horizontal text](measurements/2026-10-28-wrap-mixed.png)
+
+These are host reference previews, not LCD captures. The native cases each have
+one glyph per shaping cluster; host tests also cover multiple glyphs sharing a
+cluster. This greedy policy does not implement kinsoku, word segmentation,
+bidi, contextual reshaping at breaks or paragraph pagination. The independently
+placed ruby run does not yet follow the wrapped body or identify its base.
+
+The diagnostic glyph archive now allocates 2,496 B in bootstrap-owned PSRAM
+(actual buddy charge 4,096 B), retains copied results through worker retirement,
+and frees after logging. The accessor returns an empty slice after free. This
+archive plus the temporary canvas fit the bootstrap's existing two-root quota.
+Its final free restores the original CPU0 heap; it is separate from the
+font-task heap baseline and is not a persistent font-service allocation.
 
 Retirement ends this library lifetime. HarfBuzz globals would refer to retired
 backing afterwards, so the fixture refuses another admission and never calls
