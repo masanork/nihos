@@ -1,5 +1,6 @@
 //! CPU0 single-contact pointer stream, independent of rendering/card/PIN APIs.
 const std = @import("std");
+pub const TouchService = @import("touch_service.zig").Service;
 pub const Kind = enum(u32) { down = 1, move, up, cancel };
 pub const Reason = enum(u32) { none, multiple, invalid, stale, overflow, hardware };
 pub const Event = extern struct { kind: Kind, reason: Reason = .none, sequence: u32 = 0, x: u32 = 0, y: u32 = 0, at: u64 = 0 };
