@@ -44,7 +44,9 @@ interrupt-driven removal guarantee.
 
 ## Runtime contract
 
-`NIHOS_NATIVE_NORMAL_STORAGE=1` builds the ordinary integer live-console
+The public ordinary device build enables this read-only service by default;
+`NIHOS_NATIVE_NORMAL_STORAGE=0` opts out. Low-level ELF and qualification builds
+retain their existing defaults. Explicit `NIHOS_NATIVE_NORMAL_STORAGE=1` builds the ordinary integer live-console
 service with display/input, on-demand board devices and optional C6 networking.
 `NIHOS_NATIVE_SDMMC=1` continues to select the standalone qualification path;
 it is not the switch for this service. High-SRAM/broker/storage qualification,
@@ -105,3 +107,10 @@ against the real ELF. This is a candidate identity check, not attestation.
 The image audit enforces per-frame worker margins and forbids write/heap APIs.
 Structural call-chain analysis still retains ROM-cache, syscall and callback
 boundaries; passing a frame bound does not close the whole-stack gate.
+
+A warm-device trial with the original card completed two sector reads and a
+refresh while C6 RX/TX, UI frames and a legacy device-status command continued.
+Volume admission returned `NIH_VOLUME_NOT_FOUND`, so this establishes rejection
+coexistence, not a successful FAT/exFAT mount/file-read qualification. The
+candidate and restored full Flash bytes were separately verified. A supported
+card, successful file read, removal/abort and cold power-on remain device gates.
