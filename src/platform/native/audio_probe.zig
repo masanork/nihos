@@ -1,4 +1,4 @@
-//! Local, opt-in native tone fixture. Not an application audio service.
+//! Finite native tone request, serialized with microphone ownership.
 const codec = @import("tab5_es8388");
 const tone = @import("audio_tone");
 const lifecycle = @import("audio_probe_model");
@@ -9,8 +9,12 @@ extern fn nih_audio_tx_stop() callconv(.c) bool;
 extern fn nih_audio_stage(u32) callconv(.c) void;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
-var pcm: [tone.block_bytes]u8 align(64) = @splat(0);
-var chain: [tone.blocks]tone.Descriptor align(64) = @splat(.{ .control = 0, .buffer = 0, .next = 0 });
+const workspace = @import("device_workspace.zig");
+// Bound only after acquiring the shared I2S lease.
+// SAFETY: request binds PCM before the exclusive owner may poll.
+var pcm: *align(64) [tone.block_bytes]u8 = undefined;
+// SAFETY: request binds descriptors before the exclusive owner may poll.
+var chain: *align(64) [tone.blocks]tone.Descriptor = undefined;
 const Output = struct {
     codec_off: bool = false,
     is_stopped: bool = true,
@@ -21,14 +25,14 @@ const Output = struct {
         self.codec_off = true;
     }
     pub fn prepare(self: *@This()) !void {
-        tone.fill(&pcm);
-        try tone.descriptors(&chain, @intFromPtr(&chain), @intFromPtr(&pcm));
+        tone.fill(pcm);
+        try tone.descriptors(chain, @intFromPtr(chain), @intFromPtr(pcm));
         self.is_returned = false;
         nih_audio_stage(1);
-        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(&pcm), @sizeOf(@TypeOf(pcm))) != 0 or
-            nih_rom_cache_writeback(1 << 4, @intFromPtr(&chain), @sizeOf(@TypeOf(chain))) != 0) return error.Hardware;
+        if (nih_rom_cache_writeback(1 << 4, @intFromPtr(pcm), tone.block_bytes) != 0 or
+            nih_rom_cache_writeback(1 << 4, @intFromPtr(chain), @sizeOf([tone.blocks]tone.Descriptor)) != 0) return error.Hardware;
         nih_audio_stage(2);
-        if (!nih_audio_tx_prepare(@intFromPtr(&chain))) return error.Hardware;
+        if (!nih_audio_tx_prepare(@intFromPtr(chain))) return error.Hardware;
         self.is_stopped = false;
     }
     pub fn start(self: *@This()) !void {
@@ -56,10 +60,10 @@ const Output = struct {
     pub fn stop(self: *@This()) !void {
         if (!nih_audio_tx_stop()) return error.Busy;
         self.is_stopped = true;
-        // Retain static storage forever on cache/ownership failure. No reset
+        // Pin the shared workspace on cache/ownership failure. No reset
         // or timer expiration alone can authorize rewriting DMA-owned nodes.
-        if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(&chain), @sizeOf(@TypeOf(chain))) != 0) return error.Cache;
-        if (self.started) for (&chain) |*node| {
+        if (nih_rom_cache_invalidate(1 << 4, @intFromPtr(chain), @sizeOf([tone.blocks]tone.Descriptor)) != 0) return error.Cache;
+        if (self.started) for (chain) |*node| {
             const observed: *const volatile tone.Descriptor = node;
             if (observed.control & (1 << 31) != 0) return error.Ownership;
         };
@@ -77,10 +81,19 @@ const Output = struct {
 };
 var player = lifecycle.Player(Output){ .output = .{} };
 pub fn request() bool {
+    if (!workspace.acquire(.audio)) return false;
+    pcm = workspace.pcm();
+    chain = workspace.descriptors([tone.blocks]tone.Descriptor);
+    player = .{ .output = .{} };
     return player.request();
 }
-pub fn poll(bus: anytype, clock: anytype) void {
+pub noinline fn poll(bus: anytype, clock: anytype) linksection(if (@import("native_options").devices) ".flash.text.devices" else ".text") void {
+    if (workspace.gate.owner != .audio or workspace.gate.pinned) return;
     player.poll(bus, clock);
+    if (player.phase == .done or player.phase == .failed) {
+        const report = player.report;
+        _ = workspace.gate.release(.audio, report.codec_off == 1 and report.stopped == 1 and report.returned == 1);
+    }
 }
 pub fn snapshot() lifecycle.Report {
     return player.report;

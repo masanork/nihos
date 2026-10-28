@@ -11,6 +11,25 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_device_code_requires_exact_allowlist_rx_extent_and_explicit_profile(self):
+        first = 0x40002000
+        names = sorted(MODULE.DEVICE_FUNCTIONS) + ['audio_probe.poll__func_1', 'microphone_probe.poll__func_2', 'rs485_probe.poll__func_3']
+        functions = [(name, first + i * 16, first + (i + 1) * 16) for i, name in enumerate(names)]
+        span = (first, first + len(names) * 16)
+        MODULE.audit_flash_section('.flash.devices', 1, 6, first, span[1] - first, allow_devices=True)
+        self.assertEqual(len(MODULE.audit_device_functions(functions, span)), len(names))
+        for kind, flags, allowed in ((1, 6, False), (8, 6, True), (1, 7, True), (1, 2, True)):
+            with self.assertRaises(ValueError):
+                MODULE.audit_flash_section('.flash.devices', kind, flags, first, 64, allow_devices=allowed)
+        for changed in (functions[:-1], [('arbitrary.run', *functions[0][1:])] + functions[1:],
+                        [(functions[0][0], first, first + 20)] + functions[1:]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_device_functions(changed, span)
+        boot = [('psram.probe', 0x40000120, 0x40000920), ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
+        MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000, device_span=span)
+        with self.assertRaises(ValueError):
+            MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000)
+
     def test_automatic_card_flash_functions_require_explicit_profile_and_bounded_span(self):
         boot = [('psram.probe', 0x40000120, 0x40000920),
                 ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
