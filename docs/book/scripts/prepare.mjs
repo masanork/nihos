@@ -90,7 +90,7 @@ const snippets = {
   'native-crt-check': {
     file: 'src/platform/native/main.zig',
     start: '    if (progress[0] != 0 or progress[1] != 0 or',
-    end: '    print("NIHOS_NATIVE_CRT_PASS',
+    end: '    printBoot("NIHOS_NATIVE_CRT_PASS',
     includeEnd: false
   },
   'task-states': {
