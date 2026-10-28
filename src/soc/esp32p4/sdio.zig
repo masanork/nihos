@@ -69,6 +69,14 @@ pub fn Controller(comptime IO: type) type {
         rca: u32 = 0,
         ocr: u32 = 0,
         const Self = @This();
+        const BusType = switch (@typeInfo(IO)) {
+            .pointer => |info| info.child,
+            else => IO,
+        };
+        const shared = @hasDecl(BusType, "shared_host") and BusType.shared_host;
+        fn owns(self: *const Self) bool {
+            return if (shared) self.io.ownsSlot(1) else true;
+        }
 
         fn clear(self: *Self, address: usize, bits: u32) Error!void {
             for (0..self.poll_limit) |_| {
@@ -88,12 +96,23 @@ pub fn Controller(comptime IO: type) type {
         /// Resets the shared controller. Call only before storage/CPU1 can use
         /// it. This is not a live multi-slot arbiter or an IRQ service.
         pub fn prepare(self: *Self, exclusive: bool) Error!void {
-            if (!exclusive) return error.NoOwnership;
+            if (!exclusive or shared) return error.NoOwnership;
+            return self.preparePort(true);
+        }
+
+        /// External shared-host lease required; never resets the peer slot.
+        pub fn prepareShared(self: *Self) Error!void {
+            if (!shared or !self.owns()) return error.NoOwnership;
+            return self.preparePort(false);
+        }
+
+        fn preparePort(self: *Self, reset: bool) Error!void {
             if (self.faulted) return error.Retired;
             if (self.prepared) return error.InvalidArgument;
             errdefer self.faulted = true;
-            self.io.write(regs.ctrl, 7);
-            try self.clear(regs.ctrl, 7);
+            const bits: u32 = if (reset) 7 else 6;
+            self.io.write(regs.ctrl, bits);
+            try self.clear(regs.ctrl, bits);
             self.io.write(regs.ctrl, 0);
             self.io.write(regs.mask, 0);
             self.io.write(regs.timeout, 0xffffffff);
@@ -111,6 +130,7 @@ pub fn Controller(comptime IO: type) type {
         }
 
         pub fn command(self: *Self, index: u6, argument: u32, writing: ?bool) Error!u32 {
+            if (!self.owns()) return error.NoOwnership;
             if (!allowed(index) or (index == 53) != (writing != null)) return error.InvalidArgument;
             if (index == 52 and (argument >> 28) & 7 > 1) return error.InvalidArgument;
             if (index == 53 and ((argument >> 28) & 7 != 1 or ((argument >> 31) != 0) != writing.?)) return error.InvalidArgument;
@@ -222,6 +242,7 @@ pub fn Controller(comptime IO: type) type {
         }
 
         fn transfer(self: *Self, address: u32, source: []const u8, destination: []u8, writing: bool) Error!void {
+            if (!self.owns()) return error.NoOwnership;
             const length = if (writing) source.len else destination.len;
             const argument = try argument53(address, length, writing);
             if (self.faulted) return error.Retired;
