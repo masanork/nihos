@@ -75,6 +75,6 @@ SDL互換層、文字組版、Wasm runtimeの導入や実機試験は、この�
 
 ホストテストでは、矩形copyのランダムな位置・clip・重なり2000例を変更前の画素から作る参照結果と比較する。エディタ風の4行はスクロールと部分描画の結果が全体再描画と一致するか確認する（文字やIMEの検証ではない）。カード用縦組み起動画面を、実際のassetとcanvasのfill/maskで別に構成し、既存 `card_splash.paint` の出力とpaddingを含めて全バイト比較する。さらに `paintDynamic` のPIN桁数0〜4の表示をcanvasの矩形で再構成し、実装のindicator全画素と比較する。カードの比較は実装の動作理解のための過去の比較であり、既存画面のデザインや画素互換を将来の要件とするものではない。DebugとReleaseSafeで検査する。
 
-`src/graphics/canvas_compile_probe.zig` は全描画操作を呼ぶコンパイル専用probe。Zig 0.17.0、`riscv32-freestanding-none`、`generic_rv32+m+a+c+zicsr+zifencei`、ReleaseSafeでオブジェクト生成を確認した。オブジェクトは `memcpy` と `memset` を要求する。同じprobeを `zig build-exe -fno-entry -fcompiler-rt` で静的リンクし、未解決シンボルがないことを確認した。entryなしのためlinkerは `_start` 不在を警告する。完全なファームウェアへのリンク、コードサイズ、実行時間、実機描画は確認していない。probeは公開ABIではない。
+`src/graphics/canvas_compile_probe.zig` は全描画操作を呼ぶコンパイル専用probe。Zig 0.17.0、`riscv32-freestanding-none`、`generic_rv32+m+a+c+zicsr+zifencei`、ReleaseSafeでオブジェクト生成を確認した。オブジェクトは `memcpy` と `memset` を要求する。probeを `zig build-exe -fentry=nih_canvas_probe -fno-strip -fcompiler-rt` で静的リンクし、probeシンボルが保持され未解決シンボルがないことを確認した。以前の `-fno-entry` だけのリンクはコードが除去され得るため、リンクの証拠として採用しない。完全なファームウェアへのリンク、コードサイズ、実行時間、実機描画は確認していない。probeは公開ABIではない。
 
 mainへの統合版ではsurfaceは独立したZig moduleである。probeは `--dep surface -Mroot=src/graphics/canvas_compile_probe.zig -Msurface=src/graphics/surface.zig` を指定してリンクする。
