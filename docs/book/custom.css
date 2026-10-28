@@ -12,7 +12,7 @@
 }
 
 body { font-size: 9.5pt; line-height: 1.85; }
-h1 { font-size: 18pt; line-height: 1.5; }
+h1 { font-size: 18pt; line-height: 1.5; text-wrap: balance; }
 h2 { font-size: 13pt; line-height: 1.6; }
 h3 { font-size: 11pt; line-height: 1.6; }
 h1, h2, h3 { break-after: avoid; }
@@ -31,7 +31,29 @@ table { width: 100%; font-size: 8pt; line-height: 1.6; }
 th, td { padding: 0.5em; vertical-align: top; }
 tr { break-inside: avoid; }
 blockquote { border-left: 2pt solid #42766c; padding-left: 1em; }
-.source-note { font-size: 7.5pt; color: #555; }
+.source-note { font-size: 7.5pt; color: #555; break-before: avoid; }
+.book-figure { margin: 1.2em 0; break-inside: avoid; --vs-figure--marker-display: none; --vs-figure--marker-content: none; }
+.book-figure img { display: block; width: 100%; max-height: 135mm; object-fit: contain; margin: 0 auto; }
+.book-figure figcaption { font-size: 8pt; line-height: 1.6; margin-top: 0.5em; text-align: center; }
+figure.book-figure figcaption::before { content: none; }
+nav[role='doc-toc'] { font-size: 9pt; }
+nav[role='doc-toc'] li { line-height: 1.5; }
+.experiment-versions th:nth-child(2),
+.experiment-versions td:nth-child(2) { width: 20%; white-space: nowrap; }
+.book-index { columns: 2; column-gap: 6mm; font-size: 8pt; line-height: 1.6; }
+.book-index h2 { font-size: 11pt; margin-top: 1em; }
+.index-item { break-inside: avoid; margin: 0 0 0.4em; }
+.index-term { font-weight: bold; }
+.index-location { white-space: nowrap; text-decoration: none; }
+.index-target { font-size: 0; line-height: 0; }
+@media print {
+  .index-label { display: none; }
+  .index-location::after { content: target-counter(attr(href), page); }
+}
+@media screen {
+  .book-index { columns: auto; }
+  .index-label { white-space: normal; }
+}
 
 @page :left { --vs-page--mbox-top-outside-content: '小さなOSを育てる'; }
 

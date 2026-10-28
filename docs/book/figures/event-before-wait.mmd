@@ -1,0 +1,13 @@
+sequenceDiagram
+    accTitle: 通知がwaitより先でも、eventを残す
+    accDescr: 受信taskがqueueを空と判断した後に通知が先着しても、所有CPUのkernelがpending eventを保持する。waitEventsは確認と待機登録を直列化し、既着eventを消費して眠らず戻る。
+    participant P as 送信側
+    participant K as 受信側kernel
+    participant T as 受信task
+    Note over T: queueを空と判断
+    P->>K: queue公開後に通知
+    Note over K: pending eventを保持
+    T->>K: waitEvents
+    Note over K: 確認と登録を直列化<br/>既着eventを消費
+    K-->>T: 眠らずに戻る
+    Note over T: queueを再確認

@@ -1,0 +1,8 @@
+flowchart TB
+    accTitle: ROMからnihosの実行基盤へ
+    accDescr: ROMとESP-IDFの第2段ローダを経て、nihosがstackとgp、BSS、例外入口を準備し、Zigで書かれたカーネル本体を呼ぶ。CPU0が共有状態を準備してからCPU1を起こす。
+    R["ROMの起動処理"] --> L["ESP-IDF 第2段ローダ\nイメージの配置・mapping"]
+    L --> E["nihosの入口\n割込み禁止・gpとstack・BSS"]
+    E --> V["例外入口を準備\nカーネル本体を呼ぶ"]
+    V --> C0["CPU0\n共有状態を初期化"]
+    C0 -->|"準備後に起動"| C1["CPU1\n専用stack・例外入口"]

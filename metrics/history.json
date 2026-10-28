@@ -1,0 +1,269 @@
+[
+  {
+    "schemaVersion": 1,
+    "date": "2026-10-25",
+    "measuredAt": "2026-10-25T13:17:14.507509+00:00",
+    "project": "nihos",
+    "commit": "6d267a5ddc8d27ec34c494df9fcf9c5165bcc2c2",
+    "workingTreeDirty": true,
+    "sourceTreeSha256": "5728906f96fee085531c75fa34ac2f32e5aa67c1c3f6bfcc41cb861d33a72217",
+    "code": {
+      "implementation": 6721,
+      "tests": 1934,
+      "tooling": 1203,
+      "probes": 261,
+      "vendored": 0,
+      "generated": 0
+    },
+    "byLanguage": {
+      "Zig": {
+        "implementation": 4539,
+        "tests": 1739,
+        "tooling": 20,
+        "probes": 59,
+        "vendored": 0,
+        "generated": 0
+      },
+      "C": {
+        "implementation": 996,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 100,
+        "vendored": 0,
+        "generated": 0
+      },
+      "C/header": {
+        "implementation": 172,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 20,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Rust": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 82,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Include/data": {
+        "implementation": 44,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Assembly": {
+        "implementation": 970,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Shell": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 565,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Python": {
+        "implementation": 0,
+        "tests": 195,
+        "tooling": 618,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      }
+    },
+    "byArea": {
+      "build.zig": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 20,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "compat": {
+        "implementation": 996,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "include": {
+        "implementation": 172,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "probes": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 261,
+        "vendored": 0,
+        "generated": 0
+      },
+      "src": {
+        "implementation": 5553,
+        "tests": 1739,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "tools": {
+        "implementation": 0,
+        "tests": 195,
+        "tooling": 1183,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      }
+    },
+    "coverage": {
+      "scope": "host-zig-debug-dwarf-implementation",
+      "collector": "kcov v43",
+      "sourceHashes": {
+        "src/arch/riscv32/context.zig": "ddc2ff3f52db7dbe517efa59da29c4af67a132f21a8da39d54a0c9ef760581d4",
+        "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
+        "src/arch/riscv32/cpu1_tasks.zig": "4089f66529aae794c78a9d6cdadedaaaf589686c653d77ee1d56467a11c033dd",
+        "src/arch/riscv32/duplex_scenario.zig": "aa42ab702780d37aadcfa1aadfe0a59b0520878a575a0fd67f45cb12f1f101d1",
+        "src/arch/riscv32/fpu.S": "b7a3ea2139d6d22b36a4ca6e585ce2d6baf6a0ca0705a070912cbf034d78cfd0",
+        "src/arch/riscv32/idle.zig": "42868da738fd3fa6efef68ce2c5fcffb52a5f28b8f08a1a1f861dd651e2e1204",
+        "src/arch/riscv32/ipc_scenario.zig": "8de20da789d6e438dd383763de8feeb7a44c59c9e94153de0d41b352cb3f3465",
+        "src/arch/riscv32/lifecycle_test.zig": "5eb5aa2cab826c865c9e46e36adb86455fb440047e6a7d57700e29ad35534ca2",
+        "src/arch/riscv32/native_trap.zig": "5e64d942152d260bfbb4a360a84f0879b73923dc05830a39157c8527019379a7",
+        "src/arch/riscv32/preemption_test.zig": "cdd317010cdb54685440d7216db5b59e96e69a0129074999dd9deefbe7594863",
+        "src/arch/riscv32/remote_scenario.zig": "f9354fe0be442001d116b9d297558c35f546060e517cbaf5649f46c361ec7301",
+        "src/arch/riscv32/task_calls.zig": "b561c6341f5e35da17368b51302b0b051f1688426912a376a57bcc443d37cb2c",
+        "src/arch/riscv32/task_runtime.zig": "12159afd62720a3d8c5c00eea315ecada1bbbac586c2ba95fe4ade6a97d9517a",
+        "src/arch/riscv32/trap.zig": "7b5b093c50b205e618c0ac4a16b94d9ed785828170a0635b5c2b358b61628000",
+        "src/arch/riscv32/trap_entry.S": "f66727322072079e2af68be99d7b7ab85e2a51529d2ef953fddc568665258c17",
+        "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
+        "src/kernel/arena.zig": "67cb3baa4e700e51c31949d4b007fe68eb1b80927aa3ddf0bd5a0b487a6a3b54",
+        "src/kernel/park.zig": "2d13bf34a5d40238e47b4fad4ab5b66859ef6210a6e0c23517d10e384bc008f5",
+        "src/kernel/remote_events.zig": "fb5582e30da560fdeaf42eb8a08ea9b75757793126597fae5c4dfe7e017413f2",
+        "src/kernel/remote_events_test.zig": "05bc4659d4704d56f143c8de58723a6258633a996775b609eb2ec22fee0c4ce2",
+        "src/kernel/scheduler.zig": "32783c2468aa5ee91e67786254d4215e9e1dc0e218a4d1820597fd19bf71e47c",
+        "src/kernel/spsc_channel.zig": "2ad51f26e8ae29d3d7f1c9e66fd1012bb59c2be36f21c146416ee24452681817",
+        "src/kernel/spsc_channel_test.zig": "1a2e2c9d635015cb654d99efbbfb3fad8e473b573e5b85b6c2426502e7104d96",
+        "src/kernel/spsc_ring.zig": "6d8a9fd63e853dfd84bd39d44717fa25519ea38e21fd730296ee33e2f1bb28ba",
+        "src/kernel/task_call_numbers.inc": "2560a143af2308bfd94f44bf22cc104a213bcc3a56826e46195d49bd349d0e40",
+        "src/kernel/task_control.zig": "0f15f3005f5293082ef6c9bd9f9a0b4eaca8c99f0962a01459fd2e72e7f69571",
+        "src/kernel/task_control_test.zig": "f737a460b2416c1481dd7b34b6a5e5ec21b42f5d07fe901850157d62f38608dc",
+        "src/kernel/tick_clock.zig": "7bc43c23f3ee31aba3ff618a98cec7d982ef75daddc5cf3f0d97047a17917c7c",
+        "src/kernel/tick_counter.zig": "0aec17698c2e4dff66496a430798c3a06f4da406cc543cab0944c1a0dff89085",
+        "src/platform/abi.zig": "ee4bed75417238b7e933e81647f8d0144c1795ddaf70dc7bfda153ad4896c208",
+        "src/platform/espidf_main.zig": "2f565a3c447d17a39fb622aed3ccbff2e4bfb9c25a37c8411e8d232c73efbe49",
+        "src/platform/native/main.zig": "7904554bb28101957697aaae05c0c03ed01c5b6d8d3152349ade8d29c5c18169",
+        "src/platform/native/start.S": "e859a9cb928cf6b0b39d486b7a0969bdf3eda8efc3ad0d861b9c439e22287555",
+        "src/root.zig": "3edc9b10f5a9a7cd24a0ff24f0e577c54cf527e526060b2b300a57985f9b21af",
+        "src/soc/esp32p4/software_ipi.zig": "dbe7dafacad21c5acab4fd7772be95fb125f3f2c1ce3ad1cdd500e6c304f8117",
+        "src/soc/esp32p4/timer_group.zig": "d59c7731b84cb1fd55861f8a728887af19f1b177c2f7a81b1c5dc4245115a462"
+      },
+      "lines": {
+        "covered": 447,
+        "count": 464,
+        "percent": 96.33620689655173
+      },
+      "files": {
+        "src/arch/riscv32/context.zig": {
+          "covered": 31,
+          "count": 32
+        },
+        "src/arch/riscv32/trap.zig": {
+          "covered": 8,
+          "count": 8
+        },
+        "src/graphics/test_pattern.zig": {
+          "covered": 29,
+          "count": 29
+        },
+        "src/kernel/arena.zig": {
+          "covered": 20,
+          "count": 20
+        },
+        "src/kernel/park.zig": {
+          "covered": 21,
+          "count": 21
+        },
+        "src/kernel/remote_events.zig": {
+          "covered": 16,
+          "count": 16
+        },
+        "src/kernel/scheduler.zig": {
+          "covered": 146,
+          "count": 149
+        },
+        "src/kernel/spsc_channel.zig": {
+          "covered": 28,
+          "count": 28
+        },
+        "src/kernel/spsc_ring.zig": {
+          "covered": 25,
+          "count": 26
+        },
+        "src/kernel/task_control.zig": {
+          "covered": 45,
+          "count": 51
+        },
+        "src/kernel/tick_clock.zig": {
+          "covered": 12,
+          "count": 12
+        },
+        "src/kernel/tick_counter.zig": {
+          "covered": 11,
+          "count": 15
+        },
+        "src/soc/esp32p4/software_ipi.zig": {
+          "covered": 3,
+          "count": 3
+        },
+        "src/soc/esp32p4/timer_group.zig": {
+          "covered": 52,
+          "count": 54
+        }
+      },
+      "unrepresentedSourceFiles": [
+        "src/arch/riscv32/context_offsets.inc",
+        "src/arch/riscv32/cpu1_tasks.zig",
+        "src/arch/riscv32/duplex_scenario.zig",
+        "src/arch/riscv32/fpu.S",
+        "src/arch/riscv32/idle.zig",
+        "src/arch/riscv32/ipc_scenario.zig",
+        "src/arch/riscv32/lifecycle_test.zig",
+        "src/arch/riscv32/native_trap.zig",
+        "src/arch/riscv32/preemption_test.zig",
+        "src/arch/riscv32/remote_scenario.zig",
+        "src/arch/riscv32/task_calls.zig",
+        "src/arch/riscv32/task_runtime.zig",
+        "src/arch/riscv32/trap_entry.S",
+        "src/kernel/remote_events_test.zig",
+        "src/kernel/spsc_channel_test.zig",
+        "src/kernel/task_call_numbers.inc",
+        "src/kernel/task_control_test.zig",
+        "src/platform/abi.zig",
+        "src/platform/espidf_main.zig",
+        "src/platform/native/main.zig",
+        "src/platform/native/start.S",
+        "src/root.zig"
+      ],
+      "host": {
+        "system": "Linux",
+        "machine": "aarch64"
+      },
+      "zigVersion": "0.17.0"
+    }
+  }
+]

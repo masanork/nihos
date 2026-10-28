@@ -1,0 +1,12 @@
+stateDiagram-v2
+    accTitle: 実行候補から待機し、候補へ戻る
+    accDescr: readyから選択するとrunningになる。runningはyieldでready、sleepでsleeping、blockでblocked、event待ちでwaitingとなり、各待機条件が満たされるとreadyへ戻る。終了と回収は別図で扱う。
+    direction TB
+    ready --> running: 選択
+    running --> ready: yield
+    running --> sleeping: sleep
+    sleeping --> ready: 期限・wake
+    running --> blocked: block
+    blocked --> ready: wake
+    running --> waiting: wait
+    waiting --> ready: notify

@@ -1,0 +1,7 @@
+flowchart TB
+    accTitle: 終了記録を残してから、別のstackで回収する
+    accDescr: 実行中タスクのexitはexitedの記録を残す。他の参照がないことを確認し、kernelまたは割込みstackでreapするとvacantになる。再利用時にはgenerationが更新される。
+    A["running\n自分のstackを使用中"] -->|"exit"| B["exited\n終了結果を保持"]
+    B --> C["実行を離れた後\n別stack・残存参照の確認"]
+    C -->|"reap"| D["vacant\n管理slotを解放"]
+    D -->|"add・新しい世代"| E["ready\n次のタスク"]
