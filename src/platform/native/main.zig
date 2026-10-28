@@ -18,6 +18,16 @@ const network_config = @import("network_config");
 const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
+const pointer = @import("pointer_input");
+export fn nih_touch_available() callconv(.c) bool {
+    return options.devices and board_devices.touch.ready();
+}
+export fn nih_touch_pop(output: *pointer.Event) callconv(.c) bool {
+    if (!options.devices) return false;
+    const event = board_devices.touch.pop() orelse return false;
+    output.* = event;
+    return true;
+}
 export fn nih_device_request(kind: u32) callconv(.c) bool {
     if (!options.devices) return false;
     const accepted = board_devices.requestDevice(kind);
@@ -72,6 +82,10 @@ fn serviceNetwork() void {
             devices_report_at = now + 5_000_000;
             const devices = board_devices.snapshot();
             if (options.devices) {
+                const touch = board_devices.touch.snapshot();
+                logger.record("NIHOS_NATIVE_TOUCH_INPUT", null, .{ "status", "panel", "width", "height", "slots", "polls", "fresh", "errors", "error_code", "max_poll_us" }, &touch);
+                const events = board_devices.touch.eventSnapshot();
+                logger.record("NIHOS_NATIVE_POINTER", null, .{ "down", "move", "up", "cancel", "multi", "overflow", "quadrants", "queued" }, &events);
                 const service = board_devices.serviceSnapshot();
                 logger.record("NIHOS_NATIVE_DEVICE_SERVICE", null, .{ "available", "requested", "i2s_owner", "pinned", "workspace" }, &service);
             }
@@ -811,7 +825,7 @@ export fn nih_native_main() callconv(.c) noreturn {
         if (!network_config.enabled) print("Wi-Fi unconfigured: waiting for settings\n");
         network.begin(ui.timer(), if (!network_config.enabled) .disabled else if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, ui.serviceBacking(network.storage_bytes));
     }
-    if (options.console_live and options.boot_fast) board_devices.begin(ui.timer());
+    if (options.console_live and options.boot_fast) board_devices.begin(ui.timer(), display_panel);
     stageBegin(.cores);
     if (options.console_fault) {
         print("NIHOS_NATIVE_UI_FAULT_INJECTION stage=cores\n");
