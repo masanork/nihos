@@ -502,3 +502,11 @@ the freshness guard. There are 199 passing Python tests for the stage. Initializ
 data is 18,756 B; a 714 B sparse-word patch payload is an estimate without header,
 decoder or native footprint qualification. Native e0a2f57 remains the separate
 one-shot baseline; these host checks do not unlock native bank loans or restart.
+
+## Main integration and Tab5 qualification
+
+The [main landing record](measurements/2026-10-28-graphics-main-landing.md)
+adds three exact-image warm-reset offscreen Tab5 runs and the ordinary
+launcher/shell/device/storage regression. Earlier emulator-only measurements
+above remain scoped to their original candidates. This does not qualify optical
+output, cold startup, native font-service restart or filesystem-loaded fonts.
