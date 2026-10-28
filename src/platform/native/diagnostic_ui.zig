@@ -36,6 +36,9 @@ var settled_reported = false;
 var serial = console.keys.Serial{};
 const control = @import("device_control");
 var device_commands: control.Parser = .{};
+const storage_control = @import("storage_control");
+var storage_commands: storage_control.Parser = .{};
+extern fn nih_fs_command([*]const u8, u32) callconv(.c) void;
 extern fn nih_device_request(u32) callconv(.c) bool;
 var bus = i2c.Master(Pins){ .pins = .{ .clock = clock.timer() }, .data_pin = 0, .clock_pin = 1 };
 var keyboard = console.keyboard.Keyboard(@TypeOf(bus)){ .bus = &bus };
@@ -325,13 +328,20 @@ noinline fn poll(now: u64, log: anytype) void {
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
+        var consumed = false;
+        if (@hasDecl(options, "normal_storage") and options.normal_storage) {
+            var command: ?storage_control.Command = null;
+            consumed = storage_commands.feed(@intCast(byte), &command);
+            if (command) |value| nih_fs_command(value.path.ptr, @intCast(value.path.len));
+        }
         if (options.devices) {
             var command: ?control.Command = null;
             if (device_commands.feed(@intCast(byte), &command)) {
                 if (command) |value| _ = nih_device_request(@backingInt(value));
-                continue;
+                consumed = true;
             }
         }
+        if (consumed) continue;
         if (session_active) {
             if (session_serial.feed(@intCast(byte), now)) |key| sessionKey(key, log);
         } else if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);

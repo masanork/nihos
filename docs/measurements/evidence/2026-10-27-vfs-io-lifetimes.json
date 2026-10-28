@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "scope": "host-only owner-side lifetime policy; no MMIO or device qualification",
+  "zig": "0.17.0",
+  "source_base": "67628bfd5d7f8fb032a81464798b4f67b214f972",
+  "source_sha256": {
+    "src/fs/io_leases.zig": "05ac251493f6cb49a1166ca5a5010b750930aa9cbda631bed206351ef584b9cf",
+    "src/fs/io_leases_test.zig": "251736af80b7848fb34b47bf672e1d5e0f74bda782e1705dc72668624d1baa21",
+    "src/fs/vfs.zig": "382f6bccf238878c1f881a0c8178f0b69b2ba290a7820fe14594e5433ca4ae6d",
+    "src/fs/vfs_test.zig": "50c847352a280b17969fcef8b93fd182b23a2aa1e8745fdf4bedf1ef275dab27",
+    "src/root.zig": "16c6c7cfaddecda118d9f08c8d6e2136fd1289e0b41c18e938804514482d5812"
+  },
+  "debug_tests_passed": 183,
+  "release_safe_tests_passed": 183,
+  "lease_tests": 6,
+  "vfs_tests": 28,
+  "hardware_quiescence": false,
+  "native_driver_connection": false
+}

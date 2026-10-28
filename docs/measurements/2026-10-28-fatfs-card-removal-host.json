@@ -1,0 +1,338 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "source_commit": "fa05531cc80c5c74098f3a6130bf07d52f5c452b",
+  "evidence": "host C/FatFs/VFS/RPC/broker integration and native compile/link/image audit",
+  "hardware_executed": false,
+  "host_scenarios": 99,
+  "new_cases": [
+    {
+      "name": "fat12:card-rpc-transport-cancel",
+      "observed": {
+        "mode": "card-rpc-transport-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat12:card-rpc-transport-remove",
+      "observed": {
+        "mode": "card-rpc-transport-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat12:card-rpc-idle-remove",
+      "observed": {
+        "mode": "card-rpc-idle-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat16:card-rpc-transport-cancel",
+      "observed": {
+        "mode": "card-rpc-transport-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat16:card-rpc-transport-remove",
+      "observed": {
+        "mode": "card-rpc-transport-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 14,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat16:card-rpc-idle-remove",
+      "observed": {
+        "mode": "card-rpc-idle-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 13,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat32:card-rpc-transport-cancel",
+      "observed": {
+        "mode": "card-rpc-transport-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat32:card-rpc-transport-remove",
+      "observed": {
+        "mode": "card-rpc-transport-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "fat32:card-rpc-idle-remove",
+      "observed": {
+        "mode": "card-rpc-idle-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 22,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-transport-cancel",
+      "observed": {
+        "mode": "card-rpc-transport-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 24,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-transport-remove",
+      "observed": {
+        "mode": "card-rpc-transport-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 24,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:card-rpc-idle-remove",
+      "observed": {
+        "mode": "card-rpc-idle-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 23,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "exfat:card-rpc-transport-cancel",
+      "observed": {
+        "mode": "card-rpc-transport-cancel",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "exfat:card-rpc-transport-remove",
+      "observed": {
+        "mode": "card-rpc-transport-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 18,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    },
+    {
+      "name": "exfat:card-rpc-idle-remove",
+      "observed": {
+        "mode": "card-rpc-idle-remove",
+        "checks": 9,
+        "observed": 0,
+        "sector_reads": 17,
+        "backend_bytes": 15720,
+        "rpc_used": 44928,
+        "rpc_charged": 65536,
+        "volume_probe_reads": 0
+      }
+    }
+  ],
+  "card_pipeline": [
+    {
+      "format": "fat12",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 3,
+        "cached_read_denied": true,
+        "callback_removal_checked": true
+      }
+    },
+    {
+      "format": "fat16",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 3,
+        "cached_read_denied": true,
+        "callback_removal_checked": true
+      }
+    },
+    {
+      "format": "fat32",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 5,
+        "cached_read_denied": true,
+        "callback_removal_checked": true
+      }
+    },
+    {
+      "format": "mbr-fat32",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 5,
+        "cached_read_denied": true,
+        "callback_removal_checked": true
+      }
+    },
+    {
+      "format": "exfat",
+      "observed": {
+        "passed": true,
+        "successful_reads": 3,
+        "failed_sector_positions": 3,
+        "workspace_bytes": 26112,
+        "lifetime_checked": true,
+        "busy_destroy_rejected": 4,
+        "cached_read_denied": true,
+        "callback_removal_checked": true
+      }
+    }
+  ],
+  "disk_contract": {
+    "kind": "contract",
+    "checks": 352659,
+    "workspace_bytes": 4160,
+    "fenced_result_kinds": 4
+  },
+  "rv32_card_workspace_bytes": 26104,
+  "card_rpc_parent": {
+    "used": 44928,
+    "charged": 65536,
+    "client_frames_charged_separately": 8192,
+    "controller_dma_staging": "unchanged resident SRAM"
+  },
+  "native_build": {
+    "image_bytes": 850880,
+    "image_sha256": "e8bce73b136392db2e30acb78528bd8fb3aacc58f776f44f987985bed2e2c6df",
+    "elf_sha256": "fda7e623cf0a6ef07264813b6b5de207465caaeed25f67ff5006e4291b6a2b3e",
+    "scope": "Error-result bridge compiled/linked. card_remove is RV32-compiled and host-executed; no new physical qualification."
+  },
+  "python_tests": 236,
+  "zig_tests": "Debug and ReleaseSafe passed (cached)",
+  "format_and_zlint": "passed for both changed Zig files",
+  "negative_controls": {
+    "source_commit": "372c510",
+    "prior_disk_source_sha256": "5f551db505838930bfd1f214c659133060b1de909f278067cb198f12c047417e",
+    "negative_controls": [
+      {
+        "name": "prior_disk_bridge_loses_removed_result",
+        "rejected": true,
+        "exit_code": 1,
+        "reason": "/private/tmp/nihos-vfs-native/probes/fatfs-disk/check_disk.c:118: disk.state == (fail_result == NIH_STORAGE_READ_REMOVED ? NIH_FATFS_REMOVED : NIH_FATFS_IO_FAILED) && !disk.busy"
+      },
+      {
+        "name": "prior_disk_bridge_leaves_rpc_mount_faulted_instead_of_removed",
+        "rejected": true,
+        "exit_code": 1,
+        "reason": [
+          "Zig VFS integration: TestExpectedEqual",
+          "/private/tmp/nihos-vfs-native/probes/fatfs-disk/backend_check.c:209: nih_check_rpc() == 0"
+        ]
+      }
+    ],
+    "scope": "host replay against actual prior disk implementation; no hardware executed"
+  },
+  "private_build": "/Users/masanork/Documents/Codex/2026-10-28/nihos-fatfs-card-removal-host-build",
+  "artifacts": {
+    "build.json": "2066f4e94ee84266055b004f64913a115c745ebb0498ca0f818ae272a7b4f782",
+    "disk-results.json": "04806e7e08676389be4bc3b34e6c73b384ba944073d0b00f0d39c152807fac00",
+    "embedded-link-audit.json": "7316aa7cca13228499d2e0658331409562a5e352e777540c58848e1afdf57dfb",
+    "host-results.json": "7ba5d27d459e0953647b5032a519c7ca8ec69032b21e03fe7bd54589e5b7193a",
+    "image-audit.json": "421b2c77b99e1c5f74c4c59a2e8f2cc7b03da009168e6d378f7a6f6a02b11792",
+    "negative-controls.json": "b537f078b52094865759119f3c9e1c384a3ebce9fed1fefb6430c6f2158b8404",
+    "sqlite-manifest.json": "5e7778f40c5bfe92e4eb7526326a5732e3caf8bfd749f606cefa4f29cd04ff87"
+  },
+  "limits": [
+    "Host callbacks inject transport results and logical RPC cancellation separately; no automatic RPC-to-controller stop bridge",
+    "No card-detect IRQ registration or physical removal during mounted RPC",
+    "No silicon DMA beat timing or in-flight abort qualification",
+    "No new Flash writes or device execution in this stage",
+    "No writable filesystem, persistent SQLite, full stack bound, clean POR or power-loss qualification"
+  ],
+  "native_embedded_link_regression": {
+    "passed": true,
+    "elf_sha256": "6e35726b52de1b7a84df99076fe9650652f4928503dbfd823092bf043f32bb02",
+    "physical_execution": false
+  }
+}

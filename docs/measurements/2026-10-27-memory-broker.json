@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-27",
+  "scope": "host-executed kernel component and RV32 object compilation; no target execution or physical heap handoff",
+  "baseline_merge_commit": "ad509274acf3a93315381522cf255bbb47c2e330",
+  "profile_sha256": "b59fcc52a7dcff3ba5ea0843316f0b0b0ff5ed1e085014c2ea78f39fbe427d6f",
+  "source_sha256": {
+    "src/kernel/memory_broker.zig": "7d1a6db5e26b06c7e49e7542f922a9fe70507c4b32c24d2541a9c920a5035b97",
+    "src/kernel/memory_broker_test.zig": "67401f4efd29aee51c57a8243ea45ee8b5462af30c7718499e494f9f4f570608",
+    "src/kernel/page_pool.zig": "386a5e3ffb5b021d9e70a79ac2e2c6ad10e88afa931df68cc181d195b2f7b4b6",
+    "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+    "docs/planning/tab5-development-profile.json": "b59fcc52a7dcff3ba5ea0843316f0b0b0ff5ed1e085014c2ea78f39fbe427d6f",
+    "tools/generate_memory_profile.py": "422d3bf71b17b1da748d74941478c274398f33ded321f61d148038478d87afdd",
+    "tools/check-memory-broker.sh": "e2d9a970b3e7e5bec7dcc04f43e47322546bb88e352141e32107ae04721f2339",
+    "tools/probes/memory_broker.zig": "5321424f198a273eeb853176d99c5f5b4fc73365c32ed77c6778405801fbaf40"
+  },
+  "checks": {
+    "zig_debug_tests": 184,
+    "zig_safe_tests": 184,
+    "python_tests": 147,
+    "static_analysis": true,
+    "audited_legacy_native_elf_links": 6,
+    "rv32_object_compiled": true,
+    "emulator_executed": false,
+    "physical_executed": false,
+    "remote_ci_executed": false
+  },
+  "target": {
+    "triple": "riscv32-freestanding-none",
+    "cpu": "generic_rv32+m+a+c+zicsr+zifencei",
+    "object_sha256": "f69eef1ebb5ddd9d3de55c77544384d3e5705c376a5319aa718fb5d4ab0dcd83",
+    "assembly_sha256": "1864fb51a0d589914d6012a7c2f79d9754fe4d21d778e52f320c5b4d0f39b749",
+    "metadata_bytes": 12912,
+    "metadata_reserved_bytes": 16384,
+    "compile_contract_own_prologue_frame_bytes": 3232,
+    "frame_scope": "static own frame only, excludes callers/callees/IRQ and is not runtime high-water proof"
+  },
+  "registered_payload": {
+    "internal_bytes": 212992,
+    "external_bytes": 31457280,
+    "internal_floor_bytes": 65536,
+    "external_floor_bytes": 8912896
+  },
+  "ownership_limits": {
+    "owners": 16,
+    "live_parents": 64,
+    "pins": 32
+  },
+  "runtime_integration_pending": [
+    "exclusive platform region transfer and metadata placement",
+    "scheduler/application quiescence and RPC ownership binding",
+    "C ABI/small-object adapters and DMA cache lifetime",
+    "native and physical combined workload qualification"
+  ]
+}

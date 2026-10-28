@@ -1,0 +1,9 @@
+{
+  "operator_original_card_returned": true,
+  "flash_written": false,
+  "expected_flash_sha256": "5e8de5fe117f8738053471eada32cf1cb19bb7aec760af5e4d88792f3cb5065e",
+  "verified": false,
+  "reset_sent": false,
+  "error_type": "SerialException",
+  "error": "Could not configure port: (6, 'Device not configured')"
+}
