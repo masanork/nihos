@@ -97,4 +97,11 @@ native候補のlink/配置監査も通したが、この段階ではまだ実カ
 別カードが残っている間は元firmwareへのresetを保留してROM download状態を保つ。
 元のカードへ戻してから通常起動する。カードのformatや書込みは含まない。
 
+交換待ちの期限とoperator操作が行き違ったため、`NIHOS_NATIVE_FATFS_SD_DIRECT=1`も追加した。
+このprofileは挿入済みFAT/exFATカードで起動し、littlefs boot probeとその資格を省く。
+modeはsource mapとimmutable ELF descriptorへ固定し、通常のlegacy試験の判定を緩めない。
+実機でMBR第1partitionのexFATをmountし、140 Bの2回read、32 KiBの全回収、boot stack guard保持を確認した。
+[実カード記録](../measurements/2026-10-28-fatfs-card-physical.md)に候補と前後照合・復元を保存した。
+これは実カードのnative VFS/RPCやFS取消・抜去の資格ではない。
+
 [host検証の記録](../measurements/2026-10-28-volume-admission-host.md)にfixture hash、負例と未確認範囲を保存する。

@@ -1,0 +1,5 @@
+{
+  "result": "aborted before opening serial or detecting chip",
+  "reason": "preexisting serial owner PID 63317; exited before inspection",
+  "flash_written": false
+}
