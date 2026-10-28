@@ -9,3 +9,5 @@ The opt-in command in [the fixture description](../canvas-native-display.md) bui
 - The host fixture checked representative red/green pixels, invalid geometry without mutation, and row padding. The full host test suite and static checks passed. An incompatible console-enabled fixture was rejected.
 
 These are build and host observations only. No candidate bytes were installed on the device and no scanout, timing, optical result or physical input is claimed. This fixture neither provides a general present API nor tests card scenes, editing or concurrent rendering. The app and ELF hashes identify the local build; the audit and build artifacts must be retained separately if used for future physical qualification.
+
+The initial candidate above reported landscape geometry despite drawing in portrait. Candidate `0c8d290` corrects the diagnostic report to portrait; a fresh device/integer build and image audit passed. Its application SHA-256 is `c27f0865665fe0b558d259dd2ff4e78c3300e50e504db66520075f1a379f58a6` and ELF SHA-256 is `d06d305b1e9ae0a0e3d253b38d432fab6348bb99e32103f67d13ffdf278ef715`. This corrected candidate also has no physical qualification.
