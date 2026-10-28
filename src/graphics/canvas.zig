@@ -256,6 +256,48 @@ test "overlapping scroll preserves source pixels and row padding" {
     try std.testing.expectEqualSlices(u8, &before, &pixels);
 }
 
+test "copyRect matches immutable source for clipped overlapping moves" {
+    var prng = std.Random.DefaultPrng.init(0x9d1826);
+    const random = prng.random();
+    for (0..2000) |_| {
+        var original: [50]u8 = undefined;
+        random.bytes(&original);
+        var actual = original;
+        var expected = original;
+        const source = Rect{ .x = random.intRangeAtMost(i32, -4, 6), .y = random.intRangeAtMost(i32, -4, 6), .width = random.intRangeAtMost(u32, 0, 8), .height = random.intRangeAtMost(u32, 0, 8) };
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -4, 6), .y = random.intRangeAtMost(i32, -4, 6), .width = random.intRangeAtMost(u32, 0, 8), .height = random.intRangeAtMost(u32, 0, 8) };
+        const dx = random.intRangeAtMost(i32, -4, 6);
+        const dy = random.intRangeAtMost(i32, -4, 6);
+        Canvas.init(&actual, 4, 5, 10).?.clipped(clip).copyRect(source, dx, dy);
+        for (0..5) |y| for (0..4) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            const sx = px - dx + source.x;
+            const sy = py - dy + source.y;
+            if (px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height or sx < 0 or sx >= 4 or sy < 0 or sy >= 5 or sx < source.x or sx >= @as(i64, source.x) + source.width or sy < source.y or sy >= @as(i64, source.y) + source.height) continue;
+            const from: usize = @intCast(sy * 10 + sx * 2);
+            const to = y * 10 + x * 2;
+            expected[to] = original[from];
+            expected[to + 1] = original[from + 1];
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
+}
+
+test "editor style scroll and partial redraw equal full repaint" {
+    var incremental: [256]u8 = @splat(0);
+    var repainted = incremental;
+    const a = Canvas.init(&incremental, 8, 16, 16).?;
+    const b = Canvas.init(&repainted, 8, 16, 16).?;
+    // Four deliberately different rows act as text-line stand-ins.
+    for (0..4) |i| a.fillRect(.{ .x = 0, .y = @intCast(i * 4), .width = 8, .height = 4 }, @intCast(i + 1));
+    const content = a.clipped(.{ .x = 0, .y = 0, .width = 8, .height = 16 });
+    content.copyRect(.{ .x = 0, .y = 4, .width = 8, .height = 12 }, 0, 0);
+    content.fillRect(.{ .x = 0, .y = 12, .width = 8, .height = 4 }, 5);
+    for (0..4) |i| b.fillRect(.{ .x = 0, .y = @intCast(i * 4), .width = 8, .height = 4 }, @intCast(i + 2));
+    try std.testing.expectEqualSlices(u8, &repainted, &incremental);
+}
+
 test "card boot composition equals existing renderer including padded rows" {
     const splash = @import("card_splash.zig");
     const assets = @import("card_boot/assets.zig");
