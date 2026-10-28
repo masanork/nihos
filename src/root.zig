@@ -30,6 +30,7 @@ pub const task_control = @import("kernel/task_control.zig");
 pub const fp_vectors = @import("kernel/fp_vectors.zig");
 pub const test_pattern = @import("graphics/test_pattern.zig");
 pub const console = @import("console.zig");
+pub const font_protocol = @import("graphics/font_protocol.zig");
 pub const boot_graphics = @import("graphics/boot_graphics.zig");
 pub const tab5_boot_i2c = @import("board/tab5/boot_i2c.zig");
 pub const tab5_display = @import("board/tab5/display.zig");
@@ -81,6 +82,7 @@ test {
     _ = @import("kernel/task_control_test.zig");
     _ = test_pattern;
     _ = boot_graphics;
+    _ = font_protocol;
     _ = console;
     _ = tab5_boot_i2c;
     _ = tab5_display;

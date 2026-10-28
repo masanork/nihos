@@ -42,7 +42,7 @@ static bool backing_ready;
 extern "C" { GraphicsResult graphics_result = {}; }
 #ifdef PROBE_NATIVE_OBJECT
 extern "C" { uint32_t graphics_execution_pc = 0; }
-extern "C" void nih_graphics_service_idle(uint32_t cycle, uint32_t retained);
+extern "C" uint32_t nih_graphics_next_request(uint32_t completed, uint32_t retained);
 #endif
 static void check(bool good, const char *where) {
     (void)where;
@@ -89,13 +89,18 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
     if(inputs->load_mode==1)flags|=FT_LOAD_FORCE_AUTOHINT;
     if(inputs->load_mode==2)flags|=FT_LOAD_NO_HINTING|FT_LOAD_NO_AUTOHINT;
 #ifdef PROBE_NATIVE_OBJECT
-    const unsigned cycles=4;
     uint32_t expected[16]={};
-#else
-    const unsigned cycles=1;
 #endif
     bool success=true;
-    for(unsigned cycle=0;cycle<cycles;cycle++) {
+    for(unsigned cycle=0;;cycle++) {
+#ifdef PROBE_NATIVE_OBJECT
+    graphics_result.stage=50;
+    uint32_t request=nih_graphics_next_request(cycle,(uint32_t)nih_graphics_backing_raw_used());
+    if(request==0) { check(cycle==4,"stop after requested cycles");break; }
+    check(request==cycle+1 && cycle<4,"ordered render request");
+#else
+    if(cycle==1)break;
+#endif
     pool.begin_operation();
     graphics_result.runs=0;
     Session first(1,flags),second(2,flags);
@@ -117,8 +122,6 @@ extern "C" int graphics_font_link_probe(const GraphicsInputs *inputs) {
         if(cycle==0)expected[i]=graphics_result.hashes[i];
         else check(expected[i]==graphics_result.hashes[i],"reopened clients unchanged");
     }
-    graphics_result.stage=50;
-    nih_graphics_service_idle(cycle+1,(uint32_t)nih_graphics_backing_raw_used());
 #endif
     if(pool.peak>graphics_result.pool_peak)graphics_result.pool_peak=(uint32_t)pool.peak;
     }
