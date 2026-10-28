@@ -1,6 +1,9 @@
 """Reject resets, blackouts and card activity in the card-free scene exercise."""
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 
 SPEC = importlib.util.spec_from_file_location('scene_check', Path(__file__).with_name('check-native-scene-log.py'))
@@ -19,10 +22,23 @@ def fixture():
         result += record('CARD_SCENE', ('step',), (step,))
         result += record('CARD_SCENE_HANDOFF', ('updates', 'max_pause_us'), (step, 1000 if step else 0))
         result += record('CARD_AUTO_DISPLAY', display, (0, 1, 0, 32 + step * 100, 1, 0))
+    result += record('CARD_SCENE_READY', ('manual',), (1,))
+    result += record('CARD_AUTO_DISPLAY', display, (1, 1, 0, 1300, 1, 0))
     return result
 
 
 class NativeSceneTests(unittest.TestCase):
+    def test_exercise_build_refuses_a_read_enabled_profile(self):
+        root = Path(__file__).resolve().parents[1]
+        env = {**os.environ, 'NIHOS_NATIVE_NETWORK': '0', 'NIHOS_NATIVE_USB': '1',
+               'NIHOS_NATIVE_DISPLAY': '11', 'NIHOS_NATIVE_CARD_AUTO_PROBE': '0',
+               'NIHOS_NATIVE_CARD_SCENE_EXERCISE': '1'}
+        with tempfile.TemporaryDirectory() as temporary:
+            run = subprocess.run(['sh', str(root / 'tools/build-native-elf.sh'), 'device', temporary, 'integer'],
+                                 cwd=root, env=env, capture_output=True, text=True)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn('Card scene exercise requires DISPLAY=11 and CARD_AUTO_PROBE=1', run.stderr)
+
     def test_all_twelve_transitions_preserve_one_panel_start_and_no_blackout(self):
         report = C.check_transitions(fixture())
         self.assertEqual(report['handoffs'][-1]['updates'], 12)
