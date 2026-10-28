@@ -1,0 +1,11 @@
+{
+  "phase": "baud reconfiguration before chip detection",
+  "runner_exit_code": 1,
+  "error": "repeated TIOCEXCL returned EBUSY on already claimed Darwin serial descriptor",
+  "flash_commands_issued": false,
+  "backup_created": false,
+  "candidate_image_written": false,
+  "initial_kernel_alias_denial_checks_completed": true,
+  "source_commit": "f999090520c0bd818d6db9bf6bf749c1000432f5",
+  "runner_log_sha256": "62ad8def5fb7631f360ea5ee60de7b0ef3146879c87c4e929921ebbf5540fcf9"
+}

@@ -1,0 +1,14 @@
+pub const floating = false;
+pub const compiled = false;
+pub const sqlite = true;
+pub const qualification = false;
+pub const sdmmc = true;
+pub const sdmmc_profile: u32 = 2;
+pub const storage = true;
+pub const storage_service = true;
+pub const high_sram = true;
+pub const broker = true;
+pub const cold_flash = true;
+pub const sd_removal = false;
+pub const cold_capture = false;
+pub const fatfs_native = true;

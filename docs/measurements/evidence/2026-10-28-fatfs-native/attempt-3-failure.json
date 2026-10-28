@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "result": "failed",
+  "source_commit": "bf4d5ea3335340d54f8ce70bdefdc712670cbc61",
+  "stages": [
+    10,
+    20,
+    21,
+    22,
+    23
+  ],
+  "failure_caller": "0x400a1430",
+  "function": "fatfs_runtime.runClient",
+  "cause": "Legacy C allocator identity was used instead of the scheduler generation handle after the allocator had retired.",
+  "restored": {
+    "verified": true,
+    "sha256": "ed3aaff46d961bfa774c65920f87c5f44ca64db9f5f65b0a86e9f9c302d96ca3"
+  },
+  "log_sha256": "5f3441dbe8d5df043222e0aebf0d6a1068d5ebebc51aa69a8a8d15784a8709b2"
+}

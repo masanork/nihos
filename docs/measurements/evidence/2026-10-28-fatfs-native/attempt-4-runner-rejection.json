@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "result": "runtime passed; original runner rejected old Flash-span ceiling",
+  "source_commit": "4e193f6766a369718fb79b97893937e228969542",
+  "validator_fix_commit": "087524a93602e38978fcad0f47c8de1349b8fc89",
+  "replayed_report": "replayed-report.json",
+  "restored": {
+    "verified": true,
+    "sha256": "ed3aaff46d961bfa774c65920f87c5f44ca64db9f5f65b0a86e9f9c302d96ca3"
+  },
+  "log_sha256": "d44183c674302d7e5cb3592dd8b69e1f6594abd5f4a5a3b0cf89b6d824c9f06d"
+}
