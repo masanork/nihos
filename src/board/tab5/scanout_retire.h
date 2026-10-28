@@ -31,6 +31,9 @@ static bool stop_dma(bool blank) {
         if (!(DW_GDMA.chen0.val & 1)) {
             const int __DECLARE_RCC_ATOMIC_ENV = 0;
             (void)__DECLARE_RCC_ATOMIC_ENV;
+            // The host must stop consuming DPI before its clock/data source
+            // is retired. Otherwise a warm update latches dpi_buff_pld_under.
+            mipi_dsi_host_ll_enable_video_mode(&MIPI_DSI_HOST, false);
             mipi_dsi_brg_ll_enable_interrupt(&MIPI_DSI_BRIDGE, UINT32_MAX, false);
             mipi_dsi_brg_ll_enable_dpi_output(&MIPI_DSI_BRIDGE, false);
             mipi_dsi_brg_ll_enable(&MIPI_DSI_BRIDGE, false);
