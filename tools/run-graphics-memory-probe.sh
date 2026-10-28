@@ -24,7 +24,7 @@ if [ "$kernel_backing" = 1 ]; then
     export NIHOS_GRAPHICS_ZIG_USED
     mkdir -p "$out/buddy"
     buddy_object="$out/buddy/backing.o"
-    "$zig" build-obj -O safe -fllvm -fno-stack-check -fno-stack-protector -fcompiler-rt \
+    "$zig" build-obj -O safe -fllvm -fno-stack-check -fno-stack-protector -fPIC -fcompiler-rt \
         --dep buddy_heap --dep task_resources -Mroot=probes/graphics/buddy_backing.zig \
         -Mbuddy_heap=src/kernel/buddy_heap.zig -Mtask_resources=src/kernel/task_resources.zig \
         -femit-bin="$buddy_object"

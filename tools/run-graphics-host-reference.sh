@@ -8,7 +8,7 @@ sources=$(python3 probes/graphics/fetch_sources.py)
 out="$repo_root/build/graphics-rv32"
 mkdir -p "$out/generated" build/graphics-probe/buddy
 python3 probes/graphics/generate_link_oracle.py "$out/generated"
-"$zig" build-obj -O safe -fllvm -fno-stack-check -fno-stack-protector -fcompiler-rt \
+"$zig" build-obj -O safe -fllvm -fno-stack-check -fno-stack-protector -fPIC -fcompiler-rt \
     --dep buddy_heap --dep task_resources -Mroot=probes/graphics/buddy_backing.zig \
     -Mbuddy_heap=src/kernel/buddy_heap.zig -Mtask_resources=src/kernel/task_resources.zig \
     -femit-bin=build/graphics-probe/buddy/backing.o
