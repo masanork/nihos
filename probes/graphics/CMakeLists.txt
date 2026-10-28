@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(PROBE_SANITIZERS "Instrument host libraries and probes" ON)
 option(PROBE_LINK_ORACLE "Build memory-stream host/RV32 link oracle" OFF)
 option(PROBE_TASK_ORACLE "Use native trap assembly and common task runtime in ISA fixture" OFF)
+option(PROBE_NATIVE_OBJECT "Link a relocatable private payload for native integration" OFF)
 if(PROBE_SANITIZERS)
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address,undefined)
@@ -70,9 +71,16 @@ if(PROBE_LINK_ORACLE)
       target_include_directories(font-link-oracle PRIVATE ../../src/arch/riscv32 ../../src/kernel)
       target_link_libraries(font-link-oracle PRIVATE "${PROBE_WORKER_OBJECT}")
     endif()
-    target_link_options(font-link-oracle PRIVATE -nostartfiles --specs=nosys.specs
-      "-Wl,-T,${oracle_layout}" -Wl,--gc-sections
-      "-Wl,-Map,${CMAKE_CURRENT_BINARY_DIR}/oracle.map")
+    if(PROBE_NATIVE_OBJECT)
+      target_compile_definitions(font-link-oracle PRIVATE PROBE_NATIVE_OBJECT=1)
+      target_link_options(font-link-oracle PRIVATE -nostartfiles --specs=nosys.specs
+        -Wl,-r,--gc-sections,-e,graphics_font_link_probe
+        "-Wl,-Map,${CMAKE_CURRENT_BINARY_DIR}/oracle.map")
+    else()
+      target_link_options(font-link-oracle PRIVATE -nostartfiles --specs=nosys.specs
+        "-Wl,-T,${oracle_layout}" -Wl,--gc-sections
+        "-Wl,-Map,${CMAKE_CURRENT_BINARY_DIR}/oracle.map")
+    endif()
   else()
     target_sources(font-link-oracle PRIVATE link_host_main.cpp)
   endif()

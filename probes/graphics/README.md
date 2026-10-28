@@ -1,5 +1,12 @@
 # Demand-allocated graphics memory experiment
 
+The latest stage also has an opt-in native P4 image: see
+[`docs/native-graphics.md`](../../docs/native-graphics.md). It passes native
+boot/task/timer execution in the emulator, uses the real task-owned PSRAM
+ledger and audits both revision layouts. It uses temporary Flash font inputs;
+native font-filesystem input and physical-device qualification remain pending.
+Earlier sections below retain each experiment's original evidence scope.
+
 This independent host probe tests the user's requirement that Japanese text
 support acquire memory when needed, return client memory on close, and allow
 multiple applications to stay open. It does not reserve the previous 2/6/8 MiB

@@ -13,9 +13,10 @@ boot_dir="$build_dir/loader"
 mode=${2:-integer}
 case "$mode" in
     integer) ;;
-    floating|compiled|sqlite) build_dir="$build_dir-$mode" ;;
-    *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
+    floating|compiled|sqlite|graphics) build_dir="$build_dir-$mode" ;;
+    *) echo "mode must be integer, floating, compiled, sqlite or graphics" >&2; exit 1 ;;
 esac
+if [ "$mode" = graphics ]; then boot_dir="$build_dir/loader"; fi
 idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
 if [ ! -f "$idf_path/export.sh" ]; then
     echo "ESP-IDF v5.4.4 not found; set NIHOS_IDF_PATH" >&2
@@ -33,6 +34,11 @@ defaults="$repo_root/ports/esp32p4-native/sdkconfig.defaults"
 if [ "$profile" = emulator ]; then
     defaults="$defaults;$repo_root/sdkconfig.emulator.defaults"
 fi
+if [ "$mode" = graphics ]; then
+    printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
+        "$repo_root/ports/esp32p4-native/partitions-graphics.csv" > "$build_dir/graphics.defaults"
+    defaults="$defaults;$build_dir/graphics.defaults"
+fi
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \
     -D "SDKCONFIG_DEFAULTS=$defaults" bootloader partition-table
@@ -49,6 +55,7 @@ sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
     0x10000 "$build_dir/nihos-native.bin"
 set --
 if [ "$mode" = sqlite ]; then set -- "$build_dir/sqlite-manifest.json"; fi
+if [ "$mode" = graphics ]; then set -- "$build_dir/graphics-manifest.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"

@@ -3,6 +3,12 @@
 Status: proposed native integration boundary, 2026-10-28. The executable
 evidence is a standalone RV32 ISA fixture, not a running native service.
 
+Update: the separate [native graphics fixture](native-graphics.md) also passes
+native P4 boot/task/timer execution in the emulator and both revision-profile
+image audits. Native filesystem input, persistent service lifetime and physical
+qualification remain pending. The sections below retain the design and earlier
+ISA evidence that led to that fixture.
+
 ## Ownership
 
 One serialized worker owns FreeType/HarfBuzz calls and private mutable face

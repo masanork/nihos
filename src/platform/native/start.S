@@ -66,7 +66,18 @@ nih_native_start:
     sw zero, 0(t0)
     addi t0, t0, 4
     j 1b
-2:  call .Lsetup_vector
+2:
+#if NIH_NATIVE_GRAPHICS
+    la t0, __graphics_bss_start
+    la t1, __graphics_bss_end
+.Lzero_graphics_bss:
+    bgeu t0, t1, .Lgraphics_bss_ready
+    sw zero, 0(t0)
+    addi t0, t0, 4
+    j .Lzero_graphics_bss
+.Lgraphics_bss_ready:
+#endif
+    call .Lsetup_vector
     call nih_native_main
     j .Lhalt
 
