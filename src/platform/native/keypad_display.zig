@@ -15,10 +15,61 @@ extern fn nih_display_keypad_publish(u32, u32) callconv(.c) bool;
 extern fn nih_display_keypad_count() callconv(.c) u32;
 extern fn nih_display_notice_publish(u32) callconv(.c) bool;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
-pub const low_start: u32 = 0x4ff40000;
-pub const low_end: u32 = 0x4ff60000;
-pub const high_start: u32 = 0x4ff70000;
-pub const high_end: u32 = 0x4ff9f000;
+const sram = @import("native_tasks").memory.dma;
+const Lease = sram.Lease;
+extern fn nih_display_keypad_memory(u32, u32, u32, u32) callconv(.c) bool;
+extern fn nih_display_keypad_idle() callconv(.c) bool;
+extern fn nih_display_keypad_fits(*const plan.Config, u32, u32, bool) callconv(.c) bool;
+var leases: [2]Lease = .{ .{}, .{} };
+pub var low_start: u32 = 0;
+pub var low_end: u32 = 0;
+pub var high_start: u32 = 0;
+pub var high_end: u32 = 0;
+noinline fn acquire() linksection(if (options.card_read) ".flash.text.card" else ".text") !void {
+    if (leases[0].owner != 0 and leases[1].owner != 0) return;
+    if (leases[0].owner != 0 or leases[1].owner != 0) return error.Lease;
+    // Bounded budgets, not fixed addresses. The base may grant less when
+    // other services own SRAM; stage() validates the actual candidate fit.
+    leases[0] = sram.take(sram.display_owner, 64 * 1024, 128 * 1024) orelse return error.Lease;
+    leases[1] = sram.take(sram.display_owner, 8 * 1024, 188 * 1024) orelse {
+        if (sram.release(leases[0])) leases[0] = .{};
+        return error.Lease;
+    };
+    low_start = leases[0].start;
+    low_end = low_start + leases[0].bytes;
+    high_start = leases[1].start;
+    high_end = high_start + leases[1].bytes;
+    if (!nih_display_keypad_memory(low_start, low_end, high_start, high_end)) {
+        _ = release();
+        return error.Lease;
+    }
+}
+/// Caller must have confirmed that all display DMA references are retired.
+pub noinline fn release() linksection(if (options.card_read) ".flash.text.card" else ".text") bool {
+    if (!nih_display_keypad_idle()) return false;
+    var ok = true;
+    for (&leases, 0..) |*lease, index| if (lease.owner != 0) {
+        if (!sram.release(lease.*)) {
+            ok = false;
+        } else {
+            lease.* = .{};
+            if (index == 0) {
+                low_start = 0;
+                low_end = 0;
+            } else {
+                high_start = 0;
+                high_end = 0;
+            }
+        }
+    };
+    if (ok) {
+        low_start = 0;
+        low_end = 0;
+        high_start = 0;
+        high_end = 0;
+    }
+    return ok;
+}
 pub const Prepared = struct { local_start: u32, local_bytes: u32, nodes: u32, pixel_bytes: u32, font_low: u32, font_low_bytes: u32 };
 pub const Staged = struct { config: plan.Config, prepared: Prepared };
 pub noinline fn publishNotice(frame: []const u8) linksection(if (options.card_auto) ".flash.photo" else ".text") !void {
@@ -40,6 +91,7 @@ noinline fn paintTextures(index: u32, count: u8) linksection(if (options.card_re
 /// CPU-only PSRAM work. The live display borrows copied SRAM pixels/LLIs,
 /// never this framebuffer or plan; do not touch either SRAM pool here.
 pub noinline fn stage(frame: []u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !Staged {
+    try acquire();
     const atlas = card.KeypadAtlas.Store(".flash.keypad");
     const spans = if (options.card_read) runtime: {
         if (!static_frame) {
@@ -77,6 +129,8 @@ pub noinline fn stage(frame: []u8) linksection(if (options.card_read) ".flash.te
         .pixels = if (options.card_read) 0x48030000 else @intFromPtr(&atlas.pixels),
         .pixels_bytes = if (options.card_read) frame.len else atlas.pixels.len,
     };
+    // No SRAM or live scene changes until the exact candidate fits.
+    if (!nih_display_keypad_fits(&config, @intCast(descriptor_start), @intCast(descriptor_bytes), options.card_auto and notice_frame)) return error.Lease;
     var pixel_bytes: u32 = 0;
     for (spans) |span| if (@backingInt(span.kind) >= 3) {
         pixel_bytes += span.words * 8;
