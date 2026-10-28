@@ -14,6 +14,9 @@ def main():
         manifest=json.loads((ROOT/'src/graphics/card_auto_font.json').read_text())
         manifest['allowed_functions']=[name for name in manifest['allowed_functions'] if not name.startswith('card_read.')]
         manifest['automatic_cards']={'schema':2,'kinds':['mynumber','license','myna_license'],'credential_budget_per_pin':1,'read_enabled':not probe,'notice_scanout':'sram-double-bank-v1','jis_bytes':0 if probe else 17672,'jis_sha256':sha(ROOT/'src/card/jis0208.bin'),'trust_bytes':0 if probe else (ROOT/'src/card/license_trust.bin').stat().st_size,'trust_sha256':sha(ROOT/'src/card/license_trust.bin')}
+        if 'pub const card_scene_exercise = true;' in (build/'native_options.zig').read_text():
+            manifest['automatic_cards']['scene_exercise']=True
+            manifest['allowed_functions']=[name for name in manifest['allowed_functions'] if not name.startswith('usb_probe.Device.')]
     objects={p.name:{'sha256':sha(p),'functions':C.functions(p)} for p in sorted(build.glob('photo_*.o'))}
     source=ROOT/'build/openjpeg/openjpeg-2.5.4/src/lib/openjp2'
     paths=list(source.glob('*.c'))+list(source.glob('*.h'))+list((ROOT/'probes/photo').glob('*'))

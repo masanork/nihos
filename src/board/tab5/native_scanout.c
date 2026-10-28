@@ -43,6 +43,10 @@ static uint32_t dsi_error0, dsi_error1, dma_error, bridge_error;
 static uint32_t prime_depth;
 static uint32_t source_address;
 static bool pattern_active;
+static volatile bool pause_requested;
+static bool stop_dma(bool blank);
+static void dark(void);
+static bool complete_dma_frame(void);
 #define DMA_ERRORS 0x07ffffe0u
 #include "keypad_sparse.h"
 
@@ -118,16 +122,6 @@ void nih_display_command_header(uint32_t type, uint32_t low, uint32_t high) {
     mipi_dsi_host_ll_gen_set_packet_header(&MIPI_DSI_HOST, 0, (mipi_dsi_data_type_t)type, (uint8_t)high, (uint8_t)low);
 }
 
-static void dark(void) {
-#if NIH_NATIVE_CARD_AUTO
-    if (GPIO.out.val & (1u << 22)) ++backlight_offs;
-#endif
-    gpio_ll_set_level(&GPIO, 22, 0);
-}
-void nih_display_backlight(bool enable) {
-    if (enable && dma_owned && completions >= 2 && !fault) gpio_ll_set_level(&GPIO, 22, 1);
-    else dark();
-}
 uint32_t nih_display_dma_irq_source(void) { return ETS_DW_GDMA_INTR_SOURCE; }
 void nih_display_pattern_enable(const nih_dpi_timing *t) {
     const int __DECLARE_RCC_ATOMIC_ENV = 0;
@@ -245,6 +239,7 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uin
     if (dw_gdma_ll_is_bus_clock_enabled(0)) return -2;
     dw_gdma_ll_enable_bus_clock(0, true);
     dma_owned = true;
+    pause_requested = false;
     dw_gdma_ll_reset_register(0);
     dw_gdma_ll_enable_controller(&DW_GDMA, true);
     dw_gdma_ll_enable_intr_global(&DW_GDMA, true);
@@ -429,7 +424,9 @@ uint32_t nih_display_scanout_poll(void) {
     // the bridge data FIFO. Retain its status, do not call it DMA qualification.
     if (!pattern_active && (bridge & MIPI_DSI_BRG_LL_EVENT_UNDERRUN)) result |= 4;
     if (!result && (events & DW_GDMA_LL_CHANNEL_EVENT_DMA_TFR_DONE)) {
-        if (!restart_dma()) result = 8;
+        /* Retire only at a completed frame. Keep the panel/PHY/backlight on
+         * while the foreground owner replaces its private SRAM scanout. */
+        if (!complete_dma_frame()) result = 8;
         else { if (completions != UINT32_MAX) ++completions; result = 1; }
     }
     if (result & 14) {
@@ -441,30 +438,4 @@ uint32_t nih_display_scanout_poll(void) {
     return result;
 }
 
-bool nih_display_scanout_stop(void) {
-    dark();
-    if (!dma_owned) return true;
-    dw_gdma_ll_channel_enable_intr_propagation(&DW_GDMA, 0, UINT32_MAX, false);
-    dw_gdma_ll_channel_enable(&DW_GDMA, 0, false);
-    for (unsigned poll = 0; poll < 100000; ++poll) {
-        if (!(DW_GDMA.chen0.val & 1)) {
-            const int __DECLARE_RCC_ATOMIC_ENV = 0;
-            (void)__DECLARE_RCC_ATOMIC_ENV;
-            mipi_dsi_brg_ll_enable_interrupt(&MIPI_DSI_BRIDGE, UINT32_MAX, false);
-            mipi_dsi_brg_ll_enable_dpi_output(&MIPI_DSI_BRIDGE, false);
-            mipi_dsi_brg_ll_enable(&MIPI_DSI_BRIDGE, false);
-            mipi_dsi_ll_enable_dpi_clock(0, false);
-            dw_gdma_ll_enable_intr_global(&DW_GDMA, false);
-            dw_gdma_ll_enable_controller(&DW_GDMA, false);
-            dw_gdma_ll_enable_bus_clock(0, false);
-            dma_owned = false;
-            ui_enabled = false;
-#if NIH_NATIVE_CARD_AUTO
-            notice_enabled = false;
-#endif
-            return true;
-        }
-    }
-    /* Keep this channel/domain and its private memory retired on timeout. */
-    return false;
-}
+#include "scanout_retire.h"

@@ -282,7 +282,7 @@ pub const Device = struct {
         return device;
     }
     pub fn openAutomatic(clock: timer_group.Timer, report: *Report) !Device {
-        if (!options.card_auto) return error.Denied;
+        if (!options.card_auto or options.card_scene_exercise) return error.Denied;
         var device = try openAuthenticated(clock, report);
         device.policy.profile = .detection;
         device.policy.probe_only = options.card_auto_probe;

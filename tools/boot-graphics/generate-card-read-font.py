@@ -31,10 +31,10 @@ def main():
         data += struct.pack('<I',code) + image.tobytes()
     destination = ROOT / 'src/graphics/card_read_font.bin'
     destination.write_bytes(data)
-    sources = ('tools/boot-graphics/generate-card-read-font.py', 'src/platform/native/card_read.zig', 'src/platform/native/keypad_display.zig', 'src/platform/native/usb_probe.zig', 'src/platform/native/display_runtime.zig', 'src/graphics/card_pin.zig')
-    manifest = {'schema':1, 'ui_mode':'runtime', 'font_bytes':len(data), 'font_sha256':hashlib.sha256(data).hexdigest(),
+    sources = ('tools/boot-graphics/generate-card-read-font.py', 'src/platform/native/card_read.zig', 'src/platform/native/keypad_display.zig', 'src/platform/native/usb_probe.zig', 'src/platform/native/display_runtime.zig', 'src/graphics/card_pin.zig', 'src/board/tab5/native_scanout.c', 'src/board/tab5/keypad_sparse.h', 'src/board/tab5/notice_sparse.h', 'src/board/tab5/scanout_retire.h')
+    manifest = {'schema':1, 'ui_mode':'runtime', 'scene_handoff':'dma-eof-panel-held-v1', 'font_bytes':len(data), 'font_sha256':hashlib.sha256(data).hexdigest(),
                 'font_source_sha256':FONT_SHA, 'glyphs':len(chars),
-                'allowed_functions':['card_read.prepare', 'card_read.run', 'keypad_display.prepare', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start'],
+                'allowed_functions':['card_read.prepare', 'card_read.run', 'keypad_display.prepare', 'keypad_display.stage', 'keypad_display.bind', 'keypad_display.paintTextures', 'usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut', 'display_runtime.start', 'display_runtime.replaceCard'],
                 'sources':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in sources}}
     destination.with_suffix('.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(f'{len(chars)} glyphs, {len(data)} bytes')
