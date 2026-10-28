@@ -225,7 +225,7 @@ pub noinline fn run(clock: timer_group.Timer, workspace: ?*[8192]u8) linksection
         report.stages[phase] = .{ .index = @intCast(phase), .bus_bits = controller.bus_bits, .clock_khz = controller.clock_khz, .scr_widths = controller.scr_widths, .host_width = controller.host_width, .divider = controller.divider, .reads = 8 + sample_count, .crc0 = checks[0], .crc1 = checks[1], .crc_middle = checks[2], .crc_last = checks[3], .samples = sample_count, .digest = digest };
         report.stage_count += 1;
     }
-    if (options.storage) {
+    if (options.storage and !options.fatfs_sd_direct) {
         // The opt-in raw littlefs fixture only accepts a full-card
         // volume smaller than 2 TiB; the generic block reader supports 2 TiB.
         if (controller.sectors > 0xffff_ffff) return failure(report, controller);

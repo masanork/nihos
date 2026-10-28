@@ -757,7 +757,10 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     storage_stack = None
     storage_api = None
     storage_workspace = None
-    storage_expected = image is not None and image.get('sqlite', {}).get('littlefs') is not None
+    card_direct = (image or {}).get('sqlite',{}).get('fatfs_native',{}).get('card',{}).get('mode')=='inserted'
+    if card_direct and (require_storage or any(marker in log for marker in ('NIHOS_NATIVE_STORAGE ', 'NIHOS_NATIVE_STORAGE_STACK ', 'NIHOS_NATIVE_STORAGE_API ', 'NIHOS_NATIVE_STORAGE_WORKSPACE '))):
+        raise ValueError('inserted card profile cannot claim legacy littlefs qualification')
+    storage_expected = image is not None and image.get('sqlite', {}).get('littlefs') is not None and not card_direct
     if require_storage or storage_expected or 'NIHOS_NATIVE_STORAGE ' in log:
         if evidence != 'physical-device' or sdmmc is None or mode != 'sqlite':
             raise ValueError('storage requires physical SDMMC and SQLite mapped span')
