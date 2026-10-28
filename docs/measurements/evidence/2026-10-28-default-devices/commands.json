@@ -1,0 +1,30 @@
+[
+  {
+    "seconds": 12.027699459,
+    "command": ":devices\n"
+  },
+  {
+    "seconds": 16.074959625,
+    "command": ":mic\n:audio\n"
+  },
+  {
+    "seconds": 28.088101584,
+    "command": ":devices\n:audio\n:mic\n"
+  },
+  {
+    "seconds": 40.06364425,
+    "command": ":devices\n:mic\n"
+  },
+  {
+    "seconds": 52.065018167,
+    "command": ":devices\n:rs485-loopback\n"
+  },
+  {
+    "seconds": 64.038535542,
+    "command": ":rs485-loopback\n"
+  },
+  {
+    "seconds": 76.012321584,
+    "command": ":devices\n"
+  }
+]

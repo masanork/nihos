@@ -1,7 +1,7 @@
 # ADR 0052: Default on-demand native device drivers
 
 - Date: 2026-10-28
-- Status: implemented and host/build checked; combined-image physical validation pending
+- Status: implemented; combined-image idle/overlap/repeat physically checked
 - Extends: [ADR 0047](0047-default-connectivity-and-board-devices.md),
   [ADR 0049](0049-native-audio-output-probe.md),
   [ADR 0050](0050-native-finite-microphone-input.md),
@@ -72,8 +72,8 @@ linker marker, exact function allowlist, complete byte coverage and actual image
 payload. Unknown functions, writable sections, missing functions and extent
 changes are rejected. Standalone probes retain their prior SRAM code placement.
 
-The final local combined build leaves **50688 bytes** of primary static heap,
-versus **56128 bytes** with DEVICES=0: **5440 bytes** of additional SRAM. Its
+The final local combined build leaves **50432 bytes** of primary static heap,
+versus **55872 bytes** with DEVICES=0: **5440 bytes** of additional SRAM. Its
 foreground device code occupies **9414 Flash bytes**. These are link-layout
 measurements, not free-heap measurements from a running device.
 
@@ -92,14 +92,12 @@ Flash boundary and incompatible-profile rejection. Static analysis, RV32 links,
 DMA/UART negative-control compilation and separate legacy fixture builds pass.
 The default combined and drivers-disabled images are also built/audited in CI.
 
-The physical Tab5 was being used by a concurrent card-scene session during this
-change. No combined candidate was written or represented as device-qualified.
-Before landing the new default, obtain exclusive write ownership, retain and
-verify exact candidate bytes, confirm idle produces no requests, then exercise
-microphone/audio alternation, rejected overlap, repeated internal UART requests,
-cleanup, continuing display/ticks/sensors/C6, and restoration of the prior image.
-Audible quality, external RS485 peer/wires, cold power-cycle, power consumption
-and long-duration operation remain separate observations.
+The [combined physical checkpoint](../measurements/2026-10-28-default-devices.md)
+passed idle, rejected overlap, microphone/audio alternation, repeated internal
+UART requests and cleanup, with continuing display/hart progress and verified
+restoration of the prior app. This does not qualify external RS485, audible
+quality, microphone acoustic mapping, configured Wi-Fi traffic, cold power-cycle,
+power consumption or long-duration operation.
 
 The combined exercise checker is `python3 tools/check-native-devices.py CAPTURE
 REPORT`. CAPTURE retains `result.json`, `serial.log`, and `candidate/` with the
