@@ -48,6 +48,28 @@ pub const Canvas = struct {
             }
         }
     }
+    /// Move a rectangle within the same surface. Uncovered pixels are unchanged.
+    pub fn copyRect(self: Canvas, source: Rect, dest_x: i32, dest_y: i32) void {
+        const dx = @as(i64, dest_x) - source.x;
+        const dy = @as(i64, dest_y) - source.y;
+        const visible_source = intersect(bounds(source), .{ .left = 0, .top = 0, .right = @intCast(self.target.width), .bottom = @intCast(self.target.height) });
+        const area = intersect(visible_source, .{ .left = self.clip.left - dx, .top = self.clip.top - dy, .right = self.clip.right - dx, .bottom = self.clip.bottom - dy });
+        if (area.left >= area.right or area.top >= area.bottom) return;
+        const w: usize = @intCast(area.right - area.left);
+        const h: usize = @intCast(area.bottom - area.top);
+        for (0..h) |row| {
+            const sy: usize = @intCast(if (dy > 0) area.bottom - 1 - @as(i64, @intCast(row)) else area.top + @as(i64, @intCast(row)));
+            const ty: usize = @intCast(@as(i64, @intCast(sy)) + dy);
+            for (0..w) |column| {
+                const sx: usize = @intCast(if (dx > 0) area.right - 1 - @as(i64, @intCast(column)) else area.left + @as(i64, @intCast(column)));
+                const tx: usize = @intCast(@as(i64, @intCast(sx)) + dx);
+                const from = sy * self.target.stride + sx * 2;
+                const to = ty * self.target.stride + tx * 2;
+                self.target.bytes[to] = self.target.bytes[from];
+                self.target.bytes[to + 1] = self.target.bytes[from + 1];
+            }
+        }
+    }
     /// One pixel wide, inclusive endpoints; canonical major-axis rounding.
     pub fn line(self: Canvas, x0: i32, y0: i32, x1: i32, y1: i32, color: u16) void {
         if (self.clip.left >= self.clip.right or self.clip.top >= self.clip.bottom) return;
@@ -220,6 +242,18 @@ test "indexed nearest scaling respects clipping and padding" {
     const before = out;
     try std.testing.expectError(error.InvalidImage, c.blitIndexed8Scaled(.{ .bytes = &.{}, .width = 0, .height = 0, .stride = 0 }, &palette, .{ .x = 0, .y = 0, .width = 0, .height = 0 }));
     try std.testing.expectEqualSlices(u8, &before, &out);
+}
+
+test "overlapping scroll preserves source pixels and row padding" {
+    var pixels = [_]u8{ 1, 0, 2, 0, 3, 0, 0xaa, 0xaa, 4, 0, 5, 0, 6, 0, 0xaa, 0xaa, 7, 0, 8, 0, 9, 0, 0xaa, 0xaa };
+    const c = Canvas.init(&pixels, 3, 3, 8).?;
+    c.copyRect(.{ .x = 0, .y = 0, .width = 3, .height = 3 }, 1, 1);
+    try std.testing.expectEqualSlices(u8, &.{ 1, 0, 2, 0, 3, 0, 0xaa, 0xaa, 4, 0, 1, 0, 2, 0, 0xaa, 0xaa, 7, 0, 4, 0, 5, 0, 0xaa, 0xaa }, &pixels);
+    c.copyRect(.{ .x = 1, .y = 1, .width = 2, .height = 2 }, 0, 0);
+    try std.testing.expectEqualSlices(u8, &.{ 1, 0, 2, 0, 3, 0, 0xaa, 0xaa, 4, 0, 5, 0, 2, 0, 0xaa, 0xaa, 7, 0, 4, 0, 5, 0, 0xaa, 0xaa }, &pixels);
+    const before = pixels;
+    c.clipped(.{ .x = 1, .y = 1, .width = 1, .height = 1 }).copyRect(.{ .x = std.math.minInt(i32), .y = 0, .width = 1, .height = 1 }, std.math.maxInt(i32), 0);
+    try std.testing.expectEqualSlices(u8, &before, &pixels);
 }
 
 test "card boot composition equals existing renderer including padded rows" {
