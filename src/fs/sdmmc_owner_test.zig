@@ -59,10 +59,20 @@ test "block owner retains an incomplete DMA fence and denies further requests" {
         var data: [512]u8 = @splat(0);
         try std.testing.expectError(error.Quarantined, owner.read(&controller, 0, &data, 1, Control{ .reason = .removed }));
         try std.testing.expect(owner.busy());
+        try std.testing.expect(!owner.canRestart(false, false, true));
         try std.testing.expectError(error.Busy, owner.read(&controller, 0, &data, 2, Control{}));
         try std.testing.expectEqual(@as(u32, 1), controller.launches);
         try std.testing.expectError(error.Busy, owner.requests.discard(.{ .slot = 0, .generation = 1 }));
     }
+}
+test "card session restart requires an idle fenced owner and unused generation" {
+    var owner = bridge.ReadOwner{};
+    try std.testing.expect(owner.canRestart(false, false, true));
+    try std.testing.expect(!owner.canRestart(true, false, true));
+    try std.testing.expect(!owner.canRestart(false, true, true));
+    try std.testing.expect(!owner.canRestart(false, false, false));
+    owner.generation = 0xffff_ffff;
+    try std.testing.expect(!owner.canRestart(false, false, true));
 }
 test "block owner closes stop notification window before completion publication" {
     for ([_]sd.StopReason{ .none, .cancelled, .removed }) |reason| {

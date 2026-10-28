@@ -419,8 +419,7 @@ fn operatorMarker(text: []const u8) linksection(".flash.text.storage") void {
 /// The ordinary owner may create a new session only after old DMA quiescence.
 /// Keep tickets monotonic when clearing the old session's removal latch.
 fn freshCardSession(clock: timer_group.Timer) linksection(".flash.text.storage") bool {
-    if (io_owner.busy() or io_signal.active() != 0 or !runtime_controller.quiescence.complete() or
-        io_owner.generation >= 0xffff_ffff) return false;
+    if (!io_owner.canRestart(io_signal.active() != 0, runtime_ready or active_controller != null, runtime_controller.quiescence.complete())) return false;
     const next_ticket = io_signal.next_ticket;
     runtime_controller = .{ .io = .{ .clock = clock } };
     nih_sdmmc_power_off();
