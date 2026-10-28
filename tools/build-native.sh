@@ -20,6 +20,9 @@ if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFI
     # Explicit fixture builds retain their historical single-device profile.
     if [ "${NIHOS_NATIVE_AUDIO:-0}${NIHOS_NATIVE_MICROPHONE:-0}${NIHOS_NATIVE_RS485:-0}" = 000 ] && [ "${NIHOS_NATIVE_BOOT_TEST:-0}" = 0 ]; then
         export NIHOS_NATIVE_DEVICES="${NIHOS_NATIVE_DEVICES:-1}"
+        if [ "${NIHOS_NATIVE_USB:-0}" = 0 ]; then
+            export NIHOS_NATIVE_NORMAL_STORAGE="${NIHOS_NATIVE_NORMAL_STORAGE:-1}"
+        fi
     fi
 fi
 build_dir="$repo_root/build/native-$profile"

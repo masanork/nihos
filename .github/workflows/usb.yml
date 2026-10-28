@@ -164,8 +164,9 @@ jobs:
              build/native-device-network-devices/nihos-native.bin \
              build/native-device-network-devices/image-audit.json \
              build/native-device-network-devices/native_options.zig \
+             build/native-device-network-devices/normal-fs-manifest.json \
              build/native-device-network-devices/network-receipt.json build/usb-ci/default-connected/
-          NIHOS_NATIVE_DEVICES=0 sh tools/build-native.sh device integer
+          NIHOS_NATIVE_DEVICES=0 NIHOS_NATIVE_NORMAL_STORAGE=0 sh tools/build-native.sh device integer
           mkdir -p build/usb-ci/drivers-disabled
           cp build/native-device-network/image-audit.json build/native-device-network/native_options.zig build/usb-ci/drivers-disabled/
 
