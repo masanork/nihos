@@ -179,3 +179,12 @@ an incorrect owner into the real ledger drain, checks the resulting faulted
 state and stops. Capture through `NIHOS_NATIVE_PQC_QUARANTINE_DONE`, then run
 `python3 probes/pqc/check_worker_quarantine_log.py LOG ELF BIN AUDIT REPORT.json`.
 See [the cleanup failure measurement](../../docs/measurements/2026-10-29-pqc-worker-quarantine.md).
+
+### Native cleanup error path and control
+
+With the single worker build, set `NIHOS_NATIVE_PQC_DRAIN_PROBE=1` to retain
+its arena and inject a wrong owner into the ordinary cleanup path; `=2` uses
+the correct owner as a control. Run each 4 MiB image for 4 seconds (without
+an exit-on marker), retain its exact audit and binaries, and run
+`python3 probes/pqc/check_worker_drain_log.py LOG ELF BIN AUDIT failure|control REPORT.json`.
+See [the fail-stop measurement](../../docs/measurements/2026-10-29-pqc-drain-fail-stop.md).

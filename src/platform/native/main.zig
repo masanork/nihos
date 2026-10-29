@@ -41,7 +41,7 @@ fn pqcObserve(out: *[3]u32) callconv(.c) void {
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
-    pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine);
+    pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine or options.pqc_drain_probe != 0);
     @atomicStore(u32, &pqc_worker_done, 1, .release);
     return 0;
 }
@@ -755,6 +755,28 @@ export fn nih_native_main() callconv(.c) noreturn {
             const stale = index == 0 or tasks.pqcStaleWorkerRejected(previous);
             if (!stale or (index != 0 and identity == previous)) fail("PQC stale worker identity");
             const started = cycle();
+            if (options.pqc_drain_probe != 0) {
+                while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerExited()) {
+                    _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
+                    if (cycle() -% started > 1_000_000_000) fail("PQC drain timeout");
+                }
+                const report = pqc_worker_report;
+                const before = tasks.memory.reusable.availableBytes() orelse fail("PQC drain heap");
+                const resources = tasks.memory.reusable.resourceReport(0);
+                if (report.status != 1 or report.valid != 1 or report.rejected != 1 or report.oom != 1 or report.released != 0 or report.erased != 1 or report.live != 0 or resources.owned != 1 or resources.pending != 1 or before != report.heap_after) fail("PQC drain setup");
+                const pre: struct { mode: u32, identity: u32, owned: u32, pending: u32, charged: u32, free: u32, initial_free: u32 } = .{ .mode = options.pqc_drain_probe, .identity = identity, .owned = resources.owned, .pending = resources.pending, .charged = report.charged, .free = @intCast(before), .initial_free = report.heap_before };
+                logger.record("NIHOS_NATIVE_PQC_DRAIN_PRE", null, .{ "mode", "identity", "owned", "pending", "charged", "free", "initial_free" }, &pre);
+                _ = tasks.service(0); // Mode 1 reaches the ordinary fatal handler.
+                if (options.pqc_drain_probe == 1) fail("PQC drain unexpectedly returned");
+                if (!tasks.pqcWorkerFinished()) fail("PQC drain not cleaned");
+                const after = tasks.memory.reusable.availableBytes() orelse fail("PQC drain heap after");
+                if (after != report.heap_before or !tasks.reapPqcWorker() or !tasks.pqcPostReapYield()) fail("PQC drain control");
+                const control: struct { cleaned: u32, reaped: u32, free: u32 } = .{ .cleaned = 1, .reaped = 1, .free = @intCast(after) };
+                logger.record("NIHOS_NATIVE_PQC_DRAIN_CONTROL", null, .{ "cleaned", "reaped", "free" }, &control);
+                const done: struct { complete: u32 } = .{ .complete = 1 };
+                logger.record("NIHOS_NATIVE_PQC_DRAIN_DONE", null, .{"complete"}, &done);
+                while (true) asm volatile ("wfi");
+            }
             if (options.pqc_worker_quarantine) {
                 // Do not service the closing ledger before injecting the fault.
                 while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerExited()) {

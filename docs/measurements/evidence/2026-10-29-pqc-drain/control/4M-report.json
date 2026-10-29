@@ -1,0 +1,16 @@
+{
+  "mode": "control",
+  "elf_sha256": "90b809eb93f5bf3cf150850ea222043b234da3eccd3e0c4cd7e6aa37f2636879",
+  "image_sha256": "1a9eeaf7f0897cf4ec4d206416b7f7931600748b10bff7ddb04d84aaf3c41218",
+  "stack_start": "0x4ff35a00",
+  "stack_bytes": 8192,
+  "pre": {
+    "mode": 2,
+    "identity": 65537,
+    "owned": 1,
+    "pending": 1,
+    "charged": 16384,
+    "free": 1785152,
+    "initial_free": 1801536
+  }
+}
