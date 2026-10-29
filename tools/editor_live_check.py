@@ -8,7 +8,7 @@ from emulator_trace import source_identity
 
 
 def expected(row):
-    return reference('basic-light', ['EDITOR DEMO', row, 'ASCII ONLY - NO SAVE'], control=False)
+    return reference('jetbrains', ['EDITOR DEMO', row, 'ASCII ONLY - NO SAVE'], control=False)
 
 
 def main():
