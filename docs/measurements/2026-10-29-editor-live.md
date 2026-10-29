@@ -1,0 +1,11 @@
+# Interactive RV32 editor fixture
+
+The existing `canvas-live` emulator now offers a bounded one-row ASCII editor. After selecting **編集デモを開始・リセット**, focus the screen and use US-layout printable keys, Left/Right and Backspace. Browser keyboard codes become software HID events in the existing stopped-guest mailbox. RV32 applies the existing HID decoder and row-edit fixture, then the console renderer publishes a new offscreen framebuffer. A `|` cell marks the cursor and temporarily covers its underlying character. Start with Caps Lock off. On narrow windows, the editor frame scrolls horizontally to avoid shrinking text further.
+
+The button resets the fixture; the original pointer mode is unchanged until the editor starts. This is not an XY application, a physical keyboard/I2C test, Unicode/IME input, file persistence, a production application loader, panel/DMA emulation or a device-performance measurement. Each input pauses and resumes the guest through GDB, so this UI is not a latency model.
+
+At source commit `c2039f1`, `sh tools/nihos-dev.sh editor-live-check` replayed start, typing, movement, insertion, deletion and an ignored modified arrow. All seven intermediate RV32 frames matched independent per-pixel references, and the receipt records state, frame, image and source hashes: [RV32 report](evidence/2026-10-29-editor-live/rv32.json). The existing `canvas-live-check` pointer smoke also passed. The editor replay is included in graphics CI.
+
+A headless Chrome session exercised the actual page: start, type `h`, type `i`, then move left; counters reported three key events, two edits and cursor position one, and the shown frame hash matched the server state. [Desktop](evidence/2026-10-29-editor-live/browser-desktop.png) and [narrow viewport](evidence/2026-10-29-editor-live/browser-narrow.png) captures show the synthetic result; the latter has a 640-pixel scrollable frame inside a 342-pixel viewport. These screenshots are browser observations, not physical-device evidence.
+
+To try it, run `sh tools/nihos-dev.sh canvas-live` and open the printed localhost address. To verify deterministically, run `sh tools/nihos-dev.sh editor-live-check`; see [the simulator guide](../development-simulator.md) for prerequisites and limits.

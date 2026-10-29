@@ -1,0 +1,123 @@
+{
+  "evidence": "esp-emu-rv32-interactive-editor-fixture",
+  "source": {
+    "head": "c2039f1af011ccc3e66eccde62d234bc689df606",
+    "source_sha256": "ee85186a501492db6f5d060709d6a2705521040e2a11d78e5a27a9eace6d2e66"
+  },
+  "image_sha256": "44ac3ecfede7ad4f819882b69b4c9fcd47a72962b4d13546dfad9b9b73b63356",
+  "states": [
+    {
+      "frame": 2,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 0,
+      "edits": 0,
+      "cursor": 0,
+      "time_us": 0,
+      "pixel_sha256": "a2319e10a5fdb2000174440a7a00e5d93576f5eea2b6543e6954ec4616400b91",
+      "evidence": "esp-emu-rv32-fixture"
+    },
+    {
+      "frame": 3,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 1,
+      "edits": 1,
+      "cursor": 1,
+      "time_us": 0,
+      "pixel_sha256": "6cb0ad71a27f84c4f82b5ce344e67bf15b074e9b5763303ea24e0378930b244d",
+      "evidence": "esp-emu-rv32-fixture"
+    },
+    {
+      "frame": 4,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 2,
+      "edits": 2,
+      "cursor": 2,
+      "time_us": 0,
+      "pixel_sha256": "4348212fe0e3aa122fdfcb9751bffe8ebd59b0150ae7cef7e626705b8b9cf2cb",
+      "evidence": "esp-emu-rv32-fixture"
+    },
+    {
+      "frame": 5,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 3,
+      "edits": 2,
+      "cursor": 1,
+      "time_us": 0,
+      "pixel_sha256": "6cb0ad71a27f84c4f82b5ce344e67bf15b074e9b5763303ea24e0378930b244d",
+      "evidence": "esp-emu-rv32-fixture"
+    },
+    {
+      "frame": 6,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 4,
+      "edits": 3,
+      "cursor": 2,
+      "time_us": 0,
+      "pixel_sha256": "ec2402232b276dc0fb57031646c3d3b68a8fb29bc23a53399a2efbc7ef3048ad",
+      "evidence": "esp-emu-rv32-fixture"
+    },
+    {
+      "frame": 7,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 5,
+      "edits": 4,
+      "cursor": 1,
+      "time_us": 0,
+      "pixel_sha256": "6cb0ad71a27f84c4f82b5ce344e67bf15b074e9b5763303ea24e0378930b244d",
+      "evidence": "esp-emu-rv32-fixture"
+    },
+    {
+      "frame": 8,
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "mode": 1,
+      "keys": 6,
+      "edits": 4,
+      "cursor": 2,
+      "time_us": 0,
+      "pixel_sha256": "4348212fe0e3aa122fdfcb9751bffe8ebd59b0150ae7cef7e626705b8b9cf2cb",
+      "evidence": "esp-emu-rv32-fixture"
+    }
+  ],
+  "ignored": {
+    "frame": 9,
+    "samples": 0,
+    "events": 0,
+    "clicks": 0,
+    "kind": 0,
+    "mode": 1,
+    "keys": 7,
+    "edits": 4,
+    "cursor": 2,
+    "time_us": 0,
+    "pixel_sha256": "4348212fe0e3aa122fdfcb9751bffe8ebd59b0150ae7cef7e626705b8b9cf2cb",
+    "evidence": "esp-emu-rv32-fixture"
+  },
+  "scope": "software HID mailbox, bounded ASCII fixture and offscreen frame; no real keyboard, IME, panel or device timing"
+}
