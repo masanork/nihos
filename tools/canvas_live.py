@@ -31,6 +31,11 @@ def encode_frame(raw, previous_sha=None, previous_png=None):
     return digest, png_rgb565(raw, 720, 1280)
 
 
+def check_guard(data):
+    if data != bytes([0xa5]) * 16:
+        raise RuntimeError('emulated framebuffer guard changed')
+
+
 def acquire_session_lock(path):
     handle = path.open('a+b')
     try:
@@ -176,6 +181,7 @@ class Guest:
         # Relative GDB path avoids injecting filesystem paths into its CLI.
         self.mi.command('-interpreter-exec console "dump binary memory frame.rgb565 0x48030000 0x481f2000"', timeout=90)
         self.raw = path.read_bytes()
+        check_guard(self.mi.read(0x481f2000, 16))
         sha, self.png = encode_frame(self.raw, getattr(self, 'pixel_sha', None), getattr(self, 'png', None))
         self.pixel_sha = sha
         self.seq += 1

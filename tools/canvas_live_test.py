@@ -2,7 +2,7 @@ import struct
 import tempfile
 from pathlib import Path
 import unittest
-from canvas_live import Guest, encode_frame, acquire_session_lock
+from canvas_live import Guest, encode_frame, acquire_session_lock, check_guard
 from canvas_frame import FRAME_BYTES
 
 
@@ -62,6 +62,14 @@ class FrameCacheTest(unittest.TestCase):
         self.assertNotEqual(png3, png)
         with self.assertRaises(RuntimeError):
             encode_frame(raw[:-1])
+
+
+class GuardTest(unittest.TestCase):
+    def test_changed_or_short_guard_is_rejected(self):
+        check_guard(bytes([0xa5]) * 16)
+        for value in (bytes([0xa5]) * 15, bytes([0xa5]) * 15 + b'\x00'):
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                check_guard(value)
 
 
 class LockTest(unittest.TestCase):
