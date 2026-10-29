@@ -1146,8 +1146,13 @@ noinline fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bo
     }
     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
     logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
-    const composition: extern struct { logical_width: u32, logical_height: u32, rotation: u32 } = .{ .logical_width = if (options.display_tile or options.card_read or options.keypad_demo) @as(u32, 720) else 1280, .logical_height = if (options.display_tile or options.card_read or options.keypad_demo) @as(u32, 1280) else 720, .rotation = if (options.display_tile or options.card_read or options.keypad_demo) @as(u32, 0) else 1 };
+    const portrait = options.display_tile or options.card_read or options.keypad_demo or options.canvas_demo;
+    const composition: extern struct { logical_width: u32, logical_height: u32, rotation: u32 } = .{ .logical_width = if (portrait) @as(u32, 720) else 1280, .logical_height = if (portrait) @as(u32, 1280) else 720, .rotation = if (portrait) @as(u32, 0) else 1 };
     logger.record("NIHOS_NATIVE_DISPLAY_LAYOUT", null, .{ "logical_width", "logical_height", "rotation" }, &composition);
+    if (options.canvas_demo and screen.status == 1) {
+        const canvas_report: extern struct { checksum: u32, frames: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frames = screen.frames };
+        logger.record("NIHOS_NATIVE_CANVAS_PATTERN", null, .{ "checksum", "frames" }, &canvas_report);
+    }
     const selected = @import("tab5_panels").refreshProfile(display_panel, options.display_hz) orelse fail("display timing");
     const rates = .{ .pixel_hz = selected.dpi_mhz * 1_000_000, .refresh_millihz = @import("tab5_panels").refreshMilliHz(selected), .htotal = 720 + selected.hbp + selected.hsw + selected.hfp, .vtotal = 1280 + selected.vbp + selected.vsw + selected.vfp };
     if (options.display_sram or options.psram_200) logger.record("NIHOS_NATIVE_DISPLAY_TIMING", null, .{ "pixel_hz", "refresh_millihz", "htotal", "vtotal" }, &rates);
