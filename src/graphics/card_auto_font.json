@@ -55,7 +55,7 @@
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
     "src/graphics/card_boot/manifest.json": "a101f4c9dbd801134b2a35b5330b55ffb2292ba97d16d8791fddc6e053738cf1",
     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
-    "src/platform/native/main.zig": "e88cacc8971b43d18007a6bb4acd3e588073a500249bfe936804a7633963fb1c",
+    "src/platform/native/main.zig": "f64699bc298f65a4764081fa1012043382b4c2d3de2b4767adf186b143f554fe",
     "src/graphics/keypad_plan.zig": "bc0e78d9ab99c4cf928273fb189666f4d3f0316a5642f9edfe55ba30807fc0cb",
     "tools/design/card-splash-assets.py": "8b575516f7dc2f2ddb9f23b8c8b4da1c92103725442138bd6dce014d2c719224",
     "tools/design/shape-mask.cpp": "4d8a1d8b475326a668419e0a0ac810955491d7c744a640c2ffdfb0c87252e700",
