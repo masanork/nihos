@@ -1,0 +1,67 @@
+{
+  "scope": "local HTTP event-to-response; includes GDB, emulator and PNG conversion; not device latency",
+  "pairs": 5,
+  "median_ms": 630.078,
+  "measurements": [
+    {
+      "contact": 1,
+      "elapsed_ms": 611.642,
+      "frame": 2,
+      "clicks": 0
+    },
+    {
+      "contact": 0,
+      "elapsed_ms": 648.514,
+      "frame": 3,
+      "clicks": 1
+    },
+    {
+      "contact": 1,
+      "elapsed_ms": 603.5,
+      "frame": 4,
+      "clicks": 1
+    },
+    {
+      "contact": 0,
+      "elapsed_ms": 648.765,
+      "frame": 5,
+      "clicks": 2
+    },
+    {
+      "contact": 1,
+      "elapsed_ms": 608.477,
+      "frame": 6,
+      "clicks": 2
+    },
+    {
+      "contact": 0,
+      "elapsed_ms": 652.731,
+      "frame": 7,
+      "clicks": 3
+    },
+    {
+      "contact": 1,
+      "elapsed_ms": 605.984,
+      "frame": 8,
+      "clicks": 3
+    },
+    {
+      "contact": 0,
+      "elapsed_ms": 649.067,
+      "frame": 9,
+      "clicks": 4
+    },
+    {
+      "contact": 1,
+      "elapsed_ms": 610.602,
+      "frame": 10,
+      "clicks": 4
+    },
+    {
+      "contact": 0,
+      "elapsed_ms": 873.298,
+      "frame": 11,
+      "clicks": 5
+    }
+  ]
+}
