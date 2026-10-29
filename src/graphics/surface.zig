@@ -34,7 +34,7 @@ pub const Surface = struct {
         const count: usize = @intCast(right - left);
         for (@as(usize, @intCast(top))..@as(usize, @intCast(bottom))) |dy| {
             const sy: usize = @intCast(@as(i64, @intCast(dy)) - y);
-            compositeA8Row(self.bytes[dy * self.stride + start_x * 2 ..][0 .. count * 2], mask.bytes[sy * mask.stride + source_x ..][0..count], color);
+            internal.compositeA8Row(self.bytes[dy * self.stride + start_x * 2 ..][0 .. count * 2], mask.bytes[sy * mask.stride + source_x ..][0..count], color);
         }
         return true;
     }
@@ -75,18 +75,21 @@ fn valid(length: usize, width: usize, height: usize, stride: usize, pixel_bytes:
     const required = std.math.mul(usize, stride, height) catch return false;
     return stride >= row and length >= required;
 }
-/// Shared internal row kernel. The caller must validate the two non-aliasing
-/// slices, with exactly two destination bytes for each coverage byte.
-pub fn compositeA8Row(destination: []u8, coverage: []const u8, color: u16) void {
-    for (coverage, 0..) |alpha, x| {
-        if (alpha == 0) continue;
-        const offset = x * 2;
-        const background = @as(u16, destination[offset]) | (@as(u16, destination[offset + 1]) << 8);
-        const pixel = if (alpha == 255) color else blend(background, color, alpha);
-        destination[offset] = @truncate(pixel);
-        destination[offset + 1] = @truncate(pixel >> 8);
+/// Internal implementation shared with Canvas; not an application API.
+pub const internal = struct {
+    /// The caller validates non-aliasing slices, with two bytes per coverage.
+    pub fn compositeA8Row(destination: []u8, coverage: []const u8, color: u16) void {
+        std.debug.assert(coverage.len <= std.math.maxInt(usize) / 2 and destination.len == coverage.len * 2);
+        for (coverage, 0..) |alpha, x| {
+            if (alpha == 0) continue;
+            const offset = x * 2;
+            const background = @as(u16, destination[offset]) | (@as(u16, destination[offset + 1]) << 8);
+            const pixel = if (alpha == 255) color else blend(background, color, alpha);
+            destination[offset] = @truncate(pixel);
+            destination[offset + 1] = @truncate(pixel >> 8);
+        }
     }
-}
+};
 
 inline fn blend(background: u16, color: u16, alpha: u8) u16 {
     const a: u32 = alpha;
