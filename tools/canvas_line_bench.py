@@ -3,12 +3,15 @@
 import ctypes
 import hashlib
 import json
+import os
 import statistics
 import sys
 import time
 
 if len(sys.argv) != 3:
     raise SystemExit('usage: canvas_line_bench.py BASELINE_LIBRARY CANDIDATE_LIBRARY')
+if os.path.samefile(sys.argv[1], sys.argv[2]):
+    raise SystemExit('baseline and candidate libraries must be distinct files')
 libs = [ctypes.CDLL(path) for path in sys.argv[1:]]
 funcs = [lib.render for lib in libs]
 for func in funcs:
