@@ -6,6 +6,13 @@ BYTES = WIDTH * HEIGHT * 2
 
 
 def editor_pixel(x, y):
+    # Clipped axis lines are drawn after scrolling; vertical line wins at crossings.
+    if x == 15 and y == 15:
+        return 0xffff
+    if x == 270 and 12 <= y < 182:
+        return 0x001f
+    if y == 20 and 10 <= x < 290:
+        return 0xf800
     # Scroll reads the original row 16 pixels lower; newly exposed rows are blank.
     if y >= 184:
         return 0x1082
