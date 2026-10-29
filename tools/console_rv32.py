@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compare a native RV32 console frame with the same host fixture."""
 import ctypes
+import argparse
 import hashlib
 import json
 import os
@@ -31,10 +32,17 @@ def check_frame(actual, reference):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--font', choices=('basic-light', 'jetbrains', 'source-code'), default='basic-light')
+    args = parser.parse_args()
+    face = {'basic-light': 3, 'jetbrains': 1, 'source-code': 2}[args.font]
+    global OUT
+    OUT = BUILD / 'console-workload' / args.font
     source = source_identity()
     env = os.environ.copy()
     env.update(NIHOS_NATIVE_CANVAS_OFFSCREEN='1', NIHOS_NATIVE_CANVAS_INTERACTIVE='0',
-               NIHOS_NATIVE_CANVAS_WORKLOADS='1', NIHOS_NATIVE_QUALIFICATION='1', NIHOS_NATIVE_DISPLAY='0')
+               NIHOS_NATIVE_CANVAS_WORKLOADS='1', NIHOS_NATIVE_QUALIFICATION='1', NIHOS_NATIVE_DISPLAY='0',
+               NIHOS_NATIVE_CONSOLE_FONT=str(face))
     subprocess.run(['sh', 'tools/build-native.sh', 'emulator', 'integer'], cwd=ROOT, env=env, check=True)
     emulator = subprocess.check_output(['sh', str(ROOT / 'tools/bootstrap-esp-emu.sh')], text=True).strip()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -43,7 +51,7 @@ def main():
     for name in ('nihos-native.bin', 'nihos-native.elf', 'nihos-native-flash.bin', 'image-audit.json', 'native_options.zig'):
         shutil.copyfile(BUILD / name, OUT / name)
     options = (OUT / 'native_options.zig').read_text().splitlines()
-    for flag in ('pub const canvas_workloads = true;', 'pub const canvas_interactive = false;'):
+    for flag in ('pub const canvas_workloads = true;', 'pub const canvas_interactive = false;', f'pub const console_font: u32 = {face};'):
         if options.count(flag) != 1:
             raise RuntimeError('unexpected console workload fixture option')
     with socket.socket() as sock:
@@ -79,9 +87,12 @@ def main():
                     process.kill(); process.wait()
     subprocess.run(['python3', str(ROOT / 'tools/check-canvas-offscreen.py'), str(OUT)], cwd=ROOT, check=True)
     library = OUT / ('console-reference.dylib' if os.uname().sysname == 'Darwin' else 'console-reference.so')
+    host_options = OUT / 'host-options.zig'
+    host_options.write_text(f'pub const face: u32 = {face};\n')
     subprocess.run([str(ROOT / '.tools/zig-0.17.0/zig'), 'build-lib', '-dynamic', '-OReleaseSafe',
-                    '--dep', 'fixture', f'-Mroot={ROOT / "tools/probes/console_workload_host.zig"}',
+                    '--dep', 'fixture', '--dep', 'fixture_options', f'-Mroot={ROOT / "tools/probes/console_workload_host.zig"}',
                     '--dep', 'text_console', f'-Mfixture={ROOT / "src/platform/native/console_workload.zig"}',
+                    f'-Mfixture_options={host_options}',
                     '--dep', 'canvas', f'-Mtext_console={ROOT / "src/console.zig"}',
                     '--dep', 'surface', f'-Mcanvas={ROOT / "src/graphics/canvas.zig"}',
                     f'-Msurface={ROOT / "src/graphics/surface.zig"}', f'-femit-bin={library}'], cwd=ROOT, check=True)
@@ -98,7 +109,7 @@ def main():
     if source_identity() != source:
         raise RuntimeError('source changed during console workload')
     report = {'evidence': 'esp32p4-emulator-rv32', 'scope': 'console fixture compared with same host implementation; not independent pixel or physical display evidence',
-              'width': 720, 'height': 1280, 'source': source, 'elf_sha256': sha(OUT / 'nihos-native.elf'),
+              'width': 720, 'height': 1280, 'font': args.font, 'source': source, 'elf_sha256': sha(OUT / 'nihos-native.elf'),
               'image_sha256': sha(OUT / 'nihos-native.bin'), 'emulator_sha256': sha(Path(emulator)),
               'rgb565_sha256': hashlib.sha256(raw).hexdigest(), 'png_sha256': hashlib.sha256(png).hexdigest()}
     (OUT / 'console.json').write_text(json.dumps(report, indent=2) + '\n')
