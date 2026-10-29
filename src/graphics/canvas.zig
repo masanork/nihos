@@ -141,6 +141,20 @@ pub const Canvas = struct {
         if (dest.width == 0 or dest.height == 0) return;
         const area = intersect(self.clip, bounds(dest));
         if (area.left >= area.right or area.top >= area.bottom) return;
+        // A common low-resolution indexed framebuffer maps exactly 2×. Shift
+        // the destination-relative coordinates; clipping remains unchanged.
+        if (palette != null and @as(u64, dest.width) == @as(u64, image.width) * 2 and @as(u64, dest.height) == @as(u64, image.height) * 2) {
+            const colors = palette.?;
+            for (@as(usize, @intCast(area.top))..@as(usize, @intCast(area.bottom))) |dy| {
+                const sy: usize = @intCast(@divFloor(@as(i64, @intCast(dy)) - dest.y, 2));
+                for (@as(usize, @intCast(area.left))..@as(usize, @intCast(area.right))) |dx| {
+                    const sx: usize = @intCast(@divFloor(@as(i64, @intCast(dx)) - dest.x, 2));
+                    const color = colors[image.bytes[sy * image.stride + sx]];
+                    std.mem.writeInt(u16, self.target.bytes[dy * self.target.stride + dx * 2 ..][0..2], color, .little);
+                }
+            }
+            return;
+        }
         for (@as(usize, @intCast(area.top))..@as(usize, @intCast(area.bottom))) |dy| {
             const sy: usize = @intCast(@divFloor(@as(u64, @intCast(@as(i64, @intCast(dy)) - dest.y)) * image.height, dest.height));
             for (@as(usize, @intCast(area.left))..@as(usize, @intCast(area.right))) |dx| {
@@ -471,6 +485,35 @@ test "large clipped scrolls match immutable source and preserve padding" {
             const to = y * stride + x * 2;
             expected[to] = original[from];
             expected[to + 1] = original[from + 1];
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
+}
+
+test "two-times indexed scaling matches independent clipped reference" {
+    var prng = std.Random.DefaultPrng.init(0x85286312);
+    const random = prng.random();
+    var palette: [256]u16 = undefined;
+    for (&palette) |*value| value.* = random.int(u16);
+    for (0..500) |_| {
+        var src: [28]u8 = undefined;
+        random.bytes(&src);
+        var original: [160]u8 = undefined;
+        random.bytes(&original);
+        var actual = original;
+        var expected = original;
+        const x0 = random.intRangeAtMost(i32, -8, 9);
+        const y0 = random.intRangeAtMost(i32, -7, 8);
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -4, 9), .y = random.intRangeAtMost(i32, -4, 8), .width = random.intRangeAtMost(u32, 0, 13), .height = random.intRangeAtMost(u32, 0, 12) };
+        const c = Canvas.init(&actual, 9, 8, 20).?.clipped(clip);
+        try c.blitIndexed8Scaled(.{ .bytes = &src, .width = 5, .height = 4, .stride = 7 }, &palette, .{ .x = x0, .y = y0, .width = 10, .height = 8 });
+        for (0..8) |y| for (0..9) |x| {
+            const dx: i64 = @intCast(x);
+            const dy: i64 = @intCast(y);
+            if (dx < x0 or dx >= @as(i64, x0) + 10 or dy < y0 or dy >= @as(i64, y0) + 8 or dx < clip.x or dx >= @as(i64, clip.x) + clip.width or dy < clip.y or dy >= @as(i64, clip.y) + clip.height) continue;
+            const sx: usize = @intCast(@divFloor(dx - x0, 2));
+            const sy: usize = @intCast(@divFloor(dy - y0, 2));
+            std.mem.writeInt(u16, expected[y * 20 + x * 2 ..][0..2], palette[src[sy * 7 + sx]], .little);
         };
         try std.testing.expectEqualSlices(u8, &expected, &actual);
     }
