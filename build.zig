@@ -41,6 +41,9 @@ pub fn build(b: *std.Build) void {
     console_probe_module.addImport("canvas", canvas_module);
     console_scroll_probe.addImport("console", console_probe_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = console_scroll_probe })).step);
+    const editor_fixture = b.createModule(.{ .root_source_file = b.path("src/platform/native/editor_fixture.zig"), .target = target, .optimize = optimize });
+    editor_fixture.addImport("text_console", console_probe_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = editor_fixture })).step);
     const pattern_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/canvas_pattern.zig"), .target = target, .optimize = optimize });
     pattern_module.addImport("canvas", canvas_module);
     const pattern_tests = b.addTest(.{ .root_module = pattern_module });

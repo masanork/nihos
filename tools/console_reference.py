@@ -28,6 +28,7 @@ def reference(font):
     lines = ['NIHOS RV32 CONSOLE'] + ['fixed header'] * 6
     lines += [chr(ord('A') + row % 26) + ' deterministic console line' for row in range(9, rows - 1)]
     lines += ['first scroll', 'second scroll', '']
+    lines[9] = '> ' + lines[9]  # independently expected result of the edit trace
     assert len(lines) == rows and all(len(line) <= columns for line in lines)
     frame = bytearray(struct.pack('<H', BACKGROUND) * (WIDTH * HEIGHT))
 
