@@ -1,6 +1,23 @@
 //! Rotated console raster with incremental cells and bounded pixel scrolling.
 const std = @import("std");
 const Grid = @import("../console/ascii.zig").Grid;
+const Run = struct { alpha: u4, count: usize };
+const Runs = struct {
+    bytes: []const u8,
+    cursor: usize = 0,
+    fn next(self: *Runs) ?Run {
+        if (self.cursor == self.bytes.len) return null;
+        const value = self.bytes[self.cursor];
+        self.cursor += 1;
+        var count = @as(usize, value & 15) + 1;
+        if (value == 15) {
+            if (self.cursor == self.bytes.len) @panic("truncated console font run");
+            count += self.bytes[self.cursor];
+            self.cursor += 1;
+        }
+        return .{ .alpha = @truncate(value >> 4), .count = count };
+    }
+};
 pub const width = 720;
 pub const height = 1280;
 pub const Face = enum(u32) { basic, jetbrains, source_code, basic_light };
@@ -146,9 +163,10 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
         };
         const glyph = Store.glyphs[character - 32];
         var decoded: usize = 0;
-        for (Store.masks[glyph.offset..][0..glyph.length]) |run| {
-            const alpha: u4 = @truncate(run >> 4);
-            const count = @as(usize, run & 15) + 1;
+        var runs = Runs{ .bytes = Store.masks[glyph.offset..][0..glyph.length] };
+        while (runs.next()) |run| {
+            const alpha = run.alpha;
+            const count = run.count;
             if (alpha != 0) for (decoded..decoded + count) |index| {
                 const y = index / L.cell_width;
                 if (y >= clip_top and y < clip_bottom) pixel(frame, stride, destination + y - clip_top, 1279 - (L.margin_x + col * L.cell_width + index % L.cell_width), blend(selected.background, foreground, alpha));
@@ -352,7 +370,8 @@ test "thin basic face uses the original masks and large faces decode bounded cel
         for (Font.glyphs) |glyph| {
             try std.testing.expect(@as(usize, glyph.offset) + glyph.length <= Font.masks.len);
             var decoded: usize = 0;
-            for (Font.masks[glyph.offset..][0..glyph.length]) |run| decoded += @as(usize, run & 15) + 1;
+            var runs = Runs{ .bytes = Font.masks[glyph.offset..][0..glyph.length] };
+            while (runs.next()) |run| decoded += run.count;
             try std.testing.expectEqual(@as(usize, 450), decoded);
         }
     }
