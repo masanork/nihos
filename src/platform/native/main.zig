@@ -239,8 +239,14 @@ export fn nih_canvas_frame_ready() void {
 // nih_canvas_frame_ready; it is not an application ABI or hardware input.
 const EmulatedInput = extern struct { command: u32 = 0, contacts: u32 = 0, x: u32 = 0, y: u32 = 0, time_us: u32 = 0 };
 const EmulatedOutput = extern struct { samples: u32 = 0, events: u32 = 0, clicks: u32 = 0, kind: u32 = 0 };
-export var nih_emulator_input: EmulatedInput = .{};
-export var nih_emulator_output: EmulatedOutput = .{};
+var nih_emulator_input: EmulatedInput = .{};
+var nih_emulator_output: EmulatedOutput = .{};
+comptime {
+    if (options.canvas_interactive) {
+        @export(&nih_emulator_input, .{ .name = "nih_emulator_input" });
+        @export(&nih_emulator_output, .{ .name = "nih_emulator_output" });
+    }
+}
 
 var initialized: u32 = 0x4e494853;
 
