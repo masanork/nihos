@@ -63,18 +63,23 @@ int nih_pqc_arena_fixture(uint8_t *bytes, size_t capacity, struct nih_pqc_result
 }
 
 /* Experimental bounded copy, not a public request or trust-anchor API. */
-int nih_pqc_snapshot_fixture(uint8_t *bytes, size_t capacity,
-    uint8_t *snapshot, size_t snapshot_len, struct nih_pqc_result *r) {
-    enum { PK_LEN = 1952, SIG_LEN = 3309, CTX_MAX = 255, MSG_MAX = 4096,
-           SIG_OFF = PK_LEN, CTX_OFF = SIG_OFF + SIG_LEN,
-           MSG_OFF = CTX_OFF + CTX_MAX, SNAP_LEN = MSG_OFF + MSG_MAX };
-    if (!bytes || !snapshot || !r || ((uintptr_t)bytes & 31) != 0 ||
-        capacity < 32 || snapshot_len != SNAP_LEN ||
+enum { PK_LEN = 1952, SIG_LEN = 3309, CTX_MAX = 255, MSG_MAX = 4096,
+       SIG_OFF = PK_LEN, CTX_OFF = SIG_OFF + SIG_LEN,
+       MSG_OFF = CTX_OFF + CTX_MAX, SNAP_LEN = MSG_OFF + MSG_MAX };
+int nih_pqc_snapshot_prepare(uint8_t *snapshot, size_t snapshot_len) {
+    if (!snapshot || snapshot_len != SNAP_LEN ||
         TEST_VECTOR_CTX_LEN > CTX_MAX || TEST_VECTOR_MSG_LEN > MSG_MAX) return 1;
+    for (size_t i = 0; i < SNAP_LEN; i++) snapshot[i] = 0;
     for (size_t i = 0; i < PK_LEN; i++) snapshot[i] = test_vector_pk_65[i];
     for (size_t i = 0; i < SIG_LEN; i++) snapshot[SIG_OFF+i] = test_vector_sig_65[i];
     for (size_t i = 0; i < TEST_VECTOR_CTX_LEN; i++) snapshot[CTX_OFF+i] = TEST_VECTOR_CTX[i];
     for (size_t i = 0; i < TEST_VECTOR_MSG_LEN; i++) snapshot[MSG_OFF+i] = TEST_VECTOR_MSG[i];
+    return 0;
+}
+static int snapshot_verify(uint8_t *bytes, size_t capacity, uint8_t *snapshot,
+    size_t snapshot_len, struct nih_pqc_result *r) {
+    if (!bytes || !snapshot || !r || ((uintptr_t)bytes & 31) != 0 ||
+        capacity < 32 || snapshot_len != SNAP_LEN) return 1;
     struct nih_pqc_arena a = { .bytes = bytes, .capacity = capacity };
     uint32_t before[3], after[3];
     nih_pqc_observe(before);
@@ -102,3 +107,19 @@ int nih_pqc_snapshot_fixture(uint8_t *bytes, size_t capacity,
     return r->valid && r->rejected && r->oom && a.failures > 0 &&
         a.allocs > prior && a.live == 0 && a.allocs == a.frees ? 0 : 4;
 }
+
+int nih_pqc_snapshot_fixture(uint8_t *bytes, size_t capacity,
+    uint8_t *snapshot, size_t snapshot_len, struct nih_pqc_result *r) {
+    if (nih_pqc_snapshot_prepare(snapshot, snapshot_len)) return 1;
+    return snapshot_verify(bytes, capacity, snapshot, snapshot_len, r);
+}
+#if NIHOS_PQC_SNAPSHOT_MUTATION
+extern void nih_pqc_snapshot_copied(void);
+int nih_pqc_snapshot_mutation_fixture(uint8_t *bytes, size_t capacity,
+    uint8_t *snapshot, size_t snapshot_len, const uint8_t *source, struct nih_pqc_result *r) {
+    if (!snapshot || !source || snapshot_len != SNAP_LEN) return 1;
+    for (size_t i = 0; i < SNAP_LEN; i++) snapshot[i] = source[i];
+    nih_pqc_snapshot_copied();
+    return snapshot_verify(bytes, capacity, snapshot, snapshot_len, r);
+}
+#endif

@@ -34,6 +34,9 @@ pqc_first_fail=${NIHOS_NATIVE_PQC_SNAPSHOT_FIRST_FAIL:-0}
 case "$pqc_first_fail" in 0) pqc_first_fail=false ;; 1) pqc_first_fail=true ;; *) echo "PQC_SNAPSHOT_FIRST_FAIL must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$pqc_first_fail" = true ] && [ "$pqc_pressure" != true ]; then echo "PQC_SNAPSHOT_FIRST_FAIL requires PQC_SNAPSHOT_PRESSURE" >&2; exit 1; fi
 if [ "$pqc_snapshot" = true ] && { [ "$pqc_worker" != true ] || { [ "$pqc_repeat" = true ] && [ "$pqc_pressure" != true ]; } || [ "$pqc_quarantine" = true ] || [ "$pqc_drain" != 0 ]; }; then echo "PQC_SNAPSHOT_PROBE requires an ordinary PQC worker" >&2; exit 1; fi
+pqc_mutation=${NIHOS_NATIVE_PQC_SNAPSHOT_MUTATION:-0}
+case "$pqc_mutation" in 0) pqc_mutation=false; pqc_mutation_cpp=0 ;; 1) pqc_mutation=true; pqc_mutation_cpp=1 ;; *) echo "PQC_SNAPSHOT_MUTATION must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$pqc_mutation" = true ] && { [ "$pqc_snapshot" != true ] || [ "$pqc_repeat" = true ]; }; then echo "PQC_SNAPSHOT_MUTATION requires a single snapshot worker" >&2; exit 1; fi
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -345,6 +348,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const pqc_snapshot_probe = %s;\n' "$pqc_snapshot"
     printf 'pub const pqc_snapshot_pressure = %s;\n' "$pqc_pressure"
     printf 'pub const pqc_snapshot_first_fail = %s;\n' "$pqc_first_fail"
+    printf 'pub const pqc_snapshot_mutation = %s;\n' "$pqc_mutation"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
@@ -578,7 +582,7 @@ if [ "$pqc" = true ]; then
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -I "$source/mldsa" -I "$source/examples/monolithic_build_multilevel" \
             -DMLD_CONFIG_PARAMETER_SET=65 -DMLD_CONFIG_REDUCE_RAM -DMLD_CONFIG_NO_RANDOMIZED_API \
-            -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API ${extra:+"$extra"} \
+            -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API -DNIHOS_PQC_SNAPSHOT_MUTATION="$pqc_mutation_cpp" ${extra:+"$extra"} \
             -I "$repo_root/probes/pqc" "$file" -o "$build_dir/pqc_$name.o"
         set -- "$@" "$build_dir/pqc_$name.o"
     done

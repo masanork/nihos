@@ -1,0 +1,246 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff20000",
+  "elf_sha256": "92ef1ff268e5af422e00e0f1647ffdc741b92a26f71a3663186e136fac1d2c7a",
+  "memory": {
+    "profile": "emulator",
+    "origin": "0x4ff20000",
+    "end": "0x4ff48000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff20000",
+        "end": "0x4ff48000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "sram_reserved_bytes": 160768,
+  "primary_static_bytes": 103424,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000"
+  },
+  "heap": {
+    "start": "0x4ff39400",
+    "end": "0x4ff48000",
+    "bytes": 60416,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x40001366",
+    "bytes": 4678,
+    "sha256": "20e9214cf555b450a55296ae51c25e1d49d4262ed65bd77fb97f67c2c77b16bb",
+    "functions": {
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000e8a"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_41",
+        "start": "0x40000e8a",
+        "end": "0x40001366"
+      }
+    },
+    "image_offset": 288
+  },
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x40010760",
+    "bytes": 1856,
+    "fnv1a": 2453886103,
+    "executable": false,
+    "writable": false,
+    "image_offset": 65568
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_get_cpu_ticks": "0x4fc00040",
+    "nih_rom_set_cpu_ticks": "0x4fc00044",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 4678
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 1856
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff20000",
+      "bytes": 80708
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff33b50",
+      "bytes": 9260
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff35f80",
+      "bytes": 1360
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff36500",
+      "bytes": 12032
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff39400",
+      "bytes": 60416
+    }
+  ],
+  "service_sram": [
+    {
+      "name": "service.free0",
+      "origin": "0x4ff48000",
+      "end": "0x4ff60000",
+      "bytes": 98304
+    },
+    {
+      "name": "service.free1",
+      "origin": "0x4ff6e000",
+      "end": "0x4ff9f000",
+      "bytes": 200704
+    }
+  ],
+  "image_sha256": "e9a0c9f16221f2e4169b2c537e6648684481612b429bb9f3da3e312dbb699da5",
+  "image_bytes": 98240,
+  "image_segments": [
+    {
+      "address": "0x40000020",
+      "bytes": 4936
+    },
+    {
+      "address": "0x4ff20000",
+      "bytes": 60584
+    },
+    {
+      "address": "0x40010020",
+      "bytes": 1856
+    },
+    {
+      "address": "0x4ff2eca8",
+      "bytes": 20124
+    },
+    {
+      "address": "0x4ff33b50",
+      "bytes": 9260
+    },
+    {
+      "address": "0x4ff35f80",
+      "bytes": 1360
+    }
+  ],
+  "loader": {
+    "elf_sha256": "ec0955c9bd9d6566d00934bdbc5b30e8ea274f3d3d7f9de0e97c36fba25fa428",
+    "allocated": [
+      {
+        "address": "0x4ffaefc0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ffb5fc0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ffb60d0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ffb6120",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ffb612c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ffac2c0",
+        "bytes": 3010
+      }
+    ],
+    "nearest_higher_address": "0x4ffac2c0",
+    "gap_bytes": 410304,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 410304
+      },
+      {
+        "name": "stacks",
+        "gap_below": null,
+        "gap_above": 254656
+      },
+      {
+        "name": "service.free0",
+        "gap_below": null,
+        "gap_above": 312000
+      },
+      {
+        "name": "service.free1",
+        "gap_below": null,
+        "gap_above": 53952
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "emulator",
+    "stack_source_window": {
+      "origin": "0x4ff20000",
+      "end": "0x4ffaefc0"
+    },
+    "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+  }
+}

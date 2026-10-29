@@ -214,3 +214,12 @@ fixture. The middle worker fills both ledger entries before the snapshot
 request. Capture through `NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`; validate via
 `python3 probes/pqc/check_worker_first_fail_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` without PSRAM). See [the first-allocation failure measurement](../../docs/measurements/2026-10-29-pqc-first-snapshot-failure.md), including the separate reset-removed mutant.
+
+### Source mutation after snapshot
+
+Add `NIHOS_NATIVE_PQC_SNAPSHOT_MUTATION=1` to the single snapshot worker.
+The synthetic caller changes its source only after the worker has completed
+its copy; the worker then verifies from the copy. Capture through the worker
+owner record and validate with
+`python3 probes/pqc/check_worker_mutation_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` without PSRAM). The [measurement](../../docs/measurements/2026-10-29-pqc-snapshot-caller-mutation.md) includes a borrowed-source mutant.
