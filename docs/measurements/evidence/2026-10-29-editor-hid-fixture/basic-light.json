@@ -1,0 +1,17 @@
+{
+  "evidence": "esp32p4-emulator-rv32",
+  "scope": "console fixture compared with host and independent pixel reference; not physical display or timing evidence",
+  "width": 720,
+  "height": 1280,
+  "font": "basic-light",
+  "source": {
+    "head": "7333b123e9fc29aad27f7857bcfc0a1ae408aa90",
+    "source_sha256": "ee7470d880b27f30035a4a47023655e3100deb65727c13ddd55a7cf8cbd88019"
+  },
+  "elf_sha256": "bfd2e23819248174f909a0200c97351bbde2ef8fcfff0420abb09f0bcee19a48",
+  "image_sha256": "5bc3044fa65fe9f5e88c7bf2cfa97e088ff42a4715fb99f6d8f33529f60741b5",
+  "emulator_sha256": "a4c3468a4abf3f2e55ca0912fa7cdfbe5e101ecb6ab74a9ec35182d70ba6a771",
+  "rgb565_sha256": "8fa1cc5b4be43a7f9ae8c3a8183e97a98acc7635944485ed65518db635257cb2",
+  "reference_sha256": "8fa1cc5b4be43a7f9ae8c3a8183e97a98acc7635944485ed65518db635257cb2",
+  "png_sha256": "6de16c30637a7b99aa659c8dce5fa249b053af900a64fd872efac56de068fed3"
+}
