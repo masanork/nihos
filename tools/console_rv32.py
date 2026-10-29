@@ -13,6 +13,7 @@ import time
 
 from canvas_frame import png_rgb565
 from canvas_snapshot import ROOT, gdb_binary
+from console_reference import reference as pixel_reference
 from emulator_trace import source_identity
 
 BUILD = ROOT / 'build/native-emulator'
@@ -24,11 +25,11 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def check_frame(actual, reference):
+def check_frame(actual, reference, label='host fixture'):
     if len(actual) != FRAME_BYTES or len(reference) != FRAME_BYTES:
         raise ValueError('invalid console framebuffer length')
     if actual != reference:
-        raise ValueError('RV32 console differs from host fixture')
+        raise ValueError(f'RV32 console differs from {label}')
 
 
 def main():
@@ -104,16 +105,18 @@ def main():
         raise RuntimeError('host console fixture failed')
     raw = (OUT / 'console.rgb565').read_bytes()
     check_frame(raw, reference.raw)
+    expected = pixel_reference(args.font)
+    check_frame(raw, expected, 'independent pixel reference')
     png = png_rgb565(raw, 720, 1280)
     (OUT / 'console.png').write_bytes(png)
     if source_identity() != source:
         raise RuntimeError('source changed during console workload')
-    report = {'evidence': 'esp32p4-emulator-rv32', 'scope': 'console fixture compared with same host implementation; not independent pixel or physical display evidence',
+    report = {'evidence': 'esp32p4-emulator-rv32', 'scope': 'console fixture compared with host and independent pixel reference; not physical display or timing evidence',
               'width': 720, 'height': 1280, 'font': args.font, 'source': source, 'elf_sha256': sha(OUT / 'nihos-native.elf'),
               'image_sha256': sha(OUT / 'nihos-native.bin'), 'emulator_sha256': sha(Path(emulator)),
-              'rgb565_sha256': hashlib.sha256(raw).hexdigest(), 'png_sha256': hashlib.sha256(png).hexdigest()}
+              'rgb565_sha256': hashlib.sha256(raw).hexdigest(), 'reference_sha256': hashlib.sha256(expected).hexdigest(), 'png_sha256': hashlib.sha256(png).hexdigest()}
     (OUT / 'console.json').write_text(json.dumps(report, indent=2) + '\n')
-    print('RV32 console frame matches the host fixture:', OUT / 'console.json')
+    print('RV32 console frame matches host and independent reference:', OUT / 'console.json')
 
 
 if __name__ == '__main__':
