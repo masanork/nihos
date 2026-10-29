@@ -402,10 +402,7 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
 
 fn refresh(hart: u32, device: timer_group.Timer) bool {
     const owner = &owners[hart];
-    const now = device.counter() orelse return false;
-    const advance = owner.clock.observe(now) orelse return false;
-    return owner.runtime.policy.elapse(advance.elapsed_ticks) and
-        (alarmsDisarmed(owner) or device.armAt(advance.next_deadline));
+    return owner.clock.refresh(&owner.runtime.policy, device, !alarmsDisarmed(owner));
 }
 
 fn alarmsDisarmed(owner: *const Owner) bool {

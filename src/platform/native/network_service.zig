@@ -1,6 +1,7 @@
 //! CPU0 normal-boot networking; shared host leases in the normal FS profile.
 //! One FIFO chunk/TX per poll; DHCP maintenance and reset/backoff reconnect.
 const options = @import("native_options");
+const network_config = @import("network_config");
 const shared_api = pads.shared_api;
 const shared_host = @hasDecl(options, "normal_storage") and options.normal_storage;
 var host_generation: u32 = 0;
@@ -105,7 +106,7 @@ fn startAttempt(now: u64) void {
     @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
     state_storage.ble = .{};
     state_storage.ble_length = 0;
-    client.beginDual(configuration.get(), now, true);
+    client.beginDual(configuration.get(), now, network_config.ipv6);
     client.keep_serving = true;
     attempt_bound = false;
     counted_renewals = 0;
@@ -159,7 +160,7 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         try host.writeDoorbell(1, 0x8c, 1);
         // RPC timeouts start after enumeration, not during C6 reset.
         const join = client.join;
-        client.beginDual(join, clock.counter() orelse return error.Clock, true);
+        client.beginDual(join, clock.counter() orelse return error.Clock, network_config.ipv6);
         client.keep_serving = true;
         phase = .active;
         return;
@@ -201,9 +202,6 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             }
         }
     };
-    if (client.ipv6_client) |v6| {
-        if (v6.slaac_valid and (stamp >= v6.valid_until or stamp >= v6.preferred_until)) return error.AddressExpired;
-    }
     const bytes = try client.tx(stamp);
     if (bytes.len != 0) {
         const sent = try transport.send(bytes);
