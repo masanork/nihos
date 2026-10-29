@@ -15,7 +15,21 @@ pub const Surface = struct {
     }
     pub fn fill(self: Surface, color: u16) bool {
         if (!valid(self.bytes.len, self.width, self.height, self.stride, 2)) return false;
-        for (0..self.height) |y| for (0..self.width) |x| self.put(y * self.stride + x * 2, color);
+        return self.fillRect(0, 0, @intCast(self.width), @intCast(self.height), color);
+    }
+    /// A clipped rectangle shares the same row store as Canvas and card pages.
+    pub fn fillRect(self: Surface, x: i32, y: i32, width: u32, height: u32, color: u16) bool {
+        if (!valid(self.bytes.len, self.width, self.height, self.stride, 2)) return false;
+        const left = @max(@as(i64, 0), x);
+        const top = @max(@as(i64, 0), y);
+        const right = @min(@as(i64, @intCast(self.width)), @as(i64, x) + width);
+        const bottom = @min(@as(i64, @intCast(self.height)), @as(i64, y) + height);
+        if (left >= right or top >= bottom) return true;
+        const start: usize = @intCast(left);
+        const count: usize = @intCast(right - left);
+        for (@as(usize, @intCast(top))..@as(usize, @intCast(bottom))) |row| {
+            internal.fillRow(self.bytes[row * self.stride + start * 2 ..][0 .. count * 2], color);
+        }
         return true;
     }
     pub fn blit(self: Surface, mask: Mask, x: i32, y: i32, color: u16) bool {
@@ -64,8 +78,7 @@ pub const Surface = struct {
         return true;
     }
     fn put(self: Surface, offset: usize, pixel: u16) void {
-        self.bytes[offset] = @truncate(pixel);
-        self.bytes[offset + 1] = @truncate(pixel >> 8);
+        internal.putPixel(self.bytes[offset..][0..2], pixel);
     }
 };
 
@@ -77,6 +90,25 @@ fn valid(length: usize, width: usize, height: usize, stride: usize, pixel_bytes:
 }
 /// Internal implementation shared with Canvas; not an application API.
 pub const internal = struct {
+    pub fn putPixel(destination: *[2]u8, color: u16) void {
+        std.mem.writeInt(u16, destination, color, .little);
+    }
+    /// Whole pixels only; supports unaligned rows and preserves padding.
+    pub fn fillRow(row: []u8, color: u16) void {
+        std.debug.assert(row.len % 2 == 0);
+        if (@as(u8, @truncate(color)) == @as(u8, @truncate(color >> 8))) {
+            @memset(row, @truncate(color));
+        } else if (@import("builtin").target.cpu.arch.endian() == .little and @intFromPtr(row.ptr) % @alignOf(u16) == 0) {
+            const words: [*]u16 = @ptrCast(@alignCast(row.ptr));
+            @memset(words[0 .. row.len / 2], color);
+        } else {
+            for (0..row.len / 2) |x| putPixel(row[x * 2 ..][0..2], color);
+        }
+    }
+    /// Normalize four-bit font coverage exactly into the shared A8 path.
+    pub fn blend4(background: u16, color: u16, alpha: u4) u16 {
+        return blend(background, color, @as(u8, alpha) * 17);
+    }
     /// The caller validates non-aliasing slices, with two bytes per coverage.
     pub fn compositeA8Row(destination: []u8, coverage: []const u8, color: u16) void {
         std.debug.assert(coverage.len <= std.math.maxInt(usize) / 2 and destination.len == coverage.len * 2);
@@ -85,8 +117,7 @@ pub const internal = struct {
             const offset = x * 2;
             const background = @as(u16, destination[offset]) | (@as(u16, destination[offset + 1]) << 8);
             const pixel = if (alpha == 255) color else blend(background, color, alpha);
-            destination[offset] = @truncate(pixel);
-            destination[offset + 1] = @truncate(pixel >> 8);
+            putPixel(destination[offset..][0..2], pixel);
         }
     }
 };
@@ -203,4 +234,28 @@ test "linear composition clips and rejects aliased or short masks before writes"
     try std.testing.expect(surface.blitLinear(.{ .bytes = &mask, .width = 2, .height = 1, .stride = 2 }, -1, 0, 0xffff));
     try std.testing.expectEqualSlices(u8, &.{ 0xff, 0xff }, bytes[0..2]);
     try std.testing.expect(std.mem.allEqual(u8, bytes[2..], 0x55));
+}
+
+test "four-bit coverage shares A8 rounding for every channel and alpha" {
+    inline for (.{ @as(u16, 31), @as(u16, 63) }) |maximum| {
+        for (0..maximum + 1) |bg| for (0..maximum + 1) |fg| for (0..16) |alpha| {
+            const expected: u16 = @intCast((bg * (15 - alpha) + fg * alpha + 7) / 15);
+            const shift: u4 = if (maximum == 31) 0 else 5;
+            const actual = internal.blend4(@as(u16, @intCast(bg)) << shift, @as(u16, @intCast(fg)) << shift, @intCast(alpha));
+            try std.testing.expectEqual(expected << shift, actual);
+        };
+    }
+}
+test "rectangle fill clips damage and shares row stores for aligned, unaligned and padded buffers" {
+    for (0..2) |offset| {
+        var bytes: [34]u8 = @splat(0xa5);
+        const target = Surface.init(bytes[offset..][0..32], 3, 4, 8).?;
+        try std.testing.expect(target.fillRect(-1, 1, 3, 2, 0x1234));
+        for (0..4) |y| for (0..8) |x| {
+            const expected: u8 = if (y >= 1 and y < 3 and x < 4) (if (x % 2 == 0) 0x34 else 0x12) else 0xa5;
+            try std.testing.expectEqual(expected, bytes[offset + y * 8 + x]);
+        };
+        try std.testing.expectEqual(@as(u8, 0xa5), bytes[33]);
+        if (offset == 1) try std.testing.expectEqual(@as(u8, 0xa5), bytes[0]);
+    }
 }
