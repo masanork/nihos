@@ -16,8 +16,10 @@ from splash_reference import reference
 
 BUILD = ROOT / 'build/native-emulator'
 OUT = BUILD / 'splash-workload'
-FRAMES = (('portrait-initial', 'portrait', 0), ('portrait-final', 'portrait', 255),
-          ('landscape-initial', 'landscape', 0), ('landscape-final', 'landscape', 255))
+FRAMES = tuple((f'{layout}-{name}', layout, progress, status)
+               for layout in ('portrait', 'landscape')
+               for name, progress, status in (('initial', 0, 5), ('intermediate', 128, 5), ('final', 255, 5),
+                                               ('failed', 128, 6), ('storage', 128, 7)))
 
 
 def sha(path):
@@ -40,7 +42,7 @@ def main():
     subprocess.run(['sh', 'tools/build-native.sh', 'emulator', 'integer'], cwd=ROOT, env=env, check=True)
     emulator = subprocess.check_output(['sh', str(ROOT / 'tools/bootstrap-esp-emu.sh')], text=True).strip()
     OUT.mkdir(parents=True, exist_ok=True)
-    for name in ('report.json', 'splash.json', *(f'{n}.{ext}' for n, _, _ in FRAMES for ext in ('rgb565', 'png'))):
+    for name in ('report.json', 'splash.json', *(f'{n}.{ext}' for n, _, _, _ in FRAMES for ext in ('rgb565', 'png'))):
         (OUT / name).unlink(missing_ok=True)
     for name in ('nihos-native.bin', 'nihos-native.elf', 'nihos-native-flash.bin', 'image-audit.json', 'native_options.zig'):
         shutil.copyfile(BUILD / name, OUT / name)
@@ -64,13 +66,13 @@ def main():
                 time.sleep(.1)
             command = [gdb_binary(), '-q', '-batch', str(OUT / 'nihos-native.elf'), '-ex', 'set remotetimeout 5',
                        '-ex', f'target remote 127.0.0.1:{port}', '-ex', 'break nih_canvas_frame_ready', '-ex', 'continue']
-            for name, _, _ in FRAMES:
+            for name, _, _, _ in FRAMES:
                 command.extend(('-ex', 'continue', '-ex', f'dump binary memory {name}.rgb565 0x48030000 0x481f2000'))
             command.extend(('-ex', 'detach'))
             with (OUT / 'gdb.log').open('wb') as log:
                 subprocess.run(command, cwd=OUT, stdout=log, stderr=subprocess.STDOUT, timeout=420, check=True)
-            if (OUT / 'gdb.log').read_text(errors='replace').count('Breakpoint 1, main.nih_canvas_frame_ready') != 5:
-                raise RuntimeError('expected five frame rendezvous')
+            if (OUT / 'gdb.log').read_text(errors='replace').count('Breakpoint 1, main.nih_canvas_frame_ready') != len(FRAMES) + 1:
+                raise RuntimeError('unexpected frame rendezvous count')
             if process.wait(timeout=30) != 0:
                 raise RuntimeError('emulator failed')
         finally:
@@ -81,9 +83,9 @@ def main():
                     process.kill(); process.wait()
     subprocess.run(['python3', str(ROOT / 'tools/check-canvas-offscreen.py'), str(OUT)], cwd=ROOT, check=True)
     frames = {}
-    for name, layout, progress in FRAMES:
+    for name, layout, progress, status in FRAMES:
         raw = (OUT / (name + '.rgb565')).read_bytes()
-        expected = reference(layout, progress)
+        expected = reference(layout, progress, status)
         verify(raw, expected)
         png = png_rgb565(raw, 720, 1280)
         (OUT / (name + '.png')).write_bytes(png)

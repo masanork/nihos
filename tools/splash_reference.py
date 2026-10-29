@@ -21,8 +21,8 @@ def rgb565(color):
     return (r >> 3) << 11 | (g >> 2) << 5 | b >> 3
 
 
-def reference(layout, progress):
-    if layout not in ('portrait', 'landscape') or progress not in (0, 255):
+def reference(layout, progress, status=5):
+    if layout not in ('portrait', 'landscape') or not isinstance(progress, int) or not 0 <= progress <= 255 or status not in range(1, 8):
         raise ValueError('invalid splash workload')
     frame = bytearray(struct.pack('<H', rgb565(BACKGROUND)) * (WIDTH * HEIGHT))
     assets = ROOT / 'src/graphics/boot'
@@ -38,9 +38,9 @@ def reference(layout, progress):
             raise ValueError('splash pixel outside framebuffer')
         struct.pack_into('<H', frame, (py * WIDTH + px) * 2, color)
 
-    for sx, sy, sw, sh, offset, length, ink, group, status, which in sprites:
-        sx, sy, sw, sh, offset, length, group, status = map(int, (sx, sy, sw, sh, offset, length, group, status))
-        if which != layout or status not in (0, 5):
+    for sx, sy, sw, sh, offset, length, ink, group, sprite_status, which in sprites:
+        sx, sy, sw, sh, offset, length, group, sprite_status = map(int, (sx, sy, sw, sh, offset, length, group, sprite_status))
+        if which != layout or sprite_status not in (0, status):
             continue
         dye = min(max(progress - group * 64, 0) * 255 // 127, 255)
         color = {'normal': PAPER, 'muted': MUTED, 'dye': mix(PAPER, VERMILION, dye), '@"error"': VERMILION}[ink]
@@ -57,7 +57,7 @@ def reference(layout, progress):
             index += count
         if index != sw * sh:
             raise ValueError('invalid splash mask geometry')
-    marker = rgb565(mix(MUTED, VERMILION, progress))
+    marker = rgb565(VERMILION if status == 6 else mix(MUTED, VERMILION, progress))
     mx, my = (92, 1166) if layout == 'portrait' else (102, 647)
     for y in range(6):
         for x in range(6):
