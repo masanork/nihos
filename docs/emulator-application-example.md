@@ -18,3 +18,17 @@ This is an example and an executable boundary probe, not a stable application AB
 ## Using this for rendering work
 
 Keep a fixed input trace and compare output frames and errors before and after a Canvas change. The emulator executes the target code and can expose target-only correctness issues; its elapsed time is a developer-feedback measurement, not a prediction of P4 PSRAM or scanout performance. The current fixture has no general frame-by-frame differential test or native application loader. Add representative editor scrolling, text layout and indexed-frame traces before claiming coverage of XY, Aozora or Quake. Measure physical rendering, cache writeback and display publication separately when Tab5 is available.
+
+### Record and compare a deterministic RV32 trace
+
+```sh
+sh tools/nihos-dev.sh canvas-trace-check
+python3 tools/emulator_trace.py record probes/emulator/canvas-trace.json build/my-reference.json
+# Change the implementation, then record to a new path:
+python3 tools/emulator_trace.py record probes/emulator/canvas-trace.json build/my-candidate.json
+python3 tools/emulator_trace.py compare build/my-reference.json build/my-candidate.json
+```
+
+Each run starts a new emulator fixture. The versioned trace contains synthetic portrait touch samples and virtual microsecond timestamps. The report retains a checksum of the trace, a source fingerprint, app/ELF/Flash hashes, and for the initial frame and every sample the complete RGB565 framebuffer SHA-256 plus input/event/click counters. Comparison rejects incompatible traces, incomplete reports and any differing frame or counter. The fixed sample covers a valid click, multi-contact cancellation and drag cancellation. The output path must be new, so a failed run cannot accidentally pass using an earlier receipt. Never put real PIN or credential data in these traces.
+
+Matching two runs establishes determinism for this fixture, not independent proof that the expected image is correct. Pair comparisons with known-pixel/negative-control tests. The source fingerprint is local change detection, not a signed build attestation. The emulator still stops at each event and has no panel, DMA or physical timing model.
