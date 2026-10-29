@@ -59,6 +59,14 @@ sh tools/nihos-dev.sh canvas-live
 sh tools/nihos-dev.sh canvas-live-check
 ```
 
+For a host-only performance comparison using pinned shaped Japanese glyphs,
+run `sh tools/nihos-dev.sh glyph-bench BASELINE_LIBRARY CANDIDATE_LIBRARY --host-dir build/runtime-text-host`.
+The two libraries use `tools/probes/canvas_glyph_bench.zig` against the desired
+Canvas and Surface sources. First generate the pinned host shaping capture with
+`sh tools/run-graphics-host-reference.sh`. The command validates capture hashes
+and compares every frame with the independent pixel reference before reporting
+composition times; it does not time shaping, native RV32, PSRAM or the panel.
+
 The live fixture uses the same RV32 Canvas pattern and production `pointer.Stream` / `pointer.Button` logic. Press and release the top strip to toggle it. Each browser sample is written to a debugger mailbox while the emulated CPU is stopped at a frame rendezvous; the guest processes it, redraws if needed, and the host reads the resulting PSRAM frame. The input timestamp is recorded at the browser event, so debugger transfer latency does not become a long press. A single session shares one fixture; refresh retrieves its last simulated timestamp. Samples, pointer events, clicks and the RGB565 frame hash are shown. The deterministic check includes normal press/release, multi-contact cancellation and drag cancellation.
 
 This is a deliberately narrow emulator fixture, not the normal OS application, a public host ABI, a real touch controller, or a live MIPI/DMA model. Each interaction halts the CPU and transfers an entire frame via GDB; it is not suitable for measuring interactive latency or frame rate. The GDB stub is active while the server runs; use a trusted host/network. Stop with Ctrl-C. In a failure, check `build/native-emulator/canvas-live/` logs.
