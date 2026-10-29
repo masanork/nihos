@@ -1095,6 +1095,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                             @call(.never_inline, nih_canvas_frame_ready, .{});
                         }
                     }
+                    if (options.canvas_workloads) {
+                        if (!display_service.canvas_workloads.scroll(frame)) fail("canvas scroll workload");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!display_service.canvas_workloads.indexed(frame)) fail("canvas indexed workload");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                    }
                     print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
                 }
                 if (options.graphics) {
