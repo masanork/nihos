@@ -472,7 +472,7 @@ def check_high(log, image, evidence):
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
           external_reserved_bytes=3 * 65536, require_normal=False, headless_case=0,
-          require_usb=False, require_jpki=False, require_card=False):
+          require_usb=False, require_jpki=False, require_card=False, canvas_offscreen=False):
     if external_reserved_bytes not in (3 * 65536, 2 << 20):
         raise ValueError("unknown external reservation")
     if (image or {}).get('broker') is not None and expected_psram_bytes != 32 << 20:
@@ -731,7 +731,11 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     display_preparation = None
     if require_card:
         external_reserved_bytes = 2 << 20
-    if external_reserved_bytes == 2 << 20:
+    if canvas_offscreen:
+        if evidence != 'emulator' or image is None or image.get('memory', {}).get('profile') != 'emulator' or expected_psram_bytes < 4 << 20 or require_card:
+            raise ValueError('canvas offscreen requires emulator image and PSRAM')
+        external_reserved_bytes = 2 << 20
+    if external_reserved_bytes == 2 << 20 and not canvas_offscreen:
         if evidence != 'physical-device':
             raise ValueError('native display preparation requires physical-device evidence')
         display_preparation = check_display_preparation(log)

@@ -161,6 +161,8 @@ ReleaseSafe Zig tests, and the three-language ABI probe. ZLint is pinned and
 checksum-verified by `tools/bootstrap-zlint.sh`; its selected semantic rules
 are warnings-as-errors. This gate requires no target hardware.
 
+For a single entry point to the interactive UI simulator and native RV32 canvas checks, see the [development simulator guide](docs/development-simulator.md).
+
 For card-screen development without a Tab5, run the local host simulator:
 
 ```sh
