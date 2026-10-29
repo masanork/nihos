@@ -2,7 +2,7 @@ import struct
 import tempfile
 from pathlib import Path
 import unittest
-from canvas_live import Guest, encode_frame, acquire_session_lock, check_guard
+from canvas_live import Guest, encode_frame, acquire_session_lock, check_guard, validate_document
 from canvas_frame import FRAME_BYTES
 
 
@@ -16,6 +16,7 @@ class InputTest(unittest.TestCase):
     def setUp(self):
         self.g = Guest.__new__(Guest)
         self.g.input_addr = 100
+        self.g.document_addr = 200
         self.g.last_time = 10
         self.g.mi = FakeMi()
         self.g.state = {'ok': True}
@@ -40,6 +41,19 @@ class InputTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.g.key(0, 4)
         self.assertEqual(len(self.g.mi.writes), 2)
+
+    def test_document_load_validates_before_guest_write(self):
+        self.g.state = {'mode': 1, 'text': 'xy  '}
+        self.g.load_document('xy  ')
+        self.assertEqual(self.g.mi.writes, [(200, struct.pack('<I80s', 4, b'xy  ')),
+                                            (100, struct.pack('<IIIII', 4, 0, 0, 0, 0))])
+        for text in ('x\n', '日本語', 'a' * 81, None, 123):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                self.g.load_document(text)
+        self.assertEqual(len(self.g.mi.writes), 2)
+        self.g.state = {'mode': 0}
+        with self.assertRaises(ValueError):
+            self.g.load_document('valid')
 
     def test_invalid_input_is_not_written(self):
         for values in ((1, 720, 100, 20), (3, 0, 0, 20), (1, 0, 1280, 20),

@@ -8,7 +8,7 @@ from emulator_trace import source_identity
 
 
 def expected(row):
-    return reference('jetbrains', ['EDITOR DEMO', row, 'ASCII ONLY - NO SAVE'], control=False)
+    return reference('jetbrains', ['EDITOR DEMO', row, 'ASCII ONLY - HOST FILES'], control=False)
 
 
 def main():
@@ -33,6 +33,22 @@ def main():
             if guest.raw != expected(row):
                 raise AssertionError('editor frame differs from independent pixel reference')
             states.append(state.copy())
+        if guest.state['text'] != 'hi':
+            raise AssertionError('document contents differ from edits')
+        loaded = guest.load_document('Saved text  ')
+        if loaded['text'] != 'Saved text  ' or loaded['cursor'] != 12 or guest.raw != expected('Saved text  |'):
+            raise AssertionError('document load and trailing spaces')
+        if guest.load_document('')['text'] != '' or guest.raw != expected('|'):
+            raise AssertionError('empty document load')
+        try:
+            guest.load_document('invalid\n')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('invalid document must be rejected')
+        if guest.state['text'] != '':
+            raise AssertionError('invalid load changed the document')
+        guest.load_document('hi')
         before = guest.state['pixel_sha256']
         ignored = guest.key(2, 0x50)  # Shift-left does not silently become plain left.
         if ignored['cursor'] != 2 or ignored['edits'] != 4 or ignored['pixel_sha256'] != before:
