@@ -1,0 +1,7 @@
+# Bounded edit and incremental redraw fixture
+
+The console RV32 fixture applies a fixed sequence to one ASCII row after its existing scroll: insert, move, insert, backspace, move and insert. Cursor-only movements do not request redraw because this fixture does not display a caret. Content mutations go through the existing incremental console renderer. A host test checks the entire incremental frame against a full repaint after each of the four changes; boundary tests reject invalid bytes and insertion into a full row and check backspace at both edges.
+
+At source commit `1dbb48505f386c58d1a40a6dee7d563890abf9c0`, ESP-EMU executed the fixture with each of basic-light, JetBrains and Source Code faces. Its final 720 × 1280 RGB565 frame matched both the host fixture and an independent per-pixel reference, including a separately specified expected edited line. The frame guard passed. Receipts are [basic-light](evidence/2026-10-29-editor-fixture/basic-light.json), [JetBrains](evidence/2026-10-29-editor-fixture/jetbrains.json), and [Source Code](evidence/2026-10-29-editor-fixture/source-code.json).
+
+Reproduce with `sh tools/nihos-dev.sh console-rv32 --font basic-light` and repeat for `jetbrains` and `source-code`. This is a finite synthetic edit trace, not an XY editor, real keyboard input, Unicode, file I/O or device performance qualification. It checks each intermediate redraw only on the host and the final frame on RV32; panel, DMA and physical timing remain separate.
