@@ -1,6 +1,7 @@
 """Reject partial or misleading display evidence using a physical SRAM fixture."""
 import importlib.util
 import json
+import re
 from pathlib import Path
 import unittest
 
@@ -21,6 +22,24 @@ class NativeDisplayEvidenceTests(unittest.TestCase):
         self.assertEqual(report['refresh']['frames'], 32)
         self.assertEqual(report['native']['external_memory'][0]['start'], 0x48200000)
         self.assertEqual(report['optical_evidence'], 'not evaluated by this checker')
+
+    def test_panel_only_preparation_requires_full_runtime_scanout_evidence(self):
+        original = next(line for line in LOG.splitlines() if line.startswith('NIHOS_NATIVE_DISPLAY_PREP '))
+        panel_only = original
+        for key, value in (('stage', 3), ('checksum', 0), ('phy_trim', 0), ('phy_status', 0)):
+            panel_only = re.sub(' ' + key + r'=[0-9a-f]{8}', ' {}={:08x}'.format(key, value), panel_only)
+        log = LOG.replace(original, panel_only)
+        self.check(log)
+        # It cannot masquerade as a successful stand-alone PHY probe.
+        with self.assertRaises(ValueError):
+            DISPLAY.NATIVE.check_display_preparation(log)
+        for key in ('checksum', 'phy_trim', 'phy_status'):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self.check(log.replace(key + '=00000000', key + '=00000001', 1))
+        for marker in ('NIHOS_NATIVE_DISPLAY_SCANOUT ', 'NIHOS_NATIVE_DISPLAY_IRQ_PASS '):
+            incomplete = '\n'.join(line for line in log.splitlines() if not line.startswith(marker))
+            with self.subTest(marker=marker), self.assertRaises(ValueError):
+                self.check(incomplete)
 
     def test_default_and_unknown_reservations_do_not_accept_display_heap(self):
         for reserved in (3 * 65536, 0, 0x200040, 1 << 20):
