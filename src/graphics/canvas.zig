@@ -271,11 +271,10 @@ pub const Canvas = struct {
         // Full remaining rows are supplied because Surface validates stride * height.
         const dest = self.target.bytes[dy * self.target.stride ..][0 .. h * self.target.stride];
         const src = mask.bytes[sy * mask.stride ..][0 .. h * mask.stride];
-        // A shifted slice lacks trailing padding after the last row; use per-row calls.
         for (0..h) |row| {
-            const row_target = surface.Surface.init(dest[row * self.target.stride ..][0..self.target.stride], self.target.width, 1, self.target.stride) orelse return error.InvalidImage;
-            const row_mask = surface.Mask{ .bytes = src[row * mask.stride + sx ..][0..w], .width = w, .height = 1, .stride = w };
-            if (!row_target.blit(row_mask, @intCast(dx), 0, color)) return error.InvalidImage;
+            const target = dest[row * self.target.stride + dx * 2 ..][0 .. w * 2];
+            const source = src[row * mask.stride + sx ..][0..w];
+            surface.internal.compositeA8Row(target, source, color);
         }
     }
 };
@@ -694,6 +693,50 @@ test "incremental lines match the canonical wide formula across clips and extrem
             if (major < major0 or major > major1) continue;
             const expected_minor: i64 = if (length == 0) minor0 else @intCast(@as(i128, minor0) + @divFloor(@as(i128, minor1 - minor0) * (major - major0) + @divFloor(length, 2), length));
             if (minor == expected_minor) std.mem.writeInt(u16, expected[1 + y * 29 + x * 2 ..][0..2], 0x61d3, .little);
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
+}
+
+test "clipped A8 masks match independent RGB565 blend on padded unaligned rows" {
+    var prng = std.Random.DefaultPrng.init(0x1a8b329d);
+    const random = prng.random();
+    const coverage = [_]u8{ 0, 1, 32, 64, 127, 128, 192, 254, 255 };
+    for (0..1000) |_| {
+        var mask: [35]u8 = undefined;
+        random.bytes(&mask);
+        for (0..5) |y| for (0..5) |x| {
+            mask[y * 7 + x] = coverage[random.intRangeLessThan(usize, 0, coverage.len)];
+        };
+        var initial: [109]u8 = undefined;
+        random.bytes(&initial);
+        var actual = initial;
+        var expected = initial;
+        const dest_x = random.intRangeAtMost(i32, -7, 9);
+        const dest_y = random.intRangeAtMost(i32, -7, 8);
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -3, 9), .y = random.intRangeAtMost(i32, -3, 7), .width = random.intRangeAtMost(u32, 0, 13), .height = random.intRangeAtMost(u32, 0, 11) };
+        const color = random.int(u16);
+        const canvas = Canvas.init(actual[1..], 7, 6, 18).?.clipped(clip);
+        try canvas.blitMask(.{ .bytes = &mask, .width = 5, .height = 5, .stride = 7 }, dest_x, dest_y, color);
+        for (0..6) |y| for (0..7) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            const sx = px - dest_x;
+            const sy = py - dest_y;
+            if (sx < 0 or sx >= 5 or sy < 0 or sy >= 5 or px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height) continue;
+            const a: u32 = mask[@as(usize, @intCast(sy)) * 7 + @as(usize, @intCast(sx))];
+            const offset = 1 + y * 18 + x * 2;
+            const bg = std.mem.readInt(u16, initial[offset..][0..2], .little);
+            var result: u16 = 0;
+            inline for (.{ .{ 11, 31 }, .{ 5, 63 }, .{ 0, 31 } }) |channel| {
+                const shift = channel[0];
+                const bits = channel[1];
+                const fg_part = (@as(u32, color) >> shift) & bits;
+                const bg_part = (@as(u32, bg) >> shift) & bits;
+                const component = (fg_part * a + bg_part * (255 - a) + 127) / 255;
+                result |= @as(u16, @intCast(component)) << shift;
+            }
+            std.mem.writeInt(u16, expected[offset..][0..2], result, .little);
         };
         try std.testing.expectEqualSlices(u8, &expected, &actual);
     }
