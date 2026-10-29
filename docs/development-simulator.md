@@ -32,6 +32,18 @@ This command builds an emulator-profile image using ESP-IDF 5.4.4 and Zig, runs 
 | `canvas-rv32` | Native RV32 firmware under ESP-EMU, with offscreen Canvas in emulated PSRAM | Target-instruction execution and memory/content checks in the emulator |
 | Physical Tab5 | Device firmware, panel and peripherals | Hardware behavior under the measured conditions |
 
-The interactive simulator currently has separate normal/card backends, and it is not running the full native kernel. ESP-EMU currently provides no integrated panel window or touch interaction in this workflow. Do not infer physical colors, cache/DMA behavior, timing, or device reliability from either simulator.
+The interactive simulator currently has separate normal/card backends, and it is not running the full native kernel. ESP-EMU has a limited interactive Canvas fixture, but the normal native application has no integrated panel window or touch interaction in this workflow. Do not infer physical colors, cache/DMA behavior, timing, or device reliability from either simulator.
 
 To improve the development loop, the next milestones are a shared display/input boundary used by applications and simulator backends; a streaming emulator framebuffer with checked frame identity; deterministic touch/keyboard event injection and replay into the native application; and fast one-command workflows for editor and reader scenarios. An export must read the actual emulated framebuffer, and tests must distinguish it from host-rendered previews. Keep real hardware checks for panel, DMA, timing and input-controller behavior.
+
+## Interactive RV32 fixture
+
+```sh
+sh tools/nihos-dev.sh canvas-live
+# Open http://127.0.0.1:8713/
+sh tools/nihos-dev.sh canvas-live-check
+```
+
+The live fixture uses the same RV32 Canvas pattern and production `pointer.Stream` / `pointer.Button` logic. Press and release the top strip to toggle it. Each browser sample is written to a debugger mailbox while the emulated CPU is stopped at a frame rendezvous; the guest processes it, redraws if needed, and the host reads the resulting PSRAM frame. The input timestamp is recorded at the browser event, so debugger transfer latency does not become a long press. A single session shares one fixture; refresh retrieves its last simulated timestamp. Samples, pointer events, clicks and the RGB565 frame hash are shown. The deterministic check includes normal press/release, multi-contact cancellation and drag cancellation.
+
+This is a deliberately narrow emulator fixture, not the normal OS application, a public host ABI, a real touch controller, or a live MIPI/DMA model. Each interaction halts the CPU and transfers an entire frame via GDB; it is not suitable for measuring interactive latency or frame rate. The GDB stub is active while the server runs; use a trusted host/network. Stop with Ctrl-C. In a failure, check `build/native-emulator/canvas-live/` logs.

@@ -235,6 +235,13 @@ export fn nih_canvas_frame_ready() void {
     asm volatile ("nop" ::: .{ .memory = true });
 }
 
+// Debugger-only fixture mailbox. Access occurs while the guest is stopped at
+// nih_canvas_frame_ready; it is not an application ABI or hardware input.
+const EmulatedInput = extern struct { command: u32 = 0, contacts: u32 = 0, x: u32 = 0, y: u32 = 0, time_us: u32 = 0 };
+const EmulatedOutput = extern struct { samples: u32 = 0, events: u32 = 0, clicks: u32 = 0, kind: u32 = 0 };
+export var nih_emulator_input: EmulatedInput = .{};
+export var nih_emulator_output: EmulatedOutput = .{};
+
 var initialized: u32 = 0x4e494853;
 
 fn reg(address: usize) *volatile u32 {
@@ -1063,6 +1070,28 @@ export fn nih_native_main() callconv(.c) noreturn {
                     const result: extern struct { checksum: u32, frame_bytes: u32, guard_bytes: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frame_bytes = board.frame_bytes, .guard_bytes = 16 };
                     logger.record("NIHOS_NATIVE_CANVAS_OFFSCREEN", null, .{ "checksum", "frame_bytes", "guard_bytes" }, &result);
                     @call(.never_inline, nih_canvas_frame_ready, .{});
+                    if (options.canvas_interactive) {
+                        var stream = pointer.Stream{};
+                        var button = pointer.Button{};
+                        const rect: pointer.Rect = .{ .x = 1120, .y = 48, .width = 96, .height = 624 };
+                        var active = false;
+                        while (true) {
+                            const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
+                            if (input.command == 0) break;
+                            if (input.command != 1 or input.contacts > 2 or input.x > 65535 or input.y > 65535) fail("emulator input");
+                            nih_emulator_output.samples += 1;
+                            if (stream.fresh(@intCast(input.contacts), @intCast(input.x), @intCast(input.y), input.time_us)) |event| {
+                                nih_emulator_output.events += 1;
+                                nih_emulator_output.kind = @intFromEnum(event.kind);
+                                if (button.observe(event, rect)) {
+                                    nih_emulator_output.clicks += 1;
+                                    active = !active;
+                                    if (!display_service.canvas_pattern.indicator(frame, active)) fail("emulator indicator");
+                                }
+                            }
+                            @call(.never_inline, nih_canvas_frame_ready, .{});
+                        }
+                    }
                     print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
                 }
                 if (options.graphics) {
