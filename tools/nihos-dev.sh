@@ -15,6 +15,7 @@ case "$command" in
     splash-rv32) exec python3 tools/splash_rv32.py "$@" ;;
     canvas-trace-check) exec sh tools/run-emulator-trace.sh "$@" ;;
     canvas-live-check) exec python3 tools/run-canvas-live-smoke.py "$@" ;;
+    editor-live-check) exec python3 tools/editor_live_check.py "$@" ;;
     canvas-live) exec python3 tools/canvas_live.py "$@" ;;
     canvas-snapshot) exec python3 tools/canvas_snapshot.py "$@" ;;
     canvas-rv32) exec sh tools/run-canvas-offscreen.sh "$@" ;;
@@ -28,6 +29,7 @@ nihos development simulator
   sh tools/nihos-dev.sh canvas-snapshot capture the RV32 framebuffer as PNG
   sh tools/nihos-dev.sh canvas-live interactive RV32 fixture in your browser
   sh tools/nihos-dev.sh canvas-live-check deterministic RV32 input/frame test
+  sh tools/nihos-dev.sh editor-live-check deterministic RV32 keyboard/frame test
   sh tools/nihos-dev.sh canvas-trace-check record and compare RV32 trace frames
   sh tools/nihos-dev.sh canvas-workloads check RV32 scroll and indexed frames
   sh tools/nihos-dev.sh glyph-bench BASELINE CANDIDATE --host-dir DIR

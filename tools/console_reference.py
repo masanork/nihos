@@ -20,7 +20,7 @@ def blend(background, foreground, alpha):
     return (r << 11) | (g << 5) | b
 
 
-def reference(font):
+def reference(font, lines_override=None, control=True):
     if font not in ('basic-light', 'jetbrains', 'source-code'):
         raise ValueError('unknown console face')
     small = font == 'basic-light'
@@ -29,7 +29,12 @@ def reference(font):
     lines += [chr(ord('A') + row % 26) + ' deterministic console line' for row in range(9, rows - 1)]
     lines += ['first scroll', 'second scroll', '']
     lines[9] = '> ' + lines[9]  # independently expected result of the edit trace
-    assert len(lines) == rows and all(len(line) <= columns for line in lines)
+    if lines_override is not None:
+        if len(lines_override) > rows:
+            raise ValueError('too many lines')
+        lines = list(lines_override) + [''] * (rows - len(lines_override))
+    if len(lines) != rows or any(len(line) > columns for line in lines):
+        raise ValueError('invalid console lines')
     frame = bytearray(struct.pack('<H', BACKGROUND) * (WIDTH * HEIGHT))
 
     def put(logical_x, logical_y, color):
@@ -63,6 +68,8 @@ def reference(font):
                 for index, alpha in enumerate(masks[char_index]):
                     if alpha:
                         put(margin_x + col * cell_w + index % cell_w, margin_y + row * cell_h + index // cell_w, blend(BACKGROUND, foreground, alpha))
+    if not control:
+        return bytes(frame)
     left, top, right, bottom = 1100, 650, 1260, 706
     for x in range(left, right):
         for y in range(top, bottom):
