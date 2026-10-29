@@ -22,6 +22,15 @@ from canvas_snapshot import ROOT, gdb_binary
 OUT = ROOT / 'build/native-emulator/canvas-live'
 
 
+def encode_frame(raw, previous_sha=None, previous_png=None):
+    if len(raw) != FRAME_BYTES:
+        raise RuntimeError('short emulated framebuffer')
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest == previous_sha and previous_png is not None:
+        return digest, previous_png
+    return digest, png_rgb565(raw, 720, 1280)
+
+
 def acquire_session_lock(path):
     handle = path.open('a+b')
     try:
@@ -167,13 +176,12 @@ class Guest:
         # Relative GDB path avoids injecting filesystem paths into its CLI.
         self.mi.command('-interpreter-exec console "dump binary memory frame.rgb565 0x48030000 0x481f2000"', timeout=90)
         self.raw = path.read_bytes()
-        if len(self.raw) != FRAME_BYTES:
-            raise RuntimeError('short emulated framebuffer')
-        self.png = png_rgb565(self.raw, 720, 1280)
+        sha, self.png = encode_frame(self.raw, getattr(self, 'pixel_sha', None), getattr(self, 'png', None))
+        self.pixel_sha = sha
         self.seq += 1
         samples, events, clicks, kind = struct.unpack('<IIII', self.mi.read(self.output_addr, 16))
         self.state = {'frame': self.seq, 'samples': samples, 'events': events, 'clicks': clicks, 'kind': kind,
-                      'time_us': self.last_time, 'pixel_sha256': hashlib.sha256(self.raw).hexdigest(), 'evidence': 'esp-emu-rv32-fixture'}
+                      'time_us': self.last_time, 'pixel_sha256': self.pixel_sha, 'evidence': 'esp-emu-rv32-fixture'}
 
     def sample(self, contacts, x, y, time_us):
         if any(type(v) is not int for v in (contacts, x, y, time_us)) or contacts not in (0, 1, 2) or not 0 <= x < 720 or not 0 <= y < 1280 or not self.last_time <= time_us <= 0xffffffff:
