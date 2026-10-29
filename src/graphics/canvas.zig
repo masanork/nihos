@@ -274,7 +274,7 @@ pub const Canvas = struct {
         for (0..h) |row| {
             const target = dest[row * self.target.stride + dx * 2 ..][0 .. w * 2];
             const source = src[row * mask.stride + sx ..][0..w];
-            surface.compositeA8Row(target, source, color);
+            surface.internal.compositeA8Row(target, source, color);
         }
     }
 };
