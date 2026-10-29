@@ -24,6 +24,9 @@ extern unsigned nih_normal_fs_poll(uint32_t);
 extern void nih_normal_fs_snapshot(report *);
 extern unsigned nih_normal_fs_result(uint32_t,void *,uint32_t);
 extern unsigned nih_fs_test_step(void);
+extern uint32_t nih_fs_test_write_prepare(const host_lease *,const uint8_t [512]);
+extern unsigned nih_fs_test_write_finish(const host_lease *);
+extern unsigned nih_fs_test_write_sector(const host_lease *,const uint8_t [512],uint32_t);
 extern unsigned nih_shared_sdmmc_acquire(unsigned,host_lease *);
 extern unsigned nih_shared_sdmmc_release(const host_lease *);
 extern unsigned nih_shared_sdmmc_generation(void);
@@ -32,7 +35,9 @@ extern void nih_shared_sdmmc_write(const host_lease *,uint32_t,uint32_t);
 static uint32_t regs[129],cccr[512];
 static uint64_t micros,ticks,sectors;
 static uint32_t actor=0x10000,reset_count,ui_progress,c6_transactions,reads,cache_failure,present=1,fail_read,freeze_time;
-static uint32_t empty_root,corrupt_boot;
+static uint32_t empty_root,corrupt_boot,cache_fail_at,cache_calls,cache_trace,write_count;
+static uint8_t written[512];
+static struct { unsigned op,start,bytes; } cache_events[16];
 static int image;
 static nih_sram_pool pool;
 static uint8_t *banks[2];
@@ -83,6 +88,13 @@ void nih_fs_test_write(uint32_t offset,uint32_t value) {
             if(arg>>31) cccr[address]=arg&255;
             regs[0x30/4]=address==3?2:cccr[address];break;
         }
+        case 24: {
+            CHECK((value&(1u<<9)) && (value&(1u<<10)) && arg<sectors);
+            uint32_t *desc=(void *)nih_fs_test_pointer(regs[0x88/4]);
+            CHECK(desc && desc[1]==512 && (desc[0]&(1u<<31)));
+            memcpy(written,(void *)nih_fs_test_pointer(desc[2]),512);
+            ++write_count;desc[0]&=~(1u<<31);regs[0x44/4]|=1u<<3;break;
+        }
         case 17: {
             ++reads;
             if(fail_read) { regs[0x44/4]=1u<<7;return; }
@@ -105,8 +117,14 @@ void nih_fs_test_write(uint32_t offset,uint32_t value) {
 void nih_sdmmc_clock_init(void) { ++reset_count;memset(regs,0,sizeof regs); }
 void nih_sdmmc_power_off(void) {}
 void nih_sdmmc_power_on(void) {}
-int nih_rom_cache_writeback(unsigned banks,unsigned start,unsigned bytes) { (void)banks;(void)start;(void)bytes;return cache_failure?-1:0; }
-int nih_rom_cache_invalidate(unsigned banks,unsigned start,unsigned bytes) { (void)banks;(void)start;(void)bytes;return cache_failure?-1:0; }
+static int cache_op(unsigned op,unsigned banks,unsigned start,unsigned bytes) {
+    (void)banks;
+    if(cache_trace && cache_calls<16) { cache_events[cache_calls].op=op;cache_events[cache_calls].start=start;cache_events[cache_calls].bytes=bytes; }
+    ++cache_calls;
+    return (cache_failure || (cache_fail_at && cache_calls==cache_fail_at))?-1:0;
+}
+int nih_rom_cache_writeback(unsigned banks,unsigned start,unsigned bytes) { return cache_op(1,banks,start,bytes); }
+int nih_rom_cache_invalidate(unsigned banks,unsigned start,unsigned bytes) { return cache_op(2,banks,start,bytes); }
 unsigned nih_normal_c6_dma_release(void) { return !cache_failure; }
 bool nih_base_sram_take(unsigned owner,unsigned min,unsigned max,nih_sram_lease *out) { return nih_sram_pool_take(&pool,owner,min,max,out); }
 bool nih_base_sram_release(const nih_sram_lease *lease) { return nih_sram_pool_release(&pool,lease); }
@@ -131,6 +149,39 @@ uint64_t nih_riscv_task_call(uint32_t number,uint32_t argument,uint32_t payload)
     return 0;
 }
 _Noreturn void nih_riscv_task_exit(int status) { (void)status;abort(); }
+static void write_dma_test(void) {
+    host_lease lease={0};uint8_t source[512];
+    for(unsigned i=0;i<512;++i) source[i]=(uint8_t)i;
+    CHECK(!nih_shared_sdmmc_acquire(0,&lease));
+    cache_calls=0;cache_trace=1;
+    uint32_t address=nih_fs_test_write_prepare(&lease,source);CHECK(address);
+    uint32_t *desc=(void *)nih_fs_test_pointer(address);CHECK(desc[1]==512 && (desc[0]&(1u<<31)));
+    uint8_t *data=(void *)nih_fs_test_pointer(desc[2]);
+    CHECK(!memcmp(data,source,512));
+    CHECK(cache_calls==2 && cache_events[0].op==1 && cache_events[0].start==desc[2] && cache_events[0].bytes==512);
+    CHECK(cache_events[1].op==1 && cache_events[1].start==address && cache_events[1].bytes==64);
+    source[0]=0xff;CHECK(data[0]==0); // no DMA borrow of caller buffer
+    CHECK(!nih_fs_test_write_finish(&lease)); // descriptor still owned
+    desc[0]&=~(1u<<31);desc[0]|=1u<<30;
+    CHECK(!nih_fs_test_write_finish(&lease)); // descriptor reports error
+    desc[0]&=~(1u<<30);
+    cache_calls=0;cache_fail_at=1;CHECK(!nih_fs_test_write_finish(&lease));
+    cache_fail_at=0;CHECK(nih_fs_test_write_finish(&lease));
+    cache_trace=0;CHECK(!nih_shared_sdmmc_release(&lease));
+    CHECK(!nih_fs_test_write_prepare(&lease,source));CHECK(!nih_fs_test_write_finish(&lease));
+    CHECK(!nih_shared_sdmmc_acquire(1,&lease));
+    CHECK(!nih_fs_test_write_prepare(&lease,source));CHECK(!nih_fs_test_write_finish(&lease));
+    CHECK(!nih_shared_sdmmc_release(&lease));
+    for(unsigned fail=1;fail<=2;++fail) {
+        CHECK(!nih_shared_sdmmc_acquire(0,&lease));cache_calls=0;cache_fail_at=fail;
+        CHECK(!nih_fs_test_write_prepare(&lease,source));
+        cache_fail_at=0;CHECK(!nih_shared_sdmmc_release(&lease));
+    }
+    CHECK(!nih_shared_sdmmc_acquire(0,&lease));
+    CHECK(nih_fs_test_write_sector(&lease,source,7));
+    CHECK(write_count==1 && !memcmp(written,source,512));
+    CHECK(!nih_shared_sdmmc_release(&lease));
+}
 static void step(void) { actor=0x10001;CHECK(nih_fs_test_step());actor=0x10000; }
 static report snapshot(void) { report r={0};nih_normal_fs_snapshot(&r);return r; }
 static void check_display(void) {
@@ -170,6 +221,7 @@ int main(int argc,char **argv) {
         CHECK(nih_normal_fs_submit(0x10000,"Memo.txt",8)==0);
     } else {
         CHECK(r.status==2);
+        if(!strcmp(argv[2],"write-dma")) write_dma_test();
         actor=0x10002;CHECK(!nih_normal_fs_submit(0x10000,"Memo.txt",8));actor=0x10000;
         if(!strcmp(argv[2],"generation")) {
             host_lease lease={0};CHECK(!nih_shared_sdmmc_acquire(1,&lease));
