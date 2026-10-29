@@ -51,6 +51,8 @@ jobs:
           for font in basic-light jetbrains source-code; do
             sh tools/nihos-dev.sh console-rv32 --font "$font"
           done
+      - name: Compare RV32 splash with independent pixel reference
+        run: sh tools/nihos-dev.sh splash-rv32
       - name: RV32 library restart and negative controls
         run: |
           python3 -m venv build/graphics-rv32/venv
@@ -87,5 +89,8 @@ jobs:
             build/native-emulator/console-workload/**/*.json
             build/native-emulator/console-workload/**/*.log
             build/native-emulator/console-workload/**/*.png
+            build/native-emulator/splash-workload/*.json
+            build/native-emulator/splash-workload/*.log
+            build/native-emulator/splash-workload/*.png
             build/graphics-rv32/*log
           if-no-files-found: warn
