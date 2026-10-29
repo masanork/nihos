@@ -179,8 +179,9 @@ class Guest:
         sha, self.png = encode_frame(self.raw, getattr(self, 'pixel_sha', None), getattr(self, 'png', None))
         self.pixel_sha = sha
         self.seq += 1
-        samples, events, clicks, kind = struct.unpack('<IIII', self.mi.read(self.output_addr, 16))
+        samples, events, clicks, kind, mode, keys, edits, cursor = struct.unpack('<IIIIIIII', self.mi.read(self.output_addr, 32))
         self.state = {'frame': self.seq, 'samples': samples, 'events': events, 'clicks': clicks, 'kind': kind,
+                      'mode': mode, 'keys': keys, 'edits': edits, 'cursor': cursor,
                       'time_us': self.last_time, 'pixel_sha256': self.pixel_sha, 'evidence': 'esp-emu-rv32-fixture'}
 
     def sample(self, contacts, x, y, time_us):
@@ -188,6 +189,21 @@ class Guest:
             raise ValueError('invalid touch sample')
         self.last_time = time_us
         self.mi.write(self.input_addr, struct.pack('<IIIII', 1, contacts, x, y, time_us))
+        self.mi.resume_to_frame()
+        self.refresh()
+        return self.state
+
+    def start_editor(self):
+        self.mi.write(self.input_addr, struct.pack('<IIIII', 3, 0, 0, 0, 0))
+        self.mi.resume_to_frame()
+        self.refresh()
+        return self.state
+
+    def key(self, modifiers, usage):
+        if (self.state.get('mode') != 1 or type(modifiers) is not int or type(usage) is not int
+                or not 0 <= modifiers <= 255 or not 4 <= usage < 0xe0):
+            raise ValueError('invalid editor key')
+        self.mi.write(self.input_addr, struct.pack('<IIIII', 2, modifiers, usage, 0, 0))
         self.mi.resume_to_frame()
         self.refresh()
         return self.state
@@ -225,14 +241,22 @@ def serve(guest, port):
                 else: self.send(404, b'{}', 'application/json')
         def do_POST(self):
             host = f'127.0.0.1:{self.server.server_port}'
-            if self.path != '/sample' or self.headers.get('Host') != host or self.headers.get('Origin') not in (None, f'http://{host}') or self.headers.get('Content-Type') != 'application/json':
+            if self.path not in ('/sample', '/editor', '/key') or self.headers.get('Host') != host or self.headers.get('Origin') not in (None, f'http://{host}') or self.headers.get('Content-Type') != 'application/json':
                 self.send(403, b'{}', 'application/json'); return
             try:
                 n = int(self.headers.get('Content-Length', '0'))
                 if not 0 < n <= 256: raise ValueError('length')
                 sample = json.loads(self.rfile.read(n))
-                if set(sample) != {'contacts', 'x', 'y', 'time_us'}: raise ValueError('fields')
-                with guest.lock: result = guest.sample(**sample)
+                if not isinstance(sample, dict): raise ValueError('fields')
+                with guest.lock:
+                    if self.path == '/sample' and set(sample) == {'contacts', 'x', 'y', 'time_us'}:
+                        result = guest.sample(**sample)
+                    elif self.path == '/editor' and not sample:
+                        result = guest.start_editor()
+                    elif self.path == '/key' and set(sample) == {'modifiers', 'usage'}:
+                        result = guest.key(**sample)
+                    else:
+                        raise ValueError('fields')
                 self.send(200, json.dumps(result).encode(), 'application/json')
             except (ValueError, TypeError, KeyError, json.JSONDecodeError):
                 self.send(400, b'{}', 'application/json')
