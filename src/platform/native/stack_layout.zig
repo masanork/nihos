@@ -26,6 +26,15 @@ pub const Region = struct {
     }
 };
 
+/// Validate a frame on a separately registered experiment stack. This does not
+/// grant ownership or make external/cache-dependent memory safe for traps.
+pub fn extraFrameFits(core: u32, region: Region, frame: u32, saved_sp: u32, irq_sp: u32) bool {
+    const irq = interrupt(core) orelse return false;
+    return region.start < region.end and region.start % 16 == 0 and region.end % 16 == 0 and
+        frame % 16 == 0 and frame <= std.math.maxInt(u32) - frame_bytes and
+        saved_sp == frame + frame_bytes and region.frameFits(frame) and irq.spFits(irq_sp);
+}
+
 pub fn bootstrap(core: u32) ?Region {
     if (core >= 2) return null;
     const start = base + core * bootstrap_bytes;
@@ -128,4 +137,14 @@ test "invalid hart and overflowing frame addresses cannot change samples" {
     try std.testing.expect(!samples.observe(0, 0xfffffff0, 0x70, interrupt(0).?.end - 64));
     try std.testing.expect(!samples.observe(0, bootstrap(0).?.end - 128, bootstrap(0).?.end, interrupt(0).?.end - 63));
     try std.testing.expectEqualDeep(before, samples);
+}
+
+test "extra stack frames remain within owner, frame and interrupt bounds" {
+    const extra: Region = .{ .start = 0x4ff30000, .end = 0x4ff32000 };
+    const irq = interrupt(0).?;
+    try std.testing.expect(extraFrameFits(0, extra, extra.end - frame_bytes, extra.end, irq.end - 16));
+    try std.testing.expect(!extraFrameFits(1, extra, extra.end - frame_bytes, extra.end, irq.end - 16));
+    try std.testing.expect(!extraFrameFits(0, extra, extra.start, extra.start + frame_bytes, irq.end - 16));
+    try std.testing.expect(!extraFrameFits(0, extra, extra.end - frame_bytes, extra.end - 16, irq.end - 16));
+    try std.testing.expect(!extraFrameFits(0, extra, extra.end - frame_bytes, extra.end, irq.end));
 }

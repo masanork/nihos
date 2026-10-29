@@ -4,6 +4,47 @@ extern var __stacks_start: u8;
 extern var __stacks_end: u8;
 extern var __task_stacks_start: u8;
 extern var __task_stacks_end: u8;
+extern var __bss_start: u8;
+extern var __bss_end: u8;
+const options = @import("native_options");
+var extra: ?layout.Region = null;
+var extra_captures: u32 = 0;
+
+fn cpu0Masked() bool {
+    const hart = asm volatile ("csrr %[result], mhartid"
+        : [result] "=r" (-> u32),
+    );
+    const status = asm volatile ("csrr %[result], mstatus"
+        : [result] "=r" (-> u32),
+    );
+    return hart == 0 and status & 8 == 0;
+}
+
+/// Experimental CPU0-only BSS stack. Must register with local IRQs masked
+/// before publishing a task; the guard and frame bounds are checked in traps.
+pub fn registerExperimental(start: u32, end: u32) bool {
+    if (!options.pqc_worker_probe or !cpu0Masked() or extra != null or start % 64 != 0 or end -| start != 8192 or
+        start < @intFromPtr(&__bss_start) or end > @intFromPtr(&__bss_end)) return false;
+    const words: *volatile [4]u32 = @ptrFromInt(start);
+    words.* = @splat(layout.worker_guard);
+    extra = .{ .start = start, .end = end };
+    return true;
+}
+
+/// Caller must have retired the worker and must hold local IRQs masked.
+pub fn unregisterExperimental(start: u32, end: u32) bool {
+    if (!options.pqc_worker_probe or !cpu0Masked()) return false;
+    const region = extra orelse return false;
+    if (region.start != start or region.end != end) return false;
+    const words: *const volatile [4]u32 = @ptrFromInt(start);
+    for (words) |word| if (word != layout.worker_guard) return false;
+    extra = null;
+    return true;
+}
+
+pub fn experimentalCaptures() u32 {
+    return @atomicLoad(u32, &extra_captures, .acquire);
+}
 
 const Owner = struct {
     samples: layout.Samples align(64) = .{},
@@ -62,11 +103,19 @@ pub noinline fn begin(core: u32) bool {
 pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
     if (core >= 2 or owners[core].initialized != 1) return false;
     for (guard(core)) |word| if (word != layout.boot_guard) return false;
-    if (owners[core].confirmed != 0) {
+    const ordinary = if (owners[core].confirmed != 0) blk: {
         var sample = layout.Samples{};
-        return sample.observe(core, frame, saved_sp, irq_sp);
-    }
-    return owners[core].samples.observe(core, frame, saved_sp, irq_sp);
+        break :blk sample.observe(core, frame, saved_sp, irq_sp);
+    } else owners[core].samples.observe(core, frame, saved_sp, irq_sp);
+    if (ordinary) return true;
+    if (options.pqc_worker_probe and core == 0) if (extra) |region| {
+        const words: *const volatile [4]u32 = @ptrFromInt(region.start);
+        for (words) |word| if (word != layout.worker_guard) return false;
+        if (!layout.extraFrameFits(core, region, frame, saved_sp, irq_sp)) return false;
+        _ = @atomicRmw(u32, &extra_captures, .Add, 1, .release);
+        return true;
+    };
+    return false;
 }
 
 /// Renderer may run before worker qualification; validate only live boot/IRQ guards.

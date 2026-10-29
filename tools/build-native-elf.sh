@@ -11,6 +11,8 @@ esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 pqc=${NIHOS_NATIVE_PQC_VERIFY_PROBE:-0}
 case "$pqc" in 0) pqc=false; pqc_arena=false ;; 1) pqc=true; pqc_arena=false ;; 2) pqc=true; pqc_arena=true ;; *) echo "PQC_VERIFY_PROBE must be 0, 1 or 2" >&2; exit 1 ;; esac
+pqc_worker=${NIHOS_NATIVE_PQC_WORKER_PROBE:-0}
+case "$pqc_worker" in 0) pqc_worker=false ;; 1) pqc_worker=true ;; *) echo "PQC_WORKER_PROBE must be 0 or 1" >&2; exit 1 ;; esac
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -65,6 +67,7 @@ case "$mode" in
     *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
 if [ "$pqc_arena" = true ] && [ "$mode" != integer ]; then echo "PQC arena fixture requires integer mode" >&2; exit 1; fi
+if [ "$pqc_worker" = true ] && { [ "$profile" != emulator ] || [ "$pqc_arena" != true ] || [ "$pqc_xip" = true ] || [ "$qualification" = true ]; }; then echo "PQC worker fixture requires emulator integer arena mode" >&2; exit 1; fi
 usb=${NIHOS_NATIVE_USB:-0}
 case "$usb" in
     0) usb=false ;;
@@ -294,6 +297,9 @@ fi
 if [ "$pqc_xip" = true ] && { [ "$pqc_arena" != true ] || [ "$profile" != device ] || [ "$mode" != integer ] || [ "$network" != true ] || [ "$devices" != true ] || [ "$console_live" != true ] || [ "$boot_fast" != true ] || [ "$sdmmc" = true ] || [ "$card_read" = true ]; }; then
     echo "PQC XIP is restricted to the normal device arena fixture" >&2; exit 1
 fi
+if [ "$pqc_worker" = true ] && { [ "$display" = true ] || [ "$boot_fast" = true ] || [ "$network" = true ] || [ "$devices" = true ]; }; then
+    echo "PQC worker experiment requires headless qualification bootstrap" >&2; exit 1
+fi
 mkdir -p "$build_dir"
 native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
@@ -310,6 +316,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
 {
     printf 'pub const pqc_verify_probe = %s;\n' "$pqc"
     printf 'pub const pqc_arena_probe = %s;\n' "$pqc_arena"
+    printf 'pub const pqc_worker_probe = %s;\n' "$pqc_worker"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"

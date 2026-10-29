@@ -35,6 +35,10 @@ pub const Report = struct {
 };
 
 pub noinline fn run() Report {
+    return runOn(memory.stacks.layout.bootstrap(0).?);
+}
+
+pub noinline fn runOn(stack: memory.stacks.layout.Region) Report {
     var report: Report = .{};
     // Bound the accounting snapshot and allocation against local preemption.
     // Verification below runs with the original MIE state restored.
@@ -68,7 +72,6 @@ pub noinline fn run() Report {
         break :blk value;
     };
     report.lease = @intCast(allocation.bytes.len);
-    const stack = memory.stacks.layout.bootstrap(0).?;
     const low = stack.start + memory.stacks.layout.guard_bytes;
     const painted_to = nih_sqlite_stack_paint(low);
     report.stack_painted = painted_to;
