@@ -80,6 +80,14 @@ pub const Canvas = struct {
             if (to == from) continue;
             if (from + byte_count <= to or to + byte_count <= from) {
                 @memcpy(dst, src);
+            } else if (byte_count % 4 == 0 and @intFromPtr(src.ptr) % 4 == 0 and @intFromPtr(dst.ptr) % 4 == 0) {
+                const source_words: [*]const u32 = @ptrCast(@alignCast(src.ptr));
+                const target_words: [*]u32 = @ptrCast(@alignCast(dst.ptr));
+                if (to < from) {
+                    std.mem.copyForwards(u32, target_words[0 .. byte_count / 4], source_words[0 .. byte_count / 4]);
+                } else {
+                    std.mem.copyBackwards(u32, target_words[0 .. byte_count / 4], source_words[0 .. byte_count / 4]);
+                }
             } else if (to < from) {
                 std.mem.copyForwards(u8, dst, src);
             } else {
@@ -415,6 +423,31 @@ test "overlapping scroll preserves source pixels and row padding" {
     const before = pixels;
     c.clipped(.{ .x = 1, .y = 1, .width = 1, .height = 1 }).copyRect(.{ .x = std.math.minInt(i32), .y = 0, .width = 1, .height = 1 }, std.math.maxInt(i32), 0);
     try std.testing.expectEqualSlices(u8, &before, &pixels);
+}
+
+test "horizontal overlap copies match a snapshot for every pointer alignment" {
+    const width = 22;
+    const height = 4;
+    const stride = 48;
+    var before: [stride * height + 16]u8 align(4) = undefined;
+    var actual: [stride * height + 16]u8 align(4) = undefined;
+    var expected: [stride * height + 16]u8 align(4) = undefined;
+    var rng = std.Random.DefaultPrng.init(0xbaf3_32);
+    for (0..4) |alignment| for ([_]i32{ 0, 4 }) |destination| {
+        rng.random().bytes(&before);
+        actual = before;
+        expected = before;
+        const offset = 4 + alignment;
+        const canvas = Canvas.init(actual[offset..][0 .. stride * height], width, height, stride).?;
+        canvas.copyRect(.{ .x = 2, .y = 0, .width = 16, .height = height }, destination, 0);
+        for (0..height) |y| for (0..16) |x| {
+            const from = offset + y * stride + (2 + x) * 2;
+            const to = offset + y * stride + (@as(usize, @intCast(destination)) + x) * 2;
+            expected[to] = before[from];
+            expected[to + 1] = before[from + 1];
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    };
 }
 
 test "copyRect matches immutable source for clipped overlapping moves" {
