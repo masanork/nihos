@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Interactive RV32 Canvas fixture via ESP-EMU's halted GDB mailbox."""
 import argparse
+import fcntl
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -28,6 +29,16 @@ def encode_frame(raw, previous_sha=None, previous_png=None):
     if digest == previous_sha and previous_png is not None:
         return digest, previous_png
     return digest, png_rgb565(raw, 720, 1280)
+
+
+def acquire_session_lock(path):
+    handle = path.open('a+b')
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        raise RuntimeError('another canvas-live session is using this worktree') from None
+    return handle
 
 
 class Mi:
@@ -112,6 +123,15 @@ class Guest:
         self.lock = threading.Lock()
         self.last_time = 0
         self.seq = 0
+        OUT.mkdir(parents=True, exist_ok=True)
+        self.session_lock = acquire_session_lock(OUT / 'session.lock')
+        try:
+            self.start()
+        except BaseException:
+            self.close()
+            raise
+
+    def start(self):
         env = os.environ.copy()
         env.update(NIHOS_NATIVE_CANVAS_OFFSCREEN='1', NIHOS_NATIVE_CANVAS_INTERACTIVE='1', NIHOS_NATIVE_QUALIFICATION='1', NIHOS_NATIVE_DISPLAY='0')
         subprocess.run(['sh', 'tools/build-native.sh', 'emulator', 'integer'], cwd=ROOT, env=env, check=True, stdout=subprocess.DEVNULL)
@@ -154,7 +174,7 @@ class Guest:
         path = OUT / 'frame.rgb565'
         path.unlink(missing_ok=True)
         # Relative GDB path avoids injecting filesystem paths into its CLI.
-        self.mi.command('-interpreter-exec console "dump binary memory ' + str(path) + ' 0x48030000 0x481f2000"', timeout=90)
+        self.mi.command('-interpreter-exec console "dump binary memory frame.rgb565 0x48030000 0x481f2000"', timeout=90)
         self.raw = path.read_bytes()
         sha, self.png = encode_frame(self.raw, getattr(self, 'pixel_sha', None), getattr(self, 'png', None))
         self.pixel_sha = sha
@@ -183,6 +203,10 @@ class Guest:
                 self.proc.kill(); self.proc.wait()
         for handle in self.handles:
             handle.close()
+        self.handles = []
+        if self.session_lock is not None:
+            self.session_lock.close()
+            self.session_lock = None
 
 
 def serve(guest, port):
