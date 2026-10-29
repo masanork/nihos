@@ -1,0 +1,431 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff20000",
+  "elf_sha256": "c002f71a5e67ad83f7145a7828a348214ee3df39ee3e97deab7028992abfb5e7",
+  "memory": {
+    "profile": "emulator",
+    "origin": "0x4ff20000",
+    "end": "0x4ff48000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff20000",
+        "end": "0x4ff48000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "sram_reserved_bytes": 143232,
+  "primary_static_bytes": 85888,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000"
+  },
+  "heap": {
+    "start": "0x4ff34f80",
+    "end": "0x4ff48000",
+    "bytes": 77952,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x40001366",
+    "bytes": 4678,
+    "sha256": "003b6ae1aa809e85d5edaac1afee503efe41fba2b88db4804202fcd09e40b43c",
+    "functions": {
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000e8a"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_51",
+        "start": "0x40000e8a",
+        "end": "0x40001366"
+      }
+    },
+    "image_offset": 288
+  },
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x400108f0",
+    "bytes": 2256,
+    "fnv1a": 2281842788,
+    "executable": false,
+    "writable": false,
+    "image_offset": 65568
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_get_cpu_ticks": "0x4fc00040",
+    "nih_rom_set_cpu_ticks": "0x4fc00044",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 4678
+    },
+    {
+      "name": ".flash.pqc",
+      "address": "0x40001370",
+      "bytes": 32196
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 2256
+    },
+    {
+      "name": ".flash.pqc.rodata",
+      "address": "0x40010900",
+      "bytes": 11872
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff20000",
+      "bytes": 69648
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff31010",
+      "bytes": 2572
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff31a40",
+      "bytes": 1360
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff32000",
+      "bytes": 12160
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff34f80",
+      "bytes": 77952
+    }
+  ],
+  "service_sram": [
+    {
+      "name": "service.free0",
+      "origin": "0x4ff48000",
+      "end": "0x4ff60000",
+      "bytes": 98304
+    },
+    {
+      "name": "service.free1",
+      "origin": "0x4ff6e000",
+      "end": "0x4ff9f000",
+      "bytes": 200704
+    }
+  ],
+  "pqc_fixture": {
+    "profile": "diagnostic-combined-headless-fixture",
+    "text_start": "0x40001370",
+    "text_end": "0x40009134",
+    "text_bytes": 32196,
+    "text_sha256": "153d0870a9e3fa611db691f2258fc7668f1cbfd5da698ecbd005127f40cc950a",
+    "rodata_start": "0x40010900",
+    "rodata_end": "0x40013760",
+    "rodata_bytes": 11872,
+    "rodata_sha256": "7035f79ca92957ec0910ddeb16cfe768bbf420ae183211ecaa4c5b237684cdb8",
+    "functions": {
+      "PQCP_MLDSA_NATIVE_MLDSA65_poly_uniform": {
+        "start": "0x40001370",
+        "end": "0x400015cc"
+      },
+      "PQCP_MLDSA_NATIVE_MLDSA65_poly_challenge": {
+        "start": "0x400015cc",
+        "end": "0x400017c2"
+      },
+      "PQCP_MLDSA_NATIVE_MLDSA65_polyvecl_chknorm": {
+        "start": "0x400017c2",
+        "end": "0x40001920"
+      },
+      "PQCP_MLDSA_NATIVE_MLDSA65_polyvec_matrix_pointwise_montgomery_row_lazy": {
+        "start": "0x40001920",
+        "end": "0x40001bf4"
+      },
+      "PQCP_MLDSA_NATIVE_MLDSA65_verify_internal": {
+        "start": "0x40001bf4",
+        "end": "0x400025b4"
+      },
+      "mld_H": {
+        "start": "0x400025b4",
+        "end": "0x4000285e"
+      },
+      "PQCP_MLDSA_NATIVE_MLDSA65_verify": {
+        "start": "0x4000285e",
+        "end": "0x40002912"
+      },
+      "PQCP_MLDSA_NATIVE_MLDSA65_keccakf1600_permute": {
+        "start": "0x40002912",
+        "end": "0x40003f36"
+      },
+      "nih_pqc_arena_alloc": {
+        "start": "0x40003f36",
+        "end": "0x40003f96"
+      },
+      "nih_pqc_arena_free": {
+        "start": "0x40003f96",
+        "end": "0x40003fb8"
+      },
+      "nih_pqc_arena_fixture": {
+        "start": "0x40003fb8",
+        "end": "0x40004188"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_compress_d10": {
+        "start": "0x40004188",
+        "end": "0x4000424c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_frommsg": {
+        "start": "0x4000424c",
+        "end": "0x40004320"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_tomsg": {
+        "start": "0x40004320",
+        "end": "0x400043ea"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_gen_matrix": {
+        "start": "0x400043ea",
+        "end": "0x40004534"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_rej_uniform_x4": {
+        "start": "0x40004534",
+        "end": "0x400049d6"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_rej_uniform": {
+        "start": "0x400049d6",
+        "end": "0x40004cbc"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_indcpa_keypair_derand": {
+        "start": "0x40004cbc",
+        "end": "0x400052f8"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_polyvec_ntt": {
+        "start": "0x400052f8",
+        "end": "0x400054b2"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_polyvec_mulcache_compute": {
+        "start": "0x400054b2",
+        "end": "0x400055e4"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_polyvec_reduce": {
+        "start": "0x400055e4",
+        "end": "0x400056bc"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_indcpa_enc": {
+        "start": "0x400056bc",
+        "end": "0x40005d5c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_polyvec_basemul_acc_montgomery_cached": {
+        "start": "0x40005d5c",
+        "end": "0x40005e5c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_polyvec_invntt_tomont": {
+        "start": "0x40005e5c",
+        "end": "0x40005f8c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_indcpa_dec": {
+        "start": "0x40005f8c",
+        "end": "0x40006382"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_check_pk": {
+        "start": "0x40006382",
+        "end": "0x4000650a"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_polyvec_frombytes": {
+        "start": "0x4000650a",
+        "end": "0x400065c4"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_check_sk": {
+        "start": "0x400065c4",
+        "end": "0x400066be"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_keypair_derand": {
+        "start": "0x400066be",
+        "end": "0x4000679c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_enc_derand": {
+        "start": "0x4000679c",
+        "end": "0x40006a2c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_dec": {
+        "start": "0x40006a2c",
+        "end": "0x40006d40"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_getnoise_eta1_4x": {
+        "start": "0x40006d40",
+        "end": "0x40006eae"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_shake256x4": {
+        "start": "0x40006eae",
+        "end": "0x40007052"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_poly_cbd2": {
+        "start": "0x40007052",
+        "end": "0x4000714c"
+      },
+      "mlk_keccak_absorb_once": {
+        "start": "0x4000714c",
+        "end": "0x400072c6"
+      },
+      "mlk_keccak_absorb_once_x4": {
+        "start": "0x400072c6",
+        "end": "0x400074e6"
+      },
+      "mlk_keccak_squeezeblocks_x4": {
+        "start": "0x400074e6",
+        "end": "0x4000761c"
+      },
+      "PQCP_MLKEM_NATIVE_MLKEM768_keccakf1600_permute": {
+        "start": "0x4000761c",
+        "end": "0x40008c40"
+      },
+      "nih_mlkem_alloc": {
+        "start": "0x40008c40",
+        "end": "0x40008cb0"
+      },
+      "nih_mlkem_free": {
+        "start": "0x40008cb0",
+        "end": "0x40008ce8"
+      },
+      "nih_mlkem_worker_fixture": {
+        "start": "0x40008ce8",
+        "end": "0x40009134"
+      }
+    },
+    "cache_off_qualified": false,
+    "foreground_fixture_only": false
+  },
+  "image_sha256": "df42ac3d37476484549812487b358f45d035fe13b0be8ccf656d9d0e070255bd",
+  "image_bytes": 124976,
+  "image_segments": [
+    {
+      "address": "0x40000020",
+      "bytes": 37140
+    },
+    {
+      "address": "0x4ff20000",
+      "bytes": 28380
+    },
+    {
+      "address": "0x40010020",
+      "bytes": 14144
+    },
+    {
+      "address": "0x4ff26edc",
+      "bytes": 43840
+    },
+    {
+      "address": "0x4ff31a40",
+      "bytes": 1360
+    }
+  ],
+  "loader": {
+    "elf_sha256": "b208aeacaf466041005414000faa3d7811a44fb4fe060ba2e21f4fc00bda16de",
+    "allocated": [
+      {
+        "address": "0x4ffaefc0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ffb5fc0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ffb60d0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ffb6120",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ffb612c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ffac2c0",
+        "bytes": 3010
+      }
+    ],
+    "nearest_higher_address": "0x4ffac2c0",
+    "gap_bytes": 410304,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 410304
+      },
+      {
+        "name": "stacks",
+        "gap_below": null,
+        "gap_above": 254656
+      },
+      {
+        "name": "service.free0",
+        "gap_below": null,
+        "gap_above": 312000
+      },
+      {
+        "name": "service.free1",
+        "gap_below": null,
+        "gap_above": 53952
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "emulator",
+    "stack_source_window": {
+      "origin": "0x4ff20000",
+      "end": "0x4ffaefc0"
+    },
+    "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+  }
+}

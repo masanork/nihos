@@ -270,3 +270,10 @@ Set `NIHOS_NATIVE_PQC_COMBINED_PROBE=1` on the ML-KEM worker build to link
 both sequential worker fixtures. The normal 48 KiB linker floor rejects the
 current headless combined fixture. A separate assertion-relaxed **ELF-only**
 diagnostic and comparison procedure are documented in [the combined budget study](../../docs/measurements/2026-10-29-pqc-combined-link-budget.md); it is not an execution result or qualified firmware.
+
+### Experimental combined Flash placement
+
+A separate patched worktree placed both pinned C fixtures in Flash and ran
+sequential headless emulator jobs while keeping the 48 KiB heap floor. Its
+study-specific image audit and [patch are recorded here](../../docs/measurements/2026-10-29-pqc-combined-xip.md);
+this is not a normal-device profile or cache-off-safe service.

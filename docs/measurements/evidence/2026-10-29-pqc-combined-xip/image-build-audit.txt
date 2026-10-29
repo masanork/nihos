@@ -1,0 +1,1 @@
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols

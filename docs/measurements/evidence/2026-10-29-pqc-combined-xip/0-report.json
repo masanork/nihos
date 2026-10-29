@@ -1,0 +1,121 @@
+{
+  "mode": "0",
+  "elf_sha256": "c002f71a5e67ad83f7145a7828a348214ee3df39ee3e97deab7028992abfb5e7",
+  "image_sha256": "df42ac3d37476484549812487b358f45d035fe13b0be8ccf656d9d0e070255bd",
+  "heap_bytes": 77952,
+  "flash": {
+    ".flash.pqc": {
+      "address": "0x40001370",
+      "bytes": 32196,
+      "flags": 6,
+      "sha256": "153d0870a9e3fa611db691f2258fc7668f1cbfd5da698ecbd005127f40cc950a"
+    },
+    ".flash.pqc.rodata": {
+      "address": "0x40010900",
+      "bytes": 11872,
+      "flags": 50,
+      "sha256": "7035f79ca92957ec0910ddeb16cfe768bbf420ae183211ecaa4c5b237684cdb8"
+    },
+    "function_count": 41
+  },
+  "jobs": [
+    {
+      "index": 0,
+      "identity": 65537,
+      "previous": 0,
+      "stale_rejected": 1
+    },
+    {
+      "index": 1,
+      "identity": 131073,
+      "previous": 65537,
+      "stale_rejected": 1
+    }
+  ],
+  "mldsa": {
+    "elf_sha256": "c002f71a5e67ad83f7145a7828a348214ee3df39ee3e97deab7028992abfb5e7",
+    "image_sha256": "df42ac3d37476484549812487b358f45d035fe13b0be8ccf656d9d0e070255bd",
+    "stack_start": "0x4ff32000",
+    "stack_bytes": 8192,
+    "worker": {
+      "status": 2,
+      "verify_ticks": 0,
+      "verify_worker0": 0,
+      "verify_worker1": 0,
+      "lease": 0,
+      "charged": 0,
+      "peak": 0,
+      "allocs": 0,
+      "frees": 0,
+      "failures": 0,
+      "valid": 0,
+      "rejected": 0,
+      "oom": 0,
+      "live": 0,
+      "stack_used": 0,
+      "stack_painted": 0,
+      "erased": 0,
+      "released": 0,
+      "mie": 0
+    },
+    "owner": {
+      "captures": 1,
+      "foreground": 10863,
+      "terminated": 1,
+      "cleaned": 1,
+      "reaped": 1
+    }
+  },
+  "mlkem": {
+    "elf_sha256": "c002f71a5e67ad83f7145a7828a348214ee3df39ee3e97deab7028992abfb5e7",
+    "image_sha256": "df42ac3d37476484549812487b358f45d035fe13b0be8ccf656d9d0e070255bd",
+    "stack_start": "0x4ff32000",
+    "stack_bytes": 8192,
+    "worker": {
+      "status": 2,
+      "key_ok": 0,
+      "enc_ok": 0,
+      "dec_ok": 0,
+      "implicit_ok": 0,
+      "oom_ok": 0,
+      "key_peak": 0,
+      "enc_peak": 0,
+      "dec_peak": 0,
+      "allocs": 0,
+      "frees": 0,
+      "oom_error": 0,
+      "live": 0,
+      "uncleared": 0,
+      "ticks": 0,
+      "foreground0": 0,
+      "foreground1": 0
+    },
+    "memory": {
+      "before": 0,
+      "after_arena": 0,
+      "after_both": 0,
+      "after_release": 0,
+      "arena": 0,
+      "io": 0,
+      "charged": 0,
+      "stack_used": 0,
+      "stack_painted": 0,
+      "erased": 0,
+      "released": 0,
+      "mie": 0
+    },
+    "owner": {
+      "captures": 1,
+      "terminated": 1,
+      "cleaned": 1,
+      "reaped": 1
+    },
+    "phase_stack": {
+      "key_stack": 0,
+      "enc_stack": 0,
+      "dec_stack": 0,
+      "implicit_stack": 0,
+      "oom_stack": 0
+    }
+  }
+}
