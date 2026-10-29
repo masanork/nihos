@@ -2,42 +2,45 @@
 const std = @import("std");
 const console = @import("text_console");
 const fixture = @import("editor_fixture.zig");
-const face: console.raster.Face = .basic_light;
+const face: console.raster.Face = .jetbrains;
 const Layout = console.raster.Layout(face);
 const Text = console.Grid(Layout.columns, Layout.rows);
-const Renderer = console.raster.Renderer(null, face);
 pub const Result = enum { ignored, unchanged, moved, edited };
 
 /// Owned in the emulator's reserved scratch memory; frame ownership stays with host.
-pub const Live = struct {
-    text: Text = .{},
-    visible: Text = .{},
-    renderer: Renderer = .{},
-    editor: fixture.Editor(Text) = .{ .row = 1, .column = 0 },
-    keyboard: fixture.Keyboard = .{},
+pub fn Live(comptime section: ?[]const u8) type {
+    const Renderer = console.raster.Renderer(section, face);
+    return struct {
+        text: Text = .{},
+        visible: Text = .{},
+        renderer: Renderer = .{},
+        editor: fixture.Editor(Text) = .{ .row = 1, .column = 0 },
+        keyboard: fixture.Keyboard = .{},
 
-    pub fn start(self: *Live, frame: []u8) bool {
-        self.* = .{};
-        self.text.write("EDITOR DEMO\n\nASCII ONLY - NO SAVE");
-        return self.render(frame);
-    }
-    fn render(self: *Live, frame: []u8) bool {
-        self.visible = self.text;
-        // A visible cell cursor deliberately covers the underlying character;
-        // it is restored when the cursor moves because the document is separate.
-        const col = @min(self.editor.column, Text.width - 1);
-        self.visible.cells[self.editor.row * Text.width + col] = '|';
-        return self.renderer.submit(frame, 1440, &self.visible, .green);
-    }
-    pub fn press(self: *Live, frame: []u8, event: console.keyboard.Event) error{InvalidFrame}!Result {
-        const action = self.keyboard.press(event) orelse return .ignored;
-        const previous = self.editor.column;
-        const changed = self.editor.apply(&self.text, action);
-        if (!changed and previous == self.editor.column) return .unchanged;
-        if (!self.render(frame)) return error.InvalidFrame;
-        return if (changed) .edited else .moved;
-    }
-};
+        const Self = @This();
+        pub fn start(self: *Self, frame: []u8) bool {
+            self.* = .{};
+            self.text.write("EDITOR DEMO\n\nASCII ONLY - NO SAVE");
+            return self.render(frame);
+        }
+        fn render(self: *Self, frame: []u8) bool {
+            self.visible = self.text;
+            // A visible cell cursor deliberately covers the underlying character;
+            // it is restored when the cursor moves because the document is separate.
+            const col = @min(self.editor.column, Text.width - 1);
+            self.visible.cells[self.editor.row * Text.width + col] = '|';
+            return self.renderer.submit(frame, 1440, &self.visible, .green);
+        }
+        pub fn press(self: *Self, frame: []u8, event: console.keyboard.Event) error{InvalidFrame}!Result {
+            const action = self.keyboard.press(event) orelse return .ignored;
+            const previous = self.editor.column;
+            const changed = self.editor.apply(&self.text, action);
+            if (!changed and previous == self.editor.column) return .unchanged;
+            if (!self.render(frame)) return error.InvalidFrame;
+            return if (changed) .edited else .moved;
+        }
+    };
+}
 
 test "live edit keeps document separate from visible caret and renders each state" {
     const size = 720 * 1280 * 2;
@@ -45,7 +48,7 @@ test "live edit keeps document separate from visible caret and renders each stat
     defer std.testing.allocator.free(actual);
     const reference = try std.testing.allocator.alloc(u8, size);
     defer std.testing.allocator.free(reference);
-    var live: Live = .{};
+    var live: Live(null) = .{};
     try std.testing.expect(live.start(actual));
     const events = [_]console.keyboard.Event{
         .{ .modifiers = 0, .usage = 0x0b }, // h

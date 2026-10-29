@@ -1079,7 +1079,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     if (options.canvas_interactive) {
                         var stream = pointer.Stream{};
                         var app = display_service.canvas_demo_app.App{};
-                        const Live = @import("editor_live.zig").Live;
+                        const Live = @import("editor_live.zig").Live(".flash.rodata.display");
                         const live_address = board.framebuffer + board.frame_bytes + 16;
                         if (16 + @sizeOf(Live) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(Live) != 0) fail("editor live scratch");
                         const live: *Live = @ptrFromInt(live_address);
