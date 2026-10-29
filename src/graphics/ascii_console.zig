@@ -107,6 +107,7 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
     const half = blend(selected.background, foreground, 8);
     const quarter = blend(selected.background, foreground, 4);
     const character: usize = if (byte >= 32 and byte <= 126) byte else '?';
+    const canvas = Canvas.init(frame, width, height, stride) orelse unreachable;
     if (face == .basic or face == .basic_light) {
         const Store = if (section) |name| struct {
             const masks linksection(name) = @embedFile("ascii/basic.bin").*;
@@ -118,7 +119,7 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
         // Never expose a cleared cell while its glyph is being rasterized.
         for (0..16) |x| {
             const physical_y = 1279 - (L.margin_x + col * 16 + x);
-            const start = physical_y * stride + destination * 2;
+            var row_pixels: [16 * 2]u8 = undefined;
             for (clip_top..clip_bottom) |y| {
                 const bx: u3 = @intCast(x / 2);
                 const by = y / 2;
@@ -128,15 +129,12 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
                     const bottom = y % 2 == 1 and (by == 7 or bits[by + 1] & (@as(u8, 1) << bx) == 0);
                     color = if (face == .basic) foreground else if (right and bottom) quarter else if (right or bottom) half else foreground;
                 }
-                const offset = start + (y - clip_top) * 2;
-                if ((@intFromPtr(frame.ptr) + offset) & 1 == 0) {
-                    const output: *u16 = @ptrCast(@alignCast(frame.ptr + offset));
-                    output.* = color;
-                } else pixel(frame, stride, destination + y - clip_top, physical_y, color);
+                std.mem.writeInt(u16, row_pixels[(y - clip_top) * 2 ..][0..2], color, .little);
             }
+            const row_bytes = (clip_bottom - clip_top) * 2;
+            canvas.blitRgb565(.{ .bytes = row_pixels[0..row_bytes], .width = @intCast(clip_bottom - clip_top), .height = 1, .stride = row_bytes }, @intCast(destination), @intCast(physical_y)) catch unreachable;
         }
     } else {
-        const canvas = Canvas.init(frame, width, height, stride) orelse unreachable;
         canvas.fillRect(.{ .x = @intCast(destination), .y = @intCast(1280 - L.margin_x - (col + 1) * L.cell_width), .width = @intCast(clip_bottom - clip_top), .height = L.cell_width }, selected.background);
         const Font = if (face == .jetbrains) @import("ascii/jetbrains.zig") else @import("ascii/source_code.zig");
         const Store = if (section) |name| struct {
@@ -276,6 +274,47 @@ fn pixel(frame: []u8, stride: usize, x: usize, y: usize, color: u16) void {
     const offset = y * stride + x * 2;
     frame[offset] = @truncate(color);
     frame[offset + 1] = @truncate(color >> 8);
+}
+
+test "Canvas basic glyph rows match the original raster" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const actual = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(actual);
+    const expected = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(expected);
+    const masks = @embedFile("ascii/basic.bin");
+    inline for (.{ Face.basic, Face.basic_light }) |face| {
+        const L = Layout(face);
+        for ([_][2]usize{ .{ 0, 16 }, .{ 3, 12 } }) |clip| {
+            @memset(actual, 0xa5);
+            @memset(expected, 0xa5);
+            // An unaligned frame also covers the old byte-write fallback.
+            const frame = actual[17..][0..size];
+            const reference = expected[17..][0..size];
+            for (32..127) |character| {
+                const col = (character - 32) % L.columns;
+                const row = (character - 32) / L.columns;
+                const destination = L.margin_y + row * L.cell_height;
+                const selected = colors(.green);
+                const foreground = if (row == 0) selected.accent else selected.foreground;
+                const bits = masks[(character - 32) * 8 ..][0..8];
+                for (0..16) |x| for (clip[0]..clip[1]) |y| {
+                    const bx: u3 = @intCast(x / 2);
+                    const by = y / 2;
+                    var color = selected.background;
+                    if (bits[by] & (@as(u8, 1) << bx) != 0) {
+                        const right = x % 2 == 1 and (bx == 7 or bits[by] & (@as(u8, 1) << @as(u3, @intCast(bx + 1))) == 0);
+                        const bottom = y % 2 == 1 and (by == 7 or bits[by + 1] & (@as(u8, 1) << bx) == 0);
+                        color = if (face == .basic) foreground else if (right and bottom) blend(selected.background, foreground, 4) else if (right or bottom) blend(selected.background, foreground, 8) else foreground;
+                    }
+                    pixel(reference, stride, destination + y - clip[0], 1279 - (L.margin_x + col * 16 + x), color);
+                };
+                cell(null, face, frame, stride, @intCast(character), row, col, clip[0], clip[1], destination, .green);
+            }
+            try std.testing.expectEqualSlices(u8, expected, actual);
+        }
+    }
 }
 
 test "Canvas control matches the original rotated raster" {
