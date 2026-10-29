@@ -188,3 +188,12 @@ the correct owner as a control. Run each 4 MiB image for 4 seconds (without
 an exit-on marker), retain its exact audit and binaries, and run
 `python3 probes/pqc/check_worker_drain_log.py LOG ELF BIN AUDIT failure|control REPORT.json`.
 See [the fail-stop measurement](../../docs/measurements/2026-10-29-pqc-drain-fail-stop.md).
+
+### Copied-input memory fixture
+
+Set `NIHOS_NATIVE_PQC_SNAPSHOT_PROBE=1` with the single ordinary worker
+fixture. It copies the fixed public vector into a 9,612 B task-owned PSRAM
+snapshot and verifies from that copy while holding a separate arena. Capture
+through `NIHOS_NATIVE_PQC_WORKER_OWNER`, then run
+`python3 probes/pqc/check_worker_snapshot_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` without PSRAM). See [the snapshot measurement](../../docs/measurements/2026-10-29-pqc-input-snapshot.md).

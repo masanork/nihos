@@ -4,6 +4,7 @@ const memory = @import("native_tasks").memory;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
 const Result = extern struct { valid: u32 = 0, rejected: u32 = 0, oom: u32 = 0, peak: u32 = 0, allocs: u32 = 0, frees: u32 = 0, failures: u32 = 0, live: u32 = 0, verify_ticks: u32 = 0, verify_worker0: u32 = 0, verify_worker1: u32 = 0 };
 extern fn nih_pqc_arena_fixture([*]u8, usize, *Result) callconv(.c) c_int;
+extern fn nih_pqc_snapshot_fixture([*]u8, usize, [*]u8, usize, *Result) callconv(.c) c_int;
 
 pub const Report = struct {
     status: u32 = 0,
@@ -39,11 +40,11 @@ pub noinline fn run() Report {
 }
 
 pub noinline fn runOn(stack: memory.stacks.layout.Region) Report {
-    return runOnMode(stack, false);
+    return runOnMode(stack, false, null);
 }
 
 /// Fixture only: retain the owned allocation so exit cleanup must drain it.
-pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool) Report {
+pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool, snapshot: ?[]u8) Report {
     var report: Report = .{};
     // Bound the accounting snapshot and allocation against local preemption.
     // Verification below runs with the original MIE state restored.
@@ -81,7 +82,7 @@ pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool) Repo
     const painted_to = nih_sqlite_stack_paint(low);
     report.stack_painted = painted_to;
     var result: Result = .{};
-    const rc = nih_pqc_arena_fixture(allocation.bytes.ptr, allocation.bytes.len, &result);
+    const rc = if (snapshot) |copy| nih_pqc_snapshot_fixture(allocation.bytes.ptr, allocation.bytes.len, copy.ptr, copy.len, &result) else nih_pqc_arena_fixture(allocation.bytes.ptr, allocation.bytes.len, &result);
     const status = asm volatile ("csrr %[out], mstatus"
         : [out] "=r" (-> u32),
     );

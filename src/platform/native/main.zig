@@ -38,10 +38,41 @@ fn pqcObserve(out: *[3]u32) callconv(.c) void {
         out[2] = progress_now[1];
     }
 }
+const PqcSnapshotReport = struct { status: u32 = 0, payload: u32 = 0, charged: u32 = 0, combined: u32 = 0, before: u32 = 0, after_snapshot: u32 = 0, after_both: u32 = 0, after_release: u32 = 0, erased: u32 = 0, released: u32 = 0 };
+var pqc_snapshot_report: PqcSnapshotReport = .{};
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
-    pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine or options.pqc_drain_probe != 0);
+    if (options.pqc_snapshot_probe) {
+        var snapshot: PqcSnapshotReport = .{};
+        const before = tasks.memory.reusable.availableBytes();
+        if (before) |free_before| {
+            if (tasks.memory.allocExternal(9612, 64)) |allocation| {
+                snapshot.payload = @intCast(allocation.bytes.len);
+                snapshot.before = @intCast(free_before);
+                snapshot.after_snapshot = @intCast(tasks.memory.reusable.availableBytes().?);
+                snapshot.charged = snapshot.before - snapshot.after_snapshot;
+                pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), false, allocation.bytes);
+                snapshot.after_both = pqc_worker_report.heap_after;
+                if (pqc_worker_report.status == 1) snapshot.combined = snapshot.before - snapshot.after_both;
+                std.crypto.secureZero(u8, allocation.bytes);
+                snapshot.erased = @intFromBool(std.mem.allEqual(u8, allocation.bytes, 0));
+                tasks.memory.freeExternal(allocation) catch fail("PQC snapshot free");
+                snapshot.released = 1;
+                snapshot.after_release = @intCast(tasks.memory.reusable.availableBytes().?);
+                snapshot.status = if (pqc_worker_report.status == 1 and snapshot.erased == 1 and snapshot.after_release == snapshot.before) 1 else 3;
+            } else |_| {
+                pqc_worker_report.status = 2;
+                snapshot.status = 2;
+            }
+        } else {
+            pqc_worker_report.status = 2;
+            snapshot.status = 2;
+        }
+        pqc_snapshot_report = snapshot;
+    } else {
+        pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine or options.pqc_drain_probe != 0, null);
+    }
     @atomicStore(u32, &pqc_worker_done, 1, .release);
     return 0;
 }
@@ -829,6 +860,10 @@ export fn nih_native_main() callconv(.c) noreturn {
             if (options.pqc_worker_cancel and index == 1) {
                 const cancel: struct { requested: u32, accepted_phase: u32, phase: u32, computed_valid: u32, exposed_valid: u32, outcome: u32, cleaned: u32, reaped: u32 } = .{ .requested = @atomicLoad(u32, &pqc_cancel_requested, .acquire), .accepted_phase = @atomicLoad(u32, &pqc_cancel_accepted_phase, .acquire), .phase = @atomicLoad(u32, &pqc_cancel_phase, .acquire), .computed_valid = computed_valid, .exposed_valid = report.valid, .outcome = if (cancelled) 3 else 2, .cleaned = 1, .reaped = 1 };
                 logger.record("NIHOS_NATIVE_PQC_CANCEL", null, .{ "requested", "accepted_phase", "phase", "computed_valid", "exposed_valid", "outcome", "cleaned", "reaped" }, &cancel);
+            }
+            if (options.pqc_snapshot_probe) {
+                if (pqc_snapshot_report.status != report.status) fail("PQC snapshot status");
+                logger.record("NIHOS_NATIVE_PQC_SNAPSHOT", null, .{ "status", "payload", "charged", "combined", "before", "after_snapshot", "after_both", "after_release", "erased", "released" }, &pqc_snapshot_report);
             }
             logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
             const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };

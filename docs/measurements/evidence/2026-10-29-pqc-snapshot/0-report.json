@@ -1,0 +1,46 @@
+{
+  "elf_sha256": "a96ba6f2d4889d602fe011025a29235251c6207f724ea4f049551915ca6a7bc5",
+  "image_sha256": "74eecd3dfd9b38e4421ff18a02b205d06c272b05693a6faf10ecf77252c65965",
+  "stack_start": "0x4ff35f80",
+  "stack_bytes": 8192,
+  "worker": {
+    "status": 2,
+    "verify_ticks": 0,
+    "verify_worker0": 0,
+    "verify_worker1": 0,
+    "lease": 0,
+    "charged": 0,
+    "peak": 0,
+    "allocs": 0,
+    "frees": 0,
+    "failures": 0,
+    "valid": 0,
+    "rejected": 0,
+    "oom": 0,
+    "live": 0,
+    "stack_used": 0,
+    "stack_painted": 0,
+    "erased": 0,
+    "released": 0,
+    "mie": 0
+  },
+  "owner": {
+    "captures": 1,
+    "foreground": 10632,
+    "terminated": 1,
+    "cleaned": 1,
+    "reaped": 1
+  },
+  "snapshot": {
+    "status": 2,
+    "payload": 0,
+    "charged": 0,
+    "combined": 0,
+    "before": 0,
+    "after_snapshot": 0,
+    "after_both": 0,
+    "after_release": 0,
+    "erased": 0,
+    "released": 0
+  }
+}
