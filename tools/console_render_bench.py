@@ -3,6 +3,7 @@
 import ctypes
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import statistics
@@ -12,6 +13,8 @@ import time
 if len(sys.argv) != 3:
     raise SystemExit('usage: console_render_bench.py BASELINE_LIBRARY CANDIDATE_LIBRARY')
 paths = [Path(arg).resolve() for arg in sys.argv[1:]]
+if os.path.samefile(*paths):
+    raise SystemExit('use distinct library files: the adapter stores per-library state')
 libraries = [ctypes.CDLL(str(path)) for path in paths]
 for library in libraries:
     library.setup.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
