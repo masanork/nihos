@@ -1,6 +1,8 @@
 //! Bounded read-only SDHC/SDXC boot probe, slot 0, optional 4-bit/20 MHz.
 //! Command/PIO registers: pinned ESP-IDF v5.4.4 sdmmc register definitions.
-//! One fixed internal DMA buffer/descriptor, no IRQ, filesystem or write/erase.
+//! Normal native buses remain read-only; an opt-in, test-only CMD24 primitive
+//! requires a write-capable bus and is not registered by normal startup.
+//! One fixed internal DMA buffer/descriptor; no IRQ or filesystem.
 const std = @import("std");
 pub const base: u32 = 0x5008_3000;
 pub const regs = struct {
@@ -106,6 +108,7 @@ pub fn Controller(comptime IO: type) type {
     return struct {
         io: IO,
         poll_limit: u32 = 200_000,
+        ready_poll_limit: u32 = 5_000,
         last_command: u32 = 0,
         last_interrupts: u32 = 0,
         last_response: u32 = 0,
@@ -128,6 +131,7 @@ pub fn Controller(comptime IO: type) type {
             else => IO,
         };
         const shared = @hasDecl(BusType, "shared_host") and BusType.shared_host;
+        const write_enabled = if (@hasDecl(BusType, "experimental_sd_write")) BusType.experimental_sd_write else false;
         fn owns(self: *const Self) bool {
             return if (shared) self.io.ownsSlot(0) else true;
         }
@@ -191,9 +195,14 @@ pub fn Controller(comptime IO: type) type {
         }
 
         fn commandControlled(self: *Self, index: u6, argument: u32, control: anytype) Error![4]u32 {
+            return self.commandTransferControlled(index, argument, control, false);
+        }
+
+        fn commandTransferControlled(self: *Self, index: u6, argument: u32, control: anytype, write_transfer: bool) Error![4]u32 {
+            // CMD24 is only admitted by the explicitly enabled write path.
             // Reject before any register access, including status/FIFO resets.
             if (!self.owns()) return error.NoOwnership;
-            if (!allowed(index)) return error.InvalidCommand;
+            if (!allowed(index) and !(write_enabled and write_transfer and index == 24)) return error.InvalidCommand;
             if (self.faulted) return error.Controller;
             self.last_command = index;
             try self.pollClearControlled(regs.command, start, control);
@@ -204,7 +213,8 @@ pub fn Controller(comptime IO: type) type {
             if (index == 0) flags |= 1 << 15 else flags |= (1 << 6) | (1 << 13);
             if (index != 0 and index != 41) flags |= 1 << 8;
             if (index == 2 or index == 9) flags |= 1 << 7;
-            if (index == 17 or index == 51) flags |= 1 << 9;
+            if (index == 17 or index == 51 or index == 24) flags |= 1 << 9;
+            if (index == 24) flags |= 1 << 10;
             self.io.write(regs.command, flags);
             self.commands += 1;
             for (0..self.poll_limit) |_| {
@@ -327,6 +337,78 @@ pub fn Controller(comptime IO: type) type {
             return self.readTransferControlled(17, lba, 512, buffer, control);
         }
 
+        /// Experimental CMD24 primitive. It is not enabled for the normal
+        /// native bus. A failure after launch has an unknown media outcome;
+        /// card-ready is not a power-loss durability barrier.
+        pub fn writeSectorControlled(self: *Self, lba: u32, source: *const [512]u8, control: anytype) Error!void {
+            if (comptime !write_enabled) return error.InvalidCommand;
+            if (!self.owns()) return error.NoOwnership;
+            if (self.rca == 0 or lba >= self.sectors) return error.InvalidAddress;
+            if (self.faulted or !self.quiescence.complete()) return error.Controller;
+            try checkStop(control);
+            self.io.write(regs.ctrl, self.io.read(regs.ctrl) | 6);
+            try self.pollClearControlled(regs.ctrl, 6, control);
+            self.io.delay(10);
+            self.io.write(regs.dma_mode, 1);
+            try self.pollClearControlled(regs.dma_mode, 1, control);
+            // prepareWriteDma copies into owned staging and must return null
+            // only when no DMA-visible resource was retained.
+            const descriptor = self.io.prepareWriteDma(source) orelse return error.Controller;
+            self.quiescence = .{ .device_idle = false, .descriptors_released = false, .cache_handed_back = false };
+            errdefer {
+                self.faulted = true;
+                if (!self.quiescence.complete()) {
+                    self.stopDma() catch {
+                        self.cleanup_failed = true;
+                    };
+                    if (self.quiescence.device_idle) self.releaseDma() catch {
+                        self.cleanup_failed = true;
+                    };
+                }
+            }
+            self.io.write(regs.block, 512);
+            self.io.write(regs.bytes, 512);
+            self.io.write(regs.dma_status, 0xffff_ffff);
+            self.io.write(regs.dma_mask, 0);
+            self.io.write(regs.descriptor, descriptor);
+            self.io.write(regs.ctrl, self.io.read(regs.ctrl) | (1 << 25) | (1 << 5));
+            self.io.write(regs.dma_mode, 0x82);
+            self.io.write(regs.demand, 1);
+            const response = try self.commandTransferControlled(24, lba, control, true);
+            if (response[0] & 0xfdff_e008 != 0) return error.Response;
+            var transferred = false;
+            for (0..self.poll_limit) |_| {
+                try checkStop(control);
+                self.last_interrupts = self.io.read(regs.interrupts);
+                self.last_status = self.io.read(regs.dma_status);
+                if (self.last_interrupts & errors != 0 or self.last_status & 0x34 != 0) return error.Controller;
+                if (self.last_interrupts & (done | data_over) == done | data_over) {
+                    try self.stopDma();
+                    try checkStop(control);
+                    if (!self.io.finishWriteDma()) return error.Controller;
+                    try self.releaseDma();
+                    transferred = true;
+                    break;
+                }
+                self.io.delay(1);
+            }
+            if (!transferred) return error.Timeout;
+            for (0..self.ready_poll_limit) |_| {
+                try checkStop(control);
+                // Card programming may hold DAT0 busy for longer than a
+                // normal command timeout. Wait before issuing CMD13.
+                if (self.io.read(regs.status) & (1 << 9) != 0) {
+                    self.io.delay(1_000);
+                    continue;
+                }
+                const status = (try self.commandControlled(13, self.rca, control))[0];
+                if (status & 0xfdff_e008 != 0) return error.Response;
+                if (status & 0x100 != 0 and (status >> 9) & 15 == 4) return;
+                self.io.delay(1_000);
+            }
+            return error.Timeout;
+        }
+
         fn readTransfer(self: *Self, index: u6, argument: u32, length: u32, buffer: *[512]u8) Error!void {
             return self.readTransferControlled(index, argument, length, buffer, Proceed{});
         }
@@ -411,6 +493,14 @@ test "CSD v2 sector count retains the 2 TiB limit and rejects other layouts" {
 }
 
 const DmaModel = struct {
+    pub const experimental_sd_write = true;
+    write_command: u32 = 0,
+    write_prepared: u32 = 0,
+    write_finished: u32 = 0,
+    write_fail_finish: bool = false,
+    card_busy: bool = false,
+    host_busy_after_write: bool = false,
+    written: [512]u8 = @splat(0),
     complete: bool = true,
     owned: bool = false,
     fail_prepare: bool = false,
@@ -428,7 +518,8 @@ const DmaModel = struct {
         if (offset == regs.response) self.responses += 1;
         return switch (offset) {
             regs.interrupts => done | (if (self.complete) data_over else @as(u32, 0)),
-            regs.response => 0x900,
+            regs.response => if (self.card_busy and self.command_word & 63 == 13) 0xe00 else 0x900,
+            regs.status => if (self.host_busy_after_write and self.write_command != 0) 1 << 9 else 0,
             regs.dma_status => self.dma_error | (if (self.stall_fsm) @as(u32, 2 << 13) else 0),
             regs.ctrl => if (self.stall_stop and self.stopped != 0) 4 else 0,
             regs.descriptor => if (self.descriptor_stuck) 0x4ff1_0000 else 0,
@@ -436,13 +527,26 @@ const DmaModel = struct {
         };
     }
     pub fn write(self: *@This(), offset: usize, value: u32) void {
-        if (offset == regs.command) self.command_word = value;
+        if (offset == regs.command) {
+            self.command_word = value;
+            if (value & 63 == 24) self.write_command = value;
+        }
         if (offset == regs.dma_mode and value == 0) self.stopped += 1;
     }
     pub fn delay(_: *@This(), _: u32) void {}
     pub fn prepareDma(self: *@This(), _: u32) ?u32 {
         self.prepared += 1;
         return if (self.fail_prepare) null else 0x4ff1_0000;
+    }
+    pub fn prepareWriteDma(self: *@This(), source: *const [512]u8) ?u32 {
+        self.write_prepared += 1;
+        if (self.fail_prepare) return null;
+        self.written = source.*;
+        return 0x4ff1_0000;
+    }
+    pub fn finishWriteDma(self: *@This()) bool {
+        self.write_finished += 1;
+        return !self.owned and !self.write_fail_finish;
     }
     pub fn finishDma(self: *@This(), output: *[512]u8, _: u32) bool {
         if (self.owned) return false;
@@ -622,4 +726,82 @@ test "missing APP_CMD unsupported SCR and dropped host configuration stop switch
     }
     try std.testing.expectError(error.Unsupported, scrWidths(.{ 0x10, 5, 0, 0, 0, 0, 0, 0 }));
     try std.testing.expectError(error.Unsupported, scrWidths(.{ 0, 4, 0, 0, 0, 0, 0, 0 }));
+}
+
+test "experimental CMD24 stages a sector, drains DMA, and waits for card ready" {
+    var model = DmaModel{};
+    var controller = Controller(*DmaModel){ .io = &model, .poll_limit = 4, .ready_poll_limit = 3, .rca = 1 << 16, .sectors = 8 };
+    var bytes: [512]u8 = undefined;
+    for (&bytes, 0..) |*byte, i| byte.* = @truncate(i);
+    try std.testing.expectError(error.InvalidCommand, controller.command(24, 0));
+    try controller.writeSectorControlled(7, &bytes, Proceed{});
+    try std.testing.expectEqualSlices(u8, &bytes, &model.written);
+    try std.testing.expectEqual(@as(u32, 24), model.write_command & 63);
+    try std.testing.expect(model.write_command & (1 << 9) != 0 and model.write_command & (1 << 10) != 0);
+    try std.testing.expectEqual(@as(u32, 1), model.write_finished);
+    try std.testing.expectEqual(@as(u32, 1), model.releases);
+    try std.testing.expectEqual(@as(u32, 13), model.command_word & 63);
+    try std.testing.expect(controller.quiescence.complete());
+    try std.testing.expectError(error.InvalidAddress, controller.writeSectorControlled(8, &bytes, Proceed{}));
+    try std.testing.expectEqual(@as(u32, 1), model.write_prepared);
+}
+
+test "write failures retire the controller and retain unsafe DMA ownership" {
+    const bytes: [512]u8 = @splat(0x5a);
+    for (0..6) |fault| {
+        var model = DmaModel{ .complete = fault != 0, .dma_error = if (fault == 1) 4 else 0, .write_fail_finish = fault == 2, .stall_stop = fault == 3, .card_busy = fault == 4, .host_busy_after_write = fault == 5 };
+        var controller = Controller(*DmaModel){ .io = &model, .poll_limit = 3, .ready_poll_limit = 2, .rca = 1 << 16, .sectors = 8 };
+        if (fault == 0 or fault == 3 or fault == 4 or fault == 5)
+            try std.testing.expectError(error.Timeout, controller.writeSectorControlled(0, &bytes, Proceed{}))
+        else
+            try std.testing.expectError(error.Controller, controller.writeSectorControlled(0, &bytes, Proceed{}));
+        try std.testing.expect(controller.faulted);
+        try std.testing.expectEqual(fault != 3, controller.quiescence.complete());
+        try std.testing.expectEqual(fault == 3, controller.cleanup_failed);
+        try std.testing.expectError(error.Controller, controller.writeSectorControlled(0, &bytes, Proceed{}));
+        try std.testing.expectEqual(@as(u32, 1), model.write_prepared);
+    }
+}
+
+test "ordinary bus cannot issue the experimental write command" {
+    const ReadOnlyBus = struct {};
+    var controller = Controller(ReadOnlyBus){ .io = .{} };
+    const bytes: [512]u8 = @splat(0);
+    try std.testing.expectError(error.InvalidCommand, controller.writeSectorControlled(0, &bytes, Proceed{}));
+}
+
+test "write cancellation and removal quarantine launched transfers" {
+    const Control = struct {
+        model: *DmaModel,
+        reason: StopReason,
+        phase: u8,
+        pub fn stopReason(self: @This()) StopReason {
+            const stopped = switch (self.phase) {
+                0 => true,
+                1 => self.model.write_command != 0,
+                2 => self.model.write_finished != 0,
+                else => unreachable,
+            };
+            return if (stopped) self.reason else .none;
+        }
+    };
+    const bytes: [512]u8 = @splat(0x5a);
+    for ([_]StopReason{ .cancelled, .removed }) |reason| {
+        for (0..3) |phase| {
+            var model: DmaModel = .{};
+            var controller = Controller(*DmaModel){ .io = &model, .poll_limit = 4, .ready_poll_limit = 2, .rca = 1 << 16, .sectors = 8 };
+            const control = Control{ .model = &model, .reason = reason, .phase = @intCast(phase) };
+            const result = controller.writeSectorControlled(0, &bytes, control);
+            if (reason == .cancelled) try std.testing.expectError(error.Cancelled, result) else try std.testing.expectError(error.Removed, result);
+            try std.testing.expect(controller.quiescence.complete());
+            if (phase == 0) {
+                try std.testing.expectEqual(@as(u32, 0), model.write_prepared);
+            } else {
+                try std.testing.expect(controller.faulted);
+                try std.testing.expect(model.write_command != 0);
+                try std.testing.expectEqual(@as(u32, 1), model.releases);
+                try std.testing.expectError(error.Controller, controller.writeSectorControlled(0, &bytes, Proceed{}));
+            }
+        }
+    }
 }
