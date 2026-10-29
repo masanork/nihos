@@ -1,0 +1,131 @@
+{
+  "schema": "nihos-emulator-trace-report-v1",
+  "evidence": "esp32p4-emulator-rv32",
+  "trace": {
+    "schema": "nihos-emulator-pointer-trace-v1",
+    "name": "canvas-indicator-gestures",
+    "samples": [
+      {
+        "contacts": 1,
+        "x": 200,
+        "y": 100,
+        "time_us": 1000
+      },
+      {
+        "contacts": 0,
+        "x": 200,
+        "y": 100,
+        "time_us": 2000
+      },
+      {
+        "contacts": 1,
+        "x": 200,
+        "y": 100,
+        "time_us": 3000
+      },
+      {
+        "contacts": 2,
+        "x": 200,
+        "y": 100,
+        "time_us": 4000
+      },
+      {
+        "contacts": 0,
+        "x": 200,
+        "y": 100,
+        "time_us": 5000
+      },
+      {
+        "contacts": 1,
+        "x": 200,
+        "y": 100,
+        "time_us": 6000
+      },
+      {
+        "contacts": 1,
+        "x": 300,
+        "y": 100,
+        "time_us": 7000
+      },
+      {
+        "contacts": 0,
+        "x": 300,
+        "y": 100,
+        "time_us": 8000
+      }
+    ]
+  },
+  "trace_sha256": "f7bb661d291d8d1adb7805efa67335a2605f58930333c4cf87b0fc38cf8b668f",
+  "frames": [
+    {
+      "samples": 0,
+      "events": 0,
+      "clicks": 0,
+      "kind": 0,
+      "pixel_sha256": "8de3315ef91f8534e395a1a79e531558887314364ce5b532463560a85bab43a7"
+    },
+    {
+      "samples": 1,
+      "events": 1,
+      "clicks": 0,
+      "kind": 1,
+      "pixel_sha256": "8de3315ef91f8534e395a1a79e531558887314364ce5b532463560a85bab43a7"
+    },
+    {
+      "samples": 2,
+      "events": 2,
+      "clicks": 1,
+      "kind": 3,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    },
+    {
+      "samples": 3,
+      "events": 3,
+      "clicks": 1,
+      "kind": 1,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    },
+    {
+      "samples": 4,
+      "events": 4,
+      "clicks": 1,
+      "kind": 4,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    },
+    {
+      "samples": 5,
+      "events": 4,
+      "clicks": 1,
+      "kind": 4,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    },
+    {
+      "samples": 6,
+      "events": 5,
+      "clicks": 1,
+      "kind": 1,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    },
+    {
+      "samples": 7,
+      "events": 6,
+      "clicks": 1,
+      "kind": 2,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    },
+    {
+      "samples": 8,
+      "events": 7,
+      "clicks": 1,
+      "kind": 3,
+      "pixel_sha256": "3cf6d5fd373b1916b03b4385b33b34399dcaea2cf1cc111dabbebe0aaec697ad"
+    }
+  ],
+  "identity": {
+    "head": "3c691bbb74a0189e432931e312946dacd85da586",
+    "source_sha256": "df47c006d4dd3b4a7063a4b98f0f20974d4f41458beccb5a1c9ed98819979c5a",
+    "image_sha256": "3106a2b24612f81101c3289f8355c0216e2944a03ebe805cab6c0ac411c087db",
+    "elf_sha256": "3e9160b80e4530e181ef90067edf716cb756100b5abc8649c5573c22301d4e94",
+    "flash_sha256": "cf9af66037cbaf860591bd1627fc851aba6991ee315ad94fe769ab3bef9089b6"
+  }
+}
