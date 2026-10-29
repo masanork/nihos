@@ -114,7 +114,7 @@ pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool, snap
     std.crypto.secureZero(u8, allocation.bytes);
     report.erased = @intFromBool(std.mem.allEqual(u8, allocation.bytes, 0));
     if (retain) {
-        report.status = if (rc == 0 and first > low and report.mie == 8 and report.erased == 1) 1 else 4;
+        report.status = if (rc == 5 and @import("native_options").pqc_snapshot_race != 0 and report.erased == 1) 5 else if (rc == 0 and first > low and report.mie == 8 and report.erased == 1) 1 else 4;
         return report;
     }
     memory.freeExternal(allocation) catch {
@@ -122,6 +122,6 @@ pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool, snap
         return report;
     };
     report.released = 1;
-    report.status = if (rc == 0 and first > low and report.mie == 8 and report.erased == 1) 1 else 4;
+    report.status = if (rc == 5 and @import("native_options").pqc_snapshot_race != 0 and report.erased == 1) 5 else if (rc == 0 and first > low and report.mie == 8 and report.erased == 1) 1 else 4;
     return report;
 }

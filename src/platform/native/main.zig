@@ -19,6 +19,7 @@ comptime {
     if (options.pqc_arena_probe) @export(&pqcObserve, .{ .name = "nih_pqc_observe" });
     if (options.pqc_worker_probe) @export(&pqcWorker, .{ .name = "nih_pqc_worker_entry" });
     if (options.pqc_snapshot_mutation) @export(&pqcSnapshotCopied, .{ .name = "nih_pqc_snapshot_copied" });
+    if (options.pqc_snapshot_race != 0) @export(&pqcSnapshotVersion, .{ .name = "nih_pqc_snapshot_version" });
 }
 var pqc_cancel_test_active: u32 = 0;
 var pqc_cancel_phase: u32 = 0;
@@ -50,6 +51,11 @@ extern fn nih_pqc_snapshot_prepare([*]u8, usize) callconv(.c) c_int;
 var pqc_mutation_source: u32 = 0;
 var pqc_copy_ready: u32 = 0;
 var pqc_copy_ack: u32 = 0;
+var pqc_source_version: u32 = 0;
+var pqc_source_changed: u32 = 0;
+fn pqcSnapshotVersion() callconv(.c) u32 {
+    return @atomicLoad(u32, &pqc_source_version, .acquire);
+}
 fn pqcSnapshotCopied() callconv(.c) void {
     @atomicStore(u32, &pqc_copy_ready, 1, .release);
     while (@atomicLoad(u32, &pqc_copy_ack, .acquire) == 0) {
@@ -94,13 +100,13 @@ fn pqcWorker(_: u32) callconv(.c) i32 {
                 }
                 pqc_pressure_report = pressure;
                 snapshot.after_both = pqc_worker_report.heap_after;
-                if (pqc_worker_report.status == 1) snapshot.combined = snapshot.before - snapshot.after_both;
+                if (pqc_worker_report.status == 1 or pqc_worker_report.status == 5) snapshot.combined = snapshot.before - snapshot.after_both;
                 std.crypto.secureZero(u8, allocation.bytes);
                 snapshot.erased = @intFromBool(std.mem.allEqual(u8, allocation.bytes, 0));
                 tasks.memory.freeExternal(allocation) catch fail("PQC snapshot free");
                 snapshot.released = 1;
                 snapshot.after_release = @intCast(tasks.memory.reusable.availableBytes().?);
-                snapshot.status = if (snapshot.erased == 1 and snapshot.after_release == snapshot.before and (pqc_worker_report.status == 1 or pqc_worker_report.status == 2)) pqc_worker_report.status else 3;
+                snapshot.status = if (snapshot.erased == 1 and snapshot.after_release == snapshot.before and (pqc_worker_report.status == 1 or pqc_worker_report.status == 2 or (options.pqc_snapshot_race != 0 and pqc_worker_report.status == 5))) pqc_worker_report.status else 3;
             } else |err| {
                 if (first.active == 1) {
                     if (err != error.Full) fail("PQC first error");
@@ -901,7 +907,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                 _ = tasks.service(0);
                 if (options.pqc_snapshot_mutation and @atomicLoad(u32, &pqc_copy_ready, .acquire) == 1 and @atomicLoad(u32, &pqc_copy_ack, .acquire) == 0) {
                     const input = mutation_allocation orelse fail("PQC source missing");
-                    input.bytes[5516] ^= 1;
+                    if (options.pqc_snapshot_race != 2) {
+                        if (options.pqc_snapshot_race != 0) _ = @atomicRmw(u32, &pqc_source_version, .Add, 1, .acq_rel);
+                        input.bytes[5516] ^= 1;
+                        if (options.pqc_snapshot_race != 0) _ = @atomicRmw(u32, &pqc_source_version, .Add, 1, .release);
+                        @atomicStore(u32, &pqc_source_changed, 1, .release);
+                    }
                     @atomicStore(u32, &pqc_copy_ack, 1, .release);
                 }
                 if (options.pqc_worker_cancel and index == 1) {
@@ -943,8 +954,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                     source.charged = mutation_before - mutation_after;
                     source.simultaneous = mutation_before - pqc_snapshot_report.after_both;
                     source.copied = @atomicLoad(u32, &pqc_copy_ready, .acquire);
-                    source.mutated = @atomicLoad(u32, &pqc_copy_ack, .acquire);
-                    if (source.copied != 1 or source.mutated != 1 or report.status != 1) {
+                    source.mutated = @atomicLoad(u32, &pqc_source_changed, .acquire);
+                    if (source.copied != 1 or @atomicLoad(u32, &pqc_copy_ack, .acquire) != 1 or source.mutated != @as(u32, if (options.pqc_snapshot_race == 2) 0 else 1) or report.status != @as(u32, if (options.pqc_snapshot_race == 1) 5 else 1)) {
                         const error_report: struct { status: u32, valid: u32, rejected: u32, oom: u32, copied: u32, mutated: u32 } = .{ .status = report.status, .valid = report.valid, .rejected = report.rejected, .oom = report.oom, .copied = source.copied, .mutated = source.mutated };
                         logger.record("NIHOS_NATIVE_PQC_SOURCE_ERROR", null, .{ "status", "valid", "rejected", "oom", "copied", "mutated" }, &error_report);
                         fail("PQC source handshake");
@@ -956,7 +967,14 @@ export fn nih_native_main() callconv(.c) noreturn {
                     source.after_release = @intCast(tasks.memory.reusable.availableBytes().?);
                     if (source.after_release != source.before) fail("PQC source leaked");
                 } else source.status = 2;
-                logger.record("NIHOS_NATIVE_PQC_SOURCE", null, .{ "status", "payload", "charged", "simultaneous", "before", "after_alloc", "after_release", "copied", "mutated", "erased", "released" }, &source);
+                if (options.pqc_snapshot_race != 0) {
+                    const race_source: struct { status: u32, payload: u32, charged: u32, simultaneous: u32, before: u32, after_alloc: u32, after_release: u32, paused: u32, mutated: u32, erased: u32, released: u32 } = .{ .status = source.status, .payload = source.payload, .charged = source.charged, .simultaneous = source.simultaneous, .before = source.before, .after_alloc = source.after_alloc, .after_release = source.after_release, .paused = source.copied, .mutated = source.mutated, .erased = source.erased, .released = source.released };
+                    logger.record("NIHOS_NATIVE_PQC_RACE_SOURCE", null, .{ "status", "payload", "charged", "simultaneous", "before", "after_alloc", "after_release", "paused", "mutated", "erased", "released" }, &race_source);
+                } else logger.record("NIHOS_NATIVE_PQC_SOURCE", null, .{ "status", "payload", "charged", "simultaneous", "before", "after_alloc", "after_release", "copied", "mutated", "erased", "released" }, &source);
+                if (options.pqc_snapshot_race != 0) {
+                    const race: struct { mode: u32, version: u32, ack: u32, rejected: u32, verified: u32 } = .{ .mode = options.pqc_snapshot_race, .version = @atomicLoad(u32, &pqc_source_version, .acquire), .ack = @atomicLoad(u32, &pqc_copy_ack, .acquire), .rejected = @intFromBool(report.status == 5), .verified = report.valid };
+                    logger.record("NIHOS_NATIVE_PQC_COPY_RACE", null, .{ "mode", "version", "ack", "rejected", "verified" }, &race);
+                }
             }
             if (options.pqc_snapshot_probe) {
                 if (pqc_snapshot_report.status != report.status) fail("PQC snapshot status");
@@ -967,7 +985,7 @@ export fn nih_native_main() callconv(.c) noreturn {
             logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
             const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };
             logger.record("NIHOS_NATIVE_PQC_WORKER_OWNER", null, .{ "captures", "foreground", "terminated", "cleaned", "reaped" }, &ownership);
-            if (extra_captures == 0 or (report.status != 1 and report.status != 2)) fail("PQC worker fixture");
+            if (extra_captures == 0 or (report.status != 1 and report.status != 2 and !(options.pqc_snapshot_race != 0 and report.status == 5))) fail("PQC worker fixture");
             if (options.pqc_worker_repeat) {
                 const job: struct { index: u32, identity: u32, previous: u32, stale_rejected: u32 } = .{ .index = @intCast(index), .identity = identity, .previous = previous, .stale_rejected = @intFromBool(stale) };
                 logger.record("NIHOS_NATIVE_PQC_WORKER_JOB", null, .{ "index", "identity", "previous", "stale_rejected" }, &job);
