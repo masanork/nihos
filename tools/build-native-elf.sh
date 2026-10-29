@@ -16,6 +16,9 @@ case "$pqc_worker" in 0) pqc_worker=false ;; 1) pqc_worker=true ;; *) echo "PQC_
 pqc_repeat=${NIHOS_NATIVE_PQC_WORKER_REPEAT:-0}
 case "$pqc_repeat" in 0) pqc_repeat=false ;; 1) pqc_repeat=true ;; *) echo "PQC_WORKER_REPEAT must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$pqc_repeat" = true ] && [ "$pqc_worker" != true ]; then echo "PQC_WORKER_REPEAT requires PQC_WORKER_PROBE" >&2; exit 1; fi
+pqc_cancel=${NIHOS_NATIVE_PQC_WORKER_CANCEL:-0}
+case "$pqc_cancel" in 0) pqc_cancel=false ;; 1) pqc_cancel=true ;; *) echo "PQC_WORKER_CANCEL must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$pqc_cancel" = true ] && [ "$pqc_repeat" != true ]; then echo "PQC_WORKER_CANCEL requires PQC_WORKER_REPEAT" >&2; exit 1; fi
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -321,6 +324,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const pqc_arena_probe = %s;\n' "$pqc_arena"
     printf 'pub const pqc_worker_probe = %s;\n' "$pqc_worker"
     printf 'pub const pqc_worker_repeat = %s;\n' "$pqc_repeat"
+    printf 'pub const pqc_worker_cancel = %s;\n' "$pqc_cancel"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"

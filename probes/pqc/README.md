@@ -161,3 +161,12 @@ reap and restart three jobs on the same reserved stack. Capture through
 `NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`, then use
 `python3 probes/pqc/check_worker_repeat_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` with no PSRAM). See [the repeat measurement](../../docs/measurements/2026-10-29-pqc-worker-reuse.md).
+
+### Deferred-cancellation fixture
+
+Add `NIHOS_NATIVE_PQC_WORKER_CANCEL=1` to the three-job worker build to
+request cancellation in the verification observation interval of job 2.
+Capture through `NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`, then run
+`python3 probes/pqc/check_worker_cancel_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` for absent PSRAM). The outcome is a fixture record, not a service API.
+See [the cancellation measurement](../../docs/measurements/2026-10-29-pqc-worker-cancel.md).

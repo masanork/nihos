@@ -1,0 +1,25 @@
+{
+  "base_commit": "342fd55",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "722ba1449338462ea3b493170bc966a04cabaa16ae87a18a0d82a5aefc9ffda9",
+    "src/platform/native/main.zig": "44b3bcad6f87198c51334d5e94deffd1e10e37b3780ff2d7e5cdc41be81754fb",
+    "src/platform/native/pqc_arena_probe.zig": "8db5c3e33509b827bb1b1ae6b252b48f86f07c8222c49029a07fd7f4ed3b89f6",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "tools/build-native-elf.sh": "48a4a5d048abd4a924d8527996050c0be678a721da012c032b608ac3cf59044a",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "1c49bdde613e7e53c75a0a4c70bb1982a7336a53211ab7c9ccb2912cdd859794",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/check_worker_repeat_log.py": "c8c7a489db7ee5367ea669736e282fb3b3cf8e9cba05336f50f6a7efedb14f3f",
+    "probes/pqc/check_worker_cancel_log.py": "5c367d2d0d5ff9aa00504339312fd3008ce67fb29cebd12681ddc1de5dd1c168"
+  },
+  "elf_sha256": "b5b4d95b8655129be95c8e129e91690310a6d75a313668fd6c30ff5db24c7076",
+  "image_sha256": "755dd5924d94699c27296d4237437c78e6d4d1cec6552f899737b490024323bb",
+  "raw_logs_sha256": {
+    "4M": "7b8c45ea88c29f7d75a46b89ee715e625885e6c03293b9a98ceec190fad5b388",
+    "0": "daeaab7582aa9084cadfe687ef2f982563d4cf98d9f15eb52a3c71a6e70d3cf3"
+  }
+}
