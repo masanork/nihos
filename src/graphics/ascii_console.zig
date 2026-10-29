@@ -167,10 +167,17 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
         while (runs.next()) |run| {
             const alpha = run.alpha;
             const count = run.count;
-            if (alpha != 0) for (decoded..decoded + count) |index| {
-                const y = index / L.cell_width;
-                if (y >= clip_top and y < clip_bottom) pixel(frame, stride, destination + y - clip_top, 1279 - (L.margin_x + col * L.cell_width + index % L.cell_width), blend(selected.background, foreground, alpha));
-            };
+            if (alpha != 0) {
+                var index = decoded;
+                const end = decoded + count;
+                while (index < end) {
+                    const x = index % L.cell_width;
+                    const y = index / L.cell_width;
+                    const span = @min(end - index, L.cell_width - x);
+                    if (y >= clip_top and y < clip_bottom) canvas.fillRect(.{ .x = @intCast(destination + y - clip_top), .y = @intCast(1280 - (L.margin_x + col * L.cell_width + x + span)), .width = 1, .height = @intCast(span) }, blend(selected.background, foreground, alpha));
+                    index += span;
+                }
+            }
             decoded += count;
         }
     }
@@ -292,6 +299,47 @@ fn pixel(frame: []u8, stride: usize, x: usize, y: usize, color: u16) void {
     const offset = y * stride + x * 2;
     frame[offset] = @truncate(color);
     frame[offset + 1] = @truncate(color >> 8);
+}
+
+test "Canvas large glyph spans match the original raster" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const actual = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(actual);
+    const expected = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(expected);
+    inline for (.{ Face.jetbrains, Face.source_code }) |face| {
+        const L = Layout(face);
+        const Font = if (face == .jetbrains) @import("ascii/jetbrains.zig") else @import("ascii/source_code.zig");
+        for ([_][2]usize{ .{ 0, 30 }, .{ 4, 23 } }) |clip| {
+            @memset(actual, 0xa5);
+            @memset(expected, 0xa5);
+            const frame = actual[17..][0..size];
+            const reference = expected[17..][0..size];
+            for (32..127) |character| {
+                const col = (character - 32) % L.columns;
+                const row = (character - 32) / L.columns;
+                const destination = L.margin_y + row * L.cell_height;
+                const selected = colors(.blue);
+                const foreground = if (row == 0) selected.accent else selected.foreground;
+                for (clip[0]..clip[1]) |y| for (0..L.cell_width) |x| pixel(reference, stride, destination + y - clip[0], 1279 - (L.margin_x + col * L.cell_width + x), selected.background);
+                const glyph = Font.glyphs[character - 32];
+                var decoded: usize = 0;
+                var runs = Runs{ .bytes = Font.masks[glyph.offset..][0..glyph.length] };
+                while (runs.next()) |run| {
+                    const alpha = run.alpha;
+                    const count = run.count;
+                    if (alpha != 0) for (decoded..decoded + count) |index| {
+                        const y = index / L.cell_width;
+                        if (y >= clip[0] and y < clip[1]) pixel(reference, stride, destination + y - clip[0], 1279 - (L.margin_x + col * L.cell_width + index % L.cell_width), blend(selected.background, foreground, alpha));
+                    };
+                    decoded += count;
+                }
+                cell(null, face, frame, stride, @intCast(character), row, col, clip[0], clip[1], destination, .blue);
+            }
+            try std.testing.expectEqualSlices(u8, expected, actual);
+        }
+    }
 }
 
 test "Canvas basic glyph rows match the original raster" {
