@@ -4,6 +4,25 @@ const console = @import("text_console");
 
 pub const Action = union(enum) { insert: u8, left, right, backspace };
 
+/// Fixture adapter for Tab5 HID press events. Layout is the existing ASCII
+/// shell mapping. Modified arrows are ignored because selection is unsupported.
+pub const Keyboard = struct {
+    decoder: console.session.input.Hid = .{},
+
+    pub fn press(self: *Keyboard, event: console.keyboard.Event) ?Action {
+        if (event.usage == 0x4f or event.usage == 0x50) {
+            if (event.modifiers != 0) return null;
+            return if (event.usage == 0x4f) .right else .left;
+        }
+        const key = self.decoder.feed(event.modifiers, event.usage) orelse return null;
+        return switch (key) {
+            .text => |byte| .{ .insert = byte },
+            .backspace => .backspace,
+            else => null,
+        };
+    }
+};
+
 /// Edits one row in an existing host-owned console grid. Cursor movement alone
 /// does not request a redraw because this fixture does not render a caret.
 pub fn Editor(comptime Grid: type) type {
@@ -91,4 +110,20 @@ test "each incremental edit equals a full console repaint" {
         try std.testing.expectEqualSlices(u8, expected, actual);
     }
     try std.testing.expectEqual(@as(u32, 4), renderer.partial_updates);
+}
+
+test "synthetic Tab5 HID presses decode text, arrows and deletion without control leaks" {
+    var keyboard = Keyboard{};
+    const Event = console.keyboard.Event;
+    try std.testing.expectEqual(Action{ .insert = '>' }, keyboard.press(Event{ .modifiers = 2, .usage = 0x37 }).?);
+    try std.testing.expectEqual(Action.right, keyboard.press(Event{ .modifiers = 0, .usage = 0x4f }).?);
+    try std.testing.expectEqual(Action.left, keyboard.press(Event{ .modifiers = 0, .usage = 0x50 }).?);
+    try std.testing.expectEqual(Action.backspace, keyboard.press(Event{ .modifiers = 0, .usage = 0x2a }).?);
+    try std.testing.expect(keyboard.press(Event{ .modifiers = 2, .usage = 0x50 }) == null);
+    try std.testing.expect(keyboard.press(Event{ .modifiers = 1, .usage = 0x06 }) == null);
+    try std.testing.expect(keyboard.press(Event{ .modifiers = 4, .usage = 0x04 }) == null);
+    try std.testing.expect(keyboard.press(Event{ .modifiers = 0, .usage = 0 }) == null);
+    try std.testing.expect(keyboard.press(Event{ .modifiers = 0, .usage = 0x39 }) == null);
+    try std.testing.expectEqual(Action{ .insert = 'A' }, keyboard.press(Event{ .modifiers = 0, .usage = 4 }).?);
+    try std.testing.expectEqual(Action{ .insert = 'a' }, keyboard.press(Event{ .modifiers = 2, .usage = 4 }).?);
 }
