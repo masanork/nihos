@@ -1,0 +1,33 @@
+
+/private/tmp/nihos-pqc-xip-study/build/xip-probe/nihos-native.elf:	file format elf32-littleriscv
+
+Sections:
+Idx Name              Size     VMA      Type
+  0                   00000000 00000000
+  1 .flash.appdesc    00000100 40000020 DATA
+  2 .flash.boot       0000131e 40000120 TEXT
+  3 .flash.devices    000024c6 40001440 TEXT
+  4 .flash.time       000056d6 40003910 TEXT
+  5 .flash.pqc        00002e18 40008ff0 TEXT
+  6 .flash.rodata     0000da14 40010020 DATA
+  7 .flash.pqc.rodata 000019dc 4001da40 DATA
+  8 .text             0001223c 4ff00000 TEXT
+  9 .fp_app           00000000 4ff12240 DATA
+ 10 .rodata           000047cc 4ff12240 DATA
+ 11 .data             00000910 4ff16a40 DATA
+ 12 .bss              00001e40 4ff17380 BSS
+ 13 .stacks           0000e000 4ff60000 BSS
+ 14 .heap             0000ee40 4ff191c0 BSS
+ 15 .debug_loc        0006404a 00000000 DEBUG
+ 16 .debug_abbrev     000018e8 00000000 DEBUG
+ 17 .debug_info       00058ceb 00000000 DEBUG
+ 18 .debug_str        00022081 00000000 DEBUG
+ 19 .debug_line       0002df37 00000000 DEBUG
+ 20 .debug_ranges     00007c98 00000000 DEBUG
+ 21 .debug_aranges    00000040 00000000 DEBUG
+ 22 .debug_pubnames   00008e91 00000000 DEBUG
+ 23 .debug_pubtypes   00009b91 00000000 DEBUG
+ 24 .debug_frame      00007c90 00000000 DEBUG
+ 25 .symtab           00031000 00000000
+ 26 .shstrtab         00000131 00000000
+ 27 .strtab           00013e55 00000000

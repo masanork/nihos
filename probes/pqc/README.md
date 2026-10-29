@@ -102,3 +102,18 @@ The fixture can also be compiled and tested on the host with:
   -o /tmp/nihos-pqc-arena-host
 /tmp/nihos-pqc-arena-host
 ```
+
+## Normal-profile link-size diagnostic
+
+After the expected normal-image PQC link failure has compiled its two C
+objects, run `sh probes/pqc/normal_link_study.sh`. It links only the C fixture
+root with stand-in memory routines and a no-op observer. Its output is not
+a native image, an XIP qualification, or an integrated firmware size. See
+[the normal-image study](../../docs/measurements/2026-10-29-pqc-normal-image-budget.md).
+
+## Proposed service lifecycle model
+
+`zig test probes/pqc/service_model.zig -O ReleaseSafe` exercises the proposed
+single-job ownership, cancellation, cleanup and generation transitions. This
+host-only model is not the native service implementation; see
+[ADR 0054](../../docs/adr/0054-pqc-verify-service-contract.md).

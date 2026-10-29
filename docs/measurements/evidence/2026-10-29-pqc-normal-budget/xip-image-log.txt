@@ -1,0 +1,4 @@
+esptool.py v4.12.0
+Creating esp32p4 image...
+Merged 1 ELF section
+Successfully created esp32p4 image.

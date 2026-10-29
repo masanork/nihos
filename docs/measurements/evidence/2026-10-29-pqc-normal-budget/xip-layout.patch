@@ -1,0 +1,27 @@
+diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
+index 4433f1b..115f054 100644
+--- a/src/platform/native/esp32p4.ld
++++ b/src/platform/native/esp32p4.ld
+@@ -59,6 +59,11 @@ SECTIONS
+         __flash_time_end = .;
+     } > flash_boot
+ #endif
++    /* Unqualified study only: foreground fixture objects in Flash. */
++    .flash.pqc : ALIGN(16) {
++        *pqc_mldsa_native.o(.text .text.*)
++        *pqc_native_arena_verify.o(.text .text.*)
++    } > flash_boot
+     /* The stock P4 loader maps both segments before entering SRAM.
+      * Only self-contained normal diagnostic tables use the second page. */
+     .flash.rodata : {
+@@ -75,6 +80,10 @@ SECTIONS
+         *(.flash.rodata.bmi270)
+         __flash_records_end = .;
+     } > flash_records
++    .flash.pqc.rodata : ALIGN(16) {
++        *pqc_mldsa_native.o(.rodata .rodata.* .srodata .srodata.*)
++        *pqc_native_arena_verify.o(.rodata .rodata.* .srodata .srodata.*)
++    } > flash_records
+ #if NIH_NATIVE_KEYPAD
+     .flash.uipad : ALIGN(4) {
+         KEEP(*(.flash.keypad.pad))
