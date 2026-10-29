@@ -435,9 +435,12 @@ fn enableTimer(hart: u32) void {
 
 export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
     if (hart >= 2) fail("invalid hart");
-    if (!interruptStackValid(hart, frame)) fail("interrupt stack/MIE");
+    if (!interruptStackValid(hart, frame, status)) fail("interrupt stack/MIE");
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
-    if (options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
+    // A rejected user SP was saved in the kernel fault frame. Do not resume it
+    // from the display or boot paths; the ready path ends that task.
+    const fault_frame = tasks.pmp.rejectedPending(hart);
+    if (!fault_frame and options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
         const display = display_service.runtime;
         if (!display.active()) fail("unexpected display IRQ");
         display.onInterrupt();
@@ -453,7 +456,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         nih_native_return_states[hart] = state;
         return frame;
     }
-    if (options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
+    if (!fault_frame and options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
         tasks.ipi.bell(hart).acknowledge();
         _ = @atomicRmw(u32, &boot_ipi[hart], .Add, 1, .release);
         if (hart == 1 and options.boot_test != 4) tasks.ipi.bell(0).raise();
@@ -461,7 +464,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         return frame;
     }
     if (tasks.ready(hart)) {
-        const selected = if (cause & 0x8000_0fff == 11)
+        const from_user = (status & tasks.pmp.mpp_mask) == tasks.pmp.user_mpp;
+        const sp_rejected = tasks.pmp.takeRejectedSp(hart);
+        const selected = if (tasks.pmp.containedFault(from_user, sp_rejected, cause)) fault_path: {
+            if (cause & 0x8000_0fff == 0x8000_0010) _ = timer(hart).clearPending();
+            if (cause & 0x8000_0fff == 0x8000_0011) tasks.ipi.bell(hart).acknowledge();
+            break :fault_path tasks.onProtectedFault(hart, frame, state);
+        } else if (tasks.pmp.userCall(from_user, cause))
             tasks.onCall(hart, frame, state, timer(hart))
         else if (cause & 0x8000_0fff == 0x8000_0010 and timer(hart).clearPending()) timer_path: {
             _ = @atomicRmw(u32, &ticks[hart], .Add, 1, .release);
@@ -471,6 +480,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         else
             null;
         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
+        tasks.armProtection(hart, next);
         tasks.floating.selectBank(hart, next.floating_context);
         const next_state = if (next.floating_context == 0) next.state.integerOnly() else next.state.floatingReady();
         nih_native_return_states[hart] = next_state.returningFrom(state);
@@ -559,7 +569,7 @@ fn interruptGuard(hart: u32) *volatile [4]u32 {
     return if (hart == 0) &__irq_stack0_bottom else &__irq_stack1_bottom;
 }
 
-fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bool {
+fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, interrupted: u32) bool {
     const guard = interruptGuard(hart);
     for (0..4) |word| if (guard[word] != tasks.memory.stacks.layout.irq_guard) return false;
     const sp = asm volatile ("mv %[result], sp"
@@ -569,8 +579,9 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bo
         : [result] "=r" (-> u32),
     );
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
-    return status & (8 | 0x6000) == 0 and sp >= @intFromPtr(guard) + 16 and sp < top and
-        tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
+    if (status & (8 | 0x6000) != 0 or sp < @intFromPtr(guard) + 16 or sp >= top) return false;
+    if (tasks.pmp.acceptsDispatcherFrame(hart, interrupted, @as(u32, @intCast(@intFromPtr(frame))), frame.sp)) return true;
+    return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
 fn taskReport(hart: u32) void {

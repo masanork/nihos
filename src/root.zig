@@ -29,6 +29,7 @@ pub const record_log = @import("diagnostics/record.zig");
 pub const high_sram_layout = @import("platform/native/high_sram_layout.zig");
 pub const native_stack_layout = @import("platform/native/stack_layout.zig");
 pub const riscv32_context = @import("arch/riscv32/context.zig");
+pub const riscv32_pmp = @import("arch/riscv32/pmp.zig");
 pub const riscv32_trap = @import("arch/riscv32/trap.zig");
 pub const esp32p4_timer_group = @import("soc/esp32p4/timer_group.zig");
 pub const esp32p4_software_ipi = @import("soc/esp32p4/software_ipi.zig");
@@ -124,6 +125,7 @@ test {
     _ = native_stack_layout;
     _ = high_sram_layout;
     _ = riscv32_context;
+    _ = riscv32_pmp;
     _ = riscv32_trap;
     _ = esp32p4_timer_group;
     _ = esp32p4_software_ipi;
