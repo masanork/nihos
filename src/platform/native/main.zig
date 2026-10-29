@@ -18,6 +18,7 @@ pub const panic = std.debug.no_panic;
 comptime {
     if (options.pqc_arena_probe) @export(&pqcObserve, .{ .name = "nih_pqc_observe" });
     if (options.pqc_worker_probe) @export(&pqcWorker, .{ .name = "nih_pqc_worker_entry" });
+    if (options.pqc_snapshot_mutation) @export(&pqcSnapshotCopied, .{ .name = "nih_pqc_snapshot_copied" });
 }
 var pqc_cancel_test_active: u32 = 0;
 var pqc_cancel_phase: u32 = 0;
@@ -45,6 +46,16 @@ var pqc_pressure_report: PqcPressureReport = .{};
 var pqc_pressure_active: u32 = 0;
 const PqcFirstFailReport = struct { active: u32 = 0, full: u32 = 0, charged: u32 = 0, before: u32 = 0, after: u32 = 0, released: u32 = 0 };
 var pqc_first_fail_report: PqcFirstFailReport = .{};
+extern fn nih_pqc_snapshot_prepare([*]u8, usize) callconv(.c) c_int;
+var pqc_mutation_source: u32 = 0;
+var pqc_copy_ready: u32 = 0;
+var pqc_copy_ack: u32 = 0;
+fn pqcSnapshotCopied() callconv(.c) void {
+    @atomicStore(u32, &pqc_copy_ready, 1, .release);
+    while (@atomicLoad(u32, &pqc_copy_ack, .acquire) == 0) {
+        if (!tasks.pqcPostReapYield()) fail("PQC copy yield");
+    }
+}
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
@@ -74,7 +85,7 @@ fn pqcWorker(_: u32) callconv(.c) i32 {
                     blocker = tasks.memory.allocExternal(64, 64) catch fail("PQC pressure allocation");
                     pressure.charged = snapshot.after_snapshot - @as(u32, @intCast(tasks.memory.reusable.availableBytes().?));
                 }
-                pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), false, allocation.bytes);
+                pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), false, allocation.bytes, if (options.pqc_snapshot_mutation) @ptrFromInt(@atomicLoad(u32, &pqc_mutation_source, .acquire)) else null);
                 pressure.arena_error = pqc_worker_report.alloc_error;
                 if (blocker) |value| {
                     tasks.memory.freeExternal(value) catch fail("PQC pressure free");
@@ -111,7 +122,7 @@ fn pqcWorker(_: u32) callconv(.c) i32 {
         pqc_snapshot_report = snapshot;
         pqc_first_fail_report = first;
     } else {
-        pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine or options.pqc_drain_probe != 0, null);
+        pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine or options.pqc_drain_probe != 0, null, null);
     }
     @atomicStore(u32, &pqc_worker_done, 1, .release);
     return 0;
@@ -812,6 +823,19 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.ownerReady(0);
     enableTimer(0);
     if (options.pqc_worker_probe) {
+        var mutation_allocation: ?tasks.memory.reusable.Allocation = null;
+        var mutation_before: u32 = 0;
+        var mutation_after: u32 = 0;
+        if (options.pqc_snapshot_mutation) {
+            if (tasks.memory.reusable.availableBytes()) |available| {
+                mutation_before = @intCast(available);
+                mutation_allocation = tasks.memory.allocExternal(9612, 64) catch fail("PQC source alloc");
+                const input = mutation_allocation.?;
+                mutation_after = @intCast(tasks.memory.reusable.availableBytes().?);
+                if (nih_pqc_snapshot_prepare(input.bytes.ptr, input.bytes.len) != 0) fail("PQC source prepare");
+                @atomicStore(u32, &pqc_mutation_source, @intCast(@intFromPtr(input.bytes.ptr)), .release);
+            }
+        }
         var previous: u32 = 0;
         const rounds: u32 = if (options.pqc_worker_repeat) 3 else 1;
         for (0..rounds) |index| {
@@ -875,6 +899,11 @@ export fn nih_native_main() callconv(.c) noreturn {
             }
             while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
                 _ = tasks.service(0);
+                if (options.pqc_snapshot_mutation and @atomicLoad(u32, &pqc_copy_ready, .acquire) == 1 and @atomicLoad(u32, &pqc_copy_ack, .acquire) == 0) {
+                    const input = mutation_allocation orelse fail("PQC source missing");
+                    input.bytes[5516] ^= 1;
+                    @atomicStore(u32, &pqc_copy_ack, 1, .release);
+                }
                 if (options.pqc_worker_cancel and index == 1) {
                     // Single-hart linearization: the worker cannot pass the second
                     // observation between checking the phase and accepting cancel.
@@ -903,6 +932,31 @@ export fn nih_native_main() callconv(.c) noreturn {
             if (options.pqc_worker_cancel and index == 1) {
                 const cancel: struct { requested: u32, accepted_phase: u32, phase: u32, computed_valid: u32, exposed_valid: u32, outcome: u32, cleaned: u32, reaped: u32 } = .{ .requested = @atomicLoad(u32, &pqc_cancel_requested, .acquire), .accepted_phase = @atomicLoad(u32, &pqc_cancel_accepted_phase, .acquire), .phase = @atomicLoad(u32, &pqc_cancel_phase, .acquire), .computed_valid = computed_valid, .exposed_valid = report.valid, .outcome = if (cancelled) 3 else 2, .cleaned = 1, .reaped = 1 };
                 logger.record("NIHOS_NATIVE_PQC_CANCEL", null, .{ "requested", "accepted_phase", "phase", "computed_valid", "exposed_valid", "outcome", "cleaned", "reaped" }, &cancel);
+            }
+            if (options.pqc_snapshot_mutation) {
+                var source: struct { status: u32 = 0, payload: u32 = 0, charged: u32 = 0, simultaneous: u32 = 0, before: u32 = 0, after_alloc: u32 = 0, after_release: u32 = 0, copied: u32 = 0, mutated: u32 = 0, erased: u32 = 0, released: u32 = 0 } = .{};
+                if (mutation_allocation) |input| {
+                    source.status = 1;
+                    source.payload = @intCast(input.bytes.len);
+                    source.before = mutation_before;
+                    source.after_alloc = mutation_after;
+                    source.charged = mutation_before - mutation_after;
+                    source.simultaneous = mutation_before - pqc_snapshot_report.after_both;
+                    source.copied = @atomicLoad(u32, &pqc_copy_ready, .acquire);
+                    source.mutated = @atomicLoad(u32, &pqc_copy_ack, .acquire);
+                    if (source.copied != 1 or source.mutated != 1 or report.status != 1) {
+                        const error_report: struct { status: u32, valid: u32, rejected: u32, oom: u32, copied: u32, mutated: u32 } = .{ .status = report.status, .valid = report.valid, .rejected = report.rejected, .oom = report.oom, .copied = source.copied, .mutated = source.mutated };
+                        logger.record("NIHOS_NATIVE_PQC_SOURCE_ERROR", null, .{ "status", "valid", "rejected", "oom", "copied", "mutated" }, &error_report);
+                        fail("PQC source handshake");
+                    }
+                    std.crypto.secureZero(u8, input.bytes);
+                    source.erased = @intFromBool(std.mem.allEqual(u8, input.bytes, 0));
+                    tasks.memory.freeExternal(input) catch fail("PQC source free");
+                    source.released = 1;
+                    source.after_release = @intCast(tasks.memory.reusable.availableBytes().?);
+                    if (source.after_release != source.before) fail("PQC source leaked");
+                } else source.status = 2;
+                logger.record("NIHOS_NATIVE_PQC_SOURCE", null, .{ "status", "payload", "charged", "simultaneous", "before", "after_alloc", "after_release", "copied", "mutated", "erased", "released" }, &source);
             }
             if (options.pqc_snapshot_probe) {
                 if (pqc_snapshot_report.status != report.status) fail("PQC snapshot status");

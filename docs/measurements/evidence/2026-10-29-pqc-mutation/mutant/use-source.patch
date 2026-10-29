@@ -1,0 +1,10 @@
+--- candidate/native_arena_verify.c
++++ mutant/native_arena_verify.c
+@@ -120,6 +120,6 @@
+     if (!snapshot || !source || snapshot_len != SNAP_LEN) return 1;
+     for (size_t i = 0; i < SNAP_LEN; i++) snapshot[i] = source[i];
+     nih_pqc_snapshot_copied();
+-    return snapshot_verify(bytes, capacity, snapshot, snapshot_len, r);
++    return snapshot_verify(bytes, capacity, (uint8_t *)source, snapshot_len, r);
+ }
+ #endif

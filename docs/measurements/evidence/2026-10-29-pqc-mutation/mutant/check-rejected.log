@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_mutation_log.py", line 33, in <module>
+    result = check(*sys.argv[1:6])
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_mutation_log.py", line 14, in check
+    result = snapshot.check(log, elf, image, audit, mode)
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_snapshot_log.py", line 13, in check
+    result = worker.check(log, elf, image, audit, mode)
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_log.py", line 50, in check
+    if 'NIHOS_NATIVE_FAIL' in text: raise ValueError('native failure')
+ValueError: native failure
