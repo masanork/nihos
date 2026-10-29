@@ -1072,9 +1072,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     @call(.never_inline, nih_canvas_frame_ready, .{});
                     if (options.canvas_interactive) {
                         var stream = pointer.Stream{};
-                        var button = pointer.Button{};
-                        const rect: pointer.Rect = .{ .x = 1120, .y = 48, .width = 96, .height = 624 };
-                        var active = false;
+                        var app = display_service.canvas_demo_app.App{};
                         while (true) {
                             const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
                             if (input.command == 0) break;
@@ -1083,10 +1081,9 @@ export fn nih_native_main() callconv(.c) noreturn {
                             if (stream.fresh(@intCast(input.contacts), @intCast(input.x), @intCast(input.y), input.time_us)) |event| {
                                 nih_emulator_output.events += 1;
                                 nih_emulator_output.kind = @backingInt(event.kind);
-                                if (button.observe(event, rect)) {
-                                    nih_emulator_output.clicks += 1;
-                                    active = !active;
-                                    if (!display_service.canvas_pattern.indicator(frame, active)) fail("emulator indicator");
+                                if (app.onEvent(event)) {
+                                    nih_emulator_output.clicks = app.clicks;
+                                    if (!app.render(frame)) fail("emulator indicator");
                                 }
                             }
                             @call(.never_inline, nih_canvas_frame_ready, .{});
