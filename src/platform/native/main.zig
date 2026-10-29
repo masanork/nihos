@@ -230,6 +230,11 @@ noinline fn showDiagnosticSnapshot() void {
     ui.report(&logger);
 }
 
+// Emulator-only debugger rendezvous. No panel or physical-device I/O.
+export fn nih_canvas_frame_ready() void {
+    asm volatile ("nop" ::: .{ .memory = true });
+}
+
 var initialized: u32 = 0x4e494853;
 
 fn reg(address: usize) *volatile u32 {
@@ -1057,6 +1062,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                     if (!std.mem.allEqual(u8, guard, 0xa5)) fail("canvas offscreen guard");
                     const result: extern struct { checksum: u32, frame_bytes: u32, guard_bytes: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frame_bytes = board.frame_bytes, .guard_bytes = 16 };
                     logger.record("NIHOS_NATIVE_CANVAS_OFFSCREEN", null, .{ "checksum", "frame_bytes", "guard_bytes" }, &result);
+                    @call(.never_inline, nih_canvas_frame_ready, .{});
                     print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
                 }
                 if (options.graphics) {

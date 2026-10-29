@@ -38,6 +38,8 @@ jobs:
         run: sh tools/run-native-graphics-smoke.sh
       - name: Native RV32 Canvas offscreen qualification
         run: sh tools/run-canvas-offscreen.sh
+      - name: Capture RV32 Canvas framebuffer
+        run: sh tools/nihos-dev.sh canvas-snapshot
       - name: RV32 library restart and negative controls
         run: |
           python3 -m venv build/graphics-rv32/venv
@@ -62,5 +64,8 @@ jobs:
             build/native-emulator-graphics/case-32M/*.log
             build/native-emulator/canvas-offscreen/*.json
             build/native-emulator/canvas-offscreen/*.log
+            build/native-emulator/canvas-snapshot/*.json
+            build/native-emulator/canvas-snapshot/*.log
+            build/native-emulator/canvas-snapshot/frame.png
             build/graphics-rv32/*log
           if-no-files-found: warn
