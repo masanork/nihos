@@ -1108,6 +1108,18 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (!std.mem.allEqual(u8, guard, 0xa5)) fail("console workload guard");
                         @call(.never_inline, nih_canvas_frame_ready, .{});
                     }
+                    if (options.canvas_splash) {
+                        const boot = @import("boot_graphics");
+                        if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) fail("splash portrait initial");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .ready)) fail("splash portrait recolor");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) fail("splash landscape initial");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .ready)) fail("splash landscape recolor");
+                        if (!std.mem.allEqual(u8, guard, 0xa5)) fail("splash workload guard");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                    }
                     print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
                 }
                 if (options.graphics) {

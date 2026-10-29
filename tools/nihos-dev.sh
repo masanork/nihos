@@ -11,6 +11,7 @@ case "$command" in
     check) exec python3 tools/card_sim/app.py --headless build/card-sim/evidence "$@" ;;
     canvas-workloads) exec python3 tools/canvas_workloads.py "$@" ;;
     console-rv32) exec python3 tools/console_rv32.py "$@" ;;
+    splash-rv32) exec python3 tools/splash_rv32.py "$@" ;;
     canvas-trace-check) exec sh tools/run-emulator-trace.sh "$@" ;;
     canvas-live-check) exec python3 tools/run-canvas-live-smoke.py "$@" ;;
     canvas-live) exec python3 tools/canvas_live.py "$@" ;;
@@ -30,6 +31,7 @@ nihos development simulator
   sh tools/nihos-dev.sh canvas-workloads check RV32 scroll and indexed frames
   sh tools/nihos-dev.sh console-rv32      compare an RV32 console frame with host
       [--font basic-light|jetbrains|source-code]
+  sh tools/nihos-dev.sh splash-rv32       check RV32 splash and partial recolor
 
 ui/card/check use host code and synthetic devices. canvas-rv32 uses ESP-EMU;
 it does not simulate the Tab5 panel or provide a live display. Pass --port to
