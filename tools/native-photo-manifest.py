@@ -31,6 +31,9 @@ def main():
         paths += [ROOT/p for p in ('src/card/license_session.zig','src/card/license_record.zig','src/card/license_crypto.zig','src/card/license_trust.zig','src/card/license_trust.bin','src/card/license_trust.json','src/card/fixtures/license-rsa.bin','probes/card_crypto/link.zig','probes/card_crypto/stack.S')]
     for p in paths:
         if p.is_file():manifest['sources'][str(p.relative_to(ROOT))]=sha(p)
+    # The portrait image keeps PMP code on the boot page by placing the large
+    # keypad plan builder in the photo extent instead of the card extent.
+    manifest['allowed_functions'] = [name for name in manifest['allowed_functions'] if name != 'keypad_display.stage']
     manifest['allowed_functions'] += ['photo_runtime.prepare'] + ([] if probe else ['photo_runtime.decode']) + ['photo_runtime.close']
     if automatic and not probe:
         crypto={p.name:{'sha256':sha(p),'functions':C.functions(p)} for p in (build/'card_crypto.o',build/'card_crypto_stack.o')}
