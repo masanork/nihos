@@ -23,7 +23,7 @@ face's scroll-copy path. The command reads the full frame from emulated PSRAM an
 compares it with both the same fixture on the host and an independent per-pixel
 reference of the expected content. Reports and PNGs are under
 `build/native-emulator/console-workload/<font>/`. This is not a full normal
-application, keyboard driver, Unicode editor, panel/DMA model or physical timing test. The edit scenario uses synthetic actions, edits a single bounded row and does not draw a caret or persist a document.
+application, keyboard driver, Unicode editor, panel/DMA model or physical timing test. The edit scenario supplies synthetic HID FIFO bytes through a modeled I2C bus to the Tab5 keyboard driver, then edits a single bounded row. It does not draw a caret, persist a document or exercise a physical keyboard.
 
 `sh tools/nihos-dev.sh splash-rv32` compares portrait and landscape RV32
 splash frames before, during and after partial recoloring, as well as failure
