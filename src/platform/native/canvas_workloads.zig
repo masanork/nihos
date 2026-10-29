@@ -19,6 +19,10 @@ pub fn scroll(storage: []u8) bool {
     c.fillRect(.{ .x = 30, .y = 56, .width = 120, .height = 9 }, 0x07ff);
     c.copyRect(.{ .x = 0, .y = 16, .width = width, .height = height - 16 }, 0, 0);
     c.fillRect(.{ .x = 0, .y = height - 16, .width = width, .height = 16 }, 0x1082);
+    const clipped = c.clipped(.{ .x = 10, .y = 12, .width = 280, .height = 170 });
+    clipped.line(std.math.minInt(i32), 20, std.math.maxInt(i32), 20, 0xf800);
+    clipped.line(270, std.math.maxInt(i32), 270, std.math.minInt(i32), 0x001f);
+    clipped.line(15, 15, 15, 15, 0xffff);
     return true;
 }
 

@@ -6,6 +6,11 @@ class ReferenceTest(unittest.TestCase):
     def test_named_examples_and_negative_control(self):
         self.assertEqual(ref.editor_pixel(0, 199), 0x1082)
         self.assertEqual(ref.editor_pixel(30, 40), 0x07ff)
+        self.assertEqual(ref.editor_pixel(15, 15), 0xffff)
+        self.assertEqual(ref.editor_pixel(10, 20), 0xf800)
+        self.assertEqual(ref.editor_pixel(270, 20), 0x001f)
+        self.assertNotEqual(ref.editor_pixel(9, 20), 0xf800)
+        self.assertNotEqual(ref.editor_pixel(270, 182), 0x001f)
         self.assertEqual(ref.indexed_pixel(0, 0), 0x5a5a)
         self.assertEqual(ref.indexed_pixel(1, 1), 0x5a5a)
         self.assertEqual(ref.indexed_pixel(2, 0), (3 * 257) ^ 0x5a5a)
