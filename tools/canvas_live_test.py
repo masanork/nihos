@@ -1,6 +1,8 @@
 import struct
+import tempfile
+from pathlib import Path
 import unittest
-from canvas_live import Guest
+from canvas_live import Guest, acquire_session_lock
 
 
 class FakeMi:
@@ -29,3 +31,17 @@ class InputTest(unittest.TestCase):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 self.g.sample(*values)
         self.assertEqual(self.g.mi.writes, [])
+
+
+class LockTest(unittest.TestCase):
+    def test_only_one_session_can_own_the_worktree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'session.lock'
+            first = acquire_session_lock(path)
+            try:
+                with self.assertRaises(RuntimeError):
+                    acquire_session_lock(path)
+            finally:
+                first.close()
+            second = acquire_session_lock(path)
+            second.close()
