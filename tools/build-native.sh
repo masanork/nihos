@@ -34,6 +34,7 @@ if [ "${NIHOS_NATIVE_AUDIO:-0}" = 1 ]; then build_dir="$build_dir-audio"; fi
 if [ "${NIHOS_NATIVE_MICROPHONE:-0}" = 1 ]; then build_dir="$build_dir-microphone"; fi
 if [ "${NIHOS_NATIVE_RS485:-0}" = 1 ]; then build_dir="$build_dir-rs485"; fi
 if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then build_dir="$build_dir-devices"; fi
+if [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 1 ]; then build_dir="$build_dir-pmp-probe"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;

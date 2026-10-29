@@ -4,9 +4,17 @@
 //! U-mode and does not apply to M-mode, so kernel tasks keep running with
 //! `mstatus.MPP = Machine` and an empty plan. The two TOR grants are the
 //! same shape as an instruction/data split: code is readable and executable,
-//! the private arena is readable and writable, and every other address is
-//! denied. Entries stay unlocked. A locked table would give U-mode the same
-//! permissions on those regions and could not be replaced for the next task.
+//! the private arena is readable and writable, and every other address the
+//! writer can revoke is denied. Entries stay unlocked. A locked table would
+//! give U-mode the same permissions on those regions and could not be
+//! replaced for the next task.
+//!
+//! The ESP-IDF v5.4.4 bootloader locks entries 0, 1, 2, and 15 (CPU
+//! subsystem, CPU peripherals, mask ROM, and HP peripherals) because those
+//! `RW`/`RX` constants include `PMP_L` even in a bootloader build. Writes to
+//! those addresses are ignored. The grants therefore occupy entries 4–7,
+//! which the bootloader leaves unlocked, and the writer clears the unlocked
+//! whole-SRAM and whole-flash windows that used to sit there.
 //!
 //! Granularity matches ESP-IDF v5.4.4 `SOC_CPU_PMP_REGION_GRANULARITY`.
 //! This does not program the DMA permission controller.
@@ -22,6 +30,16 @@ pub const user_mpp: u32 = 0;
 /// MPIE set, MPP = User. `mret` enables interrupts in U-mode.
 pub const user_mstatus: u32 = 0x80;
 pub const fault_exit: i32 = -70;
+/// Hardware probe cases: allowed return, then the five contained faults.
+pub const probe_cases: u32 = 6;
+
+/// Case 0 must exit 1 after an allowed ECALL. Cases 1–5 must exit by the
+/// contained fault. Host checks do not show that the silicon raises them.
+pub fn probeResultAccepted(case_id: u32, exit_code: i32) bool {
+    if (case_id >= probe_cases) return false;
+    if (case_id == 0) return exit_code == 1;
+    return exit_code == fault_exit;
+}
 /// Cold writer. The graphics image's primary SRAM heap sits on the 48 KiB
 /// floor, so the CSR sequence lives in the boot Flash page. Callers with an
 /// empty plan return before reaching it.
@@ -47,6 +65,12 @@ const state_section = switch (@import("builtin").os.tag) {
 };
 
 export var nih_user_bounds: [2]Bounds align(8) linksection(state_section) = @splat(.{ .lo = 0, .hi = 0 });
+
+/// High bound published for the current user plan. Zero means the plan was dropped.
+pub fn publishedGrantHi(hart: u32) u32 {
+    if (hart >= nih_user_bounds.len) return 0xffff_ffff;
+    return nih_user_bounds[hart].hi;
+}
 export var nih_user_sp_bad: [2]u32 linksection(state_section) = @splat(0);
 export var nih_user_fault_frames: [2][frame_bytes]u8 align(16) linksection(state_section) = @splat(@splat(0));
 
@@ -63,20 +87,20 @@ fn separated(code_lo: u32, code_hi: u32, data_lo: u32, data_hi: u32) bool {
     return code_hi <= data_lo or data_hi <= code_lo;
 }
 
-/// Two TOR grants, entries 0–3. Entry 0 and 2 stay OFF and hold the lower
-/// bounds. Code has no write bit. Data has no execute bit.
+/// Two TOR grants on entries 4–7. Entries 4 and 6 stay OFF and hold the
+/// lower bounds. Code has no write bit. Data has no execute bit. No lock bit.
 pub noinline fn grant(code_lo: u32, code_hi: u32, data_lo: u32, data_hi: u32) linksection(text_section) ?Words {
     if (!(code_lo < code_hi and data_lo < data_hi)) return null;
     if (!(aligned(code_lo) and aligned(code_hi) and aligned(data_lo) and aligned(data_hi))) return null;
     if (!separated(code_lo, code_hi, data_lo, data_hi)) return null;
     if (data_lo > std.math.maxInt(u32) - frame_bytes) return null;
     var words = Words{};
-    words.addr[0] = code_lo >> 2;
-    words.addr[1] = code_hi >> 2;
-    words.cfg[0] |= (tor | read_bit | execute_bit) << 8;
-    words.addr[2] = data_lo >> 2;
-    words.addr[3] = data_hi >> 2;
-    words.cfg[0] |= (tor | read_bit | write_bit) << 24;
+    words.addr[4] = code_lo >> 2;
+    words.addr[5] = code_hi >> 2;
+    words.cfg[1] |= (tor | read_bit | execute_bit) << 8;
+    words.addr[6] = data_lo >> 2;
+    words.addr[7] = data_hi >> 2;
+    words.cfg[1] |= (tor | read_bit | write_bit) << 24;
     return words;
 }
 
@@ -172,60 +196,35 @@ pub fn takeRejectedSp(hart: u32) bool {
 noinline fn writeWords(words: Words) linksection(text_section) void {
     switch (comptime @import("builtin").cpu.arch) {
         .riscv32 => {
-            // Zero every configuration byte before publishing new addresses.
-            const addr: *const [entry_count]u32 = &words.addr;
-            const cfg: *const [cfg_words]u32 = &words.cfg;
+            // Entries 0–2 and 15 are locked by the bootloader. pmpcfg0 and
+            // pmpcfg3 share words with those entries, so this writer never
+            // stores them. Clearing pmpcfg1 and pmpcfg2 drops the unlocked
+            // whole-SRAM, whole-flash, and LP windows before the new bounds
+            // are published. addr4 is entry 4, the first address this writer owns.
+            const addr4: *const u32 = &words.addr[4];
+            const cfg1: *const u32 = &words.cfg[1];
             // SAFETY: the assembly block writes this scratch before every read.
             var word: u32 = undefined;
             asm volatile (
-                \\csrw pmpcfg0, zero
                 \\csrw pmpcfg1, zero
                 \\csrw pmpcfg2, zero
-                \\csrw pmpcfg3, zero
                 \\lw %[word], 0(%[addr])
-                \\csrw pmpaddr0, %[word]
-                \\lw %[word], 4(%[addr])
-                \\csrw pmpaddr1, %[word]
-                \\lw %[word], 8(%[addr])
-                \\csrw pmpaddr2, %[word]
-                \\lw %[word], 12(%[addr])
-                \\csrw pmpaddr3, %[word]
-                \\lw %[word], 16(%[addr])
                 \\csrw pmpaddr4, %[word]
-                \\lw %[word], 20(%[addr])
+                \\lw %[word], 4(%[addr])
                 \\csrw pmpaddr5, %[word]
-                \\lw %[word], 24(%[addr])
+                \\lw %[word], 8(%[addr])
                 \\csrw pmpaddr6, %[word]
-                \\lw %[word], 28(%[addr])
+                \\lw %[word], 12(%[addr])
                 \\csrw pmpaddr7, %[word]
-                \\lw %[word], 32(%[addr])
-                \\csrw pmpaddr8, %[word]
-                \\lw %[word], 36(%[addr])
-                \\csrw pmpaddr9, %[word]
-                \\lw %[word], 40(%[addr])
-                \\csrw pmpaddr10, %[word]
-                \\lw %[word], 44(%[addr])
-                \\csrw pmpaddr11, %[word]
-                \\lw %[word], 48(%[addr])
-                \\csrw pmpaddr12, %[word]
-                \\lw %[word], 52(%[addr])
-                \\csrw pmpaddr13, %[word]
-                \\lw %[word], 56(%[addr])
-                \\csrw pmpaddr14, %[word]
-                \\lw %[word], 60(%[addr])
-                \\csrw pmpaddr15, %[word]
                 \\lw %[word], 0(%[cfg])
-                \\csrw pmpcfg0, %[word]
-                \\lw %[word], 4(%[cfg])
                 \\csrw pmpcfg1, %[word]
-                \\lw %[word], 8(%[cfg])
+                \\lw %[word], 4(%[cfg])
                 \\csrw pmpcfg2, %[word]
-                \\lw %[word], 12(%[cfg])
-                \\csrw pmpcfg3, %[word]
+                \\fence.i
                 \\fence iorw, iorw
                 : [word] "=&r" (word),
-                : [addr] "r" (addr),
-                  [cfg] "r" (cfg),
+                : [addr] "r" (addr4),
+                  [cfg] "r" (cfg1),
                 : .{ .memory = true });
         },
         else => {},
@@ -257,11 +256,14 @@ noinline fn commit(hart: u32, protection: ?@import("context.zig").Protection) li
 
 test "two TOR grants are write-exclusive and execute-exclusive" {
     const words = grant(0x1000, 0x1200, 0x2000, 0x2800).?;
-    try std.testing.expectEqual(@as(u32, 0x1000 >> 2), words.addr[0]);
-    try std.testing.expectEqual(@as(u32, 0x1200 >> 2), words.addr[1]);
-    try std.testing.expectEqual(@as(u32, 0x2000 >> 2), words.addr[2]);
-    try std.testing.expectEqual(@as(u32, 0x2800 >> 2), words.addr[3]);
-    try std.testing.expect(words.cfg[1] == 0 and words.cfg[2] == 0 and words.cfg[3] == 0);
+    try std.testing.expectEqual(@as(u32, 0x1000 >> 2), words.addr[4]);
+    try std.testing.expectEqual(@as(u32, 0x1200 >> 2), words.addr[5]);
+    try std.testing.expectEqual(@as(u32, 0x2000 >> 2), words.addr[6]);
+    try std.testing.expectEqual(@as(u32, 0x2800 >> 2), words.addr[7]);
+    try std.testing.expect(words.addr[0] == 0 and words.addr[1] == 0 and words.addr[2] == 0 and words.addr[3] == 0);
+    try std.testing.expect(words.cfg[0] == 0 and words.cfg[2] == 0 and words.cfg[3] == 0);
+    try std.testing.expectEqual(@as(u32, 0x0B000D00), words.cfg[1]);
+    try std.testing.expect(words.cfg[1] & 0x80808080 == 0);
     try std.testing.expect(permits(words, 0x1000, .read));
     try std.testing.expect(permits(words, 0x11ff, .execute));
     try std.testing.expect(!permits(words, 0x1000, .write));
@@ -344,4 +346,16 @@ test "dispatcher frames stay inside the grant or the kernel fault frame" {
     try std.testing.expect(!dispatcherFrameAccepted(user_mstatus, bounds, false, 0x1f80, 0x2000, fault_frame));
     try std.testing.expect(dispatcherFrameAccepted(0x1880, bounds, true, fault_frame, fault_frame + frame_bytes, fault_frame));
     try std.testing.expect(!dispatcherFrameAccepted(user_mstatus, bounds, true, 0x2700, 0x2780, fault_frame));
+}
+
+test "probe results accept only the contained fault and the allowed return" {
+    try std.testing.expect(probeResultAccepted(0, 1));
+    try std.testing.expect(!probeResultAccepted(0, fault_exit));
+    try std.testing.expect(!probeResultAccepted(0, 2));
+    var case_id: u32 = 1;
+    while (case_id < probe_cases) : (case_id += 1) {
+        try std.testing.expect(probeResultAccepted(case_id, fault_exit));
+        try std.testing.expect(!probeResultAccepted(case_id, 1));
+    }
+    try std.testing.expect(!probeResultAccepted(probe_cases, fault_exit));
 }

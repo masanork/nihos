@@ -85,6 +85,16 @@ SECTIONS
         *(.flash.text.pmp .flash.text.pmp.*)
         __flash_pmp_end = .;
     } > flash_boot
+#if NIH_NATIVE_PMP_PROBE
+    /* U-mode probe text. One TOR range, 128-byte aligned, still on the boot
+     * page. Product images leave this section out. */
+    .flash.user : ALIGN(128) {
+        __user_probe_start = .;
+        KEEP(*(.flash.text.user))
+        . = ALIGN(128);
+        __user_probe_end = .;
+    } > flash_boot
+#endif
     /* The stock P4 loader maps both segments before entering SRAM.
      * Only self-contained normal diagnostic tables use the second page. */
     .flash.rodata : {
@@ -331,6 +341,12 @@ SECTIONS
     ASSERT(SIZEOF(.flash.boot) <= 65248, "boot code exceeds first Flash page")
     ASSERT(__flash_pmp_start < __flash_pmp_end, "missing PMP Flash code")
     ASSERT(__flash_pmp_end <= ORIGIN(flash_boot) + LENGTH(flash_boot), "PMP Flash code exceeds the boot page")
+#if NIH_NATIVE_PMP_PROBE
+    ASSERT(__user_probe_start < __user_probe_end, "missing user probe")
+    ASSERT(__user_probe_start % 128 == 0, "user probe start alignment")
+    ASSERT(__user_probe_end % 128 == 0, "user probe end alignment")
+    ASSERT(__user_probe_end <= ORIGIN(flash_boot) + LENGTH(flash_boot), "user probe exceeds the boot page")
+#endif
     ASSERT(SIZEOF(.flash.rodata) > 0, "missing mapped record tables")
     ASSERT(SIZEOF(.flash.rodata) <= 65504, "record tables exceed one Flash page")
     ASSERT(__stacks_start == ORIGIN(stack_ram), "wrong stack region origin")

@@ -646,8 +646,8 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
         while ((ui.timer().counter() orelse fail("late CPU1 clock")) - started < 100_000) asm volatile ("nop");
     }
     enableTimer(1);
-    if (options.boot_fast) {
-        if (options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
+    if (options.boot_fast or options.pmp_probe) {
+        if (options.boot_fast and options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
         while (true) tasks.idleOnce(1);
     }
     while (true) {
@@ -952,6 +952,97 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.ownerReady(0);
     enableTimer(0);
     if (options.boot_fast) normalReady();
+    if (options.pmp_probe) reportPmpProbe() else qualificationSoak(sd_crc, display_panel);
+}
+
+fn printUnsigned(value: u32) void {
+    var buf: [10]u8 = undefined;
+    var index: usize = buf.len;
+    var rest = value;
+    while (true) {
+        index -= 1;
+        buf[index] = '0' + @as(u8, @intCast(rest % 10));
+        rest /= 10;
+        if (rest == 0) break;
+    }
+    print(buf[index..]);
+}
+
+fn printSigned(value: i32) void {
+    if (value < 0) {
+        print("-");
+        const magnitude: u32 = @intCast(-@as(i64, value));
+        printUnsigned(magnitude);
+    } else printUnsigned(@intCast(value));
+}
+
+fn reportPmpProbe() noreturn {
+    if (comptime !options.pmp_probe) unreachable;
+    print("NIHOS_NATIVE_PMP_PROBE begin cases=6 hart=0\n");
+    var previous_timers: u32 = 0;
+    var previous_reaped: u32 = 0;
+    var previous_slot: u16 = 0xffff;
+    var previous_generation: u16 = 0;
+    var case_id: u32 = 0;
+    while (case_id < tasks.pmp.probe_cases) : (case_id += 1) {
+        const step = tasks.runProbeCase(case_id) orelse {
+            print("NIHOS_NATIVE_PMP_PROBE case=");
+            printUnsigned(case_id);
+            print(" result=incomplete\n");
+            fail("pmp probe case");
+        };
+        const returned = case_id == 0;
+        print("NIHOS_NATIVE_PMP_PROBE case=");
+        printUnsigned(case_id);
+        print(if (returned) " result=returned" else " result=fault");
+        print(" exit=");
+        printSigned(step.exit_code);
+        print(" kernel=1 reaped=");
+        printUnsigned(step.reaped);
+        print(" calls=");
+        printUnsigned(step.calls);
+        print(" timer_interrupts=");
+        printUnsigned(step.timer_interrupts);
+        print(" mstatus=");
+        hex(step.kernel_mstatus);
+        print(" live=");
+        hex(step.live_mstatus);
+        print(" grant=");
+        hex(step.grant_hi);
+        print(" slot=");
+        printUnsigned(step.slot);
+        print(" generation=");
+        printUnsigned(step.generation);
+        print(" data=");
+        hex(step.data_word);
+        print(" cause=");
+        hex(step.fault_cause);
+        print(" mepc=");
+        hex(step.fault_mepc);
+        print(" pmpaddr4=");
+        hex(step.pmpaddr4);
+        print(" pmpaddr5=");
+        hex(step.pmpaddr5);
+        print("\n");
+        const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code);
+        // mret writes MPP back to User. The saved bootstrap image still has
+        // Machine; the live CSR only shows that machine interrupts are on.
+        const kernel_ok = step.kernel_mstatus == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0;
+        const reaped_one = step.reaped == previous_reaped + 1;
+        const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
+        const return_ok = !returned or (step.timer_interrupts > previous_timers and step.calls > 2 and step.exit_code == 1);
+        const execute_ok = case_id != 3 or step.data_word == 0x00600513;
+        if (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok) fail("pmp probe evidence");
+        previous_timers = step.timer_interrupts;
+        previous_reaped = step.reaped;
+        previous_slot = step.slot;
+        previous_generation = step.generation;
+    }
+    print("NIHOS_NATIVE_PMP_PROBE_PASS cases=6 kernel=1\n");
+    while (true) asm volatile ("wfi" ::: .{ .memory = true });
+}
+
+fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };

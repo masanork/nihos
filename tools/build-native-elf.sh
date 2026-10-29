@@ -221,6 +221,14 @@ case "$boot_fast" in
     *) echo "NIHOS_NATIVE_BOOT_FAST must be auto, 0 or 1" >&2; exit 1 ;;
 esac
 if [ "$boot_test" != 0 ] && [ "$boot_fast" != true ]; then echo "Boot test requires normal boot" >&2; exit 1; fi
+pmp_probe=${NIHOS_NATIVE_PMP_PROBE:-0}
+case "$pmp_probe" in
+    0) pmp_probe=false; pmp_probe_cpp=0 ;;
+    1) pmp_probe=true; pmp_probe_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_PMP_PROBE must be 0 or 1" >&2; exit 1 ;;
+esac
+pmp_user_object=
+if [ "$pmp_probe" = true ]; then pmp_user_object="$repo_root/src/arch/riscv32/pmp_user.S"; fi
 if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
     echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
 fi
@@ -422,6 +430,10 @@ fi
 if { [ "$storage_service" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ]; } && { [ "$display" = true ] || [ "$network" = true ] || [ "$usb" = true ] || [ "$devices" = true ]; }; then
     echo "Storage/high-SRAM/broker qualification profiles require headless, dedicated device ownership" >&2; exit 1
 fi
+if [ "$pmp_probe" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" = true ] || [ "$qualification" = true ] || [ "$display" != false ] || [ "$console" = true ] || [ "$console_live" = true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$sdmmc" = true ] || [ "$storage" != false ] || [ "$normal_storage" = true ] || [ "$graphics" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$boot_test" != 0 ] || [ "$storage_service" = true ]; }; then
+    echo "PMP_PROBE requires a headless integer device image without qualification, normal boot, or other fixtures" >&2
+    exit 1
+fi
 mkdir -p "$build_dir"
 native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
@@ -429,10 +441,11 @@ if [ "$audio" = true ]; then native_boot_dir="$native_boot_dir-audio"; fi
 if [ "$microphone" = true ]; then native_boot_dir="$native_boot_dir-microphone"; fi
 if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
 if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
+if [ "$pmp_probe" = true ]; then native_boot_dir="$native_boot_dir-pmp-probe"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
@@ -440,6 +453,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const normal_storage = %s;\n' "$normal_storage"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
+    printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
     printf 'pub const audio = %s;\n' "$audio"
@@ -763,7 +777,7 @@ fi
     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
-    "$repo_root/src/platform/native/start.S" "$@" \
+    "$repo_root/src/platform/native/start.S" $pmp_user_object "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
     --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \
