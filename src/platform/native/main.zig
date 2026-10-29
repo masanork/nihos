@@ -41,7 +41,7 @@ fn pqcObserve(out: *[3]u32) callconv(.c) void {
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
-    pqc_worker_report = @import("pqc_arena_probe.zig").runOn(tasks.pqcWorkerStack());
+    pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine);
     @atomicStore(u32, &pqc_worker_done, 1, .release);
     return 0;
 }
@@ -755,6 +755,28 @@ export fn nih_native_main() callconv(.c) noreturn {
             const stale = index == 0 or tasks.pqcStaleWorkerRejected(previous);
             if (!stale or (index != 0 and identity == previous)) fail("PQC stale worker identity");
             const started = cycle();
+            if (options.pqc_worker_quarantine) {
+                // Do not service the closing ledger before injecting the fault.
+                while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerExited()) {
+                    _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
+                    if (cycle() -% started > 1_000_000_000) fail("PQC quarantine timeout");
+                }
+                const report = pqc_worker_report;
+                if (report.status != 1 or report.valid != 1 or report.rejected != 1 or report.oom != 1 or report.live != 0 or report.released != 0 or report.erased != 1) fail("PQC quarantine setup");
+                const free_before = tasks.memory.reusable.availableBytes() orelse fail("PQC quarantine free before");
+                if (free_before != report.heap_after) fail("PQC quarantine charge");
+                if (!tasks.memory.reusable.pqcQuarantineProbe(identity)) fail("PQC quarantine injection");
+                const free_after = tasks.memory.reusable.availableBytes() orelse fail("PQC quarantine free after");
+                if (free_before != free_after) fail("PQC quarantine free changed");
+                const reap_blocked = !tasks.reapPqcWorker();
+                const restart_blocked = !tasks.startPqcWorker();
+                if (!reap_blocked or !restart_blocked) fail("PQC quarantine reuse");
+                const outcome: struct { identity: u32, verify_valid: u32, lease: u32, charged: u32, peak: u32, stack_used: u32, free_before: u32, free_after: u32, wrong_owner: u32, retained: u32, uncleaned: u32, reopen_blocked: u32, heap_unchanged: u32, reap_blocked: u32, restart_blocked: u32 } = .{ .identity = identity, .verify_valid = report.valid, .lease = report.lease, .charged = report.charged, .peak = report.peak, .stack_used = report.stack_used, .free_before = @intCast(free_before), .free_after = @intCast(free_after), .wrong_owner = 1, .retained = 1, .uncleaned = 1, .reopen_blocked = 1, .heap_unchanged = 1, .reap_blocked = @intFromBool(reap_blocked), .restart_blocked = @intFromBool(restart_blocked) };
+                logger.record("NIHOS_NATIVE_PQC_QUARANTINE_PASS", null, .{ "identity", "verify_valid", "lease", "charged", "peak", "stack_used", "free_before", "free_after", "wrong_owner", "retained", "uncleaned", "reopen_blocked", "heap_unchanged", "reap_blocked", "restart_blocked" }, &outcome);
+                const done: struct { complete: u32 } = .{ .complete = 1 };
+                logger.record("NIHOS_NATIVE_PQC_QUARANTINE_DONE", null, .{"complete"}, &done);
+                while (true) asm volatile ("wfi");
+            }
             while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
                 _ = tasks.service(0);
                 if (options.pqc_worker_cancel and index == 1) {

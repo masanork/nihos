@@ -170,3 +170,12 @@ Capture through `NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`, then run
 `python3 probes/pqc/check_worker_cancel_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` for absent PSRAM). The outcome is a fixture record, not a service API.
 See [the cancellation measurement](../../docs/measurements/2026-10-29-pqc-worker-cancel.md).
+
+### Cleanup failure and retention fixture
+
+Set `NIHOS_NATIVE_PQC_WORKER_QUARANTINE=1` with the single-worker arena
+fixture (do not set repeat/cancel). It retains the worker allocation, injects
+an incorrect owner into the real ledger drain, checks the resulting faulted
+state and stops. Capture through `NIHOS_NATIVE_PQC_QUARANTINE_DONE`, then run
+`python3 probes/pqc/check_worker_quarantine_log.py LOG ELF BIN AUDIT REPORT.json`.
+See [the cleanup failure measurement](../../docs/measurements/2026-10-29-pqc-worker-quarantine.md).

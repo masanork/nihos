@@ -1,0 +1,23 @@
+{
+  "elf_sha256": "8a928ba7af04f4c5ad872e9fe21b6e66d88b8ec1074dfdd8dcaacbec505f7e34",
+  "image_sha256": "a4ba9d285cd2bf6fc4821ce1103239caf621ed83e68ad31b4b1e386db16daea6",
+  "stack_start": "0x4ff35e00",
+  "stack_bytes": 8192,
+  "quarantine": {
+    "identity": 65537,
+    "verify_valid": 1,
+    "lease": 16304,
+    "charged": 16384,
+    "peak": 10208,
+    "stack_used": 2768,
+    "free_before": 1785152,
+    "free_after": 1785152,
+    "wrong_owner": 1,
+    "retained": 1,
+    "uncleaned": 1,
+    "reopen_blocked": 1,
+    "heap_unchanged": 1,
+    "reap_blocked": 1,
+    "restart_blocked": 1
+  }
+}

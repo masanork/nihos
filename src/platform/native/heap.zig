@@ -622,6 +622,26 @@ pub noinline fn cleanupOne() enum { none, progress, complete } {
     return if (complete) .complete else .progress;
 }
 
+/// Experimental failure injection, called only after the worker exited. The
+/// wrong caller triggers the real buddy WrongOwner error without corrupting RAM.
+/// No normal cleanup or recovery is attempted after the ledger faults.
+pub fn pqcQuarantineProbe(identity: u32) bool {
+    if (!@import("native_options").pqc_worker_quarantine or hart() != 0) return false;
+    const status = mask();
+    defer restore(status);
+    const state = &resources[0];
+    const key = Key{ .slot = @truncate(identity), .generation = @truncate(identity >> 16) };
+    const pending = state.ledger.pending() orelse return false;
+    if (pending.key.slot != key.slot or pending.key.generation != key.generation or pending.allocation == null or state.ledger.owned() != 1) return false;
+    const before = owners[0].heap.free_bytes;
+    if (state.ledger.drainOne(&owners[0].heap, 1, key)) |_| return false else |err| {
+        if (err != error.WrongOwner) return false;
+    }
+    const next = Key{ .slot = key.slot, .generation = key.generation + 1 };
+    return state.ledger.owned() == 1 and !state.ledger.cleaned(key) and state.ledger.pending() == null and
+        !state.ledger.open(next) and owners[0].heap.free_bytes == before;
+}
+
 /// Resident metadata snapshot for owner-local admission/qualification.
 pub fn availableBytes() ?usize {
     const core = hart();

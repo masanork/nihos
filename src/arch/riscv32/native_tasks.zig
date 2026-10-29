@@ -286,6 +286,19 @@ pub fn pqcWorkerStack() memory.stacks.layout.Region {
     return .{ .start = @intFromPtr(&pqc_worker_stack), .end = @intFromPtr(&pqc_worker_stack) + pqc_worker_stack.len };
 }
 
+/// Fixture observation before ledger cleanup; runs on CPU0 bootstrap.
+pub fn pqcWorkerExited() bool {
+    if (!pqc_worker_probe) return false;
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const owner = &owners[0];
+    const task = owner.runtime.policy.snapshot(owner.workers[0]) orelse return false;
+    return task.state == .exited;
+}
+
 pub fn pqcWorkerFinished() bool {
     if (!pqc_worker_probe) return false;
     const hart = asm volatile ("csrr %[result], mhartid"

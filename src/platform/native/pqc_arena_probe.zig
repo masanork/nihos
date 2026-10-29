@@ -39,6 +39,11 @@ pub noinline fn run() Report {
 }
 
 pub noinline fn runOn(stack: memory.stacks.layout.Region) Report {
+    return runOnMode(stack, false);
+}
+
+/// Fixture only: retain the owned allocation so exit cleanup must drain it.
+pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool) Report {
     var report: Report = .{};
     // Bound the accounting snapshot and allocation against local preemption.
     // Verification below runs with the original MIE state restored.
@@ -100,6 +105,10 @@ pub noinline fn runOn(stack: memory.stacks.layout.Region) Report {
     report.verify_worker1 = result.verify_worker1;
     std.crypto.secureZero(u8, allocation.bytes);
     report.erased = @intFromBool(std.mem.allEqual(u8, allocation.bytes, 0));
+    if (retain) {
+        report.status = if (rc == 0 and first > low and report.mie == 8 and report.erased == 1) 1 else 4;
+        return report;
+    }
     memory.freeExternal(allocation) catch {
         report.status = 3;
         return report;
