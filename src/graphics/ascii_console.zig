@@ -286,15 +286,8 @@ pub fn Renderer(comptime section: ?[]const u8, comptime face: Face) type {
         }
     };
 }
-fn blend(background: u16, foreground: u16, alpha: u4) u16 {
-    const a: u32 = alpha;
-    const b: u32 = background;
-    const f: u32 = foreground;
-    const r = ((b >> 11) * (15 - a) + (f >> 11) * a + 7) / 15;
-    const g = (((b >> 5) & 63) * (15 - a) + ((f >> 5) & 63) * a + 7) / 15;
-    const blue = ((b & 31) * (15 - a) + (f & 31) * a + 7) / 15;
-    return @intCast((r << 11) | (g << 5) | blue);
-}
+const blend = Canvas.blend4;
+
 fn pixel(frame: []u8, stride: usize, x: usize, y: usize, color: u16) void {
     const offset = y * stride + x * 2;
     frame[offset] = @truncate(color);

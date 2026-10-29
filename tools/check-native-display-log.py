@@ -137,7 +137,8 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
     if image.get('keypad_storage', {}).get('card_boot'):
         check_card_boot(log, image.get('automatic_cards', {}).get('scene_exercise', False))
     core = NATIVE.check(log, 'integer', psram_bytes, image, 'physical-device',
-                        require_qualification=not normal_boot and 'NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20, require_normal=normal_boot)
+                        require_qualification=not normal_boot and 'NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20, require_normal=normal_boot,
+                        allow_panel_only=True)
     if 'NIHOS_NATIVE_DISPLAY_IRQ_FAIL' in log:
         raise ValueError('display refresh failed')
     screen = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_SCANOUT', SCANOUT)

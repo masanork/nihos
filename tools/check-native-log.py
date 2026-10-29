@@ -17,12 +17,14 @@ DISPLAY_PREP_FIELDS = ("status", "stage", "error_code", "panel", "transactions",
 CARD_FIELDS = ("status", "stage", "usb", "card", "remaining", "card_fault", "poweroff", "dma_erased", "pin_data_sent", "touch", "width", "height", "slots", "samples", "fresh", "releases", "contacts", "max_contacts", "last_type", "last_flags", "last_error", "last_parameter", "last_bytes", "vbus_off")
 
 
-def check_display_preparation(log):
+def check_display_preparation(log, allow_panel_only=False):
     r = fixed_record(log, 'NIHOS_NATIVE_DISPLAY_PREP', DISPLAY_PREP_FIELDS)
-    if (r['status'] != 1 or r['stage'] != 6 or r['error_code'] != 0 or r['panel'] not in (1, 2, 3) or
+    panel_only = allow_panel_only and r['stage'] == 3
+    if (r['status'] != 1 or (r['stage'] != 6 and not panel_only) or r['error_code'] != 0 or r['panel'] not in (1, 2, 3) or
             not 0 < r['transactions'] <= 256 or r['frame_start'] != 0x48030000 or
             r['frame_bytes'] != 720 * 1280 * 2 or r['reserve_bytes'] != 29 * 65536 or
-            r['phy_status'] != 3 or r['scanout'] != 0 or r['backlight'] != 0):
+            (any(r[key] for key in ('checksum', 'phy_trim', 'phy_status')) if panel_only else r['phy_status'] != 3) or
+            r['scanout'] != 0 or r['backlight'] != 0):
         raise ValueError('incomplete display preparation or invalid reservation')
     return r
 
@@ -472,7 +474,8 @@ def check_high(log, image, evidence):
 def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence="emulator",
           require_qualification=False, require_sdmmc=False, require_sdmmc_fast=False, require_storage=False,
           external_reserved_bytes=3 * 65536, require_normal=False, headless_case=0,
-          require_usb=False, require_jpki=False, require_card=False, canvas_offscreen=False):
+          require_usb=False, require_jpki=False, require_card=False, canvas_offscreen=False,
+          allow_panel_only=False):
     if external_reserved_bytes not in (3 * 65536, 2 << 20):
         raise ValueError("unknown external reservation")
     if (image or {}).get('broker') is not None and expected_psram_bytes != 32 << 20:
@@ -738,7 +741,9 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if external_reserved_bytes == 2 << 20 and not canvas_offscreen:
         if evidence != 'physical-device':
             raise ValueError('native display preparation requires physical-device evidence')
-        display_preparation = check_display_preparation(log)
+        # Only the full scanout checker opts into panel-only preparation; a
+        # preparation/CCID probe alone must still prove its PHY diagnostic.
+        display_preparation = check_display_preparation(log, allow_panel_only=allow_panel_only and not require_card)
         if expected_psram_bytes < 4 << 20:
             raise ValueError('invalid display external reservation')
     external_start = 0x48000000 + external_reserved_bytes

@@ -97,8 +97,9 @@ pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) Report {
     report.panel = @backingInt(panel);
     report.transactions = bus.transactions;
     report.stage = 3;
-    if (@import("native_options").boot_fast) {
-        // The runtime paints once and performs the real PHY/DMA startup.
+    if (@import("native_options").display_scanout or @import("native_options").boot_fast) {
+        // Scanout owns painting and the only PHY/DMA startup. Preparation-only
+        // diagnostics below still exercise power, lock and teardown separately.
         report.status = 1;
         return report;
     }
@@ -132,7 +133,11 @@ pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) Report {
         report.error_code = 8;
         return report;
     }
-    nih_display_phy_init(if (panel == .st7121) 960 else 1000);
+    const timing = @import("tab5_panels").timing(report.panel) orelse {
+        report.error_code = 7;
+        return report;
+    };
+    nih_display_phy_init(timing.lane_mbps);
     phy_started = true;
     report.stage = 5;
     const start = clock.counter() orelse {

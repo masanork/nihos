@@ -1,6 +1,5 @@
 //! Small, allocation-free RGB565LE canvas. Not an SDL or M5GFX implementation.
 const std = @import("std");
-const builtin = @import("builtin");
 const surface = @import("surface");
 
 pub const Rect = struct { x: i32, y: i32, width: u32, height: u32 };
@@ -30,6 +29,8 @@ pub const Canvas = struct {
     target: surface.Surface,
     clip: Bounds,
 
+    pub const blend4 = surface.internal.blend4;
+
     pub fn init(bytes: []u8, width: usize, height: usize, stride: usize) ?Canvas {
         const target = surface.Surface.init(bytes, width, height, stride) orelse return null;
         return .{ .target = target, .clip = .{ .left = 0, .top = 0, .right = @intCast(width), .bottom = @intCast(height) } };
@@ -47,14 +48,7 @@ pub const Canvas = struct {
         const count: usize = @intCast(r.right - r.left);
         for (@as(usize, @intCast(r.top))..@as(usize, @intCast(r.bottom))) |y| {
             const row = self.target.bytes[y * self.target.stride + left * 2 ..][0 .. count * 2];
-            if (@as(u8, @truncate(color)) == @as(u8, @truncate(color >> 8))) {
-                @memset(row, @truncate(color));
-            } else if (builtin.target.cpu.arch.endian() == .little and @intFromPtr(row.ptr) % @alignOf(u16) == 0) {
-                const words: [*]u16 = @ptrCast(@alignCast(row.ptr));
-                @memset(words[0..count], color);
-            } else {
-                for (0..count) |x| std.mem.writeInt(u16, row[x * 2 ..][0..2], color, .little);
-            }
+            surface.internal.fillRow(row, color);
         }
     }
     /// Move a rectangle within the same surface. Uncovered pixels are unchanged.

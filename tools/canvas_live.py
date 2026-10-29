@@ -31,6 +31,12 @@ def encode_frame(raw, previous_sha=None, previous_png=None):
     return digest, png_rgb565(raw, 720, 1280)
 
 
+def validate_document(text):
+    if not isinstance(text, str) or len(text) > 80 or any(not 32 <= ord(ch) <= 126 for ch in text):
+        raise ValueError('editor document must be at most 80 printable ASCII characters')
+    return text.encode('ascii')
+
+
 def check_guard(data):
     if data != bytes([0xa5]) * 16:
         raise RuntimeError('emulated framebuffer guard changed')
@@ -168,6 +174,7 @@ class Guest:
             self.mi.resume_to_frame()
             self.input_addr = self.mi.address('nih_emulator_input')
             self.output_addr = self.mi.address('nih_emulator_output')
+            self.document_addr = self.mi.address('nih_emulator_document')
             self.refresh()
             if fnv1a(self.raw) != 0x549e3481:
                 raise RuntimeError('initial emulator framebuffer mismatch')
@@ -186,8 +193,16 @@ class Guest:
         self.pixel_sha = sha
         self.seq += 1
         samples, events, clicks, kind, mode, keys, edits, cursor = struct.unpack('<IIIIIIII', self.mi.read(self.output_addr, 32))
+        length, content = struct.unpack('<I80s', self.mi.read(self.document_addr, 84))
+        if length > 80:
+            raise RuntimeError('invalid emulated document length')
+        try:
+            document = content[:length].decode('ascii')
+            validate_document(document)
+        except (UnicodeDecodeError, ValueError):
+            raise RuntimeError('invalid emulated document') from None
         self.state = {'frame': self.seq, 'samples': samples, 'events': events, 'clicks': clicks, 'kind': kind,
-                      'mode': mode, 'keys': keys, 'edits': edits, 'cursor': cursor,
+                      'mode': mode, 'keys': keys, 'edits': edits, 'cursor': cursor, 'text': document,
                       'time_us': self.last_time, 'pixel_sha256': self.pixel_sha, 'evidence': 'esp-emu-rv32-fixture'}
 
     def sample(self, contacts, x, y, time_us):
@@ -212,6 +227,18 @@ class Guest:
         self.mi.write(self.input_addr, struct.pack('<IIIII', 2, modifiers, usage, 0, 0))
         self.mi.resume_to_frame()
         self.refresh()
+        return self.state
+
+    def load_document(self, text):
+        if self.state.get('mode') != 1:
+            raise ValueError('editor not active')
+        content = validate_document(text)
+        self.mi.write(self.document_addr, struct.pack('<I80s', len(content), content))
+        self.mi.write(self.input_addr, struct.pack('<IIIII', 4, 0, 0, 0, 0))
+        self.mi.resume_to_frame()
+        self.refresh()
+        if self.state['text'] != text:
+            raise RuntimeError('emulated document readback mismatch')
         return self.state
 
     def close(self):
@@ -247,7 +274,7 @@ def serve(guest, port):
                 else: self.send(404, b'{}', 'application/json')
         def do_POST(self):
             host = f'127.0.0.1:{self.server.server_port}'
-            if self.path not in ('/sample', '/editor', '/key') or self.headers.get('Host') != host or self.headers.get('Origin') not in (None, f'http://{host}') or self.headers.get('Content-Type') != 'application/json':
+            if self.path not in ('/sample', '/editor', '/key', '/document') or self.headers.get('Host') != host or self.headers.get('Origin') not in (None, f'http://{host}') or self.headers.get('Content-Type') != 'application/json':
                 self.send(403, b'{}', 'application/json'); return
             try:
                 n = int(self.headers.get('Content-Length', '0'))
@@ -261,6 +288,8 @@ def serve(guest, port):
                         result = guest.start_editor()
                     elif self.path == '/key' and set(sample) == {'modifiers', 'usage'}:
                         result = guest.key(**sample)
+                    elif self.path == '/document' and set(sample) == {'text'}:
+                        result = guest.load_document(**sample)
                     else:
                         raise ValueError('fields')
                 self.send(200, json.dumps(result).encode(), 'application/json')
