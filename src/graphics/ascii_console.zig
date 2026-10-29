@@ -68,7 +68,8 @@ pub noinline fn paintFace(comptime section: ?[]const u8, comptime face: Face, fr
     const L = Layout(face);
     const T = @TypeOf(grid.*);
     if (T.width > L.columns or T.height > L.rows or !valid(frame, stride)) return false;
-    for (0..height) |y| for (0..width) |x| pixel(frame, stride, x, y, colors(palette).background);
+    const canvas = Canvas.init(frame, width, height, stride) orelse return false;
+    canvas.fillRect(.{ .x = 0, .y = 0, .width = width, .height = height }, colors(palette).background);
     for (0..T.height) |row| for (0..T.width) |col| cell(section, face, frame, stride, grid.cells[row * T.width + col], row, col, 0, L.cell_height, L.margin_y + row * L.cell_height, palette);
     return true;
 }
@@ -135,7 +136,8 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
             }
         }
     } else {
-        for (clip_top..clip_bottom) |y| for (0..L.cell_width) |x| pixel(frame, stride, destination + y - clip_top, 1279 - (L.margin_x + col * L.cell_width + x), selected.background);
+        const canvas = Canvas.init(frame, width, height, stride) orelse unreachable;
+        canvas.fillRect(.{ .x = @intCast(destination), .y = @intCast(1280 - L.margin_x - (col + 1) * L.cell_width), .width = @intCast(clip_bottom - clip_top), .height = L.cell_width }, selected.background);
         const Font = if (face == .jetbrains) @import("ascii/jetbrains.zig") else @import("ascii/source_code.zig");
         const Store = if (section) |name| struct {
             const masks linksection(name) = Font.masks.*;
