@@ -44,6 +44,11 @@ pub const Image = struct {
     }
 };
 
+pub const ContainedFault = struct {
+    exited: ?scheduler.TaskHandle = null,
+    next: ?context.TaskContext = null,
+};
+
 pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
     return struct {
         const Self = @This();
@@ -97,13 +102,15 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
         }
 
         /// End the running untrusted task after a contained fault. The saved
-        /// frame is not resumed. Another ready task may be selected.
-        pub fn containFault(self: *Self) ?context.TaskContext {
-            const current = self.policy.current() orelse return null;
-            const image = self.images[current.slot] orelse return null;
-            if (image.protection == null) return null;
-            _ = self.policy.exitCurrent(pmp.fault_exit) orelse return null;
-            return self.select();
+        /// frame is not resumed. `exited` is set only after that task is
+        /// marked exited with `pmp.fault_exit`. Another ready task may be
+        /// selected into `next`.
+        pub noinline fn containFault(self: *Self) linksection(pmp.text_section) ContainedFault {
+            const current = self.policy.current() orelse return .{};
+            const image = self.images[current.slot] orelse return .{};
+            if (image.protection == null) return .{};
+            if (self.policy.exitCurrent(pmp.fault_exit) == null) return .{};
+            return .{ .exited = current, .next = self.select() };
         }
 
         /// Reap only a completed task, from the interrupt/kernel stack. No
@@ -154,7 +161,8 @@ test "a contained fault exits a protected task and does not exit a kernel task" 
         .state = .{ .mstatus = 0x1880, .mcause = 0 },
     }).?;
     try std.testing.expect(kernel_runtime.policy.schedule() != null);
-    try std.testing.expect(kernel_runtime.containFault() == null);
+    const kernel_fault = kernel_runtime.containFault();
+    try std.testing.expect(kernel_fault.exited == null and kernel_fault.next == null);
     try std.testing.expectEqual(scheduler.TaskState.running, kernel_runtime.policy.snapshot(kernel).?.state);
 
     var user_runtime = Runtime(1, 1){};
@@ -165,8 +173,42 @@ test "a contained fault exits a protected task and does not exit a kernel task" 
         .protection = user_region,
     }).?;
     try std.testing.expect(user_runtime.policy.schedule() != null);
-    try std.testing.expect(user_runtime.containFault() == null);
+    const user_fault = user_runtime.containFault();
+    try std.testing.expectEqual(user, user_fault.exited.?);
+    try std.testing.expect(user_fault.next == null);
     try std.testing.expectEqual(scheduler.TaskState.exited, user_runtime.policy.snapshot(user).?.state);
     try std.testing.expectEqual(pmp.fault_exit, user_runtime.policy.snapshot(user).?.exit_code);
     try std.testing.expect(user_runtime.policy.current() == null);
+    try std.testing.expect(user_runtime.reap(user));
+    try std.testing.expect(user_runtime.policy.snapshot(user) == null);
+    try std.testing.expect(user_runtime.add(0, .{
+        .stack_min = user_region.data_lo,
+        .stack_max = user_region.data_hi,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+        .protection = user_region,
+    }) != null);
+}
+
+test "a contained fault can be reaped while the kernel task keeps running" {
+    var runtime = Runtime(2, 2){};
+    const kernel = runtime.add(1, .{
+        .stack_min = 0x1000,
+        .stack_max = 0x1800,
+        .state = .{ .mstatus = 0x1880, .mcause = 0 },
+    }).?;
+    const user = runtime.add(0, .{
+        .stack_min = user_region.data_lo,
+        .stack_max = user_region.data_hi,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+        .protection = user_region,
+    }).?;
+    try std.testing.expectEqual(user, runtime.policy.schedule().?);
+    const fault = runtime.containFault();
+    try std.testing.expectEqual(user, fault.exited.?);
+    try std.testing.expect(fault.next == null);
+    try std.testing.expectEqual(scheduler.TaskState.running, runtime.policy.snapshot(kernel).?.state);
+    try std.testing.expectEqual(pmp.fault_exit, runtime.policy.snapshot(user).?.exit_code);
+    try std.testing.expect(runtime.reap(user));
+    try std.testing.expect(runtime.policy.snapshot(user) == null);
+    try std.testing.expectEqual(scheduler.TaskState.running, runtime.policy.snapshot(kernel).?.state);
 }

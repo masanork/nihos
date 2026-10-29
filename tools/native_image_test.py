@@ -267,6 +267,34 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(functions=values), self.assertRaises(ValueError):
                 check(values)
 
+    def test_pmp_flash_is_an_exact_rx_allowlist_on_the_boot_page(self):
+        start = 0x40001200
+        names = sorted(MODULE.PMP_FLASH_FUNCTIONS)
+        functions = []
+        address = start
+        for name in names:
+            functions.append((name, address, address + 32))
+            address += 32
+        end = address
+        self.assertEqual(set(MODULE.audit_pmp_flash(functions, (start, end))), set(names))
+        # An unused helper may be discarded. A kept helper must stay in this extent.
+        self.assertEqual(set(MODULE.audit_pmp_flash(functions[:-1], (start, end - 32))), set(names[:-1]))
+        boot = [("resident", 0x4ff20000, 0x4ff20100), ("nih_rom_putc", 0x4fc00054, 0x4fc00058),
+                ("psram.probe", 0x40000120, 0x40000920),
+                ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
+        self.assertEqual(set(MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff20000, 0x4ff48000, pmp_span=(start, end))),
+                         {"probe", "mapping"})
+        with self.assertRaises(ValueError):
+            MODULE.audit_pmp_flash(functions[:-1] + [(names[-1], 0x4ff30000, 0x4ff30020)], (start, end - 32))
+        with self.assertRaises(ValueError):
+            MODULE.audit_pmp_flash(functions + [("pmp.extra", end, end + 16)], (start, end + 16))
+        with self.assertRaises(ValueError):
+            MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff20000, 0x4ff48000)
+        MODULE.audit_flash_section(".flash.pmp", 1, 6, start, end - start)
+        for kind, flags, where, size in ((8, 6, start, 64), (1, 2, start, 64), (1, 6, 0x40000120, 64), (1, 6, start, 0)):
+            with self.subTest(kind=kind, flags=flags, address=where, size=size), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(".flash.pmp", kind, flags, where, size)
+
     def test_sd_boot_move_requires_one_exact_named_extent_and_no_hidden_code(self):
         base = [("psram.probe", 0x40000120, 0x40000920),
                 ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
