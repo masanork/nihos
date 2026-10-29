@@ -132,7 +132,7 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
                 std.mem.writeInt(u16, row_pixels[(y - clip_top) * 2 ..][0..2], color, .little);
             }
             const row_bytes = (clip_bottom - clip_top) * 2;
-            canvas.blitRgb565(.{ .bytes = row_pixels[0..row_bytes], .width = @intCast(clip_bottom - clip_top), .height = 1, .stride = row_bytes }, @intCast(destination), @intCast(physical_y)) catch unreachable;
+            canvas.blitRgb565(.{ .bytes = row_pixels[0..row_bytes], .width = @intCast(clip_bottom - clip_top), .height = 1, .stride = row_bytes }, @intCast(destination), @intCast(physical_y)) catch @panic("invalid console row blit");
         }
     } else {
         canvas.fillRect(.{ .x = @intCast(destination), .y = @intCast(1280 - L.margin_x - (col + 1) * L.cell_width), .width = @intCast(clip_bottom - clip_top), .height = L.cell_width }, selected.background);
