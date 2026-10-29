@@ -819,7 +819,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep canvas -Mtext_console="$repo_root/src/console.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    -Mboot_graphics="$repo_root/src/graphics/boot_graphics.zig" \
+    --dep canvas -Mboot_graphics="$repo_root/src/graphics/boot_graphics.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mreset_capture="$repo_root/src/soc/esp32p4/reset_capture.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
