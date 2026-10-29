@@ -265,6 +265,23 @@ pub noinline fn startPqcWorker() bool {
     return true;
 }
 
+/// Snapshot the owner-local handle while called by the CPU0 bootstrap.
+pub fn pqcWorkerIdentity() u32 {
+    const h = owners[0].workers[0];
+    return (@as(u32, h.generation) << 16) | h.slot;
+}
+
+/// Used only after creating a replacement, under CPU0 local IRQ exclusion.
+pub fn pqcStaleWorkerRejected(identity: u32) bool {
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const h: scheduler.TaskHandle = .{ .slot = @truncate(identity), .generation = @truncate(identity >> 16) };
+    return owners[0].runtime.policy.snapshot(h) == null;
+}
+
 pub fn pqcWorkerStack() memory.stacks.layout.Region {
     return .{ .start = @intFromPtr(&pqc_worker_stack), .end = @intFromPtr(&pqc_worker_stack) + pqc_worker_stack.len };
 }

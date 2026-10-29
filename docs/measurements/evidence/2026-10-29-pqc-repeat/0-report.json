@@ -1,0 +1,124 @@
+{
+  "jobs": [
+    {
+      "elf_sha256": "8159312aa7bb5b9f1fc9e90e458d28e37bff2b776724b30f9947b379d1cfdaf7",
+      "image_sha256": "d7eb63888256b83ee2519074edb31751893660d029a260700d4fc497a6e98a9e",
+      "stack_start": "0x4ff35b00",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 10632,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "job": {
+        "index": 0,
+        "identity": 65537,
+        "previous": 0,
+        "stale_rejected": 1
+      }
+    },
+    {
+      "elf_sha256": "8159312aa7bb5b9f1fc9e90e458d28e37bff2b776724b30f9947b379d1cfdaf7",
+      "image_sha256": "d7eb63888256b83ee2519074edb31751893660d029a260700d4fc497a6e98a9e",
+      "stack_start": "0x4ff35b00",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 21039,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "job": {
+        "index": 1,
+        "identity": 131073,
+        "previous": 65537,
+        "stale_rejected": 1
+      }
+    },
+    {
+      "elf_sha256": "8159312aa7bb5b9f1fc9e90e458d28e37bff2b776724b30f9947b379d1cfdaf7",
+      "image_sha256": "d7eb63888256b83ee2519074edb31751893660d029a260700d4fc497a6e98a9e",
+      "stack_start": "0x4ff35b00",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 31446,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "job": {
+        "index": 2,
+        "identity": 196609,
+        "previous": 131073,
+        "stale_rejected": 1
+      }
+    }
+  ]
+}
