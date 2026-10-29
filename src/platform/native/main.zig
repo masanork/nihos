@@ -15,6 +15,15 @@ const network_config = @import("network_config");
 const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
+comptime {
+    if (options.pqc_arena_probe) @export(&pqcObserve, .{ .name = "nih_pqc_observe" });
+}
+fn pqcObserve(out: *[3]u32) callconv(.c) void {
+    out[0] = @atomicLoad(u32, &ticks[0], .acquire);
+    const progress_now = tasks.report(0).progress;
+    out[1] = progress_now[0];
+    out[2] = progress_now[1];
+}
 export fn nih_device_request(kind: u32) callconv(.c) bool {
     if (!options.devices) return false;
     const accepted = board_devices.requestDevice(kind);
@@ -710,7 +719,21 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
     enableTimer(0);
-    if (options.pqc_verify_probe) {
+    if (options.pqc_arena_probe) {
+        const before = cycle();
+        const tick0 = @atomicLoad(u32, &ticks[0], .acquire);
+        const tick1 = @atomicLoad(u32, &ticks[1], .acquire);
+        const work = tasks.report(0).progress;
+        var report = @import("pqc_arena_probe.zig").run();
+        report.cycles = cycle() -% before;
+        report.ticks0 = @atomicLoad(u32, &ticks[0], .acquire) -% tick0;
+        report.ticks1 = @atomicLoad(u32, &ticks[1], .acquire) -% tick1;
+        const end = tasks.report(0).progress;
+        report.worker0 = end[0] -% work[0];
+        report.worker1 = end[1] -% work[1];
+        logger.record("NIHOS_NATIVE_PQC_ARENA", null, .{ "status", "cycles", "verify_ticks", "verify_worker0", "verify_worker1", "heap_before", "heap_after", "charged", "lease", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
+        if (report.status != 1 and report.status != 2) fail("PQC arena fixture");
+    } else if (options.pqc_verify_probe) {
         const before = cycle();
         const tick0 = @atomicLoad(u32, &ticks[0], .acquire);
         const tick1 = @atomicLoad(u32, &ticks[1], .acquire);

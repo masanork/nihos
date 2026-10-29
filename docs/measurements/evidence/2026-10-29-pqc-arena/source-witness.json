@@ -1,0 +1,23 @@
+{
+  "base_commit": "105bf50",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/platform/native/main.zig": "3290e6d499fdc6eb88d5f56e9d24ed18584de2cecf7b58abb092dec1d120136f",
+    "src/platform/native/pqc_arena_probe.zig": "cf906508553073a3efb4211f00f810fc66b3f7b72ec3ef0c1993b7fd01305c40",
+    "src/platform/native/heap.zig": "d9d167c9feb68be77c44117200328b59c3fda9e3c1a2c3132c1c7ed8b243f01e",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "tools/build-native-elf.sh": "8f0597631f27b5eb5030bc777971b0edd84b7e23183f5979f7e4c150860d960d",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "1c49bdde613e7e53c75a0a4c70bb1982a7336a53211ab7c9ccb2912cdd859794",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7"
+  },
+  "raw_logs_sha256": {
+    "baseline-4M.log": "b0ff77fd3fe30af5e87e67e07f8f3f94fdcdb5291edea6a032efbfd4f990ef9c",
+    "fixture-4M.log": "bec180b5f3ac7708e0369d9c85499cc896554a2e9dca59938a10eba0ea8bb171",
+    "no-psram.log": "2e98460a2a3427c2ec2a03bc1c3b3eabe517aad2daa06f265216fe5194d3f3ff"
+  },
+  "baseline_elf_sha256": "16996774476600d7531c14227094f718bc7dc8fda90a1ffc94c1878d4b23f625",
+  "baseline_image_sha256": "0ca41b0e4b1866d1bf8b6a12798eddf3d073652bab4c0feb88f2b5ee5b294ff9",
+  "fixture_elf_sha256": "2f139982b7076dc706aa18d4f865571f2b1fac36b50c4fe52b73742a8cf2aef5",
+  "fixture_image_sha256": "5a6302dc0ac6d80ec735cc619e5c91f2376232ca6d21419092f0bd496795d88e"
+}

@@ -1,0 +1,385 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "evidence": "emulator",
+  "mode": "integer",
+  "storage": null,
+  "storage_stack": null,
+  "usb": null,
+  "authenticated_usb": null,
+  "jpki": null,
+  "card_readiness": null,
+  "display_preparation": null,
+  "qualification": null,
+  "sdmmc": null,
+  "sdmmc_stages": [],
+  "sdmmc_sweeps": [],
+  "image_elf_sha256": "2f139982b7076dc706aa18d4f865571f2b1fac36b50c4fe52b73742a8cf2aef5",
+  "flash_records": [
+    {
+      "hart": 0,
+      "start": 1073807392,
+      "end": 1073810960,
+      "bytes": 3568,
+      "initial": 3797071890,
+      "final": 3797071890,
+      "checks": 7136,
+      "confirmed": 1
+    },
+    {
+      "hart": 1,
+      "start": 1073807392,
+      "end": 1073810960,
+      "bytes": 3568,
+      "initial": 3797071890,
+      "final": 3797071890,
+      "checks": 7136,
+      "confirmed": 1
+    }
+  ],
+  "flash_boot": {
+    "start": 1073742112,
+    "end": 1073746790,
+    "probe": 1073742234,
+    "mapping": 1073745576,
+    "completed": 1
+  },
+  "cpu_clock": null,
+  "sqlite": null,
+  "stacks": [
+    {
+      "hart": 0,
+      "start": 1341521920,
+      "end": 1341579264,
+      "boot_start": 1341521920,
+      "boot_end": 1341530112,
+      "irq_start": 1341538304,
+      "irq_end": 1341546496,
+      "task_start": 1341554688,
+      "task_end": 1341566976,
+      "boot_frame": 1341526512,
+      "irq_sp": 1341546208,
+      "task0_frame": 1341558304,
+      "task1_frame": 1341562400,
+      "task2_frame": 1341566784,
+      "frames": 1078,
+      "zeroed": 20480,
+      "confirmed": 1
+    },
+    {
+      "hart": 1,
+      "start": 1341521920,
+      "end": 1341579264,
+      "boot_start": 1341530112,
+      "boot_end": 1341538304,
+      "irq_start": 1341546496,
+      "irq_end": 1341554688,
+      "task_start": 1341566976,
+      "task_end": 1341579264,
+      "boot_frame": 1341537840,
+      "irq_sp": 1341554400,
+      "task0_frame": 1341570592,
+      "task1_frame": 1341574688,
+      "task2_frame": 1341579072,
+      "frames": 1078,
+      "zeroed": 20480,
+      "confirmed": 1
+    }
+  ],
+  "rounds": 300,
+  "samples": 31,
+  "psram": {
+    "status": 1,
+    "configuration": 3328,
+    "identity": 201,
+    "bytes": 4194304,
+    "transactions": 4,
+    "mapped": 4194304,
+    "allocatable": 0
+  },
+  "psram_supply": {
+    "programmed": 1,
+    "calibrated": 0,
+    "dref": 6,
+    "mul": 5,
+    "control": 384,
+    "analog": 1719664640,
+    "settled": 1
+  },
+  "psram_io": {
+    "status": 1,
+    "mr0": 40,
+    "mr4": 64,
+    "mr8": 11,
+    "addresses": 22,
+    "passes": 2,
+    "reads": 44,
+    "writes": 44,
+    "transactions": 101
+  },
+  "psram_fast": null,
+  "psram_mapping": {
+    "status": 1,
+    "failure": 0,
+    "line_bytes": 64,
+    "last_address": 0,
+    "last_actual": 0,
+    "last_expected": 0,
+    "bytes": 4194304,
+    "entries": 1024,
+    "cpu_checks": 36,
+    "command_checks": 36,
+    "transactions": 72,
+    "syncs": 5
+  },
+  "psram_smp": {
+    "status": 1,
+    "rounds": 64,
+    "owner_checks": 3072,
+    "peer_checks": 3072,
+    "command_checks": 48,
+    "syncs": 1
+  },
+  "cpu0_progress": 4259741,
+  "cpu1_progress": 2253196,
+  "cpu0_interrupts": 923,
+  "cpu1_interrupts": 922,
+  "tasks": [
+    {
+      "hart": 0,
+      "progress": [
+        467109,
+        462336
+      ],
+      "timer_captures": [
+        309,
+        309
+      ],
+      "switches": 934,
+      "calls": 17,
+      "reaped": 3,
+      "sleeps": 2,
+      "elapsed_ticks": 923
+    },
+    {
+      "hart": 1,
+      "progress": [
+        467904,
+        462272
+      ],
+      "timer_captures": [
+        309,
+        308
+      ],
+      "switches": 933,
+      "calls": 17,
+      "reaped": 3,
+      "sleeps": 2,
+      "elapsed_ticks": 922
+    }
+  ],
+  "ipi_idle": [
+    {
+      "hart": 0,
+      "sent": 64,
+      "received": 64,
+      "ipis": 66,
+      "delivered": 64,
+      "woken": 64,
+      "rejected": 0,
+      "from_idle": 65,
+      "entries": 64,
+      "returns": 64,
+      "pending_before_wfi": 1,
+      "self_ipi": 1,
+      "timer_start": 924,
+      "timer_end": 924,
+      "queued": 0
+    },
+    {
+      "hart": 1,
+      "sent": 64,
+      "received": 64,
+      "ipis": 66,
+      "delivered": 64,
+      "woken": 64,
+      "rejected": 0,
+      "from_idle": 65,
+      "entries": 65,
+      "returns": 65,
+      "pending_before_wfi": 1,
+      "self_ipi": 1,
+      "timer_start": 924,
+      "timer_end": 924,
+      "queued": 0
+    }
+  ],
+  "floating": [
+    {
+      "hart": 0,
+      "checks0": 0,
+      "checks1": 0,
+      "checks2": 0,
+      "timer": 0,
+      "calls": 0,
+      "ipi": 0,
+      "saves": 0,
+      "restores": 0,
+      "initial": 0,
+      "app_timer": 0,
+      "confirmed": 1
+    },
+    {
+      "hart": 1,
+      "checks0": 0,
+      "checks1": 0,
+      "checks2": 0,
+      "timer": 0,
+      "calls": 0,
+      "ipi": 0,
+      "saves": 0,
+      "restores": 0,
+      "initial": 0,
+      "app_timer": 0,
+      "confirmed": 1
+    }
+  ],
+  "memory": [
+    {
+      "hart": 0,
+      "start": 1341356416,
+      "end": 1341390016,
+      "capacity": 33472,
+      "used": 448,
+      "free": 33024,
+      "checks0": 467110,
+      "checks1": 462337,
+      "rejected": 3,
+      "confirmed": 1
+    },
+    {
+      "hart": 1,
+      "start": 1341390016,
+      "end": 1341423616,
+      "capacity": 33472,
+      "used": 448,
+      "free": 33024,
+      "checks0": 467905,
+      "checks1": 462273,
+      "rejected": 3,
+      "confirmed": 1
+    }
+  ],
+  "external_memory": [
+    {
+      "hart": 0,
+      "start": 1208156160,
+      "end": 1210155008,
+      "capacity": 1998720,
+      "used": 1998720,
+      "free": 0,
+      "checks0": 467110,
+      "checks1": 462337,
+      "rejected": 3,
+      "confirmed": 1
+    },
+    {
+      "hart": 1,
+      "start": 1210155008,
+      "end": 1212153856,
+      "capacity": 1998720,
+      "used": 1998720,
+      "free": 0,
+      "checks0": 467905,
+      "checks1": 462273,
+      "rejected": 3,
+      "confirmed": 1
+    }
+  ],
+  "heaps": [
+    {
+      "hart": 0,
+      "start": 1208156288,
+      "end": 1210023488,
+      "metadata": 65536,
+      "capacity": 1801536,
+      "free": 1801536,
+      "live": 0,
+      "allocations": 14558,
+      "frees": 14558,
+      "rejected": 13,
+      "checks0": 467110,
+      "checks1": 462337,
+      "levels": 15,
+      "max_steps": 47,
+      "confirmed": 1
+    },
+    {
+      "hart": 1,
+      "start": 1210155136,
+      "end": 1212022336,
+      "metadata": 65536,
+      "capacity": 1801536,
+      "free": 1801536,
+      "live": 0,
+      "allocations": 14569,
+      "frees": 14569,
+      "rejected": 13,
+      "checks0": 467905,
+      "checks1": 462273,
+      "levels": 15,
+      "max_steps": 47,
+      "confirmed": 1
+    }
+  ],
+  "task_resources": [
+    {
+      "hart": 0,
+      "opened": 7,
+      "closed": 6,
+      "completed": 6,
+      "reclaimed": 10,
+      "reuses": 3,
+      "owned": 0,
+      "pending": 0,
+      "stale": 3,
+      "full": 3,
+      "forced": 1,
+      "pool_objects": 18,
+      "pool_rejected": 6,
+      "slab_objects": 120,
+      "slab_frees": 24,
+      "slab_rejected": 27,
+      "object_moves": 8,
+      "object_inplace": 4,
+      "object_rejected": 8,
+      "object_copy_bytes": 4208,
+      "c_probes": 2
+    },
+    {
+      "hart": 1,
+      "opened": 7,
+      "closed": 6,
+      "completed": 6,
+      "reclaimed": 10,
+      "reuses": 3,
+      "owned": 0,
+      "pending": 0,
+      "stale": 3,
+      "full": 3,
+      "forced": 1,
+      "pool_objects": 18,
+      "pool_rejected": 6,
+      "slab_objects": 120,
+      "slab_frees": 24,
+      "slab_rejected": 27,
+      "object_moves": 8,
+      "object_inplace": 4,
+      "object_rejected": 8,
+      "object_copy_bytes": 4208,
+      "c_probes": 2
+    }
+  ],
+  "external_registered_bytes": 3997440,
+  "external_allocatable_bytes": 3603072
+}

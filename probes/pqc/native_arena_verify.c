@@ -1,0 +1,63 @@
+/* Experimental public verification fixture and per-call arena, not a service. */
+#include "native_arena.h"
+#include "mldsa_native.h"
+#include "expected_test_vectors_multilevel.h"
+
+void *nih_pqc_arena_alloc(void *ctx, size_t bytes) {
+    struct nih_pqc_arena *a = ctx;
+    if (!a || !a->bytes || a->used > a->capacity || bytes > a->capacity - a->used ||
+        bytes > SIZE_MAX - 31) {
+        if (a) a->failures++;
+        return NULL;
+    }
+    size_t rounded = (bytes + 31) & ~(size_t)31;
+    if (rounded > a->capacity - a->used) { a->failures++; return NULL; }
+    void *result = a->bytes + a->used;
+    a->used += rounded;
+    if (a->used > a->peak) a->peak = a->used;
+    a->allocs++;
+    a->live++;
+    return result;
+}
+void nih_pqc_arena_free(void *ctx, void *ptr, size_t bytes) {
+    struct nih_pqc_arena *a = ctx;
+    (void)bytes;
+    if (!a || !ptr || a->live == 0) return;
+    a->frees++;
+    a->live--;
+}
+
+struct nih_pqc_result {
+    uint32_t valid, rejected, oom, peak, allocs, frees, failures, live;
+    uint32_t verify_ticks, verify_worker0, verify_worker1;
+};
+extern void nih_pqc_observe(uint32_t out[3]);
+static int verify(const uint8_t *message, size_t len, struct nih_pqc_arena *a) {
+    return PQCP_MLDSA_NATIVE_MLDSA65_verify(test_vector_sig_65, message, len,
+        (const uint8_t *)TEST_VECTOR_CTX, TEST_VECTOR_CTX_LEN, test_vector_pk_65, a);
+}
+int nih_pqc_arena_fixture(uint8_t *bytes, size_t capacity, struct nih_pqc_result *r) {
+    static const uint8_t modified[] = "Xhis is a test message for ML-DSA digital signature algorithm!";
+    if (!bytes || !r || ((uintptr_t)bytes & 31) != 0 || capacity < 32) return 1;
+    struct nih_pqc_arena a = { .bytes = bytes, .capacity = capacity };
+    uint32_t before[3], after[3];
+    nih_pqc_observe(before);
+    r->valid = verify((const uint8_t *)TEST_VECTOR_MSG, TEST_VECTOR_MSG_LEN, &a) == 0;
+    if (a.live != 0 || a.failures != 0) return 2;
+    r->peak = (uint32_t)a.peak; r->allocs = a.allocs; r->frees = a.frees;
+    a.used = 0;
+    r->rejected = verify(modified, sizeof(modified) - 1, &a) == -6;
+    nih_pqc_observe(after);
+    r->verify_ticks = after[0] - before[0];
+    r->verify_worker0 = after[1] - before[1];
+    r->verify_worker1 = after[2] - before[2];
+    if (a.live != 0 || a.failures != 0) return 3;
+    if (a.peak > r->peak) r->peak = (uint32_t)a.peak;
+    unsigned prior_allocs = a.allocs;
+    a.used = 0; a.capacity = 4096;
+    r->oom = verify((const uint8_t *)TEST_VECTOR_MSG, TEST_VECTOR_MSG_LEN, &a) == -2;
+    r->allocs = a.allocs; r->frees = a.frees;
+    r->failures = a.failures; r->live = a.live;
+    return r->valid && r->rejected && r->oom && a.failures > 0 &&
+        a.allocs > prior_allocs && a.live == 0 && r->allocs == r->frees ? 0 : 4;
+}

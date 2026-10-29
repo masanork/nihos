@@ -67,3 +67,38 @@ Retain the exact built image/ELF/audit before running ESP-EMU. Check a full log
 with both `tools/check-native-log.py` and `probes/pqc/check_native_log.py LOG 4M`.
 For no PSRAM, the latter accepts `LOG 0` and requires unavailable status.
 See the native measurement document for commands, results and limitations.
+
+## Preemptible verification with a bounded arena
+
+The opt-in value `NIHOS_NATIVE_PQC_VERIFY_PROBE=2` configures mldsa-native's
+per-call allocator/context hooks. It keeps the CPU on the existing bootstrap
+SRAM stack and allocates a 16,304-byte owner-bound PSRAM workspace. A brief
+local interrupt mask makes the heap accounting snapshot and allocation atomic;
+the two verification calls run with interrupts enabled. This is still a
+fixed-vector fixture, not a service or a validated general-purpose allocator.
+It also injects partial allocation failure and requires every successful
+allocation to be freed. The `0` profile below disables the fixture.
+
+```sh
+NIHOS_NATIVE_PQC_VERIFY_PROBE=2 NIHOS_MLDSA_SOURCE=/path/to/mldsa-native \
+  sh tools/build-native.sh emulator integer
+```
+
+After retaining the exact image, run the emulator and check the record with
+`python3 probes/pqc/check_arena_log.py LOG 4M` (or `LOG 0` for absent PSRAM),
+in addition to the normal native smoke checker for a full run.
+
+The fixture can also be compiled and tested on the host with:
+
+```sh
+"$ZIG" cc -O2 -std=c11 -DMLD_CONFIG_PARAMETER_SET=65 \
+  -DMLD_CONFIG_REDUCE_RAM -DMLD_CONFIG_NO_RANDOMIZED_API \
+  -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API \
+  -include probes/pqc/native_arena.h -I probes/pqc \
+  -I "$MLDSA_SOURCE/mldsa" \
+  -I "$MLDSA_SOURCE/examples/monolithic_build_multilevel" \
+  "$MLDSA_SOURCE/mldsa/mldsa_native.c" \
+  probes/pqc/native_arena_verify.c probes/pqc/native_arena_host.c \
+  -o /tmp/nihos-pqc-arena-host
+/tmp/nihos-pqc-arena-host
+```

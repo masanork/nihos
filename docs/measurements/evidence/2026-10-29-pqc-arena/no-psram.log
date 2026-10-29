@@ -1,0 +1,50 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  esp_emu] Loaded firmware: 166944 bytes
+[INFO  machine] WiFi SoftAP: WPA2/WPA3 transition enabled (PWE Both) for SSID 'myssid'
+[INFO  net_user] user-net: DNS forwarder upstream [100.64.0.9:53, 100.64.64.9:53], restrict=false
+[INFO  net_user] user-net: backend ready (gateway 192.168.4.1, 0 hostfwd rules)
+[INFO  esp_emu] Network backend: user-mode (smoltcp NAT, 192.168.4.1 -> host loopback)
+[INFO  esp_emu] Loaded ROM ELF: <embedded esp32p4> (256824 bytes)
+[INFO  esp_emu] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 2095 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  machine] PSRAM configured as 0 KB
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  esp_emu] Loaded application ELF build/pqc-arena-account/nihos-native.elf: 1672780 bytes
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  esp_emu] Starting emulation (chip=esp32p4, batch_size=50000)
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbc4
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+[INFO  machine] App nihos-native native-boot-1 from flash offset 0x10000: application ELF #1 is its build
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  periph::ble_hci] BLE: no VHCI symbols found (firmware may not use Bluetooth)
+[INFO  periph::thread_radio] Thread: no IEEE 802.15.4 symbols found (firmware may not use Thread)
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001366 probe=4000019a mapping=00000000 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000000 configuration=00000000 identity=00000000 bytes=00000000 transactions=00000004 mapped=00000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000000 mr0=00000000 mr4=00000000 mr8=00000000 addresses=00000000 passes=00000000 reads=00000000 writes=00000000 transactions=00000004
+NIHOS_NATIVE_PSRAM_MAP status=00000000 failure=00000000 line_bytes=00000000 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=00000000 entries=00000000 cpu_checks=00000000 command_checks=00000000 transactions=00000000 syncs=00000000
+NIHOS_NATIVE_PSRAM_SMP status=00000000 rounds=00000000 owner_checks=00000000 peer_checks=00000000 command_checks=00000000 syncs=00000000
+NIHOS_NATIVE_PQC_ARENA status=00000002 cycles=000001f3 verify_ticks=00000000 verify_worker0=00000000 verify_worker1=00000000 heap_before=00000000 heap_after=00000000 charged=00000000 lease=00000000 peak=00000000 allocs=00000000 frees=00000000 failures=00000000 valid=00000000 rejected=00000000 oom=00000000 live=00000000 stack_used=00000000 stack_painted=00000000 erased=00000000 released=00000000 mie=00000000
+[INFO  esp_emu] Exit-on string 'NIHOS_NATIVE_PQC_ARENA' found in output

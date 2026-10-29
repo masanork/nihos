@@ -10,7 +10,7 @@ case "$profile" in
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 pqc=${NIHOS_NATIVE_PQC_VERIFY_PROBE:-0}
-case "$pqc" in 0) pqc=false ;; 1) pqc=true ;; *) echo "PQC_VERIFY_PROBE must be 0 or 1" >&2; exit 1 ;; esac
+case "$pqc" in 0) pqc=false; pqc_arena=false ;; 1) pqc=true; pqc_arena=false ;; 2) pqc=true; pqc_arena=true ;; *) echo "PQC_VERIFY_PROBE must be 0, 1 or 2" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
 case "$network" in 0) network=false; network_cpp=0 ;; 1) network=true; network_cpp=1; umask 077 ;; *) echo "NETWORK must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network"; fi
@@ -62,6 +62,7 @@ case "$mode" in
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
     *) echo "mode must be integer, floating, compiled or sqlite" >&2; exit 1 ;;
 esac
+if [ "$pqc_arena" = true ] && [ "$mode" != integer ]; then echo "PQC arena fixture requires integer mode" >&2; exit 1; fi
 usb=${NIHOS_NATIVE_USB:-0}
 case "$usb" in
     0) usb=false ;;
@@ -303,6 +304,7 @@ NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 {
     printf 'pub const pqc_verify_probe = %s;\n' "$pqc"
+    printf 'pub const pqc_arena_probe = %s;\n' "$pqc_arena"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
@@ -524,20 +526,26 @@ if [ "$pqc" = true ]; then
     [ "$(git -C "$source" rev-parse HEAD)" = "$pin" ] || { echo "mldsa source revision mismatch" >&2; exit 1; }
     [ -z "$(git -C "$source" status --porcelain --untracked-files=no)" ] || { echo "mldsa source is modified" >&2; exit 1; }
     headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
-    for name in mldsa_native native_verify; do
+    fixture=native_verify
+    if [ "$pqc_arena" = true ]; then fixture=native_arena_verify; fi
+    for name in mldsa_native "$fixture"; do
         file="$source/mldsa/mldsa_native.c"
-        if [ "$name" = native_verify ]; then file="$repo_root/probes/pqc/native_verify.c"; fi
+        if [ "$name" = "$fixture" ]; then file="$repo_root/probes/pqc/$fixture.c"; fi
+        extra=""
+        if [ "$pqc_arena" = true ]; then extra="-include$repo_root/probes/pqc/native_arena.h"; fi
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
             -O2 -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -I "$source/mldsa" -I "$source/examples/monolithic_build_multilevel" \
             -DMLD_CONFIG_PARAMETER_SET=65 -DMLD_CONFIG_REDUCE_RAM -DMLD_CONFIG_NO_RANDOMIZED_API \
-            -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API \
-            "$file" -o "$build_dir/pqc_$name.o"
+            -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API ${extra:+"$extra"} \
+            -I "$repo_root/probes/pqc" "$file" -o "$build_dir/pqc_$name.o"
         set -- "$@" "$build_dir/pqc_$name.o"
     done
+    stack_source="$repo_root/probes/pqc/native_stack.S"
+    if [ "$pqc_arena" = true ]; then stack_source="$repo_root/probes/sqlite/stack_paint.S"; fi
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-        "$repo_root/probes/pqc/native_stack.S" -o "$build_dir/pqc_stack.o"
+        "$stack_source" -o "$build_dir/pqc_stack.o"
     set -- "$@" "$build_dir/pqc_stack.o"
 fi
 "$zig" build-exe -target riscv32-freestanding-none \
