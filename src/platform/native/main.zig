@@ -19,7 +19,15 @@ comptime {
     if (options.pqc_arena_probe) @export(&pqcObserve, .{ .name = "nih_pqc_observe" });
     if (options.pqc_worker_probe) @export(&pqcWorker, .{ .name = "nih_pqc_worker_entry" });
 }
+var pqc_cancel_test_active: u32 = 0;
+var pqc_cancel_phase: u32 = 0;
+var pqc_cancel_requested: u32 = 0;
+var pqc_cancel_accepted_phase: u32 = 0;
 fn pqcObserve(out: *[3]u32) callconv(.c) void {
+    // Called by the C fixture immediately before and after its two verify calls.
+    if (options.pqc_worker_cancel and @atomicLoad(u32, &pqc_cancel_test_active, .acquire) == 1) {
+        _ = @atomicRmw(u32, &pqc_cancel_phase, .Add, 1, .release);
+    }
     out[0] = @atomicLoad(u32, &ticks[0], .acquire);
     if (options.pqc_worker_probe) {
         out[1] = @atomicLoad(u32, &progress[0], .acquire);
@@ -737,6 +745,10 @@ export fn nih_native_main() callconv(.c) noreturn {
         const rounds: u32 = if (options.pqc_worker_repeat) 3 else 1;
         for (0..rounds) |index| {
             @atomicStore(u32, &pqc_worker_done, 0, .release);
+            @atomicStore(u32, &pqc_cancel_phase, 0, .release);
+            @atomicStore(u32, &pqc_cancel_requested, 0, .release);
+            @atomicStore(u32, &pqc_cancel_accepted_phase, 0, .release);
+            @atomicStore(u32, &pqc_cancel_test_active, @intFromBool(options.pqc_worker_cancel and index == 1), .release);
             const captures_before = tasks.memory.stacks.experimentalCaptures();
             if (!tasks.startPqcWorker()) fail("PQC worker start");
             const identity = tasks.pqcWorkerIdentity();
@@ -745,14 +757,35 @@ export fn nih_native_main() callconv(.c) noreturn {
             const started = cycle();
             while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
                 _ = tasks.service(0);
+                if (options.pqc_worker_cancel and index == 1) {
+                    // Single-hart linearization: the worker cannot pass the second
+                    // observation between checking the phase and accepting cancel.
+                    const status = asm volatile ("csrrci %[out], mstatus, 8"
+                        : [out] "=r" (-> u32),
+                        :
+                        : .{ .memory = true });
+                    if (@atomicLoad(u32, &pqc_cancel_phase, .acquire) == 1 and @atomicLoad(u32, &pqc_worker_done, .acquire) == 0) {
+                        @atomicStore(u32, &pqc_cancel_accepted_phase, 1, .release);
+                        @atomicStore(u32, &pqc_cancel_requested, 1, .release);
+                    }
+                    if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+                }
                 _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
                 if (cycle() -% started > 1_000_000_000) fail("PQC worker timeout");
             }
-            const report = pqc_worker_report;
+            var report = pqc_worker_report;
+            const cancelled = options.pqc_worker_cancel and index == 1 and report.status == 1;
+            if (cancelled and (@atomicLoad(u32, &pqc_cancel_requested, .acquire) != 1 or @atomicLoad(u32, &pqc_cancel_phase, .acquire) != 2 or report.valid != 1)) fail("PQC cancellation timing");
+            const computed_valid = report.valid;
+            if (cancelled) report.valid = 0;
             const extra_captures = tasks.memory.stacks.experimentalCaptures() -% captures_before;
             if (!tasks.reapPqcWorker()) fail("PQC worker reap");
             // Re-enter the scheduler after retirement to check its accounting.
             if (!tasks.pqcPostReapYield()) fail("PQC worker post-reap yield");
+            if (options.pqc_worker_cancel and index == 1) {
+                const cancel: struct { requested: u32, accepted_phase: u32, phase: u32, computed_valid: u32, exposed_valid: u32, outcome: u32, cleaned: u32, reaped: u32 } = .{ .requested = @atomicLoad(u32, &pqc_cancel_requested, .acquire), .accepted_phase = @atomicLoad(u32, &pqc_cancel_accepted_phase, .acquire), .phase = @atomicLoad(u32, &pqc_cancel_phase, .acquire), .computed_valid = computed_valid, .exposed_valid = report.valid, .outcome = if (cancelled) 3 else 2, .cleaned = 1, .reaped = 1 };
+                logger.record("NIHOS_NATIVE_PQC_CANCEL", null, .{ "requested", "accepted_phase", "phase", "computed_valid", "exposed_valid", "outcome", "cleaned", "reaped" }, &cancel);
+            }
             logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
             const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };
             logger.record("NIHOS_NATIVE_PQC_WORKER_OWNER", null, .{ "captures", "foreground", "terminated", "cleaned", "reaped" }, &ownership);

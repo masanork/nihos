@@ -1,0 +1,19 @@
+# Deferred cancellation in the native ML-DSA fixture
+
+This opt-in headless emulator experiment extends [the three sequential jobs](2026-10-29-pqc-worker-reuse.md). The second job receives a cancellation request and the third performs another normal verification. It is a fixture for the proposed [ADR 0054](../adr/0054-pqc-verify-service-contract.md) rule, not an implementation of its public service API.
+
+The C fixture invokes an observation immediately before its first verify call and immediately after its second verify call. On CPU0 the bootstrap, with local interrupts masked, accepts a cancel only after the first observation and before the second. This atomic check and publication prevents the CPU0 worker from crossing the second observation in between. The worker is not killed: it returns from the C fixture, clears and releases its arena, exits, has its task ledger cleaned, and is reaped. Only after reap does the fixture log outcome `3` (cancelled), suppressing the valid bit in the result record. The original valid calculation is separately logged as a diagnostic. The raw worker report remains internal to this test; there is no real caller-facing result channel.
+
+The observation interval encloses both verification calls and includes the observation callbacks themselves. The test shows acceptance in that interval; it does not pinpoint the interrupted instruction inside a particular cryptographic call. It does not exercise completion-versus-cancel races across harts, caller death, input snapshots, forced termination, failed cleanup quarantine, or actual service admission. The bootstrap waits rather than freeing the arena in response to cancellation; this is not a hard cancellation deadline.
+
+## Result
+
+On 4 MiB emulated PSRAM the central job recorded `requested=1`, `accepted_phase=1`, final `phase=2`, `computed_valid=1`, `exposed_valid=0`, `outcome=3`, and completed cleanup/reap. The first and third jobs accepted the valid signature and rejected the modified message; the third used the same task slot with a newer generation. Each job observed a 16,384 B PSRAM charge (16,304 B payload), 10,208 B arena peak and 2,768 B SRAM stack watermark; the separate 8,192 B stack remains reserved. These are observed values, not worst-case bounds.
+
+With PSRAM absent, all three jobs returned unavailable and were reaped; no verification interval was entered and no cancellation was accepted. The 4 MiB and absent-PSRAM logs were checked against the same exact image. This does not simulate allocation failure after a workspace has been obtained.
+
+The audited candidate has primary static SRAM **101,312 B** and primary heap span **62,528 B**, above its 48 KiB floor. These are headless fixture image figures, not normal-device headroom. Its ELF SHA-256 is `b5b4d95b8655129be95c8e129e91690310a6d75a313668fd6c30ff5db24c7076`; image SHA-256 is `755dd5924d94699c27296d4237437c78e6d4d1cec6552f899737b490024323bb`. Zig 0.17.0, ESP-IDF 5.4.4 loader, ESP-EMU 0.50.0 and the mldsa-native revision in the source witness were used.
+
+The [checker](../../probes/pqc/check_worker_cancel_log.py) verifies the cancellation record and ordered jobs, binds them to the audited ELF/image, and applies the normal resource and preemption checks to each job. The middle valid bit is temporarily reconstructed only inside the checker after independently verifying the cancelled record's computed and exposed values. Negative controls changing acceptance, accepted phase, exposed validity, outcome, stale rejection, or reap were rejected. [Evidence](evidence/2026-10-29-pqc-cancel/) retains normalized and raw logs, audit, options, reports and source hashes; exact binaries remain in `build/pqc-cancel-qualified` in the study worktree.
+
+No normal UI, actual touch latency, cache-off/Flash writes, physical Tab5, long-run endurance, adversarial scheduling, or cryptographic side-channel properties were validated.
