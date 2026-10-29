@@ -1,10 +1,10 @@
 {
   "evidence": "esp-emu-rv32-interactive-editor-fixture",
   "source": {
-    "head": "c2039f1af011ccc3e66eccde62d234bc689df606",
-    "source_sha256": "ee85186a501492db6f5d060709d6a2705521040e2a11d78e5a27a9eace6d2e66"
+    "head": "6843e4cac6914c7f6cd87440b260553ec59805bf",
+    "source_sha256": "1db027fdf25beab004d9eeb8d71530683a5d0194dda24db8eeaf5da6a9d14c1b"
   },
-  "image_sha256": "44ac3ecfede7ad4f819882b69b4c9fcd47a72962b4d13546dfad9b9b73b63356",
+  "image_sha256": "8dc26c1c5d05474f3c295b083723a3c79d908af4b5a7e69cf3a6da89415b5d66",
   "states": [
     {
       "frame": 2,
