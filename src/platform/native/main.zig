@@ -62,9 +62,15 @@ fn pqcSnapshotCopied() callconv(.c) void {
         if (!tasks.pqcPostReapYield()) fail("PQC copy yield");
     }
 }
+var kem_worker_report: if (options.mlkem_worker_probe) @import("mlkem_worker_probe.zig").Report else void = if (options.mlkem_worker_probe) .{} else {};
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
+    if (options.mlkem_worker_probe) {
+        kem_worker_report = @import("mlkem_worker_probe.zig").run(tasks.pqcWorkerStack());
+        @atomicStore(u32, &pqc_worker_done, 1, .release);
+        return 0;
+    }
     if (options.pqc_snapshot_probe) {
         // Every generation starts with an empty result, including allocation failure.
         pqc_worker_report = .{};
@@ -859,6 +865,22 @@ export fn nih_native_main() callconv(.c) noreturn {
             const stale = index == 0 or tasks.pqcStaleWorkerRejected(previous);
             if (!stale or (index != 0 and identity == previous)) fail("PQC stale worker identity");
             const started = cycle();
+            if (options.mlkem_worker_probe) {
+                while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
+                    _ = tasks.service(0);
+                    _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
+                    if (cycle() -% started > 1_000_000_000) fail("MLKEM worker timeout");
+                }
+                const report = kem_worker_report;
+                const captures = tasks.memory.stacks.experimentalCaptures() -% captures_before;
+                if (!tasks.reapPqcWorker() or !tasks.pqcPostReapYield()) fail("MLKEM worker reap");
+                logger.record("NIHOS_NATIVE_MLKEM_WORKER", null, .{ "status", "key_ok", "enc_ok", "dec_ok", "implicit_ok", "oom_ok", "key_peak", "enc_peak", "dec_peak", "allocs", "frees", "oom_error", "live", "uncleared", "ticks", "foreground0", "foreground1" }, &report);
+                logger.record("NIHOS_NATIVE_MLKEM_MEMORY", null, .{ "before", "after_arena", "after_both", "after_release", "arena", "io", "charged", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
+                const owner: struct { captures: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = captures, .terminated = 1, .cleaned = 1, .reaped = 1 };
+                logger.record("NIHOS_NATIVE_MLKEM_OWNER", null, .{ "captures", "terminated", "cleaned", "reaped" }, &owner);
+                if (captures == 0 or (report.status != 1 and report.status != 2)) fail("MLKEM worker fixture");
+                while (true) asm volatile ("wfi");
+            }
             if (options.pqc_drain_probe != 0) {
                 while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerExited()) {
                     _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);

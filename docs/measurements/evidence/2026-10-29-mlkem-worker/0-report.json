@@ -1,0 +1,45 @@
+{
+  "elf_sha256": "f53642e09a481bf02afe3ea064ee7a5bd6140e22e92f0b20ac4401ca385b85c1",
+  "image_sha256": "c7d74c311701234dab79b52706726294350ffb167c35782dbab27de0fe150d3f",
+  "stack_start": "0x4ff37600",
+  "stack_bytes": 8192,
+  "worker": {
+    "status": 2,
+    "key_ok": 0,
+    "enc_ok": 0,
+    "dec_ok": 0,
+    "implicit_ok": 0,
+    "oom_ok": 0,
+    "key_peak": 0,
+    "enc_peak": 0,
+    "dec_peak": 0,
+    "allocs": 0,
+    "frees": 0,
+    "oom_error": 0,
+    "live": 0,
+    "uncleared": 0,
+    "ticks": 0,
+    "foreground0": 0,
+    "foreground1": 0
+  },
+  "memory": {
+    "before": 0,
+    "after_arena": 0,
+    "after_both": 0,
+    "after_release": 0,
+    "arena": 0,
+    "io": 0,
+    "charged": 0,
+    "stack_used": 0,
+    "stack_painted": 0,
+    "erased": 0,
+    "released": 0,
+    "mie": 0
+  },
+  "owner": {
+    "captures": 1,
+    "terminated": 1,
+    "cleaned": 1,
+    "reaped": 1
+  }
+}
