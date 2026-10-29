@@ -1,5 +1,6 @@
 //! Small, allocation-free RGB565LE canvas. Not an SDL or M5GFX implementation.
 const std = @import("std");
+const builtin = @import("builtin");
 const surface = @import("surface");
 
 pub const Rect = struct { x: i32, y: i32, width: u32, height: u32 };
@@ -42,9 +43,17 @@ pub const Canvas = struct {
     pub fn fillRect(self: Canvas, rect: Rect, color: u16) void {
         const r = intersect(self.clip, bounds(rect));
         if (r.left >= r.right or r.top >= r.bottom) return;
+        const left: usize = @intCast(r.left);
+        const count: usize = @intCast(r.right - r.left);
         for (@as(usize, @intCast(r.top))..@as(usize, @intCast(r.bottom))) |y| {
-            for (@as(usize, @intCast(r.left))..@as(usize, @intCast(r.right))) |x| {
-                std.mem.writeInt(u16, self.target.bytes[y * self.target.stride + x * 2 ..][0..2], color, .little);
+            const row = self.target.bytes[y * self.target.stride + left * 2 ..][0 .. count * 2];
+            if (@as(u8, @truncate(color)) == @as(u8, @truncate(color >> 8))) {
+                @memset(row, @truncate(color));
+            } else if (builtin.target.cpu.arch.endian() == .little and @intFromPtr(row.ptr) % @alignOf(u16) == 0) {
+                const words: [*]u16 = @ptrCast(@alignCast(row.ptr));
+                @memset(words[0..count], color);
+            } else {
+                for (0..count) |x| std.mem.writeInt(u16, row[x * 2 ..][0..2], color, .little);
             }
         }
     }
@@ -201,6 +210,35 @@ test "nested clip and half-open rectangles preserve padding and guards" {
     try std.testing.expectEqualSlices(u8, &.{ 0xaa, 0xaa, 0x34, 0x12, 0x34, 0x12, 0xaa, 0xaa }, bytes[10..18]);
     try std.testing.expect(std.mem.allEqual(u8, bytes[0..10], 0xaa));
     try std.testing.expect(std.mem.allEqual(u8, bytes[18..], 0xaa));
+}
+test "fillRect matches pixel reference on padded and unaligned surfaces" {
+    const w = 31;
+    const h = 17;
+    const stride = w * 2 + 3;
+    var actual: [stride * h + 16]u8 = undefined;
+    var expected: [stride * h + 16]u8 = undefined;
+    var rng = std.Random.DefaultPrng.init(0x5098_3331);
+    const random = rng.random();
+    for (0..300) |iteration| {
+        random.bytes(&actual);
+        expected = actual;
+        const offset = 1 + iteration % 2;
+        const x = random.intRangeAtMost(i32, -8, 35);
+        const y = random.intRangeAtMost(i32, -8, 20);
+        const rw = random.intRangeAtMost(u32, 0, 40);
+        const rh = random.intRangeAtMost(u32, 0, 25);
+        const color: u16 = if (iteration % 7 == 0) 0x5a5a else random.int(u16);
+        const canvas = Canvas.init(actual[offset..][0 .. stride * h], w, h, stride).?;
+        canvas.clipped(.{ .x = 2, .y = 3, .width = 25, .height = 10 }).fillRect(.{ .x = x, .y = y, .width = rw, .height = rh }, color);
+        for (0..h) |py| for (0..w) |px| {
+            const sx: i64 = @intCast(px);
+            const sy: i64 = @intCast(py);
+            if (sx >= 2 and sx < 27 and sy >= 3 and sy < 13 and sx >= x and sx < @as(i64, x) + rw and sy >= y and sy < @as(i64, y) + rh) {
+                std.mem.writeInt(u16, expected[offset + py * stride + px * 2 ..][0..2], color, .little);
+            }
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
 }
 test "extreme coordinates and invalid geometry are safe" {
     var bytes: [8]u8 = @splat(0);
