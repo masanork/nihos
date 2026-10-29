@@ -239,12 +239,15 @@ export fn nih_canvas_frame_ready() void {
 // nih_canvas_frame_ready; it is not an application ABI or hardware input.
 const EmulatedInput = extern struct { command: u32 = 0, contacts: u32 = 0, x: u32 = 0, y: u32 = 0, time_us: u32 = 0 };
 const EmulatedOutput = extern struct { samples: u32 = 0, events: u32 = 0, clicks: u32 = 0, kind: u32 = 0, mode: u32 = 0, keys: u32 = 0, edits: u32 = 0, cursor: u32 = 0 };
+const EmulatedDocument = extern struct { length: u32 = 0, bytes: [80]u8 = @splat(0) };
 var nih_emulator_input: EmulatedInput = .{};
 var nih_emulator_output: EmulatedOutput = .{};
+var nih_emulator_document: EmulatedDocument = .{};
 comptime {
     if (options.canvas_interactive) {
         @export(&nih_emulator_input, .{ .name = "nih_emulator_input" });
         @export(&nih_emulator_output, .{ .name = "nih_emulator_output" });
+        @export(&nih_emulator_document, .{ .name = "nih_emulator_document" });
     }
 }
 
@@ -1115,7 +1118,18 @@ export fn nih_native_main() callconv(.c) noreturn {
                                     nih_emulator_output.edits = 0;
                                     nih_emulator_output.cursor = 0;
                                 },
+                                4 => {
+                                    if (nih_emulator_output.mode != 1 or nih_emulator_document.length > nih_emulator_document.bytes.len) fail("editor load input");
+                                    if (!live.load(frame, nih_emulator_document.bytes[0..nih_emulator_document.length])) fail("editor load render");
+                                    nih_emulator_output.cursor = @intCast(live.editor.column);
+                                },
                                 else => fail("emulator input command"),
+                            }
+                            if (nih_emulator_output.mode == 1) {
+                                const content = live.document();
+                                @memset(&nih_emulator_document.bytes, 0);
+                                @memcpy(nih_emulator_document.bytes[0..content.len], content);
+                                nih_emulator_document.length = @intCast(content.len);
                             }
                             @call(.never_inline, nih_canvas_frame_ready, .{});
                         }
