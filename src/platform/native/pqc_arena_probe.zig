@@ -8,6 +8,7 @@ extern fn nih_pqc_snapshot_fixture([*]u8, usize, [*]u8, usize, *Result) callconv
 
 pub const Report = struct {
     status: u32 = 0,
+    alloc_error: u32 = 0,
     cycles: u32 = 0,
     ticks0: u32 = 0,
     ticks1: u32 = 0,
@@ -58,7 +59,12 @@ pub noinline fn runOnMode(stack: memory.stacks.layout.Region, retain: bool, snap
             report.status = 2;
             return report;
         };
-        const value = memory.allocExternal(16304, 64) catch {
+        const value = memory.allocExternal(16304, 64) catch |err| {
+            report.alloc_error = switch (err) {
+                error.Full => 1,
+                error.OutOfMemory => 2,
+                else => 3,
+            };
             report.status = 2;
             return report;
         };

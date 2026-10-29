@@ -27,7 +27,10 @@ case "$pqc_drain" in 0|1|2) ;; *) echo "PQC_DRAIN_PROBE must be 0, 1 or 2" >&2; 
 if [ "$pqc_drain" != 0 ] && { [ "$pqc_worker" != true ] || [ "$pqc_repeat" = true ] || [ "$pqc_quarantine" = true ]; }; then echo "PQC_DRAIN_PROBE requires a single PQC worker without quarantine" >&2; exit 1; fi
 pqc_snapshot=${NIHOS_NATIVE_PQC_SNAPSHOT_PROBE:-0}
 case "$pqc_snapshot" in 0) pqc_snapshot=false ;; 1) pqc_snapshot=true ;; *) echo "PQC_SNAPSHOT_PROBE must be 0 or 1" >&2; exit 1 ;; esac
-if [ "$pqc_snapshot" = true ] && { [ "$pqc_worker" != true ] || [ "$pqc_repeat" = true ] || [ "$pqc_quarantine" = true ] || [ "$pqc_drain" != 0 ]; }; then echo "PQC_SNAPSHOT_PROBE requires a single ordinary PQC worker" >&2; exit 1; fi
+pqc_pressure=${NIHOS_NATIVE_PQC_SNAPSHOT_PRESSURE:-0}
+case "$pqc_pressure" in 0) pqc_pressure=false ;; 1) pqc_pressure=true ;; *) echo "PQC_SNAPSHOT_PRESSURE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$pqc_pressure" = true ] && { [ "$pqc_snapshot" != true ] || [ "$pqc_repeat" != true ] || [ "$pqc_cancel" = true ]; }; then echo "PQC_SNAPSHOT_PRESSURE requires repeated snapshot workers without cancellation" >&2; exit 1; fi
+if [ "$pqc_snapshot" = true ] && { [ "$pqc_worker" != true ] || { [ "$pqc_repeat" = true ] && [ "$pqc_pressure" != true ]; } || [ "$pqc_quarantine" = true ] || [ "$pqc_drain" != 0 ]; }; then echo "PQC_SNAPSHOT_PROBE requires an ordinary PQC worker" >&2; exit 1; fi
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -337,6 +340,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const pqc_worker_quarantine = %s;\n' "$pqc_quarantine"
     printf 'pub const pqc_drain_probe: u32 = %s;\n' "$pqc_drain"
     printf 'pub const pqc_snapshot_probe = %s;\n' "$pqc_snapshot"
+    printf 'pub const pqc_snapshot_pressure = %s;\n' "$pqc_pressure"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"

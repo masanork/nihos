@@ -197,3 +197,12 @@ snapshot and verifies from that copy while holding a separate arena. Capture
 through `NIHOS_NATIVE_PQC_WORKER_OWNER`, then run
 `python3 probes/pqc/check_worker_snapshot_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` without PSRAM). See [the snapshot measurement](../../docs/measurements/2026-10-29-pqc-input-snapshot.md).
+
+### Snapshot allocation followed by ledger saturation
+
+With the copied-input fixture, set `NIHOS_NATIVE_PQC_WORKER_REPEAT=1` and
+`NIHOS_NATIVE_PQC_SNAPSHOT_PRESSURE=1`. The middle of three workers fills
+its second task ledger slot before requesting the arena. Capture through
+`NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`; validate with
+`python3 probes/pqc/check_worker_pressure_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` without PSRAM). See [the ledger pressure measurement](../../docs/measurements/2026-10-29-pqc-snapshot-pressure.md).
