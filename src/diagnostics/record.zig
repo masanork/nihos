@@ -70,6 +70,18 @@ pub fn PlacedWriter(comptime Sink: type, comptime section: ?[]const u8) type {
         }
 
         noinline fn emit(self: *Self, marker: []const u8, hart: ?u32, fields: []const Field, text: []const u8, bytes: [*]const u8) void {
+            const SinkType = switch (@typeInfo(Sink)) {
+                .pointer => |info| info.child,
+                else => Sink,
+            };
+            if (comptime @hasDecl(SinkType, "beginRecord")) {
+                const token = self.sink.beginRecord();
+                defer self.sink.endRecord(token);
+                self.emitBody(marker, hart, fields, text, bytes);
+            } else self.emitBody(marker, hart, fields, text, bytes);
+        }
+
+        fn emitBody(self: *Self, marker: []const u8, hart: ?u32, fields: []const Field, text: []const u8, bytes: [*]const u8) void {
             self.sink.write(marker);
             if (hart) |number| {
                 self.sink.write(" hart=");

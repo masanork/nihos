@@ -79,3 +79,10 @@ Physical qualification remains pending for this candidate: boot to the terminal,
 use the real keyboard to edit and recall commands, open the editor and return,
 and check serial input/output and boot health. Existing physical results for
 other source heads do not qualify this image.
+
+While a terminal input line is active, normal typed diagnostic records clear the
+serial input line before the record and redraw the unfinished line and cursor
+after it. This preserves periodic diagnostic records without embedding them in
+the user's command. Other unstructured serial output and output from another
+CPU are not covered by this record-level framing; the terminal does not yet
+implement a general VT/ANSI parser.
