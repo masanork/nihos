@@ -69,12 +69,10 @@ idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
 sh "$repo_root/tools/build-native-elf.sh" "$profile" "$build_dir" "$mode"
 mkdir -p "$build_dir/licenses"
 cp "$repo_root/src/board/tab5/bmi270/LICENSE" "$build_dir/licenses/BMI270.txt"
-set --
-# Boot-clock code can leave alignment padding before the optional card section.
-# Keep that padding inside its ELF load segment instead of generating two
-# separately mapped image segments in the same 64 KiB Flash page.
-case "${NIHOS_NATIVE_DISPLAY:-0}" in 9|10|11) set -- --use_segments ;; esac
-if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ] || [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then set -- --use_segments; fi
+set -- --use_segments
+# PMP code sits in the boot page after alignment padding. esptool must follow
+# the load segment, or that padding becomes a second segment in the same 64 KiB
+# mapping. Card, device, and network images already needed the same treatment.
 "$python" -m esptool --chip esp32p4 elf2image \
     "$@" \
     --flash_mode dio --flash_freq 80m --flash_size 16MB \

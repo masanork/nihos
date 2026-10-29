@@ -66,6 +66,9 @@ const Owner = struct {
     worker_reaped: [2]bool = .{ false, false },
     timer_interrupts: u32 = 0,
     graphics_task: ?scheduler.TaskHandle = null,
+    /// Protected task exited by a contained fault. Bootstrap reaps it after
+    /// the ledger drain. This is not an extra scheduler slot.
+    faulted: ?scheduler.TaskHandle = null,
 };
 
 pub const Report = struct {
@@ -374,11 +377,47 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
     return true;
 }
 
-pub fn onProtectedFault(hart: u32, frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
+pub noinline fn onProtectedFault(hart: u32, frame: *context.IntegerContext, state: context.ReturnState) linksection(pmp.text_section) ?context.TaskContext {
     _ = frame;
     _ = state;
     const owner = &owners[hart];
-    return publish(hart, owner.runtime.containFault() orelse return null);
+    const fault = owner.runtime.containFault();
+    if (fault.exited) |handle| {
+        if (!closeFaulted(hart, handle)) return null;
+    }
+    const selected = fault.next orelse return null;
+    return publish(hart, selected);
+}
+
+/// Close the faulted task's ledger before the replacement is published.
+/// The handle stays occupied until bootstrap drains the ledger and reaps it.
+/// A non-zero floating bank is rejected: this class never owns one.
+noinline fn closeFaulted(hart: u32, handle: scheduler.TaskHandle) linksection(pmp.text_section) bool {
+    const owner = &owners[hart];
+    const image = owner.runtime.images[handle.slot] orelse return false;
+    if (image.protection == null or image.floating_context != 0) return false;
+    const snapshot = owner.runtime.policy.snapshot(handle) orelse return false;
+    if (snapshot.state != .exited or snapshot.exit_code != pmp.fault_exit) return false;
+    if (!memory.reusable.closeTask(hart, key(handle))) return false;
+    if (owner.faulted) |pending| {
+        if (pending.slot != handle.slot or pending.generation != handle.generation) return false;
+    } else owner.faulted = handle;
+    return true;
+}
+
+noinline fn reclaimFaulted(hart: u32) linksection(pmp.text_section) bool {
+    const owner = &owners[hart];
+    const handle = owner.faulted orelse return true;
+    if (!memory.reusable.taskCleaned(hart, key(handle))) return true;
+    const snapshot = owner.runtime.policy.snapshot(handle) orelse return false;
+    if (snapshot.state != .exited or snapshot.exit_code != pmp.fault_exit) return false;
+    const image = owner.runtime.images[handle.slot] orelse return false;
+    if (image.protection == null or image.floating_context != 0) return false;
+    owner.completed_runtime_ticks += snapshot.runtime_ticks;
+    if (!owner.runtime.reap(handle)) return false;
+    owner.faulted = null;
+    owner.reaped += 1;
+    return true;
 }
 
 pub fn armProtection(hart: u32, selected: context.TaskContext) void {
@@ -528,6 +567,14 @@ pub fn service(hart: u32) bool {
     }
     if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     const cleaned = memory.reusable.cleanupOne();
+    if (owner.faulted != null) {
+        const saved = asm volatile ("csrrci %[result], mstatus, 8"
+            : [result] "=r" (-> u32),
+            :
+            : .{ .memory = true });
+        defer if (saved & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+        if (!reclaimFaulted(hart)) nih_native_task_failed();
+    }
     if (cleaned == .complete or terminated) {
         if (calls.yieldNow() != 0) nih_native_task_failed();
     }
