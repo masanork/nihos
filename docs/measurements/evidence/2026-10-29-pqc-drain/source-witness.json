@@ -1,0 +1,33 @@
+{
+  "base_commit": "5bb2612",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "bbd514ee425dd9ae1e74becc484c3a75f746e77a5e9ad128d037504a4be7677b",
+    "src/platform/native/main.zig": "2a75fad259918339656079af6550c99ec5b8815fdbc5724c4cb8c882782c36c3",
+    "src/platform/native/heap.zig": "033e38bec38db8c87c0dab5283915108c8cc6360678bf8924c571e8dfd40b61d",
+    "src/platform/native/pqc_arena_probe.zig": "b7a684ffcca517044c945bc0cb98ed0f80581bac2cfdcf699925411e83afe56c",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "src/kernel/task_resources.zig": "6cf302b6388edd191a4b9d1099f294132bd97ce0a2332aea037484d1f4327b61",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "tools/build-native-elf.sh": "3b0549b12c8026fdc7a9ab00e9e8d56f6ce39a48151b4c7cd099f3e85fbdc479",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "1c49bdde613e7e53c75a0a4c70bb1982a7336a53211ab7c9ccb2912cdd859794",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/check_worker_drain_log.py": "08d13845ae2008ba7cc1b937dfc68edd685b4d596dacbe6ea83e65053983e365"
+  },
+  "images": {
+    "failure": {
+      "elf_sha256": "84ca22449f7523bfad82fce47798f55a9bfe9f8be2955a8e3d0ea4464efc8813",
+      "image_sha256": "a83f399ef9bf526441708262442dffc3581568c475bb1e9c2f043ef60cfdcd9c",
+      "raw_log_sha256": "c637184cee9271406f4620650f882504745446d187f981bb79714323f65ecff6"
+    },
+    "control": {
+      "elf_sha256": "90b809eb93f5bf3cf150850ea222043b234da3eccd3e0c4cd7e6aa37f2636879",
+      "image_sha256": "1a9eeaf7f0897cf4ec4d206416b7f7931600748b10bff7ddb04d84aaf3c41218",
+      "raw_log_sha256": "bb2d55c1ed6c3dba91dbbc2eda24e319ecac5e79ba6135753c6251f24f3e466d"
+    }
+  }
+}

@@ -613,10 +613,13 @@ pub noinline fn cleanupOne() enum { none, progress, complete } {
     }
     const status = mask();
     defer restore(status);
+    // Failure-injection fixture only: exercise the normal error path with the
+    // real allocator. Mode 2 is the same fixture with the correct owner.
+    const caller = if (@import("native_options").pqc_drain_probe == 1 and core == 0 and pending.key.slot == 1) @as(u32, 1) else core;
     const complete = if (pending.allocation == null)
         resources[core].ledger.finishEmpty(pending.key) catch nih_native_task_failed()
     else
-        resources[core].ledger.drainOne(&owners[core].heap, core, pending.key) catch nih_native_task_failed();
+        resources[core].ledger.drainOne(&owners[core].heap, caller, pending.key) catch nih_native_task_failed();
     if (worker) |index| owners[core].workers[index] = null;
     if (objects) |index| owners[core].objects[index] = null;
     return if (complete) .complete else .progress;
