@@ -6,16 +6,9 @@
 
 ## 二つのチップで、どこまで分担するか
 
-Tab5では、P4が画面とアプリケーションを担当し、C6が無線を担当する。本章で読む実装は、C6に工場出荷時のESP-Hosted 1.4.1を残し、P4側からSDIOで制御する。P4の二つのCPUとは異なり、両チップが同じメモリを共有しているわけではない。
+Tab5では、P4が画面とアプリケーションを担当し、C6が無線を担当する。P4がC6へ要求を送り、返事を受け取るため、両者をつなぐ通信路も必要になる。本章で読む実装は、C6に工場出荷時のESP-Hosted 1.4.1を残し、P4側からSDIOで制御する。P4の二つのCPUとは異なり、両チップが同じメモリを共有しているわけではない。
 
-```text
-P4の通信サービス
-  ├─ 設定と接続状態、DHCP、IPv6
-  ├─ Wi-Fiの制御要求とEthernetフレーム
-  └─ BLEのHCIコマンドとイベント
-                 ↓ SDIO
-C6の既存ファームウェアと無線回路
-```
+{{figure:p4-c6-network-path}}
 
 分担には選択肢がある。C6へTCP/IPやBluetoothの上位処理まで任せれば、P4の担当を減らせる。一方、相手のファームウェアに必要な機能とAPIがあることが前提になる。本章の構成では、DHCPや限定したIPv6処理をP4に置く。Wi-Fiの接続とBluetoothの探索が動くことから、ソケット、TCP、TLS、GATTまで使えるとは判断しない。
 
@@ -59,6 +52,22 @@ DHCPでは、Offerを受け取っただけでアドレスを確定しない。�
 
 IPv6では、link-localの重複検査が終わった状態と、ルーターからの通知によって外部へ通信できる状態も分ける。[link-localの実機試験](git:94c03aae4198a4a32f03601e362fa10ea86f39b3:docs/measurements/2026-10-27-native-ipv6.md)では準備完了後のEchoが5回とも応答したが、APからRAを受けなかったため、グローバルIPv6の実証には進んでいない。
 
+## 一つのpacketを、どちらへ渡すか
+
+新しいESP-Hostedには、P4とC6が別々のIP stackを持ちながら、一つのIP addressへのpacketをportや種類で振り分けるNetwork Splitがある。P4とC6が一つのQUIC接続の内部状態を共有する仕組みではない。接続と暗号鍵の所有者は一方に決め、その所有者へpacketが届く規則を揃える必要がある。
+
+工場出荷時の1.4.1にはこの機能がないため、調査ではv2.13.1の実際のC classifierを、host上の小さいharnessへ入れた。EthernetとIPv4/UDPのheaderを合成し、AddressSanitizerとUndefinedBehaviorSanitizerを有効にして、配送先と範囲外アクセスを調べた。実機のWi-Fi driver、割込み、DMA、並行呼出しは含まない。
+
+[classifierの記録](git:5fd810ebaed56f3469f8c33b753f84b9dade424d:docs/measurements/2026-10-29-network-split-classifier.md)では、P4用にUDP port `40000`を登録しても、内部の文字列bufferが四桁で止まり、`4000`として保持される反例が見つかった。`40000`はC6へ、意図していない`4000`はP4へ配送される。これは、予定していた同期用port `40000..49999`へ直接影響する。
+
+さらに、最初のIPv4 fragmentはUDP headerの宛先portでC6へ、後続fragmentはpayload先頭のbyteをportと誤解してP4へ振り分けられた。長さ1 byteのframeではEthernet typeを読む前の検査がなく、host fixtureのASanが範囲外読取りを検出した。MQTT wake処理にも、TCP header長と受信windowをpayload長として扱う問題があった。
+
+限定した修正候補は、五桁portを扱い、Ethernet・IPv4・TCP・UDPの長さを順に検査し、最初の方針としてすべてのIPv4 fragmentを破棄する。通常の十経路、短いframe、十三の不正長、二つのfragment、MQTT payloadのfixtureを通り、同じESP32-C6構成でリンクした。app binaryの増加は1,040バイト、静的D/IRAMは同じだった。
+
+これはC6でpacketを受信した証拠ではない。短いframeが実driverから到達するか、修正後のdropが実trafficで何件出るか、P4のqueueとSDIOへ正しく渡るかは残る。そこで診断候補は、分類直後の`host`、`slave`、`both`、`invalid`と、配送後のcounterを分けた。分類だけ増えて配送が増えなければ、classifierではなくqueueやSDIO側を調べられる。
+
+sourceを読んで予想すること、hostで実際のCを動かすこと、C6 imageがlinkすること、二つのchipでpacketが届くことは別の段階である。上流の実装であっても、自分のport範囲とpacket条件を固定した負の試験が必要になる。
+
 ## Bluetoothも、要求と完了を対応づける
 
 BLEでは、ホストとコントローラーの接続口であるHCIを通して初期化し、受動的な広告探索を行う。コマンドを無制限に送らず、相手が示す発行可能数、creditを使う。送信した時点の小さい処理を見よう。
@@ -99,4 +108,6 @@ sh tools/bootstrap-zig.sh
 
 次に[BLEのテスト](git:94c03aae4198a4a32f03601e362fa10ea86f39b3:src/net/ble_hci.zig)で、creditが0の場合、違うコマンドの完了が来た場合、期限を過ぎた場合を比べる。演習では、作業用コピーの探索停止の成功応答を失敗応答へ変え、最終状態が`idle`にならないことを確かめよう。送信した記録だけで完了と判断すると、どの検査がすり抜けるだろうか。
 
-最後にRTCの不正な曜日と日付の試験を読む。値を補正して採用する方式と、無効として利用者へ知らせる方式を、時刻の利用目的から比べてみよう。次の{{ch:io-lifetime}}では、待っている仕事を取り消すとき、資源をいつ返せるかを考える。
+Network Splitのhost fixtureでは、`39999`、`40000`、`49999`、`50000`を同じ形式で渡し、設定した境界と実際の配送先を表にしよう。fragmentを一律に破棄する方式では、正しさと到達性のどちらを優先したかを説明する。hostで反例を再現できても、実機攻撃やremote到達性を証明したとは書かない。
+
+最後にRTCの不正な曜日と日付の試験を読む。値を補正して採用する方式と、無効として利用者へ知らせる方式を、時刻の利用目的から比べてみよう。次の{{ch:device-coexistence}}では、通信を含む複数のデバイスが一つのイメージで動く条件を考える。

@@ -132,7 +132,7 @@ DMAが読んでいるバッファを書き換えないこと、別CPUへの公�
 
 ## 手元のコードで、一つ確かめる
 
-ここでは環境を増やさず、nihosの配置の検査を観察する。まだZigを用意していない場合は、次の{{ch:first-experiment}}で環境を整えた後に戻ってこよう。リポジトリのルートで実行する。
+ここでは環境を増やさず、nihosの配置の検査を観察する。Zigの準備は{{ch:first-experiment}}を参照できる。リポジトリのルートで実行する。
 
 ```sh
 .tools/zig-0.17.0/zig test src/arch/riscv32/context.zig

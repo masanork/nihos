@@ -1,0 +1,13 @@
+sequenceDiagram
+    accTitle: 要求元の終了と領域回収
+    accDescr: 要求元が終了した後も、サービスがI/Oとコピーに使う間はpinを保ち、unpin後に回収できる。
+ participant C as 要求元
+ participant S as サービス
+ participant R as 回収側
+ C->>S: 読取りを要求
+ S->>S: 領域をpin
+ C->>R: 終了
+ R->>R: closeして待つ
+ S->>S: I/Oとコピーを完了
+ S->>R: unpin
+ R->>R: 領域を回収

@@ -1,0 +1,5 @@
+flowchart TB
+    accTitle: 画素が表示されるまで
+    accDescr: CPUが描いた画素は表示用メモリからDMA、bridge FIFO、host FIFOを経由してパネルへ進む。DMA完了後も後段に画素が残りうる。
+ A["CPUが描く"] --> B["表示用メモリ"] --> C["DMA"] --> D["bridge FIFO"] --> E["host FIFO"] --> F["パネル"]
+ C -. "DMA完了後も後段に画素が残りうる" .-> E

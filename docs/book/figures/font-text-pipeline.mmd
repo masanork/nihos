@@ -1,0 +1,4 @@
+flowchart TB
+    accTitle: 文字列から画素へ
+    accDescr: 文字列と方向、フォント設定からHarfBuzzで字形と位置を決め、FreeTypeでマスクを作り、色と合成する。
+ A["文字列・方向・フォントの設定"] -->|"HarfBuzz"| B["glyph番号と位置の並び"] -->|"FreeType"| C["glyphのmask"] -->|"色との合成"| D["画面へ渡す画素"]
