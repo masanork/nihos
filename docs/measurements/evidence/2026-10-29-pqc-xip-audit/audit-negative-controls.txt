@@ -1,0 +1,3 @@
+unapproved function: rejected: unapproved PQC Flash function
+missing profile marker: rejected: PQC profile marker differs from sections
+executable read-only data: rejected: invalid PQC Flash data

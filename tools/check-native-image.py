@@ -128,7 +128,40 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False):
+# Fixed reviewed allowlist for the pinned ML-DSA-65 verify-only measurement
+# profile. Never derive this list from the ELF or an untrusted build manifest.
+PQC_FUNCTIONS = {
+    'PQCP_MLDSA_NATIVE_MLDSA65_poly_uniform',
+    'PQCP_MLDSA_NATIVE_MLDSA65_poly_challenge',
+    'PQCP_MLDSA_NATIVE_MLDSA65_polyvecl_chknorm',
+    'PQCP_MLDSA_NATIVE_MLDSA65_polyvec_matrix_pointwise_montgomery_row_lazy',
+    'PQCP_MLDSA_NATIVE_MLDSA65_verify_internal',
+    'PQCP_MLDSA_NATIVE_MLDSA65_verify',
+    'PQCP_MLDSA_NATIVE_MLDSA65_keccakf1600_permute',
+    'mld_H', 'nih_pqc_arena_alloc', 'nih_pqc_arena_free', 'nih_pqc_arena_fixture',
+}
+
+
+def audit_pqc_functions(functions, span):
+    start, end = span
+    require(0x40000120 < start < end <= 0x40010000 and start % 16 == 0, 'invalid PQC Flash extent')
+    selected = sorted((address, stop, name) for name, address, stop in functions if start <= address < end)
+    require(selected and selected[0][0] == start and selected[-1][1] == end and
+            all(start <= address < stop <= end and name in PQC_FUNCTIONS for address, stop, name in selected),
+            'unapproved PQC Flash function')
+    names = [name for _, _, name in selected]
+    require(len(names) == len(set(names)) and set(names) == PQC_FUNCTIONS, 'missing/duplicate PQC Flash function')
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])), 'overlapping/unaccounted PQC Flash bytes')
+    return {name: {'start': hex(address), 'end': hex(stop)} for address, stop, name in selected}
+
+
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, allow_pqc=False):
+    if name == '.flash.pqc':
+        require(allow_pqc and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid PQC Flash code')
+        return
+    if name == '.flash.pqc.rodata':
+        require(allow_pqc and kind == 1 and flags & 7 == 2 and flags & ~50 == 0 and 0x40010020 < address < address + size <= 0x40020000 and address % 16 == 0, 'invalid PQC Flash data')
+        return
     if name == '.flash.time':
         require(allow_time and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0, 'invalid network/time foreground Flash section')
         return
@@ -170,13 +203,16 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
             "invalid Flash section size")
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, pqc_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if ROM_SYMBOLS.get(name) == address:
+            continue
+        if pqc_span is not None and pqc_span[0] <= address < stop <= pqc_span[1]:
+            require(name in PQC_FUNCTIONS, 'unapproved PQC Flash function: ' + name)
             continue
         if time_span is not None and time_span[0] <= address < stop <= time_span[1]:
             require(time_function(name), 'unapproved network/time Flash function: ' + name)
@@ -336,6 +372,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     device_start = None
     allow_devices = any(string(names, section[0]) == '.flash.devices' and section[5] for section in sections)
     require(not allow_devices or (mode == 'integer' and profile == 'device' and keypad_manifest is None), 'invalid device Flash profile')
+    pqc_sections = {}
+    allow_pqc = any(string(names, section[0]) == '.flash.pqc' and section[5] for section in sections)
+    require(not allow_pqc or (mode == 'integer' and profile == 'device' and allow_time and allow_devices and keypad_manifest is None), 'invalid PQC fixture profile')
     sql_sections = {}
     allow_sql = mode == "sqlite"
     allow_ui = keypad_manifest is not None
@@ -363,9 +402,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
                 ui_pools.append({'name': name, 'origin': hex(address), 'end': hex(address + size), 'bytes': size})
             if not in_sram and not in_stacks and not in_ui:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, allow_pqc)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name in ('.flash.pqc', '.flash.pqc.rodata'):
+                    pqc_sections[name] = (address, elf[offset:offset + size])
                 if name == '.flash.time':
                     time_start, time_code = address, elf[offset:offset + size]
                 if name == '.flash.devices':
@@ -405,7 +446,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | ({'.flash.pqc', '.flash.pqc.rodata'} if allow_pqc else set()), "missing mapped Flash sections")
     service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
@@ -542,7 +583,27 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get("card_boot") else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span)
+    require(symbols.get('__native_pqc_xip', 0) == int(allow_pqc), 'PQC profile marker differs from sections')
+    pqc_span = None
+    pqc_report = None
+    if allow_pqc:
+        code_start, code = pqc_sections['.flash.pqc']
+        ro_start, ro = pqc_sections['.flash.pqc.rodata']
+        code_end = code_start + len(code)
+        ro_end = ro_start + len(ro)
+        require(code_start == ((time_span[1] + 15) & ~15) and
+                ro_start == ((FLASH_SECTIONS['.flash.rodata'][0] + len(flash_tables) + 15) & ~15), 'PQC Flash placement differs')
+        require(all(symbols.get(key) == value for key, value in {
+            '__flash_pqc_start': code_start, '__flash_pqc_end': code_end,
+            '__flash_pqc_rodata_start': ro_start, '__flash_pqc_rodata_end': ro_end}.items()), 'PQC linker symbols differ')
+        pqc_span = (code_start, code_end)
+        pqc_functions = audit_pqc_functions(functions, pqc_span)
+        pqc_report = {'profile': 'mldsa65-arena-fixture', 'text_start': hex(code_start), 'text_end': hex(code_end),
+                      'text_bytes': len(code), 'text_sha256': hashlib.sha256(code).hexdigest(),
+                      'rodata_start': hex(ro_start), 'rodata_end': hex(ro_end), 'rodata_bytes': len(ro),
+                      'rodata_sha256': hashlib.sha256(ro).hexdigest(), 'functions': pqc_functions,
+                      'cache_off_qualified': False, 'foreground_fixture_only': True}
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, sqlite_manifest['allowed_functions'] if allow_sql else (), card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get("card_boot") else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, pqc_span=pqc_span)
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
     require(symbols.get("__flash_records_start") == flash_start and
             symbols.get("__flash_records_end") == flash_start + len(flash_tables),
@@ -615,6 +676,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report["photo_codec"] = photo_report
         if keypad_manifest.get("automatic_cards"):
             report["automatic_cards"] = keypad_manifest["automatic_cards"]
+    if pqc_report:
+        report['pqc_fixture'] = pqc_report
     if time_span:
         report['time_text'] = {'start': hex(time_start), 'end': hex(time_span[1]), 'bytes': len(time_code), 'sha256': hashlib.sha256(time_code).hexdigest(), 'functions': time_functions, 'foreground_only': True, 'writable': False, 'executable': True}
     if device_span:
@@ -636,7 +699,14 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     if time_span:
         preceding_end = device_span[1] if device_span else boot_end
         first_payload += bytes(time_start - preceding_end) + time_code
+    if pqc_span:
+        first_payload += bytes(pqc_span[0] - time_span[1]) + pqc_sections['.flash.pqc'][1]
     first_length = 256 + ((len(first_payload) + 3) & ~3)
+    pqc_payload = None
+    if allow_pqc:
+        ro_start, ro = pqc_sections['.flash.pqc.rodata']
+        pqc_payload = flash_tables + bytes(ro_start - flash_start - len(flash_tables)) + ro
+        pqc_payload += bytes((-len(pqc_payload)) % 4)
     for index in range(image[1]):
         address, length = struct.unpack_from("<II", image, position)
         position += 8
@@ -650,7 +720,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             require(data[256:256 + len(first_payload)] == first_payload, "Flash boot/card bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
-            mapped_length = len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
+            mapped_length = len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else len(pqc_payload) if allow_pqc else (len(flash_tables) + 3) & ~3
             require((low <= address and address + length <= high) or
                     (address == FLASH_SECTIONS[".flash.appdesc"][0] and length == first_length) or
                     (address == flash_start and length == mapped_length), "unexpected image load range")
@@ -659,6 +729,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 mapped.append(address)
             if address == flash_start:
                 require(data[:len(flash_tables)] == flash_tables, "mapped Flash bytes differ from ELF")
+                if allow_pqc:
+                    require(data == pqc_payload, 'merged records/PQC image bytes differ from ELF')
                 if allow_sql:
                     require(data == sql_payload, "merged records/SQLite image bytes differ from ELF")
                     report["sqlite"]["image_offset"] = position + SQL_START - flash_start
