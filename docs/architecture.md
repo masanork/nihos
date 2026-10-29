@@ -1,4 +1,4 @@
-# Architecture bootstrap
+# Architecture
 
 nihos is built as a vertical Tab5 port first. It does not begin with a generic
 HAL designed in isolation.
@@ -38,6 +38,13 @@ cross-core system services; wakeup, cancellation, and scheduler policy remain
 separate from the ring.
 
 ## Two backends
+
+The normal device image uses the permanent native backend in
+`src/platform/native/main.zig` and `src/arch/riscv32/native_tasks.zig`
+([ADR 0018](adr/0018-independent-native-boot.md),
+[ADR 0019](adr/0019-permanent-native-task-owners.md)). The ROM and stock
+second-stage loader start it; nihOS owns CPU1 release, scheduling, traps,
+timers and IPI/WFI thereafter. Its task runtime never restores a hosted window.
 
 The ESP-IDF backend is a bring-up oracle. It proves hardware sequences and
 provides a known implementation against which the native backend can be
@@ -84,191 +91,70 @@ path integrates networking alongside the display; see
 and reconnect now have a host-tested implementation under
 [ADR 0046](adr/0046-native-network-lease-lifecycle.md). A real early-renewal ACK
 and controlled C6-reset recovery are now [physically recorded](measurements/2026-10-27-network-lease-device.md).
-Natural lease timing and long-duration recovery remain open. Application network services,
-C6 TCP/IP/BLE offload, IRQ-driven service and arbitration with
-storage are open. See [ADR 0044](adr/0044-c6-sdio-boot-transport.md) and the
+Natural lease timing and long-duration recovery remain open. Application network services, C6 TCP/IP/BLE offload and IRQ-driven service
+remain open. The normal storage profile now shares the SDMMC host with C6;
+see the [device inventory](planning/tab5-native-device-support.md) for its gates. See [ADR 0044](adr/0044-c6-sdio-boot-transport.md) and the
 [IPv6 evidence](measurements/2026-10-27-native-ipv6.md).
+
+The normal image also includes finite speaker, microphone and UART/RS485
+drivers ([ADR 0052](adr/0052-default-on-demand-device-drivers.md)). They remain
+idle until requested; speaker and microphone serialize ownership of I2S0 and
+their SRAM workspace. Inclusion does not qualify acoustic quality or external
+RS485 wiring. With a valid IPv4 lease and DNS, the bounded SNTP client can set
+and read back the RTC in UTC ([ADR 0053](adr/0053-network-time-to-rtc.md)).
+Monotonic scheduler time stays separate from unauthenticated wall time.
 
 ## Storage direction
 
-- Internal NOR configuration and small writable state: littlefs core with a
-  nihOS block adapter.
-- Large Quake PAK files and media: SD FAT/exFAT with large batched reads.
-- Immutable boot assets: a simple read-only packed partition if measurements
-  justify it.
-- M5FS implementation: not imported. Its atomic-replace and fault-test
-  requirements are retained as specifications.
-- SQLite: a future single-owner `sqld` system service over the nihOS storage
-  service, not a library entered concurrently by arbitrary applications. SMP
-  placement is a scheduler decision rather than a permanent CPU1 assignment.
+Read-only file access, filesystem services and writable log-store work have
+separate profiles and qualification gates; the normal launcher is not a general
+writable application environment. Internal NOR configuration uses the littlefs
+adapter foundation. SD FAT/exFAT serves removable files and large assets. The
+custom store explores integrating SQLite WAL with page/log/checkpoint/GC
+ownership; persistent SQL durability remains a separate integration goal.
+M5FS source is not imported.
 
-## Bring-up order
+SQLite already has a bounded, single-owner memory session, cancellation and
+resource limits ([ADR 0040](adr/0040-bounded-single-owner-sqlite-session.md)).
+The minimal C runtime and standalone RV32 link are defined in
+[ADR 0041](adr/0041-minimal-c-runtime-and-standalone-sqlite-link.md).
+The opt-in `sqlite` native profile executes that session on CPU0's retained
+bootstrap after its qualification phases, with a no-I/O VFS
+([ADR 0042](adr/0042-native-sqlite-flash-execution.md),
+`src/platform/native/sqlite_probe.zig`). This is implemented bounded execution,
+not a persistent `sqld` service. A production VFS, task/RPC, WAL persistence,
+reboot readback and power-loss qualification remain separate work. SMP service
+placement is a scheduler decision rather than a fixed CPU1 assignment.
 
-1. Host ABI and data-structure tests.
-2. ESP-IDF boot and serial output through the C ABI.
-3. Internal allocator, PSRAM discovery, and cache/DMA tests.
-4. Display scanout and vsync, then touch input.
-5. Timer interrupts and a single-core scheduler.
-6. CPU1 startup, IPI, atomics, and bounded cross-core rings.
-7. Block I/O, littlefs, and fault injection.
-8. Audio, SD assets, C6 networking, and performance applications.
+## Bring-up and evidence
 
-Every stage records whether evidence is host-only, ESP-IDF-hosted, native
-firmware, emulator-executed, or physical Tab5 behavior. Emulator execution can
-gate boot, traps, SMP ordering, and later scheduler/system-call scenarios. It
-cannot qualify board power sequencing, peripheral compatibility, display or
-audio quality, storage durability, or real-time performance.
+The original sequence was host ABI tests, ESP-IDF bring-up, allocator/PSRAM,
+display/input, timer/scheduler, CPU1/IPI, storage and further peripherals.
+The [ADRs](adr/) retain those dated checkpoints, including hosted windows that
+restored FreeRTOS. They do not describe the current normal boot path.
 
-The first four stages are complete as of 2026-10-25. Stage 2 is physical
-Tab5 evidence, but remains ESP-IDF-hosted: ESP-IDF and FreeRTOS still own boot,
-interrupt setup, and scheduling before control crosses the platform ABI into
-Zig. Stage 3 is complete at bring-up depth: bounded Zig arenas work in both
-internal RAM and PSRAM, aligned cache ownership transitions work, and real
-AXI-GDMA copies have been verified across all four internal/PSRAM paths.
+- **Permanent native ownership:** ADR 0018 introduces the independent boot;
+  ADR 0019 attaches the shared task runtime to permanent per-core trap owners.
+  [ADR 0020](adr/0020-native-ipi-and-interrupt-wait.md) adds native inbox/IPI and
+  interrupt-driven WFI; [ADR 0021](adr/0021-native-opt-in-floating-contexts.md)
+  adds opt-in native floating contexts. The
+  [task-owner measurement](measurements/2026-10-25-native-task-owners.md)
+  records emulator preemption, sleep, exit, reap and slot reuse. Normal fast
+  boot skips these qualification phases and runs the interactive session.
+- **Physical normal-image evidence:** native display and the connected loop
+  have [recorded Tab5 runs](measurements/2026-10-27-normal-boot-network.md).
+  [Combined device operations](measurements/2026-10-28-default-devices.md) and
+  [network-to-RTC synchronization](measurements/2026-10-28-network-rtc-sync.md)
+  have their own candidate-bound physical results. These records do not
+  qualify every new image, panel/input combination or long-duration workload.
+- **Host and emulator evidence:** allocation, scheduler, networking, rendering
+  and service fault tests run without hardware. ESP-EMU executes target boot,
+  trap, SMP and scheduler scenarios; it cannot establish board power sequencing,
+  peripheral compatibility, optical/acoustic quality, physical timing or storage
+  durability. A device-profile link or image audit is build evidence only.
 
-Stage 4 is complete at initial display depth. The pinned official NoGLIB BSP
-detects and initializes the panel, but the platform ABI exposes only fixed
-display facts, one writable RGB565 scanout lease, present, and vsync. Zig
-paints the scanout buffer directly, so there is no second full-screen buffer
-or copy. A physical Tab5 delivered repeatable refresh callbacks at about
-65.47 Hz. The same ABI now initializes the panel-matched touch controller and
-returns bounded five-point snapshots; repeated idle reads succeed on the
-physical device. Double buffering, tear-free swaps, visible-pattern
-confirmation, and an actual pressed-coordinate trace remain open. Timer and
-single-core scheduler work is the current architecture checkpoint.
-
-Stage 5 is now complete only at policy-and-oracle depth. An allocation-free
-Zig scheduler implements fixed-priority selection, round-robin fairness within
-a priority, sleep/wake, blocking, bounded capacity, and generation-checked
-task handles. A saturating atomic counter hands periodic interrupt ticks to
-safe scheduler context, and the ESP-IDF oracle has delivered those interrupts
-through the stable ABI in ESP-EMU and on a physical Tab5. A Zig Timer Group
-driver now delivers asynchronous interrupts through nihOS's own trap entry in
-ESP-EMU, using the bounded resource lease in ADR 0006. ADR 0007 extends this
-with free-running elapsed-time accounting and timer-driven selection of two
-integer-only tasks on separate stacks. Native physical timer qualification
-and physical preemption remain open. FreeRTOS hosts the
-bootstrap outside these bounded native execution windows.
-
-The first native-port contract is now fixed and host-tested: a 128-byte RV32
-integer switch frame, a 160-byte aligned exception-frame reservation, separate
-optional RV32F state, and lossless ESP32-P4 CLIC cause decoding. This is a data
-layout milestone. A matching save/dispatch/restore path now uses private
-per-core interrupt stacks and a Zig dispatcher. ESP-EMU and a physical
-revision-1.3 Tab5 have completed a controlled switch from the ESP-IDF
-bootstrap stack to a separate Zig task stack and back. The nihOS vector is
-installed for bounded synchronous `ecall` and asynchronous timer windows;
-normal CLIC and timer ownership outside those windows remain with ESP-IDF.
-Physical evidence currently covers the synchronous round trip. The physical
-test also established that native switching must coordinate the P4 hardware
-stack bounds. The trap path now stops monitoring only across the actual stack
-change, installs the interrupt-stack or selected-task bounds, and resumes
-monitoring before running code on that stack. It verifies the original
-FreeRTOS bounds after the controlled round trip.
-
-ADR 0008 adds explicit RV32F contexts on CPU0. Integer workers perform no FP
-context transfers; opted-in workers preserve all 32 registers and `fcsr`
-across native timer preemption in ESP-EMU. The physical IDF FP bank is also
-restored before the bounded window ends. Lazy ownership, native CPU1 FP
-switching, and physical qualification remain separate gates.
-
-ADR 0009 connects live ECALLs to scheduler policy through a reusable RV32
-runtime. Sleep and block preserve a resumable reply, returning from a task
-creates an explicit terminal completion, and only reaping permits slot reuse.
-Generation exhaustion retires slots instead of reviving stale references.
-The emulator scenario includes an idle bootstrap interval while both workers
-sleep. Cross-core lifecycle ownership and application isolation remain open.
-
-ADR 0010 adds masked event waits and latched notifications. Pending-bit
-consumption and wait registration share one serialized kernel operation;
-matching notification makes the task ready and delivers its saved reply
-before resuming. The emulator exercises preposted/coalesced events,
-nonmatching notifications, blocked delivery, bit 31, and terminal/stale
-handle rejection. This first scenario is CPU-local; ADR 0012 adds the owner
-path for CPU1 notifications. Native device-IRQ integration remains open.
-Events provide wakeups; message data stays in separate queues.
-
-ADR 0011 connects those queues and event bits as blocking SPSC channels.
-The native two-task scenario exchanges 64 ordered request/completion pairs,
-exercises full/empty waiting, and forces RV32 counter wrap at capacity 3.
-Payload progress uses channel waits, with committed data distinguished from
-notification errors. These channels still use CPU0's event owner; cross-core
-blocking, close/cancellation, and permanent service lifetimes remain open.
-
-ADR 0012 adds one-way remote event delivery to CPU0's native owner. An IDF
-task on CPU1 publishes responses and fixed notification records, then asserts
-the borrowed CPU0 IPI. The native trap alone drains the inbox and wakes tasks.
-The bounded adapter preserves IDF's reason bits and reasserts its line after
-restoring the original vector/mask/threshold. A native scenario verifies 64
-registered client waits, stale-target rejection, producer quiescence, and
-subsequent execution of an IDF CPU0 task. That first scenario uses IDF task
-placement and polling on CPU1; ADR 0013 extends the reverse direction below.
-
-ADR 0013 adds a bounded native CPU1 echo service and reverse IPI delivery.
-Its foreground uses a masked exit-check/WFI sequence, and its native tail
-processes a fixed request budget. A duplex scenario exercises preposted and
-registered waits, stop-by-IPI, and restoration of both cores, followed by a
-normal IDF IPC callback on CPU1. This removes payload polling from that
-scenario; CPU1 still starts through IDF and has no native task scheduler.
-
-ADR 0014 adds a separate CPU1 runtime using the same frame and task-call
-implementation. Two integer tasks run on distinct native stacks; the IPI tail
-delivers events and selects tasks while the service computes replies in task
-context. Its idle bootstrap still parks with WFI. Each inbox binds handles to
-its destination owner, and CPU1 reaps its own completions before publishing
-the final report. CPU1 has no periodic timer yet, so sleep explicitly returns
-not-supported and its tick count remains zero. CPU0 remains timer-preemptive;
-native CPU1 selection uses IPIs and cooperative calls.
-
-ADR 0015 adds a separate CPU1 timer lease and timer-owned tick clock while
-retaining that untimed mode. Its native timer preempts a non-yielding peer
-and wakes the sleeping service at its accepted deadline, then the duplex
-protocol completes on both runtimes. The first interrupt is delayed to test
-missed-tick accounting, and summed task/idle runtime must equal elapsed ticks.
-CPU1 clock updates occur only in its timer tail; its phase is independent of
-CPU0. Both timer/IPI leases restore IDF before the host callback probes run.
-
-Physical revision-1.3 testing now covers CPU0 integer/FP preemption and CPU1
-integer timer preemption through three complete bootstrap runs. It exposed
-two corrections: `mret` must unwind the active trap's complete `mcause` while
-restoring selected-task status, and the bounded IPC response producer must
-remain alive through final consumption and its space notice. A completion
-ACK now establishes that fixture lifetime. See the
-[physical SMP preemption record](measurements/2026-10-25-tab5-native-smp-preemption.md).
-That first physical result predates the CPU1 FP extension below. Permanent
-native boot and loaded game/audio timing remain separate work.
-
-ADR 0016 extends opt-in eager floating contexts to the CPU1 runtime. Its
-floating service/observer mode preserves the raw IDF bootstrap bank even
-with FS off, verifies each task's full register bank and rounding state, and
-counts timer, IPI, and ECALL transfers. The integer modes retain null FP
-contexts and require zero bank copies. CPU0 remains an integer client in
-this scenario; simultaneous FP workloads on both cores remain a separate
-qualification.
-
-The CPU1 FP implementation has passed ESP-EMU and three complete physical
-Tab5 boots. Each run verified both task banks and IDF's original physical
-bank/FS state; integer CPU1 scenarios performed zero FP bank copies. The
-[CPU1 floating measurement](measurements/2026-10-25-tab5-cpu1-floating.md)
-records per-trap and per-task counts and their qualification limits.
-
-ADR 0017 adds a separate simultaneous FP fixture. Both observers hold distinct
-register signatures inside a shared, acknowledged interval; published atomic
-counters require progress and timer captures from each core before release.
-CPU0 also retains its own IDF bootstrap bank through this mode, and each
-owner checks its independent trap/runtime accounting before reaping. This
-does not add migration or change the integer and CPU1-only regression modes.
-
-The [simultaneous FP record](measurements/2026-10-25-tab5-simultaneous-floating.md)
-qualifies that interval in ESP-EMU and three physical boots: each core
-recorded eight observer timer captures and advancing FP checks before the
-gate opened. Both IDF banks/FS states and per-owner trap/runtime accounting
-were restored and checked. Loaded graphics/audio behavior remains separate.
-
-The cross-core ring portion of stage 6 has also been exercised early through
-the ESP-IDF oracle. A CPU0 Zig producer and CPU1 Zig service task exchanged
-100,000 ordered request/completion pairs through the bounded SPSC rings on a
-physical Tab5. This validates the current RISC-V atomic and coherent-memory
-assumptions under FreeRTOS task placement. It does not complete stage 6:
-native CPU1 boot, permanent IPI ownership, full scheduler integration, cancellation, and
-frame-load interference remain open.
+Current native entry points are `src/platform/native/main.zig`,
+`src/arch/riscv32/native_tasks.zig` and the services under
+`src/platform/native/`. Build flags and fixture boundaries are in the
+[native boot guide](native-boot.md); the [device inventory](planning/tab5-native-device-support.md)
+tracks implementation and remaining peripheral gates.
