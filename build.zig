@@ -37,6 +37,11 @@ pub fn build(b: *std.Build) void {
     pattern_module.addImport("canvas", canvas_module);
     const pattern_tests = b.addTest(.{ .root_module = pattern_module });
     test_step.dependOn(&b.addRunArtifact(pattern_tests).step);
+    const demo_pointer_module = b.createModule(.{ .root_source_file = b.path("src/input/pointer.zig"), .target = target, .optimize = optimize });
+    const demo_app_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/canvas_demo_app.zig"), .target = target, .optimize = optimize });
+    demo_app_module.addImport("canvas", canvas_module);
+    demo_app_module.addImport("pointer_input", demo_pointer_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = demo_app_module })).step);
     const ccid_tests = b.addTest(.{ .root_module = ccid_module });
     test_step.dependOn(&b.addRunArtifact(ccid_tests).step);
 }

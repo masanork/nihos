@@ -49,3 +49,5 @@ The live fixture uses the same RV32 Canvas pattern and production `pointer.Strea
 This is a deliberately narrow emulator fixture, not the normal OS application, a public host ABI, a real touch controller, or a live MIPI/DMA model. Each interaction halts the CPU and transfers an entire frame via GDB; it is not suitable for measuring interactive latency or frame rate. The GDB stub is active while the server runs; use a trusted host/network. Stop with Ctrl-C. In a failure, check `build/native-emulator/canvas-live/` logs.
 
 To measure the local event-to-response loop against a running fixture, use `python3 tools/benchmark-canvas-live.py --port 8713`. This sends synthetic press/release pairs and changes the fixture state. The result is host tooling latency, not a Tab5 performance measurement. A single-host example and its conditions are recorded in [the feedback-loop measurement](measurements/2026-10-29-emulator-feedback.md).
+
+The [executable application example](emulator-application-example.md) shows the current borrowed-frame and event boundary used by this fixture.
