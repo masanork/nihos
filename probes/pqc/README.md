@@ -243,3 +243,16 @@ ZIG=/path/to/zig MLKEM_SOURCE=/path/to/pinned/mlkem-native \
 This runs fixed-input host interoperability and one-allocation-at-a-time
 failure injection, then builds three isolated RV32 link studies. It does not
 run ML-KEM on nihos. See [the ML-KEM arena measurement](../../docs/measurements/2026-10-29-mlkem-custom-arena.md).
+
+### ML-KEM native worker fixture
+
+```sh
+NIHOS_NATIVE_MLKEM_WORKER_PROBE=1 NIHOS_NATIVE_PQC_WORKER_PROBE=1 \
+  NIHOS_NATIVE_PQC_VERIFY_PROBE=2 NIHOS_MLDSA_SOURCE=/path/to/pinned/mldsa-native \
+  NIHOS_MLKEM_SOURCE=/path/to/pinned/mlkem-native sh tools/build-native.sh emulator integer
+```
+
+This executes fixed ML-KEM-768 test vectors on the headless 8 KiB worker.
+Capture through `NIHOS_NATIVE_MLKEM_OWNER`, then validate with
+`python3 probes/pqc/check_mlkem_worker_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` without PSRAM). See [the native worker measurement](../../docs/measurements/2026-10-29-mlkem-native-worker.md).

@@ -40,6 +40,9 @@ if [ "$pqc_mutation" = true ] && { [ "$pqc_snapshot" != true ] || [ "$pqc_repeat
 pqc_race=${NIHOS_NATIVE_PQC_SNAPSHOT_RACE:-0}
 case "$pqc_race" in 0|1|2) ;; *) echo "PQC_SNAPSHOT_RACE must be 0, 1 or 2" >&2; exit 1 ;; esac
 if [ "$pqc_race" != 0 ] && [ "$pqc_mutation" != true ]; then echo "PQC_SNAPSHOT_RACE requires PQC_SNAPSHOT_MUTATION" >&2; exit 1; fi
+mlkem_worker=${NIHOS_NATIVE_MLKEM_WORKER_PROBE:-0}
+case "$mlkem_worker" in 0) mlkem_worker=false ;; 1) mlkem_worker=true ;; *) echo "MLKEM_WORKER_PROBE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$mlkem_worker" = true ] && { [ "$pqc_worker" != true ] || [ "$pqc_arena" != true ] || [ "$pqc_repeat" = true ] || [ "$pqc_quarantine" = true ] || [ "$pqc_drain" != 0 ] || [ "$pqc_snapshot" = true ]; }; then echo "MLKEM_WORKER_PROBE requires a single ordinary PQC arena worker" >&2; exit 1; fi
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -353,6 +356,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const pqc_snapshot_first_fail = %s;\n' "$pqc_first_fail"
     printf 'pub const pqc_snapshot_mutation = %s;\n' "$pqc_mutation"
     printf 'pub const pqc_snapshot_race: u32 = %s;\n' "$pqc_race"
+    printf 'pub const mlkem_worker_probe = %s;\n' "$mlkem_worker"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
@@ -595,6 +599,23 @@ if [ "$pqc" = true ]; then
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
         "$stack_source" -o "$build_dir/pqc_stack.o"
     set -- "$@" "$build_dir/pqc_stack.o"
+fi
+if [ "$mlkem_worker" = true ]; then
+    kem_source=${NIHOS_MLKEM_SOURCE:?set NIHOS_MLKEM_SOURCE to pinned mlkem-native checkout}
+    kem_pin=e0e0ae95765f4c48585dc8cdaa0656d4eda46a06
+    [ "$(git -C "$kem_source" rev-parse HEAD)" = "$kem_pin" ] || { echo "mlkem source revision mismatch" >&2; exit 1; }
+    [ -z "$(git -C "$kem_source" status --porcelain --untracked-files=no)" ] || { echo "mlkem source is modified" >&2; exit 1; }
+    for name in mlkem_native mlkem_arena mlkem_native_worker; do
+        file="$repo_root/probes/pqc/$name.c"
+        if [ "$name" = mlkem_native ]; then file="$kem_source/mlkem/mlkem_native.c"; fi
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -O2 -std=c11 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+            -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
+            -I "$kem_source/mlkem" -I "$kem_source/test/test_vectors" -I "$repo_root/probes/pqc" \
+            -DMLK_CONFIG_PARAMETER_SET=768 -DMLK_CONFIG_NO_RANDOMIZED_API -include "$repo_root/probes/pqc/mlkem_arena.h" \
+            "$file" -o "$build_dir/pqc_$name.o"
+        set -- "$@" "$build_dir/pqc_$name.o"
+    done
 fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
