@@ -169,12 +169,36 @@ pub const Canvas = struct {
         // the destination-relative coordinates; clipping remains unchanged.
         if (palette != null and @as(u64, dest.width) == @as(u64, image.width) * 2 and @as(u64, dest.height) == @as(u64, image.height) * 2) {
             const colors = palette.?;
+            const left: usize = @intCast(area.left);
+            const width: usize = @intCast(area.right - area.left);
+            const first_x: usize = @intCast(area.left - dest.x);
+            var previous_sy: ?usize = null;
             for (@as(usize, @intCast(area.top))..@as(usize, @intCast(area.bottom))) |dy| {
                 const sy: usize = @intCast(@divFloor(@as(i64, @intCast(dy)) - dest.y, 2));
-                for (@as(usize, @intCast(area.left))..@as(usize, @intCast(area.right))) |dx| {
-                    const sx: usize = @intCast(@divFloor(@as(i64, @intCast(dx)) - dest.x, 2));
+                const row_start = dy * self.target.stride + left * 2;
+                const row = self.target.bytes[row_start..][0 .. width * 2];
+                if (previous_sy != null and previous_sy.? == sy) {
+                    const previous = row_start - self.target.stride;
+                    @memcpy(row, self.target.bytes[previous..][0 .. width * 2]);
+                    continue;
+                }
+                previous_sy = sy;
+                var offset: usize = 0;
+                if (first_x % 2 != 0) {
+                    const color = colors[image.bytes[sy * image.stride + first_x / 2]];
+                    std.mem.writeInt(u16, row[0..2], color, .little);
+                    offset = 1;
+                }
+                while (offset + 1 < width) : (offset += 2) {
+                    const sx = (first_x + offset) / 2;
                     const color = colors[image.bytes[sy * image.stride + sx]];
-                    std.mem.writeInt(u16, self.target.bytes[dy * self.target.stride + dx * 2 ..][0..2], color, .little);
+                    std.mem.writeInt(u16, row[offset * 2 ..][0..2], color, .little);
+                    std.mem.writeInt(u16, row[offset * 2 + 2 ..][0..2], color, .little);
+                }
+                if (offset < width) {
+                    const sx = (first_x + offset) / 2;
+                    const color = colors[image.bytes[sy * image.stride + sx]];
+                    std.mem.writeInt(u16, row[offset * 2 ..][0..2], color, .little);
                 }
             }
             return;
@@ -589,6 +613,26 @@ test "axis lines match independent pixels for clips, extremes and unaligned rows
             const minor = if (axis == 0) py else px;
             if (minor != fixed or major < @min(a, b) or major > @max(a, b)) continue;
             std.mem.writeInt(u16, expected[1 + y * 16 + x * 2 ..][0..2], 0x129b, .little);
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    };
+}
+
+test "two-times indexed scaling handles odd clipping and unaligned padded rows" {
+    const src = [_]u8{ 1, 2, 3, 0xee, 4, 5, 6, 0xee };
+    var palette: [256]u16 = @splat(0);
+    for (1..7) |i| palette[i] = @intCast(0x1200 + i * 257);
+    // All origins and clip edges exercise single-pixel heads/tails and row reuse.
+    for (0..2) |ox| for (0..2) |oy| for (0..6) |left| for (1..7) |right| {
+        if (left >= right) continue;
+        var actual: [81]u8 = @splat(0xa5);
+        var expected = actual;
+        const c = Canvas.init(actual[1..], 7, 5, 16).?.clipped(.{ .x = @intCast(left), .y = 1, .width = @intCast(right - left), .height = 4 });
+        try c.blitIndexed8Scaled(.{ .bytes = &src, .width = 3, .height = 2, .stride = 4 }, &palette, .{ .x = @intCast(ox), .y = @intCast(oy), .width = 6, .height = 4 });
+        for (0..5) |y| for (0..7) |x| {
+            if (x < ox or x >= ox + 6 or y < oy or y >= oy + 4 or x < left or x >= right or y < 1) continue;
+            const color = palette[src[((y - oy) / 2) * 4 + (x - ox) / 2]];
+            std.mem.writeInt(u16, expected[1 + y * 16 + x * 2 ..][0..2], color, .little);
         };
         try std.testing.expectEqualSlices(u8, &expected, &actual);
     };
