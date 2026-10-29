@@ -1,0 +1,14 @@
+{
+  "schema": "nihos-emulator-pointer-trace-v1",
+  "name": "canvas-indicator-gestures",
+  "samples": [
+    {"contacts": 1, "x": 200, "y": 100, "time_us": 1000},
+    {"contacts": 0, "x": 200, "y": 100, "time_us": 2000},
+    {"contacts": 1, "x": 200, "y": 100, "time_us": 3000},
+    {"contacts": 2, "x": 200, "y": 100, "time_us": 4000},
+    {"contacts": 0, "x": 200, "y": 100, "time_us": 5000},
+    {"contacts": 1, "x": 200, "y": 100, "time_us": 6000},
+    {"contacts": 1, "x": 300, "y": 100, "time_us": 7000},
+    {"contacts": 0, "x": 300, "y": 100, "time_us": 8000}
+  ]
+}
