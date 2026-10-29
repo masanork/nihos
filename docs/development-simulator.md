@@ -26,8 +26,8 @@ reference of the expected content. Reports and PNGs are under
 application, panel/DMA model or physical timing test.
 
 `sh tools/nihos-dev.sh splash-rv32` compares portrait and landscape RV32
-splash frames before and after partial recoloring with an independent per-pixel
-reference. It uses the real compressed masks and the reserved emulated PSRAM
+splash frames before, during and after partial recoloring, as well as failure
+and storage states, with an independent per-pixel reference. It uses the real compressed masks and the reserved emulated PSRAM
 frame. It does not model a panel or establish physical startup timing.
 
 To capture the fixture's actual emulated PSRAM as a PNG:
