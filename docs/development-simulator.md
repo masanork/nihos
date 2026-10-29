@@ -20,10 +20,10 @@ console fixture on RV32, including a fixed header, scroll, exposed-band repaint
 and view control. Pass `--font jetbrains` or `--font source-code` to exercise the
 large-font decoder and incremental repaint; those faces do not use the basic
 face's scroll-copy path. The command reads the full frame from emulated PSRAM and
-compares it with the same fixture on the host. Reports and PNGs are under
-`build/native-emulator/console-workload/<font>/`. This is a cross-target comparison,
-not an independent visual oracle, full normal application, panel/DMA model or
-physical timing test.
+compares it with both the same fixture on the host and an independent per-pixel
+reference of the expected content. Reports and PNGs are under
+`build/native-emulator/console-workload/<font>/`. This is not a full normal
+application, panel/DMA model or physical timing test.
 
 To capture the fixture's actual emulated PSRAM as a PNG:
 
