@@ -29,6 +29,7 @@ nihos development simulator
   sh tools/nihos-dev.sh canvas-trace-check record and compare RV32 trace frames
   sh tools/nihos-dev.sh canvas-workloads check RV32 scroll and indexed frames
   sh tools/nihos-dev.sh console-rv32      compare an RV32 console frame with host
+      [--font basic-light|jetbrains|source-code]
 
 ui/card/check use host code and synthetic devices. canvas-rv32 uses ESP-EMU;
 it does not simulate the Tab5 panel or provide a live display. Pass --port to

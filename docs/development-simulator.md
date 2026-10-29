@@ -17,9 +17,11 @@ sh tools/nihos-dev.sh canvas-rv32
 
 `sh tools/nihos-dev.sh console-rv32` additionally runs a deterministic basic-face
 console fixture on RV32, including a fixed header, scroll, exposed-band repaint
-and view control. It reads the full frame from emulated PSRAM and compares it
-with the same fixture on the host. The report and PNG are in
-`build/native-emulator/console-workload/`. This is a cross-target comparison,
+and view control. Pass `--font jetbrains` or `--font source-code` to exercise the
+large-font decoder and incremental repaint; those faces do not use the basic
+face's scroll-copy path. The command reads the full frame from emulated PSRAM and
+compares it with the same fixture on the host. Reports and PNGs are under
+`build/native-emulator/console-workload/<font>/`. This is a cross-target comparison,
 not an independent visual oracle, full normal application, panel/DMA model or
 physical timing test.
 
