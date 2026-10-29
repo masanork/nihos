@@ -256,3 +256,10 @@ This executes fixed ML-KEM-768 test vectors on the headless 8 KiB worker.
 Capture through `NIHOS_NATIVE_MLKEM_OWNER`, then validate with
 `python3 probes/pqc/check_mlkem_worker_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` without PSRAM). See [the native worker measurement](../../docs/measurements/2026-10-29-mlkem-native-worker.md).
+
+### ML-KEM operation stack samples
+
+The ML-KEM native worker also logs separately repainted stack-watermark samples
+for key generation, encapsulation, both decapsulation cases and injected OOM.
+Validate with `python3 probes/pqc/check_mlkem_phases_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` without PSRAM). See [the operation stack measurement](../../docs/measurements/2026-10-29-mlkem-phase-stacks.md).
