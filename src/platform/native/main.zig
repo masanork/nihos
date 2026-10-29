@@ -1104,8 +1104,8 @@ export fn nih_native_main() callconv(.c) noreturn {
                                 2 => {
                                     if (nih_emulator_output.mode != 1 or input.contacts > 255 or input.x > 255) fail("emulator key");
                                     nih_emulator_output.keys += 1;
-                                    const result = live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render");
-                                    if (result == .edited) nih_emulator_output.edits += 1;
+                                    const key_result = live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render");
+                                    if (key_result == .edited) nih_emulator_output.edits += 1;
                                     nih_emulator_output.cursor = @intCast(live.editor.column);
                                 },
                                 3 => {
