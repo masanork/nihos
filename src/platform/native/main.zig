@@ -1082,7 +1082,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                             nih_emulator_output.samples += 1;
                             if (stream.fresh(@intCast(input.contacts), @intCast(input.x), @intCast(input.y), input.time_us)) |event| {
                                 nih_emulator_output.events += 1;
-                                nih_emulator_output.kind = @intFromEnum(event.kind);
+                                nih_emulator_output.kind = @backingInt(event.kind);
                                 if (button.observe(event, rect)) {
                                     nih_emulator_output.clicks += 1;
                                     active = !active;
