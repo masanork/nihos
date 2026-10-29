@@ -6,8 +6,8 @@ from splash_rv32 import verify
 class SplashRv32Test(unittest.TestCase):
     def test_reference_and_negative_controls(self):
         for layout in ('portrait', 'landscape'):
-            for progress in (0, 255):
-                frame = reference(layout, progress)
+            for progress, status in ((0, 5), (128, 5), (255, 5), (128, 6), (128, 7)):
+                frame = reference(layout, progress, status)
                 verify(frame, frame)
                 changed = bytearray(frame)
                 changed[len(frame) // 2] ^= 1

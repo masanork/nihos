@@ -1112,11 +1112,23 @@ export fn nih_native_main() callconv(.c) noreturn {
                         const boot = @import("boot_graphics");
                         if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) fail("splash portrait initial");
                         @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .ready)) fail("splash portrait intermediate");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
                         if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .ready)) fail("splash portrait recolor");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .failed)) fail("splash portrait failure");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .storage)) fail("splash portrait storage");
                         @call(.never_inline, nih_canvas_frame_ready, .{});
                         if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) fail("splash landscape initial");
                         @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .ready)) fail("splash landscape intermediate");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
                         if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .ready)) fail("splash landscape recolor");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .failed)) fail("splash landscape failure");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .storage)) fail("splash landscape storage");
                         if (!std.mem.allEqual(u8, guard, 0xa5)) fail("splash workload guard");
                         @call(.never_inline, nih_canvas_frame_ready, .{});
                     }
