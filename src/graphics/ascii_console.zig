@@ -78,11 +78,10 @@ pub fn paintControl(comptime section: ?[]const u8, frame: []u8, stride: usize, b
     if (!valid(frame, stride) or bounds.empty() or bounds.right > 1280 or bounds.bottom > 720 or
         bounds.right - bounds.left < 16 or bounds.bottom - bounds.top < 16 or label.len > (bounds.right - bounds.left) / 16) return false;
     for (label) |byte| if (byte < 32 or byte > 126) return false;
+    const canvas = Canvas.init(frame, width, height, stride) orelse return false;
     const selected = colors(palette);
-    for (bounds.left..bounds.right) |x| for (bounds.top..bounds.bottom) |y| {
-        const border = x < bounds.left + 2 or x + 2 >= bounds.right or y < bounds.top + 2 or y + 2 >= bounds.bottom;
-        pixel(frame, stride, y, 1279 - x, if (border) control_border else selected.background);
-    };
+    canvas.fillRect(.{ .x = @intCast(bounds.top), .y = @intCast(1280 - bounds.right), .width = @intCast(bounds.bottom - bounds.top), .height = @intCast(bounds.right - bounds.left) }, control_border);
+    canvas.fillRect(.{ .x = @intCast(bounds.top + 2), .y = @intCast(1280 - bounds.right + 2), .width = @intCast(bounds.bottom - bounds.top - 4), .height = @intCast(bounds.right - bounds.left - 4) }, selected.background);
     const Store = if (section) |name| struct {
         const masks linksection(name) = @embedFile("ascii/basic.bin").*;
     } else struct {
@@ -92,9 +91,9 @@ pub fn paintControl(comptime section: ?[]const u8, frame: []u8, stride: usize, b
     const start_y = bounds.top + (bounds.bottom - bounds.top - 16) / 2;
     for (label, 0..) |byte, index| {
         const bits = Store.masks[(@as(usize, byte) - 32) * 8 ..][0..8];
-        for (0..16) |y| for (0..16) |x| {
-            if (bits[y / 2] & (@as(u8, 1) << @as(u3, @intCast(x / 2))) != 0)
-                pixel(frame, stride, start_y + y, 1279 - (start_x + index * 16 + x), control_foreground);
+        for (0..8) |y| for (0..8) |x| {
+            if (bits[y] & (@as(u8, 1) << @as(u3, @intCast(x))) != 0)
+                canvas.fillRect(.{ .x = @intCast(start_y + y * 2), .y = @intCast(1278 - (start_x + index * 16 + x * 2)), .width = 2, .height = 2 }, control_foreground);
         };
     }
     return true;
@@ -275,6 +274,41 @@ fn pixel(frame: []u8, stride: usize, x: usize, y: usize, color: u16) void {
     const offset = y * stride + x * 2;
     frame[offset] = @truncate(color);
     frame[offset + 1] = @truncate(color >> 8);
+}
+
+test "Canvas control matches the original rotated raster" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const actual = try std.testing.allocator.alloc(u8, size + 32);
+    defer std.testing.allocator.free(actual);
+    const reference = try std.testing.allocator.alloc(u8, size + 32);
+    defer std.testing.allocator.free(reference);
+    const masks = @embedFile("ascii/basic.bin");
+    for ([_]Damage{ .{ .left = 0, .top = 0, .right = 64, .bottom = 32 }, .{ .left = 1179, .top = 671, .right = 1280, .bottom = 720 } }) |box| {
+        for ([_]Palette{ .neutral, .matrix }) |palette| {
+            @memset(actual, 0xa5);
+            @memset(reference, 0xa5);
+            const frame = actual[16..][0..size];
+            const expected = reference[16..][0..size];
+            const label = "LOGS";
+            const selected = colors(palette);
+            for (box.left..box.right) |x| for (box.top..box.bottom) |y| {
+                const border = x < box.left + 2 or x + 2 >= box.right or y < box.top + 2 or y + 2 >= box.bottom;
+                pixel(expected, stride, y, 1279 - x, if (border) control_border else selected.background);
+            };
+            const start_x = box.left + (box.right - box.left - label.len * 16) / 2;
+            const start_y = box.top + (box.bottom - box.top - 16) / 2;
+            for (label, 0..) |byte, index| {
+                const bits = masks[(@as(usize, byte) - 32) * 8 ..][0..8];
+                for (0..16) |y| for (0..16) |x| {
+                    if (bits[y / 2] & (@as(u8, 1) << @as(u3, @intCast(x / 2))) != 0)
+                        pixel(expected, stride, start_y + y, 1279 - (start_x + index * 16 + x), control_foreground);
+                };
+            }
+            try std.testing.expect(paintControl(null, frame, stride, box, label, palette));
+            try std.testing.expectEqualSlices(u8, reference, actual);
+        }
+    }
 }
 
 test "incremental cells and single-pass scroll equal a fresh raster, with fixed header and guards" {
