@@ -42,6 +42,8 @@ jobs:
         run: sh tools/nihos-dev.sh canvas-snapshot
       - name: RV32 input and framebuffer interaction
         run: sh tools/nihos-dev.sh canvas-live-check
+      - name: Replay RV32 interactive editor input
+        run: sh tools/nihos-dev.sh editor-live-check
       - name: Replay RV32 canvas input and frame trace
         run: sh tools/nihos-dev.sh canvas-trace-check
       - name: Compare RV32 Canvas workloads with independent pixel references
