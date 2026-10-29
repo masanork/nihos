@@ -57,6 +57,7 @@ To improve the development loop, the next milestones are a shared display/input 
 sh tools/nihos-dev.sh canvas-live
 # Open http://127.0.0.1:8713/
 sh tools/nihos-dev.sh canvas-live-check
+sh tools/nihos-dev.sh editor-live-check
 ```
 
 For a host-only performance comparison using pinned shaped Japanese glyphs,
@@ -66,6 +67,8 @@ Canvas and Surface sources. First generate the pinned host shaping capture with
 `sh tools/run-graphics-host-reference.sh`. The command validates capture hashes
 and compares every frame with the independent pixel reference before reporting
 composition times; it does not time shaping, native RV32, PSRAM or the panel.
+
+The **編集デモを開始・リセット** button switches the same emulator fixture to a bounded ASCII row. Focus the image and type US-layout keys, Left/Right or Backspace; a `|` cell marks the cursor and temporarily covers its character. Start with Caps Lock off. Browser key codes are converted to software HID presses and delivered through the debugger mailbox, then handled and rendered by RV32 code. The button resets the demonstration. It is not a physical keyboard, IME, application loader or file editor; no file is saved. The deterministic `editor-live-check` command compares every step in a fixed key sequence against an independent pixel reference and checks that an unsupported modified arrow is ignored.
 
 The live fixture uses the same RV32 Canvas pattern and production `pointer.Stream` / `pointer.Button` logic. Press and release the top strip to toggle it. Each browser sample is written to a debugger mailbox while the emulated CPU is stopped at a frame rendezvous; the guest processes it, redraws if needed, and the host reads the resulting PSRAM frame. The input timestamp is recorded at the browser event, so debugger transfer latency does not become a long press. A single session shares one fixture; refresh retrieves its last simulated timestamp. Samples, pointer events, clicks and the RGB565 frame hash are shown. The deterministic check includes normal press/release, multi-contact cancellation and drag cancellation.
 
