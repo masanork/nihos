@@ -31,13 +31,6 @@ pub fn paint(frame: []u8, width: usize, height: usize, stride: usize) bool {
     return checksum(frame, stride) == expected_checksum;
 }
 
-/// Emulator test indicator; the host sends raw portrait touch samples.
-pub fn indicator(frame: []u8, on: bool) bool {
-    const c = canvas.Canvas.init(frame, 720, 1280, 1440) orelse return false;
-    c.fillRect(.{ .x = 48, .y = 64, .width = 624, .height = 96 }, if (on) 0x07e0 else 0xffff);
-    return true;
-}
-
 test "pattern paints expected pixels and preserves padding" {
     const stride = 1456;
     const frame = try std.testing.allocator.alloc(u8, stride * 1280);
