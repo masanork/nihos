@@ -223,3 +223,12 @@ its copy; the worker then verifies from the copy. Capture through the worker
 owner record and validate with
 `python3 probes/pqc/check_worker_mutation_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` without PSRAM). The [measurement](../../docs/measurements/2026-10-29-pqc-snapshot-caller-mutation.md) includes a borrowed-source mutant.
+
+### Cooperative change during copying
+
+Set `NIHOS_NATIVE_PQC_SNAPSHOT_RACE=1` on the source-mutation fixture to
+change the caller buffer at a deterministic midpoint; `=2` keeps it unchanged.
+Validate each audited image with
+`python3 probes/pqc/check_worker_copy_race_log.py LOG ELF BIN AUDIT change|control|absent REPORT.json`.
+See [the mid-copy measurement](../../docs/measurements/2026-10-29-pqc-copy-race.md)
+for the cooperative-writer limitations and separate comparison-removed mutant.

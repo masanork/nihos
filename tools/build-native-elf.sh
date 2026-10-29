@@ -37,6 +37,9 @@ if [ "$pqc_snapshot" = true ] && { [ "$pqc_worker" != true ] || { [ "$pqc_repeat
 pqc_mutation=${NIHOS_NATIVE_PQC_SNAPSHOT_MUTATION:-0}
 case "$pqc_mutation" in 0) pqc_mutation=false; pqc_mutation_cpp=0 ;; 1) pqc_mutation=true; pqc_mutation_cpp=1 ;; *) echo "PQC_SNAPSHOT_MUTATION must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$pqc_mutation" = true ] && { [ "$pqc_snapshot" != true ] || [ "$pqc_repeat" = true ]; }; then echo "PQC_SNAPSHOT_MUTATION requires a single snapshot worker" >&2; exit 1; fi
+pqc_race=${NIHOS_NATIVE_PQC_SNAPSHOT_RACE:-0}
+case "$pqc_race" in 0|1|2) ;; *) echo "PQC_SNAPSHOT_RACE must be 0, 1 or 2" >&2; exit 1 ;; esac
+if [ "$pqc_race" != 0 ] && [ "$pqc_mutation" != true ]; then echo "PQC_SNAPSHOT_RACE requires PQC_SNAPSHOT_MUTATION" >&2; exit 1; fi
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -349,6 +352,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const pqc_snapshot_pressure = %s;\n' "$pqc_pressure"
     printf 'pub const pqc_snapshot_first_fail = %s;\n' "$pqc_first_fail"
     printf 'pub const pqc_snapshot_mutation = %s;\n' "$pqc_mutation"
+    printf 'pub const pqc_snapshot_race: u32 = %s;\n' "$pqc_race"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
@@ -582,7 +586,7 @@ if [ "$pqc" = true ]; then
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -I "$source/mldsa" -I "$source/examples/monolithic_build_multilevel" \
             -DMLD_CONFIG_PARAMETER_SET=65 -DMLD_CONFIG_REDUCE_RAM -DMLD_CONFIG_NO_RANDOMIZED_API \
-            -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API -DNIHOS_PQC_SNAPSHOT_MUTATION="$pqc_mutation_cpp" ${extra:+"$extra"} \
+            -DMLD_CONFIG_NO_SIGN_API -DMLD_CONFIG_NO_KEYPAIR_API -DNIHOS_PQC_SNAPSHOT_MUTATION="$pqc_mutation_cpp" -DNIHOS_PQC_SNAPSHOT_RACE="$pqc_race" ${extra:+"$extra"} \
             -I "$repo_root/probes/pqc" "$file" -o "$build_dir/pqc_$name.o"
         set -- "$@" "$build_dir/pqc_$name.o"
     done

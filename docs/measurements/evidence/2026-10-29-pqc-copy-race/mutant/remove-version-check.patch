@@ -1,0 +1,11 @@
+--- candidate/native_arena_verify.c
++++ mutant/native_arena_verify.c
+@@ -125,7 +125,7 @@
+     nih_pqc_snapshot_copied(); /* deterministic interleaving while copying */
+     for (size_t i = SNAP_LEN / 2; i < SNAP_LEN; i++) snapshot[i] = source[i];
+     uint32_t after = nih_pqc_snapshot_version();
+-    if ((before & 1) || before != after || (after & 1)) return 5;
++    (void)before; (void)after; /* deliberate negative control */
+ #else
+     for (size_t i = 0; i < SNAP_LEN; i++) snapshot[i] = source[i];
+     nih_pqc_snapshot_copied();

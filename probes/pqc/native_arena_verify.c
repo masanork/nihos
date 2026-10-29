@@ -118,8 +118,18 @@ extern void nih_pqc_snapshot_copied(void);
 int nih_pqc_snapshot_mutation_fixture(uint8_t *bytes, size_t capacity,
     uint8_t *snapshot, size_t snapshot_len, const uint8_t *source, struct nih_pqc_result *r) {
     if (!snapshot || !source || snapshot_len != SNAP_LEN) return 1;
+#if NIHOS_PQC_SNAPSHOT_RACE
+    extern uint32_t nih_pqc_snapshot_version(void);
+    uint32_t before = nih_pqc_snapshot_version();
+    for (size_t i = 0; i < SNAP_LEN / 2; i++) snapshot[i] = source[i];
+    nih_pqc_snapshot_copied(); /* deterministic interleaving while copying */
+    for (size_t i = SNAP_LEN / 2; i < SNAP_LEN; i++) snapshot[i] = source[i];
+    uint32_t after = nih_pqc_snapshot_version();
+    if ((before & 1) || before != after || (after & 1)) return 5;
+#else
     for (size_t i = 0; i < SNAP_LEN; i++) snapshot[i] = source[i];
     nih_pqc_snapshot_copied();
+#endif
     return snapshot_verify(bytes, capacity, snapshot, snapshot_len, r);
 }
 #endif

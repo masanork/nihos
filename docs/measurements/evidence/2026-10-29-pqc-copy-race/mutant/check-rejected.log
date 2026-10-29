@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_copy_race_log.py", line 63, in <module>
+    result = check(*sys.argv[1:6])
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_copy_race_log.py", line 21, in check
+    raise ValueError('native failure')
+ValueError: native failure
