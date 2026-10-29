@@ -232,3 +232,14 @@ Validate each audited image with
 `python3 probes/pqc/check_worker_copy_race_log.py LOG ELF BIN AUDIT change|control|absent REPORT.json`.
 See [the mid-copy measurement](../../docs/measurements/2026-10-29-pqc-copy-race.md)
 for the cooperative-writer limitations and separate comparison-removed mutant.
+
+### ML-KEM custom-arena host and RV32 probe
+
+```sh
+ZIG=/path/to/zig MLKEM_SOURCE=/path/to/pinned/mlkem-native \
+  sh probes/pqc/run_mlkem_arena.sh
+```
+
+This runs fixed-input host interoperability and one-allocation-at-a-time
+failure injection, then builds three isolated RV32 link studies. It does not
+run ML-KEM on nihos. See [the ML-KEM arena measurement](../../docs/measurements/2026-10-29-mlkem-custom-arena.md).
