@@ -85,8 +85,13 @@ const Canvas = struct {
     fn character(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize) bool {
         return self.sized(section, value, x, y, 32);
     }
-    fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
+    // Compressed automatic text is drawn from the photo extent. The uncompressed
+    // scaler stays on the boot Flash page so the SRAM heap stays at or above 48 KiB.
+    inline fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
         if (comptime isCompressed(section)) return AutoPainter(section).draw(self, value, x, y, size);
+        return self.sizedFlash(section, value, x, y, size);
+    }
+    noinline fn sizedFlash(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.text.card" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") bool {
         return self.sizedInline(section, value, x, y, size);
     }
     inline fn sizedInline(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {

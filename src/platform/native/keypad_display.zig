@@ -91,7 +91,7 @@ noinline fn paintTextures(index: u32, count: u8) linksection(if (options.card_re
 }
 /// CPU-only PSRAM work. The live display borrows copied SRAM pixels/LLIs,
 /// never this framebuffer or plan; do not touch either SRAM pool here.
-pub noinline fn stage(frame: []u8) linksection(if (options.card_read) ".flash.text.card" else ".text") !Staged {
+pub noinline fn stage(frame: []u8) linksection(if (options.card_photo) ".flash.photo" else if (options.card_read) ".flash.text.card" else ".text") !Staged {
     try acquire();
     const atlas = card.KeypadAtlas.Store(".flash.keypad");
     const spans = if (options.card_read) runtime: {
