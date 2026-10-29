@@ -2,6 +2,7 @@
 //! registered by importing this module; persistent hardware qualification and
 //! a stable public storage ABI remain separate work.
 pub const publication_model = @import("cow_model.zig");
+pub const sector_media = @import("sector_media.zig");
 pub const file_media = @import("file_media.zig");
 pub const checkpoint = @import("checkpoint_model.zig");
 pub const service = @import("checkpoint_service.zig");
@@ -9,6 +10,8 @@ pub const service = @import("checkpoint_service.zig");
 test {
     _ = publication_model;
     _ = file_media;
+    _ = sector_media;
+    _ = @import("sector_media_test.zig");
     _ = checkpoint;
     _ = service;
     _ = service.reader_drain;
