@@ -569,3 +569,53 @@ test "DHCP carries resolver address into a lease and preserves it on renewal" {
     try v4.receiveAt(&packet, 102);
     try std.testing.expectEqual(@as(u32, 0xc0a80701), v4.lease.?.dns);
 }
+
+test "SLAAC lifetime maintenance preserves IPv4 lease, station and queued DHCP traffic" {
+    var client = station.Client{};
+    client.beginDual(.saved, 0, true);
+    client.keep_serving = true;
+    client.phase = .done;
+    client.connected = true;
+    client.dhcp_client = try shortLease();
+    client.ipv6_client = station.ipv6.Client.init(mac, 0);
+    const v6 = &client.ipv6_client.?;
+    v6.stage = .done;
+    v6.ll_valid = true;
+    v6.slaac_valid = true;
+    v6.address = .{ 0x20, 1, 0xdb, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    v6.preferred_until = 1_000_000;
+    v6.valid_until = 2_000_000;
+    const lease = client.dhcp_client.?.lease.?;
+    try std.testing.expectEqual(@as(usize, 0), (try client.tx(1_000_000)).len);
+    try std.testing.expect(v6.slaac_deprecated and v6.slaac_valid);
+    // Simulate an unsent IPv6 packet wrapped for Hosted transport.
+    v6.output_len = 64;
+    client.output_len = 80;
+    client.tx_ipv6 = true;
+    try std.testing.expectEqual(@as(usize, 0), (try client.tx(2_000_000)).len);
+    try std.testing.expect(!v6.slaac_valid and v6.ll_valid);
+    try std.testing.expectEqual(station.Phase.done, client.phase);
+    try std.testing.expect(client.connected);
+    try std.testing.expectEqualDeep(lease, client.dhcp_client.?.lease.?);
+    client.output_len = 20;
+    client.tx_ipv6 = false;
+    try std.testing.expectEqual(@as(usize, 20), (try client.tx(2_500_000)).len);
+}
+
+test "IPv6 disabled keeps acquisition IPv4-only" {
+    var client = station.Client{};
+    try boot(&client, .saved);
+    try std.testing.expect(!client.ipv6_enabled);
+    try connect(&client);
+    _ = try client.tx(6);
+    try std.testing.expect(client.dhcp_client != null);
+    try std.testing.expect(client.ipv6_client == null);
+    client.sent(6);
+    var packet: [342]u8 = undefined;
+    try client.receive(.{ .interface = 1, .payload = try serverPacket(client.dhcp_client.?, 2, &packet) }, 7);
+    _ = try client.tx(8);
+    client.sent(8);
+    try client.receive(.{ .interface = 1, .payload = try serverPacket(client.dhcp_client.?, 5, &packet) }, 9);
+    try std.testing.expectEqual(station.Phase.done, client.phase);
+    try std.testing.expect(client.ipv6_client == null);
+}
