@@ -1,0 +1,54 @@
+{
+  "qualification": "ELF link study only; no image audit, execution or cache-off safety",
+  "all_sram_diagnostic": {
+    "elf_sha256": "40019c4861783238aea2272287637f487a4ee9ce4f1b575ad5eeaaac89f07033",
+    "primary_static_bytes": 129920,
+    "heap_start": "0x4ff3fb80",
+    "heap_end": "0x4ff48000",
+    "heap_bytes": 33920,
+    "worker_stack_start": "0x4ff3cc00",
+    "worker_stack_bytes": 8192,
+    "mlkem_function_count": 24,
+    "mldsa_function_count": 7,
+    "allocated_sections": {
+      "executable_bytes": 106522,
+      "readonly_bytes": 16976,
+      "writable_bytes": 1360,
+      "nobits_bytes": 103424
+    }
+  },
+  "combined_xip": {
+    "elf_sha256": "b23000d7610b553d8402476685e21ca027c2fe9ca448e4797562d5f8c3ae37cb",
+    "primary_static_bytes": 85888,
+    "heap_start": "0x4ff34f80",
+    "heap_end": "0x4ff48000",
+    "heap_bytes": 77952,
+    "worker_stack_start": "0x4ff32000",
+    "worker_stack_bytes": 8192,
+    "mlkem_function_count": 24,
+    "mldsa_function_count": 7,
+    "allocated_sections": {
+      "executable_bytes": 106522,
+      "readonly_bytes": 16956,
+      "writable_bytes": 1360,
+      "nobits_bytes": 147456
+    }
+  },
+  "flash": {
+    ".flash.pqc": {
+      "address": "0x40001370",
+      "bytes": 32196,
+      "flags": 6,
+      "sha256": "153d0870a9e3fa611db691f2258fc7668f1cbfd5da698ecbd005127f40cc950a"
+    },
+    ".flash.pqc.rodata": {
+      "address": "0x40010900",
+      "bytes": 11872,
+      "flags": 50,
+      "sha256": "7035f79ca92957ec0910ddeb16cfe768bbf420ae183211ecaa4c5b237684cdb8"
+    },
+    "function_count": 41
+  },
+  "static_sram_saved": 44032,
+  "heap_above_floor": 28800
+}
