@@ -115,6 +115,7 @@ pub fn Controller(comptime IO: type) type {
         last_status: u32 = 0,
         words_read: u32 = 0,
         commands: u32 = 0,
+        write_issued: bool = false,
         rca: u32 = 0,
         sectors: u64 = 0,
         faulted: bool = false,
@@ -215,6 +216,7 @@ pub fn Controller(comptime IO: type) type {
             if (index == 2 or index == 9) flags |= 1 << 7;
             if (index == 17 or index == 51 or index == 24) flags |= 1 << 9;
             if (index == 24) flags |= 1 << 10;
+            if (index == 24) self.write_issued = true;
             self.io.write(regs.command, flags);
             self.commands += 1;
             for (0..self.poll_limit) |_| {
@@ -341,6 +343,7 @@ pub fn Controller(comptime IO: type) type {
         /// native bus. A failure after launch has an unknown media outcome;
         /// card-ready is not a power-loss durability barrier.
         pub fn writeSectorControlled(self: *Self, lba: u32, source: *const [512]u8, control: anytype) Error!void {
+            self.write_issued = false;
             if (comptime !write_enabled) return error.InvalidCommand;
             if (!self.owns()) return error.NoOwnership;
             if (self.rca == 0 or lba >= self.sectors) return error.InvalidAddress;
