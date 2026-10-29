@@ -63,10 +63,11 @@ fn pqcSnapshotCopied() callconv(.c) void {
     }
 }
 var kem_worker_report: if (options.mlkem_worker_probe) @import("mlkem_worker_probe.zig").Report else void = if (options.mlkem_worker_probe) .{} else {};
+var pqc_combined_kind: u32 = 0;
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
-    if (options.mlkem_worker_probe) {
+    if (options.mlkem_worker_probe and (!options.pqc_combined_probe or @atomicLoad(u32, &pqc_combined_kind, .acquire) == 1)) {
         kem_worker_report = @import("mlkem_worker_probe.zig").run(tasks.pqcWorkerStack());
         @atomicStore(u32, &pqc_worker_done, 1, .release);
         return 0;
@@ -849,9 +850,10 @@ export fn nih_native_main() callconv(.c) noreturn {
             }
         }
         var previous: u32 = 0;
-        const rounds: u32 = if (options.pqc_worker_repeat) 3 else 1;
+        const rounds: u32 = if (options.pqc_combined_probe) 2 else if (options.pqc_worker_repeat) 3 else 1;
         for (0..rounds) |index| {
             @atomicStore(u32, &pqc_worker_done, 0, .release);
+            @atomicStore(u32, &pqc_combined_kind, @intCast(index), .release);
             pqc_pressure_report = .{};
             pqc_first_fail_report = .{};
             @atomicStore(u32, &pqc_pressure_active, @intFromBool(options.pqc_snapshot_pressure and index == 1), .release);
@@ -865,7 +867,7 @@ export fn nih_native_main() callconv(.c) noreturn {
             const stale = index == 0 or tasks.pqcStaleWorkerRejected(previous);
             if (!stale or (index != 0 and identity == previous)) fail("PQC stale worker identity");
             const started = cycle();
-            if (options.mlkem_worker_probe) {
+            if (options.mlkem_worker_probe and (!options.pqc_combined_probe or index == 1)) {
                 while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
                     _ = tasks.service(0);
                     _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
@@ -880,6 +882,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                 const owner: struct { captures: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = captures, .terminated = 1, .cleaned = 1, .reaped = 1 };
                 logger.record("NIHOS_NATIVE_MLKEM_OWNER", null, .{ "captures", "terminated", "cleaned", "reaped" }, &owner);
                 if (captures == 0 or (report.status != 1 and report.status != 2)) fail("MLKEM worker fixture");
+                if (options.pqc_combined_probe) {
+                    const job: struct { index: u32, identity: u32, previous: u32, stale_rejected: u32 } = .{ .index = @intCast(index), .identity = identity, .previous = previous, .stale_rejected = @intFromBool(stale) };
+                    logger.record("NIHOS_NATIVE_PQC_COMBINED_JOB", null, .{ "index", "identity", "previous", "stale_rejected" }, &job);
+                    previous = identity;
+                    continue;
+                }
                 while (true) asm volatile ("wfi");
             }
             if (options.pqc_drain_probe != 0) {
@@ -1009,11 +1017,15 @@ export fn nih_native_main() callconv(.c) noreturn {
             const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };
             logger.record("NIHOS_NATIVE_PQC_WORKER_OWNER", null, .{ "captures", "foreground", "terminated", "cleaned", "reaped" }, &ownership);
             if (extra_captures == 0 or (report.status != 1 and report.status != 2 and !(options.pqc_snapshot_race != 0 and report.status == 5))) fail("PQC worker fixture");
-            if (options.pqc_worker_repeat) {
+            if (options.pqc_worker_repeat or options.pqc_combined_probe) {
                 const job: struct { index: u32, identity: u32, previous: u32, stale_rejected: u32 } = .{ .index = @intCast(index), .identity = identity, .previous = previous, .stale_rejected = @intFromBool(stale) };
-                logger.record("NIHOS_NATIVE_PQC_WORKER_JOB", null, .{ "index", "identity", "previous", "stale_rejected" }, &job);
+                if (options.pqc_combined_probe) logger.record("NIHOS_NATIVE_PQC_COMBINED_JOB", null, .{ "index", "identity", "previous", "stale_rejected" }, &job) else logger.record("NIHOS_NATIVE_PQC_WORKER_JOB", null, .{ "index", "identity", "previous", "stale_rejected" }, &job);
             }
             previous = identity;
+        }
+        if (options.pqc_combined_probe) {
+            const done: struct { jobs: u32 } = .{ .jobs = rounds };
+            logger.record("NIHOS_NATIVE_PQC_COMBINED_PASS", null, .{"jobs"}, &done);
         }
         if (options.pqc_worker_repeat) {
             const done: struct { jobs: u32 } = .{ .jobs = rounds };

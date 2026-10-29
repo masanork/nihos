@@ -1,0 +1,28 @@
+{
+  "base_commit": "c2139b7",
+  "mlkem_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "bbd514ee425dd9ae1e74becc484c3a75f746e77a5e9ad128d037504a4be7677b",
+    "src/platform/native/main.zig": "ebe35dc4eabd036602b3e57970920504a28900fbc72e71cdc0d749b939d9c189",
+    "src/platform/native/mlkem_worker_probe.zig": "ebb85c4a65b722af2abc3aeeba31790852b5a899f4a25e39d6da1911e7bbd318",
+    "src/platform/native/pqc_arena_probe.zig": "9054b33550e897a0ea5d95e741dc13ca6b6c249682d9d3417d8cac99f43955a3",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "tools/build-native-elf.sh": "1bfd82802c0014c4963c96b796949ad5feee006dc8b7d011723de00d8edfd50f",
+    "probes/pqc/mlkem_arena.h": "b4ecdecd777b99dca10aaf61a28ecb9747b8b680ee6d860b09f1d541c5574abe",
+    "probes/pqc/mlkem_arena.c": "09dd0aaf2a05017791b3651145c850c97cf1c5103db528f50ac8b06eead5aa92",
+    "probes/pqc/mlkem_native_worker.c": "f6429c3ba8a36752064b6cecd859d24f441c5fb3452a1328b46867a32901086c",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "86303e4d7014c614d450dd2e09440b2c4995818d1bec34585e20b4d6657dda46",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/measure.py": "55d4ddf1db147c3d288f705c1c0fc7302830d19cdc531458097322a0324c09cf",
+    "probes/pqc/inspect_combined_link.py": "39e693ee9d28057f057851d81ac254731d3dc62bcd05f063b088817127dffd0f"
+  },
+  "diagnostic_linker_sha256": "c1143f5dbf7a480836a5586c724093935950f8b4480dab1094f77cb6e82a1ab1",
+  "baseline_elf_sha256": "5035a75e523c286b8fd21ba0697a3035291a6144a530f2a30a88977f947adc0d",
+  "diagnostic_elf_sha256": "40019c4861783238aea2272287637f487a4ee9ce4f1b575ad5eeaaac89f07033",
+  "gated_build_log_sha256": "668bdce0c3c49409fedc6a7aeabab395fcc1852b599c4abd68c4b0de0d54369c"
+}

@@ -43,6 +43,9 @@ if [ "$pqc_race" != 0 ] && [ "$pqc_mutation" != true ]; then echo "PQC_SNAPSHOT_
 mlkem_worker=${NIHOS_NATIVE_MLKEM_WORKER_PROBE:-0}
 case "$mlkem_worker" in 0) mlkem_worker=false ;; 1) mlkem_worker=true ;; *) echo "MLKEM_WORKER_PROBE must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$mlkem_worker" = true ] && { [ "$pqc_worker" != true ] || [ "$pqc_arena" != true ] || [ "$pqc_repeat" = true ] || [ "$pqc_quarantine" = true ] || [ "$pqc_drain" != 0 ] || [ "$pqc_snapshot" = true ]; }; then echo "MLKEM_WORKER_PROBE requires a single ordinary PQC arena worker" >&2; exit 1; fi
+pqc_combined=${NIHOS_NATIVE_PQC_COMBINED_PROBE:-0}
+case "$pqc_combined" in 0) pqc_combined=false ;; 1) pqc_combined=true ;; *) echo "PQC_COMBINED_PROBE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$pqc_combined" = true ] && [ "$mlkem_worker" != true ]; then echo "PQC_COMBINED_PROBE requires MLKEM_WORKER_PROBE" >&2; exit 1; fi
 pqc_xip=${NIHOS_NATIVE_PQC_XIP:-0}
 case "$pqc_xip" in 0) pqc_xip=false; pqc_xip_cpp=0 ;; 1) pqc_xip=true; pqc_xip_cpp=1 ;; *) echo "PQC_XIP must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -357,6 +360,7 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
     printf 'pub const pqc_snapshot_mutation = %s;\n' "$pqc_mutation"
     printf 'pub const pqc_snapshot_race: u32 = %s;\n' "$pqc_race"
     printf 'pub const mlkem_worker_probe = %s;\n' "$mlkem_worker"
+    printf 'pub const pqc_combined_probe = %s;\n' "$pqc_combined"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"

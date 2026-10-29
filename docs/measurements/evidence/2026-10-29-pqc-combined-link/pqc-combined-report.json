@@ -1,0 +1,39 @@
+{
+  "qualification": "link-only diagnostic with 48 KiB assertion removed; not a firmware image",
+  "baseline": {
+    "elf_sha256": "5035a75e523c286b8fd21ba0697a3035291a6144a530f2a30a88977f947adc0d",
+    "primary_static_bytes": 108288,
+    "heap_start": "0x4ff3a700",
+    "heap_end": "0x4ff48000",
+    "heap_bytes": 55552,
+    "worker_stack_start": "0x4ff37800",
+    "worker_stack_bytes": 8192,
+    "mlkem_function_count": 24,
+    "mldsa_function_count": 0,
+    "allocated_sections": {
+      "executable_bytes": 91880,
+      "readonly_bytes": 9508,
+      "writable_bytes": 1360,
+      "nobits_bytes": 124928
+    }
+  },
+  "combined_diagnostic": {
+    "elf_sha256": "40019c4861783238aea2272287637f487a4ee9ce4f1b575ad5eeaaac89f07033",
+    "primary_static_bytes": 129920,
+    "heap_start": "0x4ff3fb80",
+    "heap_end": "0x4ff48000",
+    "heap_bytes": 33920,
+    "worker_stack_start": "0x4ff3cc00",
+    "worker_stack_bytes": 8192,
+    "mlkem_function_count": 24,
+    "mldsa_function_count": 7,
+    "allocated_sections": {
+      "executable_bytes": 106522,
+      "readonly_bytes": 16976,
+      "writable_bytes": 1360,
+      "nobits_bytes": 103424
+    }
+  },
+  "static_delta_bytes": 21632,
+  "heap_floor_deficit_bytes": 15232
+}

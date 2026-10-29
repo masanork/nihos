@@ -263,3 +263,10 @@ The ML-KEM native worker also logs separately repainted stack-watermark samples
 for key generation, encapsulation, both decapsulation cases and injected OOM.
 Validate with `python3 probes/pqc/check_mlkem_phases_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` without PSRAM). See [the operation stack measurement](../../docs/measurements/2026-10-29-mlkem-phase-stacks.md).
+
+### Combined ML-DSA and ML-KEM link study
+
+Set `NIHOS_NATIVE_PQC_COMBINED_PROBE=1` on the ML-KEM worker build to link
+both sequential worker fixtures. The normal 48 KiB linker floor rejects the
+current headless combined fixture. A separate assertion-relaxed **ELF-only**
+diagnostic and comparison procedure are documented in [the combined budget study](../../docs/measurements/2026-10-29-pqc-combined-link-budget.md); it is not an execution result or qualified firmware.

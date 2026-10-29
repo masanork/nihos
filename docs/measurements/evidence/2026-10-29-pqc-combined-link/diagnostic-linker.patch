@@ -1,0 +1,11 @@
+--- gated/esp32p4.ld
++++ diagnostic/esp32p4.ld
+@@ -233,7 +233,7 @@
+     ASSERT(ORIGIN(ram) + LENGTH(ram) <= ORIGIN(stack_ram), "primary and stack SRAM overlap")
+     ASSERT(__task_stacks_end - __task_stacks_start == 24576, "invalid worker stack reservation")
+     ASSERT(__stacks_end == ORIGIN(stack_ram) + LENGTH(stack_ram), "invalid stack region size")
+-    ASSERT(__heap_end - __heap_start >= 49152, "native SRAM heap below 48 KiB")
++    ASSERT(__heap_end - __heap_start >= 0, "diagnostic heap only; not qualified")
+ }
+ /* ROM ABI, not linked ESP-IDF implementations. */
+ /* Keep the audited ROM ABI visible even when bounded live-console TX replaces
