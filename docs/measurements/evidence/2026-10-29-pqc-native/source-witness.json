@@ -1,0 +1,21 @@
+{
+  "base_commit": "7c91485",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/platform/native/main.zig": "408137d18ba3e960a4a55e011c1da28daf84b7e3f7a72541b597bd87e6f66d3e",
+    "src/platform/native/pqc_probe.zig": "7ba33abb82b98257721f7675d1995ceb06fa7e71f14e516bf89f719c97e547c6",
+    "tools/build-native-elf.sh": "6dbb23f12a76d581075c296f2fde4001f98dc99769d6da9f317d39ba16ff6483",
+    "probes/pqc/native_verify.c": "d33ebff720dce693667393bfc800eff20082345ba4b437491bbcb3a649bda78c",
+    "probes/pqc/native_stack.S": "804c0b6aa4cf96ba7b8c671c4cc5912d9fddc23599971281b9bc8bb39f8f8bbe"
+  },
+  "fixture_elf_sha256": "ecface0e519ea47867c63c23c4316347c3fc13b21f48f06e0546fab3e6150815",
+  "fixture_image_sha256": "c9778caac173f770479c06f7666d605353e17a2895db2483ade1f07fdaef48ed",
+  "baseline_elf_sha256": "6a5e0293f49a7e25ac897f53afc1d5941250f1dce74620d1f328b8a24eb0e075",
+  "baseline_image_sha256": "4cc06f9a80e4d555371d4251566e0e183b97b44a577ce3ca43905cf46a3d9806",
+  "raw_logs_sha256": {
+    "baseline-4M.log": "8bc5a5793c55905d5ac7d0226c2e2906eaca95f6f9fb84a5b419e543b39afc56",
+    "fixture-4M.log": "2660300a3e1f80ea96f8b17d63872ac07ffe6280d85d7f1cc381a331ac1f2694",
+    "no-psram.log": "54396169d0791efc4e0953a146092a408a72dc3b9acab1dd32c6d2f243fd7abf",
+    "interrupt-enabled-failure.log": "d99485d6fe8ca3de22f05651d92e080a7bb6c5b09d0c4c5de51f6b68433ad790"
+  }
+}
