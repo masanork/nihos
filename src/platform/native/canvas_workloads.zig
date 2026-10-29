@@ -25,6 +25,16 @@ pub fn scroll(storage: []u8) bool {
     clipped.line(15, 15, 15, 15, 0xffff);
     clipped.line(std.math.minInt(i32), std.math.minInt(i32) + 5, std.math.maxInt(i32) - 5, std.math.maxInt(i32), 0x07e0);
     clipped.line(280, 30, 10, 160, 0xffe0);
+    // Synthetic antialiased glyph coverage with padded source rows. The two
+    // placements cross different clip edges and existing background colors.
+    const coverage = [_]u8{ 0, 1, 32, 64, 127, 128, 192, 254, 255 };
+    var mask: [15 * 8]u8 = @splat(0xa5);
+    for (0..8) |y| for (0..13) |x| {
+        mask[y * 15 + x] = coverage[(x * 3 + y * 5) % coverage.len];
+    };
+    const image = canvas.Image{ .bytes = &mask, .width = 13, .height = 8, .stride = 15 };
+    clipped.blitMask(image, 8, 10, 0xf39c) catch return false;
+    clipped.blitMask(image, 265, 176, 0xf39c) catch return false;
     return true;
 }
 

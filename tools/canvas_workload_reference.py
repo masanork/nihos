@@ -5,7 +5,7 @@ WIDTH, HEIGHT = 320, 200
 BYTES = WIDTH * HEIGHT * 2
 
 
-def editor_pixel(x, y):
+def editor_background(x, y):
     # The final reversed diagonal uses canonical nearest-integer rounding.
     if 10 <= x <= 280 and 12 <= y < 182 and y == 160 + ((-130 * (x - 10) + 135) // 270):
         return 0xffe0
@@ -28,6 +28,25 @@ def editor_pixel(x, y):
         if 8 <= x < 228 and 8 + line * 12 <= old_y < 15 + line * 12:
             return (line * 997 + 0x1234) & 0xffff
     return 0x1082
+
+
+def editor_pixel(x, y):
+    background = editor_background(x, y)
+    if not (10 <= x < 290 and 12 <= y < 182):
+        return background
+    coverage = (0, 1, 32, 64, 127, 128, 192, 254, 255)
+    for left, top in ((8, 10), (265, 176)):
+        sx, sy = x - left, y - top
+        if 0 <= sx < 13 and 0 <= sy < 8:
+            alpha = coverage[(sx * 3 + sy * 5) % len(coverage)]
+            foreground = 0xf39c
+            result = 0
+            for shift, mask in ((11, 31), (5, 63), (0, 31)):
+                bg = (background >> shift) & mask
+                fg = (foreground >> shift) & mask
+                result |= ((fg * alpha + bg * (255 - alpha) + 127) // 255) << shift
+            return result
+    return background
 
 
 def indexed_pixel(x, y):
