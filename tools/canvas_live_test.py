@@ -1,6 +1,8 @@
 import struct
+import tempfile
+from pathlib import Path
 import unittest
-from canvas_live import Guest, encode_frame
+from canvas_live import Guest, encode_frame, acquire_session_lock
 from canvas_frame import FRAME_BYTES
 
 
@@ -45,3 +47,17 @@ class FrameCacheTest(unittest.TestCase):
         self.assertNotEqual(png3, png)
         with self.assertRaises(RuntimeError):
             encode_frame(raw[:-1])
+
+
+class LockTest(unittest.TestCase):
+    def test_only_one_session_can_own_the_worktree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'session.lock'
+            first = acquire_session_lock(path)
+            try:
+                with self.assertRaises(RuntimeError):
+                    acquire_session_lock(path)
+            finally:
+                first.close()
+            second = acquire_session_lock(path)
+            second.close()
