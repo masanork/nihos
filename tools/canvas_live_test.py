@@ -2,7 +2,7 @@ import struct
 import tempfile
 from pathlib import Path
 import unittest
-from canvas_live import Guest, encode_frame, acquire_session_lock
+from canvas_live import Guest, encode_frame, acquire_session_lock, check_guard
 from canvas_frame import FRAME_BYTES
 
 
@@ -26,6 +26,21 @@ class InputTest(unittest.TestCase):
         self.assertEqual(self.g.mi.writes, [(100, struct.pack('<IIIII', 1, 1, 200, 100, 20))])
         self.assertEqual(self.g.mi.resumes, 1)
 
+    def test_editor_and_key_commands_validate_and_pack_hid(self):
+        self.g.start_editor()
+        self.assertEqual(self.g.mi.writes[-1], (100, struct.pack('<IIIII', 3, 0, 0, 0, 0)))
+        self.g.state = {'mode': 1}
+        self.g.key(2, 0x37)
+        self.assertEqual(self.g.mi.writes[-1], (100, struct.pack('<IIIII', 2, 2, 0x37, 0, 0)))
+        self.assertEqual(self.g.mi.resumes, 2)
+        for modifiers, usage in ((True, 4), (0, 0), (256, 4), (0, 224), (0, -1)):
+            with self.subTest(modifiers=modifiers, usage=usage), self.assertRaises(ValueError):
+                self.g.key(modifiers, usage)
+        self.g.state = {'mode': 0}
+        with self.assertRaises(ValueError):
+            self.g.key(0, 4)
+        self.assertEqual(len(self.g.mi.writes), 2)
+
     def test_invalid_input_is_not_written(self):
         for values in ((1, 720, 100, 20), (3, 0, 0, 20), (1, 0, 1280, 20),
                        (1, 0, 0, 9), (True, 0, 0, 20), (1, 0, 0, 0x100000000)):
@@ -47,6 +62,14 @@ class FrameCacheTest(unittest.TestCase):
         self.assertNotEqual(png3, png)
         with self.assertRaises(RuntimeError):
             encode_frame(raw[:-1])
+
+
+class GuardTest(unittest.TestCase):
+    def test_changed_or_short_guard_is_rejected(self):
+        check_guard(bytes([0xa5]) * 16)
+        for value in (bytes([0xa5]) * 15, bytes([0xa5]) * 15 + b'\x00'):
+            with self.subTest(value=value), self.assertRaises(RuntimeError):
+                check_guard(value)
 
 
 class LockTest(unittest.TestCase):
