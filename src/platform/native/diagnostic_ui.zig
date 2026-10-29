@@ -48,7 +48,10 @@ var shown_revision: u32 = 0;
 const face: console.raster.Face = @fromBackingInt(options.console_font);
 const geometry = console.raster.Layout(face);
 const Text = console.Grid(geometry.columns, geometry.rows);
-const Renderer = console.raster.Renderer(".flash.rodata.display", face);
+// The normal storage image maps an additional read-only Flash span before
+// native startup. Keep larger font assets there when that span exists.
+const font_section = if (options.normal_storage and (face == .jetbrains or face == .source_code)) ".flash.fs.console" else ".flash.rodata.display";
+const Renderer = console.raster.Renderer(font_section, face);
 // Unused tail of the existing private display reservation, not owner heaps.
 const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
