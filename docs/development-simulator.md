@@ -15,7 +15,16 @@ Run the Canvas fixture as actual RV32 instructions under the pinned ESP-EMU:
 sh tools/nihos-dev.sh canvas-rv32
 ```
 
-This command builds an emulator-profile image using ESP-IDF 5.4.4 and Zig, runs it with 32 MiB emulated PSRAM, and checks the audited application/ELF, merged Flash image, native SMP/heap qualification, Canvas framebuffer checksum, and a 16-byte guard after the frame. The result and exact image, log and audit live in `build/native-emulator/canvas-offscreen/`. The Canvas fixture reserves the same 2 MiB region as the display owner but does not initialize the Tab5 panel or DMA. Output is a checksum, not a screenshot. The fixture flag is rejected for physical builds and is not the application-facing display API.
+To capture the fixture's actual emulated PSRAM as a PNG:
+
+```sh
+sh tools/nihos-dev.sh canvas-snapshot
+# Open build/native-emulator/canvas-snapshot/frame.png
+```
+
+This starts ESP-EMU halted under the ESP RISC-V GDB, breaks after the RV32 painter has completed, copies the RGB565LE framebuffer from emulated PSRAM, checks its length and FNV-1a, and converts those bytes to PNG. The receipt records hashes for the raw frame, PNG, app, ELF, Flash image, log, emulator and debugger. The command requires `riscv32-esp-elf-gdb` (set `NIHOS_GDB` if it is not on PATH or in the Espressif tools directory). It is a static frame and does not provide live input or panel/DMA emulation. The GDB stub is active during capture; run on a trusted host/network.
+
+This command builds an emulator-profile image using ESP-IDF 5.4.4 and Zig, runs it with 32 MiB emulated PSRAM, and checks the audited application/ELF, merged Flash image, native SMP/heap qualification, Canvas framebuffer checksum, and a 16-byte guard after the frame. The result and exact image, log and audit live in `build/native-emulator/canvas-offscreen/`. The Canvas fixture reserves the same 2 MiB region as the display owner but does not initialize the Tab5 panel or DMA. The qualification command outputs a checksum; the separate snapshot command exports the actual framebuffer. The fixture flag is rejected for physical builds and is not the application-facing display API.
 
 | Mode | What runs | What it can establish |
 |---|---|---|
@@ -25,4 +34,4 @@ This command builds an emulator-profile image using ESP-IDF 5.4.4 and Zig, runs 
 
 The interactive simulator currently has separate normal/card backends, and it is not running the full native kernel. ESP-EMU currently provides no integrated panel window or touch interaction in this workflow. Do not infer physical colors, cache/DMA behavior, timing, or device reliability from either simulator.
 
-To improve the development loop, the next milestones are a shared display/input boundary used by applications and simulator backends; an emulator framebuffer export with a checked format and frame identity; deterministic touch/keyboard event injection and replay into the native application; and fast one-command workflows for editor and reader scenarios. An export must read the actual emulated framebuffer, and tests must distinguish it from host-rendered previews. Keep real hardware checks for panel, DMA, timing and input-controller behavior.
+To improve the development loop, the next milestones are a shared display/input boundary used by applications and simulator backends; a streaming emulator framebuffer with checked frame identity; deterministic touch/keyboard event injection and replay into the native application; and fast one-command workflows for editor and reader scenarios. An export must read the actual emulated framebuffer, and tests must distinguish it from host-rendered previews. Keep real hardware checks for panel, DMA, timing and input-controller behavior.
