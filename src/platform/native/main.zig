@@ -1100,6 +1100,13 @@ export fn nih_native_main() callconv(.c) noreturn {
                         @call(.never_inline, nih_canvas_frame_ready, .{});
                         if (!display_service.canvas_workloads.indexed(frame)) fail("canvas indexed workload");
                         @call(.never_inline, nih_canvas_frame_ready, .{});
+                        const fixture = @import("console_workload.zig");
+                        const scratch_address = board.framebuffer + board.frame_bytes + 16;
+                        if (16 + @sizeOf(fixture.Scratch) > board.reserve_bytes - board.frame_bytes or scratch_address % @alignOf(fixture.Scratch) != 0) fail("console fixture scratch");
+                        const scratch: *fixture.Scratch = @ptrFromInt(scratch_address);
+                        if (!fixture.paint(frame, scratch)) fail("console canvas workload");
+                        if (!std.mem.allEqual(u8, guard, 0xa5)) fail("console workload guard");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
                     }
                     print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
                 }
