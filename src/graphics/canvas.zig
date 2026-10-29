@@ -60,13 +60,21 @@ pub const Canvas = struct {
         for (0..h) |row| {
             const sy: usize = @intCast(if (dy > 0) area.bottom - 1 - @as(i64, @intCast(row)) else area.top + @as(i64, @intCast(row)));
             const ty: usize = @intCast(@as(i64, @intCast(sy)) + dy);
-            for (0..w) |column| {
-                const sx: usize = @intCast(if (dx > 0) area.right - 1 - @as(i64, @intCast(column)) else area.left + @as(i64, @intCast(column)));
-                const tx: usize = @intCast(@as(i64, @intCast(sx)) + dx);
-                const from = sy * self.target.stride + sx * 2;
-                const to = ty * self.target.stride + tx * 2;
-                self.target.bytes[to] = self.target.bytes[from];
-                self.target.bytes[to + 1] = self.target.bytes[from + 1];
+            const sx: usize = @intCast(area.left);
+            const tx: usize = @intCast(area.left + dx);
+            const from = sy * self.target.stride + sx * 2;
+            const to = ty * self.target.stride + tx * 2;
+            const byte_count = w * 2;
+            const src = self.target.bytes[from..][0..byte_count];
+            const dst = self.target.bytes[to..][0..byte_count];
+            // Rows in different scanlines do not overlap; horizontal moves may.
+            if (to == from) continue;
+            if (from + byte_count <= to or to + byte_count <= from) {
+                @memcpy(dst, src);
+            } else if (to < from) {
+                std.mem.copyForwards(u8, dst, src);
+            } else {
+                std.mem.copyBackwards(u8, dst, src);
             }
         }
     }
@@ -397,4 +405,35 @@ test "editor style scroll and partial redraw equal full repaint" {
     content.fillRect(.{ .x = 0, .y = 12, .width = 8, .height = 4 }, 5);
     for (0..4) |i| b.fillRect(.{ .x = 0, .y = @intCast(i * 4), .width = 8, .height = 4 }, @intCast(i + 2));
     try std.testing.expectEqualSlices(u8, &repainted, &incremental);
+}
+
+test "large clipped scrolls match immutable source and preserve padding" {
+    const width = 49;
+    const height = 43;
+    const stride = 104;
+    var prng = std.Random.DefaultPrng.init(0x1a234567);
+    const random = prng.random();
+    for (0..250) |_| {
+        var original: [stride * height]u8 = undefined;
+        random.bytes(&original);
+        var actual = original;
+        var expected = original;
+        const source = Rect{ .x = random.intRangeAtMost(i32, -30, 60), .y = random.intRangeAtMost(i32, -25, 55), .width = random.intRangeAtMost(u32, 0, 80), .height = random.intRangeAtMost(u32, 0, 70) };
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -20, 45), .y = random.intRangeAtMost(i32, -20, 40), .width = random.intRangeAtMost(u32, 0, 70), .height = random.intRangeAtMost(u32, 0, 60) };
+        const dest_x = random.intRangeAtMost(i32, -30, 60);
+        const dest_y = random.intRangeAtMost(i32, -25, 55);
+        Canvas.init(&actual, width, height, stride).?.clipped(clip).copyRect(source, dest_x, dest_y);
+        for (0..height) |y| for (0..width) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            const sx = px - dest_x + source.x;
+            const sy = py - dest_y + source.y;
+            if (px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height or sx < 0 or sx >= width or sy < 0 or sy >= height or sx < source.x or sx >= @as(i64, source.x) + source.width or sy < source.y or sy >= @as(i64, source.y) + source.height) continue;
+            const from: usize = @intCast(sy * stride + sx * 2);
+            const to = y * stride + x * 2;
+            expected[to] = original[from];
+            expected[to + 1] = original[from + 1];
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
 }
