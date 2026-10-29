@@ -1,5 +1,6 @@
 //! Rotated console raster with incremental cells and bounded pixel scrolling.
 const std = @import("std");
+const Canvas = @import("canvas").Canvas;
 const Grid = @import("../console/ascii.zig").Grid;
 pub const width = 720;
 pub const height = 1280;
@@ -239,19 +240,9 @@ pub fn Renderer(comptime section: ?[]const u8, comptime face: Face) type {
             const count = @min(self.quantum, self.distance - self.advanced);
             // Logical upward motion is a contiguous left shift in each
             // physical scanline. No clearing or repainting of existing glyphs.
-            for (1280 - L.margin_x - L.columns * L.cell_width..1280 - L.margin_x) |y| {
-                const begin = y * stride + top * 2;
-                const length = (bottom - top - count) * 2;
-                if ((begin | length | (count * 2)) & 3 == 0 and @intFromPtr(frame.ptr) & 3 == 0) {
-                    const dest: [*]u32 = @ptrCast(@alignCast(frame.ptr + begin));
-                    const source: [*]const u32 = @ptrCast(@alignCast(frame.ptr + begin + count * 2));
-                    var index: usize = 0;
-                    while (index + 8 <= length / 4) : (index += 8) {
-                        inline for (0..8) |word| dest[index + word] = source[index + word];
-                    }
-                    while (index < length / 4) : (index += 1) dest[index] = source[index];
-                } else std.mem.copyForwards(u8, frame[begin..][0..length], frame[begin + count * 2 ..][0..length]);
-            }
+            const canvas = Canvas.init(frame, width, height, stride) orelse return false;
+            const first_y = 1280 - L.margin_x - L.columns * L.cell_width;
+            canvas.copyRect(.{ .x = @intCast(top + count), .y = @intCast(first_y), .width = @intCast(bottom - top - count), .height = L.columns * L.cell_width }, @intCast(top), @intCast(first_y));
             self.advanced += count;
             const band = L.cell_height + self.advanced;
             const source_top = bottom - self.distance - L.cell_height;

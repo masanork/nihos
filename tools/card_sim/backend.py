@@ -44,7 +44,7 @@ def build(directory=None):
                 pass
         if not valid:
             staged_render, staged_scanout = [p.with_name('staged-' + p.name) for p in (render, scanout)]
-            commands = [[zig, 'build-lib', '-dynamic', '-OReleaseSafe', '--dep', 'surface', '-Mroot=' + str(ROOT / 'src/card_sim.zig'), '-Msurface=' + str(ROOT / 'src/graphics/surface.zig'), '-femit-bin=' + str(staged_render)],
+            commands = [[zig, 'build-lib', '-dynamic', '-OReleaseSafe', '--dep', 'surface', '--dep', 'canvas', '-Mroot=' + str(ROOT / 'src/card_sim.zig'), '--dep', 'surface', '-Mcanvas=' + str(ROOT / 'src/graphics/canvas.zig'), '-Msurface=' + str(ROOT / 'src/graphics/surface.zig'), '-femit-bin=' + str(staged_render)],
                         [zig, 'cc', '-dynamiclib' if suffix == '.dylib' else '-shared', '-fPIC', '-std=c17', '-O2', '-UNDEBUG',
                          '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', str(ROOT / 'probes/card_sim/scanout.c'), '-o', str(staged_scanout)]]
             with (directory / 'build.log').open('w') as log:
