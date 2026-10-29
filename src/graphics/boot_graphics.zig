@@ -2,6 +2,7 @@
 //! Progress is a colour animation value, never a boot-completion percentage.
 const std = @import("std");
 const assets = @import("boot/assets.zig");
+const Canvas = @import("canvas").Canvas;
 
 pub const width: usize = 720;
 pub const height: usize = 1280;
@@ -84,16 +85,11 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
     const row_bytes = std.math.mul(usize, surface_width, 2) catch return false;
     const required = std.math.mul(usize, stride, surface_height) catch return false;
     if (stride < row_bytes or framebuffer.len < required) return false;
+    const canvas = Canvas.init(framebuffer, surface_width, surface_height, stride) orelse return false;
     const left = (surface_width - width) / 2;
     const top = (surface_height - height) / 2;
     const bg = rgb565(background);
-    if (!recolor_only) for (0..surface_height) |y| {
-        const row = framebuffer[y * stride ..][0..row_bytes];
-        for (0..surface_width) |x| {
-            row[x * 2] = @truncate(bg);
-            row[x * 2 + 1] = @truncate(bg >> 8);
-        }
-    };
+    if (!recolor_only) canvas.fillRect(.{ .x = 0, .y = 0, .width = @intCast(surface_width), .height = @intCast(surface_height) }, bg);
     for (assets.sprites) |sprite| {
         if (sprite.layout != layout) continue;
         if (recolor_only and sprite.ink != .dye) continue;
@@ -120,10 +116,8 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
     }
     // A small state marker, not a fictitious percentage or a looping spinner.
     const marker = if (status == .failed) vermilion else mix(muted, vermilion, progress);
-    for (0..6) |y| for (0..6) |x| {
-        const point = physical(layout, (if (layout == .landscape) @as(usize, 102) else 92) + x, (if (layout == .landscape) @as(usize, 647) else 1166) + y);
-        put(framebuffer, stride, left + point.x, top + point.y, marker);
-    };
+    const marker_point = physical(layout, if (layout == .landscape) 107 else 92, if (layout == .landscape) 647 else 1166);
+    canvas.fillRect(.{ .x = @intCast(left + marker_point.x), .y = @intCast(top + marker_point.y), .width = 6, .height = 6 }, rgb565(marker));
     return true;
 }
 
