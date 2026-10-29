@@ -12,6 +12,7 @@ __native_profile = 0;
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
 __native_network = NIH_NATIVE_NETWORK;
+__native_pqc_xip = NIH_NATIVE_PQC_XIP;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
@@ -59,6 +60,14 @@ SECTIONS
         __flash_time_end = .;
     } > flash_boot
 #endif
+#if NIH_NATIVE_PQC_XIP
+    .flash.pqc : ALIGN(16) {
+        __flash_pqc_start = .;
+        *pqc_mldsa_native.o(.text .text.*)
+        *pqc_native_arena_verify.o(.text .text.*)
+        __flash_pqc_end = .;
+    } > flash_boot
+#endif
     /* The stock P4 loader maps both segments before entering SRAM.
      * Only self-contained normal diagnostic tables use the second page. */
     .flash.rodata : {
@@ -75,6 +84,14 @@ SECTIONS
         *(.flash.rodata.bmi270)
         __flash_records_end = .;
     } > flash_records
+#if NIH_NATIVE_PQC_XIP
+    .flash.pqc.rodata : ALIGN(16) {
+        __flash_pqc_rodata_start = .;
+        *pqc_mldsa_native.o(.rodata .rodata.* .srodata .srodata.*)
+        *pqc_native_arena_verify.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_pqc_rodata_end = .;
+    } > flash_records
+#endif
 #if NIH_NATIVE_KEYPAD
     .flash.uipad : ALIGN(4) {
         KEEP(*(.flash.keypad.pad))

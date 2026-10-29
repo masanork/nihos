@@ -90,6 +90,21 @@ actual allocation size, alignment, granularity, duplication and fragmentation
 must be measured with the chosen layout. The 16,304 B arena limit is
 experimental and its behavior over all valid/malformed inputs is unqualified.
 
+A future cache-off coordinator must close admission before observing holders,
+wait for every previously admitted cache-dependent operation and relevant DMA
+to quiesce, and receive generation-matched quiescence acknowledgments from both
+harts before disabling the cache. No new holder may enter during draining or
+cache-off. Reopen only after restoration is confirmed; failed restoration is a
+quarantined state. The coordinator, acknowledgment path and any required IRQ
+handlers must themselves remain available with the cache off. An early check
+followed by later unregistered entry has a TOCTOU race.
+
+`probes/pqc/cache_gate_model_test.py` tests a serialized abstraction of these
+transitions and the check-then-enter counterexample. It assumes all actual
+cache-dependent operations, interrupts and DMA are registered and models no
+hardware memory ordering, cache registers, or interrupts. The native system has
+no integrated coordinator, and the model is not a production cache-off guard.
+
 The service must preserve the existing SRAM heap minimum, separately account
 for permanently resident code/data and peak task/IRQ stacks, and verify
 PSRAM cache availability throughout execution. Coordinate Flash writes and

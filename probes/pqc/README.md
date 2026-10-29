@@ -117,3 +117,21 @@ a native image, an XIP qualification, or an integrated firmware size. See
 single-job ownership, cancellation, cleanup and generation transitions. This
 host-only model is not the native service implementation; see
 [ADR 0054](../../docs/adr/0054-pqc-verify-service-contract.md).
+
+## Experimental normal-device XIP image
+
+`NIHOS_NATIVE_PQC_XIP=1` moves the fixed verify fixture C objects into the
+explicitly audited Flash sections. It is only accepted with the normal device
+arena fixture profile and does not implement an asynchronous worker or a
+cache-off protocol. It is not a production switch. Build only:
+
+```sh
+NIHOS_NATIVE_PQC_XIP=1 NIHOS_NATIVE_PQC_VERIFY_PROBE=2 \
+  NIHOS_MLDSA_SOURCE=/path/to/mldsa-native sh tools/build-native.sh device integer
+```
+
+`inspect_xip_calls.py OBJDUMP ELF IMAGE_AUDIT OUTPUT.json` reports annotated
+direct incoming branches and unannotated indirect `jalr` sites. It validates
+the ELF hash but cannot prove a complete call graph or cache-off safety.
+`python3 -m unittest probes.pqc.cache_gate_model_test` checks a separate host
+model of the desired gate; no such gate is integrated into native execution.

@@ -11,6 +11,27 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_pqc_fixture_sections_and_fixed_allowlist_fail_closed(self):
+        start = 0x40009000
+        names = sorted(MODULE.PQC_FUNCTIONS)
+        functions = [(name, start + i * 16, start + (i + 1) * 16) for i, name in enumerate(names)]
+        span = (start, start + len(names) * 16)
+        self.assertEqual(set(MODULE.audit_pqc_functions(functions, span)), set(names))
+        MODULE.audit_flash_section('.flash.pqc', 1, 6, start, 64, allow_pqc=True)
+        MODULE.audit_flash_section('.flash.pqc.rodata', 1, 2, 0x4001d000, 64, allow_pqc=True)
+        for name, kind, flags, allowed in (('.flash.pqc', 1, 6, False), ('.flash.pqc', 1, 7, True),
+                                           ('.flash.pqc.rodata', 1, 6, True), ('.flash.pqc.rodata', 8, 2, True)):
+            with self.assertRaises(ValueError):
+                MODULE.audit_flash_section(name, kind, flags, start if name == '.flash.pqc' else 0x4001d000, 64, allow_pqc=allowed)
+        for changed in (functions[:-1], [('irq.unapproved', *functions[0][1:])] + functions[1:],
+                        [(functions[0][0], start, start + 20)] + functions[1:]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_pqc_functions(changed, span)
+        boot = [('psram.probe', 0x40000120, 0x40000920), ('psram_memory.prepare__func_1', 0x40000920, 0x40001120)]
+        MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000, pqc_span=span)
+        with self.assertRaises(ValueError):
+            MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff00000, 0x4ff28000)
+
     def test_network_time_code_has_exact_rx_allowlist_and_bounded_extent(self):
         start = 0x40004000
         names = sorted(MODULE.TIME_FUNCTIONS) + [prefix + '__func_7' for prefix in sorted(MODULE.TIME_GENERIC)]

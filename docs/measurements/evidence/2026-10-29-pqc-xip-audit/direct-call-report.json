@@ -1,0 +1,24 @@
+{
+  "incoming_annotated_branches": [
+    {
+      "caller": "pqc_arena_probe.run",
+      "pc": "0x4ff0cf7a",
+      "target": "nih_pqc_arena_fixture",
+      "address": "0x4000bc38"
+    }
+  ],
+  "unresolved_indirect_jalr": [
+    {
+      "caller": "nih_native_task_trampoline",
+      "pc": "0x4ff0023c",
+      "operand": "t0"
+    },
+    {
+      "caller": "Io.Writer.writeAll",
+      "pc": "0x4ff072a6",
+      "operand": "a5"
+    }
+  ],
+  "elf_sha256": "936a07176cf1e43f8c1ef5289fb60670912ab290b7858c6604639415cb6b6043",
+  "limitation": "Indirect targets, relocations without annotations and runtime control flow are not proven."
+}
