@@ -1,0 +1,31 @@
+{
+  "base_commit": "ba4be74",
+  "mlkem_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06",
+  "host_machine": "arm64",
+  "zig_version": "0.17.0",
+  "source_sha256": {
+    "probes/pqc/mlkem_arena.h": "b4ecdecd777b99dca10aaf61a28ecb9747b8b680ee6d860b09f1d541c5574abe",
+    "probes/pqc/mlkem_arena.c": "09dd0aaf2a05017791b3651145c850c97cf1c5103db528f50ac8b06eead5aa92",
+    "probes/pqc/mlkem_arena_test.zig": "217c8baf464e3f1662bf2f08b5b1d23a2d0a93d3e044c3fcf6da0d93291ea5aa",
+    "probes/pqc/run_mlkem_arena.sh": "7bd774721cfb28d3fe1864e47d79a66484ea9874a413905b1e87ba271a152abd",
+    "probes/pqc/runtime.c": "96046cac54c934d86aa41f6d0336f331bd968a7268cd82b09288ab7fef9bae91",
+    "probes/pqc/measure.py": "55d4ddf1db147c3d288f705c1c0fc7302830d19cdc531458097322a0324c09cf"
+  },
+  "artifacts_sha256": {
+    "mlkem.o": "da41cf17c406f14ca0a208e440bfbbdf55fbd8a2a9e3e8060ea1f2400dad186e",
+    "arena.o": "f4ecc18d87b5bd5b5de75dd6b3939d56d38f8769900160154d626c54540eafa9",
+    "mlkem-rv32.o": "f8dd2273e19faa429d5621dd97e7c4d1e26b8453b5ae7d0349852cd2d27f509c",
+    "arena-rv32.o": "55abff9c2b8a060852cdc3782e0271fce63dc2af8119e0bb8f0ea902b0785a4a",
+    "runtime-rv32.o": "0b1f0dbdb44f46d04ef5aa4d73522cca8e5d55b928b509004cefefd28673d986",
+    "keypair_derand.elf": "32f82b59dab66450f4979239272e304d65086e402a298716848ee491f4b2aab6",
+    "enc_derand.elf": "5ff9915d461b1843265a9adf0afc1250e3d3cd8939ca693272de94b565457a5f",
+    "dec.elf": "5d6f04df11b24beedcc1031fccc75472e7374469525fcf538f08630732b08fdf",
+    "run.log": "d1a17d55fd8ba395a138cc9d5ede7f4df3c2ba575f3a78a4e27de61738b9f066",
+    "rv32-report.json": "0e42b059be858d416af3a987d49fa7ae8219ffd933830c365b11585a4f9889fc"
+  },
+  "negative_control": {
+    "mutant_source_sha256": "f41fe56cfe82b297963894dcb97ccdad943caa5caa96da6945e2b9a1a35a1cc3",
+    "mutant_object_sha256": "f689eb00379835049776a64483a703ba9feb9570aa4484ae141685db1b660cca",
+    "mutant_log_sha256": "1c9be1a501bca2546687001c6933252f508adbc66df7ce635d71bb3d075be5c6"
+  }
+}

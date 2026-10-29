@@ -1,0 +1,38 @@
+1/1 mlkem_arena_test.test.custom allocator interoperability and every allocation failure...keygen payload_peak=10112 attempts=7 allocs=7 frees=7 uncleared=0
+encaps payload_peak=15904 attempts=14 allocs=14 frees=14 uncleared=0
+decaps payload_peak=19232 attempts=19 allocs=19 frees=19 uncleared=0
+oom_injections=40
+OK
+All 1 tests passed.
+{
+  "note": "Standalone link-only RV32; no runtime or firmware proof",
+  "operations": {
+    "keypair_derand": {
+      "sha256": "32f82b59dab66450f4979239272e304d65086e402a298716848ee491f4b2aab6",
+      "allocated_sections": {
+        "executable_bytes": 13470,
+        "readonly_bytes": 1852,
+        "writable_bytes": 0,
+        "nobits_bytes": 0
+      }
+    },
+    "enc_derand": {
+      "sha256": "5ff9915d461b1843265a9adf0afc1250e3d3cd8939ca693272de94b565457a5f",
+      "allocated_sections": {
+        "executable_bytes": 15294,
+        "readonly_bytes": 2160,
+        "writable_bytes": 0,
+        "nobits_bytes": 0
+      }
+    },
+    "dec": {
+      "sha256": "5d6f04df11b24beedcc1031fccc75472e7374469525fcf538f08630732b08fdf",
+      "allocated_sections": {
+        "executable_bytes": 16500,
+        "readonly_bytes": 2304,
+        "writable_bytes": 0,
+        "nobits_bytes": 0
+      }
+    }
+  }
+}

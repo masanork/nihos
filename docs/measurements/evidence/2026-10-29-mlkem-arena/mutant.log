@@ -1,0 +1,5 @@
+1/1 mlkem_arena_test.test.custom allocator interoperability and every allocation failure...expected 0, found 7
+FAIL (TestExpectedEqual)
+0 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/1ad3fa3929d7cbc48a5ef6dd291be4fb/test --seed=0xd63cca64
