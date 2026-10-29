@@ -44,6 +44,9 @@ pub fn build(b: *std.Build) void {
     const editor_fixture = b.createModule(.{ .root_source_file = b.path("src/platform/native/editor_fixture.zig"), .target = target, .optimize = optimize });
     editor_fixture.addImport("text_console", console_probe_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = editor_fixture })).step);
+    const editor_live = b.createModule(.{ .root_source_file = b.path("src/platform/native/editor_live.zig"), .target = target, .optimize = optimize });
+    editor_live.addImport("text_console", console_probe_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = editor_live })).step);
     const pattern_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/canvas_pattern.zig"), .target = target, .optimize = optimize });
     pattern_module.addImport("canvas", canvas_module);
     const pattern_tests = b.addTest(.{ .root_module = pattern_module });
