@@ -295,6 +295,31 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(kind=kind, flags=flags, address=where, size=size), self.assertRaises(ValueError):
                 MODULE.audit_flash_section(".flash.pmp", kind, flags, where, size)
 
+    def test_user_probe_flash_is_an_optional_aligned_rx_span(self):
+        start = 0x40002000
+        names = sorted(MODULE.USER_PROBE_FUNCTIONS)
+        functions = []
+        address = start
+        for name in names:
+            functions.append((name, address, address + 64))
+            address += 64
+        end = start + 256
+        MODULE.audit_flash_section(".flash.user", 1, 6, start, end - start)
+        boot = [("resident", 0x4ff20000, 0x4ff20100), ("nih_rom_putc", 0x4fc00054, 0x4fc00058),
+                ("psram.probe", 0x40000120, 0x40000920),
+                ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
+        self.assertEqual(set(MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff20000, 0x4ff48000, user_span=(start, end))),
+                         {"probe", "mapping"})
+        with self.assertRaisesRegex(ValueError, "unapproved user probe"):
+            MODULE.audit_boot_functions(boot + functions + [("nih_user_probe_extra", start + 128, start + 160)],
+                                        0x40000120, 0x40001120, 0x4ff20000, 0x4ff48000, user_span=(start, end))
+        with self.assertRaisesRegex(ValueError, "unapproved Flash function"):
+            MODULE.audit_boot_functions(boot + functions, 0x40000120, 0x40001120, 0x4ff20000, 0x4ff48000)
+        for kind, flags, where, size in ((8, 6, start, 128), (1, 7, start, 128), (1, 6, start + 16, 128),
+                                         (1, 6, start, 64), (1, 6, 0x40000120, 128)):
+            with self.subTest(kind=kind, flags=flags, address=where, size=size), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(".flash.user", kind, flags, where, size)
+
     def test_sd_boot_move_requires_one_exact_named_extent_and_no_hidden_code(self):
         base = [("psram.probe", 0x40000120, 0x40000920),
                 ("psram_memory.prepare__func_43", 0x40000920, 0x40001120)]
