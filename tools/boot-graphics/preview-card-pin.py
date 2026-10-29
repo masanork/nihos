@@ -19,7 +19,7 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     library = args.out.resolve() / ("preview.dylib" if sys.platform == "darwin" else "preview.so")
     subprocess.run([str(ROOT / ".tools/zig-0.17.0/zig"), "build-lib", "-dynamic", "-OReleaseSafe",
-                    str(ROOT / "src/card_pin_preview.zig"), f"-femit-bin={library}"], check=True)
+                    '--dep', 'surface', '-Mroot=' + str(ROOT / 'src/card_pin_preview.zig'), '-Msurface=' + str(ROOT / 'src/graphics/surface.zig'), f"-femit-bin={library}"], check=True)
     loaded = ctypes.CDLL(str(library))
     paint = loaded.nih_keypad_demo_preview if args.demo else loaded.nih_card_pin_preview
     paint.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, ctypes.c_ubyte, ctypes.c_bool]

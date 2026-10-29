@@ -39,7 +39,7 @@
     "src/platform/native/keypad_display.zig": "024fbe355539a2e68bad21d3ad4bd07c73bc17676f6f82ef19908724df96f2d3",
     "src/platform/native/usb_probe.zig": "d165af40996f3c9f2524d254ae2f89eb5f0963d7807db14d480c003079acfed1",
     "src/platform/native/display_runtime.zig": "e1276574c1591e022dc2c037b35a23ef40d612adf2f53501ae0b597bd883c35d",
-    "src/graphics/card_pin.zig": "7328f89ae26a8efb0829002cf4fea01af0895edc97944b9b52eb9607a601379a",
+    "src/graphics/card_pin.zig": "cdc85df26ce8c09fa53cb5db394cc86c212bcf8abae232479c4423e899e481ad",
     "src/board/tab5/native_scanout.c": "33dd82d2b5f91bddba80f841b0db227423d1de17e8d26e3cf2891c2954f017d1",
     "src/board/tab5/keypad_sparse.h": "6d8365cc71444553b427a50543d1f490a65a071241636e4dc76fca473f0de025",
     "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
@@ -49,7 +49,7 @@
     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
     "src/platform/native/esp32p4.ld": "27460c242a1501204904acf4ab269bd3c867c7ae68ab5773b0b4e880d79dda79",
-    "src/graphics/surface.zig": "0292a0d79fd5d7bbc8d45ad10baf97124bd1b04dd0196737365f22dc4ce64b49",
+    "src/graphics/surface.zig": "d4ff4a1b418d86a2e828bccd38b276462563847813e36a5754489fe800b46561",
     "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
@@ -61,7 +61,7 @@
     "tools/design/shape-mask.cpp": "4d8a1d8b475326a668419e0a0ac810955491d7c744a640c2ffdfb0c87252e700",
     "tools/font_codec.py": "e7a8c94eba2570f5c74ae056e4ee75ba8c2650096e0cde77910691b2f5044bfd",
     "tools/boot-graphics/compress-card-font.py": "8853e744220179777db1d44073431f31c85524a311054d867f44849951c6f5e9",
-    "src/graphics/card_read_result.zig": "0c0ed61d0103d003e59a37ddc1fa29b85a879fae876a0c0bdddbed611171161a"
+    "src/graphics/card_read_result.zig": "2176dcc6b92564125fb5af928f8e2276ad150f2763467d53a7bd322e231da9dc"
   },
   "font_encoding": "row12-v1",
   "font_raw_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54"

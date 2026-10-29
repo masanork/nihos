@@ -431,7 +431,7 @@ if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
 if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
-NIHOS_C6_IPV6=1 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
+NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
 "$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
@@ -778,7 +778,7 @@ fi
     -Maudio_tone="$repo_root/src/audio/tone.zig" \
     -Maudio_probe_model="$repo_root/src/audio/playback_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep native_options --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
+    --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station -Mnetwork_service="$repo_root/src/platform/native/network_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep native_options --dep timer_group --dep sdio --dep c6_sdio --dep at_controller --dep hosted_station -Mc6_probe="$repo_root/src/platform/native/c6_probe.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
