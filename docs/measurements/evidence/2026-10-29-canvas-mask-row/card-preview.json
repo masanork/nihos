@@ -1,0 +1,13 @@
+{
+  "scope": "host-only full card boot frame, not device display",
+  "baseline_commit": "867bce4de00c4f5b6cf19449c93e4ee5211fb573",
+  "candidate_commit": "f43dfd2",
+  "compiler": "Zig 0.17.0 ReleaseSafe all modules",
+  "width": 720,
+  "height": 1280,
+  "rgb565_sha256": "9f0390cbcd50a2432b44b92e669607de0a53e07ad29ba9edca1ae0b83691ba0e",
+  "libraries_sha256": {
+    "baseline": "dedc7cc518586766755a5b74c9a3e57d0d973ccda8941c598f61e9a7d722bf99",
+    "candidate": "0d7604617b8d9a7180990d17aa9fed517c89e60a1eb217bce20d8bddf4bc124d"
+  }
+}
