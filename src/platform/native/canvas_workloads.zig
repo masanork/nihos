@@ -23,6 +23,8 @@ pub fn scroll(storage: []u8) bool {
     clipped.line(std.math.minInt(i32), 20, std.math.maxInt(i32), 20, 0xf800);
     clipped.line(270, std.math.maxInt(i32), 270, std.math.minInt(i32), 0x001f);
     clipped.line(15, 15, 15, 15, 0xffff);
+    clipped.line(std.math.minInt(i32), std.math.minInt(i32) + 5, std.math.maxInt(i32) - 5, std.math.maxInt(i32), 0x07e0);
+    clipped.line(280, 30, 10, 160, 0xffe0);
     return true;
 }
 
