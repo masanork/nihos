@@ -1,0 +1,44 @@
+{
+  "base_commit": "b5a0c2e",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/platform/native/main.zig": "3290e6d499fdc6eb88d5f56e9d24ed18584de2cecf7b58abb092dec1d120136f",
+    "src/platform/native/pqc_arena_probe.zig": "cf906508553073a3efb4211f00f810fc66b3f7b72ec3ef0c1993b7fd01305c40",
+    "src/platform/native/esp32p4.ld": "c5db7a86f25b7675f143c5bca6960f61d4fae75709f8fc8183eeba9bc4759137",
+    "tools/build-native-elf.sh": "8f0597631f27b5eb5030bc777971b0edd84b7e23183f5979f7e4c150860d960d",
+    "tools/build-native.sh": "238e37611c0b3ffdbc64146884766acf1eb9d1c5b6a733f1e4c240ebb42bfb6f",
+    "probes/pqc/native_arena_verify.c": "1c49bdde613e7e53c75a0a4c70bb1982a7336a53211ab7c9ccb2912cdd859794",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/normal_link_study.sh": "52ed7f73f4ca8ef826fc147b57e9e9becfada2818d19b225e9db7fa4f9f05ab9",
+    "probes/pqc/runtime.c": "96046cac54c934d86aa41f6d0336f331bd968a7268cd82b09288ab7fef9bae91",
+    "probes/pqc/standalone_observer.c": "d98842578481e2a4227f1203885ea31b16e83eeeb761fb62391a0d98034bd023"
+  },
+  "baseline_elf_sha256": "a93a096426767a88f05af96de90e9d7ec7534070ed210e9edbf581746ee51412",
+  "baseline_image_sha256": "1f1df403a01916bff46ca90e0a35ad84b3bf8bbec6285e2cd922f5dacf1b7f1f",
+  "baseline_heap": 62848,
+  "floor_bytes": 49152,
+  "enabled_error": "error: ld.lld: native SRAM heap below 48 KiB",
+  "standalone_elf_sha256": "a72a9586a6f036734ab05a64571a7660606d2a07e21e0f0d2707ff6382fe8fef",
+  "standalone_sections": {
+    "executable_bytes": 11898,
+    "readonly_bytes": 7584,
+    "writable_bytes": 0,
+    "nobits_bytes": 0
+  },
+  "source_note": "Standalone uses the failed build C objects with tiny memcpy/memset and a no-op observation stub; it is not a native image.",
+  "compiled_pqc_objects_sha256": {
+    "pqc_mldsa_native.o": "0e9d9ef18f2b26eecfbd91f0b70a448b0549deb63cfd02661518f0d581bc2ba4",
+    "pqc_native_arena_verify.o": "93fab7aa9279f23d6e32c12af3236ddc0a608f24dc15dbc95061507952e75469"
+  },
+  "xip_study": {
+    "source_commit": "b5a0c2e",
+    "linker_patch_sha256": "27921182453d9993467659bdc0290b1375367492fbdc9f8ac5b3fe31c5344189",
+    "elf_sha256": "740aa6a7bf252db30a71d5e89036ebd659c153f7f50080a10eef9bc5df52ec27",
+    "image_sha256": "23f22d2a22234fb1068c7f9ad045cf257bdc29212b0a65cc56e588111c4cc647",
+    "heap_span_bytes": 60992,
+    "flash_pqc_text_bytes": 11800,
+    "flash_pqc_rodata_bytes": 6620,
+    "audit_result": "rejected: unexpected non-SRAM section .flash.pqc",
+    "physical_execution": false
+  }
+}

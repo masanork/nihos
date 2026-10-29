@@ -1,0 +1,1 @@
+Native image audit failed: unexpected non-SRAM section: .flash.pqc
