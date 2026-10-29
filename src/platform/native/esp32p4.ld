@@ -249,6 +249,9 @@ SECTIONS
         __flash_fs_rodata_start = .;
         KEEP(*(.normal_fs.identity))
         *normal_fs_*.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_console_font_start = .;
+        *(.flash.fs.console)
+        __flash_console_font_end = .;
         __flash_fs_rodata_end = .;
     } > flash_fs
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }

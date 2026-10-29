@@ -16,6 +16,13 @@ palette3 and earlier pale palette1 remain available. Larger outline-derived face
 | 2 | Source Code Pro Medium | 25 px | 9,617 | 380 |
 
 The large-face masks use 4-bit coverage in 15x30 cells. Ordinary runs hold 1–16 pixels; byte `0x0f` introduces a transparent run of 16 plus the following unsigned byte, allowing up to 271 pixels. Each glyph is encoded independently.
+
+For native builds with normal storage, large-face assets live in the existing
+read-only Flash span mapped for storage; the image audit checks that their
+linker bounds lie within that span. Without normal storage, they remain in the
+first read-only record page. The display and storage services do not transfer
+ownership of the font data. Device boot and cache behavior require physical
+qualification.
 Only the selected face is linked into the existing read-only Flash span. The
 entire source font, an outline parser and FreeType are generation-time inputs,
 not native runtime dependencies. Japanese UD fonts remain deferred to the
