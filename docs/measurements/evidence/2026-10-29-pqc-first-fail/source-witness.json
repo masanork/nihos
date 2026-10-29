@@ -1,0 +1,36 @@
+{
+  "base_commit": "77378dd",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "bbd514ee425dd9ae1e74becc484c3a75f746e77a5e9ad128d037504a4be7677b",
+    "src/platform/native/main.zig": "63bc37dcac68e1b0cb94f534e490f18bc2346edebc3c68c75d5a913e2f852509",
+    "src/platform/native/heap.zig": "033e38bec38db8c87c0dab5283915108c8cc6360678bf8924c571e8dfd40b61d",
+    "src/platform/native/pqc_arena_probe.zig": "067be4fa5ae549727a35a06a0ffeb140d74ec9177449aeaf8517792d20acb521",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "src/kernel/task_resources.zig": "6cf302b6388edd191a4b9d1099f294132bd97ce0a2332aea037484d1f4327b61",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "tools/build-native-elf.sh": "4dd8cfc7b78dfa5895ac1d4a668b173befd8d3bddc5f4da598da80240c5cb182",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "5ba3c47d7e6d858534af76c494013b0f3c497f89e3f3bbb547cac0cea3a95063",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/check_worker_repeat_log.py": "c8c7a489db7ee5367ea669736e282fb3b3cf8e9cba05336f50f6a7efedb14f3f",
+    "probes/pqc/check_worker_snapshot_log.py": "0355176c599fa52e3be2b57ef75b22518dc0b6b71e4a5e71a4c4f1cea49e246d",
+    "probes/pqc/check_worker_pressure_log.py": "cc536b3095c92733fe8df92ab3ac69c75e3135ae53564658c3c84f1ef717cdfc",
+    "probes/pqc/check_worker_first_fail_log.py": "69c59f7cc8951d0bc1440c5aef46b52e25249cdd18018722de140dcb2939c6f6"
+  },
+  "elf_sha256": "7f1e440e3ea410ed8b7655f9cc6af0137ffb722a106f5b5a7ceffbc1b3990a38",
+  "image_sha256": "5ba2d7e423bef0c18b695196cedb8730b106dc964fea08df5a2370ed7b95db37",
+  "raw_logs_sha256": {
+    "4M": "d31136ff946348c4ab265c3f52afeca8c50a1384aa61ed53758a7afb792cfc7e",
+    "0": "a9d9ec25c4e9f27c2f4e5e2dd458aa32d3828f258b4c085fdb68cb0c45c5dcad"
+  },
+  "mutant": {
+    "main_sha256": "88702c35e33b3fb4d8a1483cb3783ec378ac20fbbcab75392d04076571173ead",
+    "elf_sha256": "acc80acf1ff8c286ecef44c88cb6aed3bd4e4f2fb26cefacd6da2971862b083c",
+    "image_sha256": "82e7f3202ec4082b84f3a48a456fd246f8116feaf7182877829c0a6337ea3afb",
+    "raw_log_sha256": "013f890c74ef4aef29f1dce333289ae3974add37caf74b60c8867e947cc4812d"
+  }
+}

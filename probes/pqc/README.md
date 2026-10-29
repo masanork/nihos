@@ -206,3 +206,11 @@ its second task ledger slot before requesting the arena. Capture through
 `NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`; validate with
 `python3 probes/pqc/check_worker_pressure_log.py LOG ELF BIN AUDIT 4M REPORT.json`
 (or `0` without PSRAM). See [the ledger pressure measurement](../../docs/measurements/2026-10-29-pqc-snapshot-pressure.md).
+
+### First snapshot allocation failure and stale-result control
+
+Add `NIHOS_NATIVE_PQC_SNAPSHOT_FIRST_FAIL=1` to the ledger-saturation
+fixture. The middle worker fills both ledger entries before the snapshot
+request. Capture through `NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`; validate via
+`python3 probes/pqc/check_worker_first_fail_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` without PSRAM). See [the first-allocation failure measurement](../../docs/measurements/2026-10-29-pqc-first-snapshot-failure.md), including the separate reset-removed mutant.
