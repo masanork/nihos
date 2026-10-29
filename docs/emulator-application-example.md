@@ -15,6 +15,12 @@ The same example is host-tested and runs in the ESP-EMU native image with `sh to
 
 This is an example and an executable boundary probe, not a stable application ABI, loader, task isolation, production display service or present contract. Text layout, dynamic sizing, editor/reader document state and persistence remain separate. Future native and Wasm applications need explicit ownership and cleanup, checked memory/handle lifetimes, errors, input routing and a display publication contract. A Wasm linear-memory pointer is never a native pointer, and emulation does not prove physical cache, DMA, touch or timing behavior.
 
+## Bounded edit and redraw scenario
+
+The separate `console-rv32` fixture now applies synthetic insertion, cursor movement and deletion to one ASCII row after scrolling. Each content mutation uses the console renderer's incremental path. The host test compares each incremental frame against a full repaint; RV32 reads the final frame and compares every pixel with both the host fixture and an independent reference. Run `sh tools/nihos-dev.sh console-rv32 --font basic-light`, `--font jetbrains`, or `--font source-code`.
+
+This is a bounded rendering experiment, not an XY editor or a keyboard integration: the actions are predetermined, the cursor is not drawn, and there is no Unicode editing, file I/O, input routing or persistence. It provides a reproducible exercise of edit-driven partial redraw to build on.
+
 ## Using this for rendering work
 
 Keep a fixed input trace and compare output frames and errors before and after a Canvas change. The emulator executes the target code and can expose target-only correctness issues; its elapsed time is a developer-feedback measurement, not a prediction of P4 PSRAM or scanout performance. The current fixture has no general frame-by-frame differential test or native application loader. Add representative editor scrolling, text layout and indexed-frame traces before claiming coverage of XY, Aozora or Quake. Measure physical rendering, cache writeback and display publication separately when Tab5 is available.

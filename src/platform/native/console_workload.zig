@@ -25,6 +25,12 @@ pub fn Fixture(comptime face: console.raster.Face, comptime section: ?[]const u8
             while (renderer.moving()) if (!renderer.step(frame, 1440, .green)) return false;
             if (renderer.partial_updates == 0) return false;
             if ((face == .basic or face == .basic_light) and renderer.scrolls == 0) return false;
+            const editor_fixture = @import("editor_fixture.zig");
+            var editor = editor_fixture.Editor(Text){ .row = 9, .column = 0 };
+            const actions = [_]editor_fixture.Action{ .{ .insert = '>' }, .right, .{ .insert = '#' }, .backspace, .left, .{ .insert = ' ' } };
+            for (actions) |action| {
+                if (editor.apply(text, action) and !renderer.submit(frame, 1440, text, .green)) return false;
+            }
             return console.raster.paintControl(section, frame, 1440, .{ .left = 1100, .top = 650, .right = 1260, .bottom = 706 }, "LOGS", .green);
         }
     };
