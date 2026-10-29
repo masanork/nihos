@@ -394,10 +394,7 @@ pub noinline fn onProtectedFault(hart: u32, frame: *context.IntegerContext, stat
 /// A non-zero floating bank is rejected: this class never owns one.
 noinline fn closeFaulted(hart: u32, handle: scheduler.TaskHandle) linksection(pmp.text_section) bool {
     const owner = &owners[hart];
-    const image = owner.runtime.images[handle.slot] orelse return false;
-    if (image.protection == null or image.floating_context != 0) return false;
-    const snapshot = owner.runtime.policy.snapshot(handle) orelse return false;
-    if (snapshot.state != .exited or snapshot.exit_code != pmp.fault_exit) return false;
+    if (!owner.runtime.faultCloseable(handle)) return false;
     if (!memory.reusable.closeTask(hart, key(handle))) return false;
     if (owner.faulted) |pending| {
         if (pending.slot != handle.slot or pending.generation != handle.generation) return false;
@@ -408,16 +405,15 @@ noinline fn closeFaulted(hart: u32, handle: scheduler.TaskHandle) linksection(pm
 noinline fn reclaimFaulted(hart: u32) linksection(pmp.text_section) bool {
     const owner = &owners[hart];
     const handle = owner.faulted orelse return true;
-    if (!memory.reusable.taskCleaned(hart, key(handle))) return true;
-    const snapshot = owner.runtime.policy.snapshot(handle) orelse return false;
-    if (snapshot.state != .exited or snapshot.exit_code != pmp.fault_exit) return false;
-    const image = owner.runtime.images[handle.slot] orelse return false;
-    if (image.protection == null or image.floating_context != 0) return false;
-    owner.completed_runtime_ticks += snapshot.runtime_ticks;
-    if (!owner.runtime.reap(handle)) return false;
-    owner.faulted = null;
-    owner.reaped += 1;
-    return true;
+    switch (owner.runtime.reclaimIfClean(handle, memory.reusable.taskCleaned(hart, key(handle)), &owner.completed_runtime_ticks)) {
+        .waiting => return true,
+        .refused => return false,
+        .reaped => {
+            owner.faulted = null;
+            owner.reaped += 1;
+            return true;
+        },
+    }
 }
 
 pub fn armProtection(hart: u32, selected: context.TaskContext) void {
