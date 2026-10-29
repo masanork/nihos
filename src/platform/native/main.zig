@@ -733,22 +733,40 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.ownerReady(0);
     enableTimer(0);
     if (options.pqc_worker_probe) {
-        if (!tasks.startPqcWorker()) fail("PQC worker start");
-        const started = cycle();
-        while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
-            _ = tasks.service(0);
-            _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
-            if (cycle() -% started > 1_000_000_000) fail("PQC worker timeout");
+        var previous: u32 = 0;
+        const rounds: u32 = if (options.pqc_worker_repeat) 3 else 1;
+        for (0..rounds) |index| {
+            @atomicStore(u32, &pqc_worker_done, 0, .release);
+            const captures_before = tasks.memory.stacks.experimentalCaptures();
+            if (!tasks.startPqcWorker()) fail("PQC worker start");
+            const identity = tasks.pqcWorkerIdentity();
+            const stale = index == 0 or tasks.pqcStaleWorkerRejected(previous);
+            if (!stale or (index != 0 and identity == previous)) fail("PQC stale worker identity");
+            const started = cycle();
+            while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
+                _ = tasks.service(0);
+                _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
+                if (cycle() -% started > 1_000_000_000) fail("PQC worker timeout");
+            }
+            const report = pqc_worker_report;
+            const extra_captures = tasks.memory.stacks.experimentalCaptures() -% captures_before;
+            if (!tasks.reapPqcWorker()) fail("PQC worker reap");
+            // Re-enter the scheduler after retirement to check its accounting.
+            if (!tasks.pqcPostReapYield()) fail("PQC worker post-reap yield");
+            logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
+            const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };
+            logger.record("NIHOS_NATIVE_PQC_WORKER_OWNER", null, .{ "captures", "foreground", "terminated", "cleaned", "reaped" }, &ownership);
+            if (extra_captures == 0 or (report.status != 1 and report.status != 2)) fail("PQC worker fixture");
+            if (options.pqc_worker_repeat) {
+                const job: struct { index: u32, identity: u32, previous: u32, stale_rejected: u32 } = .{ .index = @intCast(index), .identity = identity, .previous = previous, .stale_rejected = @intFromBool(stale) };
+                logger.record("NIHOS_NATIVE_PQC_WORKER_JOB", null, .{ "index", "identity", "previous", "stale_rejected" }, &job);
+            }
+            previous = identity;
         }
-        const report = pqc_worker_report;
-        const extra_captures = tasks.memory.stacks.experimentalCaptures();
-        if (!tasks.reapPqcWorker()) fail("PQC worker reap");
-        // Re-enter the scheduler after retirement to check its accounting.
-        if (!tasks.pqcPostReapYield()) fail("PQC worker post-reap yield");
-        logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
-        const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };
-        logger.record("NIHOS_NATIVE_PQC_WORKER_OWNER", null, .{ "captures", "foreground", "terminated", "cleaned", "reaped" }, &ownership);
-        if (extra_captures == 0 or (report.status != 1 and report.status != 2)) fail("PQC worker fixture");
+        if (options.pqc_worker_repeat) {
+            const done: struct { jobs: u32 } = .{ .jobs = rounds };
+            logger.record("NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS", null, .{"jobs"}, &done);
+        }
         while (true) asm volatile ("wfi");
     } else if (options.pqc_arena_probe) {
         const before = cycle();

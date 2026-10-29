@@ -153,3 +153,11 @@ After preserving the exact image and ELF, capture the emulator output until
 `python3 probes/pqc/check_worker_log.py LOG ELF BIN AUDIT 4M REPORT.json` (or
 `0` for absent PSRAM). This is a targeted worker test, not the normal
 300-round smoke. See [the worker measurement](../../docs/measurements/2026-10-29-pqc-independent-worker.md).
+
+### Three sequential worker jobs
+
+Add `NIHOS_NATIVE_PQC_WORKER_REPEAT=1` to the independent-worker build to
+reap and restart three jobs on the same reserved stack. Capture through
+`NIHOS_NATIVE_PQC_WORKER_REPEAT_PASS`, then use
+`python3 probes/pqc/check_worker_repeat_log.py LOG ELF BIN AUDIT 4M REPORT.json`
+(or `0` with no PSRAM). See [the repeat measurement](../../docs/measurements/2026-10-29-pqc-worker-reuse.md).
