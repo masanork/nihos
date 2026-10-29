@@ -401,6 +401,13 @@ pub const Client = struct {
         }
     }
     fn maintain(self: *Client, now: u64) Error!void {
+        if (self.ipv6_client) |*v6| {
+            const pending = v6.output_len;
+            try v6.tick(now);
+            // Drop the Hosted envelope too if lifetime maintenance retired
+            // its IPv6 packet while the transport had no credits.
+            if (self.tx_ipv6 and pending != 0 and v6.output_len == 0) self.output_len = 0;
+        }
         if (self.dhcp_client) |*v4| {
             const previous = v4.phase;
             v4.tick(now) catch |err| {
