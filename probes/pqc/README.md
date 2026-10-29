@@ -277,3 +277,10 @@ A separate patched worktree placed both pinned C fixtures in Flash and ran
 sequential headless emulator jobs while keeping the 48 KiB heap floor. Its
 study-specific image audit and [patch are recorded here](../../docs/measurements/2026-10-29-pqc-combined-xip.md);
 this is not a normal-device profile or cache-off-safe service.
+
+### Normal-device dual-algorithm link budgets
+
+A separate device-profile link study compares disabled, ML-DSA fixture, full
+dual fixture and dual API-root retention. Both dual variants are experimental
+patched worktrees; the ML-KEM roots are not called and no device was flashed.
+See [the normal-profile budget](../../docs/measurements/2026-10-29-pqc-normal-dual-budget.md).
