@@ -24,7 +24,9 @@ def main():
     subprocess.run([
         str(args.zig), "build-lib", "-dynamic", "-OReleaseSafe", "--dep", "boot_graphics",
         f"-Mroot={ROOT / 'tools/boot-graphics/preview.zig'}",
-        f"-Mboot_graphics={ROOT / 'src/graphics/boot_graphics.zig'}",
+        "--dep", "canvas", f"-Mboot_graphics={ROOT / 'src/graphics/boot_graphics.zig'}",
+        "--dep", "surface", f"-Mcanvas={ROOT / 'src/graphics/canvas.zig'}",
+        f"-Msurface={ROOT / 'src/graphics/surface.zig'}",
         f"-femit-bin={library}",
     ], check=True)
     paint = ctypes.CDLL(str(library)).nih_boot_preview
