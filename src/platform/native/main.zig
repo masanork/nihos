@@ -283,6 +283,12 @@ inline fn printBoot(comptime message: []const u8) void {
 }
 
 const Console = struct {
+    pub fn beginRecord(_: Console) bool {
+        return if (options.console_live) ui.serialRecordBegin() else false;
+    }
+    pub fn endRecord(_: Console, repaint: bool) void {
+        if (options.console_live) ui.serialRecordEnd(repaint);
+    }
     pub fn write(_: Console, message: []const u8) void {
         print(message);
     }

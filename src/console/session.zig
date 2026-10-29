@@ -114,7 +114,7 @@ pub const Model = struct {
             }
         }
     }
-    fn redrawLine(self: *const Model, sink: anytype) void {
+    pub fn redrawLine(self: *const Model, sink: anytype) void {
         sink.write("\r\x1b[2Knihos> ");
         sink.write(self.line[0..self.length]);
         for (self.line_cursor..self.length) |_| sink.write("\x1b[D");

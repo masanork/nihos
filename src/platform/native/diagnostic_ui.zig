@@ -59,6 +59,7 @@ const Session = console.session;
 const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
 const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
 var session_active = false;
+var session_input_busy = false;
 var session_pending = false;
 var session_serial = Session.input.Serial{};
 var session_hid = Session.input.Hid{};
@@ -69,6 +70,19 @@ const SerialSink = struct {
         for (bytes) |byte| nih_diagnostic_serial_write(byte);
     }
 };
+/// Diagnostic records share the serial stream with the shell. The record
+/// writer brackets a whole record, never the individual fragments it emits.
+pub fn serialRecordBegin() bool {
+    const hart = asm volatile ("csrr %[hart],mhartid"
+        : [hart] "=r" (-> u32),
+    );
+    if (hart != 0 or !session_active or session_input_busy or session.view != .shell) return false;
+    (SerialSink{}).write("\r\x1b[2K");
+    return true;
+}
+pub fn serialRecordEnd(repaint: bool) void {
+    if (repaint and session_active and !session_input_busy and session.view == .shell) session.redrawLine(SerialSink{});
+}
 /// Single optional CPU0 service reservation after all console objects. The
 /// full tail already belongs to the display lease, outside both owner heaps.
 /// No object in this range is a scanout/DMA source.
@@ -381,14 +395,16 @@ fn beginSession(log: anytype) void {
     // Do not let a boot-time partial serial escape leak into the shell.
     session_serial = .{};
     session_hid = .{};
-    session_active = true;
     session_pending = false;
     const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
     log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);
+    session_active = true;
     session.prompt(SerialSink{});
     @atomicStore(u32, &dirty, 1, .release);
 }
 noinline fn sessionKey(key: Session.input.Key, log: anytype) void {
+    session_input_busy = true;
+    defer session_input_busy = false;
     const before = session.view;
     if (session.handle(key, SerialSink{})) |command| {
         switch (command) {
