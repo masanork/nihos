@@ -17,9 +17,9 @@ This is an example and an executable boundary probe, not a stable application AB
 
 ## Bounded edit and redraw scenario
 
-The separate `console-rv32` fixture now applies synthetic insertion, cursor movement and deletion to one ASCII row after scrolling. Each content mutation uses the console renderer's incremental path. The host test compares each incremental frame against a full repaint; RV32 reads the final frame and compares every pixel with both the host fixture and an independent reference. Run `sh tools/nihos-dev.sh console-rv32 --font basic-light`, `--font jetbrains`, or `--font source-code`.
+The separate `console-rv32` fixture supplies a fixed HID FIFO through a modeled I2C bus to the Tab5 keyboard driver, then applies the decoded insertion, cursor movement and deletion to one ASCII row after scrolling. The driver filters releases and malformed usages, the fixture ignores unsupported modified arrows and control keys, and each content mutation uses the console renderer's incremental path. The host test compares each incremental frame against a full repaint; RV32 reads the final frame and compares every pixel with both the host fixture and an independent reference. Run `sh tools/nihos-dev.sh console-rv32 --font basic-light`, `--font jetbrains`, or `--font source-code`.
 
-This is a bounded rendering experiment, not an XY editor or a keyboard integration: the actions are predetermined, the cursor is not drawn, and there is no Unicode editing, file I/O, input routing or persistence. It provides a reproducible exercise of edit-driven partial redraw to build on.
+This is a bounded rendering experiment, not an XY editor or a keyboard integration: the input is predetermined and the bus is modeled, the cursor is not drawn, and there is no Unicode editing, file I/O, production application input routing or persistence. It provides a reproducible exercise of edit-driven partial redraw to build on.
 
 ## Using this for rendering work
 
