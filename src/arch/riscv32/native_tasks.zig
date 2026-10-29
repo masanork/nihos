@@ -1,6 +1,7 @@
 //! Permanent native owner: the same runtime/policy/call ABI as hosted tasks.
 //! Each hart mutates only its own Owner on its private IRQ stack with MIE=0.
 pub const context = @import("context.zig");
+pub const pmp = @import("pmp.zig");
 const runtime_module = @import("task_runtime.zig");
 pub const calls = @import("task_calls.zig");
 const options = @import("native_options");
@@ -371,6 +372,17 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
         }
     }
     return true;
+}
+
+pub fn onProtectedFault(hart: u32, frame: *context.IntegerContext, state: context.ReturnState) ?context.TaskContext {
+    _ = frame;
+    _ = state;
+    const owner = &owners[hart];
+    return publish(hart, owner.runtime.containFault() orelse return null);
+}
+
+pub fn armProtection(hart: u32, selected: context.TaskContext) void {
+    pmp.arm(hart, selected.protection);
 }
 
 fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {

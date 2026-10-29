@@ -4,9 +4,15 @@
 //! this runtime is quiescent and has no executing task on another core.
 
 pub const context = @import("context.zig");
+const pmp = @import("pmp.zig");
 const scheduler = @import("scheduler");
 const task_control = @import("task_control");
 const std = @import("std");
+
+comptime {
+    if (pmp.frame_bytes != context.integer_context_size)
+        @compileError("PMP resume frame differs from the integer context");
+}
 
 pub const Image = struct {
     // The already-running bootstrap is captured by its first trap.
@@ -15,6 +21,7 @@ pub const Image = struct {
     stack_min: u32,
     stack_max: u32,
     floating_context: u32 = 0,
+    protection: ?context.Protection = null,
 
     fn fits(self: Image, frame: *context.IntegerContext) bool {
         const address = @intFromPtr(frame);
@@ -32,6 +39,7 @@ pub const Image = struct {
             .stack_min = self.stack_min,
             .stack_max = self.stack_max,
             .floating_context = self.floating_context,
+            .protection = self.protection,
         };
     }
 };
@@ -46,6 +54,9 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
 
         pub fn add(self: *Self, priority: u8, image: Image) ?scheduler.TaskHandle {
             if (image.stack_min >= image.stack_max) return null;
+            if (image.protection) |region| {
+                if (!pmp.protectionAccepted(region.code_lo, region.code_hi, region.data_lo, region.data_hi, image.state.mstatus, image.floating_context, image.stack_min, image.stack_max)) return null;
+            }
             if (image.frame) |frame| if (!image.fits(frame)) return null;
             const handle = self.policy.add(priority) orelse return null;
             self.images[handle.slot] = image;
@@ -85,6 +96,16 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
             return (self.images[current.slot] orelse return null).selected();
         }
 
+        /// End the running untrusted task after a contained fault. The saved
+        /// frame is not resumed. Another ready task may be selected.
+        pub fn containFault(self: *Self) ?context.TaskContext {
+            const current = self.policy.current() orelse return null;
+            const image = self.images[current.slot] orelse return null;
+            if (image.protection == null) return null;
+            _ = self.policy.exitCurrent(pmp.fault_exit) orelse return null;
+            return self.select();
+        }
+
         /// Reap only a completed task, from the interrupt/kernel stack. No
         /// other core or retained frame may still own its stack or FP area.
         pub fn reap(self: *Self, handle: scheduler.TaskHandle) bool {
@@ -95,4 +116,57 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
             return true;
         }
     };
+}
+
+const user_region = context.Protection{
+    .code_lo = 0x3000,
+    .code_hi = 0x3100,
+    .data_lo = 0x2000,
+    .data_hi = 0x2800,
+};
+
+test "protected registration requires user status and the arena as its stack" {
+    var runtime = Runtime(2, 2){};
+    try std.testing.expect(runtime.add(0, .{
+        .stack_min = user_region.data_lo,
+        .stack_max = user_region.data_hi,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+        .protection = user_region,
+    }) != null);
+    try std.testing.expect(runtime.add(0, .{
+        .stack_min = user_region.data_lo,
+        .stack_max = user_region.data_hi,
+        .state = .{ .mstatus = 0x1880, .mcause = 0 },
+        .protection = user_region,
+    }) == null);
+    try std.testing.expect(runtime.add(0, .{
+        .stack_min = 0x1000,
+        .stack_max = 0x1800,
+        .state = .{ .mstatus = 0x1880, .mcause = 0 },
+    }) != null);
+}
+
+test "a contained fault exits a protected task and does not exit a kernel task" {
+    var kernel_runtime = Runtime(1, 1){};
+    const kernel = kernel_runtime.add(0, .{
+        .stack_min = 0x1000,
+        .stack_max = 0x1800,
+        .state = .{ .mstatus = 0x1880, .mcause = 0 },
+    }).?;
+    try std.testing.expect(kernel_runtime.policy.schedule() != null);
+    try std.testing.expect(kernel_runtime.containFault() == null);
+    try std.testing.expectEqual(scheduler.TaskState.running, kernel_runtime.policy.snapshot(kernel).?.state);
+
+    var user_runtime = Runtime(1, 1){};
+    const user = user_runtime.add(0, .{
+        .stack_min = user_region.data_lo,
+        .stack_max = user_region.data_hi,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+        .protection = user_region,
+    }).?;
+    try std.testing.expect(user_runtime.policy.schedule() != null);
+    try std.testing.expect(user_runtime.containFault() == null);
+    try std.testing.expectEqual(scheduler.TaskState.exited, user_runtime.policy.snapshot(user).?.state);
+    try std.testing.expectEqual(pmp.fault_exit, user_runtime.policy.snapshot(user).?.exit_code);
+    try std.testing.expect(user_runtime.policy.current() == null);
 }
