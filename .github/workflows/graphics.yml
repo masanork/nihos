@@ -40,6 +40,8 @@ jobs:
         run: sh tools/run-canvas-offscreen.sh
       - name: Capture RV32 Canvas framebuffer
         run: sh tools/nihos-dev.sh canvas-snapshot
+      - name: RV32 input and framebuffer interaction
+        run: sh tools/nihos-dev.sh canvas-live-check
       - name: RV32 library restart and negative controls
         run: |
           python3 -m venv build/graphics-rv32/venv
@@ -67,5 +69,7 @@ jobs:
             build/native-emulator/canvas-snapshot/*.json
             build/native-emulator/canvas-snapshot/*.log
             build/native-emulator/canvas-snapshot/frame.png
+            build/native-emulator/canvas-live/*.json
+            build/native-emulator/canvas-live/*.log
             build/graphics-rv32/*log
           if-no-files-found: warn
