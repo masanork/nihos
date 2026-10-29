@@ -130,14 +130,29 @@ pub const Canvas = struct {
         const lo = @max(major0, if (horizontal) self.clip.left else self.clip.top);
         const hi = @min(major1, (if (horizontal) self.clip.right else self.clip.bottom) - 1);
         if (lo > hi) return;
-        const length: i128 = major1 - major0;
+        // The first clipped pixel uses the canonical wide rounding formula.
+        // Thereafter the minor delta has magnitude at most the major length,
+        // so a bounded remainder updates the same quotient without division.
+        const length: i64 = major1 - major0;
+        const delta: i64 = minor1 - minor0;
+        const numerator = @as(i128, delta) * (lo - major0) + @divFloor(length, 2);
+        var minor: i64 = minor0 + @as(i64, @intCast(@divFloor(numerator, length)));
+        var remainder: i64 = @intCast(@mod(numerator, length));
         var pos = lo;
         while (pos <= hi) : (pos += 1) {
-            const minor: i64 = if (length == 0) minor0 else @intCast(@as(i128, minor0) + @divFloor(@as(i128, minor1 - minor0) * (pos - major0) + @divFloor(length, 2), length));
             const x = if (horizontal) pos else minor;
             const y = if (horizontal) minor else pos;
-            if (x < self.clip.left or x >= self.clip.right or y < self.clip.top or y >= self.clip.bottom) continue;
-            std.mem.writeInt(u16, self.target.bytes[@as(usize, @intCast(y)) * self.target.stride + @as(usize, @intCast(x)) * 2 ..][0..2], color, .little);
+            if (x >= self.clip.left and x < self.clip.right and y >= self.clip.top and y < self.clip.bottom) {
+                std.mem.writeInt(u16, self.target.bytes[@as(usize, @intCast(y)) * self.target.stride + @as(usize, @intCast(x)) * 2 ..][0..2], color, .little);
+            }
+            remainder += delta;
+            if (remainder < 0) {
+                remainder += length;
+                minor -= 1;
+            } else if (remainder >= length) {
+                remainder -= length;
+                minor += 1;
+            }
         }
     }
     /// Copies RGB565LE or converts one-byte palette indices to RGB565LE.
@@ -636,4 +651,50 @@ test "two-times indexed scaling handles odd clipping and unaligned padded rows" 
         };
         try std.testing.expectEqualSlices(u8, &expected, &actual);
     };
+}
+
+test "incremental lines match the canonical wide formula across clips and extremes" {
+    var prng = std.Random.DefaultPrng.init(0xaec07231);
+    const random = prng.random();
+    const extremes = [_]i32{ std.math.minInt(i32), std.math.maxInt(i32), -1, 0, 1, 8, 12 };
+    for (0..3000) |iteration| {
+        var points: [4]i32 = undefined;
+        for (&points) |*p| {
+            p.* = switch (random.intRangeAtMost(u8, 0, 2)) {
+                0 => extremes[random.intRangeLessThan(usize, 0, extremes.len)],
+                1 => random.intRangeAtMost(i32, -20, 25),
+                else => random.int(i32),
+            };
+        }
+        const clip = Rect{ .x = random.intRangeAtMost(i32, -3, 13), .y = random.intRangeAtMost(i32, -3, 9), .width = random.intRangeAtMost(u32, 0, 16), .height = random.intRangeAtMost(u32, 0, 12) };
+        var actual: [262]u8 = @splat(0xa5);
+        var expected = actual;
+        const canvas = Canvas.init(actual[1..], 13, 9, 29).?.clipped(clip);
+        const x0 = points[0];
+        const y0 = points[1];
+        const x1 = points[2];
+        const y1 = points[3];
+        if (iteration % 2 == 0) canvas.line(x0, y0, x1, y1, 0x61d3) else canvas.line(x1, y1, x0, y0, 0x61d3);
+        const horizontal = @abs(@as(i64, x1) - x0) >= @abs(@as(i64, y1) - y0);
+        var major0: i64 = if (horizontal) x0 else y0;
+        var major1: i64 = if (horizontal) x1 else y1;
+        var minor0: i64 = if (horizontal) y0 else x0;
+        var minor1: i64 = if (horizontal) y1 else x1;
+        if (major0 > major1) {
+            std.mem.swap(i64, &major0, &major1);
+            std.mem.swap(i64, &minor0, &minor1);
+        }
+        const length: i128 = major1 - major0;
+        for (0..9) |y| for (0..13) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            if (px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height) continue;
+            const major = if (horizontal) px else py;
+            const minor = if (horizontal) py else px;
+            if (major < major0 or major > major1) continue;
+            const expected_minor: i64 = if (length == 0) minor0 else @intCast(@as(i128, minor0) + @divFloor(@as(i128, minor1 - minor0) * (major - major0) + @divFloor(length, 2), length));
+            if (minor == expected_minor) std.mem.writeInt(u16, expected[1 + y * 29 + x * 2 ..][0..2], 0x61d3, .little);
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    }
 }

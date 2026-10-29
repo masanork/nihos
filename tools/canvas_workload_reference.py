@@ -6,6 +6,11 @@ BYTES = WIDTH * HEIGHT * 2
 
 
 def editor_pixel(x, y):
+    # The final reversed diagonal uses canonical nearest-integer rounding.
+    if 10 <= x <= 280 and 12 <= y < 182 and y == 160 + ((-130 * (x - 10) + 135) // 270):
+        return 0xffe0
+    if 10 <= x < 290 and 12 <= y < 182 and y == x + 5:
+        return 0x07e0
     # Clipped axis lines are drawn after scrolling; vertical line wins at crossings.
     if x == 15 and y == 15:
         return 0xffff
