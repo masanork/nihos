@@ -1,6 +1,7 @@
 import struct
 import unittest
-from canvas_live import Guest
+from canvas_live import Guest, encode_frame
+from canvas_frame import FRAME_BYTES
 
 
 class FakeMi:
@@ -29,3 +30,18 @@ class InputTest(unittest.TestCase):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 self.g.sample(*values)
         self.assertEqual(self.g.mi.writes, [])
+
+
+class FrameCacheTest(unittest.TestCase):
+    def test_reuse_and_changed_pixels(self):
+        raw = bytes(FRAME_BYTES)
+        digest, png = encode_frame(raw)
+        digest2, reused = encode_frame(raw, digest, png)
+        self.assertEqual(digest2, digest)
+        self.assertIs(reused, png)
+        changed = b'\x01' + raw[1:]
+        digest3, png3 = encode_frame(changed, digest, png)
+        self.assertNotEqual(digest3, digest)
+        self.assertNotEqual(png3, png)
+        with self.assertRaises(RuntimeError):
+            encode_frame(raw[:-1])
