@@ -98,6 +98,22 @@ pub const Canvas = struct {
     /// One pixel wide, inclusive endpoints; canonical major-axis rounding.
     pub fn line(self: Canvas, x0: i32, y0: i32, x1: i32, y1: i32, color: u16) void {
         if (self.clip.left >= self.clip.right or self.clip.top >= self.clip.bottom) return;
+        // Inclusive axis-aligned lines are clipped before converting the span
+        // to a rectangle, avoiding per-pixel wide arithmetic and division.
+        if (y0 == y1) {
+            if (y0 < self.clip.top or y0 >= self.clip.bottom) return;
+            const lo = @max(self.clip.left, @min(@as(i64, x0), @as(i64, x1)));
+            const hi = @min(self.clip.right, @max(@as(i64, x0), @as(i64, x1)) + 1);
+            if (lo < hi) self.fillRect(.{ .x = @intCast(lo), .y = y0, .width = @intCast(hi - lo), .height = 1 }, color);
+            return;
+        }
+        if (x0 == x1) {
+            if (x0 < self.clip.left or x0 >= self.clip.right) return;
+            const lo = @max(self.clip.top, @min(@as(i64, y0), @as(i64, y1)));
+            const hi = @min(self.clip.bottom, @max(@as(i64, y0), @as(i64, y1)) + 1);
+            if (lo < hi) self.fillRect(.{ .x = x0, .y = @intCast(lo), .width = 1, .height = @intCast(hi - lo) }, color);
+            return;
+        }
         const ax: i64 = x0;
         const ay: i64 = y0;
         const bx: i64 = x1;
@@ -550,4 +566,30 @@ test "two-times indexed scaling matches independent clipped reference" {
         };
         try std.testing.expectEqualSlices(u8, &expected, &actual);
     }
+}
+
+test "axis lines match independent pixels for clips, extremes and unaligned rows" {
+    const coords = [_]i32{ std.math.minInt(i32), -2, 0, 1, 3, 6, 8, std.math.maxInt(i32) };
+    const clips = [_]Rect{
+        .{ .x = 0, .y = 0, .width = 7, .height = 5 },
+        .{ .x = 1, .y = 1, .width = 3, .height = 2 },
+        .{ .x = -2, .y = 2, .width = 4, .height = 5 },
+        .{ .x = 3, .y = 1, .width = 0, .height = 2 },
+    };
+    for (clips) |clip| for (coords) |a| for (coords) |b| for (coords) |fixed| for (0..2) |axis| {
+        var actual: [81]u8 = @splat(0xa5);
+        var expected = actual;
+        const canvas = Canvas.init(actual[1..], 7, 5, 16).?.clipped(clip);
+        if (axis == 0) canvas.line(a, fixed, b, fixed, 0x129b) else canvas.line(fixed, a, fixed, b, 0x129b);
+        for (0..5) |y| for (0..7) |x| {
+            const px: i64 = @intCast(x);
+            const py: i64 = @intCast(y);
+            if (px < clip.x or px >= @as(i64, clip.x) + clip.width or py < clip.y or py >= @as(i64, clip.y) + clip.height) continue;
+            const major = if (axis == 0) px else py;
+            const minor = if (axis == 0) py else px;
+            if (minor != fixed or major < @min(a, b) or major > @max(a, b)) continue;
+            std.mem.writeInt(u16, expected[1 + y * 16 + x * 2 ..][0..2], 0x129b, .little);
+        };
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+    };
 }
