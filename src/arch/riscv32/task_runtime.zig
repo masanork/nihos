@@ -93,12 +93,41 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
             // ECALL is always 32 bits, including when C is enabled. A sleeping
             // caller resumes after the syscall with its saved scalar reply.
             frame.mepc += 4;
-            const reply = task_control.dispatchWithOptions(&self.policy, frame.a7, frame.a0, frame.a1, self.call_options);
+            const current = self.policy.current() orelse return null;
+            // Every ECALL finishes in Flash. The timer path does not call this.
+            // A protected caller is refused there when the call names another task.
+            return self.finishCall(frame, current);
+        }
+
+        noinline fn finishCall(self: *Self, frame: *context.IntegerContext, current: scheduler.TaskHandle) linksection(pmp.text_section) ?context.TaskContext {
+            const protected = self.images[current.slot].?.protection != null;
+            const reply = task_control.dispatchFrom(&self.policy, frame.a7, frame.a0, frame.a1, self.call_options, protected);
             frame.a0 = reply.low;
             frame.a1 = reply.high;
             if (reply.reschedule) return self.select();
-            const current = self.policy.current() orelse return null;
             return (self.images[current.slot] orelse return null).selected();
+        }
+
+        /// True only for a protected task already exited by a contained fault.
+        /// The caller closes and drains the ledger before reaping the slot.
+        pub inline fn faultCloseable(self: *const Self, handle: scheduler.TaskHandle) bool {
+            const image = self.images[handle.slot] orelse return false;
+            if (image.protection == null or image.floating_context != 0) return false;
+            const snapshot = self.policy.snapshot(handle) orelse return false;
+            return snapshot.state == .exited and snapshot.exit_code == pmp.fault_exit;
+        }
+
+        pub const Reclaim = enum { waiting, reaped, refused };
+
+        /// `waiting` keeps the slot while the ledger still holds it. `reaped`
+        /// is returned only after `cleaned` is true.
+        pub inline fn reclaimIfClean(self: *Self, handle: scheduler.TaskHandle, cleaned: bool, completed: *u64) Reclaim {
+            if (!cleaned) return .waiting;
+            if (!self.faultCloseable(handle)) return .refused;
+            const snapshot = self.policy.snapshot(handle) orelse return .refused;
+            completed.* += snapshot.runtime_ticks;
+            if (!self.reap(handle)) return .refused;
+            return .reaped;
         }
 
         /// End the running untrusted task after a contained fault. The saved
