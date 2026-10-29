@@ -2,6 +2,12 @@
 const std = @import("std");
 pub const Key = union(enum) { text: u8, enter, backspace, left, right, up, down, escape, cancel, eof, clear };
 
+/// Preserve legacy colon-prefixed serial diagnostics only at an empty shell
+/// prompt (or while an already-started diagnostic is being collected).
+pub fn allowDiagnostic(session_active: bool, shell: bool, line_length: usize, collecting: bool) bool {
+    return collecting or !session_active or (shell and line_length == 0);
+}
+
 pub const Hid = struct {
     caps: bool = false,
     pub fn feed(self: *Hid, modifiers: u8, usage: u8) ?Key {
