@@ -32,3 +32,10 @@ python3 tools/emulator_trace.py compare build/my-reference.json build/my-candida
 Each run starts a new emulator fixture. The versioned trace contains synthetic portrait touch samples and virtual microsecond timestamps. The report retains a checksum of the trace, a source fingerprint, app/ELF/Flash hashes, and for the initial frame and every sample the complete RGB565 framebuffer SHA-256 plus input/event/click counters. Comparison rejects incompatible traces, incomplete reports and any differing frame or counter. The fixed sample covers a valid click, multi-contact cancellation and drag cancellation. The output path must be new, so a failed run cannot accidentally pass using an earlier receipt. Never put real PIN or credential data in these traces.
 
 Matching two runs establishes determinism for this fixture, not independent proof that the expected image is correct. Pair comparisons with known-pixel/negative-control tests. The source fingerprint is local change detection, not a signed build attestation. The emulator still stops at each event and has no panel, DMA or physical timing model.
+
+
+### Independent RV32 workload comparisons
+
+`sh tools/nihos-dev.sh canvas-workloads` executes two deterministic 320 × 200 RGB565 workloads in the target emulator and reads their frames from its PSRAM. A separate Python reference computes each expected pixel without calling Canvas; every byte is compared. The first draws synthetic editor-like rows and a selection, then scrolls with `copyRect` and clears the exposed area. The second expands a synthetic 160 × 100 indexed frame with a 256-color RGB565 palette. Reports and PNGs are written under `build/native-emulator/canvas-workloads/`.
+
+These are graphics primitives, not the XY editor, text layout, a Quake port, a live display or a physical performance test. Retain the same input and compare output before and after an optimization; separately measure target timing, PSRAM, cache writeback and scanout on hardware. GDB is required, and the debug stub is active during capture; run on a trusted host/network.

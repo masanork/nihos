@@ -5,3 +5,4 @@ pub const ui = @import("diagnostic_ui.zig");
 pub const keypad = @import("keypad_display.zig");
 pub const canvas_pattern = @import("canvas_pattern.zig");
 pub const canvas_demo_app = @import("canvas_demo_app.zig");
+pub const canvas_workloads = @import("canvas_workloads.zig");
