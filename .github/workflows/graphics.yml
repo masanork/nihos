@@ -46,8 +46,11 @@ jobs:
         run: sh tools/nihos-dev.sh canvas-trace-check
       - name: Compare RV32 Canvas workloads with independent pixel references
         run: sh tools/nihos-dev.sh canvas-workloads
-      - name: Compare RV32 console scroll with host fixture
-        run: sh tools/nihos-dev.sh console-rv32
+      - name: Compare RV32 console fonts with host fixture
+        run: |
+          for font in basic-light jetbrains source-code; do
+            sh tools/nihos-dev.sh console-rv32 --font "$font"
+          done
       - name: RV32 library restart and negative controls
         run: |
           python3 -m venv build/graphics-rv32/venv
@@ -81,8 +84,8 @@ jobs:
             build/native-emulator/canvas-workloads/*.json
             build/native-emulator/canvas-workloads/*.log
             build/native-emulator/canvas-workloads/*.png
-            build/native-emulator/console-workload/*.json
-            build/native-emulator/console-workload/*.log
-            build/native-emulator/console-workload/*.png
+            build/native-emulator/console-workload/**/*.json
+            build/native-emulator/console-workload/**/*.log
+            build/native-emulator/console-workload/**/*.png
             build/graphics-rv32/*log
           if-no-files-found: warn
