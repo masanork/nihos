@@ -1,0 +1,179 @@
+{
+  "mode": "4M",
+  "jobs": [
+    {
+      "elf_sha256": "31a2c480e055c71ecaba636df5d46d983901ee45eace84bc2e9891ab69991890",
+      "image_sha256": "8fa51da71039f48282bbe25e24049bbab2ee252312a98aa5fae5d55cfc58b45e",
+      "stack_start": "0x4ff36380",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 1,
+        "verify_ticks": 16,
+        "verify_worker0": 85008,
+        "verify_worker1": 16882,
+        "lease": 16304,
+        "charged": 16384,
+        "peak": 10208,
+        "allocs": 25,
+        "frees": 25,
+        "failures": 2,
+        "valid": 1,
+        "rejected": 1,
+        "oom": 1,
+        "live": 0,
+        "stack_used": 2960,
+        "stack_painted": 1341358400,
+        "erased": 1,
+        "released": 1,
+        "mie": 8
+      },
+      "owner": {
+        "captures": 9,
+        "foreground": 95641,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "snapshot": {
+        "status": 1,
+        "payload": 9612,
+        "charged": 16384,
+        "combined": 32768,
+        "before": 1801536,
+        "after_snapshot": 1785152,
+        "after_both": 1768768,
+        "after_release": 1801536,
+        "erased": 1,
+        "released": 1
+      },
+      "pressure": {
+        "active": 0,
+        "charged": 0,
+        "arena_error": 0,
+        "released": 0
+      },
+      "job": {
+        "index": 0,
+        "identity": 65537,
+        "previous": 0,
+        "stale_rejected": 1
+      }
+    },
+    {
+      "elf_sha256": "31a2c480e055c71ecaba636df5d46d983901ee45eace84bc2e9891ab69991890",
+      "image_sha256": "8fa51da71039f48282bbe25e24049bbab2ee252312a98aa5fae5d55cfc58b45e",
+      "stack_start": "0x4ff36380",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 99469,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "snapshot": {
+        "status": 2,
+        "payload": 9612,
+        "charged": 16384,
+        "combined": 0,
+        "before": 1801536,
+        "after_snapshot": 1785152,
+        "after_both": 0,
+        "after_release": 1801536,
+        "erased": 1,
+        "released": 1
+      },
+      "pressure": {
+        "active": 1,
+        "charged": 256,
+        "arena_error": 1,
+        "released": 1
+      },
+      "job": {
+        "index": 1,
+        "identity": 131073,
+        "previous": 65537,
+        "stale_rejected": 1
+      }
+    },
+    {
+      "elf_sha256": "31a2c480e055c71ecaba636df5d46d983901ee45eace84bc2e9891ab69991890",
+      "image_sha256": "8fa51da71039f48282bbe25e24049bbab2ee252312a98aa5fae5d55cfc58b45e",
+      "stack_start": "0x4ff36380",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 1,
+        "verify_ticks": 16,
+        "verify_worker0": 85008,
+        "verify_worker1": 19495,
+        "lease": 16304,
+        "charged": 16384,
+        "peak": 10208,
+        "allocs": 25,
+        "frees": 25,
+        "failures": 2,
+        "valid": 1,
+        "rejected": 1,
+        "oom": 1,
+        "live": 0,
+        "stack_used": 2960,
+        "stack_painted": 1341358400,
+        "erased": 1,
+        "released": 1,
+        "mie": 8
+      },
+      "owner": {
+        "captures": 9,
+        "foreground": 193876,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "snapshot": {
+        "status": 1,
+        "payload": 9612,
+        "charged": 16384,
+        "combined": 32768,
+        "before": 1801536,
+        "after_snapshot": 1785152,
+        "after_both": 1768768,
+        "after_release": 1801536,
+        "erased": 1,
+        "released": 1
+      },
+      "pressure": {
+        "active": 0,
+        "charged": 0,
+        "arena_error": 0,
+        "released": 0
+      },
+      "job": {
+        "index": 2,
+        "identity": 196609,
+        "previous": 131073,
+        "stale_rejected": 1
+      }
+    }
+  ]
+}

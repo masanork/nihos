@@ -1,0 +1,29 @@
+{
+  "base_commit": "19a6593",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "bbd514ee425dd9ae1e74becc484c3a75f746e77a5e9ad128d037504a4be7677b",
+    "src/platform/native/main.zig": "ce945652b1ddcc71dfb6419efd547103f587c6d980a4a2aa494d13ebaabc26c3",
+    "src/platform/native/heap.zig": "033e38bec38db8c87c0dab5283915108c8cc6360678bf8924c571e8dfd40b61d",
+    "src/platform/native/pqc_arena_probe.zig": "067be4fa5ae549727a35a06a0ffeb140d74ec9177449aeaf8517792d20acb521",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "src/kernel/task_resources.zig": "6cf302b6388edd191a4b9d1099f294132bd97ce0a2332aea037484d1f4327b61",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "tools/build-native-elf.sh": "4497cfac2e295e1d2205335708bdfa4e3e233801a5f036cde3a53ae1b96111f7",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "5ba3c47d7e6d858534af76c494013b0f3c497f89e3f3bbb547cac0cea3a95063",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/check_worker_repeat_log.py": "c8c7a489db7ee5367ea669736e282fb3b3cf8e9cba05336f50f6a7efedb14f3f",
+    "probes/pqc/check_worker_snapshot_log.py": "0355176c599fa52e3be2b57ef75b22518dc0b6b71e4a5e71a4c4f1cea49e246d",
+    "probes/pqc/check_worker_pressure_log.py": "cc536b3095c92733fe8df92ab3ac69c75e3135ae53564658c3c84f1ef717cdfc"
+  },
+  "elf_sha256": "31a2c480e055c71ecaba636df5d46d983901ee45eace84bc2e9891ab69991890",
+  "image_sha256": "8fa51da71039f48282bbe25e24049bbab2ee252312a98aa5fae5d55cfc58b45e",
+  "raw_logs_sha256": {
+    "4M": "3c85e1d653aa7ece6d90426cda6fc8e1ab295b4d19922723ec61e5121a4955e7",
+    "0": "20e2d5a91961b2b22f50dfaed42e20a1e38ae02d984f9aced65aa9e72ce944da"
+  }
+}
