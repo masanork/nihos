@@ -1,0 +1,25 @@
+{
+  "source_commit": "3308654",
+  "capture_tool_commit": "3117bba",
+  "candidate_image_sha256": "16a3a5993514d6a19cd7158492e9100885748d7828868b04c678f5d49ebc406e",
+  "candidate_elf_sha256": "47d148ee0a00b55f902279856bfbcd3f3532e8fb9346e9b3d161e709f3df8cf8",
+  "candidate_before_verified_regions": 3,
+  "candidate_after_verified_regions": 3,
+  "original_backup_bytes": 16777216,
+  "original_backup_sha256": "023af13c7e6ed58d8d1b92116c32b5ee2ebcfe624232919b57e082dda2d5a1cc",
+  "backup_verified": true,
+  "restored_full_flash_verified": true,
+  "reset_type": "warm USB",
+  "optical_evidence": "not evaluated",
+  "restored_boot_captured": false,
+  "cooperative_writer_lock": true,
+  "serial_exclusive": true,
+  "kernel_serial_alias_exclusion": true,
+  "other_hardware_interface_exclusion": "not independently verified",
+  "artifacts_sha256": {
+    "boot.log": "9a35148763b30184391b2c0aa8baa4da32ac268e8ba93009355c47767a3e41d8",
+    "first-attempt.json": "22a6cb8fa7b24ddc26d57c4551fd2609692c349ea189c94d4bdb4d909ea8fff0",
+    "image-audit.json": "73100fa763c50457361a9eaa2213f34de8b516ed74f1277fbf6b0e49048dc75e",
+    "report.json": "1fada80ad5b80cf9cfbe0fa8c8fe383366dc797c614be2f8c8300006266030c7"
+  }
+}
