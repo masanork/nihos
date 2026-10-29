@@ -839,6 +839,12 @@ export fn nih_native_main() callconv(.c) noreturn {
     var external_heap_start = native_psram.memory.heap_start;
     var display_panel: u32 = 0;
     var external_heap_bytes = external_bytes -| native_psram.memory.reserved_bytes;
+    if (options.canvas_offscreen) {
+        // Reserve exactly the display owner's region without touching panel hardware.
+        const selected = @import("tab5_display").layout(external_bytes) orelse fail("canvas requires mapped PSRAM");
+        external_heap_start = selected.heap_start;
+        external_heap_bytes = selected.heap_bytes;
+    }
     if (options.display) {
         stageBegin(.display_prepare);
         const selected = @import("tab5_display").layout(external_bytes) orelse fail("display requires mapped PSRAM");
@@ -1040,6 +1046,18 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                         if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                     }
+                }
+                if (options.canvas_offscreen) {
+                    const board = @import("tab5_display");
+                    const base: [*]u8 = @ptrFromInt(board.framebuffer);
+                    const frame = base[0..board.frame_bytes];
+                    const guard = base[board.frame_bytes..][0..16];
+                    @memset(guard, 0xa5);
+                    if (!display_service.canvas_pattern.paint(frame, 720, 1280, 1440)) fail("canvas offscreen pattern");
+                    if (!std.mem.allEqual(u8, guard, 0xa5)) fail("canvas offscreen guard");
+                    const result: extern struct { checksum: u32, frame_bytes: u32, guard_bytes: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frame_bytes = board.frame_bytes, .guard_bytes = 16 };
+                    logger.record("NIHOS_NATIVE_CANVAS_OFFSCREEN", null, .{ "checksum", "frame_bytes", "guard_bytes" }, &result);
+                    print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
                 }
                 if (options.graphics) {
                     const result = tasks.runGraphics(timer(0)) orelse fail("native graphics fixture");
