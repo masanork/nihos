@@ -17,13 +17,13 @@ sh tools/nihos-dev.sh canvas-rv32
 
 `sh tools/nihos-dev.sh console-rv32` additionally runs a deterministic basic-face
 console fixture on RV32, including a fixed header, scroll, exposed-band repaint
-and view control. Pass `--font jetbrains` or `--font source-code` to exercise the
+view control and an ASCII row-edit sequence with incremental redraw. Pass `--font jetbrains` or `--font source-code` to exercise the
 large-font decoder and incremental repaint; those faces do not use the basic
 face's scroll-copy path. The command reads the full frame from emulated PSRAM and
 compares it with both the same fixture on the host and an independent per-pixel
 reference of the expected content. Reports and PNGs are under
 `build/native-emulator/console-workload/<font>/`. This is not a full normal
-application, panel/DMA model or physical timing test.
+application, keyboard driver, Unicode editor, panel/DMA model or physical timing test. The edit scenario uses synthetic actions, edits a single bounded row and does not draw a caret or persist a document.
 
 `sh tools/nihos-dev.sh splash-rv32` compares portrait and landscape RV32
 splash frames before, during and after partial recoloring, as well as failure
