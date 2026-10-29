@@ -1,7 +1,7 @@
 //! Differential check of PIN indicator pixels, without touching the card path.
 const std = @import("std");
 const pin = @import("card_pin.zig");
-const canvas = @import("canvas.zig");
+const canvas = @import("canvas");
 const rgb = @import("test_pattern.zig").rgb565;
 
 test "canvas matches all PIN indicator counts from production dynamic renderer" {

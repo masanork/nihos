@@ -22,7 +22,9 @@ def main():
     library = args.out.resolve() / ('console.dylib' if sys.platform == 'darwin' else 'console.so')
     subprocess.run([str(ROOT / '.tools/zig-0.17.0/zig'), 'build-lib', '-dynamic', '-OReleaseSafe',
                     '--dep', 'text_console', f'-Mroot={ROOT / "tools/console/preview.zig"}',
-                    f'-Mtext_console={ROOT / "src/console.zig"}', f'-femit-bin={library}'], check=True)
+                    '--dep', 'canvas', f'-Mtext_console={ROOT / "src/console.zig"}',
+                    '--dep', 'surface', f'-Mcanvas={ROOT / "src/graphics/canvas.zig"}',
+                    f'-Msurface={ROOT / "src/graphics/surface.zig"}', f'-femit-bin={library}'], check=True)
     log = args.log.read_bytes() if args.log else (
         b'NIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n'
         b'CRT: bss=zero data=valid ecall=returned\n'
