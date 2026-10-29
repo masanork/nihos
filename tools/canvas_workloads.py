@@ -34,8 +34,10 @@ def main():
         (OUT / name).unlink(missing_ok=True)
     for name in ('nihos-native.bin', 'nihos-native.elf', 'nihos-native-flash.bin', 'image-audit.json', 'native_options.zig'):
         shutil.copyfile(BUILD / name, OUT / name)
-    if 'pub const canvas_workloads = true;' not in (OUT / 'native_options.zig').read_text().splitlines():
-        raise RuntimeError('workload option is missing')
+    options = (OUT / 'native_options.zig').read_text().splitlines()
+    for flag in ('pub const canvas_workloads = true;', 'pub const canvas_interactive = false;'):
+        if options.count(flag) != 1:
+            raise RuntimeError('unexpected workload fixture option')
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         port = sock.getsockname()[1]
