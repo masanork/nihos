@@ -1,0 +1,11 @@
+--- candidate/main.zig
++++ mutant/main.zig
+@@ -49,8 +49,6 @@
+ var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
+ fn pqcWorker(_: u32) callconv(.c) i32 {
+     if (options.pqc_snapshot_probe) {
+-        // Every generation starts with an empty result, including allocation failure.
+-        pqc_worker_report = .{};
+         var snapshot: PqcSnapshotReport = .{};
+         var first: PqcFirstFailReport = .{};
+         var first_blockers: [2]?tasks.memory.reusable.Allocation = .{ null, null };

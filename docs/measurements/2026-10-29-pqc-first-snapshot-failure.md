@@ -1,0 +1,19 @@
+# First snapshot allocation failure after a successful job
+
+The [previous pressure fixture](2026-10-29-pqc-snapshot-pressure.md) showed recovery when an arena request failed after the snapshot was allocated. This opt-in, headless emulator experiment instead fills the worker's two task-ledger entries before its **first snapshot request**, forcing the actual `error.Full` path. It uses three sequential jobs: successful copied-input verification, forced first-allocation failure, successful copied-input verification.
+
+In the middle job, two test-only 64 B allocations consume both ledger entries and incur 512 B total buddy charge. The snapshot request returns `Full`, so the worker reports unavailable without verification. Both blockers are released, the owner heap's free count returns from the charged state to 1,801,536 B, and the worker exits, is cleaned and is reaped. The third job reuses the task slot at a later generation and verifies successfully. In the no-PSRAM run, all jobs report unavailable before the injection can run.
+
+This is ledger-capacity failure, not physical PSRAM OOM or fragmentation. The first and third jobs reserve a 9,612 B snapshot and 16,304 B arena with a combined 32,768 B charge. Their observed 8 KiB statically reserved worker stack watermark is 3,024 B; it is not a worst-case bound. The 512 B blockers are instrumentation, not a service allocation requirement.
+
+## Real negative control
+
+The candidate resets its result structure at the start of every snapshot worker. A separate, audited mutant image removes only that initialization; [the exact patch](evidence/2026-10-29-pqc-first-fail/mutant/reset-removed.patch) is retained. On that image, job 1 reports `status=1 valid=1`, and the forced first-allocation failure in job 2 reports **`status=2 valid=1`**, along with other stale job-1 measurements. This is stale diagnostic state, not proof that a real service published a valid result: no service API is implemented here. The [checker](../../probes/pqc/check_worker_first_fail_log.py) rejects the mutant specifically because a failed job retained previous result fields. In the candidate, all result fields except status are zero for the failed job, and job 3 succeeds. The mutant is a deliberate source change, not a spontaneous fault.
+
+The checker also binds each log to its audited ELF and image hashes, checks snapshot and worker ownership per job, requires the error and blocker cleanup, and verifies ordered generations and stale-handle rejection. Raw and normalized candidate and mutant logs, reports, options, image audits, checker rejection, source hashes and mutant patch are in [the evidence directory](evidence/2026-10-29-pqc-first-fail/). The mutant binaries remain in the separate worktree named by `build/pqc-first-fail-mutant-dir.txt`; candidate binaries remain in `build/pqc-first-fail-qualified`.
+
+## Candidate identity and limits
+
+The audited candidate used Zig 0.17.0, ESP-IDF 5.4.4 loader, ESP-EMU 0.50.0 and the mldsa-native revision in the witness. Primary static SRAM was **103,552 B**, heap span **60,288 B**; both candidate and mutant pass the 48 KiB floor. Candidate ELF SHA-256 `7f1e440e3ea410ed8b7655f9cc6af0137ffb722a106f5b5a7ceffbc1b3990a38`, image SHA-256 `5ba2d7e423bef0c18b695196cedb8730b106dc964fea08df5a2370ed7b95db37`. Mutant ELF SHA-256 `acc80acf1ff8c286ecef44c88cb6aed3bd4e4f2fb26cefacd6da2971862b083c`, image SHA-256 `82e7f3202ec4082b84f3a48a456fd246f8116feaf7182877829c0a6337ea3afb`. These are fixture-image resource figures, not normal-device free memory.
+
+This does not test physical PSRAM OOM, cleanup failure, caller-memory mutation, concurrent jobs, UI responsiveness, physical hardware, persistent storage or a production API. CPU-visible clearing and heap accounting are not proof of physical PSRAM erasure.

@@ -43,6 +43,8 @@ var pqc_snapshot_report: PqcSnapshotReport = .{};
 const PqcPressureReport = struct { active: u32 = 0, charged: u32 = 0, arena_error: u32 = 0, released: u32 = 0 };
 var pqc_pressure_report: PqcPressureReport = .{};
 var pqc_pressure_active: u32 = 0;
+const PqcFirstFailReport = struct { active: u32 = 0, full: u32 = 0, charged: u32 = 0, before: u32 = 0, after: u32 = 0, released: u32 = 0 };
+var pqc_first_fail_report: PqcFirstFailReport = .{};
 var pqc_worker_done: u32 = 0;
 var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
 fn pqcWorker(_: u32) callconv(.c) i32 {
@@ -50,8 +52,16 @@ fn pqcWorker(_: u32) callconv(.c) i32 {
         // Every generation starts with an empty result, including allocation failure.
         pqc_worker_report = .{};
         var snapshot: PqcSnapshotReport = .{};
+        var first: PqcFirstFailReport = .{};
+        var first_blockers: [2]?tasks.memory.reusable.Allocation = .{ null, null };
         const before = tasks.memory.reusable.availableBytes();
         if (before) |free_before| {
+            if (options.pqc_snapshot_first_fail and @atomicLoad(u32, &pqc_pressure_active, .acquire) == 1) {
+                first.active = 1;
+                first.before = @intCast(free_before);
+                for (&first_blockers) |*blocker| blocker.* = tasks.memory.allocExternal(64, 64) catch fail("PQC first blocker");
+                first.charged = first.before - @as(u32, @intCast(tasks.memory.reusable.availableBytes().?));
+            }
             if (tasks.memory.allocExternal(9612, 64)) |allocation| {
                 snapshot.payload = @intCast(allocation.bytes.len);
                 snapshot.before = @intCast(free_before);
@@ -59,7 +69,7 @@ fn pqcWorker(_: u32) callconv(.c) i32 {
                 snapshot.charged = snapshot.before - snapshot.after_snapshot;
                 var pressure: PqcPressureReport = .{};
                 var blocker: ?tasks.memory.reusable.Allocation = null;
-                if (options.pqc_snapshot_pressure and @atomicLoad(u32, &pqc_pressure_active, .acquire) == 1) {
+                if (options.pqc_snapshot_pressure and !options.pqc_snapshot_first_fail and @atomicLoad(u32, &pqc_pressure_active, .acquire) == 1) {
                     pressure.active = 1;
                     blocker = tasks.memory.allocExternal(64, 64) catch fail("PQC pressure allocation");
                     pressure.charged = snapshot.after_snapshot - @as(u32, @intCast(tasks.memory.reusable.availableBytes().?));
@@ -80,15 +90,26 @@ fn pqcWorker(_: u32) callconv(.c) i32 {
                 snapshot.released = 1;
                 snapshot.after_release = @intCast(tasks.memory.reusable.availableBytes().?);
                 snapshot.status = if (snapshot.erased == 1 and snapshot.after_release == snapshot.before and (pqc_worker_report.status == 1 or pqc_worker_report.status == 2)) pqc_worker_report.status else 3;
-            } else |_| {
+            } else |err| {
+                if (first.active == 1) {
+                    if (err != error.Full) fail("PQC first error");
+                    first.full = 1;
+                }
                 pqc_worker_report.status = 2;
                 snapshot.status = 2;
+            }
+            if (first.active == 1) {
+                for (first_blockers) |blocker| tasks.memory.freeExternal(blocker.?) catch fail("PQC first blocker free");
+                first.released = 1;
+                first.after = @intCast(tasks.memory.reusable.availableBytes().?);
+                if (first.full != 1 or first.after != first.before) fail("PQC first cleanup");
             }
         } else {
             pqc_worker_report.status = 2;
             snapshot.status = 2;
         }
         pqc_snapshot_report = snapshot;
+        pqc_first_fail_report = first;
     } else {
         pqc_worker_report = @import("pqc_arena_probe.zig").runOnMode(tasks.pqcWorkerStack(), options.pqc_worker_quarantine or options.pqc_drain_probe != 0, null);
     }
@@ -796,6 +817,7 @@ export fn nih_native_main() callconv(.c) noreturn {
         for (0..rounds) |index| {
             @atomicStore(u32, &pqc_worker_done, 0, .release);
             pqc_pressure_report = .{};
+            pqc_first_fail_report = .{};
             @atomicStore(u32, &pqc_pressure_active, @intFromBool(options.pqc_snapshot_pressure and index == 1), .release);
             @atomicStore(u32, &pqc_cancel_phase, 0, .release);
             @atomicStore(u32, &pqc_cancel_requested, 0, .release);
@@ -885,6 +907,7 @@ export fn nih_native_main() callconv(.c) noreturn {
             if (options.pqc_snapshot_probe) {
                 if (pqc_snapshot_report.status != report.status) fail("PQC snapshot status");
                 if (options.pqc_snapshot_pressure) logger.record("NIHOS_NATIVE_PQC_PRESSURE", null, .{ "active", "charged", "arena_error", "released" }, &pqc_pressure_report);
+                if (options.pqc_snapshot_first_fail) logger.record("NIHOS_NATIVE_PQC_FIRST_FAIL", null, .{ "active", "full", "charged", "before", "after", "released" }, &pqc_first_fail_report);
                 logger.record("NIHOS_NATIVE_PQC_SNAPSHOT", null, .{ "status", "payload", "charged", "combined", "before", "after_snapshot", "after_both", "after_release", "erased", "released" }, &pqc_snapshot_report);
             }
             logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);

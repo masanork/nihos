@@ -1,0 +1,185 @@
+{
+  "mode": "0",
+  "jobs": [
+    {
+      "elf_sha256": "7f1e440e3ea410ed8b7655f9cc6af0137ffb722a106f5b5a7ceffbc1b3990a38",
+      "image_sha256": "5ba2d7e423bef0c18b695196cedb8730b106dc964fea08df5a2370ed7b95db37",
+      "stack_start": "0x4ff36580",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 10632,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "snapshot": {
+        "status": 2,
+        "payload": 0,
+        "charged": 0,
+        "combined": 0,
+        "before": 0,
+        "after_snapshot": 0,
+        "after_both": 0,
+        "after_release": 0,
+        "erased": 0,
+        "released": 0
+      },
+      "first_failure": {
+        "active": 0,
+        "full": 0,
+        "charged": 0,
+        "before": 0,
+        "after": 0,
+        "released": 0
+      },
+      "job": {
+        "index": 0,
+        "identity": 65537,
+        "previous": 0,
+        "stale_rejected": 1
+      }
+    },
+    {
+      "elf_sha256": "7f1e440e3ea410ed8b7655f9cc6af0137ffb722a106f5b5a7ceffbc1b3990a38",
+      "image_sha256": "5ba2d7e423bef0c18b695196cedb8730b106dc964fea08df5a2370ed7b95db37",
+      "stack_start": "0x4ff36580",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 20969,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "snapshot": {
+        "status": 2,
+        "payload": 0,
+        "charged": 0,
+        "combined": 0,
+        "before": 0,
+        "after_snapshot": 0,
+        "after_both": 0,
+        "after_release": 0,
+        "erased": 0,
+        "released": 0
+      },
+      "first_failure": {
+        "active": 0,
+        "full": 0,
+        "charged": 0,
+        "before": 0,
+        "after": 0,
+        "released": 0
+      },
+      "job": {
+        "index": 1,
+        "identity": 131073,
+        "previous": 65537,
+        "stale_rejected": 1
+      }
+    },
+    {
+      "elf_sha256": "7f1e440e3ea410ed8b7655f9cc6af0137ffb722a106f5b5a7ceffbc1b3990a38",
+      "image_sha256": "5ba2d7e423bef0c18b695196cedb8730b106dc964fea08df5a2370ed7b95db37",
+      "stack_start": "0x4ff36580",
+      "stack_bytes": 8192,
+      "worker": {
+        "status": 2,
+        "verify_ticks": 0,
+        "verify_worker0": 0,
+        "verify_worker1": 0,
+        "lease": 0,
+        "charged": 0,
+        "peak": 0,
+        "allocs": 0,
+        "frees": 0,
+        "failures": 0,
+        "valid": 0,
+        "rejected": 0,
+        "oom": 0,
+        "live": 0,
+        "stack_used": 0,
+        "stack_painted": 0,
+        "erased": 0,
+        "released": 0,
+        "mie": 0
+      },
+      "owner": {
+        "captures": 1,
+        "foreground": 31306,
+        "terminated": 1,
+        "cleaned": 1,
+        "reaped": 1
+      },
+      "snapshot": {
+        "status": 2,
+        "payload": 0,
+        "charged": 0,
+        "combined": 0,
+        "before": 0,
+        "after_snapshot": 0,
+        "after_both": 0,
+        "after_release": 0,
+        "erased": 0,
+        "released": 0
+      },
+      "first_failure": {
+        "active": 0,
+        "full": 0,
+        "charged": 0,
+        "before": 0,
+        "after": 0,
+        "released": 0
+      },
+      "job": {
+        "index": 2,
+        "identity": 196609,
+        "previous": 131073,
+        "stale_rejected": 1
+      }
+    }
+  ]
+}

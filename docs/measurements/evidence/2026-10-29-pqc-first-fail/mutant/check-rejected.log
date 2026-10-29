@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_first_fail_log.py", line 57, in <module>
+    result = check(*sys.argv[1:6])
+  File "/private/tmp/nihos-pqc-resource/probes/pqc/check_worker_first_fail_log.py", line 41, in check
+    raise ValueError('previous result leaked into failed job')
+ValueError: previous result leaked into failed job
