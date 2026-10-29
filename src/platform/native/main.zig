@@ -238,7 +238,7 @@ export fn nih_canvas_frame_ready() void {
 // Debugger-only fixture mailbox. Access occurs while the guest is stopped at
 // nih_canvas_frame_ready; it is not an application ABI or hardware input.
 const EmulatedInput = extern struct { command: u32 = 0, contacts: u32 = 0, x: u32 = 0, y: u32 = 0, time_us: u32 = 0 };
-const EmulatedOutput = extern struct { samples: u32 = 0, events: u32 = 0, clicks: u32 = 0, kind: u32 = 0 };
+const EmulatedOutput = extern struct { samples: u32 = 0, events: u32 = 0, clicks: u32 = 0, kind: u32 = 0, mode: u32 = 0, keys: u32 = 0, edits: u32 = 0, cursor: u32 = 0 };
 var nih_emulator_input: EmulatedInput = .{};
 var nih_emulator_output: EmulatedOutput = .{};
 comptime {
@@ -1079,18 +1079,43 @@ export fn nih_native_main() callconv(.c) noreturn {
                     if (options.canvas_interactive) {
                         var stream = pointer.Stream{};
                         var app = display_service.canvas_demo_app.App{};
+                        const Live = @import("editor_live.zig").Live;
+                        const live_address = board.framebuffer + board.frame_bytes + 16;
+                        if (16 + @sizeOf(Live) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(Live) != 0) fail("editor live scratch");
+                        const live: *Live = @ptrFromInt(live_address);
                         while (true) {
                             const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
                             if (input.command == 0) break;
-                            if (input.command != 1 or input.contacts > 2 or input.x > 65535 or input.y > 65535) fail("emulator input");
-                            nih_emulator_output.samples += 1;
-                            if (stream.fresh(@intCast(input.contacts), @intCast(input.x), @intCast(input.y), input.time_us)) |event| {
-                                nih_emulator_output.events += 1;
-                                nih_emulator_output.kind = @backingInt(event.kind);
-                                if (app.onEvent(event)) {
-                                    nih_emulator_output.clicks = app.clicks;
-                                    if (!app.render(frame)) fail("emulator indicator");
-                                }
+                            switch (input.command) {
+                                1 => {
+                                    if (input.contacts > 2 or input.x > 65535 or input.y > 65535) fail("emulator input");
+                                    if (nih_emulator_output.mode == 0) {
+                                        nih_emulator_output.samples += 1;
+                                        if (stream.fresh(@intCast(input.contacts), @intCast(input.x), @intCast(input.y), input.time_us)) |event| {
+                                            nih_emulator_output.events += 1;
+                                            nih_emulator_output.kind = @backingInt(event.kind);
+                                            if (app.onEvent(event)) {
+                                                nih_emulator_output.clicks = app.clicks;
+                                                if (!app.render(frame)) fail("emulator indicator");
+                                            }
+                                        }
+                                    }
+                                },
+                                2 => {
+                                    if (nih_emulator_output.mode != 1 or input.contacts > 255 or input.x > 255) fail("emulator key");
+                                    nih_emulator_output.keys += 1;
+                                    const result = live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render");
+                                    if (result == .edited) nih_emulator_output.edits += 1;
+                                    nih_emulator_output.cursor = @intCast(live.editor.column);
+                                },
+                                3 => {
+                                    if (!live.start(frame)) fail("editor live start");
+                                    nih_emulator_output.mode = 1;
+                                    nih_emulator_output.keys = 0;
+                                    nih_emulator_output.edits = 0;
+                                    nih_emulator_output.cursor = 0;
+                                },
+                                else => fail("emulator input command"),
                             }
                             @call(.never_inline, nih_canvas_frame_ready, .{});
                         }
