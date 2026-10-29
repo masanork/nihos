@@ -33,6 +33,10 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(surface_tests).step);
     const canvas_module = b.createModule(.{ .root_source_file = b.path("src/graphics/canvas.zig"), .target = target, .optimize = optimize });
     canvas_module.addImport("surface", surface_module);
+    const console_scroll_probe = b.createModule(.{ .root_source_file = b.path("src/graphics/console_canvas_scroll_test.zig"), .target = target, .optimize = optimize });
+    console_scroll_probe.addImport("canvas", canvas_module);
+    console_scroll_probe.addImport("console", b.createModule(.{ .root_source_file = b.path("src/console.zig"), .target = target, .optimize = optimize }));
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = console_scroll_probe })).step);
     const pattern_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/canvas_pattern.zig"), .target = target, .optimize = optimize });
     pattern_module.addImport("canvas", canvas_module);
     const pattern_tests = b.addTest(.{ .root_module = pattern_module });
