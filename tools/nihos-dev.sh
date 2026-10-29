@@ -10,6 +10,7 @@ case "$command" in
     card) exec python3 tools/card_sim/app.py --application card "$@" ;;
     check) exec python3 tools/card_sim/app.py --headless build/card-sim/evidence "$@" ;;
     canvas-workloads) exec python3 tools/canvas_workloads.py "$@" ;;
+    glyph-bench) exec python3 tools/canvas_glyph_bench.py "$@" ;;
     console-rv32) exec python3 tools/console_rv32.py "$@" ;;
     splash-rv32) exec python3 tools/splash_rv32.py "$@" ;;
     canvas-trace-check) exec sh tools/run-emulator-trace.sh "$@" ;;
@@ -29,6 +30,8 @@ nihos development simulator
   sh tools/nihos-dev.sh canvas-live-check deterministic RV32 input/frame test
   sh tools/nihos-dev.sh canvas-trace-check record and compare RV32 trace frames
   sh tools/nihos-dev.sh canvas-workloads check RV32 scroll and indexed frames
+  sh tools/nihos-dev.sh glyph-bench BASELINE CANDIDATE --host-dir DIR
+                                    compare captured shaped glyph composition
   sh tools/nihos-dev.sh console-rv32      compare an RV32 console frame with host
       [--font basic-light|jetbrains|source-code]
   sh tools/nihos-dev.sh splash-rv32       check RV32 splash and partial recolor
