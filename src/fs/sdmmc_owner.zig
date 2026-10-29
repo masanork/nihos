@@ -23,11 +23,23 @@ pub const ReadOwner = struct {
     /// owner must be rebuilt only after media recovery. A successful transfer
     /// is not by itself a power-loss durability barrier.
     pub inline fn write(self: *@This(), controller: anytype, lba: u32, source: *const [512]u8, buffer_lease: u64, control: anytype) Error!void {
-        if (self.busy()) return error.Busy;
-        if (self.recovery_required) return error.RecoveryRequired;
+        if (self.busy()) {
+            _ = control.finishReason();
+            return error.Busy;
+        }
+        if (self.recovery_required) {
+            _ = control.finishReason();
+            return error.RecoveryRequired;
+        }
         const mount = io.Reference{ .slot = 0, .generation = self.generation };
-        const request = self.requests.retain(0, mount, mount, buffer_lease) catch return error.Exhausted;
-        self.requests.start(request) catch return error.Quarantined;
+        const request = self.requests.retain(0, mount, mount, buffer_lease) catch {
+            _ = control.finishReason();
+            return error.Exhausted;
+        };
+        self.requests.start(request) catch {
+            _ = control.finishReason();
+            return error.Quarantined;
+        };
         const successful = if (controller.writeSectorControlled(lba, source, control)) |_| true else |_| false;
         const reason = control.finishReason();
         const uncertain = controller.write_issued and (!successful or reason != .none);
@@ -53,11 +65,23 @@ pub const ReadOwner = struct {
         }
     }
     pub inline fn read(self: *@This(), controller: anytype, lba: u32, destination: *[512]u8, buffer_lease: u64, control: anytype) Error!void {
-        if (self.busy()) return error.Busy;
-        if (self.recovery_required) return error.RecoveryRequired;
+        if (self.busy()) {
+            _ = control.finishReason();
+            return error.Busy;
+        }
+        if (self.recovery_required) {
+            _ = control.finishReason();
+            return error.RecoveryRequired;
+        }
         const mount = io.Reference{ .slot = 0, .generation = self.generation };
-        const request = self.requests.retain(0, mount, mount, buffer_lease) catch return error.Exhausted;
-        self.requests.start(request) catch return error.Quarantined;
+        const request = self.requests.retain(0, mount, mount, buffer_lease) catch {
+            _ = control.finishReason();
+            return error.Exhausted;
+        };
+        self.requests.start(request) catch {
+            _ = control.finishReason();
+            return error.Quarantined;
+        };
         const successful = if (controller.readSectorControlled(lba, destination, control)) |_| true else |_| false;
         // Atomically close the notification window before publishing completion.
         const reason = control.finishReason();

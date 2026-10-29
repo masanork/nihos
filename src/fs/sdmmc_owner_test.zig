@@ -221,3 +221,22 @@ test "actual write controller marks launch and owner gates cancellation after CM
         try std.testing.expect(controller.quiescence.complete() and !owner.busy());
     }
 }
+
+test "rejected owner requests close their own stop ticket" {
+    var owner = bridge.ReadOwner{ .recovery_required = true };
+    var controller: Model = .{};
+    var signal: bridge.Signal = .{};
+    const bytes: [512]u8 = @splat(0);
+    var out: [512]u8 = undefined;
+    const first = signal.begin().?;
+    try std.testing.expectError(error.RecoveryRequired, owner.write(&controller, 0, &bytes, first.ticket, first));
+    try std.testing.expectEqual(@as(u32, 0), signal.active());
+    const second = signal.begin().?;
+    try std.testing.expectError(error.RecoveryRequired, owner.read(&controller, 0, &out, second.ticket, second));
+    try std.testing.expectEqual(@as(u32, 0), signal.active());
+    owner.recovery_required = false;
+    const third = signal.begin().?;
+    try std.testing.expectError(error.Exhausted, owner.write(&controller, 0, &bytes, 0, third));
+    try std.testing.expectEqual(@as(u32, 0), signal.active());
+    try std.testing.expectEqual(@as(u32, 0), controller.launches);
+}
