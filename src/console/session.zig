@@ -325,7 +325,8 @@ test "physical HID typing, cancellation and both display geometries stay usable"
     _ = model.handle(hid.feed(1, 6).?, &sink);
     for ([_]u8{ 8, 27, 12, 23, 0x28 }) |usage| _ = model.handle(hid.feed(0, usage).?, &sink);
     try std.testing.expectEqual(View.launcher, model.view);
-    _ = model.handle(.up, &sink); // wrap to Tasks
+    _ = model.handle(.up, &sink); // wrap to Editor
+    _ = model.handle(.up, &sink); // move to Tasks
     var small = @import("ascii.zig").Grid(78, 43){};
     var large = @import("ascii.zig").Grid(80, 22){};
     model.render(&small);
