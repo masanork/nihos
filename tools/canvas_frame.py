@@ -1,7 +1,10 @@
 """Validate and convert an emulated RGB565LE frame to a portable PNG."""
+import array
+import functools
 import hashlib
 import json
 import struct
+import sys
 import zlib
 from pathlib import Path
 
@@ -21,17 +24,28 @@ def chunk(tag, data):
     return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
 
 
+@functools.lru_cache(maxsize=1)
+def rgb565_table():
+    # Keep the same nearest-integer expansion used by the previous converter.
+    return tuple(bytes((((pixel >> 11) * 255 + 15) // 31,
+                        (((pixel >> 5) & 63) * 255 + 31) // 63,
+                        ((pixel & 31) * 255 + 15) // 31)) for pixel in range(65536))
+
+
 def png_rgb565(data, width, height):
     if width <= 0 or height <= 0 or len(data) != width * height * 2:
         raise ValueError('invalid RGB565 frame dimensions')
+    pixels = array.array('H')
+    if pixels.itemsize != 2:
+        raise RuntimeError('platform has non-16-bit unsigned short')
+    pixels.frombytes(data)
+    if sys.byteorder != 'little':
+        pixels.byteswap()
+    table = rgb565_table()
     scan = bytearray()
     for row in range(height):
         scan.append(0)
-        for x in range(width):
-            i = (row * width + x) * 2
-            pixel = data[i] | (data[i + 1] << 8)
-            r, g, b = pixel >> 11, (pixel >> 5) & 63, pixel & 31
-            scan.extend(((r * 255 + 15) // 31, (g * 255 + 31) // 63, (b * 255 + 15) // 31))
+        scan.extend(b''.join(map(table.__getitem__, pixels[row * width:(row + 1) * width])))
     header = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header) + chunk(b'IDAT', zlib.compress(scan)) + chunk(b'IEND', b'')
 
