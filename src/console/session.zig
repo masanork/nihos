@@ -33,7 +33,23 @@ pub const Model = struct {
     length: usize = 0,
     output: Journal(2048) = .{},
     editor_grid: EditGrid = .{},
+    editor_length: usize = 0,
     editor_cursor: row_edit.Editor(EditGrid) = .{ .row = 0, .column = 0 },
+
+    /// Replace the editor document only after validating the whole input.
+    pub fn loadEditor(self: *Model, bytes: []const u8) error{UnsupportedDocument}!void {
+        if (bytes.len > EditGrid.width) return error.UnsupportedDocument;
+        for (bytes) |byte| if (byte < 32 or byte > 126) return error.UnsupportedDocument;
+        @memset(&self.editor_grid.cells, ' ');
+        @memcpy(self.editor_grid.cells[0..bytes.len], bytes);
+        self.editor_length = bytes.len;
+        self.editor_cursor.column = bytes.len;
+        self.revision +%= 1;
+    }
+
+    pub fn editorText(self: *const Model) []const u8 {
+        return self.editor_grid.cells[0..self.editor_length];
+    }
 
     pub fn begin(self: *Model, sink: anytype) void {
         self.view = .launcher;
@@ -160,7 +176,18 @@ pub const Model = struct {
                     },
                     else => null,
                 };
-                if (action) |value| _ = self.editor_cursor.apply(&self.editor_grid, value);
+                if (action) |value| {
+                    switch (value) {
+                        .right => if (self.editor_cursor.column >= self.editor_length) return null,
+                        .insert => if (self.editor_length == EditGrid.width) return null,
+                        else => {},
+                    }
+                    if (self.editor_cursor.apply(&self.editor_grid, value)) switch (value) {
+                        .insert => self.editor_length += 1,
+                        .backspace => self.editor_length -= 1,
+                        else => {},
+                    };
+                }
             },
             .shell => switch (key) {
                 .text => |byte| if (byte >= 32 and byte <= 126 and self.length < self.line.len) {
@@ -381,4 +408,25 @@ test "launcher editor accepts real HID decoder events and preserves unsaved text
     _ = model.handle(.enter, &sink);
     try std.testing.expectEqual(View.editor, model.view);
     try std.testing.expectEqualStrings("h!i", model.editor_grid.cells[0..3]);
+}
+
+test "editor preserves trailing spaces and refuses insertion into a full row" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    _ = model.handle(.{ .text = '5' }, &sink);
+    _ = model.handle(.enter, &sink);
+    for (0..64) |_| _ = model.handle(.{ .text = ' ' }, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_length);
+    _ = model.handle(.left, &sink);
+    _ = model.handle(.{ .text = 'x' }, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_length);
+    try std.testing.expectEqualSlices(u8, &@as([64]u8, @splat(' ')), &model.editor_grid.cells);
+    _ = model.handle(.backspace, &sink);
+    try std.testing.expectEqual(@as(usize, 63), model.editor_length);
+    _ = model.handle(.{ .text = 'x' }, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_length);
+    try std.testing.expectEqual(@as(u8, 'x'), model.editor_grid.cells[62]);
+    _ = model.handle(.right, &sink);
+    _ = model.handle(.right, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_cursor.column);
 }
