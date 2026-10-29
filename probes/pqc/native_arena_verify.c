@@ -61,3 +61,44 @@ int nih_pqc_arena_fixture(uint8_t *bytes, size_t capacity, struct nih_pqc_result
     return r->valid && r->rejected && r->oom && a.failures > 0 &&
         a.allocs > prior_allocs && a.live == 0 && r->allocs == r->frees ? 0 : 4;
 }
+
+/* Experimental bounded copy, not a public request or trust-anchor API. */
+int nih_pqc_snapshot_fixture(uint8_t *bytes, size_t capacity,
+    uint8_t *snapshot, size_t snapshot_len, struct nih_pqc_result *r) {
+    enum { PK_LEN = 1952, SIG_LEN = 3309, CTX_MAX = 255, MSG_MAX = 4096,
+           SIG_OFF = PK_LEN, CTX_OFF = SIG_OFF + SIG_LEN,
+           MSG_OFF = CTX_OFF + CTX_MAX, SNAP_LEN = MSG_OFF + MSG_MAX };
+    if (!bytes || !snapshot || !r || ((uintptr_t)bytes & 31) != 0 ||
+        capacity < 32 || snapshot_len != SNAP_LEN ||
+        TEST_VECTOR_CTX_LEN > CTX_MAX || TEST_VECTOR_MSG_LEN > MSG_MAX) return 1;
+    for (size_t i = 0; i < PK_LEN; i++) snapshot[i] = test_vector_pk_65[i];
+    for (size_t i = 0; i < SIG_LEN; i++) snapshot[SIG_OFF+i] = test_vector_sig_65[i];
+    for (size_t i = 0; i < TEST_VECTOR_CTX_LEN; i++) snapshot[CTX_OFF+i] = TEST_VECTOR_CTX[i];
+    for (size_t i = 0; i < TEST_VECTOR_MSG_LEN; i++) snapshot[MSG_OFF+i] = TEST_VECTOR_MSG[i];
+    struct nih_pqc_arena a = { .bytes = bytes, .capacity = capacity };
+    uint32_t before[3], after[3];
+    nih_pqc_observe(before);
+    r->valid = PQCP_MLDSA_NATIVE_MLDSA65_verify(snapshot + SIG_OFF, snapshot + MSG_OFF,
+        TEST_VECTOR_MSG_LEN, snapshot + CTX_OFF, TEST_VECTOR_CTX_LEN, snapshot, &a) == 0;
+    if (a.live || a.failures) return 2;
+    r->peak = (uint32_t)a.peak;
+    a.used = 0;
+    snapshot[MSG_OFF] ^= 1;
+    r->rejected = PQCP_MLDSA_NATIVE_MLDSA65_verify(snapshot + SIG_OFF, snapshot + MSG_OFF,
+        TEST_VECTOR_MSG_LEN, snapshot + CTX_OFF, TEST_VECTOR_CTX_LEN, snapshot, &a) == -6;
+    snapshot[MSG_OFF] ^= 1;
+    nih_pqc_observe(after);
+    r->verify_ticks = after[0] - before[0];
+    r->verify_worker0 = after[1] - before[1];
+    r->verify_worker1 = after[2] - before[2];
+    if (a.live || a.failures) return 3;
+    if (a.peak > r->peak) r->peak = (uint32_t)a.peak;
+    unsigned prior = a.allocs;
+    a.used = 0; a.capacity = 4096;
+    r->oom = PQCP_MLDSA_NATIVE_MLDSA65_verify(snapshot + SIG_OFF, snapshot + MSG_OFF,
+        TEST_VECTOR_MSG_LEN, snapshot + CTX_OFF, TEST_VECTOR_CTX_LEN, snapshot, &a) == -2;
+    r->allocs = a.allocs; r->frees = a.frees;
+    r->failures = a.failures; r->live = a.live;
+    return r->valid && r->rejected && r->oom && a.failures > 0 &&
+        a.allocs > prior && a.live == 0 && a.allocs == a.frees ? 0 : 4;
+}

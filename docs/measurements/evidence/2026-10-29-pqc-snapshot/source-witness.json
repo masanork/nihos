@@ -1,0 +1,27 @@
+{
+  "base_commit": "af724cd",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "bbd514ee425dd9ae1e74becc484c3a75f746e77a5e9ad128d037504a4be7677b",
+    "src/platform/native/main.zig": "082db33ea15842b38196463a2fd45599220c499fec9e3fd66845aa3c7bc6129a",
+    "src/platform/native/heap.zig": "033e38bec38db8c87c0dab5283915108c8cc6360678bf8924c571e8dfd40b61d",
+    "src/platform/native/pqc_arena_probe.zig": "8ada7b3d409c6faee656633fa5a1320c04f6a2f0d8fcba7b3ecb2edbd18a3f74",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "src/kernel/task_resources.zig": "6cf302b6388edd191a4b9d1099f294132bd97ce0a2332aea037484d1f4327b61",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "tools/build-native-elf.sh": "4e153d6af60980d11e066ff756d50e0c5725d72e3ce7ef2eb4ac2cfc40153209",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "5ba3c47d7e6d858534af76c494013b0f3c497f89e3f3bbb547cac0cea3a95063",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/check_worker_snapshot_log.py": "0355176c599fa52e3be2b57ef75b22518dc0b6b71e4a5e71a4c4f1cea49e246d"
+  },
+  "elf_sha256": "a96ba6f2d4889d602fe011025a29235251c6207f724ea4f049551915ca6a7bc5",
+  "image_sha256": "74eecd3dfd9b38e4421ff18a02b205d06c272b05693a6faf10ecf77252c65965",
+  "raw_logs_sha256": {
+    "4M": "f5da7fd58ca4dec82f2d86c47e85ffb2faca628159adc16ceb21f8c8ca6d6afe",
+    "0": "8bd502572b71293d9480769874842a126a0a29523f8f4366dcb495c62af9b1dc"
+  }
+}
