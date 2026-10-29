@@ -14,6 +14,8 @@
 
 ## データを分けて、所在を表にする
 
+例えば4ページからなる文書の2ページ目だけを直す。新しい2ページ目を別の場所に書き、1、3、4ページ目はそのまま参照できれば、全体の複製を避けられる。どのページがどこにあるかは別の表に記録し、その表を公開する順序も守る必要がある。
+
 そこで、データを4 KiBのページに分け、論理ページから媒体上のページを引く表、mapを置く。map自体も、一度作ったnodeを変更しない木にする。
 
 {{figure:page-map-sharing}}
@@ -135,4 +137,4 @@ sh tools/bootstrap-zig.sh
   --test-filter 'batch writes one shared map path'
 ```
 
-切り詰め前のreaderを残し、新旧viewの末尾を比べよう。次に16件の変更が同じleafへ集まる図と、別のsubtreeへ散る図を描く。data量、map量、sync回数のうち何が変わるかを予想すると、次の{{ch:sqlite-persistence}}でDBの書込みを読むときの手掛かりになる。
+切り詰め前のreaderを残し、新旧viewの末尾を比べよう。次に16件の変更が同じleafへ集まる図と、別のsubtreeへ散る図を描く。data量、map量、sync回数のうち何が変わるかを予想すると、後の{{ch:sqlite-persistence}}でDBの書込みを読むときの手掛かりになる。

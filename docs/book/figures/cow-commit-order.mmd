@@ -1,0 +1,5 @@
+flowchart TB
+    accTitle: 保存と成功通知の順序
+    accDescr: 旧rootと旧payloadを保持したまま、新payloadと新rootを順に書き同期し、成功を知らせる。
+ O["旧root"] --> P["旧payload：保存中も保持"]
+ A["新payloadを書込む"] -->|"payloadをsync"| B["次のrootを書込む"] -->|"rootを含めてsync"| C["成功を呼出し元へ知らせる"]

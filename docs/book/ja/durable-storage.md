@@ -6,7 +6,7 @@
 
 ## 読める、書ける、残る
 
-{{ch:c-library}}のSQLiteはメモリ上のデータベースだった。SQLが実行できることから、電源を切っても結果が残るとは言えない。同じように、ファイルへwriteしたことと、永続化を確認したことは異なる。
+ファイルへ書き込む命令が戻っても、データが電源断後に残る場所まで届いたとは限らない。CPU側や装置側の一時的な記憶に置かれたままかもしれない。ファイルへwriteしたことと、永続化を確認したことを区別しよう。
 
 ここでは、書込み内容を保持する一時的なcacheと、電源断後にも残るstable imageを分けた[媒体モデル](git:8b1c3c24fae826699829488c0af2834700945a4d:src/storage/model_media.zig)を使う。成功したsyncは、その前のdirty sectorをすべて永続化する。sync前の書込みも、一部または全部が先に残る場合がある。中断時にはcacheが失われる。
 
@@ -18,16 +18,7 @@
 
 rootは二つ用意し、交互に更新する。各rootには世代番号、objectの所在、長さ、checksumなどを記録する。一方を更新中にも、もう一方の完全な世代を残したい。
 
-```text
-旧root ──→ 旧payload
-             保存中も保持
-
-新payloadを書込む
-    ↓ payloadをsync
-次のrootを書込む
-    ↓ rootを含めてsync
-成功を呼出し元へ知らせる
-```
+{{figure:cow-commit-order}}
 
 [最初のストアモデル](git:8b1c3c24fae826699829488c0af2834700945a4d:src/storage/cow_model.zig)は、最大8個のobjectを扱う小さい実装である。更新や削除はtransactionへ積み、commitまで現在の読取りviewへ出さない。公開部分の入口は短い。
 

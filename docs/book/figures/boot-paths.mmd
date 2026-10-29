@@ -1,0 +1,6 @@
+flowchart TB
+    accTitle: 二つの起動経路
+    accDescr: ROMと第2段ローダの後、ESP-IDFとFreeRTOSを使う経路と、nihosが実行を管理する経路に分かれる。
+ A["電源投入"] --> B["チップ内の起動処理"] --> C["第2段ブートローダ"]
+ C --> D["ESP-IDFとFreeRTOS"] --> E["nihosのコード"]
+ C --> F["nihosのネイティブな初期化\nと実行管理"]

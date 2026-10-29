@@ -2,11 +2,11 @@
 
 『小さなOSを育てる — ZigとRISC-Vで学ぶ、実機のしくみと設計判断』の原稿と組版環境です。nihosを教材に、OSの仕組みと実機での設計判断を学びます。
 
-序章の問いを各章へつなぎ、役割と保護、モデルと実機、応答と期限、共有とメッセージ、データの寿命と割当方式を比較しながら実装を読みます。後半では、日本語フォント、無線通信、I/Oの寿命、保存と復旧、部分更新、SQLiteの保存を経て、ICカード端末の総合事例へ進みます。IMUと音声DMAもI/Oの具体例として扱います。
+序章の問いを各章へつなぎ、役割と保護、モデルと実機、応答と期限、共有とメッセージ、データの寿命と割当方式を比較しながら実装を読みます。後半では、日本語フォント、無線通信、I/Oの寿命、保存と復旧、部分更新、重い計算サービス、SQLiteの保存を経て、ICカード端末の総合事例へ進みます。IMUと音声DMAもI/Oの具体例として扱います。
 
 - [編集資料・企画案と類書調査](proposal.md): 読者、差別化、目次案、演習、エコシステムへの導線。本文には収録しません。
 - [OS教科書のシラバスとフィットギャップ](syllabus-fit-gap.md): 二十章をOS基礎課程と照合し、本文の不足、nihosの実装・統合課題、比較説明に留める範囲を整理した編集資料。
-- [本文](ja/preface.md): 序章と、境界・言語選択からタスク、通信、保存、端末へ進む二十四章。
+- [本文](ja/preface.md): 序章と、境界・言語選択からタスク、通信、保存、端末へ進む二十五章。
 - [序章 小さなOSを学ぶということ](ja/why-os.md): 時分割、Unix、個人の道具、応答期限からnihosの位置づけとAIと学ぶ意味を考えます。
 - [OSを何で書くか](ja/os-languages.md): アセンブリ、PL/I、C/C++、Lisp、Mesa/Oberon、Singularity、RustからZigの利点と限界を考える。Singularityの実体験とNGSCBについての伝聞を交え、言語・検証・開発環境の関係も考える。
 - [Zigで書かれたカーネルが動き始めるまで](ja/native-entry.md): スタックと初期値、最初の例外復帰、ELF配置の実験。
@@ -17,6 +17,7 @@
 - [浮動小数点の状態と言語の境界](ja/floating-and-abi.md): FPU状態、命令監査、ILP32FとC adapterを扱う補足。
 - [使えるメモリになるまで](ja/psram-and-evidence.md): PSRAMの段階的検証、実機識別失敗、address設定とcache同期の修正からSQL実行まで。
 - [既存のCライブラリを迎える](ja/c-library.md): SQLiteのallocator、owner、shutdown、メモリ不足からの回復とnative実行の範囲。
+- [重い計算をOSサービスにする](ja/pqc-service.md): PQC実験を題材に、入力snapshot、専用worker、取消し、回収失敗、SRAM・Flash配置を扱う発展事例。
 - [文字が画面に現れるまで](ja/drawing-text.md): ASCII grid、RGB565、部分更新、scroll、cacheとDMAの受渡し。四象限のタッチ実習と、明示的な離指・未更新sampleの区別。
 - [日本語フォントを載せる予算](ja/japanese-fonts.md): FreeType/HarfBuzz、複数session、extent group、確保失敗、hintingとRV32 stack、workerの寿命。
 - [通信相手は、別の計算機](ja/networking.md): P4–C6、SDIOのdoorbell、DHCP更新・失効、IPv6、BLEのcreditと完了。RTCの妥当性を扱うコラム。
