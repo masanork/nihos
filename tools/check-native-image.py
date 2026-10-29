@@ -757,6 +757,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         ro_start, data = fs_sections['.flash.fsrodata']
         require(pad_start == 0x40010020 + ((len(flash_tables) + 3) & ~3) and not any(pad), 'invalid ordinary FS padding bytes')
         require(text_start == symbols.get('__flash_fs_text_start') == SQL_START and text_start + len(code) == symbols.get('__flash_fs_text_end') == ro_start == symbols.get('__flash_fs_rodata_start') and ro_start + len(data) == symbols.get('__flash_fs_rodata_end'), 'ordinary FS linker extent mismatch')
+        font_start = symbols.get('__flash_console_font_start')
+        font_end = symbols.get('__flash_console_font_end')
+        require(font_start is not None and font_end is not None and ro_start <= font_start <= font_end <= ro_start + len(data), 'console font outside ordinary FS read-only span')
         fs_span = (text_start, ro_start)
         actual = {n for n, a, b in functions if text_start <= a < b <= ro_start}
         require(normal_fs_profile.REQUIRED.issubset(actual), 'missing ordinary FS runtime functions')
