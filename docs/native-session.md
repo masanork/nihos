@@ -20,7 +20,10 @@ and restore the unfinished draft. Backspace, Shift, Caps Lock, Ctrl-C and
 Ctrl-L are supported. Serial redraw uses ANSI erase-line and cursor-left
 sequences. The keyboard uses the existing US-style HID mapping; Japanese input,
 USB/Bluetooth keyboard adapters and on-screen keyboards are not implemented.
-During initialisation, Escape opens boot diagnostics and does not abort a driver.
+At an empty serial prompt, a leading colon remains reserved for the existing
+`:storage`, `:read`, and device diagnostic commands. A colon within a shell
+command or editor text is ordinary input. During initialisation, Escape opens
+boot diagnostics and does not abort a driver.
 
 `mem` reports the calling CPU0 owner's SRAM boot arena and reusable PSRAM heap
 capacity/free/used bytes. Local interrupts are masked only while copying those
@@ -83,6 +86,6 @@ other source heads do not qualify this image.
 While a terminal input line is active, normal typed diagnostic records clear the
 serial input line before the record and redraw the unfinished line and cursor
 after it. This preserves periodic diagnostic records without embedding them in
-the user's command. Other unstructured serial output and output from another
-CPU are not covered by this record-level framing; the terminal does not yet
-implement a general VT/ANSI parser.
+the user's command. Normal Wi-Fi and storage notifications use the same framing. Other unstructured
+serial output and output from another CPU remain outside this protection; the
+terminal does not yet implement a general VT/ANSI parser.

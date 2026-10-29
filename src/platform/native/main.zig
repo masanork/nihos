@@ -52,7 +52,7 @@ export fn nih_normal_fs_wake() callconv(.c) void {
 export fn nih_fs_command(path: [*]const u8, length: u32) callconv(.c) void {
     if (!normal_storage or length > 512) return;
     const accepted = normal_fs.submit(storageClient(), path[0..length]);
-    if (!accepted) printBoot("Storage request unavailable or busy.\n");
+    if (!accepted) printNotice("Storage request unavailable or busy.\n");
 }
 var last_storage_status: u32 = 0xffffffff;
 fn serviceStorage() void {
@@ -80,6 +80,8 @@ fn serviceStorage() void {
         const io_words: extern struct { error_code: u32, command: u32, interrupts: u32, dma_status: u32 } = .{ .error_code = report.io_error, .command = report.command, .interrupts = report.interrupts, .dma_status = report.dma_status };
         logger.record("NIHOS_NORMAL_FS_IO", null, .{ "error_code", "command", "interrupts", "dma_status" }, &io_words);
     }
+    const repaint = if (options.console_live) ui.serialRecordBegin() else false;
+    defer if (options.console_live) ui.serialRecordEnd(repaint);
     if (changed) switch (report.status) {
         .mounted => printBoot("SD ready. :read path reads up to 4096 bytes; :storage refreshes.\n"),
         .no_card => printBoot("No SD card. Insert a card and enter :storage.\n"),
@@ -185,7 +187,7 @@ fn serviceNetwork() void {
     const state = network.snapshot();
     if (network_ready and state.ip == 0) {
         network_ready = false;
-        print("Wi-Fi disconnected; addresses retired, retry scheduled\n");
+        printNotice("Wi-Fi disconnected; addresses retired, retry scheduled\n");
     }
     if (!network_ready and state.ip != 0 and state.linklocal != 0) {
         network_ready = true;
@@ -193,8 +195,10 @@ fn serviceNetwork() void {
         const message = std.fmt.bufPrint(&line, "Wi-Fi IPv4: {d}.{d}.{d}.{d}; IPv6 link-local ready\n", .{
             state.ip >> 24, (state.ip >> 16) & 255, (state.ip >> 8) & 255, state.ip & 255,
         }) catch fail("network message");
+        const repaint = if (options.console_live) ui.serialRecordBegin() else false;
         print(message);
         print("NIHOS_NATIVE_NETWORK_READY\n");
+        if (options.console_live) ui.serialRecordEnd(repaint);
     }
     if (now < network_report_at) return;
     network_report_at = now + 5_000_000;
@@ -268,6 +272,12 @@ noinline fn print(message: []const u8) void {
             _ = nih_rom_putc(byte);
         }
     }
+}
+/// A complete asynchronous line from the normal service path.
+fn printNotice(message: []const u8) void {
+    const repaint = if (options.console_live) ui.serialRecordBegin() else false;
+    print(message);
+    if (options.console_live) ui.serialRecordEnd(repaint);
 }
 /// Ordinary boot messages share the existing immutable diagnostic Flash span.
 /// Fatal strings/output remain resident so failure reporting keeps its fallback.

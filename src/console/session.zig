@@ -114,6 +114,16 @@ pub const Model = struct {
             }
         }
     }
+    /// Bracket a complete asynchronous serial message while a command is
+    /// being edited. The newline keeps diagnostic markers at line start.
+    pub fn beginNotice(self: *const Model, sink: anytype) bool {
+        if (self.view != .shell) return false;
+        sink.write("\r\x1b[2K\r\n");
+        return true;
+    }
+    pub fn endNotice(self: *const Model, sink: anytype, repaint: bool) void {
+        if (repaint and self.view == .shell) self.redrawLine(sink);
+    }
     pub fn redrawLine(self: *const Model, sink: anytype) void {
         sink.write("\r\x1b[2Knihos> ");
         sink.write(self.line[0..self.length]);

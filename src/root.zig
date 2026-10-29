@@ -116,6 +116,7 @@ test {
     _ = @import("fs/io_stop.zig");
     _ = @import("fs/sdmmc_owner_test.zig");
     _ = @import("console/serial_record_test.zig");
+    _ = @import("console/serial_router_test.zig");
     _ = @import("fs/vfs_test.zig");
     _ = @import("fs/vfs_rpc_test.zig");
     _ = @import("fs/vfs_wakeup_test.zig");

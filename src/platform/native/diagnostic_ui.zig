@@ -77,11 +77,10 @@ pub fn serialRecordBegin() bool {
         : [hart] "=r" (-> u32),
     );
     if (hart != 0 or !session_active or session_input_busy or session.view != .shell) return false;
-    (SerialSink{}).write("\r\x1b[2K");
-    return true;
+    return session.beginNotice(SerialSink{});
 }
 pub fn serialRecordEnd(repaint: bool) void {
-    if (repaint and session_active and !session_input_busy and session.view == .shell) session.redrawLine(SerialSink{});
+    if (session_active and !session_input_busy) session.endNotice(SerialSink{}, repaint);
 }
 /// Single optional CPU0 service reservation after all console objects. The
 /// full tail already belongs to the display lease, outside both owner heaps.
@@ -346,12 +345,14 @@ noinline fn poll(now: u64, log: anytype) void {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
         var consumed = false;
-        if (@hasDecl(options, "normal_storage") and options.normal_storage) {
+        if (@hasDecl(options, "normal_storage") and options.normal_storage and
+            Session.input.allowDiagnostic(session_active, session_active and session.view == .shell, if (session_active) session.length else 0, storage_commands.collecting))
+        {
             var command: ?storage_control.Command = null;
             consumed = storage_commands.feed(@intCast(byte), &command);
             if (command) |value| nih_fs_command(value.path.ptr, @intCast(value.path.len));
         }
-        if (options.devices) {
+        if (options.devices and Session.input.allowDiagnostic(session_active, session_active and session.view == .shell, if (session_active) session.length else 0, device_commands.collecting)) {
             var command: ?control.Command = null;
             if (device_commands.feed(@intCast(byte), &command)) {
                 if (command) |value| _ = nih_device_request(@backingInt(value));
