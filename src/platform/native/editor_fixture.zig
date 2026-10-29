@@ -178,3 +178,35 @@ test "Tab5 keyboard driver events reach the native launcher editor" {
     try std.testing.expectEqualStrings("h!i", session.editor_grid.cells[0..3]);
     try std.testing.expectEqual(@as(u32, 1), driver.report.releases);
 }
+
+test "Tab5 keyboard FIFO drives terminal editing and history" {
+    const events = [_]console.keyboard.Event{
+        .{ .modifiers = 0, .usage = 0x0b }, // h
+        .{ .modifiers = 0, .usage = 0x08 }, // e
+        .{ .modifiers = 0, .usage = 0x13 }, // p
+        .{ .modifiers = 0, .usage = 0x50 }, // left
+        .{ .modifiers = 0, .usage = 0x0f }, // l
+        .{ .modifiers = 0, .usage = 0x28 }, // enter: help
+        .{ .modifiers = 0, .usage = 0x52 }, // history up
+    };
+    var bus = InputBus{ .events = &events };
+    var keyboard = console.keyboard.Keyboard(InputBus){ .bus = &bus };
+    try std.testing.expect(try keyboard.begin());
+    var decoder: console.session.input.Hid = .{};
+    var session: console.session.Model = .{};
+    const Sink = struct {
+        pub fn write(_: @This(), _: []const u8) void {}
+    };
+    session.startTerminal(Sink{});
+    while (bus.next < events.len) {
+        var batch: [4]console.keyboard.Event = undefined;
+        const count = try keyboard.poll(&batch);
+        for (batch[0..count]) |event| if (decoder.feed(event.modifiers, event.usage)) |key| {
+            _ = session.handle(key, Sink{});
+        };
+    }
+    try std.testing.expectEqualStrings("help", session.line[0..session.length]);
+    try std.testing.expectEqual(@as(usize, 4), session.line_cursor);
+    try std.testing.expectEqual(@as(usize, 1), session.history_count);
+    try std.testing.expectEqual(console.session.View.shell, session.view);
+}

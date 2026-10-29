@@ -1,19 +1,21 @@
-//! Bounded post-boot launcher and ASCII shell, independent of board/allocator.
+//! Bounded post-boot terminal and ASCII shell, independent of board/allocator.
 const std = @import("std");
 pub const input = @import("session_input.zig");
 const Journal = @import("../diagnostics/boot_journal.zig").Journal;
 pub const View = enum(u8) { launcher, shell, logs, editor };
-pub const Command = enum { shell, help, clear, log, mem, tasks, launcher, exit, editor };
+pub const Command = enum { shell, help, clear, echo, log, mem, tasks, launcher, exit, editor };
 const Entry = struct { command: Command, name: []const u8, help: []const u8 };
 pub const commands = [_]Entry{
-    .{ .command = .shell, .name = "shell", .help = "Open the command prompt" },
+    .{ .command = .shell, .name = "shell", .help = "Open the terminal" },
     .{ .command = .help, .name = "help", .help = "List commands" },
-    .{ .command = .clear, .name = "clear", .help = "Clear shell output" },
+    .{ .command = .clear, .name = "clear", .help = "Clear terminal output" },
+    .{ .command = .echo, .name = "echo", .help = "Print text" },
     .{ .command = .log, .name = "log", .help = "Show retained boot log" },
     .{ .command = .mem, .name = "mem", .help = "Show CPU0 memory usage" },
     .{ .command = .tasks, .name = "tasks", .help = "Show published runtime counters" },
-    .{ .command = .launcher, .name = "launcher", .help = "Return to the launcher" },
-    .{ .command = .exit, .name = "exit", .help = "Return to the launcher" },
+    .{ .command = .launcher, .name = "tools", .help = "Open the tools menu" },
+    .{ .command = .launcher, .name = "launcher", .help = "Alias for tools" },
+    .{ .command = .exit, .name = "exit", .help = "Open the tools menu" },
     .{ .command = .editor, .name = "edit", .help = "Open the unsaved ASCII editor" },
 };
 pub const menu = [_]struct { label: []const u8, command: Command }{
@@ -31,6 +33,13 @@ pub const Model = struct {
     revision: u32 = 0,
     line: [64]u8 = @splat(0),
     length: usize = 0,
+    line_cursor: usize = 0,
+    history: [4][64]u8 = @splat(@splat(0)),
+    history_lengths: [4]u8 = @splat(0),
+    history_count: usize = 0,
+    history_pos: usize = 0,
+    draft: [64]u8 = @splat(0),
+    draft_length: usize = 0,
     output: Journal(2048) = .{},
     editor_grid: EditGrid = .{},
     editor_length: usize = 0,
@@ -51,14 +60,21 @@ pub const Model = struct {
         return self.editor_grid.cells[0..self.editor_length];
     }
 
+    /// Normal boot enters a usable command prompt; the tools menu is optional.
+    pub fn startTerminal(self: *Model, sink: anytype) void {
+        self.shell(sink);
+        self.revision +%= 1;
+    }
     pub fn begin(self: *Model, sink: anytype) void {
         self.view = .launcher;
         self.length = 0;
+        self.line_cursor = 0;
+        self.history_pos = self.history_count;
         self.revision +%= 1;
         self.announce(sink);
     }
     fn announce(self: *const Model, sink: anytype) void {
-        sink.write("\r\nnihos launcher\r\n");
+        sink.write("\r\nnihos tools\r\n");
         for (menu, 0..) |entry, index| {
             sink.write(if (index == self.selected) "> " else "  ");
             sink.write(&.{ @as(u8, @intCast(index)) + '1', '.', ' ' });
@@ -92,8 +108,51 @@ pub const Model = struct {
     pub fn finishInput(self: *const Model, key: input.Key, before: View, sink: anytype) void {
         if (self.view == .shell and (before != .shell or key == .enter or key == .escape or key == .cancel or key == .clear)) {
             self.prompt(sink);
-            if (key == .clear) sink.write(self.line[0..self.length]);
+            if (key == .clear) {
+                sink.write(self.line[0..self.length]);
+                for (self.line_cursor..self.length) |_| sink.write("\x1b[D");
+            }
         }
+    }
+    fn redrawLine(self: *const Model, sink: anytype) void {
+        sink.write("\r\x1b[2Knihos> ");
+        sink.write(self.line[0..self.length]);
+        for (self.line_cursor..self.length) |_| sink.write("\x1b[D");
+    }
+    fn saveHistory(self: *Model, bytes: []const u8) void {
+        if (bytes.len == 0) return;
+        if (self.history_count != 0) {
+            const last = self.history_count - 1;
+            if (std.mem.eql(u8, self.history[last][0..self.history_lengths[last]], bytes)) return;
+        }
+        if (self.history_count == self.history.len) {
+            for (1..self.history.len) |i| {
+                self.history[i - 1] = self.history[i];
+                self.history_lengths[i - 1] = self.history_lengths[i];
+            }
+            self.history_count -= 1;
+        }
+        @memcpy(self.history[self.history_count][0..bytes.len], bytes);
+        self.history_lengths[self.history_count] = @intCast(bytes.len);
+        self.history_count += 1;
+    }
+    fn historyMove(self: *Model, up: bool, sink: anytype) void {
+        if (up) {
+            if (self.history_pos == 0) return;
+            if (self.history_pos == self.history_count) {
+                @memcpy(self.draft[0..self.length], self.line[0..self.length]);
+                self.draft_length = self.length;
+            }
+            self.history_pos -= 1;
+        } else {
+            if (self.history_pos >= self.history_count) return;
+            self.history_pos += 1;
+        }
+        const bytes = if (self.history_pos == self.history_count) self.draft[0..self.draft_length] else self.history[self.history_pos][0..self.history_lengths[self.history_pos]];
+        @memcpy(self.line[0..bytes.len], bytes);
+        self.length = bytes.len;
+        self.line_cursor = self.length;
+        self.redrawLine(sink);
     }
     fn clearOutput(self: *Model) void {
         self.output.head = 0;
@@ -101,9 +160,11 @@ pub const Model = struct {
         self.output.dropped = 0;
     }
     fn shell(self: *Model, sink: anytype) void {
-        if (self.view != .shell) self.write(sink, "\r\nnihos shell | help: commands | exit: launcher\r\n");
+        if (self.view != .shell) self.write(sink, "\r\nnihos terminal | help: commands | edit: editor\r\n");
         self.view = .shell;
         self.length = 0;
+        self.line_cursor = 0;
+        self.history_pos = self.history_count;
     }
     fn execute(self: *Model, command: Command, sink: anytype) ?Command {
         switch (command) {
@@ -118,9 +179,10 @@ pub const Model = struct {
                 self.clearOutput();
                 sink.write("\x1b[2J\x1b[H");
             },
+            .echo => self.write(sink, "\r\n"),
             .log => {
                 self.view = .logs;
-                sink.write("\r\nBoot log | Esc: launcher\r\n");
+                sink.write("\r\nBoot log | Esc: terminal\r\n");
             },
             .mem, .tasks => {
                 self.shell(sink);
@@ -128,7 +190,7 @@ pub const Model = struct {
             },
             .editor => {
                 self.view = .editor;
-                sink.write("\r\nEditor | ASCII | not saved | Esc: launcher\r\n");
+                sink.write("\r\nEditor | ASCII | not saved | Esc: terminal\r\n");
             },
             .launcher, .exit => self.begin(sink),
         }
@@ -137,7 +199,7 @@ pub const Model = struct {
     /// mem/tasks return a bounded service request. Caller writes its result
     /// and any telemetry before emitting the serial prompt.
     pub fn handle(self: *Model, key: input.Key, sink: anytype) ?Command {
-        if (self.view != .editor and (key == .left or key == .right)) return null;
+        if (self.view != .editor and self.view != .shell and (key == .left or key == .right)) return null;
         self.revision +%= 1;
         switch (self.view) {
             .launcher => {
@@ -161,7 +223,7 @@ pub const Model = struct {
                 }
             },
             .logs => switch (key) {
-                .escape, .cancel, .eof => self.begin(sink),
+                .escape, .cancel, .eof => self.shell(sink),
                 else => {},
             },
             .editor => {
@@ -171,7 +233,7 @@ pub const Model = struct {
                     .left => .left,
                     .right => .right,
                     .escape, .cancel => {
-                        self.begin(sink);
+                        self.shell(sink);
                         return null;
                     },
                     else => null,
@@ -191,16 +253,32 @@ pub const Model = struct {
             },
             .shell => switch (key) {
                 .text => |byte| if (byte >= 32 and byte <= 126 and self.length < self.line.len) {
-                    self.line[self.length] = byte;
+                    std.mem.copyBackwards(u8, self.line[self.line_cursor + 1 .. self.length + 1], self.line[self.line_cursor..self.length]);
+                    self.line[self.line_cursor] = byte;
                     self.length += 1;
-                    sink.write(&.{byte});
+                    self.line_cursor += 1;
+                    self.redrawLine(sink);
                 },
-                .backspace => if (self.length > 0) {
+                .backspace => if (self.line_cursor > 0) {
+                    self.line_cursor -= 1;
+                    std.mem.copyForwards(u8, self.line[self.line_cursor .. self.length - 1], self.line[self.line_cursor + 1 .. self.length]);
                     self.length -= 1;
-                    sink.write("\x08 \x08");
+                    self.redrawLine(sink);
                 },
+                .left => if (self.line_cursor > 0) {
+                    self.line_cursor -= 1;
+                    self.redrawLine(sink);
+                },
+                .right => if (self.line_cursor < self.length) {
+                    self.line_cursor += 1;
+                    self.redrawLine(sink);
+                },
+                .up => self.historyMove(true, sink),
+                .down => self.historyMove(false, sink),
                 .escape, .cancel => {
                     self.length = 0;
+                    self.line_cursor = 0;
+                    self.history_pos = self.history_count;
                     self.write(sink, "^C\r\n");
                 },
                 .clear => {
@@ -215,11 +293,19 @@ pub const Model = struct {
                     self.output.append("\r\n");
                     sink.write("\r\n");
                     const line = std.mem.trim(u8, self.line[0..self.length], " \t");
+                    self.saveHistory(line);
+                    self.history_pos = self.history_count;
                     self.length = 0;
+                    self.line_cursor = 0;
                     var request: ?Command = null;
                     if (line.len != 0) {
                         var found = false;
-                        for (commands) |entry| if (std.mem.eql(u8, line, entry.name)) {
+                        if (std.mem.startsWith(u8, line, "echo ")) {
+                            self.write(sink, line[5..]);
+                            self.write(sink, "\r\n");
+                            found = true;
+                        }
+                        for (commands) |entry| if (!found and std.mem.eql(u8, line, entry.name)) {
                             request = self.execute(entry.command, sink);
                             found = true;
                             break;
@@ -228,7 +314,6 @@ pub const Model = struct {
                     }
                     return request;
                 },
-                else => {},
             },
         }
         return null;
@@ -242,7 +327,7 @@ pub const Model = struct {
         grid.scrolls = 0;
         _ = grid.setScrollTop(header);
         if (self.view == .editor) {
-            grid.write("nihos / editor\n\nASCII | arrows | Backspace | Esc: launcher | NOT SAVED\n");
+            grid.write("nihos / editor\n\nASCII | arrows | Backspace | Esc: terminal | NOT SAVED\n");
             while (grid.y < header) grid.write("\n");
             const position = self.editor_cursor.column;
             grid.write(self.editor_grid.cells[0..position]);
@@ -250,8 +335,8 @@ pub const Model = struct {
             grid.write(self.editor_grid.cells[position..]);
             return;
         }
-        grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n\n");
-        grid.write(if (self.view == .launcher) "Up/Down or 1-5: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
+        grid.write(if (self.view == .launcher) "nihos / tools\n\n" else "nihos / terminal\n\n");
+        grid.write(if (self.view == .launcher) "Up/Down or 1-5: select | Enter: open | Esc: shell\n" else "help: commands | arrows: edit/history | Ctrl-C: cancel\n");
         if (self.view == .shell and self.output.dropped != 0) grid.write("[older shell output discarded]\n");
         while (grid.y < header) grid.write("\n");
         if (self.view == .launcher) {
@@ -264,8 +349,9 @@ pub const Model = struct {
         } else {
             for (self.output.spans()) |part| grid.write(part);
             grid.write("nihos> ");
-            grid.write(self.line[0..self.length]);
+            grid.write(self.line[0..self.line_cursor]);
             grid.write("_");
+            grid.write(self.line[self.line_cursor..self.length]);
         }
     }
 };
@@ -289,13 +375,15 @@ test "launcher, shell and log round trips share the command registry" {
     _ = typeLine(&model, &sink, "help");
     var grid = @import("ascii.zig").Grid(78, 43){};
     model.render(&grid);
-    try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "exit - Return") != null);
+    try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "exit - Open") != null);
     _ = typeLine(&model, &sink, "exit");
     try std.testing.expectEqual(View.launcher, model.view);
     _ = model.handle(.down, &sink);
     _ = model.handle(.enter, &sink);
     try std.testing.expectEqual(View.logs, model.view);
     _ = model.handle(.escape, &sink);
+    try std.testing.expectEqual(View.shell, model.view);
+    _ = typeLine(&model, &sink, "tools");
     _ = model.handle(.down, &sink);
     try std.testing.expectEqual(Command.mem, model.handle(.enter, &sink).?);
     try std.testing.expectEqual(View.shell, model.view);
@@ -403,9 +491,8 @@ test "launcher editor accepts real HID decoder events and preserves unsaved text
     model.render(&grid);
     try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "h!|i") != null);
     _ = model.handle(.escape, &sink);
-    try std.testing.expectEqual(View.launcher, model.view);
-    _ = model.handle(.{ .text = '5' }, &sink);
-    _ = model.handle(.enter, &sink);
+    try std.testing.expectEqual(View.shell, model.view);
+    _ = typeLine(&model, &sink, "edit");
     try std.testing.expectEqual(View.editor, model.view);
     try std.testing.expectEqualStrings("h!i", model.editor_grid.cells[0..3]);
 }
@@ -429,4 +516,58 @@ test "editor preserves trailing spaces and refuses insertion into a full row" {
     _ = model.handle(.right, &sink);
     _ = model.handle(.right, &sink);
     try std.testing.expectEqual(@as(usize, 64), model.editor_cursor.column);
+}
+
+test "terminal starts at prompt and edits the command at the cursor" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    model.startTerminal(&sink);
+    try std.testing.expectEqual(View.shell, model.view);
+    model.prompt(&sink);
+    for ("hep") |byte| _ = model.handle(.{ .text = byte }, &sink);
+    _ = model.handle(.left, &sink);
+    _ = model.handle(.{ .text = 'l' }, &sink);
+    try std.testing.expectEqualStrings("help", model.line[0..model.length]);
+    try std.testing.expectEqual(@as(usize, 3), model.line_cursor);
+    var grid = @import("ascii.zig").Grid(78, 43){};
+    model.render(&grid);
+    try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "nihos> hel_p") != null);
+    try std.testing.expect(std.mem.endsWith(u8, sink.bytes.spans()[0], "\r\x1b[2Knihos> help\x1b[D"));
+    _ = model.handle(.backspace, &sink);
+    try std.testing.expectEqualStrings("hep", model.line[0..model.length]);
+    _ = model.handle(.right, &sink);
+    _ = model.handle(.right, &sink);
+    try std.testing.expectEqual(model.length, model.line_cursor);
+    _ = model.handle(.cancel, &sink);
+    try std.testing.expectEqual(@as(usize, 0), model.line_cursor);
+}
+
+test "history is bounded and restores an unfinished draft" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    model.startTerminal(&sink);
+    for ([_][]const u8{ "one", "two", "three", "four", "five" }) |line| _ = typeLine(&model, &sink, line);
+    try std.testing.expectEqual(@as(usize, 4), model.history_count);
+    for ("draft") |byte| _ = model.handle(.{ .text = byte }, &sink);
+    _ = model.handle(.up, &sink);
+    try std.testing.expectEqualStrings("five", model.line[0..model.length]);
+    _ = model.handle(.up, &sink);
+    try std.testing.expectEqualStrings("four", model.line[0..model.length]);
+    _ = model.handle(.up, &sink);
+    _ = model.handle(.up, &sink);
+    _ = model.handle(.up, &sink);
+    try std.testing.expectEqualStrings("two", model.line[0..model.length]);
+    for (0..4) |_| _ = model.handle(.down, &sink);
+    try std.testing.expectEqualStrings("draft", model.line[0..model.length]);
+    try std.testing.expectEqual(model.length, model.line_cursor);
+}
+
+test "echo prints its arguments and retains them in history" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    model.startTerminal(&sink);
+    _ = typeLine(&model, &sink, "echo hello world");
+    try std.testing.expect(std.mem.endsWith(u8, sink.bytes.spans()[0], "hello world\r\n"));
+    _ = model.handle(.up, &sink);
+    try std.testing.expectEqualStrings("echo hello world", model.line[0..model.length]);
 }

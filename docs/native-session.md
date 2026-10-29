@@ -1,34 +1,26 @@
-# Native launcher and shell
+# Native terminal and shell
 
-The live integer normal-boot profile enters a small launcher after core health
-checks complete and the milestone-driven boot graphic reaches its final colour.
-The ESP-IDF backend and native qualification profiles retain their existing
-behaviour. This work builds on `codex/native-console` (`8cd0076`).
+The normal device boot enters a terminal with a `nihos>` prompt after the boot
+health checks and splash. The I2C Tab5 Keyboard is enabled by default; set
+`NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. Serial input is also supported.
+The standard device build uses the larger JetBrains Mono console face and a
+neutral palette; `NIHOS_NATIVE_CONSOLE_FONT` and `NIHOS_NATIVE_CONSOLE_PALETTE`
+remain configurable.
 
-The launcher lists Shell, Boot log, Memory, Tasks and an unsaved ASCII editor.
-Up/Down or 1–5 selects a tool; Enter opens it. Escape opens the shell directly.
-During initialisation, Escape still opens boot diagnostics and does not abort a
-driver. After handoff, Escape in the log viewer returns to the launcher. Escape
-or Ctrl-C in the shell cancels the current input; `exit`, `launcher`, or Ctrl-D
-on an empty line returns to the launcher.
+The shell offers `help`, `clear`, `echo`, `log`, `mem`, `tasks`, and `edit`.
+`tools` opens the optional tools menu; `launcher` and `exit` also open it for
+compatibility. `echo` prints its literal arguments; quoting, pipes, program
+execution and shell expansion are not implemented. `log` and `edit` return to
+the terminal with Escape. The editor is a one-line ASCII buffer in RAM; it does
+not save to the device.
 
-The shell implements `shell`, `help`, `clear`, `log`, `mem`, `tasks`, `launcher`,
-`exit`, and `edit`. Menu actions and command names share the same dispatch. There are
-no executable files, background jobs, pipes, filesystem commands, interpreter,
-or external apps in this first version.
-
-The editor holds one ASCII line of up to 64 bytes in RAM, supports Left/Right
-and Backspace, and returns to the launcher with Escape. Its text is not saved
-to the device. The normal device build enables the I2C Tab5 Keyboard by default;
-set `NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it.
-
-Input is ASCII, with a 64-byte command limit, Backspace, Shift, Caps Lock and
-Ctrl-L. Characters beyond the limit are ignored. The I2C Tab5 Keyboard uses a
-US-style HID-to-ASCII mapping; Japanese input, USB/Bluetooth keyboard adapters,
-touch selection and on-screen keyboards are future work. Serial accepts the
-same commands and menu navigation, echoes edits, suppresses the LF of CRLF,
-and distinguishes standalone Escape (30 ms) from arrow sequences. Arrow keys
-in the shell do not yet recall history or move the cursor.
+Input is printable ASCII, with a 64-byte command limit. Left/Right edit within
+the current line; Up/Down navigate the last four distinct consecutive commands
+and restore the unfinished draft. Backspace, Shift, Caps Lock, Ctrl-C and
+Ctrl-L are supported. Serial redraw uses ANSI erase-line and cursor-left
+sequences. The keyboard uses the existing US-style HID mapping; Japanese input,
+USB/Bluetooth keyboard adapters and on-screen keyboards are not implemented.
+During initialisation, Escape opens boot diagnostics and does not abort a driver.
 
 `mem` reports the calling CPU0 owner's SRAM boot arena and reusable PSRAM heap
 capacity/free/used bytes. Local interrupts are masked only while copying those
@@ -45,8 +37,9 @@ does not overwrite the boot journal. Diagnostic logging continues independently.
 A fatal CPU0 path switches back to the diagnostic journal, bypassing the shell.
 All keyboard, serial command handling, drawing and I2C work runs outside IRQs.
 
-Serial evidence uses `NIHOS_NATIVE_SESSION_READY` (view 0 = launcher, line/history
-capacities) and `NIHOS_NATIVE_SESSION_VIEW` (from/to; 1 = shell, 2 = boot log).
+Serial evidence uses `NIHOS_NATIVE_SESSION_READY` (view 1 = terminal, line/output
+capacities) and `NIHOS_NATIVE_SESSION_VIEW` (from/to; 0 = tools, 1 = terminal,
+2 = boot log, 3 = editor).
 The existing health, READY and final splash records precede the session record.
 
 ## Build and verification
@@ -82,11 +75,7 @@ escape handling. The previews use the production grid and raster. Headless
 emulator cases cover existing core boot and fault paths; they do not execute
 the display-backed launcher or qualify physical input/display operation.
 
-Physical qualification remains pending for this candidate: boot to the launcher,
-use the real keyboard to enter the shell, run each command, return with `exit`,
-re-enter the launcher/log viewer repeatedly, confirm serial input/output, and
-check that boot health, display errors and stack guards remain valid. Do not
-reuse the base branch's physical receipt as evidence for this image.
-
-The completed host/build checks and exact artifact hashes are recorded in the
-[2026-10-27 checkpoint](measurements/2026-10-27-native-launcher-host.md).
+Physical qualification remains pending for this candidate: boot to the terminal,
+use the real keyboard to edit and recall commands, open the editor and return,
+and check serial input/output and boot health. Existing physical results for
+other source heads do not qualify this image.
