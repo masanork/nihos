@@ -2,8 +2,8 @@
 const std = @import("std");
 pub const input = @import("session_input.zig");
 const Journal = @import("../diagnostics/boot_journal.zig").Journal;
-pub const View = enum(u8) { launcher, shell, logs };
-pub const Command = enum { shell, help, clear, log, mem, tasks, launcher, exit };
+pub const View = enum(u8) { launcher, shell, logs, editor };
+pub const Command = enum { shell, help, clear, log, mem, tasks, launcher, exit, editor };
 const Entry = struct { command: Command, name: []const u8, help: []const u8 };
 pub const commands = [_]Entry{
     .{ .command = .shell, .name = "shell", .help = "Open the command prompt" },
@@ -14,13 +14,17 @@ pub const commands = [_]Entry{
     .{ .command = .tasks, .name = "tasks", .help = "Show published runtime counters" },
     .{ .command = .launcher, .name = "launcher", .help = "Return to the launcher" },
     .{ .command = .exit, .name = "exit", .help = "Return to the launcher" },
+    .{ .command = .editor, .name = "edit", .help = "Open the unsaved ASCII editor" },
 };
 pub const menu = [_]struct { label: []const u8, command: Command }{
     .{ .label = "Shell", .command = .shell },
     .{ .label = "Boot log", .command = .log },
     .{ .label = "Memory", .command = .mem },
     .{ .label = "Tasks", .command = .tasks },
+    .{ .label = "Editor (not saved)", .command = .editor },
 };
+const EditGrid = @import("ascii.zig").Grid(64, 1);
+const row_edit = @import("line_edit.zig");
 pub const Model = struct {
     view: View = .launcher,
     selected: usize = 0,
@@ -28,6 +32,8 @@ pub const Model = struct {
     line: [64]u8 = @splat(0),
     length: usize = 0,
     output: Journal(2048) = .{},
+    editor_grid: EditGrid = .{},
+    editor_cursor: row_edit.Editor(EditGrid) = .{ .row = 0, .column = 0 },
 
     pub fn begin(self: *Model, sink: anytype) void {
         self.view = .launcher;
@@ -43,7 +49,7 @@ pub const Model = struct {
             sink.write(entry.label);
             sink.write("\r\n");
         }
-        sink.write("Up/Down or 1-4: select | Enter: open | Esc: shell\r\n");
+        sink.write("Up/Down or 1-5: select | Enter: open | Esc: shell\r\n");
     }
     pub fn write(self: *Model, sink: anytype, bytes: []const u8) void {
         self.output.append(bytes);
@@ -104,6 +110,10 @@ pub const Model = struct {
                 self.shell(sink);
                 return command;
             },
+            .editor => {
+                self.view = .editor;
+                sink.write("\r\nEditor | ASCII | not saved | Esc: launcher\r\n");
+            },
             .launcher, .exit => self.begin(sink),
         }
         return null;
@@ -111,6 +121,7 @@ pub const Model = struct {
     /// mem/tasks return a bounded service request. Caller writes its result
     /// and any telemetry before emitting the serial prompt.
     pub fn handle(self: *Model, key: input.Key, sink: anytype) ?Command {
+        if (self.view != .editor and (key == .left or key == .right)) return null;
         self.revision +%= 1;
         switch (self.view) {
             .launcher => {
@@ -123,7 +134,7 @@ pub const Model = struct {
                         self.selected = (self.selected + 1) % menu.len;
                         self.announce(sink);
                     },
-                    .text => |byte| if (byte >= '1' and byte <= '4') {
+                    .text => |byte| if (byte >= '1' and byte <= '5') {
                         self.selected = byte - '1';
                         self.announce(sink);
                     },
@@ -136,6 +147,20 @@ pub const Model = struct {
             .logs => switch (key) {
                 .escape, .cancel, .eof => self.begin(sink),
                 else => {},
+            },
+            .editor => {
+                const action: ?row_edit.Action = switch (key) {
+                    .text => |byte| .{ .insert = byte },
+                    .backspace => .backspace,
+                    .left => .left,
+                    .right => .right,
+                    .escape, .cancel => {
+                        self.begin(sink);
+                        return null;
+                    },
+                    else => null,
+                };
+                if (action) |value| _ = self.editor_cursor.apply(&self.editor_grid, value);
             },
             .shell => switch (key) {
                 .text => |byte| if (byte >= 32 and byte <= 126 and self.length < self.line.len) {
@@ -189,8 +214,17 @@ pub const Model = struct {
         grid.wrap_pending = false;
         grid.scrolls = 0;
         _ = grid.setScrollTop(header);
+        if (self.view == .editor) {
+            grid.write("nihos / editor\n\nASCII | arrows | Backspace | Esc: launcher | NOT SAVED\n");
+            while (grid.y < header) grid.write("\n");
+            const position = self.editor_cursor.column;
+            grid.write(self.editor_grid.cells[0..position]);
+            grid.write("|");
+            grid.write(self.editor_grid.cells[position..]);
+            return;
+        }
         grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n\n");
-        grid.write(if (self.view == .launcher) "Up/Down or 1-4: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
+        grid.write(if (self.view == .launcher) "Up/Down or 1-5: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
         if (self.view == .shell and self.output.dropped != 0) grid.write("[older shell output discarded]\n");
         while (grid.y < header) grid.write("\n");
         if (self.view == .launcher) {
@@ -319,4 +353,31 @@ test "serial prompt follows view telemetry and Ctrl-L restores partial input" {
     model.finishInput(.clear, .shell, &sink);
     try std.testing.expect(std.mem.endsWith(u8, sink.bytes.spans()[0], "\x1b[2J\x1b[Hnihos> hel"));
     try std.testing.expectEqual(@as(usize, 3), model.length);
+}
+
+test "launcher editor accepts real HID decoder events and preserves unsaved text on return" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    var hid = input.Hid{};
+    model.begin(&sink);
+    _ = model.handle(hid.feed(0, 0x22).?, &sink); // 5
+    _ = model.handle(hid.feed(0, 0x28).?, &sink); // Enter
+    try std.testing.expectEqual(View.editor, model.view);
+    _ = model.handle(hid.feed(0, 0x0b).?, &sink); // h
+    _ = model.handle(hid.feed(0, 0x0c).?, &sink); // i
+    _ = model.handle(hid.feed(0, 0x50).?, &sink); // left
+    _ = model.handle(hid.feed(2, 0x1e).?, &sink); // !
+    try std.testing.expectEqualStrings("h!i", model.editor_grid.cells[0..3]);
+    try std.testing.expectEqual(@as(usize, 2), model.editor_cursor.column);
+    try std.testing.expect(hid.feed(2, 0x50) == null); // selection not implemented
+    const Grid = @import("ascii.zig").Grid(78, 43);
+    var grid: Grid = .{};
+    model.render(&grid);
+    try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "h!|i") != null);
+    _ = model.handle(.escape, &sink);
+    try std.testing.expectEqual(View.launcher, model.view);
+    _ = model.handle(.{ .text = '5' }, &sink);
+    _ = model.handle(.enter, &sink);
+    try std.testing.expectEqual(View.editor, model.view);
+    try std.testing.expectEqualStrings("h!i", model.editor_grid.cells[0..3]);
 }
