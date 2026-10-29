@@ -32,7 +32,8 @@ pub fn Fixture(comptime face: console.raster.Face, comptime section: ?[]const u8
             const events = [_]Event{
                 .{ .modifiers = 1, .usage = 0x06 }, // control-C ignored
                 .{ .modifiers = 2, .usage = 0x4f }, // shift-right ignored
-                .{ .modifiers = 0, .usage = 0 }, // release ignored
+                .{ .modifiers = 0, .usage = 0 }, // release filtered by driver
+                .{ .modifiers = 0, .usage = 1 }, // malformed filtered by driver
                 .{ .modifiers = 2, .usage = 0x37 }, // >
                 .{ .modifiers = 0, .usage = 0x4f }, // right
                 .{ .modifiers = 2, .usage = 0x20 }, // #
@@ -40,13 +41,20 @@ pub fn Fixture(comptime face: console.raster.Face, comptime section: ?[]const u8
                 .{ .modifiers = 0, .usage = 0x50 }, // left
                 .{ .modifiers = 0, .usage = 0x2c }, // space
             };
+            var bus = editor_fixture.InputBus{ .events = &events };
+            var driver = console.keyboard.Keyboard(editor_fixture.InputBus){ .bus = &bus };
+            if (!(driver.begin() catch return false)) return false;
             var accepted: usize = 0;
-            for (events) |event| {
-                const action = keyboard.press(event) orelse continue;
-                accepted += 1;
-                if (editor.apply(text, action) and !renderer.submit(frame, 1440, text, .green)) return false;
+            while (bus.next < events.len) {
+                var batch: [4]Event = undefined;
+                const count = driver.poll(&batch) catch return false;
+                for (batch[0..count]) |event| {
+                    const action = keyboard.press(event) orelse continue;
+                    accepted += 1;
+                    if (editor.apply(text, action) and !renderer.submit(frame, 1440, text, .green)) return false;
+                }
             }
-            if (accepted != 6) return false;
+            if (accepted != 6 or driver.report.presses != 8 or driver.report.releases != 1 or driver.report.malformed != 1) return false;
             return console.raster.paintControl(section, frame, 1440, .{ .left = 1100, .top = 650, .right = 1260, .bottom = 706 }, "LOGS", .green);
         }
     };

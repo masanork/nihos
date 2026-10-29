@@ -23,7 +23,39 @@ pub const Keyboard = struct {
     }
 };
 
-/// Edits one row in an existing host-owned console grid. Cursor movement alone
+/// Deterministic I2C register model for the Tab5 keyboard driver, used only by
+/// the fixture. It supplies FIFO bytes; it is not a physical bus simulation.
+pub const InputBus = struct {
+    events: []const console.keyboard.Event,
+    next: usize = 0,
+
+    pub fn transfer(self: *InputBus, address: u8, write: []const u8, read: []u8) error{InvalidTransfer}!void {
+        if (address != 0x6d or write.len != 1) return error.InvalidTransfer;
+        switch (write[0]) {
+            0xfe, 0x10 => {
+                if (read.len != 1) return error.InvalidTransfer;
+                read[0] = 1;
+            },
+            0xff => {
+                if (read.len != 1) return error.InvalidTransfer;
+                read[0] = 0x6d;
+            },
+            0x02 => {
+                if (read.len != 1 or self.events.len - self.next > 32) return error.InvalidTransfer;
+                read[0] = @intCast(self.events.len - self.next);
+            },
+            0x30 => {
+                if (read.len != 2 or self.next >= self.events.len) return error.InvalidTransfer;
+                const event = self.events[self.next];
+                self.next += 1;
+                read[0] = event.modifiers;
+                read[1] = event.usage;
+            },
+            else => return error.InvalidTransfer,
+        }
+    }
+};
+
 /// does not request a redraw because this fixture does not render a caret.
 pub fn Editor(comptime Grid: type) type {
     return struct {
@@ -126,4 +158,27 @@ test "synthetic Tab5 HID presses decode text, arrows and deletion without contro
     try std.testing.expect(keyboard.press(Event{ .modifiers = 0, .usage = 0x39 }) == null);
     try std.testing.expectEqual(Action{ .insert = 'A' }, keyboard.press(Event{ .modifiers = 0, .usage = 4 }).?);
     try std.testing.expectEqual(Action{ .insert = 'a' }, keyboard.press(Event{ .modifiers = 2, .usage = 4 }).?);
+}
+
+test "keyboard driver drains bounded model FIFO and filters releases and malformed usages" {
+    const Event = console.keyboard.Event;
+    const events = [_]Event{
+        .{ .modifiers = 0, .usage = 0 },
+        .{ .modifiers = 0, .usage = 1 },
+        .{ .modifiers = 2, .usage = 0x37 },
+        .{ .modifiers = 0, .usage = 0x4f },
+        .{ .modifiers = 0, .usage = 0x2a },
+    };
+    var bus = InputBus{ .events = &events };
+    var driver = console.keyboard.Keyboard(InputBus){ .bus = &bus };
+    try std.testing.expect(try driver.begin());
+    var output: [4]Event = undefined;
+    try std.testing.expectEqual(@as(usize, 2), try driver.poll(&output));
+    try std.testing.expectEqual(@as(u8, 0x37), output[0].usage);
+    try std.testing.expectEqual(@as(u8, 0x4f), output[1].usage);
+    try std.testing.expectEqual(@as(usize, 1), try driver.poll(&output));
+    try std.testing.expectEqual(@as(u8, 0x2a), output[0].usage);
+    try std.testing.expectEqual(@as(u32, 1), driver.report.releases);
+    try std.testing.expectEqual(@as(u32, 1), driver.report.malformed);
+    try std.testing.expectEqual(@as(u32, 3), driver.report.presses);
 }
