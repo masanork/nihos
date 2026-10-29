@@ -2,7 +2,8 @@
 const std = @import("std");
 const console = @import("text_console");
 
-pub const Action = union(enum) { insert: u8, left, right, backspace };
+pub const Action = console.line_edit.Action;
+pub const Editor = console.line_edit.Editor;
 
 /// Fixture adapter for Tab5 HID press events. Layout is the existing ASCII
 /// shell mapping. Modified arrows are ignored because selection is unsupported.
@@ -10,14 +11,12 @@ pub const Keyboard = struct {
     decoder: console.session.input.Hid = .{},
 
     pub fn press(self: *Keyboard, event: console.keyboard.Event) ?Action {
-        if (event.usage == 0x4f or event.usage == 0x50) {
-            if (event.modifiers != 0) return null;
-            return if (event.usage == 0x4f) .right else .left;
-        }
         const key = self.decoder.feed(event.modifiers, event.usage) orelse return null;
         return switch (key) {
             .text => |byte| .{ .insert = byte },
             .backspace => .backspace,
+            .left => .left,
+            .right => .right,
             else => null,
         };
     }
@@ -55,43 +54,6 @@ pub const InputBus = struct {
         }
     }
 };
-
-/// does not request a redraw because this fixture does not render a caret.
-pub fn Editor(comptime Grid: type) type {
-    return struct {
-        row: usize,
-        column: usize,
-
-        pub fn apply(self: *@This(), grid: *Grid, action: Action) bool {
-            if (self.row >= Grid.height or self.column > Grid.width) return false;
-            const row = grid.cells[self.row * Grid.width ..][0..Grid.width];
-            switch (action) {
-                .left => {
-                    if (self.column != 0) self.column -= 1;
-                    return false;
-                },
-                .right => {
-                    if (self.column < Grid.width) self.column += 1;
-                    return false;
-                },
-                .insert => |ch| {
-                    if (ch < 32 or ch > 126 or self.column == Grid.width or row[Grid.width - 1] != ' ') return false;
-                    std.mem.copyBackwards(u8, row[self.column + 1 ..], row[self.column .. Grid.width - 1]);
-                    row[self.column] = ch;
-                    self.column += 1;
-                    return true;
-                },
-                .backspace => {
-                    if (self.column == 0) return false;
-                    self.column -= 1;
-                    std.mem.copyForwards(u8, row[self.column .. Grid.width - 1], row[self.column + 1 ..]);
-                    row[Grid.width - 1] = ' ';
-                    return true;
-                },
-            }
-        }
-    };
-}
 
 test "bounded row edits and cursor moves preserve other rows" {
     const Grid = console.Grid(8, 2);
@@ -181,4 +143,38 @@ test "keyboard driver drains bounded model FIFO and filters releases and malform
     try std.testing.expectEqual(@as(u32, 1), driver.report.releases);
     try std.testing.expectEqual(@as(u32, 1), driver.report.malformed);
     try std.testing.expectEqual(@as(u32, 3), driver.report.presses);
+}
+
+test "Tab5 keyboard driver events reach the native launcher editor" {
+    const Event = console.keyboard.Event;
+    const events = [_]Event{
+        .{ .modifiers = 0, .usage = 0x22 }, // 5
+        .{ .modifiers = 0, .usage = 0x28 }, // Enter
+        .{ .modifiers = 0, .usage = 0x0b }, // h
+        .{ .modifiers = 0, .usage = 0 }, // release
+        .{ .modifiers = 0, .usage = 0x0c }, // i
+        .{ .modifiers = 0, .usage = 0x50 }, // left
+        .{ .modifiers = 2, .usage = 0x1e }, // !
+    };
+    const Sink = struct {
+        pub fn write(_: *@This(), _: []const u8) void {}
+    };
+    var sink: Sink = .{};
+    var session: console.session.Model = .{};
+    session.begin(&sink);
+    var decoder: console.session.input.Hid = .{};
+    var bus = InputBus{ .events = &events };
+    var driver = console.keyboard.Keyboard(InputBus){ .bus = &bus };
+    try std.testing.expect(try driver.begin());
+    while (bus.next < events.len) {
+        var batch: [4]Event = undefined;
+        const count = try driver.poll(&batch);
+        for (batch[0..count]) |event| {
+            const key = decoder.feed(event.modifiers, event.usage) orelse continue;
+            _ = session.handle(key, &sink);
+        }
+    }
+    try std.testing.expectEqual(console.session.View.editor, session.view);
+    try std.testing.expectEqualStrings("h!i", session.editor_grid.cells[0..3]);
+    try std.testing.expectEqual(@as(u32, 1), driver.report.releases);
 }

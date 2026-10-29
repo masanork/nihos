@@ -17,6 +17,7 @@ test {
     _ = @import("cow_model_test.zig");
     _ = @import("model_media.zig");
     _ = @import("file_media_test.zig");
+    _ = @import("editor_document_test.zig");
     _ = @import("checkpoint_model_test.zig");
     _ = @import("range_checksum_test.zig");
     _ = @import("index_gc_test.zig");

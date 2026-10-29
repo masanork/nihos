@@ -1,6 +1,6 @@
 //! ASCII shell/menu input. Boot diagnostic keys keep their separate decoder.
 const std = @import("std");
-pub const Key = union(enum) { text: u8, enter, backspace, up, down, escape, cancel, eof, clear };
+pub const Key = union(enum) { text: u8, enter, backspace, left, right, up, down, escape, cancel, eof, clear };
 
 pub const Hid = struct {
     caps: bool = false,
@@ -35,6 +35,8 @@ pub const Hid = struct {
             0x36 => .{ .text = if (shift) '<' else ',' },
             0x37 => .{ .text = if (shift) '>' else '.' },
             0x38 => .{ .text = if (shift) '?' else '/' },
+            0x4f => if (modifiers == 0) .right else null,
+            0x50 => if (modifiers == 0) .left else null,
             0x51 => .down,
             0x52 => .up,
             else => null,
@@ -76,6 +78,8 @@ pub const Serial = struct {
                     return switch (byte) {
                         'A' => .up,
                         'B' => .down,
+                        'C' => .right,
+                        'D' => .left,
                         else => null,
                     };
                 }

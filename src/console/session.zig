@@ -2,8 +2,8 @@
 const std = @import("std");
 pub const input = @import("session_input.zig");
 const Journal = @import("../diagnostics/boot_journal.zig").Journal;
-pub const View = enum(u8) { launcher, shell, logs };
-pub const Command = enum { shell, help, clear, log, mem, tasks, launcher, exit };
+pub const View = enum(u8) { launcher, shell, logs, editor };
+pub const Command = enum { shell, help, clear, log, mem, tasks, launcher, exit, editor };
 const Entry = struct { command: Command, name: []const u8, help: []const u8 };
 pub const commands = [_]Entry{
     .{ .command = .shell, .name = "shell", .help = "Open the command prompt" },
@@ -14,13 +14,17 @@ pub const commands = [_]Entry{
     .{ .command = .tasks, .name = "tasks", .help = "Show published runtime counters" },
     .{ .command = .launcher, .name = "launcher", .help = "Return to the launcher" },
     .{ .command = .exit, .name = "exit", .help = "Return to the launcher" },
+    .{ .command = .editor, .name = "edit", .help = "Open the unsaved ASCII editor" },
 };
 pub const menu = [_]struct { label: []const u8, command: Command }{
     .{ .label = "Shell", .command = .shell },
     .{ .label = "Boot log", .command = .log },
     .{ .label = "Memory", .command = .mem },
     .{ .label = "Tasks", .command = .tasks },
+    .{ .label = "Editor (not saved)", .command = .editor },
 };
+const EditGrid = @import("ascii.zig").Grid(64, 1);
+const row_edit = @import("line_edit.zig");
 pub const Model = struct {
     view: View = .launcher,
     selected: usize = 0,
@@ -28,6 +32,24 @@ pub const Model = struct {
     line: [64]u8 = @splat(0),
     length: usize = 0,
     output: Journal(2048) = .{},
+    editor_grid: EditGrid = .{},
+    editor_length: usize = 0,
+    editor_cursor: row_edit.Editor(EditGrid) = .{ .row = 0, .column = 0 },
+
+    /// Replace the editor document only after validating the whole input.
+    pub fn loadEditor(self: *Model, bytes: []const u8) error{UnsupportedDocument}!void {
+        if (bytes.len > EditGrid.width) return error.UnsupportedDocument;
+        for (bytes) |byte| if (byte < 32 or byte > 126) return error.UnsupportedDocument;
+        @memset(&self.editor_grid.cells, ' ');
+        @memcpy(self.editor_grid.cells[0..bytes.len], bytes);
+        self.editor_length = bytes.len;
+        self.editor_cursor.column = bytes.len;
+        self.revision +%= 1;
+    }
+
+    pub fn editorText(self: *const Model) []const u8 {
+        return self.editor_grid.cells[0..self.editor_length];
+    }
 
     pub fn begin(self: *Model, sink: anytype) void {
         self.view = .launcher;
@@ -43,7 +65,7 @@ pub const Model = struct {
             sink.write(entry.label);
             sink.write("\r\n");
         }
-        sink.write("Up/Down or 1-4: select | Enter: open | Esc: shell\r\n");
+        sink.write("Up/Down or 1-5: select | Enter: open | Esc: shell\r\n");
     }
     pub fn write(self: *Model, sink: anytype, bytes: []const u8) void {
         self.output.append(bytes);
@@ -104,6 +126,10 @@ pub const Model = struct {
                 self.shell(sink);
                 return command;
             },
+            .editor => {
+                self.view = .editor;
+                sink.write("\r\nEditor | ASCII | not saved | Esc: launcher\r\n");
+            },
             .launcher, .exit => self.begin(sink),
         }
         return null;
@@ -111,6 +137,7 @@ pub const Model = struct {
     /// mem/tasks return a bounded service request. Caller writes its result
     /// and any telemetry before emitting the serial prompt.
     pub fn handle(self: *Model, key: input.Key, sink: anytype) ?Command {
+        if (self.view != .editor and (key == .left or key == .right)) return null;
         self.revision +%= 1;
         switch (self.view) {
             .launcher => {
@@ -123,7 +150,7 @@ pub const Model = struct {
                         self.selected = (self.selected + 1) % menu.len;
                         self.announce(sink);
                     },
-                    .text => |byte| if (byte >= '1' and byte <= '4') {
+                    .text => |byte| if (byte >= '1' and byte <= '5') {
                         self.selected = byte - '1';
                         self.announce(sink);
                     },
@@ -136,6 +163,31 @@ pub const Model = struct {
             .logs => switch (key) {
                 .escape, .cancel, .eof => self.begin(sink),
                 else => {},
+            },
+            .editor => {
+                const action: ?row_edit.Action = switch (key) {
+                    .text => |byte| .{ .insert = byte },
+                    .backspace => .backspace,
+                    .left => .left,
+                    .right => .right,
+                    .escape, .cancel => {
+                        self.begin(sink);
+                        return null;
+                    },
+                    else => null,
+                };
+                if (action) |value| {
+                    switch (value) {
+                        .right => if (self.editor_cursor.column >= self.editor_length) return null,
+                        .insert => if (self.editor_length == EditGrid.width) return null,
+                        else => {},
+                    }
+                    if (self.editor_cursor.apply(&self.editor_grid, value)) switch (value) {
+                        .insert => self.editor_length += 1,
+                        .backspace => self.editor_length -= 1,
+                        else => {},
+                    };
+                }
             },
             .shell => switch (key) {
                 .text => |byte| if (byte >= 32 and byte <= 126 and self.length < self.line.len) {
@@ -189,8 +241,17 @@ pub const Model = struct {
         grid.wrap_pending = false;
         grid.scrolls = 0;
         _ = grid.setScrollTop(header);
+        if (self.view == .editor) {
+            grid.write("nihos / editor\n\nASCII | arrows | Backspace | Esc: launcher | NOT SAVED\n");
+            while (grid.y < header) grid.write("\n");
+            const position = self.editor_cursor.column;
+            grid.write(self.editor_grid.cells[0..position]);
+            grid.write("|");
+            grid.write(self.editor_grid.cells[position..]);
+            return;
+        }
         grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n\n");
-        grid.write(if (self.view == .launcher) "Up/Down or 1-4: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
+        grid.write(if (self.view == .launcher) "Up/Down or 1-5: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
         if (self.view == .shell and self.output.dropped != 0) grid.write("[older shell output discarded]\n");
         while (grid.y < header) grid.write("\n");
         if (self.view == .launcher) {
@@ -291,7 +352,8 @@ test "physical HID typing, cancellation and both display geometries stay usable"
     _ = model.handle(hid.feed(1, 6).?, &sink);
     for ([_]u8{ 8, 27, 12, 23, 0x28 }) |usage| _ = model.handle(hid.feed(0, usage).?, &sink);
     try std.testing.expectEqual(View.launcher, model.view);
-    _ = model.handle(.up, &sink); // wrap to Tasks
+    _ = model.handle(.up, &sink); // wrap to Editor
+    _ = model.handle(.up, &sink); // move to Tasks
     var small = @import("ascii.zig").Grid(78, 43){};
     var large = @import("ascii.zig").Grid(80, 22){};
     model.render(&small);
@@ -319,4 +381,52 @@ test "serial prompt follows view telemetry and Ctrl-L restores partial input" {
     model.finishInput(.clear, .shell, &sink);
     try std.testing.expect(std.mem.endsWith(u8, sink.bytes.spans()[0], "\x1b[2J\x1b[Hnihos> hel"));
     try std.testing.expectEqual(@as(usize, 3), model.length);
+}
+
+test "launcher editor accepts real HID decoder events and preserves unsaved text on return" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    var hid = input.Hid{};
+    model.begin(&sink);
+    _ = model.handle(hid.feed(0, 0x22).?, &sink); // 5
+    _ = model.handle(hid.feed(0, 0x28).?, &sink); // Enter
+    try std.testing.expectEqual(View.editor, model.view);
+    _ = model.handle(hid.feed(0, 0x0b).?, &sink); // h
+    _ = model.handle(hid.feed(0, 0x0c).?, &sink); // i
+    _ = model.handle(hid.feed(0, 0x50).?, &sink); // left
+    _ = model.handle(hid.feed(2, 0x1e).?, &sink); // !
+    try std.testing.expectEqualStrings("h!i", model.editor_grid.cells[0..3]);
+    try std.testing.expectEqual(@as(usize, 2), model.editor_cursor.column);
+    try std.testing.expect(hid.feed(2, 0x50) == null); // selection not implemented
+    const Grid = @import("ascii.zig").Grid(78, 43);
+    var grid: Grid = .{};
+    model.render(&grid);
+    try std.testing.expect(std.mem.indexOf(u8, &grid.cells, "h!|i") != null);
+    _ = model.handle(.escape, &sink);
+    try std.testing.expectEqual(View.launcher, model.view);
+    _ = model.handle(.{ .text = '5' }, &sink);
+    _ = model.handle(.enter, &sink);
+    try std.testing.expectEqual(View.editor, model.view);
+    try std.testing.expectEqualStrings("h!i", model.editor_grid.cells[0..3]);
+}
+
+test "editor preserves trailing spaces and refuses insertion into a full row" {
+    var model: Model = .{};
+    var sink: Sink = .{};
+    _ = model.handle(.{ .text = '5' }, &sink);
+    _ = model.handle(.enter, &sink);
+    for (0..64) |_| _ = model.handle(.{ .text = ' ' }, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_length);
+    _ = model.handle(.left, &sink);
+    _ = model.handle(.{ .text = 'x' }, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_length);
+    try std.testing.expectEqualSlices(u8, &@as([64]u8, @splat(' ')), &model.editor_grid.cells);
+    _ = model.handle(.backspace, &sink);
+    try std.testing.expectEqual(@as(usize, 63), model.editor_length);
+    _ = model.handle(.{ .text = 'x' }, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_length);
+    try std.testing.expectEqual(@as(u8, 'x'), model.editor_grid.cells[62]);
+    _ = model.handle(.right, &sink);
+    _ = model.handle(.right, &sink);
+    try std.testing.expectEqual(@as(usize, 64), model.editor_cursor.column);
 }
