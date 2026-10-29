@@ -1,0 +1,52 @@
+{
+  "qualification": "device-profile structural image study; no KEM runtime or dedicated worker",
+  "disabled": {
+    "elf_sha256": "a197b2d3f818f6933e91cfc7341c3a8365f9d741baa60bafbd039d52e39dff76",
+    "image_sha256": "949e99f1038f4ebd65aa28f54bc2e85d3a526d77ea463399eea28cedffce945a",
+    "primary_static_bytes": 100992,
+    "heap_bytes": 62848,
+    "image_bytes": 185648
+  },
+  "baseline": {
+    "elf_sha256": "5a56b0f9d92c9500a5d0c655a5e0c231cc87055ad208ae59980bf4efc8aa810d",
+    "image_sha256": "644a69c81c3cce313602797712e695d04230b35a747057422a9ec2a9c8410852",
+    "primary_static_bytes": 102976,
+    "heap_bytes": 60864,
+    "image_bytes": 206336,
+    "flash_text_bytes": 11800,
+    "flash_rodata_bytes": 6620
+  },
+  "dual": {
+    "elf_sha256": "c8d8cc41c71ce864b8dd72ee6a025745c2eddf35fc53e86692683a5929d17c59",
+    "image_sha256": "43404ed3aedc2f9cfaaa5b55cf2b69e70e28af17bbb646e033ea5fd985c1a8da",
+    "primary_static_bytes": 111104,
+    "heap_bytes": 52736,
+    "image_bytes": 232032,
+    "flash_text_bytes": 26528,
+    "flash_rodata_bytes": 9472,
+    "sram_code_bytes": 5668,
+    "sram_test_data_bytes": 2400
+  },
+  "static_delta_from_disabled": 10112,
+  "static_delta_bytes": 8128,
+  "heap_floor_margin_bytes": 3584,
+  "hypothetical_heap_after_extra_8192_stack": 44544,
+  "hypothetical_floor_deficit": 4608,
+  "retained_roots": {
+    "elf_sha256": "df6c4ea53282b0be78bd316434212826f91ba6f0ae2b089571378023db59ddd2",
+    "image_sha256": "324f2a1d924aea52e08b63497335addd8ca56865c21644d2441c1c39931b07e4",
+    "primary_static_bytes": 105728,
+    "heap_bytes": 58112,
+    "image_bytes": 226096,
+    "sram_code_bytes": 2710,
+    "flash_text_bytes": 28386,
+    "flash_rodata_bytes": 7072,
+    "flash_text_remaining": 302,
+    "flash_rodata_remaining": 2592,
+    "static_delta_from_disabled": 4736,
+    "static_delta_from_mldsa": 2752,
+    "heap_floor_margin_bytes": 8960,
+    "hypothetical_heap_after_extra_8192_stack": 49920,
+    "hypothetical_margin": 768
+  }
+}

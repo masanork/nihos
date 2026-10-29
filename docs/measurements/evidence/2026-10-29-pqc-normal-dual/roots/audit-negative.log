@@ -1,0 +1,4 @@
+unknown function: rejected: unapproved PQC Flash function
+missing profile marker: rejected: PQC profile marker differs from sections
+executable read-only section: rejected: invalid PQC Flash data
+changed Flash image byte: rejected: Flash boot/card bytes differ from ELF

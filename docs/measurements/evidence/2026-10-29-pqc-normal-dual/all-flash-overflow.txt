@@ -1,0 +1,4 @@
+error: ld.lld: section '.flash.pqc' will not fit in region 'flash_boot': overflowed by 3508 bytes
+error: ld.lld: section '.flash.pqc.rodata' will not fit in region 'flash_records': overflowed by 2208 bytes
+error: ld.lld: section .flash.pqc virtual address range overlaps with .flash.rodata
+error: ld.lld: section .flash.pqc load address range overlaps with .flash.rodata
