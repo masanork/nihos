@@ -710,6 +710,17 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
     enableTimer(0);
+    if (options.pqc_verify_probe) {
+        const before = cycle();
+        const tick0 = @atomicLoad(u32, &ticks[0], .acquire);
+        const tick1 = @atomicLoad(u32, &ticks[1], .acquire);
+        var report = @import("pqc_probe.zig").run();
+        report.cycles = cycle() -% before;
+        report.ticks0 = @atomicLoad(u32, &ticks[0], .acquire) -% tick0;
+        report.ticks1 = @atomicLoad(u32, &ticks[1], .acquire) -% tick1;
+        logger.record("NIHOS_NATIVE_PQC_VERIFY", null, .{ "status", "cycles", "masked_cycles", "ticks0", "ticks1", "lease", "stack_used", "guard", "erased", "released", "masked" }, &report);
+        if (report.status != 1 and report.status != 2) fail("PQC verify fixture");
+    }
     if (options.boot_fast) normalReady();
     var previous: u32 = 0;
     var rounds: u32 = 0;

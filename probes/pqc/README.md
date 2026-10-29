@@ -47,3 +47,23 @@ For the host interoperability fixture, using the same source revisions:
 
 Fixed test seeds do not provide production entropy. No external source is
 vendored by this probe.
+
+## Experimental native verification fixture
+
+The opt-in `NIHOS_NATIVE_PQC_VERIFY_PROBE=1` links the pinned external
+mldsa-native checkout (`NIHOS_MLDSA_SOURCE`) into the regular native ELF build.
+It verifies upstream's public fixture and rejects a changed message on a 32 KiB
+owner-allocated PSRAM stack. The current trap stack contract rejects PSRAM task
+frames; the measurement temporarily masks CPU0 interrupts during both checks.
+This is a measurement fixture, **not** an interactive or production service.
+CPU-visible zero readback does not establish external-memory erasure.
+
+```sh
+NIHOS_NATIVE_PQC_VERIFY_PROBE=1 NIHOS_MLDSA_SOURCE=/path/to/mldsa-native \
+  sh tools/build-native.sh emulator integer
+```
+
+Retain the exact built image/ELF/audit before running ESP-EMU. Check a full log
+with both `tools/check-native-log.py` and `probes/pqc/check_native_log.py LOG 4M`.
+For no PSRAM, the latter accepts `LOG 0` and requires unavailable status.
+See the native measurement document for commands, results and limitations.
