@@ -376,7 +376,7 @@ pub fn startSession(log: anytype) bool {
     return service(log);
 }
 fn beginSession(log: anytype) void {
-    @memset(@import("std").mem.asBytes(session), 0);
+    session.* = .{};
     session.begin(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
     session_serial = .{};

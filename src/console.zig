@@ -5,6 +5,7 @@ pub const keyboard = @import("board/tab5/keyboard.zig");
 pub const Journal = @import("diagnostics/boot_journal.zig").Journal;
 pub const boot = @import("diagnostics/boot_state.zig");
 pub const Grid = @import("console/ascii.zig").Grid;
+pub const line_edit = @import("console/line_edit.zig");
 pub const snapshot = @import("console/snapshot.zig");
 pub const raster = @import("graphics/ascii_console.zig");
 test {
