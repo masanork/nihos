@@ -34,13 +34,6 @@ fn rgb565(color: [3]u8) u16 {
     return (@as(u16, color[0] >> 3) << 11) | (@as(u16, color[1] >> 2) << 5) | (color[2] >> 3);
 }
 
-fn put(framebuffer: []u8, stride: usize, x: usize, y: usize, color: [3]u8) void {
-    const offset = y * stride + x * 2;
-    const pixel = rgb565(color);
-    framebuffer[offset] = @truncate(pixel);
-    framebuffer[offset + 1] = @truncate(pixel >> 8);
-}
-
 fn dyeAmount(progress: u8, group: u8) u8 {
     // Three overlapping fades, in reading order; a true monochrome first frame.
     const start = @as(u16, group) * 64;
@@ -105,10 +98,17 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
             const alpha = @as(u8, run >> 4) * 17;
             const count = @as(usize, run & 15) + 1;
             if (alpha != 0) {
-                const color = mix(background, ink, alpha);
-                for (pixel..pixel + count) |index| {
-                    const point = physical(layout, sprite.x + index % sprite.width, sprite.y + index / sprite.width);
-                    put(framebuffer, stride, left + point.x, top + point.y, color);
+                const color = rgb565(mix(background, ink, alpha));
+                var index = pixel;
+                const end = pixel + count;
+                while (index < end) {
+                    const x = index % sprite.width;
+                    const y = index / sprite.width;
+                    const span = @min(end - index, sprite.width - x);
+                    // A run can cross a glyph row; split before rotating it.
+                    const point = physical(layout, sprite.x + x + if (layout == .landscape) span - 1 else 0, sprite.y + y);
+                    canvas.fillRect(.{ .x = @intCast(left + point.x), .y = @intCast(top + point.y), .width = @intCast(if (layout == .landscape) 1 else span), .height = @intCast(if (layout == .landscape) span else 1) }, color);
+                    index += span;
                 }
             }
             pixel += count;
