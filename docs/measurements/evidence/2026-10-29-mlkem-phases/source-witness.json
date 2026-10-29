@@ -1,0 +1,37 @@
+{
+  "base_commit": "9c4e600",
+  "mlkem_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06",
+  "mldsa_revision": "33031ee66dfe0231cc5995dd1d4ced467df6b8de",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "bbd514ee425dd9ae1e74becc484c3a75f746e77a5e9ad128d037504a4be7677b",
+    "src/platform/native/main.zig": "55a7a0164e8b7188edf0cb3d1ef9b1d07e431e52731313854ce8f2589426d08c",
+    "src/platform/native/heap.zig": "033e38bec38db8c87c0dab5283915108c8cc6360678bf8924c571e8dfd40b61d",
+    "src/platform/native/mlkem_worker_probe.zig": "ebb85c4a65b722af2abc3aeeba31790852b5a899f4a25e39d6da1911e7bbd318",
+    "src/platform/native/stack_layout.zig": "b682051e7cb159f5cfa23f8f3c075ce0236dab107d43370f86fe2818545537e4",
+    "src/platform/native/stacks.zig": "64bd6f3180f64777376a237cfaf1789e781d496b6f577caac01ee1abbb367d62",
+    "src/platform/native/esp32p4.ld": "ff8f2b653d30d4703e645dce53e53c57839107598ccb372e008e9f593a02f85f",
+    "src/kernel/task_resources.zig": "6cf302b6388edd191a4b9d1099f294132bd97ce0a2332aea037484d1f4327b61",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+    "tools/build-native-elf.sh": "d6d1f83565cbddea88d8cf6990b81e585fe9d2827414c4283a4bdac57feaab80",
+    "probes/pqc/mlkem_arena.h": "b4ecdecd777b99dca10aaf61a28ecb9747b8b680ee6d860b09f1d541c5574abe",
+    "probes/pqc/mlkem_arena.c": "09dd0aaf2a05017791b3651145c850c97cf1c5103db528f50ac8b06eead5aa92",
+    "probes/pqc/mlkem_native_worker.c": "f6429c3ba8a36752064b6cecd859d24f441c5fb3452a1328b46867a32901086c",
+    "probes/pqc/native_arena.h": "bd881cdd7b1ee43c38f455927ba90995864730ad1ae1a1b8e877f931476c8b4f",
+    "probes/pqc/native_arena_verify.c": "86303e4d7014c614d450dd2e09440b2c4995818d1bec34585e20b4d6657dda46",
+    "probes/sqlite/stack_paint.S": "60dca052a33ac4462d52bbb23ef00ec8fd4d40330bd8c3725dec7849f6a072e7",
+    "probes/pqc/check_worker_log.py": "4872683e3ed4adcfbe946ab87e86dc1360f855bae7f36444175dece606c16f98",
+    "probes/pqc/check_mlkem_worker_log.py": "7108e0c017159d1e86ed4d5a10c605c1b2916726693960eb5c208efeccad2859",
+    "probes/pqc/check_mlkem_phases_log.py": "f4444376302682042d8792d4da893016a6c772f260aaca2231ea9633b9102b6d"
+  },
+  "upstream_file_sha256": {
+    "mlkem/mlkem_native.c": "458fe663d72587cac228d797be63f37303d11905bc3493fc8fcf6bf36cdf5e4a",
+    "mlkem/mlkem_native.h": "2106c67761997c8920356f4822ec8aba77bb5dd1cb26ee90162fcbc1c53f5722",
+    "test/test_vectors/expected_test_vectors.h": "af87225bf785ac824d06a2cadd0a9d1c79ee9a505b3ebce0b444c59b79a6d2c7"
+  },
+  "elf_sha256": "1a0b0125828096c8f0333c1fcfeaa713dec5e0a4b2bd9de165fd8558a27777f2",
+  "image_sha256": "aaaa26ebe87b39f643d1591a3ba8ce6e6c248b968e1e94d2aab738bd877b92c1",
+  "raw_logs_sha256": {
+    "4M": "985ca643ef0128884e0a6f4c75156fe4e1689e41b794af852907b2d17c54385d",
+    "0": "c197d60a6582d4b8f2273cc3c9177b36b9588c8a0b739a26bcc8e3108b4e0d3f"
+  }
+}

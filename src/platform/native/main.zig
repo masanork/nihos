@@ -876,6 +876,7 @@ export fn nih_native_main() callconv(.c) noreturn {
                 if (!tasks.reapPqcWorker() or !tasks.pqcPostReapYield()) fail("MLKEM worker reap");
                 logger.record("NIHOS_NATIVE_MLKEM_WORKER", null, .{ "status", "key_ok", "enc_ok", "dec_ok", "implicit_ok", "oom_ok", "key_peak", "enc_peak", "dec_peak", "allocs", "frees", "oom_error", "live", "uncleared", "ticks", "foreground0", "foreground1" }, &report);
                 logger.record("NIHOS_NATIVE_MLKEM_MEMORY", null, .{ "before", "after_arena", "after_both", "after_release", "arena", "io", "charged", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
+                logger.record("NIHOS_NATIVE_MLKEM_STACK", null, .{ "key_stack", "enc_stack", "dec_stack", "implicit_stack", "oom_stack" }, &report);
                 const owner: struct { captures: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = captures, .terminated = 1, .cleaned = 1, .reaped = 1 };
                 logger.record("NIHOS_NATIVE_MLKEM_OWNER", null, .{ "captures", "terminated", "cleaned", "reaped" }, &owner);
                 if (captures == 0 or (report.status != 1 and report.status != 2)) fail("MLKEM worker fixture");

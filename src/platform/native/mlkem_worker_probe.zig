@@ -2,9 +2,9 @@
 const std = @import("std");
 const memory = @import("native_tasks").memory;
 extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
-const Result = extern struct { key_ok: u32 = 0, enc_ok: u32 = 0, dec_ok: u32 = 0, implicit_ok: u32 = 0, oom_ok: u32 = 0, key_peak: u32 = 0, enc_peak: u32 = 0, dec_peak: u32 = 0, allocs: u32 = 0, frees: u32 = 0, oom_error: u32 = 0, live: u32 = 0, uncleared: u32 = 0, ticks: u32 = 0, foreground0: u32 = 0, foreground1: u32 = 0 };
-extern fn nih_mlkem_worker_fixture([*]u8, usize, [*]u8, usize, *Result) callconv(.c) c_int;
-pub const Report = struct { status: u32 = 0, before: u32 = 0, after_arena: u32 = 0, after_both: u32 = 0, after_release: u32 = 0, arena: u32 = 0, io: u32 = 0, charged: u32 = 0, key_ok: u32 = 0, enc_ok: u32 = 0, dec_ok: u32 = 0, implicit_ok: u32 = 0, oom_ok: u32 = 0, key_peak: u32 = 0, enc_peak: u32 = 0, dec_peak: u32 = 0, allocs: u32 = 0, frees: u32 = 0, oom_error: u32 = 0, live: u32 = 0, uncleared: u32 = 0, ticks: u32 = 0, foreground0: u32 = 0, foreground1: u32 = 0, stack_used: u32 = 0, stack_painted: u32 = 0, erased: u32 = 0, released: u32 = 0, mie: u32 = 0 };
+const Result = extern struct { key_ok: u32 = 0, enc_ok: u32 = 0, dec_ok: u32 = 0, implicit_ok: u32 = 0, oom_ok: u32 = 0, key_peak: u32 = 0, enc_peak: u32 = 0, dec_peak: u32 = 0, allocs: u32 = 0, frees: u32 = 0, oom_error: u32 = 0, live: u32 = 0, uncleared: u32 = 0, ticks: u32 = 0, foreground0: u32 = 0, foreground1: u32 = 0, key_stack: u32 = 0, enc_stack: u32 = 0, dec_stack: u32 = 0, implicit_stack: u32 = 0, oom_stack: u32 = 0 };
+extern fn nih_mlkem_worker_fixture([*]u8, usize, [*]u8, usize, u32, u32, *Result) callconv(.c) c_int;
+pub const Report = struct { status: u32 = 0, before: u32 = 0, after_arena: u32 = 0, after_both: u32 = 0, after_release: u32 = 0, arena: u32 = 0, io: u32 = 0, charged: u32 = 0, key_ok: u32 = 0, enc_ok: u32 = 0, dec_ok: u32 = 0, implicit_ok: u32 = 0, oom_ok: u32 = 0, key_peak: u32 = 0, enc_peak: u32 = 0, dec_peak: u32 = 0, allocs: u32 = 0, frees: u32 = 0, oom_error: u32 = 0, live: u32 = 0, uncleared: u32 = 0, ticks: u32 = 0, foreground0: u32 = 0, foreground1: u32 = 0, key_stack: u32 = 0, enc_stack: u32 = 0, dec_stack: u32 = 0, implicit_stack: u32 = 0, oom_stack: u32 = 0, stack_used: u32 = 0, stack_painted: u32 = 0, erased: u32 = 0, released: u32 = 0, mie: u32 = 0 };
 pub noinline fn run(stack: memory.stacks.layout.Region) Report {
     var report: Report = .{};
     const before = memory.reusable.availableBytes() orelse {
@@ -35,7 +35,7 @@ pub noinline fn run(stack: memory.stacks.layout.Region) Report {
     const painted = nih_sqlite_stack_paint(low);
     report.stack_painted = painted;
     var result: Result = .{};
-    const rc = nih_mlkem_worker_fixture(arena.bytes.ptr, arena.bytes.len, io.bytes.ptr, io.bytes.len, &result);
+    const rc = nih_mlkem_worker_fixture(arena.bytes.ptr, arena.bytes.len, io.bytes.ptr, io.bytes.len, low, stack.end, &result);
     const status = asm volatile ("csrr %[out], mstatus"
         : [out] "=r" (-> u32),
     );
@@ -62,6 +62,12 @@ pub noinline fn run(stack: memory.stacks.layout.Region) Report {
     report.ticks = result.ticks;
     report.foreground0 = result.foreground0;
     report.foreground1 = result.foreground1;
+    report.key_stack = result.key_stack;
+    report.enc_stack = result.enc_stack;
+    report.dec_stack = result.dec_stack;
+    report.implicit_stack = result.implicit_stack;
+    report.oom_stack = result.oom_stack;
+    report.stack_used = @max(report.stack_used, report.key_stack, report.enc_stack, report.dec_stack, report.implicit_stack, report.oom_stack);
     std.crypto.secureZero(u8, arena.bytes);
     std.crypto.secureZero(u8, io.bytes);
     report.erased = @intFromBool(std.mem.allEqual(u8, arena.bytes, 0) and std.mem.allEqual(u8, io.bytes, 0));
