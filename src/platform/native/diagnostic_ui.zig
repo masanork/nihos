@@ -377,7 +377,7 @@ pub fn startSession(log: anytype) bool {
 }
 fn beginSession(log: anytype) void {
     session.* = .{};
-    session.begin(SerialSink{});
+    session.startTerminal(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
     session_serial = .{};
     session_hid = .{};
@@ -385,6 +385,7 @@ fn beginSession(log: anytype) void {
     session_pending = false;
     const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
     log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);
+    session.prompt(SerialSink{});
     @atomicStore(u32, &dirty, 1, .release);
 }
 noinline fn sessionKey(key: Session.input.Key, log: anytype) void {
@@ -418,7 +419,7 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) void {
     if (session.view != before) {
         if (session.view == .logs) {
             for (journal.spans()) |part| (SerialSink{}).write(part);
-            (SerialSink{}).write("\r\nEsc: launcher\r\n");
+            (SerialSink{}).write("\r\nEsc: terminal\r\n");
         }
         const values = .{ .from = @as(u32, @backingInt(before)), .to = @as(u32, @backingInt(session.view)) };
         log.record("NIHOS_NATIVE_SESSION_VIEW", null, .{ "from", "to" }, &values);

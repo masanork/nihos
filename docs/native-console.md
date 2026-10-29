@@ -110,23 +110,24 @@ NIHOS_NATIVE_CONSOLE=1 NIHOS_NATIVE_CONSOLE_LIVE=1 \
   NIHOS_NATIVE_QUALIFICATION=0 sh tools/build-native.sh device integer
 python3 tools/console/preview.py
 python3 tools/console/preview.py --failed
-# Palette: 0 = neutral, 1 = pale green, 2 = blue, 3 = stronger green, 4 = Matrix green (default)
+# Palette: 0 = neutral, 1 = pale green, 2 = blue, 3 = stronger green, 4 = Matrix green (low-level default)
 # NIHOS_NATIVE_CONSOLE_PALETTE=4 selects vivid green, RGB5650x07e8.
-# NIHOS_NATIVE_CONSOLE_FONT=3 (default): original small bitmap, lighter edges.
+# NIHOS_NATIVE_CONSOLE_FONT=3 (low-level default): original small bitmap, lighter edges.
 # 0: original solid bitmap; 1: JetBrains; 2: Source Code Pro.
 python3 tools/console/preview.py --palette matrix
 python3 tools/console/preview.py --palette blue
 python3 tools/console/preview.py --palette green --font source-code
 ```
 
-The current default returns to the first small **8x8 VGA bitmap in 16x16 cells**:
-78 columns and 43 rows, with16-pixel margins. Option3 retains the exact bitmap
+The low-level console default uses the small **8x8 VGA bitmap in 16x16 cells**:
+78 columns and 43 rows, with 16-pixel margins. The normal device build instead
+uses the JetBrains face and neutral palette for a more readable terminal. Option3 retains the exact bitmap
 and cell advance, reducing coverage on exposed right/bottom stroke edges.
-Option0 is the initial solid bitmap. Palette4 is now the default: vivid
+Option0 is the initial solid bitmap. Low-level palette4 is vivid
 Matrix-style green, RGB565 foreground0x07e8 and heading0x05a6. Palette3 retains
 the darker muted0x5dcf trial and palette1 the earlier pale0xa5f5 trial.
-The previous JetBrains Mono Medium 24 px and Source Code Pro Medium 25 px faces
-remain optional, at 80x22 in 15x30 cells.
+JetBrains Mono Medium 24 px and Source Code Pro Medium 25 px use 80x22
+in 15x30 cells.
 
 During a console view, boot output appends directly to a retained body grid.
 The fixed header is refreshed separately without changing the output cursor.
@@ -166,8 +167,8 @@ SHA256 hashes and OFL notices are in
 [the ASCII font provenance](../src/graphics/ascii/README.md). This does not
 implement or embed the deferred Japanese UD faces.
 
-The console option requires the full PSRAM display mode and remains off by
-default. Live mode requires the console; I2C keyboard and fault injection
+The console option requires the full PSRAM display mode. The low-level ELF build
+leaves it off by default; the normal device build enables it. Live mode requires the console; I2C keyboard and fault injection
 require live mode. The build retains the 48 KiB SRAM heap minimum, existing
 image regions, ROM allowlist and integer-only audit. Kernel, tasks and allocator
 remain ReleaseSafe. Display service, bounded peripheral leaves and graphics use
