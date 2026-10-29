@@ -135,3 +135,21 @@ direct incoming branches and unannotated indirect `jalr` sites. It validates
 the ELF hash but cannot prove a complete call graph or cache-off safety.
 `python3 -m unittest probes.pqc.cache_gate_model_test` checks a separate host
 model of the desired gate; no such gate is integrated into native execution.
+
+## Independent worker experiment
+
+`NIHOS_NATIVE_PQC_WORKER_PROBE=1` uses a dedicated 8 KiB internal SRAM BSS
+stack for a single arena verification worker. It is restricted to the
+headless integer emulator fixture and never implements the normal UI service.
+The 8 KiB stack remains statically reserved after the task is reaped.
+
+```sh
+NIHOS_NATIVE_PQC_WORKER_PROBE=1 NIHOS_NATIVE_PQC_VERIFY_PROBE=2 \
+  NIHOS_MLDSA_SOURCE=/path/to/mldsa-native sh tools/build-native.sh emulator integer
+```
+
+After preserving the exact image and ELF, capture the emulator output until
+`NIHOS_NATIVE_PQC_WORKER_OWNER`, then validate with
+`python3 probes/pqc/check_worker_log.py LOG ELF BIN AUDIT 4M REPORT.json` (or
+`0` for absent PSRAM). This is a targeted worker test, not the normal
+300-round smoke. See [the worker measurement](../../docs/measurements/2026-10-29-pqc-independent-worker.md).

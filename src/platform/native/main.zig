@@ -17,12 +17,25 @@ const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
 comptime {
     if (options.pqc_arena_probe) @export(&pqcObserve, .{ .name = "nih_pqc_observe" });
+    if (options.pqc_worker_probe) @export(&pqcWorker, .{ .name = "nih_pqc_worker_entry" });
 }
 fn pqcObserve(out: *[3]u32) callconv(.c) void {
     out[0] = @atomicLoad(u32, &ticks[0], .acquire);
-    const progress_now = tasks.report(0).progress;
-    out[1] = progress_now[0];
-    out[2] = progress_now[1];
+    if (options.pqc_worker_probe) {
+        out[1] = @atomicLoad(u32, &progress[0], .acquire);
+        out[2] = @atomicLoad(u32, &progress[1], .acquire);
+    } else {
+        const progress_now = tasks.report(0).progress;
+        out[1] = progress_now[0];
+        out[2] = progress_now[1];
+    }
+}
+var pqc_worker_done: u32 = 0;
+var pqc_worker_report: if (options.pqc_worker_probe) @import("pqc_arena_probe.zig").Report else void = if (options.pqc_worker_probe) .{} else {};
+fn pqcWorker(_: u32) callconv(.c) i32 {
+    pqc_worker_report = @import("pqc_arena_probe.zig").runOn(tasks.pqcWorkerStack());
+    @atomicStore(u32, &pqc_worker_done, 1, .release);
+    return 0;
 }
 export fn nih_device_request(kind: u32) callconv(.c) bool {
     if (!options.devices) return false;
@@ -719,7 +732,25 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
     enableTimer(0);
-    if (options.pqc_arena_probe) {
+    if (options.pqc_worker_probe) {
+        if (!tasks.startPqcWorker()) fail("PQC worker start");
+        const started = cycle();
+        while (@atomicLoad(u32, &pqc_worker_done, .acquire) == 0 or !tasks.pqcWorkerFinished()) {
+            _ = tasks.service(0);
+            _ = @atomicRmw(u32, &progress[0], .Add, 1, .release);
+            if (cycle() -% started > 1_000_000_000) fail("PQC worker timeout");
+        }
+        const report = pqc_worker_report;
+        const extra_captures = tasks.memory.stacks.experimentalCaptures();
+        if (!tasks.reapPqcWorker()) fail("PQC worker reap");
+        // Re-enter the scheduler after retirement to check its accounting.
+        if (!tasks.pqcPostReapYield()) fail("PQC worker post-reap yield");
+        logger.record("NIHOS_NATIVE_PQC_WORKER", null, .{ "status", "verify_ticks", "verify_worker0", "verify_worker1", "lease", "charged", "peak", "allocs", "frees", "failures", "valid", "rejected", "oom", "live", "stack_used", "stack_painted", "erased", "released", "mie" }, &report);
+        const ownership: struct { captures: u32, foreground: u32, terminated: u32, cleaned: u32, reaped: u32 } = .{ .captures = extra_captures, .foreground = @atomicLoad(u32, &progress[0], .acquire), .terminated = 1, .cleaned = 1, .reaped = 1 };
+        logger.record("NIHOS_NATIVE_PQC_WORKER_OWNER", null, .{ "captures", "foreground", "terminated", "cleaned", "reaped" }, &ownership);
+        if (extra_captures == 0 or (report.status != 1 and report.status != 2)) fail("PQC worker fixture");
+        while (true) asm volatile ("wfi");
+    } else if (options.pqc_arena_probe) {
         const before = cycle();
         const tick0 = @atomicLoad(u32, &ticks[0], .acquire);
         const tick1 = @atomicLoad(u32, &ticks[1], .acquire);

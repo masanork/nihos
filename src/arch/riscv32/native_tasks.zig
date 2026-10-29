@@ -19,6 +19,9 @@ extern fn nih_native_task_trampoline() callconv(.c) void;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 
 const normal_boot = @import("native_options").boot_fast;
+const pqc_worker_probe = @import("native_options").pqc_worker_probe;
+extern fn nih_pqc_worker_entry(u32) callconv(.c) i32;
+var pqc_worker_stack: if (pqc_worker_probe) [8192]u8 else [0]u8 align(64) = undefined;
 const Phase = enum { normal, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol };
 
@@ -219,7 +222,7 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     memory.reusable.selectTask(hart, key(owner.bootstrap));
     _ = owner.runtime.policy.schedule() orelse return false;
     owner.last_slot = owner.bootstrap.slot;
-    if (normal_boot) {
+    if (normal_boot or (pqc_worker_probe and hart == 0)) {
         for (&stacks[hart]) |*stack| {
             const guard: *[4]u32 = @ptrCast(stack);
             guard.* = @splat(memory.stacks.layout.worker_guard);
@@ -234,12 +237,95 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     return true;
 }
 
+/// Opt-in emulator-only fixture. The worker has a dedicated internal BSS
+/// stack and task-owned arena; it is not a public dynamic task API.
+pub noinline fn startPqcWorker() bool {
+    if (!pqc_worker_probe) return false;
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const hart = asm volatile ("csrr %[result], mhartid"
+        : [result] "=r" (-> u32),
+    );
+    if (hart != 0) return false;
+    const owner = &owners[0];
+    const current = owner.runtime.policy.current() orelse return false;
+    if (current.slot != owner.bootstrap.slot or current.generation != owner.bootstrap.generation) return false;
+    const start = @intFromPtr(&pqc_worker_stack);
+    const end = start + pqc_worker_stack.len;
+    if (!owner.ready or !memory.stacks.registerExperimental(start, end)) return false;
+    const address = context.initialTaskFrameAddress(start, pqc_worker_stack.len) orelse return false;
+    const frame: *context.IntegerContext = @ptrFromInt(address);
+    context.initialize(frame, .{ .entry = @intFromPtr(&nih_pqc_worker_entry), .argument = 0, .trampoline = @intFromPtr(&nih_native_task_trampoline), .global_pointer = owner.gp });
+    const handle = owner.runtime.add(0, .{ .frame = frame, .state = initial_state, .stack_min = start + 16, .stack_max = end }) orelse return false;
+    if (!memory.reusable.openTask(0, key(handle))) return false;
+    owner.workers[0] = handle;
+    return true;
+}
+
+pub fn pqcWorkerStack() memory.stacks.layout.Region {
+    return .{ .start = @intFromPtr(&pqc_worker_stack), .end = @intFromPtr(&pqc_worker_stack) + pqc_worker_stack.len };
+}
+
+pub fn pqcWorkerFinished() bool {
+    if (!pqc_worker_probe) return false;
+    const hart = asm volatile ("csrr %[result], mhartid"
+        : [result] "=r" (-> u32),
+    );
+    if (hart != 0) return false;
+    const status = asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    const owner = &owners[0];
+    const task = owner.runtime.policy.snapshot(owner.workers[0]) orelse return false;
+    return task.state == .exited and memory.reusable.taskCleaned(0, key(owner.workers[0]));
+}
+
+/// Retire only after task exit and ledger cleanup. The fixed BSS reservation
+/// remains allocated; clear it after the scheduler no longer references it.
+pub noinline fn reapPqcWorker() bool {
+    if (!pqc_worker_probe) return false;
+    const hart = asm volatile ("csrr %[result], mhartid"
+        : [result] "=r" (-> u32),
+    );
+    if (hart != 0) return false;
+    const ok = blk: {
+        const status = asm volatile ("csrrci %[result], mstatus, 8"
+            : [result] "=r" (-> u32),
+            :
+            : .{ .memory = true });
+        defer if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+        const owner = &owners[0];
+        const current = owner.runtime.policy.current() orelse return false;
+        if (current.slot != owner.bootstrap.slot or current.generation != owner.bootstrap.generation) return false;
+        const task = owner.runtime.policy.snapshot(owner.workers[0]) orelse return false;
+        if (task.state != .exited or task.exit_code != 0 or !memory.reusable.taskCleaned(0, key(owner.workers[0]))) return false;
+        const region = pqcWorkerStack();
+        owner.completed_runtime_ticks += task.runtime_ticks;
+        if (!owner.runtime.reap(owner.workers[0])) return false;
+        if (!memory.stacks.unregisterExperimental(region.start, region.end)) return false;
+        owner.workers[0] = .{ .slot = 0, .generation = 0 };
+        break :blk true;
+    };
+    if (!ok) return false;
+    @memset(&pqc_worker_stack, 0);
+    return true;
+}
+
+pub fn pqcPostReapYield() bool {
+    return pqc_worker_probe and calls.yieldNow() == 0;
+}
+
 pub fn ready(hart: u32) bool {
     return owners[hart].ready;
 }
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {
-    if (normal_boot) return true;
+    if (normal_boot or (pqc_worker_probe and hart == 0)) return true;
     const owner = &owners[hart];
     if (owner.phase != .initial_lifecycle and owner.phase != .replacement_lifecycle and owner.phase != .forced_lifecycle)
         return maintainProtocol(hart, device);
