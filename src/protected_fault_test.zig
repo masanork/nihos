@@ -21,7 +21,7 @@ test "a protected fault drains its ledger before the slot is reused" {
     var heap = buddy.Heap.init(&memory, 0).?;
     var ledger = resources.Resources(buddy, 4, 2){};
     const Runtime2 = runtime_module.Runtime(2, 2);
-    var runtime = Runtime2{};
+    var runtime = Runtime2{ .protected_admission = .diagnostic };
     const kernel = runtime.add(1, .{
         .stack_min = 0x1000,
         .stack_max = 0x1800,

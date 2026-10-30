@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "implementation_commit": "1bf99916fb79fc8ac5ed3fdbb7346a58e3d072ae",
+  "evidence": "physical-and-emulator",
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "reset": "warm USB reset",
+  "probe_cases_executed": [
+    11
+  ],
+  "probe_cases_not_executed": [
+    8
+  ],
+  "clic_confinement_qualified": false,
+  "untrusted_native_execution_qualified": false,
+  "rom_execute_denied": true,
+  "kernel_continued": true,
+  "fault": {
+    "cause": "0x08000001",
+    "mepc": "0x4fc00000",
+    "exit_code": -70
+  },
+  "boot_pmpcfg0": "0x00181818",
+  "source_files_sha256": {
+    "src/arch/riscv32/pmp.zig": "8484ca5bc56322c0eff5f0b5416b84e613e3316bf013fd8fad329e2dbd295fbd",
+    "src/arch/riscv32/pmp_user.S": "d32aefb37897341b03a8c992e0bab26df75b02ace17dd6a4d580d44049a1b45e",
+    "src/platform/native/main.zig": "60de7cbd2270464a33ced21f82da39307d6254c9a4a0e318e2c5a766b5a0659d",
+    "ports/esp32p4-native/bootloader_components/region_protect/region_protect.c": "e38c246f0a6e3814f3b99526ac6e57cd7fc529161da878048851e0fb0de1822d",
+    "src/arch/riscv32/native_tasks.zig": "5bfe69c6b382b4608978647c256d44c70b9b1306e5c425c20dcd6416bf9ad349",
+    "src/arch/riscv32/task_runtime.zig": "ed13e8ccae507b3a1f675b23e2b5025158f535c98f403fb29b046e5644b9b69e",
+    "tools/build-native-elf.sh": "64addc9535d849a44ad456b21ed0bef9600d222087a34ccbc1cfe8b82a356e86"
+  },
+  "artifacts_sha256": {
+    "nihos-native.bin": "1724671bcaad60ffafdd3047eef0a8a346e5e1527e3988f1ea765695c834052e",
+    "bootloader.bin": "966760427cecc26576ef200df5ac9a7d51572c648638fbb1f10e63a9d1b18e12",
+    "partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+    "emulator.log": "17fb140004127f46eeddd344663c57ed0cc64e90d5b48e0e215fb209ab24d43b",
+    "verify-restored.log": "d4b8d8d2aad25e477b1fdada59ac548975c1538defdeb4286d0191e77c86f5d6",
+    "verify-candidate.log": "0330f99b43106bc4f9ef45008110745b44acf3e69bf0ea72885062797e7e3cbd",
+    "physical.log": "ecb2acf8e19b601795727ee1cfa31e6ce10b23a38e2e4dca6502833bded483e2"
+  },
+  "restore": {
+    "verified": true,
+    "sha256": "d9411b6af948100f86e61b88fd8b6ab9e92f50f5ddbfddc78eecd34500c08f10"
+  },
+  "candidate_audit_image_sha256": "1724671bcaad60ffafdd3047eef0a8a346e5e1527e3988f1ea765695c834052e",
+  "limitations": [
+    "Only ROM execute case 11 was physically run for this candidate.",
+    "CLIC case 8 was not rerun; the earlier timeout remains unresolved.",
+    "The later default-deny admission change is host/CI evidence, not this physical image.",
+    "A timeout does not establish whether an access reached the bus or the CPU locked up."
+  ]
+}
