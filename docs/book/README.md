@@ -6,8 +6,9 @@
 
 - [編集資料・企画案と類書調査](proposal.md): 読者、差別化、目次案、演習、エコシステムへの導線。本文には収録しません。
 - [OS教科書のシラバスとフィットギャップ](syllabus-fit-gap.md): 二十章をOS基礎課程と照合し、本文の不足、nihosの実装・統合課題、比較説明に留める範囲を整理した編集資料。
-- [本文](ja/preface.md): 序章と、境界・OS環境の比較からタスク、通信、保存、端末、言語選択へ進む二十七章。
+- [本文](ja/preface.md): 序章と、機械の基礎、境界・OS環境の比較からタスク、通信、保存、端末、言語選択へ進む二十八章。
 - [序章 小さなOSを学ぶということ](ja/why-os.md): MeOSに惹かれた出発点、開発中の発見、現在の設計上の問いを分け、OSとAIと学ぶ意味を考えます。
+- [CPUとメモリ、機器の仕事を追う](ja/machine-basics.md): バイトと番地、CPUとレジスタ、スタック、メモリマップとMMIO、ポーリングとIRQ、DMA、キャッシュを、入力から画面更新までの例と紙上演習で学びます。
 - [M5Stackで動くOSとアプリ環境を見渡す](ja/m5stack-ecosystem.md): FreeRTOS、MeOS、NuttX、Zephyr、Tactility、tab5-os、MicroHydra、UIFlow、M5Launcher、NOMMU Linuxとエミュレータを、機種と実行方式から比較します。
 - [OSを何で書くか](ja/os-languages.md): アセンブリ、PL/I、C/C++、Lisp、Mesa/Oberon、Singularity、RustからZigの利点と限界を考える。Singularityの実体験とNGSCBについての伝聞を交え、言語・検証・開発環境の関係も考える。
 - [Zigで書かれたカーネルが動き始めるまで](ja/native-entry.md): スタックと初期値、最初の例外復帰、ELF配置の実験。

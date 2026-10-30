@@ -39,8 +39,8 @@
       "viewBox": "4 4 330 663.9000244140625"
     },
     "context-switch": {
-      "sourceSha256": "0517e84548bde21317dd4a834678488c3845da76e4f8d82a50739bded9ad8021",
-      "svgSha256": "df7d3fba503a6d8ffc8e019fcefae2dd505e2814b8d1b0727a3a89c61d3a8407",
+      "sourceSha256": "27548e3cca0a64a9fc91a2a87a1ace244ff2e5de61d7870667b32d7615b76d7d",
+      "svgSha256": "cda60c0937f7983ecef1689c00f3c5df6e218f529fc7d5136d7392fce754476d",
       "file": "figures/context-switch.mmd",
       "title": "保存した復帰先を、別のタスクへ切り替える",
       "description": "タスクAへのタイマー割込みでframeを保存し、kernelがタスクBのframeを選ぶ。mretはBを再開し、Aは次に選ばれるまで保存状態を保持する。",
@@ -70,6 +70,14 @@
       "description": "送信CPUが受信箱へ値を公開してIPIを立て、受信CPUが割込みで受信箱を読み待機タスクへ通知する。",
       "viewBox": "-50 -10 431 497"
     },
+    "cpu-memory-steps": {
+      "sourceSha256": "1c9f9bba29a33523fc0031bd25a4c8f78f4970d74b32fcf501b4f58b6c9a60e3",
+      "svgSha256": "552cfee5aca8a607a7e5f800f193929a371e32be2ee60933e900836834e95a44",
+      "file": "figures/cpu-memory-steps.mmd",
+      "title": "レジスタの計算と、メモリの更新を分ける",
+      "description": "CPUが番地0x1000の値10をレジスタへロードし、レジスタだけを11へ更新した後、ストアしてメモリの値を11にする。レジスタの計算だけではメモリの値は変わらない。",
+      "viewBox": "-50 -10 443 495"
+    },
     "display-pipeline": {
       "sourceSha256": "447feb4f76464b0c5042188723128e6a6139df288488dbe89fedda69430d0d6b",
       "svgSha256": "747b4ae0d945ab2bf77fd4f0c45f3992e0c5ae814396648322ead11f57d40242",
@@ -77,6 +85,14 @@
       "title": "画素が表示されるまで",
       "description": "CPUが描いた画素は表示用メモリからDMA、bridge FIFO、host FIFOを経由してパネルへ進む。DMA完了後も後段に画素が残りうる。",
       "viewBox": "4 4 416.25 475.97100830078125"
+    },
+    "dma-control-and-data": {
+      "sourceSha256": "89701ac1540a310d46640b7e05d71b5d9c2a098ec589f3787314d21c05a5f961",
+      "svgSha256": "4fc15b7bb5308f17ec96b526cd7af9ab869ac9d0b48e96c182280933c1ffffc7",
+      "file": "figures/dma-control-and-data.mmd",
+      "title": "DMAのデータ転送と、CPUへの通知を分ける",
+      "description": "CPUが表示用メモリへ画素を書き、DMAの開始を指示する。DMAはメモリから画素を読み、表示回路へ送る。点線は完了をIRQで知らせる構成の例であり、データの流れではない。",
+      "viewBox": "4 4 488.640625 517.9000244140625"
     },
     "ecall-return": {
       "sourceSha256": "fac85c1187acdac18ac2adc43ac3f9e6e16eda1912d8f5e32f205c21f0da4307",
@@ -101,6 +117,14 @@
       "title": "文字列から画素へ",
       "description": "文字列と方向、フォント設定からHarfBuzzで字形と位置を決め、FreeTypeでマスクを作り、色と合成する。",
       "viewBox": "4 4 328.875 503.0270080566406"
+    },
+    "interrupt-request-path": {
+      "sourceSha256": "2934562aeb7245222ac01c1f9c35b7c568c16a80277d06ae064b7d39ba0df536",
+      "svgSha256": "7eb293196000edd357acd5f46b474970b824c6cdbf4bc2812feca5f624edaae4",
+      "file": "figures/interrupt-request-path.mmd",
+      "title": "割込み要求から処理と再開まで",
+      "description": "架空の入力機器が割込み要求を出し、コントローラを通ってCPUが受ける。CPUで通常の処理を中断し、必要な状態を保存してハンドラを実行し、復元して再開する。一つのCPUで処理を切り替える例である。",
+      "viewBox": "-50 -10 634 465"
     },
     "io-owner-lifetime": {
       "sourceSha256": "f5c82724751cbc45ced3f8aeff7fdf827d8f05dbfb10732e9a1bad0b6a2b0472",
@@ -183,8 +207,8 @@
       "viewBox": "4 4 767.84375 246.80001831054688"
     },
     "protected-fault-cleanup": {
-      "sourceSha256": "3a1e6fcda6fed16c2dc8a0de561789fef5d24cef8722ea18ef773cfaf2a4fb83",
-      "svgSha256": "90c7846dc09dd6f4b10d70edf745116f488896c803ac77a129637e3ae3fc2d5d",
+      "sourceSha256": "d3c02449e96bca34eef307594f0217466111d72db1c4e253558be70ca14387b5",
+      "svgSha256": "200a738fe4d3286ed8e28d6cd8d8ac02d80108aabef1ebc0121eacbb34ed3ff2",
       "file": "figures/protected-fault-cleanup.mmd",
       "title": "故障したタスクだけを止め、回収後に枠を使い直す",
       "description": "U-modeの故障を安全なスタックで受け、対象タスクを終了値マイナス70でexitedにする。別の実行を再開する前に資源台帳を閉じ、回収完了を待ってreapする。同じslotは新しい世代へ再利用する。",

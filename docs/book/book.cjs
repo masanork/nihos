@@ -9,6 +9,7 @@ module.exports = {
     { id: 'preface', title: 'はじめに' },
     { id: 'toc', title: '目次', rel: 'contents' },
     { id: 'why-os', title: '序章　小さなOSを学ぶということ' },
+    { id: 'machine-basics', title: 'CPUとメモリ、機器の仕事を追う', chapter: true },
     { id: 'boundaries', title: '動く端末からOSを考える', chapter: true },
     { id: 'm5stack-ecosystem', title: 'M5Stackで動くOSとアプリ環境を見渡す', chapter: true },
     { id: 'first-experiment', title: '最初の実験を再現する', chapter: true },

@@ -6,7 +6,7 @@ sequenceDiagram
     participant B as 通常タスクB
     Note over A: 計算中
     A->>K: タイマー割込み
-    Note over K: Aのframeを保存<br/>IRQ stackで処理
+    Note over K: Aのframeを保存<br/>割込み用スタックで処理
     Note over K: Bのframeを選択<br/>復帰状態を復元
     K->>B: mretでBを再開
     Note over A: 次の選択まで<br/>保存状態を保持
