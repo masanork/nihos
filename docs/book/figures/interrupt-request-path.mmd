@@ -1,0 +1,12 @@
+sequenceDiagram
+    accTitle: 割込み要求から処理と再開まで
+    accDescr: 架空の入力機器が割込み要求を出し、コントローラを通ってCPUが受ける。CPUで通常の処理を中断し、必要な状態を保存してハンドラを実行し、復元して再開する。一つのCPUで処理を切り替える例である。
+    participant D as 入力機器
+    participant I as 割込み制御回路
+    participant C as CPU
+    Note over C: 通常の処理を実行中
+    D->>I: 入力が届き、IRQを出す
+    I->>C: 設定に応じて要求を通知
+    Note over C: 中断と状態の保存<br/>ハンドラを実行
+    C->>D: 原因と入力状態を確認
+    Note over C: 状態を復元<br/>通常の処理を再開
