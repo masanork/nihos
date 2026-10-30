@@ -17,6 +17,16 @@ if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFI
     export NIHOS_NATIVE_CONSOLE="${NIHOS_NATIVE_CONSOLE:-1}"
     export NIHOS_NATIVE_CONSOLE_LIVE="${NIHOS_NATIVE_CONSOLE_LIVE:-1}"
     export NIHOS_NATIVE_NETWORK="${NIHOS_NATIVE_NETWORK:-1}"
+    # The ordinary device starts xy. Explicit camera qualification profiles
+    # keep their existing diagnostic UI unless xy is explicitly requested.
+    if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then
+        export NIHOS_NATIVE_XY_WORKSPACE="${NIHOS_NATIVE_XY_WORKSPACE:-0}"
+    else
+        export NIHOS_NATIVE_XY_WORKSPACE="${NIHOS_NATIVE_XY_WORKSPACE:-1}"
+    fi
+    if [ "${NIHOS_NATIVE_XY_WORKSPACE}" = 1 ]; then
+        export NIHOS_NATIVE_CONSOLE_FONT="${NIHOS_NATIVE_CONSOLE_FONT:-1}"
+    fi
     # Explicit fixture builds retain their historical single-device profile.
     if [ "${NIHOS_NATIVE_AUDIO:-0}${NIHOS_NATIVE_MICROPHONE:-0}${NIHOS_NATIVE_RS485:-0}" = 000 ] && [ "${NIHOS_NATIVE_BOOT_TEST:-0}" = 0 ]; then
         export NIHOS_NATIVE_DEVICES="${NIHOS_NATIVE_DEVICES:-1}"
@@ -44,6 +54,7 @@ if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then
 fi
 if [ "${NIHOS_NATIVE_CAMERA_JPEG:-0}" = 1 ]; then build_dir="$build_dir-jpeg"; fi
 if [ "${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}" = 1 ]; then build_dir="$build_dir-camera-ui-fixture"; fi
+if [ "${NIHOS_NATIVE_XY_TRACE:-0}" = 1 ]; then build_dir="$build_dir-xy-trace"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;

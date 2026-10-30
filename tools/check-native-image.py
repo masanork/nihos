@@ -68,7 +68,7 @@ DEVICE_FUNCTIONS = {
 # These entry points are CPU0 foreground dispatch, never interrupt handlers.
 # These run with the loader's Flash mapping available; IRQ and cache-off
 # control remains in SRAM/ROM. The permitted entry points are explicit.
-CAMERA_FOREGROUND_FUNCTIONS = {'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
+CAMERA_FOREGROUND_FUNCTIONS = {'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem', 'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
     'nih_csi_stream_begin', 'nih_csi_stream_stop', 'nih_csi_stream_state', 'nih_csi_stream_borrow',
     'nih_csi_stream_release', 'nih_csi_stream_end', 'nih_csi_stream_abort',
     'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail'}
@@ -175,6 +175,30 @@ def audit_ui_pool(name, kind, flags, address, size, allowed):
     require(allowed and kind == 8 and flags == 3 and (address, size) == UI_POOLS.get(name), 'invalid keypad SRAM pool')
 
 
+XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
+XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
+              'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
+              'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
+              'runCommand', 'format', 'emit', 'print'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand'}
+
+
+def xy_function(name):
+    match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
+    host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
+    return bool((match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem'))
+
+
+def audit_xy_functions(functions, span):
+    start, end = span
+    require(start == 0x40060000 and start < end <= 0x40080000, 'invalid xy code extent')
+    selected = sorted((a, b, n) for n, a, b in functions if start <= a < end)
+    require(selected and selected[0][0] == start and all(a < b <= end and xy_function(n) for a, b, n in selected), 'unapproved xy Flash function')
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])) and 0 <= end - selected[-1][1] <= 16, 'unaccounted xy code bytes')
+    require(any('Runtime.evaluate' in n for _, _, n in selected) and any('Runtime.collect' in n for _, _, n in selected), 'incomplete xy evaluator')
+    return {n: {'start': hex(a), 'end': hex(b)} for a, b, n in selected}
+
+
 def audit_service_sram(symbols, high, allocated):
     keys = ['__service_sram' + str(i) + suffix for i in range(2) for suffix in ('_start', '_end')]
     if not any(key in symbols for key in keys):
@@ -207,7 +231,14 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END, allow_fs=False, allow_graphics=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END, allow_fs=False, allow_graphics=False, allow_xy=False):
+    if name == '.flash.xypad':
+        require(allow_xy and kind == 1 and flags == 2 and 0x40010020 < address < 0x40060000 and address + size == 0x40060000 and address % 4 == size % 4 == 0, 'invalid xy Flash padding')
+        return
+    if name in XY_SECTIONS:
+        require(allow_xy and kind == 1 and (flags == 6 if name == '.flash.xytext' else flags & 7 == 2 and flags & ~50 == 0), 'invalid xy Flash profile/permissions')
+        require(0x40060000 <= address < address + size <= 0x40080000 and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
+        return
     if name in GRAPH_SECTIONS:
         readonly = flags & 7 == 2 and flags & ~50 == 0
         require(allow_graphics and kind == 1 and (flags == 6 if name in (".flash.graphtext", ".flash.graphrender") else readonly), "unapproved graphics Flash section")
@@ -347,13 +378,16 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
             "stack_bytes": 32768, "ram_reserved_bytes": 32768}, (text[0], ro[0]), payload
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None, xy_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
+            continue
+        if xy_span is not None and xy_span[0] <= address < stop <= xy_span[1]:
+            require(xy_function(name), 'unapproved xy foreground function: ' + name)
             continue
         if fs_span is not None and fs_span[0] <= address < stop <= fs_span[1]:
             require(name in fs_functions, 'non-manifest ordinary FS Flash function: ' + name)
@@ -650,6 +684,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     device_start = None
     allow_devices = any(string(names, section[0]) == '.flash.devices' and section[5] for section in sections)
     require(not allow_devices or (mode == 'integer' and profile == 'device' and keypad_manifest is None), 'invalid device Flash profile')
+    xy_sections = {}
+    allow_xy = any(string(names, section[0]) in XY_SECTIONS and section[5] for section in sections)
+    require(not allow_xy or (mode == 'integer' and sqlite_manifest is None and keypad_manifest is None), 'invalid xy evaluator image profile')
     fs_sections = {}
     allow_fs = normal_fs_manifest is not None
     has_fs = any(string(names, section[0]) in normal_fs_profile.SECTIONS and section[5] for section in sections)
@@ -701,9 +738,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_graphics_sram(name, section_type, flags, address, size)
                 graph_sections[name] = (address, elf[offset:offset+size] if section_type == 1 else b"", size)
             if not in_sram and not in_stacks and not in_ui and not in_high and not in_graphics_ram:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end, allow_fs=allow_fs, allow_graphics=allow_graphics)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end, allow_fs=allow_fs, allow_graphics=allow_graphics, allow_xy=allow_xy)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name in XY_SECTIONS:
+                    xy_sections[name] = (address, elf[offset:offset + size])
                 if name in normal_fs_profile.SECTIONS:
                     fs_sections[name] = (address, elf[offset:offset + size])
                 if name == '.flash.time':
@@ -752,7 +791,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
     require((user_start is not None) == ("__user_probe_start" in symbols) == ("__user_probe_end" in symbols), "user probe section/symbol mismatch")
-    require(flash_found == set(FLASH_SECTIONS) | {".flash.pmp"} | ({".flash.user"} if user_start is not None else set()) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | {".flash.pmp"} | ({".flash.user"} if user_start is not None else set()) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()) | (XY_SECTIONS if allow_xy else set()), "missing mapped Flash sections")
     service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
@@ -957,7 +996,26 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(user_start % 128 == 0 and user_span[1] % 128 == 0 and user_start >= pmp_span[1], "invalid user probe extent")
         require(symbols.get("__user_probe_start") == user_start and symbols.get("__user_probe_end") == user_span[1], "user probe symbols differ from section")
         require({name for name, address, stop in functions if user_span[0] <= address < stop <= user_span[1]} == USER_PROBE_FUNCTIONS, "user probe functions differ")
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span)
+    flash_start = FLASH_SECTIONS[".flash.rodata"][0]
+    xy_span = None
+    xy_report = None
+    xy_payload = None
+    if allow_xy:
+        require(set(xy_sections) == XY_SECTIONS, 'missing xy code or data')
+        gap_start, gap_data = xy_sections['.flash.xypad']
+        preceding = fs_sections['.flash.fsrodata'] if allow_fs else (flash_start, flash_tables)
+        require(gap_start == preceding[0] + len(preceding[1]) and gap_start + len(gap_data) == 0x40060000 and not any(gap_data), 'xy padding differs from preceding payload')
+        xy_start, xy_code = xy_sections['.flash.xytext']
+        xy_ro, xy_data = xy_sections['.flash.xyrodata']
+        xy_span = (xy_start, xy_start + len(xy_code))
+        require(xy_ro == (xy_span[1] + 15) & ~15 and symbols.get('__flash_xy_start') == xy_start and symbols.get('__flash_xy_text_end') == xy_span[1] and symbols.get('__flash_xy_rodata_start') == xy_ro and symbols.get('__flash_xy_end') == xy_ro + len(xy_data), 'xy linker symbols differ')
+        xy_functions = audit_xy_functions(functions, xy_span)
+        base = fs_payload if allow_fs else flash_tables + bytes((-len(flash_tables)) % 4)
+        require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
+        xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
+        xy_payload += bytes((-len(xy_payload)) % 4)
+        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': False}
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None
@@ -1053,6 +1111,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         report["photo_codec"] = photo_report
         if keypad_manifest.get("automatic_cards"):
             report["automatic_cards"] = keypad_manifest["automatic_cards"]
+    if xy_report is not None:
+        report['xy_scheme'] = xy_report
     if time_span:
         report['time_text'] = {'start': hex(time_start), 'end': hex(time_span[1]), 'bytes': len(time_code), 'sha256': hashlib.sha256(time_code).hexdigest(), 'functions': time_functions, 'foreground_only': True, 'writable': False, 'executable': True}
     if device_span:
@@ -1125,7 +1185,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             require(data[256:256 + len(first_payload)] == first_payload, "Flash boot/card bytes differ from ELF")
             report["flash_boot"]["image_offset"] = position + 256
         if address:
-            mapped_length = len(graph_payload) if allow_graphics else len(fs_payload) if allow_fs else len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
+            mapped_length = len(xy_payload) if allow_xy else len(graph_payload) if allow_graphics else len(fs_payload) if allow_fs else len(ui_payload) if allow_ui else len(sql_payload) if allow_sql else (len(flash_tables) + 3) & ~3
             require((low <= address and address + length <= high) or
                     (allow_graphics and address == GRAPH_RAM_LOW and length == (graph_sections[".graphics.data"][2] + 3) & ~3) or
                     (address == FLASH_SECTIONS[".flash.appdesc"][0] and length == first_length) or
@@ -1137,9 +1197,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 require(address % 65536 == position % 65536, "Flash image/MMU offset mismatch")
                 mapped.append(address)
             if address == flash_start:
+                if allow_xy:
+                    require(data == xy_payload, 'merged xy image bytes differ from ELF')
                 require(data[:len(flash_tables)] == flash_tables, "mapped Flash bytes differ from ELF")
                 if allow_fs:
-                    require(data == fs_payload, 'merged records/ordinary FS bytes differ from ELF')
+                    require(data == (xy_payload if allow_xy else fs_payload), 'merged records/ordinary FS bytes differ from ELF')
                     report['normal_fs']['image_offset'] = position + SQL_START - flash_start
                 if allow_sql:
                     require(data == sql_payload, "merged records/SQLite image bytes differ from ELF")

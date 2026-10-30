@@ -11,6 +11,24 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
+        start = 0x40060000
+        functions = [('xy.scheme_runtime.Runtime.evaluate__func_1', start, start + 16),
+                     ('xy.scheme_runtime.Runtime.collect', start + 16, start + 32)]
+        self.assertEqual(len(MODULE.audit_xy_functions(functions, (start, start + 32))), 2)
+        for name, flags, address in (('.flash.xytext', 6, start), ('.flash.xyrodata', 2, start + 32)):
+            MODULE.audit_flash_section(name, 1, flags, address, 16, allow_xy=True)
+            for kind, changed, permitted in ((1, flags, False), (1, 7, True), (8, flags, True)):
+                with self.assertRaises(ValueError):
+                    MODULE.audit_flash_section(name, kind, changed, address, 16, allow_xy=permitted)
+        for changed in ([('irq.arbitrary', *functions[0][1:])] + functions[1:],
+                        [('xy.scheme_runtime.Runtime.unapproved', *functions[0][1:])] + functions[1:],
+                        [functions[0], (functions[1][0], start + 48, start + 64)], functions[:1]):
+            with self.assertRaises(ValueError):
+                MODULE.audit_xy_functions(changed, (start, start + 64))
+        with self.assertRaises(ValueError):
+            MODULE.audit_flash_section('.flash.xytext', 1, 6, start - 16, 32, allow_xy=True)
+
     def test_normal_filesystem_sections_require_explicit_profile_and_permissions(self):
         cases = (('.flash.fstext', 0x40020000, 128, 6),
                  ('.flash.fsrodata', 0x40020080, 128, 2),
