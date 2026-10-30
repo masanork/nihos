@@ -1,0 +1,1 @@
+NIHOS_APP_SESSION parity=1 pixels=12800 scanout=921600 quit=1 cancel=1 restart=1 start_faults=11 active_faults=2 reentry=1 wiped=1 detached=1 leases_native=8 leases_wasm=9

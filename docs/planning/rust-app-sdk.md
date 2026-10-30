@@ -5,6 +5,14 @@ Status: experimental Rust SDK, host surface integration, and native emulator fix
 For the current integration base, reproducible checks and the remaining finite
 landing gates, see [experimental SDK landing](rust-sdk-landing.md). The reports
 below retain their original candidate identities and qualification limits.
+
+The later [foreground session integration](../measurements/2026-10-31-rust-session-normal-owner.md)
+adds an opt-in `rust-app` shell command in the normal native UI, with its own
+PSRAM lease and explicit quit/cancel/error cleanup. Native Rust and signed WAMR
+also run through the same OS session and rotated display-copy code on the host.
+The session control ABI is OS-internal; applications still receive only the
+provisional drawing services. Normal RV32 Wasm task/stack registration and
+physical display qualification remain open.
 This is not a stable SDK, a native application loader, or an on-device
 display/input integration.
 

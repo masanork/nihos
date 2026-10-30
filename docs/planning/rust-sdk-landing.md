@@ -73,14 +73,23 @@ still required before merging. Neither is physical qualification.
 
 ## Remaining work, in order
 
-1. **Normal OS ownership and presentation.** Replace the CPU0 boot fixture with
-   one OS-owned app session. Acquire a disjoint surface/lease, route bounded
-   serial input, enter the app synchronously, present through the existing
-   display owner, and revoke/detach/release on quit, trap or cancellation.
-   Preserve camera/console ownership. Exercise both backends with the same
-   `0 -> 1 -> 0 -> q` sequence and compare observable pixels and cleanup.
-   The offscreen emulator surface and isolated native display fixture do not
-   satisfy this step.
+Native foreground ownership is now wired behind `NIHOS_NATIVE_RUST_SESSION=1`:
+`rust-app` opens the sample from the normal shell, with a separate PSRAM lease,
+per-input drawing/publication, and quit/cancel/failure cleanup followed by a
+console repaint. The same session and rotated display-copy code run with native
+Rust and signed WAMR on the host. A headless normal-profile RV32 fixture exercises
+the actual native backend while both hart timers run. See the
+[session integration report](../measurements/2026-10-31-rust-session-normal-owner.md).
+This does not complete the Wasm portion of the next gate.
+
+1. **Wasm task ownership in the normal OS.** Connect WAMR to the common session
+   through an OS-registered task, with its leased 64 KiB stack accepted by the
+   task runtime and interrupt-stack validator. Do not switch SP behind the
+   scheduler or disable interrupts around guest execution. Preserve bounded
+   calls, admitted rights, quit/trap/cancellation cleanup and camera/console
+   ownership. Then exercise `0 -> 1 -> 0 -> q` through both normal backends.
+   The native headless fixture and Wasm host parity test do not establish RV32
+   Wasm scheduling or physical scanout.
    A long ROM-console no-input poll while CPU1's qualification tasks were already
    running exposed a timer clock-refresh rejection during integration. The boot
    fixture now keeps CPU1 before task admission until WAMR has stopped and freed
