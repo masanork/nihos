@@ -1,0 +1,15 @@
+sequenceDiagram
+    accTitle: 選んだタスクに合わせて復帰の権限と許可を変える
+    accDescr: U-modeの例外をカーネルが受け、保存と選択を行う。選んだ実行に合わせてPMPを設定または解除し、mcauseを先、mstatusを後に書いてmretする。故障した元のタスクは再開しない。
+    participant U as 保護タスク
+    participant K as カーネル M-mode
+    participant M as 通常タスク
+    U->>K: ECALL・割込み・故障
+    Note over K: 安全なstackで保存<br/>次のタスクを選択
+    alt U-modeを選択
+      Note over K: PMP許可を設定<br/>mcause→mstatus
+      K->>U: mretでU-modeへ
+    else M-modeを選択
+      Note over K: 利用者許可を解除<br/>mcause→mstatus
+      K->>M: mretでM-modeへ
+    end

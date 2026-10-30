@@ -39,8 +39,8 @@
       "viewBox": "4 4 330 663.9000244140625"
     },
     "context-switch": {
-      "sourceSha256": "474525bf16d10e1e4007c89714fa782396a56935e8de37157c5588a9393302ae",
-      "svgSha256": "7755a0377f864fc34f24f39707fa7659c1dc45af8865d781ba1ca41e3cbae95b",
+      "sourceSha256": "0517e84548bde21317dd4a834678488c3845da76e4f8d82a50739bded9ad8021",
+      "svgSha256": "df7d3fba503a6d8ffc8e019fcefae2dd505e2814b8d1b0727a3a89c61d3a8407",
       "file": "figures/context-switch.mmd",
       "title": "保存した復帰先を、別のタスクへ切り替える",
       "description": "タスクAへのタイマー割込みでframeを保存し、kernelがタスクBのframeを選ぶ。mretはBを再開し、Aは次に選ばれるまで保存状態を保持する。",
@@ -79,11 +79,11 @@
       "viewBox": "4 4 416.25 475.97100830078125"
     },
     "ecall-return": {
-      "sourceSha256": "8162df097532e3a2216a5db4b98211a9412d2095cb5dbe925ef4d047830e0c64",
-      "svgSha256": "5bc41f828df8ee28c41f982054fde6bce52f171f734aa429bf40f580126cdd40",
+      "sourceSha256": "fac85c1187acdac18ac2adc43ac3f9e6e16eda1912d8f5e32f205c21f0da4307",
+      "svgSha256": "49fc84fbc41fa62eda2fa84fc25c496a3fa7d4bf010b194865a5d3ec8e014279",
       "file": "figures/ecall-return.mmd",
-      "title": "ecallから例外復帰まで",
-      "description": "呼び出しから例外入口とdispatchを経て保存状態を復元し、ecallの次の命令へ戻る。",
+      "title": "起動用M-modeのecallから例外復帰まで",
+      "description": "起動用M-modeの呼び出しが例外入口とdispatchを経て、ecallの次の命令へ戻る。U-modeの権限切替や故障終了を表す図ではない。",
       "viewBox": "4 3.999998092651367 314.640625 730.260009765625"
     },
     "event-before-wait": {
@@ -127,12 +127,12 @@
       "viewBox": "4 4 254 391"
     },
     "os-responsibilities": {
-      "sourceSha256": "24a87292d541faea3c33965822dfc38f2f366c43e4e9ac29e6ecc9f1b042d791",
-      "svgSha256": "eb75d8a13f666c32a4e24e70f98a5ed7646da1d691a38355b8e0c9fd0b556186",
+      "sourceSha256": "18aa0a28f6e2557f7328154b6e48b9ca57ebba98fd9f6da16edc34b0db2312ad",
+      "svgSha256": "02ab04225f47028c216a3dd940d7f8facba0cc9e9565df4954c5891227e392b2",
       "file": "figures/os-responsibilities.mmd",
-      "title": "仕事の分担と、現在の保護範囲",
-      "description": "nihosのタスクとサービスは同じM-mode空間にある。要求を渡す構造はあるが、その分担だけで任意の書込みを隔離できるわけではない。",
-      "viewBox": "4 4 583.9609375 475"
+      "title": "通常の役割分担と、追加したCPU0の保護境界",
+      "description": "通常のアプリとサービスは同じM-mode空間に残る。別枠のCPU0診断タスクだけをU-modeとPMPで制限し、スカラECALLでカーネルへ入る。既存サービスへの直接接続を示す図ではない。",
+      "viewBox": "4 4 599.8109130859375 651.9000244140625"
     },
     "p4-c6-network-path": {
       "sourceSha256": "74710cfa8994ce493690c15fa01480eedf33a9985f1835bc95722930425f1273",
@@ -166,6 +166,30 @@
       "description": "高優先度Hを選んでも、低優先度AとBを巡回するcursorは変更しない。Hがblockして低優先度を選べる機会が来たら、Aの次にBを選べる。",
       "viewBox": "4 4 464.3125 329.79998779296875"
     },
+    "protected-addresses": {
+      "sourceSha256": "e465bffa900c12d454d0f6dda0f594cb373970c1cd630f170199c3593a2f4aa2",
+      "svgSha256": "672a32e988a2b8c19fae52514873db9528e20afe4e5ab7dca095fd6702da7ada",
+      "file": "figures/protected-addresses.mmd",
+      "title": "同じ物理アドレスに、タスク別の許可を結び付ける",
+      "description": "CPU0の保護タスクはコードを読出し実行でき、専用アリーナを読書きできる。カーネル、ROM、周辺回路へのアクセスは拒否する。これはアドレス変換の図ではなく、許可の模式図である。",
+      "viewBox": "4 4 767.84375 246.80001831054688"
+    },
+    "protected-fault-cleanup": {
+      "sourceSha256": "3a1e6fcda6fed16c2dc8a0de561789fef5d24cef8722ea18ef773cfaf2a4fb83",
+      "svgSha256": "90c7846dc09dd6f4b10d70edf745116f488896c803ac77a129637e3ae3fc2d5d",
+      "file": "figures/protected-fault-cleanup.mmd",
+      "title": "故障したタスクだけを止め、回収後に枠を使い直す",
+      "description": "U-modeの故障を安全なスタックで受け、対象タスクを終了値マイナス70でexitedにする。別の実行を再開する前に資源台帳を閉じ、回収完了を待ってreapする。同じslotは新しい世代へ再利用する。",
+      "viewBox": "4 4 292 642.4760131835938"
+    },
+    "protected-return": {
+      "sourceSha256": "8bb3f028cb264db1113c30d2b3a31c5ecb50131a21ed5e06bebce7b6e5ec1bae",
+      "svgSha256": "7743d8ba881499009d428f1cf8417bbaf5aed4cd6adc318b02845b2995368d10",
+      "file": "figures/protected-return.mmd",
+      "title": "選んだタスクに合わせて復帰の権限と許可を変える",
+      "description": "U-modeの例外をカーネルが受け、保存と選択を行う。選んだ実行に合わせてPMPを設定または解除し、mcauseを先、mstatusを後に書いてmretする。故障した元のタスクは再開しない。",
+      "viewBox": "-50 -10 617 601"
+    },
     "spsc-ownership": {
       "sourceSha256": "33e1b50a681d44b6cd8b040b05b4b7fcb146035d2988859100a63e097648f886",
       "svgSha256": "c7650415268b2c9ed18f272d784ae623a015be2f15b7259f93bde9a4f75468ad",
@@ -191,12 +215,12 @@
       "viewBox": "4 4 285.484375 686.3760375976562"
     },
     "task-records": {
-      "sourceSha256": "8d2930762b6b45b676c61573e57ab4a5966df580907cebf04271fd03af31e30f",
-      "svgSha256": "e3e615c28a117575d6aa2216a588f629765a190e545a99116637fca498068bbe",
+      "sourceSha256": "ec1289a55b81bd4a4cc23802ea1aeecb5622b0f7c18d52ff1bdec4e8ab235444",
+      "svgSha256": "5d2a6ba2ceacb72c88d758d1a6fea1aacfedbafe49f9d8b63d85ef44842ee7e1",
       "file": "figures/task-records.mmd",
       "title": "タスクの管理表と保存イメージ",
-      "description": "slotとgenerationでタスクを識別し、Schedulerのtasks配列とRuntimeのimages配列を同じslotで対応づける。保存frameはそのタスクのstack範囲にある。",
-      "viewBox": "4 4 307.78125 561.3710327148438"
+      "description": "slotとgenerationでタスクを識別し、Schedulerのtasks配列とRuntimeのimages配列を同じslotで対応づける。imagesには復帰状態と任意の保護情報がある。通常のframeはタスクのstack範囲にあり、不正な利用者SPは別の故障用frameで受ける。",
+      "viewBox": "4 4 330.703125 561.3710327148438"
     },
     "task-states": {
       "sourceSha256": "19ffb66d989b8b4a02dd55b68c510c356d030d5e726ede872b78f6b0469f8f44",
