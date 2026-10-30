@@ -58,6 +58,8 @@ for name,injected,status,received,frames,presentations,rejected in (
                   'bytes':received if i==0 else 5,'frames':frames if i==0 else 3,
                   'presentations':presentations if i==0 else 4,'rejected':rejected if i==0 else 1,
                   'recovered':1,'reaped':1,'wiped':1,'detached':1,'guards':1,
+                  'calls':8 if i or name=='normal' else 4 if name=='present-failure' else 2,
+                  'denied':4 if i or name=='normal' else 2 if name in ('metered-trap','present-failure') else 1,
                   'requested':532480,'charged':589824}
         assert all(r[k]==v for k,v in expected.items()),(name,r,expected)
         assert all(r[k]>0 for k in ('captures','timers','waits','calls','denied','ticks0','ticks1')),r

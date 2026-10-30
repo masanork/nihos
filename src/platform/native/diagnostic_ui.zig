@@ -495,7 +495,8 @@ pub fn startSession(log: anytype) bool {
     revision +%= 1;
     return service(log);
 }
-fn beginSession(log: anytype) void {
+// Foreground console handoff, with Flash available throughout.
+noinline fn beginSession(log: anytype) linksection(if (options.rust_session) ".flash.text.rust_app" else ".text") void {
     @memset(@import("std").mem.asBytes(session), 0);
     session.begin(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
@@ -598,7 +599,7 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
     session.finishInput(key, before, SerialSink{});
     @atomicStore(u32, &dirty, 1, .release);
 }
-fn sessionUsage(label: []const u8, capacity: u32, free: u32) void {
+noinline fn sessionUsage(label: []const u8, capacity: u32, free: u32) linksection(if (options.rust_session) ".flash.text.rust_app" else ".text") void {
     session.write(SerialSink{}, label);
     session.write(SerialSink{}, " capacity=");
     session.number(SerialSink{}, capacity);

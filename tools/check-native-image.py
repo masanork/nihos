@@ -102,10 +102,10 @@ RUST_SESSION_FLASH_FUNCTIONS = {
     'rust_session.present', 'rust_session.close', 'rust_session.release',
     'rust_session.start', 'rust_session.input', 'rust_session.cancel',
     'session.nih_app_session_start', 'session.nih_app_session_input',
-    'session.nih_app_session_cancel', 'session.Session.finish', 'session.Session.draw',
+    'session.nih_app_session_cancel', 'session.Session.finish', 'session.Session.draw', 'session.Session.guardsIntact',
     'nih_app_session_start', 'nih_app_session_input', 'nih_app_session_cancel',
     'app_presenter.copy', 'app_presenter.nih_app_present_copy', 'nih_app_present_copy',
-    'diagnostic_ui.presentApp', 'diagnostic_ui.drawSession', 'nih_rust_app_frame',
+    'diagnostic_ui.presentApp', 'diagnostic_ui.drawSession', 'diagnostic_ui.sessionUsage', 'nih_rust_app_frame',
     'nih_app_probe_attach', 'nih_app_probe_detach', 'nih_app_fill_rect', 'nih_app_text',
 }
 
@@ -378,7 +378,9 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
             continue
         if rust_session_span is not None and rust_session_span[0] <= address < stop <= rust_session_span[1]:
-            require(name in RUST_SESSION_FLASH_FUNCTIONS, 'unapproved Rust session Flash function: ' + name)
+            require(name in RUST_SESSION_FLASH_FUNCTIONS or
+                    re.fullmatch(r'diagnostic_ui\.beginSession__func_[0-9]+', name) is not None,
+                    'unapproved Rust session Flash function: ' + name)
             if start <= address < stop <= end:
                 app_boot.append({"name": name, "start": hex(address), "end": hex(stop)})
             continue

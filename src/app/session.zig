@@ -35,7 +35,7 @@ pub const Session = extern struct {
     busy: u32 = 0,
     opened: u32 = 0,
 
-    fn guardsIntact(self: *const Session) bool {
+    noinline fn guardsIntact(self: *const Session) linksection(text_section) bool {
         const p = self.storage orelse return false;
         return std.mem.allEqual(u8, p[0..guard], 0xa5) and
             std.mem.allEqual(u8, p[guard + frame_bytes .. guard + frame_bytes + guard], 0xa5);

@@ -139,6 +139,7 @@ pub fn service(log: anytype) bool {
     fail_present = false;
     if (app.start(&present) != -41 or app.active() or app.observed.recovered != 1 or
         app.observed.reaped != 1 or app.observed.wiped != 1 or
+        app.observed.guards != 1 or app.observed.detached != 1 or
         (tasks.memory.reusable.localUsage() orelse return false).free != free_before) return false;
     const partial: extern struct { recovered: u32, generation: u32 } = .{ .recovered = 1, .generation = app.observed.generation };
     log.record("NIHOS_WASM_SESSION_PARTIAL", null, .{ "recovered", "generation" }, &partial);
