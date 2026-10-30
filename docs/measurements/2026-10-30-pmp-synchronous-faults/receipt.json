@@ -170,6 +170,8 @@
     "synchronous_result": "Same CLIC case 8 faults at user lw and kernel continues; no PMP layout change."
   },
   "evidence_files_sha256": {
+    ".gitattributes": "0e32e6e7a6d7d9c4d2249539365516af769cacf8b46723dd8f6b0ec76e431bf9",
+    "README.md": "21b348554cdcd86d8a0ea5241f576bea38598c0c8455989d56cb176d41027e00",
     "capture-session.py": "b18f695b3fac5cabeb05d6a0c0b0078879be3ba9cf0765909fcb79ebaca67d10",
     "controls/asynchronous-jtag.log": "0ea5755d88ef6c05a2774cfd4b8687b85d854828c39121e8456b528312789997",
     "controls/asynchronous-restored.json": "57919a3b0cfd726690baaa5deebd407d2797d525e233319f871c45e0e35e1000",
@@ -183,6 +185,12 @@
     "emulator.log": "bc317493195a4ccccc047a92b0f90c4b80762316986b347d5399add41e4cbaf7",
     "image-audit.json": "29b9a001b355f86e0e62e8f7cfe0563353b7dca0a615ba96274903ed3b346d91",
     "native_options.zig": "1ac1f297e18c7a33d043722caeddc80e5028278823ac7ced0f5fcf781dc4ff29",
+    "normal-boot/image-audit.json": "be397b3d5618eed028560e1c155bb463361812682d739c76a86101fad3f2ed77",
+    "normal-boot/native_options.zig": "33eee32b76ccbea9af9c86e8b008cbc7fcae9d5c7c348372a83477ec57b7b026",
+    "normal-boot/restored.json": "57919a3b0cfd726690baaa5deebd407d2797d525e233319f871c45e0e35e1000",
+    "normal-boot/uart.log": "8cb1b45185a923de4a040618cdce95a50b41fc05854e31ec15e6364ac5b011d7",
+    "normal-boot/verify-candidate.log": "41437a93bdb30b2083d0a0b95e478616c24876854f1c75dbd6602d21d1983a40",
+    "normal-boot/verify-restored-full-flash.log": "8172ec431436fd4ce061309ad27c1dc121e5c93ad925151d48d17fb42d21dbbd",
     "probe-2.log": "695bc60749b9cc6659bc1b858aa2c620ff49e257c8c2fc220fe11d240a8eaa63",
     "probe-3.log": "695bc60749b9cc6659bc1b858aa2c620ff49e257c8c2fc220fe11d240a8eaa63",
     "probe.log": "daac65006f4cdb2e6063ccfb24214ccfd8767fee9dedad62c8ec80a201337cb6",
@@ -190,5 +198,22 @@
     "verify-candidate-3.log": "805464778d8ba44d38cd88a50eb2374e1d7c7e54fff02fe12a12e8999ee354e6",
     "verify-candidate.log": "805464778d8ba44d38cd88a50eb2374e1d7c7e54fff02fe12a12e8999ee354e6",
     "verify-restored-full-flash.log": "826a3f2a9456bf0213fe7608e87f803abd84dc6caba1b0c2fce5db02f0c713aa"
+  },
+  "normal_boot": {
+    "source_head": "99b69b52cc8f0dde62440a41db818b2df1b2401c",
+    "runtime_commit": "d39c1b99fb034fdb7580e61580ddf18329c68f03",
+    "network_enabled": false,
+    "uart_session_ready": true,
+    "both_core_timer_ipi_health": true,
+    "lcd_visual_or_input_qualified": false,
+    "artifacts_sha256": {
+      "nihos-native.bin": "cbf3b54739bb636af6b2540e4c6a7864bc5cb75719d587fe3f98593a90a1e57d",
+      "bootloader.bin": "a1f83a377a06ff2394918875fe42d1bc03252d88c7a0f5fd80a3bf5ff7a27e23",
+      "partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "restore": {
+      "verified": true,
+      "sha256": "d9411b6af948100f86e61b88fd8b6ab9e92f50f5ddbfddc78eecd34500c08f10"
+    }
   }
 }
