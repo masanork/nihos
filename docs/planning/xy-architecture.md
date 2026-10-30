@@ -37,7 +37,11 @@ Schemeの正常起動を前提とせず、常用shellを残すこととは分け
 macroによる拡張、実機のScheme VM、永続 `sqld` とU-mode隔離の接続が完成したという
 意味ではない。ネイティブの通常起動にはRAM上の `*scratch*` を接続した。
 [起動・編集・実機確認の範囲](../measurements/2026-10-31-xy-ram-startup.md)を参照。
-初期表示は既存のASCIIラスタを使い、日本語字形・保存・Scheme VMの接続は残る。
+ネイティブのミニバッファには別モジュールの `scheme_runtime.zig` を接続し、
+`define` / lexical closure / コマンド登録・再定義とDocument操作を実機で確認した。
+[限定Schemeの範囲と検証](../measurements/2026-10-31-xy-scheme-runtime.md)を参照。
+初期表示は既存のASCIIラスタを使い、日本語字形・保存・macro・標準Scheme準拠、
+既存 `scheme_bridge.zig` とデスクトップC ABIの評価器統合は残る。
 `log` / `mem` / `tasks` は読み取り専用のシステムバッファとして開き、
 本文・カーソル・undoを保って戻れる。[実装と検証範囲](../measurements/2026-10-31-xy-system-buffers.md)を参照。
 

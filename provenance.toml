@@ -234,3 +234,11 @@ revision = "2.1.4"
 license = "Component-specific GPL/LGPL core and API notices; Python wheel metadata identifies BSD bindings. See upstream COPYING and COPYING.LGPL2."
 status = "host-test-tool-only"
 use = "Checksum-pinned macOS/Linux wheels in probes/graphics/unicorn-requirements.txt, installed only into ignored build virtualenv. The host runner observes unmodified RV32 SP instruction by instruction. Not linked into native firmware."
+
+[[source]]
+name = "MeOS bounded Scheme workspace design"
+url = "https://github.com/shi3z/MeOS"
+revision = "Untracked local user/scheme working files inspected 2026-10-31; scheme.c SHA256 b1c6537761af2a896b1c755cf2729b30375c924e286e8845e6e82a8713dc1451; README.md SHA256 8577c9cf6c4ac3cad09fbdf40d30d3a88c5723f9f242332f617de4b14559a03c"
+license = "Not stated in inspected working files; design reference only"
+status = "design-reference-only"
+use = "Referenced lexical closure lifetime, between-request GC, bounded evaluation and editor command workflow. No MeOS source files or libraries imported; nihos has its own integer Zig runtime, shared Document bindings and serial/HID adapter. The referenced working files are not attributed to the tracked upstream revision."

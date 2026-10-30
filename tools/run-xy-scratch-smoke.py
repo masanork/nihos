@@ -100,18 +100,45 @@ def main():
         command(2, 0x1d, 1)  # Last scratch edit is still undoable after all views.
         assert read_state('undo-after-system')['text'] == 'a\n:storagb'
         command(5)
+        serial(b'base')
+        scheme_base = read_state('scheme-base', True)
+        def evaluate(source):
+            command(2, 0x29)
+            serial(source + b'\r\n')
+        evaluate(b'(define (make x) (lambda () (buffer/insert! x)))')
+        evaluate(b'(define stamp (make "XY"))')
+        evaluate(b'stamp')
+        assert read_state('scheme-closure', True)['text'] == 'baseXY'
+        command(2, 0x1d, 1)
+        assert read_state('scheme-undo', True)['pixel_sha256'] == scheme_base['pixel_sha256']
+        evaluate(b'(command/register! "stamp" (lambda () (buffer/insert! "Z")))')
+        evaluate(b'stamp')
+        assert read_state('scheme-replaced', True)['text'] == 'baseZ'
+        command(2, 0x1d, 1)
+        evaluate(b'(command/register! "my-log" (lambda () (system/log)))')
+        evaluate(b'my-log')
+        assert read_state('scheme-system', True)['text'] == 'base'
+        command(2, 0x29)
+        assert read_state('scheme-system-return', True)['pixel_sha256'] == scheme_base['pixel_sha256']
+        evaluate(b'(define (loop) (loop)) (loop)')
+        assert read_state('scheme-bounded-error', True)['text'] == 'base'
+        evaluate(b'(+ 20 22)')
+        read_state('scheme-result', True)
+        evaluate(b'(buffer/insert! "!")')
+        assert read_state('scheme-recovered')['text'] == 'base!'
+        command(5)
         serial(b'Shared Document / live editing.\r\nRAM scratch / UTF-8 document.')
         read_state('workspace', True)
         if any(sha((ROOT / p).read_bytes()) != h for p, h in sources.items()):
             raise RuntimeError('sources changed during xy capture')
         report = {'passed': True, 'evidence': 'ESP-EMU RV32 offscreen workspace fixture',
             'normal_boot_executed': False, 'physical_device_used': False, 'panel_or_dma_tested': False,
-            'scheme_vm_tested': False, 'persistence_tested': False, 'unicode_raster_tested': False,
+            'scheme_vm_tested': True, 'persistence_tested': False, 'unicode_raster_tested': False, 'scheme_scope': 'bounded integer subset; no R7RS claim',
             'snapshot_prefix_limit_bytes': 80, 'sources': sources, 'observations': observations,
             'image_sha256': sha((OUT / 'nihos-native.bin').read_bytes()),
             'elf_sha256': sha((OUT / 'nihos-native.elf').read_bytes())}
         (output / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-        print('RV32 xy scratch passed: editing, CRLF, IVS deletion, undo pixels, help return, literal colon and read-only system buffers')
+        print('RV32 xy scratch passed: editing, CRLF, IVS deletion, undo pixels, help return, literal colon, read-only system buffers and Scheme closures/commands')
     finally:
         guest.close()
 
