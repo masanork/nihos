@@ -119,7 +119,7 @@ ML-KEM の改変暗号文試験では、デカプセル化 API が成功を返�
 
 ## 7. 実験記録と再確認方法
 
-実装と詳細な測定・生ログ・イメージ監査・失敗例・対照実験は、独立ブランチ `codex/pqc-resource-study` の以下にある。リンク先は**そのブランチ上のパス**であり、main に同じファイルが存在するという意味ではない。作業ツリーは `/private/tmp/nihos-pqc-resource`。一時ディレクトリ内のビルド成果物は環境のクリーンアップで失われ得るため、長期保管する場合は別途保存が必要。
+実装と詳細な測定・生ログ・イメージ監査・失敗例・対照実験は、独立ブランチ `codex/pqc-resource-study` の[報告時点の固定版](https://github.com/masanork/nihos/tree/90d0a9e8b8c1758e31751fac39ea89634127ca80)の以下にある。リンク先は**そのブランチ上のパス**であり、main に同じファイルが存在するという意味ではない。作業ツリーは `/private/tmp/nihos-pqc-resource`。一時ディレクトリ内のビルド成果物は環境のクリーンアップで失われ得るため、長期保管する場合は別途保存が必要。
 
 - `docs/measurements/2026-10-29-pqc-combined-xip.md` — 同一イメージの両アルゴリズム逐次実行、画像監査、PSRAM 不在時。
 - `docs/measurements/2026-10-29-pqc-normal-dual-budget.md` — 通常デバイス向け４構成、Flash 領域の不足、分割配置。
