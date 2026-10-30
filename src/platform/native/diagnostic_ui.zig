@@ -608,7 +608,9 @@ fn sessionUsage(label: []const u8, capacity: u32, free: u32) void {
     session.number(SerialSink{}, capacity - free);
     session.write(SerialSink{}, "\r\n");
 }
-fn drawSession() bool {
+// Foreground-only shell repaint after app handoff. Cache maintenance itself
+// remains in SRAM; the Rust-enabled profile shares its audited Flash region.
+noinline fn drawSession() linksection(if (options.rust_session) ".flash.text.rust_app" else ".text") bool {
     if (!renderer_ready) {
         @memset(@import("std").mem.asBytes(renderer), 0);
         renderer_ready = true;

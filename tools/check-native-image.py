@@ -103,7 +103,7 @@ RUST_SESSION_FLASH_FUNCTIONS = {
     'session.nih_app_session_cancel', 'session.Session.finish', 'session.Session.draw',
     'nih_app_session_start', 'nih_app_session_input', 'nih_app_session_cancel',
     'app_presenter.copy', 'app_presenter.nih_app_present_copy', 'nih_app_present_copy',
-    'diagnostic_ui.presentApp', 'nih_rust_app_frame',
+    'diagnostic_ui.presentApp', 'diagnostic_ui.drawSession', 'nih_rust_app_frame',
     'nih_app_probe_attach', 'nih_app_probe_detach', 'nih_app_fill_rect', 'nih_app_text',
 }
 
