@@ -4,7 +4,7 @@ sequenceDiagram
     participant D as 入力機器
     participant I as 割込み制御回路
     participant C as CPU
-    Note over C: 通常の処理を実行中
+    Note over C: 通常の処理中
     D->>I: 入力が届き、IRQを出す
     I->>C: 設定に応じて要求を通知
     Note over C: 中断と状態の保存<br/>ハンドラを実行

@@ -119,12 +119,12 @@
       "viewBox": "4 4 328.875 503.0270080566406"
     },
     "interrupt-request-path": {
-      "sourceSha256": "2934562aeb7245222ac01c1f9c35b7c568c16a80277d06ae064b7d39ba0df536",
-      "svgSha256": "7eb293196000edd357acd5f46b474970b824c6cdbf4bc2812feca5f624edaae4",
+      "sourceSha256": "f48d063af99e4a9cdda5f1a209c161caf533ec8909adaf96ce33014b924819ce",
+      "svgSha256": "cd58b6c326e5fa6b879ab65c48c061b4c1a2c5bad30fe3f6a20cddbe57b8323d",
       "file": "figures/interrupt-request-path.mmd",
       "title": "割込み要求から処理と再開まで",
       "description": "架空の入力機器が割込み要求を出し、コントローラを通ってCPUが受ける。CPUで通常の処理を中断し、必要な状態を保存してハンドラを実行し、復元して再開する。一つのCPUで処理を切り替える例である。",
-      "viewBox": "-50 -10 634 465"
+      "viewBox": "-50 -10 634 447"
     },
     "io-owner-lifetime": {
       "sourceSha256": "f5c82724751cbc45ced3f8aeff7fdf827d8f05dbfb10732e9a1bad0b6a2b0472",
