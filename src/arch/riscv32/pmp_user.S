@@ -134,8 +134,9 @@ nih_user_probe_body:
 /* A completed load returns 10, 11, or 12. A load fault exits -70.
  * 0x3FF10000 is the cache register block and 0x20800000 is CLIC.
  * Both sit in the old locked windows and are registers this kernel reads.
- * With entries 0 and 1 OFF, the CLIC load reached the bus and the hart
- * stopped. 0x20000000 did not answer either. Do not load that base. */
+ * With entries 0 and 1 OFF, the CLIC load stalled the hart. Timeout alone
+ * does not locate the stall. 0x20000000 did not answer either. Do not load
+ * that base. */
 .Lmmio_hp:
     lui t0, 0x50000
     lw t0, 0(t0)
