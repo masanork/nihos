@@ -33,6 +33,92 @@
 typedef enum { CSI_RX_IDLE, CSI_RX_ARMED, CSI_RX_RUNNING, CSI_RX_STOPPED, CSI_RX_PINNED } csi_rx_state;
 typedef struct { csi_rx_state state; uint32_t events; } csi_rx;
 static uint32_t stop_status_before_clear;
+#include "camera_dma_pool.h"
+extern int32_t nih_csi_dma_configure(uint32_t, uint32_t, uint32_t);
+static camera_dma_pool stream_pool;
+static uint32_t stream_addresses[2], stream_fault;
+static bool stream_configured, stream_stop, stream_drained;
+#if defined(__riscv)
+#define STREAM_FOREGROUND __attribute__((section(".flash.text.devices")))
+#else
+#define STREAM_FOREGROUND
+#endif
+STREAM_FOREGROUND bool nih_csi_stream_begin(uint32_t a, uint32_t b) {
+    if (stream_configured || CSI_DMA_ENABLED() || MIPI_CSI_BRIDGE.csi_en.csi_brg_en ||
+        a < 0x48030000u || b < 0x48030000u || a > 0x4c000000u - 921600u || b > 0x4c000000u - 921600u ||
+        (a & 63u) || (b & 63u) || !((uint64_t)a + 921600u <= b || (uint64_t)b + 921600u <= a)) return false;
+    camera_pool_init(&stream_pool);
+    stream_addresses[0] = a; stream_addresses[1] = b;
+    stream_fault = 0; stream_stop = false; stream_drained = false;
+    stream_configured = true;
+    return true;
+}
+STREAM_FOREGROUND void nih_csi_stream_stop(void) { if (stream_configured) stream_stop = true; }
+STREAM_FOREGROUND void nih_csi_stream_abort(void) {
+    if (!stream_configured) return;
+    stream_fault |= 0x100u;
+    dw_gdma_ll_channel_enable_intr_propagation(&DW_GDMA, 1, UINT32_MAX, false);
+    mipi_csi_brg_ll_enable(&MIPI_CSI_BRIDGE, false);
+    CSI_DMA_ENABLE(false);
+    CSI_DMA_FENCE();
+    stream_drained = true; /* fault remains latched; no retirement/reuse follows */
+}
+STREAM_FOREGROUND uint32_t nih_csi_stream_state(uint32_t kind) {
+    switch (kind) {
+    case 0: return stream_configured;
+    case 1: return stream_pool.generation;
+    case 2: return stream_pool.dropped;
+    case 3: return stream_fault;
+    case 4: return stream_drained;
+    default: return 0;
+    }
+}
+STREAM_FOREGROUND uint32_t nih_csi_stream_borrow(uint32_t *generation) {
+    if (!stream_configured || stream_fault || stream_stop) return 0;
+    const int slot = camera_pool_borrow(&stream_pool, generation);
+    return slot < 0 ? 0 : stream_addresses[slot];
+}
+STREAM_FOREGROUND bool nih_csi_stream_release(uint32_t generation) {
+    return stream_configured && camera_pool_release(&stream_pool, generation);
+}
+STREAM_FOREGROUND bool nih_csi_stream_end(void) {
+    if (!stream_configured || CSI_DMA_ENABLED() || MIPI_CSI_BRIDGE.csi_en.csi_brg_en || stream_pool.borrowed >= 0) return false;
+    stream_configured = false;
+    return true;
+}
+/* Shared DW-GDMA IRQ, CPU0 with interrupts masked. Like ESP-IDF v5.4.4's
+ * CSI completion callback, rearm channel 1 before foreground consumption.
+ * Both payloads are pre-cleaned and subsequently CPU read-only; consumers
+ * invalidate sampled cache lines after borrowing a completed, inactive slot. */
+void nih_csi_stream_irq(uint32_t common) {
+    if (!stream_configured || stream_drained) return;
+    const uint32_t events = dw_gdma_ll_channel_get_intr_status(&DW_GDMA, 1) & CSI_DMA_EVENTS;
+    const uint32_t bridge = MIPI_CSI_BRIDGE.int_raw.val & 0x1fu;
+    if (!events && !common && !bridge) return;
+    CSI_DMA_CLEAR(events);
+    if (common || bridge || (events & CSI_DMA_ERRORS)) stream_fault |= common | events | (bridge << 24);
+    if (!(events & CSI_DMA_DONE) && !stream_fault) return;
+    CSI_DMA_ENABLE(false);
+    CSI_DMA_FENCE();
+    if (CSI_DMA_ENABLED()) stream_fault |= 1u;
+    if (stream_fault || stream_stop) {
+        mipi_csi_brg_ll_enable(&MIPI_CSI_BRIDGE, false);
+        dw_gdma_ll_channel_enable_intr_propagation(&DW_GDMA, 1, UINT32_MAX, false);
+        stream_drained = true;
+        return;
+    }
+    const int next = camera_pool_complete(&stream_pool);
+    if (next < 0 || nih_csi_dma_configure(stream_addresses[next], stream_addresses[next], 921600) != 0) {
+        stream_fault |= 4u;
+        mipi_csi_brg_ll_enable(&MIPI_CSI_BRIDGE, false);
+        dw_gdma_ll_channel_enable_intr_propagation(&DW_GDMA, 1, UINT32_MAX, false);
+        stream_drained = true;
+        return;
+    }
+    CSI_DMA_ENABLE(true);
+    CSI_DMA_FENCE();
+    if (!CSI_DMA_ENABLED()) stream_fault |= 8u;
+}
 
 /* Prototype restart of a successfully completed transfer on the SAME retained
  * channel and frame. This does not retire the lease or authorize allocation reuse.
@@ -64,6 +150,7 @@ bool nih_csi_dma_arm(csi_rx *rx) {
     CSI_DMA_ENABLE(true);
     CSI_DMA_FENCE();
     if (!CSI_DMA_ENABLED()) { rx->state = CSI_RX_PINNED; return false; }
+    if (stream_configured) dw_gdma_ll_channel_enable_intr_propagation(&DW_GDMA, 1, CSI_DMA_EVENTS, true);
     return true;
 }
 /* Sensor stays off until this call succeeds. */

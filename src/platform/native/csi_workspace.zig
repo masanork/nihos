@@ -46,6 +46,30 @@ pub const Backend = struct {
 pub const FrameWorkspace = workspace.Workspace(Backend, frame_bytes, cache_chunk);
 var backend: Backend = .{};
 var frame: FrameWorkspace = .{};
+var stream_second: ?memory.reusable.Pin = null;
+var stream_second_offset: usize = 0;
+pub fn prepareStreamSecond() ?bool {
+    if (stream_second == null) stream_second = memory.reusable.allocPinnedTask(frame_bytes, 64) catch return null;
+    if (stream_second_offset == frame_bytes) return true;
+    const bytes = stream_second.?.allocation.bytes[stream_second_offset..][0..cache_chunk];
+    @memset(bytes, 0);
+    if (!backend.writeback(bytes) or !backend.invalidate(bytes)) return null;
+    stream_second_offset += cache_chunk;
+    return stream_second_offset == frame_bytes;
+}
+pub fn streamSecondAddress() ?u32 {
+    if (stream_second_offset != frame_bytes) return null;
+    return @intCast(@intFromPtr(stream_second.?.allocation.bytes.ptr));
+}
+pub fn streamPreviewRow(address_value: u32, row: usize) ?[preview.width]u8 {
+    if (row >= preview.height or (address_value != address() and address_value != streamSecondAddress())) return null;
+    // Caller holds the completed slot's generation; IRQ never writes that slot
+    // until release. The original frame and second allocation remain pinned.
+    const data = @as([*]u8, @ptrFromInt(address_value))[0..frame_bytes];
+    const start = row * 16 * preview.frame_width;
+    for (0..4) |part| if (!backend.invalidate(data[start + part * 640 ..][0..640])) return null;
+    return preview.row(data, row);
+}
 pub fn begin() bool {
     return frame.begin(&backend);
 }
