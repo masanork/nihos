@@ -387,7 +387,7 @@ noinline fn action(value: console.keys.Action, source: console.keys.Source, modi
     log.record("NIHOS_NATIVE_DIAGNOSTIC_KEY", null, .{ "sequence", "source", "action", "modifiers", "usage", "accepted", "view", "stage", "frames" }, &values);
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn poll(now: u64, log: anytype) void {
+noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (now - last_input < 10_000 or !model.input_available) return;
     last_input = now;
     if (options.devices) {
@@ -476,7 +476,7 @@ fn beginSession(log: anytype) void {
     log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn sessionKey(key: Session.input.Key, log: anytype) void {
+noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     const before = session.view;
     if (camera_live.state == .draining and camera_overlay.state == .idle) return;
     if (cameraLiveActive() and camera_overlay.state == .idle) {

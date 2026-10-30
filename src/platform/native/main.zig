@@ -32,7 +32,7 @@ export fn nih_touch_pop(output: *pointer.Event) callconv(.c) bool {
 }
 export fn nih_device_request(kind: u32) callconv(.c) bool {
     if (!options.devices) return false;
-    if (options.camera_id and kind == 29 and board_devices.cameraResetHoldActive()) cameraResetRecovery(false);
+    if (options.camera_diagnostics and kind == 29 and board_devices.cameraResetHoldActive()) cameraResetRecovery(false);
     const accepted = board_devices.requestDevice(kind);
     const workspace = @import("device_workspace.zig");
     const words: extern struct { kind: u32, accepted: u32, i2s_owner: u32, pinned: u32, workspace: u32 } = .{ .kind = kind, .accepted = @intFromBool(accepted), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
@@ -149,7 +149,7 @@ var camera_screen_state: u32 = 0;
 var camera_screen_frame: u32 = 0;
 var camera_screen_mismatches: u32 = 0xffffffff;
 var camera_screen_tone: u32 = 0;
-fn serviceNetwork() void {
+noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (options.console_live and options.boot_fast) {
         board_devices.poll();
         if (options.camera_id and board_devices.cameraCaptureFailed() and ui.cameraLiveFailure()) {
@@ -159,7 +159,7 @@ fn serviceNetwork() void {
             logger.record("NIHOS_NATIVE_CAMERA_LIVE_FAILURE", null, .{ "state", "result", "failed_phase", "reason", "dma_events", "sensor_state", "sensor_result" }, &failure);
         }
         if (options.camera_id) if (board_devices.cameraPreviewNext()) |preview| {
-            if (board_devices.cameraPreviewDiagnostics()) preview_logger.record("NIHOS_NATIVE_CSI_PREVIEW", null, .{ "pass", "row", "changed", "p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19" }, &preview);
+            if (options.camera_diagnostics and board_devices.cameraPreviewDiagnostics()) preview_logger.record("NIHOS_NATIVE_CSI_PREVIEW", null, .{ "pass", "row", "changed", "p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19" }, &preview);
         };
         if (options.camera_id) if (board_devices.cameraPreviewForDisplay()) |preview| {
             if (!ui.cameraAcceptFrame()) {
@@ -181,7 +181,7 @@ fn serviceNetwork() void {
         if (now >= devices_report_at) {
             devices_report_at = now + 5_000_000;
             const devices = board_devices.snapshot();
-            if (options.camera_id) {
+            if (options.camera_diagnostics) {
                 const camera = board_devices.cameraSnapshot();
                 logger.record("NIHOS_NATIVE_CAMERA_ID", null, .{ "state", "result" }, &camera);
                 const csi = board_devices.csiSnapshot();

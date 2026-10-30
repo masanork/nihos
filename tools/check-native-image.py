@@ -54,7 +54,7 @@ FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.boot": (0x40000120, None),
                   ".flash.rodata": (0x40010020, None)}
 
-# Foreground only, never reached by an ISR or a cache-off/boot path. Keep the
+# Foreground only, never reached by an ISR or a cache-off path. Keep the
 # allowlist independent of the linked ELF; accepting all functions found there
 # would defeat the SRAM/Flash boundary check.
 DEVICE_FUNCTIONS = {
@@ -65,8 +65,13 @@ DEVICE_FUNCTIONS = {
     'nih_rs485_close', 'nih_rs485_closed', 'rs485_output',
 }
 
+# These entry points are CPU0 foreground dispatch, never interrupt handlers.
+# These run with the loader's Flash mapping available; IRQ and cache-off
+# control remains in SRAM/ROM. The permitted entry points are explicit.
+CAMERA_FOREGROUND_FUNCTIONS = {'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork'}
+
 def device_function(name):
-    return name in DEVICE_FUNCTIONS or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
+    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:poll|sessionKey)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
 
 
 PMP_FLASH_FUNCTIONS = {

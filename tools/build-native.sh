@@ -22,6 +22,10 @@ if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFI
         export NIHOS_NATIVE_DEVICES="${NIHOS_NATIVE_DEVICES:-1}"
         if [ "${NIHOS_NATIVE_USB:-0}" = 0 ]; then
             export NIHOS_NATIVE_NORMAL_STORAGE="${NIHOS_NATIVE_NORMAL_STORAGE:-1}"
+            if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ] && [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 0 ] && [ "${NIHOS_NATIVE_CAMERA_ID+x}" != x ]; then
+                export NIHOS_NATIVE_CAMERA_ID=1
+                export NIHOS_NATIVE_CAMERA_DIAGNOSTICS="${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-0}"
+            fi
         fi
     fi
 fi
@@ -35,7 +39,9 @@ if [ "${NIHOS_NATIVE_MICROPHONE:-0}" = 1 ]; then build_dir="$build_dir-microphon
 if [ "${NIHOS_NATIVE_RS485:-0}" = 1 ]; then build_dir="$build_dir-rs485"; fi
 if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then build_dir="$build_dir-devices"; fi
 if [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 1 ]; then build_dir="$build_dir-pmp-probe"; fi
-if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then build_dir="$build_dir-camera-id"; fi
+if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then
+    if [ "${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-1}" = 1 ]; then build_dir="$build_dir-camera-id"; else build_dir="$build_dir-camera"; fi
+fi
 if [ "${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}" = 1 ]; then build_dir="$build_dir-camera-ui-fixture"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
