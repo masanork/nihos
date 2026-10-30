@@ -12,7 +12,8 @@ pub const Backend = struct {
     pub const Allocation = memory.reusable.Pin;
     pub fn allocate(_: *Backend, length: usize, alignment: usize) ?Allocation {
         // Allocation and pin are published atomically against task close.
-        return memory.reusable.allocPinnedTask(length, alignment) catch null;
+        const bytes_needed = if (@import("native_options").camera_diagnostics) length else length * 2;
+        return memory.reusable.allocPinnedTask(bytes_needed, alignment) catch null;
     }
     pub fn bytes(_: *Backend, allocation: Allocation) []u8 {
         return allocation.allocation.bytes;
@@ -46,12 +47,13 @@ pub const Backend = struct {
 pub const FrameWorkspace = workspace.Workspace(Backend, frame_bytes, cache_chunk);
 var backend: Backend = .{};
 var frame: FrameWorkspace = .{};
-var stream_second: ?memory.reusable.Pin = null;
 var stream_second_offset: usize = 0;
 pub fn prepareStreamSecond() ?bool {
-    if (stream_second == null) stream_second = memory.reusable.allocPinnedTask(frame_bytes, 64) catch return null;
+    const allocation = frame.allocation orelse return null;
+    const data = allocation.allocation.bytes;
+    if (data.len < frame_bytes * 2) return null;
     if (stream_second_offset == frame_bytes) return true;
-    const bytes = stream_second.?.allocation.bytes[stream_second_offset..][0..cache_chunk];
+    const bytes = data[frame_bytes + stream_second_offset ..][0..cache_chunk];
     @memset(bytes, 0);
     if (!backend.writeback(bytes) or !backend.invalidate(bytes)) return null;
     stream_second_offset += cache_chunk;
@@ -59,7 +61,7 @@ pub fn prepareStreamSecond() ?bool {
 }
 pub fn streamSecondAddress() ?u32 {
     if (stream_second_offset != frame_bytes) return null;
-    return @intCast(@intFromPtr(stream_second.?.allocation.bytes.ptr));
+    return (address() orelse return null) + frame_bytes;
 }
 pub fn streamPreviewRow(address_value: u32, row: usize) ?[preview.width]u8 {
     if (row >= preview.height or (address_value != address() and address_value != streamSecondAddress())) return null;
