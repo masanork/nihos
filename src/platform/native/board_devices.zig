@@ -115,6 +115,8 @@ pub fn cameraResetHoldActive() bool {
 }
 const FirstFrameHardware = struct {
     retained: bool = false,
+    keep_configured: bool = false,
+    sensor_idle_at: u64 = 0,
     retained_chunk: usize = 0,
     sensor_started: bool = false,
     low_exposure: bool = false,
@@ -181,12 +183,14 @@ const FirstFrameHardware = struct {
         if (self.retained) {
             var fault: u32 = 0;
             if (!nih_camera_dma_domain_common(self.token, &fault) or fault != 0 or !nih_csi_dma_retained_ready()) return .failed;
-            // Bound foreground work to 16 KiB, rather than one scheduler
-            // round trip per 1 KiB cache operation.
-            for (0..16) |_| {
+            // Normal preview batches up to 128 KiB within a 1 ms budget;
+            // diagnostic fixtures retain their original 16 KiB cadence.
+            const started = clock.counter();
+            for (0..if (options.camera_diagnostics) @as(usize, 16) else 128) |_| {
                 if (csi_workspace.readChunk(self.frame_identity, self.retained_chunk) == null) return .failed;
                 self.retained_chunk += 1;
                 if (self.retained_chunk == 900) break;
+                if (!options.camera_diagnostics and cameraBudgetExpired(started)) break;
             }
             return if (self.retained_chunk == 900) .done else .pending;
         }
@@ -194,9 +198,11 @@ const FirstFrameHardware = struct {
             self.frame_started = true;
             if (!csi_workspace.begin()) return .failed;
         }
-        for (0..16) |_| {
+        const started = clock.counter();
+        for (0..if (options.camera_diagnostics) @as(usize, 16) else 128) |_| {
             csi_workspace.poll();
             if (csi_workspace.phase() == .ready_dma or csi_workspace.phase() == .pinned) break;
+            if (!options.camera_diagnostics and cameraBudgetExpired(started)) break;
         }
         return switch (csi_workspace.phase()) {
             .ready_dma => .done,
@@ -384,6 +390,14 @@ const FirstFrameHardware = struct {
         return true;
     }
     pub fn powerOff(self: *@This()) first_frame.Step {
+        if (self.keep_configured and first_frame_probe.canKeepSensor() and
+            camera_probe.state == .held and self.xclk_attempted and !self.stream_attempted and
+            !self.csi_owned and !self.isp_owned and !self.dma_uncertain and !self.domain_fault)
+        {
+            const now = clock.counter() orelse return .failed;
+            self.sensor_idle_at = now + 500_000;
+            return .done;
+        }
         switch (camera_probe.state) {
             .idle, .done => {
                 if (self.xclk_attempted) {
@@ -405,6 +419,12 @@ const FirstFrameHardware = struct {
         csi_workspace.pin();
     }
 };
+// CPU0 yields between bounded batches. Missing/backward clocks end a batch.
+inline fn cameraBudgetExpired(started: ?u64) bool {
+    const start = started orelse return true;
+    const now = clock.counter() orelse return true;
+    return now < start or now - start >= 1_000;
+}
 // CPU0 board I2C/domain owner only. These are deliberately not exposed as a
 // command outside the diagnostic capture. Failed cleanup remains unqualified.
 const InFlightIo = struct {
@@ -656,7 +676,7 @@ var preview_row: u32 = 0;
 var preview_fault = false;
 /// Called only by the CPU0 foreground after a completed, stopped capture.
 /// Compare two sampled passes; the complete frame remains pinned until reset.
-pub fn cameraPreviewNext() ?PreviewRow {
+fn cameraPreviewRow() ?PreviewRow {
     if (!sample_preview_requested or first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete or preview_pass >= 2 or preview_fault) return null;
     var common: u32 = 0;
     const h = &first_frame_hardware;
@@ -687,6 +707,15 @@ pub fn cameraPreviewNext() ?PreviewRow {
     if (preview_row == camera_preview.height) {
         preview_row = 0;
         preview_pass += 1;
+    }
+    return result;
+}
+pub fn cameraPreviewNext() ?PreviewRow {
+    const started = clock.counter();
+    var result: ?PreviewRow = null;
+    for (0..if (options.camera_diagnostics) @as(usize, 1) else camera_preview.height * 2) |_| {
+        result = cameraPreviewRow() orelse break;
+        if (cameraBudgetExpired(started)) break;
     }
     return result;
 }
@@ -767,12 +796,31 @@ fn pollDomainDiagnostic() void {
 pub noinline fn poll() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (!active) return;
     if (options.camera_id) {
-        camera_probe.poll(&bus, clock);
+        const sensor_started = clock.counter();
+        for (0..if (options.camera_diagnostics) @as(usize, 1) else 8) |_| {
+            const before = camera_probe.state;
+            const index = camera_probe.mode_driver.index;
+            camera_probe.poll(&bus, clock);
+            if ((camera_probe.state == before and camera_probe.mode_driver.index == index) or cameraBudgetExpired(sensor_started)) break;
+        }
         csi_probe.poll(&csi_hardware);
         pollDomainDiagnostic();
         pollDmaTest();
         pollPsramDmaTest();
-        if (first_frame_probe.phase != .idle and first_frame_probe.phase != .done and first_frame_probe.phase != .pinned and !(camera_reset_hold and first_frame_probe.phase == .isp_prepare)) first_frame_probe.poll(&first_frame_hardware, clock.counter());
+        const capture_started = clock.counter();
+        for (0..if (options.camera_diagnostics) @as(usize, 1) else 8) |_| {
+            const before = first_frame_probe.phase;
+            if (before == .idle or before == .done or before == .pinned or (camera_reset_hold and before == .isp_prepare)) break;
+            first_frame_probe.poll(&first_frame_hardware, clock.counter());
+            if (first_frame_probe.phase == before or cameraBudgetExpired(capture_started)) break;
+        }
+        // Warm mode is useful only while snapshots keep arriving. Stream is
+        // already off; an idle shell powers the sensor/XCLK down after 500 ms.
+        if (!options.camera_diagnostics and first_frame_probe.phase == .done and first_frame_hardware.xclk_attempted) {
+            const now = clock.counter();
+            if (now == null or now.? >= first_frame_hardware.sensor_idle_at) first_frame_hardware.keep_configured = false;
+            if (!first_frame_hardware.keep_configured and first_frame_hardware.powerOff() == .failed) preview_fault = true;
+        }
         if (options.camera_diagnostics and first_frame_probe.phase == .done and first_frame_probe.result == .dma_complete and scan_completed_frame and capture_scratch.stability.phase != .done and capture_scratch.stability.phase != .failed) {
             if (capture_scratch.stability.phase == .idle) _ = capture_scratch.stability.start();
             capture_scratch.stability.pollBatch(&stability_backend, &stability_timing);
@@ -893,6 +941,7 @@ fn startCameraSnapshot() bool {
     sample_preview_requested = true;
     first_frame_hardware.display_preview = true;
     first_frame_hardware.display_tone = true;
+    first_frame_hardware.keep_configured = !options.camera_diagnostics;
     return true;
 }
 pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
@@ -918,7 +967,9 @@ pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".fl
             const h = &first_frame_hardware;
             var fault: u32 = 0;
             h.reason = 0x600;
-            if (h.dma_uncertain or h.domain_fault or h.rx.state != 3 or h.token == 0 or h.csi_owned or h.isp_owned or h.xclk_attempted or camera_probe.state != .done or !nih_camera_dma_domain_common(h.token, &fault) or fault != 0) break :blk false;
+            const warm = h.keep_configured and h.xclk_attempted and camera_probe.state == .held;
+            const cold = !h.xclk_attempted and camera_probe.state == .done;
+            if (h.dma_uncertain or h.domain_fault or h.rx.state != 3 or h.token == 0 or h.csi_owned or h.isp_owned or (!warm and !cold) or !nih_camera_dma_domain_common(h.token, &fault) or fault != 0) break :blk false;
             h.reason = 0x700 | nih_csi_dma_retained_flags();
             if (h.reason != 0x700) break :blk false;
             const now = clock.counter() orelse break :blk false;
@@ -926,8 +977,8 @@ pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".fl
             if (!next_capture.start(now, 120_000_000)) break :blk false;
             const retained_token = h.token;
             const retained_identity = h.frame_identity;
-            first_frame_hardware = .{ .retained = true, .token = retained_token, .frame_identity = retained_identity, .display_preview = true, .display_tone = true };
-            camera_probe = .{};
+            first_frame_hardware = .{ .retained = true, .token = retained_token, .frame_identity = retained_identity, .display_preview = true, .display_tone = true, .keep_configured = !options.camera_diagnostics, .sensor_started = warm, .xclk_attempted = warm };
+            if (!warm) camera_probe = .{};
             first_frame_probe = next_capture;
             preview_pass = 0;
             preview_row = 0;
