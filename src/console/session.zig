@@ -81,7 +81,9 @@ pub const Model = struct {
         self.output.dropped = 0;
     }
     fn shell(self: *Model, sink: anytype) void {
-        if (self.view != .shell) self.write(sink, "\r\nnihos shell | help: commands | exit: launcher\r\n");
+        // Serial needs its own heading; the screen already renders one.
+        // Keep entrance notices out of the shared command history.
+        if (self.view != .shell) sink.write("\r\nnihos / shell\r\n");
         self.view = .shell;
         self.length = 0;
     }
@@ -184,15 +186,15 @@ pub const Model = struct {
         return null;
     }
     pub fn render(self: *const Model, grid: anytype) void {
-        const header = @import("snapshot.zig").header_rows;
+        const header: usize = if (self.view == .shell) 1 else @import("snapshot.zig").header_rows;
         @memset(&grid.cells, ' ');
         grid.x = 0;
         grid.y = 0;
         grid.wrap_pending = false;
         grid.scrolls = 0;
         _ = grid.setScrollTop(header);
-        grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n\n");
-        grid.write(if (self.view == .launcher) "Up/Down or 1-4: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
+        grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n");
+        if (self.view == .launcher) grid.write("Up/Down or 1-4: select | Enter: open | Esc: shell\n");
         if (self.view == .shell and self.output.dropped != 0) grid.write("[older shell output discarded]\n");
         while (grid.y < header) grid.write("\n");
         if (self.view == .launcher) {

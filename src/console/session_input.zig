@@ -1,6 +1,13 @@
 //! ASCII shell/menu input. Boot diagnostic keys keep their separate decoder.
 const std = @import("std");
-pub const Key = union(enum) { text: u8, enter, backspace, up, down, escape, cancel, eof, clear };
+pub const Key = union(enum) { text: u8, enter, backspace, left, right, up, down, escape, cancel, eof, clear, undo };
+
+/// C transports return -1 when empty, otherwise a byte. Validate the foreign
+/// integer before crossing the byte boundary and preserve its high bit.
+pub fn transportByte(value: i32) ?u8 {
+    if (value < 0 or value > 255) return null;
+    return @truncate(@as(u32, @bitCast(value)));
+}
 
 pub const Hid = struct {
     caps: bool = false,
@@ -14,6 +21,7 @@ pub const Hid = struct {
             0x06 => .cancel,
             0x07 => .eof,
             0x0f => .clear,
+            0x1d => .undo,
             else => null,
         };
         const shift = modifiers & 0x22 != 0;
@@ -35,6 +43,8 @@ pub const Hid = struct {
             0x36 => .{ .text = if (shift) '<' else ',' },
             0x37 => .{ .text = if (shift) '>' else '.' },
             0x38 => .{ .text = if (shift) '?' else '/' },
+            0x4f => .right,
+            0x50 => .left,
             0x51 => .down,
             0x52 => .up,
             else => null,
@@ -76,6 +86,8 @@ pub const Serial = struct {
                     return switch (byte) {
                         'A' => .up,
                         'B' => .down,
+                        'C' => .right,
+                        'D' => .left,
                         else => null,
                     };
                 }
@@ -97,6 +109,7 @@ pub const Serial = struct {
             3 => .cancel,
             4 => .eof,
             12 => .clear,
+            26 => .undo,
             32...126 => .{ .text = byte },
             else => null,
         };
@@ -114,6 +127,11 @@ test "serial CRLF executes once and arrows are not Escape" {
     try std.testing.expect(serial.expire(129_999) == null);
     try std.testing.expectEqual(Key.escape, serial.expire(130_000).?);
     for ("\x1b[200~") |byte| try std.testing.expect(serial.feed(byte, 140_000) == null);
+}
+
+test "foreign serial results preserve every byte and reject invalid integers" {
+    for (0..256) |value| try std.testing.expectEqual(@as(u8, @intCast(value)), transportByte(@intCast(value)).?);
+    for ([_]i32{ -2147483648, -257, -1, 256, 65535, 2147483647 }) |value| try std.testing.expect(transportByte(value) == null);
 }
 
 test "HID supports ASCII, Shift, Caps Lock and editing controls" {

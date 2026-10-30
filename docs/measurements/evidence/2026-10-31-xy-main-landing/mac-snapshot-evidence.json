@@ -1,0 +1,28 @@
+{
+  "scope": "clean committed macOS frontend; no concurrent desktop edits included",
+  "ttf_source_sha256": "9634e4e0f75e68e1868a01d4b81d7522c65bf934d80781d9d7cf09c1ec27a70f",
+  "c_abi_source_sha256": "1c2247dcb3e18ec3dfd522c3a7229e369a939cb78238a339878c5f409473a622",
+  "files": {
+    "ttf-regression-before.log.gz": {
+      "sha256": "574c774219315ae3c26200f94e4214f00cd2c3df58f929c45285c81be744effa",
+      "raw_sha256": "6b7f14c2d300be12f944f204fc2a6c1e5efa8919f27866953d3f9795a8beb63e"
+    },
+    "ttf-regression-after.log.gz": {
+      "sha256": "901e37af60c8ffb8b6a9a31f89be7525f0cdaec1cefcd2b9a056a8b92546b871",
+      "raw_sha256": "6b8ff90936c8d6ece93ff4e212127674fc6cb59fda158bd2fa8d2524304479db"
+    },
+    "mac-snapshot.log.gz": {
+      "sha256": "e469f76707bc298affeafe89d11ffcf314de6c8a5612829d4a8c5ad1ddab16f3",
+      "raw_sha256": "08909033f8aa4c973895246e255c2e873b1633ef49a75a08b69fa0eaaf7d6567"
+    },
+    "xy_scene2_vertical_mincho.png": {
+      "sha256": "1bbf046ba59fce4b8cad46452c944ac277bea85d5c48ab4819f9746fc666ec64"
+    },
+    "xy_scene3_vertical_gothic_dark.png": {
+      "sha256": "11161fb426104243b4b9f2f1afef0d52355747a8d3a5f654f14de59c2deed9f2"
+    },
+    "xy_scene1_horizontal_mincho.png": {
+      "sha256": "c4eeb0d5b89ba03df695fc37241afa45c3625573c7cc77263e2b64187a99d19f"
+    }
+  }
+}
