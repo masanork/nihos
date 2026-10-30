@@ -1014,6 +1014,7 @@ fn reportPmpProbe() noreturn {
     printUnsigned(end_case - first_case);
     print(" first=");
     printUnsigned(first_case);
+    print(if (options.emulator) " sbe_evidence=unmodeled" else " sbe_evidence=csr-readback");
     print(" hart=0 pmpcfg0=");
     hex(pmpcfg0);
     print(" pmpcfg1=");
@@ -1090,8 +1091,10 @@ fn reportPmpProbe() noreturn {
         // mret writes MPP back to User. The saved bootstrap image still has
         // Machine (0x1800) and MPIE (0x80). The Tab5 sample was 0x1880.
         // ESP-EMU's trap mstatus also has UIE, so bit 0 may be set.
-        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0 and
-            step.kernel_mhint & tasks.pmp.synchronous_bus_error == 0 and step.user_mhint & tasks.pmp.synchronous_bus_error != 0;
+        // ESP-EMU v0.50.0 does not model mhint.SBE. Its fault/return matrix
+        // remains useful, but synchronous-bus-error evidence is device-only.
+        const mode_ok = options.emulator or (step.kernel_mhint & tasks.pmp.synchronous_bus_error == 0 and step.user_mhint & tasks.pmp.synchronous_bus_error != 0);
+        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0 and mode_ok;
         const reaped_one = step.reaped == previous_reaped + 1;
         const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
         const return_ok = !returned or (step.timer_interrupts > previous_timers and step.user_timer_interrupts != 0 and step.calls > 2 and step.exit_code == 1);
