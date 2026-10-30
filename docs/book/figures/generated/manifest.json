@@ -127,11 +127,11 @@
       "viewBox": "4 4 254 391"
     },
     "os-responsibilities": {
-      "sourceSha256": "18aa0a28f6e2557f7328154b6e48b9ca57ebba98fd9f6da16edc34b0db2312ad",
-      "svgSha256": "02ab04225f47028c216a3dd940d7f8facba0cc9e9565df4954c5891227e392b2",
+      "sourceSha256": "c38bb1216e7261f97b8c2ad852fefed6175b1bdd5b0fa6b41ccce24f4c2f3ce2",
+      "svgSha256": "33adeb90797059b982c4ab3612b84085a5607ef0a56878302b96b5b0a1f835db",
       "file": "figures/os-responsibilities.mmd",
       "title": "通常の役割分担と、追加したCPU0の保護境界",
-      "description": "通常のアプリとサービスは同じM-mode空間に残る。別枠のCPU0診断タスクだけをU-modeとPMPで制限し、スカラECALLでカーネルへ入る。既存サービスへの直接接続を示す図ではない。",
+      "description": "通常のアプリとサービスは同じM-mode空間に残る。別枠のCPU0診断タスクからは検査する要求を介してカーネルへ入る。既存サービスへの直接接続を示す図ではない。",
       "viewBox": "4 4 599.8109130859375 651.9000244140625"
     },
     "p4-c6-network-path": {
@@ -167,10 +167,10 @@
       "viewBox": "4 4 464.3125 329.79998779296875"
     },
     "protected-addresses": {
-      "sourceSha256": "e465bffa900c12d454d0f6dda0f594cb373970c1cd630f170199c3593a2f4aa2",
-      "svgSha256": "672a32e988a2b8c19fae52514873db9528e20afe4e5ab7dca095fd6702da7ada",
+      "sourceSha256": "b2083d4ae3cfe7bffe39b94a67a223118e6dd0cc357762a1680a6c2c15f4bf46",
+      "svgSha256": "480a49f380f0e6a4c91c4758ce08755c525cce58b40caf33af5fd444af08541b",
       "file": "figures/protected-addresses.mmd",
-      "title": "同じ物理アドレスに、タスク別の許可を結び付ける",
+      "title": "CPUが使うアドレスに、タスク別の許可を結び付ける",
       "description": "CPU0の保護タスクはコードを読出し実行でき、専用アリーナを読書きできる。カーネル、ROM、周辺回路へのアクセスは拒否する。これはアドレス変換の図ではなく、許可の模式図である。",
       "viewBox": "4 4 767.84375 246.80001831054688"
     },
@@ -183,8 +183,8 @@
       "viewBox": "4 4 292 642.4760131835938"
     },
     "protected-return": {
-      "sourceSha256": "8bb3f028cb264db1113c30d2b3a31c5ecb50131a21ed5e06bebce7b6e5ec1bae",
-      "svgSha256": "7743d8ba881499009d428f1cf8417bbaf5aed4cd6adc318b02845b2995368d10",
+      "sourceSha256": "48c3bc8d26be72688ec052a53a73f44031a552f302a80e8ce2ca2cc128e3502d",
+      "svgSha256": "e61e8d181a58a9696b758b28ba53a48b407d6c207a7a444eedaa660ac6fe2e7c",
       "file": "figures/protected-return.mmd",
       "title": "選んだタスクに合わせて復帰の権限と許可を変える",
       "description": "U-modeの例外をカーネルが受け、保存と選択を行う。選んだ実行に合わせてPMPを設定または解除し、mcauseを先、mstatusを後に書いてmretする。故障した元のタスクは再開しない。",
