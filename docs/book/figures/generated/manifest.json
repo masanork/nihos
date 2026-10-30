@@ -31,12 +31,12 @@
       "viewBox": "4 4 345.2890625 287.70001220703125"
     },
     "camera-buffer-ownership": {
-      "sourceSha256": "8c2f6af7445077e1b8ce955c15448bed05652eca104276ac7c0bdce67f68b06a",
-      "svgSha256": "f9cc37b5c2b41ee59a5c73f09c6ee33bc82fccd581cfdfdc35da0de0abc5bd70",
+      "sourceSha256": "4a432182fcfa2a045ac56a8c23f736891041df1bb2603ab53d3cef8946d6e3a3",
+      "svgSha256": "6af2e6fe31a7ebff087c7eeff9660d108094cf4548bc2cf264c74b137a8c6cff",
       "file": "figures/camera-buffer-ownership.mmd",
       "title": "借り手が返すまで、撮影領域を上書きしない",
       "description": "CPUが完了した領域Aを借りる間、DMAはBを使い、返却がなければBを繰り返し使ってフレームを捨てる。世代付きの返却後にAを再利用できる。",
-      "viewBox": "-50 -10 640 581"
+      "viewBox": "-50 -10 636 527"
     },
     "camera-data-path": {
       "sourceSha256": "306fd10bbe0c89227a6c5dc68af32cec613591676004aaf732b1e6d6b91f6d77",
