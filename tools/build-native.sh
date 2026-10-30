@@ -42,6 +42,7 @@ if [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 1 ]; then build_dir="$build_dir-pmp-probe"
 if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then
     if [ "${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-1}" = 1 ]; then build_dir="$build_dir-camera-id"; else build_dir="$build_dir-camera"; fi
 fi
+if [ "${NIHOS_NATIVE_CAMERA_JPEG:-0}" = 1 ]; then build_dir="$build_dir-jpeg"; fi
 if [ "${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}" = 1 ]; then build_dir="$build_dir-camera-ui-fixture"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
