@@ -1,0 +1,23 @@
+{
+  "result": {
+    "result": "CSI sampled preview rendered to the UI framebuffer; image remains unverified optically",
+    "idle_reports": 2,
+    "terminal_reports": 2,
+    "dismiss": "serial Escape consumed and previous UI view repainted"
+  },
+  "receipt": {
+    "image_sha256": "447f81ed65ac49a40813b3b5a526073ea5b63a89ae4f074cc3521f691629e2d9",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "e81f7a7836658ca2e167a06c9aa055f304cc6e74e6aadf79c3e7260d83404fc7"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      172032
+    ]
+  },
+  "serial_sha256": "4dea3061cd525dbf79453fca078255c61af0d88a0054335d1bd4fe7ceb2cd023",
+  "restored": true
+}

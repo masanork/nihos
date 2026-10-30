@@ -1,0 +1,12 @@
+{
+  "restored": true,
+  "backup_sha256": [
+    "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+    "a37a56b1aa4bf648cb607e27a9708e8b24e9a1cfd2b1157ebacbf6d25192dc9c"
+  ],
+  "span_bytes": [
+    24576,
+    167936
+  ],
+  "reference": "/private/tmp/nihos-camera-exposure-low-main-20261030/result.json"
+}

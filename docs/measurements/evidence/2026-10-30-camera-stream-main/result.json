@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "sensor stream-on and stream-off readback confirmed; expander off",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "c41d357bcc2ee7c0c7e2bbf362ef2851b03404c39c4ea9be306e83ae6acadf3a",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "08ecddb007003aafff02593ce83bea10d2f446bd7efac96430febe005b8391cd"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      151552
+    ]
+  },
+  "serial_sha256": "17bc0dccf01da43ec12271c62c1984b151d085bea7fce9ef01618e2cef23b8d5",
+  "restored": true
+}

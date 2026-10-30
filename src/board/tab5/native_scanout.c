@@ -37,6 +37,50 @@ static bool scene_enabled;
 static dw_gdma_link_list_item_t *active_nodes = &descriptor;
 static uint32_t node_count = 1;
 static bool dma_owned;
+#include "dw_dma_domain.h"
+#if NIH_NATIVE_CAMERA_ID
+#include "dw_dma_camera.h"
+/* CPU0 foreground only. Preserve the previous interrupt state; display IRQ
+ * uses the same exclusion when accessing the shared DMA domain. */
+static uint32_t camera_domain_lock(void) {
+    uint32_t previous;
+    __asm__ volatile("csrrci %0,mstatus,8" : "=r"(previous) :: "memory");
+    return previous;
+}
+static void camera_domain_unlock(uint32_t previous) {
+    if (previous & 8u) __asm__ volatile("csrsi mstatus,8" ::: "memory");
+}
+uint32_t nih_camera_dma_domain_acquire(void) {
+    const uint32_t previous = camera_domain_lock();
+    const uint32_t token = dw_camera_acquire();
+    camera_domain_unlock(previous);
+    return token;
+}
+uint32_t nih_camera_dma_domain_denial(void) {
+    const uint32_t previous = camera_domain_lock();
+    const uint32_t denial = dw_camera_denial;
+    camera_domain_unlock(previous);
+    return denial;
+}
+bool nih_camera_dma_domain_common(uint32_t token, uint32_t *out) {
+    const uint32_t previous = camera_domain_lock();
+    const bool ok = dw_camera_common(token, out);
+    camera_domain_unlock(previous);
+    return ok;
+}
+bool nih_camera_dma_domain_mark_started(uint32_t token) {
+    const uint32_t previous = camera_domain_lock();
+    const bool ok = dw_camera_mark_started(token);
+    camera_domain_unlock(previous);
+    return ok;
+}
+bool nih_camera_dma_domain_release_unused(uint32_t token) {
+    const uint32_t previous = camera_domain_lock();
+    const bool ok = dw_camera_release_unused(token);
+    camera_domain_unlock(previous);
+    return ok;
+}
+#endif
 bool nih_display_keypad_idle(void) { return !dma_owned; }
 static uint32_t completions;
 static uint32_t fault;
@@ -244,17 +288,9 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uin
         address = (uint32_t)(uintptr_t)&solid_word;
     }
     source_address = address;
-    /* Do not reset or appropriate an already clocked DMA domain. */
-    if (dw_gdma_ll_is_bus_clock_enabled(0)) return -2;
-    dw_gdma_ll_enable_bus_clock(0, true);
+    if (!dw_domain_acquire(0)) return -2;
     dma_owned = true;
     pause_requested = false;
-    dw_gdma_ll_reset_register(0);
-    dw_gdma_ll_enable_controller(&DW_GDMA, true);
-    dw_gdma_ll_enable_intr_global(&DW_GDMA, true);
-    dw_gdma_ll_enable_common_intr_generation(&DW_GDMA, UINT32_MAX, true);
-    dw_gdma_ll_enable_common_intr_propagation(&DW_GDMA, UINT32_MAX, false);
-    dw_gdma_ll_clear_common_intr(&DW_GDMA, UINT32_MAX);
     dw_gdma_ll_channel_set_trans_flow(&DW_GDMA, 0, DW_GDMA_ROLE_MEM, DW_GDMA_ROLE_PERIPH_DSI, DW_GDMA_FLOW_CTRL_SELF);
     dw_gdma_ll_channel_set_src_multi_block_type(&DW_GDMA, 0, DW_GDMA_BLOCK_TRANSFER_LIST);
     dw_gdma_ll_channel_set_dst_multi_block_type(&DW_GDMA, 0, DW_GDMA_BLOCK_TRANSFER_LIST);
@@ -419,10 +455,10 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uin
 uint32_t nih_display_scanout_poll(void) {
     if (!dma_owned || fault) return 0;
     uint32_t events = dw_gdma_ll_channel_get_intr_status(&DW_GDMA, 0);
-    uint32_t common = dw_gdma_ll_get_common_intr_status(&DW_GDMA);
     uint32_t bridge = mipi_dsi_brg_ll_get_interrupt_status(&MIPI_DSI_BRIDGE);
     dw_gdma_ll_channel_clear_intr(&DW_GDMA, 0, events);
-    dw_gdma_ll_clear_common_intr(&DW_GDMA, common);
+    dw_domain_refresh_common();
+    uint32_t common = dw_domain_take_common(0);
     mipi_dsi_brg_ll_clear_interrupt_status(&MIPI_DSI_BRIDGE, bridge);
     uint32_t result = 0;
     dsi_error0 |= MIPI_DSI_HOST.int_st0.val; dsi_error1 |= MIPI_DSI_HOST.int_st1.val;

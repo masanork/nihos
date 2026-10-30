@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "CSI DMA completion reported; frame contents not inspected; lease retained until reset",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "92a0864ccaeb46b4a3c967248254715811f5ecf907b9bd7088c982708a20616b",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "225ee30fe2ea77e9d7fbcc56b83f2481ce6ec8e2d7f68c405e895a1c808edad4"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      163840
+    ]
+  },
+  "serial_sha256": "8f7bc5a6b8463c6549b4ab659916ea567df48d809572aea13016f541773f1614",
+  "restored": true
+}

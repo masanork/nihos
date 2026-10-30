@@ -16,6 +16,9 @@ static bool fifo_stuck, lane_stuck;
 static bool dma_owned, ui_enabled, notice_enabled, pause_requested, stuck;
 static uint32_t fault, completions, backlight_offs;
 static unsigned restarts, disabled, stopped_domains;
+static bool domain_clock;
+static uint32_t domain_status;
+static unsigned domain_starts, domain_resets;
 static bool stop_dma(bool blank);
 static bool restart_dma(void) { ++restarts; return true; }
 static void gpio_ll_set_level(void *io, unsigned pin, unsigned level) {
@@ -48,9 +51,16 @@ static bool mipi_dsi_phy_ll_are_lanes_stopped(void *io, unsigned lanes) { (void)
 static void mipi_dsi_brg_ll_enable_dpi_output(void *io, bool on) { (void)io; assert(!on && !video_enabled); }
 static void mipi_dsi_brg_ll_enable(void *io, bool on) { (void)io; assert(!on); }
 static void mipi_dsi_ll_enable_dpi_clock(unsigned id, bool on) { assert(id == 0 && !on); }
-static void dw_gdma_ll_enable_intr_global(void *io, bool on) { (void)io; assert(!on); }
-static void dw_gdma_ll_enable_controller(void *io, bool on) { (void)io; assert(!on); }
-static void dw_gdma_ll_enable_bus_clock(unsigned id, bool on) { assert(id == 0 && !on); ++stopped_domains; }
+static void dw_gdma_ll_enable_intr_global(void *io, bool on) { (void)io; (void)on; }
+static void dw_gdma_ll_enable_controller(void *io, bool on) { (void)io; (void)on; }
+static void dw_gdma_ll_enable_bus_clock(unsigned id, bool on) { assert(id == 0); domain_clock = on; if (!on) ++stopped_domains; else ++domain_starts; }
+static bool dw_gdma_ll_is_bus_clock_enabled(unsigned id) { assert(id == 0); return domain_clock; }
+static void dw_gdma_ll_reset_register(unsigned id) { assert(id == 0); ++domain_resets; }
+static void dw_gdma_ll_enable_common_intr_generation(void *io, uint32_t mask, bool on) { (void)io; (void)mask; (void)on; }
+static void dw_gdma_ll_enable_common_intr_propagation(void *io, uint32_t mask, bool on) { (void)io; (void)mask; (void)on; }
+static uint32_t dw_gdma_ll_get_common_intr_status(void *io) { (void)io; return domain_status; }
+static void dw_gdma_ll_clear_common_intr(void *io, uint32_t mask) { (void)io; domain_status &= ~mask; }
+#include "../../src/board/tab5/dw_dma_domain.h"
 #include "../../src/board/tab5/scanout_retire.h"
 static void active(void) {
     dma_owned = ui_enabled = notice_enabled = true;
@@ -58,9 +68,30 @@ static void active(void) {
     fifo = 4; fifo_stuck = lane_stuck = false; MIPI_DSI_HOST.vid_pkt_status.val = 0;
     pause_requested = stuck = false; fault = 0; completions = 2;
     backlight_offs = restarts = disabled = stopped_domains = 0;
+    dw_domain_channels = 1; domain_clock = true; dw_domain_common_fault = false;
     GPIO.out.val = 1u << 22; DW_GDMA.chen0.val = 1;
 }
 int main(void) {
+    domain_clock = true;
+    assert(!dw_domain_acquire(0) && dw_domain_channels == 0 && domain_resets == 0);
+    domain_clock = false;
+    assert(dw_domain_acquire(0) && domain_clock && domain_starts == 1 && domain_resets == 1);
+    assert(!dw_domain_acquire(0) && !dw_domain_release(1));
+    assert(dw_domain_acquire(1) && domain_resets == 1);
+    dw_domain_publish_common(0x12);
+    assert(!dw_domain_acquire(2));
+    assert(dw_domain_take_common(0) == 0x12);
+    assert(dw_domain_take_common(0) == 0);
+    dw_domain_publish_common(0x80);
+    assert(dw_domain_take_common(1) == 0x92);
+    assert(dw_domain_take_common(0) == 0x80);
+    assert(dw_domain_release(0) && domain_clock);
+    assert(dw_domain_release(1) && !domain_clock);
+    assert(dw_domain_acquire(0));
+    domain_status = 0x40; /* fault exists before display IRQ has observed it */
+    assert(!dw_domain_acquire(1));
+    assert(domain_status == 0 && dw_domain_take_common(0) == 0x40);
+    assert(dw_domain_release(0));
     active();
     assert(complete_dma_frame() && restarts == 1 && dma_owned);
     assert(nih_display_scanout_pause_request());
@@ -91,5 +122,11 @@ int main(void) {
     nih_display_backlight(true); assert(!GPIO.out.val);
     active(); completions = 1;
     nih_display_backlight(true); assert(!GPIO.out.val);
+    active();
+    assert(dw_domain_acquire(1));
+    assert(nih_display_scanout_stop());
+    assert(dw_domain_channels == 2 && domain_clock && stopped_domains == 0);
+    assert(dw_domain_release(1));
+    assert(!domain_clock && stopped_domains == 1);
     puts("Scene retirement replay passed: EOF only, pause stays lit, timeout retains ownership, faults blank");
 }

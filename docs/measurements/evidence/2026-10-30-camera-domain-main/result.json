@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "unused camera DMA domain lease acquired and released",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "f06c09fb3884e313e0cf83c52a95ca1503fd25e8640a9f45024ad4a3bf74430e",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "2fb5ba6e47e00f7eb32ca62f03e39bf6466f9fd770b38ea714259c4f8977bfb4"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      155648
+    ]
+  },
+  "serial_sha256": "81b7adb1968a86de41a13e0541ff45bf10a94f70c874c44081a9bb759dea0c03",
+  "restored": true
+}

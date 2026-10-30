@@ -1,0 +1,48 @@
+{
+  "result": {
+    "result": "three retained-frame capture and display cycles returned to shell",
+    "snapshots": [
+      {
+        "sequence": 1,
+        "state": 1,
+        "sample_hash": 661873263,
+        "mismatches": 0,
+        "frames": 322,
+        "request_ms": 3265
+      },
+      {
+        "sequence": 2,
+        "state": 1,
+        "sample_hash": 3562971465,
+        "mismatches": 0,
+        "frames": 479,
+        "request_ms": 2441
+      },
+      {
+        "sequence": 3,
+        "state": 1,
+        "sample_hash": 4250244315,
+        "mismatches": 0,
+        "frames": 630,
+        "request_ms": 2332
+      }
+    ],
+    "distinct_sample_hashes": 3,
+    "shell_returns": 3
+  },
+  "receipt": {
+    "image_sha256": "6d05319b98ee9ad6d61f2c05fd3e8a65c6cd454eac2c9e4d5e15091a7ff5fd52",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "83dbf630325111646f4377d8cfbe3d11ba6d5771e59a7ab005cd96fb85c4cc44"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      176128
+    ]
+  },
+  "serial_sha256": "a5c8c820d847f0c621328f606d22798852059b6a049647cd07de51cfd82f5d72",
+  "restored": true
+}

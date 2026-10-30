@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "CSI frame lease cache preparation, erase, and release confirmed",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "6a27bc5f68c735b7f09f40ea7bde8ba3d9b5ef0988c0fb9d62103ff3156793bf",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "08ecddb007003aafff02593ce83bea10d2f446bd7efac96430febe005b8391cd"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      151552
+    ]
+  },
+  "serial_sha256": "0352eb747685cd3c9eb35f51b54b7421591cc682446f5325431a5d61be859085",
+  "restored": true
+}

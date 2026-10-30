@@ -32,10 +32,15 @@ export fn nih_touch_pop(output: *pointer.Event) callconv(.c) bool {
 }
 export fn nih_device_request(kind: u32) callconv(.c) bool {
     if (!options.devices) return false;
+    if (options.camera_diagnostics and kind == 29 and board_devices.cameraResetHoldActive()) cameraResetRecovery(false);
     const accepted = board_devices.requestDevice(kind);
     const workspace = @import("device_workspace.zig");
     const words: extern struct { kind: u32, accepted: u32, i2s_owner: u32, pinned: u32, workspace: u32 } = .{ .kind = kind, .accepted = @intFromBool(accepted), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
     logger.record("NIHOS_DEVICE_REQUEST", null, .{ "kind", "accepted", "i2s_owner", "pinned", "workspace" }, &words);
+    if (options.camera_id and kind == 26 and !accepted) {
+        const reason: extern struct { reason: u32 } = .{ .reason = board_devices.cameraRetakeReason() };
+        logger.record("NIHOS_NATIVE_CAMERA_RETAKE_DENIED", null, .{"reason"}, &reason);
+    }
     return accepted;
 }
 
@@ -140,13 +145,72 @@ var display_refresh_pending: u32 = 0;
 var network_report_at: u64 = 0;
 var network_ready = false;
 var devices_report_at: u64 = 0;
-fn serviceNetwork() void {
+var camera_screen_state: u32 = 0;
+var camera_screen_frame: u32 = 0;
+var camera_screen_mismatches: u32 = 0xffffffff;
+var camera_screen_tone: u32 = 0;
+noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (options.console_live and options.boot_fast) {
         board_devices.poll();
+        if (options.camera_id and board_devices.cameraCaptureFailed() and ui.cameraLiveFailure()) {
+            const capture = board_devices.cameraFirstFrameSnapshot();
+            const detail = board_devices.cameraFirstFrameDetail();
+            const failure: extern struct { state: u32, result: u32, failed_phase: u32, reason: u32, dma_events: u32, sensor_state: u32, sensor_result: u32 } = .{ .state = capture.state, .result = capture.result, .failed_phase = detail.failed_phase, .reason = detail.reason, .dma_events = detail.dma_events, .sensor_state = detail.sensor_state, .sensor_result = detail.sensor_result };
+            logger.record("NIHOS_NATIVE_CAMERA_LIVE_FAILURE", null, .{ "state", "result", "failed_phase", "reason", "dma_events", "sensor_state", "sensor_result" }, &failure);
+        }
+        if (options.camera_id) if (board_devices.cameraPreviewNext()) |preview| {
+            if (options.camera_diagnostics and board_devices.cameraPreviewDiagnostics()) preview_logger.record("NIHOS_NATIVE_CSI_PREVIEW", null, .{ "pass", "row", "changed", "p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10", "p11", "p12", "p13", "p14", "p15", "p16", "p17", "p18", "p19" }, &preview);
+        };
+        if (options.camera_id) if (board_devices.cameraPreviewForDisplay()) |preview| {
+            if (!ui.cameraAcceptFrame()) {
+                const discarded: extern struct { sequence: u32 } = .{ .sequence = board_devices.cameraCaptureSequence() };
+                (SerialOnly{}).write("\n");
+                logger.record("NIHOS_NATIVE_CAMERA_LIVE_DRAIN", null, .{"sequence"}, &discarded);
+            } else {
+                camera_screen_state = if (ui.showCameraPreview(preview.pixels, preview.tone)) 1 else 2;
+                camera_screen_mismatches = ui.cameraPreviewMismatchCount();
+                camera_screen_tone = @intFromBool(preview.tone);
+                camera_screen_frame = display_service.runtime.snapshot().frames;
+                const presented: extern struct { sequence: u32, state: u32, sample_hash: u32, mismatches: u32, frames: u32 } = .{ .sequence = board_devices.cameraCaptureSequence(), .state = camera_screen_state, .sample_hash = std.hash.Fnv1a_32.hash(std.mem.asBytes(preview.pixels)), .mismatches = camera_screen_mismatches, .frames = camera_screen_frame };
+                (SerialOnly{}).write("\n"); // asynchronous result may follow the shell prompt
+                logger.record("NIHOS_NATIVE_CAMERA_SNAPSHOT", null, .{ "sequence", "state", "sample_hash", "mismatches", "frames" }, &presented);
+                if (ui.cameraLiveActive() and (camera_screen_state != 1 or !board_devices.requestDevice(26))) ui.cameraLiveEnd();
+            }
+        };
         const now = ui.timer().counter() orelse fail("device report clock");
         if (now >= devices_report_at) {
             devices_report_at = now + 5_000_000;
             const devices = board_devices.snapshot();
+            if (options.camera_diagnostics) {
+                const camera = board_devices.cameraSnapshot();
+                logger.record("NIHOS_NATIVE_CAMERA_ID", null, .{ "state", "result" }, &camera);
+                const csi = board_devices.csiSnapshot();
+                logger.record("NIHOS_NATIVE_CSI_PREP", null, .{ "state", "result" }, &csi);
+                const csi_memory = board_devices.csiMemorySnapshot();
+                logger.record("NIHOS_NATIVE_CSI_MEMORY", null, .{ "state", "result" }, &csi_memory);
+                const camera_domain = board_devices.cameraDomainSnapshot();
+                logger.record("NIHOS_NATIVE_CAMERA_DOMAIN", null, .{ "state", "result" }, &camera_domain);
+                const camera_dma = board_devices.cameraDmaTestSnapshot();
+                logger.record("NIHOS_NATIVE_CAMERA_DMA_TEST", null, .{ "state", "result" }, &camera_dma);
+                const camera_psram_dma = board_devices.cameraPsramDmaSnapshot();
+                logger.record("NIHOS_NATIVE_CAMERA_DMA_PSRAM", null, .{ "state", "result" }, &camera_psram_dma);
+                const first_frame = board_devices.cameraFirstFrameSnapshot();
+                logger.record("NIHOS_NATIVE_CSI_FIRST_FRAME", null, .{ "state", "result" }, &first_frame);
+                const first_frame_detail = board_devices.cameraFirstFrameDetail();
+                logger.record("NIHOS_NATIVE_CSI_FIRST_DETAIL", null, .{ "dma_state", "dma_events", "sensor_state", "sensor_result", "failed_phase", "reason", "xclk_levels", "phy_seen", "bridge_raw", "dma_progress", "exposure", "exposure_state", "stop_observed", "stop_fifo", "stop_status", "stop_signal", "stop_generation", "stop_channels", "window_samples", "window_late", "stop_before_clear", "dar_samples", "dar_min", "dar_max" }, &first_frame_detail);
+                const stability = board_devices.cameraStabilityDetail();
+                logger.record("NIHOS_NATIVE_CSI_STABILITY", null, .{ "state", "changed", "chunks", "sha_match", "injected", "zeroed", "nonzero" }, &stability);
+                const stability_timing = board_devices.cameraStabilityTiming();
+                logger.record("NIHOS_NATIVE_CSI_STABILITY_TIMING", null, .{ "valid", "first_us", "second_us", "max_step_us", "steps", "max_batch_us", "batches" }, &stability_timing);
+                const frame_lease = board_devices.cameraFrameLeaseDetail();
+                logger.record("NIHOS_NATIVE_CSI_FRAME_LEASE", null, .{ "low", "high" }, &frame_lease);
+                const camera_screen: extern struct { state: u32, frames: u32, tone: u32 } = .{ .state = camera_screen_state, .frames = camera_screen_frame, .tone = camera_screen_tone };
+                logger.record("NIHOS_NATIVE_CAMERA_SCREEN", null, .{ "state", "frames", "tone" }, &camera_screen);
+                const screen_verify: extern struct { pixels: u32, mismatches: u32 } = .{ .pixels = 320 * 180, .mismatches = camera_screen_mismatches };
+                logger.record("NIHOS_NATIVE_CAMERA_SCREEN_VERIFY", null, .{ "pixels", "mismatches" }, &screen_verify);
+                const camera_ui: extern struct { frames: u32, ticks0: u32, ticks1: u32 } = .{ .frames = display_service.runtime.snapshot().frames, .ticks0 = @atomicLoad(u32, &ticks[0], .acquire), .ticks1 = @atomicLoad(u32, &ticks[1], .acquire) };
+                logger.record("NIHOS_NATIVE_CAMERA_UI", null, .{ "frames", "ticks0", "ticks1" }, &camera_ui);
+            }
             if (options.devices) {
                 const touch = board_devices.touch.snapshot();
                 logger.record("NIHOS_NATIVE_TOUCH_INPUT", null, .{ "status", "panel", "width", "height", "slots", "polls", "fresh", "errors", "error_code", "max_poll_us" }, &touch);
@@ -290,6 +354,17 @@ const Console = struct {
     }
 };
 var logger = record_log.PlacedWriter(Console, ".flash.rodata.records"){ .sink = .{} };
+// Scene-derived data go only to the diagnostic serial stream, never to the
+// retained UI journal. The trial directory containing serial data is private.
+const SerialOnly = struct {
+    pub fn write(_: SerialOnly, bytes: []const u8) void {
+        for (bytes) |byte| {
+            if (byte == '\n') nih_diagnostic_serial_write('\r');
+            nih_diagnostic_serial_write(byte);
+        }
+    }
+};
+var preview_logger = record_log.PlacedWriter(SerialOnly, ".flash.rodata.records"){ .sink = .{} };
 
 noinline fn hex(value: u32) void {
     const digits = "0123456789abcdef";
@@ -313,6 +388,12 @@ export fn nih_diagnostic_serial_idle() callconv(.c) void {
 
 fn fail(reason: []const u8) noreturn {
     asm volatile ("csrci mstatus, 8");
+    if (options.console_live) {
+        const hart = asm volatile ("csrr %[hart], mhartid"
+            : [hart] "=r" (-> u32),
+        );
+        if (hart == 0) ui.abandonCameraPreview();
+    }
     if (options.card_auto) {
         if (@import("card_auto.zig").armed) {
             const diagnostic = @import("card_auto.zig").diagnostic();
@@ -358,6 +439,30 @@ fn watchdogOff() void {
     reg(0x50116018).* = 0x50d83aa1;
     reg(0x50116000).* &= ~@as(u32, 1 << 31);
     reg(0x50116018).* = 0;
+}
+
+fn cameraResetRecovery(boot: bool) void {
+    const reason = (reg(0x50111010).* >> 7) & 63; // same CPU0 field as reset_capture
+    const report: extern struct { flags: u32, reason: u32 } = .{ .flags = board_devices.cameraBootFlags(), .reason = reason };
+    if (boot) logger.record("NIHOS_NATIVE_CAMERA_BOOT", null, .{ "flags", "reason" }, &report) else logger.record("NIHOS_NATIVE_CAMERA_RESET_FIXTURE", null, .{ "flags", "reason" }, &report);
+    switch (board_devices.cameraBootAction(report.flags, reason)) {
+        .proceed => {},
+        .full_reset => cameraFullReset(),
+        .failed => fail("camera retained CSI after full reset"),
+    }
+}
+
+fn cameraFullReset() noreturn {
+    // esptool ESP32-P4 LP-WDT chip-reset sequence. Boot calls this before
+    // allocation/devices; the reset fixture calls it before ISP/DMA start.
+    asm volatile ("csrci mstatus, 8" ::: .{ .memory = true });
+    reg(0x50116018).* = 0x50d83aa1;
+    reg(0x50116004).* = 2000;
+    reg(0x50116000).* = (1 << 31) | (5 << 28) | (1 << 8) | 2;
+    reg(0x50116018).* = 0;
+    asm volatile ("fence iorw,iorw" ::: .{ .memory = true });
+    for (0..200_000_000) |_| asm volatile ("nop");
+    fail("camera full reset timeout");
 }
 
 fn startCpu1() void {
@@ -863,6 +968,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
     stageComplete(.crt);
     stageBegin(.memory);
+    if (options.camera_id) cameraResetRecovery(true);
     if (!options.boot_fast and !flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     if (!options.cold_capture) prepareTimers();

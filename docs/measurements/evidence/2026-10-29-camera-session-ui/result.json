@@ -1,0 +1,20 @@
+{
+  "result": {
+    "launcher": "one synthetic preview, zero framebuffer mismatches, serial Escape repaint",
+    "shell": "partial exit preserved through synthetic preview and serial Escape, then executed"
+  },
+  "receipt": {
+    "image_sha256": "056b777bec330e8718a7c0e16e537792cddf471fd0cbc9673a84902d519b1c29",
+    "loader_sha256": "dda44a42e0dcb2b87261ac3c14c8e8c3f3c4e6daeb821d237bb7a9f739dd36fb",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "08ecddb007003aafff02593ce83bea10d2f446bd7efac96430febe005b8391cd"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      151552
+    ]
+  },
+  "serial_sha256": "a748178fb4764d4031484c522c8139d6262483a4b5cfc045e03084e7ebd45cf4"
+}

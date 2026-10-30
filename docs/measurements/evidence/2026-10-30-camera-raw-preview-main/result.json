@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "CSI DMA completion and two identical sampled preview passes; lease retained until reset",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "dac9501eb6007c5890b438fdd1dc79c31d4e7278ee34f9172a82c710d2cb975f",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "a37a56b1aa4bf648cb607e27a9708e8b24e9a1cfd2b1157ebacbf6d25192dc9c"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      167936
+    ]
+  },
+  "serial_sha256": "e6f7683ab63e9c018c21feb7b18fca35093e30cc92e7919f015d71c639044881",
+  "restored": true
+}

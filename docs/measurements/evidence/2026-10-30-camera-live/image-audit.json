@@ -1,0 +1,373 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff00000",
+  "elf_sha256": "4e6808695c7ae813568ded858854cd393a1fb8cd62a1efb8e83772a691886bb9",
+  "memory": {
+    "profile": "device",
+    "origin": "0x4ff00000",
+    "end": "0x4ff28000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "sram_reserved_bytes": 169600,
+  "primary_static_bytes": 112256,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000",
+    "task_side_trap_bytes": 128,
+    "ordinary_sp_budget_bytes": 3952
+  },
+  "heap": {
+    "start": "0x4ff1b680",
+    "end": "0x4ff28000",
+    "bytes": 51584,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x4000141c",
+    "bytes": 4860,
+    "sha256": "7076cbaa1d77a2fa57b02004ac66f594479c2e57d7728ac1aab7615695d8aefb",
+    "functions": {
+      "clock": {
+        "name": "cpu_boot.run__func_2",
+        "start": "0x40000f78",
+        "end": "0x4000141c"
+      },
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000b9a"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_288",
+        "start": "0x40000b9a",
+        "end": "0x40000f78"
+      }
+    },
+    "image_offset": 288
+  },
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x4001e23d",
+    "bytes": 57885,
+    "fnv1a": 3727219295,
+    "executable": false,
+    "writable": false,
+    "image_offset": 65568
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_get_cpu_ticks": "0x4fc00040",
+    "nih_rom_set_cpu_ticks": "0x4fc00044",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 4860
+    },
+    {
+      "name": ".flash.devices",
+      "address": "0x40001420",
+      "bytes": 9378
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 57885
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff00000",
+      "bytes": 89510
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff15db0",
+      "bytes": 9352
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff18240",
+      "bytes": 2128
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff18ac0",
+      "bytes": 11200
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff1b680",
+      "bytes": 51584
+    }
+  ],
+  "service_sram": [
+    {
+      "name": "service.free0",
+      "origin": "0x4ff40000",
+      "end": "0x4ff60000",
+      "bytes": 131072
+    },
+    {
+      "name": "service.free1",
+      "origin": "0x4ff6e000",
+      "end": "0x4ff9f000",
+      "bytes": 200704
+    }
+  ],
+  "device_text": {
+    "start": "0x40001420",
+    "end": "0x400038c2",
+    "bytes": 9378,
+    "sha256": "8150fe7acce5481c9c110b0d782c040fff30f5aca84d22d82cc96634ee410976",
+    "functions": {
+      "nih_audio_tx_prepare": {
+        "start": "0x40001420",
+        "end": "0x4000185a"
+      },
+      "audio_output": {
+        "start": "0x4000185a",
+        "end": "0x40001960"
+      },
+      "nih_audio_tx_start": {
+        "start": "0x40001960",
+        "end": "0x400019b6"
+      },
+      "nih_audio_tx_status": {
+        "start": "0x400019b6",
+        "end": "0x40001a0a"
+      },
+      "nih_audio_tx_stop": {
+        "start": "0x40001a0a",
+        "end": "0x40001aac"
+      },
+      "nih_microphone_prepare": {
+        "start": "0x40001aac",
+        "end": "0x40001ea2"
+      },
+      "microphone_output": {
+        "start": "0x40001ea2",
+        "end": "0x40001fa2"
+      },
+      "nih_microphone_start": {
+        "start": "0x40001fa2",
+        "end": "0x4000203e"
+      },
+      "nih_microphone_status": {
+        "start": "0x4000203e",
+        "end": "0x40002070"
+      },
+      "nih_microphone_stop": {
+        "start": "0x40002070",
+        "end": "0x40002144"
+      },
+      "nih_rs485_diagnostic": {
+        "start": "0x40002144",
+        "end": "0x4000215e"
+      },
+      "nih_rs485_dir_low": {
+        "start": "0x4000215e",
+        "end": "0x4000219a"
+      },
+      "nih_rs485_open": {
+        "start": "0x4000219a",
+        "end": "0x4000255a"
+      },
+      "rs485_output": {
+        "start": "0x4000255a",
+        "end": "0x400026b6"
+      },
+      "nih_rs485_direction": {
+        "start": "0x400026b6",
+        "end": "0x4000274c"
+      },
+      "nih_rs485_errors": {
+        "start": "0x4000274c",
+        "end": "0x40002764"
+      },
+      "nih_rs485_writable": {
+        "start": "0x40002764",
+        "end": "0x40002790"
+      },
+      "nih_rs485_readable": {
+        "start": "0x40002790",
+        "end": "0x400027b4"
+      },
+      "nih_rs485_tx_idle": {
+        "start": "0x400027b4",
+        "end": "0x400027e8"
+      },
+      "nih_rs485_write": {
+        "start": "0x400027e8",
+        "end": "0x40002820"
+      },
+      "nih_rs485_read": {
+        "start": "0x40002820",
+        "end": "0x40002852"
+      },
+      "nih_rs485_close": {
+        "start": "0x40002852",
+        "end": "0x400029c6"
+      },
+      "nih_rs485_closed": {
+        "start": "0x400029c6",
+        "end": "0x400029dc"
+      },
+      "rs485_probe.poll__func_107": {
+        "start": "0x400029dc",
+        "end": "0x40002c7a"
+      },
+      "microphone_probe.poll__func_106": {
+        "start": "0x40002c7a",
+        "end": "0x400032b4"
+      },
+      "audio_probe.poll__func_105": {
+        "start": "0x400032b4",
+        "end": "0x400038c2"
+      }
+    },
+    "foreground_only": true,
+    "writable": false,
+    "executable": true
+  },
+  "image_sha256": "8652c98a94ccb3b1a3f6f1d1b91580105c99441ac58bc6ee09cf3b40ac23aa33",
+  "image_bytes": 173488,
+  "image_segments": [
+    {
+      "address": "0x40000020",
+      "bytes": 14500
+    },
+    {
+      "address": "0x4ff00000",
+      "bytes": 51020
+    },
+    {
+      "address": "0x40010020",
+      "bytes": 57888
+    },
+    {
+      "address": "0x4ff0c74c",
+      "bytes": 38492
+    },
+    {
+      "address": "0x4ff15db0",
+      "bytes": 9352
+    },
+    {
+      "address": "0x4ff18240",
+      "bytes": 2128
+    }
+  ],
+  "loader": {
+    "elf_sha256": "23cf292f987b44a35aecccd53b8ee8a63c421b4df3e41dd64f6ed4d27028f5d4",
+    "allocated": [
+      {
+        "address": "0x4ff2cbd0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ff33bd0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ff33ce0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ff33d30",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ff33d3c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ff2abd0",
+        "bytes": 3010
+      }
+    ],
+    "nearest_higher_address": "0x4ff2abd0",
+    "gap_bytes": 11216,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 11216
+      },
+      {
+        "name": "stacks",
+        "gap_below": 176396,
+        "gap_above": null
+      },
+      {
+        "name": "service.free0",
+        "gap_below": 45324,
+        "gap_above": null
+      },
+      {
+        "name": "service.free1",
+        "gap_below": 233740,
+        "gap_above": null
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "device",
+    "stack_source_window": {
+      "origin": "0x4ff40000",
+      "end": "0x4ffa0000"
+    },
+    "config_sha256": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6"
+  }
+}
