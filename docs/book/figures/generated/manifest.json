@@ -126,6 +126,14 @@
       "description": "要求の受付、バッファの借用、読取り、完了または停止の確認、返却の順序を示す。",
       "viewBox": "4 4 254 391"
     },
+    "os-environment-layers": {
+      "sourceSha256": "0fec94b8bd67ce4688d459f08f83f53f5fc89c346a79fa8f3c9100db6aa2e257",
+      "svgSha256": "7f287750228852bcc7f25708cbb466072bf540913e3f5aa1dd31f058dcdaaf10",
+      "file": "figures/os-environment-layers.mmd",
+      "title": "OSとアプリ環境を役割で分ける",
+      "description": "利用者のアプリとランチャーは、サービスや必要に応じた言語ランタイムを利用する。その下でカーネルが実行と資源を管理し、ハードウェアが命令を実行する。矢印は利用関係であり、アクセス保護を表さない。",
+      "viewBox": "4 4 333.640625 391.5999755859375"
+    },
     "os-responsibilities": {
       "sourceSha256": "c38bb1216e7261f97b8c2ad852fefed6175b1bdd5b0fa6b41ccce24f4c2f3ce2",
       "svgSha256": "33adeb90797059b982c4ab3612b84085a5607ef0a56878302b96b5b0a1f835db",
