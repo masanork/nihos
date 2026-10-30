@@ -4,11 +4,11 @@ sequenceDiagram
     participant D as DMA完了処理
     participant P as 二領域のプール
     participant C as CPUの標本処理
-    D->>P: Aの完了を公開、Bへ転送
-    C->>P: Aを借りる（世代付き）
+    D->>P: Aを公開、Bへ転送
+    C->>P: Aを借りる（世代）
     P-->>C: Aの読取り権
-    D->>P: Bの完了、Aは貸出し中
-    P-->>D: Bを再利用、フレームを破棄
-    C->>C: 標本を別領域へコピー
-    C->>P: Aを返す（世代を照合）
-    D->>P: 次の完了時にAを再利用可能
+    D->>P: B完了、Aは貸出し中
+    P-->>D: Bを再利用（破棄）
+    C->>C: 標本を別領域へ写す
+    C->>P: Aを返す（世代）
+    D->>P: Aを再利用できる

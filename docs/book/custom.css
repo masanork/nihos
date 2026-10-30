@@ -36,6 +36,8 @@ blockquote { border-left: 2pt solid #42766c; padding-left: 1em; }
 .book-figure img { display: block; width: 100%; max-height: 135mm; object-fit: contain; margin: 0 auto; }
 .book-figure img[src$='os-environment-layers.svg'] { max-height: 80mm; }
 .book-figure img[src$='cpu-memory-steps.svg'] { max-height: 100mm; }
+.book-figure img[src$='camera-data-path.svg'],
+.book-figure img[src$='editor-document-flow.svg'] { max-height: 100mm; }
 .book-figure figcaption { font-size: 8pt; line-height: 1.6; margin-top: 0.5em; text-align: center; }
 figure.book-figure figcaption::before { content: none; }
 nav[role='doc-toc'] { font-size: 9pt; }
