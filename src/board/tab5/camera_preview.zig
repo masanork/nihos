@@ -88,6 +88,10 @@ pub const Live = struct {
     pub fn stop(self: *Live) void {
         if (self.state == .running) self.state = .draining;
     }
+    /// Full-view cache writeback must wait for the outstanding capture.
+    pub fn canRepaint(self: *const Live) bool {
+        return self.state != .draining;
+    }
     pub fn acceptFrame(self: *Live) bool {
         if (self.state == .draining) {
             self.state = .idle;
@@ -99,6 +103,24 @@ pub const Live = struct {
         self.state = .idle;
     }
 };
+test "live dismissal defers full-view repaint until the pending frame drains" {
+    var live: Live = .{};
+    var overlay: Overlay = .{};
+    try std.testing.expect(live.start());
+    overlay.shown();
+    try std.testing.expect(overlay.dismiss(7));
+    live.stop();
+    try std.testing.expect(!live.canRepaint());
+    try std.testing.expect(overlay.state == .repaint_pending);
+    try std.testing.expect(!live.acceptFrame());
+    try std.testing.expect(live.canRepaint());
+    try std.testing.expectEqual(@as(u32, 7), overlay.repainted().?.dismissal);
+    try std.testing.expect(overlay.canShow());
+    try std.testing.expect(live.start());
+    live.stop();
+    live.end(); // a failed capture also ends the repaint wait
+    try std.testing.expect(live.canRepaint());
+}
 test "live stop drains one outstanding frame before restart" {
     var live: Live = .{};
     try std.testing.expect(live.start());

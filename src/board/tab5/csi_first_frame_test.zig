@@ -1,5 +1,22 @@
 const std = @import("std");
 const m = @import("csi_first_frame.zig");
+test "sensor configuration survives only a completed clean capture" {
+    var p: m.Probe = .{ .phase = .power_off, .completed = true };
+    try std.testing.expect(p.canKeepSensor());
+    p.cleanup_failed = true;
+    try std.testing.expect(!p.canKeepSensor());
+    p.cleanup_failed = false;
+    for ([_]m.Result{ .timeout, .dma_error, .setup_failed, .cleanup_failed, .cancel_observed }) |result| {
+        p.result = result;
+        try std.testing.expect(!p.canKeepSensor());
+    }
+    p.result = .none;
+    p.completed = false;
+    try std.testing.expect(!p.canKeepSensor());
+    p.completed = true;
+    p.phase = .wait;
+    try std.testing.expect(!p.canKeepSensor());
+}
 test "USB residue can reset once; watchdog residue fails closed" {
     for ([_]u32{ 1, 3, 16, 22, 23 }) |reason| try std.testing.expectEqual(m.BootAction.proceed, m.bootAction(0, reason));
     try std.testing.expectEqual(m.BootAction.full_reset, m.bootAction(7, 23));

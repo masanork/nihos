@@ -64,6 +64,10 @@ pub const Probe = struct {
     cancel_mode: bool = false,
     cleanup_failed: bool = false,
     failed_phase: Phase = .idle,
+    /// A warm sensor is permitted only after successful receiver cleanup.
+    pub fn canKeepSensor(self: *const Probe) bool {
+        return self.phase == .power_off and self.completed and !self.cleanup_failed and self.result == .none;
+    }
     pub fn start(self: *Probe, now: u64, timeout_us: u64) bool {
         if (self.phase != .idle or timeout_us == 0) return false;
         self.deadline = std.math.add(u64, now, timeout_us) catch return false;
