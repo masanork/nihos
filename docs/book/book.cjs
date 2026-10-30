@@ -10,6 +10,7 @@ module.exports = {
     { id: 'toc', title: '目次', rel: 'contents' },
     { id: 'why-os', title: '序章　小さなOSを学ぶということ' },
     { id: 'boundaries', title: '動く端末からOSを考える', chapter: true },
+    { id: 'm5stack-ecosystem', title: 'M5Stackで動くOSとアプリ環境を見渡す', chapter: true },
     { id: 'first-experiment', title: '最初の実験を再現する', chapter: true },
     { id: 'native-entry', title: 'Zigで書かれたカーネルが動き始めるまで', chapter: true },
     { id: 'task-lifetime', title: '割り込まれたプログラムを再開する', chapter: true },
