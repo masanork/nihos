@@ -153,7 +153,12 @@ class Session:
                                     stop_drain_seconds=latency, stream=self.pending_stream,
                                     heartbeats=self.heartbeats - self.start_heartbeats))
             self.pending_stream = None
-            self.move('repaint', now)
+            # Loading cancellation never opened the image overlay, so the
+            # shell is already visible and no repaint record is expected.
+            if self.cycle % 2:
+                self.move('memory', now, b'mem\n')
+            else:
+                self.move('repaint', now)
         elif tag == 'NIHOS_NATIVE_CAMERA_UI_REPAINT':
             if f['kind'] != 1 or f['view'] != 1 or f['line_bytes'] != 0:
                 raise ValueError('shell repaint failed')
