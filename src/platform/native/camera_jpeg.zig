@@ -127,7 +127,7 @@ pub noinline fn poll() linksection(".flash.text.devices") void {
         return;
     }
     if (phase == .capture) {
-        if (!board.requestDevice(26)) return fail(7);
+        if (!board.cameraJpegCapture()) return fail(7);
         deadline = now + 10_000_000;
         phase = .wait_capture;
         return;

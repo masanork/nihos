@@ -1120,6 +1120,7 @@ fn startCameraSnapshot() bool {
 }
 pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!options.devices or !active) return false;
+    if (options.camera_jpeg and kind >= 6) return false;
     if (!options.camera_diagnostics and kind >= 6 and kind != 26 and kind != 30) return false;
     return switch (kind) {
         30 => blk: {
@@ -1349,4 +1350,11 @@ pub fn cameraJpegFrame() ?u32 {
 
 pub fn cameraJpegClock() ?u64 {
     return if (active) clock.counter() else null;
+}
+
+/// The fixture owns both payloads; ordinary camera commands stay denied.
+pub fn cameraJpegCapture() bool {
+    if (!options.camera_jpeg or camera_sequence != 0 or !startCameraSnapshot()) return false;
+    camera_sequence += 1;
+    return true;
 }
