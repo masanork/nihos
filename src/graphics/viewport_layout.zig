@@ -238,8 +238,8 @@ pub fn shapeRun(
     return count;
 }
 
-/// Lay out a paragraph with optional group-ruby annotations according to `ViewStyle`
-/// and emit a flat `PlacedGlyph` Display List.
+/// Lay out one or more `\n`-separated paragraphs with optional group-ruby annotations
+/// according to `ViewStyle` and emit a flat `PlacedGlyph` Display List.
 pub fn layoutParagraph(
     comptime max_glyphs: usize,
     comptime max_body_bytes: usize,
@@ -261,24 +261,23 @@ pub fn layoutParagraph(
     const is_vert = axis == .vertical;
     const style_u4: u4 = @intCast(view.style_id & 0x0F);
 
-    var body_map: [max_body_bytes + 1]policy.Boundary = undefined;
+    const usable_w: i32 = @as(i32, view.viewport_width_px) - 2 * @as(i32, view.margin_x_px);
+    const usable_h: i32 = @as(i32, view.viewport_height_px) - 2 * @as(i32, view.margin_y_px);
+    if (usable_w <= @as(i32, view.body_px) or usable_h <= @as(i32, view.body_px))
+        return error.ViewportTooSmall;
+
+    const inline_limit_26_6: i32 = (if (is_vert) usable_h else usable_w) * 64;
+    const step_px: i32 = @as(i32, view.body_px) + @as(i32, view.ruby_px) + @as(i32, view.line_gap_px);
+    const step_26_6: i32 = step_px * 64;
+    const max_lines: u16 = @intCast(@max(1, @divTrunc(if (is_vert) usable_w else usable_h, step_px) + 2));
+    const cross_offset_26_6: i32 = (@as(i32, view.ruby_px) + @as(i32, view.ruby_gap_px)) * 64;
+
     var ruby_map: [max_ruby_bytes + 1]policy.Boundary = undefined;
-    try policy.map(body_text, body_map[0 .. body_text.len + 1]);
     try policy.map(ruby_text, ruby_map[0 .. ruby_text.len + 1]);
 
+    var body_map: [max_body_bytes + 1]policy.Boundary = undefined;
     var shaped: [max_glyphs]ShapedGlyph = undefined;
-    const body_count = try shapeRun(
-        CacheType,
-        cache,
-        family,
-        style_u4,
-        view.body_px,
-        is_vert,
-        0,
-        body_text,
-        glyf_scratch,
-        &shaped,
-    );
+
     const ruby_count = try shapeRun(
         CacheType,
         cache,
@@ -289,82 +288,137 @@ pub fn layoutParagraph(
         1,
         ruby_text,
         glyf_scratch,
-        shaped[body_count..],
+        shaped[max_glyphs - @min(max_glyphs / 2, 128) ..],
     );
-    const total_count = body_count + ruby_count;
-    if (total_count > out_display_list.len) return error.Capacity;
+    const ruby_shaped_slice = shaped[max_glyphs - @min(max_glyphs / 2, 128) ..][0..ruby_count];
 
-    // Compute inline limit and line step in 26.6 fixed point
-    const usable_w: i32 = @as(i32, view.viewport_width_px) - 2 * @as(i32, view.margin_x_px);
-    const usable_h: i32 = @as(i32, view.viewport_height_px) - 2 * @as(i32, view.margin_y_px);
-    if (usable_w <= @as(i32, view.body_px) or usable_h <= @as(i32, view.body_px))
-        return error.ViewportTooSmall;
+    var total_emitted: usize = 0;
+    var para_block_offset_px: i32 = 0;
 
-    const inline_limit_26_6: i32 = (if (is_vert) usable_h else usable_w) * 64;
-    const step_px: i32 = @as(i32, view.body_px) + @as(i32, view.ruby_px) + @as(i32, view.line_gap_px);
-    const step_26_6: i32 = step_px * 64;
-    const max_lines: u16 = @intCast(@max(1, @divTrunc(if (is_vert) usable_w else usable_h, step_px) + 2));
+    var p_start: usize = 0;
+    while (p_start <= body_text.len) {
+        var p_end = p_start;
+        while (p_end < body_text.len and body_text[p_end] != '\n' and body_text[p_end] != '\r') : (p_end += 1) {}
 
-    const initial_flow = try layout.Flow.init(inline_limit_26_6, step_26_6, max_lines);
-    const cross_offset_26_6: i32 = (@as(i32, view.ruby_px) + @as(i32, view.ruby_gap_px)) * 64;
+        const para_slice = body_text[p_start..p_end];
+        if (para_slice.len > 0) {
+            try policy.map(para_slice, body_map[0 .. para_slice.len + 1]);
 
-    const plan = try ruby.plan(
-        max_glyphs,
-        ShapedGlyph,
-        shaped[0..total_count],
-        body_map[0 .. body_text.len + 1],
-        ruby_map[0 .. ruby_text.len + 1],
-        annotations,
-        axis,
-        initial_flow,
-        cross_offset_26_6,
-    );
+            const body_count = try shapeRun(
+                CacheType,
+                cache,
+                family,
+                style_u4,
+                view.body_px,
+                is_vert,
+                0,
+                para_slice,
+                glyf_scratch,
+                shaped[0 .. max_glyphs - ruby_count],
+            );
 
-    // Convert 26.6 layout positions into screen pixel Display List
-    for (shaped[0..total_count], 0..) |g, i| {
-        const pos = plan.positions[i];
-        const inline_px = @divTrunc(pos.inline_offset + 32, 64);
-        const block_px = @divTrunc(pos.block_offset + 32, 64);
-
-        var cell_x: i32 = 0;
-        var cell_y: i32 = 0;
-        if (!is_vert) {
-            // Horizontal: inline is +X (left to right), block is +Y (top to bottom)
-            // Ruby has block_offset - cross_offset, so it sits ABOVE the body line.
-            cell_x = @as(i32, view.margin_x_px) + inline_px;
-            cell_y = @as(i32, view.margin_y_px) + @as(i32, view.ruby_px) + block_px;
-        } else {
-            // Vertical: columns start at the right margin and progress right-to-left (-X).
-            // Ruby has block_offset - cross_offset, so subtracting block_px places ruby
-            // to the RIGHT (+X) of its parent vertical column!
-            const right_col_x = @as(i32, view.viewport_width_px) - @as(i32, view.margin_x_px) - @as(i32, view.ruby_px) - @as(i32, view.body_px);
-            cell_x = right_col_x - block_px;
-            if (g.run == 1) {
-                // Align ruby column flush to the right edge of the parent body column
-                cell_x = right_col_x - (block_px + @as(i32, view.ruby_px) + @as(i32, view.ruby_gap_px)) + @as(i32, view.body_px) + @as(i32, view.ruby_gap_px);
+            // Copy only ruby annotations belonging to `[p_start, p_end)`
+            var local_anns: [64]ruby.Annotation = undefined;
+            var local_ann_count: usize = 0;
+            const p_start_u32: u32 = @intCast(p_start);
+            for (annotations) |ann| {
+                if (ann.base.start >= p_start and ann.base.end <= p_end and local_ann_count < local_anns.len) {
+                    local_anns[local_ann_count] = .{
+                        .base = .{ .start = ann.base.start - p_start_u32, .end = ann.base.end - p_start_u32 },
+                        .ruby = ann.ruby,
+                    };
+                    local_ann_count += 1;
+                }
             }
-            cell_y = @as(i32, view.margin_y_px) + inline_px;
+
+            // Append ruby glyphs after `shaped[0..body_count]` when annotations exist in this paragraph
+            var para_total = body_count;
+            if (local_ann_count > 0) {
+                @memcpy(shaped[body_count .. body_count + ruby_count], ruby_shaped_slice);
+                para_total += ruby_count;
+            }
+
+            const initial_flow = try layout.Flow.init(inline_limit_26_6, step_26_6, max_lines);
+            const plan = try ruby.plan(
+                max_glyphs,
+                ShapedGlyph,
+                shaped[0..para_total],
+                body_map[0 .. para_slice.len + 1],
+                if (local_ann_count > 0) ruby_map[0 .. ruby_text.len + 1] else ruby_map[0..1],
+                local_anns[0..local_ann_count],
+                axis,
+                initial_flow,
+                cross_offset_26_6,
+            );
+
+            var max_block_px_in_para: i32 = 0;
+            for (shaped[0..para_total], 0..) |g, i| {
+                // Skip ruby glyphs that did not belong to any annotation in this paragraph
+                if (g.run == 1) {
+                    var matched = false;
+                    for (local_anns[0..local_ann_count]) |la| {
+                        if (g.cluster >= la.ruby.start and g.cluster < la.ruby.end) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched) continue;
+                }
+
+                if (total_emitted >= out_display_list.len) return error.Capacity;
+                const pos = plan.positions[i];
+                const inline_px = @divTrunc(pos.inline_offset + 32, 64);
+                const block_px = para_block_offset_px + @divTrunc(pos.block_offset + 32, 64);
+                if (g.run == 0) {
+                    max_block_px_in_para = @max(max_block_px_in_para, @divTrunc(pos.block_offset + 32, 64));
+                }
+
+                var cell_x: i32 = 0;
+                var cell_y: i32 = 0;
+                if (!is_vert) {
+                    cell_x = @as(i32, view.margin_x_px) + inline_px;
+                    cell_y = @as(i32, view.margin_y_px) + @as(i32, view.ruby_px) + block_px;
+                } else {
+                    const right_col_x = @as(i32, view.viewport_width_px) - @as(i32, view.margin_x_px) - @as(i32, view.ruby_px) - @as(i32, view.body_px);
+                    cell_x = right_col_x - block_px;
+                    if (g.run == 1) {
+                        cell_x = right_col_x - (block_px + @as(i32, view.ruby_px) + @as(i32, view.ruby_gap_px)) + @as(i32, view.body_px) + @as(i32, view.ruby_gap_px);
+                    }
+                    cell_y = @as(i32, view.margin_y_px) + inline_px;
+                }
+
+                const baseline_y = cell_y + @divTrunc(@as(i32, g.px_size) * 880 + 512, 1024);
+                out_display_list[total_emitted] = .{
+                    .base_cp = g.base_cp,
+                    .ivs_cp = g.ivs_cp,
+                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster,
+                    .run = @intCast(g.run),
+                    .style_id = view.style_id,
+                    .px_size = g.px_size,
+                    .vertical = @intFromBool(is_vert),
+                    .cell_x_px = cell_x,
+                    .cell_y_px = cell_y,
+                    .bitmap_x_px = cell_x + g.left_px,
+                    .bitmap_y_px = baseline_y - g.top_px,
+                    .bitmap_width = g.width,
+                    .bitmap_height = g.height,
+                };
+                total_emitted += 1;
+            }
+            para_block_offset_px += max_block_px_in_para + step_px;
+        } else {
+            para_block_offset_px += step_px;
         }
 
-        const baseline_y = cell_y + @as(i32, g.px_size);
-        out_display_list[i] = .{
-            .base_cp = g.base_cp,
-            .ivs_cp = g.ivs_cp,
-            .cluster_byte_offset = g.cluster,
-            .run = @intCast(g.run),
-            .style_id = view.style_id,
-            .px_size = g.px_size,
-            .vertical = @intFromBool(is_vert),
-            .cell_x_px = cell_x,
-            .cell_y_px = cell_y,
-            .bitmap_x_px = cell_x + g.left_px,
-            .bitmap_y_px = baseline_y - g.top_px,
-            .bitmap_width = g.width,
-            .bitmap_height = g.height,
-        };
+        if (p_end >= body_text.len) break;
+        if (body_text[p_end] == '\r' and p_end + 1 < body_text.len and body_text[p_end + 1] == '\n') {
+            p_start = p_end + 2;
+        } else {
+            p_start = p_end + 1;
+        }
     }
 
-    return out_display_list[0..total_count];
+    return out_display_list[0..total_emitted];
 }
 
 // ============================================================================
