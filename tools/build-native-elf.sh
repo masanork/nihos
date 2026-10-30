@@ -6,7 +6,7 @@ profile=${1:-device}
 case "$profile" in
     device) rev3=0 ;;
     emulator) rev3=1 ;;
-    *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
+    *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite|wasm]" >&2; exit 1 ;;
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 camera_id=${NIHOS_NATIVE_CAMERA_ID:-0}
@@ -58,6 +58,8 @@ sqlite=false
 sqlite_cpp=0
 graphics=false
 graphics_cpp=0
+wasm=false
+wasm_cpp=0
 abi=ilp32
 qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
 case "$qualification" in
@@ -68,11 +70,16 @@ esac
 case "$mode" in
     integer) floating=false; fp_asm=0 ;;
     sqlite) floating=false; fp_asm=0; sqlite=true; sqlite_cpp=1 ;;
+    wasm) floating=false; fp_asm=0; wasm=true; wasm_cpp=1 ;;
     graphics) floating=false; fp_asm=0; graphics=true; graphics_cpp=1 ;;
     floating) floating=true; fp_asm=1 ;;
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
-    *) echo "mode must be integer, floating, compiled, sqlite or graphics" >&2; exit 1 ;;
+    *) echo "mode must be integer, floating, compiled, sqlite, graphics or wasm" >&2; exit 1 ;;
 esac
+if [ "$wasm" = true ] && [ "$profile" != emulator ]; then
+    echo "WAMR fixture is emulator-only until physical qualification is requested" >&2
+    exit 1
+fi
 usb=${NIHOS_NATIVE_USB:-0}
 usb_cpp=0
 case "$usb" in
@@ -431,7 +438,26 @@ esac
 if [ "$normal_storage" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$sdmmc" = true ] || [ "$storage" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then
     echo "NORMAL_STORAGE requires ordinary integer device live-console boot; qualification/finite probes remain separate" >&2; exit 1
 fi
-zig="$repo_root/.tools/zig-0.17.0/zig"
+rust_display=${NIHOS_NATIVE_RUST_DISPLAY:-0}
+case "$rust_display" in
+    0) rust_display=false ;;
+    1) rust_display=true ;;
+    *) echo "NIHOS_NATIVE_RUST_DISPLAY must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_display" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$psram_200" != true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$normal_storage" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$sdmmc" = true ] || [ "$usb" = true ] || [ "$qualification" = true ] || [ "$boot_test" != 0 ] || [ "$console_fault" = true ]; }; then
+    echo "RUST_DISPLAY requires the isolated live display device profile without optional services" >&2; exit 1
+fi
+rust_probe=${NIHOS_NATIVE_RUST_PROBE:-0}
+if [ "$rust_display" = true ]; then rust_probe=1; fi
+case "$rust_probe" in
+    0) rust_probe=false ;;
+    1) rust_probe=true ;;
+    *) echo "NIHOS_NATIVE_RUST_PROBE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_probe" = true ] && [ "$mode" != integer ]; then
+    echo "RUST_PROBE requires the integer ilp32 ABI" >&2; exit 1
+fi
+zig=${NIHOS_ZIG:-"$repo_root/.tools/zig-0.17.0/zig"}
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 if [ "$devices" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" != 2 ] || [ "$psram_200" != true ] || [ "$boot_test" != 0 ] || [ "$sdmmc" = true ]; }; then
     echo "DEVICES requires the normal integer live-console device profile" >&2; exit 1
@@ -470,12 +496,15 @@ if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camer
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
 {
     printf 'pub const normal_storage = %s;\n' "$normal_storage"
+    printf 'pub const rust_probe = %s;\n' "$rust_probe"
+    printf 'pub const rust_display = %s;\n' "$rust_display"
+    printf 'pub const wasm_probe = %s;\n' "$wasm"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
@@ -551,6 +580,113 @@ if [ "$high_sram" != true ]; then
         -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_CARD_READ="$card_read_cpp" \
         -o "$build_dir/base_sram.o" "$repo_root/src/platform/native/base_sram.c"
     set -- "$@" "$build_dir/base_sram.o"
+fi
+if [ "$rust_probe" = true ]; then
+    CARGO_TARGET_DIR="$build_dir/rust-target" cargo build --locked --release \
+        --target riscv32imac-unknown-none-elf --features native-task --manifest-path "$repo_root/probes/rust-app/Cargo.toml"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -femit-bin="$build_dir/rust-fixture.o" "$repo_root/src/graphics/rust_app_native_fixture.zig"
+    set -- "$@" "$build_dir/rust-fixture.o" "$build_dir/rust-target/riscv32imac-unknown-none-elf/release/libnihos_rust_app_probe.a"
+fi
+if [ "$wasm" = true ]; then
+    wamr="$repo_root/build/wamr-2.4.5"
+    [ -d "$wamr/.git" ] || { echo "Run probes/wamr-host/run.sh first" >&2; exit 1; }
+    [ "$(git -C "$wamr" rev-parse HEAD)" = 25bd7eb63e828e4bd242cc9b38d260b4b31c6605 ] || { echo "WAMR revision mismatch" >&2; exit 1; }
+    [ -z "$(git -C "$wamr" status --porcelain)" ] || { echo "WAMR source modified" >&2; exit 1; }
+    mkdir -p "$build_dir/licenses"
+    cp "$wamr/LICENSE" "$build_dir/licenses/WAMR.txt"
+    riscv_cc=${NIHOS_RISCV_CC:-riscv32-esp-elf-gcc}
+    riscv_cc_path=$(command -v "$riscv_cc") || { echo "Set NIHOS_RISCV_CC" >&2; exit 1; }
+    riscv_prefix=${riscv_cc_path%gcc}
+    for tool in ld objcopy; do [ -x "$riscv_prefix$tool" ] || { echo "Missing matching $tool" >&2; exit 1; }; done
+    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
+    NIHOS_ZIG="$zig" sh "$repo_root/probes/wamr-arena/run-rv32.sh"
+    "$riscv_prefix"ld -m elf32lriscv -r --whole-archive \
+        "$repo_root/build/wamr-rv32-compile/libwamr-rv32-compile.a" --no-whole-archive \
+        -o "$build_dir/wamr-combined.o"
+    cp "$repo_root/build/wamr-arena-rv32/arena.o" "$build_dir/wamr_arena.o"
+    RUSTFLAGS='-C link-arg=-zstack-size=16384 -C link-arg=--initial-memory=65536 -C link-arg=--max-memory=65536' \
+        CARGO_TARGET_DIR="$build_dir/rust-wasm-target" cargo build --locked --release \
+        --target wasm32-unknown-unknown --manifest-path "$repo_root/probes/rust-wasm/Cargo.toml"
+    cp "$build_dir/rust-wasm-target/wasm32-unknown-unknown/release/nihos_rust_wasm_probe.wasm" "$build_dir/app.wasm"
+    "$zig" build-exe -O ReleaseSmall -femit-bin="$build_dir/package-ed25519-pack" \
+        --dep app_package --dep package_ed25519 --dep app_policy \
+        -Mroot="$repo_root/probes/wamr-native/package-ed25519-pack.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig"
+    "$build_dir/package-ed25519-pack" "$build_dir/app.wasm" "$build_dir/app-test-ed25519.nihpkg"
+    "$build_dir/package-ed25519-pack" "$build_dir/app.wasm" "$build_dir/app-update-ed25519.nihpkg" 2
+    "$zig" build-exe -O ReleaseSmall -femit-bin="$build_dir/boot-media-pack" \
+        --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
+        -Mroot="$repo_root/probes/wamr-native/boot-media-pack.zig" \
+        --dep app_package --dep app_policy -Mapp_install="$repo_root/src/app/package_install.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        --dep app_package -Mtrust_snapshot="$repo_root/src/app/trust_snapshot.zig" \
+        --dep app_package --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_store \
+        -Mtrust_snapshot_ed25519="$repo_root/src/app/trust_snapshot_ed25519.zig" \
+        -Mtrust_snapshot_store="$repo_root/src/app/trust_snapshot_store.zig"
+    "$build_dir/boot-media-pack" "$build_dir/app-test-ed25519.nihpkg" \
+        "$build_dir/boot_trust.bin" "$build_dir/boot_package.bin" \
+        "$build_dir/boot_counter.bin" "$build_dir/boot_root.pub"
+    rm -f "$build_dir/package_blob.o"
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_trust.bin -o boot_trust.o)
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_package.bin -o boot_package.o)
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_counter.bin -o boot_counter.o)
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_root.pub -o boot_root.o)
+    (cd "$build_dir" && cp app-update-ed25519.nihpkg boot_update.bin && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_update.bin -o boot_update.o)
+    "$riscv_prefix"objcopy --rename-section .data=.flash.trust.journal,alloc,load,readonly,data,contents "$build_dir/boot_trust.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.package.journal,alloc,load,readonly,data,contents "$build_dir/boot_package.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.counter.fixture,alloc,load,readonly,data,contents "$build_dir/boot_counter.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.root.fixture,alloc,load,readonly,data,contents "$build_dir/boot_root.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.package.update,alloc,load,readonly,data,contents "$build_dir/boot_update.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -ffunction-sections -fdata-sections -femit-bin="$build_dir/package_ed25519.o" \
+        --dep package_ed25519 --dep app_package --dep app_policy \
+        -Mroot="$repo_root/probes/wamr-native/ed25519-rv32.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -ffunction-sections -fdata-sections -femit-bin="$build_dir/boot_media.o" \
+        --dep app_boot --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
+        -Mroot="$repo_root/probes/wamr-native/boot-media-rv32.zig" \
+        --dep app_install --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
+        -Mapp_boot="$repo_root/src/app/boot_admission.zig" \
+        --dep app_package --dep app_policy -Mapp_install="$repo_root/src/app/package_install.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        --dep app_package -Mtrust_snapshot="$repo_root/src/app/trust_snapshot.zig" \
+        --dep app_package --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_store \
+        -Mtrust_snapshot_ed25519="$repo_root/src/app/trust_snapshot_ed25519.zig" \
+        -Mtrust_snapshot_store="$repo_root/src/app/trust_snapshot_store.zig"
+    "$riscv_cc_path" -c -march=rv32imac_zicsr_zifencei -mabi=ilp32 \
+        "$repo_root/probes/wamr-native/stack.S" -o "$build_dir/wamr_stack.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -ffunction-sections -fdata-sections -femit-bin="$build_dir/wamr_surface.o" \
+        "$repo_root/src/graphics/rust_app_probe.zig"
+    "$riscv_cc_path" -c -Os -std=c11 -Wall -Wextra -Wconversion -Werror \
+        -ffreestanding -fno-builtin -fno-unwind-tables \
+        -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections \
+        -I "$wamr/core/iwasm/include" "$repo_root/probes/wamr-native/runner.c" \
+        -o "$build_dir/wamr_runner.o"
+    set -- "$@" "$build_dir/wamr-combined.o" "$build_dir/wamr_arena.o" \
+        "$build_dir/boot_trust.o" "$build_dir/boot_package.o" \
+        "$build_dir/boot_counter.o" "$build_dir/boot_root.o" "$build_dir/boot_update.o" \
+        "$build_dir/package_ed25519.o" "$build_dir/boot_media.o" \
+        "$build_dir/wamr_stack.o" "$build_dir/wamr_runner.o" "$build_dir/wamr_surface.o"
+    for source in c_sort c_format c_strings; do
+        extra=
+        if [ "$source" = c_strings ]; then extra=-DNIH_C_NO_FABS; fi
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -Oz -std=c11 -ffreestanding -fno-builtin -fno-unwind-tables -fno-asynchronous-unwind-tables \
+            -ffunction-sections -fdata-sections -I "$repo_root/include" $extra \
+            "$repo_root/src/compat/$source.c" -o "$build_dir/wamr_c_$source.o"
+        set -- "$@" "$build_dir/wamr_c_$source.o"
+    done
 fi
 if [ "$display" = true ] || [ "$psram_200" = true ]; then
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}

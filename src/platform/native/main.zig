@@ -111,6 +111,10 @@ comptime {
         @compileError("stack observations must use the native integer frame ABI");
 }
 
+// The boot-only Wasm owner finishes before either hart starts its tasks.
+var wasm_boot_complete: u32 = 0;
+
+extern fn nih_rust_native_fixture() callconv(.c) u32;
 extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
@@ -697,6 +701,11 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
 
 fn taskReport(hart: u32) void {
     const report = tasks.report(hart);
+    if (options.rust_probe and hart == 0) {
+        if (!tasks.rustTaskPass()) fail("Rust task fixture");
+        const result: extern struct { ran: u32, reaped: u32 } = .{ .ran = 1, .reaped = report.reaped };
+        logger.record("NIHOS_NATIVE_RUST_TASK", null, .{ "ran", "reaped" }, &result);
+    }
     if (report.progress[0] == 0 or report.progress[1] == 0 or
         report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
         report.calls < 12 or report.reaped != 3 or report.sleeps != 2)
@@ -751,6 +760,9 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     native_psram.memory.peer();
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     native_psram.memory.ownerReady(1);
+    if (options.wasm_probe) {
+        while (@atomicLoad(u32, &wasm_boot_complete, .acquire) == 0) asm volatile ("nop");
+    }
     prepareTasks(1);
     if (options.boot_test == 2) {
         const started = ui.timer().counter() orelse fail("late CPU1 clock");
@@ -966,6 +978,12 @@ export fn nih_native_main() callconv(.c) noreturn {
     asm volatile ("ecall" ::: .{ .memory = true });
     if (exceptions[0] != 1) fail("CPU0 exception return");
     printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    if (options.rust_probe) {
+        const rust_result = nih_rust_native_fixture();
+        const report: extern struct { result: u32 } = .{ .result = rust_result };
+        logger.record("NIHOS_NATIVE_RUST_APP", null, .{"result"}, &report);
+        if (rust_result != 0) fail("Rust application fixture");
+    }
     stageComplete(.crt);
     stageBegin(.memory);
     if (options.camera_id) cameraResetRecovery(true);
@@ -1062,6 +1080,61 @@ export fn nih_native_main() callconv(.c) noreturn {
     } else if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
+    if (options.wasm_probe) {
+        const wamr = @import("wamr_runtime.zig").run();
+        logger.record("NIHOS_NATIVE_WAMR", null, .{ "status", "calls", "trapped", "metered", "bad_text", "cycles", "cycle_recovered", "recovered", "runtime_peak", "linear_peak", "runtime_free", "linear_free", "export_count", "stack_used", "lease_bytes", "policy_status", "services", "sdk_abi", "origin", "attestation", "module_tag", "digest_tag", "instruction_budget" }, &wamr);
+        const signature = .{
+            .signature_status = wamr.signature_status,
+            .boot_admission_cycles = wamr.boot_admission_cycles,
+            .boot_admission_stack_used = wamr.boot_admission_stack_used,
+            .package_trust = wamr.package_trust,
+            .package_sequence_low = wamr.package_sequence_low,
+            .package_sequence_high = wamr.package_sequence_high,
+            .package_rejected = wamr.package_rejected,
+            .boot_recovered = wamr.boot_recovered,
+            .trust_epoch_low = wamr.trust_epoch_low,
+            .trust_epoch_high = wamr.trust_epoch_high,
+            .initial_sequence_low = wamr.initial_sequence_low,
+            .initial_sequence_high = wamr.initial_sequence_high,
+            .installed_sequence_low = wamr.installed_sequence_low,
+            .installed_sequence_high = wamr.installed_sequence_high,
+            .package_syncs = wamr.package_syncs,
+            .simulated_reboot = wamr.simulated_reboot,
+            .interrupted_update_recovered = wamr.interrupted_update_recovered,
+        };
+        logger.record("NIHOS_NATIVE_PACKAGE", null, .{ "signature_status", "boot_admission_cycles", "boot_admission_stack_used", "package_trust", "initial_sequence_low", "initial_sequence_high", "interrupted_update_recovered", "installed_sequence_low", "installed_sequence_high", "package_sequence_low", "package_sequence_high", "package_syncs", "simulated_reboot", "package_rejected", "boot_recovered", "trust_epoch_low", "trust_epoch_high" }, &signature);
+        const owner = .{ .checks = wamr.owner_checks, .released = wamr.owners_released, .services = wamr.services };
+        logger.record("NIHOS_NATIVE_WAMR_OWNER", null, .{ "checks", "released", "services" }, &owner);
+        const surface = .{ .checks = wamr.surface_checks, .width = wamr.surface_width, .height = wamr.surface_height, .stride = wamr.surface_stride, .bytes = wamr.surface_bytes, .capacity = wamr.surface_capacity };
+        logger.record("NIHOS_NATIVE_WAMR_SURFACE", null, .{ "checks", "width", "height", "stride", "bytes", "capacity" }, &surface);
+        const events = .{ .checks = wamr.event_checks, .frames = wamr.event_frames };
+        logger.record("NIHOS_NATIVE_WAMR_EVENTS", null, .{ "checks", "frames" }, &events);
+        const uart = .{ .status = wamr.uart_status, .bytes = wamr.uart_bytes, .frames = wamr.uart_frames, .rejected = wamr.uart_rejected };
+        logger.record("NIHOS_NATIVE_WAMR_UART", null, .{ "status", "bytes", "frames", "rejected" }, &uart);
+        if (wamr.status != 0 or wamr.calls != 17 or wamr.export_count != 8 or wamr.cycles != 2 or
+            wamr.cycle_recovered != 1 or wamr.trapped != 1 or wamr.metered != 1 or
+            wamr.bad_text != 1 or wamr.recovered != 1 or wamr.policy_status != 0 or
+            wamr.owner_checks != 15 or wamr.owners_released != 1 or
+            wamr.surface_checks != 127 or
+            wamr.surface_width != 160 or wamr.surface_height != 80 or wamr.surface_stride != 324 or
+            wamr.surface_bytes != 25920 or wamr.surface_capacity != 32768 or
+            wamr.event_checks != 31 or wamr.event_frames != 3 or
+            wamr.uart_status != 1 or wamr.uart_bytes != 5 or wamr.uart_frames != 3 or wamr.uart_rejected != 1 or
+            wamr.services != 1 or wamr.sdk_abi != 1 or wamr.origin != 1 or
+            wamr.attestation != 2 or wamr.instruction_budget != 10_000 or
+            wamr.signature_status != 1 or wamr.boot_admission_cycles == 0 or
+            wamr.boot_admission_stack_used == 0 or wamr.boot_admission_stack_used > 64 * 1024 or
+            wamr.package_trust != 0 or wamr.initial_sequence_low != 1 or
+            wamr.initial_sequence_high != 0 or wamr.interrupted_update_recovered != 1 or
+            wamr.installed_sequence_low != 2 or
+            wamr.installed_sequence_high != 0 or wamr.package_sequence_low != 2 or
+            wamr.package_sequence_high != 0 or wamr.package_rejected != 1 or
+            wamr.package_syncs != 3 or wamr.simulated_reboot != 1 or
+            wamr.boot_recovered != 1 or wamr.trust_epoch_low != 1 or
+            wamr.trust_epoch_high != 0)
+            fail("WAMR fixture");
+        @atomicStore(u32, &wasm_boot_complete, 1, .release);
+    }
     enableTimer(0);
     if (options.boot_fast) normalReady();
     if (options.pmp_probe) reportPmpProbe() else qualificationSoak(sd_crc, display_panel);

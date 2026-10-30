@@ -50,6 +50,13 @@ extern fn nih_user_probe_trampoline() callconv(.c) void;
 extern fn nih_user_probe_body() callconv(.c) void;
 
 const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
+extern fn nih_rust_native_fixture() callconv(.c) u32;
+extern fn nih_rust_task_entry(u32) callconv(.c) i32;
+var rust_task_pass: u32 = 0;
+pub fn rustTaskPass() bool {
+    return @atomicLoad(u32, &rust_task_pass, .acquire) == 1;
+}
+
 const normal_boot = @import("native_options").boot_fast;
 const Phase = enum { normal, pmp_probe, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete, graphics };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol, normal_storage };
@@ -163,6 +170,25 @@ fn lifecycle(argument: u32) callconv(.c) i32 {
     return @intCast(40 + argument);
 }
 
+// Called only by the opted-in Rust task through its C ABI boundary.
+fn rustTaskBegin(argument: u32) callconv(.c) i32 {
+    var marker = argument;
+    if (argument != 2 or !onTaskStack(0, 2, @intFromPtr(&marker), @sizeOf(u32)) or calls.current() == null) return -1;
+    memory.reusable.lifecycleProbe();
+    return if (nih_rust_native_fixture() == 0) 0 else -1;
+}
+fn rustTaskEnd() callconv(.c) i32 {
+    _ = @atomicRmw(u32, &reports[0].sleeps, .Add, 1, .release);
+    @atomicStore(u32, &rust_task_pass, 1, .release);
+    return 0;
+}
+comptime {
+    if (@import("native_options").rust_probe) {
+        @export(&rustTaskBegin, .{ .name = "nih_rust_task_begin" });
+        @export(&rustTaskEnd, .{ .name = "nih_rust_task_end" });
+    }
+}
+
 fn floatingBusy(argument: u32) callconv(.c) i32 {
     floating.enter(argument / 4, argument % 4, if (floating.compiled) &floating.app.busy else &busy, argument);
 }
@@ -238,7 +264,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
     context.initialize(frame, .{
         .entry = switch (kind) {
             .busy => if (floating.enabled) @intFromPtr(&floatingBusy) else @intFromPtr(&busy),
-            .initial_lifecycle, .replacement_lifecycle => if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
+            .initial_lifecycle, .replacement_lifecycle => if (@import("native_options").rust_probe and hart == 0 and kind == .initial_lifecycle) @intFromPtr(&nih_rust_task_entry) else if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
             .ipi_protocol => if (floating.enabled) @intFromPtr(&floatingProtocol) else @intFromPtr(&ipi.run),
             .forced_lifecycle => @intFromPtr(&forced),
             .storage_protocol => if (options.storage_service) @intFromPtr(&nih_storage_task_entry) else 0,

@@ -22,6 +22,10 @@ extern fn nih_keyboard_pads_init() callconv(.c) void;
 extern fn nih_diagnostic_serial_dropped() callconv(.c) u32;
 extern fn nih_diagnostic_serial_read() callconv(.c) i32;
 extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
+extern fn nih_rust_owner_render([*]u8, u32, [*]u8, u32, u32) callconv(.c) i32;
+extern fn nih_rust_owner_input(u32) callconv(.c) i32;
+var rust_selected: u32 = 0;
+var rust_dirty = true;
 
 var journal = console.Journal(2048){};
 pub var model = console.boot.Model{};
@@ -430,6 +434,15 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
+        if (options.rust_display and (byte == '0' or byte == '1')) {
+            const selection = nih_rust_owner_input(@intCast(byte));
+            if (selection < 0) continue;
+            rust_selected = @intCast(selection);
+            rust_dirty = true;
+            const event: extern struct { selected: u32 } = .{ .selected = rust_selected };
+            log.record("NIHOS_RUST_APP_INPUT", null, .{"selected"}, &event);
+            continue;
+        }
         var consumed = false;
         if (@hasDecl(options, "normal_storage") and options.normal_storage) {
             var command: ?storage_control.Command = null;
@@ -586,6 +599,23 @@ pub noinline fn service(log: anytype) bool {
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
     if (camera_overlay.state == .visible) return true;
+    if (options.rust_display) {
+        if (!rust_dirty) return true;
+        rendering = true;
+        defer rendering = false;
+        const scratch = serviceBacking(160 * 80 * 2);
+        if (nih_rust_owner_render(frame().ptr, board.frame_bytes, scratch, scratch.len, rust_selected) != 0) return false;
+        // Logical rectangle (16,16)..(176,96) maps to physical rows 1104..1264.
+        for (1104..1264) |y| {
+            const start = (y * 1440 + 16 * 2) & ~@as(usize, 63);
+            const end = (y * 1440 + 96 * 2 + 63) & ~@as(usize, 63);
+            if (!flushSpan(start, end)) return false;
+        }
+        rust_dirty = false;
+        const result: extern struct { selected: u32, frames: u32 } = .{ .selected = rust_selected, .frames = observed.frames };
+        log.record("NIHOS_RUST_APP_PRESENT", null, .{ "selected", "frames" }, &result);
+        return true;
+    }
     const next_status = status();
     const forced = shown_status != next_status or shown_details != model.details or revision != shown_revision or camera_overlay.state == .repaint_pending or camera_overlay.state == .recovery_pending;
     const new_frame = observed.frames != last_frame;

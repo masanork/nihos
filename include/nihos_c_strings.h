@@ -17,5 +17,7 @@ char *NIH_C_NAME(strcpy)(char *destination, const char *source);
 char *NIH_C_NAME(strrchr)(const char *text, int byte);
 size_t NIH_C_NAME(strspn)(const char *text, const char *accept);
 size_t NIH_C_NAME(strcspn)(const char *text, const char *reject);
+#ifndef NIH_C_NO_FABS
 double NIH_C_NAME(fabs)(double value);
+#endif
 #endif

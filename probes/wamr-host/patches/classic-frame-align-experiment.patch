@@ -1,0 +1,40 @@
+diff --git a/core/iwasm/interpreter/wasm_interp.h b/core/iwasm/interpreter/wasm_interp.h
+index 1416405..0c109c3 100644
+--- a/core/iwasm/interpreter/wasm_interp.h
++++ b/core/iwasm/interpreter/wasm_interp.h
+@@ -98,7 +98,11 @@ wasm_interp_interp_frame_size(unsigned all_cell_num)
+ #else
+     frame_size = (uint32)offsetof(WASMInterpFrame, operand) + all_cell_num * 4;
+ #endif
++#if WASM_ENABLE_FAST_INTERP == 0
++    return align_uint(frame_size, sizeof(void *));
++#else
+     return align_uint(frame_size, 4);
++#endif
+ }
+ 
+ void
+diff --git a/core/iwasm/interpreter/wasm_interp_classic.c b/core/iwasm/interpreter/wasm_interp_classic.c
+index 9f7e03e..1b5b8a0 100644
+--- a/core/iwasm/interpreter/wasm_interp_classic.c
++++ b/core/iwasm/interpreter/wasm_interp_classic.c
+@@ -6770,6 +6770,7 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
+                                       + cur_func->local_cell_num
+                                       + max_stack_cell_num;
+             all_cell_num = cell_num_of_local_stack
++                           + (sizeof(void *) / sizeof(uint32) - 1)
+                            + cur_wasm_func->max_block_num
+                                  * (uint32)sizeof(WASMBranchBlock) / 4;
+ #if WASM_ENABLE_GC != 0
+@@ -6798,8 +6799,9 @@ wasm_interp_call_func_bytecode(WASMModuleInstance *module,
+                 frame_lp + cur_func->param_cell_num + cur_func->local_cell_num;
+             frame->sp_boundary = frame->sp_bottom + max_stack_cell_num;
+ 
+-            frame_csp = frame->csp_bottom =
+-                (WASMBranchBlock *)frame->sp_boundary;
++            frame_csp = frame->csp_bottom = (WASMBranchBlock *)
++                (((uintptr_t)frame->sp_boundary + sizeof(void *) - 1)
++                 & ~((uintptr_t)sizeof(void *) - 1));
+             frame->csp_boundary =
+                 frame->csp_bottom + cur_wasm_func->max_block_num;
+ 
