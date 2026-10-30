@@ -100,9 +100,10 @@ remain separate evidence.
 The first local baseline uses Linux ARM64 in Docker on macOS; hosted CI uses
 Linux x86-64. Emitted-line denominators can differ with host architecture and
 compiler backend, so changes in that environment must accompany interpretation
-of a coverage trend. kcov pins traced execution to one CPU; busy-wait thread
-tests can therefore take minutes under the collector even when normal host
-tests finish quickly. The collector has a five-minute execution limit.
+of a coverage trend. kcov pins traced execution to one CPU. The host thread tests yield while
+waiting for queue space or data, so the peer can progress without waiting for
+a full scheduler time slice. The collector has a five-minute execution limit.
+Coverage runs in its own CI job, separately from the normal quality gates.
 
 Without a matching measured report, coverage is `null`/unavailable and the
 chart has a gap. Test source divided by total source is never presented as
