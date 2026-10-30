@@ -2614,7 +2614,10 @@
           24576,
           286720
         ]
-      }
+      },
+      "sanitized_events": "trial-1.jsonl",
+      "sanitized_events_sha256": "a402b0d1dd08257bdb55b5810879b1414f02e43df6da5a679df01f4728fa82b6",
+      "final_strict_replay_matches_original_result": true
     },
     {
       "frozen_directory": "/private/tmp/nihos-camera-soak-fixed-120s-20261031-r3",
@@ -5224,7 +5227,10 @@
           24576,
           286720
         ]
-      }
+      },
+      "sanitized_events": "trial-2.jsonl",
+      "sanitized_events_sha256": "c16b369b8a8bd8aec8c6884bde10db6b442d6d2a7c5eb1cd03b971b008cad507",
+      "final_strict_replay_matches_original_result": true
     }
   ],
   "earlier_failures": [
@@ -5267,5 +5273,6 @@
       "error": "stage timeout: repaint",
       "restored": true
     }
-  ]
+  ],
+  "sanitization": "Protocol lines and timestamps retained; unrelated lines replaced by timer events; scene hashes replaced by ordinal equality labels preserving distinctness. Raw and sanitized hashes are separate."
 }
