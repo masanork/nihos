@@ -134,6 +134,8 @@ var boot_clock_ready = false;
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
 var display_refresh_reported = false;
+var probe_arm_cycles_max: u32 = 0;
+var probe_dispatch_cycles_max: u32 = 0;
 var display_refresh_pending: u32 = 0;
 var network_report_at: u64 = 0;
 var network_ready = false;
@@ -434,6 +436,7 @@ fn enableTimer(hart: u32) void {
 }
 
 export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
+    const probe_dispatch_begin = if (options.pmp_probe) cycle() else 0;
     if (hart >= 2) fail("invalid hart");
     if (!interruptStackValid(hart, frame, status)) fail("interrupt stack/MIE");
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
@@ -480,10 +483,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         else
             null;
         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
+        const probe_arm_begin = if (options.pmp_probe) cycle() else 0;
         tasks.armProtection(hart, next);
+        if (options.pmp_probe and hart == 0) probe_arm_cycles_max = @max(probe_arm_cycles_max, cycle() -% probe_arm_begin);
         tasks.floating.selectBank(hart, next.floating_context);
         const next_state = if (next.floating_context == 0) next.state.integerOnly() else next.state.floatingReady();
         nih_native_return_states[hart] = next_state.returningFrom(state);
+        if (options.pmp_probe and hart == 0) probe_dispatch_cycles_max = @max(probe_dispatch_cycles_max, cycle() -% probe_dispatch_begin);
         return next.frame;
     }
     nih_native_return_states[hart] = state;
@@ -1028,6 +1034,8 @@ fn reportPmpProbe() noreturn {
     var reason: ?[]const u8 = null;
     var case_id: u32 = first_case;
     while (case_id < end_case) : (case_id += 1) {
+        probe_arm_cycles_max = 0;
+        probe_dispatch_cycles_max = 0;
         const step = tasks.runProbeCase(case_id) orelse {
             print("NIHOS_NATIVE_PMP_PROBE case=");
             printUnsigned(case_id);
@@ -1072,6 +1080,10 @@ fn reportPmpProbe() noreturn {
         hex(step.user_mhint);
         print(" kernel_mhint=");
         hex(step.kernel_mhint);
+        print(" arm_cycles_max=");
+        printUnsigned(probe_arm_cycles_max);
+        print(" dispatch_cycles_max=");
+        printUnsigned(probe_dispatch_cycles_max);
         print("\n");
         const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code) and
             tasks.pmp.probeCauseAccepted(case_id, step.fault_cause, step.fault_mepc);

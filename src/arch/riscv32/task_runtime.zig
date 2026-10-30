@@ -55,8 +55,8 @@ pub const ContainedFault = struct {
     next: ?context.TaskContext = null,
 };
 
-/// No native platform has completed the confinement matrix yet. Diagnostic
-/// execution is an explicit kernel-owned opt-in, not a security capability.
+/// Protected execution is an explicit kernel-owned opt-in. The only caller
+/// currently enabled by the platform is the bounded CPU0 diagnostic fixture.
 pub const ProtectedAdmission = enum { denied, diagnostic };
 
 pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
