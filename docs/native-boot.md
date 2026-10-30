@@ -16,12 +16,17 @@ Set `NIHOS_NATIVE_DEVICES=0` for the
 smaller connected image in `build/native-device-network/`. The [combined controller exercise](measurements/2026-10-28-default-devices.md)
 has passed; dedicated probes retain their own profiles.
 
-Normal camera preview work uses bounded batches and reuses the sensor mode
-between clean captures. After 500 ms without another capture, the owner powers
-the sensor and XCLK down. A live-preview dismissal waits for the outstanding
-capture to drain before repainting the shell. This remains repeated finite DMA
-capture with a boot-lifetime frame/channel lease, rather than continuous video.
-The [cadence update](measurements/2026-10-30-camera-preview-cadence.md) records the comparison and stop regression.
+Normal `camera-live` keeps the sensor, CSI and ISP running and rearms DMA from
+the shared DW-GDMA interrupt. Two pinned RAW8 buffers protect foreground sampling
+from incoming writes; frames are dropped while the reader holds the other slot.
+Two finite trials measured approximately 17 updates per second for the 80×45
+grayscale preview. A dismissal drains capture before repainting the shell.
+`camera` remains a finite snapshot, and diagnostic profiles retain finite live
+captures. After 500 ms idle the owner powers the sensor and XCLK down. The first
+normal camera use reserves a 2 MiB PSRAM frame allocation plus scratch until
+reset, including when starting with a single snapshot. See the
+[continuous capture trial](measurements/2026-10-31-camera-continuous.md) for
+identities, memory accounting and remaining qualification limits.
 
 An opt-in [normal-boot networking integration](adr/0045-normal-boot-network-integration.md)
 services factory Hosted Wi-Fi alongside the live display. The initial
