@@ -79,7 +79,10 @@ python3 tools/metrics.py --coverage build/metrics/host-coverage.json
 ```
 
 The collector builds the `src/root.zig` test root with the `ccid`, `surface`
-and `canvas` module bindings from `build.zig` and Debug optimization. Other
+and `canvas` module bindings from `build.zig`, Debug optimization and the
+LLVM backend (`-fllvm`). The backend is recorded in the coverage report.
+The x86-64 default backend in the pinned Zig snapshot produces a report with
+no source lines recognized by kcov v43; an empty report fails collection. Other
 standalone test roots in `zig build test` are outside this collection. It
 executes the root binary directly and under checksum-pinned
 [kcov v43](https://github.com/SimonKagstrom/kcov/tree/v43), and counts emitted

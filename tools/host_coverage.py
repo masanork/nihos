@@ -28,7 +28,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='coverage-', dir=output) as stage:
         stage = Path(stage)
         binary = stage / 'host-tests'
-        subprocess.run([str(zig), 'test', '-O', 'Debug',
+        subprocess.run([str(zig), 'test', '-O', 'Debug', '-fllvm',
                         '--test-no-exec', f'-femit-bin={binary}',
                         '--dep', 'ccid', '--dep', 'surface', '--dep', 'canvas',
                         '-Mroot=src/root.zig', '-Mccid=src/usb/ccid.zig',
@@ -56,6 +56,7 @@ def main():
         if before != source_hashes(ROOT):
             raise ValueError('Source changed during coverage collection')
         report['host'] = {'system': platform.system(), 'machine': platform.machine()}
+        report['compilerBackend'] = 'llvm'
         report['zigVersion'] = subprocess.check_output([str(zig), 'version'], text=True).strip()
         write_json(report_path, report)
     c = report['lines']
