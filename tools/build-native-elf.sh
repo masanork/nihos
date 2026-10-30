@@ -466,6 +466,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
     printf 'pub const pmp_case: ?u32 = %s;\n' "$pmp_case_zig"
+    if [ "$profile" = emulator ]; then echo 'pub const emulator = true;'; else echo 'pub const emulator = false;'; fi
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
     printf 'pub const audio = %s;\n' "$audio"
