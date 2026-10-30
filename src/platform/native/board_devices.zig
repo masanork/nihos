@@ -571,7 +571,18 @@ const CaptureScratch = union(enum) {
     stability: StabilityScan,
 };
 // One-shot admission prevents simultaneous preview and scan users.
-var capture_scratch: CaptureScratch = .{ .preview = undefined };
+const capture_memory = @import("native_tasks").memory.reusable;
+// Allocated on first camera use and pinned for the bootstrap owner's lifetime.
+var capture_scratch: *CaptureScratch = undefined;
+var capture_scratch_pin: ?capture_memory.Pin = null;
+fn prepareCaptureScratch() bool {
+    if (capture_scratch_pin != null) return true;
+    const pin = capture_memory.allocPinnedTask(@sizeOf(CaptureScratch), 64) catch return false;
+    capture_scratch = @ptrCast(@alignCast(pin.allocation.bytes.ptr));
+    capture_scratch.* = .{ .preview = undefined };
+    capture_scratch_pin = pin;
+    return true;
+}
 var scan_completed_frame = false;
 var stability_timing: stability.Timing = .{};
 const StabilityBackend = struct {
@@ -707,7 +718,7 @@ fn pollDomainDiagnostic() void {
         else => {},
     }
 }
-pub fn poll() void {
+pub noinline fn poll() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (!active) return;
     if (options.camera_id) {
         camera_probe.poll(&bus, clock);
@@ -716,7 +727,7 @@ pub fn poll() void {
         pollDmaTest();
         pollPsramDmaTest();
         if (first_frame_probe.phase != .idle and first_frame_probe.phase != .done and first_frame_probe.phase != .pinned and !(camera_reset_hold and first_frame_probe.phase == .isp_prepare)) first_frame_probe.poll(&first_frame_hardware, clock.counter());
-        if (first_frame_probe.phase == .done and first_frame_probe.result == .dma_complete and scan_completed_frame and capture_scratch.stability.phase != .done and capture_scratch.stability.phase != .failed) {
+        if (options.camera_diagnostics and first_frame_probe.phase == .done and first_frame_probe.result == .dma_complete and scan_completed_frame and capture_scratch.stability.phase != .done and capture_scratch.stability.phase != .failed) {
             if (capture_scratch.stability.phase == .idle) _ = capture_scratch.stability.start();
             capture_scratch.stability.pollBatch(&stability_backend, &stability_timing);
         }
@@ -824,8 +835,19 @@ fn setCalendarSection(value: rtc.DateTime, comptime section: ?[]const u8) !void 
 }
 
 /// CPU0 foreground only. Explicit requests never run from an interrupt.
-pub fn requestDevice(kind: u32) bool {
+fn startCameraSnapshot() bool {
+    if (!options.camera_id or first_frame_probe.phase != .idle or camera_probe.state != .idle or csi_probe.state != .idle or csi_memory_state != .idle or psram_dma_state != .idle or dma_test_state != .idle or domain_state != .idle) return false;
+    const now = clock.counter() orelse return false;
+    if (!prepareCaptureScratch()) return false;
+    if (!first_frame_probe.start(now, 120_000_000)) return false;
+    sample_preview_requested = true;
+    first_frame_hardware.display_preview = true;
+    first_frame_hardware.display_tone = true;
+    return true;
+}
+pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!options.devices or !active) return false;
+    if (!options.camera_diagnostics and kind >= 6 and kind != 26) return false;
     return switch (kind) {
         27 => blk: {
             // Leave only the prepared CSI clocks on, BEFORE ISP or DMA start,
@@ -838,7 +860,7 @@ pub fn requestDevice(kind: u32) bool {
             if (!options.camera_id) break :blk false;
             if (camera_sequence == 0xffffffff) break :blk false;
             if (first_frame_probe.phase == .idle) {
-                if (!requestDevice(24)) break :blk false;
+                if (!startCameraSnapshot()) break :blk false;
                 camera_sequence += 1;
                 break :blk true;
             }
@@ -896,14 +918,16 @@ pub fn requestDevice(kind: u32) bool {
         21, 25 => blk: {
             if (!options.camera_id or first_frame_probe.phase != .idle or camera_probe.state != .idle or csi_probe.state != .idle or csi_memory_state != .idle or psram_dma_state != .idle or dma_test_state != .idle or domain_state != .idle) break :blk false;
             const now = clock.counter() orelse break :blk false;
+            if (!prepareCaptureScratch()) break :blk false;
             if (!first_frame_probe.start(now, 120_000_000)) break :blk false;
-            capture_scratch = .{ .stability = .{ .inject = kind == 25 } };
+            capture_scratch.* = .{ .stability = .{ .inject = kind == 25 } };
             scan_completed_frame = true;
             break :blk true;
         },
         23, 24 => blk: {
             if (!options.camera_id or first_frame_probe.phase != .idle or camera_probe.state != .idle or csi_probe.state != .idle or csi_memory_state != .idle or psram_dma_state != .idle or dma_test_state != .idle or domain_state != .idle) break :blk false;
             const now = clock.counter() orelse break :blk false;
+            if (!prepareCaptureScratch()) break :blk false;
             if (!first_frame_probe.start(now, 120_000_000)) break :blk false;
             sample_preview_requested = true;
             first_frame_hardware.display_preview = true;
@@ -914,6 +938,7 @@ pub fn requestDevice(kind: u32) bool {
         15 => blk: {
             if (!options.camera_id or first_frame_probe.phase != .idle or camera_probe.state != .idle or csi_probe.state != .idle or csi_memory_state != .idle or psram_dma_state != .idle or dma_test_state != .idle or domain_state != .idle) break :blk false;
             const now = clock.counter() orelse break :blk false;
+            if (!prepareCaptureScratch()) break :blk false;
             if (!first_frame_probe.start(now, 120_000_000)) break :blk false;
             sample_preview_requested = true;
             first_frame_hardware.low_exposure = true;
@@ -922,6 +947,7 @@ pub fn requestDevice(kind: u32) bool {
         14 => blk: {
             if (!options.camera_id or first_frame_probe.phase != .idle or camera_probe.state != .idle or csi_probe.state != .idle or csi_memory_state != .idle or psram_dma_state != .idle or dma_test_state != .idle or domain_state != .idle) break :blk false;
             const now = clock.counter() orelse break :blk false;
+            if (!prepareCaptureScratch()) break :blk false;
             if (!first_frame_probe.start(now, 120_000_000)) break :blk false;
             sample_preview_requested = true;
             break :blk true;

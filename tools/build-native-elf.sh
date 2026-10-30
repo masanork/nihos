@@ -13,6 +13,9 @@ camera_id=${NIHOS_NATIVE_CAMERA_ID:-0}
 case "$camera_id" in 0) camera_id=false ;; 1) camera_id=true ;; *) echo "CAMERA_ID must be 0 or 1" >&2; exit 1 ;; esac
 camera_id_cpp=0
 if [ "$camera_id" = true ]; then camera_id_cpp=1; fi
+camera_diagnostics=${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-$camera_id_cpp}
+case "$camera_diagnostics" in 0) camera_diagnostics=false ;; 1) camera_diagnostics=true ;; *) echo "CAMERA_DIAGNOSTICS must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$camera_diagnostics" = true ] && [ "$camera_id" != true ]; then echo "CAMERA_DIAGNOSTICS requires CAMERA_ID=1" >&2; exit 1; fi
 camera_ui_fixture=${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}
 case "$camera_ui_fixture" in 0) camera_ui_fixture=false ;; 1) camera_ui_fixture=true ;; *) echo "CAMERA_UI_FIXTURE must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
@@ -460,7 +463,9 @@ if [ "$microphone" = true ]; then native_boot_dir="$native_boot_dir-microphone";
 if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
 if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
 if [ "$pmp_probe" = true ]; then native_boot_dir="$native_boot_dir-pmp-probe"; fi
-if [ "$camera_id" = true ]; then native_boot_dir="$native_boot_dir-camera-id"; fi
+if [ "$camera_id" = true ]; then
+    if [ "$camera_diagnostics" = true ]; then native_boot_dir="$native_boot_dir-camera-id"; else native_boot_dir="$native_boot_dir-camera"; fi
+fi
 if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camera-ui-fixture"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
@@ -479,6 +484,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
     printf 'pub const camera_id = %s;\n' "$camera_id"
+    printf 'pub const camera_diagnostics = %s;\n' "$camera_diagnostics"
     printf 'pub const camera_ui_fixture = %s;\n' "$camera_ui_fixture"
     printf 'pub const audio = %s;\n' "$audio"
     printf 'pub const rs485 = %s;\n' "$rs485"

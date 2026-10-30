@@ -1,10 +1,16 @@
 # Camera snapshot prototype
 
-Build from this integration worktree:
+Build the normal interactive image from this integration worktree:
 
 ```sh
-NIHOS_NATIVE_CAMERA_ID=1 NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0 sh tools/build-native.sh device
+sh tools/build-native.sh device
 ```
+
+The default image includes camera with network and normal storage, and omits
+detailed camera diagnostics. Its [normal-profile trial](../measurements/2026-10-30-camera-normal-profile.md)
+records the latest-main integration, resource placement and physical limits.
+For the earlier standalone diagnostic profile, explicitly use
+`NIHOS_NATIVE_CAMERA_ID=1 NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0`.
 
 After installing the resulting candidate, press Escape to enter the shell, then type `camera` and Enter. A request captures one frame and displays an 80×45 grayscale sample enlarged to 320×180. Press a key to close it and return to the shell. Type `camera` again to take another picture. `help` lists the command. Builds without camera support report that it is unavailable.
 

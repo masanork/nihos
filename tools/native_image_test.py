@@ -54,6 +54,12 @@ class NativeInstructionTests(unittest.TestCase):
         span = (first, first + len(names) * 16)
         MODULE.audit_flash_section('.flash.devices', 1, 6, first, span[1] - first, allow_devices=True)
         self.assertEqual(len(MODULE.audit_device_functions(functions, span)), len(names))
+        optional = sorted(MODULE.CAMERA_FOREGROUND_FUNCTIONS) + ['diagnostic_ui.poll__func_17', 'diagnostic_ui.sessionKey__func_18']
+        extended = functions + [(name, span[1] + i * 16, span[1] + (i + 1) * 16) for i, name in enumerate(optional)]
+        self.assertEqual(len(MODULE.audit_device_functions(extended, (first, extended[-1][2]))), len(extended))
+        for name in ('diagnostic_ui.poll__func_bad', 'diagnostic_ui.sessionKey__func_18.extra', 'board_devices.arbitrary'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                MODULE.audit_device_functions(extended[:-1] + [(name, *extended[-1][1:])], (first, extended[-1][2]))
         for kind, flags, allowed in ((1, 6, False), (8, 6, True), (1, 7, True), (1, 2, True)):
             with self.assertRaises(ValueError):
                 MODULE.audit_flash_section('.flash.devices', kind, flags, first, 64, allow_devices=allowed)
