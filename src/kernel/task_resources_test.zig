@@ -278,3 +278,94 @@ test "termination of a blocked resource owner keeps completion until cleanup" {
     try std.testing.expect(!policy.terminate(task, 1));
     try std.testing.expect(next.generation != task.generation);
 }
+
+test "pinned DMA parent survives task close without starving other owners" {
+    var memory: [8192]u8 align(64) = undefined;
+    var heap = buddy.Heap.init(&memory, 0).?;
+    var table = Table{};
+    const a = Key{ .slot = 0, .generation = 1 };
+    const b = Key{ .slot = 1, .generation = 1 };
+    try std.testing.expect(table.open(a) and table.open(b));
+    const buffer = try table.alloc(&heap, 0, a, 512, 64);
+    @memset(buffer.bytes, 0x5a);
+    const pin = try table.pin(0, a, buffer);
+    try std.testing.expectError(error.Pinned, table.free(&heap, 0, a, buffer));
+    _ = try table.alloc(&heap, 0, a, 64, 64);
+    _ = try table.alloc(&heap, 0, b, 64, 64);
+    try std.testing.expect(table.close(a) and table.close(b));
+    try std.testing.expectEqual(a.slot, table.pending().?.key.slot);
+    try std.testing.expect(!try table.drainOne(&heap, 0, a));
+    try std.testing.expectEqual(b.slot, table.pending().?.key.slot);
+    try std.testing.expect(try table.drainOne(&heap, 0, b));
+    try std.testing.expect(table.pending() == null);
+    try std.testing.expect(!table.cleaned(a));
+    try std.testing.expect(!table.open(.{ .slot = 0, .generation = 2 }));
+    for (buffer.bytes) |byte| try std.testing.expectEqual(@as(u8, 0x5a), byte);
+    try std.testing.expectError(error.WrongOwner, table.releasePin(&heap, 1, pin));
+    try table.releasePin(&heap, 0, pin);
+    try std.testing.expectError(error.InvalidAllocation, table.releasePin(&heap, 0, pin));
+    try std.testing.expect(table.pending().?.allocation == null);
+    try std.testing.expect(try table.finishEmpty(a));
+    try std.testing.expect(table.open(.{ .slot = 0, .generation = 2 }));
+    try std.testing.expectError(error.Inactive, table.releasePin(&heap, 0, pin));
+}
+
+test "only raw allocations can be pinned and pin cannot be duplicated" {
+    var memory: [4096]u8 align(64) = undefined;
+    var heap = buddy.Heap.init(&memory, 0).?;
+    var table = Table{};
+    const key = Key{ .slot = 0, .generation = 1 };
+    try std.testing.expect(table.open(key));
+    const pool = try table.openPool(&heap, 0, key, 128, 64);
+    try std.testing.expectError(error.InvalidAllocation, table.pin(0, key, pool.allocation));
+    try table.closePool(&heap, 0, key, pool);
+    const raw = try table.alloc(&heap, 0, key, 128, 64);
+    const token = try table.pin(0, key, raw);
+    try std.testing.expectError(error.Pinned, table.pin(0, key, raw));
+    try table.releasePin(&heap, 0, token);
+}
+
+test "failed pinned release retains quarantine and blocks generation reuse" {
+    var memory: [4096]u8 align(64) = undefined;
+    var heap = buddy.Heap.init(&memory, 0).?;
+    var table = Table{};
+    const key = Key{ .slot = 0, .generation = 1 };
+    try std.testing.expect(table.open(key));
+    const allocation = try table.alloc(&heap, 0, key, 128, 64);
+    const token = try table.pin(0, key, allocation);
+    try std.testing.expect(table.close(key));
+    memory[0] ^= 1;
+    try std.testing.expectError(error.Corrupt, table.releasePin(&heap, 0, token));
+    try std.testing.expectEqual(@as(u32, 1), table.owned());
+    try std.testing.expect(table.pending() == null);
+    try std.testing.expect(!table.cleaned(key));
+    try std.testing.expect(!table.open(.{ .slot = 0, .generation = 2 }));
+}
+
+test "pinned raw frame does not block extent group cleanup or other tasks" {
+    const GroupTable = resources.ResourcesWithGroups(buddy, 3, 3, 1, 4);
+    var memory: [16384]u8 align(64) = undefined;
+    var heap = buddy.Heap.init(&memory, 0).?;
+    var table = GroupTable{};
+    const a = Key{ .slot = 0, .generation = 1 };
+    const b = Key{ .slot = 1, .generation = 1 };
+    try std.testing.expect(table.open(a) and table.open(b));
+    const frame = try table.alloc(&heap, 0, a, 512, 64);
+    const pin = try table.pin(0, a, frame);
+    const group = try table.openGroup(&heap, 0, a);
+    _ = try table.allocExtent(&heap, 0, a, group, 128, 64);
+    _ = try table.alloc(&heap, 0, b, 64, 64);
+    try std.testing.expectError(error.InvalidAllocation, table.pin(0, a, group.allocation));
+    try std.testing.expect(table.close(a) and table.close(b));
+    var rounds: usize = 0;
+    while (table.pending()) |pending| : (rounds += 1) {
+        try std.testing.expect(rounds < 12);
+        _ = try table.drainOne(&heap, 0, pending.key);
+    }
+    try std.testing.expect(table.cleaned(b));
+    try std.testing.expect(!table.cleaned(a));
+    try std.testing.expectEqual(@as(u32, 1), table.owned());
+    try table.releasePin(&heap, 0, pin);
+    try std.testing.expect(try table.drainOne(&heap, 0, a));
+    try std.testing.expect(table.cleaned(a));
+}

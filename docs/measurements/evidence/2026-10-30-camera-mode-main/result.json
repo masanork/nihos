@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "mode geometry and stream-off readback confirmed; expander off",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "0afdd99a836126df88e756ab2affcc286fcce6b3853013adafbc32bc26104684",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "406e797029e556125986cd050f6d75b1d20917461f4c56b9a3598855a6a6f75f"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      147456
+    ]
+  },
+  "serial_sha256": "def39d832e58163a876d4fd833c0da6adaf19a316d2a5c8747e505488fc5f841",
+  "restored": true
+}

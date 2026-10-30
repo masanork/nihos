@@ -1,0 +1,91 @@
+{
+  "result": {
+    "recovery_boots": [
+      {
+        "flags": 0,
+        "reason": 23
+      },
+      {
+        "flags": 0,
+        "reason": 23
+      }
+    ],
+    "reset_fixture": [
+      {
+        "flags": 15,
+        "reason": 23
+      }
+    ],
+    "usb_reopens": 1,
+    "result": "five live updates, visible stop, manual capture, initial-loading stop, and shell memory command completed",
+    "snapshots": [
+      {
+        "sequence": 1,
+        "state": 1,
+        "sample_hash": 811287059,
+        "mismatches": 0,
+        "frames": 331
+      },
+      {
+        "sequence": 2,
+        "state": 1,
+        "sample_hash": 3621292569,
+        "mismatches": 0,
+        "frames": 474
+      },
+      {
+        "sequence": 3,
+        "state": 1,
+        "sample_hash": 3674034309,
+        "mismatches": 0,
+        "frames": 615
+      },
+      {
+        "sequence": 4,
+        "state": 1,
+        "sample_hash": 3407672537,
+        "mismatches": 0,
+        "frames": 757
+      },
+      {
+        "sequence": 5,
+        "state": 1,
+        "sample_hash": 1673929155,
+        "mismatches": 0,
+        "frames": 897
+      },
+      {
+        "sequence": 7,
+        "state": 1,
+        "sample_hash": 1334590650,
+        "mismatches": 0,
+        "frames": 1179
+      }
+    ],
+    "discarded_after_stop": [
+      {
+        "sequence": 6
+      },
+      {
+        "sequence": 8
+      }
+    ],
+    "shell_repaints": 2,
+    "distinct_live_sample_hashes": 5
+  },
+  "receipt": {
+    "image_sha256": "5fa039f986217c5924490dc0d71d24bfa2834e829782b7e87a0767236b037d7b",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "83dbf630325111646f4377d8cfbe3d11ba6d5771e59a7ab005cd96fb85c4cc44"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      176128
+    ]
+  },
+  "serial_sha256": "0c0c521fc0c5d432fb612e116eb4ffa82639396f69885ff2da74581631ba965c",
+  "restored": true
+}

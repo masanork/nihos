@@ -35,6 +35,8 @@ if [ "${NIHOS_NATIVE_MICROPHONE:-0}" = 1 ]; then build_dir="$build_dir-microphon
 if [ "${NIHOS_NATIVE_RS485:-0}" = 1 ]; then build_dir="$build_dir-rs485"; fi
 if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ]; then build_dir="$build_dir-devices"; fi
 if [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 1 ]; then build_dir="$build_dir-pmp-probe"; fi
+if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then build_dir="$build_dir-camera-id"; fi
+if [ "${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}" = 1 ]; then build_dir="$build_dir-camera-ui-fixture"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;

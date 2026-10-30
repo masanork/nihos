@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "camera DMA copy to pinned PSRAM confirmed; frame and channel retained until reset",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "35dffb709f856030905f0629b1eeb519ac0be7727746a4972bf9a46fd3329eae",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "2fb5ba6e47e00f7eb32ca62f03e39bf6466f9fd770b38ea714259c4f8977bfb4"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      155648
+    ]
+  },
+  "serial_sha256": "64f9b7a2f864eea78777b2a3dc967db1ee5e49319466717dd8db3d55d6f74185",
+  "restored": true
+}

@@ -8,6 +8,7 @@ const Ledger = if (@import("native_options").graphics)
 else
     task_resources.Resources(buddy, 4, 2);
 pub const Group = Ledger.Group;
+pub const Pin = Ledger.Pin;
 pub const Allocation = buddy.Allocation;
 pub const Pool = Ledger.Pool;
 pub const Slab = Ledger.Slab;
@@ -193,6 +194,32 @@ pub noinline fn freeTask(allocation: Allocation) Error!void {
     const status = mask();
     defer restore(status);
     return resources[core].ledger.free(&owners[core].heap, core, resources[core].current, allocation);
+}
+
+/// Trusted owner service only. Allocation and pin publication are one masked
+/// transaction so task close cannot reclaim the buffer between the two.
+pub noinline fn allocPinnedTask(length: usize, alignment: usize) Error!Pin {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    const key = resources[core].current;
+    const ledger = &resources[core].ledger;
+    const allocation = try ledger.alloc(&owners[core].heap, core, key, length, alignment);
+    return ledger.pin(core, key, allocation) catch |err| {
+        ledger.free(&owners[core].heap, core, key, allocation) catch nih_native_task_failed();
+        return err;
+    };
+}
+
+/// The service must establish DMA/IRQ/cache quiescence and erase contents
+/// before calling. Unlike normal free, this also accepts a closing task.
+pub noinline fn releasePinnedTask(token: Pin) Error!void {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return error.NotReady;
+    const status = mask();
+    defer restore(status);
+    return resources[core].ledger.releasePin(&owners[core].heap, core, token);
 }
 
 pub noinline fn openPool(length: usize, alignment: usize) Error!Pool {

@@ -1,0 +1,9 @@
+# Low-exposure camera preview retry (2026-10-30)
+
+After the interrupted [prior trial and subsequent restoration](2026-10-30-camera-low-exposure-incident.md), one new physical Tab5 trial used the identical frozen candidate. Device ESP32-P4 rev 1.3, MAC `e8:f6:0a:e2:e8:9c`; app SHA-256 `66db79aaa8d0cf2a3465fafde3667979a9f52fecf6ce319c9c6280296243c999`, ELF `a8f53ed0724f4002257897cb234467f1deb0eb8ce7b32b346bf6b8df227358b8`. [Receipt and image audit](evidence/2026-10-30-camera-low-screen-retry/).
+
+The explicit low-exposure preview command prepared sensor exposure `0x100` and read back all three exposure bytes, captured one frame, and obtained two matching 80×45 grayscale sample passes. With the display tone disabled, all 57,600 RGB565 preview pixels matched the CPU-visible framebuffer after cache writeback/invalidation. An automated serial Escape dismissed the overlay; the completed repaint retained launcher view 0, selection 0 and an empty input line. Display and both CPU counters advanced. This was one capture; repeated terminal reports are repeated telemetry.
+
+Unlike the interrupted attempt, this transaction verified both candidate images after capture, restored the then-existing loader and app erase spans (24,576 and 167,936 bytes), verified full readback, and issued a hard reset. The restored-system boot was not captured. The adapted session-aware qualifier and raw scene/serial files remain private under `/private/tmp`. The earlier failure and recovery remain recorded; this new result does not retroactively prove the earlier candidate's post-capture state.
+
+This is not optical confirmation of the panel or subject, physical keyboard/touch interaction, controlled exposure quality, full-frame integrity, safe DMA/frame reuse or video. The started DMA lease and frame were retained until reset. The screen command is a diagnostic, not a launcher application.
