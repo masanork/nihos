@@ -154,7 +154,12 @@ pub noinline fn poll() linksection(".flash.text.devices") void {
         return;
     }
     if (phase == .encode) {
+        const saved = asm volatile ("csrrci %[previous], mstatus, 8"
+            : [previous] "=r" (-> u32),
+            :
+            : .{ .memory = true });
         const result = nih_jpeg_poll();
+        if (saved & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
         if (result < 0 or now >= deadline) return fail(if (result < 0) @bitCast(result) else 9);
         if (result == 0) return;
         encoded_bytes = @intCast(result);

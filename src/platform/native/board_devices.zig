@@ -289,7 +289,7 @@ const FirstFrameHardware = struct {
             self.reason = 0x101;
             return false;
         };
-        if (address < 0x48030000 or address > 0x4c000000 - 921600) {
+        if (address < 0x48030000 or address > 0x4c000000 - csi_workspace.frame_bytes) {
             self.reason = 0x102;
             return false;
         }
@@ -532,7 +532,7 @@ const InFlightIo = struct {
     pub fn frame(_: *@This()) ?inflight.Frame {
         const identity = csi_workspace.dmaLeaseIdentity() orelse return null;
         const base = csi_workspace.address() orelse return null;
-        return .{ .identity = identity, .base = base, .length = 921600, .dma_owned = true };
+        return .{ .identity = identity, .base = base, .length = csi_workspace.frame_bytes, .dma_owned = true };
     }
     pub fn active(_: *@This()) bool {
         return nih_csi_inflight_active();
