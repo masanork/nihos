@@ -265,5 +265,1181 @@
       },
       "zigVersion": "0.17.0"
     }
+  },
+  {
+    "schemaVersion": 1,
+    "date": "2026-10-30",
+    "measuredAt": "2026-10-30T10:32:12.254596+00:00",
+    "project": "nihos",
+    "commit": "d43280d9828891ef0433aa5e68ab9ed15d22a551",
+    "workingTreeDirty": false,
+    "sourceTreeSha256": "6ab883d6699d93eaf820b3f4a8668d8265965b010d9c7e57765f2fecf1cc53ed",
+    "code": {
+      "implementation": 44747,
+      "tests": 25282,
+      "tooling": 16859,
+      "probes": 8548,
+      "vendored": 582,
+      "generated": 0
+    },
+    "byLanguage": {
+      "Zig": {
+        "implementation": 39372,
+        "tests": 18935,
+        "tooling": 821,
+        "probes": 1237,
+        "vendored": 0,
+        "generated": 0
+      },
+      "C": {
+        "implementation": 2877,
+        "tests": 0,
+        "tooling": 35,
+        "probes": 4816,
+        "vendored": 0,
+        "generated": 0
+      },
+      "C/header": {
+        "implementation": 1055,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 517,
+        "vendored": 582,
+        "generated": 0
+      },
+      "Assembly": {
+        "implementation": 1399,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 98,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Python": {
+        "implementation": 0,
+        "tests": 6314,
+        "tooling": 13519,
+        "probes": 1798,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Rust": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 82,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Include/data": {
+        "implementation": 44,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "Shell": {
+        "implementation": 0,
+        "tests": 33,
+        "tooling": 2484,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      }
+    },
+    "byArea": {
+      "build.zig": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 80,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "compat": {
+        "implementation": 996,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "include": {
+        "implementation": 514,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "probes": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 8548,
+        "vendored": 0,
+        "generated": 0
+      },
+      "src": {
+        "implementation": 43237,
+        "tests": 18935,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      },
+      "third_party": {
+        "implementation": 0,
+        "tests": 0,
+        "tooling": 0,
+        "probes": 0,
+        "vendored": 582,
+        "generated": 0
+      },
+      "tools": {
+        "implementation": 0,
+        "tests": 6347,
+        "tooling": 16779,
+        "probes": 0,
+        "vendored": 0,
+        "generated": 0
+      }
+    },
+    "coverage": {
+      "scope": "host-zig-debug-dwarf-implementation",
+      "collector": "kcov v43",
+      "sourceHashes": {
+        "src/arch/riscv32/compiled_fp.zig": "0d9a0a0ec193485f2d4778b4fa38d693e1f5f30f61952430e05205822798999d",
+        "src/arch/riscv32/context.zig": "88a4c8b5b044a4f524299ed09ae4ba6d13d748e5268de739f6fce9d855f4d186",
+        "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
+        "src/arch/riscv32/cpu1_tasks.zig": "4089f66529aae794c78a9d6cdadedaaaf589686c653d77ee1d56467a11c033dd",
+        "src/arch/riscv32/duplex_scenario.zig": "aa42ab702780d37aadcfa1aadfe0a59b0520878a575a0fd67f45cb12f1f101d1",
+        "src/arch/riscv32/fpu.S": "440e60f02a42a138784eaf52348871f43e5afb437d15c1b20fbddb82e0b5fd37",
+        "src/arch/riscv32/idle.zig": "42868da738fd3fa6efef68ce2c5fcffb52a5f28b8f08a1a1f861dd651e2e1204",
+        "src/arch/riscv32/ipc_scenario.zig": "8de20da789d6e438dd383763de8feeb7a44c59c9e94153de0d41b352cb3f3465",
+        "src/arch/riscv32/lifecycle_test.zig": "5eb5aa2cab826c865c9e46e36adb86455fb440047e6a7d57700e29ad35534ca2",
+        "src/arch/riscv32/native_floating.zig": "25ba2da8ebd772fc6ac06264c8944b06cd7b823e973ab00f2f89aee1d4c2d472",
+        "src/arch/riscv32/native_font_exchange.zig": "a39ec94b27007c5b865f19dc98ce3a0d6c28d0ebe20f757b22592d15bfb3439e",
+        "src/arch/riscv32/native_font_stack.zig": "99bc9ec81041147944a026a29de8280eca4c3f01adb4a50523e22011806290a6",
+        "src/arch/riscv32/native_graphics.zig": "7ef3fa4f8a74f59bfa7f9dc4922754e6f9c1bd6b7df2b35382f937f1bc92a33e",
+        "src/arch/riscv32/native_ipi.zig": "985662dad59fb62d8f28923986e385f78e9a300d8382de5b4bb92f5fd3228026",
+        "src/arch/riscv32/native_raster.zig": "9a1f8f3135493da41d07fd28168ebf6292394efdcc90ddd20a596158413540e2",
+        "src/arch/riscv32/native_surface.zig": "63ac2e24aebfa39e76b5320fd80da841befb2dfb840f1e183050b54265733bd9",
+        "src/arch/riscv32/native_tasks.zig": "c6ceff7d4cbfe0c042f970853f264cb83cb58e320017a1aaaf50ec624f91e3e1",
+        "src/arch/riscv32/native_trap.zig": "5e64d942152d260bfbb4a360a84f0879b73923dc05830a39157c8527019379a7",
+        "src/arch/riscv32/pmp.zig": "afa679f3144ec16f93b3ddccf1a262516a0f940adfe9f6fc0d8e5b8e2f98dcd0",
+        "src/arch/riscv32/pmp_user.S": "e276647a7386df0744f1e80a6f85c2418062d417037cf0d1c9541894e34c47e5",
+        "src/arch/riscv32/preemption_test.zig": "cdd317010cdb54685440d7216db5b59e96e69a0129074999dd9deefbe7594863",
+        "src/arch/riscv32/remote_scenario.zig": "f9354fe0be442001d116b9d297558c35f546060e517cbaf5649f46c361ec7301",
+        "src/arch/riscv32/task_calls.zig": "b561c6341f5e35da17368b51302b0b051f1688426912a376a57bcc443d37cb2c",
+        "src/arch/riscv32/task_runtime.zig": "d751110557b386abe6e774f659d6034dd68d87b948c7db13c5525fcee9f1103c",
+        "src/arch/riscv32/trap.zig": "7b5b093c50b205e618c0ac4a16b94d9ed785828170a0635b5c2b358b61628000",
+        "src/arch/riscv32/trap_entry.S": "f66727322072079e2af68be99d7b7ab85e2a51529d2ef953fddc568665258c17",
+        "src/audio/capture_probe.zig": "1f62eb5ca4e589925746c6c552683f91e97aa9813d166ad7d6be1d6279ec7ae7",
+        "src/audio/playback_probe.zig": "fb0804987246ffd3d648034e0c89611ccd2b31d2149c4c19d4e305070fb631c3",
+        "src/audio/tone.zig": "3bb23db92f4d49188a65884bbe023cf577fdbcac8ddeabbe280cf53e625dae3d",
+        "src/board/tab5/bmi270.zig": "a6781c4bd33b9c2ebea0f007ba3eb06471639f5db280880f34a83354661850f0",
+        "src/board/tab5/bmi270_test.zig": "adc46004dcfa6b2e6bccfecccb059af31eb3a11e5d14a8bbc226cb56430c591c",
+        "src/board/tab5/boot_i2c.zig": "bb05b1bee5bb3d634b457c1fb19e0bf6ca17dec994086aab8709c54d89d306a4",
+        "src/board/tab5/dcs.zig": "5b68afee81e946c4f592389f51c02f0a20cbbf731c6953243425b08d0fd71450",
+        "src/board/tab5/display.zig": "2da98294e46993c1a221376c81457aa50961b18ff8b1f672644bbffaf3210a2c",
+        "src/board/tab5/es7210.zig": "4b74e6a9657879346c092665e0f7004a41209583cd0deabdec2c0cd246e6b66c",
+        "src/board/tab5/es8388.zig": "3fc7b6cb447cc15cf42e8df4d28a0f2d7e68ae2ccc66faeacd60683352a0da32",
+        "src/board/tab5/keyboard.zig": "0c6acc07b6d0feb4cfacc1f2fd42f44aa4a3266241ed29c479d4981d70f1b541",
+        "src/board/tab5/keypad_sparse.h": "6d8365cc71444553b427a50543d1f490a65a071241636e4dc76fca473f0de025",
+        "src/board/tab5/native_pads.c": "2073f795192eed5cce37c5b41a96e538b47aa6922aef0484ae81383018e6927b",
+        "src/board/tab5/native_scanout.c": "33dd82d2b5f91bddba80f841b0db227423d1de17e8d26e3cf2891c2954f017d1",
+        "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
+        "src/board/tab5/panels.zig": "df78a9adeb0b945fb6f3ad40f0893d307a2b4c9bceacffe275e2ceafc274897b",
+        "src/board/tab5/rtc.zig": "28255d781db99ea1caf34e6e04d9ee340d37827727af600a5e7e9dc456106b2a",
+        "src/board/tab5/scanout_retire.h": "0b00ac2cbcb9fd0ded106dd03c9cafc1c5afdbe4892ef6241ecb1bab6c763a36",
+        "src/board/tab5/scanout_state.zig": "4bad04a018246caa5764240e98c3d7bd32e71caee94bab95909da2eff290d6ac",
+        "src/board/tab5/scene_pixels.h": "a6e005d46c440b89dc5a11dfba303a392eb978630b218bb36e7d913bc5637d31",
+        "src/board/tab5/touch.zig": "c64b1ec60784f6bf8156c8e61def9ab209aaa8a23277d3cdfbcddcf4948bdf41",
+        "src/board/tab5/touch_feedback.zig": "13b76794b976ea7bb96e8e8380796e6a83f78a71377a1c79a95384a83115fcef",
+        "src/card.zig": "63fed4599782a91c2a374724dbc7d9a8ccd8a8c44216aaf7f664d7a067e116f9",
+        "src/card/ccid_owner.zig": "d5ddbf66f1e91370d4b732a15f34746495bcb87d9995d82343d9116d2eb94f44",
+        "src/card/extended_test.zig": "af8e418bed980ef9fb5f151372affaed57f3eb14bca3156f7a9fc5fe879b4c03",
+        "src/card/input_support.zig": "2463ae15c9976945282573a65d1ea2ef20d8850c9b72f5f7befe547aa3a3a790",
+        "src/card/jis0208.zig": "90fc1930eec905df26a9cefe0e595cab32c6add60ac46030bad7e8b312953085",
+        "src/card/keypad_demo.zig": "ab38e7b49435c32690b06ecaec8954e524e807b230e8efbe2f6142683adb9c84",
+        "src/card/license.zig": "e25bbbc6b6f20c757fa16e321783f5e326261bebf9058b90c61241edff2b63c6",
+        "src/card/license_crypto.zig": "b25fcb755e75b8585f4360f487ed5c537d168c527a0885113ed20f29634c16b8",
+        "src/card/license_record.zig": "943c28a1ad11a97e185157316821f5e79cda9149f6f48210385961434df29c5d",
+        "src/card/license_session.zig": "1a5ba35aed25644c0a15cb6488e16fa9a220c0ba16a2a5aa03c04efc96b32178",
+        "src/card/license_session_test.zig": "2d8551e3f7beda1f32fc08857ee87da2f76f29b3f3f92d51cf30c0ff038c4970",
+        "src/card/license_trust.zig": "76fc04bf77fc3a0462204e4ce7a3072298b3a19c2ba87da1fc069ad6df13da69",
+        "src/card/pin_entry.zig": "7651450f4e3e92f06dd8ff734ac83143e5d8d74396dff5915aa33c7f22057897",
+        "src/card/presence.zig": "3f0ad5af6f8ac389a01c41b8233c86e37f956cdbcb5e536f96201117bb4ea799",
+        "src/card/result_input.zig": "b5f927c7bc3d61cb4f13b804af3c45aea79aa177c7c6c8ef21bf3f01485bb086",
+        "src/card/service.zig": "479d4a74925e282aa0ef6a3ae76341176d18eb094019f9daf0c0b01aa7f82bbe",
+        "src/card/service_test.zig": "d95959b4c6a710e1a10824dd189fb9407b547b01a9b6872cfc45975a3c0f3da0",
+        "src/card/surface.zig": "ca80b27d0858fc3f7c47e06b14bf89e01f54a6c41b150d44e5376d34c0c060e3",
+        "src/card/wire_policy.zig": "567897b6a91ec73b0ada00ba7f42bd59b1382701071fd4fd4338708ebeb2249e",
+        "src/card_boot_preview.zig": "3c53faa62c91c2112f519cc239b7afb50d602ee4716dbdfce63c9a6235c792b4",
+        "src/card_compile_probe.zig": "4dc739871380b727009a456a5620bad94cdd89701e597ef44cd569f1b9642dd4",
+        "src/card_pin_preview.zig": "70097056c8ba0106185424cd4e80f2d5accf88316ac250ffae4d2b955712491a",
+        "src/card_sim.zig": "7fa831b2d539837d589282f2c4ffab519dde6342c69eda9983323c60b05b8bd2",
+        "src/compat/c_strings.c": "cfadeb90d036f48878e30b47d36f6338d29e97f3f94625fe290362765ae05025",
+        "src/console.zig": "a85c6ba6f2b1ab7143a942cd977afb6119b4b0e1691508c71673b69971f7b262",
+        "src/console/ascii.zig": "3e5946d719f9298a11e292e522ee874ff381c09f553724d37b57347b280ba3ac",
+        "src/console/diagnostic_keys.zig": "96099cc09f00bc3cceb1b5453821514e7907ed09f8444d9b7f217243bee4a6d0",
+        "src/console/session.zig": "99ec4c5624d52a4b19505d94b2ca331840e69ec13e07599b42e297cd00a5b227",
+        "src/console/session_input.zig": "6b57769dc2b89da9f787bea4e6821102c67145468691787d791de9a9c1ae39db",
+        "src/console/snapshot.zig": "de63e46ec4ce917aec7663fdd2837057af3f7b414be9963cb14de2e654358f5a",
+        "src/device/control.zig": "4183b5b2cf37e7a0621a5a1724f8cf4038197b83953fc72a6cc8041f63a9778a",
+        "src/diagnostics/boot_journal.zig": "b4679a36e030f84236e174a48ce817c068b03ba2c5a864f8c8a3a8ba4324a432",
+        "src/diagnostics/boot_state.zig": "c181282054593e7d8e199395e8c0e29f65545daec227e56d1ce821261460665c",
+        "src/diagnostics/record.zig": "882a6288a08840af138cf190fd125353c0ed5b7cbfe1c15f56fcc6085c85132f",
+        "src/fs/fatfs_backend.zig": "45c0415cc576cb4e4645dcf4a5684f2d3d3f7b6900a2ba88a26cec22b8fee566",
+        "src/fs/io_leases.zig": "a1ffddfb54df132f22890a5cf5bfece784a7c646d1c1dfb125351ea483e50683",
+        "src/fs/io_leases_test.zig": "251736af80b7848fb34b47bf672e1d5e0f74bda782e1705dc72668624d1baa21",
+        "src/fs/io_stop.zig": "5e4a2e07946d38d90d9b61305fe764d06e64f45b1e4c636d2ed27b071fe2fa71",
+        "src/fs/sdmmc_owner.zig": "046c19250dea7795c000f961213311df0ae17a0d232e3b3ff8fbd337f4c024c9",
+        "src/fs/sdmmc_owner_test.zig": "74e79853dfcb37b8f2ece45a4ae9f5dd8b74f91124ff892c5e60e19a8220fd0f",
+        "src/fs/vfs.zig": "5ea2acc47d4de2325b5ea7a2b4874b7d38950be417f974e2391cde8973a5c499",
+        "src/fs/vfs_memory.zig": "56d3155e5cba971794412b66e72184b89fa15179d53ddb2d9a9d5345d474bbcb",
+        "src/fs/vfs_rpc.zig": "e086170022ba9b528ff2d684ba5d3e4516c8b05f2ba544151a39b6e21a88594d",
+        "src/fs/vfs_rpc_test.zig": "9f053ed6e1b4d2063167f2b1caf04b5eeacdd1de4a8dcc8ea64f058564f95816",
+        "src/fs/vfs_test.zig": "45b581de786aaf623e2bfd1df574a3e597666980108a467f4e020cf9535031d7",
+        "src/fs/vfs_wakeup_test.zig": "468aae7f83c44a3c0b90b92e17b73b77f2f684a145b7690e76260392b8e875fd",
+        "src/graphics/ascii/jetbrains.zig": "53d12db9291edc0b523ff325c7bacea96006480d8d18b34061be6adf192c4832",
+        "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
+        "src/graphics/ascii_console.zig": "c94adc6ed19b3740d91b73153e3120e9903859d7a8988842929a03907cd5c80c",
+        "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
+        "src/graphics/boot_graphics.zig": "eada9f356412c09f2c37d99fb65e8735e9566ec890f2553f282fc5d5e952ba86",
+        "src/graphics/canvas.zig": "0a1b02139ed579c42a4978902c8722d4ec4e639fc7a1f5ad0476ad061aef8b62",
+        "src/graphics/canvas_compile_probe.zig": "800c462939b4afb1c19693ac39aab443e9de8255557765a74d90d69c2c5d2909",
+        "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
+        "src/graphics/card_canvas_test.zig": "5be1cec2fd512f98536a2469f6c427fb6f4d635e9577748a8a0577b328f81c78",
+        "src/graphics/card_pin.zig": "cdc85df26ce8c09fa53cb5db394cc86c212bcf8abae232479c4423e899e481ad",
+        "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
+        "src/graphics/card_read_result.zig": "f7e47e6c0fab3af4d3aa6e7dec7c37ef1b1a02b8f56ab0e51f940664ce39d16f",
+        "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
+        "src/graphics/console_canvas_scroll_test.zig": "ef5d5f7c1a41651d45b49ce2e82fa944e70e6a7454af876d810d8dde3dac95cd",
+        "src/graphics/font_protocol.zig": "a7fa154cfafebcc48c8abdaf997227f66cab4cbd70f658e718a9f6c75fad3cfe",
+        "src/graphics/font_stack_lifetime.zig": "9e3239d87b7c4172addafcd1fc04e75447b142ae6bcd0f060a6b84e28c775f69",
+        "src/graphics/japanese_break.zig": "56370f7f367f85fdb2b58b257e562fad558bfc586350d9c3c1e52a6c097c1bf1",
+        "src/graphics/keypad_atlas.zig": "5db05e2c42b6796a8c90639cd38996a3df7eef51cb7ff9fc663f50c9ae022342",
+        "src/graphics/keypad_atlas_test.zig": "ba1808de34bdbb68601363f32d1e9054ee77a5b220261aa726b6be074e9f32b3",
+        "src/graphics/keypad_plan.zig": "bc0e78d9ab99c4cf928273fb189666f4d3f0316a5642f9edfe55ba30807fc0cb",
+        "src/graphics/line_layout.zig": "b48ba478e28c99f60cd66537b0789f17712bc0fda491fa1765226397f333e821",
+        "src/graphics/photo_fixture.zig": "0307339167dfba04a44d3c69336088897b227419c5405cf5741bd200bd649beb",
+        "src/graphics/raster_lease.zig": "c3f94beb94dfce2d0f2103f5f1b40c1822d984ad021d169dc3e1b79c78f22a48",
+        "src/graphics/ruby_layout.zig": "cd314e2153f3eeb7e5005cba3b042bb7b8d5b80a6e3878e763d98b7124984430",
+        "src/graphics/surface.zig": "d4ff4a1b418d86a2e828bccd38b276462563847813e36a5754489fe800b46561",
+        "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
+        "src/graphics/text_context.zig": "a55f50aa03a68f5fe2ead4575929223342045033fecf8e32b6e671d7ab5d82cc",
+        "src/input/pointer.zig": "b41098302814b3b77a843474e8c0a85a6ad0025f9f9edb18d974ff41e7aed5e4",
+        "src/input/touch_service.zig": "dbe261836dab4d89c75c270997f48d123032e55d6974f18f2e660dae311fc8d4",
+        "src/io/sdmmc_host.zig": "b0cfea5f68cfa38a9ab74ee6afe9057b52ab29520e77d6f83f341a1e06559ce0",
+        "src/io/sdmmc_shared_test.zig": "3ed56790f776c9425d9f8e3e2413a83a003cadb10ff73ffe00154244c6957824",
+        "src/kernel/arena.zig": "67cb3baa4e700e51c31949d4b007fe68eb1b80927aa3ddf0bd5a0b487a6a3b54",
+        "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97",
+        "src/kernel/buddy_heap_test.zig": "f446c24804ac5eaff0dcfc56b19bae42721613becf2918546a3a61bc142b6022",
+        "src/kernel/c_allocator.zig": "31b4dbe99768202990246ae440d815329b43107fed094a9b157e8e74b75673e8",
+        "src/kernel/c_allocator_test.zig": "6c2de72aaa4e21816158ec9fb18559cad794f1955bdebad402a793058626cf85",
+        "src/kernel/core_arena.zig": "b7ae72da52d9c0d2c6a5fe53fa34939cd31fd479f5abc1935dd6a5708ad8f847",
+        "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+        "src/kernel/event_latch.zig": "a68eae43d35240781017d712eb55f389dba2ef1e47052da277b74d3c30ce7904",
+        "src/kernel/extent_groups.zig": "611c96a6eeb7937405da9c5831e9b6dcac2088cb0a617a4f996611357a463217",
+        "src/kernel/fp_vectors.zig": "63c2a8ab28f30dbb032cbbf32051f1576641921f408bd5b7953de17facf3525a",
+        "src/kernel/memory_broker.zig": "d65d17e3aaaeb97530bf7797c44acdd9c867a89d71c9c1c5b2925b207e18d396",
+        "src/kernel/memory_broker_test.zig": "67401f4efd29aee51c57a8243ea45ee8b5462af30c7718499e494f9f4f570608",
+        "src/kernel/page_pool.zig": "761a36f0fbfcec6d4a6cd4862936b195d5709c40467c32d2867c2e69713cbae2",
+        "src/kernel/park.zig": "2d13bf34a5d40238e47b4fad4ab5b66859ef6210a6e0c23517d10e384bc008f5",
+        "src/kernel/remote_events.zig": "fb5582e30da560fdeaf42eb8a08ea9b75757793126597fae5c4dfe7e017413f2",
+        "src/kernel/remote_events_test.zig": "05bc4659d4704d56f143c8de58723a6258633a996775b609eb2ec22fee0c4ce2",
+        "src/kernel/scheduler.zig": "54a84902c2e857fa47a29dda39cf71c5edbc5e5c951f496bc5c0920f8a229a55",
+        "src/kernel/size_pool.zig": "f29b0809accdfa0a302ee6d397f73200efbb38e132e5c9b36daf31451e3b8b31",
+        "src/kernel/size_pool_test.zig": "09633b26b8bb73ed4481d908c4de12e67a7c641a9f2fb15b79908cf4ee6d20b5",
+        "src/kernel/slab.zig": "a8ffb87f89c60ee60056bc669c838b2cf59079c4005962a2ae70596b7b411794",
+        "src/kernel/slab_test.zig": "4a3ea1b362c3e23975a95e08401f3a8afab291d0b825bd15fa3f451ef8d519d0",
+        "src/kernel/spsc_channel.zig": "2ad51f26e8ae29d3d7f1c9e66fd1012bb59c2be36f21c146416ee24452681817",
+        "src/kernel/spsc_channel_test.zig": "1a2e2c9d635015cb654d99efbbfb3fad8e473b573e5b85b6c2426502e7104d96",
+        "src/kernel/spsc_mailbox.zig": "66380370dcbbe89383c038495a4b011957239bf9173028748e76e7793893ba87",
+        "src/kernel/spsc_mailbox_test.zig": "e447b900bc277e5b942dff4904ae1ef91f5426dea03a68ad4d34164998688b31",
+        "src/kernel/spsc_ring.zig": "c35f4765f988cc840dd715f8846cb59c6b52b554e404855439094f0378542f30",
+        "src/kernel/storage_rpc.zig": "bc6b656bfc61aedb9740ca731d0ab5678212740098df200dfbcd94e072d1848f",
+        "src/kernel/storage_rpc_test.zig": "6793b928e678e166c768262c64ff62f75db030e35688f7c3f9942bf6b4245026",
+        "src/kernel/task_call_numbers.inc": "2560a143af2308bfd94f44bf22cc104a213bcc3a56826e46195d49bd349d0e40",
+        "src/kernel/task_control.zig": "2c5a10e5ce44c67027500ce9947d7b5dc9df65fa6c8c3d2bf51f6d3defbf7b6a",
+        "src/kernel/task_control_test.zig": "9f2589bc6e9c38eb5c49bfd1e8931e93a836c31b0f2a53b6e24d8214be79cfa6",
+        "src/kernel/task_pools_test.zig": "072798ea7e6d12814c6fcb5b375d8499ce69b58a08f07ac4aab8d6fbc4f8a769",
+        "src/kernel/task_resources.zig": "0e4e30d80ff193cc35f175e93fbd48e5b71d7193c88ff79782a41e64e5918694",
+        "src/kernel/task_resources_test.zig": "fd8c3a21a9b92cb2e298be03fef26448d571a1d8c3e89547e5ae4c3d2b971e84",
+        "src/kernel/tick_clock.zig": "ca88904f82c1021795564fd04cdf4b1b6b062265ff857d5cfe8ca17189b51853",
+        "src/kernel/tick_counter.zig": "0aec17698c2e4dff66496a430798c3a06f4da406cc543cab0944c1a0dff89085",
+        "src/net/at_commands.zig": "7c0647c37a34e865a5146546d170b6d092bb8d60bb32579b341e5e3c3cae9104",
+        "src/net/at_controller.zig": "368867d2a987d218a5c139141dbf568a20d209fd33fa5dda9f80e072a07fd3ad",
+        "src/net/at_controller_test.zig": "3f6f8e347e27c8acd56e9421d68b4da8e128b732f299c14876410ed7a8ce7c80",
+        "src/net/ble_hci.zig": "4ed815de800875d9b3e7d2b187b3836d1abfc7e1d7718a68f3188394884bfdbd",
+        "src/net/c6_link_test.zig": "2ec6dccc3e4da7892e923f13aa114fa7a861ceeb64febaab044712b6be271662",
+        "src/net/c6_sdio.zig": "94b343b8b7d6315be1fd1ab5ffc91719200b333c52eb911026d37635dd2d643c",
+        "src/net/c6_sdio_test.zig": "dfc69c04f59b03953e540174ee35287683655fbae057881dcb59557dcc016f0e",
+        "src/net/dhcp.zig": "94a5f0d2579b0d4ea1e198a089c6c37c51ed3a84346a6ad29b0311e853f4794f",
+        "src/net/esp_at.zig": "76b134c1c9a3bd78e7a7cbb43081e098607709420c643482cae7ed481aa42389",
+        "src/net/esp_at_test.zig": "1f386f99cc99bed0a0b469dc4d59efc618252b8307f02ae0466396abbe51394f",
+        "src/net/hosted.zig": "14078ddb0678809b9b56eff87e7438747b27a75238baa7a25f000a9f25c20104",
+        "src/net/hosted_station.zig": "2c11f787166fddb1d3cc12565a39590d4651d265f68ab1ae48c0550a52034db0",
+        "src/net/hosted_test.zig": "128dd7f19cd1ab8dee14172a9bd3925df1c1537031d22035d9275a9a668d27e0",
+        "src/net/ipv6.zig": "26a948d02f789c32732aff0db460dcc692a046808c0df8eb798e23f24b728951",
+        "src/net/ipv6_test.zig": "9a46416983acfcfe122f4116cbfb5599e4aa694a28bc9c53e3c8424fba0fade5",
+        "src/net/sntp.zig": "23d274f572ed198689f5b9b7327f93138d4dd60abf9be7eff22473c4fcefea60",
+        "src/net/sntp_test.zig": "029b485180445214e71cb1ab0ebaf51918612e54f3c73246c2f9c75436a3e176",
+        "src/net/wifi_station.zig": "5b01b2469ac044767086d67555c231c8f2bf0d03b11223c166d41406ff3370ac",
+        "src/net/wifi_station_test.zig": "c2700efb00415a95832fc08f79779b7ed4b7c29aea09c52f343fbd80e653aaa3",
+        "src/normal_sim.zig": "4f8f983105a2bed50b0cb7ab71c1337b9776e2d18bd274ece289cda60f10d38a",
+        "src/platform/abi.zig": "ee4bed75417238b7e933e81647f8d0144c1795ddaf70dc7bfda153ad4896c208",
+        "src/platform/espidf_main.zig": "3d506e673edf45ee0f534c270a338bed3fd6302407966b784fb7e9592ab43e9c",
+        "src/platform/native/audio_probe.zig": "21b19ea2cda53732cdcff64c660b79d4c387440f4bec21282c3ed19983a32c72",
+        "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
+        "src/platform/native/board_devices.zig": "f0b827e8f9f8142eed7d6d885fda2ba21885c4ef132bdccc6576d0cb4aee0a22",
+        "src/platform/native/broker_abi.zig": "221d693de6b33cb5c29a2d9385ebc7abb2e9e959d1c6297e7b928e34b4a470aa",
+        "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
+        "src/platform/native/c6_probe.zig": "d3b2df11aa39d27c04fdfb2bc8fc960b673f52d731a5ca7433afe229f95d92a7",
+        "src/platform/native/canvas_demo_app.zig": "802f210b533bdaf238e7b3d4b6d45ecf25cac13dd6d0a30faab9a91f826d8f8b",
+        "src/platform/native/canvas_pattern.zig": "955af251b733d0229673b3f29894b65d8a7cdebdbdfc115f68fbab27d91125f7",
+        "src/platform/native/canvas_workloads.zig": "ede714a78850f58e38a899ebe686552100f9ea9b9ae12e7e54453bde4ad29333",
+        "src/platform/native/card_auto.zig": "249a220cc1e026aea2a0f610080f28bcde62b69f8ac2a5828b7555ceb833afd1",
+        "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
+        "src/platform/native/card_probe.zig": "d9215e9a7eb7b5af35cff9e4b751730b9f965aff0f0a230b4bfbec9df82d4179",
+        "src/platform/native/card_read.zig": "65f1161adfc56146591fdc96c02dd47442df75c4807e7a79926b12ba3735f8b8",
+        "src/platform/native/console_workload.zig": "68aaaae08ca0a11ea6301a9923393941591c5423a8197899cf211393dbf9f8ca",
+        "src/platform/native/cpu_boot.zig": "6d8d6e5455e5b65dcf6af064aa1bcba16516849331be0af7d1a2b0037ea825d0",
+        "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
+        "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
+        "src/platform/native/diagnostic_ui.zig": "828b138666f5023cdf83e0ac81860e098be0a691863c6122e00244e24fdbed0b",
+        "src/platform/native/display_probe.zig": "3385df69e5e477732cc13dda0d8f56c6bf24c0a818e4e04aef0f9e0be4629049",
+        "src/platform/native/display_runtime.zig": "e1276574c1591e022dc2c037b35a23ef40d612adf2f53501ae0b597bd883c35d",
+        "src/platform/native/display_service.zig": "81d076ed4fbc36206629ebd897f231ddea1c6c75892b2d751f9cbc08c5b7775f",
+        "src/platform/native/dma_memory.zig": "bdd0d0c4ebf00445cdbee1233a059d1f49c31dddcd24f8edc785d488cc8b99b1",
+        "src/platform/native/editor_fixture.zig": "2c91e8564fbc7d3edfd4dd3aeb768f62b59e718ff2119aceaf342035d6373d66",
+        "src/platform/native/editor_live.zig": "5c4ca0aab1a8302ce0a908bed1fe1d6d063c551a10ed4ae2fc8042b488b48fc0",
+        "src/platform/native/external_layout.zig": "484c5c82a3b92686ff3409358be9bcd20367e84b4c014d5159ea5cbf9cb4efa7",
+        "src/platform/native/fatfs_card.c": "136163161a574a91f169ae7e1e2029a434d491676c43e31abb7c6541dcd2c1bb",
+        "src/platform/native/fatfs_card_abi.zig": "51563e1e98e3a175b173dd4eeade88bd3d8cc9abe6571e2aa76a47e2ecb3e4b9",
+        "src/platform/native/fatfs_disk.c": "3a5e3427df79c9f08692b546c9569b7ec45363c35501702d9b407615e67b3a7e",
+        "src/platform/native/fatfs_fixture.c": "ddc413fd0fffcdab36bbf08ebf7db33590443fa476b6651284c74cd6deb33d95",
+        "src/platform/native/fatfs_fixture_disk.c": "cdaaa28cf0a9591d4ddcc18db02ec8539a8ff44ed3742ac60a72cfbfb19fb8c7",
+        "src/platform/native/fatfs_runtime.zig": "7e5266e2db89e657b0942487ee3bc17175ecf693a39ef3e392b16426089e2ee5",
+        "src/platform/native/fatfs_service_abi.zig": "e6018b7fda243e98465cdd6f07bda7c72e6a0f3e03ab9ad91ddfb0225b729817",
+        "src/platform/native/flash_records.zig": "5565e748e4e7a9e6e9bd35f40a53edc103ba7553c78f70b5da7a1db811f1c141",
+        "src/platform/native/foreground_timer.zig": "8d563fef2996e6a93b93b5171ebf9e3f2cb7cceedd3a447c51a1adfe6e97467b",
+        "src/platform/native/heap.zig": "c31a24a1ca7d3fb285382759352fcadec6f555ee6fab5cb16bd8f8b0a83d06b8",
+        "src/platform/native/high_sram.zig": "28f32b83a71b46399157e1e4039335eaaa8bb81748caf37d1b11ad07d48de499",
+        "src/platform/native/high_sram_layout.zig": "b7ed5cb6b4297216f49a13cded31fce2bad67ce7bea4fb629ec43f4c9c2c82ed",
+        "src/platform/native/keypad_display.zig": "085f097f397fbe1eece8b85ff24bd74450f5c059fae861de1e4ca9bc3e053017",
+        "src/platform/native/keypad_probe.zig": "c565fe8d6a96166de4d372f537f2e053e1b50a2ac8b4b90d762221889a309f7e",
+        "src/platform/native/main.zig": "f6691474a298c6f6ba6d0eaac80ff93abc94a86146c39a136fe1437ab47e1e44",
+        "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
+        "src/platform/native/microphone_probe.zig": "e9f67b35914b9863aaaac4cbca1d29f3ced895c97b58acfc554ca49d09db913f",
+        "src/platform/native/network_service.zig": "3763e17a60dca2423746ce10ab9a9ab8af28e300d4f839070df63b13466a2bc6",
+        "src/platform/native/normal_fs.zig": "b66de983be83b9be3998ada561f3d7ec7bfab1982a307a1fa0e2b85b97210bba",
+        "src/platform/native/normal_fs_abi.zig": "dfc10bcfe1482467c81ad1122e683daaba59cf32bc41f3d6efb64d02e5fff5b3",
+        "src/platform/native/normal_fs_test_hooks.zig": "1878f547baeb912849944b2c938bfb9b912d83c6a6b2872eee9882d274230c31",
+        "src/platform/native/normal_touch.zig": "2e2a0850e9b7cb9a14b6f14888df22c179990a4da98397998bf39ca25cf73549",
+        "src/platform/native/photo_runtime.zig": "72556a68b861ff95cc55bd789d0e32d0717e338994f9f632658e3f9c16d2c478",
+        "src/platform/native/psram.zig": "3c2748cf5ff576f68b36455fd9f108472f00fb0b300409a50a8196e32a7e1a08",
+        "src/platform/native/psram_memory.zig": "a57f78961f95b2c0cc6e782964169537de5e67c96febe0ca44cf531efb0e90ac",
+        "src/platform/native/rs485_probe.zig": "a0f6646d421343877c11b9c693b84ceb208c3ddc2e97b717935660c6664ce58f",
+        "src/platform/native/sdmmc_probe.zig": "68610ff3a156d80441411d1001147471e830d2eaa984478170f72bcda393ec97",
+        "src/platform/native/shared_sdmmc.zig": "21fc9c23a20ddff5463f1c0017bcb7417807a2fc90954262e6c29c4d0bb48a98",
+        "src/platform/native/shared_sdmmc_abi.zig": "b5ffbd2d402377a3dd849387372e3e703fc929e4d561ecdf06372432f17fc436",
+        "src/platform/native/sqlite_probe.zig": "5b1baac96ea2587a899ec42d42afe870079ba19a15a7df4aa0be83e6c99a6dbd",
+        "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
+        "src/platform/native/stack_layout.zig": "89277ab57dbaa5f5d4a51f056ef54b5d2f298b1a5178b45cc844deb6d2e49806",
+        "src/platform/native/stacks.zig": "c98b592e176e8868b2189cefcd2339573e54ac0fbceb881c33d4e1d600339d56",
+        "src/platform/native/start.S": "670d6bcad40406c9d86be4e9a01250678de5b7cfb256d9c023da631d5ffa1376",
+        "src/platform/native/storage_runtime.zig": "a514783874fc6513ff70c8dec447d04ca6eefc965641bd2c0ad731ae3b39dd27",
+        "src/platform/native/storage_service_abi.zig": "74fa28ad88ce71cc916370f56930c0eae1c4c31b94c577ee3d21f157ab440b17",
+        "src/platform/native/touch_probe.zig": "5fbffe3e87ba19f9597d372ec1469a976d9106e97fe57b426554f013f8f847ef",
+        "src/platform/native/usb_probe.zig": "1312b09e392a6d70b460344fa2eaf223bf0518a8c17b0643f7bf6fcd70c0cf0f",
+        "src/protected_fault_test.zig": "ecb1d37d47991d93d45a8acd3ef435d7512ba01b211b82e4cee1aacb4971d318",
+        "src/root.zig": "48b420411af39881b922c83bcca709d57e30f14292356c2a90eabf37df341441",
+        "src/serial/half_duplex.zig": "94eeeb4354f3258ca20bcd692a07a9664bb2da895ca6e32b1b3d5e23ddc13558",
+        "src/services/sqlite_session.c": "211f35d173cd7f185cf7c01470f7d47fb2134cda24070e0f5b3e32a25ef6c82b",
+        "src/services/storage_internal.h": "8e55b2ae43d5ab4cafb85facb43a97e0bda0d2c922071a2e393bbd530b82e5f6",
+        "src/services/storage_littlefs.c": "690bfe4733aa997bf34399baa817056a3654b78b31d8fec63aa2f86adee41eaa",
+        "src/soc/esp32p4/cpu_clock.zig": "577b4f0f8a0d044556047fc4b9e30f6f1ed68abb9805c61fef202fe0cd601d00",
+        "src/soc/esp32p4/psram.zig": "c4a3cbed9576a5546ad1282303811547d72e4e087e954da9fe85ff99c9f7c826",
+        "src/soc/esp32p4/psram_mapping.zig": "7ecb50bee22f7a1060b132a5f632425682c62fa4002a0f4e518dc99169bdbd00",
+        "src/soc/esp32p4/psram_mapping_test.zig": "a2b694e572433c5b3b49bf6328834ca52f6589b20f0581809a7107f0d9151177",
+        "src/soc/esp32p4/psram_mpll.zig": "87b944fd7bb2b880b9b2b1f490c6f1e6dfe681a77ce525d7681b4312e18e9b7b",
+        "src/soc/esp32p4/psram_supply.zig": "e53a6e2c40b602adb79da90600fb24f95b17df80da6763a1ccfea090e7e0a4ef",
+        "src/soc/esp32p4/psram_test.zig": "e2adb99bb598739e449099bc98b9e9292d9f42cc5c3462493f1f6befe36da98c",
+        "src/soc/esp32p4/psram_tuning.zig": "c8f2ea359756abf78028f55004db69b1df110805552fb48448fe0efea4bf2313",
+        "src/soc/esp32p4/reset_capture.zig": "7e3ee65d8e204ec05ee5df71d5e2f2d2825b9887920df40d7e700a596a3db3df",
+        "src/soc/esp32p4/sdio.zig": "81115c60543f152590fa9f4bb345d1856b2005e0fca9c42e1eb210a564ca6ddf",
+        "src/soc/esp32p4/sdio_test.zig": "dfdcee229522653f8b40a802c76b36bef3cc11896dbe3516d9cb4268d3dda1cf",
+        "src/soc/esp32p4/sdmmc.zig": "9cdf8262ecfce5f7ffb077ea9b57c033d6c8425dd382fe61b8eb1168d124ed68",
+        "src/soc/esp32p4/software_ipi.zig": "dbe7dafacad21c5acab4fd7772be95fb125f3f2c1ce3ad1cdd500e6c304f8117",
+        "src/soc/esp32p4/timer_group.zig": "24a821031bde77b15ca366760be29a47edb9dda58dc9907f9e7a987aae3ff07f",
+        "src/soc/esp32p4/usb_host.zig": "d473cd3991e2c8cffbde9d75aaada08006fe003026dfbb0308e15f3c8d040814",
+        "src/storage/batch_test.zig": "12dfe798f20baa3fff6091b981a46ff2f7a617b2a67a00862157aa4ed1b798c5",
+        "src/storage/block.zig": "e2d348ccd20957fa2e461b3b13e9ea270b17cb49605ca2935a953c75c09eb4c7",
+        "src/storage/checkpoint_model.zig": "ba8b6be417706c2d20a51807598c2baa972768969aab2ba7e40aaee30118f878",
+        "src/storage/checkpoint_model_test.zig": "535d155ed181cc39abb4fcc05a297f4d4a8c7103d56dcd7a972c7207d636c163",
+        "src/storage/checkpoint_service.zig": "e7958c3cc34ee08b141c4d73ae70fb30ab91c58fbf69c7290e69cf7390566d9c",
+        "src/storage/checkpoint_service_test.zig": "0d1c51a8e2de3f74cb0210ec4896b7e72c5f79b290acd8b4109473ae68a2a5da",
+        "src/storage/control.zig": "9fd21b9fcc079a6e5bdb4eaf7c2b46c3241a382640bcccae9d04c7841a7da565",
+        "src/storage/cow_model.zig": "5acc505ee1755af8813a2e958941468295d5b903c4b43c2038651345f050745d",
+        "src/storage/cow_model_test.zig": "6b35e97f5a1baffe9b8d80094c0d370e14afaaedc3218440afb245093cd3606d",
+        "src/storage/deadline.zig": "97f45c897ff17e9b25f056a2f893b849311379bd37802dc32322f91b81ee118a",
+        "src/storage/dispatch_gate.zig": "5aee69402b1c87cd7e57e318ad9a7957237754dae13a61206ec4ec854121345b",
+        "src/storage/dispatch_gate_test.zig": "140926dea71f6476e6c0c7d6d7c9d9a4fcecad6221a42520e6d7383f8cc658d1",
+        "src/storage/experimental.zig": "b394e56c365a4dbc577d1b253618c4bc1fc08dcff6b878baeb2b2eec1db1a30f",
+        "src/storage/extent_map.zig": "1dd41ff3cf628c7a173375efbd3ef49fcdadc7aa400a2164a8e7da4288d1b3fd",
+        "src/storage/extent_map_test.zig": "9e829c240b2d6a0d8f3b8e5902b3e5b261faa9681dbe7f71e074a939b16737e2",
+        "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
+        "src/storage/fatfs_disk.c": "e83dca42ee5720810a1014f7f46d1739166ab8ecddb1619108087b24502296b4",
+        "src/storage/fatfs_volume.c": "c40b79ebca7a7cdc72e75ba05d4c038d7f6090918fc513fbddc9823ff3cef677",
+        "src/storage/file_media.zig": "0e74ef22381a9b7ce14273f90e652634d31a745fe16fe614708eb91f14114d1c",
+        "src/storage/file_media_test.zig": "da5051f978d2605b92c1649f2a690066db057aab7b898afa848f656e48191418",
+        "src/storage/index_gc_test.zig": "875e04956577ce5c900ef2a1594018f4ab7d55d70b072c26de4c4255f5d8b06f",
+        "src/storage/lifetime_budget.zig": "be1073865a2d09b6e8f7b09d3abc79deba71ac2efa60d20b3e7bb2182ee84474",
+        "src/storage/lifetime_budget_test.zig": "e1e4e5c0fe2fbebdf635cb67674ec040e6f09b01b3af0ea7ec96107a3e2bb428",
+        "src/storage/lifetime_usage_test.zig": "638f3b346b9c97d645376067f97cb951efd738feb976a06db98667ec9bf00320",
+        "src/storage/model_media.zig": "eedede2dc776114b2699ac08a82a0febce2648ae739418aefe1cd124d981b67d",
+        "src/storage/object_pin_test.zig": "f66fb361e228a15994035fa230a63f9436ce22cfce8ac298bb34d89fa693b299",
+        "src/storage/payload_gc_test.zig": "74eb2beec2fbd02e23037ae0eb565727f06bc87630a62cf5bf8ac89c7529e38a",
+        "src/storage/range_checksum_test.zig": "312329956b5d80684ba7715e514c516b24b1f89aa04a48bbeadc24a12644dff5",
+        "src/storage/reader_drain.zig": "8a5e3a3519dddd2258a3fb2806e850fea705d15081fbdf60307b881396de2510",
+        "src/storage/recovery_budget.zig": "6ebc2ad6f58184d85deea30ceaea9473bde8be134c94cc3a01c18a194e335f06",
+        "src/storage/reservation_test.zig": "e3034b80167d510a1c2d1c0097b2afc98d0ef339ac59c1b6fe518fa26a86bb6c",
+        "src/storage/resize_test.zig": "be5c140a4343c5bd2f0fb323582c9a85799a4cbf5477385259bd7496944480e4",
+        "src/storage/scatter_test.zig": "416564f7966d4491403704d4b7f3d2764fdb01a2e2f79ef66eeadf52a381c376",
+        "src/storage/search_cache_test.zig": "5fa40a13a3d5f0d12a0e1ac6985a494f37e931ea896c1cdd5907de8471152299",
+        "src/storage/sector_media.zig": "62f945637ce5fa4aed1b50b8c093323fb367612b1365cfe217645ebf7d6640b6",
+        "src/storage/sector_media_test.zig": "54f2b0acf2a0ce3cd05039ec5424e6eaf26464705507a1ae8f50483bd0cd1b73",
+        "src/storage/stream_test.zig": "b0735be992d290497708e1ae965f22726673c255dc0b23275cf2c76a7e20e87a",
+        "src/storage_vfs.zig": "c63e12c5cd5ac6b0b3e1a131d019875e952f0bb81d2606712e1f5c87d9808703",
+        "src/touch_sim.zig": "3b104408b9ddd63aa70609bc3a58672f1abd51cd49fa10657057fdbcd10b9f14",
+        "src/usb/ccid.zig": "f4cd8986d6429e7e77c007551ffe91da48f43e30d6bcdb6e7421ba651e322dd2",
+        "src/usb/descriptors.zig": "a069c782000da795815c437b0cf2672357239c233fc7c061320c83e59d0bb9d4",
+        "src/usb/jpki.zig": "72c73be16bea70893a71faaa8e01312b27f8aa0be8bb0f15b39ac899343ba976"
+      },
+      "lines": {
+        "covered": 11131,
+        "count": 11457,
+        "percent": 97.1545779872567
+      },
+      "files": {
+        "src/arch/riscv32/context.zig": {
+          "covered": 40,
+          "count": 40
+        },
+        "src/arch/riscv32/pmp.zig": {
+          "covered": 106,
+          "count": 106
+        },
+        "src/arch/riscv32/trap.zig": {
+          "covered": 8,
+          "count": 8
+        },
+        "src/audio/capture_probe.zig": {
+          "covered": 113,
+          "count": 114
+        },
+        "src/audio/playback_probe.zig": {
+          "covered": 94,
+          "count": 95
+        },
+        "src/audio/tone.zig": {
+          "covered": 16,
+          "count": 16
+        },
+        "src/board/tab5/bmi270.zig": {
+          "covered": 89,
+          "count": 92
+        },
+        "src/board/tab5/boot_i2c.zig": {
+          "covered": 129,
+          "count": 129
+        },
+        "src/board/tab5/dcs.zig": {
+          "covered": 27,
+          "count": 27
+        },
+        "src/board/tab5/display.zig": {
+          "covered": 56,
+          "count": 57
+        },
+        "src/board/tab5/es7210.zig": {
+          "covered": 76,
+          "count": 81
+        },
+        "src/board/tab5/es8388.zig": {
+          "covered": 73,
+          "count": 80
+        },
+        "src/board/tab5/keyboard.zig": {
+          "covered": 57,
+          "count": 58
+        },
+        "src/board/tab5/panels.zig": {
+          "covered": 34,
+          "count": 34
+        },
+        "src/board/tab5/rtc.zig": {
+          "covered": 77,
+          "count": 77
+        },
+        "src/board/tab5/scanout_state.zig": {
+          "covered": 8,
+          "count": 8
+        },
+        "src/board/tab5/touch.zig": {
+          "covered": 120,
+          "count": 120
+        },
+        "src/board/tab5/touch_feedback.zig": {
+          "covered": 20,
+          "count": 20
+        },
+        "src/card/ccid_owner.zig": {
+          "covered": 41,
+          "count": 44
+        },
+        "src/card/input_support.zig": {
+          "covered": 54,
+          "count": 54
+        },
+        "src/card/jis0208.zig": {
+          "covered": 28,
+          "count": 32
+        },
+        "src/card/keypad_demo.zig": {
+          "covered": 25,
+          "count": 25
+        },
+        "src/card/license.zig": {
+          "covered": 81,
+          "count": 81
+        },
+        "src/card/license_crypto.zig": {
+          "covered": 38,
+          "count": 38
+        },
+        "src/card/license_record.zig": {
+          "covered": 169,
+          "count": 174
+        },
+        "src/card/license_session.zig": {
+          "covered": 175,
+          "count": 189
+        },
+        "src/card/license_trust.zig": {
+          "covered": 14,
+          "count": 14
+        },
+        "src/card/pin_entry.zig": {
+          "covered": 67,
+          "count": 69
+        },
+        "src/card/presence.zig": {
+          "covered": 18,
+          "count": 20
+        },
+        "src/card/result_input.zig": {
+          "covered": 6,
+          "count": 8
+        },
+        "src/card/service.zig": {
+          "covered": 327,
+          "count": 350
+        },
+        "src/card/surface.zig": {
+          "covered": 55,
+          "count": 59
+        },
+        "src/card/wire_policy.zig": {
+          "covered": 116,
+          "count": 116
+        },
+        "src/console/ascii.zig": {
+          "covered": 29,
+          "count": 29
+        },
+        "src/console/diagnostic_keys.zig": {
+          "covered": 25,
+          "count": 28
+        },
+        "src/console/session.zig": {
+          "covered": 117,
+          "count": 120
+        },
+        "src/console/session_input.zig": {
+          "covered": 37,
+          "count": 49
+        },
+        "src/console/snapshot.zig": {
+          "covered": 50,
+          "count": 50
+        },
+        "src/device/control.zig": {
+          "covered": 33,
+          "count": 33
+        },
+        "src/diagnostics/boot_journal.zig": {
+          "covered": 12,
+          "count": 12
+        },
+        "src/diagnostics/boot_state.zig": {
+          "covered": 40,
+          "count": 43
+        },
+        "src/diagnostics/record.zig": {
+          "covered": 23,
+          "count": 23
+        },
+        "src/fs/io_leases.zig": {
+          "covered": 90,
+          "count": 90
+        },
+        "src/fs/io_stop.zig": {
+          "covered": 30,
+          "count": 30
+        },
+        "src/fs/sdmmc_owner.zig": {
+          "covered": 24,
+          "count": 24
+        },
+        "src/fs/vfs.zig": {
+          "covered": 212,
+          "count": 218
+        },
+        "src/fs/vfs_memory.zig": {
+          "covered": 23,
+          "count": 23
+        },
+        "src/fs/vfs_rpc.zig": {
+          "covered": 142,
+          "count": 152
+        },
+        "src/graphics/ascii_console.zig": {
+          "covered": 161,
+          "count": 161
+        },
+        "src/graphics/boot_graphics.zig": {
+          "covered": 62,
+          "count": 62
+        },
+        "src/graphics/canvas.zig": {
+          "covered": 90,
+          "count": 102
+        },
+        "src/graphics/card_pin.zig": {
+          "covered": 95,
+          "count": 95
+        },
+        "src/graphics/card_read_result.zig": {
+          "covered": 211,
+          "count": 213
+        },
+        "src/graphics/card_splash.zig": {
+          "covered": 34,
+          "count": 34
+        },
+        "src/graphics/font_protocol.zig": {
+          "covered": 48,
+          "count": 49
+        },
+        "src/graphics/font_stack_lifetime.zig": {
+          "covered": 18,
+          "count": 18
+        },
+        "src/graphics/japanese_break.zig": {
+          "covered": 37,
+          "count": 37
+        },
+        "src/graphics/keypad_atlas.zig": {
+          "covered": 3,
+          "count": 3
+        },
+        "src/graphics/keypad_plan.zig": {
+          "covered": 63,
+          "count": 63
+        },
+        "src/graphics/line_layout.zig": {
+          "covered": 33,
+          "count": 33
+        },
+        "src/graphics/raster_lease.zig": {
+          "covered": 26,
+          "count": 26
+        },
+        "src/graphics/ruby_layout.zig": {
+          "covered": 107,
+          "count": 107
+        },
+        "src/graphics/surface.zig": {
+          "covered": 67,
+          "count": 68
+        },
+        "src/graphics/test_pattern.zig": {
+          "covered": 29,
+          "count": 29
+        },
+        "src/graphics/text_context.zig": {
+          "covered": 39,
+          "count": 39
+        },
+        "src/input/pointer.zig": {
+          "covered": 69,
+          "count": 70
+        },
+        "src/io/sdmmc_host.zig": {
+          "covered": 85,
+          "count": 91
+        },
+        "src/kernel/arena.zig": {
+          "covered": 20,
+          "count": 20
+        },
+        "src/kernel/buddy_heap.zig": {
+          "covered": 130,
+          "count": 130
+        },
+        "src/kernel/core_arena.zig": {
+          "covered": 30,
+          "count": 30
+        },
+        "src/kernel/event_latch.zig": {
+          "covered": 2,
+          "count": 2
+        },
+        "src/kernel/extent_groups.zig": {
+          "covered": 61,
+          "count": 62
+        },
+        "src/kernel/fp_vectors.zig": {
+          "covered": 9,
+          "count": 9
+        },
+        "src/kernel/memory_broker.zig": {
+          "covered": 178,
+          "count": 179
+        },
+        "src/kernel/page_pool.zig": {
+          "covered": 86,
+          "count": 87
+        },
+        "src/kernel/park.zig": {
+          "covered": 21,
+          "count": 21
+        },
+        "src/kernel/remote_events.zig": {
+          "covered": 16,
+          "count": 16
+        },
+        "src/kernel/scheduler.zig": {
+          "covered": 163,
+          "count": 167
+        },
+        "src/kernel/size_pool.zig": {
+          "covered": 91,
+          "count": 93
+        },
+        "src/kernel/slab.zig": {
+          "covered": 122,
+          "count": 122
+        },
+        "src/kernel/spsc_channel.zig": {
+          "covered": 28,
+          "count": 28
+        },
+        "src/kernel/spsc_mailbox.zig": {
+          "covered": 33,
+          "count": 34
+        },
+        "src/kernel/spsc_ring.zig": {
+          "covered": 41,
+          "count": 42
+        },
+        "src/kernel/storage_rpc.zig": {
+          "covered": 56,
+          "count": 61
+        },
+        "src/kernel/task_control.zig": {
+          "covered": 60,
+          "count": 60
+        },
+        "src/kernel/task_resources.zig": {
+          "covered": 196,
+          "count": 196
+        },
+        "src/kernel/tick_clock.zig": {
+          "covered": 38,
+          "count": 38
+        },
+        "src/kernel/tick_counter.zig": {
+          "covered": 11,
+          "count": 15
+        },
+        "src/net/at_commands.zig": {
+          "covered": 93,
+          "count": 93
+        },
+        "src/net/at_controller.zig": {
+          "covered": 161,
+          "count": 172
+        },
+        "src/net/ble_hci.zig": {
+          "covered": 72,
+          "count": 82
+        },
+        "src/net/c6_sdio.zig": {
+          "covered": 31,
+          "count": 31
+        },
+        "src/net/dhcp.zig": {
+          "covered": 252,
+          "count": 254
+        },
+        "src/net/esp_at.zig": {
+          "covered": 143,
+          "count": 143
+        },
+        "src/net/hosted.zig": {
+          "covered": 132,
+          "count": 134
+        },
+        "src/net/hosted_station.zig": {
+          "covered": 249,
+          "count": 267
+        },
+        "src/net/ipv6.zig": {
+          "covered": 289,
+          "count": 309
+        },
+        "src/net/sntp.zig": {
+          "covered": 253,
+          "count": 263
+        },
+        "src/net/wifi_station.zig": {
+          "covered": 64,
+          "count": 66
+        },
+        "src/platform/native/external_layout.zig": {
+          "covered": 7,
+          "count": 7
+        },
+        "src/platform/native/foreground_timer.zig": {
+          "covered": 34,
+          "count": 35
+        },
+        "src/platform/native/stack_layout.zig": {
+          "covered": 34,
+          "count": 34
+        },
+        "src/serial/half_duplex.zig": {
+          "covered": 131,
+          "count": 132
+        },
+        "src/soc/esp32p4/cpu_clock.zig": {
+          "covered": 66,
+          "count": 67
+        },
+        "src/soc/esp32p4/psram.zig": {
+          "covered": 121,
+          "count": 123
+        },
+        "src/soc/esp32p4/psram_mapping.zig": {
+          "covered": 121,
+          "count": 121
+        },
+        "src/soc/esp32p4/psram_mpll.zig": {
+          "covered": 64,
+          "count": 65
+        },
+        "src/soc/esp32p4/psram_supply.zig": {
+          "covered": 15,
+          "count": 15
+        },
+        "src/soc/esp32p4/psram_tuning.zig": {
+          "covered": 83,
+          "count": 83
+        },
+        "src/soc/esp32p4/reset_capture.zig": {
+          "covered": 18,
+          "count": 19
+        },
+        "src/soc/esp32p4/sdio.zig": {
+          "covered": 184,
+          "count": 195
+        },
+        "src/soc/esp32p4/sdmmc.zig": {
+          "covered": 274,
+          "count": 279
+        },
+        "src/soc/esp32p4/software_ipi.zig": {
+          "covered": 3,
+          "count": 3
+        },
+        "src/soc/esp32p4/timer_group.zig": {
+          "covered": 55,
+          "count": 57
+        },
+        "src/soc/esp32p4/usb_host.zig": {
+          "covered": 66,
+          "count": 87
+        },
+        "src/storage/block.zig": {
+          "covered": 14,
+          "count": 14
+        },
+        "src/storage/checkpoint_model.zig": {
+          "covered": 1131,
+          "count": 1135
+        },
+        "src/storage/checkpoint_service.zig": {
+          "covered": 207,
+          "count": 237
+        },
+        "src/storage/control.zig": {
+          "covered": 24,
+          "count": 24
+        },
+        "src/storage/cow_model.zig": {
+          "covered": 150,
+          "count": 150
+        },
+        "src/storage/deadline.zig": {
+          "covered": 29,
+          "count": 29
+        },
+        "src/storage/dispatch_gate.zig": {
+          "covered": 103,
+          "count": 111
+        },
+        "src/storage/extent_map.zig": {
+          "covered": 104,
+          "count": 104
+        },
+        "src/storage/file_media.zig": {
+          "covered": 33,
+          "count": 33
+        },
+        "src/storage/lifetime_budget.zig": {
+          "covered": 96,
+          "count": 99
+        },
+        "src/storage/model_media.zig": {
+          "covered": 48,
+          "count": 48
+        },
+        "src/storage/reader_drain.zig": {
+          "covered": 59,
+          "count": 59
+        },
+        "src/storage/recovery_budget.zig": {
+          "covered": 7,
+          "count": 7
+        },
+        "src/storage/sector_media.zig": {
+          "covered": 32,
+          "count": 32
+        },
+        "src/usb/ccid.zig": {
+          "covered": 20,
+          "count": 20
+        },
+        "src/usb/descriptors.zig": {
+          "covered": 50,
+          "count": 50
+        },
+        "src/usb/jpki.zig": {
+          "covered": 96,
+          "count": 98
+        }
+      },
+      "unrepresentedSourceFiles": [
+        "src/arch/riscv32/compiled_fp.zig",
+        "src/arch/riscv32/context_offsets.inc",
+        "src/arch/riscv32/cpu1_tasks.zig",
+        "src/arch/riscv32/duplex_scenario.zig",
+        "src/arch/riscv32/fpu.S",
+        "src/arch/riscv32/idle.zig",
+        "src/arch/riscv32/ipc_scenario.zig",
+        "src/arch/riscv32/lifecycle_test.zig",
+        "src/arch/riscv32/native_floating.zig",
+        "src/arch/riscv32/native_font_exchange.zig",
+        "src/arch/riscv32/native_font_stack.zig",
+        "src/arch/riscv32/native_graphics.zig",
+        "src/arch/riscv32/native_ipi.zig",
+        "src/arch/riscv32/native_raster.zig",
+        "src/arch/riscv32/native_surface.zig",
+        "src/arch/riscv32/native_tasks.zig",
+        "src/arch/riscv32/native_trap.zig",
+        "src/arch/riscv32/pmp_user.S",
+        "src/arch/riscv32/preemption_test.zig",
+        "src/arch/riscv32/remote_scenario.zig",
+        "src/arch/riscv32/task_calls.zig",
+        "src/arch/riscv32/task_runtime.zig",
+        "src/arch/riscv32/trap_entry.S",
+        "src/board/tab5/bmi270_test.zig",
+        "src/board/tab5/keypad_sparse.h",
+        "src/board/tab5/native_pads.c",
+        "src/board/tab5/native_scanout.c",
+        "src/board/tab5/notice_sparse.h",
+        "src/board/tab5/scanout_retire.h",
+        "src/board/tab5/scene_pixels.h",
+        "src/card.zig",
+        "src/card/extended_test.zig",
+        "src/card/license_session_test.zig",
+        "src/card/service_test.zig",
+        "src/card_boot_preview.zig",
+        "src/card_compile_probe.zig",
+        "src/card_pin_preview.zig",
+        "src/card_sim.zig",
+        "src/compat/c_strings.c",
+        "src/console.zig",
+        "src/fs/fatfs_backend.zig",
+        "src/fs/io_leases_test.zig",
+        "src/fs/sdmmc_owner_test.zig",
+        "src/fs/vfs_rpc_test.zig",
+        "src/fs/vfs_test.zig",
+        "src/fs/vfs_wakeup_test.zig",
+        "src/graphics/ascii/jetbrains.zig",
+        "src/graphics/ascii/source_code.zig",
+        "src/graphics/boot/assets.zig",
+        "src/graphics/canvas_compile_probe.zig",
+        "src/graphics/card_boot/assets.zig",
+        "src/graphics/card_canvas_test.zig",
+        "src/graphics/card_pin_assets.zig",
+        "src/graphics/console_canvas_scroll_test.zig",
+        "src/graphics/keypad_atlas_test.zig",
+        "src/graphics/photo_fixture.zig",
+        "src/input/touch_service.zig",
+        "src/io/sdmmc_shared_test.zig",
+        "src/kernel/buddy_heap_test.zig",
+        "src/kernel/c_allocator.zig",
+        "src/kernel/c_allocator_test.zig",
+        "src/kernel/development_memory.zig",
+        "src/kernel/memory_broker_test.zig",
+        "src/kernel/remote_events_test.zig",
+        "src/kernel/size_pool_test.zig",
+        "src/kernel/slab_test.zig",
+        "src/kernel/spsc_channel_test.zig",
+        "src/kernel/spsc_mailbox_test.zig",
+        "src/kernel/storage_rpc_test.zig",
+        "src/kernel/task_call_numbers.inc",
+        "src/kernel/task_control_test.zig",
+        "src/kernel/task_pools_test.zig",
+        "src/kernel/task_resources_test.zig",
+        "src/net/at_controller_test.zig",
+        "src/net/c6_link_test.zig",
+        "src/net/c6_sdio_test.zig",
+        "src/net/esp_at_test.zig",
+        "src/net/hosted_test.zig",
+        "src/net/ipv6_test.zig",
+        "src/net/sntp_test.zig",
+        "src/net/wifi_station_test.zig",
+        "src/normal_sim.zig",
+        "src/platform/abi.zig",
+        "src/platform/espidf_main.zig",
+        "src/platform/native/audio_probe.zig",
+        "src/platform/native/base_sram.c",
+        "src/platform/native/board_devices.zig",
+        "src/platform/native/broker_abi.zig",
+        "src/platform/native/broker_runtime.zig",
+        "src/platform/native/c6_probe.zig",
+        "src/platform/native/canvas_demo_app.zig",
+        "src/platform/native/canvas_pattern.zig",
+        "src/platform/native/canvas_workloads.zig",
+        "src/platform/native/card_auto.zig",
+        "src/platform/native/card_boot.zig",
+        "src/platform/native/card_probe.zig",
+        "src/platform/native/card_read.zig",
+        "src/platform/native/console_workload.zig",
+        "src/platform/native/cpu_boot.zig",
+        "src/platform/native/device_workspace.zig",
+        "src/platform/native/diagnostic_clock.zig",
+        "src/platform/native/diagnostic_ui.zig",
+        "src/platform/native/display_probe.zig",
+        "src/platform/native/display_runtime.zig",
+        "src/platform/native/display_service.zig",
+        "src/platform/native/dma_memory.zig",
+        "src/platform/native/editor_fixture.zig",
+        "src/platform/native/editor_live.zig",
+        "src/platform/native/fatfs_card.c",
+        "src/platform/native/fatfs_card_abi.zig",
+        "src/platform/native/fatfs_disk.c",
+        "src/platform/native/fatfs_fixture.c",
+        "src/platform/native/fatfs_fixture_disk.c",
+        "src/platform/native/fatfs_runtime.zig",
+        "src/platform/native/fatfs_service_abi.zig",
+        "src/platform/native/flash_records.zig",
+        "src/platform/native/heap.zig",
+        "src/platform/native/high_sram.zig",
+        "src/platform/native/high_sram_layout.zig",
+        "src/platform/native/keypad_display.zig",
+        "src/platform/native/keypad_probe.zig",
+        "src/platform/native/main.zig",
+        "src/platform/native/memory.zig",
+        "src/platform/native/microphone_probe.zig",
+        "src/platform/native/network_service.zig",
+        "src/platform/native/normal_fs.zig",
+        "src/platform/native/normal_fs_abi.zig",
+        "src/platform/native/normal_fs_test_hooks.zig",
+        "src/platform/native/normal_touch.zig",
+        "src/platform/native/photo_runtime.zig",
+        "src/platform/native/psram.zig",
+        "src/platform/native/psram_memory.zig",
+        "src/platform/native/rs485_probe.zig",
+        "src/platform/native/sdmmc_probe.zig",
+        "src/platform/native/shared_sdmmc.zig",
+        "src/platform/native/shared_sdmmc_abi.zig",
+        "src/platform/native/sqlite_probe.zig",
+        "src/platform/native/sram_pool.h",
+        "src/platform/native/stacks.zig",
+        "src/platform/native/start.S",
+        "src/platform/native/storage_runtime.zig",
+        "src/platform/native/storage_service_abi.zig",
+        "src/platform/native/touch_probe.zig",
+        "src/platform/native/usb_probe.zig",
+        "src/protected_fault_test.zig",
+        "src/root.zig",
+        "src/services/sqlite_session.c",
+        "src/services/storage_internal.h",
+        "src/services/storage_littlefs.c",
+        "src/soc/esp32p4/psram_mapping_test.zig",
+        "src/soc/esp32p4/psram_test.zig",
+        "src/soc/esp32p4/sdio_test.zig",
+        "src/storage/batch_test.zig",
+        "src/storage/checkpoint_model_test.zig",
+        "src/storage/checkpoint_service_test.zig",
+        "src/storage/cow_model_test.zig",
+        "src/storage/dispatch_gate_test.zig",
+        "src/storage/experimental.zig",
+        "src/storage/extent_map_test.zig",
+        "src/storage/fatfs_backend.c",
+        "src/storage/fatfs_disk.c",
+        "src/storage/fatfs_volume.c",
+        "src/storage/file_media_test.zig",
+        "src/storage/index_gc_test.zig",
+        "src/storage/lifetime_budget_test.zig",
+        "src/storage/lifetime_usage_test.zig",
+        "src/storage/object_pin_test.zig",
+        "src/storage/payload_gc_test.zig",
+        "src/storage/range_checksum_test.zig",
+        "src/storage/reservation_test.zig",
+        "src/storage/resize_test.zig",
+        "src/storage/scatter_test.zig",
+        "src/storage/search_cache_test.zig",
+        "src/storage/sector_media_test.zig",
+        "src/storage/stream_test.zig",
+        "src/storage_vfs.zig",
+        "src/touch_sim.zig"
+      ],
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64"
+      },
+      "compilerBackend": "llvm",
+      "zigVersion": "0.17.0"
+    }
   }
 ]
