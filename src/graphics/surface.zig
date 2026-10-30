@@ -259,3 +259,14 @@ test "rectangle fill clips damage and shares row stores for aligned, unaligned a
         if (offset == 1) try std.testing.expectEqual(@as(u8, 0xa5), bytes[0]);
     }
 }
+
+test "fillRect clips and preserves stride padding and rejects invalid surfaces" {
+    var bytes: [16]u8 = @splat(0xaa);
+    const surface = Surface.init(bytes[2..14], 2, 2, 6).?;
+    try std.testing.expect(surface.fillRect(-1, -1, 2, 2, 0xf800));
+    try std.testing.expectEqualSlices(u8, &.{ 0, 0xf8 }, bytes[2..4]);
+    try std.testing.expect(std.mem.allEqual(u8, bytes[4..], 0xaa));
+    try std.testing.expect(surface.fillRect(std.math.maxInt(i32), std.math.maxInt(i32), std.math.maxInt(u32), std.math.maxInt(u32), 0));
+    const invalid = Surface{ .bytes = &bytes, .width = 9, .height = 2, .stride = 4 };
+    try std.testing.expect(!invalid.fillRect(0, 0, 1, 1, 0));
+}
