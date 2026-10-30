@@ -102,4 +102,19 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = workloads_module })).step);
     const ccid_tests = b.addTest(.{ .root_module = ccid_module });
     test_step.dependOn(&b.addRunArtifact(ccid_tests).step);
+    const ttf_module = b.createModule(.{ .root_source_file = b.path("src/graphics/ttf.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ttf_module })).step);
+    const viewport_layout_module = b.createModule(.{ .root_source_file = b.path("src/graphics/viewport_layout.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = viewport_layout_module })).step);
+    const xy_document_module = b.createModule(.{ .root_source_file = b.path("src/xy/document.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_document_module })).step);
+    const xy_ime_omni_module = b.createModule(.{ .root_source_file = b.path("src/xy/ime_omni.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_ime_omni_module })).step);
+    const xy_scheme_bridge_module = b.createModule(.{ .root_source_file = b.path("src/xy/scheme_bridge.zig"), .target = target, .optimize = optimize });
+    xy_scheme_bridge_module.addImport("viewport_layout", viewport_layout_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_scheme_bridge_module })).step);
+    const xy_render_adapter_module = b.createModule(.{ .root_source_file = b.path("src/xy/render_adapter.zig"), .target = target, .optimize = optimize });
+    xy_render_adapter_module.addImport("surface", surface_module);
+    xy_render_adapter_module.addImport("viewport_layout", viewport_layout_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_render_adapter_module })).step);
 }
