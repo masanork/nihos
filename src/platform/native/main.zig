@@ -1374,6 +1374,10 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
                         const live_address = board.framebuffer + board.frame_bytes + 16;
                         if (16 + @sizeOf(Live) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(Live) != 0) fail("editor live scratch");
                         const live: *Live = @ptrFromInt(live_address);
+                        const XyLive = @import("xy_scratch_live.zig").Live(".flash.rodata.display");
+                        if (16 + @sizeOf(XyLive) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(XyLive) != 0) fail("xy scratch region");
+                        // Mutually exclusive fixture views borrow the same tail.
+                        const xy_live: *XyLive = @ptrFromInt(live_address);
                         while (true) {
                             const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
                             if (input.command == 0) break;
@@ -1393,11 +1397,14 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
                                     }
                                 },
                                 2 => {
-                                    if (nih_emulator_output.mode != 1 or input.contacts > 255 or input.x > 255) fail("emulator key");
+                                    if ((nih_emulator_output.mode != 1 and nih_emulator_output.mode != 2) or input.contacts > 255 or input.x > 255) fail("emulator key");
                                     nih_emulator_output.keys += 1;
-                                    const key_result = live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render");
-                                    if (key_result == .edited) nih_emulator_output.edits += 1;
-                                    nih_emulator_output.cursor = @intCast(live.editor.column);
+                                    const edited = if (nih_emulator_output.mode == 2)
+                                        xy_live.press(frame, @intCast(input.contacts), @intCast(input.x)) catch fail("xy key render")
+                                    else
+                                        (live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render")) == .edited;
+                                    if (edited) nih_emulator_output.edits += 1;
+                                    nih_emulator_output.cursor = if (nih_emulator_output.mode == 2) xy_live.model.doc.cursor else @intCast(live.editor.column);
                                 },
                                 3 => {
                                     if (!live.start(frame)) fail("editor live start");
@@ -1411,14 +1418,31 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
                                     if (!live.load(frame, nih_emulator_document.bytes[0..nih_emulator_document.length])) fail("editor load render");
                                     nih_emulator_output.cursor = @intCast(live.editor.column);
                                 },
+                                5 => {
+                                    if (!xy_live.start(frame)) fail("xy scratch start");
+                                    nih_emulator_output.mode = 2;
+                                    nih_emulator_output.keys = 0;
+                                    nih_emulator_output.edits = 0;
+                                    nih_emulator_output.cursor = 0;
+                                },
+                                6 => {
+                                    if (nih_emulator_output.mode != 2) fail("xy serial byte");
+                                    const byte = text_console.session.input.transportByte(@bitCast(input.x)) orelse fail("xy serial result");
+                                    nih_emulator_output.keys += 1;
+                                    if (xy_live.serialByte(frame, byte, input.time_us) catch fail("xy serial render")) nih_emulator_output.edits += 1;
+                                    nih_emulator_output.cursor = xy_live.model.doc.cursor;
+                                },
                                 else => fail("emulator input command"),
                             }
-                            if (nih_emulator_output.mode == 1) {
-                                const content = live.document();
+                            if (nih_emulator_output.mode == 1 or nih_emulator_output.mode == 2) {
+                                const content = if (nih_emulator_output.mode == 2) xy_live.document() else live.document();
+                                var count = @min(content.len, nih_emulator_document.bytes.len);
+                                while (!std.unicode.utf8ValidateSlice(content[0..count])) count -= 1;
                                 @memset(&nih_emulator_document.bytes, 0);
-                                @memcpy(nih_emulator_document.bytes[0..content.len], content);
-                                nih_emulator_document.length = @intCast(content.len);
+                                @memcpy(nih_emulator_document.bytes[0..count], content[0..count]);
+                                nih_emulator_document.length = @intCast(count);
                             }
+                            if (!std.mem.allEqual(u8, guard, 0xa5)) fail("emulator workspace guard");
                             @call(.never_inline, nih_canvas_frame_ready, .{});
                         }
                     }
