@@ -3,7 +3,7 @@ const std = @import("std");
 pub const input = @import("session_input.zig");
 const Journal = @import("../diagnostics/boot_journal.zig").Journal;
 pub const View = enum(u8) { launcher, shell, logs };
-pub const Command = enum { shell, help, clear, log, mem, tasks, launcher, exit };
+pub const Command = enum { shell, help, clear, log, mem, tasks, camera, camera_live, launcher, exit };
 const Entry = struct { command: Command, name: []const u8, help: []const u8 };
 pub const commands = [_]Entry{
     .{ .command = .shell, .name = "shell", .help = "Open the command prompt" },
@@ -12,6 +12,8 @@ pub const commands = [_]Entry{
     .{ .command = .log, .name = "log", .help = "Show retained boot log" },
     .{ .command = .mem, .name = "mem", .help = "Show CPU0 memory usage" },
     .{ .command = .tasks, .name = "tasks", .help = "Show published runtime counters" },
+    .{ .command = .camera, .name = "camera", .help = "Open a camera snapshot" },
+    .{ .command = .camera_live, .name = "camera-live", .help = "Open an updating camera preview" },
     .{ .command = .launcher, .name = "launcher", .help = "Return to the launcher" },
     .{ .command = .exit, .name = "exit", .help = "Return to the launcher" },
 };
@@ -100,7 +102,7 @@ pub const Model = struct {
                 self.view = .logs;
                 sink.write("\r\nBoot log | Esc: launcher\r\n");
             },
-            .mem, .tasks => {
+            .mem, .tasks, .camera, .camera_live => {
                 self.shell(sink);
                 return command;
             },
@@ -239,6 +241,9 @@ test "launcher, shell and log round trips share the command registry" {
     try std.testing.expectEqual(Command.mem, model.handle(.enter, &sink).?);
     try std.testing.expectEqual(View.shell, model.view);
     try std.testing.expectEqual(Command.tasks, typeLine(&model, &sink, "tasks").?);
+    try std.testing.expectEqual(Command.camera, typeLine(&model, &sink, "camera").?);
+    try std.testing.expectEqual(Command.camera_live, typeLine(&model, &sink, "camera-live").?);
+    try std.testing.expectEqual(View.shell, model.view);
     _ = typeLine(&model, &sink, "launcher");
     try std.testing.expectEqual(View.launcher, model.view);
 }

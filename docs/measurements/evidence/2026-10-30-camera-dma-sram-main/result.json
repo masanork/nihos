@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "camera DMA channel memory copy confirmed; lease retained until reset",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "9f1bdf767d0f3877564a21541bc6e598cb537599f5bf52e67a6dde0e7ebcfa82",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "2fb5ba6e47e00f7eb32ca62f03e39bf6466f9fd770b38ea714259c4f8977bfb4"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      155648
+    ]
+  },
+  "serial_sha256": "4f22006ca03b8c7cccf72b4a8fdde167f608b86b8ccb8c265689d99afbea0509",
+  "restored": true
+}

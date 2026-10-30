@@ -45,6 +45,27 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run host-side nihOS unit tests");
     test_step.dependOn(&run_module_tests.step);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = protected_fault })).step);
+    // Ownership contracts only: no camera hardware or video driver is wired here.
+    const camera_contract = b.createModule(.{ .root_source_file = b.path("src/device/camera_contract.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = camera_contract })).step);
+    const camera_stream_model = b.createModule(.{ .root_source_file = b.path("src/device/camera_stream_model.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = camera_stream_model })).step);
+    const camera_preview = b.createModule(.{ .root_source_file = b.path("src/board/tab5/camera_preview.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = camera_preview })).step);
+    const tab5_camera = b.createModule(.{ .root_source_file = b.path("src/board/tab5/camera.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tab5_camera })).step);
+    const csi_preflight = b.createModule(.{ .root_source_file = b.path("src/board/tab5/csi_preflight.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = csi_preflight })).step);
+    const csi_stability = b.createModule(.{ .root_source_file = b.path("src/board/tab5/csi_stability.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = csi_stability })).step);
+    const camera_sha = b.createModule(.{ .root_source_file = b.path("src/board/tab5/camera_sha256.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = camera_sha })).step);
+    const csi_workspace = b.createModule(.{ .root_source_file = b.path("src/board/tab5/csi_workspace.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = csi_workspace })).step);
+    inline for (.{ "csi_first_frame_test.zig", "csi_inflight_stop.zig", "csi_inflight_adapter.zig", "sc202cs_exposure.zig" }) |name| {
+        const camera_stage = b.createModule(.{ .root_source_file = b.path("src/board/tab5/" ++ name), .target = target, .optimize = optimize });
+        test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = camera_stage })).step);
+    }
     const surface_tests = b.addTest(.{ .root_module = surface_module });
     test_step.dependOn(&b.addRunArtifact(surface_tests).step);
     const canvas_module = b.createModule(.{ .root_source_file = b.path("src/graphics/canvas.zig"), .target = target, .optimize = optimize });
@@ -55,6 +76,10 @@ pub fn build(b: *std.Build) void {
     console_scroll_probe.addImport("canvas", canvas_module);
     const console_probe_module = b.createModule(.{ .root_source_file = b.path("src/console.zig"), .target = target, .optimize = optimize });
     console_probe_module.addImport("canvas", canvas_module);
+    const camera_input = b.createModule(.{ .root_source_file = b.path("src/console/camera_input.zig"), .target = target, .optimize = optimize });
+    camera_input.addImport("text_console", console_probe_module);
+    camera_input.addImport("camera_preview", camera_preview);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = camera_input })).step);
     console_scroll_probe.addImport("console", console_probe_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = console_scroll_probe })).step);
     const editor_fixture = b.createModule(.{ .root_source_file = b.path("src/platform/native/editor_fixture.zig"), .target = target, .optimize = optimize });

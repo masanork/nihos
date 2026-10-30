@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "CSI frame DMA completed; injected byte detected by both scans; lease retained until reset",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "b2e13358b262025f78c482e3ecb862d3469d08919edf422f665707367a4e99a7",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "e81f7a7836658ca2e167a06c9aa055f304cc6e74e6aadf79c3e7260d83404fc7"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      172032
+    ]
+  },
+  "serial_sha256": "fc3e875aecdb7637d3b8277b3b5be5d27e1e35f32c121433e8ff416fd5c929b0",
+  "restored": true
+}

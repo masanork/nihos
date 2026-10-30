@@ -1,7 +1,7 @@
 //! CPU0 foreground device requests. No hardware activity follows from parsing
 //! ordinary UI keys, incomplete lines, or an overlong command.
 const std = @import("std");
-pub const Command = enum(u32) { audio = 1, microphone, rs485_loopback, rs485_peer, status };
+pub const Command = enum(u32) { audio = 1, microphone, rs485_loopback, rs485_peer, status, camera_id, camera_mode, csi_preflight, csi_memory, camera_stream = 10, camera_dma_domain, camera_dma_test, camera_dma_psram, camera_first_frame, camera_first_low, camera_frame_scan = 21, camera_screen_preview_low = 23, camera_screen_preview_tone = 24, camera_frame_scan_control = 25, camera_reset_hold = 27, camera_recover = 29 };
 pub const Parser = struct {
     buffer: [24]u8 = @splat(0),
     length: usize = 0,
@@ -24,7 +24,7 @@ pub const Parser = struct {
         if (byte == '\r' or byte == '\n') {
             if (!self.overflow) {
                 const line = self.buffer[0..self.length];
-                inline for (.{ .{ "audio", Command.audio }, .{ "mic", Command.microphone }, .{ "rs485-loopback", Command.rs485_loopback }, .{ "rs485-peer", Command.rs485_peer }, .{ "devices", Command.status } }) |entry| {
+                inline for (.{ .{ "audio", Command.audio }, .{ "mic", Command.microphone }, .{ "rs485-loopback", Command.rs485_loopback }, .{ "rs485-peer", Command.rs485_peer }, .{ "devices", Command.status }, .{ "camera-id", Command.camera_id }, .{ "camera-mode", Command.camera_mode }, .{ "csi-probe", Command.csi_preflight }, .{ "csi-memory", Command.csi_memory }, .{ "camera-stream", Command.camera_stream }, .{ "camera-domain", Command.camera_dma_domain }, .{ "camera-dma-test", Command.camera_dma_test }, .{ "camera-dma-psram", Command.camera_dma_psram }, .{ "camera-first-frame", Command.camera_first_frame }, .{ "camera-first-low", Command.camera_first_low }, .{ "camera-preview-low", Command.camera_screen_preview_low }, .{ "camera-frame-scan", Command.camera_frame_scan }, .{ "camera-scan-control", Command.camera_frame_scan_control }, .{ "camera-reset-hold", Command.camera_reset_hold }, .{ "camera-recover", Command.camera_recover }, .{ "camera-preview-tone", Command.camera_screen_preview_tone } }) |entry| {
                     if (std.mem.eql(u8, line, entry[0])) result.* = entry[1];
                 }
             }
@@ -76,6 +76,36 @@ test "only complete exact commands dispatch and overflow cannot become a command
     for (":audio") |c| _ = parser.feed(c, &result);
     try std.testing.expect(!parser.feed(0x1b, &result));
     try std.testing.expect(!parser.feed('a', &result));
+    for (":camera-id\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_id, result.?);
+    for (":camera-mode\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_mode, result.?);
+    for (":csi-probe\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.csi_preflight, result.?);
+    for (":csi-memory\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.csi_memory, result.?);
+    for (":camera-stream\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_stream, result.?);
+    for (":camera-domain\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_dma_domain, result.?);
+    for (":camera-dma-test\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_dma_test, result.?);
+    for (":camera-dma-psram\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_dma_psram, result.?);
+    for (":camera-first-frame\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_first_frame, result.?);
+    for (":camera-first-low\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_first_low, result.?);
+    for (":camera-preview-low\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_screen_preview_low, result.?);
+    for (":camera-preview-tone\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_screen_preview_tone, result.?);
+    for (":camera-frame-scan\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_frame_scan, result.?);
+    for (":camera-scan-control\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_frame_scan_control, result.?);
+    for (":camera-reset-hold\n") |c| _ = parser.feed(c, &result);
+    try std.testing.expectEqual(Command.camera_reset_hold, result.?);
     for (":unknown\n") |c| _ = parser.feed(c, &result);
     try std.testing.expect(result == null);
 }

@@ -1,6 +1,22 @@
 schema = 1
 
 [[source]]
+name = "Espressif esp_cam_sensor SC202CS"
+url = "https://github.com/espressif/esp-video-components/tree/52b416934c5ed92f2252e387609f586b1e20b256/esp_cam_sensor/sensors/sc202cs"
+revision = "2.0.1; 52b416934c5ed92f2252e387609f586b1e20b256"
+license = "Apache-2.0"
+status = "register-reference-only"
+use = "SC202CS SCCB address and sensor identity registers for independent Tab5 camera probe; no source copied"
+
+[[source]]
+name = "SC202CS 1280x720 RAW8 register sequence"
+url = "https://github.com/espressif/esp-video-components/blob/52b416934c5ed92f2252e387609f586b1e20b256/esp_cam_sensor/sensors/sc202cs/private_include/sc202cs_mipi_1lane_24Minput_1280x720_raw8_30fps.h"
+revision = "esp_cam_sensor 2.0.1; 52b416934c5ed92f2252e387609f586b1e20b256"
+license = "Apache-2.0"
+status = "vendored-register-data"
+use = "Original header and license in third_party/sc202cs; generated Zig table preserves order and does not start streaming; SHA256 c30c93bdda9aa66a046e45183c19c5dda5c4a7c50c1b1577ebbe0cf35e4447cf"
+
+[[source]]
 name = "civ JPKI wire sequence"
 url = "https://github.com/masanork/civ"
 revision = "54a843e656513930df60bbc20d752ff3289e7078"
