@@ -1,0 +1,4 @@
+flowchart TB
+    accTitle: P4とC6の通信分担
+    accDescr: P4の通信サービスは接続状態、Wi-Fi、BLEを扱い、SDIOを介してC6の既存ファームウェアと無線回路につながる。
+    P["P4の通信サービス\n接続状態：DHCP、IPv6\nWi-Fi制御とEthernetフレーム\nBLEのHCIコマンドとイベント"] -->|"SDIO"| C["C6の既存ファームウェアと無線回路"]

@@ -1,0 +1,10 @@
+sequenceDiagram
+    accTitle: CPU間の公開と通知
+    accDescr: 送信CPUが受信箱へ値を公開してIPIを立て、受信CPUが割込みで受信箱を読み待機タスクへ通知する。
+ participant A as 送信CPU
+ participant B as 受信CPU
+ A->>A: inboxへ値を公開
+ A->>B: IPIを立てる
+ B->>B: 割込みを受けinboxを読む
+ B->>B: 待機タスクへ通知
+ B->>B: 次のタスクを選ぶ
