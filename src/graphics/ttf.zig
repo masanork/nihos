@@ -637,6 +637,14 @@ fn decodeSimpleGlyfSlice(
             }
         }
         if (out_count.* > base_out) {
+            if (!out_points[base_out].on_curve and out_count.* - base_out >= 2) {
+                const last_pt = out_points[out_count.* - 1];
+                var rot_i = out_count.* - 1;
+                while (rot_i > base_out) : (rot_i -= 1) {
+                    out_points[rot_i] = out_points[rot_i - 1];
+                }
+                out_points[base_out] = last_pt;
+            }
             out_points[out_count.* - 1].contour_end = true;
         }
         c_start = c_end + 1;
