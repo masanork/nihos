@@ -156,7 +156,7 @@ noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.dev
         if (options.camera_id and board_devices.cameraStreamDrained()) {
             _ = ui.cameraAcceptFrame();
             const stream = board_devices.cameraStreamStats();
-            logger.record("NIHOS_NATIVE_CAMERA_STREAM", null, .{ "completed", "dropped", "fault" }, &stream);
+            logger.record("NIHOS_NATIVE_CAMERA_STREAM", null, .{ "completed", "dropped", "fault", "incomplete" }, &stream);
             const discarded: extern struct { sequence: u32 } = .{ .sequence = board_devices.cameraCaptureSequence() };
             (SerialOnly{}).write("\n");
             logger.record("NIHOS_NATIVE_CAMERA_LIVE_DRAIN", null, .{"sequence"}, &discarded);

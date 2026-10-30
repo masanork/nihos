@@ -234,11 +234,11 @@ The normal interactive device build also includes a camera preview prototype.
 Press Escape to open the shell, then use `camera` for a snapshot or
 `camera-live` for automatic updates; press a key to close it. The current
 preview is sampled grayscale; normal `camera-live` uses interrupt-rearmed DMA
-and two buffers. Two finite Tab5 trials measured about 17 updates per second. Set
+and two buffers. Two 120-second Tab5 trials measured about 19 updates per second. Set
 `NIHOS_NATIVE_CAMERA_ID=0` to omit it. Detailed camera diagnostics remain an
 explicit fixture profile. See the [normal-profile camera trial](docs/measurements/2026-10-30-camera-normal-profile.md)
 for the original tested configuration and remaining limits, and the
-[continuous capture trial](docs/measurements/2026-10-31-camera-continuous.md) for current measurements and memory costs.
+[live capture soak trial](docs/measurements/2026-10-31-camera-live-soak.md) for current measurements, incomplete-frame recovery and memory costs.
 
 Normal native Tab5 boot also initializes BMI270 and acquires acceleration and
 gyroscope readings through the shared board I2C owner. See
