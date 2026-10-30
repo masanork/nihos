@@ -15,24 +15,48 @@ pub const Sha256 = struct {
     buffer: [64]u8 = @splat(0),
     used: usize = 0,
     length: u64 = 0,
-    pub fn init(_: anytype) Sha256 { return .{}; }
-    fn rotr(x: u32, bits: u5) u32 { return (x >> bits) | (x << @as(u5, @intCast(32 - @as(u6, bits)))); }
+    pub fn init(_: anytype) Sha256 {
+        return .{};
+    }
+    fn rotr(x: u32, bits: u5) u32 {
+        return (x >> bits) | (x << @as(u5, @intCast(32 - @as(u6, bits))));
+    }
     noinline fn block(self: *Sha256, data: *const [64]u8) void {
         var w: [64]u32 = undefined;
         for (0..16) |i| w[i] = std.mem.readInt(u32, data[i * 4 ..][0..4], .big);
         for (16..64) |i| {
-            const a = w[i - 15]; const b = w[i - 2];
+            const a = w[i - 15];
+            const b = w[i - 2];
             w[i] = w[i - 16] +% (rotr(a, 7) ^ rotr(a, 18) ^ (a >> 3)) +% w[i - 7] +% (rotr(b, 17) ^ rotr(b, 19) ^ (b >> 10));
         }
-        var a = self.state[0]; var b = self.state[1]; var c = self.state[2]; var d = self.state[3];
-        var e = self.state[4]; var f = self.state[5]; var g = self.state[6]; var h = self.state[7];
+        var a = self.state[0];
+        var b = self.state[1];
+        var c = self.state[2];
+        var d = self.state[3];
+        var e = self.state[4];
+        var f = self.state[5];
+        var g = self.state[6];
+        var h = self.state[7];
         for (0..64) |i| {
             const t1 = h +% (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) +% ((e & f) ^ (~e & g)) +% constants[i] +% w[i];
             const t2 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) +% ((a & b) ^ (a & c) ^ (b & c));
-            h = g; g = f; f = e; e = d +% t1; d = c; c = b; b = a; a = t1 +% t2;
+            h = g;
+            g = f;
+            f = e;
+            e = d +% t1;
+            d = c;
+            c = b;
+            b = a;
+            a = t1 +% t2;
         }
-        self.state[0] +%= a; self.state[1] +%= b; self.state[2] +%= c; self.state[3] +%= d;
-        self.state[4] +%= e; self.state[5] +%= f; self.state[6] +%= g; self.state[7] +%= h;
+        self.state[0] +%= a;
+        self.state[1] +%= b;
+        self.state[2] +%= c;
+        self.state[3] +%= d;
+        self.state[4] +%= e;
+        self.state[5] +%= f;
+        self.state[6] +%= g;
+        self.state[7] +%= h;
     }
     pub fn update(self: *Sha256, input: []const u8) void {
         self.length +%= input.len;
@@ -42,7 +66,10 @@ pub const Sha256 = struct {
             @memcpy(self.buffer[self.used..][0..take], remaining[0..take]);
             self.used += take;
             remaining = remaining[take..];
-            if (self.used == 64) { self.block(&self.buffer); self.used = 0; }
+            if (self.used == 64) {
+                self.block(&self.buffer);
+                self.used = 0;
+            }
         }
     }
     pub fn final(self: *Sha256, output: *[32]u8) void {
@@ -67,9 +94,15 @@ test "compact SHA-256 agrees with standard across boundaries and chunks" {
         var expected: [32]u8 = undefined;
         std.crypto.hash.sha2.Sha256.hash(data[0..n], &expected, .{});
         for ([_]usize{ 1, 7, 64, 511 }) |chunk| {
-            var hash = Sha256.init(.{}); var i: usize = 0;
-            while (i < n) { const end = @min(i + chunk, n); hash.update(data[i..end]); i = end; }
-            var actual: [32]u8 = undefined; hash.final(&actual);
+            var hash = Sha256.init(.{});
+            var i: usize = 0;
+            while (i < n) {
+                const end = @min(i + chunk, n);
+                hash.update(data[i..end]);
+                i = end;
+            }
+            var actual: [32]u8 = undefined;
+            hash.final(&actual);
             try std.testing.expectEqualSlices(u8, &expected, &actual);
         }
     }
@@ -79,8 +112,13 @@ test "frame-sized incremental digest agrees with standard" {
     for (&data, 0..) |*byte, i| byte.* = @truncate(i *% 13 +% 7);
     var actual = Sha256.init(.{});
     var expected = std.crypto.hash.sha2.Sha256.init(.{});
-    for (0..900) |_| { actual.update(&data); expected.update(&data); }
-    var a: [32]u8 = undefined; var b: [32]u8 = undefined;
-    actual.final(&a); expected.final(&b);
+    for (0..900) |_| {
+        actual.update(&data);
+        expected.update(&data);
+    }
+    var a: [32]u8 = undefined;
+    var b: [32]u8 = undefined;
+    actual.final(&a);
+    expected.final(&b);
     try std.testing.expectEqualSlices(u8, &b, &a);
 }

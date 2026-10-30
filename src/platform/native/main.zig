@@ -167,14 +167,14 @@ noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.dev
                 (SerialOnly{}).write("\n");
                 logger.record("NIHOS_NATIVE_CAMERA_LIVE_DRAIN", null, .{"sequence"}, &discarded);
             } else {
-            camera_screen_state = if (ui.showCameraPreview(preview.pixels, preview.tone)) 1 else 2;
-            camera_screen_mismatches = ui.cameraPreviewMismatchCount();
-            camera_screen_tone = @intFromBool(preview.tone);
-            camera_screen_frame = display_service.runtime.snapshot().frames;
-            const presented: extern struct { sequence: u32, state: u32, sample_hash: u32, mismatches: u32, frames: u32 } = .{ .sequence = board_devices.cameraCaptureSequence(), .state = camera_screen_state, .sample_hash = std.hash.Fnv1a_32.hash(std.mem.asBytes(preview.pixels)), .mismatches = camera_screen_mismatches, .frames = camera_screen_frame };
-            (SerialOnly{}).write("\n"); // asynchronous result may follow the shell prompt
-            logger.record("NIHOS_NATIVE_CAMERA_SNAPSHOT", null, .{ "sequence", "state", "sample_hash", "mismatches", "frames" }, &presented);
-            if (ui.cameraLiveActive() and (camera_screen_state != 1 or !board_devices.requestDevice(26))) ui.cameraLiveEnd();
+                camera_screen_state = if (ui.showCameraPreview(preview.pixels, preview.tone)) 1 else 2;
+                camera_screen_mismatches = ui.cameraPreviewMismatchCount();
+                camera_screen_tone = @intFromBool(preview.tone);
+                camera_screen_frame = display_service.runtime.snapshot().frames;
+                const presented: extern struct { sequence: u32, state: u32, sample_hash: u32, mismatches: u32, frames: u32 } = .{ .sequence = board_devices.cameraCaptureSequence(), .state = camera_screen_state, .sample_hash = std.hash.Fnv1a_32.hash(std.mem.asBytes(preview.pixels)), .mismatches = camera_screen_mismatches, .frames = camera_screen_frame };
+                (SerialOnly{}).write("\n"); // asynchronous result may follow the shell prompt
+                logger.record("NIHOS_NATIVE_CAMERA_SNAPSHOT", null, .{ "sequence", "state", "sample_hash", "mismatches", "frames" }, &presented);
+                if (ui.cameraLiveActive() and (camera_screen_state != 1 or !board_devices.requestDevice(26))) ui.cameraLiveEnd();
             }
         };
         const now = ui.timer().counter() orelse fail("device report clock");
@@ -366,7 +366,6 @@ const SerialOnly = struct {
 };
 var preview_logger = record_log.PlacedWriter(SerialOnly, ".flash.rodata.records"){ .sink = .{} };
 
-
 noinline fn hex(value: u32) void {
     const digits = "0123456789abcdef";
     var bytes: [8]u8 = undefined;
@@ -390,7 +389,9 @@ export fn nih_diagnostic_serial_idle() callconv(.c) void {
 fn fail(reason: []const u8) noreturn {
     asm volatile ("csrci mstatus, 8");
     if (options.console_live) {
-        const hart = asm volatile ("csrr %[hart], mhartid" : [hart] "=r" (-> u32));
+        const hart = asm volatile ("csrr %[hart], mhartid"
+            : [hart] "=r" (-> u32),
+        );
         if (hart == 0) ui.abandonCameraPreview();
     }
     if (options.card_auto) {

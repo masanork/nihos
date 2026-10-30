@@ -36,14 +36,19 @@ pub const Overlay = struct {
     state: enum { idle, visible, repaint_pending, recovery_pending, failed } = .idle,
     dismissal_sequence: u32 = 0,
 
-    pub fn canShow(self: *const Overlay) bool { return self.state == .idle; }
+    pub fn canShow(self: *const Overlay) bool {
+        return self.state == .idle;
+    }
     /// CPU0 paints synchronously; input cannot interleave with this transition.
     pub fn beginRefresh(self: *Overlay) bool {
         if (self.state != .visible) return false;
         self.state = .idle;
         return true;
     }
-    pub fn shown(self: *Overlay) void { std.debug.assert(self.canShow()); self.state = .visible; }
+    pub fn shown(self: *Overlay) void {
+        std.debug.assert(self.canShow());
+        self.state = .visible;
+    }
     pub fn dismiss(self: *Overlay, sequence: u32) bool {
         if (self.state != .visible) return false;
         self.state = .repaint_pending;
@@ -58,7 +63,9 @@ pub const Overlay = struct {
     }
     /// Fatal UI handling may draw an error screen; it must not report the
     /// abandoned ordinary-view repaint as a successful recovery.
-    pub fn abandon(self: *Overlay) void { self.state = .failed; }
+    pub fn abandon(self: *Overlay) void {
+        self.state = .failed;
+    }
     /// Only call after a successful full repaint and presentation.
     pub fn repainted(self: *Overlay) ?Repaint {
         const result: Repaint = switch (self.state) {
@@ -88,7 +95,9 @@ pub const Live = struct {
         }
         return true;
     }
-    pub fn end(self: *Live) void { self.state = .idle; }
+    pub fn end(self: *Live) void {
+        self.state = .idle;
+    }
 };
 test "live stop drains one outstanding frame before restart" {
     var live: Live = .{};
