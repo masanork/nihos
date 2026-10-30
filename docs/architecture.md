@@ -114,6 +114,15 @@ custom store explores integrating SQLite WAL with page/log/checkpoint/GC
 ownership; persistent SQL durability remains a separate integration goal.
 M5FS source is not imported.
 
+The storage design contracts are specified in
+[`planning/filesystem-vfs.md`](planning/filesystem-vfs.md) and
+[`planning/sqlite-integration.md`](planning/sqlite-integration.md).
+OS VFS and SQLite VFS have separate responsibilities. Filesystem read support,
+general file saves, and writable SQLite are qualified independently, with
+explicit mount generations, durability profiles, and uncertain write outcomes.
+The plans define required behavior and acceptance gates; they do not establish
+implemented filesystem support or physical storage qualification.
+
 SQLite already has a bounded, single-owner memory session, cancellation and
 resource limits ([ADR 0040](adr/0040-bounded-single-owner-sqlite-session.md)).
 The minimal C runtime and standalone RV32 link are defined in

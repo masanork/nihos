@@ -1,0 +1,13 @@
+sequenceDiagram
+    accTitle: SQLiteへsync成功を返すまで
+    accDescr: xWriteはserviceのstaged viewを更新する。xSyncでpayloadとmapをsyncしrootをsyncした後にcommittedを返信し、SQLiteへ同期成功を返す。下位の公開とSQL transactionは同じ単位ではない。
+    participant Q as SQLite VFS
+    participant S as store service
+    participant M as 保存先
+    Q->>S: xWrite / コピー要求
+    S-->>Q: stagedの応答
+    Q->>S: xSync
+    S->>M: payload・mapを同期
+    S->>M: rootを同期
+    M-->>S: 公開完了
+    S-->>Q: committed

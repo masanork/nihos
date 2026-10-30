@@ -88,3 +88,61 @@ jobs:
 
       - name: RV32 SQLite standalone link (synthetic map only)
         run: sh tools/probe-sqlite-rv32-link.sh
+
+  metrics:
+    name: Source metrics and host coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Zig
+        run: sh tools/bootstrap-zig.sh
+
+      - name: Install coverage build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake g++ libcurl4-openssl-dev libdw-dev libelf-dev libssl-dev zlib1g-dev
+
+      - name: Measure host Zig execution coverage
+        run: python3 tools/host_coverage.py --kcov "$(sh tools/bootstrap-kcov.sh)"
+
+      - name: Measure source size and generate charts
+        run: python3 tools/metrics.py --coverage build/metrics/host-coverage.json
+
+      - name: Retain metrics and coverage reports
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: project-metrics
+          path: build/metrics/
+          if-no-files-found: error
+
+  record-metrics:
+    name: Record main metrics history
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [quality, metrics]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Check out measured source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: true
+
+      - name: Download this run's metrics
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: project-metrics
+          path: build/metrics/
+
+      - name: Record the measured snapshot and refresh charts
+        run: python3 tools/metrics.py --record --snapshot-file build/metrics/current.json
+
+      - name: Publish if main still matches the measured source
+        run: sh tools/publish-metrics.sh

@@ -70,6 +70,19 @@ SQLite has a [bounded single-owner memory session](docs/adr/0040-bounded-single-
 and an [opt-in native execution fixture](docs/adr/0042-native-sqlite-flash-execution.md);
 a persistent `sqld` task/RPC and production VFS remain future work.
 
+## Project metrics
+
+![Implementation, test, and tooling source growth](metrics/code-size.svg)
+
+![Host Zig emitted-line coverage](metrics/coverage.svg)
+
+CI tracks source size and host Zig execution coverage. See the
+[measurement scope and local commands](metrics/README.md) and
+[current summary](metrics/summary.md). Host coverage is limited to emitted
+Debug test-binary lines; emulator and physical Tab5 evidence remain separate.
+To compare current local source trees, run
+`python3 tools/metrics.py --compare ../MeOS`.
+
 ## Build and checks
 
 Build the normal interactive Tab5 image with the pinned ESP-IDF v5.4.4 loader

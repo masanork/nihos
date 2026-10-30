@@ -1,0 +1,7 @@
+flowchart TB
+    accTitle: データを先に残し、rootを公開してから成功を返す
+    accDescr: 新payloadとmetadataを書きsyncした後、別のroot slotへ新世代を書きsyncし、成功を通知する。root公開前は旧世代が基準であり、成功通知後の再起動では新世代を要求する。
+    A["新payload・metadataを書く\n旧世代は保持"] --> B["sync\n参照先を先に残す"]
+    B --> C["別のroot slotへ\n新世代を書く"]
+    C --> D["sync\nrootの公開を確定"]
+    D --> E["成功を通知\n再起動後も新世代"]

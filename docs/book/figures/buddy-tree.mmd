@@ -1,0 +1,7 @@
+flowchart TB
+    accTitle: 同じ親を持つ空きblockを結合する
+    accDescr: 256 byteを二つの128 byteへ、左の128 byteを二つの64 byteへ分割した例。右の128 byteと左下の64 byteは空きでも異なる親なので直接は結合できない。
+    A["256 B\n分割済み"] --> L["128 B\n分割済み"]
+    A --> R["128 B\n空き"]
+    L --> U["64 B\n使用中"]
+    L --> F["64 B\n空き"]
