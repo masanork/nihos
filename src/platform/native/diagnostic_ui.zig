@@ -635,6 +635,9 @@ pub noinline fn service(log: anytype) bool {
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
     if (options.rust_session and rust_session.active()) return true;
+    // Input may dismiss an overlay while the next frame is already in DMA.
+    // Drain it before a full shell repaint competes for PSRAM/cache bandwidth.
+    if (!camera_live.canRepaint()) return true;
     if (camera_overlay.state == .visible) return true;
     if (options.rust_display) {
         if (!rust_dirty) return true;
