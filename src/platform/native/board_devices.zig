@@ -94,6 +94,55 @@ extern fn nih_csi_dma_window_finish() callconv(.c) u32;
 extern fn nih_csi_dma_stop(*CsiRx) callconv(.c) bool;
 extern fn nih_csi_dma_retained_ready() callconv(.c) bool;
 extern fn nih_csi_dma_retained_flags() callconv(.c) u32;
+extern fn nih_csi_stream_begin(u32, u32) callconv(.c) bool;
+extern fn nih_csi_stream_stop() callconv(.c) void;
+extern fn nih_csi_stream_abort() callconv(.c) void;
+extern fn nih_csi_stream_state(u32) callconv(.c) u32;
+extern fn nih_csi_stream_borrow(*u32) callconv(.c) u32;
+extern fn nih_csi_stream_release(u32) callconv(.c) bool;
+extern fn nih_csi_stream_end() callconv(.c) bool;
+var stream_requested = false;
+var stream_stopping = false;
+var stream_retired = false;
+var stream_borrow: u32 = 0;
+var stream_generation: u32 = 0;
+var stream_last_shown: u32 = 0;
+var stream_produced: u32 = 0;
+var stream_progress_at: u64 = 0;
+pub fn cameraStreaming() bool {
+    return stream_requested;
+}
+pub fn cameraStreamStats() extern struct { completed: u32, dropped: u32, fault: u32 } {
+    const previous = CsiHardware.mask();
+    defer CsiHardware.restore(previous);
+    return .{ .completed = nih_csi_stream_state(1), .dropped = nih_csi_stream_state(2), .fault = nih_csi_stream_state(3) };
+}
+pub fn cameraStopStreaming() void {
+    if (!stream_requested or stream_stopping) return;
+    stream_stopping = true;
+    const previous = CsiHardware.mask();
+    defer CsiHardware.restore(previous);
+    if (stream_borrow != 0) {
+        if (!nih_csi_stream_release(stream_generation)) preview_fault = true;
+        stream_borrow = 0;
+    }
+    nih_csi_stream_stop();
+}
+pub fn cameraStreamDrained() bool {
+    if (!stream_requested or !stream_stopping or first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete) return false;
+    const previous = CsiHardware.mask();
+    defer CsiHardware.restore(previous);
+    if (!nih_csi_stream_end()) {
+        preview_fault = true;
+        return false;
+    }
+    stream_requested = false;
+    stream_retired = true;
+    if (camera_sequence == stream_last_shown) camera_sequence += 1;
+    sample_preview_requested = false;
+    screen_preview_taken = true;
+    return true;
+}
 extern fn nih_csi_inflight_active() callconv(.c) bool;
 extern fn nih_csi_inflight_generation() callconv(.c) bool;
 extern fn nih_csi_inflight_masked() callconv(.c) bool;
@@ -115,6 +164,7 @@ pub fn cameraResetHoldActive() bool {
 }
 const FirstFrameHardware = struct {
     retained: bool = false,
+    continuous: bool = false,
     keep_configured: bool = false,
     sensor_idle_at: u64 = 0,
     retained_chunk: usize = 0,
@@ -192,7 +242,7 @@ const FirstFrameHardware = struct {
                 if (self.retained_chunk == 900) break;
                 if (!options.camera_diagnostics and cameraBudgetExpired(started)) break;
             }
-            return if (self.retained_chunk == 900) .done else .pending;
+            return if (self.retained_chunk == 900) self.prepareSecond() else .pending;
         }
         if (!self.frame_started) {
             self.frame_started = true;
@@ -205,10 +255,20 @@ const FirstFrameHardware = struct {
             if (!options.camera_diagnostics and cameraBudgetExpired(started)) break;
         }
         return switch (csi_workspace.phase()) {
-            .ready_dma => .done,
+            .ready_dma => self.prepareSecond(),
             .pinned => .failed,
             else => .pending,
         };
+    }
+    fn prepareSecond(self: *@This()) first_frame.Step {
+        if (!self.continuous) return .done;
+        const started = clock.counter();
+        for (0..128) |_| {
+            const ready = csi_workspace.prepareStreamSecond() orelse return .failed;
+            if (ready) return .done;
+            if (cameraBudgetExpired(started)) break;
+        }
+        return .pending;
     }
     pub fn prepareCsi(self: *@This()) bool {
         const status = csi_hardware.prepare();
@@ -250,6 +310,12 @@ const FirstFrameHardware = struct {
         };
         const code = nih_csi_dma_configure(address, address, 921600);
         if (code != 0) self.reason = @bitCast(code);
+        if (code == 0 and self.continuous) {
+            const second = csi_workspace.streamSecondAddress() orelse return false;
+            const previous = CsiHardware.mask();
+            defer CsiHardware.restore(previous);
+            if (!nih_csi_stream_begin(address, second)) return false;
+        }
         return code == 0;
     }
     pub fn prepareIsp(self: *@This()) bool {
@@ -281,7 +347,7 @@ const FirstFrameHardware = struct {
     }
     pub fn events(self: *@This()) first_frame.Events {
         if (self.xclk_levels == 0) self.xclk_levels = nih_camera_xclk_levels();
-        if (self.stream_attempted and self.rx.state == 2) {
+        if (self.stream_attempted and self.rx.state == 2 and !self.continuous) {
             self.phy_seen |= nih_csi_dma_observe(0);
             self.bridge_raw |= nih_csi_dma_observe(1);
             self.dma_progress = @max(self.dma_progress, nih_csi_dma_observe(2));
@@ -736,6 +802,46 @@ fn cameraPreviewRow() ?PreviewRow {
     return result;
 }
 pub fn cameraPreviewNext() ?PreviewRow {
+    if (stream_requested) {
+        if (stream_stopping or first_frame_probe.phase != .wait or preview_fault) return null;
+        if (screen_preview_taken or stream_borrow == 0) {
+            if (stream_borrow == 0) {
+                const previous = CsiHardware.mask();
+                stream_borrow = nih_csi_stream_borrow(&stream_generation);
+                CsiHardware.restore(previous);
+                if (stream_borrow == 0) return null;
+                if (camera_sequence == stream_last_shown) camera_sequence += 1;
+                preview_row = 0;
+                preview_pass = 0;
+                screen_preview_taken = false;
+            }
+        }
+        const started = clock.counter();
+        for (0..camera_preview.height * 2) |_| {
+            const pixels = csi_workspace.streamPreviewRow(stream_borrow, preview_row) orelse {
+                preview_fault = true;
+                return null;
+            };
+            if (preview_pass == 0) capture_scratch.preview[preview_row] = pixels else if (!std.mem.eql(u8, &capture_scratch.preview[preview_row], &pixels)) {
+                preview_fault = true;
+                return null;
+            }
+            preview_row += 1;
+            if (preview_row == camera_preview.height) {
+                preview_row = 0;
+                preview_pass += 1;
+                if (preview_pass == 2) {
+                    const previous = CsiHardware.mask();
+                    if (!nih_csi_stream_release(stream_generation)) preview_fault = true;
+                    CsiHardware.restore(previous);
+                    stream_borrow = 0;
+                    break;
+                }
+            }
+            if (cameraBudgetExpired(started)) break;
+        }
+        return null;
+    }
     const started = clock.counter();
     var result: ?PreviewRow = null;
     for (0..if (options.camera_diagnostics) @as(usize, 1) else camera_preview.height * 2) |_| {
@@ -761,8 +867,19 @@ pub fn cameraRetakeReason() u32 {
 }
 pub const ScreenPreview = struct { pixels: *const [camera_preview.height][camera_preview.width]u8, tone: bool };
 pub fn cameraPreviewForDisplay() ?ScreenPreview {
+    if (stream_requested and stream_stopping) return null;
+    if (stream_requested) {
+        const previous = CsiHardware.mask();
+        const fault = nih_csi_stream_state(3);
+        CsiHardware.restore(previous);
+        if (fault != 0) {
+            preview_fault = true;
+            return null;
+        }
+    }
     if (!first_frame_hardware.display_preview or preview_pass != 2 or preview_fault or screen_preview_taken) return null;
     screen_preview_taken = true;
+    if (stream_requested) stream_last_shown = camera_sequence;
     return .{ .pixels = &capture_scratch.preview, .tone = first_frame_hardware.display_tone };
 }
 
@@ -836,6 +953,34 @@ pub noinline fn poll() linksection(if (options.camera_id) ".flash.text.devices" 
         for (0..if (options.camera_diagnostics) @as(usize, 1) else 8) |_| {
             const before = first_frame_probe.phase;
             if (before == .idle or before == .done or before == .pinned or (camera_reset_hold and before == .isp_prepare)) break;
+            if (stream_requested and before == .wait) {
+                const previous = CsiHardware.mask();
+                if (stream_stopping) nih_csi_stream_stop();
+                const produced = nih_csi_stream_state(1);
+                const fault = nih_csi_stream_state(3);
+                const drained = nih_csi_stream_state(4) != 0;
+                CsiHardware.restore(previous);
+                const now = clock.counter() orelse break;
+                if (produced != stream_produced) {
+                    stream_produced = produced;
+                    stream_progress_at = now;
+                }
+                if (fault != 0 or preview_fault or now < stream_progress_at or now - stream_progress_at >= 5_000_000) {
+                    const saved = CsiHardware.mask();
+                    nih_csi_stream_abort();
+                    CsiHardware.restore(saved);
+                    first_frame_hardware.reason = fault;
+                    first_frame_probe.result = .dma_error;
+                    first_frame_probe.failed_phase = .wait;
+                    first_frame_probe.phase = .sensor_off;
+                    first_frame_hardware.domain_fault = true;
+                } else if (stream_stopping and drained) {
+                    first_frame_probe.completed = true;
+                    first_frame_hardware.rx.events |= 2;
+                    first_frame_probe.phase = .sensor_off;
+                }
+                break;
+            }
             first_frame_probe.poll(&first_frame_hardware, clock.counter());
             if (first_frame_probe.phase == before or cameraBudgetExpired(capture_started)) break;
         }
@@ -971,8 +1116,21 @@ fn startCameraSnapshot() bool {
 }
 pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!options.devices or !active) return false;
-    if (!options.camera_diagnostics and kind >= 6 and kind != 26) return false;
+    if (!options.camera_diagnostics and kind >= 6 and kind != 26 and kind != 30) return false;
     return switch (kind) {
+        30 => blk: {
+            const now = clock.counter() orelse break :blk false;
+            if (options.camera_diagnostics or stream_requested or !requestDevice(26)) break :blk false;
+            stream_requested = true;
+            stream_stopping = false;
+            stream_retired = false;
+            stream_borrow = 0;
+            stream_last_shown = camera_sequence - 1;
+            stream_produced = 0;
+            stream_progress_at = now;
+            first_frame_hardware.continuous = true;
+            break :blk true;
+        },
         27 => blk: {
             // Leave only the prepared CSI clocks on, BEFORE ISP or DMA start,
             // so a USB-reset recovery can be exercised deterministically.
@@ -988,7 +1146,7 @@ pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".fl
                 camera_sequence += 1;
                 break :blk true;
             }
-            if (!sample_preview_requested or first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete or preview_pass != 2 or preview_fault or !first_frame_hardware.display_preview) break :blk false;
+            if ((!sample_preview_requested and !stream_retired) or first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete or (preview_pass != 2 and !stream_retired) or preview_fault or !first_frame_hardware.display_preview) break :blk false;
             const h = &first_frame_hardware;
             var fault: u32 = 0;
             h.reason = 0x600;
@@ -1009,6 +1167,8 @@ pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".fl
             preview_row = 0;
             preview_fault = false;
             screen_preview_taken = false;
+            sample_preview_requested = true;
+            stream_retired = false;
             camera_sequence += 1;
             break :blk true;
         },

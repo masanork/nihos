@@ -9,7 +9,6 @@
 //! - Exposes both Target A (`xy_host_render_rgb565`) and Target B (`xy_host_render_gpui`
 //!   + `xy_host_render_rgba8` quad compositor) alongside live Scheme evaluation (`xy_host_eval`).
 
-const std = @import("std");
 pub const surface = @import("surface");
 pub const viewport_layout = @import("viewport_layout");
 pub const render_adapter = @import("render_adapter.zig");
@@ -47,7 +46,7 @@ pub const COmniQueryFn = *const fn (
 ) callconv(.c) void;
 
 const ReaderAdapter = struct {
-    desc: CSliceReaderDesc = undefined,
+    desc: CSliceReaderDesc,
 
     fn readBridge(ctx_raw: *const anyopaque, offset: u32, buf: []u8) ttf.Error![]const u8 {
         const self: *const ReaderAdapter = @ptrCast(@alignCast(ctx_raw));
@@ -85,6 +84,7 @@ var g_ws: HostWorkspaceType = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
 var g_placed_buf: [512]PlacedGlyph = undefined;
 var g_quads_buf: [512]GpuiGlyphQuad = undefined;
+// SAFETY: render_gpui assigns the complete minibuffer view before taking line().
 var g_mb_view: ime_omni.MinibufferView = undefined;
 
 var g_c_omni_ctx: ?*anyopaque = null;
@@ -102,7 +102,7 @@ fn bridgeOmniQuery(
     if (g_c_omni_fn) |cb| {
         g_active_cand_list = out;
         defer g_active_cand_list = null;
-        cb(g_c_omni_ctx, @intFromEnum(kind), prefix_char, query_key.ptr, @intCast(query_key.len));
+        cb(g_c_omni_ctx, @backingInt(kind), prefix_char, query_key.ptr, @intCast(query_key.len));
     }
 }
 
@@ -284,6 +284,8 @@ pub export fn xy_host_render_rgba8(
     stride: u32,
     theme_id: u8,
 ) callconv(.c) i32 {
+    // SAFETY: a nonnegative render_gpui result initializes the whole descriptor;
+    // the error return above any read prevents use of an incomplete frame.
     var frame: GpuiFrameDescriptor = undefined;
     const q_count = xy_host_render_gpui(theme_id, &frame, &g_quads_buf, g_quads_buf.len);
     if (q_count < 0) return q_count;
@@ -311,9 +313,9 @@ pub export fn xy_host_render_rgba8(
         const gh: i32 = quad.glyph.bitmap_height;
         if (gw <= 0 or gh <= 0) continue;
 
-        const fg_r: u16 = @as(u8, @truncate(quad.rgba8_color >> 24));
-        const fg_g: u16 = @as(u8, @truncate(quad.rgba8_color >> 16));
-        const fg_b: u16 = @as(u8, @truncate(quad.rgba8_color >> 8));
+        const fg_r: u16 = @intCast((quad.rgba8_color >> 24) & 0xff);
+        const fg_g: u16 = @intCast((quad.rgba8_color >> 16) & 0xff);
+        const fg_b: u16 = @intCast((quad.rgba8_color >> 8) & 0xff);
         const alpha_slice = quad.alpha_ptr[0..quad.alpha_len];
 
         var sy: i32 = 0;

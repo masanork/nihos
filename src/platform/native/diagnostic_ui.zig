@@ -510,7 +510,7 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
     if (routed.command) |command| {
         switch (command) {
             .camera, .camera_live => {
-                const accepted = options.camera_id and camera_live.state == .idle and nih_device_request(26);
+                const accepted = options.camera_id and camera_live.state == .idle and nih_device_request(if (command == .camera_live and !options.camera_diagnostics) 30 else 26);
                 if (accepted and command == .camera_live) _ = camera_live.start();
                 session.write(SerialSink{}, if (!accepted) "Camera unavailable or busy.\r\n" else if (command == .camera_live) "Camera preview: press a key to stop.\r\n" else "Taking a camera snapshot. Press a key to close after it appears.\r\n");
             },
