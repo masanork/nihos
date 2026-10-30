@@ -14,8 +14,8 @@
 //! unlocked NAPOT regions with no R, W, or X. U-mode matches them and is
 //! denied. M-mode ignores them because L is clear. OFF was not that denial:
 //! a U-mode load of CLIC at `0x20800000` reached the bus and the hart stopped.
-//! Entry 2 stays `NAPOT|RX|L` on the mask ROM (`0x4FC00000..0x4FC20000`);
-//! U-mode can still execute that ROM. Entry 15 is left OFF. Entry 8 is an
+//! Entry 2 denies the mask ROM (`0x4FC00000..0x4FC20000`) without locking;
+//! kernel ROM calls remain permitted in M-mode. Entry 15 is left OFF. Entry 8 is an
 //! unlocked NAPOT denial of the HP peripheral window. It matches before a
 //! leftover locked entry 15, and M-mode ignores it because L is clear.
 //!
@@ -43,7 +43,8 @@ pub const fault_exit: i32 = -70;
 /// the contained faults. Cases 6–8 load `0x50000000`, the cache block at
 /// `0x3FF10000`, and CLIC at `0x20800000`. A completed load returns 10, 11,
 /// or 12 and is rejected.
-pub const probe_cases: u32 = 9;
+/// Cases 9–11 test valid kernel SRAM, ROM read, and ROM instruction fetch.
+pub const probe_cases: u32 = 12;
 
 /// Case 0 must exit 1 after an allowed ECALL. Every other case must exit by
 /// the contained fault. Host checks do not show that the silicon raises them.
@@ -51,6 +52,23 @@ pub fn probeResultAccepted(case_id: u32, exit_code: i32) bool {
     if (case_id >= probe_cases) return false;
     if (case_id == 0) return exit_code == 1;
     return exit_code == fault_exit;
+}
+
+/// A different fault is not proof that the attempted access was denied.
+/// In particular, executing a ROM function and faulting later is not a
+/// successful instruction-fetch denial at the ROM boundary.
+pub fn probeCauseAccepted(case_id: u32, cause: u32, pc: u32) bool {
+    if (case_id >= probe_cases) return false;
+    const code = cause & 0x8000_0fff;
+    return switch (case_id) {
+        0 => cause == 0,
+        2 => code == 7,
+        3 => code == 1,
+        4 => code == 8,
+        5 => code == 2,
+        11 => code == 1 and pc == 0x4fc0_0000,
+        else => code == 5,
+    };
 }
 /// Cold writer. The graphics image's primary SRAM heap sits on the 48 KiB
 /// floor, so the CSR sequence lives in the boot Flash page. Callers with an
@@ -107,12 +125,12 @@ fn putNapot(words: *Words, index: u32, start: u32, size: u32, cfg: u32) void {
 }
 
 /// Bootloader entries 0, 1, and 2. Entries 0 and 1 match with no R, W, X, or L.
-/// Entry 2 is locked mask-ROM RX. Entry 15 stays OFF, so it is absent here.
+/// Entry 2 denies mask-ROM access without locking. Entry 15 stays OFF.
 fn portEntries() Words {
     var words = Words{};
     putNapot(&words, 0, 0x2000_0000, 0x1000_0000, napot);
     putNapot(&words, 1, 0x3ff0_0000, 0x0002_0000, napot);
-    putNapot(&words, 2, 0x4fc0_0000, 0x0002_0000, napot | lock_bit | read_bit | execute_bit);
+    putNapot(&words, 2, 0x4fc0_0000, 0x0002_0000, napot);
     return words;
 }
 
@@ -176,9 +194,46 @@ pub noinline fn protectionAccepted(
 ) linksection(text_section) bool {
     if (grant(code_lo, code_hi, data_lo, data_hi) == null) return false;
     if (floating != 0 or mstatus & mpp_mask != user_mpp) return false;
+    if (comptime @import("builtin").cpu.arch == .riscv32) {
+        if (!bootContractAccepted(.{
+            asm volatile ("csrr %[value], pmpcfg0"
+                : [value] "=r" (-> u32),
+            ),
+            asm volatile ("csrr %[value], pmpcfg1"
+                : [value] "=r" (-> u32),
+            ),
+            asm volatile ("csrr %[value], pmpcfg2"
+                : [value] "=r" (-> u32),
+            ),
+            asm volatile ("csrr %[value], pmpcfg3"
+                : [value] "=r" (-> u32),
+            ),
+        }, .{
+            asm volatile ("csrr %[value], pmpaddr0"
+                : [value] "=r" (-> u32),
+            ),
+            asm volatile ("csrr %[value], pmpaddr1"
+                : [value] "=r" (-> u32),
+            ),
+            asm volatile ("csrr %[value], pmpaddr2"
+                : [value] "=r" (-> u32),
+            ),
+        })) return false;
+    }
     // The trap accepts any aligned SP in the writable grant. That grant is
     // therefore the only range a saved frame may occupy.
     return stack_min == data_lo and stack_max == data_hi;
+}
+
+/// A stale stock loader must not silently leave ROM, MMIO, or a locked RAM
+/// grant accessible to a protected task. This checks the live loader ABI;
+/// it is not evidence that a chip enforces the CLIC denial.
+pub fn bootContractAccepted(cfg: [cfg_words]u32, first_addr: [3]u32) bool {
+    return cfg[0] == 0x0018_1818 and cfg[3] == 0 and
+        cfg[1] & 0x8080_8080 == 0 and cfg[2] & 0x8080_8080 == 0 and
+        first_addr[0] == napotAddress(0x2000_0000, 0x1000_0000) and
+        first_addr[1] == napotAddress(0x3ff0_0000, 0x0002_0000) and
+        first_addr[2] == napotAddress(0x4fc0_0000, 0x0002_0000);
 }
 
 pub const Access = enum { read, write, execute };
@@ -278,8 +333,8 @@ pub fn takeRejectedSp(hart: u32) bool {
 noinline fn writeWords(words: Words) linksection(text_section) void {
     switch (comptime @import("builtin").cpu.arch) {
         .riscv32 => {
-            // Entry 2 is locked mask-ROM RX and shares pmpcfg0 with entries 0
-            // and 1, so this writer never stores pmpcfg0. The bootloader owns
+            // The bootloader owns the deny entries 0–2. This writer leaves
+            // pmpcfg0 unchanged. The bootloader owns
             // entries 0 and 1 (unlocked NAPOT, no R/W/X) and leaves entry 15
             // OFF. Entry 8 is 16 bytes after addr4: an unlocked NAPOT denial
             // of the HP peripherals, which matches before a leftover locked
@@ -406,7 +461,7 @@ test "locked peripheral RW grants U-mode and the port entries deny those loads" 
 
     const plan = grant(0x1000, 0x1200, 0x2000, 0x2800).?;
     const port = overlayGrant(portEntries(), plan);
-    try std.testing.expectEqual(@as(u32, 0x009d1818), port.cfg[0]);
+    try std.testing.expectEqual(@as(u32, 0x00181818), port.cfg[0]);
     try std.testing.expectEqual(@as(u32, 0x09ff_ffff), port.addr[0]);
     try std.testing.expectEqual(@as(u32, 0x0ffc_3fff), port.addr[1]);
     try std.testing.expectEqual(@as(u32, 0x13f0_3fff), port.addr[2]);
@@ -418,8 +473,8 @@ test "locked peripheral RW grants U-mode and the port entries deny those loads" 
     try std.testing.expect(!permits(port, 0x3ff0_0000, .read));
     try std.testing.expect(!permits(port, 0x5000_0000, .read));
     try std.testing.expect(!permits(port, 0x500f_ffff, .write));
-    try std.testing.expect(permits(port, 0x4fc0_0000, .execute));
-    try std.testing.expect(permits(port, 0x4fc1_fffc, .read));
+    try std.testing.expect(!permits(port, 0x4fc0_0000, .execute));
+    try std.testing.expect(!permits(port, 0x4fc1_fffc, .read));
     try std.testing.expect(!permits(port, 0x4fc0_0000, .write));
     try std.testing.expect(permits(port, 0x1000, .execute));
     try std.testing.expect(!permits(port, 0x1000, .write));
@@ -429,6 +484,25 @@ test "locked peripheral RW grants U-mode and the port entries deny those loads" 
     var leftover = port;
     putNapot(&leftover, 15, peripheral_lo, peripheral_bytes, napot | lock_bit | read_bit | write_bit);
     try std.testing.expect(!permits(leftover, 0x5000_0000, .read));
+}
+
+test "protected registration rejects a stale or locked boot PMP contract" {
+    const port = portEntries();
+    const addresses = port.addr[0..3].*;
+    try std.testing.expect(bootContractAccepted(port.cfg, addresses));
+    try std.testing.expect(!bootContractAccepted(stockLockedEntries().cfg, addresses));
+    var cfg = port.cfg;
+    cfg[0] = 0x009d_1818; // Old port loader still grants locked ROM RX.
+    try std.testing.expect(!bootContractAccepted(cfg, addresses));
+    cfg = port.cfg;
+    cfg[1] = 0x80; // A debugger or old loader locked a task entry.
+    try std.testing.expect(!bootContractAccepted(cfg, addresses));
+    cfg = port.cfg;
+    cfg[3] = 0x9b00_0000;
+    try std.testing.expect(!bootContractAccepted(cfg, addresses));
+    var wrong = addresses;
+    wrong[2] = 0;
+    try std.testing.expect(!bootContractAccepted(port.cfg, wrong));
 }
 
 test "grant rejects empty, unaligned, and overlapping ranges" {
@@ -512,4 +586,8 @@ test "probe results accept only the contained fault and the allowed return" {
         try std.testing.expect(!probeResultAccepted(case_id, 1));
     }
     try std.testing.expect(!probeResultAccepted(probe_cases, fault_exit));
+    try std.testing.expect(probeCauseAccepted(11, 0x0800_0001, 0x4fc0_0000));
+    try std.testing.expect(!probeCauseAccepted(11, 0x0800_0002, 0x4fc0_0004));
+    try std.testing.expect(!probeCauseAccepted(11, 0x0800_0001, 0x4000_0000));
+    try std.testing.expect(!probeCauseAccepted(9, 0x0800_0002, 0));
 }

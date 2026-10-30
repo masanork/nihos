@@ -15,7 +15,8 @@
  * matches them and is denied. M-mode ignores them because L is clear.
  * Leaving those bytes OFF did not deny a U-mode load of CLIC at 0x20800000:
  * that load reached the bus and the hart stopped. Entry 15 is left OFF.
- * Entry 2 stays NAPOT|RX|L for the mask ROM. The app installs an unlocked
+ * Entry 2 denies the mask ROM to U-mode without a lock. M-mode may still
+ * call ROM routines. The app installs an unlocked
  * NAPOT denial on entry 8 so a leftover locked entry 15 cannot grant the
  * HP peripheral window to U-mode.
  */
@@ -100,9 +101,11 @@ void __wrap_esp_cpu_configure_region_protection(void)
     PMP_ENTRY_SET(1, pmpaddr1, PMP_NAPOT);
     _Static_assert(CPU_PERIPH_LOW < CPU_PERIPH_HIGH, "Invalid CPU peripheral region");
 
-    // 3. I/D-ROM. This stays locked and executable.
+    // 3. I/D-ROM. An RX entry also grants ROM execution to U-mode. Kernel
+    // ROM calls need no grant because an unlocked entry does not bind M-mode.
     const uint32_t pmpaddr2 = PMPADDR_NAPOT(SOC_IROM_MASK_LOW, SOC_IROM_MASK_HIGH);
-    PMP_ENTRY_SET(2, pmpaddr2, PMP_NAPOT | PMP_L | PMP_R | PMP_X);
+    PMP_ENTRY_CFG_RESET(2);
+    PMP_ENTRY_SET(2, pmpaddr2, PMP_NAPOT);
     _Static_assert(SOC_IROM_MASK_LOW < SOC_IROM_MASK_HIGH, "Invalid I/D-ROM region");
 
     if (esp_cpu_dbgr_is_attached()) {

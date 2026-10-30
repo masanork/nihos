@@ -978,11 +978,10 @@ fn printSigned(value: i32) void {
 
 fn reportPmpProbe() noreturn {
     if (comptime !options.pmp_probe) unreachable;
-    // Entry 2 is NAPOT|R|X|L (0x9D) in bits 23:16. Entries 0 and 1 are
-    // unlocked NAPOT with no R/W/X (0x18), so pmpcfg0 is 0x009D1818.
+    // Entries 0–2 are unlocked NAPOT with no R/W/X (0x18), so pmpcfg0
+    // is 0x00181818. This also removes the old U-mode mask-ROM grant.
     // The stock bootloader sets those bytes to NAPOT|R|W|L (0x9B), which
     // lets U-mode read and write the CPU subsystem and the CPU peripherals.
-    // Entry 2 remains, so U-mode can still execute the mask ROM.
     // pmpaddr0 is NAPOT(0x20000000, 0x30000000) >> 2 = 0x09FFFFFF.
     // pmpaddr1 is NAPOT(0x3FF00000, 0x3FF20000) >> 2 = 0x0FFC3FFF.
     const pmpcfg0 = asm volatile ("csrr %[value], pmpcfg0"
@@ -1003,8 +1002,12 @@ fn reportPmpProbe() noreturn {
     const pmpaddr1 = asm volatile ("csrr %[value], pmpaddr1"
         : [value] "=r" (-> u32),
     );
+    const first_case = options.pmp_case orelse 0;
+    const end_case = if (options.pmp_case) |only| only + 1 else tasks.pmp.probe_cases;
     print("NIHOS_NATIVE_PMP_PROBE begin cases=");
-    printUnsigned(tasks.pmp.probe_cases);
+    printUnsigned(end_case - first_case);
+    print(" first=");
+    printUnsigned(first_case);
     print(" hart=0 pmpcfg0=");
     hex(pmpcfg0);
     print(" pmpcfg1=");
@@ -1023,8 +1026,8 @@ fn reportPmpProbe() noreturn {
     var previous_slot: u16 = 0xffff;
     var previous_generation: u16 = 0;
     var reason: ?[]const u8 = null;
-    var case_id: u32 = 0;
-    while (case_id < tasks.pmp.probe_cases) : (case_id += 1) {
+    var case_id: u32 = first_case;
+    while (case_id < end_case) : (case_id += 1) {
         const step = tasks.runProbeCase(case_id) orelse {
             print("NIHOS_NATIVE_PMP_PROBE case=");
             printUnsigned(case_id);
@@ -1043,6 +1046,8 @@ fn reportPmpProbe() noreturn {
         printUnsigned(step.calls);
         print(" timer_interrupts=");
         printUnsigned(step.timer_interrupts);
+        print(" user_timer_interrupts=");
+        printUnsigned(step.user_timer_interrupts);
         print(" mstatus=");
         hex(step.kernel_mstatus);
         print(" live=");
@@ -1064,27 +1069,26 @@ fn reportPmpProbe() noreturn {
         print(" pmpaddr5=");
         hex(step.pmpaddr5);
         print("\n");
-        const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code);
+        const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code) and
+            tasks.pmp.probeCauseAccepted(case_id, step.fault_cause, step.fault_mepc);
         // mret writes MPP back to User. The saved bootstrap image still has
         // Machine (0x1800) and MPIE (0x80). The Tab5 sample was 0x1880.
         // ESP-EMU's trap mstatus also has UIE, so bit 0 may be set.
         const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0;
         const reaped_one = step.reaped == previous_reaped + 1;
         const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
-        const return_ok = !returned or (step.timer_interrupts > previous_timers and step.calls > 2 and step.exit_code == 1);
+        const return_ok = !returned or (step.timer_interrupts > previous_timers and step.user_timer_interrupts != 0 and step.calls > 2 and step.exit_code == 1);
         const execute_ok = case_id != 3 or step.data_word == 0x00600513;
-        // Cases 6–8 are loads. A successful load returns 10, 11, or 12.
-        const mmio_ok = case_id < 6 or step.fault_cause & 0x8000_0fff == 5;
-        if (reason == null and (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok or !mmio_ok)) reason = "pmp probe evidence";
+        if (reason == null and (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok)) reason = "pmp probe evidence";
         previous_timers = step.timer_interrupts;
         previous_reaped = step.reaped;
         previous_slot = step.slot;
         previous_generation = step.generation;
     }
     if (reason) |text| fail(text);
-    if (pmpcfg0 != 0x009d1818 or pmpaddr0 != 0x09ffffff or pmpaddr1 != 0x0ffc3fff) fail("pmpcfg0");
+    if (pmpcfg0 != 0x00181818 or pmpaddr0 != 0x09ffffff or pmpaddr1 != 0x0ffc3fff or pmpcfg3 != 0) fail("pmpcfg0");
     print("NIHOS_NATIVE_PMP_PROBE_PASS cases=");
-    printUnsigned(tasks.pmp.probe_cases);
+    printUnsigned(end_case - (options.pmp_case orelse 0));
     print(" kernel=1\n");
     while (true) asm volatile ("wfi" ::: .{ .memory = true });
 }

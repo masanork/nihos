@@ -223,6 +223,12 @@ case "$boot_fast" in
 esac
 if [ "$boot_test" != 0 ] && [ "$boot_fast" != true ]; then echo "Boot test requires normal boot" >&2; exit 1; fi
 pmp_probe=${NIHOS_NATIVE_PMP_PROBE:-0}
+pmp_case=${NIHOS_NATIVE_PMP_CASE:-all}
+case "$pmp_case" in
+    all) pmp_case_zig=null ;;
+    0|1|2|3|4|5|6|7|8|9|10|11) pmp_case_zig=$pmp_case ;;
+    *) echo "NIHOS_NATIVE_PMP_CASE must be all or 0..11" >&2; exit 1 ;;
+esac
 case "$pmp_probe" in
     0) pmp_probe=false; pmp_probe_cpp=0 ;;
     1) pmp_probe=true; pmp_probe_cpp=1 ;;
@@ -455,6 +461,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
+    printf 'pub const pmp_case: ?u32 = %s;\n' "$pmp_case_zig"
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
     printf 'pub const audio = %s;\n' "$audio"

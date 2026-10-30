@@ -86,6 +86,7 @@ const Owner = struct {
     /// the bootloader's locked NAPOT values, so they are not evidence.
     probe_pmpaddr4: u32 = 0,
     probe_pmpaddr5: u32 = 0,
+    probe_user_timers: u32 = 0,
 };
 
 pub const Report = struct {
@@ -486,6 +487,8 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    if (options.pmp_probe and state.mstatus & pmp.mpp_mask == pmp.user_mpp and
+        owner.runtime.images[current.slot].?.protection != null) owner.probe_user_timers += 1;
     if (@import("native_options").graphics and hart == 0) graphics.exchange.composer.captureTimer(frame.mepc);
     if (@import("native_options").graphics and owner.graphics_task != null and current.slot == owner.graphics_task.?.slot) graphics.capture(frame, true);
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer, frame.mepc);
@@ -711,6 +714,7 @@ pub const ProbeStep = struct {
     reaped: u32,
     calls: u32,
     timer_interrupts: u32,
+    user_timer_interrupts: u32,
     kernel_mstatus: u32,
     live_mstatus: u32,
     grant_hi: u32,
@@ -814,6 +818,7 @@ fn runProbeCaseLive(case_id: u32) ?ProbeStep {
         .reaped = owner.reaped,
         .calls = owner.calls,
         .timer_interrupts = owner.timer_interrupts,
+        .user_timer_interrupts = owner.probe_user_timers,
         .kernel_mstatus = image.state.mstatus,
         .live_mstatus = live_mstatus,
         .grant_hi = pmp.publishedGrantHi(hart),
