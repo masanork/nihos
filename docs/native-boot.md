@@ -16,6 +16,13 @@ Set `NIHOS_NATIVE_DEVICES=0` for the
 smaller connected image in `build/native-device-network/`. The [combined controller exercise](measurements/2026-10-28-default-devices.md)
 has passed; dedicated probes retain their own profiles.
 
+Normal camera preview work uses bounded batches and reuses the sensor mode
+between clean captures. After 500 ms without another capture, the owner powers
+the sensor and XCLK down. A live-preview dismissal waits for the outstanding
+capture to drain before repainting the shell. This remains repeated finite DMA
+capture with a boot-lifetime frame/channel lease, rather than continuous video.
+The [cadence update](https://github.com/masanork/nihos/pull/82) records the comparison and stop regression.
+
 An opt-in [normal-boot networking integration](adr/0045-normal-boot-network-integration.md)
 services factory Hosted Wi-Fi alongside the live display. The initial
 [120-second physical evidence](measurements/2026-10-27-normal-boot-network.md)
