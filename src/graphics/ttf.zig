@@ -977,7 +977,7 @@ pub fn TwoTierCache(
             resolved_key: u64 = 0, // caches (style_id, base_cp, ivs_cp) -> OutlineKey mapping
             advance_em: u16 = 0,
             point_count: u16 = 0,
-            points: [max_pts_per_outline]CurvePoint = undefined,
+            points: [max_pts_per_outline]CurvePoint = @splat(.{ .x = 0, .y = 0, .on_curve = false }),
         };
 
         pub const BitmapSlot = struct {
@@ -985,7 +985,7 @@ pub fn TwoTierCache(
             stamp: u32 = 0,
             key: BitmapKey = .{ .base_cp = 0, .px_size = 0 },
             metrics: RasterMetrics = .{ .width = 0, .height = 0, .left_px = 0, .top_px = 0, .x_advance_26_6 = 0, .y_advance_26_6 = 0 },
-            pixels: [max_bytes_per_bitmap]u8 = undefined,
+            pixels: [max_bytes_per_bitmap]u8 = @splat(0),
         };
 
         pub const CachedGlyph = struct {
