@@ -2,13 +2,20 @@
 
 2026年10月25日。エディタの実装前に、拡張言語と文字処理の責任を整理する。
 
+**2026-10-31の採用方針**: 通常起動から `xy` を使い、そのエディタ操作、mode、
+keymap、hookとシステム操作の公開はSchemeへ統一する。
+[起動面と実装順](xy-architecture.md)を現行方針とする。
+以下のScheme/Lua比較は選定の背景と、言語に依存しないUnicode編集APIの検討資料として
+残す。Scheme採用を再び保留するための前提条件にはしない。学習用の制作言語の比較と、
+Scheme処理系の選定・互換性・実機統合の検証は引き続き別の課題である。
+
 Luaもエディタ拡張の有力候補になる。Emacs的な操作、コマンド、keymap、minibuffer、hook、選択範囲の評価を提供するために、拡張言語をLisp系へ限定する必要はない。[NeovimのLua API](https://neovim.io/doc/user/lua/)は、editor coreと拡張言語を接続する実例になる。
 
 Schemeは、手元で関数やmacroを定義し、エディタを育てる体験に向く。利用者にはMeOS向けSchemeとBASICを作った経験もある。一方、制作側にLuaを選ぶなら、エディタ拡張にもLuaを使うことで、言語、binding、処理系のコードを共通化しやすい。作品の実行stateとエディタの拡張stateは分離する。
 
-現段階では、Unicodeを理由にSchemeへ固定しない。先に言語に依存しない編集APIを定め、同じ小さな拡張をSchemeとLuaで書いて比較する。子どもの作品向け言語の選択は[別の比較](learning-languages.md)として扱う。
+初期検討ではUnicode対応だけを理由に拡張言語を固定せず、共通の編集APIとScheme/Luaの比較を先行させる案だった。現在はScheme採用を確定し、言語に依存しない編集APIをその接続先とする。子どもの作品向け言語の選択は[別の比較](learning-languages.md)として扱う。
 
-標準の学習言語をPythonに寄せる利点と、エディタの常駐拡張言語の適性は別に評価する。nihosでは、学習用MicroPythonと、エディタ拡張用Schemeを分ける構成を第一案に戻し、後者の対抗案としてLuaを比較する。Pythonで作品を書くためにSchemeの学習は必要としない。
+標準の学習言語をPythonに寄せる利点と、エディタの常駐拡張言語の適性は別に評価する。nihosでは、学習用MicroPythonの検討と、エディタ拡張用Schemeの採用を分ける。Pythonで作品を書くためにSchemeの学習は必要としない。
 
 ## Pythonによる拡張との違い
 
@@ -98,7 +105,7 @@ Lua向けのcolon呼出しと、Scheme向けのprocedure呼出しは表記の違
 
 二つのlibraryを無条件に全機能でリンクするより、必要な境界処理と正規化の責任を決めたい。Unicode dataはlibraryの採用版に合わせ、同じ版のconformance testを使う。
 
-## 小さな比較で決める
+## 比較検討の観点（選定時の記録）
 
 最初の比較には、日付の挿入、選択範囲の変換、辞書lookup、キー割当、保存時hookを使う。結合濁点、補助面漢字、異体字セレクタ、絵文字ZWJ列を含め、カーソル、削除、undo、IME確定、検索・置換の動作が両bindingで一致することを確認する。
 
