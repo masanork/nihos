@@ -124,6 +124,21 @@ int main(void) {
     HP_SYS_CLKRST.soc_clk_ctrl1.reg_csi_brg_sys_clk_en = 0;
     MIPI_CSI_BRIDGE.csi_en.csi_brg_en = 1; /* inaccessible clock-gated value */
     assert(nih_csi_stream_end());
+    HP_SYS_CLKRST.soc_clk_ctrl1.reg_csi_brg_sys_clk_en = 1;
+    MIPI_CSI_BRIDGE.csi_en.csi_brg_en = 0;
+    assert(!nih_csi_stream_begin(0x48200000u, 0x48200000u));
+    assert(!nih_csi_stream_begin(0x48200001u, 0x48400000u));
+    assert(!nih_csi_stream_begin(0x48000000u, 0x48400000u));
+    assert(!nih_csi_stream_begin(0x48200000u, 0x4c000000u));
+    assert(nih_csi_stream_begin(0x48200000u, 0x48400000u));
+    rx = (csi_rx){0};
+    assert(nih_csi_dma_arm(&rx) && nih_csi_dma_bridge_on(&rx));
+    DW_GDMA.ch[1].int_st0.val = CSI_DMA_DONE;
+    nih_csi_stream_irq(0x400u); /* shared controller fault beats completed data */
+    assert(nih_csi_stream_state(3) & 0x400u);
+    assert(nih_csi_stream_state(4) && !enabled && !MIPI_CSI_BRIDGE.csi_en.csi_brg_en);
+    assert(nih_csi_stream_borrow(&next_generation) == 0);
+    assert(!nih_csi_stream_begin(0x48200000u, 0x48400000u));
     assert(DW_GDMA.ch[0].int_sig_ena0.val == 0x12345678);
     puts("CSI DMA one-frame control replay passed");
 }
