@@ -74,6 +74,20 @@ const snippets = {
   'native-entry': {
     file: 'src/platform/native/start.S',
     start: 'nih_native_start:\n',
+    end: '#if NIH_NATIVE_DISPLAY_SCANOUT',
+    includeEnd: false,
+    language: 'text'
+  },
+  'native-stack': {
+    file: 'src/platform/native/start.S',
+    start: '.Lstacks_ready:\n',
+    end: '    la t0, __bss_start',
+    includeEnd: false,
+    language: 'text'
+  },
+  'native-main-call': {
+    file: 'src/platform/native/start.S',
+    start: '    call .Lsetup_vector\n    call nih_native_main',
     end: '    .global nih_native_cpu1_start',
     includeEnd: false,
     language: 'text'
@@ -81,13 +95,33 @@ const snippets = {
   'native-bss': {
     file: 'src/platform/native/esp32p4.ld',
     start: '    .bss (NOLOAD) : ALIGN(16) {',
+    end: '        *(.bss .bss.* .sbss .sbss.*) *(COMMON)',
+    includeEnd: true,
+    language: 'text'
+  },
+  'native-bss-end': {
+    file: 'src/platform/native/esp32p4.ld',
+    start: '        . = ALIGN(16);\n        __bss_end = .;',
     end: '    .stacks (NOLOAD)',
+    includeEnd: false,
+    language: 'text'
+  },
+  'native-bss-zero': {
+    file: 'src/platform/native/start.S',
+    start: '    la t0, __bss_start\n',
+    end: '#if NIH_NATIVE_GRAPHICS\n    la t0, __graphics_bss_start',
     includeEnd: false,
     language: 'text'
   },
   'native-boot-state': {
     file: 'src/platform/native/main.zig',
     start: 'var progress = ',
+    end: 'var boot_ipi = ',
+    includeEnd: false
+  },
+  'native-initialized-state': {
+    file: 'src/platform/native/main.zig',
+    start: 'var initialized: u32 = ',
     end: 'fn reg(',
     includeEnd: false
   },
