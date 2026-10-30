@@ -61,6 +61,14 @@ status = "build-tool"
 use = "Pinned semantic static analyzer for Zig sources; downloaded binary checksum is verified"
 
 [[source]]
+name = "kcov"
+url = "https://github.com/SimonKagstrom/kcov"
+revision = "a39874f938ce13f7a65f253120d1ec946b349ffe (v43)"
+license = "GPL-2.0 with source-file-specific notices"
+status = "test-tool"
+use = "Host Zig DWARF line coverage only; checksum-verified tool source is built in ignored .tools and is not linked into firmware"
+
+[[source]]
 name = "ESP-EMU"
 url = "https://github.com/espressif/esp-emulator"
 revision = "v0.50.0"

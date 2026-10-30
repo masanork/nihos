@@ -1,0 +1,218 @@
+{
+  "versions": {
+    "@mermaid-js/mermaid-cli": "12.0.0",
+    "mermaid": "12.2.0"
+  },
+  "configSha256": "8d873bd1f3699c4486bfb2a2731baf3e7154414b5a6ada1f2d789312cc36d31a",
+  "browser": "Chrome/156.0.8078.74",
+  "figures": {
+    "boot-paths": {
+      "sourceSha256": "e93d7a3a31970d4bb7b2b846c316cff173ff04eb79d60df473eaf18a1ce11c15",
+      "svgSha256": "a1227f5ea2371400e4c477f37e611433121aa0f1c80170b8a3728aecde6d3719",
+      "file": "figures/boot-paths.mmd",
+      "title": "二つの起動経路",
+      "description": "ROMと第2段ローダの後、ESP-IDFとFreeRTOSを使う経路と、nihosが実行を管理する経路に分かれる。",
+      "viewBox": "4 4 581.28125 411.8999938964844"
+    },
+    "boot-sequence": {
+      "sourceSha256": "db6e98dc8cdca94fa71e8dac3aed0e1cb4cd83a984a3a4000359fa37b39849b1",
+      "svgSha256": "6706e858e9129acf0a3f2a6bd1e4baa3d72afc1ba15f9bfb09ea59a97c8f80d4",
+      "file": "figures/boot-sequence.mmd",
+      "title": "ROMからnihosの実行基盤へ",
+      "description": "ROMとESP-IDFの第2段ローダを経て、nihosがstackとgp、BSS、例外入口を準備し、Zigで書かれたカーネル本体を呼ぶ。CPU0が共有状態を準備してからCPU1を起こす。",
+      "viewBox": "4 4 329.90625 645.4420166015625"
+    },
+    "buddy-tree": {
+      "sourceSha256": "cb5d54913f270c63b87e862b2162acb6914a70766d03c0523beb063da6392008",
+      "svgSha256": "76bc03b25685302dada0c4b92ff2f7b8fa711476756865716c3874b096de163c",
+      "file": "figures/buddy-tree.mmd",
+      "title": "同じ親を持つ空きblockを結合する",
+      "description": "256 byteを二つの128 byteへ、左の128 byteを二つの64 byteへ分割した例。右の128 byteと左下の64 byteは空きでも異なる親なので直接は結合できない。",
+      "viewBox": "4 4 345.2890625 287.70001220703125"
+    },
+    "card-operation": {
+      "sourceSha256": "5e85e0d10c2e8459ff2b7eb9af62eae6b0defe48bcc87ac1e281f05499352e23",
+      "svgSha256": "2c26fd877b53e35ef235d4f5158948f1e9af2dc9e91865a102a14d0f05ca7c0f",
+      "file": "figures/card-operation.mmd",
+      "title": "カード操作と結果の公開",
+      "description": "カード選択と事前確認から入力、要求、読取り、秘密の消去、表示、画素の消去へ進む。",
+      "viewBox": "4 4 330 663.9000244140625"
+    },
+    "context-switch": {
+      "sourceSha256": "474525bf16d10e1e4007c89714fa782396a56935e8de37157c5588a9393302ae",
+      "svgSha256": "7755a0377f864fc34f24f39707fa7659c1dc45af8865d781ba1ca41e3cbae95b",
+      "file": "figures/context-switch.mmd",
+      "title": "保存した復帰先を、別のタスクへ切り替える",
+      "description": "タスクAへのタイマー割込みでframeを保存し、kernelがタスクBのframeを選ぶ。mretはBを再開し、Aは次に選ばれるまで保存状態を保持する。",
+      "viewBox": "-50 -10 598 467"
+    },
+    "cow-commit-order": {
+      "sourceSha256": "9e8ba10308d451af3409f5d5719f33e34440a0a54d8fae2ec029f54c9f8ba0e8",
+      "svgSha256": "dbbbbf499e28231425fd7c57102a76570316031f076992b523503679c581fd37",
+      "file": "figures/cow-commit-order.mmd",
+      "title": "保存と成功通知の順序",
+      "description": "旧rootと旧payloadを保持したまま、新payloadと新rootを順に書き同期し、成功を知らせる。",
+      "viewBox": "4 4.000001907348633 536.953125 377.0270080566406"
+    },
+    "cow-publication": {
+      "sourceSha256": "d121118dfce6f8751aab037bf261d99484f92768f1239d5c06191b5adfb0a742",
+      "svgSha256": "2703e5fc5beed2ca5cc3a2387268abb94a7efd4e89295576d3e6824fe8bdb261",
+      "file": "figures/cow-publication.mmd",
+      "title": "データを先に残し、rootを公開してから成功を返す",
+      "description": "新payloadとmetadataを書きsyncした後、別のroot slotへ新世代を書きsyncし、成功を通知する。root公開前は旧世代が基準であり、成功通知後の再起動では新世代を要求する。",
+      "viewBox": "4 4 321.046875 495.5"
+    },
+    "cpu-ipi-delivery": {
+      "sourceSha256": "c7c4c53158ea219c42a46b37974733d7bc8bff9a39795c69819c52a28cb33f5d",
+      "svgSha256": "577d4c8ee7bbbba6501b5ad260e0937be2a31ef55a37327395151c1966c5a1ce",
+      "file": "figures/cpu-ipi-delivery.mmd",
+      "title": "CPU間の公開と通知",
+      "description": "送信CPUが受信箱へ値を公開してIPIを立て、受信CPUが割込みで受信箱を読み待機タスクへ通知する。",
+      "viewBox": "-50 -10 431 497"
+    },
+    "display-pipeline": {
+      "sourceSha256": "447feb4f76464b0c5042188723128e6a6139df288488dbe89fedda69430d0d6b",
+      "svgSha256": "747b4ae0d945ab2bf77fd4f0c45f3992e0c5ae814396648322ead11f57d40242",
+      "file": "figures/display-pipeline.mmd",
+      "title": "画素が表示されるまで",
+      "description": "CPUが描いた画素は表示用メモリからDMA、bridge FIFO、host FIFOを経由してパネルへ進む。DMA完了後も後段に画素が残りうる。",
+      "viewBox": "4 4 416.25 475.97100830078125"
+    },
+    "ecall-return": {
+      "sourceSha256": "8162df097532e3a2216a5db4b98211a9412d2095cb5dbe925ef4d047830e0c64",
+      "svgSha256": "5bc41f828df8ee28c41f982054fde6bce52f171f734aa429bf40f580126cdd40",
+      "file": "figures/ecall-return.mmd",
+      "title": "ecallから例外復帰まで",
+      "description": "呼び出しから例外入口とdispatchを経て保存状態を復元し、ecallの次の命令へ戻る。",
+      "viewBox": "4 3.999998092651367 314.640625 730.260009765625"
+    },
+    "event-before-wait": {
+      "sourceSha256": "0a3797aa81e4219fe767c0ac80c24195c1718249b70b2229a5614547a2801947",
+      "svgSha256": "d8dfb266c3d27546ea8b3c2b8b7d33ecfa35eff92939bead4992e7095a4f0271",
+      "file": "figures/event-before-wait.mmd",
+      "title": "通知がwaitより先でも、eventを残す",
+      "description": "受信taskがqueueを空と判断した後に通知が先着しても、所有CPUのkernelがpending eventを保持する。waitEventsは確認と待機登録を直列化し、既着eventを消費して眠らず戻る。",
+      "viewBox": "-50 -10 620 505"
+    },
+    "font-text-pipeline": {
+      "sourceSha256": "39ae07898eef2f42725f93b4b299872ef910c7a32cd4920bd94e2668b572ef00",
+      "svgSha256": "f53b32273a3f57447fea6cbc6490cbf676e3f6b794458a3b160aefb5d652cab9",
+      "file": "figures/font-text-pipeline.mmd",
+      "title": "文字列から画素へ",
+      "description": "文字列と方向、フォント設定からHarfBuzzで字形と位置を決め、FreeTypeでマスクを作り、色と合成する。",
+      "viewBox": "4 4 328.875 503.0270080566406"
+    },
+    "io-owner-lifetime": {
+      "sourceSha256": "f5c82724751cbc45ced3f8aeff7fdf827d8f05dbfb10732e9a1bad0b6a2b0472",
+      "svgSha256": "fea683aa16c2d295be7ebc8b4321fdcd9cf2ba68af3571b3874df784d7a39b3c",
+      "file": "figures/io-owner-lifetime.mmd",
+      "title": "要求元の終了と領域回収",
+      "description": "要求元が終了した後も、サービスがI/Oとコピーに使う間はpinを保ち、unpin後に回収できる。",
+      "viewBox": "-50 -10 599 581"
+    },
+    "io-release": {
+      "sourceSha256": "8a4c39858074a66ce71976d91b3fa69410104c8afbb7b886642d6f9c7817f4c2",
+      "svgSha256": "923936d9b143340a1b308f2cc5a40bb97c4da114f3048c627ce02b3c69c8d7f4",
+      "file": "figures/io-release.mmd",
+      "title": "所有者が終了しても、pinがあれば回収を待つ",
+      "description": "owner終了後もI/Oや他の借り手のpinが残っていれば回収待ちになる。転送停止などを確認し最後のpinが外れた後に回収できる。取消要求だけでは停止を確認できない。",
+      "viewBox": "4 4 353.484375 501.4280090332031"
+    },
+    "io-request-flow": {
+      "sourceSha256": "b0cfe60e02a8eef6cbb01957efa6777e98c900cd0d9c16053f0f036fa1604751",
+      "svgSha256": "3f204d8752feb3e8e69f75750b6f8b72118b5b6d4982457fd2a4f4401883b142",
+      "file": "figures/io-request-flow.mmd",
+      "title": "読取り要求とバッファ返却",
+      "description": "要求の受付、バッファの借用、読取り、完了または停止の確認、返却の順序を示す。",
+      "viewBox": "4 4 254 391"
+    },
+    "os-responsibilities": {
+      "sourceSha256": "24a87292d541faea3c33965822dfc38f2f366c43e4e9ac29e6ecc9f1b042d791",
+      "svgSha256": "eb75d8a13f666c32a4e24e70f98a5ed7646da1d691a38355b8e0c9fd0b556186",
+      "file": "figures/os-responsibilities.mmd",
+      "title": "仕事の分担と、現在の保護範囲",
+      "description": "nihosのタスクとサービスは同じM-mode空間にある。要求を渡す構造はあるが、その分担だけで任意の書込みを隔離できるわけではない。",
+      "viewBox": "4 4 583.9609375 475"
+    },
+    "p4-c6-network-path": {
+      "sourceSha256": "74710cfa8994ce493690c15fa01480eedf33a9985f1835bc95722930425f1273",
+      "svgSha256": "a9641da99ce242a97ba01fb9b9ef546e3be0cf93cb33166421e71abde2b49005",
+      "file": "figures/p4-c6-network-path.mmd",
+      "title": "P4とC6の通信分担",
+      "description": "P4の通信サービスは接続状態、Wi-Fi、BLEを扱い、SDIOを介してC6の既存ファームウェアと無線回路につながる。",
+      "viewBox": "4 4 373.953125 267.70001220703125"
+    },
+    "page-map-sharing": {
+      "sourceSha256": "4892aa3d984cc964ad0044c05f137def7a3ad8bfe3f1b2002dbbf21f2e19b87c",
+      "svgSha256": "526a70574c6746641f6923e9a05eb1f2f2175a1447077c19195f2bbf8bbae257",
+      "file": "figures/page-map-sharing.mmd",
+      "title": "更新したページとmapの経路だけを新しくする",
+      "description": "旧rootと旧leafはA、B、Cを参照し、新rootと新leafはA、新しいB、Cを参照する。AとCは共有し、旧rootやreaderが参照するBを先に回収しない。",
+      "viewBox": "4 4 613.3125 265.8999938964844"
+    },
+    "priority-cursors": {
+      "sourceSha256": "4ed4dd4ff0dc24693dd67a3b8e7843cd782e13ae1284d8f94a2c84726f3ca778",
+      "svgSha256": "85483c47658a4d9ae4b4d50c6c0c446de115fff2a0d42a70f3400f2ccaeae377",
+      "file": "figures/priority-cursors.mmd",
+      "title": "優先度ごとに、前回の選択位置を覚える",
+      "description": "高優先度Hを選んでも、低優先度AとBを巡回するcursorは変更しない。Hがblockして低優先度を選べる機会が来たら、Aの次にBを選べる。",
+      "viewBox": "4 4 464.3125 329.79998779296875"
+    },
+    "spsc-ownership": {
+      "sourceSha256": "33e1b50a681d44b6cd8b040b05b4b7fcb146035d2988859100a63e097648f886",
+      "svgSha256": "c7650415268b2c9ed18f272d784ae623a015be2f15b7259f93bde9a4f75468ad",
+      "file": "figures/spsc-ownership.mmd",
+      "title": "一つのslotを、公開してから渡す",
+      "description": "送信側が空きslotへ書きreleaseで公開し、受信側はacquireで観測して読む。読取り終了をreleaseで返し、送信側がacquireで確認した後に再利用する。",
+      "viewBox": "4 4 396.7890625 582.4760131835938"
+    },
+    "sqlite-sync": {
+      "sourceSha256": "f92cc8b8235f4a136e3728755592e2a496ca1bef84f1fb5a08af63c946d2ff80",
+      "svgSha256": "a7bfe4c8b67ce94e31c762f3965e77d45c528d15abda213af7a61638ce817da1",
+      "file": "figures/sqlite-sync.mmd",
+      "title": "SQLiteへsync成功を返すまで",
+      "description": "xWriteはserviceのstaged viewを更新する。xSyncでpayloadとmapをsyncしrootをsyncした後にcommittedを返信し、SQLiteへ同期成功を返す。下位の公開とSQL transactionは同じ単位ではない。",
+      "viewBox": "-50 -10 619 465"
+    },
+    "task-reap": {
+      "sourceSha256": "0747c3e9ed6b4c6522d6ad925e9da737bccf93410a2d57e9cbc7ba7eed0b7bd6",
+      "svgSha256": "9e497ed9cf58f987d2ce2b08609a891e333a6e27f865e3a826a7ce47674561b6",
+      "file": "figures/task-reap.mmd",
+      "title": "終了記録を残してから、別のstackで回収する",
+      "description": "実行中タスクのexitはexitedの記録を残す。他の参照がないことを確認し、kernelまたは割込みstackでreapするとvacantになる。再利用時にはgenerationが更新される。",
+      "viewBox": "4 4 285.484375 686.3760375976562"
+    },
+    "task-records": {
+      "sourceSha256": "8d2930762b6b45b676c61573e57ab4a5966df580907cebf04271fd03af31e30f",
+      "svgSha256": "e3e615c28a117575d6aa2216a588f629765a190e545a99116637fca498068bbe",
+      "file": "figures/task-records.mmd",
+      "title": "タスクの管理表と保存イメージ",
+      "description": "slotとgenerationでタスクを識別し、Schedulerのtasks配列とRuntimeのimages配列を同じslotで対応づける。保存frameはそのタスクのstack範囲にある。",
+      "viewBox": "4 4 307.78125 561.3710327148438"
+    },
+    "task-states": {
+      "sourceSha256": "19ffb66d989b8b4a02dd55b68c510c356d030d5e726ede872b78f6b0469f8f44",
+      "svgSha256": "d0a7de2209bb37c67e48051125dc5aee5ff3213548387d51bf5c18a4f9e0f33b",
+      "file": "figures/task-states.mmd",
+      "title": "実行候補から待機し、候補へ戻る",
+      "description": "readyから選択するとrunningになる。runningはyieldでready、sleepでsleeping、blockでblocked、event待ちでwaitingとなり、各待機条件が満たされるとreadyへ戻る。終了と回収は別図で扱う。",
+      "viewBox": "4 4 568.96875 376.83599853515625"
+    },
+    "text-display-path": {
+      "sourceSha256": "9d9d8ec2e055abcfa4c0aa40a00609d731373a5e2f66968900befdf623a8da48",
+      "svgSha256": "aff8cbc912e6c95d6b6042a3758435000866ee382a2e0004d314636cd926de12",
+      "file": "figures/text-display-path.mmd",
+      "title": "文字から表示まで",
+      "description": "ログの状態から文字セル、字形と色、フレームバッファを経てDMAと表示回路へ渡る。",
+      "viewBox": "4 4 365.53125 411.8999938964844"
+    },
+    "vfs-layers": {
+      "sourceSha256": "fd060f11a586a77ef56d392b7ac3a56838716077281ae2e8d40981ced979d6af",
+      "svgSha256": "2e62da224b0cc052ad732ce5b50da921a99ff701e1607dbbc0d4218a23eb2663",
+      "file": "figures/vfs-layers.mmd",
+      "title": "名前とhandleから、媒体上のbyteへ",
+      "description": "VFSはroot、mount、権限とhandleを扱い、backendがfile identityとoffsetからデータ位置を求める。FATのchainと独自storeのpage mapは別の方式で、すべてが一つに統合済みという図ではない。",
+      "viewBox": "4 4 446.640625 564.3939819335938"
+    }
+  }
+}

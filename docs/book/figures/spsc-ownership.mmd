@@ -1,0 +1,7 @@
+flowchart TB
+    accTitle: 一つのslotを、公開してから渡す
+    accDescr: 送信側が空きslotへ書きreleaseで公開し、受信側はacquireで観測して読む。読取り終了をreleaseで返し、送信側がacquireで確認した後に再利用する。
+    W["送信側\n空きslotへ値を書く"] -->|"write counterをrelease"| P["読めるslotとして公開"]
+    P -->|"受信側がacquire"| R["受信側\n値をコピーして読み終える"]
+    R -->|"read counterをrelease"| F["空きslotとして返す"]
+    F -->|"送信側がacquire"| W

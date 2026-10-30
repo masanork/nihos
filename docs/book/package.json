@@ -1,0 +1,37 @@
+{
+  "name": "nihos-book",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "figures": "node scripts/render-figures.mjs",
+    "test": "node --test scripts/*.test.mjs",
+    "check": "node scripts/prepare.mjs",
+    "build": "npm run check && vivliostyle build -c vivliostyle.config.cjs",
+    "postbuild": "node scripts/save-source.mjs pdf",
+    "build:web": "npm run check && vivliostyle build -c vivliostyle.config.cjs -o output/web --format webpub",
+    "postbuild:web": "node scripts/save-source.mjs web",
+    "preview": "npm run check && vivliostyle preview -c vivliostyle.config.cjs"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "12.0.0",
+    "@vivliostyle/cli": "11.4.0",
+    "@vivliostyle/theme-techbook": "3.0.0",
+    "puppeteer": "25.16.0",
+    "remark-parse": "8.0.3",
+    "unified": "9.2.2"
+  },
+  "overrides": {
+    "katex": "0.18.2",
+    "dompurify": "3.4.17",
+    "prismjs": "1.30.0",
+    "trim": "0.0.3",
+    "uuid": "11.1.1",
+    "valibot": "1.4.2",
+    "vite": "8.1.6",
+    "zod": "4.6.6"
+  }
+}

@@ -1,0 +1,6 @@
+flowchart TB
+    accTitle: タスクの管理表と保存イメージ
+    accDescr: slotとgenerationでタスクを識別し、Schedulerのtasks配列とRuntimeのimages配列を同じslotで対応づける。保存frameはそのタスクのstack範囲にある。
+    H["TaskHandle\nslot / generation"] -->|"世代を照合"| T["tasks の該当slot\nstate・priority・wake_tick\nevent・実行時間"]
+    T ---|"同じslot"| I["images の該当slot\nframe・stack範囲\n復帰状態・FPU参照"]
+    I --> F["タスクのstack\n保存された整数frame"]

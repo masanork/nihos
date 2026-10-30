@@ -1,0 +1,352 @@
+{
+  "evidence": "host-only sizing; not ESP32-P4 latency or heap qualification",
+  "sqlite_version": "3.54.0",
+  "page_size": 4096,
+  "query_cache_kib": 1024,
+  "mmap_size": 0,
+  "build_mode": "host journal_mode=OFF,synchronous=OFF; never for user writes",
+  "dictionary_projection": "all entries, headwords, readings, English gloss only; not a lossless dictionary pack",
+  "sources": {
+    "JMdict_e.gz": {
+      "url": "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz",
+      "bytes": 10588094,
+      "sha256": "315589a36c90c1070f1fa52f746a2c757beca0cc1ff53a66c2d410de98047ffd"
+    },
+    "kanjidic2.xml.gz": {
+      "url": "https://www.edrdg.org/pub/Nihongo/kanjidic2.xml.gz",
+      "bytes": 1488582,
+      "sha256": "3f7c7f38e5098d3a72b75f999b2d88e9c1c76cbb7e2a8f9331e1fe37a3e02496"
+    },
+    "aozora-catalog.zip": {
+      "url": "https://www.aozora.gr.jp/index_pages/list_person_all_extended_utf8.zip",
+      "bytes": 2092746,
+      "sha256": "a615fa6ddb6ef3e0ad598337f5d08f1570c3d2aa51cc5d43a62998ca904905be"
+    }
+  },
+  "corpora": {
+    "jmdict": {
+      "records": 218957,
+      "forms": 499496,
+      "projected_utf8_bytes": 16072113,
+      "variants": [
+        {
+          "variant": "base",
+          "database_bytes": 50847744,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.003083000000000946
+              }
+            }
+          }
+        },
+        {
+          "variant": "unicode61-full",
+          "database_bytes": 68620288,
+          "host_build_seconds": 2.077299334,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.0029579999999973516
+              },
+              "match": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.007915999999996703
+              },
+              "ranked": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.020458000000000975
+              }
+            }
+          }
+        },
+        {
+          "variant": "trigram-full",
+          "database_bytes": 106926080,
+          "host_build_seconds": 4.798770958,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.002833000000000696
+              },
+              "match": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.010207999999997663
+              },
+              "ranked": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.06420899999999563
+              }
+            }
+          }
+        },
+        {
+          "variant": "trigram-none",
+          "database_bytes": 68866048,
+          "host_build_seconds": 3.563662625000001,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.0029580000000042905
+              },
+              "match": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.010874999999993529
+              },
+              "substring": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.0254169999999998
+              }
+            }
+          }
+        }
+      ]
+    },
+    "kanjidic": {
+      "records": 13108,
+      "forms": 50156,
+      "projected_utf8_bytes": 638169,
+      "variants": [
+        {
+          "variant": "base",
+          "database_bytes": 2973696,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.002874999999999406
+              }
+            }
+          }
+        },
+        {
+          "variant": "unicode61-full",
+          "database_bytes": 3784704,
+          "host_build_seconds": 0.08825549999999893,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.0029589999999968253
+              },
+              "match": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.012249999999991434
+              },
+              "ranked": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.12016600000000488
+              }
+            }
+          }
+        },
+        {
+          "variant": "trigram-full",
+          "database_bytes": 5095424,
+          "host_build_seconds": 0.13272729199999844,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.002874999999999406
+              },
+              "match": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.009666999999990988
+              },
+              "ranked": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.1698749999999999
+              }
+            }
+          }
+        },
+        {
+          "variant": "trigram-none",
+          "database_bytes": 3518464,
+          "host_build_seconds": 0.10096345899999903,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 1,
+                "warm_median_ms": 0.0029170000000050544
+              },
+              "match": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.010875000000007407
+              },
+              "substring": {
+                "returned_rows": 20,
+                "warm_median_ms": 0.025584000000009044
+              }
+            }
+          }
+        }
+      ]
+    },
+    "aozora-three": {
+      "records": 597,
+      "forms": 0,
+      "projected_utf8_bytes": 1807985,
+      "catalog_rows": 19502,
+      "catalog_unique_works": 17840,
+      "selected_books": [
+        {
+          "work_id": "000789",
+          "title": "吾輩は猫である",
+          "url": "https://www.aozora.gr.jp/cards/000148/files/789_ruby_5639.zip",
+          "utf8_bytes": 1120767,
+          "bytes": 344964,
+          "sha256": "6545750b89ee2c57f215a65079eeab56ee7c997373b7b86e5b00ae74fe69208f"
+        },
+        {
+          "work_id": "000773",
+          "title": "こころ",
+          "url": "https://www.aozora.gr.jp/cards/000148/files/773_ruby_5968.zip",
+          "utf8_bytes": 559512,
+          "bytes": 153688,
+          "sha256": "c55d7bf6c7cc5bd960ce291949f38cae9ba6a672a6142c3b9e1a9f5a159fa4c4"
+        },
+        {
+          "work_id": "000456",
+          "title": "銀河鉄道の夜",
+          "url": "https://www.aozora.gr.jp/cards/000081/files/456_ruby_145.zip",
+          "utf8_bytes": 127706,
+          "bytes": 34564,
+          "sha256": "8bc90c0c7f97e069d02c4783ce905fa7b959cf60a74df816aeccf94079555076"
+        }
+      ],
+      "variants": [
+        {
+          "variant": "base",
+          "database_bytes": 2457600,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 0,
+                "warm_median_ms": 0.002209000000003014
+              }
+            }
+          }
+        },
+        {
+          "variant": "unicode61-full",
+          "database_bytes": 4083712,
+          "host_build_seconds": 0.14916291600000164,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 0,
+                "warm_median_ms": 0.0022080000000035405
+              },
+              "match": {
+                "returned_rows": 0,
+                "warm_median_ms": 0.007082999999991069
+              },
+              "ranked": {
+                "returned_rows": 0,
+                "warm_median_ms": 0.01654099999999492
+              }
+            }
+          }
+        },
+        {
+          "variant": "trigram-full",
+          "database_bytes": 7061504,
+          "host_build_seconds": 0.3670452500000003,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 0,
+                "warm_median_ms": 0.0021670000000043044
+              },
+              "match": {
+                "returned_rows": 4,
+                "warm_median_ms": 0.006499999999999562
+              },
+              "ranked": {
+                "returned_rows": 4,
+                "warm_median_ms": 0.023584000000000105
+              }
+            }
+          }
+        },
+        {
+          "variant": "trigram-none",
+          "database_bytes": 4284416,
+          "host_build_seconds": 0.2976926660000032,
+          "read_probe": {
+            "sqlite_heap_limit_bytes": 4194304,
+            "queries": {
+              "exact": {
+                "returned_rows": 0,
+                "warm_median_ms": 0.00229200000000096
+              },
+              "match": {
+                "returned_rows": 4,
+                "warm_median_ms": 0.007709000000001576
+              },
+              "substring": {
+                "returned_rows": 4,
+                "warm_median_ms": 0.017499999999996685
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "host": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "machine": "arm64"
+  },
+  "recorded_at_utc": "2026-10-25T09:11:43.954870+00:00",
+  "target_compile_probe": {
+    "sqlite_version": "3.54.1",
+    "architecture": "rv32imafc_zicsr_zifencei",
+    "abi": "ilp32f",
+    "compiler": "Espressif GCC 14.2.0 esp-14.2.0_20260121",
+    "memstatus": true,
+    "core": {
+      "text": 509145,
+      "data": 6240,
+      "bss": 658
+    },
+    "fts5": {
+      "text": 617046,
+      "data": 6240,
+      "bss": 658
+    },
+    "evidence": "compile-only objects; not linked or executed on target"
+  },
+  "zig_compile_probe": {
+    "zig": "0.17.0",
+    "evidence": "macOS host compiling for wasm32-freestanding; no on-device compiler execution",
+    "default_cold": {
+      "max_rss_bytes": 291241984,
+      "peak_footprint_bytes": 252904288,
+      "wasm_bytes": 84
+    },
+    "no_llvm_cold": {
+      "max_rss_bytes": 291946496,
+      "peak_footprint_bytes": 253297504,
+      "wasm_bytes": 438
+    },
+    "sum_to_10": 45
+  }
+}

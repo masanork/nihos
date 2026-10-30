@@ -1,0 +1,4 @@
+flowchart TB
+    accTitle: ecallから例外復帰まで
+    accDescr: 呼び出しから例外入口とdispatchを経て保存状態を復元し、ecallの次の命令へ戻る。
+ A["nih_native_main"] -->|"ecall"| B["CPUが原因と発生位置を記録"] -->|"mtvecで指定した入口"| C["nih_native_trap"] -->|"レジスタを保存"| D["nih_native_dispatch"] -->|"復帰位置を更新"| E["状態を復元してmret"] --> F["ecallの次の命令"]

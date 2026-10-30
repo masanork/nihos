@@ -1,0 +1,12 @@
+sequenceDiagram
+    accTitle: 保存した復帰先を、別のタスクへ切り替える
+    accDescr: タスクAへのタイマー割込みでframeを保存し、kernelがタスクBのframeを選ぶ。mretはBを再開し、Aは次に選ばれるまで保存状態を保持する。
+    participant A as タスクA
+    participant K as kernel
+    participant B as タスクB
+    Note over A: 計算中
+    A->>K: タイマー割込み
+    Note over K: Aのframeを保存<br/>IRQ stackで処理
+    Note over K: Bのframeを選択<br/>復帰状態を復元
+    K->>B: mretでBを再開
+    Note over A: 次の選択まで<br/>保存状態を保持
