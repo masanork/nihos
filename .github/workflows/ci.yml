@@ -114,6 +114,7 @@ jobs:
         run: python3 tools/metrics.py --coverage build/metrics/host-coverage.json
 
       - name: Retain metrics and coverage reports
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: project-metrics
