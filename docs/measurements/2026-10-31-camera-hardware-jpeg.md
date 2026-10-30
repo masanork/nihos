@@ -30,7 +30,7 @@ All device trials held the shared board-writer lease and kernel serial exclusion
 
 ## Reproduce
 
-Build the fixture with `NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0 NIHOS_NATIVE_CAMERA_JPEG=1 sh tools/build-native.sh device`. It writes `build/native-device-devices-camera-jpeg/`. The default `sh tools/build-native.sh device` continues to produce the normal connected camera image. CI builds and audits the opt-in fixture as an additional native configuration, without claiming hardware execution.
+Build the fixture with `NIHOS_NATIVE_CAMERA_ID=1 NIHOS_NATIVE_CAMERA_DIAGNOSTICS=0 NIHOS_NATIVE_XY_WORKSPACE=0 NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0 NIHOS_NATIVE_CAMERA_JPEG=1 sh tools/build-native.sh device`. It writes `build/native-device-devices-camera-jpeg/`. The default `sh tools/build-native.sh device` continues to produce the normal connected camera image. CI builds and audits the opt-in fixture as an additional native configuration, without claiming hardware execution.
 
 Use `python3 tools/native_jpeg.py /private/tmp/nihos-camera-jpeg-final-20261031` to reconstruct/check the private UART evidence and fully decode both JPEGs (requires Pillow). The private qualification wrapper and capture driver are under `/private/tmp/nihos-camera-jpeg-tools/`; the flash transaction still performs identity-checked backup and verified restoration. The public synthetic JPEG can be opened in any standard JPEG viewer. Host tests exercise missing/duplicated/corrupted payloads, invalid dimensions/timing, incomplete workflows and the public artifact's identity and baseline geometry.
 
