@@ -86,6 +86,7 @@ const Owner = struct {
     /// the bootloader's locked NAPOT values, so they are not evidence.
     probe_pmpaddr4: u32 = 0,
     probe_pmpaddr5: u32 = 0,
+    probe_mhint: u32 = 0,
     probe_user_timers: u32 = 0,
 };
 
@@ -502,6 +503,9 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
 
 fn noteProbeGrant(owner: *Owner) void {
     if (comptime !options.pmp_probe) return;
+    owner.probe_mhint = asm volatile ("csrr %[result], 0x7c5"
+        : [result] "=r" (-> u32),
+    );
     owner.probe_pmpaddr4 = asm volatile ("csrr %[result], pmpaddr4"
         : [result] "=r" (-> u32),
     );
@@ -726,6 +730,8 @@ pub const ProbeStep = struct {
     fault_mepc: u32,
     pmpaddr4: u32,
     pmpaddr5: u32,
+    user_mhint: u32,
+    kernel_mhint: u32,
 };
 
 fn maskInterrupts() u32 {
@@ -764,6 +770,7 @@ fn runProbeCaseLive(case_id: u32) ?ProbeStep {
     owner.probe_fault_mepc = 0;
     owner.probe_pmpaddr4 = 0;
     owner.probe_pmpaddr5 = 0;
+    owner.probe_mhint = 0;
     const saved = maskInterrupts();
     if (!owner.runtime.policy.setPriority(owner.bootstrap, 1)) {
         restoreInterrupts(saved);
@@ -830,6 +837,10 @@ fn runProbeCaseLive(case_id: u32) ?ProbeStep {
         .fault_mepc = owner.probe_fault_mepc,
         .pmpaddr4 = owner.probe_pmpaddr4,
         .pmpaddr5 = owner.probe_pmpaddr5,
+        .user_mhint = owner.probe_mhint,
+        .kernel_mhint = asm volatile ("csrr %[result], 0x7c5"
+            : [result] "=r" (-> u32),
+        ),
     };
 }
 

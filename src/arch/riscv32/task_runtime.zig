@@ -68,7 +68,9 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
         images: [capacity]?Image = @splat(null),
         protected_admission: ProtectedAdmission = .denied,
 
-        pub fn add(self: *Self, priority: u8, image: Image) ?scheduler.TaskHandle {
+        // Registration runs on the kernel bootstrap stack before execution.
+        // Keep admission checks in Flash without moving capture/select off SRAM.
+        pub noinline fn add(self: *Self, priority: u8, image: Image) linksection(pmp.text_section) ?scheduler.TaskHandle {
             if (image.stack_min >= image.stack_max) return null;
             if (image.protection) |region| {
                 if (self.protected_admission != .diagnostic) return null;

@@ -11,9 +11,11 @@
 //! The ESP-IDF v5.4.4 bootloader programs entries 0, 1, 2, and 15 with `PMP_L`
 //! in the `RW`/`RX` constants. Entries 0 and 1 have the highest priority, so
 //! the app cannot override them. The port bootloader programs those two as
-//! unlocked NAPOT regions with no R, W, or X. U-mode matches them and is
-//! denied. M-mode ignores them because L is clear. OFF was not that denial:
-//! a U-mode load of CLIC at `0x20800000` reached the bus and the hart stopped.
+//! unlocked NAPOT regions with no R, W, or X. The model denies U-mode;
+//! M-mode ignores them because L is clear. On Tab5 v1.3, loading CLIC at
+//! `0x20800000` stalls with asynchronous bus errors. While a user grant is
+//! installed, mhint.SBE makes bus errors synchronous, so the fault is
+//! attributed to the user instruction before the kernel trap saves registers.
 //! Entry 2 denies the mask ROM (`0x4FC00000..0x4FC20000`) without locking;
 //! kernel ROM calls remain permitted in M-mode. Entry 15 is left OFF. Entry 8 is an
 //! unlocked NAPOT denial of the HP peripheral window. It matches before a
@@ -39,6 +41,7 @@ pub const user_mpp: u32 = 0;
 /// MPIE set, MPP = User. `mret` enables interrupts in U-mode.
 pub const user_mstatus: u32 = 0x80;
 pub const fault_exit: i32 = -70;
+pub const synchronous_bus_error: u32 = 1 << 20;
 /// Hardware probe cases. Case 0 returns after an allowed ECALL. Cases 1–5 are
 /// the contained faults. Cases 6–8 load `0x50000000`, the cache block at
 /// `0x3FF10000`, and CLIC at `0x20800000`. A completed load returns 10, 11,
@@ -342,6 +345,7 @@ noinline fn writeWords(words: Words) linksection(text_section) void {
             // whole-SRAM, whole-flash, and LP windows first.
             const addr4: *const u32 = &words.addr[4];
             const cfg1: *const u32 = &words.cfg[1];
+            const sbe: u32 = if (words.cfg[1] != 0) synchronous_bus_error else 0;
             // SAFETY: the assembly block writes this scratch before every read.
             var word: u32 = undefined;
             asm volatile (
@@ -361,11 +365,19 @@ noinline fn writeWords(words: Words) linksection(text_section) void {
                 \\csrw pmpcfg1, %[word]
                 \\lw %[word], 4(%[cfg])
                 \\csrw pmpcfg2, %[word]
+                // v1.3 TRM 1.13.1.2: retain synchronous attribution while
+                // user code runs; kernel-only operation uses default mode.
+                \\csrr %[word], 0x7c5
+                \\and %[word], %[word], %[sbe_clear]
+                \\or %[word], %[word], %[sbe]
+                \\csrw 0x7c5, %[word]
                 \\fence.i
                 \\fence iorw, iorw
                 : [word] "=&r" (word),
                 : [addr] "r" (addr4),
                   [cfg] "r" (cfg1),
+                  [sbe_clear] "r" (~synchronous_bus_error),
+                  [sbe] "r" (sbe),
                 : .{ .memory = true });
         },
         else => {},

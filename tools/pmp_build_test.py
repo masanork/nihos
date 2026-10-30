@@ -1,4 +1,4 @@
-"""Reject known unsafe physical probe selections before a build or device access."""
+"""Reject a probe selector on a non-probe image before building."""
 import os
 from pathlib import Path
 import subprocess
@@ -20,11 +20,6 @@ class PmpBuildTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(message, result.stderr)
             self.assertFalse(output.exists())
-
-    def test_device_clic_case_and_implicit_all_stop_before_building(self):
-        for case in ('8', 'all'):
-            with self.subTest(case=case):
-                self.refused('1', case, 'CLIC case 8 is not qualified')
 
     def test_a_selector_cannot_silently_run_a_non_probe_image(self):
         self.refused('0', '11', 'requires NIHOS_NATIVE_PMP_PROBE=1')

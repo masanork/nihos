@@ -1068,13 +1068,18 @@ fn reportPmpProbe() noreturn {
         hex(step.pmpaddr4);
         print(" pmpaddr5=");
         hex(step.pmpaddr5);
+        print(" user_mhint=");
+        hex(step.user_mhint);
+        print(" kernel_mhint=");
+        hex(step.kernel_mhint);
         print("\n");
         const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code) and
             tasks.pmp.probeCauseAccepted(case_id, step.fault_cause, step.fault_mepc);
         // mret writes MPP back to User. The saved bootstrap image still has
         // Machine (0x1800) and MPIE (0x80). The Tab5 sample was 0x1880.
         // ESP-EMU's trap mstatus also has UIE, so bit 0 may be set.
-        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0;
+        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0 and
+            step.kernel_mhint & tasks.pmp.synchronous_bus_error == 0 and step.user_mhint & tasks.pmp.synchronous_bus_error != 0;
         const reaped_one = step.reaped == previous_reaped + 1;
         const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
         const return_ok = !returned or (step.timer_interrupts > previous_timers and step.user_timer_interrupts != 0 and step.calls > 2 and step.exit_code == 1);

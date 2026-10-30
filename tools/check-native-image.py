@@ -77,6 +77,7 @@ PMP_FLASH_FUNCTIONS = {
     "pmp.grant",
     "pmp.protectionAccepted",
     "pmp.writeWords",
+    "task_runtime.Runtime(4,2).add",
     "task_runtime.Runtime(4,2).containFault",
     "task_runtime.Runtime(4,2).finishCall",
 }
