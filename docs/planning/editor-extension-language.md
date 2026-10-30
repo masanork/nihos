@@ -136,3 +136,13 @@ IMEの候補選択UI、ファイラ、辞書検索、設定参照、コマンド
 | `▽(expr ...)` → `SPC` | Scheme評価器（U-mode PMP） | SKKプログラム変換。S式を評価した結果を文字列として挿入 |
 
 さらに `(ime/register-prefix! prefix handler)` のような小さな拡張口を用意し、利用者自身が新しいSQLiteテーブルやScheme関数を変換ソースとして追加できるようにする。
+
+
+## 2026-10-31: native xyの限定Scheme接続
+
+`scheme_runtime.zig` に定義・字句スコープclosure・GC・明示的な実行量制限を持つ
+整数Schemeサブセットを実装し、ミニバッファ、共通Document、読み取り専用システム
+バッファ、コマンド登録へ接続した。コード・VM状態は固定の境界内に置き、実機でも
+closureとコマンド再登録・エラー復帰を照合した。[実装契約と証跡](../measurements/2026-10-31-xy-scheme-runtime.md)を参照。
+R7RS、macro、任意キー割当、利用者操作による実行中断、SQL・保存・U-mode隔離は
+未実装であり、既存host向け `scheme_bridge.zig` のフォームを全て接続したものではない。

@@ -40,6 +40,11 @@ MEMORY {
 #elif NIH_NATIVE_KEYPAD
     flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
+#if NIH_NATIVE_XY
+    flash_xy_gap (r) : ORIGIN = 0x40010020, LENGTH = 320K - 0x20
+    /* Foreground xy evaluator; no ISR/cache-off entry points. */
+    flash_xy (rx) : ORIGIN = 0x40060000, LENGTH = 128K
+#endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
 SECTIONS
@@ -109,6 +114,9 @@ SECTIONS
         *(.flash.rodata.display)
         *(.flash.rodata.card_pin)
         *(.flash.rodata.bmi270)
+#if NIH_NATIVE_XY
+        . = ALIGN(4);
+#endif
         __flash_records_end = .;
     } > flash_records
 #if NIH_NATIVE_KEYPAD
@@ -272,8 +280,36 @@ SECTIONS
         __flash_console_font_start = .;
         *(.flash.fs.console)
         __flash_console_font_end = .;
+#if NIH_NATIVE_XY
+        . = ALIGN(4);
+#endif
         __flash_fs_rodata_end = .;
     } > flash_fs
+#endif
+#if NIH_NATIVE_XY
+#if NIH_NATIVE_NORMAL_STORAGE
+    __xy_gap_start = ADDR(.flash.fsrodata) + SIZEOF(.flash.fsrodata);
+#else
+    __xy_gap_start = ADDR(.flash.rodata) + SIZEOF(.flash.rodata);
+#endif
+    .flash.xypad __xy_gap_start : {
+        BYTE(0)
+        . = ORIGIN(flash_xy);
+    } > flash_xy_gap
+    .flash.xytext : ALIGN(16) {
+        __flash_xy_start = .;
+        *(.flash.xytext)
+        . = ALIGN(16);
+        __flash_xy_text_end = .;
+    } > flash_xy
+    .flash.xyrodata : ALIGN(16) {
+        __flash_xy_rodata_start = .;
+        *(.flash.xyrodata)
+        . = ALIGN(4);
+        __flash_xy_end = .;
+    } > flash_xy
+#endif
+#if NIH_NATIVE_NORMAL_STORAGE
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
 #endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram

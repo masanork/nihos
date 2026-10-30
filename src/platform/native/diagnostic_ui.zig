@@ -598,7 +598,7 @@ const xy_tasks_header linksection(".flash.rodata.display") = "Published runtime 
 const xy_tasks_footer linksection(".flash.rodata.display") = "Bootstrap/idle counters; not an application task list.\n".*;
 // One bounded capture on explicit open/refresh. Published task fields are not
 // an atomic scheduler dump; owner-local heaps do not include stacks/display.
-noinline fn captureXySystem() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+noinline fn captureXySystem() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") void {
     switch (scratch.takeSystemRequest()) {
         .none => return,
         .log => {
@@ -630,7 +630,7 @@ noinline fn traceScratch(log: anytype) void {
     const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash };
     log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash" }, &values);
 }
-noinline fn drawSession() linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
+noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!renderer_ready) {
         @memset(@import("std").mem.asBytes(renderer), 0);
         renderer_ready = true;

@@ -1,25 +1,36 @@
 //! RAM workspace over the shared xy Document. The first native presentation
 //! uses the existing fixed-cell raster; non-ASCII clusters are shown as '?'.
-//! Text remains UTF-8. No shell dispatch, persistence or Scheme VM is implied.
+//! Text remains UTF-8. The bounded Scheme runtime has no storage or shell access.
 const std = @import("std");
 pub const input = @import("../console/session_input.zig");
+pub const scheme = @import("scheme_runtime.zig");
 pub const document = @import("document.zig");
 // Immutable presentation text follows the existing diagnostic font placement;
 // host targets retain their ordinary read-only segment.
-const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: help, undo, forget-undo\nSystem buffers: log, mem, tasks\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
+const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const system = @import("system_buffer.zig");
 pub const Mode = enum { edit, command, help, system };
-pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_unavailable, read_only };
+pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_result, scheme_error, command_full, read_only };
+
+const default_commands linksection(scheme.data_section) = ("(command/register! \"log\" (lambda () (system/log))) " ++
+    "(command/register! \"mem\" (lambda () (system/memory))) " ++
+    "(command/register! \"tasks\" (lambda () (system/tasks))) " ++
+    "(command/register! \"undo\" (lambda () (buffer/undo!))) " ++
+    "(command/register! \"forget-undo\" (lambda () (buffer/forget-undo!)))").*;
 
 pub const Model = struct {
     doc: Doc,
+    vm: scheme.Runtime,
+    reply: [128]u8,
+    reply_length: usize,
+    command_overflow: bool,
     snapshot: system.Snapshot,
     request: system.Request,
     mode: Mode,
     status: Status,
     revision: u32,
-    command: [64]u8,
+    command: [256]u8,
     command_length: usize,
     top_row: usize,
     serial: input.Serial,
@@ -28,11 +39,12 @@ pub const Model = struct {
     utf8_length: u3,
     utf8_needed: u3,
 
-    pub fn initInPlace(self: *Model) void {
+    pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
         self.doc.revision = 1;
         self.doc.next_group_id = 1;
         self.revision = 1;
+        self.resetScheme();
     }
     fn changed(self: *Model) void {
         self.revision +%= 1;
@@ -50,7 +62,7 @@ pub const Model = struct {
             return;
         };
     }
-    pub fn insert(self: *Model, text: []const u8) void {
+    pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
         if (self.mode == .system) {
             self.status = .read_only;
             self.changed();
@@ -60,7 +72,7 @@ pub const Model = struct {
         self.doc.insertUtf8(text) catch |err| self.failed(err);
         self.changed();
     }
-    pub fn handle(self: *Model, key: input.Key) void {
+    pub fn handle(self: *Model, key: input.Key) linksection(scheme.code_section) void {
         self.status = .none;
         self.changed();
         if (self.mode == .help) {
@@ -83,19 +95,19 @@ pub const Model = struct {
         if (self.mode == .command) {
             switch (key) {
                 .escape, .cancel => self.mode = .edit,
-                .backspace => self.command_length -|= 1,
-                .text => |byte| if (self.command_length < self.command.len) {
-                    self.command[self.command_length] = byte;
-                    self.command_length += 1;
+                .backspace => {
+                    self.command_length = document.prevClusterStart(self.command[0..self.command_length], self.command_length) catch 0;
+                    self.command_overflow = false;
                 },
+                .text => |byte| self.appendCommand(&.{byte}),
                 .enter => {
                     const text = std.mem.trim(u8, self.command[0..self.command_length], " ");
                     self.mode = .edit;
-                    if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "undo")) {
-                        self.accept(self.doc.undo());
-                    } else if (std.mem.eql(u8, text, "log")) self.openSystem(.log) else if (std.mem.eql(u8, text, "mem")) self.openSystem(.memory) else if (std.mem.eql(u8, text, "tasks")) self.openSystem(.tasks) else if (std.mem.eql(u8, text, "forget-undo")) self.doc.forgetUndoHistory() else if (text.len != 0) {
-                        self.status = if (text[0] == '(') .scheme_unavailable else .unknown_command;
+                    if (self.command_overflow) {
+                        self.status = .command_full;
+                        return;
                     }
+                    if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'');
                 },
                 else => {},
             }
@@ -128,11 +140,62 @@ pub const Model = struct {
             .escape => {
                 self.mode = .command;
                 self.command_length = 0;
+                self.command_overflow = false;
             },
             .cancel, .clear => {},
         }
     }
-    fn openSystem(self: *Model, kind: system.Kind) void {
+    fn appendCommand(self: *Model, bytes: []const u8) linksection(scheme.code_section) void {
+        if (self.command_overflow or self.command_length + bytes.len > self.command.len) {
+            self.command_overflow = true;
+            self.status = .command_full;
+            return;
+        }
+        @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
+        self.command_length += bytes.len;
+    }
+    pub fn resetScheme(self: *Model) linksection(scheme.code_section) void {
+        self.vm.initInPlace();
+        const result = self.vm.evaluate(&default_commands, self, &self.reply) catch |err| {
+            self.schemeError(err);
+            return;
+        };
+        self.reply_length = result.len;
+    }
+    fn schemeError(self: *Model, err: scheme.Error) linksection(scheme.code_section) void {
+        const text = scheme.message(err);
+        @memcpy(self.reply[0..text.len], text);
+        self.reply_length = text.len;
+        self.status = if (err == error.UnknownCommand) .unknown_command else .scheme_error;
+    }
+    pub fn evaluate(self: *Model, source: []const u8, named: bool) linksection(scheme.code_section) void {
+        _ = self.doc.beginUndoGroup();
+        defer self.doc.endUndoGroup();
+        self.changed();
+        const reply = (if (named) self.vm.runCommand(source, self, &self.reply) else self.vm.evaluate(source, self, &self.reply)) catch |err| {
+            self.schemeError(err);
+            return;
+        };
+        self.reply_length = reply.len;
+        self.status = .scheme_result;
+    }
+    pub fn schemeCall(self: *Model, op: scheme.EditorOp, text: []const u8, number: i32) linksection(scheme.code_section) scheme.Error!void {
+        if (self.mode == .system and (op == .insert or op == .move or op == .undo or op == .forget)) return error.EditorFailure;
+        switch (op) {
+            .insert => self.doc.insertUtf8(text) catch return error.EditorFailure,
+            .move => {
+                _ = self.doc.moveGraphemes(number) catch return error.EditorFailure;
+            },
+            .undo => {
+                _ = self.doc.undo() catch return error.EditorFailure;
+            },
+            .forget => self.doc.forgetUndoHistory(),
+            .log => self.openSystem(.log),
+            .memory => self.openSystem(.memory),
+            .tasks => self.openSystem(.tasks),
+        }
+    }
+    fn openSystem(self: *Model, kind: system.Kind) linksection(scheme.code_section) void {
         self.snapshot.begin(kind);
         self.request = switch (kind) {
             .log => .log,
@@ -146,10 +209,10 @@ pub const Model = struct {
         self.request = .none;
         return request;
     }
-    pub fn feedHid(self: *Model, modifiers: u8, usage: u8) void {
+    pub fn feedHid(self: *Model, modifiers: u8, usage: u8) linksection(scheme.code_section) void {
         if (self.hid.feed(modifiers, usage)) |key| self.handle(key);
     }
-    pub fn feedSerial(self: *Model, byte: u8, now: u64) void {
+    pub fn feedSerial(self: *Model, byte: u8, now: u64) linksection(scheme.code_section) void {
         if (self.utf8_length != 0 or byte >= 128) {
             if (self.utf8_length == 0) {
                 self.serial.cr = false;
@@ -173,7 +236,13 @@ pub const Model = struct {
             self.utf8_length += 1;
             if (self.utf8_length == self.utf8_needed) {
                 const text = self.utf8[0..self.utf8_length];
-                if (self.mode == .edit) self.insert(text) else {
+                if (!std.unicode.utf8ValidateSlice(text)) {
+                    self.status = .invalid_input;
+                    self.changed();
+                } else if (self.mode == .edit) self.insert(text) else if (self.mode == .command) {
+                    self.appendCommand(text);
+                    self.changed();
+                } else {
                     self.status = .invalid_input;
                     self.changed();
                 }
@@ -183,7 +252,7 @@ pub const Model = struct {
         }
         if (self.serial.feed(byte, now)) |key| self.handle(key);
     }
-    pub fn expireSerial(self: *Model, now: u64) void {
+    pub fn expireSerial(self: *Model, now: u64) linksection(scheme.code_section) void {
         if (self.serial.expire(now)) |key| self.handle(key);
     }
     fn advance(text: []const u8, offset: usize, columns: usize, row: *usize, column: *usize) usize {
@@ -241,14 +310,29 @@ pub const Model = struct {
         grid.wrap_pending = false;
         if (self.mode == .command) {
             grid.write(": ");
-            grid.write(self.command[0..self.command_length]);
+            var start = self.command_length -| (columns - 3);
+            while (start < self.command_length and !document.isClusterBoundary(self.command[0..self.command_length], start)) start += 1;
+            var index = start;
+            while (index < self.command_length) {
+                grid.write(&.{if (self.command[index] < 128) self.command[index] else @as(u8, '?')});
+                index = document.nextClusterEnd(self.command[0..self.command_length], index) catch self.command_length;
+            }
+        } else if (self.status == .scheme_result or self.status == .scheme_error) {
+            grid.write(if (self.status == .scheme_error) "Scheme error: " else "Scheme: ");
+            var index: usize = 0;
+            var available = columns - grid.x - 1;
+            while (index < self.reply_length and available > 0) : (available -= 1) {
+                grid.write(&.{if (self.reply[index] >= 32 and self.reply[index] < 127) self.reply[index] else @as(u8, '?')});
+                index = document.nextClusterEnd(self.reply[0..self.reply_length], index) catch self.reply_length;
+            }
         } else grid.write(switch (self.status) {
             .none => "",
             .buffer_full => "Buffer full",
             .undo_full => "Undo full: Esc, forget-undo releases history",
             .invalid_input => "Invalid input",
             .unknown_command => "Unknown command: Esc, help",
-            .scheme_unavailable => "Scheme evaluation is not connected yet",
+            .scheme_result, .scheme_error => "",
+            .command_full => "Command too long; cancel or edit before evaluating",
             .read_only => "Read-only system buffer",
         });
     }
@@ -288,7 +372,7 @@ test "UTF8 serial input preserves IVS and combining clusters and colon text" {
     try std.testing.expect(std.unicode.utf8ValidateSlice(model.doc.slice()));
 }
 
-test "help and unavailable evaluation preserve scratch text" {
+test "help and Scheme evaluation preserve scratch text" {
     // SAFETY: all fields are initialized in place before use.
     var model: Model = undefined;
     model.initInPlace();
@@ -300,7 +384,8 @@ test "help and unavailable evaluation preserve scratch text" {
     model.handle(.escape);
     model.handle(.escape);
     for ("(+ 1 2)\r") |byte| model.feedSerial(byte, 40_000);
-    try std.testing.expectEqual(Status.scheme_unavailable, model.status);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqualStrings("3", model.reply[0..model.reply_length]);
     try std.testing.expectEqualStrings("notes", model.doc.slice());
 }
 
@@ -372,4 +457,60 @@ test "read only system buffers preserve scratch cursor revision and undo" {
     }
     model.handle(.undo);
     try std.testing.expectEqualStrings("", model.doc.slice());
+}
+
+fn enterCommand(model: *Model, source: []const u8) void {
+    model.handle(.escape);
+    for (source) |byte| model.feedSerial(byte, 0);
+    model.handle(.enter);
+}
+test "minibuffer registers programmable commands with grouped undo and UTF8 names" {
+    // SAFETY: initialized before use.
+    var model: Model = undefined;
+    model.initInPlace();
+    model.insert("notes:");
+    enterCommand(&model, "(define (挨拶) (buffer/insert! \"葛\u{e0100}\") (buffer/insert! \"!\"))");
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    enterCommand(&model, "挨拶");
+    try std.testing.expectEqualStrings("notes:葛\u{e0100}!", model.doc.slice());
+    model.handle(.undo);
+    try std.testing.expectEqualStrings("notes:", model.doc.slice());
+    enterCommand(&model, "(buffer/move-graphemes! -2147483648)");
+    try std.testing.expectEqual(@as(u32, 0), model.doc.cursor);
+    enterCommand(&model, "(buffer/move-graphemes! 2147483647)");
+    enterCommand(&model, "(command/register! \"log\" (lambda () (buffer/insert! \"custom\")))");
+    enterCommand(&model, "log");
+    try std.testing.expectEqual(Mode.edit, model.mode);
+    try std.testing.expectEqualStrings("notes:custom", model.doc.slice());
+    enterCommand(&model, "reset-scheme");
+    enterCommand(&model, "log");
+    try std.testing.expectEqual(Mode.system, model.mode);
+    model.handle(.escape);
+    try std.testing.expectEqualStrings("notes:custom", model.doc.slice());
+}
+test "eval buffer parses before self-edit and truncated commands never execute" {
+    // SAFETY: initialized before use.
+    var model: Model = undefined;
+    model.initInPlace();
+    const source = "(buffer/insert! \"X\") (buffer/insert! \"Y\")";
+    model.insert(source);
+    enterCommand(&model, "eval-buffer");
+    try std.testing.expectEqualStrings(source ++ "XY", model.doc.slice());
+    model.handle(.undo);
+    try std.testing.expectEqualStrings(source, model.doc.slice());
+    enterCommand(&model, "(buffer/insert! \"bad\") (");
+    try std.testing.expectEqual(Status.scheme_error, model.status);
+    try std.testing.expectEqualStrings(source, model.doc.slice());
+    model.handle(.escape);
+    for ("(buffer/insert! \"bad\")") |byte| model.feedSerial(byte, 0);
+    for (0..256) |_| model.feedSerial(' ', 0);
+    model.handle(.enter);
+    try std.testing.expectEqual(Status.command_full, model.status);
+    try std.testing.expectEqualStrings(source, model.doc.slice());
+    enterCommand(&model, "(+ 20 22)");
+    try std.testing.expectEqualStrings("42", model.reply[0..model.reply_length]);
+    model.handle(.escape);
+    for ("葛\u{e0100}") |byte| model.feedSerial(byte, 0);
+    model.handle(.backspace);
+    try std.testing.expectEqual(@as(usize, 0), model.command_length);
 }

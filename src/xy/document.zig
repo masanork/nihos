@@ -213,7 +213,7 @@ pub fn Document(
                     pos = try nextClusterEnd(self.slice(), pos);
                 }
             } else if (delta < 0) {
-                var rem: usize = @intCast(-delta);
+                var rem: usize = @intCast(-@as(i64, delta));
                 while (rem > 0 and pos > 0) : (rem -= 1) {
                     pos = try prevClusterStart(self.slice(), pos);
                 }
@@ -238,7 +238,7 @@ pub fn Document(
 
             var target_line_start = line_start;
             if (delta < 0) {
-                var rem: usize = @intCast(-delta);
+                var rem: usize = @intCast(-@as(i64, delta));
                 while (rem > 0 and target_line_start > 0) : (rem -= 1) {
                     target_line_start -= 1; // step over '\n'
                     while (target_line_start > 0 and txt[target_line_start - 1] != '\n') : (target_line_start -= 1) {}
@@ -534,4 +534,15 @@ test "non-destructive SKK preedit overlay and ruby span shifting on edit" {
     try std.testing.expectEqualStrings("美しい日本", doc.slice());
     try std.testing.expectEqual(@as(u32, 9), doc.ruby_spans[0].base_start);
     try std.testing.expectEqual(@as(u32, 15), doc.ruby_spans[0].base_end);
+}
+
+test "extreme signed movements clamp without overflowing negation" {
+    var doc = Document(128, 8, 128, 1, 16){};
+    try doc.insertUtf8("葛\u{e0100}\nか\u{3099}");
+    _ = try doc.moveGraphemes(std.math.minInt(i32));
+    try std.testing.expectEqual(@as(u32, 0), doc.cursor);
+    _ = try doc.moveGraphemes(std.math.maxInt(i32));
+    try std.testing.expectEqual(doc.len, doc.cursor);
+    _ = try doc.moveLines(std.math.minInt(i32));
+    try std.testing.expect(doc.cursor < doc.len);
 }
