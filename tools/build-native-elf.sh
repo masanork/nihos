@@ -430,8 +430,8 @@ fi
 if { [ "$storage_service" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ]; } && { [ "$display" = true ] || [ "$network" = true ] || [ "$usb" = true ] || [ "$devices" = true ]; }; then
     echo "Storage/high-SRAM/broker qualification profiles require headless, dedicated device ownership" >&2; exit 1
 fi
-if [ "$pmp_probe" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" = true ] || [ "$qualification" = true ] || [ "$display" != false ] || [ "$console" = true ] || [ "$console_live" = true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$sdmmc" = true ] || [ "$storage" != false ] || [ "$normal_storage" = true ] || [ "$graphics" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$boot_test" != 0 ] || [ "$storage_service" = true ]; }; then
-    echo "PMP_PROBE requires a headless integer device image without qualification, normal boot, or other fixtures" >&2
+if [ "$pmp_probe" = true ] && { { [ "$profile" != device ] && [ "$profile" != emulator ]; } || [ "$mode" != integer ] || [ "$boot_fast" = true ] || [ "$qualification" = true ] || [ "$display" != false ] || [ "$console" = true ] || [ "$console_live" = true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$sdmmc" = true ] || [ "$storage" != false ] || [ "$normal_storage" = true ] || [ "$graphics" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$boot_test" != 0 ] || [ "$storage_service" = true ]; }; then
+    echo "PMP_PROBE requires a headless integer device or emulator image without qualification, normal boot, or other fixtures" >&2
     exit 1
 fi
 mkdir -p "$build_dir"
@@ -771,13 +771,18 @@ if [ "$normal_storage" = true ]; then
         set -- "$@" "$build_dir/normal_fs_$unit.o"
     done
 fi
+# An empty expansion must not become a zig argument. Quoting it always would
+# pass that empty word; leaving it unquoted fails ShellCheck SC2086.
+if [ -n "$pmp_user_object" ]; then
+    set -- "$pmp_user_object" "$@"
+fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
-    "$repo_root/src/platform/native/start.S" $pmp_user_object "$@" \
+    "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
     --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \

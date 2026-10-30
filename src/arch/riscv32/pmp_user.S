@@ -39,6 +39,12 @@ nih_user_probe_body:
     beq a0, t0, .Lbad_sp
     li t0, 5
     beq a0, t0, .Lprivileged
+    li t0, 6
+    beq a0, t0, .Lmmio_hp
+    li t0, 7
+    beq a0, t0, .Lmmio_cpu
+    li t0, 8
+    beq a0, t0, .Lmmio_subsys
     li a0, 9
     ret
 
@@ -60,12 +66,23 @@ nih_user_probe_body:
     li a0, 0
     li a1, 0
     ecall
-    bne a0, s0, .Lreturned
+    bne a0, s0, .Lticks_moved
     addi s1, s1, -1
     bnez s1, .Lspin
     li a0, 2
     ret
-.Lreturned:
+.Lticks_moved:
+    /* now() can move when the ecall samples the counter, before the timer
+     * interrupt is counted. A short extra sample leaves room for that IRQ
+     * without holding the emulator for the whole 200000-call cap. */
+    li s1, 1000
+.Lsettle:
+    li a7, NIH_TASK_TICKS
+    li a0, 0
+    li a1, 0
+    ecall
+    addi s1, s1, -1
+    bnez s1, .Lsettle
     li a0, 1
     ret
 .Lcurrent_failed:
@@ -106,6 +123,29 @@ nih_user_probe_body:
 .Lprivileged:
     csrr t0, mstatus
     li a0, 8
+    ret
+
+/* A completed load returns 10, 11, or 12. A load fault exits -70.
+ * 0x3FF10000 is the cache register block and 0x20800000 is CLIC.
+ * Both sit in the old locked windows and are registers this kernel reads.
+ * With entries 0 and 1 OFF, the CLIC load reached the bus and the hart
+ * stopped. 0x20000000 did not answer either. Do not load that base. */
+.Lmmio_hp:
+    lui t0, 0x50000
+    lw t0, 0(t0)
+    li a0, 10
+    ret
+
+.Lmmio_cpu:
+    lui t0, 0x3ff10
+    lw t0, 0(t0)
+    li a0, 11
+    ret
+
+.Lmmio_subsys:
+    lui t0, 0x20800
+    lw t0, 0(t0)
+    li a0, 12
     ret
 .size nih_user_probe_body, .-nih_user_probe_body
 .option pop

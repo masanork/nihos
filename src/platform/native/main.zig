@@ -978,11 +978,51 @@ fn printSigned(value: i32) void {
 
 fn reportPmpProbe() noreturn {
     if (comptime !options.pmp_probe) unreachable;
-    print("NIHOS_NATIVE_PMP_PROBE begin cases=6 hart=0\n");
+    // Entry 2 is NAPOT|R|X|L (0x9D) in bits 23:16. Entries 0 and 1 are
+    // unlocked NAPOT with no R/W/X (0x18), so pmpcfg0 is 0x009D1818.
+    // The stock bootloader sets those bytes to NAPOT|R|W|L (0x9B), which
+    // lets U-mode read and write the CPU subsystem and the CPU peripherals.
+    // Entry 2 remains, so U-mode can still execute the mask ROM.
+    // pmpaddr0 is NAPOT(0x20000000, 0x30000000) >> 2 = 0x09FFFFFF.
+    // pmpaddr1 is NAPOT(0x3FF00000, 0x3FF20000) >> 2 = 0x0FFC3FFF.
+    const pmpcfg0 = asm volatile ("csrr %[value], pmpcfg0"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg1 = asm volatile ("csrr %[value], pmpcfg1"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg2 = asm volatile ("csrr %[value], pmpcfg2"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg3 = asm volatile ("csrr %[value], pmpcfg3"
+        : [value] "=r" (-> u32),
+    );
+    const pmpaddr0 = asm volatile ("csrr %[value], pmpaddr0"
+        : [value] "=r" (-> u32),
+    );
+    const pmpaddr1 = asm volatile ("csrr %[value], pmpaddr1"
+        : [value] "=r" (-> u32),
+    );
+    print("NIHOS_NATIVE_PMP_PROBE begin cases=");
+    printUnsigned(tasks.pmp.probe_cases);
+    print(" hart=0 pmpcfg0=");
+    hex(pmpcfg0);
+    print(" pmpcfg1=");
+    hex(pmpcfg1);
+    print(" pmpcfg2=");
+    hex(pmpcfg2);
+    print(" pmpcfg3=");
+    hex(pmpcfg3);
+    print(" pmpaddr0=");
+    hex(pmpaddr0);
+    print(" pmpaddr1=");
+    hex(pmpaddr1);
+    print("\n");
     var previous_timers: u32 = 0;
     var previous_reaped: u32 = 0;
     var previous_slot: u16 = 0xffff;
     var previous_generation: u16 = 0;
+    var reason: ?[]const u8 = null;
     var case_id: u32 = 0;
     while (case_id < tasks.pmp.probe_cases) : (case_id += 1) {
         const step = tasks.runProbeCase(case_id) orelse {
@@ -1026,19 +1066,26 @@ fn reportPmpProbe() noreturn {
         print("\n");
         const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code);
         // mret writes MPP back to User. The saved bootstrap image still has
-        // Machine; the live CSR only shows that machine interrupts are on.
-        const kernel_ok = step.kernel_mstatus == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0;
+        // Machine (0x1800) and MPIE (0x80). The Tab5 sample was 0x1880.
+        // ESP-EMU's trap mstatus also has UIE, so bit 0 may be set.
+        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0;
         const reaped_one = step.reaped == previous_reaped + 1;
         const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
         const return_ok = !returned or (step.timer_interrupts > previous_timers and step.calls > 2 and step.exit_code == 1);
         const execute_ok = case_id != 3 or step.data_word == 0x00600513;
-        if (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok) fail("pmp probe evidence");
+        // Cases 6–8 are loads. A successful load returns 10, 11, or 12.
+        const mmio_ok = case_id < 6 or step.fault_cause & 0x8000_0fff == 5;
+        if (reason == null and (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok or !mmio_ok)) reason = "pmp probe evidence";
         previous_timers = step.timer_interrupts;
         previous_reaped = step.reaped;
         previous_slot = step.slot;
         previous_generation = step.generation;
     }
-    print("NIHOS_NATIVE_PMP_PROBE_PASS cases=6 kernel=1\n");
+    if (reason) |text| fail(text);
+    if (pmpcfg0 != 0x009d1818 or pmpaddr0 != 0x09ffffff or pmpaddr1 != 0x0ffc3fff) fail("pmpcfg0");
+    print("NIHOS_NATIVE_PMP_PROBE_PASS cases=");
+    printUnsigned(tasks.pmp.probe_cases);
+    print(" kernel=1\n");
     while (true) asm volatile ("wfi" ::: .{ .memory = true });
 }
 
