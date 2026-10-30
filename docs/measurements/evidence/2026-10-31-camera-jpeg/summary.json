@@ -139,9 +139,174 @@
         ]
       },
       "restored": true
+    },
+    {
+      "frozen_directory": "/private/tmp/nihos-camera-jpeg-owned-20261031",
+      "source_head": "98b8088642c3174a3f40bb1439fb2128b94d9ef4",
+      "source_status": "",
+      "source_manifest_sha256": "aea7fd7f125377add25632dafafa623b8f52243025280f2764a6d50b9b7e15a4",
+      "image_sha256": "76ec8168c2d3497eb298f2ca2f45a22c1e84241e54076f92e9522d4f4b661acc",
+      "elf_sha256": "868bf3b9b95ec26d6d0766c39037b24cf1ac26cc0ea91a7a6a12340d0f230710",
+      "loader_sha256": "8d4358c1c25155ba544ed753aee0ede5d86fc1f26a026146a2068d7e802e5643",
+      "serial_sha256": "4e7dc186b54d09d13baa6f5592f3ae65487b26ea699bfe663eb8473345de9fb3",
+      "host_decode_sha256": "5ca7df62c6c43a7bd24620feb9ace09766ad668f8ca849bb42cf1f70ef816661",
+      "images": {
+        "pattern.jpg": {
+          "kind": 0,
+          "bytes": 21522,
+          "width": 1280,
+          "height": 720,
+          "quality": 75,
+          "source_fnv": 3272766917,
+          "encode_us": 22545,
+          "sha256": "9df9069c2c78683da14d7589658162de1fda46f556deff81e443733917457a77",
+          "decoded_mode": "RGB",
+          "decoded_size": [
+            1280,
+            720
+          ]
+        },
+        "camera.jpg": {
+          "kind": 1,
+          "bytes": 42876,
+          "width": 1280,
+          "height": 720,
+          "quality": 75,
+          "source_fnv": 1616787448,
+          "encode_us": 23457,
+          "sha256": "5d1088a72a8305f7dafa7b9f9d393937a03a4bf0f21fb75c378f241fbfe73fc0",
+          "decoded_mode": "RGB",
+          "decoded_size": [
+            1280,
+            720
+          ]
+        }
+      },
+      "memory": {
+        "capacity": 15072576,
+        "free": 10874176,
+        "used": 4198400
+      },
+      "rejected_external_requests": [
+        [
+          26,
+          0
+        ],
+        [
+          30,
+          0
+        ]
+      ],
+      "sram_heap_span_bytes": 76352,
+      "receipt": {
+        "image_sha256": "76ec8168c2d3497eb298f2ca2f45a22c1e84241e54076f92e9522d4f4b661acc",
+        "loader_sha256": "8d4358c1c25155ba544ed753aee0ede5d86fc1f26a026146a2068d7e802e5643",
+        "backup_sha256": [
+          "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+          "f67ff47af82ce7dd8d62d9d238b6e4c02ae0981f1d61ad70f41a4a988b2dea07"
+        ],
+        "restored": true,
+        "span_bytes": [
+          24576,
+          176128
+        ]
+      },
+      "restored": true
     }
   ],
   "normal_regression": {
+    "frozen_directory": "/private/tmp/nihos-camera-jpeg-owned-normal-60-20261031",
+    "source_head": "98b8088642c3174a3f40bb1439fb2128b94d9ef4",
+    "image_sha256": "f3abaac47d99f2b32dbd58cd04a601e253bfe4aeefc27adb8db38d5323334268",
+    "elf_sha256": "5114bd41da8c258ac9ef34b8a555dad26e8785bb0cfc23262fdca8e5abb34236",
+    "serial_sha256": "d43dca351c26e4d7bd75a72dc36e36302afe6bbbb84fed1174bad600d21bdae8",
+    "live_updates": 61,
+    "intervals_seconds": [
+      0.06919808299999985,
+      0.04917091699999787,
+      0.07104504100000142,
+      0.05494949999999932,
+      0.050139167000001095,
+      0.049508666999997786,
+      0.05015575000000183,
+      0.0498300829999998,
+      0.05057199999999895,
+      0.050230917000000375,
+      0.0496184580000012,
+      0.04961808299999859,
+      0.049908667000000406,
+      0.06260262500000024,
+      0.037490208000001246,
+      0.05003170899999887,
+      0.05012704099999965,
+      0.05015470900000096,
+      0.04985824999999977,
+      0.04985341599999771,
+      0.05022679200000013,
+      0.06519850000000105,
+      0.06693187500000164,
+      0.06375262499999934,
+      0.05459308300000032,
+      0.05001620899999892,
+      0.0653410000000001,
+      0.06634995799999999,
+      0.0633282080000015,
+      0.05654083399999976,
+      0.04837724999999793,
+      0.06626412500000001,
+      0.06589258300000012,
+      0.06267779200000234,
+      0.06376258299999904,
+      0.04162933299999949,
+      0.048833916999999616,
+      0.0611157079999991,
+      0.055680167000002,
+      0.06672187499999893,
+      0.06607591699999915,
+      0.06359562500000138,
+      0.06812591599999962,
+      0.06666462500000137,
+      0.06514329199999835,
+      0.06887008300000019,
+      0.06646512500000057,
+      0.06642741699999988,
+      0.06850966700000072,
+      0.06476987499999964,
+      0.0655286249999989,
+      0.06993287499999923,
+      0.06509862500000096,
+      0.07109295800000126,
+      0.06405841699999826,
+      0.06562141599999904,
+      0.05124070900000177,
+      0.06100800000000106,
+      0.03449887499999704,
+      0.03512875000000193
+    ],
+    "updates_per_second": 17.265419422359503,
+    "stop_drain_seconds": 0.269723416999998,
+    "presented_images": 63,
+    "framebuffer_mismatches": 0,
+    "restoration": {
+      "image_sha256": "f3abaac47d99f2b32dbd58cd04a601e253bfe4aeefc27adb8db38d5323334268",
+      "loader_sha256": "450bf45d0085eb7899dffabb0e9f511506dc08826f1d71780a6c8c8445cd1582",
+      "backup_sha256": [
+        "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+        "e36de852844f74c66e2fd5d5019d8c28c38327efa79aa9997453397ec822f203"
+      ],
+      "restored": true,
+      "span_bytes": [
+        24576,
+        286720
+      ]
+    }
+  },
+  "public_pattern": {
+    "path": "pattern.jpg",
+    "sha256": "9df9069c2c78683da14d7589658162de1fda46f556deff81e443733917457a77",
+    "source": "Known synthetic RGB565 bars encoded by device hardware; no camera scene"
+  },
+  "earlier_normal_regression": {
     "frozen_directory": "/private/tmp/nihos-camera-jpeg-normal-60-20261031",
     "source_head": "0a4fd884348c510214ec890623fe51e0c8c8b347",
     "image_sha256": "c289db60e82b82a54e870a13ee2d02328c6fd1d13f66d528153332257299e850",
@@ -227,10 +392,5 @@
         286720
       ]
     }
-  },
-  "public_pattern": {
-    "path": "pattern.jpg",
-    "sha256": "9df9069c2c78683da14d7589658162de1fda46f556deff81e443733917457a77",
-    "source": "Known synthetic RGB565 bars encoded by device hardware; no camera scene"
   }
 }
