@@ -45,6 +45,12 @@ nih_user_probe_body:
     beq a0, t0, .Lmmio_cpu
     li t0, 8
     beq a0, t0, .Lmmio_subsys
+    li t0, 9
+    beq a0, t0, .Lkernel_read
+    li t0, 10
+    beq a0, t0, .Lrom_read
+    li t0, 11
+    beq a0, t0, .Lrom_execute
     li a0, 9
     ret
 
@@ -147,5 +153,23 @@ nih_user_probe_body:
     lw t0, 0(t0)
     li a0, 12
     ret
+
+/* These are valid memory addresses. Denying address zero alone cannot
+ * distinguish PMP confinement from the platform's invalid-address PMA. */
+.Lkernel_read:
+    lui t0, 0x4ff00
+    lw t0, 0(t0)
+    li a0, 13
+    ret
+
+.Lrom_read:
+    lui t0, 0x4fc00
+    lw t0, 0(t0)
+    li a0, 14
+    ret
+
+.Lrom_execute:
+    lui t0, 0x4fc00
+    jalr zero, 0(t0)
 .size nih_user_probe_body, .-nih_user_probe_body
 .option pop
