@@ -1,6 +1,5 @@
 //! Opt-in boot probe: exclusive CPU0, bounded polled USB / PIN-free JPKI.
 const options = @import("native_options");
-const builtin = @import("builtin");
 const std = @import("std");
 const ccid = @import("ccid");
 const jpki = @import("jpki");
@@ -18,11 +17,7 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 /// The linker script places this at a 512-byte address inside BSS. The
 /// input alignment stays small so the rest of BSS is not forced to 512.
-const dma_qtd_section = switch (builtin.os.tag) {
-    .freestanding => ".usb_dma_qtd",
-    else => ".bss",
-};
-var dma_qtd: [16]u32 align(64) linksection(dma_qtd_section) = @splat(0);
+var dma_qtd: [16]u32 align(64) linksection(if (@import("builtin").os.tag == .freestanding) ".usb_dma_qtd" else ".bss") = @splat(0);
 pub var card_report = jpki.Report{};
 const Session = struct {
     controller: *usb.Controller(Bus),
