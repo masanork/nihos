@@ -32,6 +32,7 @@ pub const Image = struct {
 
     fn selected(self: Image) ?context.TaskContext {
         const frame = self.frame orelse return null;
+        if (!self.privilegeAccepted(self.state)) return null;
         if (!self.fits(frame)) return null;
         return .{
             .frame = frame,
@@ -42,12 +43,21 @@ pub const Image = struct {
             .protection = self.protection,
         };
     }
+
+    fn privilegeAccepted(self: Image, state: context.ReturnState) bool {
+        const expected: u32 = if (self.protection == null) pmp.mpp_mask else pmp.user_mpp;
+        return state.mstatus & pmp.mpp_mask == expected;
+    }
 };
 
 pub const ContainedFault = struct {
     exited: ?scheduler.TaskHandle = null,
     next: ?context.TaskContext = null,
 };
+
+/// No native platform has completed the confinement matrix yet. Diagnostic
+/// execution is an explicit kernel-owned opt-in, not a security capability.
+pub const ProtectedAdmission = enum { denied, diagnostic };
 
 pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
     return struct {
@@ -56,13 +66,15 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
         policy: Policy = .{},
         call_options: task_control.Options = .{},
         images: [capacity]?Image = @splat(null),
+        protected_admission: ProtectedAdmission = .denied,
 
         pub fn add(self: *Self, priority: u8, image: Image) ?scheduler.TaskHandle {
             if (image.stack_min >= image.stack_max) return null;
             if (image.protection) |region| {
+                if (self.protected_admission != .diagnostic) return null;
                 if (!pmp.protectionAccepted(region.code_lo, region.code_hi, region.data_lo, region.data_hi, image.state.mstatus, image.floating_context, image.stack_min, image.stack_max)) return null;
             }
-            if (image.frame) |frame| if (!image.fits(frame)) return null;
+            if (image.frame) |frame| if (!image.fits(frame) or !image.privilegeAccepted(image.state)) return null;
             const handle = self.policy.add(priority) orelse return null;
             self.images[handle.slot] = image;
             return handle;
@@ -71,7 +83,7 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
         pub fn capture(self: *Self, frame: *context.IntegerContext, state: context.ReturnState) bool {
             const current = self.policy.current() orelse return false;
             const image = self.images[current.slot] orelse return false;
-            if (!image.fits(frame)) return false;
+            if (!image.fits(frame) or !image.privilegeAccepted(state)) return false;
             self.images[current.slot].?.frame = frame;
             self.images[current.slot].?.state = state;
             return true;
@@ -162,7 +174,7 @@ const user_region = context.Protection{
 };
 
 test "protected registration requires user status and the arena as its stack" {
-    var runtime = Runtime(2, 2){};
+    var runtime = Runtime(2, 2){ .protected_admission = .diagnostic };
     try std.testing.expect(runtime.add(0, .{
         .stack_min = user_region.data_lo,
         .stack_max = user_region.data_hi,
@@ -194,7 +206,7 @@ test "a contained fault exits a protected task and does not exit a kernel task" 
     try std.testing.expect(kernel_fault.exited == null and kernel_fault.next == null);
     try std.testing.expectEqual(scheduler.TaskState.running, kernel_runtime.policy.snapshot(kernel).?.state);
 
-    var user_runtime = Runtime(1, 1){};
+    var user_runtime = Runtime(1, 1){ .protected_admission = .diagnostic };
     const user = user_runtime.add(0, .{
         .stack_min = user_region.data_lo,
         .stack_max = user_region.data_hi,
@@ -219,7 +231,7 @@ test "a contained fault exits a protected task and does not exit a kernel task" 
 }
 
 test "a contained fault can be reaped while the kernel task keeps running" {
-    var runtime = Runtime(2, 2){};
+    var runtime = Runtime(2, 2){ .protected_admission = .diagnostic };
     const kernel = runtime.add(1, .{
         .stack_min = 0x1000,
         .stack_max = 0x1800,
@@ -240,4 +252,30 @@ test "a contained fault can be reaped while the kernel task keeps running" {
     try std.testing.expect(runtime.reap(user));
     try std.testing.expect(runtime.policy.snapshot(user) == null);
     try std.testing.expectEqual(scheduler.TaskState.running, runtime.policy.snapshot(kernel).?.state);
+}
+
+test "ordinary runtime refuses protected tasks before allocating a slot" {
+    var runtime = Runtime(2, 2){};
+    const user = Image{
+        .stack_min = user_region.data_lo,
+        .stack_max = user_region.data_hi,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+        .protection = user_region,
+    };
+    try std.testing.expect(runtime.add(0, user) == null);
+    // Metadata-only synthetic RV32 frame; add() does not dereference it.
+    try std.testing.expect(runtime.add(0, .{
+        .frame = @ptrFromInt(0x1700),
+        .stack_min = 0x1000,
+        .stack_max = 0x1800,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+    }) == null);
+    const kernel = runtime.add(1, .{
+        .stack_min = 0x1000,
+        .stack_max = 0x1800,
+        .state = .{ .mstatus = 0x1880, .mcause = 0 },
+    }).?;
+    try std.testing.expectEqual(@as(u16, 0), kernel.slot);
+    runtime.protected_admission = .diagnostic;
+    try std.testing.expect(runtime.add(0, user) != null);
 }

@@ -264,6 +264,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
 /// Called on the corresponding bootstrap stack before that hart enables MIE.
 pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     const owner = &owners[hart];
+    if (options.pmp_probe) owner.runtime.protected_admission = .diagnostic;
     owner.gp = gp;
     owner.bootstrap = owner.runtime.add(0, .{ .stack_min = stack_min, .stack_max = stack_max }) orelse return false;
     if (!memory.reusable.openTask(hart, key(owner.bootstrap))) return false;
