@@ -585,6 +585,9 @@ pub noinline fn service(log: anytype) bool {
     if (observed.fault != 0) return false;
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
+    // Input may dismiss an overlay while the next frame is already in DMA.
+    // Drain it before a full shell repaint competes for PSRAM/cache bandwidth.
+    if (!camera_live.canRepaint()) return true;
     if (camera_overlay.state == .visible) return true;
     const next_status = status();
     const forced = shown_status != next_status or shown_details != model.details or revision != shown_revision or camera_overlay.state == .repaint_pending or camera_overlay.state == .recovery_pending;
