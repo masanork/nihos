@@ -9,6 +9,12 @@ case "$profile" in
     *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
+camera_id=${NIHOS_NATIVE_CAMERA_ID:-0}
+case "$camera_id" in 0) camera_id=false ;; 1) camera_id=true ;; *) echo "CAMERA_ID must be 0 or 1" >&2; exit 1 ;; esac
+camera_id_cpp=0
+if [ "$camera_id" = true ]; then camera_id_cpp=1; fi
+camera_ui_fixture=${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}
+case "$camera_ui_fixture" in 0) camera_ui_fixture=false ;; 1) camera_ui_fixture=true ;; *) echo "CAMERA_UI_FIXTURE must be 0 or 1" >&2; exit 1 ;; esac
 network=${NIHOS_NATIVE_NETWORK:-0}
 case "$network" in 0) network=false; network_cpp=0 ;; 1) network=true; network_cpp=1; umask 077 ;; *) echo "NETWORK must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network"; fi
@@ -17,6 +23,7 @@ case "$network_test" in 0) network_test=false ;; 1) network_test=true ;; *) echo
 if [ "$network_test" = true ] && [ "$network" != true ]; then echo "NETWORK_TEST requires NETWORK=1" >&2; exit 1; fi
 devices=${NIHOS_NATIVE_DEVICES:-0}
 case "$devices" in 0) devices=false; devices_cpp=0 ;; 1) devices=true; devices_cpp=1 ;; *) echo "DEVICES must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$camera_id" = true ] && [ "$devices" != true ]; then echo "CAMERA_ID requires DEVICES=1" >&2; exit 1; fi
 audio=${NIHOS_NATIVE_AUDIO:-0}
 case "$audio" in 0) audio=false ;; 1) audio=true ;; *) echo "AUDIO must be 0 or 1" >&2; exit 1 ;; esac
 microphone=${NIHOS_NATIVE_MICROPHONE:-0}
@@ -453,6 +460,8 @@ if [ "$microphone" = true ]; then native_boot_dir="$native_boot_dir-microphone";
 if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
 if [ "$devices" = true ]; then native_boot_dir="$native_boot_dir-devices"; fi
 if [ "$pmp_probe" = true ]; then native_boot_dir="$native_boot_dir-pmp-probe"; fi
+if [ "$camera_id" = true ]; then native_boot_dir="$native_boot_dir-camera-id"; fi
+if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camera-ui-fixture"; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
@@ -469,6 +478,8 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     if [ "$profile" = emulator ]; then echo 'pub const emulator = true;'; else echo 'pub const emulator = false;'; fi
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
+    printf 'pub const camera_id = %s;\n' "$camera_id"
+    printf 'pub const camera_ui_fixture = %s;\n' "$camera_ui_fixture"
     printf 'pub const audio = %s;\n' "$audio"
     printf 'pub const rs485 = %s;\n' "$rs485"
     printf 'pub const rs485_mode: u32 = %s;\n' "$rs485_mode"
@@ -554,6 +565,42 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
         -I "$idf_path/components/esp_rom/esp32p4" \
         -o "$build_dir/display_pads.o" "$repo_root/src/board/tab5/native_pads.c"
     set -- "$@" "$build_dir/display_pads.o"
+    if [ "$camera_id" = true ]; then
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+            -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
+            -I "$native_boot_dir/loader/config" \
+            -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+            -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+            -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/hw_ver1" \
+            -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+            -I "$idf_path/components/esp_rom/include" -I "$idf_path/components/esp_rom/esp32p4/include" -I "$idf_path/components/esp_rom/esp32p4/include/esp32p4" \
+            -I "$idf_path/components/esp_rom/esp32p4" \
+            -o "$build_dir/csi_prepare.o" "$repo_root/src/board/tab5/native_csi_prepare.c"
+        set -- "$@" "$build_dir/csi_prepare.o"
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+            -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
+            -I "$native_boot_dir/loader/config" \
+            -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+            -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+            -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/hw_ver1" \
+            -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+            -o "$build_dir/camera_dma_test.o" "$repo_root/src/board/tab5/native_camera_dma_test.c"
+        set -- "$@" "$build_dir/camera_dma_test.o"
+        for csi_file in native_csi_dma_config native_csi_dma_run native_csi_inflight_adapter native_camera_xclk native_camera_isp; do
+            "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+                -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+                -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
+                -I "$native_boot_dir/loader/config" \
+                -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
+                -I "$idf_path/components/hal/esp32p4/include" -I "$idf_path/components/soc/include" \
+                -I "$idf_path/components/soc/esp32p4/include" -I "$idf_path/components/soc/esp32p4/register/hw_ver1" \
+                -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
+                -o "$build_dir/$csi_file.o" "$repo_root/src/board/tab5/$csi_file.c"
+            set -- "$@" "$build_dir/$csi_file.o"
+        done
+    fi
     if [ "$audio" = true ] || [ "$devices" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
             -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
@@ -592,7 +639,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     fi
     if [ "$display_scanout" = true ]; then
         "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-            -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" -DNIH_NATIVE_CARD_SCENE_EXERCISE="$scene_exercise" \
+            -DNIH_NATIVE_CAMERA_ID="$camera_id_cpp" -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_DISPLAY_TILE="$display_tile_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_CARD_AUTO="$card_auto" -DNIH_NATIVE_CARD_SCENE_EXERCISE="$scene_exercise" \
             -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
             -isystem "$headers/riscv-linux-any" \
             -I "$native_boot_dir/loader/config" \
@@ -797,12 +844,17 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \
     -Mdevice_control="$repo_root/src/device/control.zig" \
     -Mstorage_control="$repo_root/src/storage/control.zig" \
     -Mtab5_rtc="$repo_root/src/board/tab5/rtc.zig" \
     -Mtab5_bmi270="$repo_root/src/board/tab5/bmi270.zig" \
+    -Mtab5_camera="$repo_root/src/board/tab5/camera.zig" \
+    -Mtab5_csi_preflight="$repo_root/src/board/tab5/csi_preflight.zig" \
+    -Mtab5_csi_inflight_adapter="$repo_root/src/board/tab5/csi_inflight_adapter.zig" \
+    -Mtab5_csi_stability="$repo_root/src/board/tab5/csi_stability.zig" \
+    -Msc202cs_exposure="$repo_root/src/board/tab5/sc202cs_exposure.zig" \
     -Mhalf_duplex="$repo_root/src/serial/half_duplex.zig" \
     -Mtab5_es7210="$repo_root/src/board/tab5/es7210.zig" \
     -Mmicrophone_model="$repo_root/src/audio/capture_probe.zig" \
@@ -824,8 +876,14 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console \
+    --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mcamera_preview="$repo_root/src/board/tab5/camera_preview.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Mcamera_workspace="$repo_root/src/board/tab5/csi_workspace.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    --dep text_console --dep camera_preview -Mcamera_input="$repo_root/src/console/camera_input.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep surface -Mcanvas="$repo_root/src/graphics/canvas.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \

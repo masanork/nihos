@@ -1,0 +1,22 @@
+{
+  "result": {
+    "result": "CSI frame DMA completed; two full-frame scans matched; lease retained until reset",
+    "idle_reports": 2,
+    "terminal_reports": 2
+  },
+  "receipt": {
+    "image_sha256": "90b2487cfbaec06afd753050118c31f222abb7090373221cf5749b0e6151f9f6",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "83dbf630325111646f4377d8cfbe3d11ba6d5771e59a7ab005cd96fb85c4cc44"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      176128
+    ]
+  },
+  "serial_sha256": "c44064313c800702e1c31defe357714f952a435f01db9308a4362225ea60e7a6",
+  "restored": true
+}

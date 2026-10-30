@@ -56,9 +56,7 @@ static bool stop_dma(bool blank) {
             mipi_dsi_brg_ll_enable_dpi_output(&MIPI_DSI_BRIDGE, false);
             mipi_dsi_brg_ll_enable(&MIPI_DSI_BRIDGE, false);
             mipi_dsi_ll_enable_dpi_clock(0, false);
-            dw_gdma_ll_enable_intr_global(&DW_GDMA, false);
-            dw_gdma_ll_enable_controller(&DW_GDMA, false);
-            dw_gdma_ll_enable_bus_clock(0, false);
+            if (!dw_domain_release(0)) return false;
             dma_owned = false;
             ui_enabled = false;
 #if NIH_NATIVE_CARD_AUTO

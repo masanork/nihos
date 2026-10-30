@@ -23,11 +23,12 @@ pub fn ResourcesWithGroups(comptime Backend: type, comptime capacity: usize, com
     return struct {
         const Self = @This();
         const Groups = extent_groups.Registry(Backend, group_limit, extent_limit);
-        pub const Error = Backend.Error || slab.Error || Groups.Error || error{ Inactive, Full, NotReady };
+        pub const Error = Backend.Error || slab.Error || Groups.Error || error{ Inactive, Full, NotReady, Pinned };
         const State = enum { vacant, active, closing, cleaned, faulted };
         const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize, objects_pending: size_pool.Config, objects: size_pool.Config, extent_group: Groups.Token };
         const Entry = struct {
             allocation: Backend.Allocation,
+            pinned: bool = false,
             // Canonical cursor stays in the ledger, so copied pool handles
             // cannot allocate overlapping children with independent cursors.
             // Slab tags retain only cell size; child state lives in the parent.
@@ -37,6 +38,7 @@ pub fn ResourcesWithGroups(comptime Backend: type, comptime capacity: usize, com
         pub const Slab = struct { key: Key, allocation: Backend.Allocation };
         pub const Objects = struct { key: Key, allocation: Backend.Allocation };
         pub const Group = struct { key: Key, allocation: Backend.Allocation, token: Groups.Token };
+        pub const Pin = struct { key: Key, allocation: Backend.Allocation };
         const Slot = struct {
             generation: u16 = 0,
             state: State = .vacant,
@@ -101,11 +103,43 @@ pub fn ResourcesWithGroups(comptime Backend: type, comptime capacity: usize, com
 
         pub noinline fn free(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, allocation: Backend.Allocation) Error!void {
             const entry = try self.find(key, allocation);
+            if (entry.*.?.pinned) return error.Pinned;
             switch (entry.*.?.storage) {
                 .extent_group => |token| try self.groups.close(heap, caller, token, allocation),
                 else => try heap.free(caller, allocation),
             }
             entry.* = null;
+        }
+
+        /// Caller serializes alloc and pin against task close. Only an entire
+        /// raw allocation may be pinned; child pools cannot bypass their owner.
+        pub fn pin(self: *Self, caller: u32, key: Key, allocation: Backend.Allocation) Error!Pin {
+            if (caller != allocation.owner) return error.WrongOwner;
+            const entry = try self.find(key, allocation);
+            if (entry.*.?.pinned) return error.Pinned;
+            switch (entry.*.?.storage) {
+                .raw => {},
+                else => return error.InvalidAllocation,
+            }
+            entry.*.?.pinned = true;
+            return .{ .key = key, .allocation = allocation };
+        }
+
+        /// Trusted service calls only after hardware/IRQ/cache quiescence and
+        /// data erasure. Works after task close; a failed heap free retains pin.
+        pub fn releasePin(self: *Self, heap: *Backend.Heap, caller: u32, token: Pin) Error!void {
+            if (caller != token.allocation.owner) return error.WrongOwner;
+            const slot = self.resolve(token.key) orelse return error.Inactive;
+            if (slot.state != .active and slot.state != .closing) return error.Inactive;
+            for (&slot.allocations) |*entry| if (entry.*) |tracked| {
+                if (equal(tracked.allocation, token.allocation)) {
+                    if (!tracked.pinned) return error.InvalidAllocation;
+                    try heap.free(caller, token.allocation);
+                    entry.* = null;
+                    return;
+                }
+            };
+            return error.InvalidAllocation;
         }
 
         /// One task-ledger entry owns a root plus a bounded, noncontiguous set
@@ -339,12 +373,12 @@ pub fn ResourcesWithGroups(comptime Backend: type, comptime capacity: usize, com
         pub fn pending(self: *Self) ?Pending {
             for (&self.slots, 0..) |*slot, index| {
                 if (slot.state != .closing) continue;
-                var allocation: ?Backend.Allocation = null;
-                for (slot.allocations) |entry| if (entry != null) {
-                    allocation = entry.?.allocation;
-                    break;
+                var any = false;
+                for (slot.allocations) |entry| if (entry) |tracked| {
+                    any = true;
+                    if (!tracked.pinned) return .{ .key = .{ .slot = @intCast(index), .generation = slot.generation }, .allocation = tracked.allocation };
                 };
-                return .{ .key = .{ .slot = @intCast(index), .generation = slot.generation }, .allocation = allocation };
+                if (!any) return .{ .key = .{ .slot = @intCast(index), .generation = slot.generation }, .allocation = null };
             }
             return null;
         }
@@ -355,6 +389,7 @@ pub fn ResourcesWithGroups(comptime Backend: type, comptime capacity: usize, com
             const slot = self.resolve(key) orelse return error.Inactive;
             if (slot.state != .closing) return error.Inactive;
             for (&slot.allocations) |*entry| if (entry.*) |tracked| {
+                if (tracked.pinned) continue;
                 const complete = switch (tracked.storage) {
                     .extent_group => |token| self.groups.drainOne(heap, caller, token, tracked.allocation),
                     else => blk: {

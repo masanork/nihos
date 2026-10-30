@@ -45,3 +45,10 @@ static void mipi_dsi_ll_enable_dpi_clock(unsigned id, bool on) { assert(id == 0 
 static void dw_gdma_ll_enable_intr_global(void *io, bool on) { (void)io; assert(!on); }
 static void dw_gdma_ll_enable_controller(void *io, bool on) { (void)io; assert(!on); }
 static void dw_gdma_ll_enable_bus_clock(unsigned id, bool on) { assert(id == 0 && !on); ++stopped_domains; }
+static bool dw_domain_release(uint32_t channel) {
+    assert(channel == 0);
+    dw_gdma_ll_enable_intr_global(&DW_GDMA, false);
+    dw_gdma_ll_enable_controller(&DW_GDMA, false);
+    dw_gdma_ll_enable_bus_clock(0, false);
+    return true;
+}

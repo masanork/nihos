@@ -1,0 +1,74 @@
+{
+  "result": {
+    "result": "five live updates, visible stop, manual capture, initial-loading stop, and shell memory command completed",
+    "snapshots": [
+      {
+        "sequence": 1,
+        "state": 1,
+        "sample_hash": 4036321518,
+        "mismatches": 0,
+        "frames": 332
+      },
+      {
+        "sequence": 2,
+        "state": 1,
+        "sample_hash": 2160723448,
+        "mismatches": 0,
+        "frames": 476
+      },
+      {
+        "sequence": 3,
+        "state": 1,
+        "sample_hash": 782009064,
+        "mismatches": 0,
+        "frames": 617
+      },
+      {
+        "sequence": 4,
+        "state": 1,
+        "sample_hash": 2421320002,
+        "mismatches": 0,
+        "frames": 759
+      },
+      {
+        "sequence": 5,
+        "state": 1,
+        "sample_hash": 2522905242,
+        "mismatches": 0,
+        "frames": 901
+      },
+      {
+        "sequence": 7,
+        "state": 1,
+        "sample_hash": 143367469,
+        "mismatches": 0,
+        "frames": 1180
+      }
+    ],
+    "discarded_after_stop": [
+      {
+        "sequence": 6
+      },
+      {
+        "sequence": 8
+      }
+    ],
+    "shell_repaints": 2,
+    "distinct_live_sample_hashes": 5
+  },
+  "receipt": {
+    "image_sha256": "8652c98a94ccb3b1a3f6f1d1b91580105c99441ac58bc6ee09cf3b40ac23aa33",
+    "loader_sha256": "16b070eae42b7f063628531ed8d9fd41ef3dc719ad2039b283b3a2bd6f989337",
+    "backup_sha256": [
+      "9a49b1bdca06b6bb8ab1662f72670f763b41b85ba72c979bc445f378568aae2a",
+      "83dbf630325111646f4377d8cfbe3d11ba6d5771e59a7ab005cd96fb85c4cc44"
+    ],
+    "restored": true,
+    "span_bytes": [
+      24576,
+      176128
+    ]
+  },
+  "serial_sha256": "3e82ece8a18a7f668d844cfbeab20741a7755abb1a056f6848c015c6aa2ca23b",
+  "restored": true
+}

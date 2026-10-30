@@ -7,6 +7,8 @@ var touch_available = false;
 var view_button: pointer.Button = .{};
 var input_started: u64 = 0;
 const console = @import("text_console");
+const camera_preview = @import("camera_preview");
+const camera_input = @import("camera_input");
 const board = @import("tab5_display");
 const boot = @import("boot_graphics");
 const tasks = @import("native_tasks");
@@ -15,6 +17,7 @@ const Pins = @import("display_probe.zig").Pins;
 const runtime = @import("display_runtime.zig");
 const clock = @import("diagnostic_clock.zig");
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
+extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 extern fn nih_keyboard_pads_init() callconv(.c) void;
 extern fn nih_diagnostic_serial_dropped() callconv(.c) u32;
 extern fn nih_diagnostic_serial_read() callconv(.c) i32;
@@ -58,6 +61,25 @@ const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @si
 const Session = console.session;
 const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
 const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
+var camera_overlay: camera_preview.Overlay = .{};
+var camera_live: camera_preview.Live = .{};
+pub fn cameraLiveActive() bool { return camera_live.state == .running; }
+pub fn cameraAcceptFrame() bool { return camera_live.acceptFrame(); }
+pub fn cameraLiveEnd() void { camera_live.end(); }
+pub fn cameraLiveFailure() bool {
+    if (camera_live.state == .idle) return false;
+    camera_live.end();
+    if (camera_overlay.state == .visible) {
+        camera_input_sequence +%= 1;
+        _ = camera_overlay.dismiss(camera_input_sequence);
+        requestCameraRepaint();
+    }
+    session.write(SerialSink{}, "Camera preview stopped after a capture failure.\r\n");
+    @atomicStore(u32, &dirty, 1, .release);
+    return true;
+}
+var camera_input_sequence: u32 = 0;
+var camera_preview_mismatches: u32 = 0xffffffff;
 var session_active = false;
 var session_pending = false;
 var session_serial = Session.input.Serial{};
@@ -136,7 +158,9 @@ pub fn complete(stage: console.boot.Stage) bool {
 pub fn unavailable(stage: console.boot.Stage) void {
     if (options.console) _ = model.unavailable(stage);
 }
+pub fn abandonCameraPreview() void { camera_overlay.abandon(); }
 pub fn failed() void {
+    abandonCameraPreview();
     if (options.console) {
         model.fail(1);
         session_pending = false;
@@ -207,6 +231,63 @@ fn flushSpan(start: usize, end: usize) bool {
     }
     return tasks.memory.stacks.bootGuardsIntact(0);
 }
+fn invalidateCameraSpan(start: usize, end: usize) bool {
+    var offset = start;
+    while (offset < end) {
+        const length = @min(16384, end - offset);
+        const previous = mask();
+        const result = nih_rom_cache_invalidate((1 << 4) | (1 << 5), board.framebuffer + @as(u32, @intCast(offset)), @intCast(length));
+        restore(previous);
+        if (result != 0) return false;
+        if (previous & 8 == 0) runtime.onInterrupt();
+        offset += length;
+    }
+    return true;
+}
+const fixture_pixels: [camera_preview.height][camera_preview.width]u8 = pixels: {
+    @setEvalBranchQuota(20_000);
+    var result: [camera_preview.height][camera_preview.width]u8 = undefined;
+    for (&result, 0..) |*row, y| for (row, 0..) |*value, x| {
+        value.* = @intCast((x * 3 + y * 5) % 256);
+    };
+    break :pixels result;
+};
+pub fn cameraPreviewMismatchCount() u32 { return camera_preview_mismatches; }
+/// Diagnostic still-image overlay for a ready session. The caller supplies a
+/// stable sampled copy, not a DMA buffer; hardware capture is not wired here.
+pub fn showCameraPreview(pixels: *const [camera_preview.height][camera_preview.width]u8, tone: bool) bool {
+    const refresh = cameraLiveActive() and camera_overlay.state == .visible;
+    if (!options.console_live or !session_active or !runtime.active() or rendering or (!camera_overlay.canShow() and !refresh) or runtime.snapshot().fault != 0) return false;
+    if (refresh) _ = camera_overlay.beginRefresh();
+    rendering = true;
+    defer rendering = false;
+    camera_preview_mismatches = 0xffffffff;
+    var completed = false;
+    defer if (!completed) {
+        camera_overlay.failed();
+        shown_session_view = null;
+        if (renderer_ready) renderer.invalidate();
+        @atomicStore(u32, &dirty, 1, .release);
+    };
+    if (!camera_preview.paint(frame(), pixels, tone)) return false;
+    const low_row = 1279 - (camera_preview.display_left + camera_preview.display_width - 1);
+    const high_row = 1279 - camera_preview.display_left;
+    const start = (low_row * 1440 + camera_preview.display_top * 2) & ~@as(usize, 63);
+    const end = (high_row * 1440 + (camera_preview.display_top + camera_preview.display_height) * 2 + 63) & ~@as(usize, 63);
+    if (!flushSpan(start, end) or !invalidateCameraSpan(start, end)) return false;
+    camera_preview_mismatches = camera_preview.mismatches(frame(), pixels, tone) orelse return false;
+    if (camera_preview_mismatches != 0) return false;
+    camera_overlay.shown();
+    completed = true;
+    return true;
+}
+fn requestCameraRepaint() void {
+    camera_live.stop();
+    shown_session_view = null;
+    if (renderer_ready) renderer.invalidate();
+    @atomicStore(u32, &dirty, 1, .release);
+}
+
 fn status() boot.Status {
     if (model.failure_latched) return .failed;
     const stage = model.active orelse model.last_complete orelse return .display;
@@ -325,7 +406,15 @@ noinline fn poll(now: u64, log: anytype) void {
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
             if (!available or model.failure_latched or event.at < input_started) continue;
-            if (view_button.observe(event, pointer.view_button)) action(if (model.details) .splash else .logs, .touch, 0, 1, log);
+            if (view_button.observe(event, pointer.view_button)) {
+                if (camera_overlay.state == .visible) {
+                    camera_input_sequence +%= 1;
+                    _ = camera_overlay.dismiss(camera_input_sequence);
+                    requestCameraRepaint();
+                } else if (camera_overlay.state == .idle) {
+                    if (camera_live.state != .idle) sessionKey(.escape, log) else action(if (model.details) .splash else .logs, .touch, 0, 1, log);
+                }
+            }
         }
     }
     for (0..16) |_| {
@@ -389,8 +478,32 @@ fn beginSession(log: anytype) void {
 }
 noinline fn sessionKey(key: Session.input.Key, log: anytype) void {
     const before = session.view;
-    if (session.handle(key, SerialSink{})) |command| {
+    if (camera_live.state == .draining and camera_overlay.state == .idle) return;
+    if (cameraLiveActive() and camera_overlay.state == .idle) {
+        camera_live.stop();
+        session.write(SerialSink{}, "Camera preview stopped.\r\n");
+        @atomicStore(u32, &dirty, 1, .release);
+        return;
+    }
+    if (options.camera_ui_fixture and key == .clear and camera_overlay.canShow()) {
+        const ok = showCameraPreview(&fixture_pixels, true);
+        const values: extern struct { ok: u32, view: u32, line_bytes: u32, selected: u32, mismatches: u32, frames: u32 } = .{ .ok = @intFromBool(ok), .view = @backingInt(session.view), .line_bytes = @intCast(session.length), .selected = @intCast(session.selected), .mismatches = camera_preview_mismatches, .frames = runtime.snapshot().frames };
+        log.record("NIHOS_NATIVE_CAMERA_UI_FIXTURE", null, .{ "ok", "view", "line_bytes", "selected", "mismatches", "frames" }, &values);
+        return;
+    }
+    camera_input_sequence +%= 1;
+    const routed = camera_input.route(&camera_overlay, camera_input_sequence, session, key, SerialSink{});
+    if (routed.disposition != .forwarded) {
+        if (routed.disposition == .dismissed) requestCameraRepaint();
+        return;
+    }
+    if (routed.command) |command| {
         switch (command) {
+            .camera, .camera_live => {
+                const accepted = options.camera_id and camera_live.state == .idle and nih_device_request(26);
+                if (accepted and command == .camera_live) _ = camera_live.start();
+                session.write(SerialSink{}, if (!accepted) "Camera unavailable or busy.\r\n" else if (command == .camera_live) "Camera preview: press a key to stop.\r\n" else "Taking a camera snapshot. Press a key to close after it appears.\r\n");
+            },
             .mem => {
                 session.write(SerialSink{}, "CPU0 owner only (bytes; excludes stacks/display):\r\n");
                 if (tasks.memory.localUsage()) |usage| sessionUsage("SRAM boot arena", usage.capacity, usage.free) else session.write(SerialSink{}, "SRAM boot arena unavailable\r\n");
@@ -462,8 +575,9 @@ pub noinline fn service(log: anytype) bool {
     if (observed.fault != 0) return false;
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
+    if (camera_overlay.state == .visible) return true;
     const next_status = status();
-    const forced = shown_status != next_status or shown_details != model.details or revision != shown_revision;
+    const forced = shown_status != next_status or shown_details != model.details or revision != shown_revision or camera_overlay.state == .repaint_pending or camera_overlay.state == .recovery_pending;
     const new_frame = observed.frames != last_frame;
     if (!new_frame and !forced) return true;
     last_frame = observed.frames;
@@ -472,7 +586,12 @@ pub noinline fn service(log: anytype) bool {
         if (changed or shown_session_view != session.view or shown_session_revision != session.revision or renderer.moving()) {
             rendering = true;
             defer rendering = false;
-            return drawSession();
+            if (!drawSession()) return false;
+            if (camera_overlay.repainted()) |result| {
+                const values: extern struct { kind: u32, sequence: u32, view: u32, line_bytes: u32, selected: u32, frames: u32 } = .{ .kind = switch (result) { .dismissal => 1, .recovery => 2 }, .sequence = switch (result) { .dismissal => |seq| seq, .recovery => 0 }, .view = @backingInt(session.view), .line_bytes = @intCast(session.length), .selected = @intCast(session.selected), .frames = runtime.snapshot().frames };
+                log.record("NIHOS_NATIVE_CAMERA_UI_REPAINT", null, .{ "kind", "sequence", "view", "line_bytes", "selected", "frames" }, &values);
+            }
+            return true;
         }
         return true;
     }
