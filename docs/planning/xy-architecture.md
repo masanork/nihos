@@ -10,6 +10,62 @@
 
 ---
 
+## 起動面と操作体系（2026-10-31の方針確定）
+
+通常起動はスプラッシュから `xy` の作業バッファへ直接進む。独立したlauncher、
+ASCII shell、別エディタを日常操作の入口として増設せず、編集・読書・辞書・
+システム観察を同じバッファ、ミニバッファ、コマンド登録とScheme bindingへ集約する。
+文書内の統合環境名は `xy` とする。
+
+- 初期画面は短いヘッダと編集可能な `*scratch*`。常設のコマンド一覧や重複する
+  起動案内を置かず、説明は明示的に開くhelpバッファへ出す。
+- 既存エディタの通常操作と保存は共通Document APIへ収束させる。読み取り専用の
+  書籍・辞書・ログ・メモリ・タスク表示も同じ表示面のmodeとして扱う。
+- コマンド、keymap、hook、mode、選択範囲やS式の評価をSchemeから登録・変更する。
+  ボタン、キー操作、ミニバッファは同じコマンドを呼ぶ。全操作にS式の手入力を
+  要求せず、利用者が必要な箇所から環境を改造できるようにする。
+- Zig coreとsystem serviceが文書、組版、描画、入力、保存と資源管理を担い、
+  Schemeにはその操作APIを公開する。デバイスの生ポインタやDMA操作へ直結させる
+  ことを「全機能のbinding」とは呼ばない。
+
+boot/faultの診断記録と復旧経路は通常UIから独立して維持する。起動失敗時の復旧に
+Schemeの正常起動を前提とせず、常用shellを残すこととは分ける。移行中の既存shellは
+診断用の暫定入口であり、機能追加の主線にしない。
+
+現在の `scheme_bridge.zig` は固定フォームを扱う限定的なS式評価器、Document操作、
+表示設定、クエリhookのhost向け接続を持つ。一般の `define` / `lambda`、closure、
+macroによる拡張、実機のScheme VM、永続 `sqld` とU-mode隔離の接続が完成したという
+意味ではない。ネイティブの通常起動にはRAM上の `*scratch*` を接続した。
+[起動・編集・実機確認の範囲](../measurements/2026-10-31-xy-ram-startup.md)を参照。
+ネイティブのミニバッファには別モジュールの `scheme_runtime.zig` を接続し、
+`define` / lexical closure / コマンド登録・再定義とDocument操作を実機で確認した。
+[限定Schemeの範囲と検証](../measurements/2026-10-31-xy-scheme-runtime.md)を参照。
+初期表示は既存のASCIIラスタを使い、日本語字形・保存・macro・標準Scheme準拠、
+既存 `scheme_bridge.zig` とデスクトップC ABIの評価器統合は残る。
+`log` / `mem` / `tasks` は読み取り専用のシステムバッファとして開き、
+本文・カーソル・undoを保って戻れる。[実装と検証範囲](../measurements/2026-10-31-xy-system-buffers.md)を参照。
+
+現時点の通常起動での接続は次の通り。共通コアの存在と、各frontendからの接続完了を区別する。
+
+| 部分 | Tab5の通常 `*scratch*` | macOS Cocoa / C ABI | 共有状況 |
+| --- | --- | --- | --- |
+| UTF-8正本・書記素移動・undo | `scratch.Model.doc` | `scheme_bridge.XyWorkspace.doc` | 同じ `document.zig` の型を容量違いで利用 |
+| Scheme評価・コマンド登録 | `scheme_runtime.zig` | `scheme_bridge.zig` の固定フォーム評価 | 評価器の一本化は未実施 |
+| 組版・OpenType・ルビ | 通常画面には未接続 | `viewport_layout.zig` / `ttf.zig` | 共通コアとRGB565側adapterは存在するが、実機frontendの接続が残る |
+| 通常画面の描画 | `ascii_console.zig` / Canvas | Display List / RGBA compositor | 異なるfrontend。Tab5は固定ラスタの暫定表示 |
+| 入力とウィンドウ | serial / HID / タッチ入口 | Cocoa / C ABI | OSごとのadapter |
+
+次の共通化ではmacOSの評価入口を同じScheme実行系へ接続し、既存の表示設定・辞書hookを
+型付きbindingとして保った上で評価器を一本化する。続いてTab5の通常画面を共通の組版・
+OpenType表示へ接続する。今回のmain統合は、その共通化が既に完了したという意味ではない。
+
+実装の直近の順序は、(1) 共通Documentを使うRAM上の `*scratch*` と入力・描画を
+通常起動へ接続、(2) ログ・メモリ・タスク観察をバッファとして公開、(3) 本格的な
+Scheme評価とコマンド登録・再定義・中断を接続、(4) 保存、読書、辞書を同じmode機構へ
+載せる。RAMでの起動経路はSQLite、辞書、IMEの全機能完成を待たずに進める。
+利用者のScheme定義でキー動作を変更でき、評価エラーや中断後にも本文と操作が残る
+ことを、programmableな環境になったかの受け入れ条件とする。
+
 ## 1. 設計原則とデュアルターゲット境界（`nihos` / `GPUI` 共通コア）
 
 `xy` のコアロジック（UTF-8編集、書記素・IVS境界、禁則・ルビ・縦横組版、SKKオムニ変換、Scheme評価器とSQLiteデータモデル接続、`ttf.zig` ラスタライザ）は、特定のOSやフレームバッファ形式に直接結合させず、**ヒープアロケーションを持たない純Zigモジュール群**として実装する。

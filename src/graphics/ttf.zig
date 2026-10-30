@@ -809,7 +809,9 @@ pub fn rasterizeContours(
 
     const toXFp = struct {
         inline fn f(em_x: i32, l_px: i32, s_px: i32, u: i32) i32 {
-            return @divTrunc((em_x * s_px - l_px * u) * 65536, u);
+            // The quotient fits 16.16 bitmap coordinates, but an ordinary
+            // 1000-em glyph at 36 px already overflows an i32 numerator.
+            return @intCast(@divTrunc((@as(i64, em_x) * s_px - @as(i64, l_px) * u) * 65536, u));
         }
     }.f;
     const toYSub = struct {
@@ -1414,4 +1416,25 @@ test "TwoTierCache re-rasterizes across size and vertical changes with zero medi
     try std.testing.expectEqual(@as(u32, 3), cache.bitmap_misses);
     try std.testing.expect(g32h.metrics.width >= g20h.metrics.width);
     try std.testing.expectEqual(@as(i32, -32 * 64), g32v.metrics.y_advance_26_6);
+}
+
+test "36px em-square scaling retains full coverage without fixed-point overflow" {
+    var font_buf: [512]u8 = undefined;
+    const font_bytes = buildTestFont(&font_buf, 0x300C, 0xE0100, true);
+    const face = try Face.init(SliceReader.fromSlice(&font_bytes));
+    const square = [_]CurvePoint{
+        .{ .x = 0, .y = 0, .on_curve = true, .contour_end = false },
+        .{ .x = 1000, .y = 0, .on_curve = true, .contour_end = false },
+        .{ .x = 1000, .y = 1000, .on_curve = true, .contour_end = false },
+        .{ .x = 0, .y = 1000, .on_curve = true, .contour_end = true },
+    };
+    var pixels: [64 * 64]u8 = @splat(0);
+    const metrics = try rasterizeContours(&face, 1000, &square, 36, true, &pixels);
+    var full: usize = 0;
+    for (pixels[0 .. @as(usize, metrics.width) * metrics.height]) |alpha| {
+        try std.testing.expect(alpha == 0 or alpha == 255);
+        if (alpha == 255) full += 1;
+    }
+    try std.testing.expectEqual(@as(usize, 36 * 36), full);
+    try std.testing.expectEqual(@as(i32, -36 * 64), metrics.y_advance_26_6);
 }
