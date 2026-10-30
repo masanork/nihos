@@ -1,0 +1,6 @@
+flowchart TB
+    accTitle: 優先度ごとに、前回の選択位置を覚える
+    accDescr: 高優先度Hを選んでも、低優先度AとBを巡回するcursorは変更しない。Hがblockして低優先度を選べる機会が来たら、Aの次にBを選べる。
+    H["高優先度のcursor\nHを選択"] -->|"Hがblock"| L["低優先度を選べる機会"]
+    A["低優先度のcursor\n前回はA"] -->|"保持した位置から探索"| L
+    L --> B["次はB\n低優先度のcursorを更新"]
