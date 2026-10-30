@@ -19,13 +19,13 @@ has passed; dedicated probes retain their own profiles.
 Normal `camera-live` keeps the sensor, CSI and ISP running and rearms DMA from
 the shared DW-GDMA interrupt. Two pinned RAW8 buffers protect foreground sampling
 from incoming writes; frames are dropped while the reader holds the other slot.
-Two finite trials measured approximately 17 updates per second for the 80×45
+Two 120-second trials measured approximately 19 updates per second for the 80×45
 grayscale preview. A dismissal drains capture before repainting the shell.
 `camera` remains a finite snapshot, and diagnostic profiles retain finite live
 captures. After 500 ms idle the owner powers the sensor and XCLK down. The first
 normal camera use reserves a 2 MiB PSRAM frame allocation plus scratch until
 reset, including when starting with a single snapshot. See the
-[continuous capture trial](measurements/2026-10-31-camera-continuous.md) for
+[live capture soak trial](measurements/2026-10-31-camera-live-soak.md) for
 identities, memory accounting and remaining qualification limits.
 
 An opt-in [normal-boot networking integration](adr/0045-normal-boot-network-integration.md)
