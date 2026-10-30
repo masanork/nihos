@@ -41,6 +41,7 @@ test "mailbox refuses payload storage overlapping either publication cursor" {
     try std.testing.expect(mailbox.detachAfterQuiescence().? == &slot);
 }
 
+// Yield on backpressure so both host threads progress under single-CPU tracing.
 test "mailbox counters wrap under full backpressure across host threads" {
     const Mailbox = SpscMailbox(u32);
     var slot: u32 = 0;
@@ -52,7 +53,7 @@ test "mailbox counters wrap under full backpressure across host threads" {
     const Producer = struct {
         fn run(target: *Mailbox) void {
             for (0..100_000) |index| {
-                while (!target.tryPush(@intCast(index))) std.atomic.spinLoopHint();
+                while (!target.tryPush(@intCast(index))) std.Thread.yield() catch {};
             }
         }
     };
@@ -61,7 +62,7 @@ test "mailbox counters wrap under full backpressure across host threads" {
     for (0..100_000) |expected| {
         const item = while (true) {
             if (mailbox.tryPop()) |value| break value;
-            std.atomic.spinLoopHint();
+            std.Thread.yield() catch {};
         };
         if (item != expected) ordered = false;
     }

@@ -136,6 +136,7 @@ test "wrapping counters preserve occupancy and order" {
     try std.testing.expect(ring.tryPop() == null);
 }
 
+// Yield on backpressure so both host threads progress under single-CPU tracing.
 test "producer and consumer preserve order across host threads" {
     inline for (.{ 3, 64 }) |capacity| {
         const Ring = SpscRing(u32, capacity);
@@ -149,7 +150,7 @@ test "producer and consumer preserve order across host threads" {
             fn run(target: *Ring) void {
                 for (0..item_count) |index| {
                     const item: u32 = @intCast(index);
-                    while (!target.tryPush(item)) std.atomic.spinLoopHint();
+                    while (!target.tryPush(item)) std.Thread.yield() catch {};
                 }
             }
         };
@@ -159,7 +160,7 @@ test "producer and consumer preserve order across host threads" {
         for (0..item_count) |expected| {
             const item = while (true) {
                 if (ring.tryPop()) |value| break value;
-                std.atomic.spinLoopHint();
+                std.Thread.yield() catch {};
             };
             if (item != expected) ordered = false;
         }
@@ -181,7 +182,7 @@ test "pointer messages preserve full payloads across producer reuse and wrap" {
             for (0..2000) |sequence| {
                 message.sequence = @intCast(sequence);
                 @memset(&message.data, @truncate(sequence));
-                while (!target.tryPushFrom(&message)) std.atomic.spinLoopHint();
+                while (!target.tryPushFrom(&message)) std.Thread.yield() catch {};
                 @memset(&message.data, 0xa5);
             }
         }
@@ -190,7 +191,7 @@ test "pointer messages preserve full payloads across producer reuse and wrap" {
     var message = Message{ .sequence = 0, .data = @splat(0) };
     var valid = true;
     for (0..2000) |sequence| {
-        while (!queue.tryPopInto(&message)) std.atomic.spinLoopHint();
+        while (!queue.tryPopInto(&message)) std.Thread.yield() catch {};
         if (message.sequence != sequence) valid = false;
         for (message.data) |byte| if (byte != @as(u8, @truncate(sequence))) {
             valid = false;
