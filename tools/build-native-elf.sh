@@ -234,6 +234,14 @@ case "$pmp_probe" in
     1) pmp_probe=true; pmp_probe_cpp=1 ;;
     *) echo "NIHOS_NATIVE_PMP_PROBE must be 0 or 1" >&2; exit 1 ;;
 esac
+if [ "$pmp_probe" = false ] && [ "$pmp_case" != all ]; then
+    echo "NIHOS_NATIVE_PMP_CASE requires NIHOS_NATIVE_PMP_PROBE=1" >&2
+    exit 1
+fi
+if [ "$pmp_probe" = true ] && [ "$profile" = device ] && { [ "$pmp_case" = all ] || [ "$pmp_case" = 8 ]; }; then
+    echo "CLIC case 8 is not qualified on this device; select a single case 0..7 or 9..11" >&2
+    exit 1
+fi
 pmp_user_object=
 if [ "$pmp_probe" = true ]; then pmp_user_object="$repo_root/src/arch/riscv32/pmp_user.S"; fi
 if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
