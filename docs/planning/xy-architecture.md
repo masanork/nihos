@@ -45,6 +45,20 @@ macroによる拡張、実機のScheme VM、永続 `sqld` とU-mode隔離の接�
 `log` / `mem` / `tasks` は読み取り専用のシステムバッファとして開き、
 本文・カーソル・undoを保って戻れる。[実装と検証範囲](../measurements/2026-10-31-xy-system-buffers.md)を参照。
 
+現時点の通常起動での接続は次の通り。共通コアの存在と、各frontendからの接続完了を区別する。
+
+| 部分 | Tab5の通常 `*scratch*` | macOS Cocoa / C ABI | 共有状況 |
+| --- | --- | --- | --- |
+| UTF-8正本・書記素移動・undo | `scratch.Model.doc` | `scheme_bridge.XyWorkspace.doc` | 同じ `document.zig` の型を容量違いで利用 |
+| Scheme評価・コマンド登録 | `scheme_runtime.zig` | `scheme_bridge.zig` の固定フォーム評価 | 評価器の一本化は未実施 |
+| 組版・OpenType・ルビ | 通常画面には未接続 | `viewport_layout.zig` / `ttf.zig` | 共通コアとRGB565側adapterは存在するが、実機frontendの接続が残る |
+| 通常画面の描画 | `ascii_console.zig` / Canvas | Display List / RGBA compositor | 異なるfrontend。Tab5は固定ラスタの暫定表示 |
+| 入力とウィンドウ | serial / HID / タッチ入口 | Cocoa / C ABI | OSごとのadapter |
+
+次の共通化ではmacOSの評価入口を同じScheme実行系へ接続し、既存の表示設定・辞書hookを
+型付きbindingとして保った上で評価器を一本化する。続いてTab5の通常画面を共通の組版・
+OpenType表示へ接続する。今回のmain統合は、その共通化が既に完了したという意味ではない。
+
 実装の直近の順序は、(1) 共通Documentを使うRAM上の `*scratch*` と入力・描画を
 通常起動へ接続、(2) ログ・メモリ・タスク観察をバッファとして公開、(3) 本格的な
 Scheme評価とコマンド登録・再定義・中断を接続、(4) 保存、読書、辞書を同じmode機構へ
