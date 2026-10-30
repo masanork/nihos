@@ -84,7 +84,7 @@ var g_ws: HostWorkspaceType = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
 var g_placed_buf: [512]PlacedGlyph = undefined;
 var g_quads_buf: [512]GpuiGlyphQuad = undefined;
-// SAFETY: rendering assigns formatMinibuffer before reading this view.
+// SAFETY: render_gpui assigns the complete minibuffer view before taking line().
 var g_mb_view: ime_omni.MinibufferView = undefined;
 
 var g_c_omni_ctx: ?*anyopaque = null;
@@ -284,7 +284,8 @@ pub export fn xy_host_render_rgba8(
     stride: u32,
     theme_id: u8,
 ) callconv(.c) i32 {
-    // SAFETY: successful xy_host_render_gpui initializes the complete descriptor.
+    // SAFETY: a nonnegative render_gpui result initializes the whole descriptor;
+    // the error return above any read prevents use of an incomplete frame.
     var frame: GpuiFrameDescriptor = undefined;
     const q_count = xy_host_render_gpui(theme_id, &frame, &g_quads_buf, g_quads_buf.len);
     if (q_count < 0) return q_count;
