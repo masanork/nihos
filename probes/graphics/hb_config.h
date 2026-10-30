@@ -1,0 +1,20 @@
+/* Static TrueType experiment: retain Unicode, GSUB/GPOS and vertical support. */
+#define HB_NO_AAT
+#define HB_NO_GRAPHITE2
+#define HB_NO_ATEXIT
+#define HB_NO_GETENV
+#define HB_NO_MMAP
+#define HB_NO_OPEN
+#define HB_NO_SETLOCALE
+#define HB_NO_BUFFER_SERIALIZE
+#define HB_NO_BUFFER_MESSAGE
+#define HB_NO_BUFFER_VERIFY
+#define HB_NO_COLOR
+#define HB_NO_SVG
+#define HB_NO_MATH
+#define HB_NO_OT_FONT_GLYPH_NAMES
+#define HB_NO_MT
+#define HB_OPTIMIZE_SIZE
+#define HB_MINIMIZE_MEMORY_USAGE
+#define HB_NO_CFF
+#define HB_NO_VAR

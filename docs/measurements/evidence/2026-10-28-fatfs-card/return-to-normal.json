@@ -1,0 +1,16 @@
+{
+  "operator_original_card_returned": true,
+  "flash_written": false,
+  "expected_flash_sha256": "5e8de5fe117f8738053471eada32cf1cb19bb7aec760af5e4d88792f3cb5065e",
+  "verified": false,
+  "reset_sent": true,
+  "current_firmware_boot_requested": true,
+  "restoration_snapshot_differs": true,
+  "current_partition_verified": true,
+  "current_app_header_sha256": "fd78cee87b47f8e5a162d191d507cb87f016ac99ce9850d0fa30fd4a641d6523",
+  "current_boot_header_checked": true,
+  "log_sha256": "eaa8e7cba6be89de06c906f7123a7858294d62ae73b97274b1b9c51be0d58b35",
+  "bytes_captured": 10543,
+  "rom_boot_seen": true,
+  "native_boot_seen": true
+}

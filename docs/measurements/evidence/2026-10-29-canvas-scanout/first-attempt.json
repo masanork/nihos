@@ -1,0 +1,8 @@
+{
+  "error": "esptool detect_chip: No serial data received",
+  "identity_verified": false,
+  "candidate_write_started": false,
+  "backup_bytes": 0,
+  "reset_after_failure": false,
+  "note": "Attempt preceded automatic failure receipts; serial open/connection may have toggled reset lines."
+}

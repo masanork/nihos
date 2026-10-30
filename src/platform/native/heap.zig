@@ -3,7 +3,11 @@ const std = @import("std");
 const buddy = @import("buddy_heap");
 const task_resources = @import("task_resources");
 pub const Key = task_resources.Key;
-const Ledger = task_resources.Resources(buddy, 4, 2);
+const Ledger = if (@import("native_options").graphics)
+    task_resources.ResourcesWithGroups(buddy, 4, 2, 1, 32)
+else
+    task_resources.Resources(buddy, 4, 2);
+pub const Group = Ledger.Group;
 pub const Allocation = buddy.Allocation;
 pub const Pool = Ledger.Pool;
 pub const Slab = Ledger.Slab;
@@ -100,6 +104,51 @@ pub fn openTask(core: u32, key: Key) bool {
 
 pub fn selectTask(core: u32, key: Key) void {
     resources[core].current = key;
+}
+
+pub fn currentIdentity() Error!u32 {
+    return CBackend.identity();
+}
+
+/// Graphics owns a bounded group in the existing heap; never reinitialize it.
+/// Root/child bookkeeping is atomic with respect to this hart's dispatcher.
+pub noinline fn acquireExtent(group: *?Group, raw_bytes: usize, charge: *usize) Error![*]u8 {
+    const core = try CBackend.check();
+    if (raw_bytes < 65536 or raw_bytes & (raw_bytes - 1) != 0) return error.InvalidRequest;
+    const status = mask();
+    defer restore(status);
+    const state = &resources[core];
+    const heap = &owners[core].heap;
+    const before = heap.free_bytes;
+    const fresh = group.* == null;
+    if (fresh) group.* = try state.ledger.openGroup(heap, core, state.current);
+    const live = group.*.?;
+    const allocation = state.ledger.allocExtent(heap, core, state.current, live, raw_bytes - 128, 64) catch |err| {
+        if (fresh) {
+            try state.ledger.closeGroup(heap, core, state.current, live);
+            group.* = null;
+        }
+        return err;
+    };
+    charge.* = before - heap.free_bytes;
+    return allocation.bytes.ptr;
+}
+
+pub noinline fn releaseExtent(group: *?Group, address: usize) Error!usize {
+    const core = try CBackend.check();
+    const status = mask();
+    defer restore(status);
+    const state = &resources[core];
+    const heap = &owners[core].heap;
+    const live = group.* orelse return error.NotReady;
+    const allocation = try state.ledger.extentFromPointer(core, state.current, live, address);
+    const before = heap.free_bytes;
+    try state.ledger.freeExtent(heap, core, state.current, live, allocation);
+    if (try state.ledger.extentCount(core, state.current, live) == 0) {
+        try state.ledger.closeGroup(heap, core, state.current, live);
+        group.* = null;
+    }
+    return heap.free_bytes - before;
 }
 
 pub fn closeTask(core: u32, key: Key) bool {
@@ -406,7 +455,7 @@ comptime {
     C.exportSymbols();
 }
 
-noinline fn growProbe(lease: Objects, old: Object, length: usize) Object {
+noinline fn growProbe(lease: Objects, old: Object, length: usize) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") Object {
     const next = (reallocObject(lease, old, length) catch nih_native_task_failed()) orelse nih_native_task_failed();
     if (interrupts() != 8 or next.cell.bytes.len != length) nih_native_task_failed();
     if (next.cell.bytes.ptr == old.cell.bytes.ptr) {
@@ -418,7 +467,7 @@ noinline fn growProbe(lease: Objects, old: Object, length: usize) Object {
     return next;
 }
 
-noinline fn objectsProbe(worker: u32) ObjectState {
+noinline fn objectsProbe(worker: u32) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") ObjectState {
     const core = hart();
     const c_retained = nih_c_allocator_probe() orelse nih_native_task_failed();
     _ = @atomicRmw(u32, &resources[core].c_probes, .Add, 1, .monotonic);
@@ -485,7 +534,7 @@ noinline fn validSlabCell(bytes: []u8, expected: u8) bool {
     return true;
 }
 
-noinline fn slabProbe(lease: Slab) Cell {
+noinline fn slabProbe(lease: Slab) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") Cell {
     const core = hart();
     // SAFETY: The tested prefix is filled before reads; replacements stay inside it.
     var cells: [16]Cell = undefined;
@@ -523,7 +572,7 @@ noinline fn slabProbe(lease: Slab) Cell {
     return cells[0];
 }
 
-noinline fn poolProbe(pool: Pool) void {
+noinline fn poolProbe(pool: Pool) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     const copy = pool;
     const first = allocPool(pool, 7, 1) catch nih_native_task_failed();
     const second = allocPool(copy, 33, 32) catch nih_native_task_failed();
@@ -542,7 +591,7 @@ noinline fn poolProbe(pool: Pool) void {
 }
 
 /// Fixture tasks retain a monotonic pool and a slab at exit/termination.
-pub noinline fn lifecycleProbe() void {
+pub noinline fn lifecycleProbe() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     const core = hart();
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return;
     const disabled = mask();
@@ -634,6 +683,24 @@ pub fn availableBytes() ?usize {
 pub fn resourceReport(core: u32) ResourceReport {
     const ledger = &resources[core].ledger;
     return .{ .opened = ledger.opened, .closed = ledger.closed, .completed = ledger.completed, .reclaimed = ledger.reclaimed, .reuses = ledger.reuses, .owned = ledger.owned(), .pending = @intFromBool(ledger.pending() != null), .stale = resources[core].stale, .full = resources[core].full, .forced = resources[core].forced, .pool_objects = resources[core].pool_objects, .pool_rejected = resources[core].pool_rejected, .slab_objects = resources[core].slab_objects, .slab_frees = resources[core].slab_frees, .slab_rejected = resources[core].slab_rejected, .object_moves = resources[core].object_moves, .object_inplace = resources[core].object_inplace, .object_rejected = resources[core].object_rejected, .object_copy_bytes = resources[core].object_copy_bytes, .c_probes = resources[core].c_probes };
+}
+
+/// CPU0 only, after both bootstraps published completion and CPU1 parked.
+/// All validation precedes revocation; no payload is touched by retirement.
+pub fn canRetire() bool {
+    for (0..2) |core| {
+        if (@atomicLoad(u32, &prepared[core], .acquire) != 1 or
+            @atomicLoad(u32, &reports[core].confirmed, .acquire) != 1 or
+            resources[core].ledger.owned() != 0 or resources[core].ledger.pending() != null or
+            owners[core].heap.live != 0 or owners[core].heap.free_bytes != owners[core].heap.payload.len) return false;
+    }
+    return true;
+}
+pub fn retire() void {
+    for (0..2) |core| {
+        resources[core].c_pools = @splat(null);
+        @atomicStore(u32, &prepared[core], 2, .release);
+    }
 }
 
 fn hart() u32 {
@@ -775,7 +842,7 @@ pub noinline fn probe(argument: u32) void {
     owner.checks[worker] +%= 1;
 }
 
-pub noinline fn finish() bool {
+pub noinline fn finish() linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") bool {
     const core = hart();
     if (core >= 2) return false;
     if (@atomicLoad(u32, &prepared[core], .acquire) == 0) return true;
@@ -826,4 +893,13 @@ pub noinline fn finish() bool {
 pub fn report(core: u32) Report {
     if (@atomicLoad(u32, &reports[core].confirmed, .acquire) != 1) return .{};
     return reports[core];
+}
+
+/// Live counters of the calling owner only; not a completed qualification.
+pub fn localUsage() ?struct { capacity: u32, free: u32 } {
+    const core = hart();
+    if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1) return null;
+    const previous = mask();
+    defer restore(previous);
+    return .{ .capacity = @intCast(owners[core].heap.payload.len), .free = @intCast(owners[core].heap.free_bytes) };
 }

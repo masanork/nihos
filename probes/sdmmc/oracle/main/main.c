@@ -13,6 +13,7 @@
 #ifdef NIHOS_ORACLE_STORAGE
 #include "nihos_storage_probe.h"
 static sdmmc_card_t *storage_card;
+static uint8_t storage_workspace[NIH_RO_WORKSPACE_BYTES] __attribute__((aligned(64)));
 int nih_storage_read(uint32_t lba, void *sector) {
     if (!storage_card || lba >= storage_card->csd.capacity) return -1;
     return sdmmc_read_sectors(storage_card, sector, lba, 1) == ESP_OK ? 0 : -1;
@@ -84,12 +85,16 @@ void app_main(void) {
 #ifdef NIHOS_ORACLE_STORAGE
     storage_card = &card;
     nih_storage_report storage;
-    nih_storage_probe(card.csd.capacity, &storage);
+    nih_storage_api_report api;
+    nih_storage_probe(storage_workspace, sizeof(storage_workspace), card.csd.capacity, &storage, &api);
     printf("NIHOS_STORAGE_IDF");
     const char *names[] = {"status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes"};
     const uint32_t *values = (const uint32_t *)&storage;
     for (unsigned i = 0; i < sizeof(names)/sizeof(names[0]); ++i) printf(" %s=%08lx", names[i], (unsigned long)values[i]);
     printf("\n");
+    printf("NIHOS_STORAGE_API_IDF status=%08lx opens=%08lx closes=%08lx cancelled=%08lx rejected=%08lx read_calls=%08lx workspace_bytes=%08lx used_bytes=%08lx cleared=%08lx\n",
+        (unsigned long)api.status,(unsigned long)api.opens,(unsigned long)api.closes,(unsigned long)api.cancelled,(unsigned long)api.rejected,
+        (unsigned long)api.read_calls,(unsigned long)api.workspace_bytes,(unsigned long)api.used_bytes,(unsigned long)api.cleared);
     storage_card = NULL;
 #endif
     printf("NIHOS_SDMMC_IDF_ORACLE_PASS reads=%u writes=0\n", 8u + NIHOS_ORACLE_SAMPLES);

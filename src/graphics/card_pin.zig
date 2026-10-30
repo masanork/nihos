@@ -1,6 +1,7 @@
 //! PIN prompt renderer: accepts only a masked View, never a PIN or Service.
 //! Board scanout, cache synchronization, and touch ownership are external.
 const std = @import("std");
+const surface = @import("surface");
 const input = @import("../card/pin_entry.zig");
 const assets = @import("card_pin_assets.zig");
 const pixel = @import("test_pattern.zig").rgb565;
@@ -28,8 +29,7 @@ fn Canvas(comptime section: ?[]const u8) type {
         fn put(self: Self, x: usize, y: usize, value: u16) void {
             if (x < self.left or y < self.top or x - self.left >= self.columns or y - self.top >= self.rows) return;
             const offset = (y - self.top) * self.stride + (x - self.left) * 2;
-            self.bytes[offset] = @truncate(value);
-            self.bytes[offset + 1] = @truncate(value >> 8);
+            surface.internal.putPixel(self.bytes[offset..][0..2], value);
         }
         fn fill(self: Self, rect: input.Rect, color: u16) void {
             const left = @max(rect.x, self.left);
@@ -37,19 +37,17 @@ fn Canvas(comptime section: ?[]const u8) type {
             const top = @max(rect.y, self.top);
             const bottom = @min(rect.y + rect.height, self.top + self.rows);
             if (left >= right or top >= bottom) return;
-            for (top..bottom) |y| for (left..right) |x| self.put(x, y, color);
+            const target = surface.Surface.init(self.bytes, self.columns, self.rows, self.stride) orelse return;
+            _ = target.fillRect(@intCast(left - self.left), @intCast(top - self.top), @intCast(right - left), @intCast(bottom - top), color);
         }
         fn text(self: Self, id: assets.Id, x: usize, y: usize, ink: u16, paper: u16) void {
             const glyph = Store.glyphs[@backingInt(id)];
             var index: usize = 0;
             for (Store.masks[glyph.offset..][0..glyph.length]) |run| {
-                const alpha: u16 = run >> 4;
+                const alpha: u4 = @intCast(run >> 4);
                 for (0..@as(usize, run & 15) + 1) |_| {
                     if (alpha != 0) {
-                        const r = (((ink >> 11) * alpha + (paper >> 11) * (15 - alpha)) / 15) << 11;
-                        const g = ((((ink >> 5) & 63) * alpha + ((paper >> 5) & 63) * (15 - alpha)) / 15) << 5;
-                        const b = ((ink & 31) * alpha + (paper & 31) * (15 - alpha)) / 15;
-                        self.put(x + index % glyph.width, y + index / glyph.width, r | g | b);
+                        self.put(x + index % glyph.width, y + index / glyph.width, surface.internal.blend4(paper, ink, alpha));
                     }
                     index += 1;
                 }

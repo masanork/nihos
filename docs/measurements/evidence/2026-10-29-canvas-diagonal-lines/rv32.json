@@ -1,0 +1,24 @@
+{
+  "evidence": "esp32p4-emulator-rv32",
+  "scope": "offscreen synthetic workloads; not editor, Quake or physical timing",
+  "width": 320,
+  "height": 200,
+  "pixel_format": "RGB565LE",
+  "source": {
+    "head": "accaa30d39a48dfa71fd75a9c8c7d2c7235360ed",
+    "source_sha256": "cc2f7768399c5289e630df501e20a713a2380f5cb45e65c76b2e9de693f804a7"
+  },
+  "image_sha256": "c75fbb74b58b62eb9aac40efec65930c4111ab6ba9c34f3a3fd04f7e5b629ef5",
+  "elf_sha256": "1f564bec68edff779485d71f479a3ca44edfd130c215935bb3ffb40b295535ec",
+  "emulator_sha256": "a4c3468a4abf3f2e55ca0912fa7cdfbe5e101ecb6ab74a9ec35182d70ba6a771",
+  "frames": {
+    "scroll": {
+      "rgb565_sha256": "30880181e9a87e00e7ac1b000a9b0779dedea4482275c53ca2291a0edf306ac3",
+      "png_sha256": "a72c356c60f7181118f83c36d532dc64943fe1421493ba8c9178d066eca21aaf"
+    },
+    "indexed": {
+      "rgb565_sha256": "89ba749878a8506fa6c54c384b0f4a4e3897d6635dc2bad4ff6cc0569f7d7241",
+      "png_sha256": "939526077bff2013efb379c845bd5d18b7f37394561ea0545c02801eb860e5c1"
+    }
+  }
+}

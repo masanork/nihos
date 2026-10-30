@@ -1,0 +1,49 @@
+{
+  "code_commit": "e1a454f34f0488e0045af3ce41afc0a364f8e37a",
+  "minimum_heap_bytes": 49152,
+  "profiles": {
+    "keypad": {
+      "heap_bytes": 59712,
+      "image_sha256": "4c5ef6b317d13aff9f410a0ce69ad8a5602cf1f96d55f504ebedefd4a3450411",
+      "elf_sha256": "5de3e23cee281137cf14f9a36b4082628b6f89336933101004d8c8f9eb89f8bb",
+      "audit_sha256": "63428ee234212fd964a90afc9433978349ca70f7616bbd5b626ed81c2d3a6a0f",
+      "physical_qualification": false
+    },
+    "card-read": {
+      "heap_bytes": 50048,
+      "image_sha256": "30ef38e074681984b6e61fc3f2717f62db1c43ba2b6465e453a8f43b16f3d669",
+      "elf_sha256": "889c91603e8de786374b4f57e3d468abd653e0bd14d9e815145efcbd8b5d5bba",
+      "audit_sha256": "f908d3d3d82e03d76cd5ede7a9b261902fe68100c59f4a2f5131fe5f95cba0ce",
+      "physical_qualification": false
+    },
+    "card-photo": {
+      "heap_bytes": 49536,
+      "image_sha256": "9f613493c235db172076a08e0708a971ee137f20ab7ad638f9e36058b7bdc39a",
+      "elf_sha256": "d126da348a6b6198c2c8e2f4cdc9bcb84af278686ae8fef72aad081873d3d796",
+      "audit_sha256": "b53a629572009401f4dd97fcc7701df3b7bda4c633b8d822ed08eaa0797b2ff2",
+      "physical_qualification": false
+    },
+    "card-auto": {
+      "heap_bytes": 50048,
+      "image_sha256": "69bff642156e219f59cf96422fc781c6316e34982c9af7d994364a594f38a6c0",
+      "elf_sha256": "fac12413426c57d08a2abc3671659ff3707194bd8ce8bb21ceae37a3c520eb83",
+      "audit_sha256": "fa5fcf38fbd0ecf96878d1040dc73525152f172c2d4540afe652ccd31f62de30",
+      "physical_qualification": false
+    },
+    "card-auto-probe": {
+      "heap_bytes": 55680,
+      "image_sha256": "7c1c7abfc0f41c81f50ce19e346ac018941d3de39c1aa58b6ef600fa7842e1a9",
+      "elf_sha256": "ae2990ea60e93cd106b76eac2b1257001ca89a87f59ac8c9ab123e6f251b35be",
+      "audit_sha256": "70618c8a2386e2d76c5b30c6e0467ea9167e6e0b5b2620c5af93264e61c45701",
+      "physical_qualification": false
+    },
+    "card-scene": {
+      "heap_bytes": 57728,
+      "image_sha256": "4809dfe830b1f185a6210323edc0392cd3bff0b9dece6cd17ba5e91a5c5b5f6b",
+      "elf_sha256": "4c9f095237396bc82bc633285f3050c621a5cde651e68ff14dea84471f6e9091",
+      "audit_sha256": "92472fa91dfb39d26abde449aeb5b0a712d1966c14ad2dd6f8ba9a5de44467bc",
+      "physical_qualification": false
+    }
+  },
+  "legacy_sample_matches_main_source": true
+}

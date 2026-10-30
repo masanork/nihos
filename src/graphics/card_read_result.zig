@@ -1,5 +1,6 @@
 //! Ephemeral card overview and legacy page renderer. No strings leave the device.
 const std = @import("std");
+const surface = @import("surface");
 const screen = @import("card_pin.zig");
 const input = @import("../card/input_support.zig");
 fn Store(comptime section: ?[]const u8) type {
@@ -75,26 +76,40 @@ fn rawGlyph(comptime section: ?[]const u8, value: u21) ?[]const u8 {
     if (low == data.len / 36 or code(data[low * 36 ..]) != value) return null;
     return data[low * 36 + 4 ..][0..32];
 }
+fn clearRows(frame: []u8, top: u32, bottom: u32) void {
+    const target = surface.Surface.init(frame, 720, 1280, 1440) orelse return;
+    _ = target.fillRect(0, @intCast(top), 720, bottom - top, screen.paper_color);
+}
 const Canvas = struct {
     frame: []u8,
     fn character(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize) bool {
         return self.sized(section, value, x, y, 32);
     }
-    fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
+    // Compressed automatic text is drawn from the photo extent. The uncompressed
+    // scaler stays on the boot Flash page so the SRAM heap stays at or above 48 KiB.
+    inline fn sized(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
         if (comptime isCompressed(section)) return AutoPainter(section).draw(self, value, x, y, size);
+        return self.sizedFlash(section, value, x, y, size);
+    }
+    noinline fn sizedFlash(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.text.card" else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text") bool {
         return self.sizedInline(section, value, x, y, size);
     }
     inline fn sizedInline(self: Canvas, comptime section: ?[]const u8, value: u21, x: usize, y: usize, size: usize) bool {
         const selected = glyph(section, value);
         const bits = selected orelse glyph(section, 0x25a1).?;
-        for (0..size) |row| for (0..size) |column| {
-            const original_y = row * 16 / size;
-            const original_x = column * 16 / size;
-            if (bits[original_y * 2 + original_x / 8] & (@as(u8, 128) >> @as(u3, @intCast(original_x % 8))) == 0) continue;
-            if (x + column >= 720 or y + row >= 1280) continue;
-            const offset = ((y + row) * 720 + x + column) * 2;
-            std.mem.writeInt(u16, self.frame[offset..][0..2], 0x2125, .little);
-        };
+        if (size > 32) return false;
+        const target = surface.Surface.init(self.frame, 720, 1280, 1440) orelse return false;
+        var coverage: [32]u8 = undefined;
+        for (0..size) |row| {
+            for (0..size) |column| {
+                const original_y = row * 16 / size;
+                const original_x = column * 16 / size;
+                // The source font is one-bit coverage, so its A8 endpoints
+                // are 0 and 255. Shared Surface handles blending and clipping.
+                coverage[column] = if (bits[original_y * 2 + original_x / 8] & (@as(u8, 128) >> @as(u3, @intCast(original_x % 8))) == 0) 0 else 255;
+            }
+            if (!target.blit(.{ .bytes = coverage[0..size], .width = size, .height = 1, .stride = size }, @intCast(x), @intCast(y + row), 0x2125)) return false;
+        }
         return selected != null;
     }
     inline fn wrapped(self: Canvas, comptime section: ?[]const u8, value: []const u8, x: usize, y: usize, size: usize, columns: usize, lines: usize) !Paint {
@@ -148,7 +163,7 @@ test "automatic font decoding preserves every original glyph pixel" {
 pub const Paint = struct { missing: u32 = 0, shown: u32 = 0, truncated: bool = false };
 pub fn result(comptime section: ?[]const u8, frame: []u8, attributes: input.Attributes, pager: *Pager) !Paint {
     if (frame.len != 720 * 1280 * 2 or pager.field >= 4) return error.Invalid;
-    for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 0, 1280);
     const canvas = Canvas{ .frame = frame };
     canvas.text(section, "券面情報の読取結果", 24, 110);
     canvas.text(section, "署名検証は未実施", 24, 170);
@@ -183,7 +198,7 @@ pub inline fn licenseOverview(comptime section: ?[]const u8, frame: []u8, info: 
 pub const Document = struct { name: []const u8, address: []const u8, birth_date: []const u8, detail: []const u8, expiration: ?[]const u8 = null, external_missing: u32 = 0 };
 inline fn overviewDocument(comptime section: ?[]const u8, frame: []u8, attributes: Document, portrait: ?[]const u8) !Paint {
     if (frame.len != 720 * 1280 * 2 or (portrait != null and portrait.?.len != portrait_bytes)) return error.Invalid;
-    for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 0, 1280);
     const canvas = Canvas{ .frame = frame };
     _ = try canvas.wrapped(section, if (attributes.expiration != null) "運転免許証" else "マイナンバーカード", 24, 64, 24, 28, 1);
     _ = try canvas.wrapped(section, if (attributes.expiration != null) "交付時の記録・署名検証は未実施" else "読取結果・署名検証は未実施", 24, 104, 16, 42, 1);
@@ -220,21 +235,21 @@ inline fn overviewDocument(comptime section: ?[]const u8, frame: []u8, attribute
 }
 pub inline fn notice(comptime section: ?[]const u8, frame: []u8, title: []const u8, detail: []const u8) !void {
     if (frame.len != 720 * 1280 * 2) return error.Invalid;
-    for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 0, 1280);
     const canvas = Canvas{ .frame = frame };
     _ = try canvas.wrapped(section, title, 24, 240, 24, 28, 3);
     _ = try canvas.wrapped(section, detail, 24, 420, 24, 28, 6);
 }
 pub inline fn licensePinHeader(comptime section: ?[]const u8, frame: []u8, index: u8) !void {
     if (frame.len != 720 * 1280 * 2 or index < 1 or index > 3) return error.Invalid;
-    for (0..280 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 0, 280);
     const canvas = Canvas{ .frame = frame };
     _ = try canvas.wrapped(section, if (index == 3) "マイナ免許証" else "IC運転免許証", 84, 106, 24, 24, 1);
     _ = try canvas.wrapped(section, if (index == 3) "免許情報の暗証番号" else if (index == 1) "免許証の暗証番号１" else "写真・署名確認の暗証番号２", 84, 190, 24, 24, 1);
     _ = try canvas.wrapped(section, if (index == 2) "署名確認のため本籍も端末内で読みます" else if (index == 3) "マイナンバーカード用とは別の暗証番号です" else "暗証番号は保存しません", 84, 245, 16, 32, 1);
 }
 pub inline fn licenseNote(comptime section: ?[]const u8, frame: []u8, verification: @import("../card/license_record.zig").Verification, myna: bool, changed: u2) !void {
-    for (92 * 720..156 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 92, 156);
     const canvas = Canvas{ .frame = frame };
     _ = try automaticText(section, canvas, switch (verification) {
         .valid => AutoCaptions.get(0),
@@ -246,7 +261,10 @@ pub inline fn licenseNote(comptime section: ?[]const u8, frame: []u8, verificati
     _ = try automaticText(section, canvas, if (myna) AutoCaptions.get(5) else if (changed == 2) AutoCaptions.get(38) else if (changed == 1) AutoCaptions.get(6) else AutoCaptions.get(7), 24, 128, 16, 42, 1);
 }
 pub inline fn resultControls(comptime section: ?[]const u8, frame: []u8, myna: bool) !void {
-    for (1080 * 720..1280 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 1080, 1280);
+    try paintResultControls(section, frame, myna);
+}
+inline fn paintResultControls(comptime section: ?[]const u8, frame: []u8, myna: bool) !void {
     const canvas = Canvas{ .frame = frame };
     _ = try automaticText(section, canvas, AutoCaptions.get(8), 24, 1140, 24, 8, 1);
     _ = try automaticText(section, canvas, if (myna) AutoCaptions.get(9) else AutoCaptions.get(10), 264, 1140, 24, 8, 1);
@@ -302,7 +320,7 @@ pub inline fn licensePage(comptime section: ?[]const u8, frame: []u8, myna: bool
         report.missing += part.missing;
         report.truncated = report.truncated or part.truncated;
     }
-    try resultControls(section, frame, myna);
+    try paintResultControls(section, frame, myna);
     return report;
 }
 pub inline fn preview(comptime section: ?[]const u8, frame: []u8, portrait: []const u8) !void {
@@ -311,8 +329,8 @@ pub inline fn preview(comptime section: ?[]const u8, frame: []u8, portrait: []co
     for (0..26) |i| @memcpy(name[i * 3 ..][0..3], "例");
     for (0..168) |i| @memcpy(address[i * 3 ..][0..3], "試");
     _ = try overview(section, frame, .{ .name = &name, .address = &address, .birth_date = "00000000", .gender = "0" }, portrait);
-    for (0..150 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
-    for (1080 * 720..1200 * 720) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 0, 150);
+    clearRows(frame, 1080, 1200);
     const canvas = Canvas{ .frame = frame };
     _ = try canvas.wrapped(section, "表示の動作確認", 24, 64, 24, 28, 1);
     _ = try canvas.wrapped(section, "テスト画像・架空データ", 24, 104, 16, 42, 1);
@@ -345,7 +363,7 @@ const EndLabels = struct {
     }
 };
 pub inline fn endMessage(comptime section: ?[]const u8, frame: []u8, reason: End) void {
-    for (0..frame.len / 2) |i| std.mem.writeInt(u16, frame[i * 2 ..][0..2], screen.paper_color, .little);
+    clearRows(frame, 0, 1280);
     const canvas = Canvas{ .frame = frame };
     const title = EndLabels.get(@backingInt(reason));
     _ = canvas.wrapped(section, title, 24, 300, 24, 28, 2) catch return;

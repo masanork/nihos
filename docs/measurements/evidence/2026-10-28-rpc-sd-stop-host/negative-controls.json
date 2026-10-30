@@ -1,0 +1,14 @@
+{
+  "name": "poll_relay_omitted_but_completion_relay_kept",
+  "rejected": true,
+  "exit_code": -6,
+  "reason": [
+    "expected 0, found 1",
+    "Zig VFS integration: TestExpectedEqual",
+    "thread 24543069 panic: RPC to controller stop relay failed"
+  ],
+  "expected_property": "controller aborts before finishDma publishes bytes; logical late cancellation alone is insufficient",
+  "source_sha256": "5e4a2e07946d38d90d9b61305fe764d06e64f45b1e4c636d2ed27b071fe2fa71",
+  "mutant_sha256": "7f87614b4d750c88ed77b2896728ebf1a5dfefbd28738b76242c5b9630774c64",
+  "scope": "host actual C/FatFs/RPC/broker/controller model; no hardware execution"
+}

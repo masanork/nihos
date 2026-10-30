@@ -126,7 +126,9 @@ def check_keypad_storage(lease, storage, audit, runtime=False, memory=None):
         raise ValueError('invalid SRAM sparse keypad plan')
 
 
-def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=False, require_live_controls=False, normal_boot=False):
+def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=False, require_live_controls=False, normal_boot=False, canvas_demo=False):
+    if canvas_demo and (mode != 2 or normal_boot or require_console or require_live_controls):
+        raise ValueError('canvas fixture requires the dedicated qualification profile')
     if normal_boot and (mode != 2 or require_live_controls):
         raise ValueError('normal boot is not the qualification control exercise')
     if mode not in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11) or expected_dpi not in (10, 60, 80):
@@ -135,7 +137,8 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
     if image.get('keypad_storage', {}).get('card_boot'):
         check_card_boot(log, image.get('automatic_cards', {}).get('scene_exercise', False))
     core = NATIVE.check(log, 'integer', psram_bytes, image, 'physical-device',
-                        require_qualification=not normal_boot and 'NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20, require_normal=normal_boot)
+                        require_qualification=not normal_boot and 'NIHOS_NATIVE_PSRAM_TUNING ' in log, external_reserved_bytes=2 << 20, require_normal=normal_boot,
+                        allow_panel_only=True)
     if 'NIHOS_NATIVE_DISPLAY_IRQ_FAIL' in log:
         raise ValueError('display refresh failed')
     screen = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_SCANOUT', SCANOUT)
@@ -197,8 +200,16 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
             raise ValueError('display refresh timing does not match the selected profile')
     if 'NIHOS_NATIVE_DISPLAY_LAYOUT ' in log:
         layout = NATIVE.fixed_record(log, 'NIHOS_NATIVE_DISPLAY_LAYOUT', ('logical_width', 'logical_height', 'rotation'))
-        if layout != dict(zip(('logical_width', 'logical_height', 'rotation'), (720, 1280, 0) if mode in (6, 7, 8, 9, 10, 11) else (1280, 720, 1))):
+        if layout != dict(zip(('logical_width', 'logical_height', 'rotation'), (720, 1280, 0) if canvas_demo or mode in (6, 7, 8, 9, 10, 11) else (1280, 720, 1))):
             raise ValueError('unexpected display composition/rotation')
+    canvas = None
+    if canvas_demo:
+        canvas = NATIVE.fixed_record(log, 'NIHOS_NATIVE_CANVAS_PATTERN', ('checksum', 'frames'))
+        if (layout is None or canvas['checksum'] != 0x549e3481 or canvas['frames'] != screen['frames'] or
+                not log.index('NIHOS_NATIVE_DISPLAY_LAYOUT ') < log.index('NIHOS_NATIVE_CANVAS_PATTERN ') < log.index('NIHOS_NATIVE_DISPLAY_IRQ_PASS ')):
+            raise ValueError('canvas framebuffer evidence mismatch')
+    elif 'NIHOS_NATIVE_CANVAS_PATTERN ' in log:
+        raise ValueError('unexpected canvas fixture evidence')
     console = None
     console_style = None
     live = None
@@ -246,7 +257,7 @@ def check(log, image, mode, expected_dpi, psram_bytes=32 << 20, require_console=
         raise ValueError('orphan console style record')
     if live is None and (require_live_controls or 'NIHOS_NATIVE_UI_' in log or 'NIHOS_NATIVE_KEYBOARD ' in log or 'NIHOS_NATIVE_DIAGNOSTIC_KEY ' in log):
         raise ValueError('orphan live UI/input evidence')
-    return {'live': live, 'console_style': console_style, 'console': console, 'timing': timing, 'layout': layout, 'native': core, 'display': screen, 'source': source, 'refresh': refresh,
+    return {'live': live, 'console_style': console_style, 'console': console, 'timing': timing, 'layout': layout, 'canvas': canvas, 'native': core, 'display': screen, 'source': source, 'refresh': refresh,
             'mode': mode, 'lease': lease, 'optical_evidence': 'not evaluated by this checker'}
 
 
@@ -260,8 +271,9 @@ def main():
     parser.add_argument("--console", action="store_true", help="Require the ASCII console record")
     parser.add_argument("--exercise-live", action="store_true", help="Require the complete six-control serial exercise")
     parser.add_argument("--normal-boot", action="store_true", help="Validate normal boot health, without claiming full qualification")
+    parser.add_argument("--canvas-demo", action="store_true", help="Require the opt-in portrait canvas fixture record")
     args = parser.parse_args()
-    report = check(args.log.read_text(), json.loads(args.audit.read_text()), args.mode, args.dpi, require_console=args.console, require_live_controls=args.exercise_live, normal_boot=args.normal_boot)
+    report = check(args.log.read_text(), json.loads(args.audit.read_text()), args.mode, args.dpi, require_console=args.console, require_live_controls=args.exercise_live, normal_boot=args.normal_boot, canvas_demo=args.canvas_demo)
     args.report.write_text(json.dumps(report, indent=2) + '\n')
     print('Native memory/core and display startup/IRQ evidence passed; optical evidence is separate')
 

@@ -1,7 +1,12 @@
 //! Independent native boot experiment: no IDF application or FreeRTOS link.
 const std = @import("std");
 const options = @import("native_options");
+const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
+const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
+const normal_fs = @import("normal_fs_abi.zig");
+const broker_runtime = if (options.broker) @import("broker_abi.zig") else struct {};
 const timer_group = @import("timer_group");
+const reset_capture = @import("reset_capture");
 const tasks = @import("native_tasks");
 const native_psram = @import("psram.zig");
 const record_log = @import("record_log");
@@ -15,6 +20,16 @@ const network_config = @import("network_config");
 const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
+const pointer = @import("pointer_input");
+export fn nih_touch_available() callconv(.c) bool {
+    return options.devices and board_devices.touch.ready();
+}
+export fn nih_touch_pop(output: *pointer.Event) callconv(.c) bool {
+    if (!options.devices) return false;
+    const event = board_devices.touch.pop() orelse return false;
+    output.* = event;
+    return true;
+}
 export fn nih_device_request(kind: u32) callconv(.c) bool {
     if (!options.devices) return false;
     const accepted = board_devices.requestDevice(kind);
@@ -22,6 +37,68 @@ export fn nih_device_request(kind: u32) callconv(.c) bool {
     const words: extern struct { kind: u32, accepted: u32, i2s_owner: u32, pinned: u32, workspace: u32 } = .{ .kind = kind, .accepted = @intFromBool(accepted), .i2s_owner = @backingInt(workspace.gate.owner), .pinned = @intFromBool(workspace.gate.pinned), .workspace = workspace.bytesReserved() };
     logger.record("NIHOS_DEVICE_REQUEST", null, .{ "kind", "accepted", "i2s_owner", "pinned", "workspace" }, &words);
     return accepted;
+}
+
+fn storageClient() u32 {
+    const handle = tasks.calls.current() orelse return 0;
+    return (@as(u32, handle.generation) << 16) | handle.slot;
+}
+export fn nih_normal_c6_dma_release() callconv(.c) u32 {
+    return if (options.network and normal_storage) network.releaseDmaForHost() else 1;
+}
+export fn nih_normal_fs_wake() callconv(.c) void {
+    tasks.wakeNormalStorage();
+}
+export fn nih_fs_command(path: [*]const u8, length: u32) callconv(.c) void {
+    if (!normal_storage or length > 512) return;
+    const accepted = normal_fs.submit(storageClient(), path[0..length]);
+    if (!accepted) printBoot("Storage request unavailable or busy.\n");
+}
+var last_storage_status: u32 = 0xffffffff;
+fn serviceStorage() void {
+    if (!normal_storage) return;
+    const completed = normal_fs.poll(storageClient());
+    const report = normal_fs.snapshot();
+    const changed = last_storage_status != @backingInt(report.status);
+    if (!completed and !changed) return;
+    last_storage_status = @backingInt(report.status);
+    const words: extern struct { status: u32, epoch: u32, kind: u32, requests: u32, completed: u32, bytes: u32, crc: u32, eof: u32, error_code: u32, reads: u32, yields: u32 } = .{
+        .status = @backingInt(report.status),
+        .epoch = report.generation,
+        .kind = report.kind,
+        .requests = report.requests,
+        .completed = report.completed,
+        .bytes = report.bytes,
+        .crc = report.crc,
+        .eof = report.eof,
+        .error_code = @bitCast(report.error_code),
+        .reads = report.io_reads,
+        .yields = report.yields,
+    };
+    logger.record("NIHOS_NORMAL_FS", null, .{ "status", "epoch", "kind", "requests", "completed", "bytes", "crc", "eof", "error_code", "reads", "yields" }, &words);
+    if (report.io_error != 0) {
+        const io_words: extern struct { error_code: u32, command: u32, interrupts: u32, dma_status: u32 } = .{ .error_code = report.io_error, .command = report.command, .interrupts = report.interrupts, .dma_status = report.dma_status };
+        logger.record("NIHOS_NORMAL_FS_IO", null, .{ "error_code", "command", "interrupts", "dma_status" }, &io_words);
+    }
+    if (changed) switch (report.status) {
+        .mounted => printBoot("SD ready. :read path reads up to 4096 bytes; :storage refreshes.\n"),
+        .no_card => printBoot("No SD card. Insert a card and enter :storage.\n"),
+        .rejected => printBoot("SD unavailable. Enter :storage to retry.\n"),
+        .no_memory => printBoot("Storage memory unavailable.\n"),
+        .quarantined => printBoot("Storage stopped. Restart to recover.\n"),
+        else => {},
+    };
+    if (completed and report.error_code == 0 and report.bytes != 0) {
+        var preview: [128]u8 = undefined;
+        const count = normal_fs.result(0, &preview);
+        // An arbitrary file must not inject terminal commands into the journal.
+        for (preview[0..count]) |*byte| if ((byte.* < 32 and byte.* != 10 and byte.* != 9) or byte.* >= 127) {
+            byte.* = '.';
+        };
+        print(preview[0..count]);
+        printBoot("\n");
+        if (report.bytes > count or report.eof == 0) printBoot("[preview truncated]\n");
+    }
 }
 
 comptime {
@@ -32,6 +109,11 @@ comptime {
 extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
+extern fn nih_rom_reset_reason(u32) callconv(.c) u32;
+extern var nih_rom_saved_pc: [2]u32;
+extern fn nih_boot_capture_getc() callconv(.c) i32;
+extern fn nih_storage_clock_start() callconv(.c) u32;
+extern fn nih_sqlite_stack_paint(u32) callconv(.c) u32;
 extern fn nih_native_cpu1_start() callconv(.c) void;
 extern var __stack0_bottom: u8;
 extern var __stack0_top: u8;
@@ -52,6 +134,8 @@ var boot_clock_ready = false;
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
 var display_refresh_reported = false;
+var probe_arm_cycles_max: u32 = 0;
+var probe_dispatch_cycles_max: u32 = 0;
 var display_refresh_pending: u32 = 0;
 var network_report_at: u64 = 0;
 var network_ready = false;
@@ -64,6 +148,10 @@ fn serviceNetwork() void {
             devices_report_at = now + 5_000_000;
             const devices = board_devices.snapshot();
             if (options.devices) {
+                const touch = board_devices.touch.snapshot();
+                logger.record("NIHOS_NATIVE_TOUCH_INPUT", null, .{ "status", "panel", "width", "height", "slots", "polls", "fresh", "errors", "error_code", "max_poll_us" }, &touch);
+                const events = board_devices.touch.eventSnapshot();
+                logger.record("NIHOS_NATIVE_POINTER", null, .{ "down", "move", "up", "cancel", "multi", "overflow", "quadrants", "queued" }, &events);
                 const service = board_devices.serviceSnapshot();
                 logger.record("NIHOS_NATIVE_DEVICE_SERVICE", null, .{ "available", "requested", "i2s_owner", "pinned", "workspace" }, &service);
             }
@@ -142,6 +230,27 @@ noinline fn showDiagnosticSnapshot() void {
     if (!ui.snapshot()) fail("console snapshot");
     if (!tasks.memory.stacks.finish(0)) fail("console stack guards");
     ui.report(&logger);
+}
+
+// Emulator-only debugger rendezvous. No panel or physical-device I/O.
+export fn nih_canvas_frame_ready() void {
+    asm volatile ("nop" ::: .{ .memory = true });
+}
+
+// Debugger-only fixture mailbox. Access occurs while the guest is stopped at
+// nih_canvas_frame_ready; it is not an application ABI or hardware input.
+const EmulatedInput = extern struct { command: u32 = 0, contacts: u32 = 0, x: u32 = 0, y: u32 = 0, time_us: u32 = 0 };
+const EmulatedOutput = extern struct { samples: u32 = 0, events: u32 = 0, clicks: u32 = 0, kind: u32 = 0, mode: u32 = 0, keys: u32 = 0, edits: u32 = 0, cursor: u32 = 0 };
+const EmulatedDocument = extern struct { length: u32 = 0, bytes: [80]u8 = @splat(0) };
+var nih_emulator_input: EmulatedInput = .{};
+var nih_emulator_output: EmulatedOutput = .{};
+var nih_emulator_document: EmulatedDocument = .{};
+comptime {
+    if (options.canvas_interactive) {
+        @export(&nih_emulator_input, .{ .name = "nih_emulator_input" });
+        @export(&nih_emulator_output, .{ .name = "nih_emulator_output" });
+        @export(&nih_emulator_document, .{ .name = "nih_emulator_document" });
+    }
 }
 
 var initialized: u32 = 0x4e494853;
@@ -327,10 +436,14 @@ fn enableTimer(hart: u32) void {
 }
 
 export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
+    const probe_dispatch_begin = if (options.pmp_probe) cycle() else 0;
     if (hart >= 2) fail("invalid hart");
-    if (!interruptStackValid(hart, frame)) fail("interrupt stack/MIE");
+    if (!interruptStackValid(hart, frame, status)) fail("interrupt stack/MIE");
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
-    if (options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
+    // A rejected user SP was saved in the kernel fault frame. Do not resume it
+    // from the display or boot paths; the ready path ends that task.
+    const fault_frame = tasks.pmp.rejectedPending(hart);
+    if (!fault_frame and options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
         const display = display_service.runtime;
         if (!display.active()) fail("unexpected display IRQ");
         display.onInterrupt();
@@ -346,7 +459,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         nih_native_return_states[hart] = state;
         return frame;
     }
-    if (options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
+    if (!fault_frame and options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
         tasks.ipi.bell(hart).acknowledge();
         _ = @atomicRmw(u32, &boot_ipi[hart], .Add, 1, .release);
         if (hart == 1 and options.boot_test != 4) tasks.ipi.bell(0).raise();
@@ -354,7 +467,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         return frame;
     }
     if (tasks.ready(hart)) {
-        const selected = if (cause & 0x8000_0fff == 11)
+        const from_user = (status & tasks.pmp.mpp_mask) == tasks.pmp.user_mpp;
+        const sp_rejected = tasks.pmp.takeRejectedSp(hart);
+        const selected = if (tasks.pmp.containedFault(from_user, sp_rejected, cause)) fault_path: {
+            if (cause & 0x8000_0fff == 0x8000_0010) _ = timer(hart).clearPending();
+            if (cause & 0x8000_0fff == 0x8000_0011) tasks.ipi.bell(hart).acknowledge();
+            break :fault_path tasks.onProtectedFault(hart, frame, state);
+        } else if (tasks.pmp.userCall(from_user, cause))
             tasks.onCall(hart, frame, state, timer(hart))
         else if (cause & 0x8000_0fff == 0x8000_0010 and timer(hart).clearPending()) timer_path: {
             _ = @atomicRmw(u32, &ticks[hart], .Add, 1, .release);
@@ -364,9 +483,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         else
             null;
         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
+        const probe_arm_begin = if (options.pmp_probe) cycle() else 0;
+        tasks.armProtection(hart, next);
+        if (options.pmp_probe and hart == 0) probe_arm_cycles_max = @max(probe_arm_cycles_max, cycle() -% probe_arm_begin);
         tasks.floating.selectBank(hart, next.floating_context);
         const next_state = if (next.floating_context == 0) next.state.integerOnly() else next.state.floatingReady();
         nih_native_return_states[hart] = next_state.returningFrom(state);
+        if (options.pmp_probe and hart == 0) probe_dispatch_cycles_max = @max(probe_dispatch_cycles_max, cycle() -% probe_dispatch_begin);
         return next.frame;
     }
     nih_native_return_states[hart] = state;
@@ -407,6 +530,11 @@ export fn nih_audio_stage(code: u32) callconv(.c) void {
 }
 
 export fn nih_native_task_failed() callconv(.c) noreturn {
+    if (options.fatfs_native) {
+        print("NIHOS_NATIVE_TASK_FAILURE caller=");
+        hex(@returnAddress());
+        print("\n");
+    }
     fail("task invariant");
 }
 
@@ -447,7 +575,7 @@ fn interruptGuard(hart: u32) *volatile [4]u32 {
     return if (hart == 0) &__irq_stack0_bottom else &__irq_stack1_bottom;
 }
 
-fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bool {
+fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, interrupted: u32) bool {
     const guard = interruptGuard(hart);
     for (0..4) |word| if (guard[word] != tasks.memory.stacks.layout.irq_guard) return false;
     const sp = asm volatile ("mv %[result], sp"
@@ -457,8 +585,9 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bo
         : [result] "=r" (-> u32),
     );
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
-    return status & (8 | 0x6000) == 0 and sp >= @intFromPtr(guard) + 16 and sp < top and
-        tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
+    if (status & (8 | 0x6000) != 0 or sp < @intFromPtr(guard) + 16 or sp >= top) return false;
+    if (tasks.pmp.acceptsDispatcherFrame(hart, interrupted, @as(u32, @intCast(@intFromPtr(frame))), frame.sp)) return true;
+    return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
 fn taskReport(hart: u32) void {
@@ -513,6 +642,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     interruptGuard(1).* = @splat(tasks.memory.stacks.layout.irq_guard);
     asm volatile ("ecall" ::: .{ .memory = true });
     if (!tasks.memory.begin()) fail("CPU1 memory begin");
+    if (options.high_sram) tasks.memory.high.peer();
     native_psram.memory.peer();
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     native_psram.memory.ownerReady(1);
@@ -522,17 +652,31 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
         while ((ui.timer().counter() orelse fail("late CPU1 clock")) - started < 100_000) asm volatile ("nop");
     }
     enableTimer(1);
-    if (options.boot_fast) {
-        if (options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
+    if (options.boot_fast or options.pmp_probe) {
+        if (options.boot_fast and options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
         while (true) tasks.idleOnce(1);
     }
     while (true) {
         _ = tasks.service(1);
         if (tasks.ipi.done()) {
+            if (options.storage_service and !options.fatfs_native) runStorageTasks(1);
             tasks.floating.quiesce(1);
             if (!flash_records.finish(1)) fail("CPU1 Flash records finish");
             if (!tasks.memory.stacks.finish(1)) fail("CPU1 stack bank finish");
             if (!tasks.memory.finish()) fail("CPU1 memory finish");
+            if (options.broker) {
+                broker_runtime.peerQuiet();
+                while (!broker_runtime.ready()) asm volatile ("nop");
+                if (!tasks.startBroker(1)) fail("broker task admission");
+                while (!broker_runtime.done()) {
+                    _ = tasks.service(1);
+                    if (tasks.calls.yieldNow() != 0) fail("broker peer yield");
+                }
+                if (options.fatfs_native) {
+                    while (!storage_runtime.ready()) asm volatile ("nop");
+                    runStorageTasks(1);
+                }
+            }
             while (true) asm volatile ("wfi");
         }
         _ = @atomicRmw(u32, &progress[1], .Add, 1, .release);
@@ -540,38 +684,29 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     }
 }
 
-export fn nih_native_main() callconv(.c) noreturn {
-    watchdogOff();
-    stageBegin(.crt);
-    if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
-    interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
-    printBoot("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
-    print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
-    print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
-    if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
-    if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
-    if (options.boot_fast) printBoot("NIHOS_NATIVE_PROFILE normal=1 qualification=0\n");
-    if (options.boot_test != 0) {
-        const test_case: extern struct { case: u32 } = .{ .case = options.boot_test };
-        logger.record("NIHOS_NATIVE_BOOT_TEST", null, .{"case"}, &test_case);
+noinline fn runStorageTasks(hart: u32) void {
+    if (!tasks.startStorage(hart)) fail("storage task admission");
+    const began = cycle();
+    while (!storage_runtime.finished()) {
+        _ = tasks.service(hart);
+        storage_runtime.poll(hart);
+        if (tasks.calls.yieldNow() != 0) fail("storage bootstrap yield");
+        if (cycle() -% began > 1_000_000_000) fail("storage task timeout");
     }
-    if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
-    if (options.usb) print("NIHOS_NATIVE_USB_MODE enabled=1\n");
-    if (options.jpki) print("NIHOS_NATIVE_JPKI_MODE pin_input=disabled\n");
-    if (progress[0] != 0 or progress[1] != 0 or
-        @as(*volatile u32, &initialized).* != 0x4e494853)
-        fail("CRT data/BSS");
-    asm volatile ("ecall" ::: .{ .memory = true });
-    if (exceptions[0] != 1) fail("CPU0 exception return");
-    printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
-    stageComplete(.crt);
-    stageBegin(.memory);
-    if (!options.boot_fast and !flash_records.begin(0)) fail("CPU0 Flash records begin");
-    if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
-    prepareTimers();
-    if (options.cpu_mhz != 0 and !cpu_boot.run(timer(0), &logger)) fail("native CPU clock");
-    if (!ui.initializeClock()) fail("diagnostic clock");
-    boot_clock_ready = true;
+}
+
+noinline fn runSqlProbe() linksection(if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
+    if (options.qualification) {
+        const soak = @import("sqlite_probe.zig").soak();
+        logger.record("NIHOS_NATIVE_SQLITE_SOAK", null, .{ "loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed" }, &soak);
+    }
+    const sql = @import("sqlite_probe.zig").run();
+    logger.record("NIHOS_NATIVE_SQLITE", null, .{ "status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie" }, &sql);
+    const classes = @import("sqlite_probe.zig").classPeaks();
+    logger.record("NIHOS_NATIVE_SQLITE_CLASSES", null, .{ "c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096" }, &classes);
+}
+
+noinline fn bootMemory() u32 {
     const external = native_psram.probe(timer(0));
     const BootCode = struct { start: u32, end: u32, probe: u32, mapping: u32, completed: u32 };
     const boot_code = BootCode{
@@ -623,14 +758,134 @@ export fn nih_native_main() callconv(.c) noreturn {
         const sweep = native_psram.memory.fullSweep(external.mapping.bytes);
         logger.record("NIHOS_NATIVE_PSRAM_SWEEP", null, .{ "bytes", "passes", "reads", "writes", "syncs", "confirmed" }, &sweep);
     }
+    if (options.storage and external.mapping.status != 1) fail("storage requires mapped PSRAM");
+    return external.mapping.bytes;
+}
+
+extern var __flash_sdmmc_boot_start: u8;
+extern var __flash_sdmmc_boot_end: u8;
+noinline fn runIoLifetimes(expected_crc: u32) linksection(".flash.text.storage") void {
+    const lifetime = @import("sdmmc_probe.zig").qualifyLifetimes(expected_crc);
+    logger.record("NIHOS_NATIVE_IO_LIFETIMES", null, .{ "version", "status", "normal_reads", "cancelled", "removed", "stale_rejected", "idle_denied", "fences", "unpublished", "crc", "ctrl", "dma_mode", "dma_fsm", "irq_mask", "dma_mask", "descriptor", "descriptor_word" }, &lifetime);
+    if (lifetime.status != 1) fail("SD request lifetime qualification");
+    if (options.sd_removal) {
+        const removal = @import("sdmmc_probe.zig").qualifyRemoval(expected_crc);
+        logger.record("NIHOS_NATIVE_SD_REMOVAL", null, .{ "version", "status", "before_reads", "failed_command", "failed_interrupts", "unpublished", "fenced", "idle_denied", "stale_rejected", "reinserted", "after_reads", "crc", "generation_before", "generation_after", "ctrl", "dma_mode", "dma_fsm", "irq_mask", "dma_mask", "descriptor", "descriptor_word" }, &removal);
+        if (removal.status != 1) fail("physical SD removal qualification");
+    }
+}
+
+noinline fn runSdProbe(workspace: ?*[8192]u8) u32 {
+    const sd = @import("sdmmc_probe.zig").run(timer(0), workspace);
+    const Code = struct { start: u32, end: u32, pc: u32, completed: u32 };
+    const code = Code{ .start = @intFromPtr(&__flash_sdmmc_boot_start), .end = @intFromPtr(&__flash_sdmmc_boot_end), .pc = sd.code_pc, .completed = sd.status };
+    logger.record("NIHOS_NATIVE_SDMMC_CODE", null, .{ "start", "end", "pc", "completed" }, &code);
+    logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
+    for (0..sd.stage_count) |phase| {
+        logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
+        if (sd.stages[phase].samples != 0) logger.record("NIHOS_NATIVE_SDMMC_SWEEP", null, .{ "index", "samples", "digest" }, &sd.stages[phase]);
+    }
+    if (options.storage and !options.fatfs_sd_direct) {
+        logger.record("NIHOS_NATIVE_STORAGE", null, .{ "status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes" }, &sd.storage);
+        logger.record("NIHOS_NATIVE_STORAGE_STACK", null, .{ "low", "high", "painted_to", "used", "confirmed" }, &sd.storage_stack);
+        logger.record("NIHOS_NATIVE_STORAGE_API", null, .{ "status", "opens", "closes", "cancelled", "rejected", "read_calls", "workspace_bytes", "used_bytes", "cleared" }, &sd.api);
+        const WorkspaceRecord = struct { start: u32, bytes: u32, cleared: u32 };
+        const reservation = WorkspaceRecord{ .start = @intFromPtr(workspace.?), .bytes = 8192, .cleared = sd.api.cleared };
+        logger.record("NIHOS_NATIVE_STORAGE_WORKSPACE", null, .{ "start", "bytes", "cleared" }, &reservation);
+        if ((sd.storage.status != 1 and sd.storage.status != 2) or sd.storage_stack.confirmed != 1 or sd.api.status != 1) fail("storage probe");
+    }
+    if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
+    if (sd.status != 1) fail("SDMMC probe");
+    return sd.crc0;
+}
+
+noinline fn captureBoot(snapshot: *const reset_capture.Snapshot) linksection(".flash.text.storage") void {
+    if (nih_storage_clock_start() != 1) fail("boot capture clock");
+    const clock = timer_group.Timer.fromGroup(0x500c3000, 0).?;
+    defer clock.stop();
+    const started = clock.counter() orelse fail("boot capture counter");
+    var last_marker = started;
+    var drained: u32 = 0;
+    while (nih_boot_capture_getc() >= 0) {
+        drained += 1;
+        if (drained >= 1024) fail("boot capture stale input flood");
+    }
+    print("NIHOS_CAPTURE_WAIT\n");
+    while (true) {
+        if (nih_boot_capture_getc() == 'G') break;
+        const now = clock.counter() orelse fail("boot capture counter");
+        if (now - started >= 120_000_000) fail("boot capture timeout");
+        if (now - last_marker >= 1_000_000) {
+            print("NIHOS_CAPTURE_WAIT\n");
+            last_marker = now;
+        }
+    }
+    logger.record("NIHOS_NATIVE_RESET", null, .{ "cpu0", "ack", "raw_cause", "lp", "cpu1", "reset_flags", "saved_pc0", "saved_pc1", "clock_gates", "wdt_valid", "wdt0", "wdt1" }, snapshot);
+}
+
+export fn nih_native_main() callconv(.c) noreturn {
+    // Sample before watchdogOff / prepareTimers alter the state. Assembly CRT
+    // and the loader have already run; this does not record their entry state.
+    const snapshot = if (options.cold_capture) reset_capture.sample(struct {
+        pub fn read32(_: @This(), address: usize) u32 {
+            return @as(*const volatile u32, @ptrFromInt(address)).*;
+        }
+    }{}, @intFromPtr(&nih_rom_saved_pc)) else std.mem.zeroes(reset_capture.Snapshot);
+    if (options.cold_capture and snapshot.cpu0 != nih_rom_reset_reason(0)) fail("reset capture mismatch");
+    watchdogOff();
+    stageBegin(.crt);
+    if (!tasks.memory.stacks.begin(0)) fail("CPU0 stack bank begin");
+    interruptGuard(0).* = @splat(tasks.memory.stacks.layout.irq_guard);
+    if (options.cold_capture) {
+        // TG0 flash-boot MWDT can survive into the native entry on power-on.
+        // Stop it before waiting for USB enumeration; USB reset often hides it.
+        prepareTimers();
+        captureBoot(&snapshot);
+    }
+    printBoot("\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n");
+    print(if (tasks.floating.enabled) "NIHOS_NATIVE_MODE floating=1\n" else "NIHOS_NATIVE_MODE floating=0\n");
+    print(if (tasks.floating.compiled) "NIHOS_NATIVE_COMPILER enabled=1\n" else "NIHOS_NATIVE_COMPILER enabled=0\n");
+    if (options.sqlite) print("NIHOS_NATIVE_SQLITE_MODE enabled=1\n");
+    if (options.qualification) print("NIHOS_NATIVE_QUALIFICATION enabled=1\n");
+    if (options.boot_fast) printBoot("NIHOS_NATIVE_PROFILE normal=1 qualification=0\n");
+    if (options.boot_test != 0) {
+        const test_case: extern struct { case: u32 } = .{ .case = options.boot_test };
+        logger.record("NIHOS_NATIVE_BOOT_TEST", null, .{"case"}, &test_case);
+    }
+    if (options.sdmmc) print("NIHOS_NATIVE_SDMMC_MODE enabled=1\n");
+    if (options.usb) print("NIHOS_NATIVE_USB_MODE enabled=1\n");
+    if (options.jpki) print("NIHOS_NATIVE_JPKI_MODE pin_input=disabled\n");
+    if (progress[0] != 0 or progress[1] != 0 or
+        @as(*volatile u32, &initialized).* != 0x4e494853)
+        fail("CRT data/BSS");
+    asm volatile ("ecall" ::: .{ .memory = true });
+    if (exceptions[0] != 1) fail("CPU0 exception return");
+    printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    stageComplete(.crt);
+    stageBegin(.memory);
+    if (!options.boot_fast and !flash_records.begin(0)) fail("CPU0 Flash records begin");
+    if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
+    if (!options.cold_capture) prepareTimers();
+    if (options.cpu_mhz != 0 and !cpu_boot.run(timer(0), &logger)) fail("native CPU clock");
+    if (!ui.initializeClock()) fail("diagnostic clock");
+    boot_clock_ready = true;
+    const external_bytes = bootMemory();
+    if (options.broker and external_bytes != 32 * 1024 * 1024) fail("broker PSRAM geometry");
+    if (options.high_sram and !tasks.memory.high.init(external_bytes)) fail("high SRAM initialization");
     stageComplete(.memory);
     if (options.console and !options.sdmmc) ui.unavailable(.storage);
     var external_heap_start = native_psram.memory.heap_start;
     var display_panel: u32 = 0;
-    var external_heap_bytes = external.mapping.bytes -| native_psram.memory.reserved_bytes;
+    var external_heap_bytes = external_bytes -| native_psram.memory.reserved_bytes;
+    if (options.canvas_offscreen) {
+        // Reserve exactly the display owner's region without touching panel hardware.
+        const selected = @import("tab5_display").layout(external_bytes) orelse fail("canvas requires mapped PSRAM");
+        external_heap_start = selected.heap_start;
+        external_heap_bytes = selected.heap_bytes;
+    }
     if (options.display) {
         stageBegin(.display_prepare);
-        const selected = @import("tab5_display").layout(external.mapping.bytes) orelse fail("display requires mapped PSRAM");
+        const selected = @import("tab5_display").layout(external_bytes) orelse fail("display requires mapped PSRAM");
         const display = display_service.probe.run(timer(0), selected);
         logger.record("NIHOS_NATIVE_DISPLAY_PREP", null, .{ "status", "stage", "error_code", "panel", "transactions", "frame_start", "frame_bytes", "reserve_bytes", "checksum", "phy_trim", "phy_status", "scanout", "backlight" }, &display);
         logger.record("NIHOS_NATIVE_DISPLAY_PINS", null, .{ "initial_pins", "failed_pins", "recovery_pulses" }, &display);
@@ -667,21 +922,10 @@ export fn nih_native_main() callconv(.c) noreturn {
         }
         if (!timer(0).configureOneShot(tasks.period_us)) fail("USB timer return");
     }
+    var sd_crc: u32 = 0;
     if (options.sdmmc) {
         stageBegin(.storage);
-        const sd = @import("sdmmc_probe.zig").run(timer(0));
-        logger.record("NIHOS_NATIVE_SDMMC", null, .{ "status", "stage", "command", "interrupts", "response", "commands", "sectors_low", "sectors_high", "reads", "crc0", "crc1", "crc_middle", "crc_last", "bus_bits", "clock_khz", "writes", "error_code", "host_status", "data_words", "dma" }, &sd);
-        for (0..sd.stage_count) |phase| {
-            logger.record("NIHOS_NATIVE_SDMMC_STAGE", null, .{ "index", "bus_bits", "clock_khz", "scr_widths", "host_width", "divider", "reads", "crc0", "crc1", "crc_middle", "crc_last" }, &sd.stages[phase]);
-            if (sd.stages[phase].samples != 0) logger.record("NIHOS_NATIVE_SDMMC_SWEEP", null, .{ "index", "samples", "digest" }, &sd.stages[phase]);
-        }
-        if (options.storage) {
-            logger.record("NIHOS_NATIVE_STORAGE", null, .{ "status", "error_code", "passes", "block_size", "block_count", "entries", "files", "directories", "directory_digest", "file_bytes", "file_crc", "file_name_digest", "reads", "denied_writes" }, &sd.storage);
-            logger.record("NIHOS_NATIVE_STORAGE_STACK", null, .{ "low", "high", "painted_to", "used", "confirmed" }, &sd.storage_stack);
-            if ((sd.storage.status != 1 and sd.storage.status != 2) or sd.storage_stack.confirmed != 1) fail("storage probe");
-        }
-        if (!timer(0).configureOneShot(tasks.period_us)) fail("SDMMC timer return");
-        if (sd.status != 1) fail("SDMMC probe");
+        sd_crc = runSdProbe(if (options.storage) @ptrFromInt(@import("psram_mapping").storage_workspace_start) else null);
         stageComplete(.storage);
     }
     if (options.network) {
@@ -689,14 +933,17 @@ export fn nih_native_main() callconv(.c) noreturn {
         if (!network_config.enabled) print("Wi-Fi unconfigured: waiting for settings\n");
         network.begin(ui.timer(), if (!network_config.enabled) .disabled else if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, ui.serviceBacking(network.storage_bytes));
     }
-    if (options.console_live and options.boot_fast) board_devices.begin(ui.timer());
+    if (options.console_live and options.boot_fast) board_devices.begin(ui.timer(), display_panel);
     stageBegin(.cores);
     if (options.console_fault) {
         print("NIHOS_NATIVE_UI_FAULT_INJECTION stage=cores\n");
         fail("injected boot failure");
     }
+    if (options.storage_service and !options.fatfs_native) storage_runtime.init();
+    if (options.fatfs_native) @import("sdmmc_probe.zig").runtimeEnd();
     prepareTasks(0);
     startCpu1();
+    if (options.high_sram) tasks.memory.high.ownerExchange();
     const external_smp = native_psram.exchange();
     logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
@@ -711,6 +958,162 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.ownerReady(0);
     enableTimer(0);
     if (options.boot_fast) normalReady();
+    if (options.pmp_probe) reportPmpProbe() else qualificationSoak(sd_crc, display_panel);
+}
+
+fn printUnsigned(value: u32) void {
+    var buf: [10]u8 = undefined;
+    var index: usize = buf.len;
+    var rest = value;
+    while (true) {
+        index -= 1;
+        buf[index] = '0' + @as(u8, @intCast(rest % 10));
+        rest /= 10;
+        if (rest == 0) break;
+    }
+    print(buf[index..]);
+}
+
+fn printSigned(value: i32) void {
+    if (value < 0) {
+        print("-");
+        const magnitude: u32 = @intCast(-@as(i64, value));
+        printUnsigned(magnitude);
+    } else printUnsigned(@intCast(value));
+}
+
+fn reportPmpProbe() noreturn {
+    if (comptime !options.pmp_probe) unreachable;
+    // Entries 0–2 are unlocked NAPOT with no R/W/X (0x18), so pmpcfg0
+    // is 0x00181818. This also removes the old U-mode mask-ROM grant.
+    // The stock bootloader sets those bytes to NAPOT|R|W|L (0x9B), which
+    // lets U-mode read and write the CPU subsystem and the CPU peripherals.
+    // pmpaddr0 is NAPOT(0x20000000, 0x30000000) >> 2 = 0x09FFFFFF.
+    // pmpaddr1 is NAPOT(0x3FF00000, 0x3FF20000) >> 2 = 0x0FFC3FFF.
+    const pmpcfg0 = asm volatile ("csrr %[value], pmpcfg0"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg1 = asm volatile ("csrr %[value], pmpcfg1"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg2 = asm volatile ("csrr %[value], pmpcfg2"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg3 = asm volatile ("csrr %[value], pmpcfg3"
+        : [value] "=r" (-> u32),
+    );
+    const pmpaddr0 = asm volatile ("csrr %[value], pmpaddr0"
+        : [value] "=r" (-> u32),
+    );
+    const pmpaddr1 = asm volatile ("csrr %[value], pmpaddr1"
+        : [value] "=r" (-> u32),
+    );
+    const first_case = options.pmp_case orelse 0;
+    const end_case = if (options.pmp_case) |only| only + 1 else tasks.pmp.probe_cases;
+    print("NIHOS_NATIVE_PMP_PROBE begin cases=");
+    printUnsigned(end_case - first_case);
+    print(" first=");
+    printUnsigned(first_case);
+    print(if (options.emulator) " sbe_evidence=unmodeled" else " sbe_evidence=csr-readback");
+    print(" hart=0 pmpcfg0=");
+    hex(pmpcfg0);
+    print(" pmpcfg1=");
+    hex(pmpcfg1);
+    print(" pmpcfg2=");
+    hex(pmpcfg2);
+    print(" pmpcfg3=");
+    hex(pmpcfg3);
+    print(" pmpaddr0=");
+    hex(pmpaddr0);
+    print(" pmpaddr1=");
+    hex(pmpaddr1);
+    print("\n");
+    var previous_timers: u32 = 0;
+    var previous_reaped: u32 = 0;
+    var previous_slot: u16 = 0xffff;
+    var previous_generation: u16 = 0;
+    var reason: ?[]const u8 = null;
+    var case_id: u32 = first_case;
+    while (case_id < end_case) : (case_id += 1) {
+        probe_arm_cycles_max = 0;
+        probe_dispatch_cycles_max = 0;
+        const step = tasks.runProbeCase(case_id) orelse {
+            print("NIHOS_NATIVE_PMP_PROBE case=");
+            printUnsigned(case_id);
+            print(" result=incomplete\n");
+            fail("pmp probe case");
+        };
+        const returned = case_id == 0;
+        print("NIHOS_NATIVE_PMP_PROBE case=");
+        printUnsigned(case_id);
+        print(if (returned) " result=returned" else " result=fault");
+        print(" exit=");
+        printSigned(step.exit_code);
+        print(" kernel=1 reaped=");
+        printUnsigned(step.reaped);
+        print(" calls=");
+        printUnsigned(step.calls);
+        print(" timer_interrupts=");
+        printUnsigned(step.timer_interrupts);
+        print(" user_timer_interrupts=");
+        printUnsigned(step.user_timer_interrupts);
+        print(" mstatus=");
+        hex(step.kernel_mstatus);
+        print(" live=");
+        hex(step.live_mstatus);
+        print(" grant=");
+        hex(step.grant_hi);
+        print(" slot=");
+        printUnsigned(step.slot);
+        print(" generation=");
+        printUnsigned(step.generation);
+        print(" data=");
+        hex(step.data_word);
+        print(" cause=");
+        hex(step.fault_cause);
+        print(" mepc=");
+        hex(step.fault_mepc);
+        print(" pmpaddr4=");
+        hex(step.pmpaddr4);
+        print(" pmpaddr5=");
+        hex(step.pmpaddr5);
+        print(" user_mhint=");
+        hex(step.user_mhint);
+        print(" kernel_mhint=");
+        hex(step.kernel_mhint);
+        print(" arm_cycles_max=");
+        printUnsigned(probe_arm_cycles_max);
+        print(" dispatch_cycles_max=");
+        printUnsigned(probe_dispatch_cycles_max);
+        print("\n");
+        const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code) and
+            tasks.pmp.probeCauseAccepted(case_id, step.fault_cause, step.fault_mepc);
+        // mret writes MPP back to User. The saved bootstrap image still has
+        // Machine (0x1800) and MPIE (0x80). The Tab5 sample was 0x1880.
+        // ESP-EMU's trap mstatus also has UIE, so bit 0 may be set.
+        // ESP-EMU v0.50.0 does not model mhint.SBE. Its fault/return matrix
+        // remains useful, but synchronous-bus-error evidence is device-only.
+        const mode_ok = options.emulator or (step.kernel_mhint & tasks.pmp.synchronous_bus_error == 0 and step.user_mhint & tasks.pmp.synchronous_bus_error != 0);
+        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0 and mode_ok;
+        const reaped_one = step.reaped == previous_reaped + 1;
+        const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
+        const return_ok = !returned or (step.timer_interrupts > previous_timers and step.user_timer_interrupts != 0 and step.calls > 2 and step.exit_code == 1);
+        const execute_ok = case_id != 3 or step.data_word == 0x00600513;
+        if (reason == null and (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok)) reason = "pmp probe evidence";
+        previous_timers = step.timer_interrupts;
+        previous_reaped = step.reaped;
+        previous_slot = step.slot;
+        previous_generation = step.generation;
+    }
+    if (reason) |text| fail(text);
+    if (pmpcfg0 != 0x00181818 or pmpaddr0 != 0x09ffffff or pmpaddr1 != 0x0ffc3fff or pmpcfg3 != 0) fail("pmpcfg0");
+    print("NIHOS_NATIVE_PMP_PROBE_PASS cases=");
+    printUnsigned(end_case - (options.pmp_case orelse 0));
+    print(" kernel=1\n");
+    while (true) asm volatile ("wfi" ::: .{ .memory = true });
+}
+
+fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };
@@ -754,16 +1157,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                 printBoot("NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none\n");
                 tasks.ipi.request();
                 while (!tasks.ipi.done()) tasks.idleOnce(0);
-                if (options.sqlite) {
-                    if (options.qualification) {
-                        const soak = @import("sqlite_probe.zig").soak();
-                        logger.record("NIHOS_NATIVE_SQLITE_SOAK", null, .{ "loops", "sessions", "queries", "heap_before", "heap_after", "max_stack", "confirmed" }, &soak);
-                    }
-                    const sql = @import("sqlite_probe.zig").run();
-                    logger.record("NIHOS_NATIVE_SQLITE", null, .{ "status", "owner", "sessions", "queries", "open_pc", "text_start", "text_end", "rodata_start", "rodata_end", "heap_before", "heap_after", "stack_low", "stack_high", "painted_to", "observed_used", "mie" }, &sql);
-                    const classes = @import("sqlite_probe.zig").classPeaks();
-                    logger.record("NIHOS_NATIVE_SQLITE_CLASSES", null, .{ "c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096" }, &classes);
+                if (options.storage_service and !options.fatfs_native) {
+                    runStorageTasks(0);
+                    const report = storage_runtime.finish();
+                    logger.record("NIHOS_NATIVE_STORAGE_SERVICE", null, .{ "status", "requests", "responses", "queue_full", "rejected", "bytes", "crc", "owner", "exit_seen", "released", "stale_rejected", "owner_stack", "client_stack", "peer_polls", "elapsed_us", "clock_ok", "fs_cleared", "ipc_cleared", "forced_exit", "inflight_completed", "discarded_requests", "discarded_responses", "rebound", "replacement_owner", "old_epoch_rejected", "old_reply_rejected", "old_handle_rejected", "old_exit_rejected", "replacement_exit", "replacement_bytes", "replacement_crc" }, &report);
                 }
+                if (options.sqlite) runSqlProbe();
                 tasks.floating.quiesce(0);
                 if (!flash_records.finish(0)) fail("CPU0 Flash records finish");
                 if (!tasks.memory.stacks.finish(0)) fail("CPU0 stack bank finish");
@@ -771,6 +1170,12 @@ export fn nih_native_main() callconv(.c) noreturn {
                 const started = cycle();
                 while (tasks.floating.report(1).confirmed != 1 or tasks.memory.report(1).confirmed != 1) {
                     if (cycle() -% started > 100_000_000) fail("CPU1 final publication timeout");
+                }
+                if (options.high_sram) {
+                    const high = tasks.memory.high.result();
+                    logger.record("NIHOS_NATIVE_HIGH_SRAM", null, .{ "status", "bytes", "passes", "reads", "writes", "peer_reads", "peer_writes", "owner_reads", "heap_bytes", "free_bytes", "guards", "rejected", "checks0", "checks1", "checks2", "checks3", "recovered" }, &high);
+                    const vm = tasks.memory.high.vmResult();
+                    logger.record("NIHOS_NATIVE_PAGE_LEASE", null, .{ "status", "start", "bytes", "requested4", "charged4", "requested8", "charged8", "reads", "writes", "boundary_ok", "recovered" }, &vm);
                 }
                 ipiReport(0);
                 ipiReport(1);
@@ -789,6 +1194,26 @@ export fn nih_native_main() callconv(.c) noreturn {
                 stackReport(1);
                 flashReport(0);
                 flashReport(1);
+                if (options.broker) {
+                    const waited = cycle();
+                    while (!broker_runtime.quiet()) {
+                        if (cycle() -% waited > 1_000_000_000) fail("broker peer quiescence");
+                    }
+                    if (!tasks.memory.retireForBroker()) fail("broker heap retirement");
+                    broker_runtime.init(sd_crc);
+                    const began = cycle();
+                    while (!broker_runtime.done()) {
+                        _ = tasks.service(0);
+                        broker_runtime.poll();
+                        if (tasks.calls.yieldNow() != 0) fail("broker owner yield");
+                        if (cycle() -% began > 2_000_000_000) fail("broker cleanup timeout");
+                    }
+                    const b = broker_runtime.finish();
+                    logger.record("NIHOS_NATIVE_BROKER", null, .{ "status", "old_api_denied", "metadata", "internal_bytes", "internal_free", "external_bytes", "external_free", "internal_floor", "external_floor", "requested4", "charged4", "requested8", "charged8", "client", "replacement", "requests", "responses", "rejected", "exits", "reaped", "pin_waited", "borrow_completed", "stale_identity", "stale_lease", "guards", "recovered", "client_stack", "forced_client", "after_forced", "forced_exit", "io_issued", "io_completed", "io_bytes", "io_crc", "expected_crc", "pinned_after_kill", "completion_after_exit", "discarded_responses", "io_clock_acquired", "io_clock_released" }, &b);
+                    runIoLifetimes(sd_crc);
+                    if (options.fatfs_native) runFatFsTasks();
+                    if (options.fatfs_sd and !options.fatfs_sd_rpc) runFatFsCard();
+                }
                 printBoot(if (tasks.floating.enabled) "NIHOS_NATIVE_FP_PASS floating=1\n" else "NIHOS_NATIVE_FP_PASS floating=0\n");
                 stageComplete(.cores);
                 if (options.card_check) {
@@ -815,6 +1240,124 @@ export fn nih_native_main() callconv(.c) noreturn {
                         if (options.touch_check) @import("touch_probe.zig").run(timer(0), display_panel, TouchLog{});
                         if (options.keypad_demo) @import("keypad_probe.zig").run(timer(0), display_panel, KeypadLog{});
                     }
+                }
+                if (options.canvas_offscreen) {
+                    const board = @import("tab5_display");
+                    const base: [*]u8 = @ptrFromInt(board.framebuffer);
+                    const frame = base[0..board.frame_bytes];
+                    const guard = base[board.frame_bytes..][0..16];
+                    @memset(guard, 0xa5);
+                    if (!display_service.canvas_pattern.paint(frame, 720, 1280, 1440)) fail("canvas offscreen pattern");
+                    if (!std.mem.allEqual(u8, guard, 0xa5)) fail("canvas offscreen guard");
+                    const result: extern struct { checksum: u32, frame_bytes: u32, guard_bytes: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frame_bytes = board.frame_bytes, .guard_bytes = 16 };
+                    logger.record("NIHOS_NATIVE_CANVAS_OFFSCREEN", null, .{ "checksum", "frame_bytes", "guard_bytes" }, &result);
+                    @call(.never_inline, nih_canvas_frame_ready, .{});
+                    if (options.canvas_interactive) {
+                        var stream = pointer.Stream{};
+                        var app = display_service.canvas_demo_app.App{};
+                        const Live = @import("editor_live.zig").Live(".flash.rodata.display");
+                        const live_address = board.framebuffer + board.frame_bytes + 16;
+                        if (16 + @sizeOf(Live) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(Live) != 0) fail("editor live scratch");
+                        const live: *Live = @ptrFromInt(live_address);
+                        while (true) {
+                            const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
+                            if (input.command == 0) break;
+                            switch (input.command) {
+                                1 => {
+                                    if (input.contacts > 2 or input.x > 65535 or input.y > 65535) fail("emulator input");
+                                    if (nih_emulator_output.mode == 0) {
+                                        nih_emulator_output.samples += 1;
+                                        if (stream.fresh(@intCast(input.contacts), @intCast(input.x), @intCast(input.y), input.time_us)) |event| {
+                                            nih_emulator_output.events += 1;
+                                            nih_emulator_output.kind = @backingInt(event.kind);
+                                            if (app.onEvent(event)) {
+                                                nih_emulator_output.clicks = app.clicks;
+                                                if (!app.render(frame)) fail("emulator indicator");
+                                            }
+                                        }
+                                    }
+                                },
+                                2 => {
+                                    if (nih_emulator_output.mode != 1 or input.contacts > 255 or input.x > 255) fail("emulator key");
+                                    nih_emulator_output.keys += 1;
+                                    const key_result = live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render");
+                                    if (key_result == .edited) nih_emulator_output.edits += 1;
+                                    nih_emulator_output.cursor = @intCast(live.editor.column);
+                                },
+                                3 => {
+                                    if (!live.start(frame)) fail("editor live start");
+                                    nih_emulator_output.mode = 1;
+                                    nih_emulator_output.keys = 0;
+                                    nih_emulator_output.edits = 0;
+                                    nih_emulator_output.cursor = 0;
+                                },
+                                4 => {
+                                    if (nih_emulator_output.mode != 1 or nih_emulator_document.length > nih_emulator_document.bytes.len) fail("editor load input");
+                                    if (!live.load(frame, nih_emulator_document.bytes[0..nih_emulator_document.length])) fail("editor load render");
+                                    nih_emulator_output.cursor = @intCast(live.editor.column);
+                                },
+                                else => fail("emulator input command"),
+                            }
+                            if (nih_emulator_output.mode == 1) {
+                                const content = live.document();
+                                @memset(&nih_emulator_document.bytes, 0);
+                                @memcpy(nih_emulator_document.bytes[0..content.len], content);
+                                nih_emulator_document.length = @intCast(content.len);
+                            }
+                            @call(.never_inline, nih_canvas_frame_ready, .{});
+                        }
+                    }
+                    if (options.canvas_workloads) {
+                        if (!display_service.canvas_workloads.scroll(frame)) fail("canvas scroll workload");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!display_service.canvas_workloads.indexed(frame)) fail("canvas indexed workload");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        const fixture = @import("console_workload.zig").Fixture(@fromBackingInt(@intCast(options.console_font)), ".flash.rodata.display");
+                        const scratch_address = board.framebuffer + board.frame_bytes + 16;
+                        if (16 + @sizeOf(fixture.Scratch) > board.reserve_bytes - board.frame_bytes or scratch_address % @alignOf(fixture.Scratch) != 0) fail("console fixture scratch");
+                        const scratch: *fixture.Scratch = @ptrFromInt(scratch_address);
+                        if (!fixture.paint(frame, scratch)) fail("console canvas workload");
+                        if (!std.mem.allEqual(u8, guard, 0xa5)) fail("console workload guard");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                    }
+                    if (options.canvas_splash) {
+                        const boot = @import("boot_graphics");
+                        if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) fail("splash portrait initial");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .ready)) fail("splash portrait intermediate");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .ready)) fail("splash portrait recolor");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .failed)) fail("splash portrait failure");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintPlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .storage)) fail("splash portrait storage");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, .ready)) fail("splash landscape initial");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .ready)) fail("splash landscape intermediate");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 255, .ready)) fail("splash landscape recolor");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .failed)) fail("splash landscape failure");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 128, .storage)) fail("splash landscape storage");
+                        if (!std.mem.allEqual(u8, guard, 0xa5)) fail("splash workload guard");
+                        @call(.never_inline, nih_canvas_frame_ready, .{});
+                    }
+                    print("NIHOS_NATIVE_CANVAS_OFFSCREEN_PASS\n");
+                }
+                if (options.graphics) {
+                    const result = tasks.runGraphics(timer(0)) orelse fail("native graphics fixture");
+                    if (!tasks.graphics.exchange.composer.contextAllowed()) fail("graphics report context");
+                    graphicsReport(&result);
+                    if (!tasks.graphics.exchange.releaseArchive()) fail("graphics archive release");
+                    const queues = tasks.graphics.exchange.queue_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_QUEUE", null, .{ "capacity", "metadata_bytes", "payload_bytes", "binding_rejected", "full_rejected", "detached", "live_payloads", "closed_rejected", "requests_metadata", "replies_metadata", "request_payload", "reply_payload" }, &queues);
+                    const archive = tasks.graphics.exchange.archive_metrics;
+                    logger.record("NIHOS_NATIVE_GRAPHICS_ARCHIVE", null, .{ "logical_bytes", "charge", "live_charge", "before", "after" }, &archive);
+                    tasks.graphics.stack.scratch();
+                    graphicsReport(null);
+                    print("NIHOS_NATIVE_GRAPHICS_PASS\n");
                 }
                 while (true) {
                     flushDisplayReport();
@@ -850,11 +1393,13 @@ fn normalReady() noreturn {
     if (options.console_live) {
         ui.report(&logger);
         ui.liveReport(&logger, true);
+        if (!ui.startSession(&logger)) fail("launcher startup");
     }
     if (options.boot_test != 0) {
         const ready = .{ .wait_us = @as(u32, @intCast((ui.timer().counter() orelse fail("ready clock")) - started)) };
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
+    if (normal_storage) normal_fs.begin(storageClient());
     var idle_checked = false;
     while (true) {
         if (options.boot_test != 0 and !idle_checked and (ui.timer().counter() orelse fail("idle clock")) - started >= 200_000) {
@@ -869,6 +1414,7 @@ fn normalReady() noreturn {
         }
         flushDisplayReport();
         serviceNetwork();
+        serviceStorage();
         if (!ui.service(&logger)) fail("normal console idle");
         tasks.idleOnce(0);
     }
@@ -905,8 +1451,13 @@ noinline fn startDisplay(clock: timer_group.Timer, display_panel: u32, early: bo
     }
     logger.record("NIHOS_NATIVE_DISPLAY_SCANOUT", null, .{ "status", "stage", "error_code", "panel", "commands", "last_command", "frames", "fault", "event", "backlight", "dpi_mhz", "lane_mbps", "cleanup", "dsi_error0", "dsi_error1", "dma_error", "bridge_error", "start_code", "prime_depth", "bl_latch", "bl_enable", "bl_level", "bl_mux", "bl_matrix", "white" }, &screen);
     logger.record("NIHOS_NATIVE_DISPLAY_SOURCE", null, .{ "sram", "source", "dma_source", "dma_control", "word" }, &screen);
-    const composition: extern struct { logical_width: u32, logical_height: u32, rotation: u32 } = .{ .logical_width = if (options.display_tile or options.card_read or options.keypad_demo) @as(u32, 720) else 1280, .logical_height = if (options.display_tile or options.card_read or options.keypad_demo) @as(u32, 1280) else 720, .rotation = if (options.display_tile or options.card_read or options.keypad_demo) @as(u32, 0) else 1 };
+    const portrait = options.display_tile or options.card_read or options.keypad_demo or options.canvas_demo;
+    const composition: extern struct { logical_width: u32, logical_height: u32, rotation: u32 } = .{ .logical_width = if (portrait) @as(u32, 720) else 1280, .logical_height = if (portrait) @as(u32, 1280) else 720, .rotation = if (portrait) @as(u32, 0) else 1 };
     logger.record("NIHOS_NATIVE_DISPLAY_LAYOUT", null, .{ "logical_width", "logical_height", "rotation" }, &composition);
+    if (options.canvas_demo and screen.status == 1) {
+        const canvas_report: extern struct { checksum: u32, frames: u32 } = .{ .checksum = display_service.canvas_pattern.expected_checksum, .frames = screen.frames };
+        logger.record("NIHOS_NATIVE_CANVAS_PATTERN", null, .{ "checksum", "frames" }, &canvas_report);
+    }
     const selected = @import("tab5_panels").refreshProfile(display_panel, options.display_hz) orelse fail("display timing");
     const rates = .{ .pixel_hz = selected.dpi_mhz * 1_000_000, .refresh_millihz = @import("tab5_panels").refreshMilliHz(selected), .htotal = 720 + selected.hbp + selected.hsw + selected.hfp, .vtotal = 1280 + selected.vbp + selected.vsw + selected.vfp };
     if (options.display_sram or options.psram_200) logger.record("NIHOS_NATIVE_DISPLAY_TIMING", null, .{ "pixel_hz", "refresh_millihz", "htotal", "vtotal" }, &rates);
@@ -976,38 +1527,6 @@ const KeypadLog = struct {
         logger.record("NIHOS_NATIVE_KEYPAD_CHECK", null, .{ "status", "pin_enabled", "vbus_off", "samples", "increments", "erases", "cancels", "confirms", "full", "updates", "retries", "shown_mask", "errors", "frames" }, report);
     }
 };
-
-fn memoryReport(hart: u32) void {
-    const report = tasks.memory.report(hart);
-    if (report.confirmed != 1) fail("memory publication");
-    logger.record("NIHOS_NATIVE_MEMORY", hart, .{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }, &report);
-}
-
-fn externalMemoryReport(hart: u32) void {
-    const report = tasks.memory.externalReport(hart);
-    logger.record("NIHOS_NATIVE_EXTERNAL", hart, .{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }, &report);
-}
-
-fn heapReport(hart: u32) void {
-    const report = tasks.memory.reusable.report(hart);
-    logger.record("NIHOS_NATIVE_HEAP", hart, .{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }, &report);
-}
-
-fn resourceReport(hart: u32) void {
-    const report = tasks.memory.reusable.resourceReport(hart);
-    logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes", "c_probes" }, &report);
-}
-
-fn flashReport(hart: u32) void {
-    const report = flash_records.report(hart);
-    if (report.confirmed != 1) fail("Flash record publication");
-    logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
-}
-
-fn stackReport(hart: u32) void {
-    const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
-    logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
-}
 
 const CardReadLog = struct {
     pub fn displayTest(_: CardReadLog, frames: u32) void {
@@ -1122,4 +1641,125 @@ noinline fn serviceTime() linksection(".flash.text.time") void {
     logger.record("NIHOS_NATIVE_NTP", null, .{ "phase", "attempts", "replies", "rejected", "failures", "server", "stratum", "rtt_us", "unix_high", "unix_low" }, &ntp);
     const clock = board_devices.timeSnapshot();
     logger.record("NIHOS_NATIVE_RTC_SYNC", null, .{ "applied", "failures", "error_code", "unix_high", "unix_low" }, &clock);
+}
+
+// Only immutable completed qualification records are emitted here. The SRAM
+// caller gates CPU0 bootstrap/MIE; task reaping and archive retirement stay SRAM.
+noinline fn graphicsReport(result: ?*const tasks.graphics.Report) linksection(".flash.text.render") void {
+    const completed = result orelse {
+        const stack_loan = tasks.graphics.stack.metrics;
+        logger.record("NIHOS_NATIVE_GRAPHICS_STACK_LOAN", null, .{ "bytes", "loans", "guards", "busy", "stale", "premature", "returned", "before_hash", "after_hash", "paint_pc", "start", "end" }, &stack_loan);
+        return;
+    };
+    logger.record("NIHOS_NATIVE_GRAPHICS", null, .{ "status", "owner", "runs", "library_pc", "heap_before", "heap_after", "raw_peak", "retained", "stack_low", "stack_high", "observed_used", "captures", "render_captures", "bootstrap_progress", "record_peak", "controller_bytes", "allocations", "releases", "foreign_rejected", "irq_rejected", "forged_rejected" }, completed);
+    logger.record("NIHOS_NATIVE_GRAPHICS_CLIENTS", null, .{ "client_cycles", "idle_retained", "idle_captures", "idle_progress" }, completed);
+    const exchange = tasks.graphics.exchange.report();
+    logger.record("NIHOS_NATIVE_GRAPHICS_EXCHANGE", null, .{ "sent", "received", "replies", "waits", "blocked_ticks", "idle_runtime", "stop_ack", "terminal_gap", "copied_inputs", "text_success", "text_failed", "copied_outputs", "queue_bytes" }, &exchange);
+    const raster = tasks.graphics.exchange.raster.metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_RASTER", null, .{ "created", "discarded", "published", "reclaimed", "live_charge", "peak_charge", "held_ticks", "stale_rejected", "foreign_rejected" }, &raster);
+    const placement = tasks.graphics.exchange.composer.placement;
+    logger.record("NIHOS_NATIVE_GRAPHICS_PLACEMENT", null, .{ "paint_pc", "draw_pc", "frames", "draws", "context_checks", "irq_rejected", "active_ticks", "flash_ticks", "trap_pc" }, &placement);
+    const composition = tasks.graphics.exchange.composer.metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_SURFACE", null, .{ "frames", "blits", "clipped", "guards", "rejected", "peak_charge", "live_charge" }, &composition);
+    const wrapped = tasks.graphics.exchange.composer.wrap_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_WRAP", null, .{ "frames", "clusters", "lines", "wrapped_runs", "transitions", "clipped" }, &wrapped);
+    const policy_result = tasks.graphics.exchange.composer.policy_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_KINSOKU", null, .{ "frames", "spans", "joined", "lines", "transitions", "clipped" }, &policy_result);
+    const source_result = tasks.graphics.exchange.composer.source_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_SOURCE", null, .{ "input_pc", "prepare_pc", "verify_pc", "staged", "maps", "rejected", "edited", "poisoned", "echoed", "stale", "content", "annotations", "map_mutations", "wrong_reply" }, &source_result);
+    const ruby_result = tasks.graphics.exchange.composer.ruby_metrics;
+    logger.record("NIHOS_NATIVE_GRAPHICS_RUBY", null, .{ "frames", "groups", "moved", "wide", "units", "joins", "lines", "clipped", "plan_bytes", "scratch_bytes" }, &ruby_result);
+    for (tasks.graphics.exchange.textResults()) |*reply| {
+        const text_result = .{ .id = reply.id, .runs = reply.runs, .hash = reply.hashes[0], .outcome = @as(u32, @backingInt(reply.outcome)), .glyph_count = reply.output.count, .pixel_bytes = reply.output.raster_bytes, .pixel_hash = reply.pixel_hash, .source_hash = reply.source_hash, .surface_hash = reply.composition.surface_hash, .wrap_hash = reply.composition.wrap_hash, .policy_hash = reply.composition.policy_hash, .ruby_hash = reply.composition.ruby_hash };
+        logger.record("NIHOS_NATIVE_GRAPHICS_TEXT", null, .{ "id", "runs", "hash", "outcome", "glyph_count", "pixel_bytes", "pixel_hash", "source_hash", "surface_hash", "wrap_hash", "policy_hash", "ruby_hash" }, &text_result);
+        for (reply.output.glyphs[0..reply.output.count], 0..) |g, index| {
+            const glyph = .{ .request = reply.id, .index = @as(u32, @intCast(index)), .glyph_id = g.id, .cluster = g.cluster, .run = g.run, .pixels = g.pixels, .x_advance = @as(u32, @bitCast(g.x_advance)), .y_advance = @as(u32, @bitCast(g.y_advance)), .x_offset = @as(u32, @bitCast(g.x_offset)), .y_offset = @as(u32, @bitCast(g.y_offset)), .left = @as(u32, @bitCast(g.left)), .top = @as(u32, @bitCast(g.top)), .width = g.width, .height = g.height, .pixel_offset = g.pixel_offset };
+            logger.record("NIHOS_NATIVE_GRAPHICS_GLYPH", null, .{ "request", "index", "glyph_id", "cluster", "run", "pixels", "x_advance", "y_advance", "x_offset", "y_offset", "left", "top", "width", "height", "pixel_offset" }, &glyph);
+        }
+    }
+    const hashes = tasks.graphics.hashes();
+    for (hashes, 0..) |hash, index| {
+        const item = .{ .index = @as(u32, @intCast(index)), .hash = hash };
+        logger.record("NIHOS_NATIVE_GRAPHICS_HASH", null, .{ "index", "hash" }, &item);
+    }
+}
+
+noinline fn runFatFsTasks() linksection(".flash.text.storage") void {
+    if (options.fatfs_sd_rpc) print("NIHOS_FATFS_SD_READY\n");
+    storage_runtime.init();
+    runStorageTasks(0);
+    const report = storage_runtime.finish();
+    logger.record("NIHOS_NATIVE_FATFS_RPC", null, @import("fatfs_service_abi.zig").fields, &report);
+    if (options.fatfs_sd_rpc) {
+        const card = @import("fatfs_card_abi.zig");
+        var result = card.Report{};
+        card.nih_fatfs_card_rpc_report(&result);
+        logger.record("NIHOS_NATIVE_FATFS_CARD", null, card.fields, &result);
+        const Stack = struct { used: u32, preserved: u32 };
+        const stack = Stack{ .used = @max(report.owner_stack, report.client_stack), .preserved = 1 };
+        logger.record("NIHOS_NATIVE_FATFS_CARD_STACK", null, .{ "used", "preserved" }, &stack);
+    }
+}
+noinline fn runFatFsCard() linksection(".flash.text.storage") void {
+    const card = @import("fatfs_card_abi.zig");
+    if (!options.fatfs_sd_direct) {
+        const began = timer(0).counter() orelse fail("card wait clock");
+        var drained: u32 = 0;
+        while (nih_boot_capture_getc() >= 0) {
+            drained += 1;
+            if (drained >= 1024) fail("card stale input flood");
+        }
+        print("NIHOS_FATFS_SD_READY\n");
+        while (nih_boot_capture_getc() != 'S') {
+            const now = timer(0).counter() orelse fail("card wait clock");
+            if (now - began > 300_000_000) fail("FAT/exFAT card swap timeout");
+        }
+    } else print("NIHOS_FATFS_SD_READY\n");
+    var report = card.Report{};
+    const guard: *volatile [4]u32 = @ptrCast(@alignCast(&__stack0_bottom));
+    var saved: [4]u32 = undefined;
+    for (0..4) |i| saved[i] = guard[i];
+    const low = @intFromPtr(&__stack0_bottom) + 16;
+    const painted = nih_sqlite_stack_paint(low);
+    if (card.nih_fatfs_card_attempt(&report) != 1) fail("FAT/exFAT card read");
+    for (0..4) |i| if (saved[i] != guard[i]) fail("card stack guard");
+    var first = low;
+    while (first < painted and @as(*volatile u32, @ptrFromInt(first)).* == 0x5a7ec319) : (first += 4) {}
+    if (first <= low + 160 or first > painted) fail("card stack margin");
+    const Stack = struct { used: u32, preserved: u32 };
+    const stack = Stack{ .used = @intFromPtr(&__stack0_top) - first, .preserved = 1 };
+    logger.record("NIHOS_NATIVE_FATFS_CARD", null, card.fields, &report);
+    logger.record("NIHOS_NATIVE_FATFS_CARD_STACK", null, .{ "used", "preserved" }, &stack);
+}
+
+fn memoryReport(hart: u32) void {
+    const report = tasks.memory.report(hart);
+    if (report.confirmed != 1) fail("memory publication");
+    logger.record("NIHOS_NATIVE_MEMORY", hart, .{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }, &report);
+}
+
+fn externalMemoryReport(hart: u32) void {
+    const report = tasks.memory.externalReport(hart);
+    logger.record("NIHOS_NATIVE_EXTERNAL", hart, .{ "start", "end", "capacity", "used", "free", "checks0", "checks1", "rejected", "confirmed" }, &report);
+}
+
+fn heapReport(hart: u32) void {
+    const report = tasks.memory.reusable.report(hart);
+    logger.record("NIHOS_NATIVE_HEAP", hart, .{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }, &report);
+}
+
+noinline fn resourceReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
+    const report = tasks.memory.reusable.resourceReport(hart);
+    logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes", "c_probes" }, &report);
+}
+
+fn flashReport(hart: u32) void {
+    const report = flash_records.report(hart);
+    if (report.confirmed != 1) fail("Flash record publication");
+    logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
+}
+
+noinline fn stackReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") void {
+    const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
+    logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
 }

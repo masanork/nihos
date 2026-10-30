@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--log', type=Path)
     parser.add_argument('--out', type=Path, default=ROOT / 'build/console-preview')
     parser.add_argument('--failed', action='store_true')
+    parser.add_argument('--session', choices=('launcher', 'shell'))
     parser.add_argument('--palette', choices=('neutral', 'green', 'blue', 'forest', 'matrix'), default='matrix')
     parser.add_argument('--font', choices=('basic', 'jetbrains', 'source-code', 'basic-light'), default='basic-light')
     args = parser.parse_args()
@@ -21,7 +22,9 @@ def main():
     library = args.out.resolve() / ('console.dylib' if sys.platform == 'darwin' else 'console.so')
     subprocess.run([str(ROOT / '.tools/zig-0.17.0/zig'), 'build-lib', '-dynamic', '-OReleaseSafe',
                     '--dep', 'text_console', f'-Mroot={ROOT / "tools/console/preview.zig"}',
-                    f'-Mtext_console={ROOT / "src/console.zig"}', f'-femit-bin={library}'], check=True)
+                    '--dep', 'canvas', f'-Mtext_console={ROOT / "src/console.zig"}',
+                    '--dep', 'surface', f'-Mcanvas={ROOT / "src/graphics/canvas.zig"}',
+                    f'-Msurface={ROOT / "src/graphics/surface.zig"}', f'-femit-bin={library}'], check=True)
     log = args.log.read_bytes() if args.log else (
         b'NIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n'
         b'CRT: bss=zero data=valid ecall=returned\n'
@@ -32,13 +35,21 @@ def main():
         b'CORES: SMP, timer, heap and IPI checks passed\n'
         b'CONSOLE: fixed ASCII raster initialized\n')
     pixels = (ctypes.c_ubyte * (720 * 1280 * 2))()
-    render = ctypes.CDLL(str(library)).nih_console_preview
-    render.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, ctypes.c_char_p,
-                       ctypes.c_size_t, ctypes.c_bool, ctypes.c_uint32, ctypes.c_uint32]
+    lib = ctypes.CDLL(str(library))
+    render = lib.nih_session_preview if args.session else lib.nih_console_preview
+    render.argtypes = ([ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, ctypes.c_bool,
+                        ctypes.c_uint32, ctypes.c_uint32] if args.session else
+                      [ctypes.POINTER(ctypes.c_ubyte), ctypes.c_size_t, ctypes.c_char_p,
+                       ctypes.c_size_t, ctypes.c_bool, ctypes.c_uint32, ctypes.c_uint32])
     render.restype = ctypes.c_bool
-    assert render(pixels, len(pixels), log, len(log), args.failed, ('neutral', 'green', 'blue', 'forest', 'matrix').index(args.palette), ('basic', 'jetbrains', 'source-code', 'basic-light').index(args.font))
+    common = (('neutral', 'green', 'blue', 'forest', 'matrix').index(args.palette),
+              ('basic', 'jetbrains', 'source-code', 'basic-light').index(args.font))
+    if args.session:
+        assert render(pixels, len(pixels), args.session == 'shell', *common)
+    else:
+        assert render(pixels, len(pixels), log, len(log), args.failed, *common)
     image = Image.frombytes('RGB', (720, 1280), bytes(pixels), 'raw', 'BGR;16')
-    destination = args.out / (('failed' if args.failed else 'console') + '-' + args.font + '-' + args.palette + '.png')
+    destination = args.out / ((args.session or ('failed' if args.failed else 'console')) + '-' + args.font + '-' + args.palette + '.png')
     image.transpose(Image.Transpose.ROTATE_270).save(destination)
     print(destination)
 

@@ -7,14 +7,18 @@ M5Stack Tab5 and its ESP32-P4. It is intended to explore a readable Zig-first
 system that uses the hardware well without hiding the important mechanisms
 behind a large framework.
 
-The project is at the design and hardware-bootstrap stage. Its
-ESP-IDF-hosted Zig entry boots on a physical Tab5 and now writes the MIPI-DSI
-scanout framebuffer directly and synchronizes to display refresh. nihOS does
-not yet own the permanent scheduler or native device drivers. Bounded native
-execution exercises CPU0 task preemption and event waits, plus an independent
-CPU1 task runtime with its own timer, IPI wakeup, and WFI idle context.
-Each window restores the ESP-IDF host afterward. A bounded touch ABI can also
-initialize and poll the panel-matched controller.
+The normal Tab5 image boots directly into nihOS through the stock ROM and
+ESP-IDF second-stage loader. After `nih_native_start`, Zig/assembly owns both
+cores, traps, timers, scheduling and native drivers permanently; there is no
+FreeRTOS application runtime to return to. The normal profile opens a launcher
+with a bounded shell, boot log, memory view and per-core counters. Display,
+touch, keyboard, C6 Wi-Fi/BLE, RTC and board sensors have native paths; finite
+speaker, microphone and UART/RS485 operations are available on demand.
+
+This remains an experimental OS. Host tests, emulator execution and physical
+Tab5 measurements cover different boundaries. Peripheral quality, persistent
+SQLite, application isolation and long-duration reliability are not implied by
+a successful build. The ESP-IDF-hosted windows remain comparison fixtures.
 
 ## Name
 
@@ -47,89 +51,24 @@ The language decision and its validation gates are recorded in
 [`docs/adr/0001-zig-first.md`](docs/adr/0001-zig-first.md). The initial system
 layers and hardware boundary are described in
 [`docs/architecture.md`](docs/architecture.md).
-The shared SMP service model for graphics, audio, storage, and a future SQLite
-service is recorded in
-[`docs/adr/0002-smp-services.md`](docs/adr/0002-smp-services.md).
-Its first host-only transport result is recorded in
-[`docs/measurements/2026-10-25-spsc-ring-host.md`](docs/measurements/2026-10-25-spsc-ring-host.md).
-The first physical CPU0/CPU1 transport result, still using FreeRTOS only to
-start and place the tasks, is recorded in
-[`docs/measurements/2026-10-25-espidf-smp-mailbox.md`](docs/measurements/2026-10-25-espidf-smp-mailbox.md).
-The static-analysis and emulator policy is recorded in
-[`docs/adr/0003-quality-and-emulation.md`](docs/adr/0003-quality-and-emulation.md).
-The timer-interrupt and scheduler boundary is recorded in
-[`docs/adr/0004-timer-and-scheduler-boundary.md`](docs/adr/0004-timer-and-scheduler-boundary.md).
-The native RV32 context and CLIC trap contract is recorded in
-[`docs/adr/0005-riscv-context-and-trap-contract.md`](docs/adr/0005-riscv-context-and-trap-contract.md).
-Its first separate-stack execution result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-context-switch.md`](docs/measurements/2026-10-25-esp-emu-context-switch.md),
-and the physical ESP32-P4 result is in
-[`docs/measurements/2026-10-25-tab5-context-switch.md`](docs/measurements/2026-10-25-tab5-context-switch.md).
-The first Zig Timer Group driver and native asynchronous interrupt window
-are described in
-[`docs/adr/0006-bounded-native-timer.md`](docs/adr/0006-bounded-native-timer.md).
-The repeated timer/interrupt-restoration result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-native-timer.md`](docs/measurements/2026-10-25-esp-emu-native-timer.md).
-The free-running clock and timer-driven task-switching contract is in
-[`docs/adr/0007-native-preemption-and-elapsed-time.md`](docs/adr/0007-native-preemption-and-elapsed-time.md).
-The first two-worker preemption and delayed-tick result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-native-preemption.md`](docs/measurements/2026-10-25-esp-emu-native-preemption.md).
-Opt-in RV32F context handling and the full-register preemption probe are
-described in
-[`docs/adr/0008-opt-in-eager-rv32f-context.md`](docs/adr/0008-opt-in-eager-rv32f-context.md).
-Its integer/FP separation and host-bank restoration result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-rv32f-preemption.md`](docs/measurements/2026-10-25-esp-emu-rv32f-preemption.md).
-Native task calls, sleep/block/wake, and completion/reaping are defined in
-[`docs/adr/0009-native-task-lifecycle.md`](docs/adr/0009-native-task-lifecycle.md).
-The first live sleep/block/wake/exit result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-task-lifecycle.md`](docs/measurements/2026-10-25-esp-emu-task-lifecycle.md).
-Latched event notifications, masked waits, and deferred task replies are
-defined in
-[`docs/adr/0010-latched-task-events.md`](docs/adr/0010-latched-task-events.md).
-Their first native ECALL and timer execution result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-task-events.md`](docs/measurements/2026-10-25-esp-emu-task-events.md).
-Bounded request/completion channels and notification commit semantics are
-defined in
-[`docs/adr/0011-event-driven-spsc-channels.md`](docs/adr/0011-event-driven-spsc-channels.md).
-The first bounded native request/completion result, including the ring's
-non-power-of-two counter-wrap correction, is recorded in
-[`docs/measurements/2026-10-25-esp-emu-spsc-channels.md`](docs/measurements/2026-10-25-esp-emu-spsc-channels.md).
-CPU1-to-CPU0 owner notifications and bounded borrowing of IDF's IPI line are
-defined in
-[`docs/adr/0012-owner-inbox-and-borrowed-ipi.md`](docs/adr/0012-owner-inbox-and-borrowed-ipi.md).
-The first remote-wait and IDF-restoration result is recorded in
-[`docs/measurements/2026-10-25-esp-emu-owner-ipi.md`](docs/measurements/2026-10-25-esp-emu-owner-ipi.md).
-Reverse wakeup, CPU1's WFI service, and restoration of both hosts are defined
-in
-[`docs/adr/0013-duplex-ipi-and-wfi-service.md`](docs/adr/0013-duplex-ipi-and-wfi-service.md).
-The first duplex request/completion, WFI, stop-IPI, and host-restoration result
-is recorded in
-[`docs/measurements/2026-10-25-esp-emu-duplex-wfi.md`](docs/measurements/2026-10-25-esp-emu-duplex-wfi.md).
-Independent CPU1 task execution, owner-local handles, and task-context service
-work are defined in
-[`docs/adr/0014-owner-local-cpu1-tasks.md`](docs/adr/0014-owner-local-cpu1-tasks.md).
-Their first two-task execution, native stack checks, and dual-owner result is
-recorded in
-[`docs/measurements/2026-10-25-esp-emu-cpu1-tasks.md`](docs/measurements/2026-10-25-esp-emu-cpu1-tasks.md).
-CPU1 timer ownership, deadline wakeup, and non-yielding-task preemption are
-defined in
-[`docs/adr/0015-cpu1-timer-and-preemption.md`](docs/adr/0015-cpu1-timer-and-preemption.md).
-Their first delayed-tick, deadline-wakeup, and dual-timer result is recorded
-in
-[`docs/measurements/2026-10-25-esp-emu-cpu1-preemption.md`](docs/measurements/2026-10-25-esp-emu-cpu1-preemption.md).
-Three physical Tab5 boots, including the CLIC return and IPC endpoint-lifetime
-corrections found on silicon, are recorded in
-[`docs/measurements/2026-10-25-tab5-native-smp-preemption.md`](docs/measurements/2026-10-25-tab5-native-smp-preemption.md).
-Opt-in CPU1 floating contexts and preservation of IDF's raw FP bank are
-defined in
-[`docs/adr/0016-cpu1-floating-contexts.md`](docs/adr/0016-cpu1-floating-contexts.md).
-The emulator and three physical CPU1 FP runs are recorded in
-[`docs/measurements/2026-10-25-tab5-cpu1-floating.md`](docs/measurements/2026-10-25-tab5-cpu1-floating.md).
-An explicit overlap handshake for simultaneous FP owners on both cores is
-defined in
-[`docs/adr/0017-simultaneous-floating-owners.md`](docs/adr/0017-simultaneous-floating-owners.md).
-Its emulator and three physical overlap results are recorded in
-[`docs/measurements/2026-10-25-tab5-simultaneous-floating.md`](docs/measurements/2026-10-25-tab5-simultaneous-floating.md).
+Permanent native boot and scheduler ownership are defined in
+[ADR 0018](docs/adr/0018-independent-native-boot.md) and
+[ADR 0019](docs/adr/0019-permanent-native-task-owners.md). Native IPI/WFI and
+opt-in floating contexts follow in
+[ADR 0020](docs/adr/0020-native-ipi-and-interrupt-wait.md) and
+[ADR 0021](docs/adr/0021-native-opt-in-floating-contexts.md).
+See the [native boot guide](docs/native-boot.md) for build profiles and
+[architecture](docs/architecture.md) for service and evidence boundaries.
+Earlier [ADRs](docs/adr/) preserve the progression from hosted windows to the
+permanent native runtime.
+
+The normal device image includes
+[connectivity and board devices](docs/adr/0047-default-connectivity-and-board-devices.md),
+[on-demand speaker, microphone and RS485 drivers](docs/adr/0052-default-on-demand-device-drivers.md),
+and [SNTP-to-UTC RTC synchronization](docs/adr/0053-network-time-to-rtc.md).
+SQLite has a [bounded single-owner memory session](docs/adr/0040-bounded-single-owner-sqlite-session.md)
+and an [opt-in native execution fixture](docs/adr/0042-native-sqlite-flash-execution.md);
+a persistent `sqld` task/RPC and production VFS remain future work.
 
 ## Project metrics
 
@@ -144,7 +83,16 @@ Debug test-binary lines; emulator and physical Tab5 evidence remain separate.
 To compare current local source trees, run
 `python3 tools/metrics.py --compare ../MeOS`.
 
-## Bootstrap checks
+## Build and checks
+
+Build the normal interactive Tab5 image with the pinned ESP-IDF v5.4.4 loader
+and toolchain setup from the [native boot guide](docs/native-boot.md):
+
+```sh
+sh tools/build-native.sh device
+```
+
+This packages a candidate; it does not install it on a device.
 
 Install the pinned Zig toolchain into the ignored `.tools/` directory:
 
@@ -164,9 +112,8 @@ sh tools/run-language-probe.sh
 Static analysis also compile-checks the architecture contract for the pinned
 RV32IMAF target, so a host ABI success cannot hide a target layout/type error.
 
-The probe is not a Tab5 performance result. It verifies the language boundary
-and establishes a repeatable comparison harness before target-specific code is
-introduced. The first host baseline is recorded in
+The language probe verifies the ABI boundary; it does not measure Tab5
+performance. The first host baseline is recorded in
 [`docs/measurements/2026-10-25-language-probe-host.md`](docs/measurements/2026-10-25-language-probe-host.md).
 
 The fast hosted CI gate runs formatting, ZLint, ShellCheck, Debug and
@@ -174,11 +121,15 @@ ReleaseSafe Zig tests, and the three-language ABI probe. ZLint is pinned and
 checksum-verified by `tools/bootstrap-zlint.sh`; its selected semantic rules
 are warnings-as-errors. This gate requires no target hardware.
 
+For a single entry point to the interactive UI simulator and native RV32 canvas checks, see the [development simulator guide](docs/development-simulator.md).
+
 For card-screen development without a Tab5, run the local host simulator:
 
 ```sh
 python3 tools/card_sim/app.py
 # Open http://127.0.0.1:8711
+python3 tools/card_sim/app.py --application normal
+# Or select normal UI in the page header
 python3 tools/card_sim/app.py --headless build/card-sim/evidence
 ```
 
@@ -188,6 +139,10 @@ reconstructed from the DMA descriptors; scenarios cover EOF handoff, capacity
 rollback, stuck retirement, and deliberate pixel corruption. See the
 [card simulator guide](docs/card-ui-simulator.md) for replay, base-image SRAM
 budgets, evidence, and the boundary between host simulation and target emulation.
+Normal mode also runs the production splash/log rendering and rotated pointer
+stream through the gray LOGS/SPLASH control. Its input traces reproduce holds,
+drags, multiple contacts and queue overflow. Card result-page controls are
+shared with the native application and work directly inside the canvas.
 
 Run the ESP32-P4 core smoke under the pinned official Espressif emulator with:
 
@@ -196,8 +151,8 @@ sh tools/run-esp-emu-smoke.sh
 ```
 
 This builds a separate revision-3 ESP32-P4 image, boots both emulated cores,
-and checks the 100,000-message SMP mailbox. The corresponding hosted workflow
-is manual while the native timer and scheduler are still being built. An
+and checks the 100,000-message SMP mailbox. The corresponding hosted workflow is manual; permanent native boot has its
+own smoke and qualification profiles. An
 emulator pass is target-execution evidence, but it is not evidence for Tab5
 power, DMA, display, touch, audio, SD, timing, or physical-device reliability.
 The initial result is recorded in
@@ -209,7 +164,7 @@ and
 The corresponding ESP-IDF-hosted physical timer result is recorded in
 [`docs/measurements/2026-10-25-tab5-periodic-timer.md`](docs/measurements/2026-10-25-tab5-periodic-timer.md).
 
-Build the first ESP32-P4 firmware using the pinned ESP-IDF v5.4.4 setup:
+Build the separate ESP-IDF bring-up oracle using the pinned ESP-IDF v5.4.4 setup:
 
 ```sh
 sh tools/build-espidf.sh
@@ -222,13 +177,22 @@ PSRAM arenas, exercises the platform cache-sync contract, and verifies
 memory-to-memory AXI-GDMA across internal RAM and PSRAM. It then paints a
 bounded RGB565 test pattern from Zig into the display driver's scanout buffer
 without an intermediate full-frame copy and measures physical refresh events.
-It is a bring-up backend, not yet the native nihOS scheduler. The
+This oracle runs under FreeRTOS; the normal native image uses its own scheduler. The
 physical-device results are recorded in
 [`docs/measurements/2026-10-25-espidf-zig-bootstrap.md`](docs/measurements/2026-10-25-espidf-zig-bootstrap.md)
 and
 [`docs/measurements/2026-10-25-tab5-display-scanout.md`](docs/measurements/2026-10-25-tab5-display-scanout.md).
 The first idle touch-poll result is in
 [`docs/measurements/2026-10-25-tab5-touch-bootstrap.md`](docs/measurements/2026-10-25-tab5-touch-bootstrap.md).
+
+## Native launcher
+
+The live native integer normal-boot profile now opens a small launcher after
+initialisation. Escape opens an ASCII shell; `exit` returns to the launcher.
+Shell, boot logs, CPU0 memory usage and per-core runtime counters are available.
+See [native session behaviour and build flags](docs/native-session.md).
+Physical results qualify the exact candidates recorded in the measurement
+files; new builds require their own input/display validation.
 
 ## Project boundary
 
@@ -272,8 +236,8 @@ gyroscope readings through the shared board I2C owner. See
 the licensed configuration data and remaining motion/calibration gates.
 
 An experimental finite audio-output probe can be built explicitly with
-`NIHOS_NATIVE_AUDIO=1 sh tools/build-native.sh device`. Normal builds keep it
-disabled. Its native codec/DMA transfer and shutdown have physical evidence;
+`NIHOS_NATIVE_AUDIO=1 sh tools/build-native.sh device`. The normal image includes the same finite output driver through the on-demand
+service; playback waits for an explicit request. Its native codec/DMA transfer and shutdown have physical evidence;
 audible output is still unconfirmed. See
 [the audio checkpoint](docs/measurements/2026-10-28-native-audio.md).
 

@@ -29,7 +29,28 @@ const start: u32 = 1 << 31;
 const done: u32 = 1 << 2;
 const data_over: u32 = 1 << 3;
 const errors: u32 = 0xbfc2; // response/data timeout, CRC, HLE, FIFO, framing.
-pub const Error = error{ InvalidCommand, Timeout, Controller, Response, Unsupported, InvalidAddress, ShortRead };
+pub const Error = error{ InvalidCommand, NoOwnership, Timeout, Controller, Response, Unsupported, InvalidAddress, ShortRead, Cancelled, Removed };
+pub const StopReason = enum { none, cancelled, removed };
+pub const Quiescence = struct {
+    device_idle: bool = true,
+    descriptors_released: bool = true,
+    cache_handed_back: bool = true,
+    pub fn complete(self: Quiescence) bool {
+        return self.device_idle and self.descriptors_released and self.cache_handed_back;
+    }
+};
+const Proceed = struct {
+    pub fn stopReason(_: @This()) StopReason {
+        return .none;
+    }
+};
+fn checkStop(control: anytype) Error!void {
+    switch (control.stopReason()) {
+        .none => {},
+        .cancelled => return error.Cancelled,
+        .removed => return error.Removed,
+    }
+}
 
 pub fn allowed(index: u6) bool {
     return switch (index) {
@@ -95,15 +116,32 @@ pub fn Controller(comptime IO: type) type {
         sectors: u64 = 0,
         faulted: bool = false,
         cleanup_failed: bool = false,
+        quiescence: Quiescence = .{},
         bus_bits: u32 = 1,
         clock_khz: u32 = 400,
         scr_widths: u32 = 0,
         host_width: u32 = 0,
         divider: u32 = 50,
         const Self = @This();
+        const BusType = switch (@typeInfo(IO)) {
+            .pointer => |info| info.child,
+            else => IO,
+        };
+        const shared = @hasDecl(BusType, "shared_host") and BusType.shared_host;
+        fn owns(self: *const Self) bool {
+            return if (shared) self.io.ownsSlot(0) else true;
+        }
+        // Native storage owners run with mapped Flash/cache available. IRQs
+        // only publish resident flags and never enter these routines.
+        const runtime_section = if (@hasDecl(BusType, "runtime_section")) BusType.runtime_section else if (@import("builtin").os.tag == .macos) "__TEXT,__text" else ".text";
 
         fn pollClear(self: *Self, offset: usize, bits: u32) Error!void {
+            return self.pollClearControlled(offset, bits, Proceed{});
+        }
+
+        fn pollClearControlled(self: *Self, offset: usize, bits: u32, control: anytype) Error!void {
             for (0..self.poll_limit) |_| {
+                try checkStop(control);
                 if (self.io.read(offset) & bits == 0) return;
                 self.io.delay(1);
             }
@@ -117,9 +155,22 @@ pub fn Controller(comptime IO: type) type {
             if (self.io.read(regs.interrupts) & (1 << 12) != 0) return error.Controller;
         }
 
-        pub fn prepare(self: *Self) Error!void {
-            self.io.write(regs.ctrl, 7);
-            try self.pollClear(regs.ctrl, 7);
+        pub fn prepare(self: *Self) linksection(runtime_section) Error!void {
+            if (shared) return error.NoOwnership;
+            return self.preparePort(true);
+        }
+
+        pub fn prepareShared(self: *Self) linksection(runtime_section) Error!void {
+            if (!shared or !self.owns()) return error.NoOwnership;
+            return self.preparePort(false);
+        }
+
+        fn preparePort(self: *Self, reset: bool) linksection(runtime_section) Error!void {
+            // A new initialization must never overwrite quarantined staging.
+            if (!self.quiescence.complete()) return error.Controller;
+            const bits: u32 = if (reset) 7 else 6;
+            self.io.write(regs.ctrl, bits);
+            try self.pollClear(regs.ctrl, bits);
             self.io.write(regs.ctrl, 0); // Interrupts and DMA both disabled.
             self.io.write(regs.mask, 0);
             self.io.write(regs.timeout, 0xffff_ffff);
@@ -136,12 +187,17 @@ pub fn Controller(comptime IO: type) type {
         }
 
         pub fn command(self: *Self, index: u6, argument: u32) Error![4]u32 {
+            return self.commandControlled(index, argument, Proceed{});
+        }
+
+        fn commandControlled(self: *Self, index: u6, argument: u32, control: anytype) Error![4]u32 {
             // Reject before any register access, including status/FIFO resets.
+            if (!self.owns()) return error.NoOwnership;
             if (!allowed(index)) return error.InvalidCommand;
             if (self.faulted) return error.Controller;
             self.last_command = index;
-            try self.pollClear(regs.command, start);
-            try self.pollClear(regs.status, 1 << 9);
+            try self.pollClearControlled(regs.command, start, control);
+            try self.pollClearControlled(regs.status, 1 << 9, control);
             self.io.write(regs.interrupts, 0xffff_ffff);
             self.io.write(regs.argument, argument);
             var flags: u32 = start | (1 << 29) | index;
@@ -152,6 +208,7 @@ pub fn Controller(comptime IO: type) type {
             self.io.write(regs.command, flags);
             self.commands += 1;
             for (0..self.poll_limit) |_| {
+                try checkStop(control);
                 const status = self.io.read(regs.interrupts);
                 self.last_interrupts = status;
                 if (status & errors != 0) return error.Controller;
@@ -172,7 +229,7 @@ pub fn Controller(comptime IO: type) type {
             return response[0];
         }
 
-        pub fn identify(self: *Self) Error!void {
+        pub fn identify(self: *Self) linksection(runtime_section) Error!void {
             _ = try self.command(0, 0);
             self.io.delay(10_000);
             if ((try self.command(8, 0x1aa))[0] & 0xfff != 0x1aa) return error.Unsupported;
@@ -198,10 +255,29 @@ pub fn Controller(comptime IO: type) type {
             if ((status >> 9) & 15 != 4 or status & 0x100 == 0) return error.Response;
         }
 
-        fn stopDma(self: *Self) Error!void {
+        fn stopDma(self: *Self) linksection(runtime_section) Error!void {
+            self.quiescence.device_idle = false;
+            // Polling owner: mask both interrupt sources before draining them.
+            self.io.write(regs.mask, 0);
+            self.io.write(regs.dma_mask, 0);
             self.io.write(regs.dma_mode, 0);
-            self.io.write(regs.ctrl, (self.io.read(regs.ctrl) & ~@as(u32, (1 << 25) | (1 << 5))) | 4);
+            self.io.write(regs.ctrl, (self.io.read(regs.ctrl) & ~@as(u32, (1 << 25) | (1 << 5) | (1 << 4))) | 4);
             try self.pollClear(regs.ctrl, 4);
+            try self.pollClear(regs.dma_status, 15 << 13); // IDMAC FSM must be idle.
+            if (self.io.read(regs.ctrl) & ((1 << 25) | (1 << 5) | (1 << 4) | 4) != 0 or
+                self.io.read(regs.dma_mode) != 0 or self.io.read(regs.mask) != 0 or self.io.read(regs.dma_mask) != 0) return error.Controller;
+            self.io.write(regs.interrupts, 0xffff_ffff);
+            self.io.write(regs.dma_status, 0xffff_ffff);
+            self.quiescence.device_idle = true;
+        }
+
+        fn releaseDma(self: *Self) linksection(runtime_section) Error!void {
+            self.quiescence.descriptors_released = false;
+            self.quiescence.cache_handed_back = false;
+            self.io.write(regs.descriptor, 0);
+            if (self.io.read(regs.descriptor) != 0 or !self.io.releaseDma()) return error.Controller;
+            self.quiescence.descriptors_released = true;
+            self.quiescence.cache_handed_back = true;
         }
 
         fn appPrefix(self: *Self) Error!void {
@@ -240,14 +316,26 @@ pub fn Controller(comptime IO: type) type {
             self.clock_khz = 20_000;
         }
 
-        pub fn readSector(self: *Self, lba: u32, buffer: *[512]u8) Error!void {
+        pub fn readSector(self: *Self, lba: u32, buffer: *[512]u8) linksection(runtime_section) Error!void {
+            return self.readSectorControlled(lba, buffer, Proceed{});
+        }
+
+        /// control reads owner-published resident flags; it must not free memory,
+        /// manipulate MMIO or reenter the controller from an interrupt.
+        pub inline fn readSectorControlled(self: *Self, lba: u32, buffer: *[512]u8, control: anytype) Error!void {
             if (self.rca == 0 or lba >= self.sectors) return error.InvalidAddress;
-            return self.readTransfer(17, lba, 512, buffer);
+            return self.readTransferControlled(17, lba, 512, buffer, control);
         }
 
         fn readTransfer(self: *Self, index: u6, argument: u32, length: u32, buffer: *[512]u8) Error!void {
+            return self.readTransferControlled(index, argument, length, buffer, Proceed{});
+        }
+
+        inline fn readTransferControlled(self: *Self, index: u6, argument: u32, length: u32, buffer: *[512]u8, control: anytype) Error!void {
             if (!((index == 17 and length == 512) or (index == 51 and length == 8))) return error.InvalidCommand;
-            if (self.faulted) return error.Controller;
+            if (!self.owns()) return error.NoOwnership;
+            if (self.faulted or !self.quiescence.complete()) return error.Controller;
+            try checkStop(control);
             self.words_read = 0;
             self.io.write(regs.ctrl, self.io.read(regs.ctrl) | 6);
             try self.pollClear(regs.ctrl, 6);
@@ -255,6 +343,7 @@ pub fn Controller(comptime IO: type) type {
             self.io.write(regs.dma_mode, 1);
             try self.pollClear(regs.dma_mode, 1);
             const descriptor = self.io.prepareDma(length) orelse return error.Controller;
+            self.quiescence = .{ .device_idle = false, .descriptors_released = false, .cache_handed_back = false };
             self.io.write(regs.block, length);
             self.io.write(regs.bytes, length);
             self.io.write(regs.dma_status, 0xffff_ffff);
@@ -268,16 +357,23 @@ pub fn Controller(comptime IO: type) type {
                 self.stopDma() catch {
                     self.cleanup_failed = true;
                 };
+                if (self.quiescence.device_idle) self.releaseDma() catch {
+                    self.cleanup_failed = true;
+                };
             }
-            _ = try self.r1(index, argument);
+            const response = try self.commandControlled(index, argument, control);
+            if (response[0] & 0xfdff_e008 != 0) return error.Response;
             for (0..self.poll_limit) |_| {
+                try checkStop(control);
                 const interrupts = self.io.read(regs.interrupts);
                 self.last_interrupts = interrupts;
                 self.last_status = self.io.read(regs.dma_status);
                 if (interrupts & errors != 0 or self.last_status & 0x34 != 0) return error.Controller;
                 if (interrupts & (done | data_over) == done | data_over) {
                     try self.stopDma();
+                    try checkStop(control);
                     if (!self.io.finishDma(buffer, length)) return error.ShortRead;
+                    try self.releaseDma();
                     self.words_read = length / 4;
                     return;
                 }
@@ -320,15 +416,22 @@ const DmaModel = struct {
     fail_prepare: bool = false,
     dma_error: u32 = 0,
     stall_stop: bool = false,
+    stall_fsm: bool = false,
+    fail_release: bool = false,
+    releases: u32 = 0,
+    responses: u32 = 0,
+    descriptor_stuck: bool = false,
     prepared: u32 = 0,
     stopped: u32 = 0,
     command_word: u32 = 0,
     pub fn read(self: *@This(), offset: usize) u32 {
+        if (offset == regs.response) self.responses += 1;
         return switch (offset) {
             regs.interrupts => done | (if (self.complete) data_over else @as(u32, 0)),
             regs.response => 0x900,
-            regs.dma_status => self.dma_error,
+            regs.dma_status => self.dma_error | (if (self.stall_fsm) @as(u32, 2 << 13) else 0),
             regs.ctrl => if (self.stall_stop and self.stopped != 0) 4 else 0,
+            regs.descriptor => if (self.descriptor_stuck) 0x4ff1_0000 else 0,
             else => 0,
         };
     }
@@ -346,7 +449,47 @@ const DmaModel = struct {
         for (output, 0..) |*byte, i| byte.* = @truncate(i);
         return true;
     }
+    pub fn releaseDma(self: *@This()) bool {
+        std.debug.assert(self.stopped != 0 and !self.stall_stop and !self.stall_fsm);
+        self.releases += 1;
+        return !self.fail_release;
+    }
 };
+
+test "cancel and removal stop at command data and copy boundaries without publishing bytes" {
+    const Control = struct {
+        model: *DmaModel,
+        phase: u32,
+        reason: StopReason,
+        pub fn stopReason(self: @This()) StopReason {
+            const stop_now = switch (self.phase) {
+                0 => true,
+                1 => self.model.command_word != 0,
+                2 => self.model.responses != 0,
+                else => self.model.stopped != 0,
+            };
+            return if (stop_now) self.reason else .none;
+        }
+    };
+    for ([_]StopReason{ .cancelled, .removed }) |reason| {
+        for (0..4) |phase| {
+            var model = DmaModel{};
+            var controller = Controller(*DmaModel){ .io = &model, .poll_limit = 4, .rca = 1 << 16, .sectors = 8 };
+            var data: [512]u8 = @splat(0xa5);
+            const result = controller.readSectorControlled(0, &data, Control{ .model = &model, .phase = @intCast(phase), .reason = reason });
+            if (reason == .cancelled) try std.testing.expectError(error.Cancelled, result) else try std.testing.expectError(error.Removed, result);
+            try std.testing.expect(controller.quiescence.complete());
+            for (data) |byte| try std.testing.expectEqual(@as(u8, 0xa5), byte);
+            if (phase == 0) {
+                try std.testing.expectEqual(@as(u32, 0), model.prepared);
+            } else {
+                try std.testing.expect(controller.faulted);
+                try std.testing.expect(model.releases > 0);
+                try std.testing.expectError(error.Controller, controller.readSector(0, &data));
+            }
+        }
+    }
+}
 
 test "DMA read is read-only bounded and stopped before publishing a complete sector" {
     var model = DmaModel{};
@@ -428,6 +571,9 @@ const WidthModel = struct {
     pub fn finishDma(self: *@This(), output: *[512]u8, length: u32) bool {
         std.debug.assert(self.length == 8 and length == 8);
         output[0..8].* = .{ 2, self.widths, 0, 0, 0, 0, 0, 0 };
+        return true;
+    }
+    pub fn releaseDma(_: *@This()) bool {
         return true;
     }
 };

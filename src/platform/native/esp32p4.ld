@@ -12,17 +12,32 @@ __native_profile = 0;
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
 __native_network = NIH_NATIVE_NETWORK;
+__native_normal_storage = NIH_NATIVE_NORMAL_STORAGE;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
 MEMORY {
     ram (rwx) : ORIGIN = NIH_SRAM_ORIGIN, LENGTH = 160K
     stack_ram (rw) : ORIGIN = 0x4ff60000, LENGTH = 56K
+#if NIH_NATIVE_GRAPHICS
+    graphics_stack (rw) : ORIGIN = 0x4ff6e000, LENGTH = 32K
+    graphics_ram (rw) : ORIGIN = 0x4ff78000, LENGTH = 32K
+    flash_graphics (rx) : ORIGIN = 0x40020000, LENGTH = 12M - 128K
+#endif
+#if NIH_NATIVE_HIGH_SRAM
+    high_a (rw) : ORIGIN = 0x4ff40000, LENGTH = 128K
+    high_b (rw) : ORIGIN = 0x4ff6e000, LENGTH = 200K
+#endif
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
 #if NIH_NATIVE_SQLITE
+#if NIH_NATIVE_FATFS_RPC
+    flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 704K
+#else
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
-#if NIH_NATIVE_KEYPAD
+#elif NIH_NATIVE_NORMAL_STORAGE
+    flash_fs (rx) : ORIGIN = 0x40020000, LENGTH = 256K
+#elif NIH_NATIVE_KEYPAD
     flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
@@ -33,6 +48,9 @@ SECTIONS
     .flash.boot : {
         __flash_boot_start = .;
         *(.flash.text.boot)
+        __flash_sdmmc_boot_start = .;
+        *(.flash.text.sdboot)
+        __flash_sdmmc_boot_end = .;
         __flash_boot_end = .;
     } > flash_boot
 #if NIH_NATIVE_CARD_READ
@@ -57,6 +75,24 @@ SECTIONS
         __flash_time_start = .;
         *(.flash.text.time)
         __flash_time_end = .;
+    } > flash_boot
+#endif
+    /* Unlocked PMP programming and the contained-fault path. Normal tasks
+     * with an empty plan never call this page. It stays on the boot Flash
+     * page so the graphics image can keep a 48 KiB primary SRAM heap. */
+    .flash.pmp : ALIGN(16) {
+        __flash_pmp_start = .;
+        *(.flash.text.pmp .flash.text.pmp.*)
+        __flash_pmp_end = .;
+    } > flash_boot
+#if NIH_NATIVE_PMP_PROBE
+    /* U-mode probe text. One TOR range, 128-byte aligned, still on the boot
+     * page. Product images leave this section out. */
+    .flash.user : ALIGN(128) {
+        __user_probe_start = .;
+        KEEP(*(.flash.text.user))
+        . = ALIGN(128);
+        __user_probe_end = .;
     } > flash_boot
 #endif
     /* The stock P4 loader maps both segments before entering SRAM.
@@ -146,10 +182,19 @@ SECTIONS
         *sql_lfs.o(.text .text.*)
         *sql_lfs_util.o(.text .text.*)
         *sql_lfs_reader.o(.text .text.*)
-        . = ALIGN(16);
+        *sql_storage_api.o(.text .text.*)
+        *sql_storage_runtime.o(.text .text.*)
+        *sql_broker_runtime.o(.text .text.*)
+        *sql_fat_*.o(.text .text.*)
+        *(.flash.text.storage)
+        . = ALIGN(4);
+        __flash_cold_start = .;
+        *(.flash.text.cold)
+        __flash_cold_end = .;
+        . = ALIGN(128);
         __flash_sql_text_end = .;
     } > flash_sql
-    .flash.sqlrodata : ALIGN(16) {
+    .flash.sqlrodata : ALIGN(128) {
         __flash_sql_rodata_start = .;
         *sql_sqlite3.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_session.o(.rodata .rodata.* .srodata .srodata.*)
@@ -157,8 +202,79 @@ SECTIONS
         *sql_lfs.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_util.o(.rodata .rodata.* .srodata .srodata.*)
         *sql_lfs_reader.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_storage_api.o(.rodata .rodata.* .srodata .srodata.*)
+        *sql_storage_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        KEEP(*sql_broker_runtime.o(.rodata.fatfs_config))
+        *sql_broker_runtime.o(.rodata .rodata.* .srodata .srodata.*)
+        KEEP(*sql_fat_card.o(.rodata.nih_fatfs_card_workspace_bytes))
+        *sql_fat_*.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_sql_rodata_end = .;
     } > flash_sql
+#endif
+#if NIH_NATIVE_GRAPHICS
+    .flash.graphpad : ALIGN(4) {
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.graphtext : {
+        __flash_graphics_text_start = .;
+        *graphics_payload.o(.text .text.*)
+        . = ALIGN(16);
+        __flash_graphics_text_end = .;
+    } > flash_graphics
+    .flash.graphrodata : ALIGN(16) {
+        *graphics_payload.o(.rodata .rodata.* .srodata .srodata.*)
+        . = ALIGN(16);
+    } > flash_graphics
+    .flash.graphfonts : ALIGN(16) {
+        KEEP(*(.graphics.fonts))
+    } > flash_graphics
+    .flash.graphrender : ALIGN(4) {
+        __flash_render_start = .;
+        *(.flash.text.render)
+        __flash_render_end = .;
+        __flash_graphics_end = .;
+    } > flash_graphics
+    .graphics.data : ALIGN(64) {
+        __graphics_data_start = .;
+        *graphics_payload.o(.data .data.* .sdata .sdata.*)
+        __graphics_data_end = .;
+    } > graphics_ram
+    .graphics.bss (NOLOAD) : ALIGN(64) {
+        __graphics_bss_start = .;
+        *graphics_payload.o(.bss .bss.* .sbss .sbss.* COMMON)
+        . = ALIGN(16);
+        *(.user.pmp_state)
+        . = ALIGN(4);
+        __graphics_bss_end = .;
+    } > graphics_ram
+    .graphics.stack (NOLOAD) : {
+        __graphics_font_stack_bottom = .;
+        . += 32768;
+        __graphics_font_stack_top = .;
+    } > graphics_stack
+#endif
+#if NIH_NATIVE_NORMAL_STORAGE
+    .flash.fspad : ALIGN(4) {
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+    } > flash_records
+    .flash.fstext : {
+        __flash_fs_text_start = .;
+        *normal_fs_*.o(.text .text.*)
+        . = ALIGN(128);
+        __flash_fs_text_end = .;
+    } > flash_fs
+    .flash.fsrodata : ALIGN(128) {
+        __flash_fs_rodata_start = .;
+        KEEP(*(.normal_fs.identity))
+        *normal_fs_*.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_console_font_start = .;
+        *(.flash.fs.console)
+        __flash_console_font_end = .;
+        __flash_fs_rodata_end = .;
+    } > flash_fs
+    .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
 #endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {
@@ -174,6 +290,18 @@ SECTIONS
     .bss (NOLOAD) : ALIGN(16) {
         __bss_start = .;
         *(.bss .bss.* .sbss .sbss.*) *(COMMON)
+#if NIH_NATIVE_USB
+        /* One 64-byte queue head needs a 512-byte address. Giving that
+         * alignment to the whole section pads the start by up to 511 bytes
+         * and drops the card-auto heap under 48 KiB. Place the head before
+         * the fault frames so that pad is not pushed past another boundary.
+         * It stays inside the zeroed BSS span. */
+        . = ALIGN(512);
+        *(.usb_dma_qtd)
+#endif
+#if !NIH_NATIVE_GRAPHICS
+        *(.user.pmp_state)
+#endif
         . = ALIGN(16);
         __bss_end = .;
     } > ram
@@ -188,11 +316,20 @@ SECTIONS
         __task_stacks_end = .;
         __stacks_end = .;
     } > stack_ram
+#if NIH_NATIVE_HIGH_SRAM
+    .high_sram_a (NOLOAD) : {
+        __high_sram_a_start = .; . += LENGTH(high_a); __high_sram_a_end = .;
+    } > high_a
+    .high_sram_b (NOLOAD) : {
+        __high_sram_b_start = .; . += LENGTH(high_b); __high_sram_b_end = .;
+    } > high_b
+#endif
     .heap (NOLOAD) : ALIGN(64) {
         __heap_start = .;
         . = ORIGIN(ram) + LENGTH(ram);
         __heap_end = .;
     } > ram
+#if !NIH_NATIVE_HIGH_SRAM
     /* Free service SRAM belongs to the base, not to a card application.
      * The SDK/loader-supported high RW window starts at 0x4ff40000.
      * Retain the top 4 KiB guard used by the high-SRAM qualification. */
@@ -206,10 +343,19 @@ SECTIONS
     __service_sram1_end = 0x4ff9f000;
     ASSERT(__service_sram0_start < __service_sram0_end, "no low service SRAM")
     ASSERT(__service_sram1_start < __service_sram1_end, "no high service SRAM")
+#endif
     /DISCARD/ : { *(.eh_frame .eh_frame_hdr .comment .riscv.attributes) }
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
     ASSERT(SIZEOF(.flash.boot) > 0, "missing Flash boot code")
     ASSERT(SIZEOF(.flash.boot) <= 65248, "boot code exceeds first Flash page")
+    ASSERT(__flash_pmp_start < __flash_pmp_end, "missing PMP Flash code")
+    ASSERT(__flash_pmp_end <= ORIGIN(flash_boot) + LENGTH(flash_boot), "PMP Flash code exceeds the boot page")
+#if NIH_NATIVE_PMP_PROBE
+    ASSERT(__user_probe_start < __user_probe_end, "missing user probe")
+    ASSERT(__user_probe_start % 128 == 0, "user probe start alignment")
+    ASSERT(__user_probe_end % 128 == 0, "user probe end alignment")
+    ASSERT(__user_probe_end <= ORIGIN(flash_boot) + LENGTH(flash_boot), "user probe exceeds the boot page")
+#endif
     ASSERT(SIZEOF(.flash.rodata) > 0, "missing mapped record tables")
     ASSERT(SIZEOF(.flash.rodata) <= 65504, "record tables exceed one Flash page")
     ASSERT(__stacks_start == ORIGIN(stack_ram), "wrong stack region origin")
@@ -229,3 +375,7 @@ PROVIDE(nih_rom_l2_line_size = 0x4fc003cc);
 PROVIDE(nih_rom_l2_enable = 0x4fc00504);
 PROVIDE(nih_rom_cache_invalidate = 0x4fc003e4);
 PROVIDE(nih_rom_cache_writeback = 0x4fc003f4);
+#if NIH_NATIVE_CAPTURE
+PROVIDE(nih_rom_reset_reason = 0x4fc00018);
+PROVIDE(nih_rom_saved_pc = 0x4ff3fff8);
+#endif

@@ -1,0 +1,7 @@
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR riscv32)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+set(CMAKE_CXX_COMPILER "$ENV{NIHOS_GRAPHICS_RV32_CXX}")
+string(REPLACE "g++" "gcc" CMAKE_C_COMPILER "${CMAKE_CXX_COMPILER}")
+set(CMAKE_C_FLAGS_INIT "-march=rv32imac_zicsr_zifencei -mabi=ilp32")
+set(CMAKE_CXX_FLAGS_INIT "-march=rv32imac_zicsr_zifencei -mabi=ilp32 -fno-exceptions -fno-rtti")

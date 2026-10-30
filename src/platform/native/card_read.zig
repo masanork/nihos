@@ -108,7 +108,7 @@ pub noinline fn prepare(clock: timer.Timer, panel: u32) linksection(".flash.text
     }
 }
 
-pub fn abort() void {
+pub noinline fn abort() linksection(if (options.card_photo) ".flash.photo" else ".text") void {
     abort_state = @backingInt(if (service.fault != .none) service.fault_state else service.state);
     abort_sw = service.last_sw;
     if (device) |*link| dma_erased = link.emergency();

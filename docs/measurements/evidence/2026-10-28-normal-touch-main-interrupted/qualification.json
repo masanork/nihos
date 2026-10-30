@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-28T06:56:29.672246+00:00",
+  "commit": "8efd270774bbf1111de2e49c01343f73a36a20d6",
+  "app_sha256": "42f1e05fd858f651fbb51b5a0309446e8bb087b3f5250143babc063abbf822b0",
+  "elf_sha256": "45d336c1c2aba1ce0c528b9d70ff99f371f145653bcc8ab3990bca40e46fc5c4",
+  "source_archive_sha256": "78cd45aae159bec0232f308f4b2cf85d0958aec46d70698ca3675ff4493f27c1",
+  "scope": "normal shared-I2C touch with configured network and on-demand devices; optical confirmation recorded separately",
+  "written": true,
+  "restored": false,
+  "prior_app_partition_sha256": "6126f70e6fd3137c7fd7f8d0b645e83101d37fd2935e905462ebf2e81aa90ecb",
+  "boot_sha256": "2abdd2bd47aa470d84bcc46bbd01465d154b99db7985d0a93e096fd98db4a40f",
+  "error": "read failed: [Errno 6] Device not configured",
+  "raw_serial_sha256": "90410931350d172646e291db3bd05a2ebe46c13999dfc841e12dd1f5cce15cb9",
+  "raw_log_complete": false,
+  "operator_tests_deferred": true,
+  "restore_status": "pending USB reconnection; backup retained",
+  "qualified": false
+}

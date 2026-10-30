@@ -25,8 +25,16 @@ def compare(log, native):
     for key in NATIVE.STORAGE_FIELDS:
         if key != 'reads' and reference[key] != actual[key]:
             raise ValueError('native/IDF storage differs: ' + key)
+    api = None
+    if native.get('storage_api') is not None or 'NIHOS_STORAGE_API_IDF ' in log:
+        if native.get('storage_api') is None:
+            raise ValueError('missing native file API qualification')
+        api = NATIVE.check_storage_api(NATIVE.fixed_record(log.replace('\r', ''), 'NIHOS_STORAGE_API_IDF', NATIVE.STORAGE_API_FIELDS), reference)
+        NATIVE.check_storage_api(native['storage_api'], actual)
+        if any(api[key] != native['storage_api'][key] for key in NATIVE.STORAGE_API_FIELDS if key != 'used_bytes'):
+            raise ValueError('native/IDF file API results differ')
     return {'passed': True, 'upstream_fs_shared': True, 'independent_block_io': True,
-            'native_elf_sha256': native['image_elf_sha256'], 'native': actual, 'idf': reference}
+            'native_elf_sha256': native['image_elf_sha256'], 'native': actual, 'idf': reference, 'api': api}
 
 
 if __name__ == '__main__':

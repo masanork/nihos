@@ -1,5 +1,7 @@
 # Tab5 native SD: 読取り専用block APIとlittlefsの実機検証
 
+後続の[file backendと固定workspaceの実機検証](2026-10-26-tab5-readonly-file-api.md)も参照。
+
 2026-10-26。前段の4ビット・20 MHz SDMMCから、既存カードのFS読取りへ進めた。
 **native版でlittlefsをマウントし、ルート列挙と既存ファイルの全読取りに成功した。**
 実行ソース `fbbce97`、ブランチ `codex/tab5-psram-physical-fix`。

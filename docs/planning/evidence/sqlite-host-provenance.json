@@ -1,0 +1,9 @@
+{
+  "sqlite_version": "3.54.1",
+  "sqlite_source_sha256": "0c657666d819f261cc4007526ad57e1669de9949df7a8ea847aa284a2bf0ee52",
+  "results_sha256": "335c997d9b8a0f4c8f67b01510e866b87330dc571dcc5de471ca351a6652068d",
+  "scope": "8192 rows of 256-byte payload plus id/counter, 512 counter updates, fixed 512KiB cache suggestion, FULL sync, no auto-checkpoint during updates, same keys and ordering per pattern across page/batch variants; host Unix VFS only",
+  "probe_source": "../../../tools/probes/sqlite-geometry.c",
+  "probe_source_sha256": "b79227b16cc026d9a12f2e09046885ca65521fa7174d76c469520f6264383e52",
+  "compile_example": "cc -O2 -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -I AMALGAMATION tools/probes/sqlite-geometry.c AMALGAMATION/sqlite3.c -o build/sqlite-geometry"
+}

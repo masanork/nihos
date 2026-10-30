@@ -1,5 +1,7 @@
 """Count-only keypad trace regressions; no actual key values are fixtures."""
 import importlib.util
+import hashlib
+import json
 from pathlib import Path
 import unittest
 
@@ -20,6 +22,24 @@ def complete():
 
 
 class KeypadTests(unittest.TestCase):
+    def test_shipped_ui_manifests_match_current_sources_and_payloads(self):
+        root = Path(__file__).resolve().parents[1]
+        payloads = {
+            'keypad_atlas': {'plan_sha256': 'keypad_atlas_plan.bin', 'atlas_sha256': 'keypad_atlas.bin'},
+            'card_read_font': {'font_sha256': 'card_read_font.bin'},
+            'card_auto_font': {'font_sha256': 'card_auto_font.bin', 'font_raw_sha256': 'card_read_font.bin'},
+        }
+        for name, fields in payloads.items():
+            manifest = json.loads((root / 'src/graphics' / (name + '.json')).read_text())
+            self.assertTrue({'src/platform/native/main.zig', 'src/platform/native/memory.zig',
+                             'src/platform/native/esp32p4.ld'} <= manifest['sources'].keys())
+            for source, expected in manifest['sources'].items():
+                with self.subTest(manifest=name, source=source):
+                    self.assertEqual(hashlib.sha256((root / source).read_bytes()).hexdigest(), expected)
+            for field, filename in fields.items():
+                with self.subTest(manifest=name, payload=filename):
+                    self.assertEqual(hashlib.sha256((root / 'src/graphics' / filename).read_bytes()).hexdigest(), manifest[field])
+
     def test_relocated_display_leases_must_stay_inside_base_free_domains(self):
         low = 0x4ff48000
         lease = {'nodes': 100, 'lease_start': low + 0x1000, 'lease_bytes': 6400}

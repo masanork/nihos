@@ -8,8 +8,10 @@ mkdir -p "$destination"
 "$zig" build-obj -target riscv32-freestanding-none \
     -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe -fllvm \
     -femit-bin="$destination/card-service.o" \
-    --dep ccid -Mroot="$repo_root/src/card_compile_probe.zig" \
+    --dep ccid --dep surface -Mroot="$repo_root/src/card_compile_probe.zig" \
     -target riscv32-freestanding-none \
     -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
-    -Mccid="$repo_root/src/usb/ccid.zig"
+    -Mccid="$repo_root/src/usb/ccid.zig" \
+    -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei -O safe \
+    -Msurface="$repo_root/src/graphics/surface.zig"
 echo "card service and PIN entry: RV32 compile-only pass"

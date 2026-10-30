@@ -1,0 +1,119 @@
+{
+  "normal_boot": true,
+  "headless_emulator": false,
+  "qualification": null,
+  "evidence": "physical-device",
+  "psram": {
+    "status": 1,
+    "configuration": 36144,
+    "identity": 41183,
+    "bytes": 33554432,
+    "transactions": 4,
+    "mapped": 33554432,
+    "allocatable": 0
+  },
+  "psram_fast": {
+    "mpll": {
+      "status": 1,
+      "mhz": 400,
+      "reused": 1,
+      "divider": 153,
+      "error_code": 0
+    },
+    "tuning": {
+      "status": 1,
+      "stage": 4,
+      "phase_mask": 15,
+      "phase": 0,
+      "delay_mask": 1073741760,
+      "delay": 17,
+      "repetitions": 100,
+      "reads": 77216,
+      "writes": 32,
+      "error_code": 0
+    },
+    "link": {
+      "core": 53341,
+      "bus": 65537,
+      "command": 65537,
+      "sctrl": 49792633,
+      "cmd": 2365325312,
+      "ddr": 12323,
+      "dll_cache": 33,
+      "dll_command": 33,
+      "dqs0": 65537,
+      "dqs1": 65537
+    }
+  },
+  "psram_mapping": {
+    "status": 1,
+    "failure": 0,
+    "line_bytes": 64,
+    "last_address": 0,
+    "last_actual": 0,
+    "last_expected": 0,
+    "bytes": 33554432,
+    "entries": 1024,
+    "cpu_checks": 36,
+    "command_checks": 36,
+    "transactions": 72,
+    "syncs": 5
+  },
+  "psram_smp": {
+    "status": 1,
+    "rounds": 1,
+    "owner_checks": 48,
+    "peer_checks": 48,
+    "command_checks": 48,
+    "syncs": 1
+  },
+  "cpu_clock": {
+    "status": 1,
+    "error_code": 0,
+    "pc": 1073745870,
+    "source": 1,
+    "cpll_mhz": 360,
+    "before_mhz": 90,
+    "after_mhz": 359,
+    "mem_mhz": 180,
+    "apb_mhz": 90,
+    "ctrl0": 0,
+    "ctrl1": 1,
+    "ctrl2": 65536,
+    "rom_mhz": 360
+  },
+  "health": {
+    "cpu0_ticks": 1,
+    "cpu1_ticks": 1,
+    "ipi0": 1,
+    "ipi1": 1
+  },
+  "boot_times": [
+    {
+      "stage": 1,
+      "elapsed_us": 198524
+    },
+    {
+      "stage": 3,
+      "elapsed_us": 214536
+    },
+    {
+      "stage": 5,
+      "elapsed_us": 1333326
+    },
+    {
+      "stage": 7,
+      "elapsed_us": 1428384
+    },
+    {
+      "stage": 4,
+      "elapsed_us": 1690634
+    },
+    {
+      "stage": 6,
+      "elapsed_us": 1785202
+    }
+  ],
+  "ready_us_from_diagnostic_clock": 1785202,
+  "launcher_escape_help_memory_tasks_return": true
+}

@@ -175,6 +175,8 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         report.pool0_bytes = renderer.low_end - renderer.low_start;
         report.pool1_start = renderer.high_start;
         report.pool1_bytes = renderer.high_end - renderer.high_start;
+    } else if (options.canvas_demo) {
+        if (!@import("canvas_pattern.zig").paint(frame, 720, 1280, 1440)) return error.Image;
     } else if (white) @memset(frame, 0xff) else if (!paint(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, 0, if (options.console_live) .display else .ready)) return error.Image;
     if (nih_rom_cache_writeback((1 << 4) | (1 << 5), board.framebuffer, board.frame_bytes) != 0) return error.Cache;
     if (options.display_tile) {
@@ -197,8 +199,8 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
         nih_display_pattern_enable(&selected);
         report.dpi_mhz = if (panel == 1) 60 else 80;
     }
-    if (!options.console_live and !options.card_read and !options.keypad_demo and !white and (!options.display_tile or options.display_scene)) for (0..60) |_| try waitFrame(pins, state.frames);
-    if (!options.console_live and !options.card_read and !options.keypad_demo and !white and (!options.display_tile or options.display_scene)) for (1..33) |step| {
+    if (!options.console_live and !options.card_read and !options.keypad_demo and !options.canvas_demo and !white and (!options.display_tile or options.display_scene)) for (0..60) |_| try waitFrame(pins, state.frames);
+    if (!options.console_live and !options.card_read and !options.keypad_demo and !options.canvas_demo and !white and (!options.display_tile or options.display_scene)) for (1..33) |step| {
         try waitFrame(pins, state.frames);
         if (!recolor(".flash.rodata.boot_graphics", frame, 720, 1280, 1440, @intCast(step * 255 / 32), .ready)) return error.Image;
         if (options.display_scene) {

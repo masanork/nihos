@@ -1,0 +1,8 @@
+Initial local shared-reader batching attempt, before normal-only isolation.
+This excerpt is not a qualified image or complete source receipt.
+ idf.py -p PORT bootloader-flash
+or
+ python -m esptool --chip esp32p4 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x2000 build/native-device/loader/bootloader/bootloader.bin
+or from the "/private/tmp/nihos-normal-touch-input/build/native-device/loader" directory
+ python -m esptool --chip esp32p4 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
+error: ld.lld: native SRAM heap below 48 KiB

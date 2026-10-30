@@ -41,6 +41,7 @@ pub const Client = struct {
     stage: Stage = .join,
     ll_valid: bool = false,
     slaac_valid: bool = false,
+    slaac_deprecated: bool = false,
     started: u64,
     deadline: u64,
     next_send: u64,
@@ -76,18 +77,27 @@ pub const Client = struct {
     pub fn tick(self: *Client, now: u64) Error!void {
         if (now < self.started) return error.Clock;
         if (self.stage == .duplicate) return error.Duplicate;
-        if (self.finished()) return;
+        // Lifetimes remain active after the bounded boot probe finishes.
+        if (self.valid_until != 0 and now >= self.preferred_until) self.slaac_deprecated = true;
+        if (self.valid_until != 0 and now >= self.valid_until) {
+            self.slaac_valid = false;
+            self.address = zero;
+            self.valid_until = 0;
+            self.preferred_until = 0;
+            self.output_len = 0;
+            self.response_len = 0;
+            self.stage = .timeout;
+        }
         if (self.router_until != 0 and now >= self.router_until) {
             self.router = zero;
             self.router_mac = null;
+            self.router_until = 0;
+            self.output_len = 0;
+            self.response_len = 0;
             self.stage = .timeout;
             return;
         }
-        if (self.valid_until != 0 and (now >= self.valid_until or now >= self.preferred_until)) {
-            self.slaac_valid = false;
-            self.stage = .timeout;
-            return;
-        }
+        if (self.finished()) return;
         if (self.stage == .wait_link and now >= self.next_send) {
             self.ll_valid = true;
             self.stage = .discover;

@@ -1,0 +1,30 @@
+[
+  {
+    "action": "reset",
+    "application": "normal",
+    "palette": 4
+  },
+  {
+    "action": "pointer",
+    "contacts": 1,
+    "x": 48,
+    "y": 79,
+    "dt_us": 10000,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "pointer",
+    "contacts": 0,
+    "x": 0,
+    "y": 0,
+    "dt_us": 10000,
+    "dispatch": true,
+    "automatic": true
+  },
+  {
+    "action": "append_log",
+    "automatic": true,
+    "count": 60
+  }
+]

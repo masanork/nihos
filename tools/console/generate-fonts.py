@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, __version__ as pillow_version, features
+from font_rle import encode
 
 ROOT = Path(__file__).resolve().parents[2]
 DESTINATION = ROOT / 'src/graphics/ascii'
@@ -30,13 +31,7 @@ def main():
             ImageDraw.Draw(image).text((0, BASELINE), chr(code), font=font, anchor='ls', fill=255)
             pixels = [(p * 15 + 127) // 255 for p in image.tobytes()]
             offset = len(masks)
-            i = 0
-            while i < len(pixels):
-                count = 1
-                while count < 16 and i + count < len(pixels) and pixels[i + count] == pixels[i]:
-                    count += 1
-                masks.append((pixels[i] << 4) | (count - 1))
-                i += count
+            masks.extend(encode(pixels))
             glyphs.append((offset, len(masks) - offset))
         assert len(masks) < 65536
         (DESTINATION / (key + '.rle')).write_bytes(masks)
