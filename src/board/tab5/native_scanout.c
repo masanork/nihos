@@ -453,6 +453,13 @@ int32_t nih_display_scanout_begin(uint32_t address, const nih_dpi_timing *t, uin
 
 /* 1 completed frame, 2 DMA/common error, 4 underrun, 8 descriptor handoff error. */
 uint32_t nih_display_scanout_poll(void) {
+#if NIH_NATIVE_CAMERA_ID
+    extern void nih_csi_stream_irq(uint32_t);
+    if (dw_camera_live) {
+        uint32_t camera_common = 0;
+        if (dw_camera_common(dw_camera_live, &camera_common)) nih_csi_stream_irq(camera_common);
+    }
+#endif
     if (!dma_owned || fault) return 0;
     uint32_t events = dw_gdma_ll_channel_get_intr_status(&DW_GDMA, 0);
     uint32_t bridge = mipi_dsi_brg_ll_get_interrupt_status(&MIPI_DSI_BRIDGE);
