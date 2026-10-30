@@ -46,7 +46,8 @@ def trace():
         record('NIHOS_NATIVE_CAMERA_STREAM', completed=20 if cycle != 1 else 0, dropped=0, fault=0)
         record('NIHOS_NATIVE_CAMERA_LIVE_DRAIN', sequence=sequence)
         sequence += 1
-        repaint()
+        if cycle != 1:
+            repaint()
         memory()
     request(26)
     shot()
@@ -73,6 +74,7 @@ class CameraSoakTest(unittest.TestCase):
         result = self.run_trace(trace())
         self.assertEqual([cycle['frames'] for cycle in result['cycles']], [12, 0, 5])
         self.assertEqual(result['snapshots'], 19)
+        self.assertEqual(result['repaints'], 4)
         self.assertEqual(len(result['memory']), 6)
         self.assertEqual(result['memory'][0]['used'], 0)
         self.assertTrue(all(sample['used'] == 2101248 for sample in result['memory'][1:]))
