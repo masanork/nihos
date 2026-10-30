@@ -3,6 +3,15 @@ project(nihos_wamr_probe C ASM)
 if(NOT DEFINED WAMR_ROOT_DIR)
   message(FATAL_ERROR "Set WAMR_ROOT_DIR")
 endif()
+if(DEFINED NIHOS_SESSION_DIR)
+  add_executable(nihos-app-session ../rust-session/host.c)
+  target_compile_options(nihos-app-session PRIVATE -UNDEBUG -Wall -Wextra -Werror)
+  target_include_directories(nihos-app-session PRIVATE ../../include ${WAMR_ROOT_DIR}/core/iwasm/include)
+  target_link_libraries(nihos-app-session PRIVATE wamr
+    ${NIHOS_SESSION_DIR}/session.o ${NIHOS_SESSION_DIR}/presenter.o
+    ${NIHOS_SESSION_DIR}/adapter.o ${NIHOS_SESSION_DIR}/libnative.a
+    ${NIHOS_BOOT_LIBRARY} m pthread)
+endif()
 string(TOLOWER "${CMAKE_HOST_SYSTEM_NAME}" WAMR_BUILD_PLATFORM)
 if(APPLE)
   add_definitions(-DBH_PLATFORM_DARWIN)

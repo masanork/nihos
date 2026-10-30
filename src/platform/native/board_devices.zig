@@ -692,6 +692,13 @@ pub fn cameraPreviewNext() ?PreviewRow {
 }
 
 var screen_preview_taken = false;
+/// Foreground display handoff is unavailable from capture admission until its
+/// retained image has reached the UI (or while capture remains pinned).
+pub fn cameraPresentationBusy() bool {
+    if (first_frame_probe.phase == .idle) return false;
+    return first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete or
+        preview_pass != 2 or preview_fault or !screen_preview_taken;
+}
 var camera_sequence: u32 = 0;
 pub fn cameraCaptureSequence() u32 {
     return camera_sequence;

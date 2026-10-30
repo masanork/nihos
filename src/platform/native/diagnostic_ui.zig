@@ -16,6 +16,7 @@ const i2c = @import("boot_i2c");
 const Pins = @import("display_probe.zig").Pins;
 const runtime = @import("display_runtime.zig");
 const clock = @import("diagnostic_clock.zig");
+pub const rust_session = @import("rust_session.zig");
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 extern fn nih_keyboard_pads_init() callconv(.c) void;
@@ -47,6 +48,7 @@ const storage_control = @import("storage_control");
 var storage_commands: storage_control.Parser = .{};
 extern fn nih_fs_command([*]const u8, u32) callconv(.c) void;
 extern fn nih_device_request(u32) callconv(.c) bool;
+extern fn nih_app_display_available() callconv(.c) bool;
 var bus = i2c.Master(Pins){ .pins = .{ .clock = clock.timer() }, .data_pin = 0, .clock_pin = 1 };
 var keyboard = console.keyboard.Keyboard(@TypeOf(bus)){ .bus = &bus };
 var hardware_ready = false;
@@ -270,6 +272,7 @@ pub fn cameraPreviewMismatchCount() u32 {
 /// Diagnostic still-image overlay for a ready session. The caller supplies a
 /// stable sampled copy, not a DMA buffer; hardware capture is not wired here.
 pub fn showCameraPreview(pixels: *const [camera_preview.height][camera_preview.width]u8, tone: bool) bool {
+    if (options.rust_session and rust_session.active()) return false;
     const refresh = cameraLiveActive() and camera_overlay.state == .visible;
     if (!options.console_live or !session_active or !runtime.active() or rendering or (!camera_overlay.canShow() and !refresh) or runtime.snapshot().fault != 0) return false;
     if (refresh) _ = camera_overlay.beginRefresh();
@@ -419,6 +422,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         for (0..8) |_| {
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
+            if (options.rust_session and rust_session.active()) continue;
             if (!available or model.failure_latched or event.at < input_started) continue;
             if (view_button.observe(event, pointer.view_button)) {
                 if (camera_overlay.state == .visible) {
@@ -434,6 +438,10 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
+        if (options.rust_session and rust_session.active()) {
+            if (session_serial.feed(@intCast(byte), now)) |key| sessionKey(key, log);
+            continue;
+        }
         if (options.rust_display and (byte == '0' or byte == '1')) {
             const selection = nih_rust_owner_input(@intCast(byte));
             if (selection < 0) continue;
@@ -500,6 +508,24 @@ fn beginSession(log: anytype) void {
     @atomicStore(u32, &dirty, 1, .release);
 }
 noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+    if (options.rust_session and rust_session.active()) {
+        const result = switch (key) {
+            .text => |byte| rust_session.input(byte),
+            .escape, .cancel, .eof => rust_session.cancel(),
+            else => return,
+        };
+        const event = .{ .status = @as(u32, @bitCast(result)), .frames = rust_session.frames(), .active = @as(u32, @intFromBool(rust_session.active())) };
+        log.record("NIHOS_NATIVE_APP_INPUT", null, .{ "status", "frames", "active" }, &event);
+        if (!rust_session.active()) {
+            session_serial = .{};
+            shown_session_view = null;
+            renderer.invalidate();
+            @atomicStore(u32, &dirty, 1, .release);
+            session.write(SerialSink{}, if (result == 0) "Rust sample stopped.\r\n" else "Rust sample failed.\r\n");
+            session.prompt(SerialSink{});
+        }
+        return;
+    }
     const before = session.view;
     if (camera_live.state == .draining and camera_overlay.state == .idle) return;
     if (cameraLiveActive() and camera_overlay.state == .idle) {
@@ -522,6 +548,16 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
     }
     if (routed.command) |command| {
         switch (command) {
+            .rust_app => {
+                if (options.rust_session) {
+                    const accepted = !rendering and camera_overlay.canShow() and camera_live.state == .idle and nih_app_display_available();
+                    const result = if (accepted) rust_session.start(&presentApp) else -3;
+                    if (result != 0 and renderer_ready) renderer.invalidate();
+                    const app_report = .{ .status = @as(u32, @bitCast(result)), .frames = rust_session.frames() };
+                    log.record("NIHOS_NATIVE_APP_START", null, .{ "status", "frames" }, &app_report);
+                    session.write(SerialSink{}, if (result == 0) "Rust sample | 0/1: state | q or Esc: return\r\n" else "Rust sample unavailable.\r\n");
+                } else session.write(SerialSink{}, "Rust sample unavailable.\r\n");
+            },
             .camera, .camera_live => {
                 const accepted = options.camera_id and camera_live.state == .idle and nih_device_request(26);
                 if (accepted and command == .camera_live) _ = camera_live.start();
@@ -598,6 +634,7 @@ pub noinline fn service(log: anytype) bool {
     if (observed.fault != 0) return false;
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
+    if (options.rust_session and rust_session.active()) return true;
     if (camera_overlay.state == .visible) return true;
     if (options.rust_display) {
         if (!rust_dirty) return true;
@@ -696,6 +733,19 @@ pub noinline fn service(log: anytype) bool {
         return drawSession();
     }
     return true;
+}
+
+fn presentApp(bytes: [*]const u8, len: u32) linksection(".flash.text.rust_app") callconv(.c) i32 {
+    if (rendering or camera_overlay.state == .visible) return -3;
+    rendering = true;
+    defer rendering = false;
+    if (!@import("app_presenter").copy(frame(), bytes[0..len])) return -1;
+    for (1104..1264) |y| {
+        const start = (y * 1440 + 16 * 2) & ~@as(usize, 63);
+        const end = (y * 1440 + 96 * 2 + 63) & ~@as(usize, 63);
+        if (!flushSpan(start, end)) return -4;
+    }
+    return 0;
 }
 pub noinline fn checkpoint(log: anytype) bool {
     if (!options.console_live) return true;

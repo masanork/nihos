@@ -47,6 +47,7 @@ jobs:
             build/package-process/*.log
             build/package-process/*.txt
             build/journal-wamr-host/*.log
+            build/rust-session-host/*.log
           if-no-files-found: warn
           retention-days: 14
 
@@ -66,6 +67,12 @@ jobs:
         run: rustup toolchain install 1.98.1 --profile minimal --target wasm32-unknown-unknown,riscv32imac-unknown-none-elf
       - name: Native FFI task lifecycle
         run: sh probes/rust-app/run-emulator.sh
+      - name: Normal-profile Rust session and cleanup
+        run: sh probes/rust-session/run-emulator.sh
+      - name: Link and audit the normal device Rust session (no physical run)
+        env:
+          NIHOS_NATIVE_RUST_SESSION: '1'
+        run: sh tools/build-native.sh device integer
       - name: Fetch pinned WAMR and run host bounds fixture
         run: sh probes/wamr-host/run.sh
       - name: Signed Wasm and UART cleanup matrix
@@ -79,6 +86,10 @@ jobs:
           name: rust-sdk-emulator-evidence
           path: |
             build/native-emulator/psram-0/
+            build/rust-session-emulator/*.log
+            build/rust-session-emulator/*.json
+            build/rust-session-emulator/*.elf
+            build/rust-session-emulator/*.bin
             build/native-emulator-wasm/*.log
             build/native-emulator-wasm/*.json
             build/native-emulator-wasm/*.txt

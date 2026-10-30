@@ -3,7 +3,7 @@ const std = @import("std");
 pub const input = @import("session_input.zig");
 const Journal = @import("../diagnostics/boot_journal.zig").Journal;
 pub const View = enum(u8) { launcher, shell, logs };
-pub const Command = enum { shell, help, clear, log, mem, tasks, camera, camera_live, launcher, exit };
+pub const Command = enum { shell, help, clear, log, mem, tasks, camera, camera_live, rust_app, launcher, exit };
 const Entry = struct { command: Command, name: []const u8, help: []const u8 };
 pub const commands = [_]Entry{
     .{ .command = .shell, .name = "shell", .help = "Open the command prompt" },
@@ -14,6 +14,7 @@ pub const commands = [_]Entry{
     .{ .command = .tasks, .name = "tasks", .help = "Show published runtime counters" },
     .{ .command = .camera, .name = "camera", .help = "Open a camera snapshot" },
     .{ .command = .camera_live, .name = "camera-live", .help = "Open an updating camera preview" },
+    .{ .command = .rust_app, .name = "rust-app", .help = "Run the Rust sample" },
     .{ .command = .launcher, .name = "launcher", .help = "Return to the launcher" },
     .{ .command = .exit, .name = "exit", .help = "Return to the launcher" },
 };
@@ -102,7 +103,7 @@ pub const Model = struct {
                 self.view = .logs;
                 sink.write("\r\nBoot log | Esc: launcher\r\n");
             },
-            .mem, .tasks, .camera, .camera_live => {
+            .mem, .tasks, .camera, .camera_live, .rust_app => {
                 self.shell(sink);
                 return command;
             },

@@ -48,6 +48,11 @@ SECTIONS
     .flash.boot : {
         __flash_boot_start = .;
         *(.flash.text.boot)
+#if !NIH_NATIVE_NORMAL_STORAGE
+        __flash_rust_app_start = .;
+        *(.flash.text.rust_app)
+        __flash_rust_app_end = .;
+#endif
         __flash_sdmmc_boot_start = .;
         *(.flash.text.sdboot)
         __flash_sdmmc_boot_end = .;
@@ -262,6 +267,12 @@ SECTIONS
     .flash.fstext : {
         __flash_fs_text_start = .;
         *normal_fs_*.o(.text .text.*)
+        __flash_rust_app_start = .;
+        *(.flash.text.rust_app)
+        *rust-fixture.o(.text .text.*)
+        *rust-session-adapter.o(.text .text.*)
+        *(.text.nih_rust_app_frame)
+        __flash_rust_app_end = .;
         . = ALIGN(128);
         __flash_fs_text_end = .;
     } > flash_fs
@@ -269,6 +280,8 @@ SECTIONS
         __flash_fs_rodata_start = .;
         KEEP(*(.normal_fs.identity))
         *normal_fs_*.o(.rodata .rodata.* .srodata .srodata.*)
+        *rust-fixture.o(.rodata .rodata.* .srodata .srodata.*)
+        *rust-session-adapter.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_console_font_start = .;
         *(.flash.fs.console)
         __flash_console_font_end = .;
@@ -418,8 +431,8 @@ SECTIONS
 /* Keep the audited ROM ABI visible even when bounded live-console TX replaces
  * all ROM putc calls in this image. This does not link or execute ROM code. */
 nih_rom_putc = 0x4fc00054;
-#if NIH_NATIVE_WASM
-/* ESP32-P4 ROM uart_rx_one_char, nonblocking console receive. */
+#if NIH_NATIVE_WASM || NIH_NATIVE_RUST_SESSION_TEST
+/* ESP32-P4 ROM uart_rx_one_char, nonblocking fixture console receive. */
 PROVIDE(nih_rom_rx_one_char = 0x4fc00060);
 #endif
 nih_rom_get_cpu_ticks = 0x4fc00040;

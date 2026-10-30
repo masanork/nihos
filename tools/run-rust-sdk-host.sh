@@ -12,4 +12,4 @@ sh probes/wamr-host/run.sh
 sh probes/wamr-rv32/run-platform-model.sh
 sh probes/wamr-arena/run.sh
 sh probes/wamr-native/run-package-process.sh
-sh probes/wamr-native/run-journal-wamr-host.sh
+sh probes/rust-session/run-host.sh

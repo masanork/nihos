@@ -48,7 +48,8 @@ ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_l2_enable": 0x4FC00504,
                "nih_rom_cache_invalidate": 0x4FC003E4,
                "nih_rom_cache_writeback": 0x4FC003F4}
-OPTIONAL_ROM_SYMBOLS = {"nih_rom_reset_reason": 0x4FC00018}
+OPTIONAL_ROM_SYMBOLS = {"nih_rom_reset_reason": 0x4FC00018,
+                        "nih_rom_rx_one_char": 0x4FC00060}
 OPTIONAL_ROM_DATA = {"nih_rom_saved_pc": 0x4FF3FFF8}
 FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.boot": (0x40000120, None),
@@ -90,6 +91,20 @@ PMP_FLASH_FUNCTIONS = {
 USER_PROBE_FUNCTIONS = {
     "nih_user_probe_trampoline",
     "nih_user_probe_body",
+}
+
+# Foreground-only experimental session; its region is bounded by linker
+# symbols. No scheduler/IRQ/cache-off function may be moved into this span.
+RUST_SESSION_FLASH_FUNCTIONS = {
+    'rust_session.acquire', 'rust_session.open', 'rust_session.render',
+    'rust_session.present', 'rust_session.close', 'rust_session.release',
+    'rust_session.start', 'rust_session.input', 'rust_session.cancel',
+    'session.nih_app_session_start', 'session.nih_app_session_input',
+    'session.nih_app_session_cancel', 'session.Session.finish', 'session.Session.draw',
+    'nih_app_session_start', 'nih_app_session_input', 'nih_app_session_cancel',
+    'app_presenter.copy', 'app_presenter.nih_app_present_copy', 'nih_app_present_copy',
+    'diagnostic_ui.presentApp', 'nih_rust_app_frame',
+    'nih_app_probe_attach', 'nih_app_probe_detach', 'nih_app_fill_rect', 'nih_app_text',
 }
 
 
@@ -344,13 +359,26 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
             "stack_bytes": 32768, "ram_reserved_bytes": 32768}, (text[0], ro[0]), payload
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None, rust_session_span=None):
+    if rust_session_span is not None:
+        app_start, app_end = rust_session_span
+        require(app_start <= app_end, 'reversed Rust session extent')
+        if app_start != app_end:
+            require(start <= app_start < app_end <= end or
+                    fs_span is not None and fs_span[0] <= app_start < app_end <= fs_span[1],
+                    'Rust session outside approved foreground Flash')
+    app_boot = []
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
+            continue
+        if rust_session_span is not None and rust_session_span[0] <= address < stop <= rust_session_span[1]:
+            require(name in RUST_SESSION_FLASH_FUNCTIONS, 'unapproved Rust session Flash function: ' + name)
+            if start <= address < stop <= end:
+                app_boot.append({"name": name, "start": hex(address), "end": hex(stop)})
             continue
         if fs_span is not None and fs_span[0] <= address < stop <= fs_span[1]:
             require(name in fs_functions, 'non-manifest ordinary FS Flash function: ' + name)
@@ -390,10 +418,14 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         found[role] = {"name": name, "start": hex(address), "end": hex(stop)}
     expected_roles = {"probe", "mapping"} | ({"sdmmc"} if sdmmc_span is not None else set())
     require(set(found) in (expected_roles, expected_roles | {"clock"}), "missing approved Flash boot functions")
-    ordered = sorted(found.values(), key=lambda entry: int(entry["start"], 16))
+    # Exported C aliases can share an extent with their Zig implementation.
+    app_boot = list({(row['start'], row['end']): row for row in app_boot}.values())
+    ordered = sorted(list(found.values()) + app_boot, key=lambda entry: int(entry["start"], 16))
     require(int(ordered[0]["start"], 16) == start and int(ordered[-1]["end"], 16) == end and
             all(0 <= int(right["start"], 16) - int(left["end"], 16) <= 16 for left, right in zip(ordered, ordered[1:])),
             "overlapping/unaccounted Flash boot extent")
+    if app_boot:
+        found['rust_session'] = app_boot
     return found
 
 
@@ -954,7 +986,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(user_start % 128 == 0 and user_span[1] % 128 == 0 and user_start >= pmp_span[1], "invalid user probe extent")
         require(symbols.get("__user_probe_start") == user_start and symbols.get("__user_probe_end") == user_span[1], "user probe symbols differ from section")
         require({name for name, address, stop in functions if user_span[0] <= address < stop <= user_span[1]} == USER_PROBE_FUNCTIONS, "user probe functions differ")
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, rust_session_span=(symbols.get("__flash_rust_app_start", 0), symbols.get("__flash_rust_app_end", 0)))
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None

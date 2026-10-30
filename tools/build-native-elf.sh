@@ -447,6 +447,25 @@ esac
 if [ "$rust_display" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$psram_200" != true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$normal_storage" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$sdmmc" = true ] || [ "$usb" = true ] || [ "$qualification" = true ] || [ "$boot_test" != 0 ] || [ "$console_fault" = true ]; }; then
     echo "RUST_DISPLAY requires the isolated live display device profile without optional services" >&2; exit 1
 fi
+rust_session_test=${NIHOS_NATIVE_RUST_SESSION_TEST:-0}
+case "$rust_session_test" in
+    0) rust_session_test=false; rust_session_test_cpp=0 ;;
+    1) rust_session_test=true; rust_session_test_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_RUST_SESSION_TEST must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_session_test" = true ] && { [ "$profile" != emulator ] || [ "$mode" != integer ] || [ "$boot_test" != 1 ] || [ "$console_live" = true ]; }; then
+    echo "RUST_SESSION_TEST requires the emulator headless normal boot test 1" >&2; exit 1
+fi
+rust_session=${NIHOS_NATIVE_RUST_SESSION:-0}
+if [ "$rust_session_test" = true ]; then rust_session=1; fi
+case "$rust_session" in
+    0) rust_session=false ;;
+    1) rust_session=true ;;
+    *) echo "NIHOS_NATIVE_RUST_SESSION must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_session" = true ] && [ "$rust_session_test" != true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$rust_display" = true ]; }; then
+    echo "RUST_SESSION requires the normal integer device live-console profile" >&2; exit 1
+fi
 rust_probe=${NIHOS_NATIVE_RUST_PROBE:-0}
 if [ "$rust_display" = true ]; then rust_probe=1; fi
 case "$rust_probe" in
@@ -496,7 +515,7 @@ if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camer
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_RUST_SESSION_TEST="$rust_session_test_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
@@ -504,6 +523,8 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const normal_storage = %s;\n' "$normal_storage"
     printf 'pub const rust_probe = %s;\n' "$rust_probe"
     printf 'pub const rust_display = %s;\n' "$rust_display"
+    printf 'pub const rust_session = %s;\n' "$rust_session"
+    printf 'pub const rust_session_test = %s;\n' "$rust_session_test"
     printf 'pub const wasm_probe = %s;\n' "$wasm"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
@@ -581,12 +602,19 @@ if [ "$high_sram" != true ]; then
         -o "$build_dir/base_sram.o" "$repo_root/src/platform/native/base_sram.c"
     set -- "$@" "$build_dir/base_sram.o"
 fi
-if [ "$rust_probe" = true ]; then
+if [ "$rust_probe" = true ] || [ "$rust_session" = true ]; then
     CARGO_TARGET_DIR="$build_dir/rust-target" cargo build --locked --release \
         --target riscv32imac-unknown-none-elf --features native-task --manifest-path "$repo_root/probes/rust-app/Cargo.toml"
-    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-        -femit-bin="$build_dir/rust-fixture.o" "$repo_root/src/graphics/rust_app_native_fixture.zig"
-    set -- "$@" "$build_dir/rust-fixture.o" "$build_dir/rust-target/riscv32imac-unknown-none-elf/release/libnihos_rust_app_probe.a"
+    if [ "$rust_probe" = true ]; then
+        "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+            -femit-bin="$build_dir/rust-fixture.o" "$repo_root/src/graphics/rust_app_native_fixture.zig"
+        set -- "$@" "$build_dir/rust-fixture.o"
+    else
+        "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+            -femit-bin="$build_dir/rust-session-adapter.o" "$repo_root/src/graphics/rust_app_probe.zig"
+        set -- "$@" "$build_dir/rust-session-adapter.o"
+    fi
+    set -- "$@" "$build_dir/rust-target/riscv32imac-unknown-none-elf/release/libnihos_rust_app_probe.a"
 fi
 if [ "$wasm" = true ]; then
     wamr="$repo_root/build/wamr-2.4.5"
@@ -986,7 +1014,9 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep app_session --dep app_presenter --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    -Mapp_session="$repo_root/src/app/session.zig" \
+    -Mapp_presenter="$repo_root/src/graphics/app_presenter.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \
     -Mdevice_control="$repo_root/src/device/control.zig" \
     -Mstorage_control="$repo_root/src/storage/control.zig" \
@@ -1018,7 +1048,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input \
+    --dep app_session --dep app_presenter --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mcamera_preview="$repo_root/src/board/tab5/camera_preview.zig" \

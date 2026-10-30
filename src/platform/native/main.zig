@@ -44,6 +44,10 @@ export fn nih_device_request(kind: u32) callconv(.c) bool {
     return accepted;
 }
 
+export fn nih_app_display_available() callconv(.c) bool {
+    return !options.camera_id or !board_devices.cameraPresentationBusy();
+}
+
 fn storageClient() u32 {
     const handle = tasks.calls.current() orelse return 0;
     return (@as(u32, handle.generation) << 16) | handle.slot;
@@ -1579,8 +1583,16 @@ fn normalReady() noreturn {
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
     if (normal_storage) normal_fs.begin(storageClient());
+    if (options.rust_session_test) {
+        if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
+        print("NIHOS_RUST_SESSION_READY\n");
+    }
     var idle_checked = false;
     while (true) {
+        if (options.rust_session_test and !@import("rust_session_fixture.zig").service(&logger)) {
+            print("NIHOS_RUST_SESSION_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
         if (options.boot_test != 0 and !idle_checked and (ui.timer().counter() orelse fail("idle clock")) - started >= 200_000) {
             for (0..2) |core| {
                 const hart: u32 = @intCast(core);
