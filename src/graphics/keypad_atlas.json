@@ -21,7 +21,7 @@
     "src/graphics/surface.zig": "d4ff4a1b418d86a2e828bccd38b276462563847813e36a5754489fe800b46561",
     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
-    "src/platform/native/main.zig": "506de2209d0767a00e3bf22d73aa847677fc0f9fb40d86cc3bd2f633be2895ec",
+    "src/platform/native/main.zig": "56231a35476c7c3ba40d9be1a19f53634a4992bb91bbcc48859f6e9062c50cff",
     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
     "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
     "src/graphics/card_boot/manifest.json": "a101f4c9dbd801134b2a35b5330b55ffb2292ba97d16d8791fddc6e053738cf1",
