@@ -63,9 +63,15 @@ const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Mod
 const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
 var camera_overlay: camera_preview.Overlay = .{};
 var camera_live: camera_preview.Live = .{};
-pub fn cameraLiveActive() bool { return camera_live.state == .running; }
-pub fn cameraAcceptFrame() bool { return camera_live.acceptFrame(); }
-pub fn cameraLiveEnd() void { camera_live.end(); }
+pub fn cameraLiveActive() bool {
+    return camera_live.state == .running;
+}
+pub fn cameraAcceptFrame() bool {
+    return camera_live.acceptFrame();
+}
+pub fn cameraLiveEnd() void {
+    camera_live.end();
+}
 pub fn cameraLiveFailure() bool {
     if (camera_live.state == .idle) return false;
     camera_live.end();
@@ -158,7 +164,9 @@ pub fn complete(stage: console.boot.Stage) bool {
 pub fn unavailable(stage: console.boot.Stage) void {
     if (options.console) _ = model.unavailable(stage);
 }
-pub fn abandonCameraPreview() void { camera_overlay.abandon(); }
+pub fn abandonCameraPreview() void {
+    camera_overlay.abandon();
+}
 pub fn failed() void {
     abandonCameraPreview();
     if (options.console) {
@@ -252,7 +260,9 @@ const fixture_pixels: [camera_preview.height][camera_preview.width]u8 = pixels: 
     };
     break :pixels result;
 };
-pub fn cameraPreviewMismatchCount() u32 { return camera_preview_mismatches; }
+pub fn cameraPreviewMismatchCount() u32 {
+    return camera_preview_mismatches;
+}
 /// Diagnostic still-image overlay for a ready session. The caller supplies a
 /// stable sampled copy, not a DMA buffer; hardware capture is not wired here.
 pub fn showCameraPreview(pixels: *const [camera_preview.height][camera_preview.width]u8, tone: bool) bool {
@@ -588,7 +598,13 @@ pub noinline fn service(log: anytype) bool {
             defer rendering = false;
             if (!drawSession()) return false;
             if (camera_overlay.repainted()) |result| {
-                const values: extern struct { kind: u32, sequence: u32, view: u32, line_bytes: u32, selected: u32, frames: u32 } = .{ .kind = switch (result) { .dismissal => 1, .recovery => 2 }, .sequence = switch (result) { .dismissal => |seq| seq, .recovery => 0 }, .view = @backingInt(session.view), .line_bytes = @intCast(session.length), .selected = @intCast(session.selected), .frames = runtime.snapshot().frames };
+                const values: extern struct { kind: u32, sequence: u32, view: u32, line_bytes: u32, selected: u32, frames: u32 } = .{ .kind = switch (result) {
+                    .dismissal => 1,
+                    .recovery => 2,
+                }, .sequence = switch (result) {
+                    .dismissal => |seq| seq,
+                    .recovery => 0,
+                }, .view = @backingInt(session.view), .line_bytes = @intCast(session.length), .selected = @intCast(session.selected), .frames = runtime.snapshot().frames };
                 log.record("NIHOS_NATIVE_CAMERA_UI_REPAINT", null, .{ "kind", "sequence", "view", "line_bytes", "selected", "frames" }, &values);
             }
             return true;

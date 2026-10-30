@@ -24,7 +24,9 @@ pub fn route(overlay: *Overlay, sequence: u32, session: *Session.Model, key: Ses
 
 const Sink = struct {
     count: usize = 0,
-    pub fn write(self: *@This(), bytes: []const u8) void { self.count += bytes.len; }
+    pub fn write(self: *@This(), bytes: []const u8) void {
+        self.count += bytes.len;
+    }
 };
 
 test "serial Escape closes preview without opening shell; later Escape opens it" {

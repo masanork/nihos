@@ -48,7 +48,6 @@ var psram_dma_state: PsramDmaState = .idle;
 var psram_dma_result: u32 = 0;
 var psram_dma_started: u64 = 0;
 
-
 extern fn nih_camera_dma_domain_acquire() callconv(.c) u32;
 extern fn nih_camera_dma_domain_denial() callconv(.c) u32;
 extern fn nih_camera_dma_domain_common(u32, *u32) callconv(.c) bool;
@@ -58,12 +57,29 @@ extern fn nih_csi_prepare_720p() callconv(.c) i32;
 extern fn nih_csi_prepare_stop() callconv(.c) bool;
 extern fn nih_csi_prepare_busy_flags() callconv(.c) u32;
 pub const cameraBootAction = first_frame.bootAction;
-pub fn cameraBootFlags() u32 { return nih_csi_prepare_busy_flags(); }
+pub fn cameraBootFlags() u32 {
+    return nih_csi_prepare_busy_flags();
+}
 const CsiHardware = struct {
-    fn mask() u32 { return asm volatile ("csrrci %[previous], mstatus, 8" : [previous] "=r" (-> u32) : : .{ .memory = true }); }
-    fn restore(previous: u32) void { if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true }); }
-    pub fn prepare(_: *@This()) i32 { const previous = mask(); defer restore(previous); return nih_csi_prepare_720p(); }
-    pub fn stop(_: *@This()) bool { const previous = mask(); defer restore(previous); return nih_csi_prepare_stop(); }
+    fn mask() u32 {
+        return asm volatile ("csrrci %[previous], mstatus, 8"
+            : [previous] "=r" (-> u32),
+            :
+            : .{ .memory = true });
+    }
+    fn restore(previous: u32) void {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+    }
+    pub fn prepare(_: *@This()) i32 {
+        const previous = mask();
+        defer restore(previous);
+        return nih_csi_prepare_720p();
+    }
+    pub fn stop(_: *@This()) bool {
+        const previous = mask();
+        defer restore(previous);
+        return nih_csi_prepare_stop();
+    }
 };
 var csi_hardware: CsiHardware = .{};
 extern fn nih_camera_dma_domain_mark_started(u32) callconv(.c) bool;
@@ -403,16 +419,36 @@ const InFlightIo = struct {
         const base = csi_workspace.address() orelse return null;
         return .{ .identity = identity, .base = base, .length = 921600, .dma_owned = true };
     }
-    pub fn active(_: *@This()) bool { return nih_csi_inflight_active(); }
-    pub fn status(_: *@This()) u32 { return nih_csi_inflight_status(); }
-    pub fn dar(_: *@This()) u32 { return nih_csi_dma_observe(9); }
-    pub fn generation(_: *@This()) bool { return nih_csi_inflight_generation(); }
-    pub fn masked(_: *@This()) bool { return nih_csi_inflight_masked(); }
-    pub fn clearDisabled(_: *@This()) void { nih_csi_inflight_clear_disabled(); }
-    pub fn sensorOff(self: *@This()) bool { return self.hardware.sensorOff(); }
-    pub fn bridgeOff(_: *@This()) bool { return nih_csi_inflight_bridge_off(); }
-    pub fn requestDisable(_: *@This()) bool { return nih_csi_inflight_request_disable(); }
-    pub fn fifo(_: *@This()) u32 { return nih_csi_inflight_fifo(); }
+    pub fn active(_: *@This()) bool {
+        return nih_csi_inflight_active();
+    }
+    pub fn status(_: *@This()) u32 {
+        return nih_csi_inflight_status();
+    }
+    pub fn dar(_: *@This()) u32 {
+        return nih_csi_dma_observe(9);
+    }
+    pub fn generation(_: *@This()) bool {
+        return nih_csi_inflight_generation();
+    }
+    pub fn masked(_: *@This()) bool {
+        return nih_csi_inflight_masked();
+    }
+    pub fn clearDisabled(_: *@This()) void {
+        nih_csi_inflight_clear_disabled();
+    }
+    pub fn sensorOff(self: *@This()) bool {
+        return self.hardware.sensorOff();
+    }
+    pub fn bridgeOff(_: *@This()) bool {
+        return nih_csi_inflight_bridge_off();
+    }
+    pub fn requestDisable(_: *@This()) bool {
+        return nih_csi_inflight_request_disable();
+    }
+    pub fn fifo(_: *@This()) u32 {
+        return nih_csi_inflight_fifo();
+    }
 };
 var first_frame_hardware: FirstFrameHardware = .{};
 
@@ -572,13 +608,16 @@ const CaptureScratch = union(enum) {
 };
 // One-shot admission prevents simultaneous preview and scan users.
 const capture_memory = @import("native_tasks").memory.reusable;
-// Allocated on first camera use and pinned for the bootstrap owner's lifetime.
+// SAFETY: prepareCaptureScratch binds this before any capture starts. The
+// bootstrap owner's pin prevents reclamation while sampling or displaying it.
 var capture_scratch: *CaptureScratch = undefined;
 var capture_scratch_pin: ?capture_memory.Pin = null;
 fn prepareCaptureScratch() bool {
     if (capture_scratch_pin != null) return true;
     const pin = capture_memory.allocPinnedTask(@sizeOf(CaptureScratch), 64) catch return false;
     capture_scratch = @ptrCast(@alignCast(pin.allocation.bytes.ptr));
+    // SAFETY: the first sampling pass writes every row; display is admitted
+    // only after the second complete pass has compared those initialized rows.
     capture_scratch.* = .{ .preview = undefined };
     capture_scratch_pin = pin;
     return true;
@@ -586,7 +625,9 @@ fn prepareCaptureScratch() bool {
 var scan_completed_frame = false;
 var stability_timing: stability.Timing = .{};
 const StabilityBackend = struct {
-    pub fn counter(_: *@This()) ?u64 { return clock.counter(); }
+    pub fn counter(_: *@This()) ?u64 {
+        return clock.counter();
+    }
     pub fn chunk(_: *@This(), index: usize) ?[]const u8 {
         const h = &first_frame_hardware;
         var common: u32 = 0;
@@ -607,7 +648,6 @@ const StabilityBackend = struct {
     }
 };
 var stability_backend: StabilityBackend = .{};
-
 
 pub const PreviewRow = extern struct { pass: u32, row: u32, changed: u32, p0: u32, p1: u32, p2: u32, p3: u32, p4: u32, p5: u32, p6: u32, p7: u32, p8: u32, p9: u32, p10: u32, p11: u32, p12: u32, p13: u32, p14: u32, p15: u32, p16: u32, p17: u32, p18: u32, p19: u32 };
 var sample_preview_requested = false;
@@ -653,12 +693,18 @@ pub fn cameraPreviewNext() ?PreviewRow {
 
 var screen_preview_taken = false;
 var camera_sequence: u32 = 0;
-pub fn cameraCaptureSequence() u32 { return camera_sequence; }
-pub fn cameraPreviewDiagnostics() bool { return camera_sequence == 0; }
+pub fn cameraCaptureSequence() u32 {
+    return camera_sequence;
+}
+pub fn cameraPreviewDiagnostics() bool {
+    return camera_sequence == 0;
+}
 pub fn cameraCaptureFailed() bool {
     return preview_fault or first_frame_probe.phase == .pinned or (first_frame_probe.phase == .done and first_frame_probe.result != .dma_complete);
 }
-pub fn cameraRetakeReason() u32 { return first_frame_hardware.reason; }
+pub fn cameraRetakeReason() u32 {
+    return first_frame_hardware.reason;
+}
 pub const ScreenPreview = struct { pixels: *const [camera_preview.height][camera_preview.width]u8, tone: bool };
 pub fn cameraPreviewForDisplay() ?ScreenPreview {
     if (!first_frame_hardware.display_preview or preview_pass != 2 or preview_fault or screen_preview_taken) return null;
@@ -734,7 +780,11 @@ pub noinline fn poll() linksection(if (options.camera_id) ".flash.text.devices" 
         if (csi_memory_state == .preparing or csi_memory_state == .erasing) {
             csi_workspace.poll();
             switch (csi_workspace.phase()) {
-                .ready_dma => if (csi_workspace.erase()) { csi_memory_state = .erasing; } else { csi_memory_state = .pinned; },
+                .ready_dma => if (csi_workspace.erase()) {
+                    csi_memory_state = .erasing;
+                } else {
+                    csi_memory_state = .pinned;
+                },
                 .idle => csi_memory_state = .done,
                 .pinned => csi_memory_state = .pinned,
                 else => {},
