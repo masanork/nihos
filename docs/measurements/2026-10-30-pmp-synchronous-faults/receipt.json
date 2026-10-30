@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "runtime_commit": "d39c1b99fb034fdb7580e61580ddf18329c68f03",
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c"
+  },
+  "reset": "warm USB reset; three separately verified starts",
+  "cpu_mhz": 360,
+  "scope": "CPU0 protected fixture cases 0 through 11; no product application migration",
+  "runs": [
+    {
+      "log": "probe.log",
+      "sha256": "daac65006f4cdb2e6063ccfb24214ccfd8767fee9dedad62c8ec80a201337cb6",
+      "passed_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "slot": 1,
+      "generations": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "max_arm_cycles": 5146,
+      "max_c_dispatch_cycles": 22224
+    },
+    {
+      "log": "probe-2.log",
+      "sha256": "695bc60749b9cc6659bc1b858aa2c620ff49e257c8c2fc220fe11d240a8eaa63",
+      "passed_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "slot": 1,
+      "generations": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "max_arm_cycles": 5146,
+      "max_c_dispatch_cycles": 22224
+    },
+    {
+      "log": "probe-3.log",
+      "sha256": "695bc60749b9cc6659bc1b858aa2c620ff49e257c8c2fc220fe11d240a8eaa63",
+      "passed_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "slot": 1,
+      "generations": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "max_arm_cycles": 5146,
+      "max_c_dispatch_cycles": 22224
+    }
+  ],
+  "artifacts_sha256": {
+    "nihos-native.bin": "424d3b087d26a0b9ee35e516a9fe0ed72f8d4fd8be92dfe79272e9202d037a03",
+    "bootloader.bin": "966760427cecc26576ef200df5ac9a7d51572c648638fbb1f10e63a9d1b18e12",
+    "partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+  },
+  "elf_sha256": "b2870d21dff0fd9de809305d497bb6c74403763a3dacb1f9bdba679d0df54ad7",
+  "source_files_sha256": {
+    "src/arch/riscv32/pmp.zig": "afa679f3144ec16f93b3ddccf1a262516a0f940adfe9f6fc0d8e5b8e2f98dcd0",
+    "src/arch/riscv32/pmp_user.S": "e276647a7386df0744f1e80a6f85c2418062d417037cf0d1c9541894e34c47e5",
+    "src/arch/riscv32/native_tasks.zig": "c6ceff7d4cbfe0c042f970853f264cb83cb58e320017a1aaaf50ec624f91e3e1",
+    "src/arch/riscv32/task_runtime.zig": "d751110557b386abe6e774f659d6034dd68d87b948c7db13c5525fcee9f1103c",
+    "src/platform/native/main.zig": "f6691474a298c6f6ba6d0eaac80ff93abc94a86146c39a136fe1437ab47e1e44",
+    "src/platform/native/start.S": "670d6bcad40406c9d86be4e9a01250678de5b7cfb256d9c023da631d5ffa1376",
+    "tools/build-native-elf.sh": "9c61f932b67a2f6b2f3b175947dc65c3dd3356a3f82be18d935345eceba81675",
+    "ports/esp32p4-native/bootloader_components/region_protect/region_protect.c": "e38c246f0a6e3814f3b99526ac6e57cd7fc529161da878048851e0fb0de1822d"
+  },
+  "restore": {
+    "verified": true,
+    "sha256": "d9411b6af948100f86e61b88fd8b6ab9e92f50f5ddbfddc78eecd34500c08f10"
+  },
+  "emulator": {
+    "version": "v0.50.0",
+    "cases": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "mhint_sbe_modeled": false,
+    "physical_evidence": false
+  },
+  "limits": [
+    "Warm reset only; no cold-power or long-duration qualification.",
+    "Observed C-dispatch cycles exclude assembly trap entry/exit and are not worst-case interrupt latency bounds.",
+    "No DMA/APM confinement, other silicon revision qualification, or arbitrary native-code loader.",
+    "Admission stays kernel-owned and defaults to denied; only the bounded CPU0 fixture opts in."
+  ],
+  "controls": {
+    "base_commit": "86a99d030ffa0293064fbfafd4b0888cd616bf99",
+    "observer_commit": "4e63d3d",
+    "synchronous_control_commit": "d87b7d7",
+    "same_bootloader_sha256": "966760427cecc26576ef200df5ac9a7d51572c648638fbb1f10e63a9d1b18e12",
+    "asynchronous_result": "No new trap marker; CPU1 user_marker=c1080001. JTAG snapshot is after debug intervention.",
+    "synchronous_result": "Same CLIC case 8 faults at user lw and kernel continues; no PMP layout change."
+  },
+  "evidence_files_sha256": {
+    ".gitattributes": "0e32e6e7a6d7d9c4d2249539365516af769cacf8b46723dd8f6b0ec76e431bf9",
+    "README.md": "21b348554cdcd86d8a0ea5241f576bea38598c0c8455989d56cb176d41027e00",
+    "capture-session.py": "b18f695b3fac5cabeb05d6a0c0b0078879be3ba9cf0765909fcb79ebaca67d10",
+    "controls/asynchronous-jtag.log": "0ea5755d88ef6c05a2774cfd4b8687b85d854828c39121e8456b528312789997",
+    "controls/asynchronous-restored.json": "57919a3b0cfd726690baaa5deebd407d2797d525e233319f871c45e0e35e1000",
+    "controls/asynchronous-uart.log": "381e9150d5cfdde0783f288f8dd83db7bfba76f030629249e5100949e5bc9654",
+    "controls/capture-asynchronous.py": "3412d7856c89b23f208ca321e473723a0a4ee54fbf94b8eb6cb14f6c1677cd68",
+    "controls/capture-synchronous.py": "343b5351c22ea992ec686bdd58a84604978b17e588fff15f1c4d083855ade969",
+    "controls/observer.patch": "ad326df629a7b774f1b78b31198c2ebe50d72393e6e03e37d218c7a939a2d4bb",
+    "controls/synchronous-mode.patch": "b3c0e1f8790611ff49eee2d503db52954454c25e9638d07a4b9281b17a0a5e14",
+    "controls/synchronous-restored.json": "57919a3b0cfd726690baaa5deebd407d2797d525e233319f871c45e0e35e1000",
+    "controls/synchronous-uart.log": "a0d45785c70d2cbbb7238e8178f5daac4d959d28b754ef76fea7d6bcf09e0213",
+    "emulator.log": "bc317493195a4ccccc047a92b0f90c4b80762316986b347d5399add41e4cbaf7",
+    "image-audit.json": "29b9a001b355f86e0e62e8f7cfe0563353b7dca0a615ba96274903ed3b346d91",
+    "native_options.zig": "1ac1f297e18c7a33d043722caeddc80e5028278823ac7ced0f5fcf781dc4ff29",
+    "normal-boot/image-audit.json": "be397b3d5618eed028560e1c155bb463361812682d739c76a86101fad3f2ed77",
+    "normal-boot/native_options.zig": "33eee32b76ccbea9af9c86e8b008cbc7fcae9d5c7c348372a83477ec57b7b026",
+    "normal-boot/restored.json": "57919a3b0cfd726690baaa5deebd407d2797d525e233319f871c45e0e35e1000",
+    "normal-boot/uart.log": "8cb1b45185a923de4a040618cdce95a50b41fc05854e31ec15e6364ac5b011d7",
+    "normal-boot/verify-candidate.log": "41437a93bdb30b2083d0a0b95e478616c24876854f1c75dbd6602d21d1983a40",
+    "normal-boot/verify-restored-full-flash.log": "8172ec431436fd4ce061309ad27c1dc121e5c93ad925151d48d17fb42d21dbbd",
+    "probe-2.log": "695bc60749b9cc6659bc1b858aa2c620ff49e257c8c2fc220fe11d240a8eaa63",
+    "probe-3.log": "695bc60749b9cc6659bc1b858aa2c620ff49e257c8c2fc220fe11d240a8eaa63",
+    "probe.log": "daac65006f4cdb2e6063ccfb24214ccfd8767fee9dedad62c8ec80a201337cb6",
+    "verify-candidate-2.log": "805464778d8ba44d38cd88a50eb2374e1d7c7e54fff02fe12a12e8999ee354e6",
+    "verify-candidate-3.log": "805464778d8ba44d38cd88a50eb2374e1d7c7e54fff02fe12a12e8999ee354e6",
+    "verify-candidate.log": "805464778d8ba44d38cd88a50eb2374e1d7c7e54fff02fe12a12e8999ee354e6",
+    "verify-restored-full-flash.log": "826a3f2a9456bf0213fe7608e87f803abd84dc6caba1b0c2fce5db02f0c713aa"
+  },
+  "normal_boot": {
+    "source_head": "99b69b52cc8f0dde62440a41db818b2df1b2401c",
+    "runtime_commit": "d39c1b99fb034fdb7580e61580ddf18329c68f03",
+    "network_enabled": false,
+    "uart_session_ready": true,
+    "both_core_timer_ipi_health": true,
+    "lcd_visual_or_input_qualified": false,
+    "artifacts_sha256": {
+      "nihos-native.bin": "cbf3b54739bb636af6b2540e4c6a7864bc5cb75719d587fe3f98593a90a1e57d",
+      "bootloader.bin": "a1f83a377a06ff2394918875fe42d1bc03252d88c7a0f5fd80a3bf5ff7a27e23",
+      "partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "restore": {
+      "verified": true,
+      "sha256": "d9411b6af948100f86e61b88fd8b6ab9e92f50f5ddbfddc78eecd34500c08f10"
+    }
+  }
+}

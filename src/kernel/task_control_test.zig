@@ -91,6 +91,49 @@ test "event calls preserve bit 31 and reject payloads on scalar-only calls" {
     try std.testing.expectEqual(Status.invalid_argument, dispatch(&policy, @backingInt(Number.notify), encodeHandle(task)).statusCode());
 }
 
+test "a protected caller may only name itself" {
+    const scheduler = @import("scheduler.zig");
+    var policy = scheduler.Scheduler(2, 2){};
+    const kernel = policy.add(0).?;
+    const user = policy.add(1).?;
+    try std.testing.expectEqual(kernel, policy.schedule().?);
+    try std.testing.expect(policy.block(kernel));
+    try std.testing.expectEqual(user, policy.schedule().?);
+    try std.testing.expectEqual(scheduler.TaskState.blocked, policy.snapshot(kernel).?.state);
+
+    const wake = control.dispatchFrom(&policy, @backingInt(Number.wake), encodeHandle(kernel), 0, .{}, true);
+    try std.testing.expectEqual(Status.not_supported, wake.statusCode());
+    try std.testing.expect(!wake.reschedule);
+    try std.testing.expectEqual(scheduler.TaskState.blocked, policy.snapshot(kernel).?.state);
+    try std.testing.expectEqual(user, policy.current().?);
+
+    const notify = control.dispatchFrom(&policy, @backingInt(Number.notify), encodeHandle(kernel), 1, .{}, true);
+    try std.testing.expectEqual(Status.not_supported, notify.statusCode());
+    try std.testing.expect(!notify.reschedule);
+    try std.testing.expectEqual(@as(u32, 0), policy.snapshot(kernel).?.pending_events);
+
+    const unknown = control.dispatchFrom(&policy, 0x4e49_ffff, 0, 0, .{}, true);
+    try std.testing.expectEqual(Status.invalid_call, unknown.statusCode());
+    try std.testing.expectEqual(user, policy.current().?);
+
+    const identity = control.dispatchFrom(&policy, @backingInt(Number.current), 0, 0, .{}, true);
+    try std.testing.expectEqual(encodeHandle(user), identity.low);
+    try std.testing.expect(!identity.reschedule);
+    const yielded = control.dispatchFrom(&policy, @backingInt(Number.yield_now), 0, 0, .{}, true);
+    try std.testing.expect(yielded.reschedule);
+    try std.testing.expectEqual(Status.ok, yielded.statusCode());
+
+    const allowed = control.dispatchFrom(&policy, @backingInt(Number.wake), encodeHandle(kernel), 0, .{}, false);
+    try std.testing.expect(allowed.reschedule);
+    try std.testing.expectEqual(scheduler.TaskState.ready, policy.snapshot(kernel).?.state);
+    for ([_]control.Number{ .yield_now, .sleep, .block, .exit, .current, .ticks, .wait_events }) |number| {
+        try std.testing.expect(control.refusedFromUser(@backingInt(number)) == null);
+    }
+    try std.testing.expectEqual(Status.not_supported, control.refusedFromUser(@backingInt(Number.wake)).?);
+    try std.testing.expectEqual(Status.not_supported, control.refusedFromUser(@backingInt(Number.notify)).?);
+    try std.testing.expectEqual(Status.invalid_call, control.refusedFromUser(0x4e49_ffff).?);
+}
+
 test "an owner without a timer rejects sleep without suspending its caller" {
     const scheduler = @import("scheduler.zig");
     var policy = scheduler.Scheduler(2, 2){};

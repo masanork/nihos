@@ -77,6 +77,24 @@ SECTIONS
         __flash_time_end = .;
     } > flash_boot
 #endif
+    /* Unlocked PMP programming and the contained-fault path. Normal tasks
+     * with an empty plan never call this page. It stays on the boot Flash
+     * page so the graphics image can keep a 48 KiB primary SRAM heap. */
+    .flash.pmp : ALIGN(16) {
+        __flash_pmp_start = .;
+        *(.flash.text.pmp .flash.text.pmp.*)
+        __flash_pmp_end = .;
+    } > flash_boot
+#if NIH_NATIVE_PMP_PROBE
+    /* U-mode probe text. One TOR range, 128-byte aligned, still on the boot
+     * page. Product images leave this section out. */
+    .flash.user : ALIGN(128) {
+        __user_probe_start = .;
+        KEEP(*(.flash.text.user))
+        . = ALIGN(128);
+        __user_probe_end = .;
+    } > flash_boot
+#endif
     /* The stock P4 loader maps both segments before entering SRAM.
      * Only self-contained normal diagnostic tables use the second page. */
     .flash.rodata : {
@@ -225,6 +243,8 @@ SECTIONS
     .graphics.bss (NOLOAD) : ALIGN(64) {
         __graphics_bss_start = .;
         *graphics_payload.o(.bss .bss.* .sbss .sbss.* COMMON)
+        . = ALIGN(16);
+        *(.user.pmp_state)
         . = ALIGN(4);
         __graphics_bss_end = .;
     } > graphics_ram
@@ -270,6 +290,18 @@ SECTIONS
     .bss (NOLOAD) : ALIGN(16) {
         __bss_start = .;
         *(.bss .bss.* .sbss .sbss.*) *(COMMON)
+#if NIH_NATIVE_USB
+        /* One 64-byte queue head needs a 512-byte address. Giving that
+         * alignment to the whole section pads the start by up to 511 bytes
+         * and drops the card-auto heap under 48 KiB. Place the head before
+         * the fault frames so that pad is not pushed past another boundary.
+         * It stays inside the zeroed BSS span. */
+        . = ALIGN(512);
+        *(.usb_dma_qtd)
+#endif
+#if !NIH_NATIVE_GRAPHICS
+        *(.user.pmp_state)
+#endif
         . = ALIGN(16);
         __bss_end = .;
     } > ram
@@ -316,6 +348,14 @@ SECTIONS
     ASSERT(SIZEOF(.flash.appdesc) == 256, "invalid app descriptor")
     ASSERT(SIZEOF(.flash.boot) > 0, "missing Flash boot code")
     ASSERT(SIZEOF(.flash.boot) <= 65248, "boot code exceeds first Flash page")
+    ASSERT(__flash_pmp_start < __flash_pmp_end, "missing PMP Flash code")
+    ASSERT(__flash_pmp_end <= ORIGIN(flash_boot) + LENGTH(flash_boot), "PMP Flash code exceeds the boot page")
+#if NIH_NATIVE_PMP_PROBE
+    ASSERT(__user_probe_start < __user_probe_end, "missing user probe")
+    ASSERT(__user_probe_start % 128 == 0, "user probe start alignment")
+    ASSERT(__user_probe_end % 128 == 0, "user probe end alignment")
+    ASSERT(__user_probe_end <= ORIGIN(flash_boot) + LENGTH(flash_boot), "user probe exceeds the boot page")
+#endif
     ASSERT(SIZEOF(.flash.rodata) > 0, "missing mapped record tables")
     ASSERT(SIZEOF(.flash.rodata) <= 65504, "record tables exceed one Flash page")
     ASSERT(__stacks_start == ORIGIN(stack_ram), "wrong stack region origin")

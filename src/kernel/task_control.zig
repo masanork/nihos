@@ -57,6 +57,25 @@ pub const Reply = struct {
     }
 };
 
+/// Status for a call a protected task may not make, or null when it may.
+/// The allowed calls name only the caller. `wake` and `notify` name another
+/// task, so they stay available to kernel tasks and return `not_supported`
+/// from a protected caller. An unknown number is `invalid_call`.
+pub fn refusedFromUser(raw_number: u32) ?i32 {
+    const number = Number.decode(raw_number) orelse return Status.invalid_call;
+    return switch (number) {
+        .wake, .notify => Status.not_supported,
+        .yield_now, .sleep, .block, .exit, .current, .ticks, .wait_events => null,
+    };
+}
+
+pub inline fn dispatchFrom(policy: anytype, raw_number: u32, argument: u32, payload: u32, options: Options, protected: bool) Reply {
+    if (protected) {
+        if (refusedFromUser(raw_number)) |status| return .status(status);
+    }
+    return dispatchWithOptions(policy, raw_number, argument, payload, options);
+}
+
 /// Called only by the serialized kernel/trap tail. It mutates policy but
 /// does not switch stacks, allocate, log, or dereference a task-supplied pointer.
 pub fn dispatch(policy: anytype, raw_number: u32, argument: u32) Reply {
