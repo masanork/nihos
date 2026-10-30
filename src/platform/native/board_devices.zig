@@ -269,7 +269,14 @@ const FirstFrameHardware = struct {
     }
     pub fn sensorOn(self: *@This()) bool {
         self.stream_attempted = true;
-        camera.setStream(&bus, true) catch return false;
+        // SCCB write + readback is a short bit-banged transaction pair. A
+        // scheduler switch must not stretch it while the CSI receiver is armed.
+        const previous = CsiHardware.mask();
+        defer CsiHardware.restore(previous);
+        camera.setStream(&bus, true) catch |err| {
+            self.reason = 0x800 | cameraTransferReason(err);
+            return false;
+        };
         return true;
     }
     pub fn events(self: *@This()) first_frame.Events {
@@ -334,7 +341,12 @@ const FirstFrameHardware = struct {
     }
     pub fn sensorOff(self: *@This()) bool {
         if (!self.stream_attempted) return true;
-        camera.setStream(&bus, false) catch return false;
+        const previous = CsiHardware.mask();
+        defer CsiHardware.restore(previous);
+        camera.setStream(&bus, false) catch |err| {
+            if (self.reason == 0) self.reason = 0x900 | cameraTransferReason(err);
+            return false;
+        };
         self.stream_attempted = false;
         return true;
     }
@@ -424,6 +436,19 @@ inline fn cameraBudgetExpired(started: ?u64) bool {
     const start = started orelse return true;
     const now = clock.counter() orelse return true;
     return now < start or now - start >= 1_000;
+}
+inline fn cameraTransferReason(err: anyerror) u32 {
+    return switch (err) {
+        error.Readback => 1,
+        error.AddressNack => 2,
+        error.ReadAddressNack => 3,
+        error.Nack => 4,
+        error.BusBusy => 5,
+        error.ClockTimeout => 6,
+        error.ArbitrationLost => 7,
+        error.Timer => 8,
+        else => 255,
+    };
 }
 // CPU0 board I2C/domain owner only. These are deliberately not exposed as a
 // command outside the diagnostic capture. Failed cleanup remains unqualified.
