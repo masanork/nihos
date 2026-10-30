@@ -4,12 +4,18 @@
 const std = @import("std");
 pub const input = @import("../console/session_input.zig");
 pub const document = @import("document.zig");
+// Immutable presentation text follows the existing diagnostic font placement;
+// host targets retain their ordinary read-only segment.
+const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: help, undo, forget-undo\nSystem buffers: log, mem, tasks\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
-pub const Mode = enum { edit, command, help };
-pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_unavailable };
+pub const system = @import("system_buffer.zig");
+pub const Mode = enum { edit, command, help, system };
+pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_unavailable, read_only };
 
 pub const Model = struct {
     doc: Doc,
+    snapshot: system.Snapshot,
+    request: system.Request,
     mode: Mode,
     status: Status,
     revision: u32,
@@ -45,6 +51,11 @@ pub const Model = struct {
         };
     }
     pub fn insert(self: *Model, text: []const u8) void {
+        if (self.mode == .system) {
+            self.status = .read_only;
+            self.changed();
+            return;
+        }
         self.status = .none;
         self.doc.insertUtf8(text) catch |err| self.failed(err);
         self.changed();
@@ -54,6 +65,19 @@ pub const Model = struct {
         self.changed();
         if (self.mode == .help) {
             if (key == .escape or key == .cancel or key == .enter) self.mode = .edit;
+            return;
+        }
+        if (self.mode == .system) {
+            switch (key) {
+                .escape, .cancel => {
+                    self.mode = .edit;
+                    self.request = .none;
+                },
+                .up => self.snapshot.scroll(false),
+                .down => self.snapshot.scroll(true),
+                .clear => self.openSystem(self.snapshot.kind),
+                else => self.status = .read_only,
+            }
             return;
         }
         if (self.mode == .command) {
@@ -69,7 +93,7 @@ pub const Model = struct {
                     self.mode = .edit;
                     if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "undo")) {
                         self.accept(self.doc.undo());
-                    } else if (std.mem.eql(u8, text, "forget-undo")) self.doc.forgetUndoHistory() else if (text.len != 0) {
+                    } else if (std.mem.eql(u8, text, "log")) self.openSystem(.log) else if (std.mem.eql(u8, text, "mem")) self.openSystem(.memory) else if (std.mem.eql(u8, text, "tasks")) self.openSystem(.tasks) else if (std.mem.eql(u8, text, "forget-undo")) self.doc.forgetUndoHistory() else if (text.len != 0) {
                         self.status = if (text[0] == '(') .scheme_unavailable else .unknown_command;
                     }
                 },
@@ -107,6 +131,20 @@ pub const Model = struct {
             },
             .cancel, .clear => {},
         }
+    }
+    fn openSystem(self: *Model, kind: system.Kind) void {
+        self.snapshot.begin(kind);
+        self.request = switch (kind) {
+            .log => .log,
+            .memory => .memory,
+            .tasks => .tasks,
+        };
+        self.mode = .system;
+    }
+    pub fn takeSystemRequest(self: *Model) system.Request {
+        const request = self.request;
+        self.request = .none;
+        return request;
     }
     pub fn feedHid(self: *Model, modifiers: u8, usage: u8) void {
         if (self.hid.feed(modifiers, usage)) |key| self.handle(key);
@@ -162,7 +200,11 @@ pub const Model = struct {
         }
         return end;
     }
-    pub fn render(self: *Model, grid: anytype) void {
+    pub inline fn render(self: *Model, grid: anytype) void {
+        if (self.mode == .system) {
+            self.snapshot.render(grid);
+            return;
+        }
         const Grid = @TypeOf(grid.*);
         const columns = Grid.width;
         const body_rows = Grid.height - 2;
@@ -174,7 +216,7 @@ pub const Model = struct {
         _ = grid.setScrollTop(1);
         grid.write(if (self.mode == .help) "xy / *help*\n" else "xy / *scratch* [RAM]\n");
         if (self.mode == .help) {
-            grid.write("Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: help, undo, forget-undo\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*");
+            grid.write(&help_text);
             return;
         }
         const text = self.doc.slice();
@@ -207,6 +249,7 @@ pub const Model = struct {
             .invalid_input => "Invalid input",
             .unknown_command => "Unknown command: Esc, help",
             .scheme_unavailable => "Scheme evaluation is not connected yet",
+            .read_only => "Read-only system buffer",
         });
     }
 };
@@ -296,4 +339,37 @@ test "viewport follows cursor and presentation never modifies UTF8 source" {
     model.render(&grid);
     try std.testing.expectEqual(@as(usize, 0), model.top_row);
     try std.testing.expectEqual(@as(u8, '|'), grid.cells[24]);
+}
+
+test "read only system buffers preserve scratch cursor revision and undo" {
+    // SAFETY: initialized before use.
+    var model: Model = undefined;
+    model.initInPlace();
+    model.insert("葛\u{e0100} draft");
+    model.handle(.left);
+    const cursor = model.doc.cursor;
+    const revision = model.doc.revision;
+    const undo_count = model.doc.undo_count;
+    for ([_][]const u8{ "log", "mem", "tasks" }, [_]system.Request{ .log, .memory, .tasks }) |command, expected| {
+        model.handle(.escape);
+        for (command) |byte| model.handle(.{ .text = byte });
+        model.handle(.enter);
+        try std.testing.expectEqual(Mode.system, model.mode);
+        try std.testing.expectEqual(expected, model.takeSystemRequest());
+        try std.testing.expectEqual(system.Request.none, model.takeSystemRequest());
+        model.snapshot.write("captured observation\n");
+        for ([_]input.Key{ .{ .text = 'X' }, .enter, .backspace, .eof, .undo, .left, .right, .up, .down }) |key| model.handle(key);
+        model.insert("blocked");
+        for ("日本") |byte| model.feedSerial(byte, 0);
+        try std.testing.expectEqualStrings("葛\u{e0100} draft", model.doc.slice());
+        try std.testing.expectEqual(cursor, model.doc.cursor);
+        try std.testing.expectEqual(revision, model.doc.revision);
+        try std.testing.expectEqual(undo_count, model.doc.undo_count);
+        model.handle(.clear);
+        try std.testing.expectEqual(expected, model.takeSystemRequest());
+        model.handle(.escape);
+        try std.testing.expectEqual(Mode.edit, model.mode);
+    }
+    model.handle(.undo);
+    try std.testing.expectEqualStrings("", model.doc.slice());
 }

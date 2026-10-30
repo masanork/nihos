@@ -446,6 +446,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         if (xy_workspace and session_active) {
             if (xy_trace) xy_input_bytes +%= 1;
             scratch.feedSerial(byte, now);
+            captureXySystem();
             @atomicStore(u32, &dirty, 1, .release);
             continue;
         }
@@ -516,6 +517,7 @@ fn beginSession(log: anytype) void {
 noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (xy_workspace) {
         scratch.handle(key);
+        captureXySystem();
         @atomicStore(u32, &dirty, 1, .release);
         return;
     }
@@ -591,16 +593,44 @@ fn sessionUsage(label: []const u8, capacity: u32, free: u32) void {
     session.number(SerialSink{}, capacity - free);
     session.write(SerialSink{}, "\r\n");
 }
+const xy_memory_header linksection(".flash.rodata.display") = "CPU0 owner only (bytes; excludes stacks/display):\n".*;
+const xy_tasks_header linksection(".flash.rodata.display") = "Published runtime counters (per-field snapshots):\n".*;
+const xy_tasks_footer linksection(".flash.rodata.display") = "Bootstrap/idle counters; not an application task list.\n".*;
+// One bounded capture on explicit open/refresh. Published task fields are not
+// an atomic scheduler dump; owner-local heaps do not include stacks/display.
+noinline fn captureXySystem() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+    switch (scratch.takeSystemRequest()) {
+        .none => return,
+        .log => {
+            scratch.snapshot.dropped = journal.dropped;
+            for (journal.spans()) |part| scratch.snapshot.write(part);
+        },
+        .memory => {
+            scratch.snapshot.write(&xy_memory_header);
+            scratch.snapshot.usage("SRAM boot arena", tasks.memory.localUsage());
+            scratch.snapshot.usage("PSRAM reusable heap", tasks.memory.reusable.localUsage());
+        },
+        .tasks => {
+            scratch.snapshot.write(&xy_tasks_header);
+            for (0..2) |index| scratch.snapshot.counters(@intCast(index), tasks.report(@intCast(index)));
+            scratch.snapshot.write(&xy_tasks_footer);
+        },
+    }
+}
 noinline fn traceScratch(log: anytype) void {
     if (!xy_trace or (scratch.revision == last_xy_trace_revision and xy_input_bytes == last_xy_input_bytes)) return;
     last_xy_trace_revision = scratch.revision;
     last_xy_input_bytes = xy_input_bytes;
     var fnv: u32 = 0x811c9dc5;
     for (scratch.doc.slice()) |byte| fnv = (fnv ^ byte) *% 0x01000193;
-    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status) };
-    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status" }, &values);
+    var buffer_hash: u32 = 0x811c9dc5;
+    if (scratch.mode == .system) for (scratch.snapshot.slice()) |byte| {
+        buffer_hash = (buffer_hash ^ byte) *% 0x01000193;
+    };
+    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash };
+    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash" }, &values);
 }
-fn drawSession() bool {
+noinline fn drawSession() linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!renderer_ready) {
         @memset(@import("std").mem.asBytes(renderer), 0);
         renderer_ready = true;

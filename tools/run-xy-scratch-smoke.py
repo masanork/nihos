@@ -73,6 +73,32 @@ def main():
         assert returned['pixel_sha256'] == before['pixel_sha256']
         serial(b':storage')
         assert read_state('literal-colon')['text'] == 'a\n:storageb'
+        scratch = read_state('before-system', True)
+        for name in (b'log', b'mem', b'tasks'):
+            command(2, 0x29)
+            serial(name + b'\r\n')
+            first = read_state(name.decode() + '-buffer', True)
+            assert first['text'] == scratch['text'] and first['cursor'] == scratch['cursor']
+            assert first['pixel_sha256'] != scratch['pixel_sha256']
+            for usage, modifiers in ((0x1b, 0), (0x28, 0), (0x2a, 0), (0x1d, 1), (0x07, 1)):
+                command(2, usage, modifiers)
+            blocked = read_state(name.decode() + '-readonly', True)
+            assert blocked['text'] == scratch['text'] and blocked['cursor'] == scratch['cursor']
+            assert blocked['pixel_sha256'] == first['pixel_sha256']
+            if name == b'log':
+                for _ in range(70): command(2, 0x51)
+                bottom = read_state('log-bottom', True)
+                assert bottom['pixel_sha256'] != first['pixel_sha256']
+                for _ in range(5): command(2, 0x51)
+                assert read_state('log-clamped', True)['pixel_sha256'] == bottom['pixel_sha256']
+            command(2, 0x0f, 1)  # Ctrl-L captures again and resets scroll.
+            assert read_state(name.decode() + '-refreshed', True)['pixel_sha256'] == first['pixel_sha256']
+            command(2, 0x29)
+            returned = read_state(name.decode() + '-return', True)
+            assert returned['text'] == scratch['text'] and returned['cursor'] == scratch['cursor']
+            assert returned['pixel_sha256'] == scratch['pixel_sha256']
+        command(2, 0x1d, 1)  # Last scratch edit is still undoable after all views.
+        assert read_state('undo-after-system')['text'] == 'a\n:storagb'
         command(5)
         serial(b'Shared Document / live editing.\r\nRAM scratch / UTF-8 document.')
         read_state('workspace', True)
@@ -85,7 +111,7 @@ def main():
             'image_sha256': sha((OUT / 'nihos-native.bin').read_bytes()),
             'elf_sha256': sha((OUT / 'nihos-native.elf').read_bytes())}
         (output / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-        print('RV32 xy scratch passed: editing, CRLF, IVS deletion, undo pixels, help return and literal colon')
+        print('RV32 xy scratch passed: editing, CRLF, IVS deletion, undo pixels, help return, literal colon and read-only system buffers')
     finally:
         guest.close()
 
