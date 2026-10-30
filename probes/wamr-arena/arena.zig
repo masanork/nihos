@@ -57,6 +57,14 @@ export fn nih_wamr_arena_free_bytes(kind: u32) callconv(.c) usize {
     return heaps[kind].free_bytes;
 }
 
+/// Detach borrowed regions only after every object and guard has recovered.
+export fn nih_wamr_arena_deinit() callconv(.c) c_int {
+    if (nih_wamr_arena_recovered(0) != 1 or nih_wamr_arena_recovered(1) != 1) return -1;
+    ready = false;
+    heaps = undefined;
+    return 0;
+}
+
 test "separate arenas reject wrong owner and recover all blocks" {
     const testing = @import("std").testing;
     const Backing = struct {
@@ -74,6 +82,7 @@ test "separate arenas reject wrong owner and recover all blocks" {
     const before1 = nih_wamr_arena_free_bytes(1);
     const p = nih_wamr_arena_alloc(0, 32).?;
     const q = nih_wamr_arena_alloc(1, 65536).?;
+    try testing.expectEqual(@as(c_int, -1), nih_wamr_arena_deinit());
     try testing.expectEqual(@as(c_int, -1), nih_wamr_arena_free(1, p));
     try testing.expectEqual(@as(c_int, -1), nih_wamr_arena_free(0, @ptrFromInt(1)));
     try testing.expect(nih_wamr_arena_alloc(2, 32) == null);
@@ -90,4 +99,11 @@ test "separate arenas reject wrong owner and recover all blocks" {
     try testing.expect(nih_wamr_arena_alloc(0, 1) == null);
     for (allocated) |item| try testing.expectEqual(@as(c_int, 0), nih_wamr_arena_free(0, item));
     try testing.expectEqual(@as(c_int, 1), nih_wamr_arena_recovered(0));
+    try testing.expectEqual(@as(c_int, 0), nih_wamr_arena_deinit());
+    try testing.expect(nih_wamr_arena_alloc(0, 1) == null);
+    try testing.expectEqual(@as(c_int, -1), nih_wamr_arena_deinit());
+    try testing.expectEqual(@as(c_int, 0), nih_wamr_arena_init(&Backing.runtime, runtime_capacity, &Backing.linear, linear_capacity));
+    try testing.expectEqual(before0, nih_wamr_arena_free_bytes(0));
+    try testing.expectEqual(before1, nih_wamr_arena_free_bytes(1));
+    try testing.expectEqual(@as(c_int, 0), nih_wamr_arena_deinit());
 }

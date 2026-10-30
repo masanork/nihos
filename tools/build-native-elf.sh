@@ -60,6 +60,17 @@ graphics=false
 graphics_cpp=0
 wasm=false
 wasm_cpp=0
+wasm_task=${NIHOS_NATIVE_WASM_TASK:-0}
+case "$wasm_task" in
+    0) wasm_task=false; wasm_task_define= ;;
+    1) wasm_task=true; wasm_task_define=-DNIHOS_WAMR_TASK=1 ;;
+    *) echo "NIHOS_NATIVE_WASM_TASK must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$wasm_task" = true ] && { [ "$profile" != emulator ] || [ "$mode" != wasm ] || [ "${NIHOS_NATIVE_BOOT_TEST:-0}" != 1 ]; }; then
+    echo "WASM_TASK requires emulator wasm mode with headless BOOT_TEST=1" >&2; exit 1
+fi
+normal_mode=false
+if [ "$mode" = integer ] || [ "$wasm_task" = true ]; then normal_mode=true; fi
 abi=ilp32
 qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
 case "$qualification" in
@@ -225,13 +236,13 @@ fi
 # 3=missing ready, 4=missing IPI reply, 5=missing CPU1 timer.
 boot_test=${NIHOS_NATIVE_BOOT_TEST:-0}
 case "$boot_test" in 0|1|2|3|4|5) ;; *) echo "NIHOS_NATIVE_BOOT_TEST must be 0..5" >&2; exit 1 ;; esac
-if [ "$boot_test" != 0 ] && { [ "$profile" != emulator ] || [ "$mode" != integer ] || [ "$qualification" != false ] || [ "$console_live" != false ] || [ "$display" != false ] || [ "$sdmmc" != false ]; }; then
+if [ "$boot_test" != 0 ] && { [ "$profile" != emulator ] || [ "$normal_mode" != true ] || [ "$qualification" != false ] || [ "$console_live" != false ] || [ "$display" != false ] || [ "$sdmmc" != false ]; }; then
     echo "Boot test requires headless emulator integer profile, without qualification/SDMMC" >&2; exit 1
 fi
 # Interactive integer console boots normally; other profiles remain fixtures.
 boot_fast=${NIHOS_NATIVE_BOOT_FAST:-auto}
 if [ "$boot_fast" = auto ]; then
-    if { [ "$console_live" = true ] || [ "$boot_test" != 0 ]; } && [ "$mode" = integer ] && [ "$qualification" = false ]; then boot_fast=1; else boot_fast=0; fi
+    if { [ "$console_live" = true ] || [ "$boot_test" != 0 ]; } && [ "$normal_mode" = true ] && [ "$qualification" = false ]; then boot_fast=1; else boot_fast=0; fi
 fi
 case "$boot_fast" in
     0) boot_fast=false ;;
@@ -257,7 +268,7 @@ if [ "$pmp_probe" = false ] && [ "$pmp_case" != all ]; then
 fi
 pmp_user_object=
 if [ "$pmp_probe" = true ]; then pmp_user_object="$repo_root/src/arch/riscv32/pmp_user.S"; fi
-if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
+if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$normal_mode" != true ] || [ "$qualification" = true ]; }; then
     echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
 fi
 if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ]; }; then
@@ -526,6 +537,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const rust_session = %s;\n' "$rust_session"
     printf 'pub const rust_session_test = %s;\n' "$rust_session_test"
     printf 'pub const wasm_probe = %s;\n' "$wasm"
+    printf 'pub const wasm_task = %s;\n' "$wasm_task"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
@@ -699,7 +711,7 @@ if [ "$wasm" = true ]; then
     "$riscv_cc_path" -c -Os -std=c11 -Wall -Wextra -Wconversion -Werror \
         -ffreestanding -fno-builtin -fno-unwind-tables \
         -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections \
-        -I "$wamr/core/iwasm/include" "$repo_root/probes/wamr-native/runner.c" \
+        $wasm_task_define -I "$wamr/core/iwasm/include" "$repo_root/probes/wamr-native/runner.c" \
         -o "$build_dir/wamr_runner.o"
     set -- "$@" "$build_dir/wamr-combined.o" "$build_dir/wamr_arena.o" \
         "$build_dir/boot_trust.o" "$build_dir/boot_package.o" \

@@ -3,14 +3,14 @@
 const timer_group = @import("timer_group");
 const memory = @import("native_tasks").memory;
 
-const runtime_bytes = 128 * 1024;
-const linear_bytes = 256 * 1024;
-const module_bytes = 4 * 1024;
-const module_count = 2;
-const stack_bytes = 64 * 1024;
-const surface_bytes = 32 * 1024;
-const package_max_bytes = 4096;
-const lease_bytes = runtime_bytes + linear_bytes + module_count * module_bytes + stack_bytes + surface_bytes;
+pub const runtime_bytes = 128 * 1024;
+pub const linear_bytes = 256 * 1024;
+pub const module_bytes = 4 * 1024;
+pub const module_count = 2;
+pub const stack_bytes = 64 * 1024;
+pub const surface_bytes = 32 * 1024;
+pub const package_max_bytes = 4096;
+pub const lease_bytes = runtime_bytes + linear_bytes + module_count * module_bytes + stack_bytes + surface_bytes;
 
 pub const Report = extern struct {
     status: u32 = 0,
@@ -81,6 +81,17 @@ extern fn nih_wamr_call(
 
 var active_stack_low: usize = 0;
 var active_surface: ?[]u8 = null;
+
+pub fn bindTaskStorage(stack: []u8, surface: []u8) bool {
+    if (active_stack_low != 0 or active_surface != null or stack.len != stack_bytes or surface.len != surface_bytes) return false;
+    active_stack_low = @intFromPtr(stack.ptr);
+    active_surface = surface;
+    return true;
+}
+pub fn detachTaskStorage() void {
+    active_stack_low = 0;
+    active_surface = null;
+}
 
 export fn nih_wamr_surface_storage(length: *u32) callconv(.c) ?[*]u8 {
     const surface = active_surface orelse {

@@ -700,6 +700,7 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
     if (status & (8 | 0x6000) != 0 or sp < @intFromPtr(guard) + 16 or sp >= top) return false;
     if (tasks.pmp.acceptsDispatcherFrame(hart, interrupted, @as(u32, @intCast(@intFromPtr(frame))), frame.sp)) return true;
+    if (options.wasm_task and tasks.acceptsWasmFrame(hart, interrupted, @intCast(@intFromPtr(frame)), frame.sp)) return true;
     return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
@@ -764,7 +765,7 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     native_psram.memory.peer();
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     native_psram.memory.ownerReady(1);
-    if (options.wasm_probe) {
+    if (options.wasm_probe and !options.wasm_task) {
         while (@atomicLoad(u32, &wasm_boot_complete, .acquire) == 0) asm volatile ("nop");
     }
     prepareTasks(1);
@@ -1084,7 +1085,7 @@ export fn nih_native_main() callconv(.c) noreturn {
     } else if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
-    if (options.wasm_probe) {
+    if (options.wasm_probe and !options.wasm_task) {
         const wamr = @import("wamr_runtime.zig").run();
         logger.record("NIHOS_NATIVE_WAMR", null, .{ "status", "calls", "trapped", "metered", "bad_text", "cycles", "cycle_recovered", "recovered", "runtime_peak", "linear_peak", "runtime_free", "linear_free", "export_count", "stack_used", "lease_bytes", "policy_status", "services", "sdk_abi", "origin", "attestation", "module_tag", "digest_tag", "instruction_budget" }, &wamr);
         const signature = .{
@@ -1583,12 +1584,17 @@ fn normalReady() noreturn {
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
     if (normal_storage) normal_fs.begin(storageClient());
+    if (options.wasm_task and !@import("wamr_task.zig").start()) fail("Wasm task start");
     if (options.rust_session_test) {
         if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
         print("NIHOS_RUST_SESSION_READY\n");
     }
     var idle_checked = false;
     while (true) {
+        if (options.wasm_task and !@import("wamr_task.zig").service(&logger)) {
+            print("NIHOS_WASM_TASK_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
         if (options.rust_session_test and !@import("rust_session_fixture.zig").service(&logger)) {
             print("NIHOS_RUST_SESSION_DONE\n");
             while (true) tasks.idleOnce(0);

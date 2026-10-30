@@ -6,6 +6,7 @@
 
 enum { RUNTIME_BYTES = 128 * 1024, LINEAR_BYTES = 256 * 1024 };
 extern int nih_wamr_arena_init(void *, size_t, void *, size_t);
+extern int nih_wamr_arena_deinit(void);
 extern void *nih_wamr_arena_alloc(uint32_t, size_t);
 extern int nih_wamr_arena_free(uint32_t, void *);
 extern int nih_wamr_arena_recovered(uint32_t);
@@ -14,6 +15,11 @@ extern uint8_t *nih_wamr_stack_boundary(void);
 extern uint8_t *nih_wamr_surface_storage(uint32_t *);
 extern int nih_rom_putc(uint8_t);
 extern int nih_rom_rx_one_char(uint8_t *);
+#ifdef NIHOS_WAMR_TASK
+extern int32_t nih_wamr_task_receive(void);
+extern int32_t nih_wamr_task_wait(void);
+extern void nih_wamr_task_uart_ready(void);
+#endif
 extern int32_t nih_app_probe_attach(uint8_t *, uint32_t, uint32_t, uint32_t, uint32_t);
 extern void nih_app_probe_detach(void);
 extern int32_t nih_app_fill_rect(int32_t, int32_t, uint32_t, uint32_t, uint32_t);
@@ -187,10 +193,23 @@ static int owner_uart(wasm_exec_env_t env, wasm_function_inst_t function,
     struct import_owner *owner = current_owner(env);
     if (!owner) return 44;
     for (size_t i=0; i<sizeof(ready)-1; i++) (void)nih_rom_putc((uint8_t)ready[i]);
+#ifdef NIHOS_WAMR_TASK
+    nih_wamr_task_uart_ready();
+#endif
     const uint32_t begin = cycle32();
     while ((uint32_t)(cycle32()-begin) < 64000000u) {
         uint8_t byte;
+#ifdef NIHOS_WAMR_TASK
+        int32_t received = nih_wamr_task_receive();
+        if (received == -2) { report->uart_status = 2; return 42; }
+        if (received < 0) {
+            if (nih_wamr_task_wait() != 0) return 46;
+            continue;
+        }
+        byte = (uint8_t)received;
+#else
         if (nih_rom_rx_one_char(&byte) != 0) continue;
+#endif
         if (++report->uart_bytes > 16) return 43;
         if (byte == 'q') {
             owner->active = false;
@@ -577,6 +596,7 @@ cleanup:
         nih_wamr_arena_recovered(0) && nih_wamr_arena_recovered(1) &&
         report->runtime_free == initial[0] && report->linear_free == initial[1])
         report->recovered = 1;
+    if (report->recovered && nih_wamr_arena_deinit() != 0) report->recovered = 0;
     if (result == 0 && !report->recovered) result = 14;
     report->status = (uint32_t)result;
     return result;

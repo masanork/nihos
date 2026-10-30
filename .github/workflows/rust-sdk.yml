@@ -79,6 +79,10 @@ jobs:
         run: |
           . "$IDF_PATH/export.sh" >/dev/null
           NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-emulator.sh
+      - name: Scheduled Wasm task, wait, reap and same-boot restart
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-task-emulator.sh
       - name: Retain emulator evidence
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -96,5 +100,11 @@ jobs:
             build/native-emulator-wasm/*.elf
             build/native-emulator-wasm/*.bin
             build/native-emulator-wasm/licenses/
+            build/wamr-task-emulator/*.log
+            build/wamr-task-emulator/*.json
+            build/wamr-task-emulator/*.txt
+            build/wamr-task-emulator/*.elf
+            build/wamr-task-emulator/*.bin
+            build/wamr-task-emulator/licenses/
           if-no-files-found: warn
           retention-days: 14
