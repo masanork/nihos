@@ -212,95 +212,108 @@
         ]
       },
       "restored": true
-    }
-  ],
-  "normal_regression": {
-    "frozen_directory": "/private/tmp/nihos-camera-jpeg-owned-normal-60-20261031",
-    "source_head": "98b8088642c3174a3f40bb1439fb2128b94d9ef4",
-    "image_sha256": "f3abaac47d99f2b32dbd58cd04a601e253bfe4aeefc27adb8db38d5323334268",
-    "elf_sha256": "5114bd41da8c258ac9ef34b8a555dad26e8785bb0cfc23262fdca8e5abb34236",
-    "serial_sha256": "d43dca351c26e4d7bd75a72dc36e36302afe6bbbb84fed1174bad600d21bdae8",
-    "live_updates": 61,
-    "intervals_seconds": [
-      0.06919808299999985,
-      0.04917091699999787,
-      0.07104504100000142,
-      0.05494949999999932,
-      0.050139167000001095,
-      0.049508666999997786,
-      0.05015575000000183,
-      0.0498300829999998,
-      0.05057199999999895,
-      0.050230917000000375,
-      0.0496184580000012,
-      0.04961808299999859,
-      0.049908667000000406,
-      0.06260262500000024,
-      0.037490208000001246,
-      0.05003170899999887,
-      0.05012704099999965,
-      0.05015470900000096,
-      0.04985824999999977,
-      0.04985341599999771,
-      0.05022679200000013,
-      0.06519850000000105,
-      0.06693187500000164,
-      0.06375262499999934,
-      0.05459308300000032,
-      0.05001620899999892,
-      0.0653410000000001,
-      0.06634995799999999,
-      0.0633282080000015,
-      0.05654083399999976,
-      0.04837724999999793,
-      0.06626412500000001,
-      0.06589258300000012,
-      0.06267779200000234,
-      0.06376258299999904,
-      0.04162933299999949,
-      0.048833916999999616,
-      0.0611157079999991,
-      0.055680167000002,
-      0.06672187499999893,
-      0.06607591699999915,
-      0.06359562500000138,
-      0.06812591599999962,
-      0.06666462500000137,
-      0.06514329199999835,
-      0.06887008300000019,
-      0.06646512500000057,
-      0.06642741699999988,
-      0.06850966700000072,
-      0.06476987499999964,
-      0.0655286249999989,
-      0.06993287499999923,
-      0.06509862500000096,
-      0.07109295800000126,
-      0.06405841699999826,
-      0.06562141599999904,
-      0.05124070900000177,
-      0.06100800000000106,
-      0.03449887499999704,
-      0.03512875000000193
-    ],
-    "updates_per_second": 17.265419422359503,
-    "stop_drain_seconds": 0.269723416999998,
-    "presented_images": 63,
-    "framebuffer_mismatches": 0,
-    "restoration": {
-      "image_sha256": "f3abaac47d99f2b32dbd58cd04a601e253bfe4aeefc27adb8db38d5323334268",
-      "loader_sha256": "450bf45d0085eb7899dffabb0e9f511506dc08826f1d71780a6c8c8445cd1582",
-      "backup_sha256": [
-        "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
-        "e36de852844f74c66e2fd5d5019d8c28c38327efa79aa9997453397ec822f203"
-      ],
-      "restored": true,
-      "span_bytes": [
-        24576,
-        286720
+    },
+    {
+      "frozen_directory": "/private/tmp/nihos-camera-jpeg-integrated-20261031",
+      "source_head": "cd53b72fd0d440b2a918fafa1d2e9d921527f979",
+      "source_status": "",
+      "source_manifest_sha256": "16d1d792fefdd1f8ffda0fe7a10cecdeabd12d4ba8a18a24d1fb006f8427aee3",
+      "image_sha256": "a9f10186ab95b1aab3e7825820cef588fa0c90e3ec45ee47777b4eea918e5241",
+      "elf_sha256": "cc7a6d8ba9f45238a1faa9d110e6b00db3db8b84d5790dd98ae399743fca7d8e",
+      "loader_sha256": "8d4358c1c25155ba544ed753aee0ede5d86fc1f26a026146a2068d7e802e5643",
+      "serial_sha256": "9975a4b3485928a8ad72f611eb972fa26c51b1825cd9be7ef185d58210df8b49",
+      "host_decode_sha256": "3e7733d274f6d0c8078e9cc5fcba8c998d1818848481be37eae564a65d150879",
+      "images": {
+        "pattern.jpg": {
+          "kind": 0,
+          "bytes": 21522,
+          "width": 1280,
+          "height": 720,
+          "quality": 75,
+          "source_fnv": 3272766917,
+          "encode_us": 20016,
+          "sha256": "9df9069c2c78683da14d7589658162de1fda46f556deff81e443733917457a77",
+          "decoded_mode": "RGB",
+          "decoded_size": [
+            1280,
+            720
+          ],
+          "extrema": [
+            [
+              0,
+              255
+            ],
+            [
+              0,
+              252
+            ],
+            [
+              0,
+              255
+            ]
+          ]
+        },
+        "camera.jpg": {
+          "kind": 1,
+          "bytes": 40191,
+          "width": 1280,
+          "height": 720,
+          "quality": 75,
+          "source_fnv": 1249952126,
+          "encode_us": 20907,
+          "sha256": "3ce6a70a3121700009d61df40c9be891dbd282a12a897f28db58116f02d20d6e",
+          "decoded_mode": "RGB",
+          "decoded_size": [
+            1280,
+            720
+          ],
+          "extrema": [
+            [
+              20,
+              65
+            ],
+            [
+              34,
+              94
+            ],
+            [
+              17,
+              55
+            ]
+          ]
+        }
+      },
+      "memory": {
+        "capacity": 15072576,
+        "free": 10874176,
+        "used": 4198400
+      },
+      "sram_heap_span_bytes": 77120,
+      "receipt": {
+        "image_sha256": "a9f10186ab95b1aab3e7825820cef588fa0c90e3ec45ee47777b4eea918e5241",
+        "loader_sha256": "8d4358c1c25155ba544ed753aee0ede5d86fc1f26a026146a2068d7e802e5643",
+        "backup_sha256": [
+          "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+          "f67ff47af82ce7dd8d62d9d238b6e4c02ae0981f1d61ad70f41a4a988b2dea07"
+        ],
+        "restored": true,
+        "span_bytes": [
+          24576,
+          176128
+        ]
+      },
+      "rejected_external_requests": [
+        [
+          26,
+          0
+        ],
+        [
+          30,
+          0
+        ]
       ]
     }
-  },
+  ],
   "public_pattern": {
     "path": "pattern.jpg",
     "sha256": "9df9069c2c78683da14d7589658162de1fda46f556deff81e443733917457a77",
@@ -392,5 +405,291 @@
         286720
       ]
     }
-  }
+  },
+  "pre_xy_normal_regression": {
+    "frozen_directory": "/private/tmp/nihos-camera-jpeg-owned-normal-60-20261031",
+    "source_head": "98b8088642c3174a3f40bb1439fb2128b94d9ef4",
+    "image_sha256": "f3abaac47d99f2b32dbd58cd04a601e253bfe4aeefc27adb8db38d5323334268",
+    "elf_sha256": "5114bd41da8c258ac9ef34b8a555dad26e8785bb0cfc23262fdca8e5abb34236",
+    "serial_sha256": "d43dca351c26e4d7bd75a72dc36e36302afe6bbbb84fed1174bad600d21bdae8",
+    "live_updates": 61,
+    "intervals_seconds": [
+      0.06919808299999985,
+      0.04917091699999787,
+      0.07104504100000142,
+      0.05494949999999932,
+      0.050139167000001095,
+      0.049508666999997786,
+      0.05015575000000183,
+      0.0498300829999998,
+      0.05057199999999895,
+      0.050230917000000375,
+      0.0496184580000012,
+      0.04961808299999859,
+      0.049908667000000406,
+      0.06260262500000024,
+      0.037490208000001246,
+      0.05003170899999887,
+      0.05012704099999965,
+      0.05015470900000096,
+      0.04985824999999977,
+      0.04985341599999771,
+      0.05022679200000013,
+      0.06519850000000105,
+      0.06693187500000164,
+      0.06375262499999934,
+      0.05459308300000032,
+      0.05001620899999892,
+      0.0653410000000001,
+      0.06634995799999999,
+      0.0633282080000015,
+      0.05654083399999976,
+      0.04837724999999793,
+      0.06626412500000001,
+      0.06589258300000012,
+      0.06267779200000234,
+      0.06376258299999904,
+      0.04162933299999949,
+      0.048833916999999616,
+      0.0611157079999991,
+      0.055680167000002,
+      0.06672187499999893,
+      0.06607591699999915,
+      0.06359562500000138,
+      0.06812591599999962,
+      0.06666462500000137,
+      0.06514329199999835,
+      0.06887008300000019,
+      0.06646512500000057,
+      0.06642741699999988,
+      0.06850966700000072,
+      0.06476987499999964,
+      0.0655286249999989,
+      0.06993287499999923,
+      0.06509862500000096,
+      0.07109295800000126,
+      0.06405841699999826,
+      0.06562141599999904,
+      0.05124070900000177,
+      0.06100800000000106,
+      0.03449887499999704,
+      0.03512875000000193
+    ],
+    "updates_per_second": 17.265419422359503,
+    "stop_drain_seconds": 0.269723416999998,
+    "presented_images": 63,
+    "framebuffer_mismatches": 0,
+    "restoration": {
+      "image_sha256": "f3abaac47d99f2b32dbd58cd04a601e253bfe4aeefc27adb8db38d5323334268",
+      "loader_sha256": "450bf45d0085eb7899dffabb0e9f511506dc08826f1d71780a6c8c8445cd1582",
+      "backup_sha256": [
+        "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+        "e36de852844f74c66e2fd5d5019d8c28c38327efa79aa9997453397ec822f203"
+      ],
+      "restored": true,
+      "span_bytes": [
+        24576,
+        286720
+      ]
+    }
+  },
+  "normal_regression": {
+    "frozen_directory": "/private/tmp/nihos-camera-jpeg-integrated-legacy-20261031",
+    "source_head": "cd53b72fd0d440b2a918fafa1d2e9d921527f979",
+    "ui_profile": "legacy shell, explicit xy_workspace=false",
+    "image_sha256": "742d22850e8b8f1bd4193962cd332861c7d4ee16e5b9a8abbde71961b426c10a",
+    "elf_sha256": "0430e999aab78a70d456fffe238ee0ec0cd2206c1492b00e5dad154b0d8ddc1f",
+    "serial_sha256": "4803b9585fad0590812e63c730740c4064a815ece05d1227ed53a1fe23f80d6b",
+    "live_updates": 61,
+    "intervals_seconds": [
+      0.05651899999999799,
+      0.06393812499999996,
+      0.07312666700000037,
+      0.06306112500000083,
+      0.07012258299999985,
+      0.06382104200000072,
+      0.05517012500000007,
+      0.050039999999999196,
+      0.047688916999998554,
+      0.06188116600000271,
+      0.05040499999999781,
+      0.07021533400000024,
+      0.06497270800000265,
+      0.05494458299999749,
+      0.04990345899999937,
+      0.047946375000002206,
+      0.061732374999998285,
+      0.05048433299999999,
+      0.06538166700000048,
+      0.06964337500000184,
+      0.05496308299999697,
+      0.049965166999999866,
+      0.04787900000000178,
+      0.061900208000000845,
+      0.050424958000000686,
+      0.06997783399999946,
+      0.06493762499999889,
+      0.05300891599999957,
+      0.061623125000000556,
+      0.05044245899999922,
+      0.07008620799999932,
+      0.06486179200000208,
+      0.053955874999999764,
+      0.05977616599999891,
+      0.05132741699999954,
+      0.07205116700000147,
+      0.06671216599999852,
+      0.06131225000000029,
+      0.07010625000000203,
+      0.06480595899999742,
+      0.0541133330000001,
+      0.05957404200000127,
+      0.051417415999999605,
+      0.07017308400000033,
+      0.06479554099999874,
+      0.05413304200000013,
+      0.05952162500000213,
+      0.051406874999997854,
+      0.07018612500000287,
+      0.06472741699999673,
+      0.05433187500000258,
+      0.04760304099999857,
+      0.06897229200000154,
+      0.061512000000000455,
+      0.05141016700000023,
+      0.039753249999996854,
+      0.04063470800000246,
+      0.06291949999999957,
+      0.03913708299999996,
+      0.05848016699999903
+    ],
+    "updates_per_second": 17.065243600705234,
+    "stop_drain_seconds": 0.30414554200000055,
+    "presented_images": 63,
+    "framebuffer_mismatches": 0,
+    "sram_heap_span_bytes": 51392,
+    "restoration": {
+      "image_sha256": "742d22850e8b8f1bd4193962cd332861c7d4ee16e5b9a8abbde71961b426c10a",
+      "loader_sha256": "450bf45d0085eb7899dffabb0e9f511506dc08826f1d71780a6c8c8445cd1582",
+      "backup_sha256": [
+        "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+        "e36de852844f74c66e2fd5d5019d8c28c38327efa79aa9997453397ec822f203"
+      ],
+      "restored": true,
+      "span_bytes": [
+        24576,
+        286720
+      ]
+    }
+  },
+  "xy_integration": [
+    {
+      "profile": "xy-default",
+      "frozen_directory": "/private/tmp/nihos-camera-jpeg-integrated-xy-default-restored-v2-20261031",
+      "source_head": "cd53b72fd0d440b2a918fafa1d2e9d921527f979",
+      "image_sha256": "788da891ccce5a8c3da5222bad78e254ad276babcaf660e3395a95299ec67150",
+      "elf_sha256": "6cd985d63053916180e38700afd50335bc9e974cadcb9580f58c445e6ddedd1f",
+      "source_manifest_sha256": "fd3edc4ee35b1c41dab620f29a534a2189c779ef5fa6263489814996986e2570",
+      "serial_sha256": "a0517724271e7f35bba6441a75930f37e10c0ace411ace9317a96543e2751e23",
+      "observations_sha256": "c3a0c4e3d787d13fb7ae3f8350bbe0fff2d3ea43e882b932d6fddd435148e997",
+      "sram_heap_span_bytes": 49856,
+      "passed": true,
+      "scheme_vm_tested": false,
+      "observations": [
+        "default-xy-ready"
+      ],
+      "restoration": {
+        "image_sha256": "788da891ccce5a8c3da5222bad78e254ad276babcaf660e3395a95299ec67150",
+        "loader_sha256": "450bf45d0085eb7899dffabb0e9f511506dc08826f1d71780a6c8c8445cd1582",
+        "backup_sha256": [
+          "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+          "5b71c0dd3e9d74eea43b831444d02a9f33b1c9b535d6094c9ff544d5fca576f4"
+        ],
+        "restored": true,
+        "span_bytes": [
+          24576,
+          507904
+        ]
+      },
+      "physical_pixel_comparison_tested": false,
+      "persistence_tested": false,
+      "cold_power_cycle_tested": false
+    },
+    {
+      "profile": "xy-trace",
+      "frozen_directory": "/private/tmp/nihos-camera-jpeg-integrated-xy-trace-restored-v2-20261031",
+      "source_head": "cd53b72fd0d440b2a918fafa1d2e9d921527f979",
+      "image_sha256": "6ddda322447aa133f5b960618a9db80f6c9816e475862c68fddf0e20b5a9ebf3",
+      "elf_sha256": "f9838e4e6957b9969ea9e6ddde7b022eaf35898bdc70620c6b4cd3206e4e129b",
+      "source_manifest_sha256": "fd3edc4ee35b1c41dab620f29a534a2189c779ef5fa6263489814996986e2570",
+      "serial_sha256": "69d7f6a0bab25a00e329954f7ec665699ede9413609648976ae4129074cb843a",
+      "observations_sha256": "297d099edba5f4977721cd074052bca63fea670c88042eb462adc52db9bafc28",
+      "sram_heap_span_bytes": 49600,
+      "passed": true,
+      "scheme_vm_tested": true,
+      "observations": [
+        "xy-boot",
+        "serial-crlf",
+        "left",
+        "insert",
+        "undo",
+        "ivs-input",
+        "cluster-delete",
+        "minibuffer",
+        "help",
+        "help-return",
+        "literal-colon",
+        "log-minibuffer",
+        "log-open",
+        "log-readonly",
+        "log-refresh",
+        "log-return",
+        "mem-minibuffer",
+        "mem-open",
+        "mem-readonly",
+        "mem-refresh",
+        "mem-return",
+        "tasks-minibuffer",
+        "tasks-open",
+        "tasks-readonly",
+        "tasks-refresh",
+        "tasks-return",
+        "scheme-closure-definition-minibuffer",
+        "scheme-closure-definition",
+        "scheme-closure-call-minibuffer",
+        "scheme-closure-call",
+        "scheme-closure-undo",
+        "scheme-depth-error-minibuffer",
+        "scheme-depth-error",
+        "scheme-after-error-minibuffer",
+        "scheme-after-error",
+        "scheme-after-error-undo",
+        "scheme-register-minibuffer",
+        "scheme-register",
+        "scheme-replace-call-minibuffer",
+        "scheme-replace-call",
+        "scheme-replace-undo",
+        "scheme-system-tasks-minibuffer",
+        "scheme-system-tasks",
+        "scheme-system-return",
+        "warm-reset-empty-ram"
+      ],
+      "restoration": {
+        "image_sha256": "6ddda322447aa133f5b960618a9db80f6c9816e475862c68fddf0e20b5a9ebf3",
+        "loader_sha256": "21ee6d105d2b53f0a8dfb00296b1e3afa5ec2917caa34925f0ddb9310198c91a",
+        "backup_sha256": [
+          "95b6cd1361f26f4777912888d416d035847cfb93ad417217355db2d7123a64ef",
+          "5b71c0dd3e9d74eea43b831444d02a9f33b1c9b535d6094c9ff544d5fca576f4"
+        ],
+        "restored": true,
+        "span_bytes": [
+          24576,
+          507904
+        ]
+      },
+      "physical_pixel_comparison_tested": false,
+      "persistence_tested": false,
+      "cold_power_cycle_tested": false
+    }
+  ]
 }
