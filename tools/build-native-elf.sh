@@ -186,10 +186,16 @@ fi
 console_fault=${NIHOS_NATIVE_CONSOLE_FAULT:-0}
 case "$console_fault" in 0) console_fault=false ;; 1) console_fault=true ;; *) echo "CONSOLE_FAULT must be 0 or 1" >&2; exit 1 ;; esac
 console_live=${NIHOS_NATIVE_CONSOLE_LIVE:-0}
+xy_workspace=${NIHOS_NATIVE_XY_WORKSPACE:-0}
+xy_trace=${NIHOS_NATIVE_XY_TRACE:-0}
+case "$xy_trace" in 0) xy_trace=false ;; 1) xy_trace=true ;; *) echo "XY_TRACE must be 0 or 1" >&2; exit 1 ;; esac
+case "$xy_workspace" in 0) xy_workspace=false ;; 1) xy_workspace=true ;; *) echo "XY_WORKSPACE must be 0 or 1" >&2; exit 1 ;; esac
 keyboard_i2c=${NIHOS_NATIVE_KEYBOARD_I2C:-0}
 case "$console_live" in 0) console_live=false ;; 1) console_live=true ;; *) echo "CONSOLE_LIVE must be 0 or 1" >&2; exit 1 ;; esac
 case "$keyboard_i2c" in 0) keyboard_i2c=false ;; 1) keyboard_i2c=true ;; *) echo "KEYBOARD_I2C must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$console_live" = true ] && [ "$console" != true ]; then echo "Live UI requires CONSOLE=1" >&2; exit 1; fi
+if [ "$xy_workspace" = true ] && [ "$console_live" != true ]; then echo "xy workspace requires CONSOLE_LIVE=1" >&2; exit 1; fi
+if [ "$xy_trace" = true ] && [ "$xy_workspace" != true ]; then echo "XY_TRACE requires XY_WORKSPACE=1" >&2; exit 1; fi
 if [ "$console_fault" = true ] && [ "$console_live" != true ]; then echo "Fault fixture requires CONSOLE_LIVE=1" >&2; exit 1; fi
 if [ "$keyboard_i2c" = true ] && [ "$console_live" != true ]; then echo "Keyboard requires CONSOLE_LIVE=1" >&2; exit 1; fi
 canvas_offscreen=${NIHOS_NATIVE_CANVAS_OFFSCREEN:-0}
@@ -476,6 +482,8 @@ printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
 {
     printf 'pub const normal_storage = %s;\n' "$normal_storage"
+    printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
+    printf 'pub const xy_trace = %s;\n' "$xy_trace"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"

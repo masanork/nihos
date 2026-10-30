@@ -196,6 +196,14 @@ pub fn Document(
             self.active_group_id = 0;
         }
 
+        /// Explicitly discard bounded undo history without changing the text,
+        /// cursor, annotations, preedit or document revision.
+        pub fn forgetUndoHistory(self: *Self) void {
+            self.active_group_id = 0;
+            self.undo_count = 0;
+            self.undo_bytes_used = 0;
+        }
+
         /// Move cursor by `delta` extended grapheme clusters (negative = left, positive = right).
         pub fn moveGraphemes(self: *Self, delta: i32) Error!u32 {
             var pos: usize = self.cursor;
