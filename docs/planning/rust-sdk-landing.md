@@ -14,7 +14,7 @@ display-owner physical check; they do not qualify a later integrated image.
 
 The isolated integration branch is `codex/rust-sdk-integration-20261030`, based
 on main `3d21dcb1b798c745c084cb9d1d74fddbd231747f`, and reconciled through
-`ef25b7abfd5bba6be83379c93f5c3f82be3c50ac`. It retains main's camera
+`980f522a3575c3922b956bf97f46a228b557070d`. It retains main's camera
 overlay, storage, PMP, graphics and xy changes. Review units, in dependency
 order, are:
 
@@ -63,6 +63,7 @@ sh probes/rust-app/run-emulator.sh
 sh probes/wamr-host/run.sh
 sh probes/wamr-native/run-emulator.sh
 sh probes/wamr-native/run-task-emulator.sh
+sh probes/wamr-native/run-session-emulator.sh
 ```
 
 The Wasm runner requires the bootloader from the first command, the matching
@@ -87,26 +88,23 @@ The new headless RV32 Wasm fixture also registers a real task on its pinned
 events, and reaps/unpins before restarting in the same boot. The restart uses
 synthetic input; the first round exercises external UART or timeout. See the
 [scheduled Wasm task report](../measurements/2026-10-31-wasm-scheduled-task.md).
-The common-session UI connection remains open.
+The common Session now calls bounded open/render/close requests on that real
+Wasm worker. Its frame lease stays alive until the worker acknowledges and the
+engine lease stays pinned through task reap. Normal input, timeout, early quit,
+cancel, metering trap, presenter refusal, partial open and same-boot restart
+pass on RV32. See the [frame bridge report](../measurements/2026-10-31-wasm-session-frame-bridge.md).
+The normal UI backend selector and physical presenter remain open.
 
-1. **Wasm task ownership in the normal OS.** Connect WAMR to the common session
-   through the newly verified OS-registered task. Its leased 64 KiB stack is now
-   accepted by the task runtime and interrupt-stack validator for the exact
-   task generation, without a private SP switch or masked guest execution.
-   Replace the monolithic headless fixture with bounded frame requests and
-   responses that return to the session presenter. Preserve bounded
-   calls, admitted rights, quit/trap/cancellation cleanup and camera/console
-   ownership. Then exercise `0 -> 1 -> 0 -> q` through both normal backends.
-   The headless task fixture establishes RV32 scheduling and recovery, but
-   does not establish normal UI ownership or physical scanout.
-   A long ROM-console no-input poll while CPU1's qualification tasks were already
-   running exposed a timer clock-refresh rejection during integration. The boot
-   fixture now keeps CPU1 before task admission until WAMR has stopped and freed
-   its lease; normal completion then runs both harts' scheduler/timer soak.
-   The failure matrix checks cleanup with CPU1 quiescent. It does not qualify
-   a blocking ROM polling loop alongside running application tasks. The new
-   task fixture instead polls at most one byte per bootstrap turn and wakes
-   the waiting child through task events; both hart timers keep advancing.
+1. **Normal UI backend selection and ownership.** The leased-stack registration
+   and bounded Session/worker frame bridge are now verified in the headless
+   normal RV32 emulator. Connect the Wasm backend to the normal shell's backend
+   selector and existing rotated presenter, preserving camera/console ownership,
+   input routing and repaint on stop. Exercise `0 -> 1 -> 0 -> q` through both
+   UI backends. Headless pixel checks do not qualify scanout/cache behavior.
+   The synchronous frame request yields to the scheduler, but does not service
+   the foreground network/camera loop while waiting; measure that latency
+   explicitly before allowing a camera/display device profile. Both hart timers
+   continue during the tested requests and cooperative shutdown.
 2. **Runtime decision and candidate profile.** Resolve the WAMR alignment
    adoption question for the exact RV32 configuration before permitting a
    Wasm device image. The AArch64 UBSan finding and narrow experimental patch
