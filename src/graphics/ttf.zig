@@ -977,7 +977,7 @@ pub fn TwoTierCache(
             resolved_key: u64 = 0, // caches (style_id, base_cp, ivs_cp) -> OutlineKey mapping
             advance_em: u16 = 0,
             point_count: u16 = 0,
-            points: [max_pts_per_outline]CurvePoint = undefined,
+            points: [max_pts_per_outline]CurvePoint,
         };
 
         pub const BitmapSlot = struct {
@@ -985,7 +985,7 @@ pub fn TwoTierCache(
             stamp: u32 = 0,
             key: BitmapKey = .{ .base_cp = 0, .px_size = 0 },
             metrics: RasterMetrics = .{ .width = 0, .height = 0, .left_px = 0, .top_px = 0, .x_advance_26_6 = 0, .y_advance_26_6 = 0 },
-            pixels: [max_bytes_per_bitmap]u8 = undefined,
+            pixels: [max_bytes_per_bitmap]u8,
         };
 
         pub const CachedGlyph = struct {
@@ -996,8 +996,20 @@ pub fn TwoTierCache(
         clock: u32 = 0,
         outline_misses: u32 = 0,
         bitmap_misses: u32 = 0,
-        outlines: [outline_slots]OutlineSlot = @splat(.{}),
-        bitmaps: [bitmap_slots]BitmapSlot = @splat(.{}),
+        outlines: [outline_slots]OutlineSlot = emptyOutlines(),
+        bitmaps: [bitmap_slots]BitmapSlot = emptyBitmaps(),
+
+        fn emptyOutlines() [outline_slots]OutlineSlot {
+            // SAFETY: invalid slots have zero point_count; decoding writes
+            // the populated prefix before setting valid and publishing it.
+            return @splat(.{ .points = undefined });
+        }
+
+        fn emptyBitmaps() [bitmap_slots]BitmapSlot {
+            // SAFETY: invalid slots expose no pixels; rasterization writes
+            // the bitmap before setting valid and publishing its metrics.
+            return @splat(.{ .pixels = undefined });
+        }
 
         inline fn makeResolvedTag(style_id: u4, base_cp: u21, ivs_cp: u21) u64 {
             return (@as(u64, style_id) << 42) | (@as(u64, ivs_cp) << 21) | @as(u64, base_cp);

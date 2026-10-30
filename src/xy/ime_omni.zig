@@ -63,9 +63,9 @@ pub const Candidate = struct {
 
 /// Bounded candidate list populated by `OmniProvider.queryFn` without heap allocation.
 pub const CandidateList = struct {
-    items: [16]Candidate = undefined,
+    items: [16]Candidate = @splat(.{ .insert_text = "" }),
     count: u8 = 0,
-    arena: [1024]u8 = undefined,
+    arena: [1024]u8 = @splat(0),
     arena_used: u16 = 0,
 
     pub fn clear(self: *CandidateList) void {
@@ -268,7 +268,7 @@ const romaji_table = [_]RomajiEntry{
 };
 
 pub const RomajiFeedResult = struct {
-    emitted_buf: [12]u8 = undefined,
+    emitted_buf: [12]u8 = @splat(0),
     emitted_len: u8 = 0,
 
     pub fn slice(self: *const RomajiFeedResult) []const u8 {
@@ -392,7 +392,7 @@ pub const MinibufferView = struct {
     prefix_kind: PrefixKind,
     selected_index: u8,
     candidate_count: u8,
-    line_buf: [256]u8 = undefined,
+    line_buf: [256]u8 = @splat(0),
     line_len: u16 = 0,
 
     pub fn line(self: *const MinibufferView) []const u8 {
@@ -411,12 +411,12 @@ pub const OmniIme = struct {
     romaji: RomajiAutomaton = .{},
 
     /// Stem / query buffer in `▽` phase (UTF-8, e.g. `"うつくし"`, `"?nihon"`, `"~葛"`, `"&木目心"`, `"(+ 1 2)"`).
-    reading_buf: [128]u8 = undefined,
+    reading_buf: [128]u8 = @splat(0),
     reading_len: u8 = 0,
 
     /// Okurigana consonant & kana buffer in `.okuri` phase (e.g. `okuri_consonant = 'i'`, `okuri_buf = "い"`).
     okuri_consonant: u8 = 0,
-    okuri_buf: [32]u8 = undefined,
+    okuri_buf: [32]u8 = @splat(0),
     okuri_len: u8 = 0,
 
     /// Sticky-shift (`;` or `/`) armed so the next key starts `▽` reading or prefix query.
@@ -954,9 +954,9 @@ fn isBalancedSexp(s: []const u8) bool {
 // ============================================================================
 
 const MockDb = struct {
-    last_learned_key: [64]u8 = undefined,
+    last_learned_key: [64]u8 = @splat(0),
     last_learned_key_len: usize = 0,
-    last_learned_stem: [64]u8 = undefined,
+    last_learned_stem: [64]u8 = @splat(0),
     last_learned_stem_len: usize = 0,
 
     fn query(

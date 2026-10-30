@@ -77,7 +77,7 @@ pub fn computeCursorRect(
         @as(i32, view.viewport_width_px) - @as(i32, view.margin_x_px) - @as(i32, body_px)
     else
         @as(i32, view.margin_x_px);
-    var cy: i32 = @as(i32, view.margin_y_px);
+    var cy: i32 = view.margin_y_px;
 
     for (placed_list) |g| {
         if (g.run != 0) continue; // Only track body run for cursor placement
