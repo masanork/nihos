@@ -3,7 +3,9 @@
 import hashlib, json, struct, sys
 from pathlib import Path
 
-elf_path, wasm_path, package_path, update_path, report_path = map(Path, sys.argv[1:])
+session = len(sys.argv) == 7 and sys.argv[6] == "--session"
+if len(sys.argv) != 6 and not session: raise SystemExit("expected five paths and optional --session")
+elf_path, wasm_path, package_path, update_path, report_path = map(Path, sys.argv[1:6])
 elf, wasm, package, update = (elf_path.read_bytes(), wasm_path.read_bytes(),
                               package_path.read_bytes(), update_path.read_bytes())
 if elf[:7] != b"\x7fELF\x01\x01\x01": raise SystemExit("expected ELF32 little endian")
@@ -76,12 +78,13 @@ if (len(update)!=len(package) or update[:8]!=b"NIHPKG01" or
 update_start=journals["package_update"][0]-ro[3]
 if robytes[update_start:update_start+len(update)]!=update:
     raise SystemExit("update package does not match linked candidate")
-for name in ("nih_wamr_run","wasm_runtime_load","wasm_runtime_call_wasm",
-             "nih_package_ed25519_admit","nih_package_boot_recover",
+entry = ("nih_wamr_session_run",) if session else ("nih_wamr_run", "nih_package_ed25519_admit")
+for name in entry + ("wasm_runtime_load","wasm_runtime_call_wasm","nih_package_boot_recover",
              "nih_app_probe_attach","nih_app_probe_detach","nih_app_fill_rect","nih_app_text"):
     address=symbols.get(name,(0,))[0]
     if not text[3]<=address<text[3]+text[5]: raise SystemExit("WAMR function outside Flash: "+name)
 report={"schema":1,"evidence":"emulator-fixture","elf_sha256":hashlib.sha256(elf).hexdigest(),
+        "execution":"common-session-rpc" if session else "monolithic-fixture",
         "load_source":"boot-journal","raw_wasm_symbols":0,
         "wasm_sha256":hashlib.sha256(wasm).hexdigest(),"wasm_bytes":len(wasm),
         "package_sha256":hashlib.sha256(package).hexdigest(),"package_bytes":len(package),

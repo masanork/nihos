@@ -601,3 +601,95 @@ cleanup:
     report->status = (uint32_t)result;
     return result;
 }
+
+#ifdef NIHOS_WAMR_SESSION
+/* All WAMR objects stay on the registered worker's stack across request waits. */
+struct session_command { uint32_t id, operation, selected, address, length; };
+struct session_report { uint32_t recovered, calls, denied, frames; };
+extern int32_t nih_wasm_session_receive(struct session_command *);
+extern void nih_wasm_session_complete(uint32_t, int32_t);
+
+int nih_wamr_session_run(void *runtime, void *linear, uint8_t *first,
+                         uint8_t *second, struct session_report *report) {
+    RuntimeInitArgs init = {0};
+    wasm_module_t module = NULL;
+    wasm_module_inst_t instance = NULL;
+    wasm_exec_env_t env = NULL;
+    struct import_owner owner = {0};
+    struct nih_boot_report admission = {0};
+    struct session_command command = {0};
+    char error[128] = {0};
+    bool initialized = false, arenas = false, reply = true;
+    int32_t status = -90;
+    memset(report, 0, sizeof(*report));
+    memset(live, 0, sizeof(live)); memset(peak, 0, sizeof(peak));
+    memset(blocks, 0, sizeof(blocks)); calls = 0; fail_rect = false;
+    if (nih_wasm_session_receive(&command) != 0) return -90;
+    if (command.operation != 1) goto stopped;
+    arenas = nih_wamr_arena_init(runtime, RUNTIME_BYTES, linear, LINEAR_BYTES) == 0;
+    if (!arenas) goto stopped;
+    if (nih_package_boot_recover(first, 4096, &admission) != 0 ||
+        !admission.wasm_length ||
+        admission.wasm_offset > admission.package_length ||
+        admission.wasm_length > admission.package_length - admission.wasm_offset ||
+        admission.package_length > 4096 || !(admission.services & SERVICE_GRAPHICS) ||
+        !admission.instruction_budget || admission.instruction_budget > INT32_MAX)
+        goto stopped;
+    memcpy(second, first + admission.wasm_offset, admission.wasm_length);
+    init.mem_alloc_type = Alloc_With_Allocator;
+    init.mem_alloc_option.allocator.malloc_func = (void *)allocate;
+    init.mem_alloc_option.allocator.realloc_func = (void *)resize;
+    init.mem_alloc_option.allocator.free_func = (void *)release;
+    initialized = wasm_runtime_full_init(&init);
+    if (!initialized || !wasm_runtime_register_natives("nihos", imports, 2)) goto stopped;
+    module = wasm_runtime_load(second, admission.wasm_length, error, sizeof(error));
+    if (!module) goto stopped;
+    if (command.selected == 1) { status = -41; goto stopped; } /* partial open */
+    instance = wasm_runtime_instantiate(module, 16384, 0, error, sizeof(error));
+    if (!instance) goto stopped;
+    env = wasm_runtime_create_exec_env(instance, 16384);
+    if (!env) goto stopped;
+    owner.instance = instance; owner.services = admission.services; owner.active = true;
+    wasm_runtime_set_custom_data(instance, &owner);
+    status = 0;
+    nih_wasm_session_complete(command.id, status);
+    reply = false;
+    while (nih_wasm_session_receive(&command) == 0) {
+        reply = true;
+        status = -90;
+        if (command.operation == 3) { status = 0; break; }
+        if (command.operation != 2 && command.operation != 4) {
+            nih_wasm_session_complete(command.id, status); reply = false; continue;
+        }
+        /* Refuse imports outside a frame before even mapping guest text. */
+        if (fill_rect(env, 0, 0, 1, 1, 0) != -5 ||
+            text(env, 0, 0, UINT32_MAX, 4, 0) != -5) break;
+        report->denied++;
+        uint8_t *pixels = (uint8_t *)(uintptr_t)command.address;
+        if (!pixels || command.length != 25600 || command.selected > 1 ||
+            nih_app_probe_attach(pixels, command.length, 160, 80, 320) != 0) break;
+        const char *name = command.operation == 4 ? "nih_probe_spin" : "nih_rust_app_frame";
+        wasm_function_inst_t function = wasm_runtime_lookup_function(instance, name);
+        uint32_t args[1] = {command.selected};
+        wasm_runtime_set_instruction_count_limit(env, (int32_t)admission.instruction_budget);
+        bool ok = function && owner_call(env, function, command.operation == 4 ? 0u : 1u, args);
+        status = ok ? (int32_t)args[0] : -48;
+        nih_app_probe_detach();
+        pixels = NULL; command.address = 0; command.length = 0;
+        if (nih_app_fill_rect(0, 0, 1, 1, 0) != -3) status = -90;
+        if (status == 0) report->frames++;
+        nih_wasm_session_complete(command.id, status);
+        reply = false;
+    }
+stopped:
+    /* Covers partial open as well as normal close and metering/presenter failure. */
+    destroy_cycle(&env, &instance, &module);
+    if (initialized) wasm_runtime_destroy();
+    if (arenas && !live[0] && !live[1] && !blocks[0] && !blocks[1] &&
+        nih_wamr_arena_deinit() == 0) report->recovered = 1;
+    report->calls = calls;
+    if (status == 0 && !report->recovered) status = -90;
+    if (reply) nih_wasm_session_complete(command.id, status);
+    return status;
+}
+#endif

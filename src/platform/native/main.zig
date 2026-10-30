@@ -1584,14 +1584,22 @@ fn normalReady() noreturn {
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
     if (normal_storage) normal_fs.begin(storageClient());
-    if (options.wasm_task and !@import("wamr_task.zig").start()) fail("Wasm task start");
+    if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").start()) fail("Wasm task start");
+    if (options.wasm_session_test) {
+        if (!@import("wasm_session_fixture.zig").start()) fail("Wasm session start");
+        print("NIHOS_WASM_SESSION_READY\n");
+    }
     if (options.rust_session_test) {
         if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
         print("NIHOS_RUST_SESSION_READY\n");
     }
     var idle_checked = false;
     while (true) {
-        if (options.wasm_task and !@import("wamr_task.zig").service(&logger)) {
+        if (options.wasm_session_test and !@import("wasm_session_fixture.zig").service(&logger)) {
+            print("NIHOS_WASM_SESSION_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
+        if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").service(&logger)) {
             print("NIHOS_WASM_TASK_DONE\n");
             while (true) tasks.idleOnce(0);
         }
