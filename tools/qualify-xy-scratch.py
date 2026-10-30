@@ -108,13 +108,14 @@ def main():
                     value = 0x811c9dc5
                     for byte in data: value = ((value ^ byte) * 0x01000193) & 0xffffffff
                     return value
-                def expect(label, text, cursor, mode=0, start=0):
+                def expect(label, text, cursor, mode=0, start=0, buffer_kind=0, buffer_hash=None):
                     def matches(data):
                         row = record(data[start:], b'NIHOS_NATIVE_XY_STATE')
-                        return row if row and row['bytes'] == len(text) and row['cursor'] == cursor and row['fnv'] == fnv(text) and row['mode'] == mode and row['frames'] > 0 else None
+                        return row if row and row['bytes'] == len(text) and row['cursor'] == cursor and row['fnv'] == fnv(text) and row['mode'] == mode and row['frames'] > 0 and row['buffer_kind'] == buffer_kind and (not buffer_kind or row['buffer_bytes'] > 0) and (buffer_hash is None or row['buffer_hash'] == buffer_hash) else None
                     row = wait(matches)
                     receipt['observations'].append({'name': label, **row}); save()
                     print(label + ': document and cursor matched', flush=True)
+                    return row
                 def boot(label):
                     raw.clear(); port.reset_input_buffer(); port.dtr = False
                     HardReset(port, uses_usb=True)()
@@ -122,10 +123,10 @@ def main():
                     if raw.count(b'ESP-ROM:esp32p4') != 1 or b'NIHOS_NATIVE_SESSION_READY' in raw:
                         raise RuntimeError('unexpected boot or launcher handoff')
                     expect(label, b'', 0)
-                def send(label, data, text, cursor, mode=0):
+                def send(label, data, text, cursor, mode=0, buffer_kind=0, buffer_hash=None):
                     start = len(raw)
                     port.write(data); port.flush()
-                    expect(label, text, cursor, mode, start)
+                    return expect(label, text, cursor, mode, start, buffer_kind, buffer_hash)
                 boot('xy-boot')
                 original = b'ab\ncd'
                 send('serial-crlf', b'ab\r\ncd', original, 5)
@@ -139,6 +140,14 @@ def main():
                 send('help', b'help\r', original, 4, 2)
                 send('help-return', b'\x1b', original, 4)
                 send('literal-colon', b':storage', b'ab\nc:storaged', 12)
+                unchanged = b'ab\nc:storaged'
+                for kind, command in enumerate((b'log', b'mem', b'tasks'), 1):
+                    name = command.decode()
+                    send(name + '-minibuffer', b'\x1b', unchanged, 12, 1)
+                    row = send(name + '-open', command + b'\r', unchanged, 12, 3, kind)
+                    send(name + '-readonly', b'X\x7f\x1a\x04\r', unchanged, 12, 3, kind, row['buffer_hash'])
+                    send(name + '-refresh', b'\x0c', unchanged, 12, 3, kind)
+                    send(name + '-return', b'\x1b', unchanged, 12)
                 boot('warm-reset-empty-ram')
             usb.tool(port, out / 'verify-after.log', 'verify_flash', paths)
             receipt['passed'] = True; save()

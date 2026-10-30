@@ -38,6 +38,8 @@ macroによる拡張、実機のScheme VM、永続 `sqld` とU-mode隔離の接�
 意味ではない。ネイティブの通常起動にはRAM上の `*scratch*` を接続した。
 [起動・編集・実機確認の範囲](../measurements/2026-10-31-xy-ram-startup.md)を参照。
 初期表示は既存のASCIIラスタを使い、日本語字形・保存・Scheme VMの接続は残る。
+`log` / `mem` / `tasks` は読み取り専用のシステムバッファとして開き、
+本文・カーソル・undoを保って戻れる。[実装と検証範囲](../measurements/2026-10-31-xy-system-buffers.md)を参照。
 
 実装の直近の順序は、(1) 共通Documentを使うRAM上の `*scratch*` と入力・描画を
 通常起動へ接続、(2) ログ・メモリ・タスク観察をバッファとして公開、(3) 本格的な

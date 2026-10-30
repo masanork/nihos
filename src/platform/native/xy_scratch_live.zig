@@ -16,6 +16,24 @@ pub fn Live(comptime section: ?[]const u8) type {
             return self.render(frame);
         }
         pub fn render(self: *Self, frame: []u8) bool {
+            // Deterministic observation fixtures; these are not native counters.
+            switch (self.model.takeSystemRequest()) {
+                .none => {},
+                .log => {
+                    self.model.snapshot.write("Emulator fixture / retained boot log\n");
+                    for (0..60) |_| self.model.snapshot.write("retained observation\n");
+                    self.model.snapshot.write("END OF FIXTURE LOG");
+                    self.model.snapshot.dropped = 17;
+                },
+                .memory => {
+                    self.model.snapshot.write("Emulator fixture / CPU0 owner only\n");
+                    self.model.snapshot.usage("SRAM boot arena", @as(?struct { capacity: u32, free: u32 }, .{ .capacity = 65536, .free = 49152 }));
+                },
+                .tasks => {
+                    self.model.snapshot.write("Emulator fixture / per-field counters\n");
+                    self.model.snapshot.counters(0, .{ .ticks = 42, .switches = 7, .calls = 3 });
+                },
+            }
             self.model.render(&self.text);
             return self.renderer.submit(frame, 1440, &self.text, .neutral);
         }

@@ -68,7 +68,7 @@ DEVICE_FUNCTIONS = {
 # These entry points are CPU0 foreground dispatch, never interrupt handlers.
 # These run with the loader's Flash mapping available; IRQ and cache-off
 # control remains in SRAM/ROM. The permitted entry points are explicit.
-CAMERA_FOREGROUND_FUNCTIONS = {'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
+CAMERA_FOREGROUND_FUNCTIONS = {'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem', 'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
     'nih_csi_stream_begin', 'nih_csi_stream_stop', 'nih_csi_stream_state', 'nih_csi_stream_borrow',
     'nih_csi_stream_release', 'nih_csi_stream_end', 'nih_csi_stream_abort'}
 
