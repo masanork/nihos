@@ -70,7 +70,8 @@ DEVICE_FUNCTIONS = {
 # control remains in SRAM/ROM. The permitted entry points are explicit.
 CAMERA_FOREGROUND_FUNCTIONS = {'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
     'nih_csi_stream_begin', 'nih_csi_stream_stop', 'nih_csi_stream_state', 'nih_csi_stream_borrow',
-    'nih_csi_stream_release', 'nih_csi_stream_end', 'nih_csi_stream_abort'}
+    'nih_csi_stream_release', 'nih_csi_stream_end', 'nih_csi_stream_abort',
+    'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail'}
 
 def device_function(name):
     return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:poll|sessionKey)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None

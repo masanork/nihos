@@ -239,10 +239,14 @@ const FirstFrameHardware = struct {
             for (0..if (options.camera_diagnostics) @as(usize, 16) else 128) |_| {
                 if (csi_workspace.readChunk(self.frame_identity, self.retained_chunk) == null) return .failed;
                 self.retained_chunk += 1;
-                if (self.retained_chunk == 900) break;
+                if (self.retained_chunk == csi_workspace.frame_bytes / 1024) break;
                 if (!options.camera_diagnostics and cameraBudgetExpired(started)) break;
             }
-            return if (self.retained_chunk == 900) self.prepareSecond() else .pending;
+            return if (self.retained_chunk == csi_workspace.frame_bytes / 1024) self.prepareSecond() else .pending;
+        }
+        if (options.camera_jpeg and !self.frame_started and csi_workspace.phase() == .ready_dma) {
+            self.frame_started = true;
+            return .done;
         }
         if (!self.frame_started) {
             self.frame_started = true;
@@ -308,7 +312,7 @@ const FirstFrameHardware = struct {
             self.reason = 0x401;
             return false;
         };
-        const code = nih_csi_dma_configure(address, address, 921600);
+        const code = nih_csi_dma_configure(address, address, csi_workspace.frame_bytes);
         if (code != 0) self.reason = @bitCast(code);
         if (code == 0 and self.continuous) {
             const second = csi_workspace.streamSecondAddress() orelse return false;
@@ -1108,10 +1112,10 @@ fn startCameraSnapshot() bool {
     const now = clock.counter() orelse return false;
     if (!prepareCaptureScratch()) return false;
     if (!first_frame_probe.start(now, 120_000_000)) return false;
-    sample_preview_requested = true;
-    first_frame_hardware.display_preview = true;
+    sample_preview_requested = !options.camera_jpeg;
+    first_frame_hardware.display_preview = !options.camera_jpeg;
     first_frame_hardware.display_tone = true;
-    first_frame_hardware.keep_configured = !options.camera_diagnostics;
+    first_frame_hardware.keep_configured = !options.camera_diagnostics and !options.camera_jpeg;
     return true;
 }
 pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
@@ -1120,7 +1124,7 @@ pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".fl
     return switch (kind) {
         30 => blk: {
             const now = clock.counter() orelse break :blk false;
-            if (options.camera_diagnostics or stream_requested or !requestDevice(26)) break :blk false;
+            if (options.camera_jpeg or options.camera_diagnostics or stream_requested or !requestDevice(26)) break :blk false;
             stream_requested = true;
             stream_stopping = false;
             stream_retired = false;
@@ -1335,4 +1339,14 @@ pub const StabilityDetail = extern struct { state: u32, changed: u32, chunks: u3
 pub fn cameraStabilityDetail() StabilityDetail {
     if (!scan_completed_frame) return .{ .state = 0, .changed = 0, .chunks = 900, .sha_match = 0, .injected = 0, .zeroed = 0, .nonzero = 0 };
     return .{ .state = @backingInt(capture_scratch.stability.phase), .changed = capture_scratch.stability.changed, .chunks = 900, .sha_match = capture_scratch.stability.sha_match, .injected = @intFromBool(capture_scratch.stability.injected), .zeroed = capture_scratch.stability.zeroed, .nonzero = capture_scratch.stability.nonzero };
+}
+
+/// JPEG fixture only: full stopped RGB565 frame; no pointer escapes to applications.
+pub fn cameraJpegFrame() ?u32 {
+    if (!options.camera_jpeg or first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete or first_frame_hardware.dma_uncertain or first_frame_hardware.domain_fault) return null;
+    return csi_workspace.address();
+}
+
+pub fn cameraJpegClock() ?u64 {
+    return if (active) clock.counter() else null;
 }

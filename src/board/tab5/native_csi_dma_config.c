@@ -11,7 +11,11 @@
 #include "soc/reg_base.h"
 
 #define CSI_CHANNEL 1u
+#if NIH_NATIVE_CAMERA_JPEG
+#define FRAME_BYTES (1280u * 720u * 2u)
+#else
 #define FRAME_BYTES (1280u * 720u)
+#endif
 #define CACHE_ALIGN 64u
 _Static_assert(FRAME_BYTES % 64u == 0, "whole cache lines");
 

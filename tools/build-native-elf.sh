@@ -11,6 +11,8 @@ esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 camera_id=${NIHOS_NATIVE_CAMERA_ID:-0}
 case "$camera_id" in 0) camera_id=false ;; 1) camera_id=true ;; *) echo "CAMERA_ID must be 0 or 1" >&2; exit 1 ;; esac
+camera_jpeg=${NIHOS_NATIVE_CAMERA_JPEG:-0}
+case "$camera_jpeg" in 0) camera_jpeg=false; camera_jpeg_cpp=0 ;; 1) camera_jpeg=true; camera_jpeg_cpp=1 ;; *) echo "CAMERA_JPEG must be 0 or 1" >&2; exit 1 ;; esac
 camera_id_cpp=0
 if [ "$camera_id" = true ]; then camera_id_cpp=1; fi
 camera_diagnostics=${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-$camera_id_cpp}
@@ -466,7 +468,9 @@ if [ "$pmp_probe" = true ]; then native_boot_dir="$native_boot_dir-pmp-probe"; f
 if [ "$camera_id" = true ]; then
     if [ "$camera_diagnostics" = true ]; then native_boot_dir="$native_boot_dir-camera-id"; else native_boot_dir="$native_boot_dir-camera"; fi
 fi
+if [ "$camera_jpeg" = true ]; then native_boot_dir="$native_boot_dir-jpeg"; fi
 if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camera-ui-fixture"; fi
+if [ "$camera_jpeg" = true ] && { [ "$camera_id" != true ] || [ "$camera_diagnostics" = true ]; }; then echo "CAMERA_JPEG requires normal CAMERA_ID" >&2; exit 1; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
@@ -483,6 +487,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     if [ "$profile" = emulator ]; then echo 'pub const emulator = true;'; else echo 'pub const emulator = false;'; fi
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
+    printf 'pub const camera_jpeg = %s;\n' "$camera_jpeg"
     printf 'pub const camera_id = %s;\n' "$camera_id"
     printf 'pub const camera_diagnostics = %s;\n' "$camera_diagnostics"
     printf 'pub const camera_ui_fixture = %s;\n' "$camera_ui_fixture"
@@ -594,9 +599,11 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
             -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
             -o "$build_dir/camera_dma_test.o" "$repo_root/src/board/tab5/native_camera_dma_test.c"
         set -- "$@" "$build_dir/camera_dma_test.o"
-        for csi_file in native_csi_dma_config native_csi_dma_run native_csi_inflight_adapter native_camera_xclk native_camera_isp; do
+        csi_files="native_csi_dma_config native_csi_dma_run native_csi_inflight_adapter native_camera_xclk native_camera_isp"
+        if [ "$camera_jpeg" = true ]; then csi_files="$csi_files native_jpeg"; fi
+        for csi_file in $csi_files; do
             "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-                -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+                -DNIH_NATIVE_CAMERA_JPEG="$camera_jpeg_cpp" -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
                 -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
                 -I "$native_boot_dir/loader/config" \
                 -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
