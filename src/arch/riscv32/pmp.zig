@@ -4,17 +4,26 @@
 //! U-mode and does not apply to M-mode, so kernel tasks keep running with
 //! `mstatus.MPP = Machine` and an empty plan. The two TOR grants are the
 //! same shape as an instruction/data split: code is readable and executable,
-//! the private arena is readable and writable, and every other address the
-//! writer can revoke is denied. Entries stay unlocked. A locked table would
-//! give U-mode the same permissions on those regions and could not be
-//! replaced for the next task.
+//! the private arena is readable and writable. Entries stay unlocked. The L
+//! bit locks an entry and applies its R/W/X bits to M-mode as well. U-mode
+//! still receives those bits, so `RW|L` is a peripheral read-write grant.
 //!
-//! The ESP-IDF v5.4.4 bootloader locks entries 0, 1, 2, and 15 (CPU
-//! subsystem, CPU peripherals, mask ROM, and HP peripherals) because those
-//! `RW`/`RX` constants include `PMP_L` even in a bootloader build. Writes to
-//! those addresses are ignored. The grants therefore occupy entries 4–7,
-//! which the bootloader leaves unlocked, and the writer clears the unlocked
-//! whole-SRAM and whole-flash windows that used to sit there.
+//! The ESP-IDF v5.4.4 bootloader programs entries 0, 1, 2, and 15 with `PMP_L`
+//! in the `RW`/`RX` constants. Entries 0 and 1 have the highest priority, so
+//! the app cannot override them. The port bootloader programs those two as
+//! unlocked NAPOT regions with no R, W, or X. U-mode matches them and is
+//! denied. M-mode ignores them because L is clear. OFF was not that denial:
+//! a U-mode load of CLIC at `0x20800000` reached the bus and the hart stopped.
+//! Entry 2 stays `NAPOT|RX|L` on the mask ROM (`0x4FC00000..0x4FC20000`);
+//! U-mode can still execute that ROM. Entry 15 is left OFF. Entry 8 is an
+//! unlocked NAPOT denial of the HP peripheral window. It matches before a
+//! leftover locked entry 15, and M-mode ignores it because L is clear.
+//!
+//! The grants occupy entries 4–7, which the stock bootloader leaves unlocked.
+//! Installing a plan clears the unlocked whole-SRAM, whole-flash, and LP
+//! windows. `grant` writes entries 4–8. `portEntries` models the bootloader
+//! words for entries 0, 1, and 2. A check of those words is the host model.
+//! It does not show that ESP-EMU or the Tab5 raises the fault.
 //!
 //! Granularity matches ESP-IDF v5.4.4 `SOC_CPU_PMP_REGION_GRANULARITY`.
 //! This does not program the DMA permission controller.
@@ -30,11 +39,14 @@ pub const user_mpp: u32 = 0;
 /// MPIE set, MPP = User. `mret` enables interrupts in U-mode.
 pub const user_mstatus: u32 = 0x80;
 pub const fault_exit: i32 = -70;
-/// Hardware probe cases: allowed return, then the five contained faults.
-pub const probe_cases: u32 = 6;
+/// Hardware probe cases. Case 0 returns after an allowed ECALL. Cases 1–5 are
+/// the contained faults. Cases 6–8 load `0x50000000`, the cache block at
+/// `0x3FF10000`, and CLIC at `0x20800000`. A completed load returns 10, 11,
+/// or 12 and is rejected.
+pub const probe_cases: u32 = 9;
 
-/// Case 0 must exit 1 after an allowed ECALL. Cases 1–5 must exit by the
-/// contained fault. Host checks do not show that the silicon raises them.
+/// Case 0 must exit 1 after an allowed ECALL. Every other case must exit by
+/// the contained fault. Host checks do not show that the silicon raises them.
 pub fn probeResultAccepted(case_id: u32, exit_code: i32) bool {
     if (case_id >= probe_cases) return false;
     if (case_id == 0) return exit_code == 1;
@@ -75,9 +87,54 @@ export var nih_user_sp_bad: [2]u32 linksection(state_section) = @splat(0);
 export var nih_user_fault_frames: [2][frame_bytes]u8 align(16) linksection(state_section) = @splat(@splat(0));
 
 const tor = 1 << 3;
+const napot = 3 << 3;
 const read_bit = 1 << 0;
 const write_bit = 1 << 1;
 const execute_bit = 1 << 2;
+const lock_bit = 1 << 7;
+/// HP APB window, `SOC_PERIPHERAL_LOW .. SOC_PERIPHERAL_HIGH`.
+const peripheral_lo: u32 = 0x5000_0000;
+const peripheral_bytes: u32 = 0x10_0000;
+
+fn napotAddress(start: u32, size: u32) u32 {
+    return (start | ((size - 1) >> 1)) >> 2;
+}
+
+fn putNapot(words: *Words, index: u32, start: u32, size: u32, cfg: u32) void {
+    words.addr[index] = napotAddress(start, size);
+    const shift: u5 = @intCast((index % 4) * 8);
+    words.cfg[index / 4] |= cfg << shift;
+}
+
+/// Bootloader entries 0, 1, and 2. Entries 0 and 1 match with no R, W, X, or L.
+/// Entry 2 is locked mask-ROM RX. Entry 15 stays OFF, so it is absent here.
+fn portEntries() Words {
+    var words = Words{};
+    putNapot(&words, 0, 0x2000_0000, 0x1000_0000, napot);
+    putNapot(&words, 1, 0x3ff0_0000, 0x0002_0000, napot);
+    putNapot(&words, 2, 0x4fc0_0000, 0x0002_0000, napot | lock_bit | read_bit | execute_bit);
+    return words;
+}
+
+/// IDF bootloader entries 0, 1, 2, and 15. `RW|L` still grants R and W to U-mode.
+fn stockLockedEntries() Words {
+    var words = Words{};
+    const rw_lock = napot | lock_bit | read_bit | write_bit;
+    putNapot(&words, 0, 0x2000_0000, 0x1000_0000, rw_lock);
+    putNapot(&words, 1, 0x3ff0_0000, 0x0002_0000, rw_lock);
+    putNapot(&words, 2, 0x4fc0_0000, 0x0002_0000, napot | lock_bit | read_bit | execute_bit);
+    putNapot(&words, 15, peripheral_lo, peripheral_bytes, rw_lock);
+    return words;
+}
+
+fn overlayGrant(boot: Words, plan: Words) Words {
+    var words = boot;
+    var index: u32 = 4;
+    while (index <= 8) : (index += 1) words.addr[index] = plan.addr[index];
+    words.cfg[1] = plan.cfg[1];
+    words.cfg[2] |= plan.cfg[2];
+    return words;
+}
 
 fn aligned(address: u32) bool {
     return address & (granularity - 1) == 0;
@@ -87,8 +144,9 @@ fn separated(code_lo: u32, code_hi: u32, data_lo: u32, data_hi: u32) bool {
     return code_hi <= data_lo or data_hi <= code_lo;
 }
 
-/// Two TOR grants on entries 4–7. Entries 4 and 6 stay OFF and hold the
-/// lower bounds. Code has no write bit. Data has no execute bit. No lock bit.
+/// TOR grants on entries 4–7 and an unlocked NAPOT denial on entry 8.
+/// Entries 4 and 6 stay OFF and hold the lower bounds. Code has no write bit.
+/// Data has no execute bit. Entry 8 has no R, W, X, or L bit.
 pub noinline fn grant(code_lo: u32, code_hi: u32, data_lo: u32, data_hi: u32) linksection(text_section) ?Words {
     if (!(code_lo < code_hi and data_lo < data_hi)) return null;
     if (!(aligned(code_lo) and aligned(code_hi) and aligned(data_lo) and aligned(data_hi))) return null;
@@ -101,6 +159,8 @@ pub noinline fn grant(code_lo: u32, code_hi: u32, data_lo: u32, data_hi: u32) li
     words.addr[6] = data_lo >> 2;
     words.addr[7] = data_hi >> 2;
     words.cfg[1] |= (tor | read_bit | write_bit) << 24;
+    words.addr[8] = napotAddress(peripheral_lo, peripheral_bytes);
+    words.cfg[2] |= napot;
     return words;
 }
 
@@ -128,14 +188,36 @@ fn entryCfg(words: Words, index: u32) u32 {
     return (words.cfg[index / 4] >> shift) & 0xff;
 }
 
-/// U-mode result for one byte address. No match is a denial.
+fn napotContains(address: u32, encoded: u32) bool {
+    const trailing_ones: u32 = @ctz(~encoded);
+    // 2^(trailing ones + 3) bytes. 29 or more trailing ones covers 4 GiB.
+    if (trailing_ones >= 29) return true;
+    const size: u32 = @as(u32, 1) << @intCast(trailing_ones + 3);
+    const mask_bits = trailing_ones + 1;
+    const addr_mask: u32 = (@as(u32, 1) << @intCast(mask_bits)) - 1;
+    const base = (encoded & ~addr_mask) << 2;
+    const end = base +% size;
+    if (end <= base) return address >= base;
+    return address >= base and address < end;
+}
+
+/// U-mode result for the supplied words. No match is a denial. TOR and NAPOT
+/// are applied in priority order. `grant` leaves entries 0, 1, and 2 empty.
+/// `portEntries` carries the bootloader encoding for those three.
 pub fn permits(words: Words, address: u32, access: Access) bool {
     for (0..entry_count) |index| {
         const cfg = entryCfg(words, @intCast(index));
-        if (cfg >> 3 & 3 != 1) continue;
-        const hi = words.addr[index] << 2;
-        const lo = if (index == 0) 0 else words.addr[index - 1] << 2;
-        if (address < lo or address >= hi) continue;
+        const mode = cfg >> 3 & 3;
+        const matched = switch (mode) {
+            1 => blk: {
+                const hi = words.addr[index] << 2;
+                const lo = if (index == 0) 0 else words.addr[index - 1] << 2;
+                break :blk address >= lo and address < hi;
+            },
+            3 => napotContains(address, words.addr[index]),
+            else => false,
+        };
+        if (!matched) continue;
         const bit: u32 = switch (access) {
             .read => read_bit,
             .write => write_bit,
@@ -196,11 +278,13 @@ pub fn takeRejectedSp(hart: u32) bool {
 noinline fn writeWords(words: Words) linksection(text_section) void {
     switch (comptime @import("builtin").cpu.arch) {
         .riscv32 => {
-            // Entries 0–2 and 15 are locked by the bootloader. pmpcfg0 and
-            // pmpcfg3 share words with those entries, so this writer never
-            // stores them. Clearing pmpcfg1 and pmpcfg2 drops the unlocked
-            // whole-SRAM, whole-flash, and LP windows before the new bounds
-            // are published. addr4 is entry 4, the first address this writer owns.
+            // Entry 2 is locked mask-ROM RX and shares pmpcfg0 with entries 0
+            // and 1, so this writer never stores pmpcfg0. The bootloader owns
+            // entries 0 and 1 (unlocked NAPOT, no R/W/X) and leaves entry 15
+            // OFF. Entry 8 is 16 bytes after addr4: an unlocked NAPOT denial
+            // of the HP peripherals, which matches before a leftover locked
+            // entry 15. Clearing pmpcfg1 and pmpcfg2 drops the unlocked
+            // whole-SRAM, whole-flash, and LP windows first.
             const addr4: *const u32 = &words.addr[4];
             const cfg1: *const u32 = &words.cfg[1];
             // SAFETY: the assembly block writes this scratch before every read.
@@ -216,6 +300,8 @@ noinline fn writeWords(words: Words) linksection(text_section) void {
                 \\csrw pmpaddr6, %[word]
                 \\lw %[word], 12(%[addr])
                 \\csrw pmpaddr7, %[word]
+                \\lw %[word], 16(%[addr])
+                \\csrw pmpaddr8, %[word]
                 \\lw %[word], 0(%[cfg])
                 \\csrw pmpcfg1, %[word]
                 \\lw %[word], 4(%[cfg])
@@ -261,9 +347,13 @@ test "two TOR grants are write-exclusive and execute-exclusive" {
     try std.testing.expectEqual(@as(u32, 0x2000 >> 2), words.addr[6]);
     try std.testing.expectEqual(@as(u32, 0x2800 >> 2), words.addr[7]);
     try std.testing.expect(words.addr[0] == 0 and words.addr[1] == 0 and words.addr[2] == 0 and words.addr[3] == 0);
-    try std.testing.expect(words.cfg[0] == 0 and words.cfg[2] == 0 and words.cfg[3] == 0);
+    try std.testing.expectEqual(@as(u32, 0x1401_ffff), words.addr[8]);
+    try std.testing.expect(words.addr[9] == 0 and words.addr[15] == 0);
+    try std.testing.expect(words.cfg[0] == 0 and words.cfg[3] == 0);
     try std.testing.expectEqual(@as(u32, 0x0B000D00), words.cfg[1]);
+    try std.testing.expectEqual(@as(u32, 0x18), words.cfg[2]);
     try std.testing.expect(words.cfg[1] & 0x80808080 == 0);
+    try std.testing.expect(words.cfg[2] & 0x80 == 0);
     try std.testing.expect(permits(words, 0x1000, .read));
     try std.testing.expect(permits(words, 0x11ff, .execute));
     try std.testing.expect(!permits(words, 0x1000, .write));
@@ -275,6 +365,70 @@ test "two TOR grants are write-exclusive and execute-exclusive" {
     try std.testing.expect(!permits(words, 0x0000, .read));
     try std.testing.expect(!permits(words, 0x1800, .execute));
     try std.testing.expect(!permits(words, 0x3000, .write));
+    try std.testing.expect(!permits(words, peripheral_lo, .read));
+    try std.testing.expect(!permits(words, 0x500f_ffff, .write));
+    try std.testing.expect(!permits(words, 0x5008_0000, .execute));
+}
+
+test "NAPOT matching follows the encoded power-of-two window" {
+    var words = Words{};
+    words.addr[8] = 0x1401_ffff;
+    words.cfg[2] = read_bit | napot;
+    try std.testing.expect(permits(words, 0x5000_0000, .read));
+    try std.testing.expect(permits(words, 0x500f_fffc, .read));
+    try std.testing.expect(!permits(words, 0x5000_0000, .write));
+    try std.testing.expect(!permits(words, 0x4fff_ffff, .read));
+    try std.testing.expect(!permits(words, 0x5010_0000, .read));
+}
+
+test "entries 0, 1, and 2 are outside the words this writer programs" {
+    // grant() leaves these addresses unmatched. The port bootloader entries
+    // are covered by the following test.
+    const words = grant(0x1000, 0x1200, 0x2000, 0x2800).?;
+    try std.testing.expect(words.addr[0] == 0 and words.addr[1] == 0 and words.cfg[0] == 0);
+    try std.testing.expect(!permits(words, 0x2000_0000, .read));
+    try std.testing.expect(!permits(words, 0x3ff0_0000, .write));
+    try std.testing.expect(!permits(words, 0x4fc0_0000, .execute));
+}
+
+test "locked peripheral RW grants U-mode and the port entries deny those loads" {
+    const stock = stockLockedEntries();
+    try std.testing.expectEqual(@as(u32, 0x009d9b9b), stock.cfg[0]);
+    try std.testing.expectEqual(@as(u32, 0x9b000000), stock.cfg[3]);
+    try std.testing.expect(permits(stock, 0x2080_0000, .read));
+    try std.testing.expect(permits(stock, 0x2080_0000, .write));
+    try std.testing.expect(permits(stock, 0x3ff1_0000, .read));
+    try std.testing.expect(permits(stock, 0x3ff1_0000, .write));
+    try std.testing.expect(permits(stock, 0x5000_0000, .read));
+    try std.testing.expect(permits(stock, 0x5000_0000, .write));
+    try std.testing.expect(permits(stock, 0x4fc0_0000, .execute));
+    try std.testing.expect(!permits(stock, 0x4fc0_0000, .write));
+
+    const plan = grant(0x1000, 0x1200, 0x2000, 0x2800).?;
+    const port = overlayGrant(portEntries(), plan);
+    try std.testing.expectEqual(@as(u32, 0x009d1818), port.cfg[0]);
+    try std.testing.expectEqual(@as(u32, 0x09ff_ffff), port.addr[0]);
+    try std.testing.expectEqual(@as(u32, 0x0ffc_3fff), port.addr[1]);
+    try std.testing.expectEqual(@as(u32, 0x13f0_3fff), port.addr[2]);
+    try std.testing.expect(!permits(port, 0x2080_0000, .read));
+    try std.testing.expect(!permits(port, 0x2080_0000, .write));
+    try std.testing.expect(!permits(port, 0x2000_0000, .read));
+    try std.testing.expect(!permits(port, 0x3ff1_0000, .read));
+    try std.testing.expect(!permits(port, 0x3ff1_0000, .write));
+    try std.testing.expect(!permits(port, 0x3ff0_0000, .read));
+    try std.testing.expect(!permits(port, 0x5000_0000, .read));
+    try std.testing.expect(!permits(port, 0x500f_ffff, .write));
+    try std.testing.expect(permits(port, 0x4fc0_0000, .execute));
+    try std.testing.expect(permits(port, 0x4fc1_fffc, .read));
+    try std.testing.expect(!permits(port, 0x4fc0_0000, .write));
+    try std.testing.expect(permits(port, 0x1000, .execute));
+    try std.testing.expect(!permits(port, 0x1000, .write));
+    try std.testing.expect(permits(port, 0x2000, .write));
+    try std.testing.expect(!permits(port, 0x2000, .execute));
+    // Entry 8 is lower-numbered than a leftover locked entry 15, so it wins.
+    var leftover = port;
+    putNapot(&leftover, 15, peripheral_lo, peripheral_bytes, napot | lock_bit | read_bit | write_bit);
+    try std.testing.expect(!permits(leftover, 0x5000_0000, .read));
 }
 
 test "grant rejects empty, unaligned, and overlapping ranges" {
