@@ -43,6 +43,7 @@ pub fn build(b: *std.Build) void {
     }));
 
     const test_step = b.step("test", "Run host-side nihOS unit tests");
+    test_step.dependOn(appTests(b, target, optimize));
     test_step.dependOn(&run_module_tests.step);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = protected_fault })).step);
     // Ownership contracts only: no camera hardware or video driver is wired here.
@@ -117,4 +118,29 @@ pub fn build(b: *std.Build) void {
     xy_render_adapter_module.addImport("surface", surface_module);
     xy_render_adapter_module.addImport("viewport_layout", viewport_layout_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_render_adapter_module })).step);
+}
+
+fn appTestModule(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, path: []const u8, imports: []const std.Build.Module.Import) *std.Build.Module {
+    return b.createModule(.{ .root_source_file = b.path(path), .target = target, .optimize = optimize, .imports = imports });
+}
+
+fn appTests(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step {
+    const step = b.step("test-app", "Run experimental app admission and journal host tests");
+    const policy = appTestModule(b, target, optimize, "src/app/module_policy.zig", &.{});
+    const package = appTestModule(b, target, optimize, "src/app/package.zig", &.{.{ .name = "app_policy", .module = policy }});
+    const install = appTestModule(b, target, optimize, "src/app/package_install.zig", &.{ .{ .name = "app_package", .module = package }, .{ .name = "app_policy", .module = policy } });
+    const store = appTestModule(b, target, optimize, "src/app/trust_snapshot_store.zig", &.{});
+    const snapshot = appTestModule(b, target, optimize, "src/app/trust_snapshot.zig", &.{.{ .name = "app_package", .module = package }});
+    const ed25519 = appTestModule(b, target, optimize, "src/app/package_ed25519.zig", &.{.{ .name = "app_package", .module = package }});
+    const roots = appTestModule(b, target, optimize, "src/app/trust_snapshot_ed25519.zig", &.{ .{ .name = "app_package", .module = package }, .{ .name = "package_ed25519", .module = ed25519 }, .{ .name = "trust_snapshot", .module = snapshot }, .{ .name = "trust_snapshot_store", .module = store } });
+    const imports: []const std.Build.Module.Import = &.{ .{ .name = "app_install", .module = install }, .{ .name = "app_package", .module = package }, .{ .name = "app_policy", .module = policy }, .{ .name = "package_ed25519", .module = ed25519 }, .{ .name = "trust_snapshot", .module = snapshot }, .{ .name = "trust_snapshot_ed25519", .module = roots }, .{ .name = "trust_snapshot_store", .module = store } };
+    const boot = appTestModule(b, target, optimize, "src/app/boot_admission.zig", imports);
+    const boot_test = appTestModule(b, target, optimize, "probes/wamr-native/boot-admission-test.zig", imports);
+    boot_test.addImport("app_boot", boot);
+    const file_test = appTestModule(b, target, optimize, "probes/wamr-native/file-storage-test.zig", imports);
+    const chain_test = appTestModule(b, target, optimize, "probes/wamr-native/trust-snapshot-chain-test.zig", imports);
+    for ([_]*std.Build.Module{ policy, package, install, store, snapshot, ed25519, roots, boot_test, file_test, chain_test }) |module| {
+        step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = module })).step);
+    }
+    return step;
 }
