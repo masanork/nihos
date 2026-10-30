@@ -30,6 +30,22 @@
       "description": "256 byteを二つの128 byteへ、左の128 byteを二つの64 byteへ分割した例。右の128 byteと左下の64 byteは空きでも異なる親なので直接は結合できない。",
       "viewBox": "4 4 345.2890625 287.70001220703125"
     },
+    "camera-buffer-ownership": {
+      "sourceSha256": "8c2f6af7445077e1b8ce955c15448bed05652eca104276ac7c0bdce67f68b06a",
+      "svgSha256": "f9cc37b5c2b41ee59a5c73f09c6ee33bc82fccd581cfdfdc35da0de0abc5bd70",
+      "file": "figures/camera-buffer-ownership.mmd",
+      "title": "借り手が返すまで、撮影領域を上書きしない",
+      "description": "CPUが完了した領域Aを借りる間、DMAはBを使い、返却がなければBを繰り返し使ってフレームを捨てる。世代付きの返却後にAを再利用できる。",
+      "viewBox": "-50 -10 640 581"
+    },
+    "camera-data-path": {
+      "sourceSha256": "306fd10bbe0c89227a6c5dc68af32cec613591676004aaf732b1e6d6b91f6d77",
+      "svgSha256": "a89550b84ea6423c868e0d0c5a4a67fc38bd49888f008af7c10383cf09a800f0",
+      "file": "figures/camera-data-path.mmd",
+      "title": "カメラの画像と表示用の標本",
+      "description": "センサーの1280かける720のRAW8をCSIとISPからDMAでPSRAMへ受け、CPUが80かける45の標本を別領域へ写して320かける180の表示へ拡大する。",
+      "viewBox": "4 4 283.234375 454.0369873046875"
+    },
     "card-operation": {
       "sourceSha256": "5e85e0d10c2e8459ff2b7eb9af62eae6b0defe48bcc87ac1e281f05499352e23",
       "svgSha256": "2c26fd877b53e35ef235d4f5158948f1e9af2dc9e91865a102a14d0f05ca7c0f",
@@ -101,6 +117,14 @@
       "title": "起動用M-modeのecallから例外復帰まで",
       "description": "起動用M-modeの呼び出しが例外入口とdispatchを経て、ecallの次の命令へ戻る。U-modeの権限切替や故障終了を表す図ではない。",
       "viewBox": "4 3.999998092651367 314.640625 730.260009765625"
+    },
+    "editor-document-flow": {
+      "sourceSha256": "81a8f81114bc3ac0feb64e63c6bedf15e33515018a02a9a20d15b7bc71653238",
+      "svgSha256": "4e84b345b8a1a343596c060e4cd88be7af58f8094a6c6705f166b9ad6df62e69",
+      "file": "figures/editor-document-flow.mmd",
+      "title": "文書、未確定入力、組版と描画を分ける",
+      "description": "キー入力は未確定入力と候補選択へ進み、確定でUTF-8文書を更新する。文書と未確定入力を組版して配置結果を作り、Tab5用とホスト用の描画へ渡す。",
+      "viewBox": "4 4 364.109375 557.9000244140625"
     },
     "event-before-wait": {
       "sourceSha256": "0a3797aa81e4219fe767c0ac80c24195c1718249b70b2229a5614547a2801947",
@@ -237,6 +261,14 @@
       "title": "SQLiteへsync成功を返すまで",
       "description": "xWriteはserviceのstaged viewを更新する。xSyncでpayloadとmapをsyncしrootをsyncした後にcommittedを返信し、SQLiteへ同期成功を返す。下位の公開とSQL transactionは同じ単位ではない。",
       "viewBox": "-50 -10 619 465"
+    },
+    "storage-sector-bridge": {
+      "sourceSha256": "d438fdc65d3d7e1c59f60f4e8fed7a37a81fb1f4fd847fea512578a8c54e5b9a",
+      "svgSha256": "ba4dec9631f3d6823043b278a55fe0afb5b39a7ef2240af1f87478fe6d5be38f",
+      "file": "figures/storage-sector-bridge.mmd",
+      "title": "ストアと実媒体の間に必要な契約",
+      "description": "checkpointストアのバイト要求をセクタアダプタが許可された範囲へ変換する。所有者は各操作のlease検証、直列化、バッファ停止と永続化barrierを担う。ホスト検査済みの境界と未接続の実媒体ドライバを区別する。",
+      "viewBox": "4 4 509.2421875 474.6000061035156"
     },
     "task-reap": {
       "sourceSha256": "0747c3e9ed6b4c6522d6ad925e9da737bccf93410a2d57e9cbc7ba7eed0b7bd6",
