@@ -36,7 +36,7 @@ static uint32_t stop_status_before_clear;
 #include "camera_dma_pool.h"
 extern int32_t nih_csi_dma_configure(uint32_t, uint32_t, uint32_t);
 static camera_dma_pool stream_pool;
-static uint32_t stream_addresses[2], stream_fault;
+static uint32_t stream_addresses[2], stream_fault, stream_start_generation;
 static bool stream_configured, stream_stop, stream_drained;
 #if defined(__riscv)
 #define STREAM_FOREGROUND __attribute__((section(".flash.text.devices")))
@@ -47,7 +47,11 @@ STREAM_FOREGROUND bool nih_csi_stream_begin(uint32_t a, uint32_t b) {
     if (stream_configured || CSI_DMA_ENABLED() || MIPI_CSI_BRIDGE.csi_en.csi_brg_en ||
         a < 0x48030000u || b < 0x48030000u || a > 0x4c000000u - 921600u || b > 0x4c000000u - 921600u ||
         (a & 63u) || (b & 63u) || !((uint64_t)a + 921600u <= b || (uint64_t)b + 921600u <= a)) return false;
+    const uint32_t generation = stream_pool.generation;
+    if (generation == UINT32_MAX) return false;
     camera_pool_init(&stream_pool);
+    stream_pool.generation = generation;
+    stream_start_generation = generation;
     stream_addresses[0] = a; stream_addresses[1] = b;
     stream_fault = 0; stream_stop = false; stream_drained = false;
     stream_configured = true;
@@ -66,7 +70,7 @@ STREAM_FOREGROUND void nih_csi_stream_abort(void) {
 STREAM_FOREGROUND uint32_t nih_csi_stream_state(uint32_t kind) {
     switch (kind) {
     case 0: return stream_configured;
-    case 1: return stream_pool.generation;
+    case 1: return stream_pool.generation - stream_start_generation;
     case 2: return stream_pool.dropped;
     case 3: return stream_fault;
     case 4: return stream_drained;
@@ -82,7 +86,8 @@ STREAM_FOREGROUND bool nih_csi_stream_release(uint32_t generation) {
     return stream_configured && camera_pool_release(&stream_pool, generation);
 }
 STREAM_FOREGROUND bool nih_csi_stream_end(void) {
-    if (!stream_configured || CSI_DMA_ENABLED() || MIPI_CSI_BRIDGE.csi_en.csi_brg_en || stream_pool.borrowed >= 0) return false;
+    if (!stream_configured || CSI_DMA_ENABLED() ||
+        (HP_SYS_CLKRST.soc_clk_ctrl1.reg_csi_brg_sys_clk_en && MIPI_CSI_BRIDGE.csi_en.csi_brg_en) || stream_pool.borrowed >= 0) return false;
     stream_configured = false;
     return true;
 }
