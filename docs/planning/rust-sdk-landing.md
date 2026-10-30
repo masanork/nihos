@@ -13,7 +13,8 @@ reports and evidence describe those candidates, including the limited native
 display-owner physical check; they do not qualify a later integrated image.
 
 The isolated integration branch is `codex/rust-sdk-integration-20261030`, based
-on main `3d21dcb1b798c745c084cb9d1d74fddbd231747f`. It retains main's camera
+on main `3d21dcb1b798c745c084cb9d1d74fddbd231747f`, and reconciled through
+`ef25b7abfd5bba6be83379c93f5c3f82be3c50ac`. It retains main's camera
 overlay, storage, PMP, graphics and xy changes. Review units, in dependency
 order, are:
 

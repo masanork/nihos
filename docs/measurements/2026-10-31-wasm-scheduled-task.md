@@ -56,6 +56,23 @@ The first rounds capture 111 task timer interrupts; restart rounds capture 112.
 Both hart counters advance in every run. These numbers are emulator
 observations, not device sizing or timing qualification.
 
+The integration also incorporates main through
+`ef25b7abfd5bba6be83379c93f5c3f82be3c50ac`, including camera drain/SCCB changes
+and xy updates. Conflict resolution preserves the camera repaint guard and
+upstream explicit cache initialization. The merged Rust-enabled device image
+initially failed the 48 KiB SRAM heap floor. Its foreground-only shell redraw
+now shares the audited session Flash region; IRQ/cache-maintenance routines
+remain in SRAM and the floor is unchanged. The resulting static heap spans
+are 49,600 bytes enabled and 51,264 bytes disabled. This is reserved heap
+capacity in linked images, not measured free device memory.
+
+Debug/ReleaseSafe tests, static analysis with six audited RV32 links, all 491
+Python regressions, the complete host SDK suite, the existing boot WAMR UART
+failure matrix and the native normal-session matrix pass. Device images with
+the native session enabled and disabled pass their image audits. The imported
+C-ABI xy host receives minimal lint/format repairs and separately links as a
+ReleaseSafe host library. The original 427-file experiment remains unchanged.
+
 The retained identity record binds logs, parsed reports and image hashes to
 the local implementation commit:
 [evidence identity](evidence/2026-10-31-wasm-scheduled-task/identity.json).
