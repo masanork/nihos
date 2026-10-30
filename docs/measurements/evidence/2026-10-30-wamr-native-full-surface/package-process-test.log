@@ -1,0 +1,13 @@
+package SIGKILL matrix: 4 cuts, 8 distinct processes, exact package recovery
+committed corruption controls: 2 rejections, 2 restored recoveries, no fallback
+boot admission process-boundary fixture: ok
+NIHOS_BOOT_PROCESS phase=provision trust_epoch=1 sequence=1 trust_syncs=3 counter_syncs=1 package_syncs=3 pid=86438
+NIHOS_BOOT_PROCESS phase=interrupt trust_epoch=1 sequence=1 package_syncs=2 await_sigkill=1 pid=86444
+NIHOS_BOOT_PROCESS phase=recover-old trust_epoch=1 sequence=1 process_reopen=1 pid=86445
+NIHOS_BOOT_PROCESS phase=install trust_epoch=1 sequence=2 package_syncs=3 pid=86446
+NIHOS_BOOT_PROCESS phase=recover-new trust_epoch=1 sequence=2 process_reopen=1 pid=86447
+NIHOS_BOOT_PROCESS phase=interrupt-trust trust_epoch=2 counter_floor=1 trust_syncs=3 counter_syncs=0 abrupt_exit=86 pid=86467
+NIHOS_BOOT_PROCESS phase=reject-unsealed trust_epoch=2 counter_floor=1 seal_failed=1 package_reads=0 pid=86470
+NIHOS_BOOT_PROCESS phase=seal-revoked trust_epoch=2 counter_floor=2 counter_syncs=1 boot_rejected=1 pid=86471
+NIHOS_BOOT_PROCESS phase=reject-revoked trust_epoch=2 sequence=2 boot_rejected=1 install_rejected=1 writes=0 pid=86478
+NIHOS_BOOT_PROCESS phase=reject-rollback trust_epoch=1 counter_floor=2 rejected=Rollback writes=0 pid=86482

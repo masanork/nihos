@@ -1,0 +1,45 @@
+{
+  "evidence": "host-process-sigkill",
+  "cases": [
+    {
+      "phase": "cut-clear",
+      "sequence": 1,
+      "partial_bytes": 0,
+      "package_syncs": 1,
+      "writer_pid": 55348,
+      "recovery_pid": 55349,
+      "media": "cut-clear.bin",
+      "sha256": "062cace5ecaa08573c7503f0489172eede7816eb3fb41512793aaf630d9402a1"
+    },
+    {
+      "phase": "cut-payload",
+      "sequence": 1,
+      "partial_bytes": 106,
+      "package_syncs": 1,
+      "writer_pid": 55351,
+      "recovery_pid": 55352,
+      "media": "cut-payload.bin",
+      "sha256": "684571462af640cd7c58c07d57ea4dcef50c0e8fef8a38b8c047ccd699e59b0d"
+    },
+    {
+      "phase": "cut-record",
+      "sequence": 1,
+      "partial_bytes": 72,
+      "package_syncs": 2,
+      "writer_pid": 55354,
+      "recovery_pid": 55355,
+      "media": "cut-record.bin",
+      "sha256": "413de26aceaa844a37658621de3ace980528eba9351649ef47aecae5e4b8a7a1"
+    },
+    {
+      "phase": "cut-committed",
+      "sequence": 2,
+      "partial_bytes": 0,
+      "package_syncs": 3,
+      "writer_pid": 55357,
+      "recovery_pid": 55358,
+      "media": "cut-committed.bin",
+      "sha256": "1c72c773100be3c0659dde138c68be3c5c47168be47f04af5ff6d1afd583a104"
+    }
+  ]
+}

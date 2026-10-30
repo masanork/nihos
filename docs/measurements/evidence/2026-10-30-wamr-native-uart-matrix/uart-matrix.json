@@ -1,0 +1,97 @@
+{
+  "evidence": "native-emulator-uart-negative-matrix",
+  "firmware_sha256": "b08977cc0e3c4cab03f8c406f7595f4b47805eaec6f39f6dbf4e6946fc72d107",
+  "elf_sha256": "06ca8d8b5c01e532f17cd08e7b405b59c66f9269bea936e88365e5edb8f8718e",
+  "cases": [
+    {
+      "case": "noinput",
+      "injected_ascii": "",
+      "fixture_status": 42,
+      "uart": {
+        "status": 2,
+        "bytes": 0,
+        "frames": 0,
+        "rejected": 0
+      },
+      "calls": 11,
+      "owners_released": 1,
+      "arenas_recovered": 1,
+      "surface_detached_and_guards": 1
+    },
+    {
+      "case": "partial",
+      "injected_ascii": "0",
+      "fixture_status": 42,
+      "uart": {
+        "status": 2,
+        "bytes": 1,
+        "frames": 1,
+        "rejected": 0
+      },
+      "calls": 13,
+      "owners_released": 1,
+      "arenas_recovered": 1,
+      "surface_detached_and_guards": 1
+    },
+    {
+      "case": "early-quit",
+      "injected_ascii": "q",
+      "fixture_status": 44,
+      "uart": {
+        "status": 1,
+        "bytes": 1,
+        "frames": 0,
+        "rejected": 0
+      },
+      "calls": 11,
+      "owners_released": 1,
+      "arenas_recovered": 1,
+      "surface_detached_and_guards": 1
+    },
+    {
+      "case": "overflow",
+      "injected_ascii": "xxxxxxxxxxxxxxxxx",
+      "fixture_status": 43,
+      "uart": {
+        "status": 0,
+        "bytes": 17,
+        "frames": 0,
+        "rejected": 16
+      },
+      "calls": 11,
+      "owners_released": 1,
+      "arenas_recovered": 1,
+      "surface_detached_and_guards": 1
+    },
+    {
+      "case": "wrong-order",
+      "injected_ascii": "1",
+      "fixture_status": 44,
+      "uart": {
+        "status": 0,
+        "bytes": 1,
+        "frames": 0,
+        "rejected": 0
+      },
+      "calls": 11,
+      "owners_released": 1,
+      "arenas_recovered": 1,
+      "surface_detached_and_guards": 1
+    },
+    {
+      "case": "extra-frame",
+      "injected_ascii": "0x100q",
+      "fixture_status": 44,
+      "uart": {
+        "status": 0,
+        "bytes": 5,
+        "frames": 3,
+        "rejected": 1
+      },
+      "calls": 17,
+      "owners_released": 1,
+      "arenas_recovered": 1,
+      "surface_detached_and_guards": 1
+    }
+  ]
+}

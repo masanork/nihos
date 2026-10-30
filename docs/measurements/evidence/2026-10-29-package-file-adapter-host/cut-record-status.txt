@@ -1,0 +1,1 @@
+cut-record pid=55354 signal=SIGKILL returncode=-9

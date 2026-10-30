@@ -1,0 +1,27 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  esp_emu] Loaded firmware: 498048 bytes
+[INFO  machine] WiFi SoftAP: WPA2/WPA3 transition enabled (PWE Both) for SSID 'myssid'
+[INFO  net_user] user-net: DNS forwarder upstream [[240d:1a:c3:4d00:ce1a:faff:febc:dc50]:53, 192.168.1.1:53, 8.8.8.8:53], restrict=false
+[INFO  net_user] user-net: backend ready (gateway 192.168.4.1, 0 hostfwd rules)
+[INFO  esp_emu] Network backend: user-mode (smoltcp NAT, 192.168.4.1 -> host loopback)
+[INFO  esp_emu] Loaded ROM ELF: <embedded esp32p4> (256824 bytes)
+[INFO  esp_emu] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 2095 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  machine] PSRAM configured as 4096 KB
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  esp_emu] Loaded application ELF /private/tmp/nihos-rust-app-sdk/build/native-emulator-wasm/nihos-native-image.elf: 603832 bytes
+[INFO  esp_emu] Starting emulation (chip=esp32p4, batch_size=50000)
+[INFO  machine] App nihos-native native-boot-1 from flash offset 0x10000: application ELF #1 is its build
+[INFO  periph::ble_hci] BLE: no VHCI symbols found (firmware may not use Bluetooth)
+[INFO  periph::thread_radio] Thread: no IEEE 802.15.4 symbols found (firmware may not use Thread)
+[INFO  esp_emu] Inject trigger 'NIHOS_WAMR_UART_READY' found, injecting 6 bytes
+[INFO  esp_emu] Exit-on string 'NIHOS_NATIVE_FAIL' found in output

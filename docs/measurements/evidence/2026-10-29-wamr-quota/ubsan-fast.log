@@ -1,0 +1,1 @@
+/private/tmp/nihos-rust-app-sdk/build/wamr-2.4.5/core/iwasm/interpreter/wasm_loader.c:9470:9: runtime error: store to misaligned address 0x0001044583b4 for type 'void *', which requires 8 byte alignment

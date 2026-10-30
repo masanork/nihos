@@ -1,0 +1,3 @@
+1/1 trust_snapshot_ed25519.test.root-signed snapshot creates package trust provider and supports overlap...NIHOS_TRUST_ROOT epoch=7 roots=2 package_keys=1 rollback=1 package_admitted=1 authority_separated=1 recovery_epoch=8
+OK
+All 1 tests passed.

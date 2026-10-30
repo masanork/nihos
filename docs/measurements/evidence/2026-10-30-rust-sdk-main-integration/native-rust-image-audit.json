@@ -1,0 +1,298 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff20000",
+  "elf_sha256": "2e47e1fb67c9029a44a139ee3df71d230121c1827f3b63553de551f02cf73f35",
+  "memory": {
+    "profile": "emulator",
+    "origin": "0x4ff20000",
+    "end": "0x4ff48000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff20000",
+        "end": "0x4ff48000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "sram_reserved_bytes": 141760,
+  "primary_static_bytes": 84416,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000",
+    "task_side_trap_bytes": 128,
+    "ordinary_sp_budget_bytes": 3952
+  },
+  "heap": {
+    "start": "0x4ff349c0",
+    "end": "0x4ff48000",
+    "bytes": 79424,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x40001366",
+    "bytes": 4678,
+    "sha256": "53fa15c5c55d1a643e6a352d0a742a0ac7b2c7c578c8311a19db8a1c07e3353a",
+    "functions": {
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000e8a"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_55",
+        "start": "0x40000e8a",
+        "end": "0x40001366"
+      }
+    },
+    "image_offset": 288
+  },
+  "pmp_flash": {
+    "start": "0x40001370",
+    "end": "0x40001dbc",
+    "bytes": 2636,
+    "sha256": "dabb374925c30f0cfac2b72bcb88bd35eb8e13da6d314c758ab736dd3dfad4c0",
+    "functions": {
+      "native_tasks.reclaimFaulted": {
+        "start": "0x40001370",
+        "end": "0x40001488"
+      },
+      "task_runtime.Runtime(4,2).add": {
+        "start": "0x40001488",
+        "end": "0x40001626"
+      },
+      "pmp.protectionAccepted": {
+        "start": "0x40001626",
+        "end": "0x400016ee"
+      },
+      "pmp.grant": {
+        "start": "0x400016ee",
+        "end": "0x400017a4"
+      },
+      "pmp.commit": {
+        "start": "0x400017a4",
+        "end": "0x40001840"
+      },
+      "pmp.writeWords": {
+        "start": "0x40001840",
+        "end": "0x400018c0"
+      },
+      "task_runtime.Runtime(4,2).finishCall": {
+        "start": "0x400018c0",
+        "end": "0x40001b04"
+      },
+      "native_tasks.onProtectedFault": {
+        "start": "0x40001b04",
+        "end": "0x40001bb4"
+      },
+      "native_tasks.closeFaulted": {
+        "start": "0x40001bb4",
+        "end": "0x40001cfe"
+      },
+      "task_runtime.Runtime(4,2).containFault": {
+        "start": "0x40001cfe",
+        "end": "0x40001dbc"
+      }
+    }
+  },
+  "user_probe": null,
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x40010d10",
+    "bytes": 3312,
+    "fnv1a": 3037644103,
+    "executable": false,
+    "writable": false,
+    "image_offset": 65568
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_get_cpu_ticks": "0x4fc00040",
+    "nih_rom_set_cpu_ticks": "0x4fc00044",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 4678
+    },
+    {
+      "name": ".flash.pmp",
+      "address": "0x40001370",
+      "bytes": 2636
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 3312
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff20000",
+      "bytes": 72848
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff31c90",
+      "bytes": 3560
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff32a80",
+      "bytes": 1600
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff33100",
+      "bytes": 6304
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff349c0",
+      "bytes": 79424
+    }
+  ],
+  "service_sram": [
+    {
+      "name": "service.free0",
+      "origin": "0x4ff48000",
+      "end": "0x4ff60000",
+      "bytes": 98304
+    },
+    {
+      "name": "service.free1",
+      "origin": "0x4ff6e000",
+      "end": "0x4ff9f000",
+      "bytes": 200704
+    }
+  ],
+  "image_sha256": "c464361fb5c0b69a72264f352062481754183d5fdba34a7642e2db29dcbb7bc8",
+  "image_bytes": 89008,
+  "image_segments": [
+    {
+      "address": "0x40000020",
+      "bytes": 7580
+    },
+    {
+      "address": "0x4ff20000",
+      "bytes": 57940
+    },
+    {
+      "address": "0x40010020",
+      "bytes": 3312
+    },
+    {
+      "address": "0x4ff2e254",
+      "bytes": 18468
+    },
+    {
+      "address": "0x4ff32a80",
+      "bytes": 1600
+    }
+  ],
+  "loader": {
+    "elf_sha256": "c10904fb6909792a30a0ae9ba2780851967f82edf656bdcb0d976d201f295bcb",
+    "allocated": [
+      {
+        "address": "0x4ffaefc0",
+        "bytes": 12498
+      },
+      {
+        "address": "0x4ffb5fc0",
+        "bytes": 272
+      },
+      {
+        "address": "0x4ffb60d0",
+        "bytes": 80
+      },
+      {
+        "address": "0x4ffb6120",
+        "bytes": 12
+      },
+      {
+        "address": "0x4ffb612c",
+        "bytes": 4536
+      },
+      {
+        "address": "0x4ffac2c0",
+        "bytes": 3032
+      }
+    ],
+    "nearest_higher_address": "0x4ffac2c0",
+    "gap_bytes": 410304,
+    "regions_checked": [
+      {
+        "name": "resident",
+        "gap_below": null,
+        "gap_above": 410304
+      },
+      {
+        "name": "stacks",
+        "gap_below": null,
+        "gap_above": 254656
+      },
+      {
+        "name": "service.free0",
+        "gap_below": null,
+        "gap_above": 312000
+      },
+      {
+        "name": "service.free1",
+        "gap_below": null,
+        "gap_above": 53952
+      }
+    ]
+  },
+  "loader_config": {
+    "l2_bytes": 131072,
+    "line_bytes": 64,
+    "profile": "emulator",
+    "stack_source_window": {
+      "origin": "0x4ff20000",
+      "end": "0x4ffaefc0"
+    },
+    "config_sha256": "b873b001c443642c89c53c80063fc237ad2528220dfd1611f4ae73757e3531c1"
+  }
+}
