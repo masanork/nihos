@@ -151,7 +151,16 @@ var camera_screen_mismatches: u32 = 0xffffffff;
 var camera_screen_tone: u32 = 0;
 noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     if (options.console_live and options.boot_fast) {
+        if (options.camera_id and board_devices.cameraStreaming() and !ui.cameraLiveActive()) board_devices.cameraStopStreaming();
         board_devices.poll();
+        if (options.camera_id and board_devices.cameraStreamDrained()) {
+            _ = ui.cameraAcceptFrame();
+            const stream = board_devices.cameraStreamStats();
+            logger.record("NIHOS_NATIVE_CAMERA_STREAM", null, .{ "completed", "dropped", "fault" }, &stream);
+            const discarded: extern struct { sequence: u32 } = .{ .sequence = board_devices.cameraCaptureSequence() };
+            (SerialOnly{}).write("\n");
+            logger.record("NIHOS_NATIVE_CAMERA_LIVE_DRAIN", null, .{"sequence"}, &discarded);
+        }
         if (options.camera_id and board_devices.cameraCaptureFailed() and ui.cameraLiveFailure()) {
             const capture = board_devices.cameraFirstFrameSnapshot();
             const detail = board_devices.cameraFirstFrameDetail();
@@ -174,7 +183,7 @@ noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.dev
                 const presented: extern struct { sequence: u32, state: u32, sample_hash: u32, mismatches: u32, frames: u32 } = .{ .sequence = board_devices.cameraCaptureSequence(), .state = camera_screen_state, .sample_hash = std.hash.Fnv1a_32.hash(std.mem.asBytes(preview.pixels)), .mismatches = camera_screen_mismatches, .frames = camera_screen_frame };
                 (SerialOnly{}).write("\n"); // asynchronous result may follow the shell prompt
                 logger.record("NIHOS_NATIVE_CAMERA_SNAPSHOT", null, .{ "sequence", "state", "sample_hash", "mismatches", "frames" }, &presented);
-                if (ui.cameraLiveActive() and (camera_screen_state != 1 or !board_devices.requestDevice(26))) ui.cameraLiveEnd();
+                if (ui.cameraLiveActive() and (camera_screen_state != 1 or (!board_devices.cameraStreaming() and !board_devices.requestDevice(26)))) ui.cameraLiveEnd();
             }
         };
         const now = ui.timer().counter() orelse fail("device report clock");
