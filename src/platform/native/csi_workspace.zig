@@ -1,6 +1,6 @@
 //! CPU0 owner-local PSRAM frame lease and bounded cache handoff.
-//! Not linked into normal firmware. DMA capability and stop-before-release
-//! must be established by the service integrator.
+//! Finite snapshots and continuous capture share boot-lifetime pinned storage.
+//! The service owns DMA eligibility and stop-before-reuse decisions.
 const memory = @import("native_tasks").memory;
 const workspace = @import("camera_workspace");
 const preview = @import("camera_preview");
@@ -66,7 +66,7 @@ pub fn streamSecondAddress() ?u32 {
 pub fn streamPreviewRow(address_value: u32, row: usize) ?[preview.width]u8 {
     if (row >= preview.height or (address_value != address() and address_value != streamSecondAddress())) return null;
     // Caller holds the completed slot's generation; IRQ never writes that slot
-    // until release. The original frame and second allocation remain pinned.
+    // until release. Both payloads share one pinned allocation.
     const data = @as([*]u8, @ptrFromInt(address_value))[0..frame_bytes];
     const start = row * 16 * preview.frame_width;
     for (0..4) |part| if (!backend.invalidate(data[start + part * 640 ..][0..640])) return null;
