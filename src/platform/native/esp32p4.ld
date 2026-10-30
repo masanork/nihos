@@ -290,6 +290,15 @@ SECTIONS
     .bss (NOLOAD) : ALIGN(16) {
         __bss_start = .;
         *(.bss .bss.* .sbss .sbss.*) *(COMMON)
+#if NIH_NATIVE_USB
+        /* One 64-byte queue head needs a 512-byte address. Giving that
+         * alignment to the whole section pads the start by up to 511 bytes
+         * and drops the card-auto heap under 48 KiB. Place the head before
+         * the fault frames so that pad is not pushed past another boundary.
+         * It stays inside the zeroed BSS span. */
+        . = ALIGN(512);
+        *(.usb_dma_qtd)
+#endif
 #if !NIH_NATIVE_GRAPHICS
         *(.user.pmp_state)
 #endif
