@@ -98,10 +98,12 @@ class CameraSoakTest(unittest.TestCase):
         shot = next(event for event in original if 'CAMERA_SNAPSHOT' in event.get('line', ''))
         drain = next(i for i, event in enumerate(original) if 'CAMERA_LIVE_DRAIN' in event.get('line', ''))
         loading = next(i for i, event in enumerate(original) if i > drain and 'NIHOS_DEVICE_REQUEST kind=0000001e' in event.get('line', ''))
-        for index, line in [(drain + 1, shot['line']), (loading + 1, shot['line']), (drain + 1, 'ESP-ROM:esp32p4')]:
+        for index, line, error in [(drain + 1, shot['line'], 'outside active capture'),
+                                   (loading + 1, shot['line'], 'outside active capture'),
+                                   (drain + 1, 'ESP-ROM:esp32p4', 'unexpected reset')]:
             events = copy.deepcopy(original)
             events.insert(index, dict(t=events[index - 1]['t'], line=line))
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, error):
                 self.run_trace(events)
         events = copy.deepcopy(original)
         events[10]['t'] = -1
