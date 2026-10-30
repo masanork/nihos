@@ -24,3 +24,13 @@ The JSON files are asset/audit manifests. User-editable xy configuration is to
 use S-expressions, as specified in the extension-language plan.
 
 [macOS snapshots and regression evidence](evidence/2026-10-31-xy-main-landing/mac-snapshot-evidence.json)
+
+
+The driver/storage-disabled connected profile also keeps the ordinary xy font.
+Without the filesystem Flash span its font masks previously overflowed the
+boot-record page. This profile now places the same masks in xy's read-only
+Flash region; filesystem-enabled profiles retain their existing font placement.
+The exact CI configuration (`NIHOS_NATIVE_DEVICES=0 NIHOS_NATIVE_NORMAL_STORAGE=0`)
+builds and passes the image audit locally, without changing the font bytes or
+relaxing the existing region/SRAM limits. Its build log and audit are retained
+beside the macOS evidence.
