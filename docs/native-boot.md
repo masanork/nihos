@@ -21,7 +21,7 @@ between clean captures. After 500 ms without another capture, the owner powers
 the sensor and XCLK down. A live-preview dismissal waits for the outstanding
 capture to drain before repainting the shell. This remains repeated finite DMA
 capture with a boot-lifetime frame/channel lease, rather than continuous video.
-The [cadence update](https://github.com/masanork/nihos/pull/82) records the comparison and stop regression.
+The [cadence update](measurements/2026-10-30-camera-preview-cadence.md) records the comparison and stop regression.
 
 An opt-in [normal-boot networking integration](adr/0045-normal-boot-network-integration.md)
 services factory Hosted Wi-Fi alongside the live display. The initial
