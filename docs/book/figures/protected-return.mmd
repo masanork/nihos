@@ -6,10 +6,10 @@ sequenceDiagram
     participant M as 通常タスク
     U->>K: ECALL・割込み・故障
     Note over K: 安全なstackで保存<br/>次のタスクを選択
-    alt U-modeを選択
-      Note over K: PMP許可を設定<br/>mcause→mstatus
+    alt U-mode
+      Note over K: PMP許可を設定<br/>mcauseを書き<br/>mstatusを書く
       K->>U: mretでU-modeへ
-    else M-modeを選択
-      Note over K: 利用者許可を解除<br/>mcause→mstatus
+    else M-mode
+      Note over K: 利用者許可を解除<br/>mcauseを書き<br/>mstatusを書く
       K->>M: mretでM-modeへ
     end
