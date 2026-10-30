@@ -1,0 +1,250 @@
+diff --git a/src/arch/riscv32/native_tasks.zig b/src/arch/riscv32/native_tasks.zig
+index f35084d..ea216af 100644
+--- a/src/arch/riscv32/native_tasks.zig
++++ b/src/arch/riscv32/native_tasks.zig
+@@ -403,10 +403,13 @@ pub noinline fn onProtectedFault(hart: u32, frame: *context.IntegerContext, stat
+         owner.probe_fault_mepc = frame.mepc;
+         noteProbeGrant(owner);
+     }
++    pmp.tracePhase(3);
+     const fault = owner.runtime.containFault();
++    pmp.tracePhase(4);
+     if (fault.exited) |handle| {
+         if (!closeFaulted(hart, handle)) return null;
+     }
++    pmp.tracePhase(5);
+     const selected = fault.next orelse return null;
+     return publish(hart, selected);
+ }
+@@ -760,6 +763,8 @@ fn runProbeCaseLive(case_id: u32) ?ProbeStep {
+     if (hart != 0 or case_id >= pmp.probe_cases) return null;
+     const owner = &owners[hart];
+     if (owner.phase != .pmp_probe or !owner.ready or owner.faulted != null or owner.protected_task != null) return null;
++    @atomicStore(u32, &pmp.nih_pmp_trace[6], case_id + 1, .release);
++    @atomicStore(u32, &pmp.nih_pmp_trace[7], @intFromPtr(probeArena()), .release);
+     owner.probe_fault_cause = 0;
+     owner.probe_fault_mepc = 0;
+     owner.probe_pmpaddr4 = 0;
+diff --git a/src/arch/riscv32/pmp.zig b/src/arch/riscv32/pmp.zig
+index 8728d6a..83f6f74 100644
+--- a/src/arch/riscv32/pmp.zig
++++ b/src/arch/riscv32/pmp.zig
+@@ -101,6 +101,12 @@ pub fn publishedGrantHi(hart: u32) u32 {
+     if (hart >= nih_user_bounds.len) return 0xffff_ffff;
+     return nih_user_bounds[hart].hi;
+ }
++// Local diagnostic only: phase, cause, status, pc, mexstatus, sequence, armed, reserved.
++pub export var nih_pmp_trace: [12]u32 align(16) = @splat(0);
++pub fn tracePhase(value: u32) void {
++    if (@atomicLoad(u32, &nih_pmp_trace[6], .acquire) != 0)
++        @atomicStore(u32, &nih_pmp_trace[0], value, .release);
++}
+ export var nih_user_sp_bad: [2]u32 linksection(state_section) = @splat(0);
+ export var nih_user_fault_frames: [2][frame_bytes]u8 align(16) linksection(state_section) = @splat(@splat(0));
+ 
+@@ -361,11 +367,18 @@ noinline fn writeWords(words: Words) linksection(text_section) void {
+                 \\csrw pmpcfg1, %[word]
+                 \\lw %[word], 4(%[cfg])
+                 \\csrw pmpcfg2, %[word]
++                \\li %[word], 61
++                \\sw %[word], 0(%[trace])
+                 \\fence.i
++                \\li %[word], 62
++                \\sw %[word], 0(%[trace])
+                 \\fence iorw, iorw
++                \\li %[word], 63
++                \\sw %[word], 0(%[trace])
+                 : [word] "=&r" (word),
+                 : [addr] "r" (addr4),
+                   [cfg] "r" (cfg1),
++                  [trace] "r" (&nih_pmp_trace[0]),
+                 : .{ .memory = true });
+         },
+         else => {},
+@@ -387,12 +400,16 @@ noinline fn commit(hart: u32, protection: ?@import("context.zig").Protection) li
+             writeWords(.{});
+             return;
+         };
++        tracePhase(6);
+         writeWords(words);
++        tracePhase(7);
+         nih_user_bounds[hart] = .{ .lo = region.data_lo, .hi = region.data_hi };
+         return;
+     }
+     nih_user_bounds[hart] = .{ .lo = 0, .hi = 0 };
++    tracePhase(6);
+     writeWords(.{});
++    tracePhase(7);
+ }
+ 
+ test "two TOR grants are write-exclusive and execute-exclusive" {
+diff --git a/src/arch/riscv32/pmp_user.S b/src/arch/riscv32/pmp_user.S
+index b1f611d..def377e 100644
+--- a/src/arch/riscv32/pmp_user.S
++++ b/src/arch/riscv32/pmp_user.S
+@@ -149,8 +149,14 @@ nih_user_probe_body:
+     ret
+ 
+ .Lmmio_subsys:
++    li t0, 0xc1080001
++    sw t0, 0(a2)
++    fence rw, rw
+     lui t0, 0x20800
+     lw t0, 0(t0)
++    li t0, 0xc1080002
++    sw t0, 0(a2)
++    fence rw, rw
+     li a0, 12
+     ret
+ 
+diff --git a/src/platform/native/main.zig b/src/platform/native/main.zig
+index 88abe23..e23f453 100644
+--- a/src/platform/native/main.zig
++++ b/src/platform/native/main.zig
+@@ -435,6 +435,7 @@ fn enableTimer(hart: u32) void {
+ 
+ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
+     if (hart >= 2) fail("invalid hart");
++    if (options.pmp_probe and hart == 0) tasks.pmp.tracePhase(2);
+     if (!interruptStackValid(hart, frame, status)) fail("interrupt stack/MIE");
+     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
+     // A rejected user SP was saved in the kernel fault frame. Do not resume it
+@@ -481,6 +482,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32,
+             null;
+         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
+         tasks.armProtection(hart, next);
++        if (options.pmp_probe and hart == 0) tasks.pmp.tracePhase(8);
+         tasks.floating.selectBank(hart, next.floating_context);
+         const next_state = if (next.floating_context == 0) next.state.integerOnly() else next.state.floatingReady();
+         nih_native_return_states[hart] = next_state.returningFrom(state);
+@@ -648,7 +650,10 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
+     enableTimer(1);
+     if (options.boot_fast or options.pmp_probe) {
+         if (options.boot_fast and options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
+-        while (true) tasks.idleOnce(1);
++        while (true) {
++            if (options.pmp_probe) observePmp();
++            tasks.idleOnce(1);
++        }
+     }
+     while (true) {
+         _ = tasks.service(1);
+@@ -1743,3 +1748,42 @@ noinline fn stackReport(hart: u32) linksection(if (options.card_read) ".flash.te
+     const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
+     logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
+ }
++
++var observer_sequence: u32 = 0;
++var observer_since: u32 = 0;
++var observer_printed: bool = false;
++fn observePmp() void {
++    const trace = &tasks.pmp.nih_pmp_trace;
++    if (@atomicLoad(u32, &trace[6], .acquire) == 0 or observer_printed) return;
++    const seq = @atomicLoad(u32, &trace[5], .acquire);
++    const now = cycle();
++    if (seq != observer_sequence or observer_since == 0) {
++        observer_sequence = seq;
++        observer_since = now;
++        return;
++    }
++    if (now -% observer_since < 90_000_000) return;
++    observer_printed = true;
++    print("NIHOS_NATIVE_PMP_OBSERVER phase=");
++    hex(@atomicLoad(u32, &trace[0], .acquire));
++    print(" cause=");
++    hex(@atomicLoad(u32, &trace[1], .acquire));
++    print(" status=");
++    hex(@atomicLoad(u32, &trace[2], .acquire));
++    print(" pc=");
++    hex(@atomicLoad(u32, &trace[3], .acquire));
++    print(" mexstatus=");
++    hex(@atomicLoad(u32, &trace[4], .acquire));
++    print(" sequence=");
++    hex(seq);
++    print(" return_status=");
++    hex(@atomicLoad(u32, &trace[8], .acquire));
++    print(" return_pc=");
++    hex(@atomicLoad(u32, &trace[9], .acquire));
++    print(" return_cause=");
++    hex(@atomicLoad(u32, &trace[10], .acquire));
++    print(" user_marker=");
++    const arena = @atomicLoad(u32, &trace[7], .acquire);
++    if (arena != 0) hex(@atomicLoad(u32, @as(*u32, @ptrFromInt(arena)), .acquire)) else hex(0);
++    print("\n");
++}
+diff --git a/src/platform/native/start.S b/src/platform/native/start.S
+index 4f7c7ac..bc71c95 100644
+--- a/src/platform/native/start.S
++++ b/src/platform/native/start.S
+@@ -138,6 +138,28 @@ nih_native_trap:
+     sw t0, 0(sp)
+     sw t1, 4(sp)
+     sw t2, 8(sp)
++#if NIH_NATIVE_PMP_PROBE
++    csrr t0, mhartid
++    bnez t0, .Ltrace_done
++    la t1, nih_pmp_trace
++    lw t0, 24(t1)
++    beqz t0, .Ltrace_done
++    csrr t0, mcause
++    sw t0, 4(t1)
++    csrr t0, mstatus
++    sw t0, 8(t1)
++    csrr t0, mepc
++    sw t0, 12(t1)
++    csrr t0, 0x7e1
++    sw t0, 16(t1)
++    li t0, 1
++    sw t0, 0(t1)
++    lw t0, 20(t1)
++    addi t0, t0, 1
++    fence rw, rw
++    sw t0, 20(t1)
++.Ltrace_done:
++#endif
+     csrr t0, mstatus
+     srli t0, t0, 11
+     andi t0, t0, 3
+@@ -291,6 +313,20 @@ nih_native_trap:
+     csrw mstatus, t1
+     lw t0, NIH_CTX_MEPC(sp)
+     csrw mepc, t0
++#if NIH_NATIVE_PMP_PROBE
++    csrr t0, mhartid
++    bnez t0, .Ltrace_return_done
++    la t0, nih_pmp_trace
++    csrr t1, mstatus
++    sw t1, 32(t0)
++    csrr t1, mepc
++    sw t1, 36(t0)
++    csrr t1, mcause
++    sw t1, 40(t0)
++    li t1, 9
++    sw t1, 0(t0)
++.Ltrace_return_done:
++#endif
+     lw ra, NIH_CTX_RA(sp)
+     lw gp, NIH_CTX_GP(sp)
+     lw tp, NIH_CTX_TP(sp)
+diff --git a/tools/build-native-elf.sh b/tools/build-native-elf.sh
+index 53d1dd2..2683be4 100644
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -238,7 +238,7 @@ if [ "$pmp_probe" = false ] && [ "$pmp_case" != all ]; then
+     echo "NIHOS_NATIVE_PMP_CASE requires NIHOS_NATIVE_PMP_PROBE=1" >&2
+     exit 1
+ fi
+-if [ "$pmp_probe" = true ] && [ "$profile" = device ] && { [ "$pmp_case" = all ] || [ "$pmp_case" = 8 ]; }; then
++if [ "$pmp_probe" = true ] && [ "$profile" = device ] && [ "$pmp_case" = all ]; then
+     echo "CLIC case 8 is not qualified on this device; select a single case 0..7 or 9..11" >&2
+     exit 1
+ fi
+@@ -796,7 +796,7 @@ fi
+     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
+     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
+     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
+-    -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
++    -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
+     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
+     "$repo_root/src/platform/native/start.S" "$@" \
+     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
