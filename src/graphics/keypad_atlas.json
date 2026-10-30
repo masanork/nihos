@@ -17,7 +17,7 @@
     "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
-    "src/platform/native/esp32p4.ld": "67c26981716ec7ff0eb6c8ef7e895bd7cbfe905a4425d16de839048008b10540",
+    "src/platform/native/esp32p4.ld": "c85a97aada2ae83a8fde84f898d92c790bb51958c60d0cf5502fdf21393b2eeb",
     "src/graphics/surface.zig": "d4ff4a1b418d86a2e828bccd38b276462563847813e36a5754489fe800b46561",
     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
