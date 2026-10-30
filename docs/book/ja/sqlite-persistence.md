@@ -8,6 +8,8 @@ SQLの取引（transaction）は、複数の変更をひとまとまりとして
 
 ## 二種類のVFSをつなぐ
 
+この章のコピー型要求やサービスは、{{ch:process-isolation}}の保護タスクから呼べる公開ABIへ移行したものではない。通常のSQLiteワーカーはM-modeに残る。CPUのアクセスを止める境界と、データベース要求の権限・所有・永続化の契約は、別に検査する。
+
 OSのVFSは、名前、権限、ファイルのhandleを管理する。一方、SQLiteのVFSは、SQLiteが利用するfile I/Oや時刻などをOSへ渡す接続口である。同じVFSという名前でも、引き受ける契約は異なる。
 
 この段階の[SQLite VFS](git:6bb2467ac14e7cc90b4bc2dde3f45c72360ca420:probes/sqlite/store_vfs.c)は、汎用的な名前空間を作らない。既存の二つのobjectを`/main.db`と`/main.db-journal`へ対応させる。connectionは一つだけとし、WAL、共有メモリ、mmapは無効にした。一般のFatFs VFSとも、nativeのSQLite sessionとも、別のホスト実験である。

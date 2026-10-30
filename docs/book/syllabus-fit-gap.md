@@ -36,7 +36,7 @@
 | S01 | OSの役割、資源の多重化、ポリシーと機構、monolithic／microkernel／unikernelを比較する | 序章、1章 境界、2章 言語 | 部分。実装責務と保護領域を重ねた全体図、主要APIの分類を追加 |
 | S02 | resetから最初のタスクまでを追い、ROM・ローダ・CRT・リンカの責任を説明する | 5章 起動 | 強い。ロード先と実行時アドレス、初期化依存順、CPU1解放の一枚図を補う |
 | S03 | 例外・割込み・syscall・関数呼出し、mode switchとcontext switchを区別する | 5、6、10章 ABI | 部分。原因→入口→保存→dispatch→復帰の比較表。ecallだけで保護境界が生まれるわけではない |
-| S04 | process／thread／task、資源共有、生成・待機・終了・回収を追う | 6章 寿命、16章 I/O | 部分。PCB/TCB相当の情報を整理し、管理表・実行イメージ・資源台帳の対応を図示 |
+| S04 | process／thread／task、資源共有、生成・待機・終了・回収を追う | 寿命、管理表、保護、I/O | 部分。PR #76を反映し、実行単位と保護単位、故障後の回収を説明。独立したprocessオブジェクト、複数threadの領域共有、fork/execは未実装 |
 | S05 | ready集合、sleep集合、event待ちをデータ構造で表し、操作コストを説明する | 6、7、8章 | 不足。固定配列走査、優先度別FIFO＋bitmap、deadline heapの比較と手動トレース |
 | S06 | FCFS、SJF/SRTF、RR、固定優先度、MLFQの仮定と損益を説明する | 6章 指標への導入、7章 公平性 | 部分。到着・実行・I/O待ちの同一入力で応答・待ち・完了時間を計算。全方式のkernel実装は不要 |
 | S07 | 飢餓と公平性の違いを説明し、反例を実装へ結びつける | 7章 TLA+と回帰 | 強い。優先度間の公平性と同一優先度内の公平性、環境の進捗仮定を明示 |
@@ -45,7 +45,7 @@
 | S10 | SMPでCPUごとの状態、公開順序、通知、cache/DMAの責任を追う | 8、11、13、16章 | 強い。acquire/releaseのhappens-before図、割込み禁止は他CPUへの排他にならないこと、CPU間可視性とDMA整合性の違いを補う |
 | S11 | 物理メモリ配置、stack／heap／static、arena／buddy／size class、断片化を説明する | 4、9、11、12、14章 | 強い。ページ管理・サイズ別poolとの関係、内部／外部断片化、管理情報の予算を一枚図にまとめる |
 | S12 | アドレス空間、変換と保護、page table、TLB、page fault、demand pagingと置換の基本を追う | 1、6章の比較、11章 外部mapping | 不足。小さなアドレス変換・TLB・FIFO/LRUの紙上／host演習を追加。Flash/PSRAM mappingとプロセスごとの仮想記憶を区別 |
-| S13 | 特権・権限・所有権・隔離、syscall引数の検査、故障の封じ込めを説明する | 1、2、6、12、16、20章 | 部分。誤動作するタスクという脅威モデルから、handle検査と任意メモリ書込みの違いを示す |
+| S13 | 特権・権限・所有権・隔離、syscall引数の検査、故障の封じ込めを説明する | 境界、保護、割当、ABI、I/O | CPU0のU-mode/PMP、スカラECALL、故障と回収の章を追加。v1.3の実機12ケース×3回とエミュレータの限界を区別。汎用アプリローダ、DMAや他チップ版の隔離は未検証 |
 | S14 | MMIO、polling／IRQ、driverの上下層、blocking I/O、DMA、buffer寿命を追う | 8、13、15、16、20章 | 強い。汎用的なread要求の受付→待機→完了→返却を先に示し、個別デバイスへ戻す |
 | S15 | ファイル・directory・path・mount・open object・FD・offsetの違いを説明する | 16章 VFS/FatFs、19章 二種類のVFS | 部分。名前解決とopen後の参照、close/unlink、部分I/O、権限・世代の構造図と操作列が不足 |
 | S16 | file offsetから媒体blockへ到達し、空き領域とmetadataを更新する経路を追う | 17、18章 COW/store | 部分。superblock相当、directory entry、inode/extent、FAT chain、bitmap/free listを比較。独自storeのobject/page mapだけで一般FS構造を代表させない |
@@ -105,9 +105,9 @@ bootloader、更新slot、署名検証とrecoveryの責任境界は概説する�
 
 別の基礎単元では、仮想ページ番号＋offset→page table→物理frame、権限検査、TLB hit/miss、page faultを小さな表で追う。TLB missとpage faultを同義にしない。demand paging、working set、FIFO/LRU、thrashingは短い比較と演習にする。これをP4で実装済みとは記述しない。
 
-P4のFlash/PSRAM mappingを、そのままプロセス別ページングとみなさない。隔離を実装するなら、対象chip revisionの特権・保護機構、領域数・粒度、trap、MMIOとDMAからのアクセス、共有buffer、CPU間の設定を先に調査する。PMPやU-modeを使えるという一般論だけで、nihosの保護が成立したとはしない。
+P4のFlash/PSRAM mappingを、そのままプロセス別ページングとみなさない。PR #76で追加したCPU0の保護タスクでは、対象chip revisionの特権・保護機構、粒度、trap、ROM/MMIO拒否を実装と実機記録で扱う。アドレス変換の導入ではない。PMPはDMAを制限せず、共有bufferや別CPUへの移動の契約も残る。PMPやU-modeがあるという一般論だけで、あらゆる用途の隔離が成立したとはしない。
 
-allocatorのowner検査やhandleの世代は、APIを通る誤用を拒否できる。しかし、現行の同じM-mode空間のタスクが任意アドレスへ書くことを防ぐ境界にはならない。この違いは本文で必修にする。
+allocatorのowner検査やhandleの世代は、APIを通る誤用を拒否できる。しかし、引き続きM-mode空間で動く通常タスクが任意アドレスへ書くことを防ぐ境界にはならない。CPU0の保護クラスを追加しても、通常のサービスをすべてU-modeへ移したわけではない。この違いは本文で必修にする。
 
 ### ファイルシステムの構造
 
@@ -141,7 +141,7 @@ SQLiteの参照版`6bb2467`はhostのPERSIST journal・単一connectionで、WAL
 | I1 | stackとメモリ予算を閉じる | 静的frameの最大値だけで総stack合格としない。間接call・ROM/assembly・割込みを含む未確認経路を残し、実taskの最大使用量とguardを測る。正常系だけでなくOOM、取消、エラー経路も対象 |
 | I2 | SQLite update→commit→reboot→readbackとUI/inputの並行動作 | 通常FS adapterで一度成立させ、store経路と比較できる基線を作る。commit遅延、最大UI遅延、RAM/stack、書込み量、GC停止、復旧時間を同一条件で記録。host process再起動と物理電断は別に判定 |
 | I2 | WALと共通log/storeの最小統合 | reader世代、commit公開、checkpoint、回収可能条件を先に固定。通常方式との小さな比較で価値を測る。PERSIST PoCの成功からWAL対応を推定せず、SQLiteの契約を満たす接続を別に検証 |
-| I3 | アプリの保護境界の最小probe | 不特定コード／学習者コードを動かす用途が要求した段階で、対象P4の機構を確認。最小taskの不正read/write・特権命令・不正引数を拒否し、kernelと他taskが続くことを確認。機構とコスト次第で言語・実行環境側の隔離も比較する |
+| I3 | 保護probeから利用者向け実行環境への接続 | 最小probeはPR #76で実装し、Tab5 v1.3のwarm resetで確認済み。次は公開するサービス、入力のコピー、資源の貸出し、取消しとDMA静止を定義する。任意バイナリのローダや複数threadのprocess管理は未実装 |
 | 条件付 | 新しいready queue／汎用同期primitive | タスク数・走査時間、複数待ち手、lockが必要な共有状態を測ってから選ぶ。mutexを足すなら所有者、IRQ可否、timeout/cancel、優先度逆転まで契約にする。教科書の単語を埋めるための実装にはしない |
 
 I0〜I2は既存成果を実用の一経路に結ぶ仕事が中心。I3やqueueの変更を先に増やして、SMPと永続化の実用的な成果を遅らせない。I2の「媒体への書込み量」は観測できる層を記し、microSD内部FTLの物理書込み・寿命まで推定しない。
@@ -197,3 +197,7 @@ I0〜I2は既存成果を実用の一経路に結ぶ仕事が中心。I3やqueue
 | `7f182b0a0ba4dd0fd2cd1e6c53a5458b5f5c914d` | `src/fs/vfs.zig`、`docs/measurements/2026-10-28-fatfs-native-link.md`、`docs/measurements/2026-10-28-fatfs-wakeup-host.md` | mount/rights/handleとnative link、通知競合、未解決の総stack・実機gate |
 
 外部比較の参照日は2026年10月28日。上記CS2023最終報告を主基準にし、旧CS2013ページや2024年1月版の授業時間との差を混ぜない。MIT/OSTEPの実装方式をnihosに必須とする判断はしていない。この監査では実機試験・電断試験・kernel回帰試験を新たに実施していない。
+
+## 2026年10月30日: 保護とプロセスモデルの反映
+
+「タスクの実行と、壊せる範囲を分ける」を公平性の後、メモリ配分の前に追加した。W0の全体図、管理イメージの図を改め、PMP範囲、権限を含む復帰、故障後の回収の三図を追加した。S03/S04/S13について実装と観測を結び付けるが、S12のページ表・TLB・demand pagingの不足を解消したとは数えない。版ごとに固定した過去のI/O、PQC、SQLiteの実験を、この保護クラスへ統合した結果とも扱わない。

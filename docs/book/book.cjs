@@ -3,6 +3,7 @@ module.exports = {
   title: '小さなOSを育てる',
   subtitle: 'ZigとRISC-Vで学ぶ、実機のしくみと設計判断',
   author: 'nihos project',
+  kernelRevision: 'd86fcf0ffda44f7a464531d318ddf6442127993b',
   entries: [
     { id: 'cover', title: '表紙' },
     { id: 'preface', title: 'はじめに' },
@@ -14,6 +15,7 @@ module.exports = {
     { id: 'task-lifetime', title: '割り込まれたプログラムを再開する', chapter: true },
     { id: 'task-queues', title: 'タスクを管理する表と実行待ち', chapter: true },
     { id: 'scheduler-fairness', title: 'スケジューラは公平か', chapter: true },
+    { id: 'process-isolation', title: 'タスクの実行と、壊せる範囲を分ける', chapter: true },
     { id: 'bounded-memory', title: '有限のメモリを誰が持つか', chapter: true },
     { id: 'reusable-memory', title: 'メモリを返して使い直す', chapter: true },
     { id: 'messages-and-waits', title: '別のCPUへ仕事を渡して待つ', chapter: true },

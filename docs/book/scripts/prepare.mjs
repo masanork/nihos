@@ -17,8 +17,12 @@ const chapters = new Map(numbered.map((entry, i) => [entry.id, i + 1]));
 const ids = new Set(book.entries.map(entry => entry.id));
 if (ids.size !== book.entries.length) throw new Error('Duplicate book entry id');
 
-const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--',
+const bookRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+const pinnedKernel = book.kernelRevision !== undefined;
+const revision = book.kernelRevision ?? bookRevision;
+if (!/^[0-9a-f]{40}$/.test(revision)) throw new Error('Kernel revision must be a full commit id');
+execFileSync('git', ['cat-file', '-e', `${revision}^{commit}`], { cwd: repo });
+const dirty = !pinnedKernel && execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--',
   'src', 'include', 'compat', 'main', 'tools', 'build.zig', 'build.zig.zon', '.zigversion'],
   { cwd: repo, encoding: 'utf8' }).trim().length > 0;
 const bookDirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', 'docs/book'],
@@ -104,6 +108,18 @@ const snippets = {
   'task-reap': {
     file: 'src/arch/riscv32/task_runtime.zig',
     start: '        pub fn reap(', end: '\n        }', includeEnd: true
+  },
+  'task-protection': {
+    file: 'src/arch/riscv32/context.zig',
+    start: 'pub const Protection = struct {', end: '\n};', includeEnd: true
+  },
+  'privilege-contract': {
+    file: 'src/arch/riscv32/task_runtime.zig',
+    start: '    fn privilegeAccepted(', end: '\n    }', includeEnd: true
+  },
+  'active-trap-return': {
+    file: 'src/arch/riscv32/context.zig',
+    start: '    pub fn returningFrom(', end: '\n    }', includeEnd: true
   },
   'ring-push': {
     file: 'src/kernel/spsc_ring.zig',
@@ -202,8 +218,8 @@ const snippetSources = {};
 for (const [id, spec] of Object.entries(snippets)) {
   const sourceRevision = spec.revision ?? revision;
   const published = knownPublic(sourceRevision);
-  const text = spec.revision
-    ? committedSource(spec.revision, spec.file).toString('utf8')
+  const text = spec.revision || pinnedKernel
+    ? committedSource(sourceRevision, spec.file).toString('utf8')
     : await readFile(resolve(repo, spec.file), 'utf8');
   const start = uniqueIndex(text, spec.start, spec.file);
   // A closing brace is deliberately searched only up to the next declaration.
@@ -217,7 +233,7 @@ for (const [id, spec] of Object.entries(snippets)) {
   const code = lines.map(line => line.slice(indent)).join('\n');
   const startLine = text.slice(0, start).split('\n').length;
   const url = `https://github.com/masanork/nihos/blob/${sourceRevision}/${spec.file}#L${startLine}`;
-  const fileDirty = !spec.revision && execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', spec.file],
+  const fileDirty = !spec.revision && !pinnedKernel && execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', spec.file],
     { cwd: repo, encoding: 'utf8' }).trim().length > 0;
   const label = fileDirty ? `${sourceRevision.slice(0, 12)} + 作業中の変更` : sourceRevision.slice(0, 12);
   const note = fileDirty
@@ -270,12 +286,12 @@ for (const entry of book.entries) {
       const path = href.slice(5);
       const target = resolve(repo, path);
       if (!target.startsWith(repo + sep)) throw new Error(`Path outside repo: ${href}`);
-      const source = await readFile(target);
+      const source = pinnedKernel ? committedSource(revision, path) : await readFile(target);
       let committed = true;
       try {
         execFileSync('git', ['cat-file', '-e', `${revision}:${path}`], { cwd: repo, stdio: 'ignore' });
       } catch { committed = false; }
-      const changed = execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', path],
+      const changed = !pinnedKernel && execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', path],
         { cwd: repo, encoding: 'utf8' }).trim().length > 0;
       const published = committed && knownPublic(revision);
       referenceSources[path] = { revision, file: path, sourceSha256: createHash('sha256').update(source).digest('hex'), committed, changed, published };
@@ -316,7 +332,7 @@ for (const entry of book.entries) {
   await writeFile(resolve(output, `${entry.id}.md`), text);
 }
 await writeFile(resolve(root, '_build/source.json'), JSON.stringify({
-  revision, kernelDirty: dirty, edition,
+  revision, bookRevision, kernelDirty: dirty, edition,
   bookDirty, manuscriptSources, referenceSources,
   snippets: Object.fromEntries(Object.entries(snippets).map(([id, spec]) => [id, spec.file])),
   snippetSources,
