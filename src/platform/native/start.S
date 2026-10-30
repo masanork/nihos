@@ -102,6 +102,16 @@ nih_native_cpu1_start:
     csrc mstatus, t0
     /* Pinned P4 MEXSTATUS.WFFEN: use interrupt wait, not event wait. */
     csrci 0x7e1, 16
+    /* IRQ top stays in mscratch so a U-mode trap can switch stacks
+     * before it stores. Install it before mtvec goes live. */
+    csrr t0, mhartid
+    li t1, 2
+    bgeu t0, t1, .Lhalt
+    slli t0, t0, 2
+    la t1, .Lirq_tops
+    add t0, t0, t1
+    lw t0, 0(t0)
+    csrw mscratch, t0
     la t0, nih_native_trap
     ori t0, t0, 3
     csrw mtvec, t0
@@ -119,6 +129,61 @@ nih_native_cpu1_start:
     .global nih_native_trap
     .type nih_native_trap, @function
 nih_native_trap:
+    /* Switch off the interrupted stack before any store. mscratch holds this
+     * hart's IRQ top. MPP is 0 after reset as well as in U-mode, so a user
+     * check also requires a published grant. A rejected SP is saved in the
+     * kernel fault frame; the epilogue still drops the frame with addi. */
+    csrrw sp, mscratch, sp
+    addi sp, sp, -16
+    sw t0, 0(sp)
+    sw t1, 4(sp)
+    sw t2, 8(sp)
+    csrr t0, mstatus
+    srli t0, t0, 11
+    andi t0, t0, 3
+    bnez t0, .Lcaller_frame
+    csrr t0, mhartid
+    li t1, 2
+    bgeu t0, t1, .Lhalt
+    slli t0, t0, 3
+    la t1, nih_user_bounds
+    add t1, t1, t0
+    lw t2, 4(t1)
+    beqz t2, .Lcaller_frame
+    lw t0, 0(t1)
+    csrr t1, mscratch
+    bltu t2, t1, .Lbad_user_sp
+    addi t0, t0, 128
+    bltu t1, t0, .Lbad_user_sp
+    andi t0, t1, 15
+    bnez t0, .Lbad_user_sp
+.Lcaller_frame:
+    lw t0, 0(sp)
+    lw t1, 4(sp)
+    lw t2, 8(sp)
+    addi sp, sp, 16
+    csrrw sp, mscratch, sp
+    j .Lsave_frame
+.Lbad_user_sp:
+    csrr t0, mhartid
+    li t1, 2
+    bgeu t0, t1, .Lhalt
+    slli t1, t0, 2
+    la t2, nih_user_sp_bad
+    add t2, t2, t1
+    li t1, 1
+    sw t1, 0(t2)
+    slli t0, t0, 7
+    la t1, nih_user_fault_frames
+    add t1, t1, t0
+    addi t2, t1, 128
+    csrw mscratch, t2
+    lw t0, 0(sp)
+    lw t1, 4(sp)
+    lw t2, 8(sp)
+    addi sp, sp, 16
+    csrrw sp, mscratch, sp
+.Lsave_frame:
     /* Stable integer frame; an opted-in FP bank is stored separately. */
     addi sp, sp, -NIH_CTX_SIZE
     sw ra, NIH_CTX_RA(sp)

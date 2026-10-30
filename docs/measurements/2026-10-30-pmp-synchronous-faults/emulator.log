@@ -1,0 +1,35 @@
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbd8
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001366 probe=4000019a mapping=40000ea8 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00000d00 identity=000000cf bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000028 mr4=00000040 mr8=0000000b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=00000071
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000040 owner_checks=00000c00 peer_checks=00000c00 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_PMP_PROBE begin cases=12 first=0 sbe_evidence=unmodeled hart=0 pmpcfg0=00181818 pmpcfg1=001d000f pmpcfg2=1f000000 pmpcfg3=00000000 pmpaddr0=09ffffff pmpaddr1=0ffc3fff
+NIHOS_NATIVE_PMP_PROBE case=0 result=returned exit=1 kernel=1 reaped=1 calls=1542 timer_interrupts=1 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=1 data=00000000 cause=00000000 mepc=00000000 pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2075
+NIHOS_NATIVE_PMP_PROBE case=1 result=fault exit=-70 kernel=1 reaped=2 calls=1544 timer_interrupts=1 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=2 data=00000000 cause=08000005 mepc=4000211c pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=2 result=fault exit=-70 kernel=1 reaped=3 calls=1546 timer_interrupts=1 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=3 data=00000000 cause=08000007 mepc=4000212c pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=3 result=fault exit=-70 kernel=1 reaped=4 calls=1548 timer_interrupts=1 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=4 data=00600513 cause=08000001 mepc=4ff2a380 pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=4 result=fault exit=-70 kernel=1 reaped=5 calls=1550 timer_interrupts=1 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=5 data=00000000 cause=08000008 mepc=40002170 pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=5 result=fault exit=-70 kernel=1 reaped=6 calls=1552 timer_interrupts=1 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=6 data=00000000 cause=08000002 mepc=4000217c pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=6 result=fault exit=-70 kernel=1 reaped=7 calls=1554 timer_interrupts=2 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=7 data=00000000 cause=08000005 mepc=4000218c pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=7 result=fault exit=-70 kernel=1 reaped=8 calls=1556 timer_interrupts=2 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=8 data=00000000 cause=08000005 mepc=4000219c pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=8 result=fault exit=-70 kernel=1 reaped=9 calls=1558 timer_interrupts=2 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=9 data=00000000 cause=08000005 mepc=400021ac pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=9 result=fault exit=-70 kernel=1 reaped=10 calls=1560 timer_interrupts=2 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=10 data=00000000 cause=08000005 mepc=400021bc pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=10 result=fault exit=-70 kernel=1 reaped=11 calls=1562 timer_interrupts=2 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=11 data=00000000 cause=08000005 mepc=400021cc pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE case=11 result=fault exit=-70 kernel=1 reaped=12 calls=1564 timer_interrupts=2 user_timer_interrupts=1 mstatus=00001881 live=00000089 grant=00000000 slot=1 generation=12 data=00000000 cause=08000001 mepc=4fc00000 pmpaddr4=10000800 pmpaddr5=10000880 user_mhint=00000000 kernel_mhint=00000000 arm_cycles_max=391 dispatch_cycles_max=2183
+NIHOS_NATIVE_PMP_PROBE_PASS cases=12 kernel=1

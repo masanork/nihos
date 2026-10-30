@@ -26,9 +26,25 @@ pub fn build(b: *std.Build) void {
         .root_module = module,
     });
     const run_module_tests = b.addRunArtifact(module_tests);
+    const protected_fault = b.createModule(.{
+        .root_source_file = b.path("src/protected_fault_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    protected_fault.addImport("scheduler", b.createModule(.{
+        .root_source_file = b.path("src/kernel/scheduler.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
+    protected_fault.addImport("task_control", b.createModule(.{
+        .root_source_file = b.path("src/kernel/task_control.zig"),
+        .target = target,
+        .optimize = optimize,
+    }));
 
     const test_step = b.step("test", "Run host-side nihOS unit tests");
     test_step.dependOn(&run_module_tests.step);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = protected_fault })).step);
     const surface_tests = b.addTest(.{ .root_module = surface_module });
     test_step.dependOn(&b.addRunArtifact(surface_tests).step);
     const canvas_module = b.createModule(.{ .root_source_file = b.path("src/graphics/canvas.zig"), .target = target, .optimize = optimize });

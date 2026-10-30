@@ -69,6 +69,43 @@ def device_function(name):
     return name in DEVICE_FUNCTIONS or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
 
 
+PMP_FLASH_FUNCTIONS = {
+    "native_tasks.closeFaulted",
+    "native_tasks.onProtectedFault",
+    "native_tasks.reclaimFaulted",
+    "pmp.commit",
+    "pmp.grant",
+    "pmp.protectionAccepted",
+    "pmp.writeWords",
+    "task_runtime.Runtime(4,2).add",
+    "task_runtime.Runtime(4,2).containFault",
+    "task_runtime.Runtime(4,2).finishCall",
+}
+
+USER_PROBE_FUNCTIONS = {
+    "nih_user_probe_trampoline",
+    "nih_user_probe_body",
+}
+
+
+def audit_pmp_flash(functions, span):
+    start, end = span
+    require(0x40000120 < start < end <= 0x40010000 and start % 16 == 0, "invalid PMP Flash extent")
+    selected = sorted((address, stop, name) for name, address, stop in functions if start <= address < end)
+    require(selected and selected[0][0] == start and selected[-1][1] == end and
+            all(start <= address < stop <= end for address, stop, name in selected),
+            "PMP Flash function outside its extent")
+    names = [name for _, _, name in selected]
+    require(names and len(names) == len(set(names)) and set(names) <= PMP_FLASH_FUNCTIONS,
+            "unapproved PMP Flash function")
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])),
+            "overlapping or unaccounted PMP Flash bytes")
+    for name, address, stop in functions:
+        if name in PMP_FLASH_FUNCTIONS:
+            require(start <= address < stop <= end, "PMP helper left its Flash extent: " + name)
+    return {name: {"start": hex(address), "end": hex(stop)} for address, stop, name in selected}
+
+
 def audit_device_functions(functions, span):
     start, end = span
     require(0x40000120 < start < end <= 0x40010000 and start % 16 == 0, 'invalid device Flash extent')
@@ -190,6 +227,14 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
     if name == '.flash.card':
         require(allow_ui and kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000, 'invalid card foreground Flash code')
         return
+    if name == ".flash.pmp":
+        require(kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 16 == 0,
+                "invalid PMP Flash section")
+        return
+    if name == ".flash.user":
+        require(kind == 1 and flags == 6 and 0x40000120 < address < address + size <= 0x40010000 and address % 128 == 0 and size % 128 == 0,
+                "invalid user probe Flash section")
+        return
     if name in UI_SECTIONS:
         require(allow_ui and kind == 1 and flags & 7 == 2 and flags & ~50 == 0, 'unapproved/mutable/executable keypad Flash section')
         if name == '.flash.uipad':
@@ -294,7 +339,7 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
             "stack_bytes": 32768, "ram_reserved_bytes": 32768}, (text[0], ro[0]), payload
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None):
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
@@ -317,13 +362,19 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         if render_span is not None and render_span[0] <= address < stop <= render_span[1]:
             require(name in RENDER_FUNCTIONS, "unapproved rendering Flash function: " + name)
             continue
+        if pmp_span is not None and pmp_span[0] <= address < stop <= pmp_span[1]:
+            require(name in PMP_FLASH_FUNCTIONS, "unapproved PMP Flash function: " + name)
+            continue
+        if user_span is not None and user_span[0] <= address < stop <= user_span[1]:
+            require(name in USER_PROBE_FUNCTIONS, "unapproved user probe function: " + name)
+            continue
         if card_span is not None and card_span[0] <= address < stop <= card_span[1]:
             require(any(name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in card_functions), 'unapproved card foreground function: ' + name)
             continue
         if photo_span is not None and photo_span[0] <= address < stop <= photo_span[1]:
             software = (name.startswith(('compiler_rt.addf3.', 'compiler_rt.mulf3.', 'compiler_rt.divf3.', 'compiler_rt.divsf3.', 'compiler_rt.divdf3.', 'compiler_rt.comparef.', 'compiler_rt.float_from_int.', 'compiler_rt.int_from_float.', 'compiler_rt.extendf.', 'compiler_rt.truncf.')) or re.fullmatch(r'__(?:(?:add|sub|mul|div|cmp|eq|ne|ge|gt|le|lt|unord)(?:sf|df)2?3?|float(?:un)?(?:si|di)(?:sf|df)|fix(?:uns)?(?:sf|df)(?:si|di)|extendsfdf2|truncdfsf2)',name))
             automatic = automatic_cards and (name in ('notice_build', 'nih_display_notice_publish', 'nih_display_scanout_begin', 'display_runtime.presentNotice', 'keypad_display.publishNotice') or name.startswith(('card_auto.', 'graphics.card_read_result.automaticText', 'graphics.card_read_result.Glyph(', 'graphics.card_read_result.AutoPainter(', 'graphics.card_read_result.readBits', 'graphics.card_read_result.automaticOverview', 'card.jis0208.Decoder(', 'card.license_trust.lookup', 'card.license.Parser(', 'card.license_record.Parser(', 'card.license_session.Session(', 'card.service.ServiceType(true,', 'card.wire_policy.PolicyType(true)')))
-            require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name == 'photo_runtime.execute' or software, 'unapproved photo codec function: ' + name)
+            require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name in ('photo_runtime.execute', 'keypad_display.stage', 'card_read.abort') or software, 'unapproved photo codec function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else "clock" if re.fullmatch(r"cpu_boot\.run__func_[0-9]+", name) else None
         if sdmmc_span is not None and name == "sdmmc_probe.run":
@@ -579,6 +630,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     flash_found = set()
     flash_tables = None
     boot_code = None
+    pmp_code = b""
+    pmp_start = None
+    user_code = b""
+    user_start = None
     time_code = b''
     time_start = None
     allow_time = any(string(names, section[0]) == '.flash.time' and section[5] for section in sections)
@@ -665,6 +720,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 if name == ".flash.boot":
                     boot_code = elf[offset:offset + size]
                     require(len(boot_code) == size, "truncated Flash boot code")
+                if name == ".flash.pmp":
+                    pmp_start, pmp_code = address, elf[offset:offset + size]
+                if name == ".flash.user":
+                    user_start, user_code = address, elf[offset:offset + size]
             allocated.append({"name": name, "address": hex(address), "bytes": size})
             if flags & 4:
                 executable.append((name, address, elf[offset:offset + size]))
@@ -684,7 +743,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                     functions.append((symbol, value, value + symbol_size))
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
-    require(flash_found == set(FLASH_SECTIONS) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()), "missing mapped Flash sections")
+    require((user_start is not None) == ("__user_probe_start" in symbols) == ("__user_probe_end" in symbols), "user probe section/symbol mismatch")
+    require(flash_found == set(FLASH_SECTIONS) | {".flash.pmp"} | ({".flash.user"} if user_start is not None else set()) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()), "missing mapped Flash sections")
     service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
@@ -856,7 +916,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             require(not any(name.startswith('usb_probe.Device.') for name, _, _ in functions), 'card transport linked into card-free scene exercise')
         diagnostics = keypad_manifest.get('diagnostic_reports', [])
         require(diagnostics in ([], ['main.resourceReport', 'main.stackReport']), 'unapproved diagnostic Flash functions')
-        require(keypad_manifest.get('allowed_functions') == (([] if keypad_manifest.get('automatic_cards') else ['card_read.prepare', 'card_read.run'] + (['card_read.redraw'] if handoff else [])) + ['keypad_display.prepare'] + (['keypad_display.stage', 'keypad_display.bind'] if handoff else []) + ['keypad_display.paintTextures'] + ([] if exercise else ['usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut']) + ['display_runtime.start'] + (['display_runtime.replaceCard'] if handoff else []) + diagnostics + (['photo_runtime.prepare'] + ([] if keypad_manifest.get('automatic_cards', {}).get('read_enabled') is False else ['photo_runtime.decode']) + ['photo_runtime.close'] if allow_photo else [])), 'unapproved foreground manifest')
+        require(keypad_manifest.get('allowed_functions') == (([] if keypad_manifest.get('automatic_cards') else ['card_read.prepare', 'card_read.run'] + (['card_read.redraw', 'graphics.card_read_result.Canvas.sizedFlash'] if handoff else [])) + ['keypad_display.prepare'] + ((['keypad_display.bind'] if allow_photo else ['keypad_display.stage', 'keypad_display.bind']) if handoff else []) + ['keypad_display.paintTextures'] + ([] if exercise else ['usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut']) + ['display_runtime.start'] + (['display_runtime.replaceCard'] if handoff else []) + diagnostics + (['photo_runtime.prepare'] + ([] if keypad_manifest.get('automatic_cards', {}).get('read_enabled') is False else ['photo_runtime.decode']) + ['photo_runtime.close'] if allow_photo else [])), 'unapproved foreground manifest')
         for prefix in keypad_manifest['allowed_functions']:
             require(sum(1 for name, address, stop in functions if card_span[0] <= address < stop <= card_span[1] and (name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name))) == 1, 'missing/duplicate card foreground entry: ' + prefix)
         if service_sram:
@@ -880,7 +940,16 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         preceding_end = device_span[1] if device_span else boot_end
         require(time_start == (preceding_end + 15) & ~15 and symbols.get('__flash_time_start') == time_start and symbols.get('__flash_time_end') == time_span[1], 'invalid network/time foreground symbols')
         time_functions = audit_time_functions(functions, time_span)
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None)
+    pmp_span = None if pmp_start is None else (pmp_start, pmp_start + len(pmp_code))
+    require(pmp_span is not None and symbols.get("__flash_pmp_start") == pmp_start and symbols.get("__flash_pmp_end") == pmp_span[1],
+            "PMP Flash symbols differ from section")
+    pmp_functions = audit_pmp_flash(functions, pmp_span)
+    user_span = None if user_start is None else (user_start, user_start + len(user_code))
+    if user_span:
+        require(user_start % 128 == 0 and user_span[1] % 128 == 0 and user_start >= pmp_span[1], "invalid user probe extent")
+        require(symbols.get("__user_probe_start") == user_start and symbols.get("__user_probe_end") == user_span[1], "user probe symbols differ from section")
+        require({name for name, address, stop in functions if user_span[0] <= address < stop <= user_span[1]} == USER_PROBE_FUNCTIONS, "user probe functions differ")
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None
@@ -943,6 +1012,10 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
               "primary_static_bytes": symbols["__heap_start"] - low, "stacks": stacks, "heap": heap,
               "flash_boot": {"start": hex(boot_start), "end": hex(boot_end), "bytes": len(boot_code),
                              "sha256": hashlib.sha256(boot_code).hexdigest(), "functions": boot_functions},
+              "pmp_flash": {"start": hex(pmp_span[0]), "end": hex(pmp_span[1]), "bytes": len(pmp_code),
+                            "sha256": hashlib.sha256(pmp_code).hexdigest(), "functions": pmp_functions},
+              "user_probe": None if user_span is None else {"start": hex(user_span[0]), "end": hex(user_span[1]), "bytes": len(user_code),
+                            "sha256": hashlib.sha256(user_code).hexdigest(), "executable": True, "writable": False},
               "flash_records": {"start": hex(flash_start), "end": hex(flash_start + len(flash_tables)),
                                 "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
                                 "executable": False, "writable": False},
@@ -1018,6 +1091,18 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     if time_span:
         preceding_end = device_span[1] if device_span else boot_end
         first_payload += bytes(time_start - preceding_end) + time_code
+    covered_end = boot_end
+    if card_span:
+        covered_end = card_span[1]
+    if device_span:
+        covered_end = device_span[1]
+    if time_span:
+        covered_end = time_span[1]
+    require(pmp_start >= covered_end, "PMP Flash code overlaps earlier boot-page code")
+    first_payload += bytes(pmp_start - covered_end) + pmp_code
+    if user_span:
+        require(user_start >= pmp_span[1], "user probe overlaps PMP code")
+        first_payload += bytes(user_start - pmp_span[1]) + user_code
     first_length = 256 + ((len(first_payload) + 3) & ~3)
     for index in range(image[1]):
         address, length = struct.unpack_from("<II", image, position)

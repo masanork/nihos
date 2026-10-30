@@ -1,6 +1,7 @@
 //! Permanent native owner: the same runtime/policy/call ABI as hosted tasks.
 //! Each hart mutates only its own Owner on its private IRQ stack with MIE=0.
 pub const context = @import("context.zig");
+pub const pmp = @import("pmp.zig");
 const runtime_module = @import("task_runtime.zig");
 pub const calls = @import("task_calls.zig");
 const options = @import("native_options");
@@ -41,10 +42,16 @@ extern fn nih_broker_cancel_requested() callconv(.c) u32;
 extern fn nih_broker_task_failed(u32) callconv(.c) noreturn;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_normal_fs_task(u32) callconv(.c) i32;
+// Linker symbols for the hardware probe. Referenced only when pmp_probe is
+// true, so a product image does not take a relocation to this section.
+extern const __user_probe_start: u8;
+extern const __user_probe_end: u8;
+extern fn nih_user_probe_trampoline() callconv(.c) void;
+extern fn nih_user_probe_body() callconv(.c) void;
 
 const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
 const normal_boot = @import("native_options").boot_fast;
-const Phase = enum { normal, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete, graphics };
+const Phase = enum { normal, pmp_probe, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete, graphics };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol, normal_storage };
 
 const Owner = struct {
@@ -65,6 +72,22 @@ const Owner = struct {
     worker_reaped: [2]bool = .{ false, false },
     timer_interrupts: u32 = 0,
     graphics_task: ?scheduler.TaskHandle = null,
+    /// Protected task exited by a contained fault. Bootstrap reaps it after
+    /// the ledger drain. This is not an extra scheduler slot.
+    faulted: ?scheduler.TaskHandle = null,
+    /// Live protected task. Its ticks stay in the publish sum until reaping
+    /// moves them into completed_runtime_ticks. Null on every product boot.
+    protected_task: ?scheduler.TaskHandle = null,
+    /// Last contained fault observed by the hardware probe. Unused when the
+    /// probe is not linked.
+    probe_fault_cause: u32 = 0,
+    probe_fault_mepc: u32 = 0,
+    /// Code TOR read back from the unlocked entries. Entries 0 and 1 stay at
+    /// the bootloader's locked NAPOT values, so they are not evidence.
+    probe_pmpaddr4: u32 = 0,
+    probe_pmpaddr5: u32 = 0,
+    probe_mhint: u32 = 0,
+    probe_user_timers: u32 = 0,
 };
 
 pub const Report = struct {
@@ -242,19 +265,20 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
 /// Called on the corresponding bootstrap stack before that hart enables MIE.
 pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     const owner = &owners[hart];
+    if (options.pmp_probe) owner.runtime.protected_admission = .diagnostic;
     owner.gp = gp;
     owner.bootstrap = owner.runtime.add(0, .{ .stack_min = stack_min, .stack_max = stack_max }) orelse return false;
     if (!memory.reusable.openTask(hart, key(owner.bootstrap))) return false;
     memory.reusable.selectTask(hart, key(owner.bootstrap));
     _ = owner.runtime.policy.schedule() orelse return false;
     owner.last_slot = owner.bootstrap.slot;
-    if (normal_boot) {
+    if (normal_boot or options.pmp_probe) {
         for (&stacks[hart]) |*stack| {
             const guard: *[4]u32 = @ptrCast(stack);
             guard.* = @splat(memory.stacks.layout.worker_guard);
         }
-        owner.phase = .normal;
-        if (normal_storage and hart == 0) owner.workers[0] = add(hart, 0, .normal_storage) orelse return false;
+        owner.phase = if (options.pmp_probe) .pmp_probe else .normal;
+        if (normal_storage and hart == 0 and !options.pmp_probe) owner.workers[0] = add(hart, 0, .normal_storage) orelse return false;
         owner.ready = true;
         return true;
     }
@@ -280,7 +304,7 @@ pub fn wakeNormalStorage() void {
 }
 
 fn maintain(hart: u32, device: timer_group.Timer) bool {
-    if (normal_boot) return true;
+    if (normal_boot or options.pmp_probe) return true;
     const owner = &owners[hart];
     if (options.broker and owner.phase == .broker_complete) return true;
     if (options.broker and owner.phase == .broker_service) {
@@ -373,6 +397,52 @@ fn maintainProtocol(hart: u32, device: timer_group.Timer) bool {
     return true;
 }
 
+pub noinline fn onProtectedFault(hart: u32, frame: *context.IntegerContext, state: context.ReturnState) linksection(pmp.text_section) ?context.TaskContext {
+    const owner = &owners[hart];
+    if (options.pmp_probe) {
+        owner.probe_fault_cause = state.mcause;
+        owner.probe_fault_mepc = frame.mepc;
+        noteProbeGrant(owner);
+    }
+    const fault = owner.runtime.containFault();
+    if (fault.exited) |handle| {
+        if (!closeFaulted(hart, handle)) return null;
+    }
+    const selected = fault.next orelse return null;
+    return publish(hart, selected);
+}
+
+/// Close the faulted task's ledger before the replacement is published.
+/// The handle stays occupied until bootstrap drains the ledger and reaps it.
+/// A non-zero floating bank is rejected: this class never owns one.
+noinline fn closeFaulted(hart: u32, handle: scheduler.TaskHandle) linksection(pmp.text_section) bool {
+    const owner = &owners[hart];
+    if (!owner.runtime.faultCloseable(handle)) return false;
+    if (!memory.reusable.closeTask(hart, key(handle))) return false;
+    if (owner.faulted) |pending| {
+        if (pending.slot != handle.slot or pending.generation != handle.generation) return false;
+    } else owner.faulted = handle;
+    return true;
+}
+
+noinline fn reclaimFaulted(hart: u32) linksection(pmp.text_section) bool {
+    const owner = &owners[hart];
+    const handle = owner.faulted orelse return true;
+    switch (owner.runtime.reclaimIfClean(handle, memory.reusable.taskCleaned(hart, key(handle)), &owner.completed_runtime_ticks)) {
+        .waiting => return true,
+        .refused => return false,
+        .reaped => {
+            owner.faulted = null;
+            owner.reaped += 1;
+            return true;
+        },
+    }
+}
+
+pub fn armProtection(hart: u32, selected: context.TaskContext) void {
+    pmp.arm(hart, selected.protection);
+}
+
 fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     const owner = &owners[hart];
     floating.publish(hart);
@@ -381,6 +451,9 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
         if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
     }
     if (owner.graphics_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
+        total += snapshot.runtime_ticks;
+    };
+    if (owner.protected_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
         total += snapshot.runtime_ticks;
     };
     if (total != owner.runtime.policy.now()) {
@@ -416,6 +489,8 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    if (options.pmp_probe and state.mstatus & pmp.mpp_mask == pmp.user_mpp and
+        owner.runtime.images[current.slot].?.protection != null) owner.probe_user_timers += 1;
     if (@import("native_options").graphics and hart == 0) graphics.exchange.composer.captureTimer(frame.mepc);
     if (@import("native_options").graphics and owner.graphics_task != null and current.slot == owner.graphics_task.?.slot) graphics.capture(frame, true);
     floating.captured(hart, owner.runtime.images[current.slot].?.floating_context, .timer, frame.mepc);
@@ -426,9 +501,23 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     return publish(hart, owner.runtime.select() orelse return null);
 }
 
+fn noteProbeGrant(owner: *Owner) void {
+    if (comptime !options.pmp_probe) return;
+    owner.probe_mhint = asm volatile ("csrr %[result], 0x7c5"
+        : [result] "=r" (-> u32),
+    );
+    owner.probe_pmpaddr4 = asm volatile ("csrr %[result], pmpaddr4"
+        : [result] "=r" (-> u32),
+    );
+    owner.probe_pmpaddr5 = asm volatile ("csrr %[result], pmpaddr5"
+        : [result] "=r" (-> u32),
+    );
+}
+
 pub fn onCall(hart: u32, frame: *context.IntegerContext, state: context.ReturnState, device: timer_group.Timer) ?context.TaskContext {
     const owner = &owners[hart];
     if (!guardsValid(hart) or !refresh(hart, device)) return null;
+    if (options.pmp_probe and state.mstatus & pmp.mpp_mask == pmp.user_mpp) noteProbeGrant(owner);
     owner.calls +%= 1;
     const current = owner.runtime.policy.current() orelse return null;
     if (@import("native_options").graphics and owner.graphics_task != null and current.slot == owner.graphics_task.?.slot) graphics.capture(frame, false);
@@ -466,7 +555,7 @@ pub fn onIpi(hart: u32, frame: *context.IntegerContext, state: context.ReturnSta
 /// Bootstrap can park only after becoming the lower-priority idle context.
 pub fn idleOnce(hart: u32) void {
     if (service(hart)) return;
-    if (normal_boot) asm volatile ("wfi" ::: .{ .memory = true }) else if (ipi.active(hart)) ipi.idleOnce(hart);
+    if (normal_boot or options.pmp_probe) asm volatile ("wfi" ::: .{ .memory = true }) else if (ipi.active(hart)) ipi.idleOnce(hart);
 }
 
 fn key(handle: scheduler.TaskHandle) memory.reusable.Key {
@@ -516,6 +605,14 @@ pub fn service(hart: u32) bool {
     }
     if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     const cleaned = memory.reusable.cleanupOne();
+    if (owner.faulted != null) {
+        const saved = asm volatile ("csrrci %[result], mstatus, 8"
+            : [result] "=r" (-> u32),
+            :
+            : .{ .memory = true });
+        defer if (saved & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+        if (!reclaimFaulted(hart)) nih_native_task_failed();
+    }
     if (cleaned == .complete or terminated) {
         if (calls.yieldNow() != 0) nih_native_task_failed();
     }
@@ -615,4 +712,170 @@ pub fn runGraphics(device: timer_group.Timer) ?graphics.Report {
         }
         if (calls.yieldNow() != 0) return null;
     }
+}
+
+pub const ProbeStep = struct {
+    exit_code: i32,
+    reaped: u32,
+    calls: u32,
+    timer_interrupts: u32,
+    user_timer_interrupts: u32,
+    kernel_mstatus: u32,
+    live_mstatus: u32,
+    grant_hi: u32,
+    slot: u16,
+    generation: u16,
+    data_word: u32,
+    fault_cause: u32,
+    fault_mepc: u32,
+    pmpaddr4: u32,
+    pmpaddr5: u32,
+    user_mhint: u32,
+    kernel_mhint: u32,
+};
+
+fn maskInterrupts() u32 {
+    return asm volatile ("csrrci %[result], mstatus, 8"
+        : [result] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+}
+
+fn restoreInterrupts(status: u32) void {
+    if (status & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+}
+
+fn probeArena() *align(128) [1024]u8 {
+    const Store = struct {
+        var bytes: [1024]u8 align(128) = undefined;
+    };
+    return &Store.bytes;
+}
+
+/// One protected case on CPU0. The caller is bootstrap. A null result means
+/// this hart did not get back to the kernel with a reaped task.
+pub fn runProbeCase(case_id: u32) ?ProbeStep {
+    if (comptime !options.pmp_probe) return null;
+    return runProbeCaseLive(case_id);
+}
+
+fn runProbeCaseLive(case_id: u32) ?ProbeStep {
+    const hart = asm volatile ("csrr %[result], mhartid"
+        : [result] "=r" (-> u32),
+    );
+    if (hart != 0 or case_id >= pmp.probe_cases) return null;
+    const owner = &owners[hart];
+    if (owner.phase != .pmp_probe or !owner.ready or owner.faulted != null or owner.protected_task != null) return null;
+    owner.probe_fault_cause = 0;
+    owner.probe_fault_mepc = 0;
+    owner.probe_pmpaddr4 = 0;
+    owner.probe_pmpaddr5 = 0;
+    owner.probe_mhint = 0;
+    const saved = maskInterrupts();
+    if (!owner.runtime.policy.setPriority(owner.bootstrap, 1)) {
+        restoreInterrupts(saved);
+        return null;
+    }
+    const handle = admitProbe(hart, case_id) orelse {
+        restoreInterrupts(saved);
+        return null;
+    };
+    restoreInterrupts(saved);
+    if (calls.yieldNow() != 0) return null;
+    const pending = owner.runtime.policy.snapshot(handle) orelse return null;
+    if (pending.state != .exited) return null;
+    const exit_code = pending.exit_code;
+    var spins: u32 = 0;
+    while (owner.runtime.policy.snapshot(handle) != null) {
+        spins += 1;
+        if (spins > 8) return null;
+        _ = service(hart);
+        if (owner.faulted != null) continue;
+        const snap = owner.runtime.policy.snapshot(handle) orelse break;
+        if (snap.state != .exited or !memory.reusable.taskCleaned(hart, key(handle))) continue;
+        const held = maskInterrupts();
+        const current = owner.runtime.policy.snapshot(handle) orelse {
+            restoreInterrupts(held);
+            return null;
+        };
+        owner.completed_runtime_ticks += current.runtime_ticks;
+        if (!owner.runtime.reap(handle)) {
+            restoreInterrupts(held);
+            return null;
+        }
+        owner.reaped += 1;
+        owner.protected_task = null;
+        restoreInterrupts(held);
+        break;
+    }
+    if (owner.runtime.policy.snapshot(handle) != null or owner.faulted != null) return null;
+    if (owner.protected_task) |live| {
+        if (live.slot != handle.slot or live.generation != handle.generation) return null;
+        const held = maskInterrupts();
+        owner.protected_task = null;
+        restoreInterrupts(held);
+    }
+    const image = owner.runtime.images[owner.bootstrap.slot] orelse return null;
+    if (image.protection != null) return null;
+    const live_mstatus = asm volatile ("csrr %[result], mstatus"
+        : [result] "=r" (-> u32),
+    );
+    const data_word: u32 = if (comptime options.pmp_probe) @as(*const u32, @ptrCast(@alignCast(probeArena()))).* else 0;
+    return .{
+        .exit_code = exit_code,
+        .reaped = owner.reaped,
+        .calls = owner.calls,
+        .timer_interrupts = owner.timer_interrupts,
+        .user_timer_interrupts = owner.probe_user_timers,
+        .kernel_mstatus = image.state.mstatus,
+        .live_mstatus = live_mstatus,
+        .grant_hi = pmp.publishedGrantHi(hart),
+        .slot = handle.slot,
+        .generation = handle.generation,
+        .data_word = data_word,
+        .fault_cause = owner.probe_fault_cause,
+        .fault_mepc = owner.probe_fault_mepc,
+        .pmpaddr4 = owner.probe_pmpaddr4,
+        .pmpaddr5 = owner.probe_pmpaddr5,
+        .user_mhint = owner.probe_mhint,
+        .kernel_mhint = asm volatile ("csrr %[result], 0x7c5"
+            : [result] "=r" (-> u32),
+        ),
+    };
+}
+
+fn admitProbe(hart: u32, case_id: u32) ?scheduler.TaskHandle {
+    if (comptime !options.pmp_probe) return null;
+    const owner = &owners[hart];
+    const arena = probeArena();
+    @memset(arena, 0);
+    const data_lo: u32 = @intFromPtr(arena);
+    const data_hi = data_lo + arena.len;
+    const code_lo: u32 = @intFromPtr(&__user_probe_start);
+    const code_hi: u32 = @intFromPtr(&__user_probe_end);
+    if (data_lo & 127 != 0 or data_hi & 127 != 0 or code_lo & 127 != 0 or code_hi & 127 != 0 or code_lo >= code_hi) return null;
+    const address = context.initialTaskFrameAddress(data_lo, arena.len) orelse return null;
+    const frame: *context.IntegerContext = @ptrFromInt(address);
+    context.initialize(frame, .{
+        .entry = @intFromPtr(&nih_user_probe_body),
+        .argument = case_id,
+        .trampoline = @intFromPtr(&nih_user_probe_trampoline),
+        .global_pointer = 0,
+    });
+    frame.a2 = data_lo;
+    const handle = owner.runtime.add(0, .{
+        .frame = frame,
+        .state = .{ .mstatus = pmp.user_mstatus, .mcause = 0 },
+        .stack_min = data_lo,
+        .stack_max = data_hi,
+        .protection = .{
+            .code_lo = code_lo,
+            .code_hi = code_hi,
+            .data_lo = data_lo,
+            .data_hi = data_hi,
+        },
+    }) orelse return null;
+    if (!memory.reusable.openTask(hart, key(handle))) return null;
+    owner.protected_task = handle;
+    return handle;
 }

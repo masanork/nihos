@@ -15,7 +15,9 @@ extern fn nih_usb_phy_stop() callconv(.c) void;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
-var dma_qtd: [16]u32 align(512) = @splat(0);
+/// The linker script places this at a 512-byte address inside BSS. The
+/// input alignment stays small so the rest of BSS is not forced to 512.
+var dma_qtd: [16]u32 align(64) linksection(if (@import("builtin").os.tag == .freestanding) ".usb_dma_qtd" else ".bss") = @splat(0);
 pub var card_report = jpki.Report{};
 const Session = struct {
     controller: *usb.Controller(Bus),
@@ -97,6 +99,7 @@ const Bus = struct {
     pub fn prepare(_: Bus, bytes: []u8, span: usize, input: bool, is_setup: bool) usb.Error!u32 {
         dma_data = @splat(0);
         if (!input) @memcpy(dma_data[0..bytes.len], bytes);
+        if (@intFromPtr(&dma_qtd) % 512 != 0) return error.Cache;
         dma_qtd = @splat(0);
         dma_qtd[0] = @as(u32, @intCast(span)) | (1 << 31) | (1 << 26) | (1 << 25) |
             (if (is_setup) @as(u32, 1 << 24) else 0);

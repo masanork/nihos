@@ -134,6 +134,8 @@ var boot_clock_ready = false;
 var exceptions = [_]u32{ 0, 0 };
 var ticks = [_]u32{ 0, 0 };
 var display_refresh_reported = false;
+var probe_arm_cycles_max: u32 = 0;
+var probe_dispatch_cycles_max: u32 = 0;
 var display_refresh_pending: u32 = 0;
 var network_report_at: u64 = 0;
 var network_ready = false;
@@ -434,10 +436,14 @@ fn enableTimer(hart: u32) void {
 }
 
 export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
+    const probe_dispatch_begin = if (options.pmp_probe) cycle() else 0;
     if (hart >= 2) fail("invalid hart");
-    if (!interruptStackValid(hart, frame)) fail("interrupt stack/MIE");
+    if (!interruptStackValid(hart, frame, status)) fail("interrupt stack/MIE");
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
-    if (options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
+    // A rejected user SP was saved in the kernel fault frame. Do not resume it
+    // from the display or boot paths; the ready path ends that task.
+    const fault_frame = tasks.pmp.rejectedPending(hart);
+    if (!fault_frame and options.display_scanout and hart == 0 and cause & 0x8000_0fff == 0x8000_0012) {
         const display = display_service.runtime;
         if (!display.active()) fail("unexpected display IRQ");
         display.onInterrupt();
@@ -453,7 +459,7 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         nih_native_return_states[hart] = state;
         return frame;
     }
-    if (options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
+    if (!fault_frame and options.boot_fast and cause & 0x8000_0fff == 0x8000_0011) {
         tasks.ipi.bell(hart).acknowledge();
         _ = @atomicRmw(u32, &boot_ipi[hart], .Add, 1, .release);
         if (hart == 1 and options.boot_test != 4) tasks.ipi.bell(0).raise();
@@ -461,7 +467,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         return frame;
     }
     if (tasks.ready(hart)) {
-        const selected = if (cause & 0x8000_0fff == 11)
+        const from_user = (status & tasks.pmp.mpp_mask) == tasks.pmp.user_mpp;
+        const sp_rejected = tasks.pmp.takeRejectedSp(hart);
+        const selected = if (tasks.pmp.containedFault(from_user, sp_rejected, cause)) fault_path: {
+            if (cause & 0x8000_0fff == 0x8000_0010) _ = timer(hart).clearPending();
+            if (cause & 0x8000_0fff == 0x8000_0011) tasks.ipi.bell(hart).acknowledge();
+            break :fault_path tasks.onProtectedFault(hart, frame, state);
+        } else if (tasks.pmp.userCall(from_user, cause))
             tasks.onCall(hart, frame, state, timer(hart))
         else if (cause & 0x8000_0fff == 0x8000_0010 and timer(hart).clearPending()) timer_path: {
             _ = @atomicRmw(u32, &ticks[hart], .Add, 1, .release);
@@ -471,9 +483,13 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
         else
             null;
         const next = selected orelse trapFailure(frame, cause, hart, "native task dispatch");
+        const probe_arm_begin = if (options.pmp_probe) cycle() else 0;
+        tasks.armProtection(hart, next);
+        if (options.pmp_probe and hart == 0) probe_arm_cycles_max = @max(probe_arm_cycles_max, cycle() -% probe_arm_begin);
         tasks.floating.selectBank(hart, next.floating_context);
         const next_state = if (next.floating_context == 0) next.state.integerOnly() else next.state.floatingReady();
         nih_native_return_states[hart] = next_state.returningFrom(state);
+        if (options.pmp_probe and hart == 0) probe_dispatch_cycles_max = @max(probe_dispatch_cycles_max, cycle() -% probe_dispatch_begin);
         return next.frame;
     }
     nih_native_return_states[hart] = state;
@@ -559,7 +575,7 @@ fn interruptGuard(hart: u32) *volatile [4]u32 {
     return if (hart == 0) &__irq_stack0_bottom else &__irq_stack1_bottom;
 }
 
-fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bool {
+fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, interrupted: u32) bool {
     const guard = interruptGuard(hart);
     for (0..4) |word| if (guard[word] != tasks.memory.stacks.layout.irq_guard) return false;
     const sp = asm volatile ("mv %[result], sp"
@@ -569,8 +585,9 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext) bo
         : [result] "=r" (-> u32),
     );
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
-    return status & (8 | 0x6000) == 0 and sp >= @intFromPtr(guard) + 16 and sp < top and
-        tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
+    if (status & (8 | 0x6000) != 0 or sp < @intFromPtr(guard) + 16 or sp >= top) return false;
+    if (tasks.pmp.acceptsDispatcherFrame(hart, interrupted, @as(u32, @intCast(@intFromPtr(frame))), frame.sp)) return true;
+    return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
 fn taskReport(hart: u32) void {
@@ -635,8 +652,8 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
         while ((ui.timer().counter() orelse fail("late CPU1 clock")) - started < 100_000) asm volatile ("nop");
     }
     enableTimer(1);
-    if (options.boot_fast) {
-        if (options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
+    if (options.boot_fast or options.pmp_probe) {
+        if (options.boot_fast and options.boot_test != 3) @atomicStore(u32, &progress[1], 1, .release);
         while (true) tasks.idleOnce(1);
     }
     while (true) {
@@ -941,6 +958,162 @@ export fn nih_native_main() callconv(.c) noreturn {
     native_psram.memory.ownerReady(0);
     enableTimer(0);
     if (options.boot_fast) normalReady();
+    if (options.pmp_probe) reportPmpProbe() else qualificationSoak(sd_crc, display_panel);
+}
+
+fn printUnsigned(value: u32) void {
+    var buf: [10]u8 = undefined;
+    var index: usize = buf.len;
+    var rest = value;
+    while (true) {
+        index -= 1;
+        buf[index] = '0' + @as(u8, @intCast(rest % 10));
+        rest /= 10;
+        if (rest == 0) break;
+    }
+    print(buf[index..]);
+}
+
+fn printSigned(value: i32) void {
+    if (value < 0) {
+        print("-");
+        const magnitude: u32 = @intCast(-@as(i64, value));
+        printUnsigned(magnitude);
+    } else printUnsigned(@intCast(value));
+}
+
+fn reportPmpProbe() noreturn {
+    if (comptime !options.pmp_probe) unreachable;
+    // Entries 0–2 are unlocked NAPOT with no R/W/X (0x18), so pmpcfg0
+    // is 0x00181818. This also removes the old U-mode mask-ROM grant.
+    // The stock bootloader sets those bytes to NAPOT|R|W|L (0x9B), which
+    // lets U-mode read and write the CPU subsystem and the CPU peripherals.
+    // pmpaddr0 is NAPOT(0x20000000, 0x30000000) >> 2 = 0x09FFFFFF.
+    // pmpaddr1 is NAPOT(0x3FF00000, 0x3FF20000) >> 2 = 0x0FFC3FFF.
+    const pmpcfg0 = asm volatile ("csrr %[value], pmpcfg0"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg1 = asm volatile ("csrr %[value], pmpcfg1"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg2 = asm volatile ("csrr %[value], pmpcfg2"
+        : [value] "=r" (-> u32),
+    );
+    const pmpcfg3 = asm volatile ("csrr %[value], pmpcfg3"
+        : [value] "=r" (-> u32),
+    );
+    const pmpaddr0 = asm volatile ("csrr %[value], pmpaddr0"
+        : [value] "=r" (-> u32),
+    );
+    const pmpaddr1 = asm volatile ("csrr %[value], pmpaddr1"
+        : [value] "=r" (-> u32),
+    );
+    const first_case = options.pmp_case orelse 0;
+    const end_case = if (options.pmp_case) |only| only + 1 else tasks.pmp.probe_cases;
+    print("NIHOS_NATIVE_PMP_PROBE begin cases=");
+    printUnsigned(end_case - first_case);
+    print(" first=");
+    printUnsigned(first_case);
+    print(if (options.emulator) " sbe_evidence=unmodeled" else " sbe_evidence=csr-readback");
+    print(" hart=0 pmpcfg0=");
+    hex(pmpcfg0);
+    print(" pmpcfg1=");
+    hex(pmpcfg1);
+    print(" pmpcfg2=");
+    hex(pmpcfg2);
+    print(" pmpcfg3=");
+    hex(pmpcfg3);
+    print(" pmpaddr0=");
+    hex(pmpaddr0);
+    print(" pmpaddr1=");
+    hex(pmpaddr1);
+    print("\n");
+    var previous_timers: u32 = 0;
+    var previous_reaped: u32 = 0;
+    var previous_slot: u16 = 0xffff;
+    var previous_generation: u16 = 0;
+    var reason: ?[]const u8 = null;
+    var case_id: u32 = first_case;
+    while (case_id < end_case) : (case_id += 1) {
+        probe_arm_cycles_max = 0;
+        probe_dispatch_cycles_max = 0;
+        const step = tasks.runProbeCase(case_id) orelse {
+            print("NIHOS_NATIVE_PMP_PROBE case=");
+            printUnsigned(case_id);
+            print(" result=incomplete\n");
+            fail("pmp probe case");
+        };
+        const returned = case_id == 0;
+        print("NIHOS_NATIVE_PMP_PROBE case=");
+        printUnsigned(case_id);
+        print(if (returned) " result=returned" else " result=fault");
+        print(" exit=");
+        printSigned(step.exit_code);
+        print(" kernel=1 reaped=");
+        printUnsigned(step.reaped);
+        print(" calls=");
+        printUnsigned(step.calls);
+        print(" timer_interrupts=");
+        printUnsigned(step.timer_interrupts);
+        print(" user_timer_interrupts=");
+        printUnsigned(step.user_timer_interrupts);
+        print(" mstatus=");
+        hex(step.kernel_mstatus);
+        print(" live=");
+        hex(step.live_mstatus);
+        print(" grant=");
+        hex(step.grant_hi);
+        print(" slot=");
+        printUnsigned(step.slot);
+        print(" generation=");
+        printUnsigned(step.generation);
+        print(" data=");
+        hex(step.data_word);
+        print(" cause=");
+        hex(step.fault_cause);
+        print(" mepc=");
+        hex(step.fault_mepc);
+        print(" pmpaddr4=");
+        hex(step.pmpaddr4);
+        print(" pmpaddr5=");
+        hex(step.pmpaddr5);
+        print(" user_mhint=");
+        hex(step.user_mhint);
+        print(" kernel_mhint=");
+        hex(step.kernel_mhint);
+        print(" arm_cycles_max=");
+        printUnsigned(probe_arm_cycles_max);
+        print(" dispatch_cycles_max=");
+        printUnsigned(probe_dispatch_cycles_max);
+        print("\n");
+        const accepted = tasks.pmp.probeResultAccepted(case_id, step.exit_code) and
+            tasks.pmp.probeCauseAccepted(case_id, step.fault_cause, step.fault_mepc);
+        // mret writes MPP back to User. The saved bootstrap image still has
+        // Machine (0x1800) and MPIE (0x80). The Tab5 sample was 0x1880.
+        // ESP-EMU's trap mstatus also has UIE, so bit 0 may be set.
+        // ESP-EMU v0.50.0 does not model mhint.SBE. Its fault/return matrix
+        // remains useful, but synchronous-bus-error evidence is device-only.
+        const mode_ok = options.emulator or (step.kernel_mhint & tasks.pmp.synchronous_bus_error == 0 and step.user_mhint & tasks.pmp.synchronous_bus_error != 0);
+        const kernel_ok = step.kernel_mstatus & ~@as(u32, 1) == 0x1880 and step.live_mstatus & 8 != 0 and step.grant_hi == 0 and mode_ok;
+        const reaped_one = step.reaped == previous_reaped + 1;
+        const reused = previous_slot == 0xffff or step.slot != previous_slot or step.generation > previous_generation;
+        const return_ok = !returned or (step.timer_interrupts > previous_timers and step.user_timer_interrupts != 0 and step.calls > 2 and step.exit_code == 1);
+        const execute_ok = case_id != 3 or step.data_word == 0x00600513;
+        if (reason == null and (!accepted or !kernel_ok or !reaped_one or !reused or !return_ok or !execute_ok)) reason = "pmp probe evidence";
+        previous_timers = step.timer_interrupts;
+        previous_reaped = step.reaped;
+        previous_slot = step.slot;
+        previous_generation = step.generation;
+    }
+    if (reason) |text| fail(text);
+    if (pmpcfg0 != 0x00181818 or pmpaddr0 != 0x09ffffff or pmpaddr1 != 0x0ffc3fff or pmpcfg3 != 0) fail("pmpcfg0");
+    print("NIHOS_NATIVE_PMP_PROBE_PASS cases=");
+    printUnsigned(end_case - (options.pmp_case orelse 0));
+    print(" kernel=1\n");
+    while (true) asm volatile ("wfi" ::: .{ .memory = true });
+}
+
+fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };

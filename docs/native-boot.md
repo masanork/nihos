@@ -67,6 +67,10 @@ Separate source-supported internal SRAM for stacks is described in
 [ADR 0035](adr/0035-separate-internal-sram-stack-region.md).
 Task-owned size-class pools and preemptible resize are described in
 [ADR 0036](adr/0036-task-owned-size-class-pools.md).
+The opt-in CPU0 protected task fixture, synchronous bus-error requirement,
+and exact Tab5 v1.3 fault evidence are described in
+[CPU0 protected native tasks](native-user-pmp.md). Ordinary native workers
+remain in the trusted M-mode domain.
 
 ## Build and emulated execution
 

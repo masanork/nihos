@@ -121,6 +121,14 @@ pub fn matchesProbe(bank: *const FloatingContext, probe: *const FloatingProbe) b
     return bank.f[31] == sum;
 }
 
+/// Physical ranges for one untrusted task. Null on every M-mode task.
+pub const Protection = struct {
+    code_lo: u32,
+    code_hi: u32,
+    data_lo: u32,
+    data_hi: u32,
+};
+
 /// A fully captured task that the trap epilogue may resume. Runtime policy
 /// owns its lifetime; assembly sees only the chosen integer-frame pointer.
 pub const TaskContext = struct {
@@ -129,6 +137,7 @@ pub const TaskContext = struct {
     stack_min: u32,
     stack_max: u32,
     floating_context: u32 = 0,
+    protection: ?Protection = null,
 };
 
 pub const InitialTask = struct {
@@ -217,6 +226,9 @@ test "task status follows selection while CLIC cause unwinds the active trap" {
     try std.testing.expectEqual(incoming.mcause, from_irq.mcause);
     const from_call = floating.returningFrom(suspended_call);
     try std.testing.expectEqual(floating.mstatus, from_call.mstatus);
+    const user = ReturnState{ .mstatus = 0x80, .mcause = 0 };
+    try std.testing.expectEqual(@as(u32, 0x80), user.integerOnly().mstatus);
+    try std.testing.expectEqual(user.mstatus, user.returningFrom(incoming).mstatus);
     try std.testing.expectEqual(suspended_call.mcause, from_call.mcause);
 }
 
