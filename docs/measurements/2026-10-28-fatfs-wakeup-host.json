@@ -1,0 +1,1156 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "base_commit": "b9dc0a20f0b328a03de01fc89f24b73e37a2096e",
+  "evidence": "local host kernel-policy/RPC interleavings and native static call-chain inventory",
+  "hardware_executed": false,
+  "physical_flash_written": false,
+  "firmware_linked": true,
+  "candidate": {
+    "elf_sha256": "f3721250376a7f0aa1e095c542dd4745ee40a26981c68e78c8e84c884d67fee0",
+    "image_sha256": "46b7f04020e7730969c6e449590992e14fe8b11ed1cdd0c80d0cb9366fa54264",
+    "image_bytes": 852560,
+    "primary_static_bytes": 106176
+  },
+  "resident_policy_limit": 106496,
+  "resident_policy_remaining": 320,
+  "native_manifest_version": 2,
+  "native_sources": {
+    "src/platform/native/fatfs_runtime.zig": "8a26c369512946c99260fd530fb492b1e1df65745b99dd546852a3c6fa6f605f",
+    "src/platform/native/fatfs_service_abi.zig": "a68335b7120994f27f5109d36a11014ed08762bfadda59845a688c8e51f441f1",
+    "src/platform/native/fatfs_fixture.c": "ddc413fd0fffcdab36bbf08ebf7db33590443fa476b6651284c74cd6deb33d95",
+    "src/platform/native/fatfs_fixture_disk.c": "cdaaa28cf0a9591d4ddcc18db02ec8539a8ff44ed3742ac60a72cfbfb19fb8c7",
+    "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
+    "src/platform/native/storage_service_abi.zig": "74fa28ad88ce71cc916370f56930c0eae1c4c31b94c577ee3d21f157ab440b17",
+    "src/platform/native/main.zig": "ae46ab44ada0acb34436d846645fa80294187b676ff926b45ea4cc7b24720fde",
+    "src/platform/native/esp32p4.ld": "5c4e6b9cbe38e780fcd99cf558e62755273bbca78cfc118c70afe225b206e3fd",
+    "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
+    "src/storage/fatfs_disk.c": "5f551db505838930bfd1f214c659133060b1de909f278067cb198f12c047417e",
+    "include/nihos_fatfs_backend.h": "079dbba8774195a11fe16b0cb768229fc8b7c9249812072a76ca9e231ceef864",
+    "include/nihos_fatfs_disk.h": "47aa7697456bc4c58a1f0b8f024bb1f19cf8648ecdc8fda617d4dae9bf546499",
+    "src/storage_vfs.zig": "d8c8839593928fa31db7423c0e2b031269b34635e063a6a28124d876f05876d2",
+    "src/fs/vfs.zig": "5ea2acc47d4de2325b5ea7a2b4874b7d38950be417f974e2391cde8973a5c499",
+    "src/fs/fatfs_backend.zig": "45c0415cc576cb4e4645dcf4a5684f2d3d3f7b6900a2ba88a26cec22b8fee566",
+    "src/fs/vfs_rpc.zig": "5887ae872285fadfe0e1bfd7f0fd4ffd3cb896d5c1d4591fd49980fcf92006c4",
+    "src/fs/vfs_memory.zig": "56d3155e5cba971794412b66e72184b89fa15179d53ddb2d9a9d5345d474bbcb",
+    "src/fs/io_leases.zig": "a1ffddfb54df132f22890a5cf5bfece784a7c646d1c1dfb125351ea483e50683",
+    "src/fs/io_stop.zig": "57e8eceb754b73c13d0bb0487723ee12ed4be33e770a3897a8887c5d7d6a3579",
+    "src/kernel/event_latch.zig": "a68eae43d35240781017d712eb55f389dba2ef1e47052da277b74d3c30ce7904",
+    "src/kernel/spsc_ring.zig": "bfdd052265942ee54fa58f5c46fa167f141632958933f5bef40956dbb6fbf0b4",
+    "src/kernel/memory_broker.zig": "d65d17e3aaaeb97530bf7797c44acdd9c867a89d71c9c1c5b2925b207e18d396",
+    "src/kernel/page_pool.zig": "761a36f0fbfcec6d4a6cd4862936b195d5709c40467c32d2867c2e69713cbae2",
+    "src/kernel/development_memory.zig": "249309519823e618089c5c5e440ed5eecdf21aa59c9837e148808d20739f3730",
+    "src/arch/riscv32/native_tasks.zig": "409ecfb811bad95889b2b22f35a89a3b1b6f805f705a05eaeb6479f7a5d316b1",
+    "probes/fatfs-disk/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+    "probes/fatfs-disk/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+    "probes/fatfs-disk/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+    "tools/build-native-elf.sh": "159ad83eabd86863997ee0c1a57d9f4ad052ffd1e6dc4591214fc243e5c520f6",
+    "tools/build-fatfs-native-input.py": "5f7f6278f0c7c1b99742c04ed0df739599fdd3f29366cc68df8a1d99f0b63dd3",
+    "tools/bootstrap-fatfs.py": "5ee17ebc135eeb2e395391c0393cb688e53d2881d8094ce0dca9604b7f965ec1",
+    "tools/native-sqlite-manifest.py": "68b5afbbb53f45a4a9dd2ccca914c36c3336fe37f886b061356351bb54bf978c",
+    "tools/check-native-image.py": "13c3b0304df4bdbf37e180fd24c8ee432e7e9d44d0541b71217156afc170f7d2",
+    "tools/fatfs_native_profile.py": "d4be28cc98586dcfb2edd31bb2ab17bd4e0146d48f6317e861accbcc937aa6b9"
+  },
+  "host_sources": {
+    "src/fs/vfs_wakeup_test.zig": "468aae7f83c44a3c0b90b92e17b73b77f2f684a145b7690e76260392b8e875fd",
+    "src/kernel/event_latch.zig": "a68eae43d35240781017d712eb55f389dba2ef1e47052da277b74d3c30ce7904",
+    "src/root.zig": "9333231fd747647045799a84a15bb7e25e2afe68c30d0d29b4c06aa7db016edb",
+    "src/kernel/scheduler.zig": "54a84902c2e857fa47a29dda39cf71c5edbc5e5c951f496bc5c0920f8a229a55",
+    "src/kernel/task_control.zig": "0f15f3005f5293082ef6c9bd9f9a0b4eaca8c99f0962a01459fd2e72e7f69571",
+    "src/fs/vfs_rpc.zig": "5887ae872285fadfe0e1bfd7f0fd4ffd3cb896d5c1d4591fd49980fcf92006c4",
+    "src/kernel/spsc_ring.zig": "bfdd052265942ee54fa58f5c46fa167f141632958933f5bef40956dbb6fbf0b4"
+  },
+  "tool_sources": {
+    "tools/check-native-call-stack.py": "339aec8b07597af77da81f6dcc59ea0abbd1ef03e835138208482ceb038cb10e",
+    "tools/native_call_stack_test.py": "8ac7dc6fc7cae62a0b549dee1bd001aa43266eacaa8dfedd1ecc92fb4c4a1847",
+    "tools/native_fatfs_test.py": "af74be144a831315ace02bfb8b15fe867dc2500474e8b416d5f8f4fdfae15b06",
+    "tools/check-native-log.py": "026e16565b9c45c55a2b85dac6e056de10e88a75d095856f554fdb4752113569",
+    ".github/workflows/native.yml": "a2449bf45837be7226335c74d283ba36d4d484cec1501fe571f41501bff41fe5"
+  },
+  "host_interleavings": {
+    "backend": "small synchronous fake; actual Scheduler/task_control/RPC/latch",
+    "queue_check_wait_cases": 30,
+    "directions": [
+      "request",
+      "reply",
+      "response credit"
+    ],
+    "missing_irq_forward_negative_controls": 3,
+    "coalesced_requests": 2,
+    "stopped_kernel_states": [
+      "running",
+      "waiting",
+      "ready with deferred event result"
+    ],
+    "doorbell_ack_exchange_cases": 6,
+    "reversed_ack_order_loses_wakeup_cases": 1,
+    "ipi_mmio_weak_memory_dma_executed": false
+  },
+  "call_stack": {
+    "schema": 1,
+    "evidence": "static structural call-chain inventory; no execution or whole-stack qualification",
+    "elf_sha256": "f3721250376a7f0aa1e095c542dd4745ee40a26981c68e78c8e84c884d67fee0",
+    "analyzer_sha256": "339aec8b07597af77da81f6dcc59ea0abbd1ef03e835138208482ceb038cb10e",
+    "disassembly_sha256": "d17232ce70cb8ee18be15d9f8b7ff2c3ff53daef340545345ec2830096fa06a0",
+    "objdump_version": "GNU objdump (crosstool-NG esp-14.2.0_20260121) 2.43.1",
+    "roots": [
+      {
+        "root": {
+          "address": "0x400a0104",
+          "functions": [
+            "fatfs_runtime.nih_storage_task_entry",
+            "nih_storage_task_entry"
+          ],
+          "frame_bytes": 16
+        },
+        "reachable_functions": 123,
+        "known_frames_on_largest_structural_chain_bytes": 2944,
+        "structural_chain": [
+          {
+            "address": "0x400a0104",
+            "functions": [
+              "fatfs_runtime.nih_storage_task_entry",
+              "nih_storage_task_entry"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a0130",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "frame_bytes": 304
+          },
+          {
+            "address": "0x400a1f5c",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a22d6",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a2b70",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a9094",
+            "functions": [
+              "nih_fatfs_backend_lookup"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a7744",
+            "functions": [
+              "nih_fatfs_guard_open"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a78e4",
+            "functions": [
+              "parents"
+            ],
+            "frame_bytes": 784
+          },
+          {
+            "address": "0x400a73b2",
+            "functions": [
+              "f_opendir"
+            ],
+            "frame_bytes": 1152
+          },
+          {
+            "address": "0x400a6b54",
+            "functions": [
+              "follow_path"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a8576",
+            "functions": [
+              "dir_find"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7536",
+            "functions": [
+              "dir_read"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a8984",
+            "functions": [
+              "load_xdir"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7678",
+            "functions": [
+              "dir_next"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a6f22",
+            "functions": [
+              "get_fat"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a7fb4",
+            "functions": [
+              "move_window"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x4ff12c20",
+            "functions": [
+              "compiler_rt.memmove.memmoveFast",
+              "memmove"
+            ],
+            "frame_bytes": null
+          }
+        ],
+        "missing_frames": [
+          {
+            "address": "0x4ff0105e",
+            "functions": [
+              "nih_sqlite_stack_paint"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff078b4",
+            "functions": [
+              "c_allocator.Adapter(heap.CBackend).identity",
+              "nih_task_identity"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12afa",
+            "functions": [
+              "compiler_rt.strlen",
+              "strlen"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12b1c",
+            "functions": [
+              "compiler_rt.memcmp",
+              "memcmp"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12b4a",
+            "functions": [
+              "compiler_rt.fastMemset",
+              "memset"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12c20",
+            "functions": [
+              "compiler_rt.memmove.memmoveFast",
+              "memmove"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12eb2",
+            "functions": [
+              "compiler_rt.memcpy.memcpyFast",
+              "memcpy"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff14be0",
+            "functions": [
+              "__udivdi3",
+              "compiler_rt.int.__udivdi3"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff14c4e",
+            "functions": [
+              "__udivmoddi4",
+              "compiler_rt.int.__udivmoddi4"
+            ],
+            "frame_bytes": null
+          }
+        ],
+        "unresolved_transfers": [
+          {
+            "address": "0x400a0130",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "frame_bytes": 304,
+            "sites": [
+              {
+                "pc": "0x400a0196",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr 48(ra) # 4ff001c2 <nih_riscv_task_call>"
+              },
+              {
+                "pc": "0x400a0704",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1342(ra) # 4ff001c2 <nih_riscv_task_call>"
+              },
+              {
+                "pc": "0x400a08a2",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1756(ra) # 4ff001c2 <nih_riscv_task_call>"
+              },
+              {
+                "pc": "0x400a0cac",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr 1306(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a106c",
+            "functions": [
+              "fatfs_runtime.runClient"
+            ],
+            "frame_bytes": 144,
+            "sites": [
+              {
+                "pc": "0x400a10ae",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr 280(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a15b6",
+            "functions": [
+              "fatfs_runtime.receive"
+            ],
+            "frame_bytes": 64,
+            "sites": [
+              {
+                "pc": "0x400a1630",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1130(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a1812",
+            "functions": [
+              "fatfs_runtime.send"
+            ],
+            "frame_bytes": 48,
+            "sites": [
+              {
+                "pc": "0x400a18de",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1816(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a271e",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+            ],
+            "frame_bytes": 48,
+            "sites": [
+              {
+                "pc": "0x400a289a",
+                "kind": "indirect-transfer",
+                "instruction": "jr a2"
+              }
+            ]
+          },
+          {
+            "address": "0x400a2b70",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+            ],
+            "frame_bytes": 96,
+            "sites": [
+              {
+                "pc": "0x400a2f40",
+                "kind": "indirect-transfer",
+                "instruction": "jr a2"
+              }
+            ]
+          },
+          {
+            "address": "0x400a30a8",
+            "functions": [
+              "fs.fatfs_backend.Backend.open"
+            ],
+            "frame_bytes": 32,
+            "sites": [
+              {
+                "pc": "0x400a30ee",
+                "kind": "indirect-transfer",
+                "instruction": "jr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a7ad2",
+            "functions": [
+              "tick"
+            ],
+            "frame_bytes": 16,
+            "sites": [
+              {
+                "pc": "0x400a7ae0",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a8c72",
+            "functions": [
+              "ff_wtoupper"
+            ],
+            "frame_bytes": 0,
+            "sites": [
+              {
+                "pc": "0x400a8cde",
+                "kind": "indirect-transfer",
+                "instruction": "jr a3"
+              }
+            ]
+          },
+          {
+            "address": "0x400a9040",
+            "functions": [
+              "result"
+            ],
+            "frame_bytes": 16,
+            "sites": [
+              {
+                "pc": "0x400a906e",
+                "kind": "indirect-transfer",
+                "instruction": "jr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32,
+            "sites": [
+              {
+                "pc": "0x400a9988",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a3"
+              }
+            ]
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null,
+            "sites": [
+              {
+                "pc": "0x4ff0d81c",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -1988(ra) # 4fc00054 <nih_rom_putc>"
+              },
+              {
+                "pc": "0x4ff0d834",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -2012(ra) # 4fc00054 <nih_rom_putc>"
+              }
+            ]
+          }
+        ],
+        "recursive_functions": [],
+        "graph_closed": false,
+        "whole_call_stack_qualified": false
+      },
+      {
+        "root": {
+          "address": "0x400a0130",
+          "functions": [
+            "fatfs_runtime.serve"
+          ],
+          "frame_bytes": 304
+        },
+        "reachable_functions": 118,
+        "known_frames_on_largest_structural_chain_bytes": 2928,
+        "structural_chain": [
+          {
+            "address": "0x400a0130",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "frame_bytes": 304
+          },
+          {
+            "address": "0x400a1f5c",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).step"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a22d6",
+            "functions": [
+              "fs.vfs_rpc.Owner(fs.fatfs_backend.Backend).dispatch"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a2b70",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+            ],
+            "frame_bytes": 96
+          },
+          {
+            "address": "0x400a9094",
+            "functions": [
+              "nih_fatfs_backend_lookup"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a7744",
+            "functions": [
+              "nih_fatfs_guard_open"
+            ],
+            "frame_bytes": 80
+          },
+          {
+            "address": "0x400a78e4",
+            "functions": [
+              "parents"
+            ],
+            "frame_bytes": 784
+          },
+          {
+            "address": "0x400a73b2",
+            "functions": [
+              "f_opendir"
+            ],
+            "frame_bytes": 1152
+          },
+          {
+            "address": "0x400a6b54",
+            "functions": [
+              "follow_path"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a8576",
+            "functions": [
+              "dir_find"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7536",
+            "functions": [
+              "dir_read"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a8984",
+            "functions": [
+              "load_xdir"
+            ],
+            "frame_bytes": 48
+          },
+          {
+            "address": "0x400a7678",
+            "functions": [
+              "dir_next"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a6f22",
+            "functions": [
+              "get_fat"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x400a7fb4",
+            "functions": [
+              "move_window"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32
+          },
+          {
+            "address": "0x4ff12c20",
+            "functions": [
+              "compiler_rt.memmove.memmoveFast",
+              "memmove"
+            ],
+            "frame_bytes": null
+          }
+        ],
+        "missing_frames": [
+          {
+            "address": "0x4ff0105e",
+            "functions": [
+              "nih_sqlite_stack_paint"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12afa",
+            "functions": [
+              "compiler_rt.strlen",
+              "strlen"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12b1c",
+            "functions": [
+              "compiler_rt.memcmp",
+              "memcmp"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12b4a",
+            "functions": [
+              "compiler_rt.fastMemset",
+              "memset"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12c20",
+            "functions": [
+              "compiler_rt.memmove.memmoveFast",
+              "memmove"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12eb2",
+            "functions": [
+              "compiler_rt.memcpy.memcpyFast",
+              "memcpy"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff14be0",
+            "functions": [
+              "__udivdi3",
+              "compiler_rt.int.__udivdi3"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff14c4e",
+            "functions": [
+              "__udivmoddi4",
+              "compiler_rt.int.__udivmoddi4"
+            ],
+            "frame_bytes": null
+          }
+        ],
+        "unresolved_transfers": [
+          {
+            "address": "0x400a0130",
+            "functions": [
+              "fatfs_runtime.serve"
+            ],
+            "frame_bytes": 304,
+            "sites": [
+              {
+                "pc": "0x400a0196",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr 48(ra) # 4ff001c2 <nih_riscv_task_call>"
+              },
+              {
+                "pc": "0x400a0704",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1342(ra) # 4ff001c2 <nih_riscv_task_call>"
+              },
+              {
+                "pc": "0x400a08a2",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1756(ra) # 4ff001c2 <nih_riscv_task_call>"
+              },
+              {
+                "pc": "0x400a0cac",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr 1306(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a271e",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).close"
+            ],
+            "frame_bytes": 48,
+            "sites": [
+              {
+                "pc": "0x400a289a",
+                "kind": "indirect-transfer",
+                "instruction": "jr a2"
+              }
+            ]
+          },
+          {
+            "address": "0x400a2b70",
+            "functions": [
+              "fs.vfs.Vfs(fs.fatfs_backend.Backend,1,32).openAt"
+            ],
+            "frame_bytes": 96,
+            "sites": [
+              {
+                "pc": "0x400a2f40",
+                "kind": "indirect-transfer",
+                "instruction": "jr a2"
+              }
+            ]
+          },
+          {
+            "address": "0x400a30a8",
+            "functions": [
+              "fs.fatfs_backend.Backend.open"
+            ],
+            "frame_bytes": 32,
+            "sites": [
+              {
+                "pc": "0x400a30ee",
+                "kind": "indirect-transfer",
+                "instruction": "jr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a7ad2",
+            "functions": [
+              "tick"
+            ],
+            "frame_bytes": 16,
+            "sites": [
+              {
+                "pc": "0x400a7ae0",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a8c72",
+            "functions": [
+              "ff_wtoupper"
+            ],
+            "frame_bytes": 0,
+            "sites": [
+              {
+                "pc": "0x400a8cde",
+                "kind": "indirect-transfer",
+                "instruction": "jr a3"
+              }
+            ]
+          },
+          {
+            "address": "0x400a9040",
+            "functions": [
+              "result"
+            ],
+            "frame_bytes": 16,
+            "sites": [
+              {
+                "pc": "0x400a906e",
+                "kind": "indirect-transfer",
+                "instruction": "jr a1"
+              }
+            ]
+          },
+          {
+            "address": "0x400a98d8",
+            "functions": [
+              "disk_read"
+            ],
+            "frame_bytes": 32,
+            "sites": [
+              {
+                "pc": "0x400a9988",
+                "kind": "indirect-transfer",
+                "instruction": "jalr a3"
+              }
+            ]
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null,
+            "sites": [
+              {
+                "pc": "0x4ff0d81c",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -1988(ra) # 4fc00054 <nih_rom_putc>"
+              },
+              {
+                "pc": "0x4ff0d834",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -2012(ra) # 4fc00054 <nih_rom_putc>"
+              }
+            ]
+          }
+        ],
+        "recursive_functions": [],
+        "graph_closed": false,
+        "whole_call_stack_qualified": false
+      },
+      {
+        "root": {
+          "address": "0x400a106c",
+          "functions": [
+            "fatfs_runtime.runClient"
+          ],
+          "frame_bytes": 144
+        },
+        "reachable_functions": 12,
+        "known_frames_on_largest_structural_chain_bytes": 224,
+        "structural_chain": [
+          {
+            "address": "0x400a106c",
+            "functions": [
+              "fatfs_runtime.runClient"
+            ],
+            "frame_bytes": 144
+          },
+          {
+            "address": "0x400a15b6",
+            "functions": [
+              "fatfs_runtime.receive"
+            ],
+            "frame_bytes": 64
+          },
+          {
+            "address": "0x400a00f4",
+            "functions": [
+              "fatfs_runtime.fail"
+            ],
+            "frame_bytes": 16
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null
+          }
+        ],
+        "missing_frames": [
+          {
+            "address": "0x4ff0105e",
+            "functions": [
+              "nih_sqlite_stack_paint"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff078b4",
+            "functions": [
+              "c_allocator.Adapter(heap.CBackend).identity",
+              "nih_task_identity"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0d84a",
+            "functions": [
+              "main.fail"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff0f942",
+            "functions": [
+              "main.nih_native_task_failed",
+              "nih_native_task_failed"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12b4a",
+            "functions": [
+              "compiler_rt.fastMemset",
+              "memset"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12c20",
+            "functions": [
+              "compiler_rt.memmove.memmoveFast",
+              "memmove"
+            ],
+            "frame_bytes": null
+          },
+          {
+            "address": "0x4ff12eb2",
+            "functions": [
+              "compiler_rt.memcpy.memcpyFast",
+              "memcpy"
+            ],
+            "frame_bytes": null
+          }
+        ],
+        "unresolved_transfers": [
+          {
+            "address": "0x400a106c",
+            "functions": [
+              "fatfs_runtime.runClient"
+            ],
+            "frame_bytes": 144,
+            "sites": [
+              {
+                "pc": "0x400a10ae",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr 280(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a15b6",
+            "functions": [
+              "fatfs_runtime.receive"
+            ],
+            "frame_bytes": 64,
+            "sites": [
+              {
+                "pc": "0x400a1630",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1130(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x400a1812",
+            "functions": [
+              "fatfs_runtime.send"
+            ],
+            "frame_bytes": 48,
+            "sites": [
+              {
+                "pc": "0x400a18de",
+                "kind": "unmeasured-target",
+                "target": "0x4ff001c2",
+                "instruction": "jalr -1816(ra) # 4ff001c2 <nih_riscv_task_call>"
+              }
+            ]
+          },
+          {
+            "address": "0x4ff0d7fa",
+            "functions": [
+              "main.print"
+            ],
+            "frame_bytes": null,
+            "sites": [
+              {
+                "pc": "0x4ff0d81c",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -1988(ra) # 4fc00054 <nih_rom_putc>"
+              },
+              {
+                "pc": "0x4ff0d834",
+                "kind": "unmeasured-target",
+                "target": "0x4fc00054",
+                "instruction": "jalr -2012(ra) # 4fc00054 <nih_rom_putc>"
+              }
+            ]
+          }
+        ],
+        "recursive_functions": [],
+        "graph_closed": false,
+        "whole_call_stack_qualified": false
+      }
+    ],
+    "whole_call_stack_qualified": false
+  },
+  "strict_call_stack_gate": {
+    "option": "--require-closed",
+    "expected_exit_code": 1,
+    "observed_rejection": "fatfs_runtime.nih_storage_task_entry: known structural sum=2944, missing frames=12, unresolved functions=12\nfatfs_runtime.serve: known structural sum=2928, missing frames=11, unresolved functions=9\nfatfs_runtime.runClient: known structural sum=224, missing frames=8, unresolved functions=4\nCall graph is incomplete; whole-stack gate remains open\n"
+  },
+  "regressions": {
+    "zig_debug": 243,
+    "zig_release_safe": 243,
+    "python": 205,
+    "static_analysis": true,
+    "native_elf_audits": 6,
+    "remote_ci_executed": false,
+    "previous_v1_candidate_replayed": true
+  },
+  "raw_artifacts": {
+    "build/native-fatfs-wakeup/image-audit.json": {
+      "sha256": "0f6f8d11949160c6ebe59de466490bbb58eb2d756932cdaabc5298e982471c2a"
+    },
+    "build/native-fatfs-wakeup/fatfs-link-audit.json": {
+      "sha256": "9ed7408d647f02f874a889814e9bb638d0740258309bf1b7363e4610bef14cec"
+    },
+    "build/native-fatfs-wakeup/sqlite-manifest.json": {
+      "sha256": "8599d8beb162666ab1f986b97de96c9cdf41456260eb3daa572872aa7fdef5dd"
+    },
+    "build/native-fatfs-wakeup/call-stack.json": {
+      "sha256": "c4b90fb0d074183e3dfdf20b98c218c89e24402d249591005b1dd130ca40318e"
+    },
+    "build/fatfs-wakeup/zig-debug.log": {
+      "sha256": "5ea6f9c4a184f9d42ca3989d2e37bcbf176c974073ff2ae56740863c5a4264dc"
+    },
+    "build/fatfs-wakeup/zig-safe.log": {
+      "sha256": "b1334ae55843380a7155114fe77e8cd95892238e26c112b77e1e4d79d0d5f5d7"
+    },
+    "build/fatfs-wakeup/python.log": {
+      "sha256": "ce79a1f4bbe81c41a07c0e4388f44b219e7916a8cd7b397539e0dc3f33a6b067"
+    },
+    "build/fatfs-wakeup/static.log": {
+      "sha256": "6762ff4d15f384e64991f66793ab458cbef6de3a1b23a1b54e381b5dd7ae675b"
+    },
+    "build/fatfs-wakeup/v1-replay-audit.json": {
+      "sha256": "bcbf9c7f764ece371eb77917ddbaa57dcc3432af8b8adeea3bea5de86e881372"
+    }
+  },
+  "limitations": [
+    "Host ordered interleavings do not execute native task instructions, MMIO/IPI, weak-memory or DMA",
+    "Known structural frame sums are neither a whole-stack bound nor measured live stack use",
+    "Unmeasured frames, indirect transfers, jump tables, assembly and ROM boundaries keep the stack gate open",
+    "Native task stack paint/guards, task stop/wakeup and physical SD FatFs remain unqualified",
+    "Clean POR, persistent SQLite, writes and power-loss recovery remain separate gates"
+  ]
+}

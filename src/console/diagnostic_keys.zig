@@ -1,6 +1,6 @@
 //! Bounded diagnostic controls; never interprets text as shell commands.
 const std = @import("std");
-pub const Source = enum(u8) { serial = 1, tab5_keyboard, usb_keyboard, bluetooth_keyboard };
+pub const Source = enum(u8) { serial = 1, tab5_keyboard, usb_keyboard, bluetooth_keyboard, touch };
 pub fn capability(source: Source) u8 {
     return @as(u8, 1) << @as(u3, @intCast(@backingInt(source) - 1));
 }

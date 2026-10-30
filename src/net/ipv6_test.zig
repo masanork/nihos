@@ -160,3 +160,34 @@ test "short Echo and unspecified destinations cannot produce a response" {
     try std.testing.expectError(error.Malformed, client.receive(try ip6.packet(&frame, peer_mac, mac, router, ip6.zero, 64, &.{ 128, 0, 0, 0, 0, 0, 0, 0 }, false), 2_000_002));
     try std.testing.expectEqual(@as(usize, 0), client.response_len);
 }
+
+test "finished SLAAC probe deprecates and expires only its global address" {
+    var client = ip6.Client.init(mac, 0);
+    try linkReady(&client);
+    var message: [56]u8 = ra[54..110].*;
+    // A valid RA with a one-second preferred lifetime must stay local to IPv6.
+    @memcpy(message[28..32], &[_]u8{ 0, 0, 0, 3 });
+    @memcpy(message[32..36], &[_]u8{ 0, 0, 0, 1 });
+    var frame: [128]u8 = undefined;
+    try client.receive(try ip6.packet(&frame, peer_mac, ip6.multicastMac(ip6.all_nodes), router, ip6.all_nodes, 255, &message, false), 2_100_000);
+    _ = try client.tx(2_100_000);
+    client.sent(2_100_000);
+    try client.tick(3_100_000);
+    client.stage = .done;
+    const address = client.address;
+    const preferred = client.preferred_until;
+    const valid = client.valid_until;
+    // Router expiry is independent of address expiry.
+    client.router_until = valid + 1;
+    try client.tick(preferred);
+    try std.testing.expect(client.slaac_valid and client.slaac_deprecated);
+    try std.testing.expectEqual(address, client.address);
+    client.output_len = 64;
+    client.response_len = 64;
+    try client.tick(valid);
+    try std.testing.expect(!client.slaac_valid and client.ll_valid);
+    try std.testing.expectEqual(ip6.zero, client.address);
+    try std.testing.expectEqual(@as(usize, 0), client.output_len);
+    try std.testing.expectEqual(@as(usize, 0), client.response_len);
+    try std.testing.expect(!ip6.equal(ip6.zero, client.router));
+}

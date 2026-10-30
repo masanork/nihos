@@ -1,6 +1,10 @@
-//! CPU0 normal-boot integration. Owns both SDMMC slots exclusively.
+//! CPU0 normal-boot networking; shared host leases in the normal FS profile.
 //! One FIFO chunk/TX per poll; DHCP maintenance and reset/backoff reconnect.
 const options = @import("native_options");
+const network_config = @import("network_config");
+const shared_api = pads.shared_api;
+const shared_host = @hasDecl(options, "normal_storage") and options.normal_storage;
+var host_generation: u32 = 0;
 const timers = @import("timer_group");
 const pads = @import("c6_probe");
 const sd = @import("sdio");
@@ -27,6 +31,10 @@ var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
 var decoder: *hosted.wire.Decoder = undefined;
 // SAFETY: begin binds the exclusive PSRAM state before the first active poll.
+// Foreground-only reset templates share the already mapped read-only display tables.
+// Keep large decoder/State defaults out of resident SRAM.
+const initial_state linksection(".flash.rodata.display") = State{};
+// SAFETY: begin binds this before any foreground state access.
 var state_storage: *State = undefined;
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
@@ -66,12 +74,12 @@ pub const Report = extern struct {
 };
 
 /// CPU0 only, between display initialization and CPU1 release. The shared I2C
-/// bus is idle here; its expander bits are preserved. Reconnect may reset
-/// SDMMC because both slots remain exclusively owned by this service.
+/// bus is idle here; its expander bits are preserved. Shared-mode reconnect
+/// changes only C6 pads/reset; the common owner alone resets SDMMC.
 pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storage_bytes]u8) void {
     const state: *State = @ptrCast(backing);
     state_storage = state;
-    state.* = .{};
+    @memcpy(@import("std").mem.asBytes(state), @import("std").mem.asBytes(&initial_state));
     client = &state.client;
     decoder = &state.decoder;
     clock = timer;
@@ -92,12 +100,13 @@ fn startAttempt(now: u64) void {
     pads.useClock(clock);
     nih_c6_pads_init();
     host = .{ .io = .{ .clock = clock } };
+    host_generation = 0;
     transport = .{ .host = &host };
-    client.* = .{};
-    decoder.* = .{};
+    @memcpy(@import("std").mem.asBytes(client), @import("std").mem.asBytes(&initial_state.client));
+    @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
     state_storage.ble = .{};
     state_storage.ble_length = 0;
-    client.beginDual(configuration.get(), now, true);
+    client.beginDual(configuration.get(), now, network_config.ipv6);
     client.keep_serving = true;
     attempt_bound = false;
     counted_renewals = 0;
@@ -121,8 +130,8 @@ fn stop(err: anyerror, now: ?u64) void {
     report.error_code = @intFromError(err);
     report.failures +|= 1;
     transport.invalidate();
-    client.* = .{};
-    decoder.* = .{};
+    @memcpy(@import("std").mem.asBytes(client), @import("std").mem.asBytes(&initial_state.client));
+    @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     nih_c6_reset(0);
@@ -144,13 +153,14 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         return;
     }
     if (phase == .reset_wait) {
-        try host.prepare(true);
+        if (shared_host) try host.prepareShared() else try host.prepare(true);
+        if (shared_host) host_generation = shared_api.generation();
         try host.identify();
         try host.enableFunction();
         try host.writeDoorbell(1, 0x8c, 1);
         // RPC timeouts start after enumeration, not during C6 reset.
         const join = client.join;
-        client.beginDual(join, clock.counter() orelse return error.Clock, true);
+        client.beginDual(join, clock.counter() orelse return error.Clock, network_config.ipv6);
         client.keep_serving = true;
         phase = .active;
         return;
@@ -192,9 +202,6 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             }
         }
     };
-    if (client.ipv6_client) |v6| {
-        if (v6.slaac_valid and (stamp >= v6.valid_until or stamp >= v6.preferred_until)) return error.AddressExpired;
-    }
     const bytes = try client.tx(stamp);
     if (bytes.len != 0) {
         const sent = try transport.send(bytes);
@@ -231,6 +238,17 @@ pub fn poll() void {
         startAttempt(now);
         return;
     }
+    if (shared_host and host_generation != 0 and host_generation != shared_api.generation()) return stop(error.HostReset, now);
+    const lease: ?shared_api.Lease = if (shared_host) shared_api.acquire(1) catch |err| {
+        if (err == error.Busy) return;
+        return stop(error.SharedHostUnavailable, now);
+    } else null;
+    if (lease) |held| host.io.lease = held;
+    defer if (lease) |held| {
+        const released = shared_api.release(held);
+        host.io.lease = .{};
+        if (released != .clean) stop(error.SharedHostFence, now);
+    };
     next = now + 2_000;
     report.polls +|= 1;
     step(now) catch |err| stop(err, now);
@@ -310,4 +328,8 @@ pub fn timeSnapshot() hosted.sntp.Report {
 pub fn takeTime() ?hosted.sntp.Sample {
     const now = clock.counter() orelse return null;
     return state_storage.time.take(now);
+}
+
+pub fn releaseDmaForHost() u32 {
+    return pads.releaseNormalDma();
 }

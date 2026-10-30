@@ -1,0 +1,845 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "evidence": "sanitized host shaping and independent batch/per-source-pixel composition, not native display",
+  "texts": [
+    {
+      "id": 5,
+      "runs": 1,
+      "hash": 855168788,
+      "outcome": 0,
+      "glyph_count": 8,
+      "pixel_bytes": 2473,
+      "pixel_hash": 1293081796,
+      "glyphs": [
+        {
+          "glyph_id": 3521,
+          "cluster": 0,
+          "run": 0,
+          "pixels": 24,
+          "x_advance": 1536,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 21,
+          "width": 24,
+          "height": 23,
+          "pixel_offset": 0
+        },
+        {
+          "glyph_id": 4248,
+          "cluster": 3,
+          "run": 0,
+          "pixels": 24,
+          "x_advance": 1536,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 3,
+          "top": 19,
+          "width": 18,
+          "height": 21,
+          "pixel_offset": 552
+        },
+        {
+          "glyph_id": 4686,
+          "cluster": 6,
+          "run": 0,
+          "pixels": 24,
+          "x_advance": 1536,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 21,
+          "width": 24,
+          "height": 23,
+          "pixel_offset": 930
+        },
+        {
+          "glyph_id": 2916,
+          "cluster": 9,
+          "run": 0,
+          "pixels": 24,
+          "x_advance": 1536,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 20,
+          "width": 24,
+          "height": 22,
+          "pixel_offset": 1482
+        },
+        {
+          "glyph_id": 416,
+          "cluster": 0,
+          "run": 1,
+          "pixels": 12,
+          "x_advance": 768,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 10,
+          "width": 10,
+          "height": 10,
+          "pixel_offset": 2010
+        },
+        {
+          "glyph_id": 432,
+          "cluster": 3,
+          "run": 1,
+          "pixels": 12,
+          "x_advance": 768,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 10,
+          "width": 11,
+          "height": 11,
+          "pixel_offset": 2110
+        },
+        {
+          "glyph_id": 456,
+          "cluster": 6,
+          "run": 1,
+          "pixels": 12,
+          "x_advance": 768,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 10,
+          "width": 12,
+          "height": 11,
+          "pixel_offset": 2231
+        },
+        {
+          "glyph_id": 393,
+          "cluster": 9,
+          "run": 1,
+          "pixels": 12,
+          "x_advance": 768,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 10,
+          "width": 11,
+          "height": 10,
+          "pixel_offset": 2363
+        }
+      ],
+      "source_hash": 144108157
+    },
+    {
+      "id": 6,
+      "runs": 0,
+      "hash": 0,
+      "outcome": 1,
+      "glyph_count": 0,
+      "pixel_bytes": 0,
+      "pixel_hash": 0,
+      "glyphs": [],
+      "source_hash": 3582353777
+    },
+    {
+      "id": 7,
+      "runs": 0,
+      "hash": 0,
+      "outcome": 2,
+      "glyph_count": 0,
+      "pixel_bytes": 0,
+      "pixel_hash": 0,
+      "glyphs": [],
+      "source_hash": 1219080227
+    },
+    {
+      "id": 8,
+      "runs": 1,
+      "hash": 1716706472,
+      "outcome": 0,
+      "glyph_count": 11,
+      "pixel_bytes": 4558,
+      "pixel_hash": 1348858277,
+      "glyphs": [
+        {
+          "glyph_id": 4138,
+          "cluster": 0,
+          "run": 0,
+          "pixels": 32,
+          "x_advance": 0,
+          "y_advance": -2048,
+          "x_offset": -1024,
+          "y_offset": -1920,
+          "left": 0,
+          "top": 28,
+          "width": 31,
+          "height": 31,
+          "pixel_offset": 0
+        },
+        {
+          "glyph_id": 2652,
+          "cluster": 3,
+          "run": 0,
+          "pixels": 32,
+          "x_advance": 0,
+          "y_advance": -2048,
+          "x_offset": -1024,
+          "y_offset": -1920,
+          "left": 2,
+          "top": 28,
+          "width": 29,
+          "height": 31,
+          "pixel_offset": 961
+        },
+        {
+          "glyph_id": 429,
+          "cluster": 6,
+          "run": 0,
+          "pixels": 32,
+          "x_advance": 0,
+          "y_advance": -2048,
+          "x_offset": -1024,
+          "y_offset": -1792,
+          "left": 1,
+          "top": 20,
+          "width": 29,
+          "height": 17,
+          "pixel_offset": 1860
+        },
+        {
+          "glyph_id": 2986,
+          "cluster": 9,
+          "run": 0,
+          "pixels": 32,
+          "x_advance": 0,
+          "y_advance": -2048,
+          "x_offset": -1024,
+          "y_offset": -1792,
+          "left": 0,
+          "top": 27,
+          "width": 31,
+          "height": 30,
+          "pixel_offset": 2353
+        },
+        {
+          "glyph_id": 388,
+          "cluster": 12,
+          "run": 0,
+          "pixels": 32,
+          "x_advance": 0,
+          "y_advance": -2048,
+          "x_offset": -1024,
+          "y_offset": -1792,
+          "left": 7,
+          "top": 26,
+          "width": 16,
+          "height": 29,
+          "pixel_offset": 3283
+        },
+        {
+          "glyph_id": 11952,
+          "cluster": 15,
+          "run": 0,
+          "pixels": 32,
+          "x_advance": 0,
+          "y_advance": -2048,
+          "x_offset": -1024,
+          "y_offset": -1728,
+          "left": 22,
+          "top": 26,
+          "width": 9,
+          "height": 9,
+          "pixel_offset": 3747
+        },
+        {
+          "glyph_id": 413,
+          "cluster": 0,
+          "run": 1,
+          "pixels": 16,
+          "x_advance": 0,
+          "y_advance": -1024,
+          "x_offset": -512,
+          "y_offset": -896,
+          "left": 3,
+          "top": 13,
+          "width": 11,
+          "height": 14,
+          "pixel_offset": 3828
+        },
+        {
+          "glyph_id": 379,
+          "cluster": 3,
+          "run": 1,
+          "pixels": 16,
+          "x_advance": 0,
+          "y_advance": -1024,
+          "x_offset": -512,
+          "y_offset": -960,
+          "left": 3,
+          "top": 14,
+          "width": 10,
+          "height": 15,
+          "pixel_offset": 3982
+        },
+        {
+          "glyph_id": 386,
+          "cluster": 6,
+          "run": 1,
+          "pixels": 16,
+          "x_advance": 0,
+          "y_advance": -1024,
+          "x_offset": -512,
+          "y_offset": -832,
+          "left": 2,
+          "top": 13,
+          "width": 12,
+          "height": 14,
+          "pixel_offset": 4132
+        },
+        {
+          "glyph_id": 11989,
+          "cluster": 9,
+          "run": 1,
+          "pixels": 16,
+          "x_advance": 0,
+          "y_advance": -1024,
+          "x_offset": -512,
+          "y_offset": -960,
+          "left": 6,
+          "top": 13,
+          "width": 9,
+          "height": 12,
+          "pixel_offset": 4300
+        },
+        {
+          "glyph_id": 379,
+          "cluster": 12,
+          "run": 1,
+          "pixels": 16,
+          "x_advance": 0,
+          "y_advance": -1024,
+          "x_offset": -512,
+          "y_offset": -960,
+          "left": 3,
+          "top": 14,
+          "width": 10,
+          "height": 15,
+          "pixel_offset": 4408
+        }
+      ],
+      "source_hash": 2878174783
+    },
+    {
+      "id": 9,
+      "runs": 1,
+      "hash": 1905604948,
+      "outcome": 0,
+      "glyph_count": 12,
+      "pixel_bytes": 1774,
+      "pixel_hash": 3544451899,
+      "glyphs": [
+        {
+          "glyph_id": 2497,
+          "cluster": 0,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 1024,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 14,
+          "width": 16,
+          "height": 16,
+          "pixel_offset": 0
+        },
+        {
+          "glyph_id": 3212,
+          "cluster": 3,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 1024,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 14,
+          "width": 16,
+          "height": 16,
+          "pixel_offset": 256
+        },
+        {
+          "glyph_id": 413,
+          "cluster": 6,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 1024,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 2,
+          "top": 14,
+          "width": 12,
+          "height": 15,
+          "pixel_offset": 512
+        },
+        {
+          "glyph_id": 384,
+          "cluster": 9,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 1024,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 14,
+          "width": 15,
+          "height": 15,
+          "pixel_offset": 692
+        },
+        {
+          "glyph_id": 415,
+          "cluster": 12,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 1024,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 14,
+          "width": 15,
+          "height": 15,
+          "pixel_offset": 917
+        },
+        {
+          "glyph_id": 98,
+          "cluster": 15,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 1024,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 4,
+          "width": 5,
+          "height": 6,
+          "pixel_offset": 1142
+        },
+        {
+          "glyph_id": 35,
+          "cluster": 18,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 512,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 13,
+          "width": 8,
+          "height": 14,
+          "pixel_offset": 1172
+        },
+        {
+          "glyph_id": 36,
+          "cluster": 19,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 512,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 13,
+          "width": 8,
+          "height": 14,
+          "pixel_offset": 1284
+        },
+        {
+          "glyph_id": 37,
+          "cluster": 20,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 512,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 13,
+          "width": 8,
+          "height": 14,
+          "pixel_offset": 1396
+        },
+        {
+          "glyph_id": 19,
+          "cluster": 21,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 512,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 1,
+          "top": 13,
+          "width": 4,
+          "height": 14,
+          "pixel_offset": 1508
+        },
+        {
+          "glyph_id": 20,
+          "cluster": 22,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 512,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 13,
+          "width": 7,
+          "height": 14,
+          "pixel_offset": 1564
+        },
+        {
+          "glyph_id": 21,
+          "cluster": 23,
+          "run": 0,
+          "pixels": 16,
+          "x_advance": 512,
+          "y_advance": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "left": 0,
+          "top": 13,
+          "width": 8,
+          "height": 14,
+          "pixel_offset": 1662
+        }
+      ],
+      "source_hash": 1682237669
+    }
+  ],
+  "frames": [
+    {
+      "id": 5,
+      "surface_hash": 1782587362,
+      "wrap_hash": 1782587362,
+      "policy_hash": 1782587362,
+      "ruby_hash": 1833819042,
+      "control_hash": 193834702,
+      "groups": 1,
+      "moved": 1,
+      "naive_forbidden_starts": 0,
+      "forbidden_starts": 0,
+      "forbidden_ends": 0,
+      "surface_clipped": 0,
+      "wrap_clipped": 0,
+      "policy_clipped": 0,
+      "ruby_clipped": 0,
+      "wrap_stats": {
+        "clusters": 8,
+        "lines": 2,
+        "wrapped_runs": 0,
+        "transitions": 0
+      },
+      "policy_stats": {
+        "spans": 8,
+        "joined": 0,
+        "lines": 2,
+        "transitions": 0,
+        "forbidden_starts": 0,
+        "forbidden_ends": 0
+      },
+      "ruby_stats": {
+        "groups": 1,
+        "moved": 1,
+        "wide": 0,
+        "units": 2,
+        "joins": 0,
+        "lines": 2
+      },
+      "logical": [
+        {
+          "index": 0,
+          "inline_offset": 3072,
+          "block_offset": 0
+        },
+        {
+          "index": 1,
+          "inline_offset": 0,
+          "block_offset": 2560
+        },
+        {
+          "index": 2,
+          "inline_offset": 1536,
+          "block_offset": 2560
+        },
+        {
+          "index": 3,
+          "inline_offset": 3072,
+          "block_offset": 2560
+        },
+        {
+          "index": 4,
+          "inline_offset": 768,
+          "block_offset": 896
+        },
+        {
+          "index": 5,
+          "inline_offset": 1536,
+          "block_offset": 896
+        },
+        {
+          "index": 6,
+          "inline_offset": 2304,
+          "block_offset": 896
+        },
+        {
+          "index": 7,
+          "inline_offset": 3072,
+          "block_offset": 896
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "surface_hash": 2840879048,
+      "wrap_hash": 3872015324,
+      "policy_hash": 3230547268,
+      "ruby_hash": 2320867100,
+      "control_hash": 3176199132,
+      "groups": 1,
+      "moved": 1,
+      "naive_forbidden_starts": 1,
+      "forbidden_starts": 0,
+      "forbidden_ends": 0,
+      "surface_clipped": 4,
+      "wrap_clipped": 0,
+      "policy_clipped": 0,
+      "ruby_clipped": 0,
+      "wrap_stats": {
+        "clusters": 11,
+        "lines": 4,
+        "wrapped_runs": 1,
+        "transitions": 2
+      },
+      "policy_stats": {
+        "spans": 9,
+        "joined": 2,
+        "lines": 5,
+        "transitions": 3,
+        "forbidden_starts": 0,
+        "forbidden_ends": 0
+      },
+      "ruby_stats": {
+        "groups": 1,
+        "moved": 1,
+        "wide": 1,
+        "units": 5,
+        "joins": 1,
+        "lines": 4
+      },
+      "logical": [
+        {
+          "index": 0,
+          "inline_offset": 512,
+          "block_offset": 2560
+        },
+        {
+          "index": 1,
+          "inline_offset": 2560,
+          "block_offset": 2560
+        },
+        {
+          "index": 2,
+          "inline_offset": 0,
+          "block_offset": 5120
+        },
+        {
+          "index": 3,
+          "inline_offset": 2048,
+          "block_offset": 5120
+        },
+        {
+          "index": 4,
+          "inline_offset": 0,
+          "block_offset": 7680
+        },
+        {
+          "index": 5,
+          "inline_offset": 2048,
+          "block_offset": 7680
+        },
+        {
+          "index": 6,
+          "inline_offset": 0,
+          "block_offset": 896
+        },
+        {
+          "index": 7,
+          "inline_offset": 1024,
+          "block_offset": 896
+        },
+        {
+          "index": 8,
+          "inline_offset": 2048,
+          "block_offset": 896
+        },
+        {
+          "index": 9,
+          "inline_offset": 3072,
+          "block_offset": 896
+        },
+        {
+          "index": 10,
+          "inline_offset": 4096,
+          "block_offset": 896
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "surface_hash": 587290586,
+      "wrap_hash": 3917300124,
+      "policy_hash": 3332983756,
+      "ruby_hash": 3332983756,
+      "control_hash": 3332983756,
+      "groups": 0,
+      "moved": 0,
+      "naive_forbidden_starts": 1,
+      "forbidden_starts": 0,
+      "forbidden_ends": 0,
+      "surface_clipped": 1,
+      "wrap_clipped": 0,
+      "policy_clipped": 0,
+      "ruby_clipped": 0,
+      "wrap_stats": {
+        "clusters": 12,
+        "lines": 2,
+        "wrapped_runs": 1,
+        "transitions": 1
+      },
+      "policy_stats": {
+        "spans": 11,
+        "joined": 1,
+        "lines": 2,
+        "transitions": 1,
+        "forbidden_starts": 0,
+        "forbidden_ends": 0
+      },
+      "ruby_stats": {
+        "groups": 0,
+        "moved": 0,
+        "wide": 0,
+        "units": 12,
+        "joins": 1,
+        "lines": 2
+      },
+      "logical": [
+        {
+          "index": 0,
+          "inline_offset": 0,
+          "block_offset": 0
+        },
+        {
+          "index": 1,
+          "inline_offset": 1024,
+          "block_offset": 0
+        },
+        {
+          "index": 2,
+          "inline_offset": 2048,
+          "block_offset": 0
+        },
+        {
+          "index": 3,
+          "inline_offset": 3072,
+          "block_offset": 0
+        },
+        {
+          "index": 4,
+          "inline_offset": 0,
+          "block_offset": 2048
+        },
+        {
+          "index": 5,
+          "inline_offset": 1024,
+          "block_offset": 2048
+        },
+        {
+          "index": 6,
+          "inline_offset": 2048,
+          "block_offset": 2048
+        },
+        {
+          "index": 7,
+          "inline_offset": 2560,
+          "block_offset": 2048
+        },
+        {
+          "index": 8,
+          "inline_offset": 3072,
+          "block_offset": 2048
+        },
+        {
+          "index": 9,
+          "inline_offset": 3584,
+          "block_offset": 2048
+        },
+        {
+          "index": 10,
+          "inline_offset": 4096,
+          "block_offset": 2048
+        },
+        {
+          "index": 11,
+          "inline_offset": 4608,
+          "block_offset": 2048
+        }
+      ]
+    }
+  ],
+  "matrix_hashes": [
+    1728955693,
+    127264623,
+    3802936562,
+    2720744390,
+    1636795626,
+    1483075906,
+    2072818531,
+    863961824,
+    41314477,
+    2150160734,
+    3827649753,
+    3029469629,
+    1662331729,
+    1389973151,
+    4053443032,
+    198040621
+  ],
+  "cases_sha256": "364f9efdceaad4693c4962a604e0d777eac3f846460a1413ff4d80323d87b76f",
+  "annotations_sha256": "ff0070742451531fa0df3a5138b1ca005dc2469ac55b40f5695fefc4dd413a9a",
+  "input_cases_sha256": "00306091daecc1c13504f7aa6fd9d1c2738eed24b38650871ad17849ad084dee",
+  "input_annotations_sha256": "8674613dae33ae225331340ea491536e7b835eb2c01923ec3253d012e393c0e2",
+  "sources_sha256": {
+    "probes/graphics/runtime_reference.py": "27240957366c24e32ecb289f32478999ec6ae9db0604fd5e331935c2ddd66bcd",
+    "probes/graphics/surface_reference.py": "dd8dacdab8c7c8b88c20a56b453f38bf3534b91033736c724f0507a4772c4c20",
+    "probes/graphics/kinsoku_reference.py": "f347c908fa689fde3f889e85cc5c82b30bd1f5b43cf9d27cc45f707602af78c1",
+    "probes/graphics/ruby_reference.py": "46aa7117b9c277fbdcc49f3aa212eb009614cb27e38c5271f7b2cdc47bb853ab"
+  },
+  "host_result_sha256": "18144c559018230920dae7fcfdee0a958bb6938766adebc4f9f9c62c86cd14f8",
+  "input_rasters_sha256": {
+    "build/runtime-text-host/raster-5.bin": "a7b13f491f456ed9cb62981143461ff3cbbcd69ef3fa85405ff8052fb4b844cb",
+    "build/runtime-text-host/raster-8.bin": "e2a4cc0d63f89cea517a558f312b88a2488ba409b8e06504f0c3f1a1f119cbf6",
+    "build/runtime-text-host/raster-9.bin": "dd6f6d1efc62aa68370c797556f8a4a957eb172f6ae88cd083d1a6ad0ff3d8ab"
+  },
+  "text_edit": "first source body changed at runtime from 日本語の描画 to 新日本語; ruby parent 0..9 -> 3..12"
+}

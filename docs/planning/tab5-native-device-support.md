@@ -7,6 +7,9 @@ service remain separate gates. Hardware inventory follows
 [M5Stack's board documentation](https://docs.m5stack.com/en/core/Tab5).
 Other active VFS/resource branches are not included in this main inventory.
 Card/touch observations retain their original candidate/optical scope.
+Main `76697c4` includes normal touch input and the gray view control. This working
+branch adds normal-only batched reads; its physical gate remains open, as detailed in
+[ADR 0054](../adr/0054-normal-touch-input.md).
 
 | Device | Native status in this change | Remaining work |
 | --- | --- | --- |
@@ -18,10 +21,10 @@ Card/touch observations retain their original candidate/optical scope.
 | INA226, 0x41 | Manufacturer/die verified; bus voltage and signed raw shunt voltage | Board shunt/calibration policy, current/power and battery service |
 | BMI270 IMU, 0x68 | Native configuration/init and +/-4 g, +/-500 dps raw acquisition; continuous readings alongside connected Wi-Fi/NTP and finite device requests | Controlled movement, gyro bias/calibration, board axis mapping, FIFO/IRQ, application input service |
 | PI4IOE5V6408, 0x43/0x44 | Existing display/C6 power sequencing; preserved handoff to shared I2C | Unified runtime GPIO/power service |
-| Touch, GT911 or ST7123 family | Native ST7121 diagnostic/card profiles; earlier physical candidate confirmed four-quadrant contacts and releases | Normal application input, other panel/multitouch qualification, IRQ23 |
+| Touch, GT911 or ST7123 family | Normal pointer/gray control landed; earlier ST7121 candidate had operator-confirmed two-way views; earlier batched candidate has down/up/action and connected coexistence evidence, max read 14.281 ms | Normal-only batching follow-up needs exact-candidate operator/negative-gesture checks; other panels, application routing, IRQ23 |
 | ES8388 / ES7210 audio | Included in normal build, idle until explicitly requested; finite speaker and repeated microphone/controller cleanup observed with Wi-Fi connected; overlap rejected and lazy 1536-byte I2S storage reused | Audible/acoustic/slot calibration, long-duration/repeated stress, streaming/mixer and application API |
 | SC2356 camera | No native capture service | Sensor setup, MIPI CSI/ISP, DMA and buffer ownership |
-| microSD | Existing bounded native read-only boot fixtures | Runtime filesystem, removal/reinsertion, SDMMC arbitration with C6 |
+| microSD | Bounded native read-only boot fixtures; ordinary FS/C6 shared-owner implementation and host tests ([contract](normal-storage-services.md)) | Ordinary-service physical coexistence/removal qualification; writes and SQLite persistence |
 | USB-A host / USB-C OTG | Opt-in native USB-A PaSoRi/CCID card profiles landed; earlier candidate read/photo physically confirmed | Merged candidate retest; USB-C role/power and other USB classes |
 | RS485 SIT3088 (TX20/RX21/DIR34) | Included in normal build, idle until requested; repeated internal UART exchanges with DIR low and stopped cleanup observed alongside connected services | External A/B peer/transceiver/direction timing, application streaming service and optional DMA |
 | Buttons / charging / USB power outputs | Hardware power behavior and limited boot expander setup | Debounced input and explicit charger/power policy |
@@ -30,7 +33,9 @@ The normal image initializes display/PSRAM/SMP, C6 transport and board sensor
 polling. With configured Wi-Fi, it also synchronizes UTC RTC through public NTP.
 Speaker, microphone and RS485 are requestable without boot-time playback,
 recording or bus transmission. This does not enable camera capture or integrate
-USB/card/touch qualification profiles into a normal application input service.
+USB/card qualification profiles into a normal application service. The normal
+touch service is on main; the normal-only batching follow-up on this branch is
+awaiting physical qualification.
 
 Evidence and contracts:
 
@@ -38,9 +43,10 @@ Evidence and contracts:
 - [Public NTP-to-RTC policy](../adr/0053-network-time-to-rtc.md)
 - [Connected device coexistence and NTP recovery](../measurements/2026-10-28-connected-devices.md)
 - [RTC write/readback and no-NTP warm retention](../measurements/2026-10-28-network-rtc-sync.md)
+- [Normal touch, batching, interrupted capture and verified recovery](../measurements/2026-10-28-normal-touch-interaction.md)
 
-The next application-input gaps are normal touch integration and BLE keyboard
-input. BLE needs a known HID-over-GATT peer, followed by connect, service/report
+The current application-input gate is physical normal-touch verification;
+BLE keyboard input is still unimplemented. BLE needs a known HID-over-GATT peer, followed by connect, service/report
 discovery, required security and report subscription. A Bluetooth Classic-only
 keyboard/headphone is not a BLE qualification peer. Camera capture and current/
 battery policy need their own hardware/register and buffer-ownership work.

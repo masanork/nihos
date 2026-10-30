@@ -1,6 +1,24 @@
 //! Rotated console raster with incremental cells and bounded pixel scrolling.
 const std = @import("std");
+const Canvas = @import("canvas").Canvas;
 const Grid = @import("../console/ascii.zig").Grid;
+const Run = struct { alpha: u4, count: usize };
+const Runs = struct {
+    bytes: []const u8,
+    cursor: usize = 0,
+    fn next(self: *Runs) ?Run {
+        if (self.cursor == self.bytes.len) return null;
+        const value = self.bytes[self.cursor];
+        self.cursor += 1;
+        var count = @as(usize, value & 15) + 1;
+        if (value == 15) {
+            if (self.cursor == self.bytes.len) @panic("truncated console font run");
+            count += self.bytes[self.cursor];
+            self.cursor += 1;
+        }
+        return .{ .alpha = @truncate(value >> 4), .count = count };
+    }
+};
 pub const width = 720;
 pub const height = 1280;
 pub const Face = enum(u32) { basic, jetbrains, source_code, basic_light };
@@ -22,6 +40,9 @@ pub const columns = Layout(default_face).columns;
 pub const rows = Layout(default_face).rows;
 pub const Palette = enum(u32) { neutral, green, blue, forest, matrix };
 pub const Colors = struct { foreground: u16, accent: u16, background: u16 = 0x1082 };
+// The diagnostic view switch stays quiet beside the splash and log content.
+const control_border: u16 = 0x3186; // RGB565 dark gray, approximately #303030.
+const control_foreground: u16 = 0x528a; // Approximately #505050.
 pub fn colors(palette: Palette) Colors {
     return .{ .foreground = switch (palette) {
         .neutral => 0xe71c,
@@ -64,10 +85,38 @@ pub noinline fn paintFace(comptime section: ?[]const u8, comptime face: Face, fr
     const L = Layout(face);
     const T = @TypeOf(grid.*);
     if (T.width > L.columns or T.height > L.rows or !valid(frame, stride)) return false;
-    for (0..height) |y| for (0..width) |x| pixel(frame, stride, x, y, colors(palette).background);
+    const canvas = Canvas.init(frame, width, height, stride) orelse return false;
+    canvas.fillRect(.{ .x = 0, .y = 0, .width = width, .height = height }, colors(palette).background);
     for (0..T.height) |row| for (0..T.width) |col| cell(section, face, frame, stride, grid.cells[row * T.width + col], row, col, 0, L.cell_height, L.margin_y + row * L.cell_height, palette);
     return true;
 }
+/// Small landscape control overlay. Uses the same licensed basic glyph masks
+/// as the console. Reject invalid geometry/text before touching any pixels.
+pub fn paintControl(comptime section: ?[]const u8, frame: []u8, stride: usize, bounds: Damage, label: []const u8, palette: Palette) bool {
+    if (!valid(frame, stride) or bounds.empty() or bounds.right > 1280 or bounds.bottom > 720 or
+        bounds.right - bounds.left < 16 or bounds.bottom - bounds.top < 16 or label.len > (bounds.right - bounds.left) / 16) return false;
+    for (label) |byte| if (byte < 32 or byte > 126) return false;
+    const canvas = Canvas.init(frame, width, height, stride) orelse return false;
+    const selected = colors(palette);
+    canvas.fillRect(.{ .x = @intCast(bounds.top), .y = @intCast(1280 - bounds.right), .width = @intCast(bounds.bottom - bounds.top), .height = @intCast(bounds.right - bounds.left) }, control_border);
+    canvas.fillRect(.{ .x = @intCast(bounds.top + 2), .y = @intCast(1280 - bounds.right + 2), .width = @intCast(bounds.bottom - bounds.top - 4), .height = @intCast(bounds.right - bounds.left - 4) }, selected.background);
+    const Store = if (section) |name| struct {
+        const masks linksection(name) = @embedFile("ascii/basic.bin").*;
+    } else struct {
+        const masks = @embedFile("ascii/basic.bin").*;
+    };
+    const start_x = bounds.left + (bounds.right - bounds.left - label.len * 16) / 2;
+    const start_y = bounds.top + (bounds.bottom - bounds.top - 16) / 2;
+    for (label, 0..) |byte, index| {
+        const bits = Store.masks[(@as(usize, byte) - 32) * 8 ..][0..8];
+        for (0..8) |y| for (0..8) |x| {
+            if (bits[y] & (@as(u8, 1) << @as(u3, @intCast(x))) != 0)
+                canvas.fillRect(.{ .x = @intCast(start_y + y * 2), .y = @intCast(1278 - (start_x + index * 16 + x * 2)), .width = 2, .height = 2 }, control_foreground);
+        };
+    }
+    return true;
+}
+
 noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8, stride: usize, byte: u8, row: usize, col: usize, clip_top: usize, clip_bottom: usize, destination: usize, palette: Palette) void {
     const L = Layout(face);
     const selected = colors(palette);
@@ -75,6 +124,7 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
     const half = blend(selected.background, foreground, 8);
     const quarter = blend(selected.background, foreground, 4);
     const character: usize = if (byte >= 32 and byte <= 126) byte else '?';
+    const canvas = Canvas.init(frame, width, height, stride) orelse unreachable;
     if (face == .basic or face == .basic_light) {
         const Store = if (section) |name| struct {
             const masks linksection(name) = @embedFile("ascii/basic.bin").*;
@@ -86,7 +136,7 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
         // Never expose a cleared cell while its glyph is being rasterized.
         for (0..16) |x| {
             const physical_y = 1279 - (L.margin_x + col * 16 + x);
-            const start = physical_y * stride + destination * 2;
+            var row_pixels: [16 * 2]u8 = undefined;
             for (clip_top..clip_bottom) |y| {
                 const bx: u3 = @intCast(x / 2);
                 const by = y / 2;
@@ -96,15 +146,13 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
                     const bottom = y % 2 == 1 and (by == 7 or bits[by + 1] & (@as(u8, 1) << bx) == 0);
                     color = if (face == .basic) foreground else if (right and bottom) quarter else if (right or bottom) half else foreground;
                 }
-                const offset = start + (y - clip_top) * 2;
-                if ((@intFromPtr(frame.ptr) + offset) & 1 == 0) {
-                    const output: *u16 = @ptrCast(@alignCast(frame.ptr + offset));
-                    output.* = color;
-                } else pixel(frame, stride, destination + y - clip_top, physical_y, color);
+                std.mem.writeInt(u16, row_pixels[(y - clip_top) * 2 ..][0..2], color, .little);
             }
+            const row_bytes = (clip_bottom - clip_top) * 2;
+            canvas.blitRgb565(.{ .bytes = row_pixels[0..row_bytes], .width = @intCast(clip_bottom - clip_top), .height = 1, .stride = row_bytes }, @intCast(destination), @intCast(physical_y)) catch @panic("invalid console row blit");
         }
     } else {
-        for (clip_top..clip_bottom) |y| for (0..L.cell_width) |x| pixel(frame, stride, destination + y - clip_top, 1279 - (L.margin_x + col * L.cell_width + x), selected.background);
+        canvas.fillRect(.{ .x = @intCast(destination), .y = @intCast(1280 - L.margin_x - (col + 1) * L.cell_width), .width = @intCast(clip_bottom - clip_top), .height = L.cell_width }, selected.background);
         const Font = if (face == .jetbrains) @import("ascii/jetbrains.zig") else @import("ascii/source_code.zig");
         const Store = if (section) |name| struct {
             const masks linksection(name) = Font.masks.*;
@@ -115,13 +163,21 @@ noinline fn cell(comptime section: ?[]const u8, comptime face: Face, frame: []u8
         };
         const glyph = Store.glyphs[character - 32];
         var decoded: usize = 0;
-        for (Store.masks[glyph.offset..][0..glyph.length]) |run| {
-            const alpha: u4 = @truncate(run >> 4);
-            const count = @as(usize, run & 15) + 1;
-            if (alpha != 0) for (decoded..decoded + count) |index| {
-                const y = index / L.cell_width;
-                if (y >= clip_top and y < clip_bottom) pixel(frame, stride, destination + y - clip_top, 1279 - (L.margin_x + col * L.cell_width + index % L.cell_width), blend(selected.background, foreground, alpha));
-            };
+        var runs = Runs{ .bytes = Store.masks[glyph.offset..][0..glyph.length] };
+        while (runs.next()) |run| {
+            const alpha = run.alpha;
+            const count = run.count;
+            if (alpha != 0) {
+                var index = decoded;
+                const end = decoded + count;
+                while (index < end) {
+                    const x = index % L.cell_width;
+                    const y = index / L.cell_width;
+                    const span = @min(end - index, L.cell_width - x);
+                    if (y >= clip_top and y < clip_bottom) canvas.fillRect(.{ .x = @intCast(destination + y - clip_top), .y = @intCast(1280 - (L.margin_x + col * L.cell_width + x + span)), .width = 1, .height = @intCast(span) }, blend(selected.background, foreground, alpha));
+                    index += span;
+                }
+            }
             decoded += count;
         }
     }
@@ -208,19 +264,9 @@ pub fn Renderer(comptime section: ?[]const u8, comptime face: Face) type {
             const count = @min(self.quantum, self.distance - self.advanced);
             // Logical upward motion is a contiguous left shift in each
             // physical scanline. No clearing or repainting of existing glyphs.
-            for (1280 - L.margin_x - L.columns * L.cell_width..1280 - L.margin_x) |y| {
-                const begin = y * stride + top * 2;
-                const length = (bottom - top - count) * 2;
-                if ((begin | length | (count * 2)) & 3 == 0 and @intFromPtr(frame.ptr) & 3 == 0) {
-                    const dest: [*]u32 = @ptrCast(@alignCast(frame.ptr + begin));
-                    const source: [*]const u32 = @ptrCast(@alignCast(frame.ptr + begin + count * 2));
-                    var index: usize = 0;
-                    while (index + 8 <= length / 4) : (index += 8) {
-                        inline for (0..8) |word| dest[index + word] = source[index + word];
-                    }
-                    while (index < length / 4) : (index += 1) dest[index] = source[index];
-                } else std.mem.copyForwards(u8, frame[begin..][0..length], frame[begin + count * 2 ..][0..length]);
-            }
+            const canvas = Canvas.init(frame, width, height, stride) orelse return false;
+            const first_y = 1280 - L.margin_x - L.columns * L.cell_width;
+            canvas.copyRect(.{ .x = @intCast(top + count), .y = @intCast(first_y), .width = @intCast(bottom - top - count), .height = L.columns * L.cell_width }, @intCast(top), @intCast(first_y));
             self.advanced += count;
             const band = L.cell_height + self.advanced;
             const source_top = bottom - self.distance - L.cell_height;
@@ -240,19 +286,129 @@ pub fn Renderer(comptime section: ?[]const u8, comptime face: Face) type {
         }
     };
 }
-fn blend(background: u16, foreground: u16, alpha: u4) u16 {
-    const a: u32 = alpha;
-    const b: u32 = background;
-    const f: u32 = foreground;
-    const r = ((b >> 11) * (15 - a) + (f >> 11) * a + 7) / 15;
-    const g = (((b >> 5) & 63) * (15 - a) + ((f >> 5) & 63) * a + 7) / 15;
-    const blue = ((b & 31) * (15 - a) + (f & 31) * a + 7) / 15;
-    return @intCast((r << 11) | (g << 5) | blue);
-}
+const blend = Canvas.blend4;
+
 fn pixel(frame: []u8, stride: usize, x: usize, y: usize, color: u16) void {
     const offset = y * stride + x * 2;
     frame[offset] = @truncate(color);
     frame[offset + 1] = @truncate(color >> 8);
+}
+
+test "Canvas large glyph spans match the original raster" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const actual = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(actual);
+    const expected = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(expected);
+    inline for (.{ Face.jetbrains, Face.source_code }) |face| {
+        const L = Layout(face);
+        const Font = if (face == .jetbrains) @import("ascii/jetbrains.zig") else @import("ascii/source_code.zig");
+        for ([_][2]usize{ .{ 0, 30 }, .{ 4, 23 } }) |clip| {
+            @memset(actual, 0xa5);
+            @memset(expected, 0xa5);
+            const frame = actual[17..][0..size];
+            const reference = expected[17..][0..size];
+            for (32..127) |character| {
+                const col = (character - 32) % L.columns;
+                const row = (character - 32) / L.columns;
+                const destination = L.margin_y + row * L.cell_height;
+                const selected = colors(.blue);
+                const foreground = if (row == 0) selected.accent else selected.foreground;
+                for (clip[0]..clip[1]) |y| for (0..L.cell_width) |x| pixel(reference, stride, destination + y - clip[0], 1279 - (L.margin_x + col * L.cell_width + x), selected.background);
+                const glyph = Font.glyphs[character - 32];
+                var decoded: usize = 0;
+                var runs = Runs{ .bytes = Font.masks[glyph.offset..][0..glyph.length] };
+                while (runs.next()) |run| {
+                    const alpha = run.alpha;
+                    const count = run.count;
+                    if (alpha != 0) for (decoded..decoded + count) |index| {
+                        const y = index / L.cell_width;
+                        if (y >= clip[0] and y < clip[1]) pixel(reference, stride, destination + y - clip[0], 1279 - (L.margin_x + col * L.cell_width + index % L.cell_width), blend(selected.background, foreground, alpha));
+                    };
+                    decoded += count;
+                }
+                cell(null, face, frame, stride, @intCast(character), row, col, clip[0], clip[1], destination, .blue);
+            }
+            try std.testing.expectEqualSlices(u8, expected, actual);
+        }
+    }
+}
+
+test "Canvas basic glyph rows match the original raster" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const actual = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(actual);
+    const expected = try std.testing.allocator.alloc(u8, size + 33);
+    defer std.testing.allocator.free(expected);
+    const masks = @embedFile("ascii/basic.bin");
+    inline for (.{ Face.basic, Face.basic_light }) |face| {
+        const L = Layout(face);
+        for ([_][2]usize{ .{ 0, 16 }, .{ 3, 12 } }) |clip| {
+            @memset(actual, 0xa5);
+            @memset(expected, 0xa5);
+            // An unaligned frame also covers the old byte-write fallback.
+            const frame = actual[17..][0..size];
+            const reference = expected[17..][0..size];
+            for (32..127) |character| {
+                const col = (character - 32) % L.columns;
+                const row = (character - 32) / L.columns;
+                const destination = L.margin_y + row * L.cell_height;
+                const selected = colors(.green);
+                const foreground = if (row == 0) selected.accent else selected.foreground;
+                const bits = masks[(character - 32) * 8 ..][0..8];
+                for (0..16) |x| for (clip[0]..clip[1]) |y| {
+                    const bx: u3 = @intCast(x / 2);
+                    const by = y / 2;
+                    var color = selected.background;
+                    if (bits[by] & (@as(u8, 1) << bx) != 0) {
+                        const right = x % 2 == 1 and (bx == 7 or bits[by] & (@as(u8, 1) << @as(u3, @intCast(bx + 1))) == 0);
+                        const bottom = y % 2 == 1 and (by == 7 or bits[by + 1] & (@as(u8, 1) << bx) == 0);
+                        color = if (face == .basic) foreground else if (right and bottom) blend(selected.background, foreground, 4) else if (right or bottom) blend(selected.background, foreground, 8) else foreground;
+                    }
+                    pixel(reference, stride, destination + y - clip[0], 1279 - (L.margin_x + col * 16 + x), color);
+                };
+                cell(null, face, frame, stride, @intCast(character), row, col, clip[0], clip[1], destination, .green);
+            }
+            try std.testing.expectEqualSlices(u8, expected, actual);
+        }
+    }
+}
+
+test "Canvas control matches the original rotated raster" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const actual = try std.testing.allocator.alloc(u8, size + 32);
+    defer std.testing.allocator.free(actual);
+    const reference = try std.testing.allocator.alloc(u8, size + 32);
+    defer std.testing.allocator.free(reference);
+    const masks = @embedFile("ascii/basic.bin");
+    for ([_]Damage{ .{ .left = 0, .top = 0, .right = 64, .bottom = 32 }, .{ .left = 1179, .top = 671, .right = 1280, .bottom = 720 } }) |box| {
+        for ([_]Palette{ .neutral, .matrix }) |palette| {
+            @memset(actual, 0xa5);
+            @memset(reference, 0xa5);
+            const frame = actual[16..][0..size];
+            const expected = reference[16..][0..size];
+            const label = "LOGS";
+            const selected = colors(palette);
+            for (box.left..box.right) |x| for (box.top..box.bottom) |y| {
+                const border = x < box.left + 2 or x + 2 >= box.right or y < box.top + 2 or y + 2 >= box.bottom;
+                pixel(expected, stride, y, 1279 - x, if (border) control_border else selected.background);
+            };
+            const start_x = box.left + (box.right - box.left - label.len * 16) / 2;
+            const start_y = box.top + (box.bottom - box.top - 16) / 2;
+            for (label, 0..) |byte, index| {
+                const bits = masks[(@as(usize, byte) - 32) * 8 ..][0..8];
+                for (0..16) |y| for (0..16) |x| {
+                    if (bits[y / 2] & (@as(u8, 1) << @as(u3, @intCast(x / 2))) != 0)
+                        pixel(expected, stride, start_y + y, 1279 - (start_x + index * 16 + x), control_foreground);
+                };
+            }
+            try std.testing.expect(paintControl(null, frame, stride, box, label, palette));
+            try std.testing.expectEqualSlices(u8, reference, actual);
+        }
+    }
 }
 
 test "incremental cells and single-pass scroll equal a fresh raster, with fixed header and guards" {
@@ -321,8 +477,29 @@ test "thin basic face uses the original masks and large faces decode bounded cel
         for (Font.glyphs) |glyph| {
             try std.testing.expect(@as(usize, glyph.offset) + glyph.length <= Font.masks.len);
             var decoded: usize = 0;
-            for (Font.masks[glyph.offset..][0..glyph.length]) |run| decoded += @as(usize, run & 15) + 1;
+            var runs = Runs{ .bytes = Font.masks[glyph.offset..][0..glyph.length] };
+            while (runs.next()) |run| decoded += run.count;
             try std.testing.expectEqual(@as(usize, 450), decoded);
         }
     }
+}
+
+test "touch control rotates with the console and preserves bounds, row padding and guards" {
+    const stride = 1440 + 8;
+    const size = stride * 1280;
+    const backing = try std.testing.allocator.alloc(u8, size + 128);
+    defer std.testing.allocator.free(backing);
+    @memset(backing, 0xa5);
+    const frame = backing[64..][0..size];
+    const bounds = Damage{ .left = 1120, .top = 16, .right = 1264, .bottom = 80 };
+    try std.testing.expect(paintControl(null, frame, stride, bounds, "LOGS", .neutral));
+    const corner = (1279 - bounds.left) * stride + bounds.top * 2;
+    try std.testing.expectEqual(@as(u16, 0x3186), std.mem.readInt(u16, frame[corner..][0..2], .little));
+    try std.testing.expect(std.mem.allEqual(u8, backing[0..64], 0xa5));
+    try std.testing.expect(std.mem.allEqual(u8, backing[64 + size ..], 0xa5));
+    for (0..1280) |row| try std.testing.expect(std.mem.allEqual(u8, frame[row * stride + 1440 ..][0..8], 0xa5));
+    const before = std.hash.Wyhash.hash(0, frame);
+    try std.testing.expect(!paintControl(null, frame, stride, .{ .left = 1270, .top = 16, .right = 1300, .bottom = 80 }, "LOGS", .neutral));
+    try std.testing.expect(!paintControl(null, frame, stride, bounds, "TOO LONG FOR CONTROL", .neutral));
+    try std.testing.expectEqual(before, std.hash.Wyhash.hash(0, frame));
 }

@@ -1,0 +1,1229 @@
+{
+  "scope": "symbol-closed synthetic link and Unicorn RV32 ISA execution; not ESP32-P4 boot/peripheral or physical-device evidence",
+  "base_commit": "7b7ae176a7501e230696ccc7093b226d86c87636",
+  "unicorn_version": "2.1.4",
+  "unicorn_library_sha256": "7207c8e3d7a63118fb0bca73e01816797fd51b1d8a39a4cbc7abfd562ee59c85",
+  "compiler": "riscv32-esp-elf-g++ (crosstool-NG esp-14.2.0_20260121) 14.2.0",
+  "profiles": [
+    {
+      "render_pool_bytes": 16384,
+      "allocation_records": 256,
+      "modes": [
+        {
+          "load_mode": 0,
+          "hinting": "default",
+          "host": {
+            "rc": 0,
+            "stage": 100,
+            "runs": 16,
+            "pool_peak": 1310720,
+            "raw_peak": 1310976,
+            "retained": 65792,
+            "hashes": [
+              3313056789,
+              2608330329,
+              3668753709,
+              2443660112,
+              2407914542,
+              1513483610,
+              2731523734,
+              1103624515,
+              3714262540,
+              1090914601,
+              1920594771,
+              3427725594,
+              3666212853,
+              945058783,
+              2993689685,
+              2669989247
+            ],
+            "controller_bytes": 7312,
+            "record_capacity": 256,
+            "record_peak": 195,
+            "record_failures": 0,
+            "allocation_failures": 0
+          },
+          "cases": [
+            {
+              "status": "stack_guard",
+              "uc_error": 0,
+              "stack_bytes": 128,
+              "stack_peak": 688,
+              "min_pc": 1090520590,
+              "instructions": 2,
+              "last_pc": 1090520590,
+              "invalid_address": 0,
+              "stage": 0,
+              "failure": 0,
+              "runs": 0,
+              "raw_peak": 0,
+              "retained": 0,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [],
+              "load_mode": 0,
+              "peak_stage": 0,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 0,
+              "record_capacity": 0,
+              "record_peak": 0,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "graphics_font_link_probe\n??:?",
+              "result_sha256": "83364e73bb8f2eeddab4a0c27adb82f2c94ab1e62fb0e68be3c4cd5bbfc01465"
+            },
+            {
+              "status": "stack_guard",
+              "uc_error": 0,
+              "stack_bytes": 4096,
+              "stack_peak": 17840,
+              "min_pc": 1090830536,
+              "instructions": 24906608,
+              "last_pc": 1090830536,
+              "invalid_address": 0,
+              "stage": 10,
+              "failure": 0,
+              "runs": 0,
+              "raw_peak": 0,
+              "retained": 0,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [],
+              "load_mode": 0,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 32
+              },
+              "controller_bytes": 0,
+              "record_capacity": 0,
+              "record_peak": 0,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_convert_glyph\nsmooth.c:?",
+              "result_sha256": "d277aced7fe7c6eee70f40028cfab78733d5dff95255b160b78b33a5f9126ff3"
+            },
+            {
+              "status": "stack_guard",
+              "uc_error": 0,
+              "stack_bytes": 16384,
+              "stack_peak": 17840,
+              "min_pc": 1090830536,
+              "instructions": 24906608,
+              "last_pc": 1090830536,
+              "invalid_address": 0,
+              "stage": 10,
+              "failure": 0,
+              "runs": 0,
+              "raw_peak": 0,
+              "retained": 0,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [],
+              "load_mode": 0,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 32
+              },
+              "controller_bytes": 0,
+              "record_capacity": 0,
+              "record_peak": 0,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_convert_glyph\nsmooth.c:?",
+              "result_sha256": "fb45fcfbab9a3bb7f26eb032ec7771ea6fd5ce0f825349793d4243f1bebd53d0"
+            },
+            {
+              "status": "pass",
+              "uc_error": 0,
+              "stack_bytes": 32768,
+              "stack_peak": 18160,
+              "min_pc": 1090827378,
+              "instructions": 303127654,
+              "last_pc": 1106247680,
+              "invalid_address": 0,
+              "stage": 100,
+              "failure": 0,
+              "runs": 16,
+              "raw_peak": 1310976,
+              "retained": 65792,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [
+                3313056789,
+                2608330329,
+                3668753709,
+                2443660112,
+                2407914542,
+                1513483610,
+                2731523734,
+                1103624515,
+                3714262540,
+                1090914601,
+                1920594771,
+                3427725594,
+                3666212853,
+                945058783,
+                2993689685,
+                2669989247
+              ],
+              "load_mode": 0,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 1554
+              },
+              "controller_bytes": 4936,
+              "record_capacity": 256,
+              "record_peak": 195,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_render_line\nsmooth.c:?",
+              "result_sha256": "b57a758917c56ee8a927591d83db20cb97f3cbab080feba6f6e18a61ec7f4a51"
+            }
+          ]
+        }
+      ],
+      "sizes": {
+        "text_and_rodata": 580653,
+        "data": 6472,
+        "bss": 2929,
+        "elf_flags": 1
+      },
+      "elf_sha256": "14ddea20484a1ce28ac6c4d10b0fc7b41426427572c17663acd82bdaf08b681f",
+      "map_sha256": "14058ff2bbe8a03416edc781b79e1d8e4c3223c47c6c4766368382cff97f0024",
+      "largest_linked_c_frames": [
+        {
+          "function": "gray_convert_glyph",
+          "frame_bytes": 16688,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_widths",
+          "frame_bytes": 7840,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_widths",
+          "frame_bytes": 7712,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_autofitter_load_glyph",
+          "frame_bytes": 6896,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_blues",
+          "frame_bytes": 576,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_blues",
+          "frame_bytes": 480,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_render_cubic",
+          "frame_bytes": 432,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_build_cmaps.isra",
+          "frame_bytes": 416,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "ft_open_face_internal",
+          "frame_bytes": 336,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_glyph_load",
+          "frame_bytes": 320,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "load_truetype_glyph",
+          "frame_bytes": 240,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_init",
+          "frame_bytes": 208,
+          "kind": "static",
+          "linked": true
+        }
+      ],
+      "unresolved_symbols": [],
+      "floating_point_instructions": 0,
+      "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv32i2p1_m2p0_a2p1_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zaamo1p0_zalrsc1p0_zca1p0\"\n",
+      "flash_payload_bytes": 587125,
+      "static_writable_bytes": 9401
+    },
+    {
+      "render_pool_bytes": 2048,
+      "allocation_records": 512,
+      "modes": [],
+      "sizes": {
+        "text_and_rodata": 580653,
+        "data": 10568,
+        "bss": 2929,
+        "elf_flags": 1
+      },
+      "elf_sha256": "10ca2e08da7fba8859b60a0ee6534095b835e71d05ef49680eac07eb8758f9b2",
+      "map_sha256": "e1397478521a8751282de2d963f9c5767bdf82cb93b38c511f26f91a21bcb50a",
+      "largest_linked_c_frames": [
+        {
+          "function": "af_latin_metrics_init_widths",
+          "frame_bytes": 7840,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_widths",
+          "frame_bytes": 7712,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_autofitter_load_glyph",
+          "frame_bytes": 6896,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_convert_glyph",
+          "frame_bytes": 2352,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_blues",
+          "frame_bytes": 576,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_blues",
+          "frame_bytes": 480,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_render_cubic",
+          "frame_bytes": 432,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_build_cmaps.isra",
+          "frame_bytes": 416,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "ft_open_face_internal",
+          "frame_bytes": 336,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_glyph_load",
+          "frame_bytes": 320,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "load_truetype_glyph",
+          "frame_bytes": 240,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_init",
+          "frame_bytes": 208,
+          "kind": "static",
+          "linked": true
+        }
+      ],
+      "unresolved_symbols": [],
+      "floating_point_instructions": 0,
+      "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv32i2p1_m2p0_a2p1_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zaamo1p0_zalrsc1p0_zca1p0\"\n",
+      "flash_payload_bytes": 591221,
+      "static_writable_bytes": 13497
+    },
+    {
+      "render_pool_bytes": 2048,
+      "allocation_records": 1024,
+      "modes": [
+        {
+          "load_mode": 0,
+          "hinting": "default",
+          "host": {
+            "rc": 0,
+            "stage": 100,
+            "runs": 16,
+            "pool_peak": 1310720,
+            "raw_peak": 1310976,
+            "retained": 65792,
+            "hashes": [
+              3313056789,
+              2608330329,
+              3668753709,
+              2443660112,
+              2407914542,
+              1513483610,
+              2731523734,
+              1103624515,
+              3714262540,
+              1090914601,
+              1920594771,
+              3427725594,
+              3666212853,
+              945058783,
+              2993689685,
+              2669989247
+            ],
+            "controller_bytes": 25744,
+            "record_capacity": 1024,
+            "record_peak": 195,
+            "record_failures": 0,
+            "allocation_failures": 0
+          },
+          "cases": [
+            {
+              "status": "pass",
+              "uc_error": 0,
+              "stack_bytes": 4096,
+              "stack_peak": 3824,
+              "min_pc": 1090827378,
+              "instructions": 308614775,
+              "last_pc": 1106247680,
+              "invalid_address": 0,
+              "stage": 100,
+              "failure": 0,
+              "runs": 16,
+              "raw_peak": 1310976,
+              "retained": 65792,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [
+                3313056789,
+                2608330329,
+                3668753709,
+                2443660112,
+                2407914542,
+                1513483610,
+                2731523734,
+                1103624515,
+                3714262540,
+                1090914601,
+                1920594771,
+                3427725594,
+                3666212853,
+                945058783,
+                2993689685,
+                2669989247
+              ],
+              "load_mode": 0,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 1554
+              },
+              "controller_bytes": 17224,
+              "record_capacity": 1024,
+              "record_peak": 195,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_render_line\nsmooth.c:?",
+              "result_sha256": "f08400a01f6dd8d9721946d61ce3ac4956ea1589efacef18c60963141a00dc70"
+            },
+            {
+              "status": "pass",
+              "uc_error": 0,
+              "stack_bytes": 8192,
+              "stack_peak": 3824,
+              "min_pc": 1090827378,
+              "instructions": 308614775,
+              "last_pc": 1106247680,
+              "invalid_address": 0,
+              "stage": 100,
+              "failure": 0,
+              "runs": 16,
+              "raw_peak": 1310976,
+              "retained": 65792,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [
+                3313056789,
+                2608330329,
+                3668753709,
+                2443660112,
+                2407914542,
+                1513483610,
+                2731523734,
+                1103624515,
+                3714262540,
+                1090914601,
+                1920594771,
+                3427725594,
+                3666212853,
+                945058783,
+                2993689685,
+                2669989247
+              ],
+              "load_mode": 0,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 1554
+              },
+              "controller_bytes": 17224,
+              "record_capacity": 1024,
+              "record_peak": 195,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_render_line\nsmooth.c:?",
+              "result_sha256": "923daf3d3065ce011b5ac5d85b85475da96e36f8731ab02698cb675c8a051f5b"
+            }
+          ]
+        },
+        {
+          "load_mode": 1,
+          "hinting": "auto",
+          "host": {
+            "rc": 0,
+            "stage": 100,
+            "runs": 16,
+            "pool_peak": 1441792,
+            "raw_peak": 1442048,
+            "retained": 65792,
+            "hashes": [
+              1728955693,
+              127264623,
+              3802936562,
+              2720744390,
+              1636795626,
+              1483075906,
+              2072818531,
+              863961824,
+              41314477,
+              2150160734,
+              3827649753,
+              3029469629,
+              1662331729,
+              1389973151,
+              4053443032,
+              198040621
+            ],
+            "controller_bytes": 25744,
+            "record_capacity": 1024,
+            "record_peak": 694,
+            "record_failures": 0,
+            "allocation_failures": 0
+          },
+          "cases": [
+            {
+              "status": "stack_guard",
+              "uc_error": 0,
+              "stack_bytes": 4096,
+              "stack_peak": 8160,
+              "min_pc": 1090880716,
+              "instructions": 20970351,
+              "last_pc": 1090880716,
+              "invalid_address": 0,
+              "stage": 10,
+              "failure": 0,
+              "runs": 0,
+              "raw_peak": 0,
+              "retained": 0,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [],
+              "load_mode": 1,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 1,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 0,
+              "record_capacity": 0,
+              "record_peak": 0,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "af_autofitter_load_glyph\nautofit.c:?",
+              "result_sha256": "e2b4f90ed9b678b2f73e719565a79254ef2905fd1ac318eab1e3d43e7fc7aa21"
+            },
+            {
+              "status": "stack_guard",
+              "uc_error": 0,
+              "stack_bytes": 8192,
+              "stack_peak": 8256,
+              "min_pc": 1090878844,
+              "instructions": 20971631,
+              "last_pc": 1090878844,
+              "invalid_address": 0,
+              "stage": 10,
+              "failure": 0,
+              "runs": 0,
+              "raw_peak": 0,
+              "retained": 0,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [],
+              "load_mode": 1,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 1,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 0,
+              "record_capacity": 0,
+              "record_peak": 0,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "af_face_globals_new\nautofit.c:?",
+              "result_sha256": "d482dd4226d4567c09207c88b26012ac09f312f5ef317b6809659ca7d59f8765"
+            },
+            {
+              "status": "stack_guard",
+              "uc_error": 0,
+              "stack_bytes": 16384,
+              "stack_peak": 16496,
+              "min_pc": 1090862318,
+              "instructions": 23362628,
+              "last_pc": 1090862318,
+              "invalid_address": 0,
+              "stage": 10,
+              "failure": 0,
+              "runs": 0,
+              "raw_peak": 0,
+              "retained": 0,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [],
+              "load_mode": 1,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 1,
+                "af_cjk_metrics_init_widths": 1,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 0,
+              "record_capacity": 0,
+              "record_peak": 0,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "load_truetype_glyph\ntruetype.c:?",
+              "result_sha256": "b0759d1856f67d69bec1698e12484b7a7922db24dff6753b06405bf63d2125fd"
+            },
+            {
+              "status": "pass",
+              "uc_error": 0,
+              "stack_bytes": 32768,
+              "stack_peak": 16864,
+              "min_pc": 1090519068,
+              "instructions": 1605066272,
+              "last_pc": 1106247680,
+              "invalid_address": 0,
+              "stage": 100,
+              "failure": 0,
+              "runs": 16,
+              "raw_peak": 1310976,
+              "retained": 65792,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [
+                1728955693,
+                127264623,
+                3802936562,
+                2720744390,
+                1636795626,
+                1483075906,
+                2072818531,
+                863961824,
+                41314477,
+                2150160734,
+                3827649753,
+                3029469629,
+                1662331729,
+                1389973151,
+                4053443032,
+                198040621
+              ],
+              "load_mode": 1,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 1648,
+                "af_cjk_metrics_init_widths": 2,
+                "af_latin_metrics_init_widths": 2,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 17224,
+              "record_capacity": 1024,
+              "record_peak": 694,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "Session::read(FT_StreamRec_*, unsigned long, unsigned char*, unsigned long)\n??:?",
+              "result_sha256": "70817d09a18b3033b97ad48a1479e60321cb75eb15d7907f4ce6240b73b11924"
+            }
+          ]
+        },
+        {
+          "load_mode": 2,
+          "hinting": "none",
+          "host": {
+            "rc": 0,
+            "stage": 100,
+            "runs": 16,
+            "pool_peak": 1310720,
+            "raw_peak": 1310976,
+            "retained": 65792,
+            "hashes": [
+              3026874988,
+              2213889916,
+              115264000,
+              3395125728,
+              3754281735,
+              3481077440,
+              2376024577,
+              3914433046,
+              3373367551,
+              791741562,
+              2804449108,
+              3251998400,
+              675387583,
+              3041094046,
+              3372560452,
+              3402669246
+            ],
+            "controller_bytes": 25744,
+            "record_capacity": 1024,
+            "record_peak": 184,
+            "record_failures": 0,
+            "allocation_failures": 0
+          },
+          "cases": [
+            {
+              "status": "pass",
+              "uc_error": 0,
+              "stack_bytes": 4096,
+              "stack_peak": 3824,
+              "min_pc": 1090827378,
+              "instructions": 137011282,
+              "last_pc": 1106247680,
+              "invalid_address": 0,
+              "stage": 100,
+              "failure": 0,
+              "runs": 16,
+              "raw_peak": 1310976,
+              "retained": 65792,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [
+                3026874988,
+                2213889916,
+                115264000,
+                3395125728,
+                3754281735,
+                3481077440,
+                2376024577,
+                3914433046,
+                3373367551,
+                791741562,
+                2804449108,
+                3251998400,
+                675387583,
+                3041094046,
+                3372560452,
+                3402669246
+              ],
+              "load_mode": 2,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 17224,
+              "record_capacity": 1024,
+              "record_peak": 184,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_render_line\nsmooth.c:?",
+              "result_sha256": "ae8e0c5fdd8349b97af7a7ad768a272a0762a3fc6cfec675125441a7b9d5e7c4"
+            },
+            {
+              "status": "pass",
+              "uc_error": 0,
+              "stack_bytes": 8192,
+              "stack_peak": 3824,
+              "min_pc": 1090827378,
+              "instructions": 137011282,
+              "last_pc": 1106247680,
+              "invalid_address": 0,
+              "stage": 100,
+              "failure": 0,
+              "runs": 16,
+              "raw_peak": 1310976,
+              "retained": 65792,
+              "runtime_malloc_calls": 0,
+              "unavailable_calls": 0,
+              "hashes": [
+                3026874988,
+                2213889916,
+                115264000,
+                3395125728,
+                3754281735,
+                3481077440,
+                2376024577,
+                3914433046,
+                3373367551,
+                791741562,
+                2804449108,
+                3251998400,
+                675387583,
+                3041094046,
+                3372560452,
+                3402669246
+              ],
+              "load_mode": 2,
+              "peak_stage": 10,
+              "path_entries": {
+                "af_autofitter_load_glyph": 0,
+                "af_cjk_metrics_init_widths": 0,
+                "af_latin_metrics_init_widths": 0,
+                "TT_RunIns": 0
+              },
+              "controller_bytes": 17224,
+              "record_capacity": 1024,
+              "record_peak": 184,
+              "record_failures": 0,
+              "allocation_failures": 0,
+              "instruction_limit": 8000000000,
+              "timeout_us": 600000000,
+              "min_function": "gray_render_line\nsmooth.c:?",
+              "result_sha256": "0479a21e2ceb6d48c1a81720d974032ace626cd1000ac739cd957501cf926cbf"
+            }
+          ]
+        }
+      ],
+      "sizes": {
+        "text_and_rodata": 580653,
+        "data": 18760,
+        "bss": 2929,
+        "elf_flags": 1
+      },
+      "elf_sha256": "4776410d173f379952d84318d70aacc0c9c9699d527e3c681db9f53c7d902682",
+      "map_sha256": "b0158c8d670b4a0d517f377982e248d7d6131f43415f20b456785c062c45a9aa",
+      "largest_linked_c_frames": [
+        {
+          "function": "af_latin_metrics_init_widths",
+          "frame_bytes": 7840,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_widths",
+          "frame_bytes": 7712,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_autofitter_load_glyph",
+          "frame_bytes": 6896,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_convert_glyph",
+          "frame_bytes": 2352,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_latin_metrics_init_blues",
+          "frame_bytes": 576,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "af_cjk_metrics_init_blues",
+          "frame_bytes": 480,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "gray_render_cubic",
+          "frame_bytes": 432,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_build_cmaps.isra",
+          "frame_bytes": 416,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "ft_open_face_internal",
+          "frame_bytes": 336,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_glyph_load",
+          "frame_bytes": 320,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "load_truetype_glyph",
+          "frame_bytes": 240,
+          "kind": "static",
+          "linked": true
+        },
+        {
+          "function": "tt_face_init",
+          "frame_bytes": 208,
+          "kind": "static",
+          "linked": true
+        }
+      ],
+      "unresolved_symbols": [],
+      "floating_point_instructions": 0,
+      "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv32i2p1_m2p0_a2p1_c2p0_zicsr2p0_zifencei2p0_zmmul1p0_zaamo1p0_zalrsc1p0_zca1p0\"\n",
+      "flash_payload_bytes": 599413,
+      "static_writable_bytes": 21689
+    }
+  ],
+  "allocation_negative_control": {
+    "256": {
+      "host": {
+        "rc": 20,
+        "stage": 90,
+        "runs": 0,
+        "pool_peak": 1245184,
+        "raw_peak": 1245440,
+        "retained": 65792,
+        "hashes": [],
+        "controller_bytes": 7312,
+        "record_capacity": 256,
+        "record_peak": 256,
+        "record_failures": 2,
+        "allocation_failures": 2,
+        "result_sha256": "4d739f87768ec76ccfc1b2a0aa7adb883c0e04401a0043afb4d7b3cc96da4a83"
+      },
+      "rv32": {
+        "status": "allocation_refused",
+        "uc_error": 0,
+        "stack_bytes": 65536,
+        "stack_peak": 16864,
+        "min_pc": 1090519068,
+        "instructions": 78873330,
+        "last_pc": 1106247680,
+        "invalid_address": 0,
+        "stage": 90,
+        "failure": 0,
+        "runs": 0,
+        "raw_peak": 1245440,
+        "retained": 65792,
+        "runtime_malloc_calls": 0,
+        "unavailable_calls": 0,
+        "hashes": [],
+        "load_mode": 1,
+        "peak_stage": 10,
+        "path_entries": {
+          "af_autofitter_load_glyph": 29,
+          "af_cjk_metrics_init_widths": 1,
+          "af_latin_metrics_init_widths": 2,
+          "TT_RunIns": 0
+        },
+        "controller_bytes": 4936,
+        "record_capacity": 256,
+        "record_peak": 256,
+        "record_failures": 2,
+        "allocation_failures": 2,
+        "instruction_limit": 8000000000,
+        "timeout_us": 600000000,
+        "result_sha256": "25359909cd8c46c8b32cd2c5c152566b423f4897a1e08b836cd95ffb9d18b0df"
+      }
+    },
+    "512": {
+      "host": {
+        "rc": 20,
+        "stage": 90,
+        "runs": 1,
+        "pool_peak": 1376256,
+        "raw_peak": 1376512,
+        "retained": 65792,
+        "hashes": [
+          1728955693
+        ],
+        "controller_bytes": 13456,
+        "record_capacity": 512,
+        "record_peak": 512,
+        "record_failures": 2,
+        "allocation_failures": 2,
+        "result_sha256": "2929c3ee872687b460fe94f55037424939ee57e63a06f36a98cbc0ca6b5ad917"
+      },
+      "rv32": {
+        "status": "allocation_refused",
+        "uc_error": 0,
+        "stack_bytes": 65536,
+        "stack_peak": 16864,
+        "min_pc": 1090519068,
+        "instructions": 275755134,
+        "last_pc": 1106247680,
+        "invalid_address": 0,
+        "stage": 90,
+        "failure": 0,
+        "runs": 1,
+        "raw_peak": 1310976,
+        "retained": 65792,
+        "runtime_malloc_calls": 0,
+        "unavailable_calls": 0,
+        "hashes": [
+          1728955693
+        ],
+        "load_mode": 1,
+        "peak_stage": 10,
+        "path_entries": {
+          "af_autofitter_load_glyph": 109,
+          "af_cjk_metrics_init_widths": 2,
+          "af_latin_metrics_init_widths": 3,
+          "TT_RunIns": 0
+        },
+        "controller_bytes": 9032,
+        "record_capacity": 512,
+        "record_peak": 512,
+        "record_failures": 2,
+        "allocation_failures": 2,
+        "instruction_limit": 8000000000,
+        "timeout_us": 600000000,
+        "result_sha256": "0db2ed94a8a9501fbf54cc33e172ad4f14548679020f6e64a31838e48a6eb53a"
+      }
+    }
+  },
+  "limits": [
+    "Full pinned TTFs are mapped external read-only test inputs, not native FS reads or fonts embedded in Flash footprint",
+    "All target instructions are observed for SP; guard check stops before out-of-range stack use",
+    "16 fixed cases: two fonts, 12/16/24/32 px body, half-size ruby run, horizontal and vertical shaping",
+    "No native SD/VFS, interrupts, dispatcher, task stop/restart, real Flash mapping or physical timing tested",
+    "Existing 4 KiB native worker stacks are not approved by these standalone measurements",
+    "Default, forced auto-hint and unhinted paths are qualified only for the pinned fonts and fixed cases; arbitrary fallback fonts remain untested",
+    "FreeType uses explicit callbacks and no environment configuration; unavailable default memory/file entry points fail explicitly",
+    "Target newlib has one fixed reent context and bounded malloc hooks; unused nosys stubs remain and are execution-forbidden",
+    "Static stack frames are not whole-call-chain upper bounds; no worst-case stack certificate for arbitrary fonts/text"
+  ],
+  "source_sha256": {
+    "probes/graphics/CMakeLists.txt": "126a488b8de5b49f8de5321d92cdd641a8546112a7b9da2e87bfbc3bd5affb6f",
+    "probes/graphics/README.md": "75d6f047c1013300cd9a7bc742ee2e45524b4ed393e12849e9c8459409bcaa16",
+    "probes/graphics/backing_test.cpp": "83f7a7bb89f954ac1dee202099930bdf15f8dab11c88a12445517e81d4932bcd",
+    "probes/graphics/buddy_backing.h": "fc05e93582b3f0bdff20a97363872961e9547fd458ce9f56c4b7ff7ca3ea65b9",
+    "probes/graphics/buddy_backing.zig": "d282978ba38eae75f53a4bb7763730173baea6849351331c9ec1006f9805c536",
+    "probes/graphics/buddy_driver.cpp": "b8b4f2fb82a2119e3d7d73de5e3ca9508a24d75eb64ae2ff89cafc5d883f1bd7",
+    "probes/graphics/elf32_layout.h": "342b1a7b271eb0ca34edd2c67fab6f6e91138e89652b686d22d922ff08f872ec",
+    "probes/graphics/fetch_sources.py": "9716ee6428b03ba341d02ab13be5b3a5197ae6d116c2408f7efa26b69e9490a3",
+    "probes/graphics/font_probe.cpp": "264a20a1ecd23859af290128eef89e8adf4cc572d25f52a6e6342b82a908993e",
+    "probes/graphics/ft_noenv.h": "5938a5e02ebc0303cd4024aad13fc1757d54dfb01365ae82840e87b55047e254",
+    "probes/graphics/ft_noio.c": "77a3e688b481056e7f495e6a3ebddbe3bbd10f4fef0e81020f78622e1539626c",
+    "probes/graphics/generate_link_oracle.py": "52aad6ce30f24602a86b3f61c57f771ea2a237978c41b7756975fdf4f160819c",
+    "probes/graphics/hb_config.h": "70806235b812f5008c86bd9c066f2ea71110faf8b310f5a0a402ce10f3521e89",
+    "probes/graphics/isa_stack_runner.cpp": "6bc656184bbcd7fddac3bb80b200ff6794c8ec116f5d2679044a8a5b51d73942",
+    "probes/graphics/lazy_pool.cpp": "601fb7584915091d2cd7e3d903f21a83d7f8ba237bb2b71a5472ed57a04acdb7",
+    "probes/graphics/lazy_pool.h": "906331f2dff1367a0c3a797be5b8f5c7a5a48c3e331a1937f55efc610839bce1",
+    "probes/graphics/link_host_main.cpp": "71d55e89d45b7c1f530306b67bc96267cd3f9a9acdd2c6f136225578a5ac6ae4",
+    "probes/graphics/link_oracle.h": "f81ec7e87d695236806a44593c8da975c2953e57204d829e270c9d3339d713f8",
+    "probes/graphics/metadata_size.cpp": "ef75a613fa5b1b4ab9711ecd6eb1c4334589edf7e75263644a0d92fa398a68cf",
+    "probes/graphics/pool_test.cpp": "9ff0043532ccdfba306b66ec7ea932dd51cd785bd3e50910c8dfe10eaf421976",
+    "probes/graphics/report.py": "c039f0267be46a64444eaa21c84ff887a474a1bb4da65f10a49bc7ce1433a415",
+    "probes/graphics/run_rv32_study.py": "2b3389891bb0d8022aa29554deba9f316250695fb5def4435c656bb7b8393a72",
+    "probes/graphics/rv32_link.ld": "8086dbb59fa980c7e3a45654f657714bf2ec36d07f857bd6e1fc052034b4b57f",
+    "probes/graphics/rv32_toolchain.cmake": "e79cbd6957c2d882db7db95ef611a3d145db624576de65be92a4a58ec8ee9127",
+    "probes/graphics/sources.json": "4651ffc4e5aee444552194e0d49986f94c6b45b1c9413114953a3e79518f20a6",
+    "probes/graphics/unicorn-requirements.txt": "c1a3d9963a1a25f50b4041c71fd7eaa01919f421bed4ec1348871025617bc66a",
+    "probes/graphics/patches/freetype-autofit-map-error.patch": "7581c3a1e0d4582cfbf4bd57e3ebef5c48e80edcea7228ad06f77332efcbc328",
+    "tools/run-graphics-rv32-probe.sh": "8743fa9417b43ceb1c3434e131779e61877c1d31c1e828e537cd815b555eb467",
+    "src/kernel/task_resources.zig": "0e4e30d80ff193cc35f175e93fbd48e5b71d7193c88ff79782a41e64e5918694",
+    "src/kernel/extent_groups.zig": "611c96a6eeb7937405da9c5831e9b6dcac2088cb0a617a4f996611357a463217",
+    "src/kernel/buddy_heap.zig": "a697abc619c1e8df9daa98abbdba59abc5950d98537eb8cb27b9dbc5a9056a97"
+  },
+  "created_utc": "2026-10-27T21:14:47.449932+00:00",
+  "input_fonts": [
+    {
+      "name": "BIZUDGothic-Regular.ttf",
+      "bytes": 4667380,
+      "sha256": "7d2b48d84ef4e65c9f85bcf65fb1fb41c92b134be641fab6a7141d597c9a92b0"
+    },
+    {
+      "name": "BIZUDMincho-Regular.ttf",
+      "bytes": 6153932,
+      "sha256": "468ee6d9b149ca144809e03841bf18740ecf014e055a00da6ecaf1aaf4165af2"
+    }
+  ],
+  "runtime_archives": {
+    "libc.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin/../lib/gcc/riscv32-esp-elf/14.2.0/../../../../riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libc.a",
+      "sha256": "5a28fce37bfd3e9bea5d164f30506d6df5f529fa81b138de91ce317196d6acf4"
+    },
+    "libm.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin/../lib/gcc/riscv32-esp-elf/14.2.0/../../../../riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libm.a",
+      "sha256": "c5ed853aec663b709fa7916bc5f359f4e321a2be39a6eea1b59947647f84973a"
+    },
+    "libgcc.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin/../lib/gcc/riscv32-esp-elf/14.2.0/rv32imac_zicsr_zifencei/ilp32/no-rtti/libgcc.a",
+      "sha256": "4c2876bd272143f14318f30cae36838585e10414e06b07b99ed010c8372c82af"
+    },
+    "libnosys.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin/../lib/gcc/riscv32-esp-elf/14.2.0/../../../../riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libnosys.a",
+      "sha256": "f7126d252773c77ed58e3a21fb6c1e0f8170dffaefe5e19c36485293c6438266"
+    },
+    "libstdc++.a": {
+      "path": "/Users/masanork/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin/../lib/gcc/riscv32-esp-elf/14.2.0/../../../../riscv32-esp-elf/lib/rv32imac_zicsr_zifencei/ilp32/no-rtti/libstdc++.a",
+      "sha256": "5c4f25d8d610be8d8906fb49168d0dae0e1d5f3a2e956b3aaf00dfad8fffcd6e"
+    }
+  },
+  "provenance_sha256": "dd09e1354aa50ea79143099601abfa0c120fb3f5f129048471cf79fe2d462a67",
+  "checks": {
+    "host_oracle_sanitizers": "ASan/UBSan",
+    "native_fonts_executed_on_hardware": false,
+    "memory_probe_replayed": true,
+    "memory_probe_log_sha256": "d2cd10761ed324f6fc744b6509587ad917fdffe5e831e6bd0d9cf32594cd65f9",
+    "static_analysis_passed": true,
+    "existing_native_links_audited": 6,
+    "static_analysis_log_sha256": "5843a6d7317f7d4ca83d1a9e77d2f240043047a26d3b5f96081ddf4362794cb1",
+    "pool_1024_sanitized_churn": {
+      "pool_checks": "pass",
+      "churn_operations": 3000,
+      "controller_host_bytes": 25744
+    },
+    "source_restore_and_patch_reapplication_passed": true
+  },
+  "documentation_sha256": {
+    "docs/graphics-font-worker.md": "e225086c50b5094cb42673ba65c4e822104e79f3bee5e088d18e4b7abd2c05f5"
+  },
+  "initial_unpatched_failure": {
+    "scope": "host ASan/UBSan; original pinned FreeType, 256 allocation records, 2 KiB raster pool, forced auto-hint",
+    "first_failed_allocation_bytes": 16,
+    "diagnostic": "af_latin_hints_apply -> ft_hash_num_lookup -> hash_bucket accesses a null reverse_charmap after allocation record exhaustion",
+    "artifact": "docs/measurements/2026-10-28-graphics-autofit-failure.txt",
+    "sha256": "54a3d9485984c30e340fc48b8b08f3f59d4ae67d314a5515a28a48f1f5ed1f99"
+  },
+  "initial_instruction_limit_attempt": {
+    "scope": "before active-prefix allocator change; incomplete run, not a stack or rendering pass",
+    "case": {
+      "status": "incomplete",
+      "uc_error": 0,
+      "stack_bytes": 32768,
+      "stack_peak": 16864,
+      "min_pc": 1090519068,
+      "instructions": 1000000000,
+      "last_pc": 1090521480,
+      "invalid_address": 0,
+      "stage": 13,
+      "failure": 0,
+      "runs": 3,
+      "raw_peak": 0,
+      "retained": 0,
+      "runtime_malloc_calls": 0,
+      "unavailable_calls": 0,
+      "hashes": [
+        1728955693,
+        127264623,
+        3802936562
+      ],
+      "load_mode": 1,
+      "peak_stage": 10,
+      "path_entries": {
+        "af_autofitter_load_glyph": 375,
+        "af_cjk_metrics_init_widths": 2,
+        "af_latin_metrics_init_widths": 2,
+        "TT_RunIns": 0
+      },
+      "controller_bytes": 0,
+      "record_capacity": 0,
+      "record_peak": 0,
+      "record_failures": 0,
+      "allocation_failures": 0
+    },
+    "runner_source_sha256": "2bbe71a8748f5e1ad1c115d82c2b52a1a2861f42e497f6ce5e9c34cba1bd0bd1",
+    "runner_binary_sha256": "b2a909af439d913ad99ac8c595288321845ec80f0cf4bffa46784cc2840e6e8e"
+  },
+  "native_candidate": {
+    "status": "proposed; not implemented or native-qualified",
+    "serialized_workers": 1,
+    "internal_sram_stack_bytes": 32768,
+    "allocation_records": 1024,
+    "raster_pool_bytes": 2048,
+    "observed_auto_hint_stack_peak": 16864,
+    "guard_bytes": 16,
+    "integer_context_frame_bytes": 128,
+    "remaining_before_native_caller_and_io_bytes": 15760,
+    "synthetic_static_writable_plus_proposed_stack_bytes": 54457
+  },
+  "host_runner_sha256": "daf51db1c6196980b1b8b4747893680954b06ede0258338453c4e35e2a6a0a51",
+  "generated_oracle_sha256": "95d897d025aa734891ef4f3b764466936cc78d62f9531da6a98b82369d366908",
+  "host_compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "configured_freetype_sources_sha256": {
+    "src/autofit/aflatin.c": "9a1153baaa80888da4fb7086d75e324049250da5c7e02990ec99c7ea2198e373",
+    "include/freetype/config/ftmodule.h": "f1e4e49ae2922ec012560690ed455d9c8efe9b0557f068460a5ff3614c621d29"
+  }
+}

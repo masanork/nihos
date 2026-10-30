@@ -1,0 +1,33 @@
+{
+  "application": "normal",
+  "view": {
+    "details": 1,
+    "accepted": 3,
+    "down": 5,
+    "move": 2,
+    "up": 5,
+    "cancel": 0,
+    "overflow": 0,
+    "queued": 0,
+    "last_x": 1192,
+    "last_y": 48,
+    "failed": 0,
+    "log_lines": 0,
+    "mismatches": 0,
+    "phase": "logs"
+  },
+  "displayed_phase": "logs",
+  "status": 0,
+  "palette": 4,
+  "time_us": 82474395,
+  "pixel_sha256": "21f8d46c5a38efc662f08722f952bef94306ae6cf7bf4ef498b6537a49bd9716",
+  "source_identity": "574d9dfc6112333dae334e23e61b5197ffa8fbd27c9ac4016934b94b69c0a40c",
+  "trace_full": false,
+  "metrics": {
+    "frames": 5,
+    "publications": 5,
+    "pending": 0,
+    "mismatches": 0
+  },
+  "scope": "production normal UI input/rendering; host frame boundary; no CPU, DMA, I2C or timing qualification"
+}

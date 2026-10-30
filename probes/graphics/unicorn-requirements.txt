@@ -1,0 +1,8 @@
+# CPython abi3 wheels for supported macOS/Linux x86_64 and arm64 hosts.
+unicorn==2.1.4 \
+    --hash=sha256:2a6f738fab5fabffa56af1e7bbf16ea1e91466c342f8dc64f125bd70f36c6b80 \
+    --hash=sha256:d6c93e0f60328d8f4a1792af3f834137a28050fcc2305f2ec01efe8558a9844e \
+    --hash=sha256:bd1fb0c9af5f57e356d8a96928b4fe045b2e18f308ef23b481d5f970008aa722 \
+    --hash=sha256:9d6e6dea140560de4ebd8446661f7ef84a357d428c14a3ef09dacd306ec8c239 \
+    --hash=sha256:01d744ba01c5cc68f1d7afe3d183f1868720fd440ec4eaedc4d1d5d9bf54b84c \
+    --hash=sha256:d348a90ee90219d141cb115ef8ed7e3fd1af42afaee105f7580761d775b25e32

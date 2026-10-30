@@ -1,0 +1,16 @@
+diff --git a/src/platform/native/start.S b/src/platform/native/start.S
+index bc71c95..280cdd4 100644
+--- a/src/platform/native/start.S
++++ b/src/platform/native/start.S
+@@ -115,6 +115,11 @@ nih_native_cpu1_start:
+     la t0, nih_native_trap
+     ori t0, t0, 3
+     csrw mtvec, t0
++#if NIH_NATIVE_PMP_PROBE
++    /* Diagnostic only: v1.3 TRM 1.13.1.2 synchronous bus-error mode. */
++    li t0, 0x100000
++    csrs 0x7c5, t0
++#endif
+ #if NIH_NATIVE_REV3
+     csrw 0x347, zero
+ #else

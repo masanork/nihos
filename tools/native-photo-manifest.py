@@ -26,11 +26,14 @@ def main():
     paths += [ROOT/p for p in ('src/platform/native/keypad_display.zig','src/platform/native/display_runtime.zig','src/platform/native/dma_memory.zig', 'src/platform/native/memory.zig', 'src/platform/native/base_sram.c','src/platform/native/sram_pool.h','src/platform/native/esp32p4.ld')]
     if automatic:
         paths += [ROOT/p for p in ('src/board/tab5/notice_sparse.h','src/board/tab5/native_scanout.c','src/board/tab5/keypad_sparse.h','src/board/tab5/scene_pixels.h','tools/build-native-elf.sh')]
-        paths += [ROOT/p for p in ('src/card/license.zig','src/card/jis0208.zig','src/card/jis0208.bin','src/card/jis0208.json','src/card/presence.zig','src/card/ccid_owner.zig','src/card/pin_entry.zig','src/platform/native/card_auto.zig','src/platform/native/main.zig','src/graphics/card_read_result.zig')]
+        paths += [ROOT/p for p in ('src/card/license.zig','src/card/jis0208.zig','src/card/jis0208.bin','src/card/jis0208.json','src/card/presence.zig','src/card/ccid_owner.zig','src/card/pin_entry.zig','src/card/result_input.zig','src/platform/native/card_auto.zig','src/platform/native/main.zig','src/graphics/card_read_result.zig')]
     if automatic:
         paths += [ROOT/p for p in ('src/card/license_session.zig','src/card/license_record.zig','src/card/license_crypto.zig','src/card/license_trust.zig','src/card/license_trust.bin','src/card/license_trust.json','src/card/fixtures/license-rsa.bin','probes/card_crypto/link.zig','probes/card_crypto/stack.S')]
     for p in paths:
         if p.is_file():manifest['sources'][str(p.relative_to(ROOT))]=sha(p)
+    # The portrait image keeps PMP code on the boot page by placing the large
+    # keypad plan builder in the photo extent instead of the card extent.
+    manifest['allowed_functions'] = [name for name in manifest['allowed_functions'] if name != 'keypad_display.stage']
     manifest['allowed_functions'] += ['photo_runtime.prepare'] + ([] if probe else ['photo_runtime.decode']) + ['photo_runtime.close']
     if automatic and not probe:
         crypto={p.name:{'sha256':sha(p),'functions':C.functions(p)} for p in (build/'card_crypto.o',build/'card_crypto_stack.o')}

@@ -12,7 +12,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ('src/graphics/card_pin.zig', 'src/graphics/card_pin.rle',
            'src/graphics/card_pin_assets.zig', 'src/graphics/keypad_plan.zig',
            'src/card_pin_preview.zig', 'tools/boot-graphics/generate-keypad-atlas.py',
-           'src/platform/native/dma_memory.zig', 'src/platform/native/memory.zig', 'src/platform/native/base_sram.c', 'src/platform/native/sram_pool.h', 'src/platform/native/esp32p4.ld')
+           'src/platform/native/dma_memory.zig', 'src/platform/native/memory.zig', 'src/platform/native/base_sram.c', 'src/platform/native/sram_pool.h', 'src/platform/native/esp32p4.ld',
+           'src/graphics/surface.zig', 'src/platform/native/card_boot.zig', 'src/graphics/card_boot/masks.rle',
+           'src/platform/native/main.zig', 'src/graphics/card_boot/assets.zig', 'src/graphics/card_splash.zig',
+           'src/graphics/card_boot/manifest.json', 'tools/design/card-splash-assets.py', 'tools/design/shape-mask.cpp')
 
 
 def main():
@@ -20,7 +23,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     library = out / ('preview.dylib' if sys.platform == 'darwin' else 'preview.so')
     subprocess.run([str(ROOT / '.tools/zig-0.17.0/zig'), 'build-lib', '-dynamic', '-OReleaseSafe',
-                    str(ROOT / 'src/card_pin_preview.zig'), f'-femit-bin={library}'], check=True)
+                    '--dep', 'surface', '-Mroot=' + str(ROOT / 'src/card_pin_preview.zig'), '-Msurface=' + str(ROOT / 'src/graphics/surface.zig'), f'-femit-bin={library}'], check=True)
     loaded = ctypes.CDLL(str(library))
     frame = (ctypes.c_ubyte * (720 * 1280 * 2))()
     paint = loaded.nih_keypad_demo_preview

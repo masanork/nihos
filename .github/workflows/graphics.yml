@@ -1,0 +1,98 @@
+name: Graphics qualification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graphics-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  graphics:
+    name: Pinned font host and native qualification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CC: /usr/bin/clang
+      CXX: /usr/bin/clang++
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: espressif/install-esp-idf-action@8fc05d1470d5591417e7a3707a1f2bec178db4ae
+        with:
+          version: v5.4.4
+      - name: Select pinned RV32 compiler
+        shell: bash
+        run: |
+          echo "NIHOS_GRAPHICS_RV32_CXX=$(command -v riscv32-esp-elf-g++)" >> "$GITHUB_ENV"
+      - name: Fresh sanitized host reference
+        run: sh tools/run-graphics-host-reference.sh
+      - name: Native offscreen graphics on 32 MiB emulator
+        run: sh tools/run-native-graphics-smoke.sh
+      - name: Native RV32 Canvas offscreen qualification
+        run: sh tools/run-canvas-offscreen.sh
+      - name: Capture RV32 Canvas framebuffer
+        run: sh tools/nihos-dev.sh canvas-snapshot
+      - name: RV32 input and framebuffer interaction
+        run: sh tools/nihos-dev.sh canvas-live-check
+      - name: Replay RV32 interactive editor input
+        run: sh tools/nihos-dev.sh editor-live-check
+      - name: Replay RV32 canvas input and frame trace
+        run: sh tools/nihos-dev.sh canvas-trace-check
+      - name: Compare RV32 Canvas workloads with independent pixel references
+        run: sh tools/nihos-dev.sh canvas-workloads
+      - name: Compare RV32 console fonts with host fixture
+        run: |
+          for font in basic-light jetbrains source-code; do
+            sh tools/nihos-dev.sh console-rv32 --font "$font"
+          done
+      - name: Compare RV32 splash with independent pixel reference
+        run: sh tools/nihos-dev.sh splash-rv32
+      - name: RV32 library restart and negative controls
+        run: |
+          python3 -m venv build/graphics-rv32/venv
+          build/graphics-rv32/venv/bin/pip install --require-hashes --no-deps --only-binary=:all: -r probes/graphics/unicorn-requirements.txt
+          sh tools/run-library-restart-probe.sh
+      - name: Audit physical Tab5 image
+        run: sh tools/build-native.sh device graphics
+      - name: Retain qualification reports
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: graphics-qualification
+          path: |
+            build/runtime-text-host/*.json
+            build/runtime-text-host/*.log
+            build/runtime-text-reference/*
+            build/library-restart-final/*.json
+            build/library-restart-final/*.log
+            build/native-*/image-audit.json
+            build/native-*/graphics-manifest.json
+            build/native-emulator-graphics/case-32M/*.json
+            build/native-emulator-graphics/case-32M/*.log
+            build/native-emulator/canvas-offscreen/*.json
+            build/native-emulator/canvas-offscreen/*.log
+            build/native-emulator/canvas-snapshot/*.json
+            build/native-emulator/canvas-snapshot/*.log
+            build/native-emulator/canvas-snapshot/frame.png
+            build/native-emulator/canvas-live/*.json
+            build/native-emulator/canvas-live/*.log
+            build/emulator-trace/*.json
+            build/native-emulator/canvas-workloads/*.json
+            build/native-emulator/canvas-workloads/*.log
+            build/native-emulator/canvas-workloads/*.png
+            build/native-emulator/console-workload/**/*.json
+            build/native-emulator/console-workload/**/*.log
+            build/native-emulator/console-workload/**/*.png
+            build/native-emulator/splash-workload/*.json
+            build/native-emulator/splash-workload/*.log
+            build/native-emulator/splash-workload/*.png
+            build/graphics-rv32/*log
+          if-no-files-found: warn

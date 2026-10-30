@@ -1,0 +1,4764 @@
+{
+  "schema": 1,
+  "scope": "host-only; read-only FatFs image probes, no native/VFS integration or writable durability",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "host": "macOS-27.0.1-arm64-arm-64bit",
+  "sanitizers": [
+    "address",
+    "undefined"
+  ],
+  "upstream": {
+    "revision": "R0.16 + official patches 1 and 2",
+    "ff_c_sha256": "3c30280ffe2d0fb19a5241d9ed9f20a2c3911c2861652ebf6ad57f74fb369250"
+  },
+  "sources": {
+    "probes/fatfs/README.md": "4324f73212ed8788459c30935af597a1e6c3b1f68dd40e31d87d320a13be07f8",
+    "probes/fatfs/ffconf.h": "de024fd059e8fa4b896c93a61929b52e7b9b2f9cb06d8d119f8dbabc197ebece",
+    "probes/fatfs/host_disk.c": "d20bdd888dc96cd73a87bf60cf81c0e846c84693c4356cdc5b317d8416236436",
+    "probes/fatfs/host_disk.h": "cd884e13b6b8e6ad2a2b6d10fd4f2c7d8ad6a193fa36d26df9b20492b370af90",
+    "probes/fatfs/make_fixture.c": "b667a04a4b9a8be880d75f3eeb88c58aa091d22d08bd26ea3135e6fce117b5ef",
+    "probes/fatfs/read_image.c": "3eda9aa3e76197cd4ba38e717003380a201d3a6533305fcb36b31d0f664346f0",
+    "probes/fatfs/safety.c": "d4ea2608aec806a4ffeb5537995791a7ba60059dfab7abf4cf899816dc319d1a",
+    "probes/fatfs/safety.h": "541de8183a27a38f1101c1d1b06ba8cc7695270cf652c716af991719bc53d9b6",
+    "tools/bootstrap-fatfs.py": "73e441daa0d0e1665e508bd254eace5e5109c07b0f1c28e93a0f1bfc6eee7107",
+    "tools/run-fatfs-host.py": "a0f762db5681518d77059981e7ade3d189e3ef6f0cd6b9dc48fd7da77ce0710c",
+    "provenance.toml": "21a717317dd9f9f0f5c15b366cecb32a20a2d33c36ecba18ad65f76e2e66b2b7"
+  },
+  "fixtures": [
+    {
+      "format": "fat12",
+      "fs_type": 1,
+      "image_bytes": 1048576,
+      "cluster_bytes": 512,
+      "fragment_first_cluster": 11,
+      "fat_byte": 512,
+      "volume_byte": 0,
+      "data_byte": 20480,
+      "big_size": 0,
+      "alias": "LONGFI~1.TXT",
+      "empty_alias": "LONGEM~1.TXT",
+      "root_cluster": 0,
+      "child_cluster": 6,
+      "child_entry_byte": 5824,
+      "sha256_before": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d",
+      "allocated_bytes": 1048576,
+      "sha256_after": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d"
+    },
+    {
+      "format": "fat16",
+      "fs_type": 2,
+      "image_bytes": 16777216,
+      "cluster_bytes": 512,
+      "fragment_first_cluster": 11,
+      "fat_byte": 512,
+      "volume_byte": 0,
+      "data_byte": 82944,
+      "big_size": 0,
+      "alias": "LONGFI~1.TXT",
+      "empty_alias": "LONGEM~1.TXT",
+      "root_cluster": 0,
+      "child_cluster": 6,
+      "child_entry_byte": 68288,
+      "sha256_before": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80",
+      "allocated_bytes": 16777216,
+      "sha256_after": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80"
+    },
+    {
+      "format": "fat32",
+      "fs_type": 3,
+      "image_bytes": 67108864,
+      "cluster_bytes": 512,
+      "fragment_first_cluster": 15,
+      "fat_byte": 16384,
+      "volume_byte": 0,
+      "data_byte": 541184,
+      "big_size": 0,
+      "alias": "LONGFI~1.TXT",
+      "empty_alias": "LONGEM~1.TXT",
+      "root_cluster": 2,
+      "child_cluster": 10,
+      "child_entry_byte": 544448,
+      "sha256_before": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28",
+      "allocated_bytes": 557056,
+      "sha256_after": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28"
+    },
+    {
+      "format": "mbr-fat32",
+      "fs_type": 3,
+      "image_bytes": 67108864,
+      "cluster_bytes": 512,
+      "fragment_first_cluster": 15,
+      "fat_byte": 48640,
+      "volume_byte": 32256,
+      "data_byte": 572928,
+      "big_size": 0,
+      "alias": "LONGFI~1.TXT",
+      "empty_alias": "LONGEM~1.TXT",
+      "root_cluster": 2,
+      "child_cluster": 10,
+      "child_entry_byte": 576192,
+      "sha256_before": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12",
+      "allocated_bytes": 589824,
+      "sha256_after": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12"
+    },
+    {
+      "format": "exfat",
+      "fs_type": 4,
+      "image_bytes": 6442450944,
+      "cluster_bytes": 4096,
+      "fragment_first_cluster": 62,
+      "fat_byte": 16384,
+      "volume_byte": 0,
+      "data_byte": 6308352,
+      "big_size": 4294975488,
+      "alias": "",
+      "empty_alias": "",
+      "root_cluster": 52,
+      "child_cluster": 57,
+      "child_entry_byte": 0,
+      "sha256_before": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e",
+      "allocated_bytes": 6668288,
+      "sha256_after": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e"
+    }
+  ],
+  "cases": [
+    {
+      "name": "fat12:mount",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fs_type": 1,
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:case-and-eof",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 24,
+        "eof": true,
+        "identity": [
+          0,
+          32
+        ],
+        "data_cluster": 2,
+        "guard_steps": 3,
+        "hex": "6e69686f7320726561642d6f6e6c7920666978747572650a",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:directory",
+      "passed": true,
+      "observed": {
+        "entries": [
+          {
+            "name": "Memo.txt",
+            "alias": "MEMO.TXT",
+            "size": 24
+          },
+          {
+            "name": "Long filename for alias.txt",
+            "alias": "LONGFI~1.TXT",
+            "size": 6
+          },
+          {
+            "name": "empty-a.txt",
+            "alias": "EMPTY-A.TXT",
+            "size": 0
+          },
+          {
+            "name": "empty-b.txt",
+            "alias": "EMPTY-B.TXT",
+            "size": 0
+          },
+          {
+            "name": "Long empty filename.txt",
+            "alias": "LONGEM~1.TXT",
+            "size": 0
+          },
+          {
+            "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+            "alias": "AAAAAA~1.TXT",
+            "size": 10
+          },
+          {
+            "name": "漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢.txt",
+            "alias": "______~1.TXT",
+            "size": 9
+          },
+          {
+            "name": "教材",
+            "alias": "__~1",
+            "size": 0
+          },
+          {
+            "name": "fragment.bin",
+            "alias": "FRAGMENT.BIN",
+            "size": 4096
+          },
+          {
+            "name": "spacer.bin",
+            "alias": "SPACER.BIN",
+            "size": 4096
+          }
+        ],
+        "status": "OK",
+        "fresult": 0,
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:max-utf8-name-buffer",
+      "passed": true,
+      "observed": {
+        "name_found": true
+      }
+    },
+    {
+      "name": "fat12:max-ascii-name",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 10,
+        "count": 10,
+        "eof": true,
+        "identity": [
+          0,
+          992
+        ],
+        "data_cluster": 4,
+        "guard_steps": 3,
+        "hex": "6d61782d61736369690a",
+        "disk_reads": 8,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:short-alias",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 6,
+        "count": 6,
+        "eof": true,
+        "identity": [
+          0,
+          160
+        ],
+        "data_cluster": 3,
+        "guard_steps": 3,
+        "hex": "616c6961730a",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:unicode:教材/漢字𠮷.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 26,
+        "count": 26,
+        "eof": true,
+        "identity": [
+          6,
+          96
+        ],
+        "data_cluster": 7,
+        "guard_steps": 4,
+        "hex": "e697a5e69cace8aa9ee383bbe3818be38299e383bbf0a0aeb70a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 11,
+        "count": 11,
+        "eof": true,
+        "identity": [
+          6,
+          160
+        ],
+        "data_cluster": 8,
+        "guard_steps": 4,
+        "hex": "6465636f6d706f7365640a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 9,
+        "count": 9,
+        "eof": true,
+        "identity": [
+          6,
+          224
+        ],
+        "data_cluster": 9,
+        "guard_steps": 4,
+        "hex": "636f6d706f7365640a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:empty:empty-a.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          192
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:empty:empty-b.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          224
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:empty-identities",
+      "passed": true,
+      "observed": {
+        "a": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "b": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            224
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "case_alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat12:empty-long-short-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "sfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat12:long-alias-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            0,
+            160
+          ],
+          "data_cluster": 3,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            0,
+            160
+          ],
+          "data_cluster": 3,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat12:parent-directory-identity",
+      "passed": true,
+      "observed": {
+        "nested": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 7,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            6,
+            288
+          ],
+          "data_cluster": 10,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "root": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 24,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            0,
+            32
+          ],
+          "data_cluster": 2,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat12:unicode-normalization-identity",
+      "passed": true,
+      "observed": {
+        "composed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 9,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            6,
+            224
+          ],
+          "data_cluster": 9,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "decomposed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 11,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            6,
+            160
+          ],
+          "data_cluster": 8,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:1",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "30303030303030303131313131313131",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:2",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "31313131313131313232323232323232",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:3",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "32323232323232323333333333333333",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:4",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "33333333333333333434343434343434",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:5",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "34343434343434343535353535353535",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:6",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "35353535353535353636363636363636",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:fragment-boundary:7",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "36363636363636363737373737373737",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:self-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:two-node-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 5,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:short-chain",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:parent-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 2,
+        "hex": "",
+        "disk_reads": 7,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:directory-ancestor-alias",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 1,
+        "hex": "",
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:budget",
+      "passed": true,
+      "observed": {
+        "status": "BudgetExceeded",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:guard:cancel",
+      "passed": true,
+      "observed": {
+        "status": "Cancelled",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:write-policy",
+      "passed": true,
+      "observed": {
+        "status": "ReadOnly",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:block-write-protection",
+      "passed": true,
+      "observed": {
+        "status": "WriteProtected",
+        "disk_reads": 0,
+        "disk_writes": 1,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:negative-control-write-flag",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 1,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 2,
+        "guard_steps": 0,
+        "hex": "6e",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "Upstream read-only build masks FA_WRITE; the outer VFS must reject write requests explicitly"
+    },
+    {
+      "name": "fat12:io-budget",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 1
+      }
+    },
+    {
+      "name": "fat12:invalid-boot-signature",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat12:negative-control-boot-signature",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fs_type": 1,
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "Upstream FatFs accepts this unsigned FAT VBR; strict outer boot policy rejects it"
+    },
+    {
+      "name": "fat12:independent-fsck",
+      "passed": true,
+      "observed": {
+        "tool": "/sbin/fsck_msdos",
+        "stdout": "** /private/tmp/nihos-vfs-review/build/fatfs-host/run-77mdxoax/fat12.img\n** Phase 1 - Preparing FAT\n** Phase 2 - Checking Directories\n** Phase 3 - Checking for Orphan Clusters\nWarning: 14 files, 991 KiB free (1983 clusters)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "fat12:image-unchanged",
+      "passed": true,
+      "observed": {
+        "sha256": "297d30b5b9794860f808b88fbf907239015d38cea680af6b5a9d1f45c3817e1d"
+      }
+    },
+    {
+      "name": "fat16:mount",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fs_type": 2,
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:case-and-eof",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 24,
+        "eof": true,
+        "identity": [
+          0,
+          32
+        ],
+        "data_cluster": 2,
+        "guard_steps": 3,
+        "hex": "6e69686f7320726561642d6f6e6c7920666978747572650a",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:directory",
+      "passed": true,
+      "observed": {
+        "entries": [
+          {
+            "name": "Memo.txt",
+            "alias": "MEMO.TXT",
+            "size": 24
+          },
+          {
+            "name": "Long filename for alias.txt",
+            "alias": "LONGFI~1.TXT",
+            "size": 6
+          },
+          {
+            "name": "empty-a.txt",
+            "alias": "EMPTY-A.TXT",
+            "size": 0
+          },
+          {
+            "name": "empty-b.txt",
+            "alias": "EMPTY-B.TXT",
+            "size": 0
+          },
+          {
+            "name": "Long empty filename.txt",
+            "alias": "LONGEM~1.TXT",
+            "size": 0
+          },
+          {
+            "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+            "alias": "AAAAAA~1.TXT",
+            "size": 10
+          },
+          {
+            "name": "漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢.txt",
+            "alias": "______~1.TXT",
+            "size": 9
+          },
+          {
+            "name": "教材",
+            "alias": "__~1",
+            "size": 0
+          },
+          {
+            "name": "fragment.bin",
+            "alias": "FRAGMENT.BIN",
+            "size": 4096
+          },
+          {
+            "name": "spacer.bin",
+            "alias": "SPACER.BIN",
+            "size": 4096
+          }
+        ],
+        "status": "OK",
+        "fresult": 0,
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:max-utf8-name-buffer",
+      "passed": true,
+      "observed": {
+        "name_found": true
+      }
+    },
+    {
+      "name": "fat16:max-ascii-name",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 10,
+        "count": 10,
+        "eof": true,
+        "identity": [
+          0,
+          992
+        ],
+        "data_cluster": 4,
+        "guard_steps": 3,
+        "hex": "6d61782d61736369690a",
+        "disk_reads": 8,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:short-alias",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 6,
+        "count": 6,
+        "eof": true,
+        "identity": [
+          0,
+          160
+        ],
+        "data_cluster": 3,
+        "guard_steps": 3,
+        "hex": "616c6961730a",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:unicode:教材/漢字𠮷.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 26,
+        "count": 26,
+        "eof": true,
+        "identity": [
+          6,
+          96
+        ],
+        "data_cluster": 7,
+        "guard_steps": 4,
+        "hex": "e697a5e69cace8aa9ee383bbe3818be38299e383bbf0a0aeb70a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 11,
+        "count": 11,
+        "eof": true,
+        "identity": [
+          6,
+          160
+        ],
+        "data_cluster": 8,
+        "guard_steps": 4,
+        "hex": "6465636f6d706f7365640a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 9,
+        "count": 9,
+        "eof": true,
+        "identity": [
+          6,
+          224
+        ],
+        "data_cluster": 9,
+        "guard_steps": 4,
+        "hex": "636f6d706f7365640a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:empty:empty-a.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          192
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:empty:empty-b.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          224
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:empty-identities",
+      "passed": true,
+      "observed": {
+        "a": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "b": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            224
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "case_alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat16:empty-long-short-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "sfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            0,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 3,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat16:long-alias-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            0,
+            160
+          ],
+          "data_cluster": 3,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            0,
+            160
+          ],
+          "data_cluster": 3,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat16:parent-directory-identity",
+      "passed": true,
+      "observed": {
+        "nested": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 7,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            6,
+            288
+          ],
+          "data_cluster": 10,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "root": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 24,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            0,
+            32
+          ],
+          "data_cluster": 2,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat16:unicode-normalization-identity",
+      "passed": true,
+      "observed": {
+        "composed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 9,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            6,
+            224
+          ],
+          "data_cluster": 9,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "decomposed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 11,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            6,
+            160
+          ],
+          "data_cluster": 8,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:1",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "30303030303030303131313131313131",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:2",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "31313131313131313232323232323232",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:3",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "32323232323232323333333333333333",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:4",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "33333333333333333434343434343434",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:5",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "34343434343434343535353535353535",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:6",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "35353535353535353636363636363636",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:fragment-boundary:7",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 11,
+        "guard_steps": 10,
+        "hex": "36363636363636363737373737373737",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:self-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:two-node-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 5,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:short-chain",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:parent-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 2,
+        "hex": "",
+        "disk_reads": 7,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:directory-ancestor-alias",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 1,
+        "hex": "",
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:budget",
+      "passed": true,
+      "observed": {
+        "status": "BudgetExceeded",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:guard:cancel",
+      "passed": true,
+      "observed": {
+        "status": "Cancelled",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:write-policy",
+      "passed": true,
+      "observed": {
+        "status": "ReadOnly",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:block-write-protection",
+      "passed": true,
+      "observed": {
+        "status": "WriteProtected",
+        "disk_reads": 0,
+        "disk_writes": 1,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:negative-control-write-flag",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 1,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 2,
+        "guard_steps": 0,
+        "hex": "6e",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "Upstream read-only build masks FA_WRITE; the outer VFS must reject write requests explicitly"
+    },
+    {
+      "name": "fat16:io-budget",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 1
+      }
+    },
+    {
+      "name": "fat16:invalid-boot-signature",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat16:independent-fsck",
+      "passed": true,
+      "observed": {
+        "tool": "/sbin/fsck_msdos",
+        "stdout": "** /private/tmp/nihos-vfs-review/build/fatfs-host/run-77mdxoax/fat16.img\n** Phase 1 - Preparing FAT\n** Phase 2 - Checking Directories\n** Phase 3 - Checking for Orphan Clusters\nWarning: 14 files, 16290 KiB free (32581 clusters)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "fat16:image-unchanged",
+      "passed": true,
+      "observed": {
+        "sha256": "78c11c4ab65b018cd358ee6b04c3fd758f3d1d0fc7e1282f80b5bee36e440e80"
+      }
+    },
+    {
+      "name": "fat32:mount",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fs_type": 3,
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:case-and-eof",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 24,
+        "eof": true,
+        "identity": [
+          2,
+          32
+        ],
+        "data_cluster": 3,
+        "guard_steps": 6,
+        "hex": "6e69686f7320726561642d6f6e6c7920666978747572650a",
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:directory",
+      "passed": true,
+      "observed": {
+        "entries": [
+          {
+            "name": "Memo.txt",
+            "alias": "MEMO.TXT",
+            "size": 24
+          },
+          {
+            "name": "Long filename for alias.txt",
+            "alias": "LONGFI~1.TXT",
+            "size": 6
+          },
+          {
+            "name": "empty-a.txt",
+            "alias": "EMPTY-A.TXT",
+            "size": 0
+          },
+          {
+            "name": "empty-b.txt",
+            "alias": "EMPTY-B.TXT",
+            "size": 0
+          },
+          {
+            "name": "Long empty filename.txt",
+            "alias": "LONGEM~1.TXT",
+            "size": 0
+          },
+          {
+            "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+            "alias": "AAAAAA~1.TXT",
+            "size": 10
+          },
+          {
+            "name": "漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢.txt",
+            "alias": "______~1.TXT",
+            "size": 9
+          },
+          {
+            "name": "教材",
+            "alias": "__~1",
+            "size": 0
+          },
+          {
+            "name": "fragment.bin",
+            "alias": "FRAGMENT.BIN",
+            "size": 4096
+          },
+          {
+            "name": "spacer.bin",
+            "alias": "SPACER.BIN",
+            "size": 4096
+          }
+        ],
+        "status": "OK",
+        "fresult": 0,
+        "disk_reads": 10,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:max-utf8-name-buffer",
+      "passed": true,
+      "observed": {
+        "name_found": true
+      }
+    },
+    {
+      "name": "fat32:max-ascii-name",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 10,
+        "count": 10,
+        "eof": true,
+        "identity": [
+          2,
+          992
+        ],
+        "data_cluster": 6,
+        "guard_steps": 6,
+        "hex": "6d61782d61736369690a",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:short-alias",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 6,
+        "count": 6,
+        "eof": true,
+        "identity": [
+          2,
+          160
+        ],
+        "data_cluster": 4,
+        "guard_steps": 6,
+        "hex": "616c6961730a",
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:unicode:教材/漢字𠮷.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 26,
+        "count": 26,
+        "eof": true,
+        "identity": [
+          10,
+          96
+        ],
+        "data_cluster": 11,
+        "guard_steps": 7,
+        "hex": "e697a5e69cace8aa9ee383bbe3818be38299e383bbf0a0aeb70a",
+        "disk_reads": 29,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 11,
+        "count": 11,
+        "eof": true,
+        "identity": [
+          10,
+          160
+        ],
+        "data_cluster": 12,
+        "guard_steps": 7,
+        "hex": "6465636f6d706f7365640a",
+        "disk_reads": 29,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 9,
+        "count": 9,
+        "eof": true,
+        "identity": [
+          10,
+          224
+        ],
+        "data_cluster": 13,
+        "guard_steps": 7,
+        "hex": "636f6d706f7365640a",
+        "disk_reads": 29,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:empty:empty-a.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          192
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:empty:empty-b.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          224
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:empty-identities",
+      "passed": true,
+      "observed": {
+        "a": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "b": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            224
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "case_alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat32:empty-long-short-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "sfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 4,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat32:long-alias-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            2,
+            160
+          ],
+          "data_cluster": 4,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            2,
+            160
+          ],
+          "data_cluster": 4,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat32:parent-directory-identity",
+      "passed": true,
+      "observed": {
+        "nested": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 7,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            10,
+            288
+          ],
+          "data_cluster": 14,
+          "guard_steps": 7,
+          "hex": "",
+          "disk_reads": 28,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "root": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 24,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            2,
+            32
+          ],
+          "data_cluster": 3,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat32:unicode-normalization-identity",
+      "passed": true,
+      "observed": {
+        "composed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 9,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            10,
+            224
+          ],
+          "data_cluster": 13,
+          "guard_steps": 7,
+          "hex": "",
+          "disk_reads": 28,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "decomposed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 11,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            10,
+            160
+          ],
+          "data_cluster": 12,
+          "guard_steps": 7,
+          "hex": "",
+          "disk_reads": 28,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:1",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "30303030303030303131313131313131",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:2",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "31313131313131313232323232323232",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:3",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "32323232323232323333333333333333",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:4",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "33333333333333333434343434343434",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:5",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "34343434343434343535353535353535",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:6",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "35353535353535353636363636363636",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:fragment-boundary:7",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "36363636363636363737373737373737",
+        "disk_reads": 20,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:self-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 18,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:two-node-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 8,
+        "hex": "",
+        "disk_reads": 18,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:short-chain",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 18,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:root-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "guard_steps": 1,
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:parent-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 5,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:directory-ancestor-alias",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 4,
+        "hex": "",
+        "disk_reads": 10,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:budget",
+      "passed": true,
+      "observed": {
+        "status": "BudgetExceeded",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:guard:cancel",
+      "passed": true,
+      "observed": {
+        "status": "Cancelled",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:write-policy",
+      "passed": true,
+      "observed": {
+        "status": "ReadOnly",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:block-write-protection",
+      "passed": true,
+      "observed": {
+        "status": "WriteProtected",
+        "disk_reads": 0,
+        "disk_writes": 1,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:negative-control-write-flag",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 1,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 3,
+        "guard_steps": 0,
+        "hex": "6e",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "Upstream read-only build masks FA_WRITE; the outer VFS must reject write requests explicitly"
+    },
+    {
+      "name": "fat32:io-budget",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 1
+      }
+    },
+    {
+      "name": "fat32:invalid-boot-signature",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:oversized-fat-bpb",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "fresult": 13,
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:invalid-cluster-link",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 18,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "fat32:negative-control-cluster-cycle",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 15,
+        "guard_steps": 0,
+        "hex": "30303030303030303030303030303030",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "FatFs does not validate this chain cycle; bounded reading can repeat data. Not general corrupted-volume qualification"
+    },
+    {
+      "name": "fat32:independent-fsck",
+      "passed": true,
+      "observed": {
+        "tool": "/sbin/fsck_msdos",
+        "stdout": "** /private/tmp/nihos-vfs-review/build/fatfs-host/run-77mdxoax/fat32.img\n** Phase 1 - Preparing FAT\n** Phase 2 - Checking Directories\n** Phase 3 - Checking for Orphan Clusters\nWarning: 14 files, 64993 KiB free (129986 clusters)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "fat32:image-unchanged",
+      "passed": true,
+      "observed": {
+        "sha256": "3d4433d24924817bbece0f3d50e31f30dcfd8e18ddc5a31c905d63069a01cc28"
+      }
+    },
+    {
+      "name": "mbr-fat32:mount",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fs_type": 3,
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:case-and-eof",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 24,
+        "eof": true,
+        "identity": [
+          2,
+          32
+        ],
+        "data_cluster": 3,
+        "guard_steps": 6,
+        "hex": "6e69686f7320726561642d6f6e6c7920666978747572650a",
+        "disk_reads": 7,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:directory",
+      "passed": true,
+      "observed": {
+        "entries": [
+          {
+            "name": "Memo.txt",
+            "alias": "MEMO.TXT",
+            "size": 24
+          },
+          {
+            "name": "Long filename for alias.txt",
+            "alias": "LONGFI~1.TXT",
+            "size": 6
+          },
+          {
+            "name": "empty-a.txt",
+            "alias": "EMPTY-A.TXT",
+            "size": 0
+          },
+          {
+            "name": "empty-b.txt",
+            "alias": "EMPTY-B.TXT",
+            "size": 0
+          },
+          {
+            "name": "Long empty filename.txt",
+            "alias": "LONGEM~1.TXT",
+            "size": 0
+          },
+          {
+            "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+            "alias": "AAAAAA~1.TXT",
+            "size": 10
+          },
+          {
+            "name": "漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢.txt",
+            "alias": "______~1.TXT",
+            "size": 9
+          },
+          {
+            "name": "教材",
+            "alias": "__~1",
+            "size": 0
+          },
+          {
+            "name": "fragment.bin",
+            "alias": "FRAGMENT.BIN",
+            "size": 4096
+          },
+          {
+            "name": "spacer.bin",
+            "alias": "SPACER.BIN",
+            "size": 4096
+          }
+        ],
+        "status": "OK",
+        "fresult": 0,
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:max-utf8-name-buffer",
+      "passed": true,
+      "observed": {
+        "name_found": true
+      }
+    },
+    {
+      "name": "mbr-fat32:max-ascii-name",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 10,
+        "count": 10,
+        "eof": true,
+        "identity": [
+          2,
+          992
+        ],
+        "data_cluster": 6,
+        "guard_steps": 6,
+        "hex": "6d61782d61736369690a",
+        "disk_reads": 12,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:short-alias",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 6,
+        "count": 6,
+        "eof": true,
+        "identity": [
+          2,
+          160
+        ],
+        "data_cluster": 4,
+        "guard_steps": 6,
+        "hex": "616c6961730a",
+        "disk_reads": 7,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:unicode:教材/漢字𠮷.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 26,
+        "count": 26,
+        "eof": true,
+        "identity": [
+          10,
+          96
+        ],
+        "data_cluster": 11,
+        "guard_steps": 7,
+        "hex": "e697a5e69cace8aa9ee383bbe3818be38299e383bbf0a0aeb70a",
+        "disk_reads": 30,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 11,
+        "count": 11,
+        "eof": true,
+        "identity": [
+          10,
+          160
+        ],
+        "data_cluster": 12,
+        "guard_steps": 7,
+        "hex": "6465636f6d706f7365640a",
+        "disk_reads": 30,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 9,
+        "count": 9,
+        "eof": true,
+        "identity": [
+          10,
+          224
+        ],
+        "data_cluster": 13,
+        "guard_steps": 7,
+        "hex": "636f6d706f7365640a",
+        "disk_reads": 30,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:empty:empty-a.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          192
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:empty:empty-b.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          224
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:empty-identities",
+      "passed": true,
+      "observed": {
+        "a": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "b": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            224
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "case_alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            192
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "mbr-fat32:empty-long-short-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "sfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            2,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "mbr-fat32:long-alias-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            2,
+            160
+          ],
+          "data_cluster": 4,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 6,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            2,
+            160
+          ],
+          "data_cluster": 4,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 6,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "mbr-fat32:parent-directory-identity",
+      "passed": true,
+      "observed": {
+        "nested": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 7,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            10,
+            288
+          ],
+          "data_cluster": 14,
+          "guard_steps": 7,
+          "hex": "",
+          "disk_reads": 29,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "root": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 24,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            2,
+            32
+          ],
+          "data_cluster": 3,
+          "guard_steps": 6,
+          "hex": "",
+          "disk_reads": 6,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "mbr-fat32:unicode-normalization-identity",
+      "passed": true,
+      "observed": {
+        "composed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 9,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            10,
+            224
+          ],
+          "data_cluster": 13,
+          "guard_steps": 7,
+          "hex": "",
+          "disk_reads": 29,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "decomposed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 11,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            10,
+            160
+          ],
+          "data_cluster": 12,
+          "guard_steps": 7,
+          "hex": "",
+          "disk_reads": 29,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:1",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "30303030303030303131313131313131",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:2",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "31313131313131313232323232323232",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:3",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "32323232323232323333333333333333",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:4",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "33333333333333333434343434343434",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:5",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "34343434343434343535353535353535",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:6",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "35353535353535353636363636363636",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:fragment-boundary:7",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 15,
+        "guard_steps": 13,
+        "hex": "36363636363636363737373737373737",
+        "disk_reads": 21,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:self-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:two-node-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 8,
+        "hex": "",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:short-chain",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:root-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "guard_steps": 1,
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:parent-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 5,
+        "hex": "",
+        "disk_reads": 12,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:directory-ancestor-alias",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 4,
+        "hex": "",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:budget",
+      "passed": true,
+      "observed": {
+        "status": "BudgetExceeded",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:guard:cancel",
+      "passed": true,
+      "observed": {
+        "status": "Cancelled",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:write-policy",
+      "passed": true,
+      "observed": {
+        "status": "ReadOnly",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:block-write-protection",
+      "passed": true,
+      "observed": {
+        "status": "WriteProtected",
+        "disk_reads": 0,
+        "disk_writes": 1,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:negative-control-write-flag",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 1,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 3,
+        "guard_steps": 0,
+        "hex": "6e",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "Upstream read-only build masks FA_WRITE; the outer VFS must reject write requests explicitly"
+    },
+    {
+      "name": "mbr-fat32:io-budget",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 1
+      }
+    },
+    {
+      "name": "mbr-fat32:invalid-boot-signature",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:oversized-fat-bpb",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "fresult": 13,
+        "disk_reads": 3,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:invalid-cluster-link",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          2,
+          1760
+        ],
+        "data_cluster": 0,
+        "guard_steps": 6,
+        "hex": "",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:negative-control-cluster-cycle",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4096,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 15,
+        "guard_steps": 0,
+        "hex": "30303030303030303030303030303030",
+        "disk_reads": 12,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "FatFs does not validate this chain cycle; bounded reading can repeat data. Not general corrupted-volume qualification"
+    },
+    {
+      "name": "mbr-fat32:partition-outside-device",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:gpt-rejected",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:volume-outside-partition",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "mbr-fat32:image-unchanged",
+      "passed": true,
+      "observed": {
+        "sha256": "82abf2857094bcccffad82308640e8bac44e9936692289878c1d5b856ac10d12"
+      }
+    },
+    {
+      "name": "exfat:mount",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fs_type": 4,
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:case-and-eof",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 24,
+        "eof": true,
+        "identity": [
+          52,
+          96
+        ],
+        "data_cluster": 53,
+        "guard_steps": 3,
+        "hex": "6e69686f7320726561642d6f6e6c7920666978747572650a",
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:directory",
+      "passed": true,
+      "observed": {
+        "entries": [
+          {
+            "name": "Memo.txt",
+            "alias": "",
+            "size": 24
+          },
+          {
+            "name": "Long filename for alias.txt",
+            "alias": "",
+            "size": 6
+          },
+          {
+            "name": "empty-a.txt",
+            "alias": "",
+            "size": 0
+          },
+          {
+            "name": "empty-b.txt",
+            "alias": "",
+            "size": 0
+          },
+          {
+            "name": "Long empty filename.txt",
+            "alias": "",
+            "size": 0
+          },
+          {
+            "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+            "alias": "",
+            "size": 10
+          },
+          {
+            "name": "漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢漢.txt",
+            "alias": "",
+            "size": 9
+          },
+          {
+            "name": "教材",
+            "alias": "",
+            "size": 0
+          },
+          {
+            "name": "fragment.bin",
+            "alias": "",
+            "size": 32768
+          },
+          {
+            "name": "spacer.bin",
+            "alias": "",
+            "size": 32768
+          },
+          {
+            "name": "large.bin",
+            "alias": "",
+            "size": 4294975488
+          }
+        ],
+        "status": "OK",
+        "fresult": 0,
+        "disk_reads": 9,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:max-utf8-name-buffer",
+      "passed": true,
+      "observed": {
+        "name_found": true
+      }
+    },
+    {
+      "name": "exfat:max-ascii-name",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 10,
+        "count": 10,
+        "eof": true,
+        "identity": [
+          52,
+          640
+        ],
+        "data_cluster": 55,
+        "guard_steps": 3,
+        "hex": "6d61782d61736369690a",
+        "disk_reads": 11,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:no-short-alias",
+      "passed": true,
+      "observed": {
+        "alias": ""
+      }
+    },
+    {
+      "name": "exfat:unicode:教材/漢字𠮷.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 26,
+        "count": 26,
+        "eof": true,
+        "identity": [
+          57,
+          0
+        ],
+        "data_cluster": 58,
+        "guard_steps": 4,
+        "hex": "e697a5e69cace8aa9ee383bbe3818be38299e383bbf0a0aeb70a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 11,
+        "count": 11,
+        "eof": true,
+        "identity": [
+          57,
+          96
+        ],
+        "data_cluster": 59,
+        "guard_steps": 4,
+        "hex": "6465636f6d706f7365640a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:unicode:教材/が.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 9,
+        "count": 9,
+        "eof": true,
+        "identity": [
+          57,
+          192
+        ],
+        "data_cluster": 60,
+        "guard_steps": 4,
+        "hex": "636f6d706f7365640a",
+        "disk_reads": 19,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:empty:empty-a.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          320
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:empty:empty-b.txt",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          416
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 5,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:empty-identities",
+      "passed": true,
+      "observed": {
+        "a": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            52,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "b": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            52,
+            416
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "case_alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 0,
+          "count": 0,
+          "eof": true,
+          "identity": [
+            52,
+            320
+          ],
+          "data_cluster": 0,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "exfat:long-alias-identity",
+      "passed": true,
+      "observed": {
+        "lfn": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            52,
+            192
+          ],
+          "data_cluster": 54,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "alias": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 6,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            52,
+            192
+          ],
+          "data_cluster": 54,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "exfat:parent-directory-identity",
+      "passed": true,
+      "observed": {
+        "nested": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 7,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            57,
+            288
+          ],
+          "data_cluster": 61,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "root": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 24,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            52,
+            96
+          ],
+          "data_cluster": 53,
+          "guard_steps": 3,
+          "hex": "",
+          "disk_reads": 5,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "exfat:unicode-normalization-identity",
+      "passed": true,
+      "observed": {
+        "composed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 9,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            57,
+            192
+          ],
+          "data_cluster": 60,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        },
+        "decomposed": {
+          "status": "OK",
+          "fresult": 0,
+          "size": 11,
+          "count": 0,
+          "eof": false,
+          "identity": [
+            57,
+            96
+          ],
+          "data_cluster": 59,
+          "guard_steps": 4,
+          "hex": "",
+          "disk_reads": 18,
+          "disk_writes": 0,
+          "out_of_range": 0,
+          "budget_exhaustions": 0
+        }
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:1",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "30303030303030303131313131313131",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:2",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "31313131313131313232323232323232",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:3",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "32323232323232323333333333333333",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:4",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "33333333333333333434343434343434",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:5",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "34343434343434343535353535353535",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:6",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "35353535353535353636363636363636",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:fragment-boundary:7",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 32768,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 62,
+        "guard_steps": 10,
+        "hex": "36363636363636363737373737373737",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:self-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:two-node-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 0,
+        "guard_steps": 5,
+        "hex": "",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:short-chain",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:root-cycle",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "guard_steps": 1,
+        "disk_reads": 4,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:budget",
+      "passed": true,
+      "observed": {
+        "status": "BudgetExceeded",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:cancel",
+      "passed": true,
+      "observed": {
+        "status": "Cancelled",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          1952
+        ],
+        "data_cluster": 0,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 13,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:write-policy",
+      "passed": true,
+      "observed": {
+        "status": "ReadOnly",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:block-write-protection",
+      "passed": true,
+      "observed": {
+        "status": "WriteProtected",
+        "disk_reads": 0,
+        "disk_writes": 1,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:negative-control-write-flag",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 1,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 53,
+        "guard_steps": 0,
+        "hex": "6e",
+        "disk_reads": 6,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      },
+      "interpretation": "Upstream read-only build masks FA_WRITE; the outer VFS must reject write requests explicitly"
+    },
+    {
+      "name": "exfat:io-budget",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 0,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 1
+      }
+    },
+    {
+      "name": "exfat:invalid-boot-signature",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "layer": "boot-policy",
+        "disk_reads": 1,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:negative-control-directory-alias",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 24,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 53,
+        "guard_steps": 0,
+        "hex": "6e69686f7320726561642d6f6e6c7920",
+        "disk_reads": 10,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:guard:directory-ancestor-alias",
+      "passed": true,
+      "observed": {
+        "status": "Corrupt",
+        "fresult": 0,
+        "size": 0,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          0,
+          0
+        ],
+        "data_cluster": 0,
+        "guard_steps": 1,
+        "hex": "",
+        "disk_reads": 8,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:large-offset:2147483640",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4294975488,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          2144
+        ],
+        "data_cluster": 78,
+        "guard_steps": 3,
+        "hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+        "disk_reads": 16,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:large-offset:4294967288",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4294975488,
+        "count": 16,
+        "eof": false,
+        "identity": [
+          52,
+          2144
+        ],
+        "data_cluster": 78,
+        "guard_steps": 3,
+        "hex": "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "disk_reads": 16,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:large-offset:4294975472",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4294975488,
+        "count": 16,
+        "eof": true,
+        "identity": [
+          52,
+          2144
+        ],
+        "data_cluster": 78,
+        "guard_steps": 3,
+        "hex": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf",
+        "disk_reads": 15,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:large-eof",
+      "passed": true,
+      "observed": {
+        "status": "OK",
+        "fresult": 0,
+        "size": 4294975488,
+        "count": 0,
+        "eof": true,
+        "identity": [
+          52,
+          2144
+        ],
+        "data_cluster": 78,
+        "guard_steps": 3,
+        "hex": "",
+        "disk_reads": 14,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:zero-exfat-clusters",
+      "passed": true,
+      "observed": {
+        "status": "MountError",
+        "fresult": 13,
+        "disk_reads": 2,
+        "disk_writes": 0,
+        "out_of_range": 0,
+        "budget_exhaustions": 0
+      }
+    },
+    {
+      "name": "exfat:image-unchanged",
+      "passed": true,
+      "observed": {
+        "sha256": "5ef01ed91bf431cae6e4835a249fc89e60c97be963dc0718085310fadc99009e"
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "binary": "/sbin/fsck_msdos",
+      "sha256": "4ddb2e8610e86a4968000e42ba218492252d25c1696e9dfdd8fda2c43d650c5d"
+    }
+  ],
+  "reader_forbidden_write_symbols": [],
+  "passed": true,
+  "case_count": 200
+}

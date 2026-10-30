@@ -1,0 +1,10 @@
+{
+  "baseline_commit": "542e6ac98d477a1c33c1b927e61136ae5ad8c68b",
+  "candidate_commit": "8efd270774bbf1111de2e49c01343f73a36a20d6",
+  "same_native_options": true,
+  "native_options_sha256": "d25f9aeaac392e542f2e6924bac91cac6050630ac59a7652c0ea4764388be551",
+  "baseline_heap_bytes": 62848,
+  "candidate_heap_bytes": 58176,
+  "additional_static_bytes": 4672,
+  "scope": "same-profile link layout; baseline ELF-only audit, no runtime free-heap claim"
+}

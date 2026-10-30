@@ -1,0 +1,147 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff2e946
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbc4
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_CPU_CLOCK status=00000001 error_code=00000000 pc=40000ec6 source=00000001 cpll_mhz=00000168 before_mhz=00000059 after_mhz=00000167 mem_mhz=000000b4 apb_mhz=0000005a ctrl0=00000000 ctrl1=00000001 ctrl2=00010000 rom_mhz=00000168
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001858 probe=4000019a mapping=40001394 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00008d28 identity=0000a0df bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000001 dref=00000007 mul=00000005 control=00000180 analog=76800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000028 mr4=00000040 mr8=0000000b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=00000071
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000040 owner_checks=00000c00 peer_checks=00000c00 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_HEARTBEAT round=00000001 cpu0=000031c2 cpu1=0000154d ticks0=00000000 ticks1=00000000
+NIHOS_NATIVE_HEARTBEAT round=0000000a cpu0=0001f089 cpu1=00011058 ticks0=0000000e ticks1=0000000e
+NIHOS_NATIVE_HEARTBEAT round=00000014 cpu0=000413df cpu1=00028297 ticks0=00000020 ticks1=0000001f
+NIHOS_NATIVE_HEARTBEAT round=0000001e cpu0=00067a9e cpu1=0003ee30 ticks0=0000002f ticks1=0000002e
+NIHOS_NATIVE_HEARTBEAT round=00000028 cpu0=0008dfb2 cpu1=00055958 ticks0=0000003e ticks1=0000003d
+NIHOS_NATIVE_HEARTBEAT round=00000032 cpu0=000b484a cpu1=0006c50d ticks0=0000004d ticks1=0000004c
+NIHOS_NATIVE_HEARTBEAT round=0000003c cpu0=000dad9d cpu1=00083094 ticks0=0000005c ticks1=0000005b
+NIHOS_NATIVE_HEARTBEAT round=00000046 cpu0=00101500 cpu1=00099b7f ticks0=0000006b ticks1=0000006b
+NIHOS_NATIVE_HEARTBEAT round=00000050 cpu0=00127c61 cpu1=000b0797 ticks0=0000007a ticks1=0000007a
+NIHOS_NATIVE_HEARTBEAT round=0000005a cpu0=0014e33e cpu1=000c73a8 ticks0=00000089 ticks1=00000088
+NIHOS_NATIVE_HEARTBEAT round=00000064 cpu0=00174fdd cpu1=000ddf80 ticks0=00000098 ticks1=00000097
+NIHOS_NATIVE_TASKS hart=00000000 work0=00035b80 work1=000353bd cap0=00000034 cap1=00000034 switches=000000a3 calls=00000011 reaped=00000003 sleeps=00000002 elapsed=00000098
+NIHOS_NATIVE_TASKS hart=00000001 work0=00035b40 work1=00035416 cap0=00000034 cap1=00000034 switches=000000a3 calls=00000011 reaped=00000003 sleeps=00000002 elapsed=00000098
+NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none
+NIHOS_NATIVE_HEARTBEAT round=0000006e cpu0=0019b115 cpu1=000f4a59 ticks0=000000a7 ticks1=000000a6
+NIHOS_NATIVE_HEARTBEAT round=00000078 cpu0=001c1db9 cpu1=0010b6a4 ticks0=000000b6 ticks1=000000b6
+NIHOS_NATIVE_HEARTBEAT round=00000082 cpu0=001e8888 cpu1=001221fc ticks0=000000c5 ticks1=000000c4
+NIHOS_NATIVE_HEARTBEAT round=0000008c cpu0=0020f8cb cpu1=00138d66 ticks0=000000d4 ticks1=000000d3
+NIHOS_NATIVE_HEARTBEAT round=00000096 cpu0=002369ee cpu1=0014f8a4 ticks0=000000e3 ticks1=000000e2
+NIHOS_NATIVE_HEARTBEAT round=000000a0 cpu0=0025d908 cpu1=001662f2 ticks0=000000f2 ticks1=000000f1
+NIHOS_NATIVE_HEARTBEAT round=000000aa cpu0=002849e7 cpu1=0017ce86 ticks0=00000101 ticks1=00000101
+NIHOS_NATIVE_HEARTBEAT round=000000b4 cpu0=002ab96d cpu1=0019392b ticks0=00000110 ticks1=00000110
+NIHOS_NATIVE_HEARTBEAT round=000000be cpu0=002d2859 cpu1=001aa393 ticks0=0000011f ticks1=0000011e
+NIHOS_NATIVE_HEARTBEAT round=000000c8 cpu0=002f9821 cpu1=001c0e1b ticks0=0000012e ticks1=0000012d
+NIHOS_NATIVE_TASKS hart=00000000 work0=0006b700 work1=0006a540 cap0=00000066 cap1=00000066 switches=00000139 calls=00000011 reaped=00000003 sleeps=00000002 elapsed=0000012e
+NIHOS_NATIVE_TASKS hart=00000001 work0=0006b700 work1=0006a617 cap0=00000066 cap1=00000066 switches=00000139 calls=00000011 reaped=00000003 sleeps=00000002 elapsed=0000012e
+NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none
+NIHOS_NATIVE_HEARTBEAT round=000000d2 cpu0=0031fe7c cpu1=001d79c0 ticks0=0000013d ticks1=0000013c
+NIHOS_NATIVE_HEARTBEAT round=000000dc cpu0=00347099 cpu1=001ee466 ticks0=0000014c ticks1=0000014b
+NIHOS_NATIVE_HEARTBEAT round=000000e6 cpu0=0036e2ac cpu1=00204f69 ticks0=0000015b ticks1=0000015b
+NIHOS_NATIVE_HEARTBEAT round=000000f0 cpu0=00395370 cpu1=0021ba96 ticks0=0000016a ticks1=00000169
+NIHOS_NATIVE_HEARTBEAT round=000000fa cpu0=003bc4a3 cpu1=00232591 ticks0=00000179 ticks1=00000179
+NIHOS_NATIVE_HEARTBEAT round=00000104 cpu0=003e3649 cpu1=00249011 ticks0=00000188 ticks1=00000188
+NIHOS_NATIVE_HEARTBEAT round=0000010e cpu0=0040a6e3 cpu1=0025fac2 ticks0=00000197 ticks1=00000196
+NIHOS_NATIVE_HEARTBEAT round=00000118 cpu0=00431823 cpu1=00276578 ticks0=000001a6 ticks1=000001a5
+NIHOS_NATIVE_HEARTBEAT round=00000122 cpu0=00458a4a cpu1=0028d0c7 ticks0=000001b5 ticks1=000001b4
+NIHOS_NATIVE_HEARTBEAT round=0000012c cpu0=0047fa50 cpu1=002a3b0e ticks0=000001c4 ticks1=000001c3
+NIHOS_NATIVE_TASKS hart=00000000 work0=000a0ec7 work1=0009f9c0 cap0=00000098 cap1=00000098 switches=000001cf calls=00000011 reaped=00000003 sleeps=00000002 elapsed=000001c4
+NIHOS_NATIVE_TASKS hart=00000001 work0=000a0ec0 work1=0009fb27 cap0=00000098 cap1=00000098 switches=000001cf calls=00000011 reaped=00000003 sleeps=00000002 elapsed=000001c4
+NIHOS_NATIVE_SMP_PASS rounds=100 timers=both rtos=none
+NIHOS_NATIVE_SOAK_PASS rounds=300 timers=both rtos=none
+NIHOS_NATIVE_IPI hart=00000000 sent=00000040 received=00000040 ipis=00000042 delivered=00000040 woken=00000040 rejected=00000000 from_idle=00000040 entries=00000040 returns=00000040 pending_before_wfi=00000001 self_ipi=00000001 timer_start=000001c5 timer_end=000001c5 queued=00000000
+NIHOS_NATIVE_IPI hart=00000001 sent=00000040 received=00000040 ipis=00000042 delivered=00000040 woken=00000040 rejected=00000000 from_idle=00000041 entries=00000041 returns=00000041 pending_before_wfi=00000001 self_ipi=00000001 timer_start=000001c5 timer_end=000001c5 queued=00000000
+NIHOS_NATIVE_IPI_IDLE_PASS exchanges=64 timer_fallback=none
+NIHOS_NATIVE_FP hart=00000000 checks0=00000000 checks1=00000000 checks2=00000000 timer=00000000 calls=00000000 ipi=00000000 saves=00000000 restores=00000000 initial=00000000 app_timer=00000000 confirmed=00000001
+NIHOS_NATIVE_FP hart=00000001 checks0=00000000 checks1=00000000 checks2=00000000 timer=00000000 calls=00000000 ipi=00000000 saves=00000000 restores=00000000 initial=00000000 app_timer=00000000 confirmed=00000001
+NIHOS_NATIVE_MEMORY hart=00000000 start=4ff1bf80 end=4ff21fc0 capacity=00005fc0 used=000001c0 free=00005e00 checks0=000a0ec8 checks1=0009f9c1 rejected=00000003 confirmed=00000001
+NIHOS_NATIVE_MEMORY hart=00000001 start=4ff21fc0 end=4ff28000 capacity=00005fc0 used=000001c0 free=00005e00 checks0=000a0ec1 checks1=0009fb27 rejected=00000003 confirmed=00000001
+NIHOS_NATIVE_EXTERNAL hart=00000000 start=48030000 end=49018000 capacity=00fe7f80 used=00fe7f80 free=00000000 checks0=000a0ec8 checks1=0009f9c1 rejected=00000003 confirmed=00000001
+NIHOS_NATIVE_EXTERNAL hart=00000001 start=49018000 end=4a000000 capacity=00fe7f80 used=00fe7f80 free=00000000 checks0=000a0ec1 checks1=0009fb27 rejected=00000003 confirmed=00000001
+NIHOS_NATIVE_HEAP hart=00000000 start=48030080 end=48ff7e40 metadata=00080000 capacity=00f47d40 free=00f47d40 live=00000000 allocations=00005046 frees=00005046 rejected=0000000d checks0=000a0ec8 checks1=0009f9c1 levels=00000012 max_steps=00000038 confirmed=00000001
+NIHOS_NATIVE_HEAP hart=00000001 start=49018080 end=49fdfe40 metadata=00080000 capacity=00f47d40 free=00f47d40 live=00000000 allocations=0000504b frees=0000504b rejected=0000000d checks0=000a0ec1 checks1=0009fb27 levels=00000012 max_steps=00000038 confirmed=00000001
+NIHOS_NATIVE_RESOURCES hart=00000000 opened=00000007 closed=00000006 completed=00000006 reclaimed=0000000a reuses=00000003 owned=00000000 pending=00000000 stale=00000003 full=00000003 forced=00000001 pool_objects=00000012 pool_rejected=00000006 slab_objects=00000078 slab_frees=00000018 slab_rejected=0000001b object_moves=00000008 object_inplace=00000004 object_rejected=00000008 object_copy_bytes=00001070 c_probes=00000002
+NIHOS_NATIVE_RESOURCES hart=00000001 opened=00000007 closed=00000006 completed=00000006 reclaimed=0000000a reuses=00000003 owned=00000000 pending=00000000 stale=00000003 full=00000003 forced=00000001 pool_objects=00000012 pool_rejected=00000006 slab_objects=00000078 slab_frees=00000018 slab_rejected=0000001b object_moves=00000008 object_inplace=00000004 object_rejected=00000008 object_copy_bytes=00001070 c_probes=00000002
+NIHOS_NATIVE_STACKS hart=00000000 start=4ff60000 end=4ff6e000 boot_start=4ff60000 boot_end=4ff62000 irq_start=4ff64000 irq_end=4ff66000 task_start=4ff68000 task_end=4ff6b000 boot_frame=4ff61c10 irq_sp=4ff65ee0 task0_frame=4ff689f0 task1_frame=4ff69e20 task2_frame=4ff6af40 frames=0000025f zeroed=00005000 confirmed=00000001
+NIHOS_NATIVE_STACKS hart=00000001 start=4ff60000 end=4ff6e000 boot_start=4ff62000 boot_end=4ff64000 irq_start=4ff66000 irq_end=4ff68000 task_start=4ff6b000 task_end=4ff6e000 boot_frame=4ff63e30 irq_sp=4ff67ee0 task0_frame=4ff6b9f0 task1_frame=4ff6ce20 task2_frame=4ff6df40 frames=0000025f zeroed=00005000 confirmed=00000001
+NIHOS_NATIVE_FLASH hart=00000000 start=40010020 end=40011894 bytes=00001874 initial=7b74d759 final=7b74d759 checks=000030e8 confirmed=00000001
+NIHOS_NATIVE_FLASH hart=00000001 start=40010020 end=40011894 bytes=00001874 initial=7b74d759 final=7b74d759 checks=000030e8 confirmed=00000001
+NIHOS_NATIVE_FP_PASS floating=0
+NIHOS_NATIVE_GRAPHICS status=00000001 owner=00010003 runs=00000010 library_pc=4002383e heap_before=00f45d40 heap_after=00f45d40 raw_peak=00140100 retained=00010100 stack_low=4ff6e010 stack_high=4ff76000 observed_used=000043d0 captures=00000c18 render_captures=00000ba5 bootstrap_progress=00005311 record_peak=000002b6 controller_bytes=00004348 allocations=0000001f releases=0000001e foreign_rejected=00005310 irq_rejected=00000c41 forged_rejected=00000001
+NIHOS_NATIVE_GRAPHICS_CLIENTS client_cycles=00000009 idle_retained=00010100 idle_captures=00000000 idle_progress=000046ff
+NIHOS_NATIVE_GRAPHICS_EXCHANGE sent=0000000a received=0000000a replies=0000000a waits=0000000a blocked_ticks=00000014 idle_runtime=00000000 stop_ack=00000001 terminal_gap=00000001 copied_inputs=00000005 text_success=00000003 text_failed=00000002 copied_outputs=00000005 queue_bytes=00000300
+NIHOS_NATIVE_GRAPHICS_RASTER created=00000005 discarded=00000002 published=00000003 reclaimed=00000003 live_charge=00000000 peak_charge=00008000 held_ticks=00000006 stale_rejected=00000008 foreign_rejected=00000003
+NIHOS_NATIVE_GRAPHICS_PLACEMENT paint_pc=40afc92c draw_pc=40afe29c frames=00000003 draws=0000007c context_checks=00000006 irq_rejected=00000df7 active_ticks=00000002 flash_ticks=00000002 trap_pc=40afdc70
+NIHOS_NATIVE_GRAPHICS_SURFACE frames=00000003 blits=0000001f clipped=00000005 guards=00000003 rejected=00000006 peak_charge=00010000 live_charge=00000000
+NIHOS_NATIVE_GRAPHICS_WRAP frames=00000003 clusters=0000001f lines=00000008 wrapped_runs=00000002 transitions=00000003 clipped=00000000
+NIHOS_NATIVE_GRAPHICS_KINSOKU frames=00000003 spans=0000001c joined=00000003 lines=00000009 transitions=00000004 clipped=00000000
+NIHOS_NATIVE_GRAPHICS_SOURCE input_pc=40afb77c prepare_pc=40afbb30 verify_pc=40afe470 staged=00000005 maps=0000000a rejected=00000005 edited=00000001 poisoned=00000005 echoed=00000005 stale=00000003 content=00000003 annotations=00000003 map_mutations=00000003 wrong_reply=00000003
+NIHOS_NATIVE_GRAPHICS_RUBY frames=00000003 groups=00000002 moved=00000002 wide=00000001 units=00000013 joins=00000002 lines=00000008 clipped=00000000 plan_bytes=000000ac scratch_bytes=00000140
+NIHOS_NATIVE_GRAPHICS_TEXT id=00000005 runs=00000001 hash=32f8d714 outcome=00000000 glyph_count=00000008 pixel_bytes=000009a9 pixel_hash=4d12dcc4 source_hash=0896ea7d surface_hash=6a401fe2 wrap_hash=6a401fe2 policy_hash=6a401fe2 ruby_hash=6d4ddba2
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000000 glyph_id=00000dc1 cluster=00000000 run=00000000 pixels=00000018 x_advance=00000600 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=00000015 width=00000018 height=00000017 pixel_offset=00000000
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000001 glyph_id=00001098 cluster=00000003 run=00000000 pixels=00000018 x_advance=00000600 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000003 top=00000013 width=00000012 height=00000015 pixel_offset=00000228
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000002 glyph_id=0000124e cluster=00000006 run=00000000 pixels=00000018 x_advance=00000600 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=00000015 width=00000018 height=00000017 pixel_offset=000003a2
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000003 glyph_id=00000b64 cluster=00000009 run=00000000 pixels=00000018 x_advance=00000600 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=00000014 width=00000018 height=00000016 pixel_offset=000005ca
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000004 glyph_id=000001a0 cluster=00000000 run=00000001 pixels=0000000c x_advance=00000300 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=0000000a width=0000000a height=0000000a pixel_offset=000007da
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000005 glyph_id=000001b0 cluster=00000003 run=00000001 pixels=0000000c x_advance=00000300 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=0000000a width=0000000b height=0000000b pixel_offset=0000083e
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000006 glyph_id=000001c8 cluster=00000006 run=00000001 pixels=0000000c x_advance=00000300 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000a width=0000000c height=0000000b pixel_offset=000008b7
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000005 index=00000007 glyph_id=00000189 cluster=00000009 run=00000001 pixels=0000000c x_advance=00000300 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=0000000a width=0000000b height=0000000a pixel_offset=0000093b
+NIHOS_NATIVE_GRAPHICS_TEXT id=00000006 runs=00000000 hash=00000000 outcome=00000001 glyph_count=00000000 pixel_bytes=00000000 pixel_hash=00000000 source_hash=d5866171 surface_hash=00000000 wrap_hash=00000000 policy_hash=00000000 ruby_hash=00000000
+NIHOS_NATIVE_GRAPHICS_TEXT id=00000007 runs=00000000 hash=00000000 outcome=00000002 glyph_count=00000000 pixel_bytes=00000000 pixel_hash=00000000 source_hash=48a9b023 surface_hash=00000000 wrap_hash=00000000 policy_hash=00000000 ruby_hash=00000000
+NIHOS_NATIVE_GRAPHICS_TEXT id=00000008 runs=00000001 hash=6652dca8 outcome=00000000 glyph_count=0000000b pixel_bytes=000011ce pixel_hash=5065f1a5 source_hash=ab8d763f surface_hash=a9545fc8 wrap_hash=e6ca43dc policy_hash=c08e3d44 ruby_hash=8a559f1c
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000000 glyph_id=0000102a cluster=00000000 run=00000000 pixels=00000020 x_advance=00000000 y_advance=fffff800 x_offset=fffffc00 y_offset=fffff880 left=00000000 top=0000001c width=0000001f height=0000001f pixel_offset=00000000
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000001 glyph_id=00000a5c cluster=00000003 run=00000000 pixels=00000020 x_advance=00000000 y_advance=fffff800 x_offset=fffffc00 y_offset=fffff880 left=00000002 top=0000001c width=0000001d height=0000001f pixel_offset=000003c1
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000002 glyph_id=000001ad cluster=00000006 run=00000000 pixels=00000020 x_advance=00000000 y_advance=fffff800 x_offset=fffffc00 y_offset=fffff900 left=00000001 top=00000014 width=0000001d height=00000011 pixel_offset=00000744
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000003 glyph_id=00000baa cluster=00000009 run=00000000 pixels=00000020 x_advance=00000000 y_advance=fffff800 x_offset=fffffc00 y_offset=fffff900 left=00000000 top=0000001b width=0000001f height=0000001e pixel_offset=00000931
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000004 glyph_id=00000184 cluster=0000000c run=00000000 pixels=00000020 x_advance=00000000 y_advance=fffff800 x_offset=fffffc00 y_offset=fffff900 left=00000007 top=0000001a width=00000010 height=0000001d pixel_offset=00000cd3
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000005 glyph_id=00002eb0 cluster=0000000f run=00000000 pixels=00000020 x_advance=00000000 y_advance=fffff800 x_offset=fffffc00 y_offset=fffff940 left=00000016 top=0000001a width=00000009 height=00000009 pixel_offset=00000ea3
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000006 glyph_id=0000019d cluster=00000000 run=00000001 pixels=00000010 x_advance=00000000 y_advance=fffffc00 x_offset=fffffe00 y_offset=fffffc80 left=00000003 top=0000000d width=0000000b height=0000000e pixel_offset=00000ef4
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000007 glyph_id=0000017b cluster=00000003 run=00000001 pixels=00000010 x_advance=00000000 y_advance=fffffc00 x_offset=fffffe00 y_offset=fffffc40 left=00000003 top=0000000e width=0000000a height=0000000f pixel_offset=00000f8e
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000008 glyph_id=00000182 cluster=00000006 run=00000001 pixels=00000010 x_advance=00000000 y_advance=fffffc00 x_offset=fffffe00 y_offset=fffffcc0 left=00000002 top=0000000d width=0000000c height=0000000e pixel_offset=00001024
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=00000009 glyph_id=00002ed5 cluster=00000009 run=00000001 pixels=00000010 x_advance=00000000 y_advance=fffffc00 x_offset=fffffe00 y_offset=fffffc40 left=00000006 top=0000000d width=00000009 height=0000000c pixel_offset=000010cc
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000008 index=0000000a glyph_id=0000017b cluster=0000000c run=00000001 pixels=00000010 x_advance=00000000 y_advance=fffffc00 x_offset=fffffe00 y_offset=fffffc40 left=00000003 top=0000000e width=0000000a height=0000000f pixel_offset=00001138
+NIHOS_NATIVE_GRAPHICS_TEXT id=00000009 runs=00000001 hash=71953954 outcome=00000000 glyph_count=0000000c pixel_bytes=000006ee pixel_hash=d3440b3b source_hash=6444e8e5 surface_hash=230157da wrap_hash=e97d419c policy_hash=c6a94bcc ruby_hash=c6a94bcc
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000000 glyph_id=000009c1 cluster=00000000 run=00000000 pixels=00000010 x_advance=00000400 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000e width=00000010 height=00000010 pixel_offset=00000000
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000001 glyph_id=00000c8c cluster=00000003 run=00000000 pixels=00000010 x_advance=00000400 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000e width=00000010 height=00000010 pixel_offset=00000100
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000002 glyph_id=0000019d cluster=00000006 run=00000000 pixels=00000010 x_advance=00000400 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000002 top=0000000e width=0000000c height=0000000f pixel_offset=00000200
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000003 glyph_id=00000180 cluster=00000009 run=00000000 pixels=00000010 x_advance=00000400 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=0000000e width=0000000f height=0000000f pixel_offset=000002b4
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000004 glyph_id=0000019f cluster=0000000c run=00000000 pixels=00000010 x_advance=00000400 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=0000000e width=0000000f height=0000000f pixel_offset=00000395
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000005 glyph_id=00000062 cluster=0000000f run=00000000 pixels=00000010 x_advance=00000400 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=00000004 width=00000005 height=00000006 pixel_offset=00000476
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000006 glyph_id=00000023 cluster=00000012 run=00000000 pixels=00000010 x_advance=00000200 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000d width=00000008 height=0000000e pixel_offset=00000494
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000007 glyph_id=00000024 cluster=00000013 run=00000000 pixels=00000010 x_advance=00000200 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000d width=00000008 height=0000000e pixel_offset=00000504
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000008 glyph_id=00000025 cluster=00000014 run=00000000 pixels=00000010 x_advance=00000200 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000d width=00000008 height=0000000e pixel_offset=00000574
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=00000009 glyph_id=00000013 cluster=00000015 run=00000000 pixels=00000010 x_advance=00000200 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000001 top=0000000d width=00000004 height=0000000e pixel_offset=000005e4
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=0000000a glyph_id=00000014 cluster=00000016 run=00000000 pixels=00000010 x_advance=00000200 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000d width=00000007 height=0000000e pixel_offset=0000061c
+NIHOS_NATIVE_GRAPHICS_GLYPH request=00000009 index=0000000b glyph_id=00000015 cluster=00000017 run=00000000 pixels=00000010 x_advance=00000200 y_advance=00000000 x_offset=00000000 y_offset=00000000 left=00000000 top=0000000d width=00000008 height=0000000e pixel_offset=0000067e
+NIHOS_NATIVE_GRAPHICS_HASH index=00000000 hash=670dc52d
+NIHOS_NATIVE_GRAPHICS_HASH index=00000001 hash=0795e76f
+NIHOS_NATIVE_GRAPHICS_HASH index=00000002 hash=e2ac34f2
+NIHOS_NATIVE_GRAPHICS_HASH index=00000003 hash=a22b43c6
+NIHOS_NATIVE_GRAPHICS_HASH index=00000004 hash=618f84ea
+NIHOS_NATIVE_GRAPHICS_HASH index=00000005 hash=5865f142
+NIHOS_NATIVE_GRAPHICS_HASH index=00000006 hash=7b8cb363
+NIHOS_NATIVE_GRAPHICS_HASH index=00000007 hash=337f02e0
+NIHOS_NATIVE_GRAPHICS_HASH index=00000008 hash=027668ad
+NIHOS_NATIVE_GRAPHICS_HASH index=00000009 hash=8028d95e
+NIHOS_NATIVE_GRAPHICS_HASH index=0000000a hash=e4254cd9
+NIHOS_NATIVE_GRAPHICS_HASH index=0000000b hash=b49209bd
+NIHOS_NATIVE_GRAPHICS_HASH index=0000000c hash=63152b51
+NIHOS_NATIVE_GRAPHICS_HASH index=0000000d hash=52d94e9f
+NIHOS_NATIVE_GRAPHICS_HASH index=0000000e hash=f19aa1d8
+NIHOS_NATIVE_GRAPHICS_HASH index=0000000f hash=0bcddc2d
+NIHOS_NATIVE_GRAPHICS_QUEUE capacity=00000001 metadata_bytes=00000300 payload_bytes=00000488 binding_rejected=00000002 full_rejected=00000002 detached=00000002 live_payloads=00000000 closed_rejected=00000003 requests_metadata=4ff1b880 replies_metadata=4ff1b700 request_payload=480b0dd4 reply_payload=480b0eb8
+NIHOS_NATIVE_GRAPHICS_ARCHIVE logical_bytes=00001190 charge=00002000 live_charge=00000000 before=00f47d40 after=00f47d40
+NIHOS_NATIVE_GRAPHICS_STACK_LOAN bytes=00008000 loans=00000002 guards=00000002 busy=00000003 stale=00000001 premature=00000001 returned=00000001 before_hash=71af978e after_hash=71af978e paint_pc=40afae6a start=4ff6e000 end=4ff76000
+NIHOS_NATIVE_GRAPHICS_PASS

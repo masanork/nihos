@@ -28,8 +28,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix='coverage-', dir=output) as stage:
         stage = Path(stage)
         binary = stage / 'host-tests'
-        subprocess.run([str(zig), 'test', 'src/root.zig', '-O', 'Debug',
-                        '--test-no-exec', f'-femit-bin={binary}'], cwd=ROOT, check=True)
+        subprocess.run([str(zig), 'test', '-O', 'Debug',
+                        '--test-no-exec', f'-femit-bin={binary}',
+                        '--dep', 'ccid', '--dep', 'surface', '--dep', 'canvas',
+                        '-Mroot=src/root.zig', '-Mccid=src/usb/ccid.zig',
+                        '-Msurface=src/graphics/surface.zig', '--dep', 'surface',
+                        '-Mcanvas=src/graphics/canvas.zig'], cwd=ROOT, check=True)
         # Also execute directly so a collector cannot hide a failing test process.
         subprocess.run([str(binary)], cwd=ROOT, check=True)
         process = subprocess.Popen(

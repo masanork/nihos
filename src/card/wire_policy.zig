@@ -39,16 +39,18 @@ pub fn PolicyType(comptime extended: bool) type {
                 return true;
             }
             if (self.surface_selected) {
-                if (std.mem.eql(u8, apdu, &surface.select_pin) or std.mem.eql(u8, apdu, &surface.select_photo) or std.mem.eql(u8, apdu, &input.query_retries)) return true;
-                if (apdu.len == 5 and apdu[0] == 0 and apdu[1] == 0xb0 and apdu[2] < 128 and apdu[3] == 0 and apdu[4] == 0) return true;
+                if (std.mem.eql(u8, apdu, &surface.select_pin) or std.mem.eql(u8, apdu, &input.query_retries)) return true;
+                if (std.mem.eql(u8, apdu, &surface.select_photo)) return self.surface_verifies == 1;
+                if (apdu.len == 5 and apdu[0] == 0 and apdu[1] == 0xb0 and apdu[2] < 128 and apdu[3] == 0 and apdu[4] == 0) return self.surface_verifies == 1;
                 if (self.probe_only or self.surface_verifies != 0 or apdu.len != 17 or !std.mem.eql(u8, apdu[0..5], &.{ 0, 0x20, 0, 0x80, 12 })) return false;
                 for (apdu[5..]) |digit| if (digit < '0' or digit > '9') return false;
                 self.surface_verifies = 1;
                 return true;
             }
-            for ([_][]const u8{ &input.select_ap, &input.select_pin, &input.query_retries, &input.select_attributes }) |permitted|
+            for ([_][]const u8{ &input.select_ap, &input.select_pin, &input.query_retries }) |permitted|
                 if (std.mem.eql(u8, apdu, permitted)) return true;
-            if (apdu.len == 5 and apdu[0] == 0 and apdu[1] == 0xb0 and apdu[2] < 8 and apdu[3] == 0 and apdu[4] == 0) return true;
+            if (std.mem.eql(u8, apdu, &input.select_attributes)) return self.verifies == 1;
+            if (apdu.len == 5 and apdu[0] == 0 and apdu[1] == 0xb0 and apdu[2] < 8 and apdu[3] == 0 and apdu[4] == 0) return self.verifies == 1;
             if (self.probe_only or apdu.len != 9 or !std.mem.eql(u8, apdu[0..5], &.{ 0, 0x20, 0, 0x80, 4 }) or self.verifies != 0) return false;
             for (apdu[5..]) |digit| if (digit < '0' or digit > '9') return false;
             self.verifies = 1; // Consumed before attempting the wire; never retry.
@@ -199,4 +201,39 @@ test "photo opt-in has independent one-shot budgets and PIN-free probe cannot se
     try std.testing.expect(probe.allow(try ccid.request(&buffer, 0x6f, 0, &input.query_retries)));
     try std.testing.expect(!probe.allow(try ccid.request(&buffer, 0x6f, 0, pin12)));
     try std.testing.expectEqual(@as(u32, 0), probe.verifies + probe.surface_verifies);
+}
+
+test "attribute and photo reads require their matching one-shot VERIFY in both policies" {
+    const ccid = @import("ccid");
+    inline for (.{ Policy, ExtendedPolicy }) |P| {
+        var buffer: [512]u8 = undefined;
+        var policy = P{ .photo_enabled = true };
+        const read = [_]u8{ 0, 0xb0, 0, 0, 0 };
+        const pin4: [9]u8 = ([_]u8{ 0, 0x20, 0, 0x80, 4 } ++ "1234").*;
+        const pin12: [17]u8 = ([_]u8{ 0, 0x20, 0, 0x80, 12 } ++ "123456789018").*;
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &input.select_attributes)));
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+        var invalid: [9]u8 = pin4;
+        invalid[8] = 'x';
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &invalid)));
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &pin4)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &input.select_attributes)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &surface.select_ap)));
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &surface.select_photo)));
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+        var invalid12: [17]u8 = pin12;
+        invalid12[16] = 'x';
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &invalid12)));
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &pin12)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &surface.select_photo)));
+        try std.testing.expect(policy.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+        try std.testing.expect(!policy.allow(try ccid.request(&buffer, 0x6f, 0, &pin12)));
+        var probe = P{ .photo_enabled = true, .probe_only = true };
+        try std.testing.expect(probe.allow(try ccid.request(&buffer, 0x6f, 0, &surface.select_ap)));
+        try std.testing.expect(!probe.allow(try ccid.request(&buffer, 0x6f, 0, &surface.select_photo)));
+        try std.testing.expect(!probe.allow(try ccid.request(&buffer, 0x6f, 0, &read)));
+    }
 }

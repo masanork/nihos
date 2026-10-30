@@ -1,0 +1,22 @@
+{
+  "source_commit": "638e04cb88f1bc195c1d03914eb7b7d58bca65cb",
+  "scope": "native build/image audit and embedded-config regression only; existing workload still injects notifications after sector fence; no device execution",
+  "artifacts": {
+    "embedded/fatfs-link-audit.json": "2c795a1910b1f63b13fd61d8972b70c0ac62383be8d9f0bd64747dff8d1d89f6",
+    "embedded/native-layout.ld": "977f9d012e8121eeb3a1c7f22538a6c12878ec48b56fbbbc9c5ea2f3a8e6a877",
+    "embedded/native_options.zig": "34c05c48820f35c3d620f66d74d31c4bd3542148ef4ec9d01d563fc3c283f226",
+    "embedded/nihos-native.elf": "1fe8514a1c1844e4826451f769391eac6c64bf10d0ebde6f187d5ef465068e99",
+    "embedded/sqlite-manifest.json": "79ba64d2f2680e3654dc8a46d7884951d324d6ca8b0fec5e7952e68f0d5357b0",
+    "image-audit.json": "f83089260fefbdd36e36e7df0d2cf19069135b80f144b5ff74ade66f1ec29e1c",
+    "loader/bootloader.bin": "5f1565c93f3bea4fe29cd9f26f4e66343e4fdd26cea31bb6ec9a5966a84f1355",
+    "loader/bootloader.elf": "8ea0c420ec67a2eb0374401d009d08b36ac365a570b464842282fa7daf38866e",
+    "loader/loader-sdkconfig.h": "70240bf59ff199261fa55b8a7b9df6513432eeed659a3e9e5e63f6edeed9d9b6",
+    "loader/partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+    "native-layout.ld": "977f9d012e8121eeb3a1c7f22538a6c12878ec48b56fbbbc9c5ea2f3a8e6a877",
+    "native_options.zig": "de6af6a23727027668a61b988b2d3b289b2fc79012b4de0b26f20fb463f87408",
+    "nihos-native.bin": "63440a974a9b7a89983e12f9d2bdfd312efc2d3ec3057ba0f1e83ad313235e67",
+    "nihos-native.elf": "116a084a9dc20352402a417fd595fdd1827884d5d95da635f26608ce8bed2486",
+    "source.tar": "5ab8e0a178c91842c984754f068eea246294931dd9d5de14ed0a1433e1986000",
+    "sqlite-manifest.json": "5428f73d0fe4480e6aa509ae15347dfddae9f08180d1f0b3599d123849d65904"
+  }
+}

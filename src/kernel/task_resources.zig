@@ -11,13 +11,21 @@ pub fn identity(owner: u32, key: Key) u32 {
 pub const slab = @import("slab.zig");
 pub const c_allocator = @import("c_allocator.zig");
 pub const size_pool = @import("size_pool.zig");
+const extent_groups = @import("extent_groups.zig");
 
 pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limit: usize) type {
+    return ResourcesWithGroups(Backend, capacity, limit, 0, 0);
+}
+
+/// Group metadata is provisioned only by callers opting into this factory.
+/// The default Resources keeps zero group slots and the existing task limit.
+pub fn ResourcesWithGroups(comptime Backend: type, comptime capacity: usize, comptime limit: usize, comptime group_limit: usize, comptime extent_limit: usize) type {
     return struct {
         const Self = @This();
-        pub const Error = Backend.Error || slab.Error || error{ Inactive, Full, NotReady };
+        const Groups = extent_groups.Registry(Backend, group_limit, extent_limit);
+        pub const Error = Backend.Error || slab.Error || Groups.Error || error{ Inactive, Full, NotReady };
         const State = enum { vacant, active, closing, cleaned, faulted };
-        const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize, objects_pending: size_pool.Config, objects: size_pool.Config };
+        const Storage = union(enum) { raw, arena: usize, slab_pending: usize, slab: usize, objects_pending: size_pool.Config, objects: size_pool.Config, extent_group: Groups.Token };
         const Entry = struct {
             allocation: Backend.Allocation,
             // Canonical cursor stays in the ledger, so copied pool handles
@@ -28,6 +36,7 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         pub const Pool = struct { key: Key, allocation: Backend.Allocation };
         pub const Slab = struct { key: Key, allocation: Backend.Allocation };
         pub const Objects = struct { key: Key, allocation: Backend.Allocation };
+        pub const Group = struct { key: Key, allocation: Backend.Allocation, token: Groups.Token };
         const Slot = struct {
             generation: u16 = 0,
             state: State = .vacant,
@@ -35,6 +44,7 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
         };
         pub const Pending = struct { key: Key, allocation: ?Backend.Allocation };
         slots: [capacity]Slot = @splat(.{}),
+        groups: Groups = .{},
         opened: u32 = 0,
         closed: u32 = 0,
         completed: u32 = 0,
@@ -91,8 +101,55 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
 
         pub noinline fn free(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, allocation: Backend.Allocation) Error!void {
             const entry = try self.find(key, allocation);
-            try heap.free(caller, allocation);
+            switch (entry.*.?.storage) {
+                .extent_group => |token| try self.groups.close(heap, caller, token, allocation),
+                else => try heap.free(caller, allocation),
+            }
             entry.* = null;
+        }
+
+        /// One task-ledger entry owns a root plus a bounded, noncontiguous set
+        /// of extents. The root is not a backing arena; children stay movable
+        /// only through explicit client copies, never by relocating pointers.
+        pub fn openGroup(self: *Self, heap: *Backend.Heap, caller: u32, key: Key) Error!Group {
+            if (group_limit == 0 or extent_limit == 0) return error.Full;
+            const allocation = try self.acquire(heap, caller, key, 64, 64, .raw);
+            const token = self.groups.open(allocation) catch |err| {
+                try self.free(heap, caller, key, allocation);
+                return err;
+            };
+            const entry = try self.find(key, allocation);
+            entry.*.?.storage = .{ .extent_group = token };
+            return .{ .key = key, .allocation = allocation, .token = token };
+        }
+
+        fn groupEntry(self: *Self, caller: u32, key: Key, group: Group) Error!Groups.Token {
+            const entry = try self.leaseEntry(caller, key, group.key, group.allocation);
+            return switch (entry.storage) {
+                .extent_group => |token| if (token.index == group.token.index and token.ticket == group.token.ticket) token else error.InvalidGroup,
+                else => error.InvalidGroup,
+            };
+        }
+
+        pub fn allocExtent(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, group: Group, length: usize, alignment: usize) Error!Backend.Allocation {
+            return self.groups.alloc(heap, caller, try self.groupEntry(caller, key, group), group.allocation, length, alignment);
+        }
+
+        pub fn freeExtent(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, group: Group, allocation: Backend.Allocation) Error!void {
+            try self.groups.free(heap, caller, try self.groupEntry(caller, key, group), group.allocation, allocation);
+        }
+
+        pub fn extentCount(self: *Self, caller: u32, key: Key, group: Group) Error!usize {
+            return self.groups.count(try self.groupEntry(caller, key, group), group.allocation);
+        }
+
+        pub fn extentFromPointer(self: *Self, caller: u32, key: Key, group: Group, address: usize) Error!Backend.Allocation {
+            return self.groups.fromPointer(try self.groupEntry(caller, key, group), group.allocation, address);
+        }
+
+        pub fn closeGroup(self: *Self, heap: *Backend.Heap, caller: u32, key: Key, group: Group) Error!void {
+            _ = try self.groupEntry(caller, key, group);
+            try self.free(heap, caller, key, group.allocation);
         }
 
         noinline fn find(self: *Self, key: Key, allocation: Backend.Allocation) Error!*?Entry {
@@ -298,10 +355,17 @@ pub fn Resources(comptime Backend: type, comptime capacity: usize, comptime limi
             const slot = self.resolve(key) orelse return error.Inactive;
             if (slot.state != .closing) return error.Inactive;
             for (&slot.allocations) |*entry| if (entry.*) |tracked| {
-                heap.free(caller, tracked.allocation) catch |err| {
+                const complete = switch (tracked.storage) {
+                    .extent_group => |token| self.groups.drainOne(heap, caller, token, tracked.allocation),
+                    else => blk: {
+                        heap.free(caller, tracked.allocation) catch |err| break :blk @as(Error!bool, err);
+                        break :blk @as(Error!bool, true);
+                    },
+                } catch |err| {
                     slot.state = .faulted;
                     return err;
                 };
+                if (!complete) return false;
                 entry.* = null;
                 self.reclaimed += 1;
                 break;

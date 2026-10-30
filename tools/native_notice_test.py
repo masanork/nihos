@@ -15,7 +15,7 @@ class NativeNoticeTest(unittest.TestCase):
             path = Path(temporary)
             zig = str(ROOT / '.tools/zig-0.17.0/zig')
             library = path / ('boot.dylib' if sys.platform == 'darwin' else 'boot.so')
-            subprocess.run([zig, 'build-lib', '-dynamic', '-OReleaseSafe', str(ROOT / 'src/card_boot_preview.zig'),
+            subprocess.run([zig, 'build-lib', '-dynamic', '-OReleaseSafe', '--dep', 'surface', '-Mroot=' + str(ROOT / 'src/card_boot_preview.zig'), '-Msurface=' + str(ROOT / 'src/graphics/surface.zig'),
                             '-femit-bin=' + str(library)], check=True, capture_output=True)
             renderer = ctypes.CDLL(str(library))
             renderer.paint.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]

@@ -44,7 +44,7 @@ def build(directory=None):
                 pass
         if not valid:
             staged_render, staged_scanout = [p.with_name('staged-' + p.name) for p in (render, scanout)]
-            commands = [[zig, 'build-lib', '-dynamic', '-OReleaseSafe', str(ROOT / 'src/card_sim.zig'), '-femit-bin=' + str(staged_render)],
+            commands = [[zig, 'build-lib', '-dynamic', '-OReleaseSafe', '--dep', 'surface', '--dep', 'canvas', '-Mroot=' + str(ROOT / 'src/card_sim.zig'), '--dep', 'surface', '-Mcanvas=' + str(ROOT / 'src/graphics/canvas.zig'), '-Msurface=' + str(ROOT / 'src/graphics/surface.zig'), '-femit-bin=' + str(staged_render)],
                         [zig, 'cc', '-dynamiclib' if suffix == '.dylib' else '-shared', '-fPIC', '-std=c17', '-O2', '-UNDEBUG',
                          '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', str(ROOT / 'probes/card_sim/scanout.c'), '-o', str(staged_scanout)]]
             with (directory / 'build.log').open('w') as log:
@@ -155,6 +155,7 @@ class Simulator:
             if self.status:
                 raise RuntimeError('DMA still owns SRAM' if self.status == -2 else 'base SRAM layout/quota rejected')
             self.zig.sim_model_reset()
+            self.last_contacts = 0
             self.profile = profile
             self.active_phase = None
             self._present()
@@ -178,11 +179,17 @@ class Simulator:
                                         2 * self.config.stride, view['phase'] in (1, 6))
         if self.status == 0:
             self.active_phase = PHASES[view['phase']]
+        if self.status >= 0 and view['phase'] in (4, 5) and self.last_contacts == 0:
+            # The modeled controller supplies a fresh idle report after release.
+            # Preserve the production gate when a preceding contact is held.
+            self.zig.sim_touch(0, 0, 0)
 
     def eof(self):
         self.status = self.c.sim_eof()
         if self.status == 0:
             self.active_phase = PHASES[self.view()['phase']]
+            if self.view()['phase'] in (4, 5) and self.last_contacts == 0:
+                self.zig.sim_touch(0, 0, 0)
         return self.state()
 
     def action(self, name, automatic=True, **kwargs):
@@ -227,29 +234,35 @@ class Simulator:
         with LOCK:
             if not (0 <= contacts <= 5 and 0 <= x < 720 and 0 <= y < 1280):
                 raise ValueError('invalid touch sample')
+            self.last_contacts = contacts
             if (self.metrics()['pending'] or self.metrics()['fault'] or self.metrics()['mismatches'] or
                     self.status in (-3, -4, -5, -6) or not self.metrics()['dma_owned'] or
                     self.active_phase != PHASES[self.view()['phase']] or
-                    self.view()['phase'] not in (2, 3)):
+                    self.view()['phase'] not in (2, 3, 4, 5)):
                 return self.state()
             before = self.view()
             effect = self.zig.sim_touch(contacts, x, y)
             if not effect:
                 return self.state()
             after = self.view()
-            if before['phase'] == after['phase'] and self._render():
+            if before['phase'] == after['phase'] and after['phase'] in (2, 3) and self._render():
                 self.status = self.c.sim_update(after['count'], self.dynamic, 2 * self.config.stride, self.frame)
             else:
                 self._present()
-            self.trace.append({'action': {1: 'digit', 2: 'erase', 3: 'cancel', 4: 'confirm'}[effect], 'automatic': bool(automatic)})
+            self.trace.append({'action': {1: 'digit', 2: 'erase', 3: 'cancel', 4: 'confirm',
+                                         8: 'result_basic', 9: 'result_next', 10: 'result_close'}[effect], 'automatic': bool(automatic)})
             if automatic and self.metrics()['pending']:
                 return self.eof()
             return self.state()
 
     def key(self, name, automatic=True):
-        point = {'digit': (100, 550), 'erase': (580, 970), 'cancel': (100, 970), 'confirm': (350, 1150)}.get(name)
+        point = {'digit': (100, 550), 'erase': (580, 970), 'cancel': (100, 970), 'confirm': (350, 1150),
+                 'result_basic': (100, 1140), 'result_next': (350, 1140), 'result_close': (600, 1140)}.get(name)
         if point is None:
             raise ValueError('unknown count-only key')
+        if ((name.startswith('result_') and self.view()['phase'] not in (4, 5)) or
+                (not name.startswith('result_') and self.view()['phase'] not in (2, 3))):
+            return self.state()
         self.touch(1, *point, automatic=automatic)
         return self.touch(0, 0, 0, automatic=automatic)
 
@@ -262,7 +275,7 @@ class Simulator:
                 raise ValueError('replay accepts semantic events only')
         for item in trace:
             action = item['action']
-            if action in ('digit', 'erase', 'cancel', 'confirm'):
+            if action in ('digit', 'erase', 'cancel', 'confirm', 'result_basic', 'result_next', 'result_close'):
                 self.key(action, item.get('automatic', True))
             else:
                 self.action(action, item.get('automatic', True), **{k: v for k, v in item.items() if k not in ('action', 'automatic')})

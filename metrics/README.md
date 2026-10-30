@@ -78,8 +78,10 @@ python3 tools/host_coverage.py --kcov "$(sh tools/bootstrap-kcov.sh)"
 python3 tools/metrics.py --coverage build/metrics/host-coverage.json
 ```
 
-The collector builds the same `src/root.zig` test root as `zig build test`,
-with Debug optimization, executes it directly and under checksum-pinned
+The collector builds the `src/root.zig` test root with the `ccid`, `surface`
+and `canvas` module bindings from `build.zig` and Debug optimization. Other
+standalone test roots in `zig build test` are outside this collection. It
+executes the root binary directly and under checksum-pinned
 [kcov v43](https://github.com/SimonKagstrom/kcov/tree/v43), and counts emitted
 DWARF implementation lines below `src/`. Test files and inline `test` blocks
 are removed from the percentage. HTML/XML retain the raw collector view,

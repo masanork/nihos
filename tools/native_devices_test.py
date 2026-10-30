@@ -16,7 +16,9 @@ class DeviceProfileTests(unittest.TestCase):
         cases = ({'NIHOS_NATIVE_DEVICES': '2'}, {'NIHOS_NATIVE_AUDIO': '1'},
                  {'NIHOS_NATIVE_MICROPHONE': '1'}, {'NIHOS_NATIVE_RS485': '1'},
                  {'NIHOS_NATIVE_BOOT_TEST': '1'}, {'NIHOS_NATIVE_DISPLAY': '3'},
-                 {'NIHOS_NATIVE_PSRAM_200': '0'})
+                 {'NIHOS_NATIVE_PSRAM_200': '0'}, {'NIHOS_NATIVE_NORMAL_STORAGE': '2'},
+                 {'NIHOS_NATIVE_NORMAL_STORAGE': '1', 'NIHOS_NATIVE_USB': '1'},
+                 {'NIHOS_NATIVE_NORMAL_STORAGE': '1', 'NIHOS_NATIVE_SDMMC': '1'})
         for changes in cases:
             with self.subTest(changes=changes), tempfile.TemporaryDirectory() as temporary:
                 output = Path(temporary) / 'must-not-exist'

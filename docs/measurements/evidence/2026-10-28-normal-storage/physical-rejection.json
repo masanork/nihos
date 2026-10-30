@@ -1,0 +1,182 @@
+{
+  "passed": true,
+  "scope": "unsupported-volume coexistence only",
+  "candidate_image_sha256": "5f59fd32e2da18ae138e9c4752b89dd463596f7512714e7251e8c55cd5a7b422",
+  "reset": "warm USB RTS",
+  "filesystem": [
+    {
+      "status": 1,
+      "epoch": 1,
+      "kind": 0,
+      "requests": 0,
+      "completed": 0,
+      "bytes": 0,
+      "crc": 0,
+      "eof": 0,
+      "error_code": 0,
+      "reads": 0,
+      "yields": 0
+    },
+    {
+      "status": 4,
+      "epoch": 1,
+      "kind": 0,
+      "requests": 0,
+      "completed": 0,
+      "bytes": 0,
+      "crc": 0,
+      "eof": 0,
+      "error_code": 4294967034,
+      "reads": 1,
+      "yields": 1
+    },
+    {
+      "status": 1,
+      "epoch": 2,
+      "kind": 0,
+      "requests": 1,
+      "completed": 0,
+      "bytes": 0,
+      "crc": 0,
+      "eof": 0,
+      "error_code": 0,
+      "reads": 1,
+      "yields": 1
+    },
+    {
+      "status": 4,
+      "epoch": 2,
+      "kind": 0,
+      "requests": 1,
+      "completed": 1,
+      "bytes": 0,
+      "crc": 0,
+      "eof": 0,
+      "error_code": 4294967034,
+      "reads": 2,
+      "yields": 2
+    }
+  ],
+  "network": [
+    {
+      "phase": 2,
+      "station": 0,
+      "error_code": 0,
+      "ip": 0,
+      "linklocal": 0,
+      "echo_requests": 0,
+      "rx": 0,
+      "tx": 0,
+      "polls": 1,
+      "max_poll_us": 50,
+      "renewals": 0,
+      "reconnects": 0,
+      "acquisitions": 0,
+      "failures": 0,
+      "disconnect_reason": 0,
+      "failed_station": 0
+    },
+    {
+      "phase": 3,
+      "station": 12,
+      "error_code": 0,
+      "ip": 0,
+      "linklocal": 0,
+      "echo_requests": 0,
+      "rx": 912,
+      "tx": 178,
+      "polls": 345,
+      "max_poll_us": 7198,
+      "renewals": 0,
+      "reconnects": 0,
+      "acquisitions": 0,
+      "failures": 0,
+      "disconnect_reason": 0,
+      "failed_station": 0
+    },
+    {
+      "phase": 3,
+      "station": 12,
+      "error_code": 0,
+      "ip": 0,
+      "linklocal": 0,
+      "echo_requests": 0,
+      "rx": 1182,
+      "tx": 178,
+      "polls": 1031,
+      "max_poll_us": 7198,
+      "renewals": 0,
+      "reconnects": 0,
+      "acquisitions": 0,
+      "failures": 0,
+      "disconnect_reason": 0,
+      "failed_station": 0
+    },
+    {
+      "phase": 3,
+      "station": 12,
+      "error_code": 0,
+      "ip": 0,
+      "linklocal": 0,
+      "echo_requests": 0,
+      "rx": 1201,
+      "tx": 195,
+      "polls": 1683,
+      "max_poll_us": 7198,
+      "renewals": 0,
+      "reconnects": 0,
+      "acquisitions": 0,
+      "failures": 0,
+      "disconnect_reason": 0,
+      "failed_station": 0
+    }
+  ],
+  "ui": [
+    {
+      "frames": 32,
+      "ticks0": 16,
+      "ticks1": 16
+    },
+    {
+      "frames": 333,
+      "ticks0": 517,
+      "ticks1": 517
+    },
+    {
+      "frames": 633,
+      "ticks0": 1017,
+      "ticks1": 1017
+    },
+    {
+      "frames": 933,
+      "ticks0": 1518,
+      "ticks1": 1518
+    }
+  ],
+  "legacy_command_records": [
+    {
+      "kind": 5,
+      "accepted": 1,
+      "i2s_owner": 0,
+      "pinned": 0,
+      "workspace": 0
+    }
+  ],
+  "positive_file_read": false,
+  "card_removal_tested": false,
+  "power_on_reset": false,
+  "execution_source_commit": "cb774ad10130f5d28b57ad9f37fc3e4e298f56ec",
+  "source_manifest_sha256": "4778313e3e5a8a34c637d5acacd5d6eb90405a729166c942bef0d4ccd799118e",
+  "warm_trial_only": true,
+  "full_flash_restore": {
+    "verified": true,
+    "sha256": "023af13c7e6ed58d8d1b92116c32b5ee2ebcfe624232919b57e082dda2d5a1cc"
+  },
+  "same_exclusive_descriptor": {
+    "restored": true,
+    "exclusive_same_serial_descriptor": true,
+    "kernel_exclusive": true,
+    "hardware_lock": true,
+    "card_changed": false
+  }
+}
