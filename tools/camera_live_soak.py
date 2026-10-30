@@ -7,6 +7,7 @@ EVENTS.jsonl --seconds 120 --restarts 10.
 """
 import argparse
 import json
+import math
 from pathlib import Path
 import re
 import time
@@ -29,9 +30,13 @@ class Session:
         self.last_frame = None
         self.manuals = 0
         self.distinct = set()
+        self.heartbeat_at, self.heartbeat_counters = None, None
+        self.manual_accepted = False
 
     def move(self, phase, now, command=None):
         self.phase, self.phase_at = phase, now
+        if phase in ('manual', 'cold_manual'):
+            self.manual_accepted = False
         if command is not None:
             self.commands.append(command)
 
@@ -46,10 +51,14 @@ class Session:
         self.move('stop', now, b'\x1b')
 
     def tick(self, now):
+        if isinstance(now, bool) or not isinstance(now, (int, float)) or not math.isfinite(now):
+            raise ValueError('non-finite or invalid event timestamp')
         elapsed = now - self.phase_at
         if elapsed < 0:
             raise ValueError('clock reversed')
         if self.phase == 'live':
+            if now - max(self.phase_at, self.heartbeat_at or self.phase_at) > 7.5:
+                raise ValueError('network service heartbeat gap exceeds 7.5 seconds')
             if self.last_frame is None and elapsed > 10:
                 raise ValueError('first frame timeout')
             if self.last_frame is not None and now - self.last_frame > 2:
@@ -67,14 +76,12 @@ class Session:
         self.tick(now)
         if 'ESP-ROM:esp32p4' in line:
             self.boots += 1
-            if self.boots > 1:
+            if self.ready or self.boots > 1:
                 raise ValueError('unexpected reset')
         if any(s in line for s in ('NIHOS_NATIVE_FAIL ', 'NIHOS_NATIVE_CAMERA_LIVE_FAILURE ', 'Camera unavailable or busy.')):
             raise ValueError('firmware failure: ' + line.strip())
         if self.ready and 'NIHOS_C6_BOOT' in line:
             raise ValueError('C6 restarted during capture')
-        if 'NIHOS_NATIVE_NETWORK_UI ' in line:
-            self.heartbeats += 1
         if 'NIHOS_NATIVE_SESSION_READY ' in line:
             if self.ready:
                 raise ValueError('session restarted')
@@ -95,7 +102,15 @@ class Session:
         self.expected_sequence += 1
 
     def record(self, tag, f, now):
-        if tag == 'NIHOS_DEVICE_REQUEST':
+        if tag == 'NIHOS_NATIVE_NETWORK_UI':
+            if not {'frames', 'ticks0', 'ticks1'} <= f.keys():
+                raise ValueError('heartbeat counters missing')
+            counters = tuple(f[key] for key in ('frames', 'ticks0', 'ticks1'))
+            if self.heartbeat_counters is not None and any(a <= b for a, b in zip(counters, self.heartbeat_counters)):
+                raise ValueError('network service heartbeat counters stalled')
+            self.heartbeat_at, self.heartbeat_counters = now, counters
+            self.heartbeats += 1
+        elif tag == 'NIHOS_DEVICE_REQUEST':
             kind, accepted = f['kind'], f['accepted']
             expected = [(27, 0), (29, 0)]
             if self.phase == 'guards':
@@ -111,11 +126,17 @@ class Session:
                     self.stop(now)
                 else:
                     self.move('live', now)
+            elif self.phase in ('manual', 'cold_manual'):
+                if self.manual_accepted:
+                    raise ValueError('duplicate manual request')
+                self.manual_accepted = True
         elif tag == 'NIHOS_NATIVE_SESSION_VIEW' and self.phase == 'shell' and f.get('from') == 0 and f.get('to') == 1:
             self.move('baseline', now, b'mem\n')
         elif tag == 'NIHOS_NATIVE_CAMERA_SNAPSHOT':
             if self.phase not in ('live', 'stop', 'manual', 'cold_manual') or (self.phase == 'stop' and self.cycle % 2):
                 raise ValueError('image outside active capture, including after drain')
+            if self.phase in ('manual', 'cold_manual') and not self.manual_accepted:
+                raise ValueError('manual image without accepted request')
             self.sequence(f['sequence'])
             if f['state'] != 1 or f['mismatches'] != 0 or f['frames'] <= self.last_display:
                 raise ValueError('framebuffer mismatch or stalled display')
@@ -131,6 +152,8 @@ class Session:
                 self.manuals += 1
                 self.move('manual_repaint' if self.phase == 'manual' else 'cold_repaint', now, b'\x1b')
         elif tag == 'NIHOS_NATIVE_CAMERA_STREAM':
+            if not {'completed', 'dropped', 'fault', 'incomplete'} <= f.keys():
+                raise ValueError('stream counters missing')
             if self.phase != 'stop' or self.pending_stream is not None or f['fault'] != 0:
                 raise ValueError('stream fault or unexpected retirement')
             self.pending_stream = f
@@ -143,7 +166,7 @@ class Session:
                 raise ValueError('stop/drain exceeds one second')
             if self.cycle == 0 and (len(self.times) < self.seconds * 10 or self.stop_at - self.times[0] < self.seconds):
                 raise ValueError('soak duration or minimum cadence not reached')
-            if self.pending_stream['completed'] < len(self.times) or self.pending_stream['dropped'] > self.pending_stream['completed']:
+            if self.pending_stream['completed'] - self.pending_stream['dropped'] < len(self.times):
                 raise ValueError('inconsistent stream counters')
             if self.cycle == 0 and self.seconds >= 30 and self.heartbeats - self.start_heartbeats < 2:
                 raise ValueError('network service heartbeat stalled')
@@ -200,17 +223,23 @@ class Session:
                     network_heartbeats=self.heartbeats, requests=self.requests)
 
 
-def run_capture(port, output):
-    """Called only inside the existing identity-checked backup/restore harness."""
+def run_capture(port, output, *, reconnect):
+    """Capture inside the exclusive backup/restore harness.
+
+    reconnect must reopen after USB reset under the held writer lease, reclaim
+    kernel exclusion, and reject other serial owners before returning. It is
+    supplied by the transaction's protected serial class, not plain Serial.
+    """
     import esptool
+    port.timeout = .2
     port.baudrate = 115200
     port.reset_input_buffer()
     esp = esptool.detect_chip(port=port, baud=115200)
     if (esp.get_chip_description(), ':'.join(f'{v:02x}' for v in esp.read_mac())) != ('ESP32-P4 (revision v1.3)', 'e8:f6:0a:e2:e8:9c'):
         raise ValueError('device identity mismatch before reset')
     esp.watchdog_reset()
-    port.close()
-    port.open()
+    reconnect()
+    port.timeout = .2
     actor = Session()
     started = time.monotonic()
     raw, events = bytearray(), []
@@ -258,6 +287,8 @@ def replay(path, seconds=120, restarts=10):
         for line in source:
             event = json.loads(line)
             now = event['t']
+            if isinstance(now, bool) or not isinstance(now, (int, float)) or not math.isfinite(now):
+                raise ValueError('non-finite or invalid event timestamp')
             if now < previous:
                 raise ValueError('event clock reversed')
             previous = now
@@ -269,12 +300,52 @@ def replay(path, seconds=120, restarts=10):
     return actor.result()
 
 
+def sanitize(source, destination, seconds=120, restarts=10):
+    """Retain protocol evidence, replace scene hashes with equality labels."""
+    if Path(source).resolve() == Path(destination).resolve():
+        raise ValueError('sanitized output must differ from source')
+    expected = replay(source, seconds, restarts)
+    tags = ('NIHOS_DEVICE_REQUEST ', 'NIHOS_NATIVE_SESSION_READY ',
+            'NIHOS_NATIVE_SESSION_VIEW ', 'NIHOS_NATIVE_NETWORK_UI ',
+            'NIHOS_NATIVE_CAMERA_SNAPSHOT ', 'NIHOS_NATIVE_CAMERA_STREAM ',
+            'NIHOS_NATIVE_CAMERA_LIVE_DRAIN ', 'NIHOS_NATIVE_CAMERA_UI_REPAINT ')
+    labels = {}
+    with Path(source).open() as src, Path(destination).open('x') as dst:
+        for line in src:
+            event = json.loads(line)
+            original = event.get('line', '')
+            event = dict(t=event['t'])
+            if any(marker in original for marker in ('NIHOS_NATIVE_FAIL ', 'NIHOS_NATIVE_CAMERA_LIVE_FAILURE ', 'NIHOS_C6_BOOT')):
+                raise ValueError('cannot sanitize an exceptional trace')
+            if 'ESP-ROM:esp32p4' in original:
+                event['line'] = 'ESP-ROM:esp32p4'
+            else:
+                for tag in tags:
+                    if tag in original:
+                        text = original[original.index(tag):]
+                        if tag == 'NIHOS_NATIVE_CAMERA_SNAPSHOT ':
+                            match = re.search(r'sample_hash=([0-9a-f]{8})', text)
+                            key = match.group(1)
+                            label = labels.setdefault(key, len(labels) + 1)
+                            text = text[:match.start(1)] + f'{label:08x}' + text[match.end(1):]
+                        event['line'] = text
+                        break
+                if 'PSRAM reusable heap capacity=' in original:
+                    event['line'] = original[original.index('PSRAM reusable heap capacity='):]
+            dst.write(json.dumps(event, separators=(',', ':'), allow_nan=False) + '\n')
+    if replay(destination, seconds, restarts) != expected:
+        raise ValueError('sanitization changed qualification result')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('events', type=Path)
     parser.add_argument('--seconds', type=int, default=120)
     parser.add_argument('--restarts', type=int, default=10)
+    parser.add_argument('--sanitize-to', type=Path)
     args = parser.parse_args()
+    if args.sanitize_to:
+        sanitize(args.events, args.sanitize_to, args.seconds, args.restarts)
     result = replay(args.events, args.seconds, args.restarts)
     print(json.dumps(dict(soak_frames=result['cycles'][0]['frames'], cycles=len(result['cycles']),
                           snapshots=result['snapshots'], memory_samples=len(result['memory']))))
