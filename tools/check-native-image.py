@@ -209,13 +209,21 @@ XY_RENDER_FUNCTIONS = {
     'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
-    'document.isClusterBoundary', 'render_session.Session.render',
+    'document.isClusterBoundary', 'render_session.SizedSession(512).render',
+    'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
+    'catalog.Pack.font', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
+    'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
+    'Io.Writer.failingRebase', 'Io.Writer.noopFlush', 'Io.Writer.fixedDrain',
+    'xy.navigation.State.home', 'xy.navigation.State.open',
+    'xy.navigation.State.selectChapter', 'xy.navigation.State.handle',
+    'xy.navigation.State.activateHome', 'xy.navigation.State.next',
+    'xy.navigation.State.back', 'xy.navigation.State.touch',
 }
 
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun|render_session\.Session\.renderInto)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(512\)\.renderInto)__func_[0-9]+", name)
     return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
@@ -268,16 +276,16 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
     if name in sqld_profile.SECTIONS:
         require(allow_sqld and kind == 1, 'unapproved permanent sqld section')
         if name == '.flash.sqldpad':
-            require(flags == 2 and 0x40060000 < address < address + size == 0x400c0000, 'invalid sqld padding')
+            require(flags == 2 and 0x40060000 < address < address + size == 0x40400000, 'invalid sqld padding')
         else:
-            require((flags == 6 if name == '.flash.sqldtext' else flags & 7 == 2 and flags & ~50 == 0) and 0x400c0000 <= address < address + size <= 0x40180000 and address % 16 == 0, 'invalid sqld extent/permissions')
+            require((flags == 6 if name == '.flash.sqldtext' else flags & 7 == 2 and flags & ~50 == 0) and 0x40400000 <= address < address + size <= 0x404c0000 and address % 16 == 0, 'invalid sqld extent/permissions')
         return
     if name == '.flash.xypad':
         require(allow_xy and kind == 1 and flags == 2 and 0x40010020 < address < 0x40060000 and address + size == 0x40060000 and address % 4 == size % 4 == 0, 'invalid xy Flash padding')
         return
     if name in XY_SECTIONS:
         require(allow_xy and kind == 1 and (flags == 6 if name == '.flash.xytext' else flags & 7 == 2 and flags & ~50 == 0), 'invalid xy Flash profile/permissions')
-        require(0x40060000 <= address < address + size <= 0x400c0000 and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
+        require(0x40060000 <= address < address + size <= (0x400c0000 if name == '.flash.xytext' else 0x40400000) and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
         return
     if name in GRAPH_SECTIONS:
         readonly = flags & 7 == 2 and flags & ~50 == 0
@@ -1059,7 +1067,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
-        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 131072 if 'nih_xy_render' in xy_functions else 0}
+        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 262144 if 'nih_xy_render' in xy_functions else 0}
     sqld_report = None
     require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
     require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')
@@ -1068,7 +1076,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         pad_start, pad = sqld_sections['.flash.sqldpad']
         text_start, code = sqld_sections['.flash.sqldtext']
         ro_start, data = sqld_sections['.flash.sqldrodata']
-        require(pad_start == flash_start + len(xy_payload) and pad_start + len(pad) == text_start == 0x400c0000 and not any(pad), 'sqld padding differs')
+        require(pad_start == flash_start + len(xy_payload) and pad_start + len(pad) == text_start == 0x40400000 and not any(pad), 'sqld padding differs')
         require(text_start == symbols.get('__flash_sqld_start') and text_start + len(code) == symbols.get('__flash_sqld_text_end') and ro_start == symbols.get('__flash_sqld_rodata_start') and ro_start + len(data) == symbols.get('__flash_sqld_end'), 'sqld linker bounds differ')
         identity = b'NIHOS_SQLD1:' + sqld_manifest['identity'].encode() + b'\0'
         at = symbols.get('nih_sqld_identity', 0) - ro_start

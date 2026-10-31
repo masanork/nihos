@@ -413,12 +413,14 @@ pub const Family = struct {
 /// Vertical writing coordinate transformation rules in em-space.
 pub const VerticalTransform = enum {
     none,
+    sideways,
     rotate_cw_90,
     rotate_prolonged,
     shift_top_right,
     shift_small_kana,
 
     pub fn forCodepoint(cp: u21) VerticalTransform {
+        if (isSideways(cp)) return .sideways;
         return switch (cp) {
             // Brackets, leader dots, dashes -> 90 deg clockwise rotation
             '(',
@@ -484,6 +486,13 @@ pub const VerticalTransform = enum {
 
         return switch (self) {
             .none => .{ .x = x, .y = y },
+            // Rotate a horizontal cell about its top-left corner. The shared
+            // renderer uses the same 880/1024 baseline, so consecutive glyphs
+            // join at their horizontal advances instead of an em-box centre.
+            .sideways => .{
+                .x = @intCast(std.math.clamp(em - @divTrunc(em * 880, 1024) + @as(i32, y), -16384, 16383)),
+                .y = @intCast(std.math.clamp(@divTrunc(em * 880, 1024) - @as(i32, x), -16384, 16383)),
+            },
             // 90 deg clockwise in Y-up em coordinates: (dx, dy) -> (dy, -dx)
             .rotate_cw_90 => .{
                 .x = @intCast(std.math.clamp(center_x + dy, -16384, 16383)),
@@ -505,6 +514,14 @@ pub const VerticalTransform = enum {
         };
     }
 };
+
+/// Bounded Latin/ASCII support for mixed Japanese book text (UAX #50 sideways).
+/// Japanese punctuation and fullwidth forms retain their existing transforms.
+pub inline fn isSideways(cp: u21) bool {
+    return (cp >= 0x21 and cp <= 0x7e) or
+        (cp >= 0xc0 and cp <= 0xd6) or (cp >= 0xd8 and cp <= 0xf6) or
+        (cp >= 0xf8 and cp <= 0x24f) or (cp >= 0x1e00 and cp <= 0x1eff);
+}
 
 pub const CurvePoint = struct {
     x: i16,
@@ -1153,7 +1170,7 @@ pub fn TwoTierCache(
             }
 
             var b_slot = &self.bitmaps[b_victim];
-            const metrics = try rasterizeContours(
+            var metrics = try rasterizeContours(
                 face,
                 o_slot.advance_em,
                 transformed_pts[0..pt_count],
@@ -1161,6 +1178,9 @@ pub fn TwoTierCache(
                 vertical,
                 &b_slot.pixels,
             );
+            if (vertical and isSideways(base_cp)) {
+                metrics.y_advance_26_6 = -@divTrunc(@as(i32, o_slot.advance_em) * px_size * 64 + @divTrunc(@as(i32, face.units_per_em), 2), face.units_per_em);
+            }
             self.clock +%= 1;
             b_slot.valid = true;
             b_slot.stamp = self.clock;
