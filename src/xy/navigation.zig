@@ -6,7 +6,7 @@ pub const section = config.section;
 const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
-pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits };
+pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise };
 pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
 pub const State = struct {
     screen: Screen = .document,
@@ -79,6 +79,7 @@ pub const State = struct {
             return;
         }
         switch (self.screen) {
+            .examples, .exercise => {},
             .document => {},
             .home => switch (key) {
                 .up, .left => self.home_selection -|= 1,
@@ -117,6 +118,7 @@ pub const State = struct {
                         self.screen = .settings;
                     },
                     'i' => self.screen = .credits,
+                    'e' => self.screen = .examples,
                     'h' => self.home(),
                     else => {},
                 },
@@ -167,7 +169,7 @@ pub const State = struct {
             if (x < 200) self.home() else if (self.screen == .chapters) {
                 if (x < 480) self.selected_chapter -|= 8 else if (x < 760) self.selected_chapter = @min(self.chapter_count[self.book] - 1, self.selected_chapter + 8);
             } else if (self.screen == .reading) {
-                if (x < 480) self.back() else if (x < 760) self.next() else if (x < 1030) self.screen = .chapters else {
+                if (x < 480) self.back() else if (x >= 680 and x < 760) self.screen = .examples else if (x < 760) self.next() else if (x < 1030) self.screen = .chapters else {
                     self.return_screen = .reading;
                     self.screen = .settings;
                 }
@@ -200,6 +202,7 @@ pub const State = struct {
                 if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 640) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560) self.screen = self.return_screen;
             },
             .credits => self.screen = .reading,
+            .examples, .exercise => {},
             .document => self.home(),
         }
     }

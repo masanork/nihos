@@ -19,6 +19,10 @@
     NSDictionary *pack = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL] : nil;
     if ([pack isKindOfClass:[NSDictionary class]] && [pack[@"version"] isEqual:@1] && [pack[@"items"] isKindOfClass:[NSArray class]]) _library = pack[@"items"];
     else _library = @[];
+    NSString *learningPath=[[path stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"learning.pack"];
+    _learningData=[NSData dataWithContentsOfFile:learningPath];
+    if (!_learningData || !data || !xy_host_learning_bind(_learningData.bytes,(uint32_t)_learningData.length,data.bytes,(uint32_t)data.length)) _learningData=nil;
+
 }
 - (void)installHomeIn:(NSView *)root {
     [self loadLibrary];
@@ -79,11 +83,13 @@
     [root addSubview:_readingBar positioned:NSWindowBelow relativeTo:_home];
     [self homeButton:@"前へ ←" action:@selector(previousPage:) frame:NSMakeRect(22, 6, 100, 28) parent:_readingBar];
     [self homeButton:@"次へ →" action:@selector(nextPage:) frame:NSMakeRect(130, 6, 100, 28) parent:_readingBar];
-    _chapterPicker=[[NSPopUpButton alloc] initWithFrame:NSMakeRect(246, 6, 450, 28)];
+    _chapterPicker=[[NSPopUpButton alloc] initWithFrame:NSMakeRect(246, 6, 340, 28)];
     _chapterPicker.target=self; _chapterPicker.action=@selector(selectChapter:); [_readingBar addSubview:_chapterPicker];
+    [self homeButton:@"このページの例題 (e)" action:@selector(showExamples:) frame:NSMakeRect(600,6,190,28) parent:_readingBar];
     [self homeButton:@"出典・図版" action:@selector(showAttribution:) frame:NSMakeRect(w-228, 6, 206, 28) parent:_readingBar];
     _readingBar.wantsLayer=YES; _readingBar.layer.backgroundColor=[NSColor colorWithCalibratedWhite:0.96 alpha:1].CGColor;
     _readingBar.hidden=YES;
+    [self installLearningBarIn:root];
     [self syncHomeSettings];
 }
 - (void)syncHomeSettings {
@@ -106,6 +112,7 @@
 }
 - (IBAction)showHome:(id)sender {
     (void)sender;
+    if (_learning) [self backToReading:nil];
     if (_editingSource) [self editSource:nil];
     [self syncHomeSettings];
     _selectAll=NO;
@@ -127,6 +134,7 @@
     if (reading) _readingTitle.stringValue=[NSString stringWithFormat:@"%@    %@",_readingItem[@"title"],_readingItem[@"author"]];
 }
 - (void)leaveReader {
+    if (_learning) [self backToReading:nil];
     if (!_reading) return;
     xy_host_reader_leave(); [self setReadingChrome:NO]; _reading=NO; _readingBar.hidden=YES;
     _readingItem=nil; _readingText=nil; _readingRuby=nil;

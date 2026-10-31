@@ -3,6 +3,7 @@ pub const Config = @import("view_config").Config;
 pub const RubySpan = @import("document.zig").RubySpan;
 pub const Request = extern struct {
     workspace: *anyopaque,
+    learning: ?*@import("learning_session.zig").Session = null,
     navigation: ?*@import("navigation.zig").State = null,
     frame: [*]u8,
     frame_length: usize,

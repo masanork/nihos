@@ -15,6 +15,7 @@ pub var failed: u32 = 0;
 pub var published_bytes: u32 = 0;
 pub var backing_payload: u32 = 0;
 pub var backing_reserved: u32 = 0;
+extern fn nih_xy_render_learning(bytes: [*]u8) callconv(.c) *console.scratch.LearningSession;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_xy_render_bytes() callconv(.c) usize;
 extern fn nih_xy_render_init([*]u8, usize) callconv(.c) bool;
@@ -43,6 +44,7 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         @memset(allocation.bytes[workspace_bytes..][0..stack_bytes], 0xa5);
     }
     const bytes = lease.?.bytes;
+    model.learning = nih_xy_render_learning(bytes.ptr);
     const stack = bytes[workspace_bytes..][0..stack_bytes];
     const completed = bytes[workspace_bytes + stack_bytes ..][0..frame_bytes];
     var status: [384]u8 = @splat(0);
@@ -63,7 +65,7 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         text = text[offset..];
     }
     const annotated = model.mode != .help and model.mode != .system;
-    const request = protocol.Request{ .navigation = if (model.nav.screen != .document) &model.nav else null, .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
+    const request = protocol.Request{ .learning = model.learning, .navigation = if (model.nav.screen != .document) &model.nav else null, .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
     const previous = asm volatile ("csrrci %[v], mstatus, 8"
         : [v] "=r" (-> u32),
         :

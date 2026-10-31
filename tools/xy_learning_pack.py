@@ -111,3 +111,12 @@ def encode(asset, library):
 def build(root):
     asset, library = load_asset(root)
     return encode(asset, library)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('output', type=Path)
+    args = parser.parse_args()
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_bytes(build(Path(__file__).resolve().parents[1]))

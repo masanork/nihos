@@ -101,6 +101,10 @@ var g_saved_doc: HostWorkspaceType.DocType = .{};
 var g_editing_source = false;
 const reader = @import("reader.zig");
 var g_reading = false;
+const learning = @import("learning_session.zig");
+// SAFETY: xy_host_live_init initializes this owner before any learning API.
+var g_learning: learning.Session = undefined;
+var g_learning_visible = false;
 var g_reader_saved_doc: HostWorkspaceType.DocType = .{};
 var g_reader_saved_ime: ime_omni.OmniIme = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
@@ -238,6 +242,8 @@ pub export fn xy_host_live_init() callconv(.c) bool {
     g_live_ready = true;
     g_editing_source = false;
     g_reading = false;
+    g_learning.initInPlace();
+    g_learning_visible = false;
     var out: [256]u8 = undefined;
     _ = g_live.prepare(live_workspace.default_source, &out) catch return false;
     g_live_error = "";
@@ -421,7 +427,11 @@ pub export fn xy_host_render_rgb565(
         .ruby_spans = &g_ws.doc.ruby_spans,
         .ruby_count = g_ws.doc.ruby_count,
     };
-    g_render_session.renderLogical(&request, width, height, stride) catch |err| {
+    const rendering = if (g_learning_visible and width == 1280 and height == 720 and stride == 2560)
+        @import("learning_view.zig").render(&g_render_session, &request, &g_learning, false, true)
+    else
+        g_render_session.renderLogical(&request, width, height, stride);
+    rendering catch |err| {
         g_render_error = @errorName(err);
         return -2;
     };
@@ -464,6 +474,7 @@ pub export fn xy_host_reader_enter() callconv(.c) bool {
     return true;
 }
 pub export fn xy_host_reader_leave() callconv(.c) void {
+    g_learning_visible = false;
     if (!g_reading) return;
     g_ws.doc = g_reader_saved_doc;
     g_ws.ime = g_reader_saved_ime;
@@ -472,7 +483,7 @@ pub export fn xy_host_reader_leave() callconv(.c) void {
 /// Candidate is bounded by the caller. Return exact consumed UTF-8 bytes.
 /// Validate and fit before replacing the current page; failure leaves it intact.
 pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]const u8, reading_len: u32, spans: [*]const reader.RubySpan, span_count: u32) callconv(.c) i32 {
-    if (!g_reading or len == 0) return -1;
+    if (!g_reading or g_learning_visible or len == 0) return -1;
     const body = text[0..len];
     const ruby_text = readings[0..reading_len];
     const annotations = spans[0..span_count];
@@ -534,4 +545,101 @@ pub export fn xy_host_document_load(text: [*]const u8, len: u32) callconv(.c) bo
     g_ws.ime = .{ .mode = g_ws.ime.mode, .custom_prefixes = g_ws.ime.custom_prefixes };
     g_ws.layout_dirty = true;
     return true;
+}
+
+// Learning operations never swap or edit the reader/editor Document.
+pub export fn xy_host_learning_bind(data: [*]const u8, len: u32, library: [*]const u8, library_len: u32) callconv(.c) bool {
+    if (!g_live_ready) return false;
+    const pack = learning.catalog.Pack.init(data[0..len]) catch return false;
+    var digest: [32]u8 = undefined;
+    @import("std").crypto.hash.sha2.Sha256.hash(library[0..library_len], &digest, .{});
+    if (!pack.matchesLibrary(&digest)) return false;
+    g_learning.bind(data[0..len]) catch return false;
+    return true;
+}
+pub export fn xy_host_learning_page(section: u32, start: u32, end: u32) callconv(.c) i32 {
+    if (!g_reading or g_learning_visible) return -1;
+    g_learning.setPage(section, start, end) catch return -1;
+    return @intCast(g_learning.count() catch return -1);
+}
+fn learningCopy(text: []const u8, out: [*]u8, cap: u32) i32 {
+    if (text.len > cap) return -1;
+    @memcpy(out[0..text.len], text);
+    return @intCast(text.len);
+}
+pub export fn xy_host_learning_choice(ordinal: u32, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const choice = (g_learning.choice(ordinal) catch return -1) orelse return -1;
+    return learningCopy(choice.code, out, cap);
+}
+pub export fn xy_host_learning_open(ordinal: u32) callconv(.c) bool {
+    if (!g_reading or !g_render_ready or g_learning_visible) return false;
+    g_learning.open(ordinal) catch return false;
+    g_learning_visible = true;
+    return true;
+}
+pub export fn xy_host_learning_leave() callconv(.c) void {
+    g_learning_visible = false;
+}
+pub export fn xy_host_learning_insert(text: [*]const u8, len: u32, replace: bool) callconv(.c) bool {
+    if (!g_learning_visible) return false;
+    if (replace) g_learning.replace(text[0..len]) catch |err| {
+        g_learning.notice(err);
+        return false;
+    } else g_learning.insert(text[0..len]) catch |err| {
+        g_learning.notice(err);
+        return false;
+    };
+    return true;
+}
+pub export fn xy_host_learning_key(key: u8) callconv(.c) void {
+    if (!g_learning_visible) return;
+    const event: learning.navigation.Key = switch (key) {
+        13, 10 => .enter,
+        8, 127 => .backspace,
+        4 => .eof,
+        12 => .clear,
+        26 => .undo,
+        128 => .up,
+        129 => .down,
+        130 => .left,
+        131 => .right,
+        else => .{ .text = key },
+    };
+    var nav = learning.navigation.State{ .screen = .exercise };
+    g_learning.handle(&nav, event);
+}
+pub export fn xy_host_learning_action(action: u32) callconv(.c) i32 {
+    if (!g_learning_visible) return -1;
+    g_learning.message_len = 0;
+    switch (action) {
+        0 => g_learning.run() catch |err| {
+            g_learning.notice(err);
+            return -1;
+        },
+        1 => g_learning.resetVm(),
+        2 => g_learning.restore() catch return -1,
+        3 => g_learning.editing_notes = !g_learning.editing_notes,
+        4 => {
+            _ = g_learning.doc().?.undo() catch return -1;
+        },
+        else => return -1,
+    }
+    const s = g_learning.slot() orelse return -1;
+    return if (action == 0 and s.failed) -1 else 0;
+}
+pub export fn xy_host_learning_copy(field: u32, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const s = g_learning.slot() orelse return -1;
+    const snippet = g_learning.pack.snippet(s.snippet) catch return -1;
+    const text = switch (field) {
+        0 => s.code.slice(),
+        1 => s.notes.slice(),
+        2 => s.result[0..s.result_len],
+        3 => snippet.id,
+        4 => g_learning.message[0..g_learning.message_len],
+        5 => snippet.reference_output,
+        else => return -1,
+    };
+    return learningCopy(text, out, cap);
 }
