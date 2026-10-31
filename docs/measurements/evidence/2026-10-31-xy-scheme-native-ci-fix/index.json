@@ -1,0 +1,50 @@
+{
+  "failed_head": "03ef7fca271d37dc4f60e1d5b7719c9ace85b025",
+  "code_commit": "d6434f1490bbfb668c1459adea8c81346762ce8f",
+  "failed_job": "https://github.com/masanork/nihos/actions/runs/41189726351/job/124504131098",
+  "source_sha256": {
+    "src/graphics/animated_plot.zig": "522351e14d3a237a61b2330e6e9510ec03b39bb0cd97364d318a1d289550763c",
+    "src/platform/native/esp32p4.ld": "96dadaacd1a6fe6bf8d0a313183d0e851f50e9c20da1053eae3c86238812d598",
+    "src/xy/scheme_runtime.zig": "e3cb98971e29b2f3655384a2356cb07f189258a85967c95cb25989b84160caf7",
+    "tools/check-native-image.py": "e920196c1ea300a4b058e13d0f6432bdb6175003f214d1f892a97acf65acb169",
+    "tools/check-xy-animation.sh": "a33ab9f15f31f0c94030ab63cac90f92c9471d562b10e7a5973aade7e19f4401",
+    "tools/native_image_test.py": "dbd7df5288f07bb23cec1480ebcc684692d0a502498100aa7cfceb01ab5db440"
+  },
+  "failed_default_reproduced": true,
+  "heap_floor_unchanged_bytes": 49152,
+  "default_heap_bytes": 49472,
+  "default_plot_table": {
+    "symbol": "xy.plot_config.sine",
+    "start": "0x4033dce8",
+    "bytes": 512,
+    "readonly_flash": true,
+    "sram_copy": false
+  },
+  "default_elf_sha256": "fe5a995a03c1a43d06104e4d4a1b30408767fcf4e77d779ec14ffd5f1234d86f",
+  "default_bin_sha256": "eb4bd88f8437ff83b40588a6b050b69ce23f3b2ba6b7dce3a9b9869692bf71cf",
+  "driver_disabled_build_and_audit": true,
+  "normal_fs_check": true,
+  "native_audit_unit_tests": 42,
+  "static_and_six_native_elf_audits": true,
+  "clock_and_live_vm_tests": true,
+  "both_rv32_probes_check_named_readonly_table": true,
+  "headless_pixels_and_scheme_recovery": true,
+  "previous_scheme_pngs_and_result_unchanged": true,
+  "diagnostic_reassembled_map_heap_bytes": 48960,
+  "diagnostic_map_is_product_elf": false,
+  "physical_device_written": false,
+  "evidence_sha256": {
+    "animation.log": "376fd7caa3286ca0fe31bbde1f2f18b935b560237ef2675378e216443cb193bb",
+    "ci-failure.txt": "31789f9908b5ac8294e75d2d91da64a5b3bd29617eb284c8607aeeb0f48d82ce",
+    "default-after.log": "bb7949e9bcdcee6fc8733e8c2dbc263b638202b88a63f3daeaea47c06eb6076e",
+    "default-audit.json": "01376a757f56052bedda480fdec9a88e44bef5c4663a514e5d2a61373664ddea",
+    "default-before.log": "a2e8f156c6efc476b9b83753b5f5de5cfd3daf982cebb00d11cced68c99d4ddf",
+    "drivers-disabled-audit.json": "40c928f853dbda74242de745e584db0b97dd97b80c30619396fe63feb6312a95",
+    "drivers-disabled.log": "5dbee9dc08b5f3e2339b8fbd449b99afbe390fc42478286f7a2e35f839e7c70a",
+    "gpui-build.log": "77971005b53e03606cf2d09cba9dbe342ba711816de22d4951d4b085e5cefe5c",
+    "gpui-headless.log": "4dec7d227c8c416366dee891600163d0ea611053ebcb73d1211df8bf9af2e2f6",
+    "headless-result.json": "f99a5f4447018af271ee4f8569670301ba31354e6a65bba9d564ea2b380d463f",
+    "normal-fs-check.log": "95a14413bb0a35283a6ad9b428e04240ceaad793e1a4c200e036d625bf277594",
+    "static-analysis.log": "7d790be24c5c1a97003fc5e49a2db0e61884e41ca59969c7488bf348b01bd09b"
+  }
+}
