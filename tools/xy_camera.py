@@ -49,8 +49,10 @@ def capture(port, output):
         def line(deadline):
             nonlocal pending, state, ready
             while b'\n' not in pending:
-                if time.monotonic() - started > 360 or time.monotonic() > deadline:
-                    raise TimeoutError('bounded XY capture exceeded six minutes')
+                if time.monotonic() - started > 360:
+                    raise TimeoutError('overall XY capture exceeded six minutes')
+                if time.monotonic() > deadline:
+                    raise TimeoutError('bounded XY phase deadline expired')
                 data = port.read(max(1, port.in_waiting))
                 pending.extend(data); log.write(data); log.flush()
             value, _, pending = pending.partition(b'\n')
