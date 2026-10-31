@@ -15,6 +15,15 @@ pub const render_adapter = @import("render_adapter.zig");
 pub const scheme_bridge = render_adapter.scheme_bridge;
 pub const ime_omni = scheme_bridge.ime_omni;
 pub const ttf = viewport_layout.ttf;
+const native_session = @import("render_session.zig");
+const view_config = @import("view_config");
+const rom_mincho: []const u8 = @embedFile("fonts/mincho.ttf");
+const rom_gothic: []const u8 = @embedFile("fonts/gothic.ttf");
+// SAFETY: render APIs check readiness; init writes the whole owner-held cache.
+var g_render_session: native_session.Session = undefined;
+var g_render_ready = false;
+var g_host_status: [256]u8 = @splat(0);
+var g_host_status_len: usize = 0;
 pub const pixel_transfer = @import("pixel_transfer");
 
 pub const PlacedGlyph = viewport_layout.PlacedGlyph;
@@ -129,7 +138,8 @@ pub export fn xy_host_init(
     gothic_descs: ?[*]const CSliceReaderDesc,
     gothic_count: u32,
 ) callconv(.c) bool {
-    if (mincho_count == 0 or mincho_count > 4 or gothic_count > 4) return false;
+    if (mincho_count > 4 or gothic_count > 4) return false;
+    g_render_ready = false;
     if (!xy_host_live_init()) return false;
     g_cache = .{};
     g_mincho_count = 0;
@@ -164,6 +174,24 @@ pub export fn xy_host_init(
         .queryFn = bridgeOmniQuery,
         .learnFn = null,
     };
+    g_render_session.init(ttf.SliceReader.fromSlice(&rom_mincho), ttf.SliceReader.fromSlice(&rom_gothic)) catch return false;
+    g_render_ready = true;
+    if (mincho_count == 0) {
+        g_mincho_faces[1] = ttf.Face.init(ttf.SliceReader.fromSlice(&rom_mincho)) catch return false;
+        g_mincho_count = 2;
+    }
+    if (gothic_count == 0) {
+        g_gothic_faces[0] = code_face;
+        g_gothic_faces[1] = ttf.Face.init(ttf.SliceReader.fromSlice(&rom_gothic)) catch return false;
+        g_gothic_count = 2;
+    }
+    return true;
+}
+
+pub export fn xy_host_set_status(text: [*]const u8, length: u32) callconv(.c) bool {
+    if (length > g_host_status.len or !@import("std").unicode.utf8ValidateSlice(text[0..length])) return false;
+    @memcpy(g_host_status[0..length], text[0..length]);
+    g_host_status_len = length;
     return true;
 }
 
@@ -364,41 +392,29 @@ pub export fn xy_host_render_rgb565(
     stride: u32,
     theme_id: u8,
 ) callconv(.c) i32 {
+    if (!g_render_ready) return -1;
     const total_bytes = @as(usize, stride) * @as(usize, height);
-    const surf = surface.Surface.init(fb_ptr[0..total_bytes], width, height, stride) orelse return -1;
-    const fam = activeFamily();
-    const placed = g_ws.renderDisplayList(
-        256,
-        4096,
-        1024,
-        HostCacheType,
-        &g_cache,
-        fam,
-        &g_glyf_scratch,
-        &g_placed_buf,
-    ) catch |err| {
+    const config = view_config.Config{ .style = g_ws.style, .appearance = effectiveAppearance(theme_id) };
+    g_mb_view = g_ws.ime.formatMinibuffer();
+    const status = if (g_host_status_len > 0) g_host_status[0..g_host_status_len] else if (g_mb_view.line().len > 0) g_mb_view.line() else "xy / *scratch*";
+    const request = native_session.protocol.Request{
+        .workspace = &g_render_session,
+        .frame = fb_ptr,
+        .frame_length = total_bytes,
+        .config = &config,
+        .text = g_ws.doc.slice().ptr,
+        .text_length = g_ws.doc.len,
+        .cursor = g_ws.doc.cursor,
+        .status = status.ptr,
+        .status_length = status.len,
+        .show_cursor = 1,
+    };
+    g_render_session.renderLogical(&request, width, height, stride) catch |err| {
         g_render_error = @errorName(err);
         return -2;
     };
-
-    const theme = ThemePalette.fromAppearance(effectiveAppearance(theme_id));
-    const stats = render_adapter.paintSurfaceRgb565(
-        HostCacheType,
-        surf,
-        &g_cache,
-        fam,
-        g_ws.style,
-        theme,
-        placed,
-        g_ws.doc.cursor,
-        g_ws.appearance.linear_blend,
-        &g_glyf_scratch,
-    ) catch |err| {
-        g_render_error = @errorName(err);
-        return -3;
-    };
     g_render_error = "";
-    return @intCast(stats.glyphs_blitted);
+    return @intCast(g_render_session.glyphs);
 }
 
 /// Present the canonical Target A framebuffer as opaque RGBA. GPUI or another
@@ -424,34 +440,4 @@ pub export fn xy_host_render_rgba8(
         return -4;
     };
     return count;
-}
-
-fn blendRgbaGlyph(rgba_ptr: [*]u8, width: u32, height: u32, stride: u32, glyph: PlacedGlyph, alpha: []const u8, color: u32, linear: bool) void {
-    const gw: i32 = glyph.bitmap_width;
-    const gh: i32 = glyph.bitmap_height;
-    if (gw <= 0 or gh <= 0) return;
-
-    const fg_r: u16 = @intCast((color >> 24) & 0xff);
-    const fg_g: u16 = @intCast((color >> 16) & 0xff);
-    const fg_b: u16 = @intCast((color >> 8) & 0xff);
-    const alpha_slice = alpha;
-
-    var sy: i32 = 0;
-    while (sy < gh) : (sy += 1) {
-        const dy = glyph.bitmap_y_px + sy;
-        if (dy < 0 or dy >= @as(i32, @intCast(height))) continue;
-        var sx: i32 = 0;
-        while (sx < gw) : (sx += 1) {
-            const dx = glyph.bitmap_x_px + sx;
-            if (dx < 0 or dx >= @as(i32, @intCast(width))) continue;
-            const a: u16 = alpha_slice[@as(usize, @intCast(sy)) * @as(usize, @intCast(gw)) + @as(usize, @intCast(sx))];
-            if (a == 0) continue;
-            const off = @as(usize, @intCast(dy)) * stride + @as(usize, @intCast(dx)) * 4;
-            const inv: u16 = 255 - a;
-            rgba_ptr[off + 0] = if (linear) surface.blendChannelLinear8(rgba_ptr[off + 0], @intCast(fg_r), @intCast(a)) else @intCast((fg_r * a + @as(u16, rgba_ptr[off + 0]) * inv) / 255);
-            rgba_ptr[off + 1] = if (linear) surface.blendChannelLinear8(rgba_ptr[off + 1], @intCast(fg_g), @intCast(a)) else @intCast((fg_g * a + @as(u16, rgba_ptr[off + 1]) * inv) / 255);
-            rgba_ptr[off + 2] = if (linear) surface.blendChannelLinear8(rgba_ptr[off + 2], @intCast(fg_b), @intCast(a)) else @intCast((fg_b * a + @as(u16, rgba_ptr[off + 2]) * inv) / 255);
-            rgba_ptr[off + 3] = 255;
-        }
-    }
 }

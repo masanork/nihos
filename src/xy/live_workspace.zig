@@ -61,6 +61,9 @@ pub fn Session(comptime Workspace: type) type {
         pub fn run(self: *Self, ws: *Workspace, source: []const u8, named: bool, output: []u8) scheme.Error![]const u8 {
             // A pending commit must not be invalidated by interactive evaluation.
             if (self.prepared) return error.Busy;
+            if (comptime @hasField(Workspace, "appearance")) {
+                self.active.view = .{ .style = ws.style, .appearance = ws.appearance };
+            }
             self.candidate = self.active;
             self.backup_doc = ws.doc;
             const old_dirty = ws.layout_dirty;
@@ -72,6 +75,10 @@ pub fn Session(comptime Workspace: type) type {
                 ws.layout_dirty = old_dirty;
                 return err;
             };
+            if (comptime @hasField(Workspace, "appearance")) {
+                ws.style = self.active.view.style;
+                ws.appearance = self.active.view.appearance;
+            }
             ws.doc.endUndoGroup();
             ws.layout_dirty = true;
             return result;

@@ -6,9 +6,10 @@ zig_bin=${ZIG:-$(tools/bootstrap-zig.sh)}
 out="$repo_root/build/xy-mac"
 mkdir -p "$out"
 "$zig_bin" build-lib -dynamic -O ReleaseSafe -fPIC -install_name @rpath/libxy_host.dylib -femit-bin="$out/libxy_host.dylib" \
-    --dep view_config --dep surface --dep viewport_layout --dep pixel_transfer -Mroot=src/xy/c_abi_host.zig \
+    --dep view_config --dep surface --dep viewport_layout --dep pixel_transfer --dep rotated_surface -Mroot=src/xy/c_abi_host.zig \
     -Msurface=src/graphics/surface.zig --dep view_config -Mviewport_layout=src/graphics/viewport_layout.zig \
-    -Mview_config=src/xy/view_config.zig -Mpixel_transfer=src/graphics/pixel_transfer.zig
+    -Mview_config=src/xy/view_config.zig -Mpixel_transfer=src/graphics/pixel_transfer.zig \
+    --dep surface -Mrotated_surface=src/graphics/rotated_surface.zig
 clang -std=c11 -Wall -Wextra -Werror -dynamiclib -I include \
     tools/xy_workspace_sqlite.c -lsqlite3 \
     -Wl,-install_name,@rpath/libxy_workspace.dylib -o "$out/libxy_workspace.dylib"

@@ -3,39 +3,54 @@ const std = @import("std");
 const layout = @import("viewport_layout");
 const adapter = @import("render_adapter.zig");
 const rotated = @import("rotated_surface");
-const protocol = @import("render_protocol.zig");
+pub const protocol = @import("render_protocol.zig");
 const document = @import("document.zig");
 pub const Cache = layout.ttf.TwoTierCache(24, 1024, 48, 128 * 128);
 pub const Session = struct {
     cache: Cache,
-    faces: [2]layout.ttf.Face,
+    faces: [3]layout.ttf.Face,
     scratch: [32768]u8,
     placed: [256]layout.PlacedGlyph,
     status_placed: [128]layout.PlacedGlyph,
     frames: u32,
+    glyphs: u32,
 
     pub fn init(self: *Session, mincho: layout.ttf.SliceReader, gothic: layout.ttf.SliceReader) !void {
         // Cache payload is inaccessible until a slot's valid bit is set.
         @memset(std.mem.asBytes(self), 0);
-        self.faces[0] = try layout.ttf.Face.init(mincho);
-        self.faces[1] = try layout.ttf.Face.init(gothic);
+        self.faces[0] = try layout.code_font.face();
+        self.faces[1] = try layout.ttf.Face.init(mincho);
+        self.faces[2] = try layout.ttf.Face.init(gothic);
     }
     pub fn render(self: *Session, request: *const protocol.Request) !void {
         const physical = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
         const target = rotated.Rotated.init(physical);
+        try self.renderInto(request, target);
+    }
+    pub fn renderLogical(self: *Session, request: *const protocol.Request, width: u32, height: u32, stride: u32) !void {
+        const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], width, height, stride) orelse return error.Geometry;
+        try self.renderInto(request, target);
+    }
+    fn renderInto(self: *Session, request: *const protocol.Request, target: anytype) !void {
+        const screen_width: u16 = @intCast(target.width);
+        const screen_height: u16 = @intCast(target.height);
         const config = request.config.*;
         var style = config.style;
-        style.viewport_width_px = 1280;
+        style.viewport_width_px = screen_width;
         const status_height = @as(u16, style.body_px) + 2 * @as(u16, config.appearance.status_padding);
-        style.viewport_height_px = 720 - status_height;
-        const family = layout.ttf.Family{ .faces = self.faces[style.style_id..][0..1] };
+        if (status_height >= screen_height) return error.Geometry;
+        style.viewport_height_px = screen_height - status_height;
+        if (@as(u32, style.margin_x_px) * 2 + style.body_px >= screen_width or
+            @as(u32, style.margin_y_px) * 2 + style.body_px >= style.viewport_height_px) return error.ViewportTooSmall;
+        const family_faces = [_]layout.ttf.Face{ self.faces[0], self.faces[@as(usize, style.style_id) + 1] };
+        const family = layout.ttf.Family{ .faces = &family_faces };
         const text = request.text[0..request.text_length];
         if (text.len > 4096) return error.Capacity;
         if (!std.unicode.utf8ValidateSlice(text) or request.cursor > text.len or !document.isClusterBoundary(text, request.cursor)) return error.InvalidUtf8;
         // Size the bounded window to the current typography, then halve it if
         // paragraph breaks consume more lines than the conservative cell budget.
-        const inline_px: usize = if (style.axis == 0) 1280 - 2 * @as(usize, style.margin_x_px) else @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px);
-        const cross_px: usize = if (style.axis == 0) @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px) else 1280 - 2 * @as(usize, style.margin_x_px);
+        const inline_px: usize = if (style.axis == 0) @as(usize, screen_width) - 2 * @as(usize, style.margin_x_px) else @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px);
+        const cross_px: usize = if (style.axis == 0) @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px) else @as(usize, screen_width) - 2 * @as(usize, style.margin_x_px);
         const cells = @max(1, inline_px / style.body_px);
         const lines = @max(1, cross_px / (@as(usize, style.body_px) + style.ruby_px + style.line_gap_px));
         const budget: usize = @min(240, cells * lines);
@@ -86,15 +101,16 @@ pub const Session = struct {
             g.bitmap_y_px += dy;
         }
         const theme = adapter.ThemePalette.fromAppearance(config.appearance);
-        _ = try adapter.paintSurfaceRgb565(Cache, target, &self.cache, family, style, theme, list, if (request.show_cursor != 0) cursor else null, config.appearance.linear_blend, &self.scratch);
-        _ = target.fillRect(0, 720 - status_height, 1280, status_height, theme.minibuf_bg_rgb565);
+        const stats = try adapter.paintSurfaceRgb565(Cache, target, &self.cache, family, style, theme, list, if (request.show_cursor != 0) cursor else null, config.appearance.linear_blend, &self.scratch);
+        self.glyphs = @intCast(stats.glyphs_blitted);
+        _ = target.fillRect(0, screen_height - status_height, screen_width, status_height, theme.minibuf_bg_rgb565);
         // Use the same TrueType shaper for the command/result line.
         var status_style = style;
         status_style.axis = 0;
         status_style.ruby_px = 0;
         status_style.margin_x_px = config.appearance.status_padding;
         status_style.margin_y_px = config.appearance.status_padding;
-        status_style.viewport_height_px = 720;
+        status_style.viewport_height_px = screen_height;
         const full_line = request.status[0..request.status_length];
         var line_end: usize = 0;
         var line_count: usize = 0;
@@ -105,7 +121,7 @@ pub const Session = struct {
             if (g.cell_y_px > status_style.margin_y_px) break;
             const glyph = try self.cache.getOrRender(family, @intCast(g.style_id), @intCast(g.base_cp), @intCast(g.ivs_cp), g.px_size, false, &self.scratch);
             const mask = adapter.surface.Mask{ .bytes = glyph.alpha, .width = glyph.metrics.width, .height = glyph.metrics.height, .stride = glyph.metrics.width };
-            const y = g.bitmap_y_px + 720 - @as(i32, status_height);
+            const y = g.bitmap_y_px + @as(i32, screen_height) - @as(i32, status_height);
             _ = if (config.appearance.linear_blend) target.blitLinear(mask, g.bitmap_x_px, y, theme.minibuf_fg_rgb565) else target.blit(mask, g.bitmap_x_px, y, theme.minibuf_fg_rgb565);
         }
         self.frames +%= 1;

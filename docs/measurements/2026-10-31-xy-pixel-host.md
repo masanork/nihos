@@ -109,3 +109,23 @@ Zig **67/67 build steps成功**、変更した8 Zigファイルのlint
 
 参照元：[Adobe Source Code Pro](https://github.com/adobe-fonts/source-code-pro)、
 [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui)。
+
+
+## Native integration follow-up
+
+The main-landing integration uses PR #87's native render session and its view
+contract. Both Mac and Tab5 now enter that same session; desktop logical rows
+and the native rotated scanout are compared after orientation normalization.
+A 10,184-byte ASCII recovery subset replaces the full font as the runtime
+input on both targets. Every printable ASCII glyph is checked against the
+pinned original at 8/25/64/96 px, horizontally and vertically. The original
+full TTF remains a test/provenance input. Native recovery Japanese faces are
+also used for the desktop device-compatible canvas, so that external full
+Bunsen packs do not silently change its fallback coverage.
+
+Earlier evidence in this file names the earlier independent Mac commit;
+final-head and physical evidence is recorded separately in the native landing
+report. The earlier 512-glyph full-document limit is replaced by the shared
+bounded viewport that follows the cursor. Native persistence remains outside
+this rendering landing: Mac workspace SQLite is writable, native normal
+storage remains read-only.
