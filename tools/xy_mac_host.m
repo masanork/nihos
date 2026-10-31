@@ -16,6 +16,7 @@
 #include <sqlite3.h>
 #include "nihos_xy_storage.h"
 #include "nihos_xy_workspace.h"
+#include "nihos_xy_learning.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -286,6 +287,7 @@ typedef struct { uint32_t base_start, base_end, ruby_start, ruby_end; } XyReader
 extern bool xy_host_reader_enter(void);
 extern bool xy_host_document_load(const uint8_t *, uint32_t);
 extern void xy_host_reader_leave(void);
+extern bool xy_host_reader_context(uint32_t, uint32_t, uint32_t);
 extern int32_t xy_host_reader_load(const uint8_t *, uint32_t, const uint8_t *, uint32_t, const XyReaderRuby *, uint32_t);
 
 // ============================================================================
@@ -520,6 +522,9 @@ static void eval_sexp_checked(const char *sexp) {
     NSSegmentedControl *_directionPicker;
     NSPopUpButton *_sizePicker, *_familyPicker, *_themePicker, *_chapterPicker;
     BOOL _reading, _documentDirty;
+    BOOL _learning;
+    NSData *_learningData;
+    NSView *_learningBar;
     NSURL *_documentURL;
     NSDictionary *_readingItem;
     NSData *_readingText;
@@ -564,11 +569,21 @@ static void eval_sexp_checked(const char *sexp) {
 - (IBAction)selectChapter:(id)sender;
 - (IBAction)showAttribution:(id)sender;
 - (void)showReadingFigures;
+- (IBAction)showExamples:(id)sender;
+- (IBAction)backToReading:(id)sender;
+- (IBAction)runLearning:(id)sender;
+- (IBAction)resetLearning:(id)sender;
+- (IBAction)restoreLearning:(id)sender;
+- (IBAction)toggleLearningNotes:(id)sender;
+- (void)installLearningBarIn:(NSView *)root;
+- (BOOL)openLearningOrdinal:(uint32_t)ordinal;
+
 
 @end
 
 @implementation XyCanvasView
 #include "xy_home.inc"
+#include "xy_learning.inc"
 
 - (instancetype)initWithFrame:(NSRect)frameRect width:(uint32_t)w height:(uint32_t)h {
     self = [super initWithFrame:frameRect];
@@ -842,6 +857,12 @@ static void eval_sexp_checked(const char *sexp) {
     [self workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:!ok];
 }
 - (void)insertRawText:(NSString *)text {
+    if (_learning) {
+        NSData *bytes=[text dataUsingEncoding:NSUTF8StringEncoding];
+        if (bytes && xy_host_learning_insert(bytes.bytes,(uint32_t)bytes.length,_selectAll)) _selectAll=NO;
+        [self setNeedsDisplay:YES]; return;
+    }
+
     if (_reading || !_home.hidden) return;
     NSData *bytes = [text dataUsingEncoding:NSUTF8StringEncoding];
     bool ok = bytes && (_selectAll ? xy_host_buffer_replace([bytes bytes], (uint32_t)[bytes length]) : xy_host_insert_text([bytes bytes], (uint32_t)[bytes length]));
@@ -858,6 +879,16 @@ static void eval_sexp_checked(const char *sexp) {
         NSString *chars = [event charactersIgnoringModifiers];
         if ([chars length] > 0) {
             unichar c = [chars characterAtIndex:0];
+            if (_learning) {
+                if (c=='r' || c=='R' || c=='l' || c=='L') { [self runLearning:nil]; return YES; }
+                if (c=='a' || c=='A') { _selectAll=YES; return YES; }
+                if (c=='z' || c=='Z') { (void)xy_host_learning_action(4); [self setNeedsDisplay:YES]; return YES; }
+                if (c=='v' || c=='V') {
+                    NSString *text=[[NSPasteboard generalPasteboard] stringForType:NSPasteboardTypeString];
+                    if (text) [self insertRawText:text]; return YES;
+                }
+            }
+
             if (c == 'q' || c == 'Q') { [NSApp terminate:nil]; return YES; }
             if (c == '0') { [self showHome:nil]; return YES; }
             if (c == 'n' || c == 'N') { [self newDocument:nil]; return YES; }
@@ -887,8 +918,22 @@ static void eval_sexp_checked(const char *sexp) {
 
 - (void)keyDown:(NSEvent *)event {
     unsigned short keyCode = [event keyCode];
+    if (_learning) {
+        if (keyCode==53) { [self backToReading:nil]; return; }
+        if (keyCode>=123 && keyCode<=126) {
+            xy_host_learning_key(keyCode==123 ? 130 : keyCode==124 ? 131 : keyCode==125 ? 129 : 128);
+        } else {
+            NSString *text=event.characters;
+            if ([text isEqualToString:@"\x7f"]) {
+                if (_selectAll) [self insertRawText:@""]; else xy_host_learning_key(8);
+            } else if (text.length) [self insertRawText:[text isEqualToString:@"\r"] ? @"\n" : text];
+        }
+        [self setNeedsDisplay:YES]; return;
+    }
+
     if (!_home.hidden) return;
     if (_reading) {
+        if ([[event charactersIgnoringModifiers] isEqualToString:@"e"]) { [self showExamples:nil]; return; }
         if (keyCode==53) { [self showHome:nil]; return; }
         if (keyCode==123 || keyCode==126 || keyCode==116) [self previousPage:nil];
         if (keyCode==124 || keyCode==125 || keyCode==121 || keyCode==49) [self nextPage:nil];

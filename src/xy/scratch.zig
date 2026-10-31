@@ -33,11 +33,13 @@ const status_4 linksection(scheme.data_section) = "Command too long; cancel or e
 
 const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
 
+pub const LearningSession = @import("learning_session.zig").Session;
 pub const Model = struct {
     camera: camera.Client,
     storage_client: scheme.storage.Client,
     doc: Doc,
     nav: navigation.State,
+    learning: ?*@import("learning_session.zig").Session,
     vm: scheme.Runtime,
     reply: [128]u8,
     reply_length: usize,
@@ -120,6 +122,11 @@ pub const Model = struct {
         }
     }
     pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
+        if (self.nav.screen == .exercise) {
+            if (self.learning) |l| l.insert(text) catch |err| l.notice(err);
+            self.changed();
+            return;
+        }
         if (self.mode == .system or self.nav.screen != .document) {
             self.status = .read_only;
             self.changed();
@@ -145,7 +152,9 @@ pub const Model = struct {
             const nav_key: navigation.Key = switch (key) {
                 inline else => |value, tag| @unionInit(navigation.Key, @tagName(tag), value),
             };
-            self.nav.handle(nav_key, &self.vm.view);
+            if (self.nav.screen == .examples or self.nav.screen == .exercise) {
+                if (self.learning) |l| l.handle(&self.nav, nav_key) else self.nav.screen = .reading;
+            } else self.nav.handle(nav_key, &self.vm.view);
             return;
         }
         if (key == .cancel and self.mode == .edit) {
@@ -230,6 +239,12 @@ pub const Model = struct {
         }
         @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
         self.command_length += bytes.len;
+    }
+    pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.nav.screen == .examples or self.nav.screen == .exercise) {
+            if (self.learning) |l| l.touch(&self.nav, x, y);
+        } else self.nav.touch(x, y, &self.vm.view);
+        self.changed();
     }
     pub fn resetScheme(self: *Model) linksection(scheme.code_section) void {
         self.vm.initInPlace();
@@ -699,6 +714,41 @@ test "camera handle reads are bounded copies and do not edit the document" {
     Fake.state = .failed;
     try std.testing.expectError(error.CameraFailed, model.vm.evaluate("(camera/read 7 0 1)", &model, &output));
     try std.testing.expectEqualStrings("notes", model.doc.slice());
+}
+
+test "learning input owns separate draft and notes without changing editor undo or settings" {
+    const l = try std.testing.allocator.create(LearningSession);
+    defer std.testing.allocator.destroy(l);
+    l.initInPlace();
+    l.active_slot = 0;
+    l.slots[0].used = true;
+    l.slots[0].code.revision = 1;
+    l.slots[0].code.next_group_id = 1;
+    l.slots[0].notes.revision = 1;
+    l.slots[0].notes.next_group_id = 1;
+    var model: Model = undefined;
+    model.initInPlace();
+    model.learning = l;
+    model.insert("ordinary document");
+    model.vm.view.style.axis = 1;
+    model.nav.screen = .exercise;
+    model.handle(.{ .text = 'A' });
+    model.handle(.enter);
+    for ("日本語") |b| model.feedSerial(b, 0);
+    try std.testing.expectEqualStrings("A\n日本語", l.slots[0].code.slice());
+    model.handle(.backspace);
+    try std.testing.expectEqualStrings("A\n日本", l.slots[0].code.slice());
+    model.handle(.undo);
+    try std.testing.expectEqualStrings("A\n日本語", l.slots[0].code.slice());
+    model.touch(1100, 680);
+    for ("メモ") |b| model.feedSerial(b, 0);
+    try std.testing.expectEqualStrings("メモ", l.slots[0].notes.slice());
+    model.handle(.escape);
+    try std.testing.expectEqual(navigation.Screen.reading, model.nav.screen);
+    try std.testing.expectEqual(@as(u8, 1), model.vm.view.style.axis);
+    try std.testing.expectEqualStrings("ordinary document", model.doc.slice());
+    try std.testing.expect(try model.doc.undo());
+    try std.testing.expectEqualStrings("", model.doc.slice());
 }
 
 // A provider may pump native UI while an evaluation awaits SD completion.

@@ -27,6 +27,17 @@ pub fn closeBoundary(end: usize, spans: []const RubySpan) usize {
     return result;
 }
 
+/// Keep a bounded English page from ending halfway through a word; long words still make progress.
+pub inline fn closeWord(text: []const u8, end: usize) usize {
+    if (end == 0 or end >= text.len) return end;
+    const before = text[end - 1];
+    const after = text[end];
+    if (!(std.ascii.isAlphanumeric(before) and std.ascii.isAlphanumeric(after))) return end;
+    var at = end;
+    while (at > 0 and (std.ascii.isAlphanumeric(text[at - 1]) or text[at - 1] == '_' or text[at - 1] == '\'')) at -= 1;
+    return if (at == 0) end else at;
+}
+
 /// Strictly reduce a candidate at a grapheme and group-ruby boundary.
 pub fn shorter(text: []const u8, end: usize, spans: []const RubySpan) !usize {
     // Geometric backoff keeps large font sizes bounded instead of re-rasterizing
@@ -89,4 +100,10 @@ test "ruby may occupy the reserved margin band but body must fit the page" {
     try std.testing.expectEqual(@as(usize, 3), visibleEnd(3, &spans, &glyphs, Style{}));
     glyphs[0].cell_y_px = 660;
     try std.testing.expectEqual(@as(usize, 0), visibleEnd(3, &spans, &glyphs, Style{}));
+}
+
+test "English book breaks preserve whole words while long tokens and Japanese still progress" {
+    try std.testing.expectEqual(@as(usize, 6), closeWord("words discover", 10));
+    try std.testing.expectEqual(@as(usize, 5), closeWord("discover", 5));
+    try std.testing.expectEqual(@as(usize, 3), closeWord("日本語", 3));
 }

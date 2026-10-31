@@ -383,6 +383,11 @@ pub const Face = struct {
 /// Multi-layer font family (e.g. [Base, Ext, PUP]).
 pub const Family = struct {
     faces: []const Face,
+    // Styles 3/5 are source code in a mixed book page; other families keep the default.
+    code_faces: ?[]const Face = null,
+    pub inline fn forStyle(self: Family, style_id: u4) Family {
+        return .{ .faces = if (style_id == 3 or style_id == 5) self.code_faces orelse self.faces else self.faces };
+    }
 
     pub const ResolvedGlyph = struct {
         layer_index: u8,
@@ -1044,7 +1049,7 @@ pub fn TwoTierCache(
 
         pub fn getOrRender(
             self: *Self,
-            family: Family,
+            input_family: Family,
             style_id: u4,
             base_cp: u21,
             ivs_cp: u21,
@@ -1052,6 +1057,7 @@ pub fn TwoTierCache(
             vertical: bool,
             glyf_scratch: []u8,
         ) Error!CachedGlyph {
+            const family = input_family.forStyle(style_id);
             // Some CJK subset fonts omit whitespace from cmap entirely. Whitespace
             // still participates in layout and must not abort a source-code frame.
             if (base_cp == ' ' or base_cp == '\t' or base_cp == 0x3000) {

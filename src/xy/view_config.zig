@@ -151,3 +151,6 @@ inline fn number(v: Value, min: i32, max: i32) Error!i32 {
     };
     return if (n >= min and n <= max) n else error.InvalidValue;
 }
+
+/// UTF-8 ranges of code in an attributed reading page.
+pub const CodeSpan = extern struct { start: u32, end: u32 };

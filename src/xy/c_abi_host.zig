@@ -133,6 +133,15 @@ var g_saved_doc: HostWorkspaceType.DocType = .{};
 var g_editing_source = false;
 const reader = @import("reader.zig");
 var g_reading = false;
+const learning = @import("learning_session.zig");
+// SAFETY: xy_host_live_init initializes this owner before any learning API.
+var g_learning: learning.Session = undefined;
+var g_learning_visible = false;
+var g_reader_section: ?u32 = null;
+var g_reader_next_section: ?u32 = null;
+var g_reader_offset: u32 = 0;
+var g_reader_codes: [64]viewport_layout.CodeSpan = undefined;
+var g_reader_code_count: usize = 0;
 var g_reader_saved_doc: HostWorkspaceType.DocType = .{};
 var g_reader_saved_ime: ime_omni.OmniIme = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
@@ -273,6 +282,11 @@ pub export fn xy_host_live_init() callconv(.c) bool {
     g_live_ready = true;
     g_editing_source = false;
     g_reading = false;
+    g_learning.initInPlace();
+    g_learning_visible = false;
+    g_reader_section = null;
+    g_reader_next_section = null;
+    g_reader_code_count = 0;
     var out: [256]u8 = undefined;
     _ = g_live.prepare(live_workspace.default_source, &out) catch return false;
     g_live_error = "";
@@ -472,12 +486,19 @@ pub export fn xy_host_render_rgb565(
         .status_length = status.len,
         .show_cursor = @intFromBool(!g_reading),
         .page_mode = @intFromBool(g_reading),
+        .book_prose = @intFromBool(g_reading and g_reader_section != null),
+        .code_spans = &g_reader_codes,
+        .code_count = if (g_reading) g_reader_code_count else 0,
         .ruby_text = &g_ws.doc.ruby_arena,
         .ruby_text_length = g_ws.doc.ruby_bytes_used,
         .ruby_spans = &g_ws.doc.ruby_spans,
         .ruby_count = g_ws.doc.ruby_count,
     };
-    g_render_session.renderLogical(&request, width, height, stride) catch |err| {
+    const rendering = if (g_learning_visible and width == 1280 and height == 720 and stride == 2560)
+        @import("learning_view.zig").render(&g_render_session, &request, &g_learning, false, true)
+    else
+        g_render_session.renderLogical(&request, width, height, stride);
+    rendering catch |err| {
         g_render_error = @errorName(err);
         return -2;
     };
@@ -520,15 +541,33 @@ pub export fn xy_host_reader_enter() callconv(.c) bool {
     return true;
 }
 pub export fn xy_host_reader_leave() callconv(.c) void {
+    g_learning_visible = false;
     if (!g_reading) return;
     g_ws.doc = g_reader_saved_doc;
     g_ws.ime = g_reader_saved_ime;
     g_reading = false;
+    g_reader_section = null;
+    g_reader_next_section = null;
+    g_reader_code_count = 0;
+}
+/// Bind typography to the already verified SICP catalogue. Other books keep their font settings.
+pub export fn xy_host_reader_context(book: u32, section: u32, offset: u32) callconv(.c) bool {
+    if (!g_reading or book >= 4) return false;
+    if (book != 2) {
+        g_reader_next_section = null;
+        return true;
+    }
+    if (!g_learning.ready or g_learning.pack.style_count == 0) return false;
+    const sec = g_learning.pack.section(section) catch return false;
+    if (offset >= sec.text_bytes) return false;
+    g_reader_next_section = section;
+    g_reader_offset = offset;
+    return true;
 }
 /// Candidate is bounded by the caller. Return exact consumed UTF-8 bytes.
 /// Validate and fit before replacing the current page; failure leaves it intact.
 pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]const u8, reading_len: u32, spans: [*]const reader.RubySpan, span_count: u32) callconv(.c) i32 {
-    if (!g_reading or len == 0) return -1;
+    if (!g_reading or g_learning_visible or len == 0) return -1;
     const body = text[0..len];
     const ruby_text = readings[0..reading_len];
     const annotations = spans[0..span_count];
@@ -539,9 +578,20 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
     style.viewport_height_px -= bar;
     var config = view_config.Config{ .style = style, .appearance = g_ws.appearance };
     config.validate() catch return -3;
+    const normal = activeFamily();
+    const book_faces = [_]ttf.Face{ g_render_session.book_face, normal.faces[1] };
+    const family = if (g_reader_next_section != null) ttf.Family{ .faces = &book_faces, .code_faces = normal.faces } else normal;
+    if (g_reader_next_section != null) {
+        style.style_id = 2 + style.style_id * 2;
+        style.ruby_px = 0;
+        style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
+    }
+    var codes: [64]viewport_layout.CodeSpan = undefined;
+    var code_count: usize = 0;
     var end: usize = len;
     var ann_buf: [64]viewport_layout.ruby.Annotation = undefined;
     while (end > 0) {
+        if (g_reader_next_section != null) end = reader.closeWord(body, end);
         var count: usize = 0;
         var r_end: usize = 0;
         for (annotations) |span| {
@@ -550,7 +600,17 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
             count += 1;
             r_end = @max(r_end, span.ruby_end);
         }
-        const list = viewport_layout.layoutParagraphWithWordWrap(1024, 4096, 1024, native_session.Cache, &g_render_session.cache, activeFamily(), style, body[0..end], ruby_text[0..r_end], ann_buf[0..count], &g_render_session.scratch, &g_render_session.placed, true) catch |err| switch (err) {
+        code_count = 0;
+        if (g_reader_next_section) |section| {
+            const final: u64 = @as(u64, g_reader_offset) + end;
+            if (final > (g_learning.pack.section(section) catch return -4).text_bytes) return -4;
+            while (g_learning.pack.styleOnPage(section, g_reader_offset, @intCast(final), @intCast(code_count)) catch return -4) |span| {
+                if (code_count == codes.len) return -4;
+                codes[code_count] = .{ .start = span.start, .end = span.end };
+                code_count += 1;
+            }
+        }
+        const list = viewport_layout.layoutStyledParagraph(1024, 4096, 1024, native_session.Cache, &g_render_session.cache, family, style, body[0..end], ruby_text[0..r_end], ann_buf[0..count], &g_render_session.scratch, &g_render_session.placed, true, codes[0..code_count]) catch |err| switch (err) {
             error.BlockFull, error.Capacity, error.SpanTooWide => {
                 end = reader.shorter(body, end, annotations) catch return -4;
                 continue;
@@ -572,6 +632,9 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
         }
         doc.cursor = 0;
         doc.forgetUndoHistory();
+        g_reader_section = g_reader_next_section;
+        g_reader_code_count = code_count;
+        @memcpy(g_reader_codes[0..code_count], codes[0..code_count]);
         g_ws.doc = doc;
         g_ws.layout_dirty = true;
         return @intCast(end);
@@ -589,5 +652,115 @@ pub export fn xy_host_document_load(text: [*]const u8, len: u32) callconv(.c) bo
     // A file replacement starts a new composition, retaining user IME settings.
     g_ws.ime = .{ .mode = g_ws.ime.mode, .custom_prefixes = g_ws.ime.custom_prefixes };
     g_ws.layout_dirty = true;
+    return true;
+}
+
+// Learning operations never swap or edit the reader/editor Document.
+pub export fn xy_host_learning_bind(data: [*]const u8, len: u32, library: [*]const u8, library_len: u32) callconv(.c) bool {
+    if (!g_live_ready) return false;
+    const pack = learning.catalog.Pack.init(data[0..len]) catch return false;
+    var digest: [32]u8 = undefined;
+    @import("std").crypto.hash.sha2.Sha256.hash(library[0..library_len], &digest, .{});
+    if (!pack.matchesLibrary(&digest)) return false;
+    g_learning.bind(data[0..len]) catch return false;
+    return true;
+}
+pub export fn xy_host_learning_page(section: u32, start: u32, end: u32) callconv(.c) i32 {
+    if (!g_reading or g_learning_visible) return -1;
+    g_learning.setPage(section, start, end) catch return -1;
+    return @intCast(g_learning.count() catch return -1);
+}
+fn learningCopy(text: []const u8, out: [*]u8, cap: u32) i32 {
+    if (text.len > cap) return -1;
+    @memcpy(out[0..text.len], text);
+    return @intCast(text.len);
+}
+pub export fn xy_host_learning_choice(ordinal: u32, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const choice = (g_learning.choice(ordinal) catch return -1) orelse return -1;
+    return learningCopy(choice.code, out, cap);
+}
+pub export fn xy_host_learning_open(ordinal: u32) callconv(.c) bool {
+    if (!g_reading or !g_render_ready or g_learning_visible) return false;
+    g_learning.open(ordinal) catch return false;
+    g_learning_visible = true;
+    return true;
+}
+pub export fn xy_host_learning_leave() callconv(.c) void {
+    g_learning_visible = false;
+}
+pub export fn xy_host_learning_insert(text: [*]const u8, len: u32, replace: bool) callconv(.c) bool {
+    if (!g_learning_visible) return false;
+    if (replace) g_learning.replace(text[0..len]) catch |err| {
+        g_learning.notice(err);
+        return false;
+    } else g_learning.insert(text[0..len]) catch |err| {
+        g_learning.notice(err);
+        return false;
+    };
+    return true;
+}
+pub export fn xy_host_learning_key(key: u8) callconv(.c) void {
+    if (!g_learning_visible) return;
+    const event: learning.navigation.Key = switch (key) {
+        13, 10 => .enter,
+        8, 127 => .backspace,
+        4 => .eof,
+        12 => .clear,
+        26 => .undo,
+        128 => .up,
+        129 => .down,
+        130 => .left,
+        131 => .right,
+        else => .{ .text = key },
+    };
+    var nav = learning.navigation.State{ .screen = .exercise };
+    g_learning.handle(&nav, event);
+}
+pub export fn xy_host_learning_action(action: u32) callconv(.c) i32 {
+    if (!g_learning_visible) return -1;
+    g_learning.message_len = 0;
+    switch (action) {
+        0 => g_learning.run() catch |err| {
+            g_learning.notice(err);
+            return -1;
+        },
+        1 => g_learning.resetVm(),
+        2 => g_learning.restore() catch |err| {
+            g_learning.notice(err);
+            return -1;
+        },
+        3 => g_learning.editing_notes = !g_learning.editing_notes,
+        4 => {
+            _ = g_learning.doc().?.undo() catch |err| {
+                g_learning.notice(err);
+                return -1;
+            };
+        },
+        else => return -1,
+    }
+    const s = g_learning.slot() orelse return -1;
+    return if (action == 0 and s.failed) -1 else 0;
+}
+pub export fn xy_host_learning_copy(field: u32, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const s = g_learning.slot() orelse return -1;
+    const snippet = g_learning.pack.snippet(s.snippet) catch return -1;
+    const text = switch (field) {
+        0 => s.code.slice(),
+        1 => s.notes.slice(),
+        2 => s.result[0..s.result_len],
+        3 => snippet.id,
+        4 => g_learning.message[0..g_learning.message_len],
+        5 => snippet.reference_output,
+        else => return -1,
+    };
+    return learningCopy(text, out, cap);
+}
+
+/// Inspect the same attributed glyph positions used for page fitting and painting.
+pub export fn xy_host_reader_glyph(index: u32, out: *viewport_layout.PlacedGlyph) callconv(.c) bool {
+    if (!g_render_ready or index >= g_render_session.placed_count) return false;
+    out.* = g_render_session.placed[index];
     return true;
 }

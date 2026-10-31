@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "candidate_commit": "4c67eef08facbe39f11a9262136b084b1d7439a6",
+  "parent": "0c1d9cae",
+  "source_sha256": {
+    ".github/workflows/xy-mac.yml": "a2696de1bb53ebceca13adc30be2f3e5605bd70abb0a238da61d0d335f698d92",
+    "assets/xy/sicp-learning.json": "20e8b6de701330ffdc12b8e7a9876e5fad645b10d86bde185aa9e8b831b563d6",
+    "src/graphics/book_font.zig": "c072ee7587e149973aaffc2a8fca623b06713dc33dd337e781fce27e3741c20b",
+    "src/graphics/serif/manifest.json": "1b7d2d4000166b0a2d8058cfd3f9b7d4356efa2c9aacce619f3a27b665338d8c",
+    "src/graphics/serif/nihos-book-serif.ttf": "706d3047363294a33c913029e15054468c4c9508804b0b49c50dc005034b9a45",
+    "src/graphics/ttf.zig": "c449ad7bfe50009949da75fa19e862ab9f2eda7fdad26b056a9658f7736979d3",
+    "src/graphics/viewport_layout.zig": "0c83bc51dbb767ef954ade4e79a4692ca1a031d64cb4e4f1b36a7114ac625346",
+    "src/xy/c_abi_host.zig": "f7c5380c82bb4c082f7891c9ad436115b073f27ceff64af0f8385b3eec11f600",
+    "src/xy/learning_catalog.zig": "a417ddd59259acf6123ce07cca2b122c6984f00bc6e5963b21acdf17ac8b26f6",
+    "src/xy/learning_view.zig": "e3f30fce27d15fccfbedf3b46abfde3fe038e740190c4581c5dbf6002f0c59f2",
+    "src/xy/native_reading.zig": "f5b06a118dfe1ef3b3d19a1263c3d8f1b6890177a30815c096e7f4cb317c4212",
+    "src/xy/preview_host.zig": "c7da109aedfbaca4c1e74ea80ca6b26f2cccd05f5588daa9cf2df6acdcc8a11d",
+    "src/xy/reader.zig": "c5d592aac6c0daa52db8986c657e8594a656427c429e74170cc59860124dbddd",
+    "src/xy/render_protocol.zig": "b0bdce254ea1796f2cd827c0d09aa80ec7cc0f8cdc50c07460abacbe3e181a73",
+    "src/xy/render_session.zig": "5fb25af32b0dcc30baecf1a04bb8ecf670e04375879cd9411de56aa568281889",
+    "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513",
+    "third_party/xy-reading/NOTICE.md": "30f45a25e648dd083c7ed1672581277475df214185c577bdf94b5cf6dac141be",
+    "third_party/xy-typography/GUST-FONT-LICENSE.txt": "2bd69affc3da00715116f713f57eab9707e96daf3562ad0215987b15b9c16f73",
+    "third_party/xy-typography/LPPL-1.3c.txt": "3d262cdf34dafa6955f703c634a8c238ec44109bc8dd6ef34fb7aa54809f7e66",
+    "third_party/xy-typography/MANIFEST-TeX-Gyre-Schola.txt": "db7d5f23bc3e684e81ed3f95e65b888b9e184f7002cdf6eb772ad8d7879ad5f6",
+    "third_party/xy-typography/texgyreschola-regular.otf": "935b82e25f56b1d1276ca82793205e8ce254fbb37ebd38bedf7388cef21fbf44",
+    "tools/build-xy-mac.sh": "a29adec726cccc7564f1e6409784dbb184d365d735f41ad1164507d1f8e48bab",
+    "tools/check-native-image.py": "6d2515aff46d1a858608569a43231346d68a5b300196e700591ef354e6877d67",
+    "tools/fonts/build-xy-book-serif.py": "f2be418be01b94da1eb460da50931a78f8c3bb4fb1a4de0cb3a19bf66e8b70bb",
+    "tools/native_image_test.py": "6925df3f457b208369031dbc1358b37233f01873e6c3b04bb3fb8089910f5db3",
+    "tools/probes/xy_learning_catalog.zig": "6ba575dc5fd2f87a5700ac3bbf59dcf87920509e066ed42e22938bd20408cd63",
+    "tools/xy_home.inc": "0bfc23bc8de2c5571ba6ffce0553b7af3cb33e1fd89421a162523e6a0f4e593a",
+    "tools/xy_learning_pack.py": "7915a13154cbd368dab6dd95ce1d9da98e6511d2a0cebc3f1a8e47d4494d4b82",
+    "tools/xy_mac_host.m": "72b9038f13dc3fed6bfcb55a328e3ab10b3a9d09d283e9925e54f1c80f4b8507",
+    "tools/xy_sicp.py": "efbacc991f62a814192b2a200fe92d8e10eec131f1931c53d187eae12e295b90",
+    "tools/xy_sicp_test.py": "79759799c6a07e2c9c9fc0576d69dadb7184ec8424a90ae982bd723b2863b267",
+    "tools/xy_typography_test.py": "88b88211f3c699b25f4323261f81b01bd0453fbd42f45a6c4ccae93e3ad4dc17"
+  },
+  "tests": {
+    "typography": {
+      "result": "passed",
+      "tests": 5
+    },
+    "learning": {
+      "result": "passed",
+      "tests": 7
+    },
+    "reader": {
+      "result": "passed",
+      "tests": 10
+    },
+    "workspace": {
+      "result": "passed",
+      "tests": 16
+    },
+    "tab5": {
+      "result": "passed",
+      "tests": 10
+    },
+    "catalog": {
+      "result": "passed",
+      "tests": 12
+    },
+    "image": {
+      "result": "passed",
+      "tests": 42
+    }
+  },
+  "zig_release_safe": "75/75 steps succeeded, including cached steps",
+  "static_analysis": "passed",
+  "scene_measurements": {
+    "mixed-before": {
+      "source_bytes": 160,
+      "rgba_sha256": "4e75044a913fc607baf6b581864d9a701b534b58274d24f59a20da297d7a2202"
+    },
+    "mixed-after": {
+      "source_bytes": 229,
+      "rgba_sha256": "e72951645763f7407399122229ea14e702c2f978706010c985c499d9aaa3c5f4"
+    },
+    "prose-before": {
+      "source_bytes": 458,
+      "rgba_sha256": "bc1f4e84e19de2f4e0a6d8f1d22afb8ad931692729bcd76e291f43503e5e3e02"
+    },
+    "prose-after": {
+      "source_bytes": 810,
+      "rgba_sha256": "8ea688ca4d1a31a2972f79abfaffabae0ab1b6920b495db6487255f4cc5534dc"
+    },
+    "width_measurement": {
+      "sample": "SICP 1.1 printable ASCII",
+      "characters": 2566,
+      "source_code_pro_em": 1539.6,
+      "schola_em": 1202.149,
+      "width_ratio": 0.7808190439075084,
+      "same_line_capacity_ratio": 1.2807064681665916
+    }
+  },
+  "native": {
+    "image_sha256": "a8dad9d3cbbf030302e3a85418406bf06eded0cd0ca6c148f835eb94622a8844",
+    "image_bytes": 3611088,
+    "heap_bytes": 49600,
+    "heap_floor_bytes": 49152,
+    "xy_code_bytes": 79344,
+    "xy_rodata_bytes": 3036072,
+    "workspace_bytes": 1667376,
+    "workspace_limit_bytes": 2097152,
+    "foreground_stack_bytes": 262144,
+    "glyph_capacity": 1024,
+    "audit_passed": true,
+    "physical_device_tested": false,
+    "whole_call_stack_qualified": false
+  },
+  "font": {
+    "source": "https://mirrors.ctan.org/fonts/tex-gyre/opentype/texgyreschola-regular.otf",
+    "source_sha256": "935b82e25f56b1d1276ca82793205e8ce254fbb37ebd38bedf7388cef21fbf44",
+    "source_family": "TeX Gyre Schola",
+    "source_version": "2.005",
+    "license": "GUST Font License / LPPL 1.3c",
+    "fonttools": "4.60.2",
+    "changes": "Renamed; Latin subset; cubic to quadratic outlines, maximum error 1 font unit; no hints or layout tables.",
+    "output_sha256": "706d3047363294a33c913029e15054468c4c9508804b0b49c50dc005034b9a45",
+    "bytes": 65292
+  },
+  "mac_abi_framebuffer_tested": true,
+  "mac_window_automation": {
+    "verified": false,
+    "reason": "cgWindowNotFound with isolated test bundles; own test processes cleaned up"
+  },
+  "original_dirty_files_unchanged_sha256": {
+    "src/graphics/ttf.zig": "52fe3958c717ad6c9e65e72897afeb8ff07e6496157c00d1e9ab0c15e67eb3c5",
+    "src/graphics/viewport_layout.zig": "b53b09a2bbf9fccf7589b49f2925e8e97043c1243d56645ac38471b21ce5afa1",
+    "src/xy/scheme_bridge.zig": "01a39041a9cadfa24d179648b17800bb45681d51da9c3ad77423dc036140878d",
+    "tools/xy_mac_host.m": "9436893488f3342617155ad5b4046f4238009a8143d549730586f2eaff5ea19c"
+  }
+}

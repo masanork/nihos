@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "book_id": "sicp",
+  "edition": "sicp-2-scheme-en",
+  "sections": [
+    {
+      "id": "sicp.elements",
+      "file": "sicp-elements.xml",
+      "sha256": "6a039f8bdea6dcdb7b45cffe7c79fa7baf05b0363df8ae6105a45212f3f672d5",
+      "title": "1.1 The Elements of Programming",
+      "snippets": []
+    },
+    {
+      "id": "sicp.expressions",
+      "file": "sicp-expressions.xml",
+      "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+      "title": "1.1.1 Expressions",
+      "snippets": [
+        {
+          "id": "sicp.expressions.literal",
+          "selector": {
+            "code_sha256": "86b700fab5db37977a73700b53a0654b21bdad0896914cc19ad70dee5f5fb3f6"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.addition",
+          "selector": {
+            "code_sha256": "2821c55899b5b7d6449d13a620dcdfa175f21c18c758e52502c9fabf235ec85b"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.subtraction",
+          "selector": {
+            "code_sha256": "8303a63a94ae12a45995d630e062d3a5025e70be4d6b3ed022d73ef64a450ead"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.multiplication",
+          "selector": {
+            "code_sha256": "3f4d59defa6f40f13b660f5a365feced79c5d180c37404e82188e3484cf3d429"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.division",
+          "selector": {
+            "code_sha256": "d964efd8c64b935505d316baaab766ca385c43590c49832c66c687f1a2b66201"
+          },
+          "kind": "expression",
+          "features": [
+            "integer",
+            "division"
+          ]
+        },
+        {
+          "id": "sicp.expressions.decimal-addition",
+          "selector": {
+            "code_sha256": "fd684305aecd0042e7d3e84e842d62351015009e3b1cd82670e563449cd2212a"
+          },
+          "kind": "expression",
+          "features": [
+            "inexact",
+            "addition"
+          ]
+        },
+        {
+          "id": "sicp.expressions.sum-many",
+          "selector": {
+            "code_sha256": "7e51d4b7cc439880c0e35dd851581c7da871c6a343e8408e85aabf1a272221e1"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.product-many",
+          "selector": {
+            "code_sha256": "8ecd2b69912daa23c64d3e2e0d1176e5442f18817d6d9fc9aa1c128ec4f58e1a"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.nested",
+          "selector": {
+            "code_sha256": "a5c7793815c42049bccff9d3148ad6517e70e5ca060222f7009aa7264941f347"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.deep-inline",
+          "selector": {
+            "code_sha256": "ad8a66baf5d389d6ac59849c0e4b9927203811ce16d907b6d75a5758fd5b7025"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.expressions.deep-formatted",
+          "selector": {
+            "code_sha256": "a6f80d92ae69cfa9281691be2b3143fed96c4c8e80bff1ec429656aa27922644"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sicp.recursion",
+      "file": "sicp-recursion.xml",
+      "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+      "title": "1.2.1 Linear Recursion and Iteration",
+      "snippets": [
+        {
+          "id": "sicp.recursion.factorial-recursive",
+          "selector": {
+            "name": "factorial_definition"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.factorial-call",
+          "selector": {
+            "name": "factorial_example"
+          },
+          "kind": "expression",
+          "features": [
+            "integer",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.factorial-local-iteration",
+          "selector": {
+            "code_sha256": "44e4011c0d57d42b8fc9040103b06b3346b50c75fbc311fb4d4a345e7ceb1850"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "recursion",
+            "proper-tail-calls"
+          ]
+        },
+        {
+          "id": "sicp.recursion.factorial-iterative",
+          "selector": {
+            "name": "factorial_iterative_definition"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "recursion",
+            "proper-tail-calls"
+          ]
+        },
+        {
+          "id": "sicp.recursion.inc-dec",
+          "selector": {
+            "name": "inc_dec_definition"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions"
+          ]
+        },
+        {
+          "id": "sicp.recursion.addition-call",
+          "selector": {
+            "name": "plus_example"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        },
+        {
+          "id": "sicp.recursion.addition-recursive",
+          "selector": {
+            "code_sha256": "02c68ee48c84ac8e248a208c2e2722a49b5ccba97e809084952a6bab7af161d7"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.addition-iterative",
+          "selector": {
+            "code_sha256": "4ac7560d5008814b25eb79d75bed2c5cc19bcaae653dc518a21442ad9b4c3b81"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "recursion",
+            "proper-tail-calls"
+          ]
+        },
+        {
+          "id": "sicp.recursion.ackermann",
+          "selector": {
+            "name": "ackermann_definition"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "cond",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.ackermann-1-10",
+          "selector": {
+            "name": "ackermann_example"
+          },
+          "kind": "expression",
+          "features": [
+            "integer",
+            "cond",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.ackermann-2-4",
+          "selector": {
+            "code_sha256": "da7ae761d6e477b50644813895f12aea111c337388887f0f14b59968f8195267"
+          },
+          "kind": "expression",
+          "features": [
+            "integer",
+            "cond",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.ackermann-3-3",
+          "selector": {
+            "code_sha256": "16d0566c690165ead448236c9aaa41c9ab7717dfb93cbdc9baafcda20c121fec"
+          },
+          "kind": "expression",
+          "features": [
+            "integer",
+            "cond",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.ackermann-derived",
+          "selector": {
+            "name": "fghk_definition"
+          },
+          "kind": "definition",
+          "features": [
+            "integer",
+            "definitions",
+            "cond",
+            "recursion"
+          ]
+        },
+        {
+          "id": "sicp.recursion.derived-k-call",
+          "selector": {
+            "name": "fghk_example"
+          },
+          "kind": "expression",
+          "features": [
+            "integer"
+          ]
+        }
+      ]
+    }
+  ]
+}
