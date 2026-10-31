@@ -104,6 +104,7 @@ jobs:
           .tools/zig-0.17.0/zig build test
           .tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
           sh tools/check-card-rv32.sh
+          sh tools/build-xy-tab5-preview.sh
           python3 -m unittest discover -s tools -p '*test.py'
 
       - name: Bounded image decoder with sanitizers

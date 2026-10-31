@@ -138,7 +138,10 @@ def main():
                     wait(lambda data: record(data, b'NIHOS_NATIVE_XY_READY'))
                     if raw.count(b'ESP-ROM:esp32p4') != 1 or b'NIHOS_NATIVE_SESSION_READY' in raw:
                         raise RuntimeError('unexpected boot or launcher handoff')
-                    expect(label, b'', 0)
+                    # Home owns normal startup. Enter the RAM document explicitly.
+                    start = len(raw)
+                    port.write(b'n'); port.flush()
+                    expect(label, b'', 0, start=start)
                 def send(label, data, text, cursor, mode=0, buffer_kind=0, buffer_hash=None):
                     start = len(raw)
                     port.write(data); port.flush()
@@ -195,7 +198,7 @@ def main():
                             row = record(data[start:], b'NIHOS_NATIVE_XY_RENDER')
                             return row if row and row['font'] == 1 and row['size'] == size and row['axis'] == axis and row['foreground'] == 0x223344 and row['background'] == 0xfaf6ee else None
                         row = wait(rendered)
-                        if row['failed'] != 0 or not 0 < row['stack_used'] < 131072 - 256:
+                        if row['failed'] != 0 or not 0 < row['stack_used'] < audit['xy_scheme']['render_stack_bytes'] - 256:
                             raise RuntimeError('render stack or repaint failure')
                         receipt.setdefault('render_observations', []).append({'name': label, **row}); save()
                     style('view-gothic-36', b"(view/set! #:font 'gothic #:size 36 #:foreground #x223344 #:background #xfaf6ee)", 0)
