@@ -1,0 +1,99 @@
+{
+  "source_commit": "f4d3604b8e9beb067ff0cd27d99ec61a1bef37e4",
+  "base_commit": "e1cfd0caa2e426c07088c7b33ed77464cbf3d899",
+  "source_hashes": {
+    ".github/workflows/sqld.yml": "4de1dea7f0f7a5d3c611de53098ce750aa1e613281890ecac9a3e0b0cb662f9d",
+    ".github/workflows/xy-mac.yml": "7c94003da95609b1daeb293eb2ce2eed44a852b846982ffb21ba338b3fdddf42",
+    "docs/planning/sqld-xy-service.md": "58dcb3932a44f0b8c14e4ecb26b3845c389cebf92d569336f3a44cc9bb102adf",
+    "docs/planning/sqlite-integration.md": "e3d973226f241a4be2660f324af321cff39d5895850399274378faf8c5318d87",
+    "docs/planning/xy-architecture.md": "e478910e4707f0275a86ca6085d711e37273b6c5974d303a66abd54f58dcbb3f",
+    "include/nihos_sqld.h": "031109fc80b84d559e284795570632b05e086153fb9763d99e9edb5d5f45f4df",
+    "include/nihos_store.h": "8d8e953cf65c6a57158f2b76c190bbdef0fdf1f316da1c11d0200d89e082b906",
+    "include/nihos_xy_storage.h": "b1257f6081f625809d57cdb90d608bd65ed6738e6a2484f929dce410488934fd",
+    "src/services/sqld.c": "91728d9e60fb076deae750399adbcec80666a5fece28d7bdb74d7ad9ac82a243",
+    "src/services/sqld_internal.h": "f40487a7648a2c04500956b07a798f5cc3d7a8685640fe42c2aec441cecb0232",
+    "src/services/sqlite_store_vfs.c": "c41f5951cfe90a12f29af99fb0db0edfe6426228a6685e5ea52275a57e5c92fe",
+    "src/storage/checkpoint_model.zig": "4c81c4e7afb0a0fc92af7112826a869bdfa651be12ebc24d83f89dedddb4b7a3",
+    "src/storage/checkpoint_model_test.zig": "d854984221edf6fd6c95644103a2dae11e451c47a2108ecb87951236ad6fac9d",
+    "src/storage/store_abi.zig": "b712cd66a7e94c6c2137b79511c4bce48d38e9227a41d6c66387da2ac0f86ef5",
+    "src/xy/c_abi_host.zig": "f7b44568625323b58f25f5e761fb70637adbe7a5e325f37f9594a2884cfad8ce",
+    "src/xy/live_workspace.zig": "b1b1931261eaadab154d1652a0fd78191df0f4270af21a99e129aaed586706d7",
+    "src/xy/scheme_bridge.zig": "106e994621b33c2cc5d709e9bb2bdb479bd3069d71ca4fa71ea1b233c1b103d7",
+    "src/xy/scheme_runtime.zig": "afd86695410a51499474c37ee38dfbd8165fe02b3f1af444844e493414719b1d",
+    "src/xy/scratch.zig": "0ec33aa571c4438eba0441e85223c8541eb2972fea12852d1607ffc6b4905042",
+    "src/xy/storage.zig": "4a106ec4b96e3ce41731da2ada9f7a486352baea1f9a7b1fcc4a8b0d19df23b7",
+    "tools/build-sqld-host.sh": "5475e82d362f27741ea290f1a22cc40c91c4065934a9e014e4c42c6c88af15b2",
+    "tools/build-xy-mac.sh": "7d304e470f35825b72ac80b2831a070585ab711b63cd087764a6c9972adb02d5",
+    "tools/check-native-image.py": "4a09206331b1bec11d51e4cffb58be20d16b3e27f89cb7e63eb50e8853b9974a",
+    "tools/check-sqld-rv32.sh": "55ecd836ed7e798d99e2f53dd5968345724911c5da6ae4af241ca87c253f87fa",
+    "tools/sqld_host.c": "6ff87c7393f6eebe8f06718904e60ae4feb57067d1cd41678716562a56f14330",
+    "tools/sqld_test.py": "8309f061837e9b54be1dbbb7125459b940af6c355f4a984e4c53d1d622ae45a2",
+    "tools/xy_mac_host.m": "55cde867d266b26f1c63a767c7e53fa7ddd1fe8190ed860ff992e9be8c634da8"
+  },
+  "scope": "host sqld + real SQLite checkpoint VFS + xy Scheme; native default client only",
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64"
+  },
+  "sqlite": {
+    "version": "3.54.1",
+    "archive_sha3_256": "92281c86e2957f9b9305890f9ac04204caa7b677cc868dc326d942689df28e30",
+    "journal_mode": "PERSIST",
+    "synchronous": "FULL",
+    "wal": false
+  },
+  "tests": {
+    "sqld": 13,
+    "workspace": 16,
+    "python_discovery": 538,
+    "zig_steps": 69,
+    "zig_tests": 837,
+    "checkpoint_tests": 9,
+    "sqlite_crash_io_points": 51,
+    "sqlite_crash_cases": 102,
+    "clang_analyzer_diagnostics": 0,
+    "fmt_zlint_shellcheck": "pass"
+  },
+  "native": {
+    "elf_regression_audit": "pass",
+    "primary_heap_bytes": 49216,
+    "primary_heap_floor_bytes": 49152,
+    "sqld_core_linked": false,
+    "sqld_core_and_store_rv32_objects": "compile only",
+    "physical_run": false,
+    "sd_writes": false,
+    "flash_writes": false
+  },
+  "artifact_sha256": {
+    "build/sqld/sqld-host": "870aa2793ff267e0a09d99000e903966d153e5abc1cf15d02de8eb2ad91c383c",
+    "build/sqld/libsqld.dylib": "78d08abcc2b4a061a5b1f39a3d6cf8db0981fd4332e9850603dbeed03fe72f9a",
+    "build/xy-mac/xy-mac-host": "57abd6ebd2543ca13e9ecfc8d441c1663505815349cc135d5b8b49ce3931a6a9",
+    "build/xy-mac/libxy_host.dylib": "657a3b116a4ffd934ee8d0747c5fe038375d076af47a7fa5c9b0a23c54da7763",
+    "build/sqld/native/nihos-native.elf": "eea5a5e2c969fdb374747a9d3793f819bbe2737bfb83f00811e3c5b84e19983c"
+  },
+  "task_complete": false,
+  "remaining": [
+    "native SD region/container grant, shared owner write DMA fence and real sync",
+    "native SQLite allocator, owner task, stack budget, copied RPC and park/wakeup",
+    "exact-candidate UI/input/C6 coexistence and reboot readback",
+    "removal/full/cancellation, cold OFF/ON and physical power loss",
+    "persistent operation receipts and large read-only pack adapters",
+    "durable named snapshot history and ruby metadata persistence"
+  ],
+  "original_worktree": {
+    "head": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+    "status": [
+      " M src/graphics/ttf.zig",
+      " M src/graphics/viewport_layout.zig",
+      " M src/xy/scheme_bridge.zig",
+      " M tools/xy_mac_host.m"
+    ],
+    "numstat": [
+      "17\t0\tsrc/graphics/ttf.zig",
+      "30\t34\tsrc/graphics/viewport_layout.zig",
+      "254\t0\tsrc/xy/scheme_bridge.zig",
+      "78\t9\ttools/xy_mac_host.m"
+    ],
+    "edited_by_this_work": false
+  }
+}
