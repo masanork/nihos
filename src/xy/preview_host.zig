@@ -93,3 +93,9 @@ pub export fn xy_tab5_learning_copy(field: u32, out: [*]u8, cap: u32) callconv(.
     @memcpy(out[0..text.len], text);
     return @intCast(text.len);
 }
+
+pub export fn xy_tab5_glyph(index: u32, out: *@import("viewport_layout").PlacedGlyph) callconv(.c) bool {
+    if (!ready or index >= instance.placed_count) return false;
+    out.* = instance.placed[index];
+    return true;
+}

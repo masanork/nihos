@@ -69,7 +69,7 @@ test "malformed offsets, counts, references, anchors and UTF8 fail closed" {
     const ea = read(fixture, 40);
     const ra = read(fixture, 44);
     const corruptions = [_]struct { at: usize, value: u32 }{
-        .{ .at = 8, .value = 2 },                          .{ .at = 12, .value = 128 },
+        .{ .at = 8, .value = 3 },                          .{ .at = 12, .value = 128 },
         .{ .at = 16, .value = std.math.maxInt(u32) },      .{ .at = 20, .value = 4097 },
         .{ .at = 24, .value = 4097 },                      .{ .at = 28, .value = 1 },
         .{ .at = 32, .value = 0 },                         .{ .at = 52, .value = 128 },
@@ -95,4 +95,21 @@ test "malformed offsets, counts, references, anchors and UTF8 fail closed" {
     for (0..128) |len| {
         try std.testing.expectError(error.InvalidPack, catalog.Pack.init(fixture[0..len]));
     }
+}
+
+test "styled source ranges clip at page boundaries and legacy catalogues remain readable" {
+    const p = try catalog.Pack.init(fixture);
+    try std.testing.expect(p.style_count > 25);
+    const s = try p.snippet((try p.findSnippet("sicp.expressions.addition")).?);
+    const a = s.anchor.?;
+    const span = (try p.styleOnPage(s.section, a.start + 1, a.end - 1, 0)).?;
+    try std.testing.expectEqual(@as(u32, 0), span.start);
+    try std.testing.expectEqual(a.end - a.start - 2, span.end);
+    const old = try catalog.Pack.init(@import("learning_fixture").legacy);
+    try std.testing.expectEqual(@as(u32, 0), old.style_count);
+    try std.testing.expect((try old.styleOnPage(1, 0, 1, 0)) == null);
+    var bytes = fixture.*;
+    const at = read(fixture, 44) + read(fixture, 48) * 4;
+    write(&bytes, at + 8, std.math.maxInt(u32));
+    try std.testing.expectError(error.Range, catalog.Pack.init(&bytes));
 }

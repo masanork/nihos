@@ -5,6 +5,8 @@
 //! and macOS/PC (`GPUI` backend).
 const std = @import("std");
 pub const code_font = @import("code_font.zig");
+pub const book_font = @import("book_font.zig");
+pub const CodeSpan = @import("view_config").CodeSpan;
 pub const ttf = @import("ttf.zig");
 pub const ruby = @import("ruby_layout.zig");
 pub const policy = ruby.policy;
@@ -42,6 +44,7 @@ pub const PlacedGlyph = extern struct {
 
 /// Internal shaped glyph compatible with `line_layout.zig` and `ruby_layout.zig`.
 pub const ShapedGlyph = struct {
+    style_id: u4 = 0,
     id: u32 = 1,
     cluster: u32 = 0,
     run: u32 = 0,
@@ -194,13 +197,36 @@ pub fn shapeRun(
     glyf_scratch: []u8,
     out_glyphs: []ShapedGlyph,
 ) Error!usize {
+    return shapeStyledRun(CacheType, cache, family, style_id, px_size, vertical, run_id, text, glyf_scratch, out_glyphs, &.{}, 0);
+}
+
+pub fn shapeStyledRun(
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    style_id: u4,
+    px_size: u8,
+    vertical: bool,
+    run_id: u32,
+    text: []const u8,
+    glyf_scratch: []u8,
+    out_glyphs: []ShapedGlyph,
+    spans: []const CodeSpan,
+    origin: u32,
+) Error!usize {
     var it = ClusterIterator{ .text = text };
     var count: usize = 0;
     while (try it.next()) |cl| {
         if (count >= out_glyphs.len) return error.Capacity;
+        const absolute = origin + cl.byte_start;
+        var selected_style = style_id;
+        for (spans) |span| if (absolute >= span.start and absolute < span.end) {
+            selected_style = if (style_id == 4) 5 else 3;
+            break;
+        };
         const rendered = try cache.getOrRender(
             family,
-            style_id,
+            selected_style,
             cl.base_cp,
             cl.ivs_cp,
             px_size,
@@ -209,6 +235,7 @@ pub fn shapeRun(
         );
         out_glyphs[count] = .{
             .id = 1,
+            .style_id = selected_style,
             .cluster = cl.byte_start,
             .run = run_id,
             .base_cp = cl.base_cp,
@@ -260,9 +287,34 @@ pub fn layoutParagraphWithWordWrap(
     out_display_list: []PlacedGlyph,
     comptime wrap_words: bool,
 ) Error![]PlacedGlyph {
+    return layoutStyledParagraph(max_glyphs, max_body_bytes, max_ruby_bytes, CacheType, cache, family, view, body_text, ruby_text, annotations, glyf_scratch, out_display_list, wrap_words, &.{});
+}
+
+pub fn layoutStyledParagraph(
+    comptime max_glyphs: usize,
+    comptime max_body_bytes: usize,
+    comptime max_ruby_bytes: usize,
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    view: ViewStyle,
+    body_text: []const u8,
+    ruby_text: []const u8,
+    annotations: []const ruby.Annotation,
+    glyf_scratch: []u8,
+    out_display_list: []PlacedGlyph,
+    comptime wrap_words: bool,
+    code_spans: []const CodeSpan,
+) Error![]PlacedGlyph {
     if (body_text.len == 0 or body_text.len > max_body_bytes or ruby_text.len > max_ruby_bytes)
         return error.Capacity;
 
+    var previous: u32 = 0;
+    for (code_spans) |span| {
+        if (span.start < previous or span.start >= span.end or span.end > body_text.len) return error.Range;
+        if ((span.start < body_text.len and body_text[span.start] & 0xc0 == 0x80) or (span.end < body_text.len and body_text[span.end] & 0xc0 == 0x80)) return error.InvalidUtf8;
+        previous = span.end;
+    }
     const axis: layout.Axis = if (view.axis == 0) .horizontal else .vertical;
     const is_vert = axis == .vertical;
     const style_u4: u4 = @intCast(view.style_id & 0x0F);
@@ -308,10 +360,10 @@ pub fn layoutParagraphWithWordWrap(
         while (p_end < body_text.len and body_text[p_end] != '\n' and body_text[p_end] != '\r') : (p_end += 1) {}
 
         const para_slice = body_text[p_start..p_end];
-        if (para_slice.len > 0) {
+        if (para_slice.len > 0 and !((view.style_id == 2 or view.style_id == 4) and std.mem.trim(u8, para_slice, " \t").len == 0)) {
             try policy.map(para_slice, body_map[0 .. para_slice.len + 1]);
 
-            const body_count = try shapeRun(
+            const body_count = try shapeStyledRun(
                 CacheType,
                 cache,
                 family,
@@ -322,6 +374,8 @@ pub fn layoutParagraphWithWordWrap(
                 para_slice,
                 glyf_scratch,
                 shaped[0 .. max_glyphs - ruby_count],
+                code_spans,
+                @intCast(p_start),
             );
 
             if (wrap_words) keepWords(shaped[0..body_count], body_map[0 .. para_slice.len + 1], inline_limit_26_6, is_vert);
@@ -422,7 +476,7 @@ pub fn layoutParagraphWithWordWrap(
                     .ivs_cp = g.ivs_cp,
                     .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster + para_ruby_start,
                     .run = @intCast(g.run),
-                    .style_id = view.style_id,
+                    .style_id = g.style_id,
                     .px_size = g.px_size,
                     .vertical = @intFromBool(is_vert),
                     .cell_x_px = cell_x,
@@ -437,7 +491,7 @@ pub fn layoutParagraphWithWordWrap(
             }
             para_block_offset_px += max_block_px_in_para + step_px;
         } else {
-            para_block_offset_px += step_px;
+            para_block_offset_px += if (view.style_id == 2 or view.style_id == 4) @max(2, @divTrunc(step_px, 4)) else step_px;
         }
 
         if (p_end >= body_text.len) break;

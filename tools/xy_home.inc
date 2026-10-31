@@ -225,7 +225,7 @@
     // Keep the candidate below the shared renderer's 1024-glyph host work area,
     // including ruby glyphs. The core does the final geometric fit.
     NSUInteger end=_readingStart, glyphs=0;
-    while (end<_readingText.length && glyphs<700) {
+    while (end<_readingText.length && glyphs<900) {
         uint8_t first=all[end]; NSUInteger n=first<128 ? 1 : first<224 ? 2 : first<240 ? 3 : 4;
         end+=n; glyphs++;
     }
@@ -250,6 +250,7 @@
         XyReaderRuby span={(uint32_t)(a-_readingStart),(uint32_t)(b-_readingStart),(uint32_t)readings.length,(uint32_t)(readings.length+bytes.length)};
         [spans appendBytes:&span length:sizeof(span)]; [readings appendData:bytes];
     }
+    (void)xy_host_reader_context([_readingItem[@"id"] isEqualToString:@"sicp"] ? 2 : 0,(uint32_t)_chapterIndex,(uint32_t)_readingStart);
     int32_t consumed=xy_host_reader_load(all+_readingStart,(uint32_t)(end-_readingStart),readings.bytes ?: (const void *)"",(uint32_t)readings.length,spans.bytes ?: (const void *)"",(uint32_t)(spans.length/sizeof(XyReaderRuby)));
     if (consumed<=0) { [self workspaceNotice:@"このページを組版できません。文字サイズを小さくしてください。" error:YES]; return NO; }
     _readingEnd=_readingStart+(NSUInteger)consumed;
