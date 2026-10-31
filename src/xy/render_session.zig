@@ -18,6 +18,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
         // Hosts can supply paged complete fonts; embedded targets use ROM faces.
         external_mincho: ?layout.ttf.Family,
         external_gothic: ?layout.ttf.Family,
+        owned_font_slices: [2][]const u8,
         frames: u32,
         glyphs: u32,
 
@@ -27,6 +28,15 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             self.faces[0] = try layout.code_font.face();
             self.faces[1] = try layout.ttf.Face.init(mincho);
             self.faces[2] = try layout.ttf.Face.init(gothic);
+        }
+        /// SliceReader stores a pointer to a slice descriptor, not its payload.
+        /// Keep those descriptors in this stable owner, never on a caller stack.
+        pub fn initSlices(self: *@This(), mincho: []const u8, gothic: []const u8) !void {
+            @memset(std.mem.asBytes(self), 0);
+            self.owned_font_slices = .{ mincho, gothic };
+            self.faces[0] = try layout.code_font.face();
+            self.faces[1] = try layout.ttf.Face.init(layout.ttf.SliceReader.fromSlice(&self.owned_font_slices[0]));
+            self.faces[2] = try layout.ttf.Face.init(layout.ttf.SliceReader.fromSlice(&self.owned_font_slices[1]));
         }
         pub fn render(self: *@This(), request: *const protocol.Request) !void {
             const physical = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
@@ -39,7 +49,8 @@ pub fn SizedSession(comptime page_capacity: usize) type {
         }
         fn renderInto(self: *@This(), request: *const protocol.Request, target: anytype) !void {
             const screen_width: u16 = @intCast(target.width);
-            const screen_height: u16 = @intCast(target.height);
+            if (request.reserved_bottom_px >= target.height) return error.Geometry;
+            const screen_height: u16 = @intCast(target.height - request.reserved_bottom_px);
             const config = request.config.*;
             var style = config.style;
             style.viewport_width_px = screen_width;
