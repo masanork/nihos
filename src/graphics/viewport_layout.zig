@@ -4,6 +4,7 @@
 //! C-ABI Display List (`PlacedGlyph`) for both `nihos` (Tab5 framebuffer)
 //! and macOS/PC (`GPUI` backend).
 const std = @import("std");
+pub const code_font = @import("code_font.zig");
 pub const ttf = @import("ttf.zig");
 pub const ruby = @import("ruby_layout.zig");
 pub const policy = ruby.policy;
@@ -264,6 +265,8 @@ pub fn layoutParagraph(
 
     var body_map: [max_body_bytes + 1]policy.Boundary = undefined;
     var shaped: [max_glyphs]ShapedGlyph = undefined;
+    // Body shaping must not overwrite ruby glyphs stored in the same array.
+    var ruby_shaped: [@min(max_glyphs / 2, 128)]ShapedGlyph = undefined;
 
     const ruby_count = try shapeRun(
         CacheType,
@@ -275,9 +278,8 @@ pub fn layoutParagraph(
         1,
         ruby_text,
         glyf_scratch,
-        shaped[max_glyphs - @min(max_glyphs / 2, 128) ..],
+        &ruby_shaped,
     );
-    const ruby_shaped_slice = shaped[max_glyphs - @min(max_glyphs / 2, 128) ..][0..ruby_count];
 
     var total_emitted: usize = 0;
     var para_block_offset_px: i32 = 0;
@@ -320,9 +322,27 @@ pub fn layoutParagraph(
 
             // Append ruby glyphs after `shaped[0..body_count]` when annotations exist in this paragraph
             var para_total = body_count;
+            var para_ruby_bytes: usize = 0;
             if (local_ann_count > 0) {
-                @memcpy(shaped[body_count .. body_count + ruby_count], ruby_shaped_slice);
-                para_total += ruby_count;
+                const ruby_start = local_anns[0].ruby.start;
+                const ruby_end = local_anns[local_ann_count - 1].ruby.end;
+                if (ruby_end < ruby_start or ruby_end > ruby_text.len) return error.Range;
+                para_ruby_bytes = ruby_end - ruby_start;
+                try policy.map(ruby_text[ruby_start..ruby_end], ruby_map[0 .. para_ruby_bytes + 1]);
+                for (local_anns[0..local_ann_count]) |*ann| {
+                    if (ann.ruby.start < ruby_start or ann.ruby.end > ruby_end) return error.Range;
+                    ann.ruby.start -= ruby_start;
+                    ann.ruby.end -= ruby_start;
+                }
+                for (ruby_shaped[0..ruby_count]) |g| {
+                    if (g.cluster < ruby_start or g.cluster >= ruby_end) continue;
+                    var local_glyph = g;
+                    local_glyph.cluster -= ruby_start;
+                    shaped[para_total] = local_glyph;
+                    para_total += 1;
+                }
+            } else {
+                try policy.map("", ruby_map[0..1]);
             }
 
             const initial_flow = try layout.Flow.init(inline_limit_26_6, step_26_6, max_lines);
@@ -331,7 +351,7 @@ pub fn layoutParagraph(
                 ShapedGlyph,
                 shaped[0..para_total],
                 body_map[0 .. para_slice.len + 1],
-                if (local_ann_count > 0) ruby_map[0 .. ruby_text.len + 1] else ruby_map[0..1],
+                ruby_map[0 .. para_ruby_bytes + 1],
                 local_anns[0..local_ann_count],
                 axis,
                 initial_flow,
@@ -485,6 +505,34 @@ test "layoutParagraph switches live between horizontal and vertical with group r
     try std.testing.expectEqual(list_v[0].cell_x_px, list_v[1].cell_x_px);
     // Ruby sits to the RIGHT (+X) of the parent vertical body column
     try std.testing.expect(list_v[2].cell_x_px > list_v[0].cell_x_px);
+}
+
+test "long body cannot overwrite ruby glyphs and paragraph readings stay local" {
+    var font_buf: [512]u8 = undefined;
+    const bytes = ttf_test_helper(&font_buf);
+    const face = try ttf.Face.init(ttf.SliceReader.fromSlice(&bytes));
+    const family = ttf.Family{ .faces = &[_]ttf.Face{face} };
+    const CacheType = ttf.TwoTierCache(16, 64, 32, 64 * 64);
+    var cache: CacheType = .{};
+    var scratch: [256]u8 = undefined;
+    var placed: [256]PlacedGlyph = undefined;
+    var body: [424]u8 = undefined;
+    for (0..140) |i| @memcpy(body[i * 3 ..][0..3], "か");
+    @memcpy(body[420..], "\nか");
+    const annotations = [_]ruby.Annotation{
+        .{ .base = .{ .start = 417, .end = 420 }, .ruby = .{ .start = 0, .end = 3 } },
+        .{ .base = .{ .start = 421, .end = 424 }, .ruby = .{ .start = 3, .end = 6 } },
+    };
+    for (0..2) |axis| {
+        const style = ViewStyle{ .body_px = 16, .ruby_px = 8, .axis = @intCast(axis), .viewport_width_px = 4096, .viewport_height_px = 2048 };
+        const list = try layoutParagraph(256, 512, 64, CacheType, &cache, family, style, &body, "つつ", &annotations, &scratch, &placed);
+        var ruby_count: usize = 0;
+        for (list) |glyph| if (glyph.run == 1) {
+            try std.testing.expectEqual(@as(u32, 'つ'), glyph.base_cp);
+            ruby_count += 1;
+        };
+        try std.testing.expectEqual(@as(usize, 2), ruby_count);
+    }
 }
 
 pub fn ttf_test_helper(buf: []u8) []const u8 {

@@ -1,0 +1,14 @@
+{
+  "head": "cccf5a27b30d7cd56657733e8f0935769e3668a5",
+  "run": 41161544074,
+  "job": 124420243392,
+  "job_url": "https://github.com/masanork/nihos/actions/runs/41161544074/job/124420243392",
+  "started_at": "2026-10-31T02:48:39Z",
+  "completed_at": "2026-10-31T03:03:56Z",
+  "conclusion": "cancelled",
+  "cancelled_step": "RV32 SQLite standalone link (synthetic map only)",
+  "preceding_quality_steps": "success",
+  "old_timeout_minutes": 15,
+  "new_timeout_minutes": 25,
+  "runtime_sources_changed": false
+}

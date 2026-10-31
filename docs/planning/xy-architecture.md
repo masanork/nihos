@@ -93,18 +93,27 @@ flowchart TD
     end
 
     subgraph Desktop["Target B: macOS / PC (Rust GPUI ホストシェル)"]
-        GPUI["GPUI Custom Element + GPU Texture Atlas (120fps Retina)"]
+        GPUI["GPUI Custom Element: completed frame texture upload (planned)"]
     end
 
-    M1 -- "8bpp α bitmap -> RGB565 Blit" --> FB
-    DL -- "C ABI Display List" --> GPUI
-    M1 -- "IVS/PUA/縦書き回転済み 8bpp α bitmap" --> GPUI
+    RGB["共通RGB565合成: 字形・ルビ・カーソル"]
+    M1 -- "8bpp α bitmap" --> RGB
+    DL --> RGB
+    RGB --> FB
+    RGB -- "RGB565 -> RGBA expansion only" --> GPUI
 ```
 
 - **Display List による分離**:
   組版エンジン（Module 2）の出力は、直接ピクセルを塗る副作用ではなく、`extern struct` で定義されたフラットな **Display List（配置済みの `GlyphKey` + 26.6固定小数点座標 `(x, y)` + 矩形/選択範囲/カーソル）** とする。
-- **Mac/PC（GPUI）とTab5での完全な組版・字形一致**:
-  macOS等のホスト環境でも、OS標準のCoreText等に丸投げするとBunsen 3レイヤ（本体・Ext・PUP）のIVS横断解決や、`vert` テーブルを持たないフォントの縦書き約物回転、グループルビの配置がTab5実機と乖離する。そのため、GPUIバックエンドでもグリフ解決・ベジェ縦書き変換・ラスタライズには共通の `src/graphics/ttf.zig` を使い、生成された 8bpp α ビットマップをGPUIのテクスチャアトラスへ供給する。
+- **Mac/PCとTab5での同一ピクセル出力**:
+  フォントの解決、26.6送り幅、組版、ラスタライズとRGB565合成を共通Zig側で行う。
+  Macは完成したRGB565をRGBAへ展開して転送し、ホストのフォント処理、追加の
+  alpha合成、補間拡大を対象画面へ適用しない。英数字は共通のSource Code Pro、
+  日本語はBunsenのフォールバックを利用する。Retinaでも1 target pixelを
+  1 backing pixelへ対応させる。GPUIは将来この完成フレームを受け取る側とする。
+  現在の操作ホストはCocoaであり、GPUIランタイムへの接続は未実装。
+  配置・glyph maskのC ABIは観測用に残すが、それだけでは合成結果の一致を保証しない。
+  [Macでの実装と検証](../measurements/2026-10-31-xy-pixel-host.md)を参照。
 
 ---
 

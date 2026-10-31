@@ -58,6 +58,23 @@ test "boot faces render Japanese spaces missing glyphs and live view settings" {
         config.style.body_px = 96;
         try instance.render(&request);
     }
+    const ruby_spans = [_]protocol.RubySpan{.{ .base_start = 2040, .base_end = 2043, .ruby_start = 0, .ruby_end = 1 }};
+    request.ruby_text = "B";
+    request.ruby_text_length = 1;
+    request.ruby_spans = &ruby_spans;
+    request.ruby_count = 1;
+    config.style.body_px = 25;
+    for (0..2) |axis| {
+        config.style.axis = @intCast(axis);
+        @memset(std.mem.asBytes(&instance.placed), 0);
+        try instance.render(&request);
+        var ruby_glyphs: usize = 0;
+        for (instance.placed) |g| if (g.run == 1) {
+            ruby_glyphs += 1;
+        };
+        try std.testing.expect(ruby_glyphs > 0);
+    }
+    request.ruby_count = 0;
     try config.set("foreground", .{ .number = 0x123456 });
     try config.set("background", .{ .number = 0xabcdef });
     request.text_length = 0;
@@ -65,4 +82,40 @@ test "boot faces render Japanese spaces missing glyphs and live view settings" {
     try instance.render(&request);
     const expected = @import("render_adapter.zig").rgb565(0xab, 0xcd, 0xef);
     try std.testing.expectEqual(expected, std.mem.readInt(u16, pixels[0..2], .little));
+}
+
+test "native rotated scanout and desktop logical presentation match every pixel" {
+    const std = @import("std");
+    const instance = try std.testing.allocator.create(session.Session);
+    defer std.testing.allocator.destroy(instance);
+    try instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    const byte_count = 1280 * 720 * 2;
+    const native = try std.testing.allocator.alloc(u8, byte_count + 16);
+    defer std.testing.allocator.free(native);
+    const logical = try std.testing.allocator.alloc(u8, byte_count + 16);
+    defer std.testing.allocator.free(logical);
+    @memset(native, 0xa5);
+    @memset(logical, 0xa5);
+    var config = @import("view_config").Config{};
+    config.style.body_px = 25;
+    config.style.ruby_px = 6;
+    config.style.line_gap_px = 0;
+    const text = "ASCII: 0123456789 ilMW () []\n日本語表示 あいうえお";
+    const status = "xy / *scratch*  Source Code Pro";
+    const ruby_spans = [_]protocol.RubySpan{.{ .base_start = 29, .base_end = 38, .ruby_start = 0, .ruby_end = "にほんご".len }};
+    var request = protocol.Request{ .workspace = instance, .frame = native.ptr, .frame_length = byte_count, .config = &config, .text = text.ptr, .text_length = text.len, .cursor = text.len, .status = status.ptr, .status_length = status.len, .show_cursor = 1, .ruby_text = "にほんご", .ruby_text_length = "にほんご".len, .ruby_spans = &ruby_spans, .ruby_count = 1 };
+    for (0..2) |axis| {
+        config.style.axis = @intCast(axis);
+        request.frame = native.ptr;
+        try instance.render(&request);
+        request.frame = logical.ptr;
+        try instance.renderLogical(&request, 1280, 720, 2560);
+        for (0..720) |y| for (0..1280) |x| {
+            const physical = (1279 - x) * 1440 + y * 2;
+            const desktop = y * 2560 + x * 2;
+            try std.testing.expectEqualSlices(u8, native[physical..][0..2], logical[desktop..][0..2]);
+        };
+    }
+    try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), native[byte_count..]);
+    try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), logical[byte_count..]);
 }

@@ -15,7 +15,7 @@ available without resetting concurrent work.
 | [#79](https://github.com/masanork/nihos/pull/79) | Superseded by xy startup in #85 | Do not replace current xy startup with the older ASCII shell. The terminal's command history and asynchronous prompt protection are not claimed as present in xy or the diagnostic fallback; their implementation remains on `codex/terminal-shell` for any later explicit terminal work. |
 | [#87](https://github.com/masanork/nihos/pull/87) | Land separately after final-head CI | Native TrueType rendering, Scheme view settings and physically diagnosed stack/preemption fixes remain useful. Its exact-candidate physical evidence is in the linked measurement reports; new integration builds are not new device trials. |
 | [#88](https://github.com/masanork/nihos/pull/88) | Keep draft | Its description explicitly requires recovery after a failed physical restoration before landing. Preserve the JPEG result and recovery gate. |
-| [#89](https://github.com/masanork/nihos/pull/89) | Keep draft | Its description records panel flicker and requires a publication/redraw fix plus retest. This reconciliation does not absorb parallel local edits. |
+| [#89](https://github.com/masanork/nihos/pull/89) | Integrate after its new final-head checks | Initially held as a flicker draft. During this reconciliation it advanced to `a53ac11`, ready for review, with foreground-only redraw, completed-frame publication and exact-candidate idle scanout evidence. Preserve the main qualification tool's distinction between loaded RAM state and manual panel confirmation while retaining #89's restore/idle-observation controls. No parallel dirty edits are absorbed. |
 
 ## Scope of validation
 

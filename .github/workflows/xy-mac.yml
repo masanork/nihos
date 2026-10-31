@@ -1,0 +1,20 @@
+name: xy Mac workspace
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: xy-mac-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  workspace:
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - name: Build the shared-core Mac app
+        run: sh tools/build-xy-mac.sh
+      - name: SQLite lifecycle and canonical framebuffer parity
+        run: python3 tools/xy_workspace_test.py -v
