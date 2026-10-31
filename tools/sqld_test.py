@@ -414,6 +414,20 @@ class CrashTest(unittest.TestCase):
         self.assertEqual(live.call(4)[0], -110)
         self.assertEqual(live.call(1, 'SELECT count(*) FROM slow')[1].text, b'((0))')
 
+    def test_constraint_rollback_clears_the_lease_without_killing_the_service(self):
+        live = MemoryService(timeout_ms=30000)
+        self.addCleanup(live.close)
+        self.assertEqual(live.call(2, 'CREATE TABLE one(id INTEGER PRIMARY KEY)')[0], 0)
+        live.monotonic_override = 1000
+        self.assertEqual(live.call(3)[0], 0)
+        self.assertEqual(live.call(2, 'INSERT INTO one VALUES(1)')[0], 0)
+        status, _ = live.call(2, 'INSERT OR ROLLBACK INTO one VALUES(1)')
+        self.assertNotEqual(status, 0)
+        live.monotonic_override = 40000
+        status, response = live.call(1, 'SELECT count(*) FROM one')
+        self.assertEqual(status, 0)
+        self.assertEqual(response.text, b'((0))')
+
     def test_invalid_monotonic_clock_refuses_begin_without_overflow(self):
         live = MemoryService()
         for now in (-1, (1 << 63) - 1):

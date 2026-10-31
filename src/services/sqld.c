@@ -245,6 +245,10 @@ static int file_request(struct nih_sqld *s,const struct nih_sqld_request *q,stru
  default: return NIH_STORE_INVALID;
  }
 }
+static void finish_transaction(struct nih_sqld *s) {
+ /* INSERT OR ROLLBACK can end an explicit transaction without COMMIT/ROLLBACK. */
+ if (s->transaction_deadline && s->db && sqlite3_get_autocommit(s->db)) s->transaction_deadline=0;
+}
 static int execute(struct nih_sqld *s,const struct nih_sqld_request *q,struct nih_sqld_response *r) {
  s->next_sequence=q->sequence;s->ticks=0;
  if (s->transaction_expired) { s->transaction_expired=0;return -110; }
@@ -256,11 +260,16 @@ static int execute(struct nih_sqld *s,const struct nih_sqld_request *q,struct ni
   sqlite3_set_authorizer(s->db,NULL,NULL);
   int result=query(s,&check,r);
   sqlite3_set_authorizer(s->db,authorize,s);
+  finish_transaction(s);
   return result;
  }
  if (q->operation>=NIH_SQL_QUERY && q->operation<=NIH_SQL_ROLLBACK) {
   if (s->fs_dirty) return NIH_STORE_BUSY;
-  if (q->operation==NIH_SQL_QUERY || q->operation==NIH_SQL_EXEC) return query(s,q,r);
+  if (q->operation==NIH_SQL_QUERY || q->operation==NIH_SQL_EXEC) {
+   int result=query(s,q,r);
+   finish_transaction(s);
+   return result;
+  }
   if ((q->operation==NIH_SQL_BEGIN)==!sqlite3_get_autocommit(s->db)) return NIH_STORE_BUSY;
   int64_t deadline=0;
   if (q->operation==NIH_SQL_BEGIN) {
@@ -314,11 +323,14 @@ int nih_sqld_failed(void *raw) { return atomic_load(&((struct nih_sqld *)raw)->d
 int nih_sqld_step(void *raw) {
  struct nih_sqld *s=raw;if (!nih_sqld_is_owner(s)) return NIH_SQLD_DENIED;
  if (!s->dead && s->transaction_deadline && s->platform.monotonic_ms(s->platform.context)>=s->transaction_deadline) {
-  sqlite3_progress_handler(s->db,0,NULL,NULL);sqlite3_set_authorizer(s->db,NULL,NULL);
-  int rc=sqlite3_exec(s->db,"ROLLBACK",NULL,NULL,NULL);
-  sqlite3_set_authorizer(s->db,authorize,s);sqlite3_progress_handler(s->db,100,progress,s);
+  int rc=SQLITE_OK;
+  if (s->db && !sqlite3_get_autocommit(s->db)) {
+   sqlite3_progress_handler(s->db,0,NULL,NULL);sqlite3_set_authorizer(s->db,NULL,NULL);
+   rc=sqlite3_exec(s->db,"ROLLBACK",NULL,NULL,NULL);
+   sqlite3_set_authorizer(s->db,authorize,s);sqlite3_progress_handler(s->db,100,progress,s);
+   s->transaction_expired=1;
+  }
   s->transaction_deadline=0;
-  s->transaction_expired=1;
   if (rc!=SQLITE_OK) s->dead=1;
  }
  uint32_t head=atomic_load_explicit(&s->response_head,memory_order_relaxed);
