@@ -310,6 +310,10 @@ SECTIONS
     .flash.xyrodata : ALIGN(16) {
         __flash_xy_rodata_start = .;
         *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
+        /* LLVM's switch tables do not inherit the function's linksection.
+         * The bounded Scheme evaluator is foreground-only mapped Flash code;
+         * keep its generated read-only tables with that same owner. */
+        *(.rodata.xy.scheme_runtime.Runtime.* .rodata.scheme_runtime.Runtime.*)
         *(.flash.xyrodata .flash.xyrodata.*)
         . = ALIGN(4);
         __flash_xy_end = .;

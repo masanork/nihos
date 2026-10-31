@@ -1,0 +1,28 @@
+{
+  "non_xy_preprocessed_linker_unchanged": true,
+  "manifests": {
+    "keypad_atlas": {
+      "previous_linker_sha256": "79c587cfd17b7e711f06c583c729103b848f772e6fa78f65c3ca5099056c02b4",
+      "linker_sha256": "96dadaacd1a6fe6bf8d0a313183d0e851f50e9c20da1053eae3c86238812d598",
+      "payloads": {
+        "plan_sha256": "2177561d5f883c0786ebaab9f2e96bd5f10b61cc2faa8ea76132e8c24896e047",
+        "atlas_sha256": "d4a7192e2b0a40709f6815e554833df0e46fc03472d4a1320cd1aafdb588964c"
+      }
+    },
+    "card_read_font": {
+      "previous_linker_sha256": "79c587cfd17b7e711f06c583c729103b848f772e6fa78f65c3ca5099056c02b4",
+      "linker_sha256": "96dadaacd1a6fe6bf8d0a313183d0e851f50e9c20da1053eae3c86238812d598",
+      "payloads": {
+        "font_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54"
+      }
+    },
+    "card_auto_font": {
+      "previous_linker_sha256": "79c587cfd17b7e711f06c583c729103b848f772e6fa78f65c3ca5099056c02b4",
+      "linker_sha256": "96dadaacd1a6fe6bf8d0a313183d0e851f50e9c20da1053eae3c86238812d598",
+      "payloads": {
+        "font_sha256": "f219b4c91143977a726c80d5e45cb0dc074feb64d59c14d0527d4b41fc6aa082",
+        "font_raw_sha256": "df47d9b86e02361404e47678c3d5234023bc47f7d740f356bc9a915197bf2a54"
+      }
+    }
+  }
+}
