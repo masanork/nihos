@@ -1,0 +1,7 @@
+esptool.py v4.12.0
+Creating esp32p4 image...
+Merged 4 ELF sections
+Successfully created esp32p4 image.
+esptool.py v4.12.0
+SHA digest in image updated
+Wrote 0x64990 bytes to file /private/tmp/nihos-rust-sdk-integration-20261030/build/wasm-interactive-repeat/nihos-native-flash.bin, ready to flash to offset 0x0

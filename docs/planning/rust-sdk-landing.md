@@ -130,6 +130,10 @@ Wasm/display profile and physical presenter remain open.
    samples loop progress across asynchronous open and cancellation; see the
    [foreground report](../measurements/2026-11-01-wasm-foreground-ui-service.md).
    Network, storage and camera work are disabled in that profile.
+   A bounded synthetic hashing and sample-aggregation workload now runs on
+   those foreground turns with independent result checking; see the
+   [mock-work report](../measurements/2026-11-01-wasm-foreground-mock-work.md).
+   It does not exercise real service drivers or run during synchronous UI calls.
    A foreground controller now owns opening, cancellation and active-input
    routing in that fixture and the UI branch. It rejects start when camera or
    display is busy and reserves display until cancellation has completed.

@@ -1,0 +1,47 @@
+{
+  "source_commit": "0db70426a9d222098cbb803f3ed0f564b2a98c0d",
+  "scope": "emulator synthetic deterministic foreground workload; no real service drivers, scanout or physical device",
+  "candidates": {
+    "mock": {
+      "nihos-native-image.elf": "f2093e7e79ff1aca4c8a1fe01a6cf2b4040ccbb8bc058d9c71a9d4947ff11fda",
+      "nihos-native-flash.bin": "079263fba24e3fb4dad4f6669942f814b0c0fa6ecd56be3ca0e5fc2169808cb4"
+    },
+    "previous_ui": {
+      "nihos-native-image.elf": "1243cc4ce92ecc8890caea4f804e47a79776f45ee462a17ad38807e82a47030c",
+      "nihos-native-flash.bin": "94883e7a57a6ca049c3f8236c3d9ccf7be65f1d0526b449ba53ff40b2696a48a"
+    },
+    "matrix": {
+      "nihos-native-image.elf": "59b48cb2cae0fa9007d0a97ad6d176122c0a74941943cf4aa0d5834f27a67429",
+      "nihos-native-flash.bin": "dba72ad79d6e6fa2f0fbd6234591fe35dd1e615c789f1500e11a12a8c6a1d4ba"
+    },
+    "native": {
+      "nihos-native.elf": "f1af80ae8f9d75479264c7d6ace5d7f8aeb57ea655e6ba4d62a8e5453ea6132d",
+      "nihos-native-flash.bin": "75ad4b66e39177c1a0dbf2b8d4f500c884ee8b511a899aea917809b35bc3338c"
+    }
+  },
+  "evidence_sha256": {
+    "build.log": "061ddcd91ae2dc18c87d567cc0427d87d5f9a747369b4bc93d4a448c61eba05d",
+    "debug.log": "9345450b248b031ded823138c2daface90a5d1a6e755aac443f4279154d2b16a",
+    "image-audit.json": "198d6e9acb62daa7e310035e54623f83fde990147f87708f96eedaa87df49da3",
+    "image.log": "7f3bc312c29e909ec21d26eeffc61b1acdd0b9b57baf3c5e2abfb8fd57509053",
+    "matrix-cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "matrix-early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "matrix-metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "matrix-noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "matrix-normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "matrix-present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "matrix-report.json": "add39a8d3640ed1c17d0d0b5fdcdf30c87a9cd67b0a379001947fc6e2dd1b8fa",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "mock-report.json": "23dac6c770cfbaff2e6a15383f644321a71d4a29846834c72548d962499c1792",
+    "native-report.json": "beebf1040865fc9ce2d01a3ee16a3048948205fc2569792bed1a40f82c4f696a",
+    "native-runner.log": "dd973e1c845fe2ceeed684fe4a3bc13b41d1d283f5b1f125a43c4b15382f5b7d",
+    "previous-ui-runner.log": "aa21e27eca068c8cad72ce1140d36ea2bb9a230455e0ad2b48c9304124af82fb",
+    "previous_ui-report.json": "cd16ed080e21913b314946759ac4fb25d08793dcfbd73ea82467332616bab05e",
+    "python.log": "be14f0cb39694f051d0a5f390ec25f864283aaa1da9833aedd79f09112cc3b4e",
+    "release-safe.log": "05cf883b52962ee90f67347ad9952a8e65768a19d719ec89d0750811df543783",
+    "repeat.log": "d26b59dabc88530103d5ca1d5bb343e6dd05f402012dcaf7df5f54d30a793aa6",
+    "report.json": "23dac6c770cfbaff2e6a15383f644321a71d4a29846834c72548d962499c1792",
+    "runner.log": "3b0030b473f40b0c4ebefc387333ee2afb8fc9a87581d3a4f8455906dbededf7",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570"
+  }
+}
