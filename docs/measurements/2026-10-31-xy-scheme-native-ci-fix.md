@@ -38,3 +38,12 @@
 
 [source・候補・ログの証跡](evidence/2026-10-31-xy-scheme-native-ci-fix/index.json)を保持する。
 これはbuild/監査とhost実行の検証であり、実機へ書き込んでいない。
+
+## 生成manifestのsource binding
+
+最初の修正pushでは、`esp32p4.ld`を参照する`keypad_atlas.json`、`card_read_font.json`、
+`card_auto_font.json`のsource hash更新が漏れ、Host quality gatesの回帰テストで検出された。
+全payloadのhashが一致し、XYを無効にしたリンカのpreprocess出力が修正前後で同じことを
+確認してから、3manifestの当該source hashだけを更新した。
+確認値は[manifest refresh](evidence/2026-10-31-xy-scheme-native-ci-fix/manifest-refresh.json)、
+再検証は[Python回帰ログ](evidence/2026-10-31-xy-scheme-native-ci-fix/python-regressions.log)に保持する。
