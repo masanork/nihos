@@ -625,3 +625,38 @@ test "camera handle reads are bounded copies and do not edit the document" {
     try std.testing.expectError(error.CameraFailed, model.vm.evaluate("(camera/read 7 0 1)", &model, &output));
     try std.testing.expectEqualStrings("notes", model.doc.slice());
 }
+
+test "learning input owns separate draft and notes without changing editor undo or settings" {
+    const l = try std.testing.allocator.create(LearningSession);
+    defer std.testing.allocator.destroy(l);
+    l.initInPlace();
+    l.active_slot = 0;
+    l.slots[0].used = true;
+    l.slots[0].code.revision = 1;
+    l.slots[0].code.next_group_id = 1;
+    l.slots[0].notes.revision = 1;
+    l.slots[0].notes.next_group_id = 1;
+    var model: Model = undefined;
+    model.initInPlace();
+    model.learning = l;
+    model.insert("ordinary document");
+    model.vm.view.style.axis = 1;
+    model.nav.screen = .exercise;
+    model.handle(.{ .text = 'A' });
+    model.handle(.enter);
+    for ("日本語") |b| model.feedSerial(b, 0);
+    try std.testing.expectEqualStrings("A\n日本語", l.slots[0].code.slice());
+    model.handle(.backspace);
+    try std.testing.expectEqualStrings("A\n日本", l.slots[0].code.slice());
+    model.handle(.undo);
+    try std.testing.expectEqualStrings("A\n日本語", l.slots[0].code.slice());
+    model.touch(1100, 680);
+    for ("メモ") |b| model.feedSerial(b, 0);
+    try std.testing.expectEqualStrings("メモ", l.slots[0].notes.slice());
+    model.handle(.escape);
+    try std.testing.expectEqual(navigation.Screen.reading, model.nav.screen);
+    try std.testing.expectEqual(@as(u8, 1), model.vm.view.style.axis);
+    try std.testing.expectEqualStrings("ordinary document", model.doc.slice());
+    try std.testing.expect(try model.doc.undo());
+    try std.testing.expectEqualStrings("", model.doc.slice());
+}
