@@ -16,9 +16,12 @@ const i2c = @import("boot_i2c");
 const Pins = @import("display_probe.zig").Pins;
 const runtime = @import("display_runtime.zig");
 const clock = @import("diagnostic_clock.zig");
+const lp_core = @import("suspend").lp_core;
+const suspend_support = @import("suspend");
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 extern fn nih_keyboard_pads_init() callconv(.c) void;
+extern fn nih_display_backlight(bool) callconv(.c) void;
 extern fn nih_diagnostic_serial_dropped() callconv(.c) u32;
 extern fn nih_diagnostic_serial_read() callconv(.c) i32;
 extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
@@ -534,6 +537,50 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
                     session.write(SerialSink{}, "\r\n");
                 }
                 session.write(SerialSink{}, "Normal boot runs bootstrap/idle; no user apps yet.\r\n");
+            },
+            .@"suspend" => {
+                session.write(SerialSink{}, "Entering standby (display off, LP core active)... Press any key/touch to resume.\r\n");
+                nih_display_backlight(false);
+
+                // Save sealed Suspend-to-RAM snapshot into LP SRAM
+                var snap = suspend_support.SuspendSnapshot{
+                    .hart_id = 0,
+                    .mstatus = asm volatile ("csrr %[val], mstatus"
+                        : [val] "=r" (-> u32),
+                    ),
+                    .sp = asm volatile ("mv %[val], sp"
+                        : [val] "=r" (-> u32),
+                    ),
+                    .ra = asm volatile ("mv %[val], ra"
+                        : [val] "=r" (-> u32),
+                    ),
+                };
+                snap.seal();
+                _ = suspend_support.saveSnapshot(suspend_support.lp_snapshot_address, snap);
+
+                _ = lp_core.boot(lp_core.NativeMmio{}, &lp_core.default_standby_stub);
+                while (true) {
+                    asm volatile ("wfi" ::: .{ .memory = true });
+                    const byte = nih_diagnostic_serial_read();
+                    if (byte >= 0) break;
+                    if (nih_touch_available()) {
+                        var ev: pointer.Event = undefined;
+                        if (nih_touch_pop(&ev)) break;
+                    }
+                    if (options.keyboard_i2c and (model.input_sources & console.keys.capability(.tab5_keyboard) != 0)) {
+                        var events: [4]console.keyboard.Event = undefined;
+                        if (keyboard.poll(&events)) |count| {
+                            if (count > 0) break;
+                        } else |_| {}
+                    }
+                }
+                const lp_stat = lp_core.status(lp_core.NativeMmio{});
+                const verified = if (suspend_support.loadSnapshot(suspend_support.lp_snapshot_address)) |s| s.isValid() else false;
+                nih_display_backlight(true);
+                session.write(SerialSink{}, "Resumed from standby. LP heartbeat: ");
+                session.number(SerialSink{}, lp_stat.heartbeat);
+                session.write(SerialSink{}, if (verified) " (state retained)\r\n" else " (state invalid)\r\n");
+                _ = drawSession();
             },
             else => unreachable,
         }

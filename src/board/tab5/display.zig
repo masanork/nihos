@@ -54,6 +54,18 @@ pub fn prepareBoard(bus: anytype) !void {
     try update(bus, 0x03, 0x20, 0x20);
 }
 
+/// Power down LCD and touch controllers for suspend / standby.
+pub fn powerDownBoard(bus: anytype) !void {
+    if (try read(bus, 0x01) & 0xfc != 0xa0) return error.ExpanderIdentity;
+    // Disable touch power (TOUCH_EN pin 5 low)
+    try update(bus, 0x05, 0x20, 0);
+    // Drive LCD_EN pin 4 low (push-pull output level 0, pull-up disabled)
+    try update(bus, 0x0b, 0x10, 0);
+    try update(bus, 0x05, 0x10, 0);
+    try update(bus, 0x07, 0x10, 0);
+    try update(bus, 0x03, 0x10, 0x10);
+}
+
 /// Identify only once the touch controller returns a supported firmware ID.
 pub fn identify(bus: anytype) !Panel {
     var version: [1]u8 = .{0};
@@ -135,6 +147,29 @@ test "LCD/touch power preparation preserves every unrelated expander bit" {
     var dropped = BoardModel{ .drop = true };
     dropped.registers[1] = 0xa1;
     try std.testing.expectError(error.Readback, prepareBoard(&dropped));
+}
+
+test "powerDownBoard drives LCD low and disables touch power while preserving other bits" {
+    var model = BoardModel{};
+    model.registers[1] = 0xa1;
+    try prepareBoard(&model);
+    const before = model.registers;
+    try powerDownBoard(&model);
+    for (model.registers, before, 0..) |after, previous, index| {
+        const mask: u8 = switch (index) {
+            3, 5, 7 => 0x30,
+            11 => 0x10,
+            else => 0,
+        };
+        try std.testing.expectEqual(previous & ~mask, after & ~mask);
+    }
+    // TOUCH_EN (pin 5) is 0
+    try std.testing.expectEqual(@as(u8, 0), model.registers[5] & 0x20);
+    // LCD_EN (pin 4) is output (bit 4 set in 0x03) and level 0 (bit 4 clear in 0x05)
+    try std.testing.expectEqual(@as(u8, 0x10), model.registers[3] & 0x10);
+    try std.testing.expectEqual(@as(u8, 0), model.registers[5] & 0x10);
+    // LCD_EN pull-up is disabled (bit 4 clear in 0x0b)
+    try std.testing.expectEqual(@as(u8, 0), model.registers[11] & 0x10);
 }
 
 test "unknown firmware or a timeout cannot fall back to another panel" {
