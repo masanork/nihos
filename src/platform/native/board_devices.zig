@@ -239,10 +239,14 @@ const FirstFrameHardware = struct {
             for (0..if (options.camera_diagnostics) @as(usize, 16) else 128) |_| {
                 if (csi_workspace.readChunk(self.frame_identity, self.retained_chunk) == null) return .failed;
                 self.retained_chunk += 1;
-                if (self.retained_chunk == 900) break;
+                if (self.retained_chunk == csi_workspace.frame_bytes / 1024) break;
                 if (!options.camera_diagnostics and cameraBudgetExpired(started)) break;
             }
-            return if (self.retained_chunk == 900) self.prepareSecond() else .pending;
+            return if (self.retained_chunk == csi_workspace.frame_bytes / 1024) self.prepareSecond() else .pending;
+        }
+        if (options.camera_jpeg and !self.frame_started and csi_workspace.phase() == .ready_dma) {
+            self.frame_started = true;
+            return .done;
         }
         if (!self.frame_started) {
             self.frame_started = true;
@@ -285,7 +289,7 @@ const FirstFrameHardware = struct {
             self.reason = 0x101;
             return false;
         };
-        if (address < 0x48030000 or address > 0x4c000000 - 921600) {
+        if (address < 0x48030000 or address > 0x4c000000 - csi_workspace.frame_bytes) {
             self.reason = 0x102;
             return false;
         }
@@ -308,7 +312,7 @@ const FirstFrameHardware = struct {
             self.reason = 0x401;
             return false;
         };
-        const code = nih_csi_dma_configure(address, address, 921600);
+        const code = nih_csi_dma_configure(address, address, csi_workspace.frame_bytes);
         if (code != 0) self.reason = @bitCast(code);
         if (code == 0 and self.continuous) {
             const second = csi_workspace.streamSecondAddress() orelse return false;
@@ -528,7 +532,7 @@ const InFlightIo = struct {
     pub fn frame(_: *@This()) ?inflight.Frame {
         const identity = csi_workspace.dmaLeaseIdentity() orelse return null;
         const base = csi_workspace.address() orelse return null;
-        return .{ .identity = identity, .base = base, .length = 921600, .dma_owned = true };
+        return .{ .identity = identity, .base = base, .length = csi_workspace.frame_bytes, .dma_owned = true };
     }
     pub fn active(_: *@This()) bool {
         return nih_csi_inflight_active();
@@ -1108,19 +1112,20 @@ fn startCameraSnapshot() bool {
     const now = clock.counter() orelse return false;
     if (!prepareCaptureScratch()) return false;
     if (!first_frame_probe.start(now, 120_000_000)) return false;
-    sample_preview_requested = true;
-    first_frame_hardware.display_preview = true;
+    sample_preview_requested = !options.camera_jpeg;
+    first_frame_hardware.display_preview = !options.camera_jpeg;
     first_frame_hardware.display_tone = true;
-    first_frame_hardware.keep_configured = !options.camera_diagnostics;
+    first_frame_hardware.keep_configured = !options.camera_diagnostics and !options.camera_jpeg;
     return true;
 }
 pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!options.devices or !active) return false;
+    if (options.camera_jpeg and kind >= 6) return false;
     if (!options.camera_diagnostics and kind >= 6 and kind != 26 and kind != 30) return false;
     return switch (kind) {
         30 => blk: {
             const now = clock.counter() orelse break :blk false;
-            if (options.camera_diagnostics or stream_requested or !requestDevice(26)) break :blk false;
+            if (options.camera_jpeg or options.camera_diagnostics or stream_requested or !requestDevice(26)) break :blk false;
             stream_requested = true;
             stream_stopping = false;
             stream_retired = false;
@@ -1335,4 +1340,21 @@ pub const StabilityDetail = extern struct { state: u32, changed: u32, chunks: u3
 pub fn cameraStabilityDetail() StabilityDetail {
     if (!scan_completed_frame) return .{ .state = 0, .changed = 0, .chunks = 900, .sha_match = 0, .injected = 0, .zeroed = 0, .nonzero = 0 };
     return .{ .state = @backingInt(capture_scratch.stability.phase), .changed = capture_scratch.stability.changed, .chunks = 900, .sha_match = capture_scratch.stability.sha_match, .injected = @intFromBool(capture_scratch.stability.injected), .zeroed = capture_scratch.stability.zeroed, .nonzero = capture_scratch.stability.nonzero };
+}
+
+/// JPEG fixture only: full stopped RGB565 frame; no pointer escapes to applications.
+pub fn cameraJpegFrame() ?u32 {
+    if (!options.camera_jpeg or first_frame_probe.phase != .done or first_frame_probe.result != .dma_complete or first_frame_hardware.dma_uncertain or first_frame_hardware.domain_fault) return null;
+    return csi_workspace.address();
+}
+
+pub fn cameraJpegClock() ?u64 {
+    return if (active) clock.counter() else null;
+}
+
+/// The fixture owns both payloads; ordinary camera commands stay denied.
+pub fn cameraJpegCapture() bool {
+    if (!options.camera_jpeg or camera_sequence != 0 or !startCameraSnapshot()) return false;
+    camera_sequence += 1;
+    return true;
 }

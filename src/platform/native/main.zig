@@ -153,6 +153,7 @@ noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.dev
     if (options.console_live and options.boot_fast) {
         if (options.camera_id and board_devices.cameraStreaming() and !ui.cameraLiveActive()) board_devices.cameraStopStreaming();
         board_devices.poll();
+        if (options.camera_jpeg) @import("camera_jpeg.zig").poll();
         if (options.camera_id and board_devices.cameraStreamDrained()) {
             _ = ui.cameraAcceptFrame();
             const stream = board_devices.cameraStreamStats();
