@@ -497,7 +497,8 @@ pub fn startSession(log: anytype) bool {
     revision +%= 1;
     return service(log);
 }
-fn beginSession(log: anytype) void {
+// Session handoff runs after the mapped xy span is available, outside IRQs.
+noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xytext" else ".text") void {
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();

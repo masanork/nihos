@@ -16,6 +16,11 @@ class NativeInstructionTests(unittest.TestCase):
         functions = [('xy.scheme_runtime.Runtime.evaluate__func_1', start, start + 16),
                      ('xy.scheme_runtime.Runtime.collect', start + 16, start + 32)]
         self.assertEqual(len(MODULE.audit_xy_functions(functions, (start, start + 32))), 2)
+        handoff = functions + [('diagnostic_ui.beginSession__func_1', start + 32, start + 48)]
+        self.assertEqual(len(MODULE.audit_xy_functions(handoff, (start, start + 48))), 3)
+        for name in ('diagnostic_ui.beginSession__func_bad', 'diagnostic_ui.beginSession__func_1.extra', 'diagnostic_ui.arbitrary__func_1'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                MODULE.audit_xy_functions(handoff[:-1] + [(name, start + 32, start + 48)], (start, start + 48))
         for name, flags, address in (('.flash.xytext', 6, start), ('.flash.xyrodata', 2, start + 32)):
             MODULE.audit_flash_section(name, 1, flags, address, 16, allow_xy=True)
             for kind, changed, permitted in ((1, flags, False), (1, 7, True), (8, flags, True)):
