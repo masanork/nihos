@@ -12,7 +12,6 @@ pub fn SizedSession(comptime page_capacity: usize) type {
     return struct {
         cache: Cache,
         faces: [3]layout.ttf.Face,
-        book_face: layout.ttf.Face,
         scratch: [32768]u8,
         placed: [page_capacity]layout.PlacedGlyph,
         status_placed: [128]layout.PlacedGlyph,
@@ -22,13 +21,11 @@ pub fn SizedSession(comptime page_capacity: usize) type {
         owned_font_slices: [2][]const u8,
         frames: u32,
         glyphs: u32,
-        placed_count: u32,
 
         pub fn init(self: *@This(), mincho: layout.ttf.SliceReader, gothic: layout.ttf.SliceReader) !void {
             // Cache payload is inaccessible until a slot's valid bit is set.
             @memset(std.mem.asBytes(self), 0);
             self.faces[0] = try layout.code_font.face();
-            self.book_face = try layout.book_font.face();
             self.faces[1] = try layout.ttf.Face.init(mincho);
             self.faces[2] = try layout.ttf.Face.init(gothic);
         }
@@ -38,7 +35,6 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             @memset(std.mem.asBytes(self), 0);
             self.owned_font_slices = .{ mincho, gothic };
             self.faces[0] = try layout.code_font.face();
-            self.book_face = try layout.book_font.face();
             self.faces[1] = try layout.ttf.Face.init(layout.ttf.SliceReader.fromSlice(&self.owned_font_slices[0]));
             self.faces[2] = try layout.ttf.Face.init(layout.ttf.SliceReader.fromSlice(&self.owned_font_slices[1]));
         }
@@ -91,20 +87,11 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             if (@as(u32, style.margin_x_px) * 2 + style.body_px >= screen_width or
                 @as(u32, style.margin_y_px) * 2 + style.body_px >= style.viewport_height_px) return error.ViewportTooSmall;
             const family_faces = [_]layout.ttf.Face{ self.faces[0], self.faces[@as(usize, style.style_id) + 1] };
-            var family = (if (style.style_id == 0) self.external_mincho else self.external_gothic) orelse layout.ttf.Family{ .faces = &family_faces };
-            const book_faces = [_]layout.ttf.Face{ self.book_face, family_faces[1] };
-            if (request.book_prose != 0) {
-                family = .{ .faces = &book_faces, .code_faces = family.faces };
-                style.style_id = 2 + style.style_id * 2;
-                style.ruby_px = 0;
-                style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
-            }
-            if (request.code_count > 64) return error.Capacity;
-            const code_spans = if (request.code_spans) |p| p[0..request.code_count] else if (request.code_count == 0) &.{} else return error.Range;
+            const family = (if (style.style_id == 0) self.external_mincho else self.external_gothic) orelse layout.ttf.Family{ .faces = &family_faces };
             const text = request.text[0..request.text_length];
             if (text.len > 4096) return error.Capacity;
             if (!std.unicode.utf8ValidateSlice(text) or request.cursor > text.len or !document.isClusterBoundary(text, request.cursor)) return error.InvalidUtf8;
-            if (request.ruby_text_length > 1024 or request.ruby_count > 64) return error.Capacity;
+            if (request.ruby_text_length > (if (request.page_mode != 0) @as(usize, 2048) else 1024) or request.ruby_count > (if (request.page_mode != 0) @as(usize, 128) else 64)) return error.Capacity;
             const readings = request.ruby_text[0..request.ruby_text_length];
             const spans = if (request.ruby_spans) |ptr| ptr[0..request.ruby_count] else if (request.ruby_count == 0) &.{} else return error.Range;
             for (spans) |span| {
@@ -112,7 +99,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                 if (!document.isClusterBoundary(text, span.base_start) or !document.isClusterBoundary(text, span.base_end)) return error.InvalidUtf8;
             }
             var visible_readings: [1024]u8 = undefined;
-            var annotations: [64]layout.ruby.Annotation = undefined;
+            var annotations: [128]layout.ruby.Annotation = undefined;
             // Size the bounded window to the current typography, then halve it if
             // paragraph breaks consume more lines than the conservative cell budget.
             const inline_px: usize = if (style.axis == 0) @as(usize, screen_width) - 2 * @as(usize, style.margin_x_px) else @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px);
@@ -139,7 +126,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                     .base = .{ .start = span.base_start, .end = span.base_end },
                     .ruby = .{ .start = span.ruby_start, .end = span.ruby_end },
                 };
-                if (text.len > 0) list = try layout.layoutStyledParagraph(page_capacity, 4096, 1024, Cache, &self.cache, family, style, text, readings, annotations[0..spans.len], &self.scratch, &self.placed, true, code_spans);
+                if (text.len > 0) list = try layout.layoutParagraphWithWordWrap(page_capacity, 4096, 2048, Cache, &self.cache, family, style, text, readings, annotations[0..spans.len], &self.scratch, &self.placed, true);
             } else while (true) {
                 const used_before: usize = @min(before, total);
                 var start: usize = boundaries[(total - used_before) % boundaries.len];
@@ -207,7 +194,6 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                 g.bitmap_y_px += dy;
             }
             const theme = adapter.ThemePalette.fromAppearance(config.appearance);
-            self.placed_count = @intCast(list.len);
             const stats = try adapter.paintSurfaceRgb565(Cache, target, &self.cache, family, style, theme, list, if (request.show_cursor != 0) cursor else null, config.appearance.linear_blend, &self.scratch);
             self.glyphs = @intCast(stats.glyphs_blitted);
             _ = target.fillRect(0, screen_height - status_height, screen_width, status_height, theme.minibuf_bg_rgb565);
