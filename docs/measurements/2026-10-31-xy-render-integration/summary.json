@@ -1,0 +1,49 @@
+{
+  "code_commit": "f0812e3d71bedda8e145c79253dd9b7767f4c6e6",
+  "physical_device_used": false,
+  "sd_written": false,
+  "native_profiles": {
+    "normal": {
+      "image_sha256": "aabda0a037183f7ae975f0cb1bb4e71b081544b263ab7ee375462ae3319e3564",
+      "elf_sha256": "21dbd12467f0284df263b08640966a6a869e18c47a9656322a1ab692e02b5a32",
+      "image_bytes": 784272,
+      "primary_heap_bytes": 49472,
+      "xy_code_bytes": 37088,
+      "xy_rodata_bytes": 253460
+    },
+    "trace": {
+      "image_sha256": "267a35a29f46695dbfbc236598d1154697ad0808f9dd3010d43b433bd0a63c03",
+      "elf_sha256": "e487462710d8fbe21ba3a35cab41dc42ce219a7e3942984a42c5182afc071a82",
+      "image_bytes": 784736,
+      "primary_heap_bytes": 49472,
+      "xy_code_bytes": 37456,
+      "xy_rodata_bytes": 253460
+    },
+    "minimal": {
+      "image_sha256": "da4062114caaaba834ff41684a3f7a24d0a5b53ae0d8ad0541adb7e73553de3e",
+      "elf_sha256": "f9961ea11d4f236b8d90d089eff672be7584efb166378afb2ddc85497fcd4802",
+      "image_bytes": 744320,
+      "primary_heap_bytes": 68544,
+      "xy_code_bytes": 37024,
+      "xy_rodata_bytes": 263284
+    }
+  },
+  "rv32_observations": 39,
+  "proof_sha256": {
+    "mac-vertical-gothic-dark.png": "148aaf4b86bbdabe72b5880f7e362ae172836bee4314c13823424a98f2568aa3",
+    "minimal-image-audit.json": "bb24fcc97bcb245143546216c7620701428ab5d746ece15022957b4d87281cf0",
+    "normal-image-audit.json": "6bf419df6abd92953dd967a698bbc960d27edc56e4aeea5e963d18787bb67145",
+    "rv32-japanese.png": "36c83e2d9295bd1d0e2cd9b246001981672812b031878f975d8fa93f65e9e65a",
+    "rv32-report.json": "d9f10aea51b2516d3d7816ceba08294f5a2c02d04e43551d7a5e52357f36aae7",
+    "rv32-view-configured.png": "fa950eb4ca50a772ee07e37c917ca7449cc009824e80ebc913024eb157cefcd8",
+    "trace-image-audit.json": "66f9d49fe4394f8095c4cd9bdaaa60dee29fb5a168f052e646030d66744f2bf5"
+  },
+  "logs_sha256": {
+    "host": "793b90be3bd100294105d26c4ced33741f232ebdbe1eaeea4c1ad3048454985e",
+    "python": "eec30f1685cbe03ec021b9dea70d677e8acdbbd5ed039805c9199f819b58d6ac",
+    "static": "2e9e281de3e1ed9cd9f443051b4fc8bfe6408d8c0c8fb86934b33090c7f84774",
+    "native": "3c03be2005bcdabf65c98bc933a26fe01bb8de6e1359e88e87baf5f86d1d35d3",
+    "emulator": "d2f11402654e1546097454ab161ddc955cc95ca3db5d8035e4e3e3ae2f5c49c3",
+    "desktop": "584bd35d807f9a68bd78a2d67c0b8f136267ee4dff8d0ff39a1aa14f72327b6c"
+  }
+}
