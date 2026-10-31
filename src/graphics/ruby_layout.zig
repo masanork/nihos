@@ -9,7 +9,7 @@ pub const Error = policy.Error || error{ Range, Run, Coverage };
 const Unit = struct { first: u16, end: u16, ruby_first: u16, ruby_end: u16, advance: i32, base_offset: i32 = 0, ruby_offset: i32 = 0 };
 pub const Stats = struct { units: u32 = 0, joins: u32 = 0, groups: u32 = 0, moved: u32 = 0, wide: u32 = 0 };
 pub fn Plan(comptime capacity: usize) type {
-    if (capacity == 0 or capacity > 1024) @compileError("ruby plan capacity must be 1..1024 glyphs");
+    if (capacity == 0 or capacity > 2048) @compileError("ruby plan capacity must be 1..2048 glyphs");
     return struct { positions: [capacity]layout.Position = @splat(.{ .inline_offset = 0, .block_offset = 0 }), flow: layout.Flow, stats: Stats = .{}, count: u32 };
 }
 pub fn scratchBytes(comptime capacity: usize) usize {
