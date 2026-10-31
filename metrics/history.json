@@ -1513,23 +1513,23 @@
   {
     "schemaVersion": 1,
     "date": "2026-10-31",
-    "measuredAt": "2026-10-31T09:25:01.398705+00:00",
+    "measuredAt": "2026-10-31T09:59:18.093312+00:00",
     "project": "nihos",
-    "commit": "0cb0ee4fd0da0901e61c527e509bafccbec360a4",
+    "commit": "1e2850c92c2fe188ad4279c2b963d9f8e6510d76",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "a28ef0202f1112fc2fab6133a6fc05524b1ca4b6de06cd06bfc65733b3feadad",
+    "sourceTreeSha256": "6bc039a001c808be7ef0daa5907f5bb18aa2bd2c51507f115836536c89415438",
     "code": {
-      "implementation": 58363,
-      "tests": 29755,
-      "tooling": 19537,
+      "implementation": 58441,
+      "tests": 29830,
+      "tooling": 19540,
       "probes": 9156,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 51795,
-        "tests": 22156,
+        "implementation": 51873,
+        "tests": 22220,
         "tooling": 902,
         "probes": 1237,
         "vendored": 0,
@@ -1561,8 +1561,8 @@
       },
       "Python": {
         "implementation": 0,
-        "tests": 7440,
-        "tooling": 15345,
+        "tests": 7451,
+        "tooling": 15348,
         "probes": 1798,
         "vendored": 0,
         "generated": 0
@@ -1626,8 +1626,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 56731,
-        "tests": 22282,
+        "implementation": 56809,
+        "tests": 22346,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -1643,8 +1643,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 7473,
-        "tooling": 19392,
+        "tests": 7484,
+        "tooling": 19395,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1786,7 +1786,7 @@
         "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
         "src/graphics/ascii_console.zig": "c94adc6ed19b3740d91b73153e3120e9903859d7a8988842929a03907cd5c80c",
         "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
-        "src/graphics/boot_graphics.zig": "e50fa8c720db0c4c797f8af9e6b0d5593504721179c51754a6e4aeb46b27aaae",
+        "src/graphics/boot_graphics.zig": "b4b824ea33c42c38fbf5caddd56a44a494b8e8ec141000d6f48a2937a24926a7",
         "src/graphics/canvas.zig": "0a1b02139ed579c42a4978902c8722d4ec4e639fc7a1f5ad0476ad061aef8b62",
         "src/graphics/canvas_compile_probe.zig": "800c462939b4afb1c19693ac39aab443e9de8255557765a74d90d69c2c5d2909",
         "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
@@ -1895,7 +1895,7 @@
         "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
         "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
         "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
-        "src/platform/native/diagnostic_ui.zig": "eac48e718c3930811a37729f5aec4b32c71d41f87f48231a972eaa224c49141b",
+        "src/platform/native/diagnostic_ui.zig": "7b4a68dc6f5041aa7b69300181460c8c8f018b9258c09ef3437883b0f8bb75ec",
         "src/platform/native/display_probe.zig": "3385df69e5e477732cc13dda0d8f56c6bf24c0a818e4e04aef0f9e0be4629049",
         "src/platform/native/display_runtime.zig": "e1276574c1591e022dc2c037b35a23ef40d612adf2f53501ae0b597bd883c35d",
         "src/platform/native/display_service.zig": "5cca357d10533650d7530a214dcf2cf64ac0021f2e5640a7289ad22affea0d5b",
@@ -2030,9 +2030,9 @@
         "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7"
       },
       "lines": {
-        "covered": 12560,
-        "count": 13031,
-        "percent": 96.3855421686747
+        "covered": 12567,
+        "count": 13038,
+        "percent": 96.38748274275196
       },
       "files": {
         "src/app/animation.zig": {
@@ -2248,8 +2248,8 @@
           "count": 161
         },
         "src/graphics/boot_graphics.zig": {
-          "covered": 79,
-          "count": 79
+          "covered": 86,
+          "count": 86
         },
         "src/graphics/canvas.zig": {
           "covered": 142,
