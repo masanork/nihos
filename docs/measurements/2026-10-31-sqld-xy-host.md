@@ -33,3 +33,15 @@ provider未接続の旧`q`が空リストで成功していた経路も、明示
 実機アクセス・Flash書込み・SD書込みは実施していない。媒体のprovision、native owner task/allocator/stack、
 RPC待機、実機での共存・再起動・抜去・電断は残る。WAL、durable operation receipt、GJS等のlarge pack、
 ruby属性の保存も未提供。元のmain worktreeは編集せず、開始時と同じ4ファイルのstatus/numstatを確認した。
+
+## Linux linkと時計境界の追補
+
+source `f5dee0a5df57c42e7a5910320324d8685a7fff92`。初回Linux CIはZig objectの`__zig_probe_stack`未解決で失敗したため、
+host objectへcompiler runtimeを明示した。無効なmonotonic clockでtransaction期限をoverflow
+させない検査、OOM/時刻エラーの返却も追加した。callbackを差し替えず固定したまま時計値を
+注入するhost試験で、未定義動作を避けている。
+
+追補のsqld試験は14件、Python discoverは539件、既存Mac workspaceは16件成功。
+C analyzerとshellcheck、更新したcore/VFSのRV32 object compileも成功した。
+Zig sourceと通常ELFの関連sourceは先行記録から変更していない。
+追補のhash・ログは同じresult.jsonのfollowupとfollowup-*.log.gzに分けて保存した。
