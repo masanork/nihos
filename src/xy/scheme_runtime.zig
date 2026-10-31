@@ -209,10 +209,10 @@ pub const Runtime = struct {
         }
         if (std.mem.eql(u8, token, "#t")) return self.yes;
         if (std.mem.eql(u8, token, "#f")) return self.no;
-        if (std.mem.startsWith(u8, token, "#x")) return self.number(std.fmt.parseInt(i32, token[2..], 16) catch return error.Overflow);
+        if (token.len >= 2 and token[0] == '#' and token[1] == 'x') return self.number(parseHex(token[2..]) catch return error.Overflow);
         if (std.mem.eql(u8, token, ".")) return error.Syntax;
         if ((token[0] >= '0' and token[0] <= '9') or (token.len > 1 and (token[0] == '-' or token[0] == '+') and token[1] >= '0' and token[1] <= '9'))
-            return self.number(std.fmt.parseInt(i32, token, 10) catch return error.Overflow);
+            return self.number(parseDecimal(token) catch return error.Overflow);
         return self.text(.symbol, token);
     }
     fn arguments(self: *const Runtime, list: Ref, out: *[16]Ref) linksection(code_section) Error![]Ref {
@@ -523,6 +523,48 @@ pub const Runtime = struct {
         if (self.heap[r].tag != .string) return error.Type;
         return self.string(r);
     }
+    fn sameText(left: []const u8, right: []const u8) linksection(code_section) bool {
+        if (left.len != right.len) return false;
+        for (left, right) |a, b| if (a != b) return false;
+        return true;
+    }
+    fn parseDecimal(token: []const u8) linksection(code_section) error{Overflow}!i32 {
+        if (token.len == 0) return error.Overflow;
+        var index: usize = 0;
+        var negative = false;
+        if (token[0] == '+' or token[0] == '-') {
+            negative = token[0] == '-';
+            index = 1;
+        }
+        if (index == token.len) return error.Overflow;
+        var magnitude: u32 = 0;
+        while (index < token.len) : (index += 1) {
+            const c = token[index];
+            if (c < '0' or c > '9') return error.Overflow;
+            const digit: u32 = c - '0';
+            if (magnitude > (std.math.maxInt(u32) - digit) / 10) return error.Overflow;
+            magnitude = magnitude * 10 + digit;
+        }
+        if (!negative) {
+            if (magnitude > std.math.maxInt(i32)) return error.Overflow;
+            return @intCast(magnitude);
+        }
+        if (magnitude > @as(u32, std.math.maxInt(i32)) + 1) return error.Overflow;
+        if (magnitude == @as(u32, std.math.maxInt(i32)) + 1) return std.math.minInt(i32);
+        return -@as(i32, @intCast(magnitude));
+    }
+
+    fn parseHex(token: []const u8) linksection(code_section) error{Overflow}!i32 {
+        if (token.len == 0) return error.Overflow;
+        var magnitude: u32 = 0;
+        for (token) |c| {
+            const digit: u32 = if (c >= '0' and c <= '9') c - '0' else if (c >= 'a' and c <= 'f') c - 'a' + 10 else if (c >= 'A' and c <= 'F') c - 'A' + 10 else return error.Overflow;
+            if (magnitude > 0x0FFFFFFF) return error.Overflow;
+            magnitude = (magnitude << 4) | digit;
+        }
+        if (magnitude > std.math.maxInt(i32)) return error.Overflow;
+        return @intCast(magnitude);
+    }
     noinline fn applyStorage(self: *Runtime, op: Op, args: []const Ref, host: anytype) linksection(code_section) Error!Ref {
         var request = storage.Request{ .operation = @fromBackingInt(@intCast(@backingInt(op) - @backingInt(Op.sql_query) + 1)) };
         var binary: [64]u8 = undefined;
@@ -581,7 +623,7 @@ pub const Runtime = struct {
                 while (i < args.len) : (i += 2) {
                     if (self.heap[args[i]].tag != .keyword) return error.Type;
                     const name = self.string(args[i]);
-                    if (std.mem.eql(u8, name, "where")) request.argument = try self.storageText(args[i + 1]) else if (std.mem.eql(u8, name, "limit")) request.count = try self.nonnegative(args[i + 1]) else return error.Type;
+                    if (sameText(name, "where")) request.argument = try self.storageText(args[i + 1]) else if (sameText(name, "limit")) request.count = try self.nonnegative(args[i + 1]) else return error.Type;
                 }
             },
             else => if (args.len != 0) return error.Arity,
@@ -591,7 +633,7 @@ pub const Runtime = struct {
         if (comptime @hasDecl(@TypeOf(host.*), "storageCall")) {
             var buffer: [1024]u8 = undefined;
             const source = try host.storageCall(request, &buffer);
-            if (!std.unicode.utf8ValidateSlice(source)) return error.StorageFailed;
+            if (!storage.validUtf8(source)) return error.StorageFailed;
             var pos: usize = 0;
             const result = try self.read(source, &pos, 0);
             space(source, &pos);
@@ -677,7 +719,7 @@ pub const Runtime = struct {
     pub fn evaluate(self: *Runtime, source: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
         try self.start();
         defer self.running = false;
-        if (source.len > 4096 or std.mem.indexOfScalar(u8, source, 0) != null or !std.unicode.utf8ValidateSlice(source)) return error.Syntax;
+        if (source.len > 4096 or std.mem.indexOfScalar(u8, source, 0) != null or !storage.validUtf8(source)) return error.Syntax;
         // Copy every token into the heap before host callbacks can edit source.
         var pos: usize = 0;
         var forms: Ref = 0;
