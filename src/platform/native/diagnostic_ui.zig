@@ -434,7 +434,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             if (!nih_touch_pop(&event)) break;
             if (!available or model.failure_latched or event.at < input_started) continue;
             if (xy_workspace and session_active and event.kind == .up) {
-                scratch.nav.touch(event.x, event.y, &scratch.vm.view);
+                scratch.touch(event.x, event.y);
                 scratch.revision +%= 1;
                 continue;
             }

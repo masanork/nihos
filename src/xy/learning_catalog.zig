@@ -1,6 +1,7 @@
 //! Borrowed, allocation-free XYLAB001 catalogue. No evaluation or JSON parsing.
 //! Source positions are UTF-8 bytes in the matching section, never page numbers.
 const std = @import("std");
+pub const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 pub const Error = error{ InvalidPack, Range, InvalidUtf8 };
 pub const none = std.math.maxInt(u32);
 pub const Section = struct { id: []const u8, text_bytes: u32, text_sha256: []const u8 };
@@ -40,7 +41,7 @@ pub const Pack = struct {
     refs_count: u32,
     strings_at: u32,
 
-    pub fn init(bytes: []const u8) Error!Pack {
+    pub fn init(bytes: []const u8) linksection(code_section) Error!Pack {
         if (bytes.len < 128 or bytes.len > 16 * 1024 * 1024 or
             !std.mem.eql(u8, bytes[0..8], "XYLAB001") or read(bytes, 8) != 1 or
             read(bytes, 12) != bytes.len or read(bytes, 28) != 0) return error.InvalidPack;
@@ -60,38 +61,38 @@ pub const Pack = struct {
         for (0..p.refs_count) |i| if (try p.reference(0, p.refs_count, @intCast(i)) >= p.snippet_count) return error.Range;
         return p;
     }
-    pub fn matchesLibrary(self: Pack, hash: []const u8) bool {
+    pub fn matchesLibrary(self: Pack, hash: []const u8) linksection(code_section) bool {
         return hash.len == 32 and std.mem.eql(u8, self.bytes[64..96], hash);
     }
-    pub fn credits(self: Pack) Error![]const u8 {
+    pub fn credits(self: Pack) linksection(code_section) Error![]const u8 {
         return self.string(56, 4096);
     }
-    fn text(self: Pack, offset: u32, len: u32) Error![]const u8 {
+    fn text(self: Pack, offset: u32, len: u32) linksection(code_section) Error![]const u8 {
         if (offset < self.strings_at or offset > self.bytes.len or len > self.bytes.len - offset) return error.Range;
         const result = self.bytes[offset..][0..len];
         if (!std.unicode.utf8ValidateSlice(result)) return error.InvalidUtf8;
         return result;
     }
-    fn string(self: Pack, at: usize, limit: u32) Error![]const u8 {
+    fn string(self: Pack, at: usize, limit: u32) linksection(code_section) Error![]const u8 {
         if (read(self.bytes, at + 4) > limit) return error.Range;
         return self.text(read(self.bytes, at), read(self.bytes, at + 4));
     }
-    fn references(self: Pack, start: u32, count: u32) Error!void {
+    fn references(self: Pack, start: u32, count: u32) linksection(code_section) Error!void {
         if (start > self.refs_count or count > self.refs_count - start) return error.Range;
     }
-    pub fn reference(self: Pack, start: u32, count: u32, index: u32) Error!u32 {
+    pub fn reference(self: Pack, start: u32, count: u32, index: u32) linksection(code_section) Error!u32 {
         try self.references(start, count);
         if (index >= count) return error.Range;
         return read(self.bytes, read(self.bytes, 44) + @as(usize, start + index) * 4);
     }
-    pub fn section(self: Pack, index: u32) Error!Section {
+    pub fn section(self: Pack, index: u32) linksection(code_section) Error!Section {
         if (index >= self.section_count) return error.Range;
         const at: usize = 128 + @as(usize, index) * 44;
         const id = try self.string(at, 128);
         if (id.len == 0) return error.InvalidPack;
         return .{ .id = id, .text_bytes = read(self.bytes, at + 8), .text_sha256 = self.bytes[at + 12 ..][0..32] };
     }
-    pub fn snippet(self: Pack, index: u32) Error!Snippet {
+    pub fn snippet(self: Pack, index: u32) linksection(code_section) Error!Snippet {
         if (index >= self.snippet_count) return error.Range;
         const at: usize = read(self.bytes, 36) + @as(usize, index) * 68;
         const flags = read(self.bytes, at + 56);
@@ -113,7 +114,7 @@ pub const Pack = struct {
         if (id.len == 0 or code.len == 0) return error.InvalidPack;
         return .{ .id = id, .section = section_index, .code = code, .reference_output = try self.string(at + 20, 4096), .upstream_expected = try self.string(at + 28, 1024), .upstream_name = try self.string(at + 36, 128), .requires_start = rs, .requires_count = rc, .example = if (example == none) null else example, .hidden = flags & 1 != 0, .eval_disabled = flags & 2 != 0, .definition = flags & 4 != 0, .anchor = anchor };
     }
-    pub fn experiment(self: Pack, index: u32) Error!Experiment {
+    pub fn experiment(self: Pack, index: u32) linksection(code_section) Error!Experiment {
         if (index >= self.experiment_count) return error.Range;
         const at: usize = read(self.bytes, 40) + @as(usize, index) * 40;
         const editable = read(self.bytes, at + 8);
@@ -126,14 +127,14 @@ pub const Pack = struct {
         if (id.len == 0) return error.InvalidPack;
         return .{ .id = id, .editable = editable, .invocation = invocation, .plan_start = start, .plan_count = count, .reference_text = try self.string(at + 24, 4096), .features = try self.string(at + 32, 1024) };
     }
-    pub fn findSnippet(self: Pack, id: []const u8) Error!?u32 {
+    pub fn findSnippet(self: Pack, id: []const u8) linksection(code_section) Error!?u32 {
         for (0..self.snippet_count) |i| {
             if (std.mem.eql(u8, (try self.snippet(@intCast(i))).id, id)) return @intCast(i);
         }
         return null;
     }
     /// Only code anchors intersecting this page are candidates. Return full code.
-    pub fn onPage(self: Pack, section_index: u32, start: u32, end: u32, ordinal: u32) Error!?Snippet {
+    pub fn onPage(self: Pack, section_index: u32, start: u32, end: u32, ordinal: u32) linksection(code_section) Error!?Snippet {
         if (start > end or end > (try self.section(section_index)).text_bytes) return error.Range;
         if (start == end) return null;
         var found: u32 = 0;
@@ -147,7 +148,7 @@ pub const Pack = struct {
         return null;
     }
 };
-fn read(bytes: []const u8, at: usize) u32 {
+fn read(bytes: []const u8, at: usize) linksection(code_section) u32 {
     return std.mem.readInt(u32, bytes[at..][0..4], .little);
 }
 

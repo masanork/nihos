@@ -28,3 +28,5 @@ jobs:
         run: sh tools/build-xy-tab5-preview.sh
       - name: Tab5 navigation, touch, and offline pagination
         run: python3 tools/xy_tab5_reader_test.py -v
+      - name: Interactive SICP drafts, isolated evaluation, and return to book
+        run: python3 tools/xy_learning_test.py -v

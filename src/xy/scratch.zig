@@ -33,10 +33,12 @@ const status_4 linksection(scheme.data_section) = "Command too long; cancel or e
 
 const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
 
+pub const LearningSession = @import("learning_session.zig").Session;
 pub const Model = struct {
     camera: camera.Client,
     doc: Doc,
     nav: navigation.State,
+    learning: ?*@import("learning_session.zig").Session,
     vm: scheme.Runtime,
     reply: [128]u8,
     reply_length: usize,
@@ -80,6 +82,11 @@ pub const Model = struct {
         };
     }
     pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
+        if (self.nav.screen == .exercise) {
+            if (self.learning) |l| l.insert(text) catch |err| l.notice(err);
+            self.changed();
+            return;
+        }
         if (self.mode == .system or self.nav.screen != .document) {
             self.status = .read_only;
             self.changed();
@@ -96,7 +103,9 @@ pub const Model = struct {
             const nav_key: navigation.Key = switch (key) {
                 inline else => |value, tag| @unionInit(navigation.Key, @tagName(tag), value),
             };
-            self.nav.handle(nav_key, &self.vm.view);
+            if (self.nav.screen == .examples or self.nav.screen == .exercise) {
+                if (self.learning) |l| l.handle(&self.nav, nav_key) else self.nav.screen = .reading;
+            } else self.nav.handle(nav_key, &self.vm.view);
             return;
         }
         if (key == .cancel and self.mode == .edit) {
@@ -181,6 +190,12 @@ pub const Model = struct {
         }
         @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
         self.command_length += bytes.len;
+    }
+    pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.nav.screen == .examples or self.nav.screen == .exercise) {
+            if (self.learning) |l| l.touch(&self.nav, x, y);
+        } else self.nav.touch(x, y, &self.vm.view);
+        self.changed();
     }
     pub fn resetScheme(self: *Model) linksection(scheme.code_section) void {
         self.vm.initInPlace();

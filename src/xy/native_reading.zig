@@ -87,6 +87,7 @@ fn footer(instance: *Session, target: anytype, reading: bool) !void {
         try label(instance, target, 24, 670, "ホーム", 24, 0xffff);
         try label(instance, target, 232, 670, "前へ", 24, 0xffff);
         try label(instance, target, 512, 670, "次へ", 24, 0xffff);
+        try label(instance, target, 680, 670, "Try", 20, 0xffff);
         try label(instance, target, 792, 670, "目次", 24, 0xffff);
         try label(instance, target, 1060, 670, "設定", 24, 0xffff);
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
@@ -101,6 +102,10 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
     const config = request.config.*;
     _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
     switch (nav.screen) {
+        .examples, .exercise => {
+            const l = request.learning orelse return error.Range;
+            try @import("learning_view.zig").render(instance, request, l, nav.screen == .examples, false);
+        },
         .home => {
             try label(instance, target, 48, 36, "xy", 48, 0x2147);
             try label(instance, target, 180, 54, "読む。書く。試す。", 32, 0x2147);
@@ -164,6 +169,9 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             read_request.ruby_count = page.count;
             try instance.render(&read_request);
             nav.end = nav.offset + @as(u32, @intCast(page.text.len));
+            if (request.learning) |l| {
+                if (nav.book == 2) try l.setPage(nav.chapter, nav.offset, nav.end) else l.page_valid = false;
+            }
             try footer(instance, target, true);
         },
         .credits => {
