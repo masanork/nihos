@@ -7,8 +7,8 @@ Flash; SD and network access are not needed for reading. Select `n` to enter
 the RAM document. It supports UTF-8 text, grapheme editing, undo and a bounded
 Scheme minibuffer; see [the xy overview](../README.md). The I2C Tab5 Keyboard is
 enabled by default with the existing US HID mapping; set
-`NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. This does not provide an SD save
-operation. The older single-row ASCII editor and terminal-first startup from
+`NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. With a provisioned microSD, Esc
+opens Scheme operations `(buffer/save! "draft.scm")` and `(buffer/load! "draft.scm")`. The older single-row ASCII editor and terminal-first startup from
 PRs #71 and #79 are superseded by this workspace.
 
 ## Normal xy input connections
@@ -33,8 +33,9 @@ it does not depend on entering the diagnostic launcher.
 
 The minibuffer evaluates Scheme or opens `help`, `log`, `mem` and `tasks`.
 Those system views are read-only. USB/Bluetooth keyboard adapters, native IME,
-SD saving and startup restoration of RAM text/settings are not connected by
-this profile. Japanese display and serial UTF-8 input are separate from IME.
+and automatic startup restoration of RAM text/settings remain separate work.
+[Persistent storage bindings](planning/sqld-xy-service.md) are available through
+the normal sqld owner; unknown media are never automatically initialized. Japanese display and serial UTF-8 input are separate from IME.
 The [Tab5 reader report](measurements/2026-10-31-xy-tab5-reader.md) and
 [sideways Latin report](measurements/2026-10-31-xy-sideways-latin.md) record
 the reader candidates. The earlier
