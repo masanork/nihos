@@ -63,7 +63,22 @@ sh tools/build-native.sh device
 書籍全体を再生成する既存の`tools/xy-library.py`も同じコンパイラを利用する。
 CIのMacジョブへ構造化・nativeカタログの契約試験を追加した。
 
-今回の実行結果とhashは同日のevidenceディレクトリに保持する。
+検証した実装コミットは `2f7381c1`。実行結果とhashは
+[evidence/result.json](evidence/2026-10-31-sicp-structured-examples/result.json)に保持する。
+続く証跡コミットでは文書とログだけを追加し、実装・生成物を変更しない。
+
+| 検証 | 結果 |
+| --- | --- |
+| 構造化・格納のPython試験 | 12件成功。内部で実データを読むZigの5契約試験も成功 |
+| 読書・Tab5共有描画・ワークスペース | それぞれ8件、8件、16件成功 |
+| native image監査の回帰試験 | 41件成功 |
+| Zig ReleaseSafe全体 | 初回75/75 steps・1017/1017 tests、実装コミット上の最終実行75/75 steps成功（cache利用） |
+| 変更Zigのfmt・ZLint、shellcheck、生成物一致 | 成功。ZLint 0 errors / 0 warnings |
+| Macアプリ・Tab5共有描画プレビュー | ビルド成功 |
+| 通常deviceイメージ | ビルド・image監査成功 |
+
+初回Zigログには`failed command: .../test ... --listen=-`の診断が1行あったが、
+終了値0、runnerの最終集計は全件成功だった。最終実行も成功し、生ログは両方保持する。
 構造化試験は、原典照合、code/output分離、期待値の未承認、IDと本文順の安定性、
 UTF-8位置、依存/使用例の区別、参照切れ/循環/範囲外/不正UTF-8の拒否を確認する。
 実際に生成した表をZigで読み、ページ途中から完全なコードを取得する試験も含む。
@@ -80,5 +95,6 @@ heap下限49,152 bytesを維持し、既存記録の通常読書版と同じheap
 ファームウェアの書込み、実機起動、物理入力・表示の確認は今回行っていない。
 
 基にした読書ブランチは、作業開始時のorigin/mainには未統合だった。
+終了時に取得したorigin/main `19b116b6` にもreaderは存在しなかった。
 今回の変更をmainへ統合する際は、先行する読書実装と、その後のmainの変更を含む
 候補で改めて統合チェックを通す。mainへ反映済みとは報告しない。
