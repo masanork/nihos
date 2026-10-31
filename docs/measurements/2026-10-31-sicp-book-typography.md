@@ -99,3 +99,16 @@ python3 tools/native_image_test.py -v
 sh tools/run-static-analysis.sh
 sh tools/build-native.sh device
 ```
+
+
+## 最新mainとの統合確認
+
+main `37c0fdff` のsplash更新・tic-tac-toe例を取り込み、`e4564f0c` でも書体5・演習7・
+image正負42試験、ReleaseSafe 75/75 steps、全体static analysisを再確認した。
+競合はFlash関数allowlistで、mainのpaintTouchControlと学習・書体用の許可関数を両方保持した。
+Mac ABIに影響する書体コードと画像は上記の比較候補から変更していない。
+
+統合後の通常native image監査も成功した。image 3,611,904 bytes、primary heap 50,112 bytes。
+workspaceは1,667,376 bytesのまま。source/binary identityとログは
+[統合結果](sicp-book-typography-2026-10-31/integration.json)へ追加した。
+実機検証の未実施とstackの未解決条件は引き続き残る。
