@@ -159,7 +159,7 @@ jobs:
       - name: Compile default connected Tab5 OS
         run: |
           sh tools/build-native.sh device integer
-          grep -Fx 'pub const keyboard_i2c = true;' build/native-device-network-devices/native_options.zig
+          grep -Fx 'pub const keyboard_i2c = true;' build/native-device-network-devices-camera/native_options.zig
           mkdir -p build/usb-ci/default-connected
           cp build/native-device-network-devices-camera/nihos-native.elf \
              build/native-device-network-devices-camera/nihos-native.bin \
