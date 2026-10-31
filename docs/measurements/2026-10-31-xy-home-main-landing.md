@@ -110,7 +110,7 @@ Previousで章0・位置2270へ、もう一度Previousで位置1868へ戻った�
 元の16MiB Flash全体と候補を書き重ねた期待値の照合、文書保持、再起動後のホームも成功した。
 最大描画スタック使用量142,368 / 262,144 bytes、primary SRAM heap 49,216 bytesを保つ。
 
-**最終的に実機に残したtrace app** のSHA-256：
+**レビュー修正時のtrace app** のSHA-256：
 
 ```text
 ca8aaaab9839eb1063fa4e733fbeadab84d26beeee4f142a7b523f008dbeaa0c
@@ -118,3 +118,24 @@ ca8aaaab9839eb1063fa4e733fbeadab84d26beeee4f142a7b523f008dbeaa0c
 
 通常版 `461e611e82a2ef4aa2e59556951bb81e1413fcc0a632d53b092bb5af74b08b33` もビルド・監査に成功した。
 最後は前と同じSICP 1.1の32px縦書き表示で利用者へ渡した。
+
+## mainに追加されたGPUIとの統合
+
+検証中にmainへ入ったGPUI更新（PR #93、`8aa2f0d0`）と、そのmetrics更新
+`19b116b6`も取り込んだ。共有Sessionの競合は、読書用の容量別SessionとGPUI用の
+`renderLabel`の両方を残し、label描画もSessionの容量を使うように解消した。
+
+GPUIアプリをRust 1.98.1で再ビルドし、737,280画素のcanonical比較、animation、
+pause/resume、held/focus、editor Undo、無効buffer拒否が成功した。
+この確認はウィンドウ操作の試験ではなく、共有Zig描画のsnapshot試験。
+Mac読書・Tab5シーンを含むPython全体546件、Zig ReleaseSafe 73/73 steps
+（794 testsと残りのcache hit）も再度成功した。
+
+GPUI統合後の候補をTab5へ再導入し、38観測と16MiB全体照合を再確認した。
+**現時点で実機に残した統合trace app** のSHA-256：
+
+```text
+f69415b4d5298f6e7fae0c82ae7fd15f4bedaa5e61f42b582c7c74fc7c9bd7df
+```
+
+証跡を `gpui/` に分け、前段の候補・観測と混同しない。
