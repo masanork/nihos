@@ -129,3 +129,5 @@ report. The earlier 512-glyph full-document limit is replaced by the shared
 bounded viewport that follows the cursor. Native persistence remains outside
 this rendering landing: Mac workspace SQLite is writable, native normal
 storage remains read-only.
+
+最終統合と実機確認は[共通画素描画のlanding記録](2026-10-31-xy-native-pixel-landing.md)を参照。

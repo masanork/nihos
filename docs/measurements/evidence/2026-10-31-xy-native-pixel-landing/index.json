@@ -1,0 +1,46 @@
+{
+  "source_commit": "4481be1af26acc3d3b232fbe4fe8f86259d1cdf2",
+  "physical": {
+    "passed": true,
+    "observations": 56,
+    "idle": {
+      "seconds": 30,
+      "records": 30,
+      "render_frames": 32,
+      "scanout_frame_delta": 1747,
+      "backing_payload": 2958656,
+      "backing_reserved": 4194304,
+      "dma_error": 0
+    },
+    "restored_verified": true
+  },
+  "optical": {
+    "readability_confirmed_on_previous_candidate": true,
+    "occasional_flicker_reported_on_previous_candidate": true,
+    "post_fix_flicker_free_claim": false
+  },
+  "files": {
+    "debug-tests.log.gz": "77bb7635e2e38be710e4c1de13223bba63624dbcbb85a9b585604433f1466a6c",
+    "emulator-result.json.gz": "3caf52cb2830da240af62ce15bed78e70efbfdd7ecf1eb68a9161ca04463b80a",
+    "emulator.log.gz": "83ba23ea2c35156d75a35a852c4af88c18ad3151f41dc10278e3f098bb250ca7",
+    "long-idle-capture.log.gz": "6a38efa14a6b29a1649c553962045108c709f2c6bce75968eec28cded7b067a8",
+    "long-idle-observe.log.gz": "d8f7d323abd645f7359a89836660aef446d39e0bef7824a866926fbd7846bdaf",
+    "long-idle-result.json.gz": "9c829ce803161e6cd80ce08d217d02c936b566f4440a544295b4d100f3f14e64",
+    "normal-image-audit.json.gz": "ea70d56ee485133db60b965ce2f89f4e0d8d74374975fbfd69e682b7a85d6f9c",
+    "normal-normal-fs-manifest.json.gz": "16b96b3bc6b2844ce1a4ad117b9ed636ac2c2252216ee12bbefd40deeed616ef",
+    "original-worktree.json": "121bfa799d3ef93a091232b956aadfcc6e3848a045f4280dcc1b65c0b5266d3a",
+    "physical-capture.log.gz": "44097612ffc28cce3f4d64012742a89d75b498b7e51172c155fd177e34738361",
+    "physical-observe.log.gz": "c094ac4c8a8e32c822afa8e1f4a1badb9857db762eda9fb3611f028453b22022",
+    "physical-restore-verify_flash.log.gz": "cab793dc5a7028b1ec978eb79256ae3c157f6e902862d418a9f9a3c0386424fc",
+    "physical-result.json.gz": "4dd80a94b3f89a768c607be2ba03181bd88f6124cb1456303df05b30f9b976e7",
+    "physical-verify-after.log.gz": "91b11b1600d1902f0981077af2081d22f2a9e6b073631e2a7f587ea2d4fb5602",
+    "physical-verify-before.log.gz": "91b11b1600d1902f0981077af2081d22f2a9e6b073631e2a7f587ea2d4fb5602",
+    "python-tests.log.gz": "014a60d7105f39f69681586ab1c0d543bb756efbcfa9279f2e1dde71bcb31d6b",
+    "qualification-tool.py.gz": "68da6193375526d6dd7a85449bd00938da79a90c509edce76ea437dfb2c0dcf9",
+    "release-tests.log.gz": "8803c99398c651ee26279cdf34b785a269c522b52e86d99f8e3065a77c3f1cdc",
+    "static.log.gz": "7683e1da2a9136abde3d9a92b4bed137a6fa242143ce1db4d22d2b715466815f",
+    "trace-image-audit.json.gz": "4448f033f6901069c4ae5f59d7a9142ec3e0cdc9c36f0ef8be6eff01522e99c5",
+    "trace-normal-fs-manifest.json.gz": "f6f09cf0a76446f965ac85352794a684bbc4e743e5617bb17664951694ea7eb2",
+    "workspace-tests.log.gz": "98268b633506fad891c613d2e81953d651092c5acafd41614cd2348f59e44b43"
+  }
+}

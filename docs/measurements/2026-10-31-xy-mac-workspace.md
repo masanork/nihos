@@ -139,3 +139,5 @@ The Mac build and tests now pass the named view_config dependency. The saved
 source lifecycle remains the Mac adapter; this does not add native SD writes
 or claim device SQLite persistence. The native and Mac pixel paths share the
 same render session and recovery faces in the landing follow-up.
+
+最終統合と実機確認は[共通画素描画のlanding記録](2026-10-31-xy-native-pixel-landing.md)を参照。
