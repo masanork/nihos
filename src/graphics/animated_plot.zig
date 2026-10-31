@@ -36,7 +36,7 @@ pub fn curvesConfigured(target: canvas.Canvas, area: Area, state: animation.Stat
         var last_y = center;
         for (0..area.width) |offset| {
             const sample = (offset * 512 / area.width + phase + series * 64) % 256;
-            const y = center - @as(i32, @intCast(@divTrunc(@as(i64, config.sine[sample]) * amplitude, 30_000)));
+            const y = center - @as(i32, @intCast(@divTrunc(@as(i64, (&config.sine)[sample]) * amplitude, 30_000)));
             const x = area.x + @as(i32, @intCast(offset));
             if (offset != 0) clipped.line(last_x, last_y, x, y, color);
             last_x = x;
