@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
@@ -180,7 +181,11 @@ class StructuredSicp(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             folder = Path(temp)
             (folder / 'learning.pack').write_bytes(packed.encode(self.asset, self.library))
-            (folder / 'fixture.zig').write_text('pub const data = @embedFile("learning.pack");\n')
+            legacy = copy.deepcopy(self.asset)
+            for section in legacy['sections']: section['blocks'] = []
+            old = bytearray(packed.encode(legacy, self.library)); struct.pack_into('<I',old,8,1)
+            (folder / 'legacy.pack').write_bytes(old)
+            (folder / 'fixture.zig').write_text('pub const data = @embedFile("learning.pack");\npub const legacy = @embedFile("legacy.pack");\n')
             result = subprocess.run([zig, 'test', '-O', 'ReleaseSafe', '--dep', 'learning_catalog', '--dep', 'learning_fixture',
                 '-Mroot=' + str(ROOT / 'tools/probes/xy_learning_catalog.zig'),
                 '-Mlearning_catalog=' + str(ROOT / 'src/xy/learning_catalog.zig'),

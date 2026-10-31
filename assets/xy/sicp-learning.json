@@ -1081,6 +1081,16 @@
           "end": 765
         },
         {
+          "kind": "inline_code",
+          "start": 879,
+          "end": 880
+        },
+        {
+          "kind": "inline_code",
+          "start": 884,
+          "end": 885
+        },
+        {
           "kind": "code",
           "start": 999,
           "end": 1010,
@@ -1217,6 +1227,11 @@
           "end": 1318
         },
         {
+          "kind": "inline_code",
+          "start": 1601,
+          "end": 1610
+        },
+        {
           "kind": "code",
           "start": 1614,
           "end": 1785,
@@ -1229,6 +1244,36 @@
           "snippet": "sicp.recursion.factorial-iterative"
         },
         {
+          "kind": "inline_code",
+          "start": 3750,
+          "end": 3757
+        },
+        {
+          "kind": "inline_code",
+          "start": 3759,
+          "end": 3766
+        },
+        {
+          "kind": "inline_code",
+          "start": 3772,
+          "end": 3781
+        },
+        {
+          "kind": "inline_code",
+          "start": 5869,
+          "end": 5878
+        },
+        {
+          "kind": "inline_code",
+          "start": 7886,
+          "end": 7889
+        },
+        {
+          "kind": "inline_code",
+          "start": 7931,
+          "end": 7934
+        },
+        {
           "kind": "code",
           "start": 7973,
           "end": 8038,
@@ -1239,6 +1284,11 @@
           "start": 8043,
           "end": 8108,
           "snippet": "sicp.recursion.addition-iterative"
+        },
+        {
+          "kind": "inline_code",
+          "start": 8211,
+          "end": 8218
         },
         {
           "kind": "code",
@@ -1265,10 +1315,30 @@
           "snippet": "sicp.recursion.ackermann-3-3"
         },
         {
+          "kind": "inline_code",
+          "start": 8634,
+          "end": 8635
+        },
+        {
           "kind": "code",
           "start": 8671,
           "end": 8767,
           "snippet": "sicp.recursion.ackermann-derived"
+        },
+        {
+          "kind": "inline_code",
+          "start": 8857,
+          "end": 8858
+        },
+        {
+          "kind": "inline_code",
+          "start": 8860,
+          "end": 8861
+        },
+        {
+          "kind": "inline_code",
+          "start": 8867,
+          "end": 8868
         }
       ]
     }

@@ -26,3 +26,11 @@ https://github.com/source-academy/sicp
 保持し、本文から除く。例題のコードとその改変物も上記CC BY-SA 4.0の対象。
 生成スクリプトとoffset形式の読出し実装はnihosのMITライセンスに従う。
 このデータの同梱は、全例題の実行対応を意味しない。
+
+
+The SICP reader uses **nihos Book Serif**, a renamed Latin subset with quadratic
+outlines derived from TeX Gyre Schola 2.005 (Century Schoolbook L lineage).
+Copyright 2007–2009 B. Jackowski and J. M. Nowacki, on behalf of TeX Users Groups.
+Distributed under the GUST Font License / LPPL 1.3c; source, licenses and the
+upstream manifest are in `third_party/xy-typography/`, and the modification
+manifest and derived face are in `src/graphics/serif/`.

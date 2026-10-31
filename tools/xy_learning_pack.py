@@ -1,4 +1,4 @@
-"""Offset-only, read-only SICP learning catalogue (XYLAB001, version 1)."""
+"""Offset-only, read-only SICP learning catalogue (XYLAB001, version 2, styled spans)."""
 import json
 from pathlib import Path
 import struct
@@ -61,7 +61,11 @@ def encode(asset, library):
     plans = [reference(e['run_order']) for e in experiments]
     if len(refs) > 65536:
         raise ValueError('Catalogue references exceed format limit')
-    strings_at = refs_at + 4 * len(refs)
+    styles = [(i,b['start'],b['end']) for i,section in enumerate(sections)
+              for b in section['blocks'] if b['kind'] in ('code','reference_output','inline_code','math')]
+    if len(styles)>65536: raise ValueError('Too many typography spans')
+    styles_at = refs_at + 4 * len(refs)
+    strings_at = styles_at + 12 * len(styles)
     data = bytearray(strings_at)
     strings = {}
 
@@ -99,10 +103,11 @@ def encode(asset, library):
                          *put(reference_text), *put('\n'.join(experiment['features'])))
     for i, ref in enumerate(refs):
         struct.pack_into('<I', data, refs_at + 4 * i, ref)
+    for i,row in enumerate(styles): struct.pack_into('<3I',data,styles_at+12*i,*row)
     if len(data) > 16 * 1024 * 1024:
         raise ValueError('Catalogue exceeds format size limit')
-    struct.pack_into('<8s14I32s32s', data, 0, b'XYLAB001', 1, len(data), len(sections),
-                     len(snippets), len(experiments), 0, section_at, snippet_at, experiment_at,
+    struct.pack_into('<8s14I32s32s', data, 0, b'XYLAB001', 2, len(data), len(sections),
+                     len(snippets), len(experiments), len(styles), section_at, snippet_at, experiment_at,
                      refs_at, len(refs), strings_at, credit_offset, credit_length,
                      bytes.fromhex(asset['library_sha256']), bytes.fromhex(asset['manifest_sha256']))
     return bytes(data)

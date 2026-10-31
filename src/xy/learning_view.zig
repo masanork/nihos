@@ -53,6 +53,9 @@ pub fn render(instance: anytype, request: *const protocol.Request, l: *learning.
     config.style.style_id = 0;
     var req = request.*;
     req.navigation = null;
+    req.book_prose = 0;
+    req.code_spans = null;
+    req.code_count = 0;
     req.learning = null;
     req.config = &config;
     req.reserved_bottom_px = 200;

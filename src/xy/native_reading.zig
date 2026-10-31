@@ -7,7 +7,7 @@ const rotated = @import("rotated_surface");
 const catalog = @import("catalog.zig");
 const reader = @import("reader.zig");
 const protocol = @import("render_protocol.zig");
-pub const Session = session_module.SizedSession(512);
+pub const Session = session_module.SizedSession(1024);
 
 pub const Page = struct {
     text: []const u8,
@@ -15,13 +15,16 @@ pub const Page = struct {
     reading_len: usize = 0,
     spans: [64]protocol.RubySpan,
     count: usize = 0,
+    codes: [64]layout.CodeSpan,
+    code_count: usize = 0,
+    book_prose: bool = false,
 };
 
-pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, offset: u32, config: protocol.Config, page: *Page) !void {
+pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, offset: u32, config: protocol.Config, page: *Page, chapter: u32) !void {
     if (offset >= entry.text.len or !@import("document.zig").isClusterBoundary(entry.text, offset)) return error.Range;
     var end: usize = offset;
     var clusters: usize = 0;
-    while (end < entry.text.len and end - offset < 3000 and clusters < 400) : (clusters += 1) end = try @import("document.zig").nextClusterEnd(entry.text, end);
+    while (end < entry.text.len and end - offset < 3000 and clusters < 960) : (clusters += 1) end = try @import("document.zig").nextClusterEnd(entry.text, end);
     var ruby_count: usize = 0;
     var at: usize = 0;
     while (at < entry.ruby.len) : (at += 16) {
@@ -34,10 +37,19 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
     var style = config.style;
     style.viewport_width_px = 1280;
     style.viewport_height_px = 648 - @as(u16, style.body_px) - 2 * @as(u16, config.appearance.status_padding);
-    const family = layout.ttf.Family{ .faces = &.{ instance.faces[0], instance.faces[1 + @as(usize, style.style_id)] } };
+    const normal_faces = [_]layout.ttf.Face{ instance.faces[0], instance.faces[1 + @as(usize, style.style_id)] };
+    const book_faces = [_]layout.ttf.Face{ instance.book_face, normal_faces[1] };
+    const learning = if (try pack.learningBytes()) |bytes| try @import("learning_catalog.zig").Pack.init(bytes) else null;
+    const styled = entry.book == 2 and learning != null and learning.?.style_count != 0;
+    const family = layout.ttf.Family{ .faces = if (styled) &book_faces else &normal_faces, .code_faces = &normal_faces };
+    if (styled) {
+        style.style_id = 2 + style.style_id * 2;
+        style.ruby_px = 0;
+        style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
+    }
     while (end > offset) {
         // SAFETY: only the populated prefixes below are consumed; lengths start at zero.
-        page.* = .{ .text = entry.text[offset..end], .readings = undefined, .spans = undefined };
+        page.* = .{ .text = entry.text[offset..end], .readings = undefined, .spans = undefined, .codes = undefined, .book_prose = styled };
         at = 0;
         while (at < entry.ruby.len) : (at += 16) {
             const a = catalog.read(entry.ruby, at);
@@ -53,7 +65,18 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
         try reader.validate(page.text, page.readings[0..page.reading_len], page.spans[0..page.count]);
         var anns: [64]layout.ruby.Annotation = undefined;
         for (page.spans[0..page.count], 0..) |span, i| anns[i] = .{ .base = .{ .start = span.base_start, .end = span.base_end }, .ruby = .{ .start = span.ruby_start, .end = span.ruby_end } };
-        const list = layout.layoutParagraphWithWordWrap(512, 4096, 1024, session_module.Cache, &instance.cache, family, style, page.text, page.readings[0..page.reading_len], anns[0..page.count], &instance.scratch, &instance.placed, true) catch |err| switch (err) {
+        if (styled) if (learning) |l| {
+            while (try l.styleOnPage(chapter, offset, @intCast(end), @intCast(page.code_count))) |span| {
+                if (page.code_count == page.codes.len) break;
+                page.codes[page.code_count] = .{ .start = span.start, .end = span.end };
+                page.code_count += 1;
+            }
+            if (try l.styleOnPage(chapter, offset, @intCast(end), @intCast(page.code_count)) != null) {
+                end = offset + try reader.shorter(page.text, page.text.len, page.spans[0..page.count]);
+                continue;
+            }
+        };
+        const list = layout.layoutStyledParagraph(1024, 4096, 1024, session_module.Cache, &instance.cache, family, style, page.text, page.readings[0..page.reading_len], anns[0..page.count], &instance.scratch, &instance.placed, true, page.codes[0..page.code_count]) catch |err| switch (err) {
             error.BlockFull, error.Capacity, error.SpanTooWide => {
                 end = offset + try reader.shorter(page.text, page.text.len, page.spans[0..page.count]);
                 continue;
@@ -149,7 +172,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             nav.text_length = @intCast(e.text.len);
             // SAFETY: prepare fills every field and all published prefixes before use.
             var page: Page = undefined;
-            try prepare(instance, pack, e, nav.offset, config, &page);
+            try prepare(instance, pack, e, nav.offset, config, &page, nav.chapter);
             var status: [256]u8 = undefined;
             const percent = @as(u64, nav.offset) * 100 / @max(1, e.text.len);
             const line = try std.fmt.bufPrint(&status, "{s} / {d}%  [h:Home c:Contents s:Settings i:Source]", .{ e.title, percent });
@@ -161,6 +184,9 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             read_request.cursor = 0;
             read_request.show_cursor = 0;
             read_request.page_mode = 1;
+            read_request.book_prose = @intFromBool(page.book_prose);
+            read_request.code_spans = &page.codes;
+            read_request.code_count = page.code_count;
             read_request.status = line.ptr;
             read_request.status_length = line.len;
             read_request.ruby_text = &page.readings;

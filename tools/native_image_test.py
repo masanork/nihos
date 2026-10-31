@@ -26,12 +26,15 @@ class NativeInstructionTests(unittest.TestCase):
         for name in ('xy.learning_session.Session.run', 'learning_session.Session.resetVm',
                      'learning_catalog.Pack.onPage', 'xy.learning_catalog.Pack.init',
                      'learning_view.render__func_2', 'learning_view.label__func_3',
+                     'learning_catalog.Pack.styleOnPage', 'viewport_layout.layoutStyledParagraph__func_1',
+                     'viewport_layout.shapeStyledRun__func_2',
                      'nih_xy_render_learning', 'native_render_entry.nih_xy_render_learning',
                      'xy.scratch.Model.touch', 'xy.document.Document(4096,256,2048,1,64).undo'):
             with self.subTest(name=name): self.assertTrue(MODULE.xy_function(name))
         for name in ('xy.learning_session.Session.arbitrary', 'learning_catalog.Pack.arbitrary',
                      'learning_view.render__func_bad', 'learning_view.render__func_2.extra',
-                     'learning_view.irq__func_1', 'learning_session.Host.arbitrary', 'xy.document.Document(4096,256,2048,1,64).arbitrary',
+                     'learning_view.irq__func_1', 'viewport_layout.layoutStyledParagraph__func_bad',
+                     'viewport_layout.shapeStyledRun__func_2.extra', 'learning_session.Host.arbitrary', 'xy.document.Document(4096,256,2048,1,64).arbitrary',
                      'xy.document.Document(8192,256,2048,1,64).undo'):
             with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
 
@@ -39,8 +42,10 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
         self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).render'))
         self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).renderInto__func_0'))
-        self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
-        self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(1024).render'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(2048).render'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(2048).renderInto__func_0'))
 
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000

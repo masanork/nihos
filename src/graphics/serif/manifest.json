@@ -1,0 +1,11 @@
+{
+  "source": "https://mirrors.ctan.org/fonts/tex-gyre/opentype/texgyreschola-regular.otf",
+  "source_sha256": "935b82e25f56b1d1276ca82793205e8ce254fbb37ebd38bedf7388cef21fbf44",
+  "source_family": "TeX Gyre Schola",
+  "source_version": "2.005",
+  "license": "GUST Font License / LPPL 1.3c",
+  "fonttools": "4.60.2",
+  "changes": "Renamed; Latin subset; cubic to quadratic outlines, maximum error 1 font unit; no hints or layout tables.",
+  "output_sha256": "706d3047363294a33c913029e15054468c4c9508804b0b49c50dc005034b9a45",
+  "bytes": 65292
+}

@@ -105,6 +105,11 @@ const learning = @import("learning_session.zig");
 // SAFETY: xy_host_live_init initializes this owner before any learning API.
 var g_learning: learning.Session = undefined;
 var g_learning_visible = false;
+var g_reader_section: ?u32 = null;
+var g_reader_next_section: ?u32 = null;
+var g_reader_offset: u32 = 0;
+var g_reader_codes: [64]viewport_layout.CodeSpan = undefined;
+var g_reader_code_count: usize = 0;
 var g_reader_saved_doc: HostWorkspaceType.DocType = .{};
 var g_reader_saved_ime: ime_omni.OmniIme = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
@@ -244,6 +249,9 @@ pub export fn xy_host_live_init() callconv(.c) bool {
     g_reading = false;
     g_learning.initInPlace();
     g_learning_visible = false;
+    g_reader_section = null;
+    g_reader_next_section = null;
+    g_reader_code_count = 0;
     var out: [256]u8 = undefined;
     _ = g_live.prepare(live_workspace.default_source, &out) catch return false;
     g_live_error = "";
@@ -422,6 +430,9 @@ pub export fn xy_host_render_rgb565(
         .status_length = status.len,
         .show_cursor = @intFromBool(!g_reading),
         .page_mode = @intFromBool(g_reading),
+        .book_prose = @intFromBool(g_reading and g_reader_section != null),
+        .code_spans = &g_reader_codes,
+        .code_count = if (g_reading) g_reader_code_count else 0,
         .ruby_text = &g_ws.doc.ruby_arena,
         .ruby_text_length = g_ws.doc.ruby_bytes_used,
         .ruby_spans = &g_ws.doc.ruby_spans,
@@ -479,6 +490,23 @@ pub export fn xy_host_reader_leave() callconv(.c) void {
     g_ws.doc = g_reader_saved_doc;
     g_ws.ime = g_reader_saved_ime;
     g_reading = false;
+    g_reader_section = null;
+    g_reader_next_section = null;
+    g_reader_code_count = 0;
+}
+/// Bind typography to the already verified SICP catalogue. Other books keep their font settings.
+pub export fn xy_host_reader_context(book: u32, section: u32, offset: u32) callconv(.c) bool {
+    if (!g_reading or book >= 4) return false;
+    if (book != 2) {
+        g_reader_next_section = null;
+        return true;
+    }
+    if (!g_learning.ready or g_learning.pack.style_count == 0) return false;
+    const sec = g_learning.pack.section(section) catch return false;
+    if (offset >= sec.text_bytes) return false;
+    g_reader_next_section = section;
+    g_reader_offset = offset;
+    return true;
 }
 /// Candidate is bounded by the caller. Return exact consumed UTF-8 bytes.
 /// Validate and fit before replacing the current page; failure leaves it intact.
@@ -494,6 +522,16 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
     style.viewport_height_px -= bar;
     var config = view_config.Config{ .style = style, .appearance = g_ws.appearance };
     config.validate() catch return -3;
+    const normal = activeFamily();
+    const book_faces = [_]ttf.Face{ g_render_session.book_face, normal.faces[1] };
+    const family = if (g_reader_next_section != null) ttf.Family{ .faces = &book_faces, .code_faces = normal.faces } else normal;
+    if (g_reader_next_section != null) {
+        style.style_id = 2 + style.style_id * 2;
+        style.ruby_px = 0;
+        style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
+    }
+    var codes: [64]viewport_layout.CodeSpan = undefined;
+    var code_count: usize = 0;
     var end: usize = len;
     var ann_buf: [64]viewport_layout.ruby.Annotation = undefined;
     while (end > 0) {
@@ -505,7 +543,17 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
             count += 1;
             r_end = @max(r_end, span.ruby_end);
         }
-        const list = viewport_layout.layoutParagraphWithWordWrap(1024, 4096, 1024, native_session.Cache, &g_render_session.cache, activeFamily(), style, body[0..end], ruby_text[0..r_end], ann_buf[0..count], &g_render_session.scratch, &g_render_session.placed, true) catch |err| switch (err) {
+        code_count = 0;
+        if (g_reader_next_section) |section| {
+            const final: u64 = @as(u64, g_reader_offset) + end;
+            if (final > (g_learning.pack.section(section) catch return -4).text_bytes) return -4;
+            while (g_learning.pack.styleOnPage(section, g_reader_offset, @intCast(final), @intCast(code_count)) catch return -4) |span| {
+                if (code_count == codes.len) return -4;
+                codes[code_count] = .{ .start = span.start, .end = span.end };
+                code_count += 1;
+            }
+        }
+        const list = viewport_layout.layoutStyledParagraph(1024, 4096, 1024, native_session.Cache, &g_render_session.cache, family, style, body[0..end], ruby_text[0..r_end], ann_buf[0..count], &g_render_session.scratch, &g_render_session.placed, true, codes[0..code_count]) catch |err| switch (err) {
             error.BlockFull, error.Capacity, error.SpanTooWide => {
                 end = reader.shorter(body, end, annotations) catch return -4;
                 continue;
@@ -527,6 +575,9 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
         }
         doc.cursor = 0;
         doc.forgetUndoHistory();
+        g_reader_section = g_reader_next_section;
+        g_reader_code_count = code_count;
+        @memcpy(g_reader_codes[0..code_count], codes[0..code_count]);
         g_ws.doc = doc;
         g_ws.layout_dirty = true;
         return @intCast(end);
@@ -648,4 +699,11 @@ pub export fn xy_host_learning_copy(field: u32, out: [*]u8, cap: u32) callconv(.
         else => return -1,
     };
     return learningCopy(text, out, cap);
+}
+
+/// Inspect the same attributed glyph positions used for page fitting and painting.
+pub export fn xy_host_reader_glyph(index: u32, out: *viewport_layout.PlacedGlyph) callconv(.c) bool {
+    if (!g_render_ready or index >= g_render_session.placed_count) return false;
+    out.* = g_render_session.placed[index];
+    return true;
 }

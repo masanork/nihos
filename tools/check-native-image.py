@@ -207,9 +207,9 @@ XY_RENDER_FUNCTIONS = {
     'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
-    'document.isClusterBoundary', 'render_session.SizedSession(512).render',
+    'document.isClusterBoundary', 'render_session.SizedSession(512).render', 'render_session.SizedSession(1024).render',
     'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
-    'catalog.Pack.font', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
+    'catalog.Pack.font', 'catalog.Pack.learningBytes', 'reader.shorter', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
     'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
     'Io.Writer.failingRebase', 'Io.Writer.noopFlush', 'Io.Writer.fixedDrain',
     'xy.navigation.State.home', 'xy.navigation.State.open',
@@ -226,13 +226,13 @@ XY_LEARNING_METHODS = {
 }
 XY_CATALOG_METHODS = {
     'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
-    'section', 'snippet', 'experiment', 'findSnippet', 'onPage',
+    'section', 'snippet', 'experiment', 'findSnippet', 'onPage', 'styleOnPage',
 }
 
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(512\)\.renderInto)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\((?:512|1024)\)\.renderInto)__func_[0-9]+", name)
     document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)

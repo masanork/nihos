@@ -286,6 +286,7 @@ typedef struct { uint32_t base_start, base_end, ruby_start, ruby_end; } XyReader
 extern bool xy_host_reader_enter(void);
 extern bool xy_host_document_load(const uint8_t *, uint32_t);
 extern void xy_host_reader_leave(void);
+extern bool xy_host_reader_context(uint32_t, uint32_t, uint32_t);
 extern int32_t xy_host_reader_load(const uint8_t *, uint32_t, const uint8_t *, uint32_t, const XyReaderRuby *, uint32_t);
 
 // ============================================================================

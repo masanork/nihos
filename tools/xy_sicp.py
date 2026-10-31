@@ -14,6 +14,7 @@ SKIP = {'INDEX', 'JAVASCRIPT', 'JAVASCRIPT_OUTPUT', 'JAVASCRIPTINLINE',
         'JAVASCRIPT_ONLY', 'WEB_ONLY', 'SOLUTION', 'LABEL', 'SECTIONCONTENT'}
 OUTPUT = {'SCHEMEOUTPUT', 'SCHEME_OUTPUT'}
 TOKEN = re.compile(r'\ufdd0(\d+)\ufdd1')
+INLINE = re.compile(r'\ufdd2(\d+)\ufdd3')
 
 
 def sha256(data):
@@ -81,6 +82,7 @@ def candidates(root):
 def render(root, selected):
     """Project typed blocks to text, recording byte ranges during final emission."""
     atoms = []
+    inlines = []
 
     def atom(kind, text, snippet=None):
         index = len(atoms)
@@ -101,6 +103,10 @@ def render(root, selected):
                 if child.tag in OUTPUT:
                     parts.append(atom('reference_output', xml_text(child), record['id'] if record else None))
             return ''.join(parts)
+        if node.tag == 'SCHEMEINLINE':
+            index = len(inlines)
+            inlines.append(''.join(node.itertext()))
+            return f'\ufdd2{index}\ufdd3'
         if node.tag == 'LATEX':
             return atom('math', math_text(''.join(node.itertext())))
         if node.tag == 'LATEXINLINE':
@@ -144,6 +150,16 @@ def render(root, selected):
     for kind, text, sid in segments:
         if not text:
             continue
+        if kind == 'prose':
+            pieces, cursor, local = [], 0, 0
+            for match in INLINE.finditer(text):
+                prefix = text[cursor:match.start()]
+                pieces.append(prefix); local += len(prefix.encode())
+                code = inlines[int(match[1])]
+                if code:
+                    blocks.append({'kind':'inline_code','start':offset+local,'end':offset+local+len(code.encode())})
+                pieces.append(code); local += len(code.encode()); cursor = match.end()
+            pieces.append(text[cursor:]); text = ''.join(pieces)
         end = offset + len(text.encode())
         if kind != 'prose':
             block = {'kind': kind, 'start': offset, 'end': end}
@@ -172,7 +188,7 @@ def compile_book(vendor=None, manifest_path=None):
         digest = sha256(source)
         if digest != section['sha256'] or digest != pins[filename]['sha256']:
             raise ValueError(f'Pinned source changed: {filename}')
-        if '\ufdd0' in source.decode() or '\ufdd1' in source.decode():
+        if any(c in source.decode() for c in '\ufdd0\ufdd1\ufdd2\ufdd3'):
             raise ValueError('Reserved renderer marker in source')
         root = ET.fromstring(source)
         remaining = candidates(root)

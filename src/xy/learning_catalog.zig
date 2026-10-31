@@ -40,26 +40,53 @@ pub const Pack = struct {
     experiment_count: u32,
     refs_count: u32,
     strings_at: u32,
+    style_count: u32,
 
     pub fn init(bytes: []const u8) linksection(code_section) Error!Pack {
         if (bytes.len < 128 or bytes.len > 16 * 1024 * 1024 or
-            !std.mem.eql(u8, bytes[0..8], "XYLAB001") or read(bytes, 8) != 1 or
-            read(bytes, 12) != bytes.len or read(bytes, 28) != 0) return error.InvalidPack;
-        const p = Pack{ .bytes = bytes, .section_count = read(bytes, 16), .snippet_count = read(bytes, 20), .experiment_count = read(bytes, 24), .refs_count = read(bytes, 48), .strings_at = read(bytes, 52) };
+            !std.mem.eql(u8, bytes[0..8], "XYLAB001") or (read(bytes, 8) != 1 and read(bytes, 8) != 2) or
+            read(bytes, 12) != bytes.len or (read(bytes, 8) == 1 and read(bytes, 28) != 0)) return error.InvalidPack;
+        const p = Pack{ .bytes = bytes, .section_count = read(bytes, 16), .snippet_count = read(bytes, 20), .experiment_count = read(bytes, 24), .refs_count = read(bytes, 48), .strings_at = read(bytes, 52), .style_count = read(bytes, 28) };
         if (p.section_count == 0 or p.section_count > 256 or p.snippet_count == 0 or
-            p.snippet_count > 4096 or p.experiment_count > 4096 or p.refs_count > 65536) return error.InvalidPack;
+            p.snippet_count > 4096 or p.experiment_count > 4096 or p.refs_count > 65536 or p.style_count > 65536) return error.InvalidPack;
         const snippet_at = 128 + p.section_count * 44;
         const experiment_at = snippet_at + p.snippet_count * 68;
         const refs_at = experiment_at + p.experiment_count * 40;
         if (read(bytes, 32) != 128 or read(bytes, 36) != snippet_at or
             read(bytes, 40) != experiment_at or read(bytes, 44) != refs_at or
-            p.strings_at != refs_at + p.refs_count * 4 or p.strings_at > bytes.len) return error.InvalidPack;
+            p.strings_at != refs_at + p.refs_count * 4 + p.style_count * 12 or p.strings_at > bytes.len) return error.InvalidPack;
         _ = try p.credits();
         for (0..p.section_count) |i| _ = try p.section(@intCast(i));
         for (0..p.snippet_count) |i| _ = try p.snippet(@intCast(i));
         for (0..p.experiment_count) |i| _ = try p.experiment(@intCast(i));
         for (0..p.refs_count) |i| if (try p.reference(0, p.refs_count, @intCast(i)) >= p.snippet_count) return error.Range;
+        var previous_section: u32 = 0;
+        var previous_end: u32 = 0;
+        for (0..p.style_count) |i| {
+            const at = refs_at + p.refs_count * 4 + i * 12;
+            const sec = read(bytes, at);
+            const start = read(bytes, at + 4);
+            const end = read(bytes, at + 8);
+            if (sec < previous_section or (sec == previous_section and start < previous_end) or start >= end or end > (try p.section(sec)).text_bytes) return error.Range;
+            previous_section = sec;
+            previous_end = end;
+        }
         return p;
+    }
+    /// Clipped code/output/inline-code ranges relative to this page, in source order.
+    pub fn styleOnPage(self: Pack, section_index: u32, start: u32, end: u32, ordinal: u32) linksection(code_section) Error!?Anchor {
+        if (start > end or end > (try self.section(section_index)).text_bytes) return error.Range;
+        var seen: u32 = 0;
+        for (0..self.style_count) |i| {
+            const at = read(self.bytes, 44) + self.refs_count * 4 + i * 12;
+            if (read(self.bytes, at) != section_index) continue;
+            const a = read(self.bytes, at + 4);
+            const b = read(self.bytes, at + 8);
+            if (start >= end or a >= end or b <= start) continue;
+            if (seen == ordinal) return .{ .start = @max(a, start) - start, .end = @min(b, end) - start };
+            seen += 1;
+        }
+        return null;
     }
     pub fn matchesLibrary(self: Pack, hash: []const u8) linksection(code_section) bool {
         return hash.len == 32 and std.mem.eql(u8, self.bytes[64..96], hash);
