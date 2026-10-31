@@ -62,12 +62,14 @@
     "src/board/tab5/keyboard.zig": "0c6acc07b6d0feb4cfacc1f2fd42f44aa4a3266241ed29c479d4981d70f1b541",
     "src/board/tab5/keypad_sparse.h": "6d8365cc71444553b427a50543d1f490a65a071241636e4dc76fca473f0de025",
     "src/board/tab5/native_camera_dma_test.c": "1c404a6262ee1e346fd947fddcf68c25ac973565fb8e5cfe5c4fa2098755b4dd",
-    "src/board/tab5/native_camera_isp.c": "5aa2e2d0a41202a626c561e9ac5343de829f3bc1baba08aba340a7ab64572f96",
+    "src/board/tab5/native_camera_isp.c": "133e5f861e1cc6647a5e73a7c73d8d13e4aea1bfe5085470599b80c2c52fb41e",
     "src/board/tab5/native_camera_xclk.c": "cd7227ecea19e8e8f7f59a89e81bafb235ba76eac936d804c084b865fdd4030d",
-    "src/board/tab5/native_csi_dma_config.c": "7d83fc28650f80012d77d19b1e981d5729eac62cef194ec9eaa36a07db616b82",
+    "src/board/tab5/native_csi_dma_config.c": "c8a247f33ebf88797a7fcd1e1001d8cf7abc9d96c98f0d845adbfce5ed5a14e3",
     "src/board/tab5/native_csi_dma_run.c": "b72a8b5aa7436bad8366c02421f5f20f4391a06db4cb3a48b0f9f222d39d5f65",
     "src/board/tab5/native_csi_inflight_adapter.c": "ac1abab8fd0e0017e58c958bbc8cf1700d33bb17b83b03f9db2e9453b974c179",
     "src/board/tab5/native_csi_prepare.c": "4d623e883f8dad93483568caefa2cbd550516402f00e94a9b6b0063348c2cca8",
+    "src/board/tab5/native_jpeg.c": "846cedb920e32977cb543d04f9916c591166f3e1417e3ef652cacb67ee0e7dca",
+    "src/board/tab5/native_jpeg_tables.h": "8c1dda2de401092f2ebc1bd86ad4f2496b0ff0feb7002bf3f8f916c1ad899858",
     "src/board/tab5/native_pads.c": "2073f795192eed5cce37c5b41a96e538b47aa6922aef0484ae81383018e6927b",
     "src/board/tab5/native_scanout.c": "e90adb8a1dccf44f7bedfd86837445aa255e2c1f5ca62480696569a447e8dc67",
     "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
@@ -223,10 +225,11 @@
     "src/platform/espidf_main.zig": "3d506e673edf45ee0f534c270a338bed3fd6302407966b784fb7e9592ab43e9c",
     "src/platform/native/audio_probe.zig": "21b19ea2cda53732cdcff64c660b79d4c387440f4bec21282c3ed19983a32c72",
     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
-    "src/platform/native/board_devices.zig": "003755719f09b6949980acf307ee50370287d84a6ddf4e6df80bbef3a7b3d688",
+    "src/platform/native/board_devices.zig": "898bbc20532a2f97e6c92c92b8952ff5690148e8a2a810c9ed1211858dafb421",
     "src/platform/native/broker_abi.zig": "221d693de6b33cb5c29a2d9385ebc7abb2e9e959d1c6297e7b928e34b4a470aa",
     "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
     "src/platform/native/c6_probe.zig": "d3b2df11aa39d27c04fdfb2bc8fc960b673f52d731a5ca7433afe229f95d92a7",
+    "src/platform/native/camera_jpeg.zig": "6ff6dc7b768dd3bbade2f2bd961f0189d45e3e32483e86f33e7b39778a30115b",
     "src/platform/native/canvas_demo_app.zig": "802f210b533bdaf238e7b3d4b6d45ecf25cac13dd6d0a30faab9a91f826d8f8b",
     "src/platform/native/canvas_pattern.zig": "955af251b733d0229673b3f29894b65d8a7cdebdbdfc115f68fbab27d91125f7",
     "src/platform/native/canvas_workloads.zig": "ede714a78850f58e38a899ebe686552100f9ea9b9ae12e7e54453bde4ad29333",
@@ -236,7 +239,7 @@
     "src/platform/native/card_read.zig": "65f1161adfc56146591fdc96c02dd47442df75c4807e7a79926b12ba3735f8b8",
     "src/platform/native/console_workload.zig": "68aaaae08ca0a11ea6301a9923393941591c5423a8197899cf211393dbf9f8ca",
     "src/platform/native/cpu_boot.zig": "6d8d6e5455e5b65dcf6af064aa1bcba16516849331be0af7d1a2b0037ea825d0",
-    "src/platform/native/csi_workspace.zig": "880daab8b19ea8a8c4788c9015747c585fb4606b6796538575a955ff37e7a621",
+    "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
     "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
     "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
     "src/platform/native/diagnostic_ui.zig": "c374580b8770ea687a6d0e75ef61af6b2ca7c69de0ac8a8a61da0efbac6ff6de",
@@ -262,7 +265,7 @@
     "src/platform/native/high_sram_layout.zig": "b7ed5cb6b4297216f49a13cded31fce2bad67ce7bea4fb629ec43f4c9c2c82ed",
     "src/platform/native/keypad_display.zig": "085f097f397fbe1eece8b85ff24bd74450f5c059fae861de1e4ca9bc3e053017",
     "src/platform/native/keypad_probe.zig": "c565fe8d6a96166de4d372f537f2e053e1b50a2ac8b4b90d762221889a309f7e",
-    "src/platform/native/main.zig": "30480fb79724384bd2484c774b92ce0945abb08a72bdd0a7c330fe626cf5b2a7",
+    "src/platform/native/main.zig": "f9e1ebb12513d127a803dcd940eb893680a84a9a98950ae9e055a01fd462c4ee",
     "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
     "src/platform/native/microphone_probe.zig": "e9f67b35914b9863aaaac4cbca1d29f3ced895c97b58acfc554ca49d09db913f",
     "src/platform/native/network_service.zig": "3763e17a60dca2423746ce10ab9a9ab8af28e300d4f839070df63b13466a2bc6",
@@ -365,8 +368,8 @@
     "src/xy/scratch.zig": "f6bb87b5ee2b104cef2d84b4b1c90ea0eaa87b46be48598d9f03373898d955b7",
     "src/xy/system_buffer.zig": "2e9e8838cd2c16427bafea051d816165ffb24947a66070b7261da2e20cc0a80f",
     "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7",
-    "tools/build-native.sh": "3c5a7a6878589c4cbd3e67f4968ac7c829be533f4d10b7ee4192f04b7a0b077a",
-    "tools/build-native-elf.sh": "afcab5e10213dd7fb7f929e659ad69e82c544d34e4c6085aa1dce58fa0e99029",
+    "tools/build-native.sh": "fedbb6bc44e0e513f98f588820d8d23ec757469214c6e10e7a3c350e74fadf36",
+    "tools/build-native-elf.sh": "b5f54d47ae2c30020a7da5211b4507556e53b9a7267005206b1cacadc9ec2dcd",
     "tools/run-xy-scratch-smoke.py": "908669037a4db485696c6fe32381c8cfb94371fd0838925143d794665500e736"
   },
   "observations": [
@@ -678,6 +681,6 @@
       "pixel_sha256": "e93d87730c352e0e234334fe1cf0c0d9554f6bf93dd1cb8703efc71bf6c87ed0"
     }
   ],
-  "image_sha256": "8c6c9b531676f991d9f4d57c7c22e9c031a3772c66e7b1d56693c384dd115155",
-  "elf_sha256": "9d0c13ed06589f0af61145e05b1c84780378ad35607ed50724677a167b4faf5c"
+  "image_sha256": "6ab5ac2d0b398b623e76a56b05a65c5a6b5d3a47bec1ac13e393a8056758bb4e",
+  "elf_sha256": "e4b8b0c518b2535570be801530e6534f591b911dc8ac4a7269b7693a0bb1db0b"
 }
