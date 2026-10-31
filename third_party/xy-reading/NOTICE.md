@@ -20,3 +20,9 @@ https://github.com/source-academy/sicp
 これらの本文のライセンスを、nihosのコードのMITライセンスへ置き換えない。
 生成物は assets/xy/library.json。変換スクリプトは tools/xy-library.py。
 同梱Bunsenフォントは別のCC0資産（assets/xy/fonts/CC0.txt）。
+
+例題情報は同じ原典から `assets/xy/sicp-learning.json` に生成する。コードと参考出力、
+前提定義（REQUIRES）と使用例（EXAMPLE）を区別する。隠れた補助コードは例題表に
+保持し、本文から除く。例題のコードとその改変物も上記CC BY-SA 4.0の対象。
+生成スクリプトとoffset形式の読出し実装はnihosのMITライセンスに従う。
+このデータの同梱は、全例題の実行対応を意味しない。

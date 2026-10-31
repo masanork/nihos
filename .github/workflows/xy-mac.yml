@@ -22,6 +22,8 @@ jobs:
         run: python3 tools/xy_workspace_test.py -v
       - name: Offline reading pack and shared-core pagination
         run: python3 tools/xy_reader_test.py -v
+      - name: Structured SICP and native catalogue contracts
+        run: python3 tools/xy_sicp_test.py -v
       - name: Build the Tab5 reader preview
         run: sh tools/build-xy-tab5-preview.sh
       - name: Tab5 navigation, touch, and offline pagination

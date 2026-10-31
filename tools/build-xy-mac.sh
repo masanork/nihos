@@ -5,6 +5,7 @@ cd "$repo_root"
 zig_bin=${ZIG:-$(tools/bootstrap-zig.sh)}
 out="$repo_root/build/xy-mac"
 mkdir -p "$out"
+python3 tools/xy_sicp.py --check
 "$zig_bin" build-lib -dynamic -O ReleaseSafe -fPIC -install_name @rpath/libxy_host.dylib -femit-bin="$out/libxy_host.dylib" \
     --dep view_config --dep surface --dep viewport_layout --dep pixel_transfer --dep rotated_surface -Mroot=src/xy/c_abi_host.zig \
     -Msurface=src/graphics/surface.zig --dep view_config -Mviewport_layout=src/graphics/viewport_layout.zig \
@@ -16,7 +17,7 @@ clang -std=c11 -Wall -Wextra -Werror -dynamiclib -I include \
 clang -fobjc-arc -Wall -Wextra -Werror -I include tools/xy_mac_host.m \
     -L "$out" -lxy_host -lxy_workspace -lsqlite3 \
     -framework Cocoa -framework ImageIO -framework WebKit -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks -o "$out/xy-mac-host"
-cp assets/xy/library.json "$out/library.json"
+cp assets/xy/library.json assets/xy/sicp-learning.json "$out/"
 mkdir -p "$out/fonts" "$out/figures"
 cp docs/book/figures/generated/*.svg "$out/figures/"
 cp assets/xy/fonts/* "$out/fonts/"
@@ -24,7 +25,7 @@ mkdir -p "$out/licenses"
 cp LICENSE src/graphics/ascii/SourceCodePro-LICENSE.md third_party/xy-reading/NOTICE.md third_party/xy-reading/CC-BY-SA-4.0.txt "$out/licenses/"
 app="$out/xy.app/Contents"
 mkdir -p "$app/MacOS" "$app/Frameworks" "$app/Resources"
-cp assets/xy/library.json "$app/Resources/library.json"
+cp assets/xy/library.json assets/xy/sicp-learning.json "$app/Resources/"
 mkdir -p "$app/Resources/fonts" "$app/Resources/figures"
 cp docs/book/figures/generated/*.svg "$app/Resources/figures/"
 cp assets/xy/fonts/* "$app/Resources/fonts/"

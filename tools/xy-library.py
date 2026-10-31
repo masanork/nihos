@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
-import xml.etree.ElementTree as ET
+from xy_sicp import compile_book, write_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / 'third_party/xy-reading'
@@ -90,53 +90,6 @@ class Aozora(HTMLParser):
             self.append(text.replace('\r', '').replace('\n', ''))
 
 
-def sicp_text(path):
-    root = ET.fromstring(path.read_text())
-    blocks = []
-    skip = {'INDEX', 'JAVASCRIPT', 'JAVASCRIPT_OUTPUT', 'JAVASCRIPTINLINE', 'LABEL', 'SECTIONCONTENT', 'WEB_ONLY', 'JAVASCRIPT_ONLY', 'SOLUTION', 'REQUIRES', 'EXPECTED', 'EXAMPLE'}
-    def block(text):
-        blocks.append(text.strip())
-        return f' XYBLOCK{len(blocks)-1} '
-    def math(text):
-        text = re.sub(r'\\begin\{array\}\{[^}]*\}|\\end\{array\}', '', text)
-        for a, b in [(r'\[', ''), (r'\]', ''), (r'\cdots', '…'), (r'\cdot', '·'), (r'\leftarrow', '←'), (r'\left', ''), (r'\right', ''), (r'\quad', ' '), ('&', ''), ('$', '')]:
-            text = text.replace(a, b)
-        text = re.sub(r'\\(?:textrm|mathrm)\{([^}]*)\}', r'\1', text)
-        return re.sub(r'\s+', ' ', text).strip()
-    def walk(node):
-        if node.tag in skip:
-            return ''
-        if node.tag == 'SNIPPET':
-            parts = [''.join(c.itertext()).strip() for c in node if c.tag in ('SCHEME', 'SCHEMEOUTPUT', 'SCHEME_OUTPUT')]
-            return block('\n'.join(parts)) if parts else ''
-        if node.tag == 'LATEX':
-            return block(math(''.join(node.itertext())))
-        if node.tag == 'LATEXINLINE':
-            return math(''.join(node.itertext()))
-        if node.tag == 'REF':
-            return '[' + node.attrib.get('NAME', '').removeprefix('sec:').removeprefix('fig:') + ']'
-        if node.tag == 'APOS':
-            return "'"
-        if node.tag == 'EMDASH':
-            return '—'
-        if node.tag == 'SPACE':
-            return ' '
-        if node.tag == 'SOFT_HYP':
-            return ''
-        text = (node.text or '') + ''.join(walk(c) + (c.tail or '') for c in node)
-        if node.tag in ('TEXT', 'NAME', 'LI', 'FOOTNOTE', 'FIGURE'):
-            text = re.sub(r'\s+', ' ', text).strip() + '\n\n'
-        return text
-    text = walk(root)
-    text = re.sub(r'&subsection[\d.]+;', '', text)
-    text = re.sub(r'\n[ \t]+', '\n', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    # Nested blocks are resolved in reverse order to preserve code indentation.
-    for i in reversed(range(len(blocks))):
-        text = text.replace(f'XYBLOCK{i}', '\n\n' + blocks[i] + '\n\n')
-    return re.sub(r'\n{3,}', '\n\n', text).strip() + '\n'
-
-
 def markdown_text(text):
     # Prepared manuscript contains resolved snippets, source notes and cross-references.
     lines, code = [], False
@@ -161,6 +114,7 @@ def section(title, text, rubies=None):
 
 
 def build():
+    compiled = compile_book()
     sources = json.loads((VENDOR / 'sources.json').read_text())
     for name, meta in sources.items():
         if digest(VENDOR / name) != meta['sha256']:
@@ -196,14 +150,14 @@ def build():
     items = [
         {'id': 'tutorial', 'title': 'xyを使ってみる', 'author': 'nihos project', 'detail': '書く・読む・道具を育てる、3つのレッスン', 'source': 'https://github.com/masanork/nihos', 'license': 'MIT', 'sections': tutorial},
         {'id': 'kusamakura', 'title': '草枕', 'author': '夏目漱石', 'detail': '青空文庫 / 全13章・ルビ付き', 'source': sources['kusamakura.html']['url'], 'license': '本文：日本で著作権保護期間満了。底本：夏目漱石全集3（ちくま文庫、筑摩書房、1987）。入力：柴田卓治、校正：伊藤時也。青空文庫、1999年公開・2011年修正。HTMLから本文・ルビを抽出、JIS指定の外字画像はUnicodeへ復元。', 'sections': chapters},
-        {'id': 'sicp', 'title': 'SICP', 'author': 'Harold Abelson / Gerald Jay Sussman / Julie Sussman', 'detail': '英語原文 / プログラミングの要素・式・再帰の抜粋', 'source': 'https://sicp.sourceacademy.org/', 'license': 'CC BY-SA 4.0 · https://creativecommons.org/licenses/by-sa/4.0/ · Scheme側の本文を抽出し、XMLをプレーンテキストへ変換。', 'sections': [section(title, sicp_text(VENDOR / name)) for name, title in [('sicp-elements.xml', '1.1 The Elements of Programming'), ('sicp-expressions.xml', '1.1.1 Expressions'), ('sicp-recursion.xml', '1.2.1 Linear Recursion and Iteration')]]},
+        {'id': 'sicp', 'title': 'SICP', 'author': 'Harold Abelson / Gerald Jay Sussman / Julie Sussman', 'detail': '英語原文 / プログラミングの要素・式・再帰の抜粋', 'source': 'https://sicp.sourceacademy.org/', 'license': 'CC BY-SA 4.0 · https://creativecommons.org/licenses/by-sa/4.0/ · Scheme側の本文を抽出し、XMLをプレーンテキストへ変換。', 'sections': [{k: s[k] for k in ('id', 'title', 'text', 'ruby')} for s in compiled['sections']]},
         {'id': 'nihos', 'title': book['title'], 'author': book['author'], 'detail': '端末の本 / ZigとRISC-Vで学ぶ、実機のしくみと設計判断', 'source': 'https://github.com/masanork/nihos/tree/main/docs/book', 'license': 'MIT · 本文・コード引用・図の説明を収録。図版ボタンから章のMermaid図を閲覧できます。', 'sections': book_sections}]
     tracked = subprocess.check_output(['git', 'ls-files', 'docs/book/ja', 'docs/book/book.cjs', 'docs/book/scripts', 'docs/book/figures'], cwd=ROOT, text=True).splitlines()
     hashes = {p: digest(ROOT / p) for p in tracked}
     result = {'version': 1, 'bookSourceHashes': hashes, 'externalSources': sources, 'items': items}
     out = ROOT / 'assets/xy/library.json'
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+    write_assets(result, compiled, out, ROOT / 'assets/xy/sicp-learning.json')
     print(f'{out}: {len(chapters)} 草枕 chapters, {len(book_sections)} nihos sections, {out.stat().st_size} bytes')
 
 
