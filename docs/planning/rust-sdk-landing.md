@@ -126,6 +126,10 @@ Wasm/display profile and physical presenter remain open.
    app exits; a three-round active/cancel/active run is covered in the
    [repeat report](../measurements/2026-11-01-wasm-ui-uart-repeat.md). Its
    presenter still verifies logical pixels without real scanout.
+   The repeat fixture now enters the normal foreground UI service entry and
+   samples loop progress across asynchronous open and cancellation; see the
+   [foreground report](../measurements/2026-11-01-wasm-foreground-ui-service.md).
+   Network, storage and camera work are disabled in that profile.
    A foreground controller now owns opening, cancellation and active-input
    routing in that fixture and the UI branch. It rejects start when camera or
    display is busy and reserves display until cancellation has completed.

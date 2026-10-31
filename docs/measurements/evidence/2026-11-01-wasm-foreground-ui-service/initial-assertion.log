@@ -1,0 +1,13 @@
+WAMR native ELF structural audit: ok
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+Traceback (most recent call last):
+  File "<stdin>", line 20, in <module>
+AssertionError: [(1, 109, 0, 2, 20054), (2, 1, 110, 0, 20001), (3, 109, 0, 2, 20003)]
