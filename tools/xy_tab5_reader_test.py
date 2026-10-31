@@ -109,5 +109,17 @@ class DeviceReader(unittest.TestCase):
         self.open(1);self.key(131);self.render();at=self.state(3)
         self.key('h');self.render();self.key('r');self.render()
         self.assertEqual(self.state(3),at)
+    def test_previous_crosses_back_to_last_page_and_keeps_chapter_history(self):
+        self.open(2);length=next(r[4] for r in self.entries if r[0]==2)
+        offsets=[self.state(3)]
+        while self.state(4)<length:
+            self.key(131);self.render();offsets.append(self.state(3))
+            self.assertLess(len(offsets),100)
+        self.assertGreater(len(offsets),2)
+        self.key(131);self.render();self.assertEqual(self.state(2),1)
+        self.key(130);self.render()
+        self.assertEqual((self.state(2),self.state(3)),(0,offsets[-1]))
+        self.key(130);self.render()
+        self.assertEqual((self.state(2),self.state(3)),(0,offsets[-2]))
 
 if __name__=='__main__':unittest.main()

@@ -108,7 +108,16 @@ def main():
                 send('grass-reflow',b'\r',lambda s,r:s['screen']==3 and s['offset']==0 and s['end']>0 and r['axis']==1 and r['size']==36)
                 send('home-from-book',b'\x1b',lambda s,r:s['screen']==1)
                 send('sicp-contents',b'3',lambda s,r:s['screen']==2 and s['book']==2)
-                send('sicp-read',b'\r',lambda s,r:s['screen']==3 and s['book']==2 and s['end']>0)
+                sicp=send('sicp-read',b'\r',lambda s,r:s['screen']==3 and s['book']==2 and s['end']>0)
+                offsets=[sicp['offset']]
+                while sicp['end']<sicp['total']:
+                    if len(offsets)>=100:raise RuntimeError('SICP first chapter exceeded bounded page budget')
+                    expected=sicp['end']
+                    sicp=send('sicp-page-'+str(len(offsets)),b'\x1b[C',lambda s,r:s['screen']==3 and s['chapter']==0 and s['offset']==expected and s['end']>expected)
+                    offsets.append(sicp['offset'])
+                send('sicp-next-chapter',b'\x1b[C',lambda s,r:s['screen']==3 and s['chapter']==1 and s['offset']==0 and s['end']>0)
+                send('sicp-previous-chapter-last-page',b'\x1b[D',lambda s,r:s['screen']==3 and s['chapter']==0 and s['offset']==offsets[-1] and s['end']==s['total'])
+                send('sicp-previous-page-history',b'\x1b[D',lambda s,r:s['screen']==3 and s['chapter']==0 and s['offset']==offsets[-2] and s['end']>s['offset'])
                 send('home-from-sicp',b'\x1b',lambda s,r:s['screen']==1)
                 send('nihos-contents',b'4',lambda s,r:s['screen']==2 and s['book']==3)
                 send('nihos-chapter-select',b'\x1b[B'*4,lambda s,r:s['screen']==2)

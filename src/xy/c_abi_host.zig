@@ -530,5 +530,8 @@ pub export fn xy_host_document_load(text: [*]const u8, len: u32) callconv(.c) bo
     doc.insertUtf8(text[0..len]) catch return false;
     doc.forgetUndoHistory();
     g_ws.doc = doc;
+    // A file replacement starts a new composition, retaining user IME settings.
+    g_ws.ime = .{ .mode = g_ws.ime.mode, .custom_prefixes = g_ws.ime.custom_prefixes };
+    g_ws.layout_dirty = true;
     return true;
 }

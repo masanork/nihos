@@ -7,6 +7,7 @@ const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
 pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits };
+pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
 pub const State = struct {
     screen: Screen = .document,
     home_selection: u8 = 0,
@@ -17,7 +18,7 @@ pub const State = struct {
     offset: u32 = 0,
     end: u32 = 0,
     text_length: u32 = 0,
-    previous: [256]u32 = @splat(0),
+    previous: [256]PageLocation = @splat(.{}),
     previous_count: u16 = 0,
     return_screen: Screen = .home,
     error_code: u32 = 0,
@@ -42,23 +43,30 @@ pub const State = struct {
         self.screen = .reading;
     }
     pub fn next(self: *State) linksection(section) void {
-        if (self.end > self.offset and self.end < self.text_length) {
-            if (self.previous_count == self.previous.len) {
-                for (1..self.previous.len) |i| self.previous[i - 1] = self.previous[i];
-                self.previous_count -= 1;
-            }
-            self.previous[self.previous_count] = self.offset;
-            self.previous_count += 1;
-            self.offset = self.end;
-        } else if (self.end == self.text_length and self.chapter + 1 < self.chapter_count[self.book]) {
-            self.selected_chapter = self.chapter + 1;
-            self.selectChapter();
+        if (self.end <= self.offset or self.end > self.text_length) return;
+        const next_chapter = self.end == self.text_length;
+        if (next_chapter and self.chapter + 1 >= self.chapter_count[self.book]) return;
+        if (self.previous_count == self.previous.len) {
+            for (1..self.previous.len) |i| self.previous[i - 1] = self.previous[i];
+            self.previous_count -= 1;
         }
+        self.previous[self.previous_count] = .{ .chapter = self.chapter, .offset = self.offset };
+        self.previous_count += 1;
+        if (next_chapter) {
+            self.chapter += 1;
+            self.selected_chapter = self.chapter;
+            self.offset = 0;
+        } else self.offset = self.end;
+        self.end = 0; // Another Next needs a completed page in the new location.
     }
     pub fn back(self: *State) linksection(section) void {
         if (self.previous_count > 0) {
             self.previous_count -= 1;
-            self.offset = self.previous[self.previous_count];
+            const location = self.previous[self.previous_count];
+            self.chapter = location.chapter;
+            self.selected_chapter = location.chapter;
+            self.offset = location.offset;
+            self.end = 0;
         } else if (self.chapter > 0) {
             self.selected_chapter = self.chapter - 1;
             self.selectChapter();
@@ -196,6 +204,25 @@ pub const State = struct {
         }
     }
 };
+
+test "previous restores chapter boundaries and keeps earlier pages" {
+    var state = State{};
+    state.open(1);
+    state.selectChapter();
+    state.next(); // No completed frame must not skip an unread chapter.
+    try std.testing.expectEqual(@as(u16, 0), state.chapter);
+    state.text_length = 200;
+    state.end = 100;
+    state.next();
+    state.end = 200;
+    state.next();
+    try std.testing.expectEqual(@as(u16, 1), state.chapter);
+    state.back();
+    try std.testing.expectEqual(@as(u16, 0), state.chapter);
+    try std.testing.expectEqual(@as(u32, 100), state.offset);
+    state.back();
+    try std.testing.expectEqual(@as(u32, 0), state.offset);
+}
 
 test "device navigation preserves reading position through home and settings" {
     var state = State{};
