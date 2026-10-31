@@ -26,14 +26,14 @@ class NativeInstructionTests(unittest.TestCase):
         for name in ('xy.learning_session.Session.run', 'learning_session.Session.resetVm',
                      'learning_catalog.Pack.onPage', 'xy.learning_catalog.Pack.init',
                      'learning_view.render__func_2', 'learning_view.label__func_3',
-                     'learning_catalog.Pack.styleOnPage', 'viewport_layout.layoutStyledParagraph__func_1',
+                     'learning_catalog.Pack.styleOnPage', 'mem.trim__func_1', 'viewport_layout.layoutStyledParagraph__func_1',
                      'viewport_layout.shapeStyledRun__func_2',
                      'nih_xy_render_learning', 'native_render_entry.nih_xy_render_learning',
                      'xy.scratch.Model.touch', 'xy.document.Document(4096,256,2048,1,64).undo'):
             with self.subTest(name=name): self.assertTrue(MODULE.xy_function(name))
         for name in ('xy.learning_session.Session.arbitrary', 'learning_catalog.Pack.arbitrary',
                      'learning_view.render__func_bad', 'learning_view.render__func_2.extra',
-                     'learning_view.irq__func_1', 'viewport_layout.layoutStyledParagraph__func_bad',
+                     'learning_view.irq__func_1', 'mem.trim__func_bad', 'viewport_layout.layoutStyledParagraph__func_bad',
                      'viewport_layout.shapeStyledRun__func_2.extra', 'learning_session.Host.arbitrary', 'xy.document.Document(4096,256,2048,1,64).arbitrary',
                      'xy.document.Document(8192,256,2048,1,64).undo'):
             with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
