@@ -1,6 +1,6 @@
 # sqldの通常起動・microSD永続化
 
-2026-10-31。最終実機source: `e75f1f17a4a7bcc200657aff11e924a19436f347`。
+2026-10-31。最終実機source: `2784da074c074f3bf1cc3c7da1f5b0db129b9eb6`。
 [証拠一覧](evidence/2026-10-31-sqld-native/index.json)、[結果](evidence/2026-10-31-sqld-native/result.json)。
 
 ## 結果
@@ -9,9 +9,9 @@ Tab5 / ESP32-P4 rev1.3の通常起動でsqld ownerが常駐し、xyのScheme pro
 最終候補は公開既定build（`xy_trace=false`, `sqld=true`, provision CID=0）。
 SQLの値を条件に日本語ファイルを読み込み、`normal-proof.scm`へ保存する単一Scheme式で
 copied RPCを11件完了した。保存後の再起動でgeneration
-39 → 40を回復した。
+40 → 41を回復した。
 Flash全16 MiBの書込み前後照合と、最後の照合後の常駐logを保持した。
-image SHA-256: `2ca9ca6276226b8b5ccc85d37f3c32efe7fe249586d3039a0b168e7dba489ef5`。
+image SHA-256: `9aead0ed66ac9236085c16af5748d5075783cdc95c27c6f4fd38769b6952d7bb`。
 
 別のtrace候補では29式を実行し、SQL更新とrollback、filesystem rollback、
 snapshot/restore/release、GC、space、checksum、SQL integrity、日本語本文のsave/loadを確認した。

@@ -1,18 +1,18 @@
 {
   "passed": true,
-  "source_base": "e75f1f17a4a7bcc200657aff11e924a19436f347",
+  "source_base": "2784da074c074f3bf1cc3c7da1f5b0db129b9eb6",
   "candidate": {
     "partition-table.bin": "fabcbebf733457e9706b46544b2a1cb9672a8e1ce626f5dc7d7e6fb4738d5b0e",
-    "nihos-native.elf": "4c069a32e71b3e07d80539a1eb88d5eb0d3c6d10e2b01de7509f28a2d6274096",
-    "normal-fs-manifest.json": "34962de04ca700f6675311eeb1a52e99588ac6ea84c2b5c054e4de960d88b8cf",
-    "nihos-native.bin": "2ca9ca6276226b8b5ccc85d37f3c32efe7fe249586d3039a0b168e7dba489ef5",
-    "sqld-manifest.json": "77f8949e480ad0dc6c33bd0064aca6bd3390994f04d359c9aa2a8ee59453aa99",
-    "image-audit.json": "7c69675baf519e8f19ab67a6cd0dfe7dbd3bd0df9c4e216bfbff3ba8aac64842",
+    "nihos-native.elf": "c66fa18ea123fa461640491d3c01e335edcdbed68075be2b8cba58e9800e85df",
+    "normal-fs-manifest.json": "77a5bc9076eba45fd09b06e8638c4ed9f693d1f0530f58150f81e4194eba6975",
+    "nihos-native.bin": "9aead0ed66ac9236085c16af5748d5075783cdc95c27c6f4fd38769b6952d7bb",
+    "sqld-manifest.json": "dde74c3ee95b3c2fac8bfde6c931bead7c0e9357569eb99b3b2655944a2d241a",
+    "image-audit.json": "697f0a2eaf38e0a60c6d4ccec6d7926b3d41f939aa9b1461ec58db8440060d4d",
     "native_options.zig": "002cf21db0f6327d69175e311cd887f600ce768d8397a4adb16342e7780df30f",
     "bootloader.bin": "2cd389577c8ab729c88b19c58d797b833c6dcb106fe7b4e6cdb1d780f51699e3"
   },
   "sqld": {
-    "identity": "b865c79dbe88893256d260228738e3e666f91d5961efa4c5bd3f7bd49bc8a6c6",
+    "identity": "1e312062ed64df3960aa545ceb902f0954f87aefd28e3da6d6bf9bf0df4d30a4",
     "text_bytes": 563344,
     "rodata_bytes": 89388,
     "reservation": [
@@ -41,7 +41,7 @@
       "error_code": 0,
       "sectors": 30867456,
       "cid_crc": 4111314636,
-      "generation": 39
+      "generation": 40
     },
     {
       "name": "default-conditional-durable-save",
@@ -52,7 +52,7 @@
       "reads": 104,
       "writes": 56,
       "syncs": 2,
-      "generation": 40,
+      "generation": 41,
       "stack_used": 9008,
       "heap_used": 209856
     },
@@ -62,7 +62,7 @@
       "error_code": 0,
       "sectors": 30867456,
       "cid_crc": 4111314636,
-      "generation": 40
+      "generation": 41
     },
     {
       "name": "default-idle",
@@ -77,6 +77,6 @@
     "chip": "ESP32-P4 (revision v1.3)",
     "flash_id": 1589318
   },
-  "backup_sha256": "da6736b480eec7fb6d821bae92d370c443e430d087aa5c2f28461a4e3829b912",
+  "backup_sha256": "735a78da2ec7d014bbd2625df72c9ba02955043835646739b2466753084b3c39",
   "normal_default_proof": true
 }
