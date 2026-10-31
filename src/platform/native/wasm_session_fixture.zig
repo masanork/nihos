@@ -39,7 +39,100 @@ pub var mock_items: u32 = 0;
 pub var mock_digest: u32 = 2166136261;
 pub var mock_sensor_sum: u32 = 0;
 var foreground_previous: u64 = 0;
-const hosted_wire = @import("hosted_station").wire;
+const hosted_station = @import("hosted_station");
+const hosted_wire = hosted_station.wire;
+var fixture_station: if (options.wasm_interactive_repeat) hosted_station.Client else void = if (options.wasm_interactive_repeat) .{} else {};
+pub var station_completed: u32 = 0;
+pub var station_stale: u32 = 0;
+pub var station_errors: u32 = 0;
+pub var station_opening: u32 = 0;
+pub var station_cancelling: u32 = 0;
+pub var station_active: u32 = 0;
+// One deterministic station step per foreground turn. The synthetic peer
+// returns a wrong-UID version reply before the matching response.
+fn stationService() void {
+    const step = (mock_items - 1) % 5;
+    if (step == 0) {
+        fixture_station.begin(.disabled, 0);
+        // Model a prior transaction so the stale UID is nonzero and valid.
+        fixture_station.uid = 1;
+        fixture_station.receive(.{ .interface = 5, .payload = &.{ 0x22, 3, 0x12, 1, 13 } }, 1) catch {
+            station_errors += 1;
+            return;
+        };
+        if (!fixture_station.capabilities_pending or fixture_station.phase != .handshake) station_errors += 1;
+    } else if (step == 1) {
+        const bytes = fixture_station.tx(2) catch {
+            station_errors += 1;
+            return;
+        };
+        if (bytes.len <= 12 or bytes[0] != 5) {
+            station_errors += 1;
+            return;
+        }
+        fixture_station.sent(2);
+        if (fixture_station.phase != .version) station_errors += 1;
+    } else if (step == 2) {
+        const bytes = fixture_station.tx(3) catch {
+            station_errors += 1;
+            return;
+        };
+        if (bytes.len <= 12 or bytes[0] != 3 or fixture_station.active_id != 350) {
+            station_errors += 1;
+            return;
+        }
+        fixture_station.sent(3);
+    } else {
+        var body_buffer: [32]u8 = undefined;
+        var body = hosted_wire.Writer{ .out = &body_buffer };
+        body.uint(2, 1) catch {
+            station_errors += 1;
+            return;
+        };
+        body.uint(3, 4) catch {
+            station_errors += 1;
+            return;
+        };
+        body.uint(4, 1) catch {
+            station_errors += 1;
+            return;
+        };
+        var payload: [128]u8 = undefined;
+        const uid = fixture_station.uid - @as(u32, @intFromBool(step == 3));
+        const response = hosted_wire.request(&payload, 606, uid, body.slice()) catch {
+            station_errors += 1;
+            return;
+        };
+        payload[13] = 2;
+        fixture_station.receive(.{ .interface = 3, .payload = response }, 4) catch {
+            station_errors += 1;
+            return;
+        };
+        if (step == 3) {
+            if (fixture_station.phase != .version or fixture_station.ignored_rpcs != 1 or fixture_station.version_known) {
+                station_errors += 1;
+                return;
+            }
+            station_stale += 1;
+        } else {
+            const pending = fixture_station.tx(5) catch {
+                station_errors += 1;
+                return;
+            };
+            if (fixture_station.phase != .done or !fixture_station.version_known or fixture_station.dhcp_client != null or fixture_station.connected or pending.len != 0) {
+                station_errors += 1;
+                return;
+            }
+            station_completed += 1;
+            switch (ui.wasmFixturePhase()) {
+                1 => station_opening += 1,
+                2 => station_cancelling += 1,
+                3 => station_active += 1,
+                else => station_errors += 1,
+            }
+        }
+    }
+}
 var fixture_decoder: if (options.wasm_interactive_repeat) hosted_wire.Decoder else void = if (options.wasm_interactive_repeat) .{} else {};
 pub var network_accepted: u32 = 0;
 pub var network_rejected: u32 = 0;
@@ -77,6 +170,7 @@ fn hostedService() void {
 fn mockService() void {
     mock_items += 1;
     hostedService();
+    stationService();
     for (0..64) |index| {
         const byte: u8 = @truncate(mock_items *% 17 +% @as(u32, @intCast(index)) *% 29 +% interactive_round *% 7);
         mock_digest = (mock_digest ^ byte) *% 16777619;
@@ -158,6 +252,13 @@ pub fn interactiveService(log: anytype) u32 {
             network_rejected = 0;
             network_errors = 0;
             network_active_events = 0;
+            fixture_station = .{};
+            station_completed = 0;
+            station_stale = 0;
+            station_errors = 0;
+            station_opening = 0;
+            station_cancelling = 0;
+            station_active = 0;
             interactive_start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
             ui.wasmFixtureClearDirty();
         }
