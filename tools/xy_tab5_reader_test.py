@@ -57,6 +57,13 @@ class DeviceReader(unittest.TestCase):
         self.assertFalse(self.vm.xy_tab5_init(self.owner,63))
         broken=bytearray(self.data);struct.pack_into('<I',broken,64+4,len(broken)+1)
         bad=c.create_string_buffer(bytes(broken));self.assertFalse(self.vm.xy_tab5_init(bad,len(broken)))
+    def test_learning_catalogue_is_embedded_and_matches_source(self):
+        from xy_learning_pack import build
+        offset,length=struct.unpack_from('<2I',self.data,40)
+        self.assertGreater(length,128)
+        self.assertEqual(self.data[offset:offset+length],build(ROOT))
+        broken=bytearray(self.data);struct.pack_into('<I',broken,44,len(broken))
+        bad=c.create_string_buffer(bytes(broken));self.assertFalse(self.vm.xy_tab5_init(bad,len(broken)))
     def test_home_touch_chapter_page_and_settings(self):
         home=self.render()
         self.vm.xy_tab5_touch(200,340);self.assertEqual(self.state(1),1)

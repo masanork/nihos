@@ -2,6 +2,7 @@
 """Compile the attributed xy JSON library and its fonts into a bounded ROM pack."""
 import argparse, hashlib, json, struct
 from pathlib import Path
+from xy_learning_pack import build as build_learning_pack
 ROOT=Path(__file__).resolve().parents[1]
 
 def build(destination):
@@ -28,9 +29,10 @@ def build(destination):
             reading=put(r['text'].encode());ruby.append((r['start'],r['end'],*reading))
         rubies=put(b''.join(struct.pack('<4I',*r) for r in ruby))
         struct.pack_into('<9I',payload,64+number*36,book,*title,*text,rubies[0],len(ruby),*credits[book])
-    struct.pack_into('<8s14I',payload,0,b'XYREAD01',1,len(payload),len(records),64,*fonts[0],*fonts[1],0,0,0,0,0,0)
+    learning = put(build_learning_pack(ROOT))
+    struct.pack_into('<8s14I',payload,0,b'XYREAD01',1,len(payload),len(records),64,*fonts[0],*fonts[1],*learning,0,0,0,0)
     destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(payload)
-    result={'version':1,'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest(),'library_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'sections':[len(b['sections']) for b in library['items']],'fonts':[{'offset':p,'bytes':n} for p,n in fonts]}
+    result={'version':1,'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest(),'library_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'sections':[len(b['sections']) for b in library['items']],'fonts':[{'offset':p,'bytes':n} for p,n in fonts],'learning':{'offset':learning[0],'bytes':learning[1],'sha256':hashlib.sha256(payload[learning[0]:learning[0]+learning[1]]).hexdigest()}}
     destination.with_suffix('.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
 

@@ -1,0 +1,1276 @@
+{
+  "version": 1,
+  "book_id": "sicp",
+  "edition": "sicp-2-scheme-en",
+  "manifest_sha256": "0269947529759659b3621c8d8087657a41420135106b6c7a9bf0cd8cdc2d165d",
+  "author": "Harold Abelson and Gerald Jay Sussman with Julie Sussman",
+  "license": "CC-BY-SA-4.0",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "source": "https://sicp.sourceacademy.org/",
+  "changes": "Scheme text extracted; code and output separated; hidden support retained in catalogue; math converted to text.",
+  "snippets": [
+    {
+      "id": "sicp.expressions.literal",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "486",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "86b700fab5db37977a73700b53a0654b21bdad0896914cc19ad70dee5f5fb3f6"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.addition",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(+ 137 349)",
+      "reference_output": "486",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "2821c55899b5b7d6449d13a620dcdfa175f21c18c758e52502c9fabf235ec85b"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.subtraction",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(- 1000 334)",
+      "reference_output": "666",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "8303a63a94ae12a45995d630e062d3a5025e70be4d6b3ed022d73ef64a450ead"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.multiplication",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(* 5 99)",
+      "reference_output": "495",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "3f4d59defa6f40f13b660f5a365feced79c5d180c37404e82188e3484cf3d429"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.division",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(/ 10 5)",
+      "reference_output": "2",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer",
+        "division"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "d964efd8c64b935505d316baaab766ca385c43590c49832c66c687f1a2b66201"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.decimal-addition",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(+ 2.7 10)",
+      "reference_output": "12.7",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "inexact",
+        "addition"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "fd684305aecd0042e7d3e84e842d62351015009e3b1cd82670e563449cd2212a"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.sum-many",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(+ 21 35 12 7)",
+      "reference_output": "75",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "7e51d4b7cc439880c0e35dd851581c7da871c6a343e8408e85aabf1a272221e1"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.product-many",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(* 25 4 12)",
+      "reference_output": "1200",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "8ecd2b69912daa23c64d3e2e0d1176e5442f18817d6d9fc9aa1c128ec4f58e1a"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.nested",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(+ (* 3 5) (- 10 6))",
+      "reference_output": "19",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "a5c7793815c42049bccff9d3148ad6517e70e5ca060222f7009aa7264941f347"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.deep-inline",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(+ (* 3 (+ (* 2 4) (+ 3 5))) (+ (- 10 7) 6))",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "ad8a66baf5d389d6ac59849c0e4b9927203811ce16d907b6d75a5758fd5b7025"
+        }
+      }
+    },
+    {
+      "id": "sicp.expressions.deep-formatted",
+      "section": "sicp.expressions",
+      "kind": "expression",
+      "code": "(+ (* 3\n      (+ (* 2 4)\n         (+ 3 5)))\n   (+ (- 10 7)\n      6))",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": null,
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-expressions.xml",
+        "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+        "selector": {
+          "code_sha256": "a6f80d92ae69cfa9281691be2b3143fed96c4c8e80bff1ec429656aa27922644"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.factorial-recursive",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (factorial n)\n  (if (= n 1)\n      1\n      (* n (factorial (- n 1)))))",
+      "reference_output": "",
+      "upstream_expected": "120",
+      "upstream_name": "factorial_definition",
+      "requires": [],
+      "example": "sicp.recursion.factorial-call",
+      "features": [
+        "integer",
+        "definitions",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "factorial_definition"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.factorial-call",
+      "section": "sicp.recursion",
+      "kind": "expression",
+      "code": "(factorial 5)",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": "factorial_example",
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer",
+        "recursion"
+      ],
+      "hidden": true,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "factorial_example"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.factorial-local-iteration",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (factorial n)\n  (define (iter product counter)\n    (if (> counter n)\n        product\n        (iter (* counter product)\n              (+ counter 1))))\n  (iter 1 1))",
+      "reference_output": "",
+      "upstream_expected": "120",
+      "upstream_name": null,
+      "requires": [],
+      "example": "sicp.recursion.factorial-call",
+      "features": [
+        "integer",
+        "definitions",
+        "recursion",
+        "proper-tail-calls"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "code_sha256": "44e4011c0d57d42b8fc9040103b06b3346b50c75fbc311fb4d4a345e7ceb1850"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.factorial-iterative",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (factorial n)\n  (fact-iter 1 1 n))\n\n(define (fact-iter product counter max-count)\n  (if (> counter max-count)\n      product\n      (fact-iter (* counter product)\n                 (+ counter 1)\n                 max-count)))",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": "factorial_iterative_definition",
+      "requires": [],
+      "example": "sicp.recursion.factorial-call",
+      "features": [
+        "integer",
+        "definitions",
+        "recursion",
+        "proper-tail-calls"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "factorial_iterative_definition"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.inc-dec",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (inc x)\n  (- x -1))\n(define (dec x)\n  (- x 1))",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": "inc_dec_definition",
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer",
+        "definitions"
+      ],
+      "hidden": true,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "inc_dec_definition"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.addition-call",
+      "section": "sicp.recursion",
+      "kind": "expression",
+      "code": "(+ 4 5)",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": "plus_example",
+      "requires": [],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": true,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "plus_example"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.addition-recursive",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (+ a b)\n  (if (= a 0)\n      b\n      (inc (+ (dec a) b))))",
+      "reference_output": "",
+      "upstream_expected": "9",
+      "upstream_name": null,
+      "requires": [
+        "sicp.recursion.inc-dec"
+      ],
+      "example": "sicp.recursion.addition-call",
+      "features": [
+        "integer",
+        "definitions",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "code_sha256": "02c68ee48c84ac8e248a208c2e2722a49b5ccba97e809084952a6bab7af161d7"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.addition-iterative",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (+ a b)\n  (if (= a 0)\n      b\n      (+ (dec a) (inc b))))",
+      "reference_output": "",
+      "upstream_expected": "9",
+      "upstream_name": null,
+      "requires": [
+        "sicp.recursion.inc-dec"
+      ],
+      "example": "sicp.recursion.addition-call",
+      "features": [
+        "integer",
+        "definitions",
+        "recursion",
+        "proper-tail-calls"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "code_sha256": "4ac7560d5008814b25eb79d75bed2c5cc19bcaae653dc518a21442ad9b4c3b81"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.ackermann",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (A x y)\n  (cond ((= y 0) 0)\n        ((= x 0) (* 2 y))\n        ((= y 1) 2)\n        (else (A (- x 1)\n                 (A x (- y 1))))))",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": "ackermann_definition",
+      "requires": [],
+      "example": "sicp.recursion.ackermann-1-10",
+      "features": [
+        "integer",
+        "definitions",
+        "cond",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "ackermann_definition"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.ackermann-1-10",
+      "section": "sicp.recursion",
+      "kind": "expression",
+      "code": "(A 1 10)",
+      "reference_output": "",
+      "upstream_expected": "1024",
+      "upstream_name": "ackermann_example",
+      "requires": [
+        "sicp.recursion.ackermann"
+      ],
+      "example": null,
+      "features": [
+        "integer",
+        "cond",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "ackermann_example"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.ackermann-2-4",
+      "section": "sicp.recursion",
+      "kind": "expression",
+      "code": "(A 2 4)",
+      "reference_output": "",
+      "upstream_expected": "65536",
+      "upstream_name": null,
+      "requires": [
+        "sicp.recursion.ackermann"
+      ],
+      "example": null,
+      "features": [
+        "integer",
+        "cond",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "code_sha256": "da7ae761d6e477b50644813895f12aea111c337388887f0f14b59968f8195267"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.ackermann-3-3",
+      "section": "sicp.recursion",
+      "kind": "expression",
+      "code": "(A 3 3)",
+      "reference_output": "",
+      "upstream_expected": "65536",
+      "upstream_name": null,
+      "requires": [
+        "sicp.recursion.ackermann"
+      ],
+      "example": null,
+      "features": [
+        "integer",
+        "cond",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "code_sha256": "16d0566c690165ead448236c9aaa41c9ab7717dfb93cbdc9baafcda20c121fec"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.ackermann-derived",
+      "section": "sicp.recursion",
+      "kind": "definition",
+      "code": "(define (f n) (A 0 n))\n\n(define (g n) (A 1 n))\n\n(define (h n) (A 2 n))\n\n(define (k n) (* 5 n n))",
+      "reference_output": "",
+      "upstream_expected": null,
+      "upstream_name": "fghk_definition",
+      "requires": [
+        "sicp.recursion.ackermann"
+      ],
+      "example": "sicp.recursion.derived-k-call",
+      "features": [
+        "integer",
+        "definitions",
+        "cond",
+        "recursion"
+      ],
+      "hidden": false,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "fghk_definition"
+        }
+      }
+    },
+    {
+      "id": "sicp.recursion.derived-k-call",
+      "section": "sicp.recursion",
+      "kind": "expression",
+      "code": "(k 4)",
+      "reference_output": "",
+      "upstream_expected": "80",
+      "upstream_name": "fghk_example",
+      "requires": [
+        "sicp.recursion.ackermann-derived"
+      ],
+      "example": null,
+      "features": [
+        "integer"
+      ],
+      "hidden": true,
+      "eval_disabled": false,
+      "source": {
+        "file": "sicp-recursion.xml",
+        "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687",
+        "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+        "selector": {
+          "name": "fghk_example"
+        }
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "id": "sicp.expressions.literal.try",
+      "editable": "sicp.expressions.literal",
+      "invocation": "sicp.expressions.literal",
+      "run_order": [
+        "sicp.expressions.literal"
+      ],
+      "reference": null,
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.addition.try",
+      "editable": "sicp.expressions.addition",
+      "invocation": "sicp.expressions.addition",
+      "run_order": [
+        "sicp.expressions.addition"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.addition",
+        "text": "486",
+        "approved": false
+      },
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.subtraction.try",
+      "editable": "sicp.expressions.subtraction",
+      "invocation": "sicp.expressions.subtraction",
+      "run_order": [
+        "sicp.expressions.subtraction"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.subtraction",
+        "text": "666",
+        "approved": false
+      },
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.multiplication.try",
+      "editable": "sicp.expressions.multiplication",
+      "invocation": "sicp.expressions.multiplication",
+      "run_order": [
+        "sicp.expressions.multiplication"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.multiplication",
+        "text": "495",
+        "approved": false
+      },
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.division.try",
+      "editable": "sicp.expressions.division",
+      "invocation": "sicp.expressions.division",
+      "run_order": [
+        "sicp.expressions.division"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.division",
+        "text": "2",
+        "approved": false
+      },
+      "features": [
+        "division",
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.decimal-addition.try",
+      "editable": "sicp.expressions.decimal-addition",
+      "invocation": "sicp.expressions.decimal-addition",
+      "run_order": [
+        "sicp.expressions.decimal-addition"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.decimal-addition",
+        "text": "12.7",
+        "approved": false
+      },
+      "features": [
+        "addition",
+        "inexact"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.sum-many.try",
+      "editable": "sicp.expressions.sum-many",
+      "invocation": "sicp.expressions.sum-many",
+      "run_order": [
+        "sicp.expressions.sum-many"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.sum-many",
+        "text": "75",
+        "approved": false
+      },
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.product-many.try",
+      "editable": "sicp.expressions.product-many",
+      "invocation": "sicp.expressions.product-many",
+      "run_order": [
+        "sicp.expressions.product-many"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.product-many",
+        "text": "1200",
+        "approved": false
+      },
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.nested.try",
+      "editable": "sicp.expressions.nested",
+      "invocation": "sicp.expressions.nested",
+      "run_order": [
+        "sicp.expressions.nested"
+      ],
+      "reference": {
+        "kind": "reference_output",
+        "snippet": "sicp.expressions.nested",
+        "text": "19",
+        "approved": false
+      },
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.deep-inline.try",
+      "editable": "sicp.expressions.deep-inline",
+      "invocation": "sicp.expressions.deep-inline",
+      "run_order": [
+        "sicp.expressions.deep-inline"
+      ],
+      "reference": null,
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.expressions.deep-formatted.try",
+      "editable": "sicp.expressions.deep-formatted",
+      "invocation": "sicp.expressions.deep-formatted",
+      "run_order": [
+        "sicp.expressions.deep-formatted"
+      ],
+      "reference": null,
+      "features": [
+        "integer"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.factorial-recursive.try",
+      "editable": "sicp.recursion.factorial-recursive",
+      "invocation": "sicp.recursion.factorial-call",
+      "run_order": [
+        "sicp.recursion.factorial-recursive",
+        "sicp.recursion.factorial-call"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.factorial-recursive",
+        "text": "120",
+        "approved": false
+      },
+      "features": [
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.factorial-local-iteration.try",
+      "editable": "sicp.recursion.factorial-local-iteration",
+      "invocation": "sicp.recursion.factorial-call",
+      "run_order": [
+        "sicp.recursion.factorial-local-iteration",
+        "sicp.recursion.factorial-call"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.factorial-local-iteration",
+        "text": "120",
+        "approved": false
+      },
+      "features": [
+        "definitions",
+        "integer",
+        "proper-tail-calls",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.factorial-iterative.try",
+      "editable": "sicp.recursion.factorial-iterative",
+      "invocation": "sicp.recursion.factorial-call",
+      "run_order": [
+        "sicp.recursion.factorial-iterative",
+        "sicp.recursion.factorial-call"
+      ],
+      "reference": null,
+      "features": [
+        "definitions",
+        "integer",
+        "proper-tail-calls",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.addition-recursive.try",
+      "editable": "sicp.recursion.addition-recursive",
+      "invocation": "sicp.recursion.addition-call",
+      "run_order": [
+        "sicp.recursion.inc-dec",
+        "sicp.recursion.addition-recursive",
+        "sicp.recursion.addition-call"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.addition-recursive",
+        "text": "9",
+        "approved": false
+      },
+      "features": [
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.addition-iterative.try",
+      "editable": "sicp.recursion.addition-iterative",
+      "invocation": "sicp.recursion.addition-call",
+      "run_order": [
+        "sicp.recursion.inc-dec",
+        "sicp.recursion.addition-iterative",
+        "sicp.recursion.addition-call"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.addition-iterative",
+        "text": "9",
+        "approved": false
+      },
+      "features": [
+        "definitions",
+        "integer",
+        "proper-tail-calls",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.ackermann.try",
+      "editable": "sicp.recursion.ackermann",
+      "invocation": "sicp.recursion.ackermann-1-10",
+      "run_order": [
+        "sicp.recursion.ackermann",
+        "sicp.recursion.ackermann-1-10"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.ackermann-1-10",
+        "text": "1024",
+        "approved": false
+      },
+      "features": [
+        "cond",
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.ackermann-1-10.try",
+      "editable": "sicp.recursion.ackermann-1-10",
+      "invocation": "sicp.recursion.ackermann-1-10",
+      "run_order": [
+        "sicp.recursion.ackermann",
+        "sicp.recursion.ackermann-1-10"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.ackermann-1-10",
+        "text": "1024",
+        "approved": false
+      },
+      "features": [
+        "cond",
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.ackermann-2-4.try",
+      "editable": "sicp.recursion.ackermann-2-4",
+      "invocation": "sicp.recursion.ackermann-2-4",
+      "run_order": [
+        "sicp.recursion.ackermann",
+        "sicp.recursion.ackermann-2-4"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.ackermann-2-4",
+        "text": "65536",
+        "approved": false
+      },
+      "features": [
+        "cond",
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.ackermann-3-3.try",
+      "editable": "sicp.recursion.ackermann-3-3",
+      "invocation": "sicp.recursion.ackermann-3-3",
+      "run_order": [
+        "sicp.recursion.ackermann",
+        "sicp.recursion.ackermann-3-3"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.ackermann-3-3",
+        "text": "65536",
+        "approved": false
+      },
+      "features": [
+        "cond",
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    },
+    {
+      "id": "sicp.recursion.ackermann-derived.try",
+      "editable": "sicp.recursion.ackermann-derived",
+      "invocation": "sicp.recursion.derived-k-call",
+      "run_order": [
+        "sicp.recursion.ackermann",
+        "sicp.recursion.ackermann-derived",
+        "sicp.recursion.derived-k-call"
+      ],
+      "reference": {
+        "kind": "upstream_expected",
+        "snippet": "sicp.recursion.derived-k-call",
+        "text": "80",
+        "approved": false
+      },
+      "features": [
+        "cond",
+        "definitions",
+        "integer",
+        "recursion"
+      ],
+      "execution_status": "unqualified"
+    }
+  ],
+  "library_sha256": "e72156a79eb1122997c3d1a1fa736be78144fa92fa1d5142e6a62006b2011780",
+  "sections": [
+    {
+      "id": "sicp.elements",
+      "title": "1.1 The Elements of Programming",
+      "text_sha256": "2b35c8dba20ae50ff1f93b7b180f1de73e85e0d2bc7f70fb34c523f3fb85e96c",
+      "blocks": []
+    },
+    {
+      "id": "sicp.expressions",
+      "title": "1.1.1 Expressions",
+      "text_sha256": "880e8c96b3ffca678595bca9f57e055fec313a188d0fd8183961228121325f8b",
+      "blocks": [
+        {
+          "kind": "code",
+          "start": 522,
+          "end": 525,
+          "snippet": "sicp.expressions.literal"
+        },
+        {
+          "kind": "reference_output",
+          "start": 762,
+          "end": 765
+        },
+        {
+          "kind": "code",
+          "start": 999,
+          "end": 1010,
+          "snippet": "sicp.expressions.addition"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1015,
+          "end": 1018,
+          "snippet": "sicp.expressions.addition"
+        },
+        {
+          "kind": "code",
+          "start": 1023,
+          "end": 1035,
+          "snippet": "sicp.expressions.subtraction"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1040,
+          "end": 1043,
+          "snippet": "sicp.expressions.subtraction"
+        },
+        {
+          "kind": "code",
+          "start": 1048,
+          "end": 1056,
+          "snippet": "sicp.expressions.multiplication"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1061,
+          "end": 1064,
+          "snippet": "sicp.expressions.multiplication"
+        },
+        {
+          "kind": "code",
+          "start": 1069,
+          "end": 1077,
+          "snippet": "sicp.expressions.division"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1082,
+          "end": 1083,
+          "snippet": "sicp.expressions.division"
+        },
+        {
+          "kind": "code",
+          "start": 1088,
+          "end": 1098,
+          "snippet": "sicp.expressions.decimal-addition"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1103,
+          "end": 1107,
+          "snippet": "sicp.expressions.decimal-addition"
+        },
+        {
+          "kind": "code",
+          "start": 1906,
+          "end": 1920,
+          "snippet": "sicp.expressions.sum-many"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1925,
+          "end": 1927,
+          "snippet": "sicp.expressions.sum-many"
+        },
+        {
+          "kind": "code",
+          "start": 1932,
+          "end": 1943,
+          "snippet": "sicp.expressions.product-many"
+        },
+        {
+          "kind": "reference_output",
+          "start": 1948,
+          "end": 1952,
+          "snippet": "sicp.expressions.product-many"
+        },
+        {
+          "kind": "code",
+          "start": 2286,
+          "end": 2306,
+          "snippet": "sicp.expressions.nested"
+        },
+        {
+          "kind": "reference_output",
+          "start": 2311,
+          "end": 2313,
+          "snippet": "sicp.expressions.nested"
+        },
+        {
+          "kind": "code",
+          "start": 2548,
+          "end": 2592,
+          "snippet": "sicp.expressions.deep-inline"
+        },
+        {
+          "kind": "code",
+          "start": 2716,
+          "end": 2784,
+          "snippet": "sicp.expressions.deep-formatted"
+        }
+      ]
+    },
+    {
+      "id": "sicp.recursion",
+      "title": "1.2.1 Linear Recursion and Iteration",
+      "text_sha256": "c012cf971137f3f267dd92c0e7a1caf837b03bca951a24be1de79fab0839c0aa",
+      "blocks": [
+        {
+          "kind": "math",
+          "start": 93,
+          "end": 123
+        },
+        {
+          "kind": "math",
+          "start": 276,
+          "end": 321
+        },
+        {
+          "kind": "code",
+          "start": 507,
+          "end": 584,
+          "snippet": "sicp.recursion.factorial-recursive"
+        },
+        {
+          "kind": "math",
+          "start": 1262,
+          "end": 1318
+        },
+        {
+          "kind": "code",
+          "start": 1614,
+          "end": 1785,
+          "snippet": "sicp.recursion.factorial-local-iteration"
+        },
+        {
+          "kind": "code",
+          "start": 1880,
+          "end": 2109,
+          "snippet": "sicp.recursion.factorial-iterative"
+        },
+        {
+          "kind": "code",
+          "start": 7973,
+          "end": 8038,
+          "snippet": "sicp.recursion.addition-recursive"
+        },
+        {
+          "kind": "code",
+          "start": 8043,
+          "end": 8108,
+          "snippet": "sicp.recursion.addition-iterative"
+        },
+        {
+          "kind": "code",
+          "start": 8356,
+          "end": 8497,
+          "snippet": "sicp.recursion.ackermann"
+        },
+        {
+          "kind": "code",
+          "start": 8554,
+          "end": 8562,
+          "snippet": "sicp.recursion.ackermann-1-10"
+        },
+        {
+          "kind": "code",
+          "start": 8567,
+          "end": 8574,
+          "snippet": "sicp.recursion.ackermann-2-4"
+        },
+        {
+          "kind": "code",
+          "start": 8579,
+          "end": 8586,
+          "snippet": "sicp.recursion.ackermann-3-3"
+        },
+        {
+          "kind": "code",
+          "start": 8671,
+          "end": 8767,
+          "snippet": "sicp.recursion.ackermann-derived"
+        }
+      ]
+    }
+  ]
+}

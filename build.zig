@@ -122,6 +122,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_reader_module })).step);
     const xy_catalog_module = b.createModule(.{ .root_source_file = b.path("src/xy/catalog.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_catalog_module })).step);
+    const xy_learning_catalog_module = b.createModule(.{ .root_source_file = b.path("src/xy/learning_catalog.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_learning_catalog_module })).step);
     const xy_document_module = b.createModule(.{ .root_source_file = b.path("src/xy/document.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_document_module })).step);
     const xy_ime_omni_module = b.createModule(.{ .root_source_file = b.path("src/xy/ime_omni.zig"), .target = target, .optimize = optimize });

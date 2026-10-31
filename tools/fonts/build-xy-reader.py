@@ -11,12 +11,34 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source-dir', type=Path, required=True)
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument('--source-dir', type=Path)
+    inputs.add_argument('--refresh-manifest', action='store_true',
+                        help='Verify unchanged checked-in font bytes and coverage, then bind the new library hash')
     args = parser.parse_args()
     library = ROOT / 'assets/xy/library.json'
     cps = set(map(ord, library.read_text())) | set(range(32,127)) | {0x25a1,0xfffd}
     out = ROOT / 'assets/xy/fonts'
     out.mkdir(parents=True, exist_ok=True)
+    if args.refresh_manifest:
+        path = out / 'manifest.json'
+        manifest = json.loads(path.read_text())
+        for style in ('Mincho', 'Gothic'):
+            name = f'Bunsen{style}-Regular.ttf'
+            font_path = out / name
+            if hashlib.sha256(font_path.read_bytes()).hexdigest() != manifest['faces'][name]['sha256']:
+                raise ValueError(f'Font bytes changed: {name}; regenerate from source')
+            font = TTFont(font_path, recalcTimestamp=False)
+            covered = set(font.getBestCmap()) | set(range(32, 127)) | {9, 10, 13, 0x3000, 0xfffd}
+            font.close()
+            missing = sorted(cps - covered)
+            if missing:
+                raise ValueError(f'{name} lacks {missing}; regenerate from source')
+            manifest[style + '_missing'] = missing
+        manifest['library_sha256'] = hashlib.sha256(library.read_bytes()).hexdigest()
+        path.write_text(json.dumps(manifest, indent=2) + '\n')
+        print('Verified unchanged reading fonts and refreshed library identity')
+        return
     manifest = {'license':'CC0-1.0', 'upstream':'https://github.com/masanork/gjs', 'fonttools':version,
                 'library_sha256':hashlib.sha256(library.read_bytes()).hexdigest(), 'faces': {}}
     for style in ('Mincho','Gothic'):
