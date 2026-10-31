@@ -92,6 +92,7 @@ pub const Session = struct {
     pub fn open(self: *Session, ordinal: u32) linksection(scheme.code_section) Error!void {
         const item = (try self.choice(ordinal)) orelse return error.Range;
         const index = (try self.pack.findSnippet(item.id)) orelse return error.Range;
+        self.message_len = 0;
         var free: ?u8 = null;
         for (&self.slots, 0..) |*s, i| {
             if (s.used and s.snippet == index) {
