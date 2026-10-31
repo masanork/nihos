@@ -1,0 +1,4 @@
+CI run https://github.com/masanork/nihos/actions/runs/41189726351/job/124504131098
+head 03ef7fca271d37dc4f60e1d5b7719c9ace85b025
+Host checks and device build configurations	Compile default connected Tab5 OS	2026-10-31T10:02:29.7965680Z error: ld.lld: native SRAM heap below 48 KiB
+Host checks and device build configurations	Compile default connected Tab5 OS	2026-10-31T10:02:29.8149125Z ##[error]Process completed with exit code 1.
