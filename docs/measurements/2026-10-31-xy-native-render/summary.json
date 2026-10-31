@@ -36,7 +36,7 @@
       "background": 16447214
     }
   ],
-  "manual_visual_confirmation": "pending",
+  "manual_visual_confirmation": "confirmed_by_user",
   "physical_keyboard_tested": false,
   "input_transport": "serial UTF-8",
   "cold_power_cycle_tested": false,
@@ -66,7 +66,12 @@
     "initialization_cause": "unknown",
     "sample_reloaded": true,
     "retained_after_passive_close_reopen": true,
-    "manual_visual_confirmation": "pending",
-    "firmware_reflashed": false
+    "manual_visual_confirmation": "confirmed_by_user",
+    "firmware_reflashed": false,
+    "user_confirmation": {
+      "date": "2026-10-31",
+      "statement": "日本語を確かに表示できた",
+      "scope": "Japanese sample visible on the physical panel after reload"
+    }
   }
 }
