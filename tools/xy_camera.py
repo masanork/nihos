@@ -32,7 +32,6 @@ def jpeg_chunk(reply, count):
 
 def capture(port, output):
     import esptool
-    from PIL import Image
     port.timeout = .1
     port.reset_input_buffer()
     chip = esptool.detect_chip(port=port, baud=115200)
@@ -123,16 +122,52 @@ def capture(port, output):
         if fnv(data) != ready['fnv'] or not data.startswith(b'\xff\xd8') or not data.endswith(b'\xff\xd9'):
             raise ValueError('Scheme-reconstructed JPEG differs from completed codec bytes')
         path = output / 'camera.jpg'; path.write_bytes(data)
-        with Image.open(path) as image:
-            image.load()
-            if image.size != (1280,720) or image.mode != 'RGB': raise ValueError('decoded image format differs')
         port.write(b'!');port.flush()
         wait(lambda value: value.startswith(b'NIHOS_NATIVE_XY_STATE ') and state['bytes']==len(notes)+1)
         port.write(b'\x1a');port.flush()
         wait(lambda value: value.startswith(b'NIHOS_NATIVE_XY_STATE ') and state['bytes']==len(notes))
         unchanged()
         evaluate(b'(camera/capture!)', b'Camera busy', error=True)
-        result = dict(ready, jpeg_sha256=hashlib.sha256(data).hexdigest(), decoded_size=[1280,720], decoded_mode='RGB', controls=controls, document_preserved=True, edit_undo_after_read=True, elapsed_seconds=time.monotonic()-started)
+        result = dict(ready, jpeg_sha256=hashlib.sha256(data).hexdigest(), controls=controls, document_preserved=True, edit_undo_after_read=True, elapsed_seconds=time.monotonic()-started)
         (output/'xy-camera.json').write_text(json.dumps(result,indent=2)+'\n')
-        print('XY_JPEG_DECODED', len(data),flush=True)
+        print('XY_JPEG_TRANSFERRED', len(data),flush=True)
         return result
+
+
+def verify(directory):
+    from PIL import Image
+    metadata = None
+    reading = False
+    data = bytearray()
+    for line in (directory/'serial.log').read_bytes().splitlines():
+        if b'NIHOS_NATIVE_FAIL' in line or b'NIHOS_JPEG_FAIL' in line:
+            raise ValueError('firmware failed')
+        if line.startswith(b'NIHOS_XY_JPEG_READY '):
+            if metadata is not None: raise ValueError('duplicate completion')
+            metadata = {k.decode():int(v,16) for k,v in re.findall(rb'(\w+)=([0-9a-f]{8})(?=\s|$)',line)}
+        if not line.startswith(b'NIHOS_NATIVE_XY_REPLY '): continue
+        reply = reply_bytes(line)
+        if metadata and reply == f"(ready 1280 720 {metadata['bytes']})".encode():
+            if reading: raise ValueError('repeated read session')
+            reading = True;continue
+        if not reading or not re.fullmatch(rb'"[0-9a-f]*"',reply): continue
+        count = (len(reply)-2)//2
+        data.extend(jpeg_chunk(reply,count))
+        if len(data) > metadata['bytes']: raise ValueError('too many bytes')
+    if not reading or len(data) != metadata['bytes'] or fnv(data) != metadata['fnv']:
+        raise ValueError('incomplete or corrupted Scheme transfer')
+    path=directory/'camera.jpg'
+    if path.read_bytes() != data: raise ValueError('saved JPEG differs from Scheme replies')
+    with Image.open(path) as image:
+        image.load()
+        if image.size != (1280,720) or image.mode != 'RGB': raise ValueError('decoded geometry/mode differs')
+    return dict(metadata,jpeg_sha256=hashlib.sha256(data).hexdigest(),decoded_size=[1280,720],decoded_mode='RGB')
+
+
+if __name__ == '__main__':
+    import argparse
+    from pathlib import Path
+    parser=argparse.ArgumentParser(description='Reconstruct and fully decode private XY JPEG evidence')
+    parser.add_argument('directory',type=Path)
+    args=parser.parse_args()
+    print(json.dumps(verify(args.directory),indent=2))
