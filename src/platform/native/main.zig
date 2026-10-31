@@ -1594,7 +1594,10 @@ fn normalReady() noreturn {
     }
     if (normal_storage) normal_fs.begin(storageClient());
     if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").start()) fail("Wasm task start");
-    if (options.wasm_session_test) {
+    if (options.wasm_interactive) {
+        if (!@import("wasm_session_fixture.zig").interactiveBegin(&logger)) fail("Wasm interactive init");
+        print("NIHOS_WASM_INTERACTIVE_READY\n");
+    } else if (options.wasm_session_test) {
         if (!@import("wasm_session_fixture.zig").asyncProbe(&logger)) fail("Wasm async startup");
         const async_report: extern struct { turns: u32, begin_us: u32 } = .{
             .turns = @import("wasm_session_fixture.zig").async_turns,
@@ -1611,7 +1614,23 @@ fn normalReady() noreturn {
     }
     var idle_checked = false;
     while (true) {
-        if (options.wasm_session_test and !@import("wasm_session_fixture.zig").service(&logger)) {
+        if (options.wasm_interactive) {
+            switch (@import("wasm_session_fixture.zig").interactiveService(&logger)) {
+                0 => {},
+                1 => print("NIHOS_WASM_INTERACTIVE_ACTIVE\n"),
+                2 => {
+                    print("NIHOS_WASM_INTERACTIVE_PASS\n");
+                    while (true) tasks.idleOnce(0);
+                },
+                4 => {
+                    print("NIHOS_WASM_INTERACTIVE_CANCEL_PASS\n");
+                    while (true) tasks.idleOnce(0);
+                },
+                5 => print("NIHOS_WASM_INTERACTIVE_OPENING\n"),
+                else => fail("Wasm interactive result"),
+            }
+        }
+        if (options.wasm_session_test and !options.wasm_interactive and !@import("wasm_session_fixture.zig").service(&logger)) {
             print("NIHOS_WASM_SESSION_DONE\n");
             while (true) tasks.idleOnce(0);
         }

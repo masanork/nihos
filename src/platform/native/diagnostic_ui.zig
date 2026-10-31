@@ -133,6 +133,11 @@ extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 extern fn nih_keyboard_pads_init() callconv(.c) void;
 extern fn nih_diagnostic_serial_dropped() callconv(.c) u32;
 extern fn nih_diagnostic_serial_read() callconv(.c) i32;
+extern fn nih_rom_rx_one_char(*u8) callconv(.c) i32;
+fn fixtureSerialRead() i32 {
+    var byte: u8 = 0;
+    return if (nih_rom_rx_one_char(&byte) == 0) byte else -1;
+}
 extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
 extern fn nih_rust_owner_render([*]u8, u32, [*]u8, u32, u32) callconv(.c) i32;
 extern fn nih_rust_owner_input(u32) callconv(.c) i32;
@@ -552,7 +557,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         }
     }
     for (0..16) |_| {
-        const byte = nih_diagnostic_serial_read();
+        const byte = if (options.wasm_interactive) fixtureSerialRead() else nih_diagnostic_serial_read();
         if (byte < 0) break;
         if ((options.rust_session and rust_session.active()) or (options.wasm_session_test and wasmFixtureReserved())) {
             if (session_serial.feed(@intCast(byte), now)) |key| sessionKey(key, log);
@@ -583,11 +588,15 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         if (consumed) continue;
         if (session_active) {
             if (session_serial.feed(@intCast(byte), now)) |key| sessionKey(key, log);
-        } else if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);
+        } else if (!options.wasm_interactive) {
+            if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);
+        }
     }
     if (session_active) {
         if (session_serial.expire(now)) |key| sessionKey(key, log);
-    } else if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
+    } else if (!options.wasm_interactive) {
+        if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
+    }
     if (hardware_ready) {
         var events: [4]console.keyboard.Event = undefined;
         const count = keyboard.poll(&events) catch blk: {
@@ -598,9 +607,26 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         for (events[0..count]) |event| {
             if (session_active) {
                 if (session_hid.feed(event.modifiers, event.usage)) |key| sessionKey(key, log);
-            } else if (console.keys.hid(event.modifiers, event.usage)) |value| action(value, .tab5_keyboard, event.modifiers, event.usage, log);
+            } else if (!options.wasm_interactive) {
+                if (console.keys.hid(event.modifiers, event.usage)) |value| action(value, .tab5_keyboard, event.modifiers, event.usage, log);
+            }
         }
     }
+}
+
+// Emulator-only transport substitution: retain the normal serial decoder and
+// dispatcher while there is no emulated scanout or USB Serial/JTAG UI owner.
+pub fn wasmInteractiveBegin(log: anytype) void {
+    if (comptime !options.wasm_interactive) return;
+    model.input_available = true;
+    last_input = 0;
+    beginSession(log);
+}
+pub fn wasmInteractivePoll(log: anytype) void {
+    if (comptime !options.wasm_interactive) return;
+    const now = clock.timer().counter() orelse return;
+    poll(now, log);
+    if (wasmFixtureReserved()) _ = wasmFixtureServiceUi();
 }
 
 pub fn startSession(log: anytype) bool {

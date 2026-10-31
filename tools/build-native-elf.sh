@@ -79,6 +79,11 @@ esac
 if [ "$wasm_session_test" = true ] && [ "$wasm_task" != true ]; then
     echo "WASM_SESSION_TEST requires the headless emulator WASM_TASK profile" >&2; exit 1
 fi
+wasm_interactive=${NIHOS_NATIVE_WASM_INTERACTIVE:-0}
+case "$wasm_interactive" in 0) wasm_interactive=false ;; 1) wasm_interactive=true ;; *) echo "WASM_INTERACTIVE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_interactive" = true ] && [ "$wasm_session_test" != true ]; then
+    echo "WASM_INTERACTIVE requires the headless WASM_SESSION_TEST profile" >&2; exit 1
+fi
 if [ "$mode" = integer ] || [ "$wasm_task" = true ]; then normal_mode=true; fi
 abi=ilp32
 qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
@@ -548,6 +553,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_probe = %s;\n' "$wasm"
     printf 'pub const wasm_task = %s;\n' "$wasm_task"
     printf 'pub const wasm_session_test = %s;\n' "$wasm_session_test"
+    printf 'pub const wasm_interactive = %s;\n' "$wasm_interactive"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"

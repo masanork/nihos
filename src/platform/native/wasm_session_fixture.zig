@@ -22,6 +22,44 @@ var fail_present = false;
 var previous_generation: u32 = 0;
 pub var async_turns: u32 = 0;
 pub var async_begin_us: u32 = 0;
+var interactive_active = false;
+var interactive_opening = false;
+var interactive_free: usize = 0;
+pub fn interactiveBegin(log: anytype) bool {
+    interactive_free = (tasks.memory.reusable.localUsage() orelse return false).free;
+    presentations = 0;
+    fail_present = false;
+    app.setFault(0);
+    ui.wasmFixtureSetPresenter(&present);
+    ui.wasmInteractiveBegin(log);
+    return true;
+}
+// 0=waiting, 1=active, 2=completed, 3=invalid, 4=cancelled, 5=opening.
+pub fn interactiveService(log: anytype) u32 {
+    ui.wasmInteractivePoll(log);
+    if (app.active() and !interactive_active) {
+        interactive_active = true;
+        return 1;
+    }
+    if (ui.wasmFixtureReserved() and !interactive_opening) {
+        interactive_opening = true;
+        return 5;
+    }
+    if (interactive_opening and !interactive_active and !ui.wasmFixtureReserved()) {
+        if (app.active() or presentations != 0 or !ui.wasmFixtureDirty() or
+            app.observed.reaped != 1 or app.observed.recovered != 1 or
+            (tasks.memory.reusable.localUsage() orelse return 3).free != interactive_free) return 3;
+        return 4;
+    }
+    if (interactive_active and !ui.wasmFixtureReserved()) {
+        if (app.active() or app.frames() != 4 or presentations != 4 or selected != 0 or
+            !ui.wasmFixtureDirty() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+            (tasks.memory.reusable.localUsage() orelse return 3).free != interactive_free) return 3;
+        return 2;
+    }
+    return 0;
+}
+
 pub fn asyncProbe(log: anytype) bool {
     const before = (tasks.memory.reusable.localUsage() orelse return false).free;
     const start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
