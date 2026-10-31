@@ -116,6 +116,10 @@ The normal UI backend selector and physical presenter remain open.
    `Esc → rust-app → Enter`, uses the normal serial key decoder for a
    synthetic `q` during open, and runs `0 → 1 → 0` after a later open. The
    fixture connects these pieces explicitly; the normal UI dispatcher does not.
+   A foreground controller now owns opening, cancellation and active-input
+   routing in that fixture. It rejects start when the caller reports camera or
+   display busy, and reserves display until cancellation has completed. Actual
+   camera/display state still has to be connected by the normal UI owner.
    If the worker exits before acknowledging close, polling now reaps it and
    reports an error instead of waiting indefinitely. Startup failures retain
    their original status across repeated polls. These paths have headless RV32
