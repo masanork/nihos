@@ -207,13 +207,21 @@ XY_RENDER_FUNCTIONS = {
     'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
-    'document.isClusterBoundary', 'render_session.Session.render',
+    'document.isClusterBoundary', 'render_session.SizedSession(512).render',
+    'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
+    'catalog.Pack.font', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
+    'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
+    'Io.Writer.failingRebase', 'Io.Writer.noopFlush', 'Io.Writer.fixedDrain',
+    'xy.navigation.State.home', 'xy.navigation.State.open',
+    'xy.navigation.State.selectChapter', 'xy.navigation.State.handle',
+    'xy.navigation.State.activateHome', 'xy.navigation.State.next',
+    'xy.navigation.State.back', 'xy.navigation.State.touch',
 }
 
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun|render_session\.Session\.renderInto)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(512\)\.renderInto)__func_[0-9]+", name)
     return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
@@ -268,7 +276,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
         return
     if name in XY_SECTIONS:
         require(allow_xy and kind == 1 and (flags == 6 if name == '.flash.xytext' else flags & 7 == 2 and flags & ~50 == 0), 'invalid xy Flash profile/permissions')
-        require(0x40060000 <= address < address + size <= 0x400c0000 and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
+        require(0x40060000 <= address < address + size <= (0x400c0000 if name == '.flash.xytext' else 0x40400000) and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
         return
     if name in GRAPH_SECTIONS:
         readonly = flags & 7 == 2 and flags & ~50 == 0
@@ -1045,7 +1053,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
-        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 131072 if 'nih_xy_render' in xy_functions else 0}
+        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 262144 if 'nih_xy_render' in xy_functions else 0}
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)

@@ -1513,23 +1513,23 @@
   {
     "schemaVersion": 1,
     "date": "2026-10-31",
-    "measuredAt": "2026-10-31T08:32:17.013397+00:00",
+    "measuredAt": "2026-10-31T09:08:27.787216+00:00",
     "project": "nihos",
-    "commit": "8aa2f0d0f880b92ef019b170057e0b41643442e4",
+    "commit": "d287bc9c66f8796aaf7a9ea7ccf893355be11567",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "a1aa4b6d97ec419e8a0b2d40d3d4415d6b4ce7a0e09f46827bdee5466e523668",
+    "sourceTreeSha256": "4403d9f5401c321196ffa2756189f45873a3627f3da28eb0e0fac401779f1d47",
     "code": {
-      "implementation": 57258,
-      "tests": 29209,
-      "tooling": 18673,
+      "implementation": 57524,
+      "tests": 29263,
+      "tooling": 18685,
       "probes": 9156,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 50757,
-        "tests": 21989,
+        "implementation": 50956,
+        "tests": 22043,
         "tooling": 898,
         "probes": 1237,
         "vendored": 0,
@@ -1538,13 +1538,13 @@
       "C": {
         "implementation": 3706,
         "tests": 126,
-        "tooling": 182,
+        "tooling": 192,
         "probes": 5417,
         "vendored": 0,
         "generated": 0
       },
       "C/header": {
-        "implementation": 1334,
+        "implementation": 1401,
         "tests": 0,
         "tooling": 0,
         "probes": 524,
@@ -1586,7 +1586,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 2735,
+        "tooling": 2737,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1610,7 +1610,7 @@
         "generated": 0
       },
       "include": {
-        "implementation": 569,
+        "implementation": 636,
         "tests": 0,
         "tooling": 0,
         "probes": 0,
@@ -1626,8 +1626,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 55693,
-        "tests": 22115,
+        "implementation": 55892,
+        "tests": 22169,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -1644,7 +1644,7 @@
       "tools": {
         "implementation": 0,
         "tests": 7094,
-        "tooling": 18532,
+        "tooling": 18544,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1655,6 +1655,8 @@
       "collector": "kcov v43",
       "sourceHashes": {
         "src/app/animation.zig": "19808b0756c84e16f1badec8e865ab4d0de91c757da4c59a8c6ea8e8cf9c5b07",
+        "src/app/plot_app.zig": "8a79fcae69eff2d630c0c808b86a182844a13f52a1044aa5c2f99765c48d95ec",
+        "src/app/protocol.zig": "e121b34143f94b89152dcec268ee04869559689e8d45ae7d5f82de3346100c84",
         "src/arch/riscv32/compiled_fp.zig": "0d9a0a0ec193485f2d4778b4fa38d693e1f5f30f61952430e05205822798999d",
         "src/arch/riscv32/context.zig": "88a4c8b5b044a4f524299ed09ae4ba6d13d748e5268de739f6fce9d855f4d186",
         "src/arch/riscv32/context_offsets.inc": "9d90501dc29c47a7151f835e15d884deb60a3f5efda64528b6c2ab2b26e13051",
@@ -1778,7 +1780,7 @@
         "src/fs/vfs_rpc_test.zig": "9f053ed6e1b4d2063167f2b1caf04b5eeacdd1de4a8dcc8ea64f058564f95816",
         "src/fs/vfs_test.zig": "45b581de786aaf623e2bfd1df574a3e597666980108a467f4e020cf9535031d7",
         "src/fs/vfs_wakeup_test.zig": "468aae7f83c44a3c0b90b92e17b73b77f2f684a145b7690e76260392b8e875fd",
-        "src/gpui_host.zig": "2a3564750e58b7e91928f403fa88647a6935fced3be3063c2375a562d9b5846d",
+        "src/gpui_host.zig": "a39581578f1615e5edc0e06d383e1f666e9b4b5f7aff155334c85075667f9d2d",
         "src/graphics/animated_plot.zig": "d802fb38667a9ed249676830df794effd3ee5d167df7020e69cba376767602a2",
         "src/graphics/ascii/jetbrains.zig": "53d12db9291edc0b523ff325c7bacea96006480d8d18b34061be6adf192c4832",
         "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
@@ -1942,7 +1944,7 @@
         "src/platform/native/xy_render_runtime.zig": "aeef2001924666b55452349f2be14dd06d56628f2c2f163b219dbfe22d5198ce",
         "src/platform/native/xy_scratch_live.zig": "8ad5a9d48c50f983eda8f04dca09ecd9d884e6d8f086a408a7101465166f1393",
         "src/protected_fault_test.zig": "ecb1d37d47991d93d45a8acd3ef435d7512ba01b211b82e4cee1aacb4971d318",
-        "src/root.zig": "d62342695243d27b91d796e4d9cf1f1c6cc736fabda61327387c781fd0c31ee0",
+        "src/root.zig": "eef90117baa66fcead6d80c7b8334cc985f74be5f75461094bd7101d19bd9d8e",
         "src/serial/half_duplex.zig": "94eeeb4354f3258ca20bcd692a07a9664bb2da895ca6e32b1b3d5e23ddc13558",
         "src/services/sqlite_session.c": "211f35d173cd7f185cf7c01470f7d47fb2134cda24070e0f5b3e32a25ef6c82b",
         "src/services/storage_internal.h": "8e55b2ae43d5ab4cafb85facb43a97e0bda0d2c922071a2e393bbd530b82e5f6",
@@ -2023,14 +2025,22 @@
         "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7"
       },
       "lines": {
-        "covered": 12424,
-        "count": 12843,
-        "percent": 96.73752238573542
+        "covered": 12480,
+        "count": 12899,
+        "percent": 96.75168617722304
       },
       "files": {
         "src/app/animation.zig": {
           "covered": 37,
           "count": 42
+        },
+        "src/app/plot_app.zig": {
+          "covered": 37,
+          "count": 37
+        },
+        "src/app/protocol.zig": {
+          "covered": 19,
+          "count": 19
         },
         "src/arch/riscv32/context.zig": {
           "covered": 40,
