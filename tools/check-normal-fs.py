@@ -19,7 +19,7 @@ from normal_fs_build import build
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMATS = ('fat12', 'fat16', 'fat32', 'mbr-fat32', 'exfat')
-MODES = ('success', 'no-card', 'generation', 'io-error', 'quarantine', 'removed', 'corrupt', 'no-memory', 'empty-root')
+MODES = ('success', 'no-card', 'generation', 'io-error', 'quarantine', 'removed', 'corrupt', 'no-memory', 'empty-root', 'write-dma')
 
 
 def sha(path):
@@ -109,6 +109,8 @@ def main():
     # Change only an isolated copy. Each injected lifetime defect must be
     # exposed by the same end-to-end test, not an assertion of its own code.
     mutants = (
+        ('cross-slot-lease', 'normal_fs.zig', 'return slot == 0 and self.lease.slot == 0 and host.owns(self.lease);',
+            'return slot == 0 and host.owns(self.lease);', 'write-dma'),
         ('stale-submit', 'normal_fs.zig', 'if (status(s) != .mounted or s.host_generation != host.generation()) return 0;',
             'if (status(s) != .mounted) return 0;', 'generation'),
         ('unproved-cache-handoff', 'shared_sdmmc.zig', 'if (released != 1) return false;',
