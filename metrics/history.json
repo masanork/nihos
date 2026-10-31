@@ -1513,30 +1513,30 @@
   {
     "schemaVersion": 1,
     "date": "2026-10-31",
-    "measuredAt": "2026-10-31T03:26:17.385055+00:00",
+    "measuredAt": "2026-10-31T06:01:35.438250+00:00",
     "project": "nihos",
-    "commit": "35ab9fa1e1aaca19dc4815da7f28caa6a7991c85",
+    "commit": "189aa66da5986f805f161e3c5bc55b8937cc6cfd",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "b0d658d17d99aec2ad8889591839db167c97d67110373eafeed33797afb00f98",
+    "sourceTreeSha256": "ea4f7e1453e3772580f7810580e600ddb0210671df60f843bf49013c1a0c663e",
     "code": {
-      "implementation": 56739,
-      "tests": 29026,
-      "tooling": 18405,
+      "implementation": 56950,
+      "tests": 29146,
+      "tooling": 18600,
       "probes": 9156,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 50273,
-        "tests": 21836,
+        "implementation": 50477,
+        "tests": 21926,
         "tooling": 882,
         "probes": 1237,
         "vendored": 0,
         "generated": 0
       },
       "C": {
-        "implementation": 3699,
+        "implementation": 3706,
         "tests": 126,
         "tooling": 182,
         "probes": 5417,
@@ -1561,8 +1561,8 @@
       },
       "Python": {
         "implementation": 0,
-        "tests": 7031,
-        "tooling": 14663,
+        "tests": 7061,
+        "tooling": 14858,
         "probes": 1798,
         "vendored": 0,
         "generated": 0
@@ -1626,8 +1626,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 55202,
-        "tests": 21962,
+        "implementation": 55413,
+        "tests": 22052,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -1643,8 +1643,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 7064,
-        "tooling": 18264,
+        "tests": 7094,
+        "tooling": 18459,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1715,7 +1715,7 @@
         "src/board/tab5/native_csi_prepare.c": "4d623e883f8dad93483568caefa2cbd550516402f00e94a9b6b0063348c2cca8",
         "src/board/tab5/native_jpeg.c": "846cedb920e32977cb543d04f9916c591166f3e1417e3ef652cacb67ee0e7dca",
         "src/board/tab5/native_jpeg_tables.h": "8c1dda2de401092f2ebc1bd86ad4f2496b0ff0feb7002bf3f8f916c1ad899858",
-        "src/board/tab5/native_pads.c": "2073f795192eed5cce37c5b41a96e538b47aa6922aef0484ae81383018e6927b",
+        "src/board/tab5/native_pads.c": "20c6f93adaa675fe6c9a9aae8209212ac3df8c061283d19344e64c82d20a576b",
         "src/board/tab5/native_scanout.c": "e90adb8a1dccf44f7bedfd86837445aa255e2c1f5ca62480696569a447e8dc67",
         "src/board/tab5/notice_sparse.h": "44d2b9b573924fa2ce01a60b15dd8b852abcd7d6912f96e75d06154f5be30761",
         "src/board/tab5/panels.zig": "df78a9adeb0b945fb6f3ad40f0893d307a2b4c9bceacffe275e2ceafc274897b",
@@ -1781,7 +1781,7 @@
         "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
         "src/graphics/ascii_console.zig": "c94adc6ed19b3740d91b73153e3120e9903859d7a8988842929a03907cd5c80c",
         "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
-        "src/graphics/boot_graphics.zig": "eada9f356412c09f2c37d99fb65e8735e9566ec890f2553f282fc5d5e952ba86",
+        "src/graphics/boot_graphics.zig": "e50fa8c720db0c4c797f8af9e6b0d5593504721179c51754a6e4aeb46b27aaae",
         "src/graphics/canvas.zig": "0a1b02139ed579c42a4978902c8722d4ec4e639fc7a1f5ad0476ad061aef8b62",
         "src/graphics/canvas_compile_probe.zig": "800c462939b4afb1c19693ac39aab443e9de8255557765a74d90d69c2c5d2909",
         "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
@@ -1877,7 +1877,7 @@
         "src/platform/native/broker_abi.zig": "221d693de6b33cb5c29a2d9385ebc7abb2e9e959d1c6297e7b928e34b4a470aa",
         "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
         "src/platform/native/c6_probe.zig": "d3b2df11aa39d27c04fdfb2bc8fc960b673f52d731a5ca7433afe229f95d92a7",
-        "src/platform/native/camera_jpeg.zig": "6ff6dc7b768dd3bbade2f2bd961f0189d45e3e32483e86f33e7b39778a30115b",
+        "src/platform/native/camera_jpeg.zig": "570e4c29e5f176be2b00f6dbc00346883b7c8715692799a21ad435e2d36699ef",
         "src/platform/native/canvas_demo_app.zig": "802f210b533bdaf238e7b3d4b6d45ecf25cac13dd6d0a30faab9a91f826d8f8b",
         "src/platform/native/canvas_pattern.zig": "955af251b733d0229673b3f29894b65d8a7cdebdbdfc115f68fbab27d91125f7",
         "src/platform/native/canvas_workloads.zig": "ede714a78850f58e38a899ebe686552100f9ea9b9ae12e7e54453bde4ad29333",
@@ -1890,7 +1890,7 @@
         "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
         "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
         "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
-        "src/platform/native/diagnostic_ui.zig": "387bf207d980c2e8ca4650cced211b2c3a264946100f229e775d9d78c2130476",
+        "src/platform/native/diagnostic_ui.zig": "a7a8685bd01e3462c5b4c4a5a2c288d46b27b2b0b004862282bbba05f63453b6",
         "src/platform/native/display_probe.zig": "3385df69e5e477732cc13dda0d8f56c6bf24c0a818e4e04aef0f9e0be4629049",
         "src/platform/native/display_runtime.zig": "e1276574c1591e022dc2c037b35a23ef40d612adf2f53501ae0b597bd883c35d",
         "src/platform/native/display_service.zig": "5cca357d10533650d7530a214dcf2cf64ac0021f2e5640a7289ad22affea0d5b",
@@ -1912,7 +1912,7 @@
         "src/platform/native/high_sram_layout.zig": "b7ed5cb6b4297216f49a13cded31fce2bad67ce7bea4fb629ec43f4c9c2c82ed",
         "src/platform/native/keypad_display.zig": "085f097f397fbe1eece8b85ff24bd74450f5c059fae861de1e4ca9bc3e053017",
         "src/platform/native/keypad_probe.zig": "c565fe8d6a96166de4d372f537f2e053e1b50a2ac8b4b90d762221889a309f7e",
-        "src/platform/native/main.zig": "f9e1ebb12513d127a803dcd940eb893680a84a9a98950ae9e055a01fd462c4ee",
+        "src/platform/native/main.zig": "9fe8edd9db5c158228f83c2535681edf76e99909336be26c0415528d2e9de6bb",
         "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
         "src/platform/native/microphone_probe.zig": "e9f67b35914b9863aaaac4cbca1d29f3ced895c97b58acfc554ca49d09db913f",
         "src/platform/native/network_service.zig": "3763e17a60dca2423746ce10ab9a9ab8af28e300d4f839070df63b13466a2bc6",
@@ -2004,6 +2004,7 @@
         "src/usb/descriptors.zig": "a069c782000da795815c437b0cf2672357239c233fc7c061320c83e59d0bb9d4",
         "src/usb/jpki.zig": "72c73be16bea70893a71faaa8e01312b27f8aa0be8bb0f15b39ac899343ba976",
         "src/xy/c_abi_host.zig": "6c4453d05b47c9d2cda56b5596842957777b2f35862b2f0cee3bd913108cfbf7",
+        "src/xy/camera.zig": "3804074e1cbda8642b36b38050d15ac7b73f7e8dedb0c4eda13e1c16f9f1d4d3",
         "src/xy/document.zig": "a6f0303c38b7bb91e5fffd94d73cf64f7bea28463546db8df5f5d54f370bfa3f",
         "src/xy/ime_omni.zig": "d01560e7981d8abaf2bf670bc6246c323250ac2a99a986cb4362cb83d1fd5912",
         "src/xy/live_workspace.zig": "2528178d50785df72019feb501b311bf42c128753c98725a53fafa68f8dd8edc",
@@ -2013,15 +2014,15 @@
         "src/xy/render_protocol.zig": "f33a24bd5b76cdb163e0595dd883719b99cc5012c9c5596481fc5bf0a6c1450b",
         "src/xy/render_session.zig": "2a6b5710143f4ea084dc4d8d1c38dc36d819ef90ac06ba3918425141ac0e3a42",
         "src/xy/scheme_bridge.zig": "469b476fb1ffcff17ba1eb3d34844a2e932d9fabd9846e3ec713b9e3de0a0f07",
-        "src/xy/scheme_runtime.zig": "9dd9601f397c4c942710484798d73ed623eccd472a3e1513abcf8d0a014469b6",
-        "src/xy/scratch.zig": "f6bb87b5ee2b104cef2d84b4b1c90ea0eaa87b46be48598d9f03373898d955b7",
+        "src/xy/scheme_runtime.zig": "3bd6c8be7ea0b7ea6d0e95dbe0b758102f7683689d8edf2103a1853e26df1de0",
+        "src/xy/scratch.zig": "1e536877e43ffdbb08cc7cec03d262201b1180e9be292409a1fa9f34c4568412",
         "src/xy/system_buffer.zig": "2e9e8838cd2c16427bafea051d816165ffb24947a66070b7261da2e20cc0a80f",
         "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7"
       },
       "lines": {
-        "covered": 12243,
-        "count": 12655,
-        "percent": 96.74436981430264
+        "covered": 12302,
+        "count": 12717,
+        "percent": 96.73665172603602
       },
       "files": {
         "src/arch/riscv32/context.zig": {
@@ -2221,8 +2222,8 @@
           "count": 161
         },
         "src/graphics/boot_graphics.zig": {
-          "covered": 62,
-          "count": 62
+          "covered": 79,
+          "count": 79
         },
         "src/graphics/canvas.zig": {
           "covered": 90,
@@ -2552,6 +2553,10 @@
           "covered": 96,
           "count": 98
         },
+        "src/xy/camera.zig": {
+          "covered": 10,
+          "count": 10
+        },
         "src/xy/document.zig": {
           "covered": 207,
           "count": 219
@@ -2561,12 +2566,12 @@
           "count": 14
         },
         "src/xy/scheme_runtime.zig": {
-          "covered": 458,
-          "count": 479
+          "covered": 484,
+          "count": 508
         },
         "src/xy/scratch.zig": {
-          "covered": 184,
-          "count": 211
+          "covered": 190,
+          "count": 217
         },
         "src/xy/system_buffer.zig": {
           "covered": 55,

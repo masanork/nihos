@@ -62,6 +62,10 @@ const Session = console.session;
 const xy_workspace = @hasDecl(options, "xy_workspace") and options.xy_workspace;
 const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
 var last_xy_trace_revision: u32 = 0;
+var camera_provider: ?*const console.scratch.camera.Provider = null;
+pub inline fn bindCamera(provider: *const console.scratch.camera.Provider) void {
+    camera_provider = provider;
+}
 var xy_input_bytes: u32 = 0;
 var last_xy_input_bytes: u32 = 0;
 var last_xy_idle_report: u64 = 0;
@@ -510,6 +514,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
         scratch.nav.home();
         scratch.vm.view.style.body_px = 32;
         scratch.vm.view.style.ruby_px = 16;
+        scratch.camera.provider = camera_provider;
         (SerialSink{}).write("\r\nxy / *scratch* [RAM]\r\n");
     } else session.begin(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
@@ -639,8 +644,14 @@ noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
     if (scratch.mode == .system) for (scratch.snapshot.slice()) |byte| {
         buffer_hash = (buffer_hash ^ byte) *% 0x01000193;
     };
-    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash };
-    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash" }, &values);
+    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32, tx_dropped: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash, .tx_dropped = nih_diagnostic_serial_dropped() };
+    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash", "tx_dropped" }, &values);
+    if (scratch.status == .scheme_result or scratch.status == .scheme_error) {
+        (SerialSink{}).write("\nNIHOS_NATIVE_XY_REPLY data=");
+        const digits = "0123456789abcdef";
+        for (scratch.reply[0..scratch.reply_length]) |b| (SerialSink{}).write(&.{ digits[b >> 4], digits[b & 15] });
+        (SerialSink{}).write("\n");
+    }
     const graphics = @import("xy_render_runtime.zig");
     const render_values: extern struct { frames: u32, stack_used: u32, failed: u32, font: u32, size: u32, axis: u32, foreground: u32, background: u32 } = .{ .frames = graphics.frames, .stack_used = graphics.stack_used, .failed = graphics.failed, .font = scratch.vm.view.style.style_id, .size = scratch.vm.view.style.body_px, .axis = scratch.vm.view.style.axis, .foreground = scratch.vm.view.appearance.foreground, .background = scratch.vm.view.appearance.background };
     log.record("NIHOS_NATIVE_XY_RENDER", null, .{ "frames", "stack_used", "failed", "font", "size", "axis", "foreground", "background" }, &render_values);
@@ -681,6 +692,10 @@ noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if 
     shown_session_view = session.view;
     shown_session_revision = if (xy_workspace) scratch.revision else session.revision;
     return true;
+}
+// Milestone drawing runs only after display/Flash startup, never in an IRQ.
+noinline fn updateSplash(selected: boot.Status) linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
+    return boot.updateLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected);
 }
 pub noinline fn service(log: anytype) bool {
     if (!options.console_live or !runtime.active()) return true;
@@ -759,7 +774,14 @@ pub noinline fn service(log: anytype) bool {
             last_render = now;
         } else if (changed) @atomicStore(u32, &dirty, 1, .release);
     } else if (full) {
-        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
+        // display_runtime prepared the first splash before enabling DMA.
+        // Milestones change its label/dye, not the static lettering. Clearing
+        // that live buffer on each stage exposes a blank inscription to DMA.
+        const painted = if (shown_details)
+            boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected)
+        else
+            updateSplash(selected);
+        if (!painted or !paintTouchControl() or !present()) return false;
     } else if (progress != old_progress) {
         if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
     }
