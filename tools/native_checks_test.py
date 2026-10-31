@@ -185,6 +185,17 @@ class NativeLogTests(unittest.TestCase):
                         boot+auxiliary+'ESP-ROM:esp32p4\n'):
             with self.subTest(changed=changed),self.assertRaises(ValueError):
                 MODULE.check_boot_headers(changed,True)
+    def test_camera_boot_header_requires_audited_camera_profile(self):
+        boot = "ESP-ROM:esp32p4\nNIHOS_NATIVE_BOOT backend=zig-sram rtos=none\n"
+        camera = "NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017\n"
+        MODULE.check_boot_headers(boot + camera, camera_boot=True)
+        for log, allowed in ((boot + camera, False), (boot, True),
+                             (boot + camera + camera, True),
+                             (boot + camera + "NIHOS_C6_BOOT backend=foreign\n", True),
+                             (boot + camera.replace("reason=00000017", "reason=bad"), True)):
+            with self.subTest(log=log, allowed=allowed), self.assertRaises(ValueError):
+                MODULE.check_boot_headers(log, camera_boot=allowed)
+
     def test_physical_evidence_requires_explicit_source_and_device_profile(self):
         image = {**complete_image(), "memory": {"profile": "device"}}
         image["heap"] = {"start": "0x4ff20000", "end": "0x4ff28000", "bytes": 32768}

@@ -703,8 +703,31 @@ noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if 
     return true;
 }
 // Milestone drawing runs only after display/Flash startup, never in an IRQ.
-noinline fn updateSplash(selected: boot.Status) linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
-    return boot.updateLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected);
+noinline fn updateSplash(selected: boot.Status, milestone: bool, controls: bool) linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
+    const painted = if (milestone)
+        boot.updateLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected)
+    else
+        boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected);
+    if (!painted) return false;
+    if (controls and !paintTouchControl()) return false;
+    inline for (boot.landscape_damage, 0..) |box, index| {
+        if (index != 2 or milestone) {
+            for (1280 - box.x - box.width..1280 - box.x) |y| {
+                const start = (y * 1440 + box.y * 2) & ~@as(usize, 63);
+                const end = (y * 1440 + (box.y + box.height) * 2 + 63) & ~@as(usize, 63);
+                if (!flushSpan(start, end)) return false;
+            }
+        }
+    }
+    if (controls and options.devices and touch_available and model.input_available and !model.failure_latched) {
+        const box = pointer.view_button;
+        for (1280 - box.x - box.width..1280 - box.x) |y| {
+            const start = (y * 1440 + box.y * 2) & ~@as(usize, 63);
+            const end = (y * 1440 + (box.y + box.height) * 2 + 63) & ~@as(usize, 63);
+            if (!flushSpan(start, end)) return false;
+        }
+    }
+    return true;
 }
 pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
     if (!options.console_live or !runtime.active()) return true;
@@ -782,17 +805,13 @@ pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") 
             if (!drawDetails()) return false;
             last_render = now;
         } else if (changed) @atomicStore(u32, &dirty, 1, .release);
-    } else if (full) {
-        // display_runtime prepared the first splash before enabling DMA.
-        // Milestones change its label/dye, not the static lettering. Clearing
-        // that live buffer on each stage exposes a blank inscription to DMA.
-        const painted = if (shown_details)
-            boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected)
-        else
-            updateSplash(selected);
-        if (!painted or !paintTouchControl() or !present()) return false;
-    } else if (progress != old_progress) {
-        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
+    } else if (full and shown_details) {
+        // Returning from diagnostics overwrote the whole splash.
+        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
+    } else if (full or progress != old_progress) {
+        // A revision alone must not erase the same status label. Flush only
+        // modified regions rather than all 1.8 MiB on every dye step.
+        if (!updateSplash(selected, shown_status != selected, full)) return false;
     }
     shown_revision = revision;
     shown_status = selected;
@@ -854,7 +873,8 @@ pub fn timer() @import("timer_group").Timer {
     return clock.timer();
 }
 
-fn paintTouchControl() bool {
+// Foreground only, after the same Flash/display startup as updateSplash.
+noinline fn paintTouchControl() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!options.devices or !touch_available or !model.input_available or model.failure_latched) return true;
     const box = pointer.view_button;
     return console.raster.paintControl(".flash.rodata.display", frame(), 1440, .{ .left = box.x, .top = box.y, .right = box.x + box.width, .bottom = box.y + box.height }, if (model.details) "SPLASH" else "LOGS", palette());
