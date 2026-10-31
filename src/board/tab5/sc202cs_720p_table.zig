@@ -2,7 +2,7 @@
 //! Copyright 2025 Espressif Systems (Shanghai) CO LTD. Apache-2.0.
 //! Source and license: third_party/sc202cs; generated, do not edit.
 pub const Reg = struct { address: u16, value: u8 };
-pub const entries = [_]Reg{
+pub const entries linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.camera" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = [_]Reg{
     .{ .address = 0x0103, .value = 0x01 },
     .{ .address = 0x0100, .value = 0x00 },
     .{ .address = 0x36e9, .value = 0x80 },
