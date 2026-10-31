@@ -322,6 +322,7 @@ class MemoryService:
         self.cut = None
         self.background = False
         self.failed = False
+        self.monotonic_override = None
         self.service = c.create_string_buffer(LIB.nih_sqld_size())
         self.store = c.create_string_buffer(LIB.nih_store_size())
         def read(_, offset, out, n):
@@ -346,7 +347,7 @@ class MemoryService:
             self.stable[:] = self.cache
             return 0
         self.device = Device(None, Read(read), Write(write), Sync(sync))
-        self.platform = Platform(None, Identity(lambda _: 1), Random(lambda _, p, n: (c.memset(p, 7, n), n)[1]), Clock(lambda _: 210866760000000), Sleep(lambda _, us: us), Clock(lambda _: int(time.monotonic() * 1000)))
+        self.platform = Platform(None, Identity(lambda _: 1), Random(lambda _, p, n: (c.memset(p, 7, n), n)[1]), Clock(lambda _: 210866760000000), Sleep(lambda _, us: us), Clock(lambda _: self.monotonic_override if self.monotonic_override is not None else int(time.monotonic() * 1000)))
         rc = LIB.nih_store_mount(self.store, len(self.store), c.byref(self.device), int(stable is None))
         if rc: raise AssertionError(('mount', rc))
         rc = LIB.nih_sqld_start(self.service, len(self.service), self.store, c.byref(self.platform), 7, 1)
@@ -364,6 +365,14 @@ class MemoryService:
 
 
 class CrashTest(unittest.TestCase):
+    def test_invalid_monotonic_clock_refuses_begin_without_overflow(self):
+        live = MemoryService()
+        for now in (-1, (1 << 63) - 1):
+            live.monotonic_override = now
+            self.assertEqual(live.call(3)[0], -110)
+            self.assertEqual(live.call(1, 'SELECT 42')[1].text, b'((42))')
+        self.assertEqual(live.close(), 0)
+
     def test_io_failure_completes_every_already_accepted_request(self):
         live = MemoryService()
         self.assertEqual(live.call(2, 'CREATE TABLE a(x)')[0], 0)

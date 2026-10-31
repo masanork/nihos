@@ -99,7 +99,7 @@ static int number(struct nih_sqld_response *r,int64_t n) {
  return append(r,text+start,sizeof(text)-start);
 }
 static int quoted(struct nih_sqld_response *r,const char *text,int n) {
- if (n>64 || n<0 || memchr(text,0,(size_t)n)) return NIH_SQLD_LIMIT;
+ if (n>64 || n<0 || (n && (!text || memchr(text,0,(size_t)n)))) return NIH_SQLD_LIMIT;
  int rc=append(r,"\"",1);
  for (int i=0;!rc && i<n;i++) {
   if (text[i]=='\n') rc=append(r,"\\n",2);
@@ -262,12 +262,18 @@ static int execute(struct nih_sqld *s,const struct nih_sqld_request *q,struct ni
   if (s->fs_dirty) return NIH_STORE_BUSY;
   if (q->operation==NIH_SQL_QUERY || q->operation==NIH_SQL_EXEC) return query(s,q,r);
   if ((q->operation==NIH_SQL_BEGIN)==!sqlite3_get_autocommit(s->db)) return NIH_STORE_BUSY;
+  int64_t deadline=0;
+  if (q->operation==NIH_SQL_BEGIN) {
+   int64_t now=s->platform.monotonic_ms(s->platform.context);
+   if (now<0 || now>INT64_MAX-2000) return -110;
+   deadline=now+2000;
+  }
   sqlite3_set_authorizer(s->db,NULL,NULL);
   int rc=sqlite3_exec(s->db,q->operation==NIH_SQL_BEGIN ? "BEGIN IMMEDIATE" : q->operation==NIH_SQL_COMMIT ? "COMMIT" : "ROLLBACK",NULL,NULL,NULL);
   sqlite3_set_authorizer(s->db,authorize,s);
   if (rc!=SQLITE_OK) { r->sqlite_code=rc;return NIH_SQLD_ERROR; }
   if (q->operation==NIH_SQL_COMMIT) r->outcome=1;
-  s->transaction_deadline=q->operation==NIH_SQL_BEGIN ? s->platform.monotonic_ms(s->platform.context)+2000 : 0;
+  s->transaction_deadline=deadline;
   return 0;
  }
  if (q->operation==NIH_SQL_LOOKUP) {
@@ -283,7 +289,7 @@ static int execute(struct nih_sqld *s,const struct nih_sqld_request *q,struct ni
    * The expansion is owned by SQLite, includes escaped values, and is capped. */
   char *expanded=rc==SQLITE_OK ? sqlite3_expanded_sql(stmt) : NULL;
   sqlite3_finalize(stmt);
-  if (!expanded) { r->sqlite_code=rc;return NIH_SQLD_ERROR; }
+  if (!expanded) { r->sqlite_code=rc==SQLITE_OK ? SQLITE_NOMEM : rc;return NIH_SQLD_ERROR; }
   struct nih_sqld_request normalized={.operation=NIH_SQL_QUERY};
   size_t n=strlen(expanded);
   int result=NIH_SQLD_LIMIT;
