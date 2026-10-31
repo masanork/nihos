@@ -1,0 +1,105 @@
+{
+  "baseline_commit": "8aa2f0d0f880b92ef019b170057e0b41643442e4",
+  "code_commit": "35e1f5c7c8b0cdb2611279de962dbdf878ae92d5",
+  "scope": "Native v1 app boundary and GPUI adapter; no Scheme semantics, Wasm adapter or device execution",
+  "zig_version": "0.17.0",
+  "rust_version": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "source_sha256": {
+    ".github/workflows/xy-gpui.yml": "6bb9e84348ca9dbbec1c32acf9ef48bcb2c5a21a961670db634953bb03e54cf9",
+    "apps/xy-gpui/Cargo.lock": "99c5e6b289f1cc82ba65fa006ffb3b8739e0fff7eeec28fcf3e38e5b7b5ed9d4",
+    "apps/xy-gpui/Cargo.toml": "705a1912e52a80899265cbd897611bd5d511c9b7c7ac6bf853fe7a42e31c4298",
+    "apps/xy-gpui/README.md": "4bc7dbf46bcd6b8f7846e96d21debfc5ae6ba54475484e99b12c5c1fd8077019",
+    "apps/xy-gpui/build.rs": "106ef818c9ac6ee62701eead1c6c321cfe6aaf64d5f128441d5e6a5485a2880e",
+    "apps/xy-gpui/src/core.rs": "17303f648ff195926be988415511cd2ec418ec7fb35d54a56e1f9591c3a54e64",
+    "apps/xy-gpui/src/main.rs": "f6b25c701510a90237e62f114563b50f6bf77e06bd7eb0b9900a28b3d81f7b42",
+    "docs/measurements/2026-10-31-xy-app-protocol.md": "99adeeb3084e4be23c31e61a81b6a9144f20ac0048fc3a34bfdd348a08c3fda8",
+    "docs/planning/xy-animation-runtime.md": "e9ddcb85d3de7039208e5cc7e1b16c44be35380de36a4819d88c51ef0970b00c",
+    "include/nihos_app.h": "865201f116cbe63722bff9f9ce9affc626271933951bf81fdf019f53e568f2e0",
+    "include/xy_animation.h": "6c43e6260107ba735dc280275aa81d035c227f9dd70d15f76efbe6f7c680ba24",
+    "src/app/animation.zig": "19808b0756c84e16f1badec8e865ab4d0de91c757da4c59a8c6ea8e8cf9c5b07",
+    "src/app/plot_app.zig": "8a79fcae69eff2d630c0c808b86a182844a13f52a1044aa5c2f99765c48d95ec",
+    "src/app/protocol.zig": "e121b34143f94b89152dcec268ee04869559689e8d45ae7d5f82de3346100c84",
+    "src/gpui_host.zig": "a39581578f1615e5edc0e06d383e1f666e9b4b5f7aff155334c85075667f9d2d",
+    "src/graphics/animated_plot.zig": "d802fb38667a9ed249676830df794effd3ee5d167df7020e69cba376767602a2",
+    "src/graphics/pixel_transfer.zig": "bd28ca20244b6305f2afe59b1099dc667d33c0ca8b120403c21754b34dc19bff",
+    "src/root.zig": "eef90117baa66fcead6d80c7b8334cc985f74be5f75461094bd7101d19bd9d8e",
+    "tools/check-xy-animation.sh": "22471d9cce78b046d2b9192633f125c85570940dc0d446d8efb9c8d244826b2b",
+    "tools/probes/animation.zig": "7c0383a987a0f53bab088a8e3c9b89fa9b13088621970c4ed20b8ba029071734",
+    "tools/probes/app_protocol.c": "ef77fa6d881c02722c50c9eb1c77507d8f589ab016d5fbf9c0775989ae9c931b"
+  },
+  "app_binary": {
+    "path": "build/xy-gpui/xy-gpui.app/Contents/MacOS/xy-gpui",
+    "sha256": "ff6e47a8be250c6d5e5334baba16c3659421de9d0bea1cf95e83477f609404f9"
+  },
+  "checks": {
+    "release_safe": {
+      "build_steps_succeeded": 69,
+      "uncached_tests_passed": 773,
+      "other_test_steps": "cached; initial full run passed 1013 tests"
+    },
+    "clock_tests_passed": 3,
+    "plot_app_protocol_including_clock_tests_passed": 6,
+    "c_record_layouts": true,
+    "rust_zig_interop": true,
+    "rv32_soft_float_standalone_link": true,
+    "static_analysis_and_six_native_elf_audits": true,
+    "clippy_deny_warnings": true,
+    "canonical_pixels_compared": 737280,
+    "all_32_logical_keys": true,
+    "terminal_cancel_reopen": true,
+    "both_panes_both_formats_odd_padding": true,
+    "invalid_requests_do_not_write_outputs": true,
+    "caller_retained_frames_independent": true
+  },
+  "gpui_window": {
+    "tested": true,
+    "tool": "cua_repl",
+    "observed": [
+      "Japanese and animated graph",
+      "pause/resume",
+      "speed 3",
+      "Tab pane switch",
+      "abc / Backspace / Ctrl-Z restores abc",
+      "Cmd-Q exits",
+      "relaunch starts speed 2 and fresh RAM editor"
+    ],
+    "final_candidate_rechecked": true,
+    "os_activation_focus_transitions_qualified": false,
+    "screenshots_retained_in_repo": false
+  },
+  "physical_device_tested": false,
+  "emulator_executed": false,
+  "wasm_host_abi": false,
+  "r7rs_implemented": false,
+  "canonical_frame_comparisons": {
+    "initial.png": {
+      "sha256": "acc371ee4db51ab27de8cfe15ff7547ab019374cfbf5eec89430461c845bde52",
+      "matches_previous_png_bytes": true,
+      "retained_at": "docs/measurements/evidence/2026-10-31-xy-gpui-animation/initial.png"
+    },
+    "moving.png": {
+      "sha256": "64184857a0e6a9a60954536501f2b60a3ca5cc00b2366d33e345ea1be1c92350",
+      "matches_previous_png_bytes": true,
+      "retained_at": "docs/measurements/evidence/2026-10-31-xy-gpui-animation/moving.png"
+    },
+    "editor.png": {
+      "sha256": "f993680c857f6fc6063def891310e88c4e925e504027ded1ca9732fcca5d1d5f",
+      "matches_previous_png_bytes": true,
+      "retained_at": "docs/measurements/evidence/2026-10-31-xy-gpui-animation/editor.png"
+    },
+    "label.png": {
+      "sha256": "590d04acd01123e7e80ed4ff0387c74a17ba8de90301a95eed82e31fbb16ee61",
+      "matches_previous_png_bytes": true,
+      "retained_at": "docs/measurements/evidence/2026-10-31-xy-gpui-animation/label.png"
+    }
+  },
+  "evidence_sha256": {
+    "build.log": "b0467797519c5bbcae088f2e9ffc4c0794465ab28fb9f326019431319f97eee8",
+    "clippy.log": "48ce53bb6a833c23b1014bafae39db7a1b8c937c7269488c531d5349c2d079a0",
+    "headless.log": "4dec7d227c8c416366dee891600163d0ea611053ebcb73d1211df8bf9af2e2f6",
+    "protocol-rv32.log": "d74e69a01dbae5e1c016082b4537ba9c07c3f2e37ab64552fd482cbb0ba9a0bb",
+    "release-safe.log": "55a02c9236e8f4f7f2c83795270d1e7286ca7004bd9772b9c8c89cc7fd7ecb32",
+    "result.json": "17325b12bfc041a7bddfbbbef63e50cff9639841ce2e914bd1b1f2bcf698b45a",
+    "static-analysis.log": "3fbf04cbef52d4b71e5ee0052003db9cc26791084fcb2c36d2ee6b87e1173cd0"
+  }
+}
