@@ -190,8 +190,8 @@ XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string'
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead',
-              'applyStorage', 'nonnegative', 'storageText','sameText','parseDecimal','parseHex'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput','evaluateOnStack'}
+              'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -238,6 +238,20 @@ def audit_xy_functions(functions, span):
     require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(ranges, ranges[1:])) and 0 <= end - selected[-1][1] <= 16, 'unaccounted xy code bytes')
     require(any('Runtime.evaluate' in n for _, _, n in selected) and any('Runtime.collect' in n for _, _, n in selected), 'incomplete xy evaluator')
     return {n: {'start': hex(a), 'end': hex(b)} for a, b, n in selected}
+
+
+def audit_xy_plot_table(symbols, sizes, ro_start, ro_data, resident_rodata, required=False):
+    names = [name for name in ('xy.plot_config.sine', 'plot_config.sine') if name in symbols]
+    if not required and not names:
+        return None
+    require(len(names) == 1, 'missing or competing xy sine table storage')
+    name = names[0]
+    start, size = symbols[name], sizes.get(name)
+    require(size == 512 and start % 2 == 0 and ro_start <= start <= ro_start + len(ro_data) - 512,
+            'xy sine table outside declared readonly Flash storage')
+    table = ro_data[start - ro_start:start - ro_start + size]
+    require(table not in resident_rodata, 'xy sine table has an anonymous SRAM copy')
+    return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
 
 
 def audit_service_sram(symbols, high, allocated):
@@ -713,6 +727,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         return table[offset:end].decode("ascii")
 
     allocated = []
+    resident_rodata = b''
     symbols = {}
     symbol_sizes = {}
     functions = []
@@ -779,6 +794,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             if in_high:
                 audit_high_section(name, section_type, flags, address, size, profile)
             in_sram = low <= address and address + size <= high
+            if in_sram and name == '.rodata':
+                resident_rodata = elf[offset:offset + size]
             in_ui = name in UI_POOLS
             if in_ui:
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
@@ -1063,11 +1080,15 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_span = (xy_start, xy_start + len(xy_code))
         require(xy_ro == (xy_span[1] + 15) & ~15 and symbols.get('__flash_xy_start') == xy_start and symbols.get('__flash_xy_text_end') == xy_span[1] and symbols.get('__flash_xy_rodata_start') == xy_ro and symbols.get('__flash_xy_end') == xy_ro + len(xy_data), 'xy linker symbols differ')
         xy_functions = audit_xy_functions(functions, xy_span)
+        plot_table = audit_xy_plot_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
+                                         any(name.endswith('Runtime.applyApp') for name in xy_functions))
         base = fs_payload if allow_fs else flash_tables + bytes((-len(flash_tables)) % 4)
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
         xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 524288 if 'nih_xy_render' in xy_functions else 0}
+        if plot_table is not None:
+            xy_report['plot_table'] = plot_table
     sqld_report = None
     require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
     require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')
