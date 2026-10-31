@@ -275,6 +275,25 @@ pub export fn xy_host_live_run(source: [*]const u8, len: u32, named: bool, out: 
     g_live_error = "";
     return @intCast(result.len);
 }
+/// Foreground app bridge: shares the live editor VM and its rollback boundary.
+pub fn appEvaluate(state: *live_workspace.scheme.plot_config.State, source: []const u8, output: []u8) live_workspace.scheme.Error![]const u8 {
+    return g_live.runApp(&g_ws, state, source, output);
+}
+pub fn appFrame(state: *live_workspace.scheme.plot_config.State) live_workspace.scheme.Error!void {
+    try g_live.frame(&g_ws, state);
+}
+pub fn appHasFrame() bool {
+    return g_live_ready and g_live.active.frame_callback != 0;
+}
+pub fn appStop() void {
+    if (g_live_ready) g_live.active.clearFrame();
+}
+pub fn documentRevision() u64 {
+    return g_ws.doc.revision;
+}
+pub fn editorViewGeneration() u32 {
+    return g_live.active.view_generation;
+}
 pub export fn xy_host_buffer_copy(out: [*]u8, cap: u32) callconv(.c) i32 {
     const text = g_ws.doc.slice();
     if (cap < text.len) return -1;

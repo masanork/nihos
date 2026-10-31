@@ -13,6 +13,7 @@ on:
       - 'tools/check-xy-animation.sh'
       - 'tools/probes/animation.zig'
       - 'tools/probes/app_protocol.c'
+      - 'tools/probes/xy_app_scheme.zig'
       - '.github/workflows/xy-gpui.yml'
   workflow_dispatch:
 permissions:
