@@ -433,6 +433,11 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
             if (!available or model.failure_latched or event.at < input_started) continue;
+            if (xy_workspace and session_active and event.kind == .up) {
+                scratch.nav.touch(event.x, event.y, &scratch.vm.view);
+                scratch.revision +%= 1;
+                continue;
+            }
             if (view_button.observe(event, pointer.view_button)) {
                 if (xy_workspace and session_active) {
                     sessionKey(.escape, log);
@@ -506,6 +511,9 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();
+        scratch.nav.home();
+        scratch.vm.view.style.body_px = 32;
+        scratch.vm.view.style.ruby_px = 16;
         scratch.camera.provider = camera_provider;
         (SerialSink{}).write("\r\nxy / *scratch* [RAM]\r\n");
     } else session.begin(SerialSink{});
@@ -647,6 +655,9 @@ noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
     const graphics = @import("xy_render_runtime.zig");
     const render_values: extern struct { frames: u32, stack_used: u32, failed: u32, font: u32, size: u32, axis: u32, foreground: u32, background: u32 } = .{ .frames = graphics.frames, .stack_used = graphics.stack_used, .failed = graphics.failed, .font = scratch.vm.view.style.style_id, .size = scratch.vm.view.style.body_px, .axis = scratch.vm.view.style.axis, .foreground = scratch.vm.view.appearance.foreground, .background = scratch.vm.view.appearance.background };
     log.record("NIHOS_NATIVE_XY_RENDER", null, .{ "frames", "stack_used", "failed", "font", "size", "axis", "foreground", "background" }, &render_values);
+    const nav = &scratch.nav;
+    const reading_values: extern struct { screen: u32, book: u32, chapter: u32, offset: u32, end: u32, total: u32, error_code: u32 } = .{ .screen = @backingInt(nav.screen), .book = nav.book, .chapter = nav.chapter, .offset = nav.offset, .end = nav.end, .total = nav.text_length, .error_code = nav.error_code };
+    log.record("NIHOS_NATIVE_XY_READER", null, .{ "screen", "book", "chapter", "offset", "end", "total", "error_code" }, &reading_values);
 }
 noinline fn traceIdle(log: anytype, now: u64, scanout: u32, dma_error: u32) linksection(".flash.xytext") void {
     if (now - last_xy_idle_report < 1_000_000) return;

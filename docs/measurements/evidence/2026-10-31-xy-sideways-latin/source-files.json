@@ -1,0 +1,11 @@
+{
+  "parent_commit": "c85d7ed3ad162b7a9cd43b93b83f0a235313dbac",
+  "candidate_app_sha256": "d5f91322332919d6b5da09e8a86dd5c178a388173d1b27400e63b0fee4d8dc7f",
+  "files": {
+    "src/graphics/ttf.zig": "cf8b57dbc99b86c7f86127154eefb91f5f072d13aaf68eec319be4a5da152837",
+    "src/graphics/viewport_layout.zig": "27ab708adc906d922b58c07d7e5197fdc27cef2f97c1312b768a413ceee42877",
+    "src/graphics/code_font.zig": "e76a32da958c6db001b1e2879c3d981f2a976eb2ba3d691eac66fc75a286e4ad",
+    "tools/xy_tab5_reader_test.py": "fda32a4b85643d7f2e00cc99230f7bf5c87fcd2a2445b16a35c44b2edb690de9",
+    "tools/qualify-xy-reader.py": "d22e85bb9f031ce60ee89af9d1b6f0184c7f4e47e9d62e5631c49aa651101f33"
+  }
+}

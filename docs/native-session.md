@@ -1,7 +1,10 @@
 # Native xy workspace and diagnostic launcher
 
-The normal `sh tools/build-native.sh device integer` profile starts the xy
-RAM workspace. It supports UTF-8 text, grapheme editing, undo and a bounded
+The normal `sh tools/build-native.sh device integer` profile starts xy Home.
+Its touch cards open a RAM document, tutorials, Kusamakura, SICP excerpts,
+the repository book, and display settings. Books and fonts are bundled in
+Flash; SD and network access are not needed for reading. Select `n` to enter
+the RAM document. It supports UTF-8 text, grapheme editing, undo and a bounded
 Scheme minibuffer; see [the xy overview](../README.md). The I2C Tab5 Keyboard is
 enabled by default with the existing US HID mapping; set
 `NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. This does not provide an SD save
@@ -19,19 +22,24 @@ it does not depend on entering the diagnostic launcher.
 
 | Input | Normal xy action |
 | --- | --- |
-| Letters, digits, Shift, Caps Lock | US HID text mapping |
-| Arrows, Enter, Backspace | Move, newline, delete before cursor |
-| Ctrl-D, Ctrl-Z | Delete after cursor, undo |
-| Esc, Ctrl-C | Open minibuffer, cancel/return |
+| Home: touch, arrows / Enter, `1`–`4`, `n`, `s` | Choose a book, document or settings |
+| Document: letters, digits, Shift, Caps Lock | US HID text mapping |
+| Document: arrows, Enter, Backspace | Move, newline, delete before cursor |
+| Document: Ctrl-D, Ctrl-Z | Delete after cursor, undo |
+| Document: Esc, Ctrl-C | Open minibuffer, return Home |
+| Reading: touch footer, arrows / Space, `c`, `s`, Esc | Page, contents, settings, Home |
 | Ctrl-L | Refresh the current view |
-| Top-right touch control | Esc action; no touch caret placement |
+| Document: touch body | Return Home; no touch caret placement |
 
 The minibuffer evaluates Scheme or opens `help`, `log`, `mem` and `tasks`.
 Those system views are read-only. USB/Bluetooth keyboard adapters, native IME,
 SD saving and startup restoration of RAM text/settings are not connected by
 this profile. Japanese display and serial UTF-8 input are separate from IME.
-The [boot/input physical report](measurements/2026-10-31-xy-boot-input.md)
-records the current candidate and user confirmation.
+The [Tab5 reader report](measurements/2026-10-31-xy-tab5-reader.md) and
+[sideways Latin report](measurements/2026-10-31-xy-sideways-latin.md) record
+the reader candidates. The earlier
+[boot/input physical report](measurements/2026-10-31-xy-boot-input.md)
+records keyboard and splash validation on its own candidate.
 
 ## Diagnostic launcher fallback
 

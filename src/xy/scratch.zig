@@ -11,6 +11,7 @@ pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) 
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const camera = @import("camera.zig");
 pub const system = @import("system_buffer.zig");
+pub const navigation = @import("navigation.zig");
 pub const Mode = enum { edit, command, help, system };
 pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_result, scheme_error, command_full, read_only };
 
@@ -20,9 +21,22 @@ const default_commands linksection(scheme.data_section) = ("(command/register! \
     "(command/register! \"undo\" (lambda () (buffer/undo!))) " ++
     "(command/register! \"forget-undo\" (lambda () (buffer/forget-undo!)))").*;
 
+const status_0 linksection(scheme.data_section) = "Buffer full".*;
+
+const status_1 linksection(scheme.data_section) = "Undo full: Esc, forget-undo releases history".*;
+
+const status_2 linksection(scheme.data_section) = "Invalid input".*;
+
+const status_3 linksection(scheme.data_section) = "Unknown command: Esc, help".*;
+
+const status_4 linksection(scheme.data_section) = "Command too long; cancel or edit before evaluating".*;
+
+const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
+
 pub const Model = struct {
     camera: camera.Client,
     doc: Doc,
+    nav: navigation.State,
     vm: scheme.Runtime,
     reply: [128]u8,
     reply_length: usize,
@@ -43,6 +57,7 @@ pub const Model = struct {
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
+        self.nav.chapter_count = .{ 3, 13, 3, 32 };
         self.doc.revision = 1;
         self.doc.next_group_id = 1;
         self.revision = 1;
@@ -65,7 +80,7 @@ pub const Model = struct {
         };
     }
     pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
-        if (self.mode == .system) {
+        if (self.mode == .system or self.nav.screen != .document) {
             self.status = .read_only;
             self.changed();
             return;
@@ -77,6 +92,17 @@ pub const Model = struct {
     pub fn handle(self: *Model, key: input.Key) linksection(scheme.code_section) void {
         self.status = .none;
         self.changed();
+        if (self.nav.screen != .document) {
+            const nav_key: navigation.Key = switch (key) {
+                inline else => |value, tag| @unionInit(navigation.Key, @tagName(tag), value),
+            };
+            self.nav.handle(nav_key, &self.vm.view);
+            return;
+        }
+        if (key == .cancel and self.mode == .edit) {
+            self.nav.home();
+            return;
+        }
         if (self.mode == .help) {
             if (key == .escape or key == .cancel or key == .enter) self.mode = .edit;
             return;
@@ -109,7 +135,7 @@ pub const Model = struct {
                         self.status = .command_full;
                         return;
                     }
-                    if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'');
+                    if (std.mem.eql(u8, text, "home")) self.nav.home() else if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'');
                 },
                 else => {},
             }
@@ -191,7 +217,7 @@ pub const Model = struct {
         return self.camera.read(camera_handle, offset, output);
     }
     pub fn schemeCall(self: *Model, op: scheme.EditorOp, text: []const u8, number: i32) linksection(scheme.code_section) scheme.Error!void {
-        if (self.mode == .system and (op == .insert or op == .move or op == .undo or op == .forget)) return error.EditorFailure;
+        if ((self.mode == .system or self.nav.screen != .document) and (op == .insert or op == .move or op == .undo or op == .forget)) return error.EditorFailure;
         switch (op) {
             .insert => self.doc.insertUtf8(text) catch return error.EditorFailure,
             .move => {
@@ -283,13 +309,13 @@ pub const Model = struct {
     pub fn statusText(self: *const Model) linksection(scheme.code_section) []const u8 {
         return switch (self.status) {
             .none => "",
-            .buffer_full => "Buffer full",
-            .undo_full => "Undo full: Esc, forget-undo releases history",
-            .invalid_input => "Invalid input",
-            .unknown_command => "Unknown command: Esc, help",
+            .buffer_full => &status_0,
+            .undo_full => &status_1,
+            .invalid_input => &status_2,
+            .unknown_command => &status_3,
             .scheme_result, .scheme_error => "",
-            .command_full => "Command too long; cancel or edit before evaluating",
-            .read_only => "Read-only system buffer",
+            .command_full => &status_4,
+            .read_only => &status_5,
         };
     }
     pub inline fn render(self: *Model, grid: anytype) void {

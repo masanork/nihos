@@ -1,0 +1,18 @@
+{
+  "kusamakura.html": {
+    "url": "https://www.aozora.gr.jp/cards/000148/files/776_14941.html",
+    "sha256": "30834ec60c6b554cb92efd857355848c369ecea8396e83fbd390bbbe11d42d87"
+  },
+  "sicp-elements.xml": {
+    "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/section1.xml",
+    "sha256": "6a039f8bdea6dcdb7b45cffe7c79fa7baf05b0363df8ae6105a45212f3f672d5"
+  },
+  "sicp-expressions.xml": {
+    "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section1/subsection1.xml",
+    "sha256": "f5767f7742ea0d6e5f1283a624ee2eeb3a15d2ade88bff20a7e60c79a1cde7aa"
+  },
+  "sicp-recursion.xml": {
+    "url": "https://raw.githubusercontent.com/source-academy/sicp/35b1a2274eec60046772dd0a4ea80021369226fc/xml/chapter1/section2/subsection1.xml",
+    "sha256": "31d6339cba3b4fa9e1a7be47765bbfa5982e53f7458894f005c30a0903958687"
+  }
+}
