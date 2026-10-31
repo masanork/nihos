@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "candidate_commit": "49b92658f1c51557e8b2038000a915f0117e6bf5",
+  "base_commit": "0cb0ee4f",
+  "evidence": "host execution and native build audit; no physical-device qualification",
+  "pr": "https://github.com/masanork/nihos/pull/99",
+  "source_sha256": {
+    ".github/workflows/xy-mac.yml": "59bfc903130a7e804a8244698cdeab9637024e4bd4cd80307f30c05ef091da37",
+    "assets/xy/fonts/manifest.json": "cccb192254bec04f93602faaf244fe271f47ba6f9693f5702a95ebebe3d23449",
+    "assets/xy/library.json": "e72156a79eb1122997c3d1a1fa736be78144fa92fa1d5142e6a62006b2011780",
+    "assets/xy/sicp-learning.json": "86c46510cc3e858be0b11647af8475bc0feb32e3a7a92e07394ffa37fc0c72b2",
+    "build.zig": "77cefd29caaa6cadee6411cbbf164b1342a317643df6c984ed4deb865312e354",
+    "include/nihos_xy_learning.h": "9ede74f1fd7efe1ff41796a7b09ce4702e1640e6aa450196a88d478211b30867",
+    "src/platform/native/diagnostic_ui.zig": "b301c95277d31f47b1debff5636e88c98ac7fb4414646164bb558333ac6544ba",
+    "src/platform/native/xy_render_runtime.zig": "a6fa2f588126a7a87c397f1d9e253ff5a3af0e0b0f40223050ff6261254fa820",
+    "src/xy/c_abi_host.zig": "58103d111dc38faad35f3c6d0425de3c08de90b0501f2bed1700ac728f6ecbbe",
+    "src/xy/catalog.zig": "e76d48e19d8d14442f70f0f2f23fd998a59b92de0b69b90c4e8bbf95d088a24e",
+    "src/xy/document.zig": "2f2fa2b6ff8e1810e4700ed517d84b8b4570f0f49eddc7ef8977405ba331f219",
+    "src/xy/learning_catalog.zig": "886e6a41580fe43082c6048e7df0beb867752a7fcc55129dd003d7573d0647e6",
+    "src/xy/learning_session.zig": "3d8be7e6ba063f73ab57ba5dd1737b4b8795486e08addcd8b0902354f65c04fe",
+    "src/xy/learning_view.zig": "e321ac7a20f9550b47e976794403b9e5f74a53eba070ef5348fdc78cd948c43e",
+    "src/xy/native_reading.zig": "0860fbdf540187a88a6c5097e2f40c81e61a6670e553ddff336d833260bb0849",
+    "src/xy/native_render_entry.zig": "f6459e7beee2ead5d81481dd77cfd4de5e823bfd8ca763ed2265c76d8eedd011",
+    "src/xy/navigation.zig": "e87bb0a12d69f502166728a12c90355631ba870631ff87cb6cbb1e6944350eb5",
+    "src/xy/preview_host.zig": "74f1106391e438920ed1e034daeaa8118ccdad8ee20162a74962f552f1e4d033",
+    "src/xy/render_protocol.zig": "5a98bc8e3f8d2b4fb114d51c60a5b2e9a70b452df45ce5acee1fe7994c325862",
+    "src/xy/scratch.zig": "59c6ace5339bbd8c8834fd6f3fe14f266e9eb33f1a8a7632be44b858b0820d8b",
+    "third_party/xy-reading/NOTICE.md": "6d8f0b78f99ec701b4369ddef3a355698d27e37acf33b814be7d869b6b8eaeb8",
+    "third_party/xy-reading/sicp-experiments.json": "0269947529759659b3621c8d8087657a41420135106b6c7a9bf0cd8cdc2d165d",
+    "tools/build-xy-mac.sh": "32be5d9ea6f6ee55c4cfa08341b27920e8522c88e84c9e6c205c1ff008bdb601",
+    "tools/build-xy-reading-pack.py": "a490a82bb9ecbe822f39b4da67840047e44b1572ad9f75d7a53bc93de1ce3aff",
+    "tools/check-native-image.py": "81b9f31ada48f9db1ad14754f02cda6706d9928b07e2abfa935b5e1caa8b98b3",
+    "tools/fonts/build-xy-reader.py": "2f98078494e717b380a76b0629ee327bb3338fae03f54488f808ae6da0393bd5",
+    "tools/native_image_test.py": "66a2030eafa3f191bc524062bf22ae0f3c6387da228c673a299b5a04eefd4cd0",
+    "tools/probes/xy_learning_catalog.zig": "b89064afd4b1431583d2bc4fd76c47dfa381fa2d631b489c7cda7f052d64b3e7",
+    "tools/xy-library.py": "d8c7f1d77241f767ea284c9cd872eb4e2f86c0a4af351deb46e70f55382c42ab",
+    "tools/xy_home.inc": "e54a6495d4c31c614c1444633a27d4928fffd8dfc98d075352e527e39caa8f34",
+    "tools/xy_learning.inc": "18c7ffad5764a74b92475be37cef11b5a479719cd8f69facd4921918a65a6cc5",
+    "tools/xy_learning_pack.py": "9915f40cd5f546385e5a7ed9b0a3960fd70224ec92ee899049d6513744d9369a",
+    "tools/xy_learning_test.py": "22b7a5c8fb57ca043221c0ddcc8da8f139fbc3fd7afceca916e272e82788a56a",
+    "tools/xy_mac_host.m": "aa6a0e970b325a5494a5849234405a293766579cebd59cdf9a364b4abc7805b5",
+    "tools/xy_sicp.py": "0092a86c0a40d2b9943bb5a16518cbaaef4a16a05e6afb786b274bb8fdab042d",
+    "tools/xy_sicp_test.py": "9dc9fa609aa9fd5ccbc7d59576918262e12dc8801135ac1ad974962b96c408bf",
+    "tools/xy_tab5_reader_test.py": "66dcf7d7062d373d6fc35e623a222d436586aa419fe6a0fba622f7c69198b62c"
+  },
+  "suites": {
+    "learning": {
+      "tests": 7,
+      "result": "passed",
+      "log": "learning-tests.log.gz"
+    },
+    "reader": {
+      "tests": 10,
+      "result": "passed",
+      "log": "reader-tests.log.gz"
+    },
+    "workspace": {
+      "tests": 16,
+      "result": "passed",
+      "log": "workspace-tests.log.gz"
+    },
+    "tab5": {
+      "tests": 10,
+      "result": "passed",
+      "log": "tab5-tests.log.gz"
+    },
+    "sicp": {
+      "tests": 12,
+      "result": "passed",
+      "log": "sicp-tests.log.gz"
+    },
+    "image": {
+      "tests": 42,
+      "result": "passed",
+      "log": "image-tests.log.gz"
+    }
+  },
+  "zig_debug_steps": "75/75 succeeded, including cached steps",
+  "zig_release_safe": "75/75 steps succeeded; 1045/1045 tests passed",
+  "zig_runner_diagnostic": {
+    "exit_code": 0,
+    "summary_succeeded": true,
+    "failed_command_line_present": true,
+    "raw_logs_retained": true
+  },
+  "native": {
+    "image_sha256": "55a18975045195f0885aaaf1b4575e052042b9a17c929de1dd897c42aaa1721f",
+    "image_bytes": 3521632,
+    "heap_bytes": 49600,
+    "heap_floor_bytes": 49152,
+    "xy_code_bytes": 76352,
+    "xy_rodata_bytes": 2949604,
+    "workspace_bytes": 1646800,
+    "workspace_limit_bytes": 2097152,
+    "workspace_before_bytes": 994640,
+    "audit_passed": true,
+    "physical_device_tested": false
+  },
+  "scenes": {
+    "reading_rgba_sha256": "13f2bee7d95544ada83b56f89c4f3d7e9c6299d7867915c194e5fb429ea2937a",
+    "returned_rgba_sha256": "13f2bee7d95544ada83b56f89c4f3d7e9c6299d7867915c194e5fb429ea2937a",
+    "result": "487",
+    "notes": "日本語のメモ",
+    "editor_unchanged": true
+  },
+  "mac_gui": {
+    "tested": true,
+    "bundle_id": "org.nihos.xy.sicp-proof",
+    "actions": [
+      "open SICP 1.1.1 addition",
+      "select all and paste (+ 137 350)",
+      "Cmd-R result 487",
+      "Japanese note entry",
+      "Escape returns to vertical book"
+    ],
+    "canonical_host_sha256": "be9ca96a1ef4372b3289a1a30c93a6ac6ff786282b7c6ba02ae315dea56625b0",
+    "canonical_core_sha256": "c471e904228945fadad8d4fe70b4afde2fcb2c9a4e8a4eb63eba8784a3a5a570"
+  },
+  "ci_at_candidate": {
+    "xy_mac_workspace": "passed",
+    "url": "https://github.com/masanork/nihos/actions/runs/41189386592/job/124502826795",
+    "other_workflows": "in progress at capture"
+  },
+  "original_dirty_files_unchanged_sha256": {
+    "src/graphics/ttf.zig": "52fe3958c717ad6c9e65e72897afeb8ff07e6496157c00d1e9ab0c15e67eb3c5",
+    "src/graphics/viewport_layout.zig": "b53b09a2bbf9fccf7589b49f2925e8e97043c1243d56645ac38471b21ce5afa1",
+    "src/xy/scheme_bridge.zig": "01a39041a9cadfa24d179648b17800bb45681d51da9c3ad77423dc036140878d",
+    "tools/xy_mac_host.m": "9436893488f3342617155ad5b4046f4238009a8143d549730586f2eaff5ea19c"
+  },
+  "remaining": [
+    "physical Tab5 learning flow and stack watermark",
+    "persistent drafts and reboot recovery",
+    "definition/prepare/invocation experiment execution",
+    "R7RS and numeric/tail-call extensions",
+    "reference result UI and grade approval"
+  ]
+}
