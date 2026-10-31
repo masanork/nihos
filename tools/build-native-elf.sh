@@ -476,6 +476,7 @@ if [ "$camera_id" = true ]; then
 fi
 if [ "$camera_jpeg" = true ]; then native_boot_dir="$native_boot_dir-jpeg"; fi
 if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camera-ui-fixture"; fi
+if [ "$xy_trace" = true ]; then native_boot_dir="$native_boot_dir-xy-trace"; fi
 if [ "$camera_jpeg" = true ] && { [ "$camera_id" != true ] || [ "$camera_diagnostics" = true ]; }; then echo "CAMERA_JPEG requires normal CAMERA_ID" >&2; exit 1; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi

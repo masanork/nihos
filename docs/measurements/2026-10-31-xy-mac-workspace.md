@@ -131,3 +131,11 @@ GUI観察は手動操作の記録であり、Tab5や電源断の証跡へ読み�
 
 SQLite APIの参照: [transaction](https://sqlite.org/lang_transaction.html)、
 [prepared statementへのbind](https://sqlite.org/c3ref/bind_blob.html)。
+
+
+Native landing integration retains PR #87's extended shared Scheme runtime
+and typed view configuration instead of the original unchanged runtime copy.
+The Mac build and tests now pass the named view_config dependency. The saved
+source lifecycle remains the Mac adapter; this does not add native SD writes
+or claim device SQLite persistence. The native and Mac pixel paths share the
+same render session and recovery faces in the landing follow-up.

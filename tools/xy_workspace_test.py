@@ -13,11 +13,13 @@ import zlib
 import subprocess
 import tempfile
 import unittest
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST = Path(os.environ.get('XY_MAC_HOST', ROOT / 'build/xy-mac/xy-mac-host'))
 
 
+@unittest.skipUnless(sys.platform == "darwin", "macOS shared-library integration runs in the Mac CI job")
 class WorkspaceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -166,9 +168,8 @@ class WorkspaceTest(unittest.TestCase):
     def init_real_fonts(self):
         directory = Path(os.environ.get('XY_FONT_DIR', Path.home() / 'repo/gjs/data/output/bunsen-build'))
         names = [f'Bunsen{family}{layer}-Regular.ttf' for family in ['Mincho', 'Gothic'] for layer in ['', 'Ext', 'PUP']]
-        if not all((directory / name).is_file() for name in names):
-            self.skipTest('External Bunsen font pack is unavailable')
-        fds = [os.open(directory / name, os.O_RDONLY) for name in names]
+        external = all((directory / name).is_file() for name in names)
+        fds = [os.open(directory / name, os.O_RDONLY) for name in names] if external else []
         for fd in fds:
             self.addCleanup(os.close, fd)
         callback_type = c.CFUNCTYPE(c.c_uint32, c.c_void_p, c.c_uint32, c.c_void_p, c.c_uint32)
@@ -184,7 +185,7 @@ class WorkspaceTest(unittest.TestCase):
         gothic = (Descriptor * 3)(*[Descriptor(i + 4, callback) for i in range(3)])
         self.vm.xy_host_init.argtypes = [c.POINTER(Descriptor), c.c_uint32, c.POINTER(Descriptor), c.c_uint32]
         self.vm.xy_host_init.restype = c.c_bool
-        self.assertTrue(self.vm.xy_host_init(mincho, 3, gothic, 3))
+        self.assertTrue(self.vm.xy_host_init(mincho, 3 if external else 0, gothic, 3 if external else 0))
 
     def test_real_font_render_of_restored_command_and_source(self):
         self.init_real_fonts()

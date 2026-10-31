@@ -129,6 +129,7 @@ extern int32_t xy_host_render_rgba8(
     uint8_t theme_id
 );
 
+extern bool xy_host_set_status(const uint8_t *, uint32_t);
 extern bool xy_host_live_init(void);
 extern int32_t xy_host_default_source(uint8_t *, uint32_t);
 extern uint32_t xy_host_render_error(uint8_t *, uint32_t);
@@ -713,7 +714,7 @@ static void eval_sexp_checked(const char *sexp) {
     NSWindow *window = [self window];
     CGFloat scale = [window backingScaleFactor];
     if (scale <= 0) return;
-    CGFloat viewHeight = _fb_height / scale + 32;
+    CGFloat viewHeight = _fb_height / scale;
     CGFloat delta = viewHeight - NSHeight([self frame]);
     CGFloat width = MAX(960, _fb_width / scale);
     NSView *root = [window contentView];
@@ -855,6 +856,11 @@ static void eval_sexp_checked(const char *sexp) {
 
 - (void)drawRect:(NSRect)dirtyRect {
     (void)dirtyRect;
+    if (_workspaceMessage) {
+        NSString *line = [NSString stringWithFormat:@"%@ r%lld: %@", _editingSource ? @"user/init.scm" : @"Document", (long long)g_workspace_revision, _workspaceMessage];
+        NSData *bytes = [line dataUsingEncoding:NSUTF8StringEncoding];
+        if ([bytes length] <= 256) xy_host_set_status([bytes bytes], (uint32_t)[bytes length]);
+    }
     int32_t rendered = xy_host_render_rgba8(_rgba_buf, _fb_width, _fb_height, _fb_width * 4, _theme_id);
     if (rendered < 0) {
         uint8_t error[128];
@@ -878,12 +884,11 @@ static void eval_sexp_checked(const char *sexp) {
     // Only the native host chrome uses point units and platform text rendering.
     const CGFloat pointWidth = NSWidth([self bounds]);
     NSRect backingBounds = [self convertRectToBacking:[self bounds]];
-    NSRect backingStatus = [self convertRectToBacking:NSMakeRect(0, 0, pointWidth, 32)];
     NSRect targetPixels = NSMakeRect(floor((NSWidth(backingBounds) - _fb_width) / 2),
-        NSHeight(backingStatus), _fb_width, _fb_height);
+        0, _fb_width, _fb_height);
     NSRect canvasRect = [self convertRectFromBacking:targetPixels];
     [[NSColor colorWithCalibratedWhite:0.12 alpha:1] setFill];
-    NSRectFill(NSMakeRect(0, 32, pointWidth, NSHeight([self bounds]) - 32));
+    NSRectFill(NSMakeRect(0, 0, pointWidth, NSHeight([self bounds])));
     CGContextSetInterpolationQuality(viewCtx, kCGInterpolationNone);
     CGContextSetShouldAntialias(viewCtx, false);
     CGContextDrawImage(viewCtx, canvasRect, img);
@@ -924,6 +929,7 @@ int main(int argc, const char **argv) {
     };
     (void)font_dir;
 
+    bool external_fonts = true;
     FontFileCtx mincho_ctxs[3];
     CSliceReaderDesc mincho_descs[3];
     FontFileCtx gothic_ctxs[3];
@@ -933,8 +939,7 @@ int main(int argc, const char **argv) {
         mincho_ctxs[i].path = mincho_paths[i];
         mincho_ctxs[i].fd = open(mincho_paths[i], O_RDONLY);
         if (mincho_ctxs[i].fd < 0) {
-            fprintf(stderr, "Failed to open %s\n", mincho_paths[i]);
-            return 1;
+            external_fonts = false;
         }
         mincho_descs[i].ctx = &mincho_ctxs[i];
         mincho_descs[i].read_fn = posix_pread_callback;
@@ -942,8 +947,7 @@ int main(int argc, const char **argv) {
         gothic_ctxs[i].path = gothic_paths[i];
         gothic_ctxs[i].fd = open(gothic_paths[i], O_RDONLY);
         if (gothic_ctxs[i].fd < 0) {
-            fprintf(stderr, "Failed to open %s\n", gothic_paths[i]);
-            return 1;
+            external_fonts = false;
         }
         gothic_descs[i].ctx = &gothic_ctxs[i];
         gothic_descs[i].read_fn = posix_pread_callback;
@@ -956,7 +960,7 @@ int main(int argc, const char **argv) {
 
     uint64_t init_calls_before = g_pread_calls;
     uint64_t init_bytes_before = g_pread_bytes;
-    if (!xy_host_init(mincho_descs, 3, gothic_descs, 3)) {
+    if (!xy_host_init(mincho_descs, external_fonts ? 3 : 0, gothic_descs, external_fonts ? 3 : 0)) {
         fprintf(stderr, "xy_host_init failed!\n");
         return 1;
     }
@@ -1077,7 +1081,7 @@ int main(int argc, const char **argv) {
         eval_sexp_checked("(view/set! #:font 'bunsen-mincho #:size 32 #:direction 'vertical #:line-gap 18)");
 
         const CGFloat toolbarH = 76.0;
-        const CGFloat statusH = 32.0;
+        const CGFloat statusH = 0.0;
         CGFloat backingScale = [[NSScreen mainScreen] backingScaleFactor];
         if (backingScale <= 0) backingScale = 1;
         const CGFloat canvasH = H / backingScale;
