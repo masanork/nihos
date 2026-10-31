@@ -119,7 +119,10 @@ fn stationService() void {
                 station_errors += 1;
                 return;
             };
-            if (fixture_station.phase != .done or !fixture_station.version_known or fixture_station.dhcp_client != null or fixture_station.connected or pending.len != 0) {
+            if (fixture_station.phase != .done or !fixture_station.version_known or
+                !@import("std").mem.eql(u32, &fixture_station.version, &.{ 1, 4, 1 }) or fixture_station.ignored_rpcs != 1 or
+                fixture_station.dhcp_client != null or fixture_station.connected or pending.len != 0)
+            {
                 station_errors += 1;
                 return;
             }
