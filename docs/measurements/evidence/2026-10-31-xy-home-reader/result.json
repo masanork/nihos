@@ -1,0 +1,17 @@
+{
+  "base": "dec310dc29acc38acc8f0ebfdb3e6eeeb5b49555",
+  "branch": "codex/xy-home-reader",
+  "target": "Mac home and offline reader; native shared-core regression build only",
+  "reader_tests": 8,
+  "workspace_tests": 16,
+  "native_image_tests": 40,
+  "zig_build_steps": "71/71",
+  "hardware_flash_performed": false,
+  "tab5_home_catalog_connected": false,
+  "sha256": {
+    "assets/xy/library.json": "1274ee105af8b5165865631ab163fc2b31ea7b8e79dc264e081e16cad95e537b",
+    "build/xy-mac/xy-mac-host": "52b4cff3d477e2685376899bf8b1f968499acadfdfd79aa64c1fc7341b0bd534",
+    "build/xy-mac/libxy_host.dylib": "2e53048753aed81925848300e3b452cfc9ae0112cfd239fcdc4f2bd49a400860",
+    "build/native-device-network-devices-camera/nihos-native-flash.bin": "79e547150bd677a36c13f42dd3086461ef6c3963cd032218886b0d64c1e905c6"
+  }
+}

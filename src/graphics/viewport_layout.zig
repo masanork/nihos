@@ -242,6 +242,24 @@ pub fn layoutParagraph(
     glyf_scratch: []u8,
     out_display_list: []PlacedGlyph,
 ) Error![]PlacedGlyph {
+    return layoutParagraphWithWordWrap(max_glyphs, max_body_bytes, max_ruby_bytes, CacheType, cache, family, view, body_text, ruby_text, annotations, glyf_scratch, out_display_list, false);
+}
+
+pub fn layoutParagraphWithWordWrap(
+    comptime max_glyphs: usize,
+    comptime max_body_bytes: usize,
+    comptime max_ruby_bytes: usize,
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    view: ViewStyle,
+    body_text: []const u8,
+    ruby_text: []const u8,
+    annotations: []const ruby.Annotation,
+    glyf_scratch: []u8,
+    out_display_list: []PlacedGlyph,
+    comptime wrap_words: bool,
+) Error![]PlacedGlyph {
     if (body_text.len == 0 or body_text.len > max_body_bytes or ruby_text.len > max_ruby_bytes)
         return error.Capacity;
 
@@ -266,7 +284,7 @@ pub fn layoutParagraph(
     var body_map: [max_body_bytes + 1]policy.Boundary = undefined;
     var shaped: [max_glyphs]ShapedGlyph = undefined;
     // Body shaping must not overwrite ruby glyphs stored in the same array.
-    var ruby_shaped: [@min(max_glyphs / 2, 128)]ShapedGlyph = undefined;
+    var ruby_shaped: [@min(max_glyphs / 2, 512)]ShapedGlyph = undefined;
 
     const ruby_count = try shapeRun(
         CacheType,
@@ -306,6 +324,8 @@ pub fn layoutParagraph(
                 shaped[0 .. max_glyphs - ruby_count],
             );
 
+            if (wrap_words) keepWords(shaped[0..body_count], body_map[0 .. para_slice.len + 1], inline_limit_26_6, is_vert);
+
             // Copy only ruby annotations belonging to `[p_start, p_end)`
             var local_anns: [64]ruby.Annotation = undefined;
             var local_ann_count: usize = 0;
@@ -323,8 +343,10 @@ pub fn layoutParagraph(
             // Append ruby glyphs after `shaped[0..body_count]` when annotations exist in this paragraph
             var para_total = body_count;
             var para_ruby_bytes: usize = 0;
+            var para_ruby_start: u32 = 0;
             if (local_ann_count > 0) {
                 const ruby_start = local_anns[0].ruby.start;
+                para_ruby_start = ruby_start;
                 const ruby_end = local_anns[local_ann_count - 1].ruby.end;
                 if (ruby_end < ruby_start or ruby_end > ruby_text.len) return error.Range;
                 para_ruby_bytes = ruby_end - ruby_start;
@@ -398,7 +420,7 @@ pub fn layoutParagraph(
                 out_display_list[total_emitted] = .{
                     .base_cp = g.base_cp,
                     .ivs_cp = g.ivs_cp,
-                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster,
+                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster + para_ruby_start,
                     .run = @intCast(g.run),
                     .style_id = view.style_id,
                     .px_size = g.px_size,
@@ -434,6 +456,30 @@ pub fn layoutParagraph(
     }
 
     return out_display_list[0..total_emitted];
+}
+
+// Keep ordinary Latin words together in prose. Long identifiers retain the
+// grapheme-level emergency breaks used by code and narrow vertical pages.
+fn keepWords(glyphs: []const ShapedGlyph, boundaries: []policy.Boundary, limit: i32, vertical: bool) void {
+    var start: usize = 0;
+    while (start < glyphs.len) {
+        const cp = glyphs[start].base_cp;
+        if (!(cp < 128 and std.ascii.isAlphanumeric(@intCast(cp)))) {
+            start += 1;
+            continue;
+        }
+        var end = start + 1;
+        var advance: i64 = if (vertical) -glyphs[start].y_advance else glyphs[start].x_advance;
+        while (end < glyphs.len) : (end += 1) {
+            const next = glyphs[end].base_cp;
+            if (next >= 128 or !(std.ascii.isAlphanumeric(@intCast(next)) or next == '\'' or next == '_')) break;
+            advance += if (vertical) -glyphs[end].y_advance else glyphs[end].x_advance;
+        }
+        if (advance <= limit) {
+            for (glyphs[start + 1 .. end]) |g| boundaries[g.cluster].allowed = false;
+        }
+        start = end;
+    }
 }
 
 // ============================================================================

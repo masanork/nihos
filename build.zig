@@ -118,6 +118,8 @@ pub fn build(b: *std.Build) void {
     xy_native_render_module.addImport("viewport_layout", viewport_layout_module);
     xy_native_render_module.addImport("rotated_surface", rotated_surface_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_native_render_module })).step);
+    const xy_reader_module = b.createModule(.{ .root_source_file = b.path("src/xy/reader.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_reader_module })).step);
     const xy_document_module = b.createModule(.{ .root_source_file = b.path("src/xy/document.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_document_module })).step);
     const xy_ime_omni_module = b.createModule(.{ .root_source_file = b.path("src/xy/ime_omni.zig"), .target = target, .optimize = optimize });

@@ -1,0 +1,20 @@
+{
+  "license": "CC0-1.0",
+  "upstream": "https://github.com/masanork/gjs",
+  "fonttools": "4.60.2",
+  "library_sha256": "1274ee105af8b5165865631ab163fc2b31ea7b8e79dc264e081e16cad95e537b",
+  "faces": {
+    "BunsenMincho-Regular.ttf": {
+      "sha256": "dc2120b8388a677a96c4d60e1c38bec1069d014e4984d583d3b45b34b83ce237",
+      "source_sha256": "a8e2846e4f3628817acbec46f438797f85f7d83947c34cb2aad91c008b1d865f",
+      "bytes": 1146288
+    },
+    "BunsenGothic-Regular.ttf": {
+      "sha256": "d92620dc24498787e4bf8e59636fc4c83923a04582505d914944a6ffd66f0430",
+      "source_sha256": "dd6a5054a708720249c016235dab4bccf6e1e1a68f58bb191cd134dac4582ae6",
+      "bytes": 1064060
+    }
+  },
+  "Mincho_missing": [],
+  "Gothic_missing": []
+}

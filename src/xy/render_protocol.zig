@@ -12,6 +12,7 @@ pub const Request = extern struct {
     status: [*]const u8,
     status_length: usize,
     show_cursor: u32,
+    page_mode: u32 = 0, // pre-fitted read-only page; no caret-following crop
     ruby_text: [*]const u8 = "",
     ruby_text_length: usize = 0,
     ruby_spans: ?[*]const RubySpan = null,

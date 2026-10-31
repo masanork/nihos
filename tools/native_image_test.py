@@ -11,6 +11,13 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_native_render_capacity_is_exactly_the_embedded_budget(self):
+        self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(256).render'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(256).renderInto__func_0'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
+
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000
         functions = [('xy.scheme_runtime.Runtime.evaluate__func_1', start, start + 16),
