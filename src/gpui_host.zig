@@ -28,7 +28,9 @@ pub export fn xy_animation_init() callconv(.c) bool {
     cached_height = 0;
     prepared = true;
     const source = "xy / GPUI\n\n日本語表示 あいうえお\n青空文庫\n\nShared TrueType / RGB565\n";
-    return xy.xy_host_buffer_replace(source, source.len);
+    if (!xy.xy_host_buffer_replace(source, source.len)) return false;
+    const status = "RAM buffer / Ctrl-Z undo";
+    return xy.xy_host_set_status(status, status.len);
 }
 pub export fn xy_animation_tick(now_us: u64) callconv(.c) bool {
     return prepared and model.advance(now_us);
