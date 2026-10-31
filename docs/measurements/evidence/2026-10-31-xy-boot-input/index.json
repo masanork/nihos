@@ -1,0 +1,58 @@
+{
+  "code_commit": "e0bd5272c3a920fdf3c889cbbc111d9ea92b9fc1",
+  "base_main": "dec310d",
+  "physical_checks": 56,
+  "idle": {
+    "seconds": 10,
+    "records": 10,
+    "render_frames": 32,
+    "scanout_frame_delta": 546,
+    "backing_payload": 2958656,
+    "backing_reserved": 4194304,
+    "dma_error": 0
+  },
+  "keyboard": {
+    "recognized": true,
+    "firmware": 1,
+    "mode": 1,
+    "serial_input_bytes_during_observation": 376,
+    "document_lengths": [
+      170,
+      171,
+      172,
+      171,
+      170
+    ],
+    "observed_document_change_without_serial_text": true,
+    "observer_completed_normally": true
+  },
+  "manual_confirmation": {
+    "date": "2026-10-31",
+    "statement": "全く問題ないようにみえる",
+    "requested_scope": "Tab5 keyboard input and editing; startup splash appearance",
+    "individual_keys_automatically_matched": false
+  },
+  "validation": {
+    "release_safe_build_steps": "69/69",
+    "release_safe_uncached_tests": "764/764",
+    "python_tests": 522,
+    "rv32_observations": 39,
+    "static_analysis": true,
+    "six_native_elf_audits": true
+  },
+  "source_sha256": {
+    "src/graphics/boot_graphics.zig": "e50fa8c720db0c4c797f8af9e6b0d5593504721179c51754a6e4aeb46b27aaae",
+    "src/platform/native/diagnostic_ui.zig": "bc5fcf4721ca1d662f2540062ab99015f8c5eb749be03d2263b5aa3b59762e2a",
+    "tools/check-native-image.py": "a5bf9cec3395ec7b9cb811bae3624051aca30080b0b52e9e717cf1ced59382e0"
+  },
+  "evidence_sha256": {
+    "keyboard-observer.py": "24d96d67009947f7a97177a5039e0fe9a320f17b5f21937bcf36a36b9b67e5d7",
+    "keyboard-result.json": "6414f1378f8a9452c5e70d678db0551c02f84c8af325bdfd43e65ee83b21dcbc",
+    "keyboard-xy.log": "6291ce2e80583dbeebf9367a4d15e68412555ca848384a699d43a8dda308311e",
+    "normal-image-audit.json": "d7c295c6ff78baeb4ce3da34e5aed2bb9594d1db0c670b12a61fd76328491d04",
+    "physical-result.json": "12f0e23c0c4ac6d6bcfd5b135dfbcae6f0813f8aa8e4730b93112ec49331f57a",
+    "physical-xy.log": "7bd1aa10771b8a2005ab5bd0ecbae9997da49c74965ed046f3ce29ab05cd7769",
+    "rv32-report.json": "ce7f789c271ff41aede3f0924b999f606e7006a1e8daf68c2a1de6727e1431d2",
+    "trace-image-audit.json": "d8894bbddd077ed52b43839df44c8bcaab762a561482315b6b5f68f3d0799f8d"
+  }
+}
