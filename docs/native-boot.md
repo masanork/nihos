@@ -9,12 +9,17 @@ power-loss and long-duration qualification.
 The normal public device build includes [on-demand speaker, microphone and
 RS485 drivers](adr/0052-default-on-demand-device-drivers.md). It leaves these
 idle until explicitly requested and writes its connected artifacts to
-`build/native-device-network-devices-camera/`. The camera prototype supplies
+`build/native-device-network-devices-camera-sqld/`. The camera prototype supplies
 shell `camera` and `camera-live` commands. Set `NIHOS_NATIVE_CAMERA_ID=0` to
-retain the image without camera in `build/native-device-network-devices/`.
+retain the image without camera in `build/native-device-network-devices-sqld/`.
 Set `NIHOS_NATIVE_DEVICES=0` for the
-smaller connected image in `build/native-device-network/`. The [combined controller exercise](measurements/2026-10-28-default-devices.md)
+smaller connected image in `build/native-device-network-sqld/`. The [combined controller exercise](measurements/2026-10-28-default-devices.md)
 has passed; dedicated probes retain their own profiles.
+
+The xy + normal storage build enables `NIHOS_NATIVE_SQLD=1` by default. Its
+[owned SD region and Scheme bindings](planning/sqld-xy-service.md) have
+[native persistence evidence](measurements/2026-10-31-sqld-native.md).
+`NIHOS_NATIVE_SQLD=0` retains the read-only FAT profile and its earlier output path.
 
 Normal `camera-live` keeps the sensor, CSI and ISP running and rearms DMA from
 the shared DW-GDMA interrupt. Two pinned RAW8 buffers protect foreground sampling
