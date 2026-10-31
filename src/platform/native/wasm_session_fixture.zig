@@ -129,9 +129,12 @@ pub fn service(log: anytype) bool {
         generation: u32,
         ticks0: u32,
         ticks1: u32,
+        open_us: u32,
+        render_max_us: u32,
+        close_us: u32,
     };
-    const record: Record = .{ .round = round, .status = @bitCast(result), .bytes = received, .frames = input_frames, .presentations = presentations, .rejected = rejected, .requested = 499712 + 32768, .charged = @intCast(charged), .recovered = @intFromBool(m.recovered == 1 and free_before == free_after), .reaped = m.reaped, .wiped = m.wiped, .detached = m.detached, .guards = m.guards, .stack_used = m.stack_used, .captures = m.captures, .timers = m.timers, .waits = m.waits, .calls = m.calls, .denied = m.denied, .generation = m.generation, .ticks0 = tasks.report(0).ticks -% ticks[0], .ticks1 = tasks.report(1).ticks -% ticks[1] };
-    log.record("NIHOS_WASM_SESSION", null, .{ "round", "status", "bytes", "frames", "presentations", "rejected", "requested", "charged", "recovered", "reaped", "wiped", "detached", "guards", "stack_used", "captures", "timers", "waits", "calls", "denied", "generation", "ticks0", "ticks1" }, &record);
+    const record: Record = .{ .round = round, .status = @bitCast(result), .bytes = received, .frames = input_frames, .presentations = presentations, .rejected = rejected, .requested = 499712 + 32768, .charged = @intCast(charged), .recovered = @intFromBool(m.recovered == 1 and free_before == free_after), .reaped = m.reaped, .wiped = m.wiped, .detached = m.detached, .guards = m.guards, .stack_used = m.stack_used, .captures = m.captures, .timers = m.timers, .waits = m.waits, .calls = m.calls, .denied = m.denied, .generation = m.generation, .ticks0 = tasks.report(0).ticks -% ticks[0], .ticks1 = tasks.report(1).ticks -% ticks[1], .open_us = m.open_us, .render_max_us = m.render_max_us, .close_us = m.close_us };
+    log.record("NIHOS_WASM_SESSION", null, .{ "round", "status", "bytes", "frames", "presentations", "rejected", "requested", "charged", "recovered", "reaped", "wiped", "detached", "guards", "stack_used", "captures", "timers", "waits", "calls", "denied", "generation", "ticks0", "ticks1", "open_us", "render_max_us", "close_us" }, &record);
     if (round == 2) return false;
     previous_generation = m.generation;
     // Partial-open failure must close/reap the worker before frame release.

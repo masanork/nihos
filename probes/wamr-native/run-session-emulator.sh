@@ -62,7 +62,7 @@ for name,injected,status,received,frames,presentations,rejected in (
                   'denied':4 if i or name=='normal' else 2 if name in ('metered-trap','present-failure') else 1,
                   'requested':532480,'charged':589824}
         assert all(r[k]==v for k,v in expected.items()),(name,r,expected)
-        assert all(r[k]>0 for k in ('captures','timers','waits','calls','denied','ticks0','ticks1')),r
+        assert all(r[k]>0 for k in ('captures','timers','waits','calls','denied','ticks0','ticks1','open_us','render_max_us','close_us')),r
         assert 0<r['stack_used']<65536,r
     assert records[1]['generation']>records[0]['generation']+1,records
     assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in identity.items())

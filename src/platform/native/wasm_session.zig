@@ -3,6 +3,7 @@ const app = @import("app_session");
 const tasks = @import("native_tasks");
 const runtime = @import("wamr_runtime.zig");
 const mailbox = @import("frame_mailbox");
+const clock = @import("timer_group").Timer.fromGroup(0x500c2000, 0).?;
 const stack_offset = runtime.runtime_bytes + runtime.linear_bytes + runtime.module_bytes * runtime.module_count;
 extern fn nih_wamr_session_run([*]u8, [*]u8, [*]u8, [*]u8, *EngineReport) callconv(.c) i32;
 extern fn nih_app_fill_rect(i32, i32, u32, u32, u32) callconv(.c) i32;
@@ -20,6 +21,9 @@ pub const Metrics = struct {
     calls: u32 = 0,
     denied: u32 = 0,
     generation: u32 = 0,
+    open_us: u32 = 0,
+    render_max_us: u32 = 0,
+    close_us: u32 = 0,
 };
 pub var observed: Metrics = .{};
 var box: mailbox.Mailbox = .{};
@@ -64,6 +68,18 @@ fn entry(argument: u32) callconv(.c) i32 {
     return nih_wamr_session_run(bytes.ptr, bytes[runtime.runtime_bytes..].ptr, bytes[runtime.runtime_bytes + runtime.linear_bytes ..].ptr, bytes[runtime.runtime_bytes + runtime.linear_bytes + runtime.module_bytes ..].ptr, &engine_report);
 }
 fn request(command: mailbox.Command) i32 {
+    const started = clock.counter() orelse return -90;
+    defer {
+        if (clock.counter()) |now| {
+            const elapsed: u32 = @intCast(@min(now -| started, 0xffffffff));
+            switch (command.operation) {
+                1 => observed.open_us = elapsed,
+                2, 4 => observed.render_max_us = @max(observed.render_max_us, elapsed),
+                3 => observed.close_us = elapsed,
+                else => {},
+            }
+        }
+    }
     const handle = child orelse return -90;
     const id = box.submit(command) orelse return -3;
     if (tasks.calls.notify(handle, 1) != 0) return -90;
