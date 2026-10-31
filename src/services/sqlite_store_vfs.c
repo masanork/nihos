@@ -125,7 +125,7 @@ static int fullpath(sqlite3_vfs *vfs,const char *path,int capacity,char *out) {
 }
 static int random_bytes(sqlite3_vfs *vfs,int n,char *out) { struct nih_sqld *s=vfs->pAppData;return s->platform.random(s->platform.context,(uint8_t *)out,n); }
 static int sleep_us(sqlite3_vfs *vfs,int us) { struct nih_sqld *s=vfs->pAppData;return s->platform.sleep_us(s->platform.context,us); }
-static int time_ms(sqlite3_vfs *vfs,sqlite3_int64 *out) { struct nih_sqld *s=vfs->pAppData;*out=s->platform.time_ms(s->platform.context);return SQLITE_OK; }
+static int time_ms(sqlite3_vfs *vfs,sqlite3_int64 *out) { struct nih_sqld *s=vfs->pAppData;*out=s->platform.time_ms(s->platform.context);return *out>0 ? SQLITE_OK : SQLITE_IOERR; }
 static int time_days(sqlite3_vfs *vfs,double *out) { sqlite3_int64 t=0;int rc=time_ms(vfs,&t);*out=(double)t/86400000.0;return rc; }
 int nih_sqld_vfs_init(struct nih_sqld *s) {
  s->vfs=(sqlite3_vfs){.iVersion=2,.szOsFile=sizeof(struct nih_sql_file),.mxPathname=32,.zName="nihos-checkpoint",.pAppData=s,

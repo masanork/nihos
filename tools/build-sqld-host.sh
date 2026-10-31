@@ -7,7 +7,7 @@ tools/bootstrap-sqlite.sh >/dev/null
 out=build/sqld
 sqlite=build/sqlite/sqlite-amalgamation-3540100
 mkdir -p "$out"
-"$zig" build-obj -O ReleaseSafe -fPIC src/storage/store_abi.zig -femit-bin="$out/store.o"
+"$zig" build-obj -O ReleaseSafe -fPIC -fcompiler-rt src/storage/store_abi.zig -femit-bin="$out/store.o"
 cc=${CC:-clang}
 "$cc" -O2 -fPIC -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL \
  -DSQLITE_TEMP_STORE=3 -DSQLITE_DEFAULT_PAGE_SIZE=4096 -DSQLITE_ENABLE_API_ARMOR \
