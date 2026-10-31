@@ -2,6 +2,11 @@
 const session = @import("render_session.zig");
 const reading = @import("native_reading.zig");
 const catalog = @import("catalog.zig");
+const learning = @import("learning_session.zig");
+const Workspace = struct { renderer: reading.Session, lessons: learning.Session };
+comptime {
+    if (@sizeOf(Workspace) > 2 * 1024 * 1024) @compileError("xy render and lesson workspace exceeds PSRAM budget");
+}
 extern var nih_xy_reading_start: u8;
 extern var nih_xy_reading_end: u8;
 fn readingPack() catalog.Error!catalog.Pack {
@@ -15,19 +20,27 @@ const ttf = @import("viewport_layout").ttf;
 const mincho: []const u8 = @embedFile("fonts/mincho.ttf");
 const gothic: []const u8 = @embedFile("fonts/gothic.ttf");
 pub export fn nih_xy_render_bytes() callconv(.c) usize {
-    return @sizeOf(reading.Session);
+    return @sizeOf(Workspace);
 }
 pub export fn nih_xy_render_init(bytes: [*]u8, length: usize) callconv(.c) bool {
-    if (length < @sizeOf(reading.Session) or @intFromPtr(bytes) % @alignOf(reading.Session) != 0) return false;
-    const instance: *reading.Session = @ptrCast(@alignCast(bytes));
+    if (length < @sizeOf(Workspace) or @intFromPtr(bytes) % @alignOf(Workspace) != 0) return false;
+    const owner: *Workspace = @ptrCast(@alignCast(bytes));
+    const instance = &owner.renderer;
     const pack = readingPack() catch return false;
     const mincho_font = pack.font(0) catch return false;
     const gothic_font = pack.font(1) catch return false;
     instance.initSlices(mincho_font, gothic_font) catch return false;
+    owner.lessons.initInPlace();
+    if (pack.learningBytes() catch return false) |data| owner.lessons.bind(data) catch return false;
     return true;
 }
+pub export fn nih_xy_render_learning(bytes: [*]u8) callconv(.c) *learning.Session {
+    const owner: *Workspace = @ptrCast(@alignCast(bytes));
+    return &owner.lessons;
+}
 pub export fn nih_xy_render(request: *const protocol.Request) callconv(.c) bool {
-    const instance: *reading.Session = @ptrCast(@alignCast(request.workspace));
+    const owner: *Workspace = @ptrCast(@alignCast(request.workspace));
+    const instance = &owner.renderer;
     if (request.navigation) |nav| {
         const pack = readingPack() catch return false;
         reading.render(instance, request, pack) catch |err| {

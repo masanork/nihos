@@ -11,6 +11,10 @@ pub const Pack = struct {
         const pack = Pack{ .bytes = bytes, .count = count };
         _ = try pack.slice(read(bytes, 24), read(bytes, 28));
         _ = try pack.slice(read(bytes, 32), read(bytes, 36));
+        const learning_offset = read(bytes, 40);
+        const learning_length = read(bytes, 44);
+        if ((learning_offset == 0) != (learning_length == 0)) return error.Range;
+        if (learning_length != 0) _ = try pack.slice(learning_offset, learning_length);
         for (0..count) |i| _ = try pack.entry(@intCast(i));
         return pack;
     }
@@ -21,6 +25,12 @@ pub const Pack = struct {
     pub fn font(self: Pack, style: u1) Error![]const u8 {
         const at: usize = 24 + @as(usize, style) * 8;
         return self.slice(read(self.bytes, at), read(self.bytes, at + 4));
+    }
+    /// Optional appended learning data; legacy reading-only packs have no table.
+    pub fn learningBytes(self: Pack) Error!?[]const u8 {
+        const len = read(self.bytes, 44);
+        if (len == 0) return null;
+        return try self.slice(read(self.bytes, 40), len);
     }
     pub fn entry(self: Pack, index: u32) Error!Entry {
         if (index >= self.count) return error.Range;
@@ -59,5 +69,19 @@ test "ROM catalogue rejects truncated headers and out of bounds references" {
     for ([_]struct { at: usize, value: u32 }{ .{ .at = 8, .value = 1 }, .{ .at = 12, .value = 100 }, .{ .at = 16, .value = 1 }, .{ .at = 20, .value = 64 } }) |v| std.mem.writeInt(u32, bytes[v.at..][0..4], v.value, .little);
     _ = try Pack.init(&bytes);
     std.mem.writeInt(u32, bytes[68..72], 101, .little);
+    try std.testing.expectError(error.Range, Pack.init(&bytes));
+}
+
+test "optional learning bytes preserve legacy packs and reject partial ranges" {
+    var bytes: [132]u8 = @splat(0);
+    @memcpy(bytes[0..8], "XYREAD01");
+    for ([_]struct { at: usize, value: u32 }{ .{ .at = 8, .value = 1 }, .{ .at = 12, .value = bytes.len }, .{ .at = 16, .value = 1 }, .{ .at = 20, .value = 64 } }) |v| std.mem.writeInt(u32, bytes[v.at..][0..4], v.value, .little);
+    try std.testing.expect((try (try Pack.init(&bytes)).learningBytes()) == null);
+    std.mem.writeInt(u32, bytes[40..44], 100, .little);
+    try std.testing.expectError(error.Range, Pack.init(&bytes));
+    std.mem.writeInt(u32, bytes[44..48], 32, .little);
+    const learning = (try (try Pack.init(&bytes)).learningBytes()).?;
+    try std.testing.expectEqualSlices(u8, bytes[100..132], learning);
+    std.mem.writeInt(u32, bytes[44..48], 33, .little);
     try std.testing.expectError(error.Range, Pack.init(&bytes));
 }
