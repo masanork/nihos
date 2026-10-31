@@ -1,4 +1,17 @@
 //! Build a read-only boot snapshot. Input transport and glyph files are separate.
+pub const ui_section = if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata";
+const input_name_0 linksection(ui_section) = "serial".*;
+const input_name_1 linksection(ui_section) = "keyboard".*;
+const input_name_2 linksection(ui_section) = "keyboard+serial".*;
+const input_name_3 linksection(ui_section) = "serial+touch".*;
+const input_name_4 linksection(ui_section) = "keyboard+serial+touch".*;
+const input_name_5 linksection(ui_section) = "available".*;
+const header_title linksection(ui_section) = "nihos / boot diagnostic snapshot".*;
+const header_failed linksection(ui_section) = " [FAILED]".*;
+const header_last linksection(ui_section) = "\nlast: ".*;
+const header_active linksection(ui_section) = "   active: ".*;
+const header_input linksection(ui_section) = "   input: ".*;
+const input_uninitialized linksection(ui_section) = "not initialized".*;
 const stages = @import("../diagnostics/boot_state.zig");
 pub const header_rows = 7;
 pub noinline fn fill(grid: anytype, model: *const stages.Model, spans: [2][]const u8, dropped: u64) void {
@@ -26,20 +39,20 @@ pub noinline fn refreshHeader(grid: anytype, model: *const stages.Model, dropped
     grid.x = 0;
     grid.y = 0;
     grid.wrap_pending = false;
-    grid.write("nihos / boot diagnostic snapshot");
-    if (model.failure_latched) grid.write(" [FAILED]");
-    grid.write("\nlast: ");
+    grid.write(&header_title);
+    if (model.failure_latched) grid.write(&header_failed);
+    grid.write(&header_last);
     grid.write(if (model.last_complete) |stage| @tagName(stage) else "none");
-    grid.write("   active: ");
+    grid.write(&header_active);
     grid.write(if (model.active) |stage| @tagName(stage) else "none");
-    grid.write("   input: ");
-    grid.write(if (!model.input_available) "not initialized" else switch (model.input_sources) {
-        1 => "serial",
-        2 => "keyboard",
-        3 => "keyboard+serial",
-        17 => "serial+touch",
-        19 => "keyboard+serial+touch",
-        else => "available",
+    grid.write(&header_input);
+    grid.write(if (!model.input_available) &input_uninitialized else switch (model.input_sources) {
+        1 => &input_name_0,
+        2 => &input_name_1,
+        3 => &input_name_2,
+        17 => &input_name_3,
+        19 => &input_name_4,
+        else => &input_name_5,
     });
     if (model.atSafeCheckpoint()) grid.write(" [PAUSED]");
     grid.write("\n");

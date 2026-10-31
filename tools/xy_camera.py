@@ -92,6 +92,9 @@ def capture(port, output):
             return result
         wait(lambda value: value.startswith(b'NIHOS_NATIVE_XY_READY '))
         wait(lambda value: value.startswith(b'NIHOS_NATIVE_XY_STATE ') and state['mode'] == 0)
+        # Normal xy now starts at Home; enter the RAM document before typing.
+        port.write(b'n'); port.flush()
+        wait(lambda value: value.startswith(b'NIHOS_NATIVE_XY_READER ') and b'screen=00000000' in value)
         port.write(notes); port.flush()
         wait(lambda value: value.startswith(b'NIHOS_NATIVE_XY_STATE ') and state['bytes'] == len(notes))
         # The previous fixture auto-started at ten seconds. This profile stays
