@@ -188,8 +188,7 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
-              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead',
-              'startBudget', 'applyApp'}
+              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead'}
 XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead'}
 
 
@@ -236,20 +235,6 @@ def audit_xy_functions(functions, span):
     require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(ranges, ranges[1:])) and 0 <= end - selected[-1][1] <= 16, 'unaccounted xy code bytes')
     require(any('Runtime.evaluate' in n for _, _, n in selected) and any('Runtime.collect' in n for _, _, n in selected), 'incomplete xy evaluator')
     return {n: {'start': hex(a), 'end': hex(b)} for a, b, n in selected}
-
-
-def audit_xy_plot_table(symbols, sizes, ro_start, ro_data, resident_rodata, required=False):
-    names = [name for name in ('xy.plot_config.sine', 'plot_config.sine') if name in symbols]
-    if not required and not names:
-        return None
-    require(len(names) == 1, 'missing or competing xy sine table storage')
-    name = names[0]
-    start, size = symbols[name], sizes.get(name)
-    require(size == 512 and start % 2 == 0 and ro_start <= start <= ro_start + len(ro_data) - 512,
-            'xy sine table outside declared readonly Flash storage')
-    table = ro_data[start - ro_start:start - ro_start + size]
-    require(table not in resident_rodata, 'xy sine table has an anonymous SRAM copy')
-    return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
 
 
 def audit_service_sram(symbols, high, allocated):
@@ -718,7 +703,6 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         return table[offset:end].decode("ascii")
 
     allocated = []
-    resident_rodata = b''
     symbols = {}
     symbol_sizes = {}
     functions = []
@@ -782,8 +766,6 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             if in_high:
                 audit_high_section(name, section_type, flags, address, size, profile)
             in_sram = low <= address and address + size <= high
-            if in_sram and name == '.rodata':
-                resident_rodata = elf[offset:offset + size]
             in_ui = name in UI_POOLS
             if in_ui:
                 audit_ui_pool(name, section_type, flags, address, size, allow_ui)
@@ -1066,15 +1048,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_span = (xy_start, xy_start + len(xy_code))
         require(xy_ro == (xy_span[1] + 15) & ~15 and symbols.get('__flash_xy_start') == xy_start and symbols.get('__flash_xy_text_end') == xy_span[1] and symbols.get('__flash_xy_rodata_start') == xy_ro and symbols.get('__flash_xy_end') == xy_ro + len(xy_data), 'xy linker symbols differ')
         xy_functions = audit_xy_functions(functions, xy_span)
-        plot_table = audit_xy_plot_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
-                                         any(name.endswith('Runtime.applyApp') for name in xy_functions))
         base = fs_payload if allow_fs else flash_tables + bytes((-len(flash_tables)) % 4)
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
         xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 524288 if 'nih_xy_render' in xy_functions else 0}
-        if plot_table is not None:
-            xy_report['plot_table'] = plot_table
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
