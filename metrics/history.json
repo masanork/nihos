@@ -1513,14 +1513,14 @@
   {
     "schemaVersion": 1,
     "date": "2026-10-31",
-    "measuredAt": "2026-10-31T03:26:17.385055+00:00",
+    "measuredAt": "2026-10-31T05:40:20.364258+00:00",
     "project": "nihos",
-    "commit": "35ab9fa1e1aaca19dc4815da7f28caa6a7991c85",
+    "commit": "de76df02bac29b4e5402211a9ef11f979e115141",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "b0d658d17d99aec2ad8889591839db167c97d67110373eafeed33797afb00f98",
+    "sourceTreeSha256": "b5830a81099617cc4af36828bb00832fa6c1d519200291a34adc665f570fd1b4",
     "code": {
-      "implementation": 56739,
-      "tests": 29026,
+      "implementation": 56777,
+      "tests": 29054,
       "tooling": 18405,
       "probes": 9156,
       "vendored": 723,
@@ -1528,8 +1528,8 @@
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 50273,
-        "tests": 21836,
+        "implementation": 50311,
+        "tests": 21864,
         "tooling": 882,
         "probes": 1237,
         "vendored": 0,
@@ -1626,8 +1626,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 55202,
-        "tests": 21962,
+        "implementation": 55240,
+        "tests": 21990,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -1781,7 +1781,7 @@
         "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
         "src/graphics/ascii_console.zig": "c94adc6ed19b3740d91b73153e3120e9903859d7a8988842929a03907cd5c80c",
         "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
-        "src/graphics/boot_graphics.zig": "eada9f356412c09f2c37d99fb65e8735e9566ec890f2553f282fc5d5e952ba86",
+        "src/graphics/boot_graphics.zig": "e50fa8c720db0c4c797f8af9e6b0d5593504721179c51754a6e4aeb46b27aaae",
         "src/graphics/canvas.zig": "0a1b02139ed579c42a4978902c8722d4ec4e639fc7a1f5ad0476ad061aef8b62",
         "src/graphics/canvas_compile_probe.zig": "800c462939b4afb1c19693ac39aab443e9de8255557765a74d90d69c2c5d2909",
         "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
@@ -1890,7 +1890,7 @@
         "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
         "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
         "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
-        "src/platform/native/diagnostic_ui.zig": "387bf207d980c2e8ca4650cced211b2c3a264946100f229e775d9d78c2130476",
+        "src/platform/native/diagnostic_ui.zig": "bc5fcf4721ca1d662f2540062ab99015f8c5eb749be03d2263b5aa3b59762e2a",
         "src/platform/native/display_probe.zig": "3385df69e5e477732cc13dda0d8f56c6bf24c0a818e4e04aef0f9e0be4629049",
         "src/platform/native/display_runtime.zig": "e1276574c1591e022dc2c037b35a23ef40d612adf2f53501ae0b597bd883c35d",
         "src/platform/native/display_service.zig": "5cca357d10533650d7530a214dcf2cf64ac0021f2e5640a7289ad22affea0d5b",
@@ -2019,9 +2019,9 @@
         "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7"
       },
       "lines": {
-        "covered": 12243,
-        "count": 12655,
-        "percent": 96.74436981430264
+        "covered": 12260,
+        "count": 12672,
+        "percent": 96.74873737373737
       },
       "files": {
         "src/arch/riscv32/context.zig": {
@@ -2221,8 +2221,8 @@
           "count": 161
         },
         "src/graphics/boot_graphics.zig": {
-          "covered": 62,
-          "count": 62
+          "covered": 79,
+          "count": 79
         },
         "src/graphics/canvas.zig": {
           "covered": 90,
