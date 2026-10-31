@@ -1,5 +1,6 @@
 //! Internal borrowed render request. No ownership crosses the C boundary.
 pub const Config = @import("view_config").Config;
+pub const RubySpan = @import("document.zig").RubySpan;
 pub const Request = extern struct {
     workspace: *anyopaque,
     frame: [*]u8,
@@ -11,4 +12,8 @@ pub const Request = extern struct {
     status: [*]const u8,
     status_length: usize,
     show_cursor: u32,
+    ruby_text: [*]const u8 = "",
+    ruby_text_length: usize = 0,
+    ruby_spans: ?[*]const RubySpan = null,
+    ruby_count: usize = 0,
 };

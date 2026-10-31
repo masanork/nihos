@@ -187,6 +187,67 @@ class WorkspaceTest(unittest.TestCase):
         self.vm.xy_host_init.restype = c.c_bool
         self.assertTrue(self.vm.xy_host_init(mincho, 3 if external else 0, gothic, 3 if external else 0))
 
+    def test_dictionary_callback_and_active_ime_survive_workspace_restart(self):
+        self.init_real_fonts()
+        callback_type = c.CFUNCTYPE(None, c.c_void_p, c.c_uint8, c.c_uint8, c.c_void_p, c.c_uint32)
+        queries = []
+        self.vm.xy_host_add_candidate.argtypes = [c.c_char_p, c.c_uint32, c.c_char_p, c.c_uint32]
+        self.vm.xy_host_add_candidate.restype = c.c_bool
+        def query(context, kind, prefix, key, length):
+            queries.append((prefix, c.string_at(key, length)))
+            for candidate in [b'alpha', b'beta']:
+                self.assertTrue(self.vm.xy_host_add_candidate(candidate, len(candidate), b'test', 4))
+        callback = callback_type(query)
+        self.vm.xy_host_set_omni_callback.argtypes = [c.c_void_p, callback_type]
+        self.vm.xy_host_set_omni_callback(None, callback)
+        self.addCleanup(self.vm.xy_host_set_omni_callback, None, callback_type())
+        self.assertTrue(self.vm.xy_host_live_init())
+        self.vm.xy_host_handle_key.argtypes = [c.c_uint8]
+        self.vm.xy_host_handle_key.restype = c.c_bool
+        self.vm.xy_host_set_status.argtypes = [c.c_char_p, c.c_uint32]
+        self.vm.xy_host_set_status.restype = c.c_bool
+        self.vm.xy_host_render_rgb565.argtypes = [c.c_void_p, c.c_uint32, c.c_uint32, c.c_uint32, c.c_uint8]
+        def status_pixels(notice):
+            self.assertTrue(self.vm.xy_host_set_status(notice, len(notice)))
+            pixels = c.create_string_buffer(960 * 540 * 2)
+            self.assertGreaterEqual(self.vm.xy_host_render_rgb565(pixels, 960, 540, 1920, 0), 0)
+            return pixels.raw[960 * 480 * 2:]
+        self.assertNotEqual(status_pixels(b'NOTICE A'), status_pixels(b'NOTICE B'))
+        for key in b';?test':
+            self.assertTrue(self.vm.xy_host_handle_key(key))
+        self.assertEqual(status_pixels(b'NOTICE A'), status_pixels(b'NOTICE B'))
+        self.assertTrue(self.vm.xy_host_handle_key(ord(' ')))
+        self.assertEqual(queries, [(ord('?'), b'test')])
+        first = status_pixels(b'NOTICE A')
+        self.assertEqual(first, status_pixels(b'NOTICE B'))
+        self.assertTrue(self.vm.xy_host_handle_key(ord(' ')))
+        self.assertNotEqual(first, status_pixels(b'NOTICE B'))
+        self.assertTrue(self.vm.xy_host_handle_key(13))
+        output = c.create_string_buffer(64)
+        n = self.vm.xy_host_buffer_copy(output, 64)
+        self.assertEqual(output.raw[:n], b'beta')
+        self.assertNotEqual(status_pixels(b'NOTICE A'), status_pixels(b'NOTICE B'))
+
+    def test_ruby_survives_cursor_following_viewport(self):
+        self.init_real_fonts()
+        self.vm.xy_host_eval.argtypes = [c.c_char_p, c.c_uint32, c.c_void_p, c.c_uint32]
+        output = c.create_string_buffer(256)
+        def evaluate(expr):
+            self.assertGreater(self.vm.xy_host_eval(expr, len(expr), output, 256), 0)
+        text = b'A' * 500 + '日本語'.encode()
+        evaluate(b'(buffer/insert! "' + text + b'")')
+        self.vm.xy_host_render_rgb565.argtypes = [c.c_void_p, c.c_uint32, c.c_uint32, c.c_uint32, c.c_uint8]
+        def render():
+            pixels = c.create_string_buffer(1280 * 720 * 2)
+            result = self.vm.xy_host_render_rgb565(pixels, 1280, 720, 2560, 0)
+            error = c.create_string_buffer(128)
+            self.vm.xy_host_render_error(error, 128)
+            self.assertGreater(result, 0, error.value)
+            return pixels.raw
+        without = render()
+        evaluate('(buffer/add-ruby! 500 509 "にほんご")'.encode())
+        self.assertNotEqual(without, render())
+
     def test_real_font_render_of_restored_command_and_source(self):
         self.init_real_fonts()
         # Same sequence as Mac startup: loading the workspace resets defaults.
