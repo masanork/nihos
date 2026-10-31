@@ -11,7 +11,7 @@
     "transfer_helpers": 0
   },
   "entry": "0x4ff00000",
-  "elf_sha256": "1f71e95d076d0b9f2ea35028ba9d464e9ab01b749094bfb3fc15940c661a2555",
+  "elf_sha256": "96a20fbe7b2bfc6d5b02d98cb44b65f475af575dcbd9ed996bc16150063043de",
   "memory": {
     "profile": "device",
     "origin": "0x4ff00000",
@@ -264,13 +264,13 @@
       0,
       1
     ],
-    "manifest_sha256": "1ff9618c8a79e370deed358689a14c23f0f83a4db84fa73c930d1e3cbbad69e4",
+    "manifest_sha256": "91fa9e5d73afe6f6cc54f992bdfee64eff5f659112739f1e9d271bf91b1ed168",
     "text_start": "0x40020000",
     "text_bytes": 42368,
     "text_sha256": "f2fba15a4a2471f3bef8012ee8755059f8cd48cf194e9cd895237048df295940",
     "rodata_start": "0x4002a580",
     "rodata_bytes": 20408,
-    "rodata_sha256": "23d26137558aed6ecad476b19fc0bf786b51be28e234fdbf04e4268a1b64f152",
+    "rodata_sha256": "529a661d8fb9c1ebebc37e799fd3d0cb7bd1774e8e4c65eb3a369ba804aa0d0b",
     "parent_bytes": 65536,
     "worker_stack_bytes": 4096,
     "foreground_only": true,
@@ -947,7 +947,7 @@
     "writable": false,
     "executable": true
   },
-  "image_sha256": "98059299ff91ca9d8fbed45491fc0fbb381fc0e4afb5583798c600ff9244ba1e",
+  "image_sha256": "cfd5f1cdff3646cb5bf442e09f53b9961024a4507acadcd6a71e78344d3415b7",
   "image_bytes": 812800,
   "image_segments": [
     {
