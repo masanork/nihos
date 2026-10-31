@@ -242,3 +242,11 @@ revision = "Untracked local user/scheme working files inspected 2026-10-31; sche
 license = "Not stated in inspected working files; design reference only"
 status = "design-reference-only"
 use = "Referenced lexical closure lifetime, between-request GC, bounded evaluation and editor command workflow. No MeOS source files or libraries imported; nihos has its own integer Zig runtime, shared Document bindings and serial/HID adapter. The referenced working files are not attributed to the tracked upstream revision."
+
+[[source]]
+name = "nihos bounded Scheme editor runtime"
+url = "https://github.com/masanork/nihos/blob/7767c8c8e2d41e0030be33f81b502d0851c959bb/src/xy/scheme_runtime.zig"
+revision = "7767c8c8e2d41e0030be33f81b502d0851c959bb"
+license = "same-project; see LICENSE"
+status = "reused-local-implementation"
+use = "scheme_runtime.zig is reused unchanged from the existing Scheme development branch; Mac live_workspace adds staging and transactional document/VM rollback rather than creating another interpreter"
