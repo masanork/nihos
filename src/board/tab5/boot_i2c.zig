@@ -110,7 +110,7 @@ pub fn Master(comptime Pins: type) type {
         }
 
         fn pause(self: *Self) Error!void {
-            if (!self.pins.delay(5)) return error.Timer;
+            if (!self.pins.delay(2)) return error.Timer;
         }
         fn highClock(self: *Self) Error!void {
             self.pins.release(self.clock_pin, true);

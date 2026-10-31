@@ -9,6 +9,12 @@ pub const Decoder = struct {
     wanted: usize = 12,
     poisoned: bool = false,
     unchecked: u32 = 0,
+    pub fn reset(self: *Decoder) void {
+        self.used = 0;
+        self.wanted = 12;
+        self.poisoned = false;
+        self.unchecked = 0;
+    }
     /// Borrowed frame remains valid only until the next push.
     pub fn push(self: *Decoder, byte: u8) Error!?Frame {
         if (self.poisoned) return error.Malformed;

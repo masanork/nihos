@@ -23,7 +23,7 @@ pub const Driver = struct {
     pub fn poll(self: *Driver, bus: anytype) void {
         switch (self.state) {
             .writing => {
-                const entry = table.entries[self.index];
+                const entry = (&table.entries)[self.index];
                 bus.transfer(address, &.{ @truncate(entry.address >> 8), @truncate(entry.address), entry.value }, &.{}) catch {
                     self.state = .failed;
                     self.fault = .transport;
