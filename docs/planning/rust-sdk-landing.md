@@ -14,7 +14,7 @@ display-owner physical check; they do not qualify a later integrated image.
 
 The isolated integration branch is `codex/rust-sdk-integration-20261030`, based
 on main `3d21dcb1b798c745c084cb9d1d74fddbd231747f`, and reconciled through
-`980f522a3575c3922b956bf97f46a228b557070d`. It retains main's camera
+`1c7935aa2e50e28ba1d484d700957fa1782bdc13`. It retains main's camera
 overlay, storage, PMP, graphics and xy changes. Review units, in dependency
 order, are:
 
@@ -112,6 +112,10 @@ The normal UI backend selector and physical presenter remain open.
    close and reap before releasing the pin. It exercises foreground polling,
    not the actual camera/network service loop. Initial frame rendering and
    ordinary session shutdown remain synchronous.
+   If the worker exits before acknowledging close, polling now reaps it and
+   reports an error instead of waiting indefinitely. Startup failures retain
+   their original status across repeated polls. These paths have headless RV32
+   fault-injection coverage; the normal UI backend remains unconnected.
    Both hart timers continue during the tested requests and cooperative shutdown.
    See the [request latency measurement](../measurements/2026-10-31-wasm-session-latency.md).
 2. **Runtime decision and candidate profile.** Resolve the WAMR alignment
