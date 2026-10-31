@@ -1595,7 +1595,7 @@ fn normalReady() noreturn {
     if (normal_storage) normal_fs.begin(storageClient());
     if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").start()) fail("Wasm task start");
     if (options.wasm_session_test) {
-        if (!@import("wasm_session_fixture.zig").asyncProbe()) fail("Wasm async startup");
+        if (!@import("wasm_session_fixture.zig").asyncProbe(&logger)) fail("Wasm async startup");
         const async_report: extern struct { turns: u32, begin_us: u32 } = .{
             .turns = @import("wasm_session_fixture.zig").async_turns,
             .begin_us = @import("wasm_session_fixture.zig").async_begin_us,

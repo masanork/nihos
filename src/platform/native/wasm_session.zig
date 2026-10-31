@@ -288,3 +288,24 @@ pub fn frames() u32 {
 pub fn setFault(value: u32) void {
     fault = value;
 }
+
+// Internal bridge between the display owner module and the single worker.
+export fn nih_wasm_ui_begin(callback: *const fn ([*]const u8, u32) callconv(.c) i32) callconv(.c) i32 {
+    return beginAsync(callback);
+}
+export fn nih_wasm_ui_poll(status: *i32) callconv(.c) bool {
+    status.* = pollAsync() orelse return false;
+    return true;
+}
+export fn nih_wasm_ui_cancel_open() callconv(.c) bool {
+    return cancelAsync();
+}
+export fn nih_wasm_ui_cancel() callconv(.c) i32 {
+    return cancel();
+}
+export fn nih_wasm_ui_input(byte: u32) callconv(.c) i32 {
+    return input(byte);
+}
+export fn nih_wasm_ui_active() callconv(.c) bool {
+    return active();
+}

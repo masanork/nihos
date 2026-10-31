@@ -17,6 +17,117 @@ const Pins = @import("display_probe.zig").Pins;
 const runtime = @import("display_runtime.zig");
 const clock = @import("diagnostic_clock.zig");
 pub const rust_session = @import("rust_session.zig");
+const wasm_control = @import("wasm_ui_controller");
+extern fn nih_wasm_ui_begin(*const fn ([*]const u8, u32) callconv(.c) i32) callconv(.c) i32;
+extern fn nih_wasm_ui_poll(*i32) callconv(.c) bool;
+extern fn nih_wasm_ui_cancel_open() callconv(.c) bool;
+extern fn nih_wasm_ui_cancel() callconv(.c) i32;
+extern fn nih_wasm_ui_input(u32) callconv(.c) i32;
+extern fn nih_wasm_ui_active() callconv(.c) bool;
+const WasmBackend = struct {
+    pub fn beginAsync(callback: *const fn ([*]const u8, u32) callconv(.c) i32) i32 {
+        return nih_wasm_ui_begin(callback);
+    }
+    pub fn pollAsync() ?i32 {
+        var reply: i32 = 0;
+        return if (nih_wasm_ui_poll(&reply)) reply else null;
+    }
+    pub fn cancelAsync() bool {
+        return nih_wasm_ui_cancel_open();
+    }
+    pub fn cancel() i32 {
+        return nih_wasm_ui_cancel();
+    }
+    pub fn input(byte: u32) i32 {
+        return nih_wasm_ui_input(byte);
+    }
+    pub fn active() bool {
+        return nih_wasm_ui_active();
+    }
+};
+var wasm_ui: if (options.wasm_session_test) wasm_control.Controller(WasmBackend) else void = if (options.wasm_session_test) .{} else {};
+var fixture_presenter: if (options.wasm_session_test) ?*const fn ([*]const u8, u32) callconv(.c) i32 else void = if (options.wasm_session_test) null else {};
+var fixture_repaints: if (options.wasm_session_test) u32 else void = if (options.wasm_session_test) 0 else {};
+
+pub fn wasmFixtureSetPresenter(callback: *const fn ([*]const u8, u32) callconv(.c) i32) void {
+    if (comptime options.wasm_session_test) fixture_presenter = callback;
+}
+pub fn wasmFixtureRepaints() u32 {
+    if (comptime !options.wasm_session_test) return 0;
+    return fixture_repaints;
+}
+pub fn wasmFixtureClearDirty() void {
+    if (comptime options.wasm_session_test) @atomicStore(u32, &dirty, 0, .release);
+}
+pub fn wasmFixtureDirty() bool {
+    if (comptime !options.wasm_session_test) return false;
+    return @atomicLoad(u32, &dirty, .acquire) != 0;
+}
+pub fn wasmFixtureCameraStart() bool {
+    if (comptime !options.wasm_session_test) return false;
+    return camera_live.start();
+}
+pub fn wasmFixtureCameraReset() void {
+    if (comptime options.wasm_session_test) camera_live.end();
+}
+pub fn wasmFixtureCameraIdle() bool {
+    if (comptime !options.wasm_session_test) return false;
+    return camera_live.state == .idle;
+}
+
+pub fn wasmFixtureStart(camera_idle: bool, display_available: bool, callback: *const fn ([*]const u8, u32) callconv(.c) i32) i32 {
+    if (comptime !options.wasm_session_test) return -5;
+    return wasm_ui.start(camera_idle, display_available, callback);
+}
+pub fn wasmFixtureKey(key: wasm_control.Key) i32 {
+    if (comptime !options.wasm_session_test) return -5;
+    return wasm_ui.key(key);
+}
+pub fn wasmFixtureRoute(key: console.session.input.Key) i32 {
+    const key_event: wasm_control.Key = switch (key) {
+        .text => |byte| .{ .text = byte },
+        .escape, .cancel, .eof => .escape,
+        else => .other,
+    };
+    return wasmFixtureKey(key_event);
+}
+pub fn wasmFixtureService() wasm_control.Update {
+    if (comptime !options.wasm_session_test) return .failed;
+    return wasm_ui.service();
+}
+pub fn wasmFixtureServiceUi() wasm_control.Update {
+    const update = wasmFixtureService();
+    if (update == .started) {
+        session.write(SerialSink{}, "Rust sample | 0/1: state | q or Esc: return.\r\n");
+    } else if ((update == .stopped or update == .failed) and !wasmFixtureReserved()) {
+        session_serial = .{};
+        shown_session_view = null;
+        if (renderer_ready) renderer.invalidate();
+        @atomicStore(u32, &dirty, 1, .release);
+        if (comptime options.wasm_session_test and !options.console_live) fixture_repaints += 1;
+        session.write(SerialSink{}, if (update == .stopped) "Rust sample stopped.\r\n" else "Rust sample failed.\r\n");
+        session.prompt(SerialSink{});
+    }
+    return update;
+}
+pub fn wasmFixtureReserved() bool {
+    if (comptime !options.wasm_session_test) return false;
+    return wasm_ui.reservesDisplay();
+}
+/// Compile the actual key dispatcher in the headless candidate without
+/// touching the hardware-backed UI unless explicitly invoked.
+pub fn wasmFixtureShellStart(log: anytype) bool {
+    if (comptime !options.wasm_session_test) return false;
+    session.* = .{};
+    session.begin(SerialSink{});
+    sessionKey(.escape, log);
+    for ("rust-app") |byte| sessionKey(.{ .text = byte }, log);
+    sessionKey(.enter, log);
+    return wasmFixtureReserved();
+}
+pub fn wasmFixtureShellKey(key: console.session.input.Key, log: anytype) void {
+    if (comptime options.wasm_session_test) sessionKey(key, log);
+}
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 extern fn nih_keyboard_pads_init() callconv(.c) void;
@@ -66,7 +177,8 @@ const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
 const Session = console.session;
 const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
-const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
+var fixture_session: if (options.wasm_session_test) Session.Model else void = if (options.wasm_session_test) .{} else {};
+const session: *Session.Model = if (options.wasm_session_test) &fixture_session else @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
 var camera_overlay: camera_preview.Overlay = .{};
 var camera_live: camera_preview.Live = .{};
 pub fn cameraLiveActive() bool {
@@ -100,6 +212,7 @@ var shown_session_revision: u32 = 0;
 var shown_session_view: ?Session.View = null;
 const SerialSink = struct {
     pub fn write(_: @This(), bytes: []const u8) void {
+        if (comptime options.wasm_session_test and !options.console_live) return;
         for (bytes) |byte| nih_diagnostic_serial_write(byte);
     }
 };
@@ -272,6 +385,7 @@ pub fn cameraPreviewMismatchCount() u32 {
 /// Diagnostic still-image overlay for a ready session. The caller supplies a
 /// stable sampled copy, not a DMA buffer; hardware capture is not wired here.
 pub fn showCameraPreview(pixels: *const [camera_preview.height][camera_preview.width]u8, tone: bool) bool {
+    if (options.wasm_session_test and wasmFixtureReserved()) return false;
     if (options.rust_session and rust_session.active()) return false;
     const refresh = cameraLiveActive() and camera_overlay.state == .visible;
     if (!options.console_live or !session_active or !runtime.active() or rendering or (!camera_overlay.canShow() and !refresh) or runtime.snapshot().fault != 0) return false;
@@ -423,7 +537,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         for (0..8) |_| {
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
-            if (options.rust_session and rust_session.active()) continue;
+            if ((options.rust_session and rust_session.active()) or (options.wasm_session_test and wasmFixtureReserved())) continue;
             if (!available or model.failure_latched or event.at < input_started) continue;
             if (view_button.observe(event, pointer.view_button)) {
                 if (camera_overlay.state == .visible) {
@@ -439,7 +553,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
     for (0..16) |_| {
         const byte = nih_diagnostic_serial_read();
         if (byte < 0) break;
-        if (options.rust_session and rust_session.active()) {
+        if ((options.rust_session and rust_session.active()) or (options.wasm_session_test and wasmFixtureReserved())) {
             if (session_serial.feed(@intCast(byte), now)) |key| sessionKey(key, log);
             continue;
         }
@@ -510,6 +624,19 @@ noinline fn beginSession(log: anytype) linksection(if (options.rust_session) ".f
     @atomicStore(u32, &dirty, 1, .release);
 }
 noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+    if (options.wasm_session_test and wasmFixtureReserved()) {
+        const reply = wasmFixtureRoute(key);
+        if (!wasmFixtureReserved()) {
+            session_serial = .{};
+            shown_session_view = null;
+            if (renderer_ready) renderer.invalidate();
+            @atomicStore(u32, &dirty, 1, .release);
+            if (comptime options.wasm_session_test and !options.console_live) fixture_repaints += 1;
+            session.write(SerialSink{}, if (reply == 0) "Rust sample stopped.\r\n" else "Rust sample failed.\r\n");
+            session.prompt(SerialSink{});
+        }
+        return;
+    }
     if (options.rust_session and rust_session.active()) {
         const result = switch (key) {
             .text => |byte| rust_session.input(byte),
@@ -551,7 +678,11 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
     if (routed.command) |command| {
         switch (command) {
             .rust_app => {
-                if (options.rust_session) {
+                if (options.wasm_session_test) {
+                    const accepted = !rendering and camera_overlay.canShow() and camera_live.state == .idle and nih_app_display_available();
+                    const reply = wasmFixtureStart(accepted, accepted, &presentApp);
+                    session.write(SerialSink{}, if (reply == 0) "Starting Rust sample; q or Esc cancels.\r\n" else "Rust sample unavailable.\r\n");
+                } else if (options.rust_session) {
                     const accepted = !rendering and camera_overlay.canShow() and camera_live.state == .idle and nih_app_display_available();
                     const result = if (accepted) rust_session.start(&presentApp) else -3;
                     if (result != 0 and renderer_ready) renderer.invalidate();
@@ -638,6 +769,10 @@ pub noinline fn service(log: anytype) bool {
     if (observed.fault != 0) return false;
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
+    if (options.wasm_session_test and wasmFixtureReserved()) {
+        _ = wasmFixtureServiceUi();
+        if (wasmFixtureReserved()) return true;
+    }
     if (options.rust_session and rust_session.active()) return true;
     // Input may dismiss an overlay while the next frame is already in DMA.
     // Drain it before a full shell repaint competes for PSRAM/cache bandwidth.
@@ -743,6 +878,9 @@ pub noinline fn service(log: anytype) bool {
 }
 
 fn presentApp(bytes: [*]const u8, len: u32) linksection(".flash.text.rust_app") callconv(.c) i32 {
+    if (comptime options.wasm_session_test and !options.console_live) {
+        return (fixture_presenter orelse return -5)(bytes, len);
+    }
     if (rendering or camera_overlay.state == .visible) return -3;
     rendering = true;
     defer rendering = false;

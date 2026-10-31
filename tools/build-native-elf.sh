@@ -1074,7 +1074,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep app_session --dep app_presenter --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input \
+    --dep wasm_ui_controller --dep app_session --dep app_presenter --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mcamera_preview="$repo_root/src/board/tab5/camera_preview.zig" \
