@@ -1,0 +1,11 @@
+1/10 boot_graphics.test.partial recolour matches the full final frame without repainting other lettering...OK
+2/10 boot_graphics.test.embedded masks are bounded and cover precisely each sprite...OK
+3/10 boot_graphics.test.RGB565 rendering preserves guards and stride padding, rejects overflow...OK
+4/10 boot_graphics.test.colour follows reading order and saturates...OK
+5/10 boot_graphics.test.only the three 丹穂 pairs and state marker acquire colour...OK
+6/10 boot_graphics.test.keyboard landscape mapping rotates asymmetric corners in the MeOS direction...OK
+7/10 boot_graphics.test.landscape partial dye matches full repaint and preserves stride and guards...OK
+8/10 boot_graphics.test.live milestones match full frames without clearing the static splash...OK
+9/10 boot_graphics.test.scanout never observes a third colour during any milestone transition...OK
+10/10 boot_graphics.test.bounded landscape flush spans cover every modified pixel...OK
+All 10 tests passed.

@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "base_commit": "e1cfd0caa2e426c07088c7b33ed77464cbf3d899",
+  "branch": "codex/splash-smooth-boot-20261031",
+  "previous_fix_commit": "e0bd5272c3a920fdf3c889cbbc111d9ea92b9fc1",
+  "previous_fix_main_merge": "de76df02",
+  "original_checkout_head": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "original_checkout_behind": 76,
+  "source_sha256": {
+    "src/graphics/boot_graphics.zig": "b4b824ea33c42c38fbf5caddd56a44a494b8e8ec141000d6f48a2937a24926a7",
+    "src/platform/native/diagnostic_ui.zig": "97ec521fbf90821ee0d13b3f2a1ea04c98c2bcaa5085551a5e910b3a14e41458",
+    "tools/check-native-image.py": "378b93ce438d08156b1b8b2a442162fc86001de6c7ff4d2b25cd280986cdc050"
+  },
+  "checks": {
+    "splash_tests": 10,
+    "intermediate_transition_cases": 98,
+    "negative_control_invalid_pixel_observations": 744,
+    "release_safe_build_steps": "69/69",
+    "release_safe_uncached_tests": "768/768",
+    "initial_release_safe_tests": "1008/1008",
+    "image_audit_tests": 39,
+    "zig_fmt": "passed",
+    "zlint": "0 errors, 0 warnings",
+    "git_diff_check": "passed"
+  },
+  "cache_writeback_bytes": {
+    "previous_step": 1843200,
+    "dye_step": 53120,
+    "milestone": 77824,
+    "milestone_with_controls": 100864
+  },
+  "images": {
+    "normal": {
+      "image_sha256": "b63226cc8864eeb92005c01ae82c911ca045c73d4d0b87a15220e4a7ca9ad795",
+      "image_bytes": 811776,
+      "elf_sha256": "cb03600e6ed78c6ad64b6ababf3ca8ee3006bf918f85941475b04d2ab390774d",
+      "primary_heap_span_bytes": 49728,
+      "minimum_heap_span_bytes": 49152,
+      "audit": "passed",
+      "physical_validation": false,
+      "artifacts": "/private/tmp/nihos-splash-smooth-20261031/build/native-device-network-devices-camera"
+    },
+    "trace": {
+      "image_sha256": "98059299ff91ca9d8fbed45491fc0fbb381fc0e4afb5583798c600ff9244ba1e",
+      "image_bytes": 812800,
+      "elf_sha256": "1f71e95d076d0b9f2ea35028ba9d464e9ab01b749094bfb3fc15940c661a2555",
+      "primary_heap_span_bytes": 49600,
+      "minimum_heap_span_bytes": 49152,
+      "audit": "passed",
+      "physical_validation": false,
+      "artifacts": "/private/tmp/nihos-splash-smooth-20261031/build/native-device-network-devices-camera-xy-trace"
+    }
+  },
+  "physical_device": {
+    "flash_identity_checked": false,
+    "written": false,
+    "reset": false,
+    "optical_confirmation": false,
+    "sd_operations": false
+  },
+  "main_merged": false,
+  "evidence_sha256": {
+    "host-releasesafe.txt": "a452497c94641dfecef3b8f546b354a50a5bbaf34eeba4c2cd595fe07e740ec2",
+    "image-audit-tests.txt": "2153e1e49b96e7325a70005efce7d6bd6dfcf2e99f1a46a0967549c8a07b28f2",
+    "negative-control.txt": "85a7a2a5ed0bebbba147788203971c575139c4d42e3761c67c2310dd83356176",
+    "normal-image-audit.json": "826d459c458266ad3e6f843cd5e6382e432c64dd00d4c84a09aab65ba7f33699",
+    "splash-tests.txt": "09425060e79df3da64269d36e13201adff1cc208459f3c68a0c22f89a8c39adb",
+    "trace-image-audit.json": "a5c44749a43f606b04d3450fffaf5290d3c050777b876c5057318254245791ec"
+  }
+}
