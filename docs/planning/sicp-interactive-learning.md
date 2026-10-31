@@ -306,6 +306,23 @@ VMは正常終了時だけ候補を採用し、エラー・深さ/予算切れ�
 エディタ・ファイル・SQL・カメラのhost機能は渡さない。
 
 nativeでは既存のPSRAM描画リースに学習セッションを含め、固定表示用領域の末尾へ置かない。
-合計ワークスペースは1,646,800 bytes。2MiB上限をコンパイル時にも検査する。
+本文とコードの書体分離後の合計ワークスペースは1,667,376 bytes。2MiB上限をコンパイル時にも検査する。
 実装・ホスト検証・ビルド監査と実機検証を区別した
 [第2段階の記録](../measurements/2026-10-31-sicp-learning-ui.md)を参照。
+
+
+## 12. 本文とソースを読み分ける書体
+
+SICPの英語本文にはCentury Schoolbook L系のTeX Gyre Schola 2.005から作成した
+`nihos Book Serif`、コード・参考出力・文中の`SCHEMEINLINE`にはSource Code Proを使う。
+英文らしさを推測せず、XMLから得たUTF-8範囲をXYLAB001 version 2の追加表へ渡す。
+原文の本文bytes・例題ID・位置は変更しない。version 1も読み出せ、書体情報のない版は従来表示に戻す。
+
+書体の計測と描画で同じ範囲と字幅を使い、cacheの書体IDも分ける。
+SICPだけは不要なルビ領域を確保せず、行間を本文サイズの1/5以内、空行を行送りの1/4にする。
+日本語の本・通常文書・演習バッファの表示設定には反映しない。
+Macは最大900、nativeは最大960文字を候補として、固定1,024 glyphs内へ収まるページを選ぶ。
+描画workspaceの2MiB上限とforeground stackの256KiBは維持する。実機のstack watermarkは未測定。
+
+書体の由来、再生成、比較画像、試験と残る実機条件は
+[書体分離の記録](../measurements/2026-10-31-sicp-book-typography.md)を参照。
