@@ -1,5 +1,6 @@
 //! Same common Session as native; actual WAMR renders on its leased task stack.
 const app = @import("wasm_session.zig");
+const options = @import("native_options");
 const tasks = @import("native_tasks");
 const console = @import("text_console");
 const ui = @import("display_service").ui;
@@ -153,6 +154,10 @@ fn present(bytes: [*]const u8, len: u32) callconv(.c) i32 {
     if (fail_present) return -49;
     if (len != 25600) return -1;
     const pressed = bytes[0] == 0x0c;
+    if (options.wasm_interactive) {
+        const expected = [_]bool{ false, false, true, false };
+        if (presentations >= expected.len or pressed != expected[presentations]) return -51;
+    }
     const ready = [_][8]u8{
         .{ 0x3f, 0x66, 0x66, 0x3e, 0x36, 0x66, 0x67, 0 }, .{ 0, 0, 0x1e, 0x33, 0x3f, 0x03, 0x1e, 0 },
         .{ 0, 0, 0x1e, 0x30, 0x3e, 0x33, 0x6e, 0 },       .{ 0x38, 0x30, 0x30, 0x3e, 0x33, 0x33, 0x6e, 0 },
