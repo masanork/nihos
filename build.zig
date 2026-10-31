@@ -43,6 +43,8 @@ pub fn build(b: *std.Build) void {
     }));
 
     const test_step = b.step("test", "Run host-side nihOS unit tests");
+    const wasm_ui_tests = b.createModule(.{ .root_source_file = b.path("src/app/wasm_ui_controller.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = wasm_ui_tests })).step);
     const async_start_tests = b.createModule(.{ .root_source_file = b.path("src/app/async_start.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = async_start_tests })).step);
     const mailbox_tests = b.createModule(.{ .root_source_file = b.path("src/app/frame_mailbox.zig"), .target = target, .optimize = optimize });

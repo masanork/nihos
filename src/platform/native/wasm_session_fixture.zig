@@ -2,6 +2,7 @@
 const app = @import("wasm_session.zig");
 const tasks = @import("native_tasks");
 const console = @import("text_console");
+const ui = @import("wasm_ui_controller");
 const clock = @import("timer_group").Timer.fromGroup(0x500c2000, 0).?;
 extern fn nih_rom_rx_one_char(*u8) callconv(.c) i32;
 var began: u64 = 0;
@@ -25,6 +26,7 @@ const QuietSink = struct {
     pub fn write(_: QuietSink, _: []const u8) void {}
 };
 var shell: console.session.Model = .{};
+var app_ui: ui.Controller(app) = .{};
 
 fn shellRustCommand() bool {
     shell = .{};
@@ -41,12 +43,14 @@ pub fn asyncProbe() bool {
     const start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
     app.setFault(0);
     if (!shellRustCommand()) return false;
+    app_ui = .{};
+    if (app_ui.start(false, true, &present) != -3 or app_ui.start(true, false, &present) != -3) return false;
     const started = clock.counter() orelse return false;
-    if (app.beginAsync(&present) != 0 or app.start(&present) != -3) return false;
+    if (app_ui.start(true, true, &present) != 0 or !app_ui.reservesDisplay() or app.start(&present) != -3) return false;
     var serial: console.session.input.Serial = .{};
     const key = serial.feed('q', started) orelse return false;
     switch (key) {
-        .text => |byte| if (byte != 'q' or !app.cancelAsync()) return false,
+        .text => |byte| if (byte != 'q' or app_ui.key(.{ .text = byte }) != 0) return false,
         else => return false,
     }
     async_begin_us = @intCast((clock.counter() orelse return false) -| started);
@@ -54,26 +58,24 @@ pub fn asyncProbe() bool {
     var turns: u32 = 0;
     while (true) {
         turns += 1;
-        if (app.pollAsync()) |status| {
-            if (status != 1) return false;
-            break;
-        }
+        const update = app_ui.service();
+        if (update == .stopped) break;
+        if (update != .waiting or !app_ui.reservesDisplay()) return false;
         tasks.idleOnce(0);
     }
-    if (turns < 2 or app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+    if (turns < 2 or app_ui.reservesDisplay() or app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
         (tasks.memory.reusable.localUsage() orelse return false).free != before or
         tasks.report(0).ticks == start_ticks[0] or tasks.report(1).ticks == start_ticks[1]) return false;
     async_turns = turns;
-    if (app.beginAsync(&present) != 0) return false;
+    if (app_ui.start(true, true, &present) != 0) return false;
     while (true) {
-        if (app.pollAsync()) |status| {
-            if (status != 0 or !app.active()) return false;
-            break;
-        }
+        const update = app_ui.service();
+        if (update == .started) break;
+        if (update != .waiting or !app_ui.reservesDisplay()) return false;
         tasks.idleOnce(0);
     }
-    if (app.input('0') != 0 or app.input('1') != 0 or app.input('0') != 0 or app.frames() != 4) return false;
-    if (app.cancel() != 0 or app.active() or
+    if (app_ui.key(.{ .text = '0' }) != 0 or app_ui.key(.{ .text = '1' }) != 0 or app_ui.key(.{ .text = '0' }) != 0 or app.frames() != 4) return false;
+    if (app_ui.key(.escape) != 0 or app_ui.reservesDisplay() or app.active() or
         (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
     app.setFault(1);
     if (app.beginAsync(&present) != 0) return false;
