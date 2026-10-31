@@ -1533,6 +1533,7 @@ fn normalReady() noreturn {
     if (options.console_live) {
         ui.report(&logger);
         ui.liveReport(&logger, true);
+        if (options.camera_jpeg) ui.bindCamera(&@import("camera_jpeg.zig").provider);
         if (!ui.startSession(&logger)) fail("launcher startup");
     }
     if (options.boot_test != 0) {

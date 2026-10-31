@@ -9,6 +9,7 @@ pub const document = @import("document.zig");
 // host targets retain their ordinary read-only segment.
 pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
+pub const camera = @import("camera.zig");
 pub const system = @import("system_buffer.zig");
 pub const Mode = enum { edit, command, help, system };
 pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_result, scheme_error, command_full, read_only };
@@ -20,6 +21,7 @@ const default_commands linksection(scheme.data_section) = ("(command/register! \
     "(command/register! \"forget-undo\" (lambda () (buffer/forget-undo!)))").*;
 
 pub const Model = struct {
+    camera: camera.Client,
     doc: Doc,
     vm: scheme.Runtime,
     reply: [128]u8,
@@ -178,6 +180,15 @@ pub const Model = struct {
         };
         self.reply_length = reply.len;
         self.status = .scheme_result;
+    }
+    pub fn cameraCapture(self: *Model) linksection(scheme.code_section) scheme.Error!i32 {
+        return self.camera.capture();
+    }
+    pub fn cameraInfo(self: *Model, camera_handle: i32) linksection(scheme.code_section) scheme.Error!camera.Info {
+        return self.camera.info(camera_handle);
+    }
+    pub fn cameraRead(self: *Model, camera_handle: i32, offset: u32, output: []u8) linksection(scheme.code_section) scheme.Error!void {
+        return self.camera.read(camera_handle, offset, output);
     }
     pub fn schemeCall(self: *Model, op: scheme.EditorOp, text: []const u8, number: i32) linksection(scheme.code_section) scheme.Error!void {
         if (self.mode == .system and (op == .insert or op == .move or op == .undo or op == .forget)) return error.EditorFailure;
@@ -516,4 +527,60 @@ test "eval buffer parses before self-edit and truncated commands never execute" 
     for ("葛\u{e0100}") |byte| model.feedSerial(byte, 0);
     model.handle(.backspace);
     try std.testing.expectEqual(@as(usize, 0), model.command_length);
+}
+
+test "camera handle reads are bounded copies and do not edit the document" {
+    const Fake = struct {
+        var state: camera.State = .pending;
+        var issued = false;
+        const payload = [_]u8{ 0xff, 0xd8, 0, 0x80, 0xff, 0xd9 };
+        fn capture() camera.Error!i32 {
+            if (issued) return error.CameraBusy;
+            issued = true;
+            return 7;
+        }
+        fn info(camera_handle: i32) camera.Error!camera.Info {
+            if (!issued or camera_handle != 7) return error.InvalidCameraHandle;
+            return .{ .state = state, .bytes = if (state == .ready) payload.len else 0 };
+        }
+        fn read(_: i32, offset: u32, output: []u8) camera.Error!void {
+            @memcpy(output, payload[offset..][0..output.len]);
+        }
+    };
+    Fake.state = .pending;
+    Fake.issued = false;
+    const provider = camera.Provider{ .capture = Fake.capture, .info = Fake.info, .read = Fake.read };
+    // SAFETY: initialization fills all metadata and VM cells before use.
+    var model: Model = undefined;
+    model.initInPlace();
+    model.insert("notes");
+    model.evaluate("(camera/capture!)", false);
+    try std.testing.expectEqual(Status.scheme_error, model.status);
+    try std.testing.expectEqualStrings("Camera unavailable", model.reply[0..model.reply_length]);
+    model.camera.provider = &provider;
+    var output: [128]u8 = @splat(0);
+    try std.testing.expectEqualStrings("7", try model.vm.evaluate("(define image (camera/capture!)) image", &model, &output));
+    try std.testing.expectEqualStrings("(pending 1280 720 0)", try model.vm.evaluate("(camera/info image)", &model, &output));
+    try std.testing.expectError(error.CameraBusy, model.vm.evaluate("(camera/capture!)", &model, &output));
+    try std.testing.expectError(error.CameraBusy, model.vm.evaluate("(camera/read image 0 1)", &model, &output));
+    try std.testing.expectError(error.InvalidCameraHandle, model.vm.evaluate("(camera/info 8)", &model, &output));
+    Fake.state = .ready;
+    try std.testing.expectEqualStrings("(ready 1280 720 6)", try model.vm.evaluate("(camera/info image)", &model, &output));
+    try std.testing.expectEqualStrings("\"ffd80080ffd9\"", try model.vm.evaluate("(camera/read image 0 6)", &model, &output));
+    try std.testing.expectEqualStrings("\"\"", try model.vm.evaluate("(camera/read image 6 0)", &model, &output));
+    for ([_][]const u8{ "(camera/read image -1 1)", "(camera/read image 0 -1)", "(camera/read image 0 33)", "(camera/read image 6 1)", "(camera/read image 2147483647 1)" }) |source| {
+        try std.testing.expectError(error.InvalidCameraRange, model.vm.evaluate(source, &model, &output));
+    }
+    try std.testing.expectError(error.InvalidCameraHandle, model.vm.evaluate("(camera/read 0 0 1)", &model, &output));
+    try std.testing.expectError(error.Arity, model.vm.evaluate("(camera/capture! 1)", &model, &output));
+    try std.testing.expectError(error.Type, model.vm.evaluate("(camera/read image \"0\" 1)", &model, &output));
+    // View configuration and camera access share the rebased builtin table.
+    try std.testing.expectEqualStrings("2", try model.vm.evaluate("(view/set! #:size 36 #:foreground #x234567)", &model, &output));
+    try std.testing.expectEqualStrings("\"ffd8\"", try model.vm.evaluate("(camera/read image 0 2)", &model, &output));
+    try std.testing.expectEqualStrings("36", try model.vm.evaluate("(view/get #:size)", &model, &output));
+    model.resetScheme();
+    try std.testing.expectEqualStrings("\"ffd8\"", try model.vm.evaluate("(camera/read 7 0 2)", &model, &output));
+    Fake.state = .failed;
+    try std.testing.expectError(error.CameraFailed, model.vm.evaluate("(camera/read 7 0 1)", &model, &output));
+    try std.testing.expectEqualStrings("notes", model.doc.slice());
 }
