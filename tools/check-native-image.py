@@ -188,7 +188,8 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
-              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead'}
+              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead',
+              'startBudget', 'applyApp'}
 XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead'}
 
 
