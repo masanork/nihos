@@ -74,7 +74,7 @@ CAMERA_FOREGROUND_FUNCTIONS = {'diagnostic_ui.drawSession', 'diagnostic_ui.captu
     'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail'}
 
 def device_function(name):
-    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:poll|sessionKey)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
+    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
 
 
 PMP_FLASH_FUNCTIONS = {

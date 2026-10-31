@@ -30,8 +30,7 @@ def main():
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--restore-from', type=Path, help='private complete 16 MiB backup; restore every modified Flash span')
     parser.add_argument('--observe-seconds', type=int, default=0)
-
-    parser.add_argument('--demo', action='store_true', help='check Scheme view changes and leave a Japanese sample visible')
+    parser.add_argument('--demo', action='store_true', help='check Scheme view changes and load a Japanese sample into RAM; panel visibility needs manual confirmation')
     args = parser.parse_args()
     if not 0 <= args.observe_seconds <= 180:
         parser.error('observe-seconds must be 0..180')
@@ -209,10 +208,10 @@ def main():
                     text += line
                     # The previous command ended with CR; send an explicit CRLF line break.
                     send('ascii-monospace-sample', b'\r\n' + line[1:], text, len(text))
-                    receipt.update(view_settings_tested=True, unicode_input_tested=True, monospace_sample_tested=True, input_transport='serial UTF-8', demo_left_visible=True)
+                    receipt.update(view_settings_tested=True, unicode_input_tested=True, monospace_sample_tested=True, input_transport='serial UTF-8', demo_state_loaded=True, manual_visual_confirmation='pending')
                     save()
 
-            print('DEMO_VISIBLE: common Source Code Pro 25px + Bunsen', flush=True)
+            print('DEMO_STATE_LOADED: common Source Code Pro 25px + Bunsen; panel confirmation pending', flush=True)
             if args.observe_seconds:
                 deadline = time.monotonic() + args.observe_seconds
                 observation = bytearray()
