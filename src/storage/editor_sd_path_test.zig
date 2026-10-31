@@ -112,8 +112,8 @@ test "editor save traverses SD controller and survives modeled restart" {
     document.initInPlace();
     const usages = [_]u8{ 0x16, 0x04, 0x19, 0x08, 0x07, 0x2c, 0x17, 0x08, 0x1b, 0x17, 0x2c, 0x2c };
     for (usages) |usage| document.feedHid(0, usage);
-    document.insert("日本語\n");
-    try std.testing.expectEqualStrings("saved text  日本語\n", document.doc.slice());
+    document.insert("日本語\n  ");
+    try std.testing.expectEqualStrings("saved text  日本語\n  ", document.doc.slice());
     try store.begin();
     try store.put(1, document.doc.slice());
     try store.commit();
@@ -130,7 +130,7 @@ test "editor save traverses SD controller and survives modeled restart" {
     var restarted: scratch.Model = undefined;
     restarted.initInPlace();
     try restarted.doc.insertUtf8(buf[0..n]);
-    try std.testing.expectEqualStrings("saved text  日本語\n", restarted.doc.slice());
+    try std.testing.expectEqualStrings("saved text  日本語\n  ", restarted.doc.slice());
     for (backing.stable[0 .. 8 * 512]) |byte| try std.testing.expectEqual(@as(u8, 0xff), byte);
     for (backing.stable[264 * 512 ..]) |byte| try std.testing.expectEqual(@as(u8, 0xff), byte);
     // A torn first write is unknown and must close the owner until recovery.
@@ -150,5 +150,5 @@ test "editor save traverses SD controller and survives modeled restart" {
     var after_fault: Store = .{};
     try after_fault.recover(&device3);
     const n2 = try after_fault.read(1, 0, &buf);
-    try std.testing.expectEqualStrings("saved text  日本語\n", buf[0..n2]);
+    try std.testing.expectEqualStrings("saved text  日本語\n  ", buf[0..n2]);
 }

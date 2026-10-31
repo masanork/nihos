@@ -27,7 +27,11 @@ formats a physical region, nor establishes SD-card power-loss durability.
 The normal build still starts xy, keeps the native FS read-only, and can disable
 the I2C keyboard explicitly. The workflow checks the keyboard option in the
 current `native-device-network-devices-camera` output directory. Its earlier
-PR path predated the default camera integration.
+PR path predated the default camera integration. Enabling it first exposed the
+48 KiB SRAM heap floor. Place only the existing foreground keyboard setup
+entry in the already mapped device Flash span, like the existing input poll,
+and extend the image auditor with that exact entry-name pattern. Interrupt
+handlers and cache-off code retain their existing placement.
 
 Final integrated host tests, hosted normal-FS probes (including negative
 controls), static/native audits, normal device image checks and GitHub workflows

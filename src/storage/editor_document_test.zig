@@ -20,8 +20,8 @@ test "editor bytes survive checkpoint commit and reopen on host media" {
     var document: scratch.Model = undefined;
     document.initInPlace();
     for ("hello  ") |byte| document.handle(.{ .text = byte });
-    document.insert("日本語\n");
-    try std.testing.expectEqualStrings("hello  日本語\n", document.doc.slice());
+    document.insert("日本語\n  ");
+    try std.testing.expectEqualStrings("hello  日本語\n  ", document.doc.slice());
     var device = try Device.open(io, temp.dir, "image");
     var store: Store = .{};
     try store.format(&device);
@@ -39,10 +39,10 @@ test "editor bytes survive checkpoint commit and reopen on host media" {
     var restarted: scratch.Model = undefined;
     restarted.initInPlace();
     try restarted.doc.insertUtf8(bytes[0..length]);
-    try std.testing.expectEqualStrings("hello  日本語\n", restarted.doc.slice());
+    try std.testing.expectEqualStrings("hello  日本語\n  ", restarted.doc.slice());
     try std.testing.expectEqual(length, restarted.doc.cursor);
     try std.testing.expectError(error.InvalidUtf8, restarted.doc.insertUtf8("\xff"));
-    try std.testing.expectEqualStrings("hello  日本語\n", restarted.doc.slice());
+    try std.testing.expectEqualStrings("hello  日本語\n  ", restarted.doc.slice());
     try std.testing.expectError(error.BufferFull, restarted.doc.insertUtf8(&@as([4096]u8, @splat('x'))));
-    try std.testing.expectEqualStrings("hello  日本語\n", restarted.doc.slice());
+    try std.testing.expectEqualStrings("hello  日本語\n  ", restarted.doc.slice());
 }
