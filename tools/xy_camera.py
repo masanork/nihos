@@ -134,14 +134,13 @@ def capture(port, output):
         return result
 
 
-def verify(directory):
-    from PIL import Image
+def reconstruct(text):
     metadata = None
     reading = False
     data = bytearray()
     revision = None
     replied_revision = None
-    for line in (directory/'serial.log').read_bytes().splitlines():
+    for line in text.splitlines():
         if b'NIHOS_NATIVE_FAIL' in line or b'NIHOS_JPEG_FAIL' in line:
             raise ValueError('firmware failed')
         if line.startswith(b'NIHOS_NATIVE_XY_STATE '):
@@ -150,6 +149,8 @@ def verify(directory):
         if line.startswith(b'NIHOS_XY_JPEG_READY '):
             if metadata is not None: raise ValueError('duplicate completion')
             metadata = {k.decode():int(v,16) for k,v in re.findall(rb'(\w+)=([0-9a-f]{8})(?=\s|$)',line)}
+            if not {'handle','bytes','width','height','source_fnv','encode_us','fnv'} <= metadata.keys(): raise ValueError('incomplete metadata')
+            if (metadata['handle'],metadata['width'],metadata['height']) != (1,1280,720) or not 640 < metadata['bytes'] <= 1843200 or not 0 < metadata['encode_us'] < 5_000_000: raise ValueError('invalid metadata')
         if not line.startswith(b'NIHOS_NATIVE_XY_REPLY '): continue
         reply = reply_bytes(line)
         if revision is None: raise ValueError('Scheme reply has no state revision')
@@ -164,6 +165,13 @@ def verify(directory):
         if len(data) > metadata['bytes']: raise ValueError('too many bytes')
     if not reading or len(data) != metadata['bytes'] or fnv(data) != metadata['fnv']:
         raise ValueError('incomplete or corrupted Scheme transfer')
+    if not data.startswith(b'\xff\xd8') or not data.endswith(b'\xff\xd9'): raise ValueError('invalid JPEG markers')
+    return metadata, bytes(data)
+
+
+def verify(directory):
+    from PIL import Image
+    metadata, data = reconstruct((directory/'serial.log').read_bytes())
     path=directory/'camera.jpg'
     if path.read_bytes() != data: raise ValueError('saved JPEG differs from Scheme replies')
     with Image.open(path) as image:
