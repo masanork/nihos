@@ -327,7 +327,9 @@ pub fn layoutStyledParagraph(
     const inline_limit_26_6: i32 = (if (is_vert) usable_h else usable_w) * 64;
     const step_px: i32 = @as(i32, view.body_px) + @as(i32, view.ruby_px) + @as(i32, view.line_gap_px);
     const step_26_6: i32 = step_px * 64;
-    const max_lines: u16 = @intCast(@max(1, @divTrunc(if (is_vert) usable_w else usable_h, step_px) + 2));
+    // Reader candidates must reach beyond the page so visibleEnd can find the
+    // exact break. Throwing BlockFull first forces a coarse prefix backoff.
+    const max_lines: u16 = if (wrap_words) @intCast(max_glyphs) else @intCast(@max(1, @divTrunc(if (is_vert) usable_w else usable_h, step_px) + 2));
     const cross_offset_26_6: i32 = (@as(i32, view.ruby_px) + @as(i32, view.ruby_gap_px)) * 64;
 
     var ruby_map: [max_ruby_bytes + 1]policy.Boundary = undefined;
@@ -381,7 +383,7 @@ pub fn layoutStyledParagraph(
             if (wrap_words) keepWords(shaped[0..body_count], body_map[0 .. para_slice.len + 1], inline_limit_26_6, is_vert);
 
             // Copy only ruby annotations belonging to `[p_start, p_end)`
-            var local_anns: [64]ruby.Annotation = undefined;
+            var local_anns: [128]ruby.Annotation = undefined;
             var local_ann_count: usize = 0;
             const p_start_u32: u32 = @intCast(p_start);
             for (annotations) |ann| {

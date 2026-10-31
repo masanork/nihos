@@ -14,6 +14,7 @@ struct Workspace {
     height: u32,
     focus: FocusHandle,
     editor_focus: bool,
+    editor_generation: u64,
     tick_pending: bool,
     frames: u64,
     labels: Labels,
@@ -62,6 +63,7 @@ impl Workspace {
             height,
             focus,
             editor_focus: false,
+            editor_generation: 1,
             tick_pending: false,
             frames: 1,
         }
@@ -78,6 +80,9 @@ impl Workspace {
         retire(std::mem::replace(&mut self.graph, next), window);
         self.frames += 1;
         self.refresh_status(window);
+        if self.core.editor_generation() != self.editor_generation {
+            self.refresh_editor(window);
+        }
     }
     fn refresh_status(&mut self, window: &mut Window) {
         let state = self.core.state();
@@ -95,9 +100,19 @@ impl Workspace {
             self.height,
         );
         retire(std::mem::replace(&mut self.editor, next), window);
+        self.editor_generation = self.core.editor_generation();
     }
     fn press(&mut self, key: Key, window: &mut Window, cx: &mut Context<Self>) {
         self.core.press(key, self.now());
+        self.refresh_graph(window);
+        cx.notify();
+    }
+    fn run_scheme(&mut self, stop: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if stop {
+            let _ = self.core.eval("(app/stop!)", self.now());
+        } else {
+            let _ = self.core.eval_buffer(self.now());
+        }
         self.refresh_graph(window);
         cx.notify();
     }
@@ -127,6 +142,16 @@ impl Workspace {
         let stroke = &event.keystroke;
         if stroke.modifiers.platform && stroke.key == "q" {
             cx.quit();
+            return;
+        }
+        if stroke.key == "f5"
+            || (stroke.key == "enter" && stroke.modifiers.control)
+            || (stroke.key == "c" && stroke.modifiers.control)
+        {
+            if !event.is_held {
+                self.run_scheme(stroke.key == "c", window, cx);
+            }
+            cx.stop_propagation();
             return;
         }
         if stroke.key == "tab" {
@@ -181,6 +206,8 @@ struct Labels {
     pause: Arc<RenderImage>,
     resume: Arc<RenderImage>,
     reset: Arc<RenderImage>,
+    run: Arc<RenderImage>,
+    stop: Arc<RenderImage>,
     editor_help: Arc<RenderImage>,
     graph_help: Arc<RenderImage>,
     footer: Arc<RenderImage>,
@@ -216,6 +243,22 @@ impl Labels {
                 [0x1c2733, 0xe0e7ee],
                 true,
             ),
+            run: label(
+                core,
+                "Run",
+                [80., 40., 16.],
+                scale,
+                [0xffffff, 0x0755aa],
+                true,
+            ),
+            stop: label(
+                core,
+                "Stop",
+                [80., 40., 16.],
+                scale,
+                [0x1c2733, 0xe0e7ee],
+                true,
+            ),
             editor_help: label(
                 core,
                 "Type - arrows - Backspace - Ctrl-Z undo",
@@ -234,7 +277,7 @@ impl Labels {
             ),
             footer: label(
                 core,
-                "Click a pane or press Tab to switch focus.",
+                "Ctrl-Enter: run Scheme - Ctrl-C: stop callback",
                 [600., 28., 14.],
                 scale,
                 bg,
@@ -298,6 +341,28 @@ impl Render for Workspace {
                     .flex()
                     .gap_3()
                     .items_center()
+                    .child(
+                        div()
+                            .id("run-scheme")
+                            .cursor_pointer()
+                            .on_click(
+                                cx.listener(|this, _, window, cx| {
+                                    this.run_scheme(false, window, cx)
+                                }),
+                            )
+                            .child(shown(&self.labels.run, 80., 40.)),
+                    )
+                    .child(
+                        div()
+                            .id("stop-scheme")
+                            .cursor_pointer()
+                            .on_click(
+                                cx.listener(|this, _, window, cx| {
+                                    this.run_scheme(true, window, cx)
+                                }),
+                            )
+                            .child(shown(&self.labels.stop, 80., 40.)),
+                    )
                     .child(
                         div()
                             .id("pause")

@@ -1,5 +1,6 @@
 /* Native record layout checked by both C and the Zig/Rust integration. */
 #include "nihos_app.h"
+#include "xy_animation.h"
 _Static_assert(sizeof(nih_app_event) == 32, "event layout");
 _Static_assert(offsetof(nih_app_event, monotonic_us) == 8, "timestamp offset");
 _Static_assert(sizeof(nih_app_info) == 48, "info layout");

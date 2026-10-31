@@ -1,0 +1,29 @@
+1/3 animation.test.equal elapsed time gives equal ticks independent of callback rate...OK
+2/3 animation.test.pause releases do not toggle and resume never catches up paused time...OK
+3/3 animation.test.overload and backwards clocks are bounded and focus loss clears held input...OK
+All 3 tests passed.
+1/6 plot_app.test.input edges, focus and cancel have bounded lifecycle with no hidden update...OK
+2/6 plot_app.test.invalid event cannot change input or clock state...OK
+3/6 animation.test.equal elapsed time gives equal ticks independent of callback rate...OK
+4/6 animation.test.pause releases do not toggle and resume never catches up paused time...OK
+5/6 animation.test.overload and backwards clocks are bounded and focus loss clears held input...OK
+6/6 protocol.test.v1 rejects unknown versions, short structs and unbounded frame requests...OK
+All 6 tests passed.
+1/16 live_workspace.test.prepare rejects effects, swaps commands without stale closures, and removes deleted definitions...OK
+2/16 live_workspace.test.failed evaluation restores definitions and document; repeated loads and extreme movement recover...OK
+3/16 live_workspace.test.frame failure rolls back VM editor and plot; next editor evaluation recovers...OK
+4/16 live_workspace.test.frame budget abort and heap pressure recover transactionally without resetting definitions...OK
+5/16 scheme_runtime.test.lexical closures mutation recursion and GC persist across requests...OK
+6/16 scheme_runtime.test.registered closures survive GC and command replacement is live...OK
+7/16 scheme_runtime.test.reader stages all forms and errors return without destroying definitions...OK
+8/16 scheme_runtime.test.bounded malformed requests do not trap or retain ephemeral garbage...OK
+9/16 scheme_runtime.test.real work hits evaluation budget and exhausted heap recovers on next request...OK
+10/16 scheme_runtime.test.view options share an atomic typed contract and survive GC...OK
+11/16 scheme_runtime.test.app capability, callback roots, replacement and atomic plot options...OK
+12/16 document.test.grapheme cursor and backspace never split IVS or combining dakuten...OK
+13/16 document.test.grouped undo reverts multi-step transaction and rejects stale or unaligned ranges...OK
+14/16 document.test.non-destructive SKK preedit overlay and ruby span shifting on edit...OK
+15/16 document.test.extreme signed movements clamp without overflowing negation...OK
+16/16 camera.test.unbound camera does not allocate or expose an address...OK
+All 16 tests passed.
+Animation/Canvas and Scheme callback RV32 soft-float standalone links passed; no device execution

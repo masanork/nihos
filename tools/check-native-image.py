@@ -191,14 +191,15 @@ XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string'
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
 # helpers must not acquire a route into the PSRAM render stack.
 XY_RENDER_FUNCTIONS = {
     'native_render_entry.nih_xy_render', 'native_render_entry.nih_xy_render_init',
-    'native_render_entry.nih_xy_render_bytes', 'rotated_surface.Rotated.blit',
+    'native_render_entry.nih_xy_render_bytes', 'native_render_entry.nih_xy_render_learning',
+    'nih_xy_render_learning', 'rotated_surface.Rotated.blit',
     'rotated_surface.Rotated.paint', 'rotated_surface.Rotated.blitLinear',
     'rotated_surface.Rotated.fillRect', 'surface.channelLinear', 'xy.presentation.publish', 'presentation.publish',
     'ttf.TwoTierCache(24,1024,48,16384).getOrRender', 'ttf.Face.glyphSpan',
@@ -211,7 +212,7 @@ XY_RENDER_FUNCTIONS = {
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
     'document.isClusterBoundary', 'render_session.SizedSession(2048).render',
     'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
-    'catalog.Pack.font', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
+    'catalog.Pack.font', 'catalog.Pack.learningBytes', 'reader.shorter', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
     'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
     'Io.Writer.failingRebase', 'Io.Writer.noopFlush', 'Io.Writer.fixedDrain',
     'xy.navigation.State.home', 'xy.navigation.State.open',
@@ -220,11 +221,27 @@ XY_RENDER_FUNCTIONS = {
     'xy.navigation.State.back', 'xy.navigation.State.touch',
 }
 
+
+# Explicit lesson foreground methods; catalogue parsing never enables I/O.
+XY_LEARNING_METHODS = {
+    'initInPlace', 'bind', 'setPage', 'choice', 'count', 'slot', 'doc', 'supported',
+    'open', 'replace', 'insert', 'resetVm', 'restore', 'run', 'notice', 'handle', 'touch',
+}
+XY_CATALOG_METHODS = {
+    'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
+    'section', 'snippet', 'experiment', 'findSnippet', 'onPage', 'styleOnPage',
+}
+
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(2048\)\.renderInto)__func_[0-9]+", name)
-    return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.renderInto)__func_[0-9]+", name)
+    document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines)', name)
+    lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
+    catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)
+    lesson_helper = re.fullmatch(r'learning_view\.(?:render|label)__func_[0-9]+', name)
+    learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
+    return bool(document or learning_allowed or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
