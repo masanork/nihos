@@ -18,6 +18,65 @@ var round: u32 = 0;
 var auto_index: usize = 0;
 var fail_present = false;
 var previous_generation: u32 = 0;
+pub var async_turns: u32 = 0;
+pub var async_begin_us: u32 = 0;
+
+pub fn asyncProbe() bool {
+    const before = (tasks.memory.reusable.localUsage() orelse return false).free;
+    const start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
+    app.setFault(0);
+    const started = clock.counter() orelse return false;
+    if (app.beginAsync(&present) != 0 or app.start(&present) != -3 or !app.cancelAsync()) return false;
+    async_begin_us = @intCast((clock.counter() orelse return false) -| started);
+    if ((tasks.memory.reusable.localUsage() orelse return false).free >= before) return false;
+    var turns: u32 = 0;
+    while (true) {
+        turns += 1;
+        if (app.pollAsync()) |status| {
+            if (status != 1) return false;
+            break;
+        }
+        tasks.idleOnce(0);
+    }
+    if (turns < 2 or app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+        (tasks.memory.reusable.localUsage() orelse return false).free != before or
+        tasks.report(0).ticks == start_ticks[0] or tasks.report(1).ticks == start_ticks[1]) return false;
+    async_turns = turns;
+    if (app.beginAsync(&present) != 0) return false;
+    while (true) {
+        if (app.pollAsync()) |status| {
+            if (status != 0 or !app.active()) return false;
+            break;
+        }
+        tasks.idleOnce(0);
+    }
+    if (app.cancel() != 0 or app.active() or
+        (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
+    app.setFault(1);
+    if (app.beginAsync(&present) != 0) return false;
+    while (true) {
+        if (app.pollAsync()) |status| {
+            if (status != -41) return false;
+            break;
+        }
+        tasks.idleOnce(0);
+    }
+    if (app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+        (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
+    app.setFault(3);
+    if (app.beginAsync(&present) != 0) return false;
+    while (true) {
+        if (app.pollAsync()) |status| {
+            if (status != -4) return false;
+            break;
+        }
+        tasks.idleOnce(0);
+    }
+    if (app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+        (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
+    app.setFault(0);
+    return true;
+}
 
 fn present(bytes: [*]const u8, len: u32) callconv(.c) i32 {
     if (fail_present) return -49;

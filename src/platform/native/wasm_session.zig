@@ -3,6 +3,7 @@ const app = @import("app_session");
 const tasks = @import("native_tasks");
 const runtime = @import("wamr_runtime.zig");
 const mailbox = @import("frame_mailbox");
+const startup = @import("async_start");
 const clock = @import("timer_group").Timer.fromGroup(0x500c2000, 0).?;
 const stack_offset = runtime.runtime_bytes + runtime.linear_bytes + runtime.module_bytes * runtime.module_count;
 extern fn nih_wamr_session_run([*]u8, [*]u8, [*]u8, [*]u8, *EngineReport) callconv(.c) i32;
@@ -33,6 +34,8 @@ var child: ?tasks.calls.Handle = null;
 var completion: ?tasks.WasmCompletion = null;
 var engine_report: EngineReport = .{};
 var engine_open = false;
+var async_policy: startup.Startup = .{};
+var async_id: u32 = 0;
 var fault: u32 = 0;
 var presenter: ?*const fn ([*]const u8, u32) callconv(.c) i32 = null;
 var owner: app.Session = .{ .hooks = .{
@@ -93,7 +96,8 @@ fn request(command: mailbox.Command) i32 {
     }
 }
 fn acquire(_: ?*anyopaque, bytes: *?[*]u8, len: *u32) callconv(.c) i32 {
-    if (frame_lease != null or backing != null) return -3;
+    if (fault == 3) return -4;
+    if (frame_lease != null or (backing != null and !engine_open)) return -3;
     const lease = tasks.memory.allocExternal(app.lease_bytes, 64) catch return -4;
     frame_lease = lease;
     bytes.* = lease.bytes.ptr;
@@ -101,6 +105,14 @@ fn acquire(_: ?*anyopaque, bytes: *?[*]u8, len: *u32) callconv(.c) i32 {
     return 0;
 }
 fn open(_: ?*anyopaque) callconv(.c) i32 {
+    if (engine_open) return 0;
+    const status = launch();
+    if (status != 0) return status;
+    const result = request(.{ .operation = 1, .selected = fault });
+    engine_open = result == 0;
+    return result;
+}
+fn launch() i32 {
     box = .{};
     observed = .{};
     engine_report = .{};
@@ -126,9 +138,75 @@ fn open(_: ?*anyopaque) callconv(.c) i32 {
     };
     child = .{ .slot = handle.slot, .generation = handle.generation };
     observed.generation = handle.generation;
-    const result = request(.{ .operation = 1, .selected = fault });
-    engine_open = result == 0;
-    return result;
+    return 0;
+}
+
+/// Begin the signed package open without waiting for the worker.
+pub fn beginAsync(callback: *const fn ([*]const u8, u32) callconv(.c) i32) i32 {
+    if (backing != null or active() or owner.busy != 0) return -3;
+    async_policy = .{};
+    presenter = callback;
+    const status = launch();
+    if (status != 0) return status;
+    const handle = child.?;
+    if (async_policy.begin(handle.generation) == null) @panic("async generation");
+    async_id = box.submit(.{ .operation = 1, .selected = fault }) orelse @panic("async mailbox");
+    if (tasks.calls.notify(handle, 1) != 0) @panic("async notify");
+    return 0;
+}
+pub fn cancelAsync() bool {
+    if (async_policy.phase != .opening) return false;
+    _ = async_policy.cancel();
+    return true;
+}
+/// Returns null while opening/closing/reaping, 0 when ready, 1 when cancelled.
+pub fn pollAsync() ?i32 {
+    const generation = async_policy.generation;
+    switch (async_policy.phase) {
+        .opening, .cancelling => {
+            const result = box.collect(async_id) orelse blk: {
+                completion = tasks.finishWasm() orelse return null;
+                break :blk -90;
+            };
+            const action = async_policy.opened(generation, result) orelse @panic("async open");
+            if (action == .publish_ready) {
+                engine_open = true;
+                const status = app.start(&owner);
+                // If frame allocation failed before Session opened the backend,
+                // Session could not close the already initialized worker.
+                if (status != 0 and backing != null and close(null) != 0) return -90;
+                return status;
+            }
+            if (action == .start_close) {
+                async_id = box.submit(.{ .operation = 3 }) orelse @panic("async close mailbox");
+                if (tasks.calls.notify(child.?, 1) != 0) @panic("async close notify");
+            }
+            return null;
+        },
+        .closing => {
+            const result = box.collect(async_id) orelse return null;
+            _ = async_policy.closed(generation, result) orelse @panic("async close");
+            return null;
+        },
+        .reaping => {
+            if (completion == null) completion = tasks.finishWasm() orelse return null;
+            const action = async_policy.reaped(generation, engine_report.recovered == 1) orelse @panic("async reap");
+            if (action == .fail) {
+                async_policy.result = -90; // Keep a damaged allocation pinned.
+                return -90;
+            }
+            const result = async_policy.result;
+            _ = close(null);
+            if (observed.guards != 1 or observed.recovered != 1 or observed.detached != 1) {
+                async_policy.result = -90;
+                return -90;
+            }
+            return if (result == 0) 1 else result;
+        },
+        .ready => return if (active()) 0 else -90,
+        .done => return if (async_policy.result == 0) 1 else async_policy.result,
+        .idle => return -5,
+    }
 }
 fn render(_: ?*anyopaque, selected: u32, bytes: [*]u8, len: u32) callconv(.c) i32 {
     const lease = frame_lease orelse return -5;
@@ -182,7 +260,7 @@ fn release(_: ?*anyopaque, bytes: [*]u8, len: u32) callconv(.c) i32 {
     return 0;
 }
 pub fn start(callback: *const fn ([*]const u8, u32) callconv(.c) i32) i32 {
-    if (active() or owner.busy != 0) return -3;
+    if (active() or owner.busy != 0 or backing != null) return -3;
     presenter = callback;
     return app.start(&owner);
 }

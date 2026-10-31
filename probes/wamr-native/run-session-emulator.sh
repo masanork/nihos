@@ -49,6 +49,9 @@ for name,injected,status,received,frames,presentations,rejected in (
     (out/f'{name}-stderr.log').write_text(result.stderr)
     assert result.returncode==0,(name,result.returncode)
     assert 'NIHOS_NATIVE_FAIL' not in result.stdout,result.stdout
+    assert len(re.findall(r'^NIHOS_WASM_ASYNC_PASS$',result.stdout,re.M))==1,result.stdout
+    async_rows=re.findall(r'^NIHOS_WASM_ASYNC turns=([0-9a-f]+) begin_us=([0-9a-f]+)$',result.stdout,re.M)
+    assert len(async_rows)==1 and int(async_rows[0][0],16)>1 and int(async_rows[0][1],16)>0,async_rows
     rows=re.findall(r'^NIHOS_WASM_SESSION (.+)$',result.stdout,re.M)
     assert len(rows)==2,rows
     records=[{k:int(v,16) for k,v in (field.split('=') for field in row.split())} for row in rows]
@@ -66,7 +69,8 @@ for name,injected,status,received,frames,presentations,rejected in (
         assert 0<r['stack_used']<65536,r
     assert records[1]['generation']>records[0]['generation']+1,records
     assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in identity.items())
-    cases.append({'case':name,'external_input':injected,'restart_input':'synthetic 0x10q','rounds':records})
+    cases.append({'case':name,'external_input':injected,'restart_input':'synthetic 0x10q',
+                  'async':{'turns':int(async_rows[0][0],16),'begin_us':int(async_rows[0][1],16)},'rounds':records})
     print(f'Wasm common session {name}: pixel oracle, task reap, wipe and restart passed',flush=True)
 (out/'report.json').write_text(json.dumps({'evidence':'headless RV32 common session; no scanout or physical run',
     'candidate':identity,'cases':cases},indent=2)+'\n')
