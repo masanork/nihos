@@ -390,7 +390,8 @@ pub noinline fn input(log: anytype) void {
     };
     log.record("NIHOS_NATIVE_KEYBOARD", null, .{ "status", "firmware", "mode", "transactions", "error_code", "sources" }, &values);
 }
-noinline fn action(value: console.keys.Action, source: console.keys.Source, modifiers: u8, usage: u8, log: anytype) void {
+// Input dispatch is called by foreground polling, with the Flash mapping active.
+noinline fn action(value: console.keys.Action, source: console.keys.Source, modifiers: u8, usage: u8, log: anytype) linksection(if (options.rust_session) ".flash.text.rust_app" else ".text") void {
     const key: console.boot.Key = switch (value) {
         .logs => .escape,
         .splash => .splash,
