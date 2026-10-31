@@ -74,6 +74,7 @@ class MacTypography(unittest.TestCase):
         before=self.page(body,0)
         self.assertTrue(self.vm.xy_host_reader_context(2,0,0));after=self.page(body,0)
         self.assertGreater(after,before)
+        raw=body['text'].encode();self.assertFalse(chr(raw[after-1]).isalnum() and chr(raw[after]).isalnum())
         stable=self.frame()
         self.assertFalse(self.vm.xy_host_reader_context(2,99,0))
         self.assertEqual(self.frame(),stable)

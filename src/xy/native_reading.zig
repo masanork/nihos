@@ -48,6 +48,7 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
         style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
     }
     while (end > offset) {
+        if (styled) end = offset + reader.closeWord(entry.text[offset..], end - offset);
         // SAFETY: only the populated prefixes below are consumed; lengths start at zero.
         page.* = .{ .text = entry.text[offset..end], .readings = undefined, .spans = undefined, .codes = undefined, .book_prose = styled };
         at = 0;

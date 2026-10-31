@@ -535,6 +535,7 @@ pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]cons
     var end: usize = len;
     var ann_buf: [64]viewport_layout.ruby.Annotation = undefined;
     while (end > 0) {
+        if (g_reader_next_section != null) end = reader.closeWord(body, end);
         var count: usize = 0;
         var r_end: usize = 0;
         for (annotations) |span| {
