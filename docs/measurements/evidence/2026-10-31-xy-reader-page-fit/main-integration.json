@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "main_commit": "37c0fdff0aa658ef2194826a40ac0078c2f090dd",
+  "pagination_parent": "d821654f6e4f451b2c792c689a47c10a509972e8",
+  "resolution": {
+    "file": "tools/check-native-image.py",
+    "native_render_glyphs": 2048,
+    "main_touch_helper": "diagnostic_ui.paintTouchControl",
+    "auditor_sha256": "e1adc1a3beb109ca3cd4f1cb4f6a9716fc59def55e42f813172196e8bc7fb0e7"
+  },
+  "validation": {
+    "native_image_tests": 41,
+    "native_checks_tests": 87,
+    "tab5_reader_tests": 11,
+    "native_build_and_audit": "passed",
+    "image_sha256": "3079067d25ab1a403f2d325a34c2e4326429612bc6d77d7329e298597a14a893",
+    "image_bytes": 3563104,
+    "heap_bytes": 49856,
+    "render_stack_bytes": 524288,
+    "physical_device": "not run",
+    "main_merge": "not performed"
+  }
+}

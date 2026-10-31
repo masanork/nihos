@@ -1,0 +1,104 @@
+test
++- run test w
+STORE_MODEL_CAMPAIGN events=82 crash_cases=2952 acknowledged_cases=6
+STORE_MODEL_METADATA events=18 crash_cases=648 acknowledged_cases=6
+STORE_MODEL_INITIAL events=17 crash_cases=612 acknowledged_cases=6
+CHECKPOINT_CAMPAIGN events=162 crash_cases=5832 acknowledged_cases=6 max_mount_bytes=24576
+CHECKPOINT_BUDGET state_bytes=32096 max_objects=16128 mount_limit_bytes=1056768 tail_replay_bytes=0
+RANGE_CHECKSUM_IO object_bytes=4157441 single_byte_bytes=12288 crossing_table_bytes=20480 checksum_pages=2
+INDEX_GC_REUSE mutations=6000 pool_pages=3 protected_pages=2 free_pages=1 generation=6001
+INDEX_GC_CAMPAIGN events=84 crash_cases=3024 acknowledged_cases=6
+PAYLOAD_GC_REUSE mutations=512 usable_pages=8 last_object_pages=2 free_after_collection=6
+PAYLOAD_GC_CAMPAIGN events=84 crash_cases=3024 acknowledged_cases=6
+SEARCH_BUDGET calls=11 max_leaf_visits=1 max_bitmap_pages=1 max_metadata_read_bytes=4096
+SEARCH_CACHE_BUDGET plain_state_bytes=32096 cached_state_bytes=558432 data_bytes=524288 tags_bytes=2048
+STREAM_CAMPAIGN events=82 crash_cases=2952 acknowledged_cases=6
+PATCH_CAMPAIGN events=82 crash_cases=2952 acknowledged_cases=6
+EXTENT_REUSE patches=128 live_payload_pages=3 unchanged_page_preserved=true
+EXTENT_CAMPAIGN events=84 crash_cases=3024 acknowledged_cases=6
+PROMOTION_CAMPAIGN events=50 crash_cases=1800 acknowledged_cases=6
+RESIZE_CAMPAIGN length=4099 events=66 crash_cases=2376 acknowledged_cases=6
+RESIZE_CAMPAIGN length=9000 events=66 crash_cases=2376 acknowledged_cases=6
+RESIZE_CAMPAIGN length=0 events=34 crash_cases=1224 acknowledged_cases=6
+RESIZE_CAMPAIGN length=262144 events=50 crash_cases=1800 acknowledged_cases=6
+BATCH_CAMPAIGN sparse=false events=82 crash_cases=2952 acknowledged_cases=6
+BATCH_CAMPAIGN sparse=true events=114 crash_cases=4104 acknowledged_cases=6
+SCATTER_CAMPAIGN resize=false events=82 crash_cases=2952 acknowledged_cases=6
+SCATTER_CAMPAIGN resize=true events=66 crash_cases=2376 acknowledged_cases=6
+MAINTENANCE_CAMPAIGN cancelled_dirty=false events=18 crash_cases=648 acknowledged_cases=6
+MAINTENANCE_CAMPAIGN cancelled_dirty=true events=42 crash_cases=1512 acknowledged_cases=6
+GATE_MAINTENANCE_CAMPAIGN crash_cases=648 dispatched_before_recovery=0
+SERVICE_CAMPAIGN events=114 crash_cases=4104 acknowledged_cases=6
+failed command: ./.zig-cache/o/04bd525f40abb96efa6c0c3162f4ce9b/test --cache-dir=./.zig-cache --seed=0xaf24225d --listen=-
+
+Build Summary: 69/69 steps succeeded; 789/789 tests passed
+test success
++- run test 772 pass (772 total) 18s MaxRSS:35M
+|  +- compile test safe native success 1m MaxRSS:1G
++- run test cached
+|  +- compile test safe native cached 68ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 77ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 64ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 58ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 73ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 95ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 103ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 61ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 52ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 101ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 93ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 62ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 96ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 64ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 79ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 91ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 103ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 72ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 93ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 128ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 62ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 63ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 91ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 68ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 68ms MaxRSS:31M
++- run test 15 pass (15 total) 221ms MaxRSS:7M
+|  +- compile test safe native success 18s MaxRSS:396M
++- run test cached
+|  +- compile test safe native cached 70ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 69ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 89ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 64ms MaxRSS:31M
++- run test 2 pass (2 total) 197ms MaxRSS:2M
+|  +- compile test safe native success 15s MaxRSS:314M
++- run test cached
+|  +- compile test safe native cached 61ms MaxRSS:31M
++- run test cached
+   +- compile test safe native cached 59ms MaxRSS:32M
+
