@@ -198,6 +198,12 @@ pub export fn xy_host_cache_stats(out_outline_misses: *u32, out_bitmap_misses: *
 }
 
 /// Target B (GPUI C-ABI): Build `GpuiFrameDescriptor` and copy up to `max_quads` `GpuiGlyphQuad`s.
+fn effectiveAppearance(theme_id: u8) @import("view_config").Appearance {
+    var appearance = g_ws.appearance;
+    if (theme_id == 1 and g_ws.config_generation == 1) appearance = .{ .background = 0x121418, .foreground = 0xe6eaf0, .ruby_color = 0x8ab4f8, .cursor_color = 0xffa657, .status_background = 0x1e222a, .status_foreground = 0xa8dab5 };
+    return appearance;
+}
+
 pub export fn xy_host_render_gpui(
     theme_id: u8,
     out_frame: *GpuiFrameDescriptor,
@@ -217,7 +223,7 @@ pub export fn xy_host_render_gpui(
     ) catch return -1;
 
     g_mb_view = g_ws.ime.formatMinibuffer();
-    const theme = if (theme_id == 1) ThemePalette.hacker_dark else ThemePalette.washi_light;
+    const theme = ThemePalette.fromAppearance(effectiveAppearance(theme_id));
     const cap = @min(@as(usize, max_quads), g_quads_buf.len);
     const frame = render_adapter.buildGpuiFrame(
         HostCacheType,
@@ -259,7 +265,7 @@ pub export fn xy_host_render_rgb565(
         &g_placed_buf,
     ) catch return -2;
 
-    const theme = if (theme_id == 1) ThemePalette.hacker_dark else ThemePalette.washi_light;
+    const theme = ThemePalette.fromAppearance(effectiveAppearance(theme_id));
     const stats = render_adapter.paintSurfaceRgb565(
         HostCacheType,
         surf,
@@ -269,7 +275,7 @@ pub export fn xy_host_render_rgb565(
         theme,
         placed,
         g_ws.doc.cursor,
-        true,
+        g_ws.appearance.linear_blend,
         &g_glyf_scratch,
     ) catch return -3;
     return @intCast(stats.glyphs_blitted);
@@ -308,35 +314,7 @@ pub export fn xy_host_render_rgba8(
 
     // 2. Blend each GpuiGlyphQuad's 8bpp alpha texture
     const count: usize = @intCast(q_count);
-    for (g_quads_buf[0..count]) |quad| {
-        const gw: i32 = quad.glyph.bitmap_width;
-        const gh: i32 = quad.glyph.bitmap_height;
-        if (gw <= 0 or gh <= 0) continue;
-
-        const fg_r: u16 = @intCast((quad.rgba8_color >> 24) & 0xff);
-        const fg_g: u16 = @intCast((quad.rgba8_color >> 16) & 0xff);
-        const fg_b: u16 = @intCast((quad.rgba8_color >> 8) & 0xff);
-        const alpha_slice = quad.alpha_ptr[0..quad.alpha_len];
-
-        var sy: i32 = 0;
-        while (sy < gh) : (sy += 1) {
-            const dy = quad.glyph.bitmap_y_px + sy;
-            if (dy < 0 or dy >= @as(i32, @intCast(height))) continue;
-            var sx: i32 = 0;
-            while (sx < gw) : (sx += 1) {
-                const dx = quad.glyph.bitmap_x_px + sx;
-                if (dx < 0 or dx >= @as(i32, @intCast(width))) continue;
-                const a: u16 = alpha_slice[@as(usize, @intCast(sy)) * @as(usize, @intCast(gw)) + @as(usize, @intCast(sx))];
-                if (a == 0) continue;
-                const off = @as(usize, @intCast(dy)) * stride + @as(usize, @intCast(dx)) * 4;
-                const inv: u16 = 255 - a;
-                rgba_ptr[off + 0] = @intCast((fg_r * a + @as(u16, rgba_ptr[off + 0]) * inv) / 255);
-                rgba_ptr[off + 1] = @intCast((fg_g * a + @as(u16, rgba_ptr[off + 1]) * inv) / 255);
-                rgba_ptr[off + 2] = @intCast((fg_b * a + @as(u16, rgba_ptr[off + 2]) * inv) / 255);
-                rgba_ptr[off + 3] = 255;
-            }
-        }
-    }
+    for (g_quads_buf[0..count]) |quad| blendRgbaGlyph(rgba_ptr, width, height, stride, quad.glyph, quad.alpha_ptr[0..quad.alpha_len], quad.rgba8_color, g_ws.appearance.linear_blend);
 
     // 3. Draw caret rectangle
     const cur_r: u8 = @truncate(frame.cursor_rgba8 >> 24);
@@ -358,5 +336,60 @@ pub export fn xy_host_render_rgba8(
         }
     }
 
+    // Status/minibuffer uses the same typeface, sizing and palette as the body.
+    const a = effectiveAppearance(theme_id);
+    const bar_height = @min(height, @as(u32, g_ws.style.body_px) + 2 * @as(u32, a.status_padding));
+    const top = height - bar_height;
+    for (top..height) |y| for (0..width) |x| {
+        const off = y * stride + x * 4;
+        rgba_ptr[off] = @truncate(a.status_background >> 16);
+        rgba_ptr[off + 1] = @truncate(a.status_background >> 8);
+        rgba_ptr[off + 2] = @truncate(a.status_background);
+        rgba_ptr[off + 3] = 255;
+    };
+    var status_style = g_ws.style;
+    status_style.axis = 0;
+    status_style.ruby_px = 0;
+    status_style.margin_x_px = a.status_padding;
+    status_style.margin_y_px = a.status_padding;
+    const status_line = if (g_mb_view.line().len == 0) "xy / *scratch*" else g_mb_view.line();
+    const status_list = viewport_layout.layoutParagraph(256, 512, 1, HostCacheType, &g_cache, activeFamily(), status_style, status_line, "", &.{}, &g_glyf_scratch, &g_placed_buf) catch return -4;
+    for (status_list) |item| {
+        if (item.cell_y_px > status_style.margin_y_px) break;
+        var g = item;
+        g.bitmap_y_px += @intCast(top);
+        const cached = g_cache.getOrRender(activeFamily(), @intCast(g.style_id), @intCast(g.base_cp), @intCast(g.ivs_cp), g.px_size, false, &g_glyf_scratch) catch return -4;
+        blendRgbaGlyph(rgba_ptr, width, height, stride, g, cached.alpha, a.status_foreground << 8 | 255, a.linear_blend);
+    }
     return q_count;
+}
+
+fn blendRgbaGlyph(rgba_ptr: [*]u8, width: u32, height: u32, stride: u32, glyph: PlacedGlyph, alpha: []const u8, color: u32, linear: bool) void {
+    const gw: i32 = glyph.bitmap_width;
+    const gh: i32 = glyph.bitmap_height;
+    if (gw <= 0 or gh <= 0) return;
+
+    const fg_r: u16 = @intCast((color >> 24) & 0xff);
+    const fg_g: u16 = @intCast((color >> 16) & 0xff);
+    const fg_b: u16 = @intCast((color >> 8) & 0xff);
+    const alpha_slice = alpha;
+
+    var sy: i32 = 0;
+    while (sy < gh) : (sy += 1) {
+        const dy = glyph.bitmap_y_px + sy;
+        if (dy < 0 or dy >= @as(i32, @intCast(height))) continue;
+        var sx: i32 = 0;
+        while (sx < gw) : (sx += 1) {
+            const dx = glyph.bitmap_x_px + sx;
+            if (dx < 0 or dx >= @as(i32, @intCast(width))) continue;
+            const a: u16 = alpha_slice[@as(usize, @intCast(sy)) * @as(usize, @intCast(gw)) + @as(usize, @intCast(sx))];
+            if (a == 0) continue;
+            const off = @as(usize, @intCast(dy)) * stride + @as(usize, @intCast(dx)) * 4;
+            const inv: u16 = 255 - a;
+            rgba_ptr[off + 0] = if (linear) surface.blendChannelLinear8(rgba_ptr[off + 0], @intCast(fg_r), @intCast(a)) else @intCast((fg_r * a + @as(u16, rgba_ptr[off + 0]) * inv) / 255);
+            rgba_ptr[off + 1] = if (linear) surface.blendChannelLinear8(rgba_ptr[off + 1], @intCast(fg_g), @intCast(a)) else @intCast((fg_g * a + @as(u16, rgba_ptr[off + 1]) * inv) / 255);
+            rgba_ptr[off + 2] = if (linear) surface.blendChannelLinear8(rgba_ptr[off + 2], @intCast(fg_b), @intCast(a)) else @intCast((fg_b * a + @as(u16, rgba_ptr[off + 2]) * inv) / 255);
+            rgba_ptr[off + 3] = 255;
+        }
+    }
 }

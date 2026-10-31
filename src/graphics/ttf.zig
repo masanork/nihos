@@ -1035,6 +1035,13 @@ pub fn TwoTierCache(
             vertical: bool,
             glyf_scratch: []u8,
         ) Error!CachedGlyph {
+            if (px_size < 6 or px_size > 200) return error.InvalidScale;
+            // Fonts may intentionally omit space from cmap (including Bunsen).
+            // Whitespace advances without media reads or a replacement glyph.
+            if (base_cp == 0x20 or base_cp == 0x3000) return .{
+                .metrics = .{ .width = 0, .height = 0, .left_px = 0, .top_px = 0, .x_advance_26_6 = if (vertical) 0 else @as(i32, px_size) * @as(i32, if (base_cp == 0x20) 32 else 64), .y_advance_26_6 = if (vertical) -@as(i32, px_size) * 64 else 0 },
+                .alpha = &.{},
+            };
             const bkey = BitmapKey{
                 .base_cp = base_cp,
                 .ivs_cp = ivs_cp,
@@ -1057,7 +1064,7 @@ pub fn TwoTierCache(
             // 2. Check Tier 1 (Outline Cache) by (style_id, base_cp, ivs_cp) tag first
             const rtag = makeResolvedTag(style_id, base_cp, ivs_cp);
             var o_idx: ?usize = null;
-            for (self.outlines, 0..) |slot, i| {
+            for (&self.outlines, 0..) |*slot, i| {
                 if (slot.valid and slot.resolved_key == rtag) {
                     o_idx = i;
                     break;
@@ -1066,7 +1073,9 @@ pub fn TwoTierCache(
 
             if (o_idx == null) {
                 self.outline_misses += 1;
-                const resolved = (try family.resolve(base_cp, ivs_cp)) orelse return error.GlyphNotFound;
+                const resolved = (try family.resolve(base_cp, ivs_cp)) orelse
+                    (try family.resolve(0xfffd, 0)) orelse
+                    (try family.resolve(0x25a1, 0)) orelse return error.GlyphNotFound;
                 const okey = OutlineKey{
                     .style_id = style_id,
                     .layer_index = @intCast(resolved.layer_index),
@@ -1077,7 +1086,7 @@ pub fn TwoTierCache(
 
                 // Pick LRU outline slot
                 var victim: usize = 0;
-                for (self.outlines, 0..) |slot, i| {
+                for (&self.outlines, 0..) |*slot, i| {
                     if (!slot.valid) {
                         victim = i;
                         break;
@@ -1120,7 +1129,7 @@ pub fn TwoTierCache(
 
             // Pick LRU bitmap slot
             var b_victim: usize = 0;
-            for (self.bitmaps, 0..) |slot, i| {
+            for (&self.bitmaps, 0..) |*slot, i| {
                 if (!slot.valid) {
                     b_victim = i;
                     break;

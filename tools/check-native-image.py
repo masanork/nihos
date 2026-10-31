@@ -106,7 +106,10 @@ def audit_pmp_flash(functions, span):
     names = [name for _, _, name in selected]
     require(names and len(names) == len(set(names)) and set(names) <= PMP_FLASH_FUNCTIONS,
             "unapproved PMP Flash function")
-    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])),
+    # Export and Zig debug aliases may describe the same bytes. Every name above
+    # must still be approved; only the byte-coverage walk collapses exact aliases.
+    ranges = sorted(set((a, b) for a, b, _ in selected))
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(ranges, ranges[1:])),
             "overlapping or unaccounted PMP Flash bytes")
     for name, address, stop in functions:
         if name in PMP_FLASH_FUNCTIONS:
@@ -124,7 +127,10 @@ def audit_device_functions(functions, span):
     require(len(names) == len(set(names)) and DEVICE_FUNCTIONS.issubset(names) and
             all(sum(re.fullmatch(prefix + r'\.poll__func_[0-9]+', name) is not None for name in names) == 1
                 for prefix in ('audio_probe', 'microphone_probe', 'rs485_probe')), 'missing/duplicate device Flash function')
-    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])), 'overlapping/unaccounted device Flash bytes')
+    # Export and Zig debug aliases may describe the same bytes. Every name above
+    # must still be approved; only the byte-coverage walk collapses exact aliases.
+    ranges = sorted(set((a, b) for a, b, _ in selected))
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(ranges, ranges[1:])), 'overlapping/unaccounted device Flash bytes')
     return {name: {'start': hex(address), 'end': hex(stop)} for address, stop, name in selected}
 
 TIME_ENGINE = 'sntp.Engine(".flash.text.time"[0..16]).'
@@ -147,7 +153,10 @@ def audit_time_functions(functions, span):
     names = [name for _, _, name in selected]
     require(len(names) == len(set(names)) and TIME_FUNCTIONS.issubset(names) and
             all(sum(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) is not None for name in names) == 1 for prefix in TIME_GENERIC), 'missing/duplicate network/time Flash function')
-    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])), 'overlapping/unaccounted network/time Flash bytes')
+    # Export and Zig debug aliases may describe the same bytes. Every name above
+    # must still be approved; only the byte-coverage walk collapses exact aliases.
+    ranges = sorted(set((a, b) for a, b, _ in selected))
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(ranges, ranges[1:])), 'overlapping/unaccounted network/time Flash bytes')
     return {name: {'start': hex(address), 'end': hex(stop)} for address, stop, name in selected}
 
 
@@ -179,22 +188,42 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
-              'runCommand', 'format', 'emit', 'print'}
+              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView'}
 XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand'}
 
+
+# Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
+# helpers must not acquire a route into the PSRAM render stack.
+XY_RENDER_FUNCTIONS = {
+    'native_render_entry.nih_xy_render', 'native_render_entry.nih_xy_render_init',
+    'native_render_entry.nih_xy_render_bytes', 'rotated_surface.Rotated.blit',
+    'rotated_surface.Rotated.paint', 'rotated_surface.Rotated.blitLinear',
+    'rotated_surface.Rotated.fillRect', 'surface.channelLinear',
+    'ttf.TwoTierCache(24,1024,48,16384).getOrRender', 'ttf.Face.glyphSpan',
+    'ttf.decodeSimpleGlyfSlice', 'ttf.Family.resolve', 'ttf.Face.lookupBaseGlyph',
+    'ttf.Face.init', 'ttf.SliceReader.fromSlice.Impl.readSlice',
+    'unicode.utf8ByteSequenceLength', 'unicode.utf8Decode4', 'unicode.utf8Decode3',
+    'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
+    'line_layout.Flow.place', 'render_adapter.computeCursorRect',
+    'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
+}
 
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    return bool((match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem'))
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.traceScratch|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun)__func_[0-9]+", name)
+    return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
     start, end = span
-    require(start == 0x40060000 and start < end <= 0x40080000, 'invalid xy code extent')
+    require(start == 0x40060000 and start < end <= 0x400c0000, 'invalid xy code extent')
     selected = sorted((a, b, n) for n, a, b in functions if start <= a < end)
     require(selected and selected[0][0] == start and all(a < b <= end and xy_function(n) for a, b, n in selected), 'unapproved xy Flash function')
-    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(selected, selected[1:])) and 0 <= end - selected[-1][1] <= 16, 'unaccounted xy code bytes')
+    # Export and Zig debug aliases may describe the same bytes. Every name above
+    # must still be approved; only the byte-coverage walk collapses exact aliases.
+    ranges = sorted(set((a, b) for a, b, _ in selected))
+    require(all(0 <= right[0] - left[1] <= 16 for left, right in zip(ranges, ranges[1:])) and 0 <= end - selected[-1][1] <= 16, 'unaccounted xy code bytes')
     require(any('Runtime.evaluate' in n for _, _, n in selected) and any('Runtime.collect' in n for _, _, n in selected), 'incomplete xy evaluator')
     return {n: {'start': hex(a), 'end': hex(b)} for a, b, n in selected}
 
@@ -237,7 +266,7 @@ def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow
         return
     if name in XY_SECTIONS:
         require(allow_xy and kind == 1 and (flags == 6 if name == '.flash.xytext' else flags & 7 == 2 and flags & ~50 == 0), 'invalid xy Flash profile/permissions')
-        require(0x40060000 <= address < address + size <= 0x40080000 and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
+        require(0x40060000 <= address < address + size <= 0x400c0000 and address % 16 == 0 and (name != '.flash.xytext' or address == 0x40060000), 'invalid xy Flash extent')
         return
     if name in GRAPH_SECTIONS:
         readonly = flags & 7 == 2 and flags & ~50 == 0
@@ -1014,7 +1043,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
-        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': False}
+        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 131072 if 'nih_xy_render' in xy_functions else 0}
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
