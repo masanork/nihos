@@ -77,10 +77,46 @@
     "physical-boot-excerpts.log": "7cc5b570c8a51617f97a86e53f2c075c0eca06f437d59e770191560d767d596f",
     "physical-summary.json": "5bacdc378b8ea599544e50c9d35dce01aadfa149186bc2f7c1371cdf068b1f45",
     "python-tests.txt": "81f580dd40583f7f3498538945c0f6c30ed41d51fdf5c4b6c353b31f164decf3",
+    "reader-normal-image-audit.json": "b054dbf32a46b040f28de06366d4e9fdf87f67eb5a58e27b0584c38422604c65",
+    "reader-python.txt": "764ebf9ed901d5388d528dd13997ea77c330d8f14b322e993400943b93fd15e6",
+    "reader-releasesafe.txt": "89c550e562fd853aa346d7c33baee48eda5ca2512bda3c4d3dde52bc6c7506a4",
+    "reader-static.txt": "55e5b16b7eaf734b030408cb60c8c28925c9dc968a33871ee3a453223ae6e1ed",
+    "reader-trace-image-audit.json": "a90dcbf06ccde083c5b1b8a7064efb5e6f2a982fd6c4ce439acf65c665ae6ddc",
     "splash-tests.txt": "09425060e79df3da64269d36e13201adff1cc208459f3c68a0c22f89a8c39adb",
     "static-analysis.txt": "8255183bc17eea5b17e5aa6a6d5287914099fb1441c00f96b7247a5974c5e0ba",
     "trace-image-audit.json": "182b3175ff2a1e283e157692d69d8c08a08bced35b77cbec5f4df66993dc6754"
   },
   "physical_test_source": "1004c716d138384e4c3584bf027ac52d6b7ab652",
-  "pr": "https://github.com/masanork/nihos/pull/95"
+  "pr": "https://github.com/masanork/nihos/pull/95",
+  "reader_integration": {
+    "base_commit": "0cb0ee4fd0da0901e61c527e509bafccbec360a4",
+    "candidate_source": "8b4b4ba2704f299916d9a1f3eaaf39d26d2da107",
+    "images": {
+      "normal": {
+        "image_sha256": "7c1dc2030d7116f2ff28d64183be0819f2b44178e950f98f4d996d5259ce64e7",
+        "elf_sha256": "bb024504fb912de2540c5026bcb9bdd623c7411d28cf97c38e74e09b0e44f864",
+        "image_bytes": 3501296,
+        "heap_span_bytes": 49856,
+        "physical_executed_at_report_commit": false
+      },
+      "trace": {
+        "image_sha256": "b40218aa23dcad2398c46bfbe5a3af35c2a3e13bcf93eb7a38c59fd90ad37296",
+        "elf_sha256": "95d2f8a54a4ba2b68c10093004e2c39e0c7b3d3677a28b699d14d1d725494d34",
+        "image_bytes": 3502416,
+        "heap_span_bytes": 49728,
+        "physical_executed_at_report_commit": false
+      }
+    },
+    "python_tests": 547,
+    "release_safe_steps": "73/73",
+    "release_safe_uncached_tests": "878/878",
+    "physical_lease": "held by separate sqld-normal-storage trial; no forced takeover",
+    "source_sha256": {
+      "src/graphics/boot_graphics.zig": "b4b824ea33c42c38fbf5caddd56a44a494b8e8ec141000d6f48a2937a24926a7",
+      "src/platform/native/diagnostic_ui.zig": "7b4a68dc6f5041aa7b69300181460c8c8f018b9258c09ef3437883b0f8bb75ec",
+      "tools/check-native-image.py": "d968475beddff9d5a3d25501002a30218c68aace8ea3f3b864cdeb4fdb10162e",
+      "tools/check-native-log.py": "00f6e1c29dd099ad2619f5b0ef75977f73ea378d95f05de67b98db383c383818",
+      "tools/native_checks_test.py": "9715dafaaaa1028d51a6f4398113f546345e3809291e6001771e2239efa53604"
+    }
+  }
 }

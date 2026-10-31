@@ -87,3 +87,19 @@ bootloader/app全域と未変更のpartition tableを照合してhard resetし�
 本体を恒久運用する読書用構成への反映・確認は残る。
 通常更新は同じ走査バッファへ書く構成を保つため、VSYNCでの原子的なフレーム切替や全tearingの消失を証明していない。
 今回の修正は、先行消去が露出する経路と不要な全画面同期を除くもの。
+
+## 読書機能のmain統合後の追従
+
+待機中にGPUI app protocol（PR #96）とホーム・本棚・読書機能（PR #92）がmainへ入ったため、
+`0cb0ee4f`へ追従した。監査関数の競合は、reader固有の許可リストを保持したうえで
+本修正の`paintTouchControl`を追加して解決した。起動描画の修正内容は維持した。
+読書機能が通常構成へ入ったので、修正候補への切替で読書機能が外れるという従前の制約はない。
+
+読書統合版の通常・traceイメージの監査が成功した。primary SRAM heap spanは通常49,856 bytes、
+trace49,728 bytesで48 KiB基準を維持した。ReleaseSafeは73/73 build steps、未cache部分878 tests成功。
+MacとTab5のpreviewを準備したPython全体547 tests、静的検査と6 ELF監査も成功した。
+
+この段階では別のSQLite/ストレージ試験がwriter leaseを保持しており、読書統合候補の実機書込みは
+ロック取得前に停止した。上記の実機7回の記録を、この読書統合イメージの実行証拠とは扱わない。
+最新候補の実機・CI・統合状態はPR #95へ追記する。新しい候補の監査は
+`reader-normal-image-audit.json`と`reader-trace-image-audit.json`、識別子はindexの`reader_integration`を参照する。
