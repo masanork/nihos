@@ -1,0 +1,16 @@
+WAMR native ELF structural audit: ok
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+Wasm common session normal: pixel oracle, task reap, wipe and restart passed
+Wasm common session noinput: pixel oracle, task reap, wipe and restart passed
+Wasm common session early-quit: pixel oracle, task reap, wipe and restart passed
+Wasm common session cancel: pixel oracle, task reap, wipe and restart passed
+Wasm common session metered-trap: pixel oracle, task reap, wipe and restart passed
+Wasm common session present-failure: pixel oracle, task reap, wipe and restart passed

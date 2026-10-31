@@ -122,6 +122,10 @@ Wasm/display profile and physical presenter remain open.
    polling and serial decoder through the same dispatcher, including cancellation
    during open. Its shell storage and presenter remain substitutes, and it stops
    after one verified session. See the [UART polling report](../measurements/2026-11-01-wasm-ui-uart-poll.md).
+   An emulator-only repeat mode now keeps the UART shell available across
+   app exits; a three-round active/cancel/active run is covered in the
+   [repeat report](../measurements/2026-11-01-wasm-ui-uart-repeat.md). Its
+   presenter still verifies logical pixels without real scanout.
    A foreground controller now owns opening, cancellation and active-input
    routing in that fixture and the UI branch. It rejects start when camera or
    display is busy and reserves display until cancellation has completed.
