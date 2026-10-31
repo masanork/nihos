@@ -47,6 +47,33 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], width, height, stride) orelse return error.Geometry;
             try self.renderInto(request, target);
         }
+        /// Bounded UI text has no editor caret window or status row. Share the
+        /// font family/cache/shaper/compositor while retaining every label glyph.
+        pub fn renderLabel(self: *@This(), request: *const protocol.Request, width: u32, height: u32, stride: u32, centered: bool) !void {
+            if (request.text_length > 128) return error.Capacity;
+            const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], width, height, stride) orelse return error.Geometry;
+            var style = request.config.style;
+            style.viewport_width_px = @intCast(width);
+            style.viewport_height_px = @intCast(height);
+            style.ruby_px = 0;
+            style.ruby_gap_px = 0;
+            style.margin_x_px = 0;
+            const faces = [_]layout.ttf.Face{ self.faces[0], self.faces[@as(usize, style.style_id) + 1] };
+            const family = layout.ttf.Family{ .faces = &faces };
+            const list = try layout.layoutParagraph(page_capacity, 4096, 1024, Cache, &self.cache, family, style, request.text[0..request.text_length], "", &.{}, &self.scratch, &self.placed);
+            if (centered) {
+                var right: i32 = 0;
+                for (list) |g| right = @max(right, g.cell_x_px + @as(i32, g.advance_px));
+                const dx = @divTrunc(@as(i32, @intCast(width)) - right, 2);
+                if (dx > 0) for (list) |*g| {
+                    g.cell_x_px += dx;
+                    g.bitmap_x_px += dx;
+                };
+            }
+            const stats = try adapter.paintSurfaceRgb565(Cache, target, &self.cache, family, style, adapter.ThemePalette.fromAppearance(request.config.appearance), list, null, request.config.appearance.linear_blend, &self.scratch);
+            self.glyphs = @intCast(stats.glyphs_blitted);
+            self.frames +%= 1;
+        }
         fn renderInto(self: *@This(), request: *const protocol.Request, target: anytype) !void {
             const screen_width: u16 = @intCast(target.width);
             if (request.reserved_bottom_px >= target.height) return error.Geometry;

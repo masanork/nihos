@@ -1,0 +1,13 @@
+[package]
+name = "nihos-xy-gpui"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[dependencies]
+gpui = { version = "=0.2.2", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[profile.dev]
+debug = 0
