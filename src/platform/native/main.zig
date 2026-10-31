@@ -554,15 +554,17 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
     const probe_dispatch_begin = if (options.pmp_probe) cycle() else 0;
     if (hart >= 2) fail("invalid hart");
     if (!interruptStackValid(hart, frame, status)) {
-        print("NIHOS_NATIVE_STACK_FAIL frame=");
-        hex(@intFromPtr(frame));
-        print(" sp=");
-        hex(frame.sp);
-        print(" cause=");
-        hex(cause);
-        print(" status=");
-        hex(status);
-        print("\n");
+        if (native_sqld) {
+            print("NIHOS_NATIVE_STACK_FAIL frame=");
+            hex(@intFromPtr(frame));
+            print(" sp=");
+            hex(frame.sp);
+            print(" cause=");
+            hex(cause);
+            print(" status=");
+            hex(status);
+            print("\n");
+        }
         fail("interrupt stack/MIE");
     }
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
@@ -656,12 +658,14 @@ export fn nih_audio_stage(code: u32) callconv(.c) void {
 }
 
 export fn nih_native_task_failed() callconv(.c) noreturn {
-    const caller_pc = asm volatile ("mv %[v],ra"
-        : [v] "=r" (-> u32),
-    );
-    print("NIHOS_NATIVE_TASK_FAIL caller=");
-    hex(caller_pc);
-    print("\n");
+    if (native_sqld) {
+        const caller_pc = asm volatile ("mv %[v],ra"
+            : [v] "=r" (-> u32),
+        );
+        print("NIHOS_NATIVE_TASK_FAIL caller=");
+        hex(caller_pc);
+        print("\n");
+    }
     if (options.fatfs_native) {
         print("NIHOS_NATIVE_TASK_FAILURE caller=");
         hex(@returnAddress());
