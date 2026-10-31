@@ -50,9 +50,20 @@ def expected(round,items):
 assert len(work)==3 and [w[0] for w in work]==[1,2,3],work
 for row,phase in zip(work,fg):
     assert row[1]==sum(phase[1:4]) and row[1]>0 and row[2:]==expected(row[0],row[1]),(row,phase)
+hosted=re.findall(r'NIHOS_WASM_HOSTED_FIXTURE round=([0-9a-f]+) accepted=([0-9a-f]+) rejected=([0-9a-f]+) errors=([0-9a-f]+) active_events=([0-9a-f]+)',r.stdout)
+hosted=[tuple(int(x,16) for x in row) for row in hosted]
+assert len(hosted)==3 and [h[0] for h in hosted]==[1,2,3],hosted
+for h,w in zip(hosted,work):
+    n=w[1]; assert h[1]==n//4+(n%4>=2) and h[2]==n//4 and h[3]==0,(h,w)
+assert hosted[0][4]>0 and hosted[2][4]>0 and hosted[1][4]==0,hosted
+latency=re.findall(r'NIHOS_WASM_REQUEST_LATENCY round=([0-9a-f]+) render_us=([0-9a-f]+) close_us=([0-9a-f]+)',r.stdout)
+latency=[tuple(int(x,16) for x in row) for row in latency]
+assert len(latency)==3 and [x[0] for x in latency]==[1,2,3],latency
+assert all(0<latency[i][1]<200000 and 0<latency[i][2]<200000 for i in (0,2)),latency
+assert latency[1][1:]==(0,0),latency
 assert r.stdout.count('Starting Rust sample; q or Esc cancels.')==3,r.stdout
 assert r.stdout.count('Rust sample stopped.\nnihos> ')==3,r.stdout
 assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in hashes.items())
-(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg], 'mock_work':[dict(zip(('round','items','digest','sensor'),row)) for row in work]},indent=2)+'\n')
+(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg], 'mock_work':[dict(zip(('round','items','digest','sensor'),row)) for row in work], 'hosted_decoder':[dict(zip(('round','accepted','rejected','errors','active_events'),row)) for row in hosted], 'request_latency':[dict(zip(('round','render_us','close_us'),row)) for row in latency]},indent=2)+'\n')
 print('repeat: two active runs and startup cancellation, with shell returns and full recovery passed')
 PYRUN

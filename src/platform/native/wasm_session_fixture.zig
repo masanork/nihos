@@ -39,9 +39,44 @@ pub var mock_items: u32 = 0;
 pub var mock_digest: u32 = 2166136261;
 pub var mock_sensor_sum: u32 = 0;
 var foreground_previous: u64 = 0;
+const hosted_wire = @import("hosted_station").wire;
+var fixture_decoder: if (options.wasm_interactive_repeat) hosted_wire.Decoder else void = if (options.wasm_interactive_repeat) .{} else {};
+pub var network_accepted: u32 = 0;
+pub var network_rejected: u32 = 0;
+pub var network_errors: u32 = 0;
+pub var network_active_events: u32 = 0;
+// A valid ESP-Hosted frame and a one-byte-corrupted variant, each fed in
+// two foreground turns. This exercises the real decoder with synthetic input.
+fn hostedService() void {
+    const good = [_]u8{ 0x01, 0x00, 0x04, 0x00, 0x0c, 0x00, 0x23, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x12, 0x00, 0xff };
+    const segment = (mock_items - 1) % 4;
+    const bad = segment >= 2;
+    const offset: usize = @intCast((segment % 2) * 8);
+    for (0..8) |i| {
+        const pos = offset + i;
+        const byte = if (bad and pos == 15) good[pos] ^ 1 else good[pos];
+        const maybe = fixture_decoder.push(byte) catch |err| {
+            if (bad and pos == 15 and err == error.Checksum) {
+                network_rejected += 1;
+                if (ui.wasmFixturePhase() == 3) network_active_events += 1;
+            } else network_errors += 1;
+            fixture_decoder = .{};
+            continue;
+        };
+        if (maybe) |frame| {
+            if (bad or pos != 15 or frame.interface != 1 or !@import("std").mem.eql(u8, frame.payload, &.{ 1, 0x12, 0, 0xff })) {
+                network_errors += 1;
+            } else {
+                network_accepted += 1;
+                if (ui.wasmFixturePhase() == 3) network_active_events += 1;
+            }
+        }
+    }
+}
 // Bounded deterministic work, not a camera, network, or storage driver.
 fn mockService() void {
     mock_items += 1;
+    hostedService();
     for (0..64) |index| {
         const byte: u8 = @truncate(mock_items *% 17 +% @as(u32, @intCast(index)) *% 29 +% interactive_round *% 7);
         mock_digest = (mock_digest ^ byte) *% 16777619;
@@ -118,6 +153,11 @@ pub fn interactiveService(log: anytype) u32 {
             mock_items = 0;
             mock_digest = 2166136261;
             mock_sensor_sum = 0;
+            fixture_decoder = .{};
+            network_accepted = 0;
+            network_rejected = 0;
+            network_errors = 0;
+            network_active_events = 0;
             interactive_start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
             ui.wasmFixtureClearDirty();
         }

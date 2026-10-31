@@ -1673,6 +1673,11 @@ fn normalReady() noreturn {
                     logger.record("NIHOS_WASM_FOREGROUND", null, .{ "round", "opening", "cancelling", "active", "max_gap_us" }, &foreground);
                     const work = .{ .round = fixture.interactive_round, .items = fixture.mock_items, .digest = fixture.mock_digest, .sensor = fixture.mock_sensor_sum };
                     logger.record("NIHOS_WASM_WORK", null, .{ "round", "items", "digest", "sensor" }, &work);
+                    const hosted = .{ .round = fixture.interactive_round, .accepted = fixture.network_accepted, .rejected = fixture.network_rejected, .errors = fixture.network_errors, .active_events = fixture.network_active_events };
+                    logger.record("NIHOS_WASM_HOSTED_FIXTURE", null, .{ "round", "accepted", "rejected", "errors", "active_events" }, &hosted);
+                    const timings = @import("wasm_session.zig").observed;
+                    const latency = .{ .round = fixture.interactive_round, .render_us = timings.render_max_us, .close_us = timings.close_us };
+                    logger.record("NIHOS_WASM_REQUEST_LATENCY", null, .{ "round", "render_us", "close_us" }, &latency);
                 }
                 logger.record("NIHOS_WASM_REPEAT", null, .{ "round", "state", "frames", "signature" }, &event);
             }
