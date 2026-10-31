@@ -245,14 +245,18 @@ jobs:
 
       - name: Compile XY hardware JPEG handle API and trace
         run: |
-          NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0 NIHOS_NATIVE_DEVICES=1 \
-            NIHOS_NATIVE_CAMERA_ID=1 NIHOS_NATIVE_CAMERA_DIAGNOSTICS=0 NIHOS_NATIVE_CAMERA_JPEG=1 \
-            NIHOS_NATIVE_XY_WORKSPACE=1 NIHOS_NATIVE_XY_TRACE=1 \
-            NIHOS_NATIVE_USB=0 NIHOS_NATIVE_AUDIO=0 NIHOS_NATIVE_MICROPHONE=0 NIHOS_NATIVE_RS485=0 \
-            NIHOS_NATIVE_DISPLAY=2 sh tools/build-native.sh device integer
-          mkdir -p build/usb-ci/xy-camera-jpeg
-          cp build/native-device-devices-camera-jpeg-xy-trace/image-audit.json \
-            build/native-device-devices-camera-jpeg-xy-trace/native_options.zig build/usb-ci/xy-camera-jpeg/
+          for trace in 0 1; do
+            NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0 NIHOS_NATIVE_DEVICES=1 \
+              NIHOS_NATIVE_CAMERA_ID=1 NIHOS_NATIVE_CAMERA_DIAGNOSTICS=0 NIHOS_NATIVE_CAMERA_JPEG=1 \
+              NIHOS_NATIVE_XY_WORKSPACE=1 NIHOS_NATIVE_XY_TRACE="$trace" \
+              NIHOS_NATIVE_USB=0 NIHOS_NATIVE_AUDIO=0 NIHOS_NATIVE_MICROPHONE=0 NIHOS_NATIVE_RS485=0 \
+              NIHOS_NATIVE_DISPLAY=2 sh tools/build-native.sh device integer
+            profile=build/native-device-devices-camera-jpeg
+            if [ "$trace" = 1 ]; then profile="$profile-xy-trace"; fi
+            destination="build/usb-ci/xy-camera-jpeg-$trace"
+            mkdir -p "$destination"
+            cp "$profile/image-audit.json" "$profile/native_options.zig" "$destination/"
+          done
 
       - name: Retain source-bound compile evidence
         if: always()
