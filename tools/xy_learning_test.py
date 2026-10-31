@@ -109,6 +109,7 @@ class MacLearning(unittest.TestCase):
         self.open(other); self.replace('marker')
         self.assertLess(self.vm.xy_host_learning_action(0),0)
         self.vm.xy_host_learning_leave(); self.open()
+        self.assertEqual(self.text(4),b'')
         self.assertEqual(self.text(0),b'(define marker 7) marker')
         self.replace('marker')
         self.assertLess(self.vm.xy_host_learning_action(0),0)

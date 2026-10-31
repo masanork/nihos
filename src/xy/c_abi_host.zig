@@ -618,10 +618,16 @@ pub export fn xy_host_learning_action(action: u32) callconv(.c) i32 {
             return -1;
         },
         1 => g_learning.resetVm(),
-        2 => g_learning.restore() catch return -1,
+        2 => g_learning.restore() catch |err| {
+            g_learning.notice(err);
+            return -1;
+        },
         3 => g_learning.editing_notes = !g_learning.editing_notes,
         4 => {
-            _ = g_learning.doc().?.undo() catch return -1;
+            _ = g_learning.doc().?.undo() catch |err| {
+                g_learning.notice(err);
+                return -1;
+            };
         },
         else => return -1,
     }
