@@ -13,6 +13,7 @@
 #import <ImageIO/ImageIO.h>
 #include <fcntl.h>
 #include <sqlite3.h>
+#include "nihos_xy_storage.h"
 #include "nihos_xy_workspace.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -907,12 +908,35 @@ static void eval_sexp_checked(const char *sexp) {
 // ============================================================================
 
 int main(int argc, const char **argv) {
+    if (argc == 4 && strcmp(argv[1], "--storage-cli") == 0) {
+        void *store = nih_sqld_host_open(argv[2], 0);
+        if (!store || !xy_host_live_init()) return 1;
+        xy_host_set_storage_callback(store, nih_sqld_host_xy);
+        uint8_t output[2048];
+        int32_t n = xy_host_live_run((const uint8_t *)argv[3], (uint32_t)strlen(argv[3]), false, output, sizeof(output));
+        if (n >= 0) { fwrite(output, 1, (size_t)n, stdout); putchar('\n'); }
+        else { uint32_t size = xy_host_live_error(output, sizeof(output)); fprintf(stderr, "%.*s\n", (int)size, output); }
+        xy_host_set_storage_callback(NULL, NULL);
+        int closed = nih_sqld_host_close(store);
+        return n < 0 || closed ? 1 : 0;
+    }
     if (argc >= 2 && strcmp(argv[1], "--workspace-cli") == 0) return workspace_cli(argc, argv);
     const char *workspace_path = NULL;
+    const char *store_path = NULL;
+    bool create_store = false;
     bool safe_workspace = false;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--workspace") == 0 && i + 1 < argc) workspace_path = argv[++i];
         else if (strcmp(argv[i], "--safe") == 0) safe_workspace = true;
+        else if (strcmp(argv[i], "--store") == 0 && i + 1 < argc) store_path = argv[++i];
+        else if (strcmp(argv[i], "--create-store") == 0) create_store = true;
+    }
+    void *store = NULL;
+    if (create_store && !store_path) { fprintf(stderr, "--create-store requires --store NEW_IMAGE\n"); return 2; }
+    if (store_path) {
+        store = nih_sqld_host_open(store_path, create_store);
+        if (!store) { fprintf(stderr, "Cannot mount sqld store\n"); return 1; }
+        xy_host_set_storage_callback(store, nih_sqld_host_xy);
     }
     const char *font_dir = "/Users/masanork/repo/gjs/data/output/bunsen-build";
     const char *db_path = "/Users/masanork/repo/gjs/data/output/gjs.db";
@@ -1059,6 +1083,17 @@ int main(int argc, const char **argv) {
 
     // Interactive Cocoa Window Mode
     @autoreleasepool {
+        if (!store_path) {
+            NSString *dir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/nihos/xy"];
+            NSError *error = nil;
+            if ([[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:&error]) {
+                NSString *image = [dir stringByAppendingPathComponent:@"store.img"];
+                BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:image];
+                store = nih_sqld_host_open([image fileSystemRepresentation], !exists);
+                if (store) xy_host_set_storage_callback(store, nih_sqld_host_xy);
+                else fprintf(stderr, "sqld store unavailable; editor remains usable\n");
+            }
+        }
         if (!workspace_path) {
             NSString *dir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/nihos/xy"];
             NSError *error = nil;
@@ -1146,6 +1181,8 @@ int main(int argc, const char **argv) {
         [NSApp activateIgnoringOtherApps:YES];
         [NSApp run];
         xy_workspace_close(g_workspace);
+        xy_host_set_storage_callback(NULL, NULL);
+        if (store) nih_sqld_host_close(store);
         if (g_db) sqlite3_close(g_db);
     }
     return 0;

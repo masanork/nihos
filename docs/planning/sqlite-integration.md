@@ -1,5 +1,9 @@
 # SQLite integrationと永続VFSの契約
 
+2026-10-31追記: [sqld・checkpoint store・xyの実装](sqld-xy-service.md)でhost永続VFS、
+copied request/completion、Scheme bindingと実SQLiteの回復試験を追加した。
+下記の全条件、とくにS4/S5のnative task・実SD・電断を合格にしたものではない。
+
 2026年10月27日。実装前の設計基準。[ADR 0002](../adr/0002-smp-services.md)の単一owner方針と
 [filesystem VFS](filesystem-vfs.md)のmount・保存契約を前提にする。
 API名と数値予算はPoCで確定する。既存のメモリDB試験は、永続DBやsqldの合格証拠にしない。
