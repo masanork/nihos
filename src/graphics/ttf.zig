@@ -1035,13 +1035,28 @@ pub fn TwoTierCache(
             vertical: bool,
             glyf_scratch: []u8,
         ) Error!CachedGlyph {
-            if (px_size < 6 or px_size > 200) return error.InvalidScale;
-            // Fonts may intentionally omit space from cmap (including Bunsen).
-            // Whitespace advances without media reads or a replacement glyph.
-            if (base_cp == 0x20 or base_cp == 0x3000) return .{
-                .metrics = .{ .width = 0, .height = 0, .left_px = 0, .top_px = 0, .x_advance_26_6 = if (vertical) 0 else @as(i32, px_size) * @as(i32, if (base_cp == 0x20) 32 else 64), .y_advance_26_6 = if (vertical) -@as(i32, px_size) * 64 else 0 },
-                .alpha = &.{},
-            };
+            // Some CJK subset fonts omit whitespace from cmap entirely. Whitespace
+            // still participates in layout and must not abort a source-code frame.
+            if (base_cp == ' ' or base_cp == '\t' or base_cp == 0x3000) {
+                if (px_size < 6 or px_size > 200) return error.InvalidScale;
+                var space_advance: i32 = @as(i32, px_size) * 32;
+                if (base_cp != 0x3000) {
+                    if (try family.resolve(' ', 0)) |resolved| {
+                        const face = &family.faces[resolved.layer_index];
+                        const span = try face.glyphSpan(resolved.glyph_id);
+                        space_advance = @divTrunc(@as(i32, span.advance_em) * px_size * 64 + @divTrunc(@as(i32, face.units_per_em), 2), face.units_per_em);
+                    }
+                }
+                const advance = if (base_cp == '\t') space_advance * 4 else if (base_cp == 0x3000) @as(i32, px_size) * 64 else space_advance;
+                return .{ .metrics = .{
+                    .width = 0,
+                    .height = 0,
+                    .left_px = 0,
+                    .top_px = 0,
+                    .x_advance_26_6 = if (vertical) 0 else advance,
+                    .y_advance_26_6 = if (vertical) -advance else 0,
+                }, .alpha = &.{} };
+            }
             const bkey = BitmapKey{
                 .base_cp = base_cp,
                 .ivs_cp = ivs_cp,

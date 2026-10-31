@@ -250,3 +250,11 @@ revision = "7767c8c8e2d41e0030be33f81b502d0851c959bb"
 license = "same-project; see LICENSE"
 status = "reused-local-implementation"
 use = "scheme_runtime.zig is reused unchanged from the existing Scheme development branch; Mac live_workspace adds staging and transactional document/VM rollback rather than creating another interpreter"
+
+[[source]]
+name = "Adobe Source Code Pro Medium runtime face"
+url = "https://github.com/adobe-fonts/source-code-pro/blob/803b7e23ec97ae58b6232ea76519a76d428ba268/TTF/SourceCodePro-Medium.ttf"
+revision = "803b7e23ec97ae58b6232ea76519a76d428ba268"
+license = "OFL-1.1; src/graphics/ascii/SourceCodePro-LICENSE.md"
+status = "vendored-font"
+use = "Shared xy code face, same upstream bytes as the existing console source; SHA256 f9dbc746f60c83f5cb1503b19f90729d8195cab6bb67f2b861d4eb257ed86536; rendered by common Zig rasterizer, not platform text APIs"

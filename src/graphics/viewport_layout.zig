@@ -4,6 +4,7 @@
 //! C-ABI Display List (`PlacedGlyph`) for both `nihos` (Tab5 framebuffer)
 //! and macOS/PC (`GPUI` backend).
 const std = @import("std");
+pub const code_font = @import("code_font.zig");
 pub const ttf = @import("ttf.zig");
 pub const ruby = @import("ruby_layout.zig");
 pub const policy = ruby.policy;

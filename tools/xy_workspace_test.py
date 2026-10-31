@@ -6,6 +6,10 @@ import ctypes as c
 import os
 from pathlib import Path
 import sqlite3
+import hashlib
+import json
+import struct
+import zlib
 import subprocess
 import tempfile
 import unittest
@@ -159,7 +163,7 @@ class WorkspaceTest(unittest.TestCase):
             self.assertEqual(db.execute('PRAGMA application_id').fetchone()[0], 0)
             self.assertEqual(db.execute('SELECT count(*) FROM sqlite_master WHERE name LIKE "xy_%"').fetchone()[0], 0)
 
-    def test_real_font_render_of_restored_command_and_source(self):
+    def init_real_fonts(self):
         directory = Path(os.environ.get('XY_FONT_DIR', Path.home() / 'repo/gjs/data/output/bunsen-build'))
         names = [f'Bunsen{family}{layer}-Regular.ttf' for family in ['Mincho', 'Gothic'] for layer in ['', 'Ext', 'PUP']]
         if not all((directory / name).is_file() for name in names):
@@ -173,6 +177,7 @@ class WorkspaceTest(unittest.TestCase):
             c.memmove(output, data, len(data))
             return len(data)
         callback = callback_type(read)
+        self._font_callback = callback
         class Descriptor(c.Structure):
             _fields_ = [('context', c.c_void_p), ('read', callback_type)]
         mincho = (Descriptor * 3)(*[Descriptor(i + 1, callback) for i in range(3)])
@@ -180,6 +185,9 @@ class WorkspaceTest(unittest.TestCase):
         self.vm.xy_host_init.argtypes = [c.POINTER(Descriptor), c.c_uint32, c.POINTER(Descriptor), c.c_uint32]
         self.vm.xy_host_init.restype = c.c_bool
         self.assertTrue(self.vm.xy_host_init(mincho, 3, gothic, 3))
+
+    def test_real_font_render_of_restored_command_and_source(self):
+        self.init_real_fonts()
         # Same sequence as Mac startup: loading the workspace resets defaults.
         self.assertTrue(self.vm.xy_host_live_init())
         self.vm.xy_host_set_viewport(960, 540)
@@ -204,6 +212,60 @@ class WorkspaceTest(unittest.TestCase):
         self.assertGreater(self.vm.xy_host_eval(expr, len(expr), output, 256), 0)
         self.assertGreater(self.vm.xy_host_render_rgba8(pixels, 960, 540, 960 * 4, 0), 0)
         self.vm.xy_host_source_leave()
+
+    def test_rgb565_rgba8_full_frame_parity_including_caret_and_padding(self):
+        self.init_real_fonts()
+        width, height = 1280, 720
+        self.vm.xy_host_render_rgb565.argtypes = [c.c_void_p, c.c_uint32, c.c_uint32, c.c_uint32, c.c_uint8]
+        self.vm.xy_host_render_rgba8.argtypes = [c.c_void_p, c.c_uint32, c.c_uint32, c.c_uint32, c.c_uint8]
+        self.vm.xy_host_eval.argtypes = [c.c_char_p, c.c_uint32, c.c_void_p, c.c_uint32]
+        self.vm.xy_host_insert_text.argtypes = [c.c_char_p, c.c_uint32]
+        self.vm.xy_host_insert_text.restype = c.c_bool
+        output = c.create_string_buffer(256)
+        for direction, theme in [('horizontal', 0), ('vertical', 1)]:
+            with self.subTest(direction=direction, theme=theme):
+                self.assertTrue(self.vm.xy_host_live_init())
+                self.vm.xy_host_set_viewport(width, height)
+                source = '(define (stamp) (buffer/insert! "Hello, xy!"))\n日本語 ABC 0123'.encode()
+                self.assertTrue(self.vm.xy_host_insert_text(source, len(source)))
+                expr = f"(view/set! #:direction '{direction} #:size 25)".encode()
+                self.assertGreater(self.vm.xy_host_eval(expr, len(expr), output, 256), 0)
+                native_stride, rgba_stride = width * 2 + 8, width * 4 + 16
+                native = c.create_string_buffer(b'\xa5' * (native_stride * height))
+                rgba = c.create_string_buffer(b'\xa5' * (rgba_stride * height))
+                self.assertGreater(self.vm.xy_host_render_rgb565(native, width, height, native_stride, theme), 0)
+                self.assertGreater(self.vm.xy_host_render_rgba8(rgba, width, height, rgba_stride, theme), 0)
+                native_bytes, rgba_bytes = native.raw, rgba.raw
+                for row in range(height):
+                    expected = bytearray()
+                    data = native_bytes[row * native_stride:(row + 1) * native_stride]
+                    for x in range(width):
+                        color = int.from_bytes(data[x*2:x*2+2], 'little')
+                        r, g, b = (color >> 11) & 31, (color >> 5) & 63, color & 31
+                        expected.extend(((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2), 255))
+                    actual = rgba_bytes[row * rgba_stride:(row + 1) * rgba_stride]
+                    self.assertEqual(actual[:width * 4], expected, f'row {row}')
+                    self.assertEqual(actual[width * 4:], b'\xa5' * 16)
+                    self.assertEqual(data[width * 2:], b'\xa5' * 8)
+                evidence_dir = os.environ.get('XY_RENDER_EVIDENCE_DIR')
+                if evidence_dir:
+                    directory = Path(evidence_dir)
+                    directory.mkdir(parents=True, exist_ok=True)
+                    visible = b''.join(rgba_bytes[y * rgba_stride:y * rgba_stride + width * 4] for y in range(height))
+                    native_visible = b''.join(native_bytes[y * native_stride:y * native_stride + width * 2] for y in range(height))
+                    def chunk(kind, data):
+                        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+                    scanlines = b''.join(b'\0' + visible[y * width * 4:(y + 1) * width * 4] for y in range(height))
+                    png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(scanlines)) + chunk(b'IEND', b'')
+                    stem = f'{direction}-{theme}'
+                    (directory / f'{stem}.png').write_bytes(png)
+                    (directory / f'{stem}.json').write_text(json.dumps({'width': width, 'height': height, 'rgb565_sha256': hashlib.sha256(native_visible).hexdigest(), 'rgba_sha256': hashlib.sha256(visible).hexdigest(), 'pixels_compared': width * height, 'mismatched_pixels': 0, 'source': source.decode()}, indent=2, ensure_ascii=False) + '\n')
+                unchanged = rgba.raw
+                self.assertLess(self.vm.xy_host_render_rgba8(rgba, width, height, width * 4 - 1, theme), 0)
+                self.assertEqual(rgba.raw, unchanged)
+        self.assertTrue(self.vm.xy_host_live_init())
+        self.vm.xy_host_set_viewport(width, height)
+        self.assertEqual(self.vm.xy_host_render_rgba8(rgba, width, height, rgba_stride, 0), 0)
 
     def test_same_process_vm_swap_and_failed_editor_effects_are_atomic(self):
         self.assertTrue(self.vm.xy_host_live_init())

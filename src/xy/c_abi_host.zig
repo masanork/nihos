@@ -15,6 +15,7 @@ pub const render_adapter = @import("render_adapter.zig");
 pub const scheme_bridge = render_adapter.scheme_bridge;
 pub const ime_omni = scheme_bridge.ime_omni;
 pub const ttf = viewport_layout.ttf;
+pub const pixel_transfer = @import("pixel_transfer");
 
 pub const PlacedGlyph = viewport_layout.PlacedGlyph;
 pub const GpuiGlyphQuad = render_adapter.GpuiGlyphQuad;
@@ -73,11 +74,11 @@ pub const live_workspace = @import("live_workspace.zig");
 const HostWorkspaceType = scheme_bridge.XyWorkspace(16384, 64, 4096, 64, 1024);
 
 var g_mincho_adapters: [4]ReaderAdapter = undefined;
-var g_mincho_faces: [4]ttf.Face = undefined;
+var g_mincho_faces: [5]ttf.Face = undefined;
 var g_mincho_count: usize = 0;
 
 var g_gothic_adapters: [4]ReaderAdapter = undefined;
-var g_gothic_faces: [4]ttf.Face = undefined;
+var g_gothic_faces: [5]ttf.Face = undefined;
 var g_gothic_count: usize = 0;
 
 var g_cache: HostCacheType = .{};
@@ -92,6 +93,7 @@ var g_editing_source = false;
 var g_glyf_scratch: [16384]u8 = undefined;
 var g_placed_buf: [512]PlacedGlyph = undefined;
 var g_quads_buf: [512]GpuiGlyphQuad = undefined;
+var g_rgb565_transfer: [1280 * 720 * 2]u8 = @splat(0);
 // SAFETY: render_gpui assigns the complete minibuffer view before taking line().
 var g_mb_view: ime_omni.MinibufferView = undefined;
 
@@ -133,16 +135,25 @@ pub export fn xy_host_init(
     g_mincho_count = 0;
     g_gothic_count = 0;
 
+    // Use the same embedded mono face in both targets; Japanese falls back to
+    // the paged Bunsen layers. No CoreText/AppKit glyphs enter this family.
+    const code_face = viewport_layout.code_font.face() catch return false;
+    g_mincho_faces[0] = code_face;
+    g_mincho_count = 1;
     for (0..mincho_count) |i| {
         g_mincho_adapters[i] = .{ .desc = mincho_descs[i] };
-        g_mincho_faces[i] = ttf.Face.init(g_mincho_adapters[i].toSliceReader()) catch return false;
+        g_mincho_faces[i + 1] = ttf.Face.init(g_mincho_adapters[i].toSliceReader()) catch return false;
         g_mincho_count += 1;
     }
 
     if (gothic_descs) |g_ptr| {
+        if (gothic_count > 0) {
+            g_gothic_faces[0] = code_face;
+            g_gothic_count = 1;
+        }
         for (0..gothic_count) |i| {
             g_gothic_adapters[i] = .{ .desc = g_ptr[i] };
-            g_gothic_faces[i] = ttf.Face.init(g_gothic_adapters[i].toSliceReader()) catch return false;
+            g_gothic_faces[i + 1] = ttf.Face.init(g_gothic_adapters[i].toSliceReader()) catch return false;
             g_gothic_count += 1;
         }
     }
@@ -292,6 +303,7 @@ pub export fn xy_host_cache_stats(out_outline_misses: *u32, out_bitmap_misses: *
     out_bitmap_misses.* = g_cache.bitmap_misses;
 }
 
+/// Atlas/placement inspection API. Pixel-exact hosts present render_rgba8 instead.
 /// Target B (GPUI C-ABI): Build `GpuiFrameDescriptor` and copy up to `max_quads` `GpuiGlyphQuad`s.
 fn effectiveAppearance(theme_id: u8) @import("view_config").Appearance {
     var appearance = g_ws.appearance;
@@ -364,7 +376,10 @@ pub export fn xy_host_render_rgb565(
         fam,
         &g_glyf_scratch,
         &g_placed_buf,
-    ) catch return -2;
+    ) catch |err| {
+        g_render_error = @errorName(err);
+        return -2;
+    };
 
     const theme = ThemePalette.fromAppearance(effectiveAppearance(theme_id));
     const stats = render_adapter.paintSurfaceRgb565(
@@ -378,12 +393,16 @@ pub export fn xy_host_render_rgb565(
         g_ws.doc.cursor,
         g_ws.appearance.linear_blend,
         &g_glyf_scratch,
-    ) catch return -3;
+    ) catch |err| {
+        g_render_error = @errorName(err);
+        return -3;
+    };
+    g_render_error = "";
     return @intCast(stats.glyphs_blitted);
 }
 
-/// Composite the Target B (`GpuiFrameDescriptor` + `GpuiGlyphQuad`) output directly into
-/// a 32-bit RGBA8888 buffer (`[R, G, B, A]` per pixel) for macOS CoreGraphics/Metal display.
+/// Present the canonical Target A framebuffer as opaque RGBA. GPUI or another
+/// host uploads these pixels without reshaping text or redoing alpha blending.
 pub export fn xy_host_render_rgba8(
     rgba_ptr: [*]u8,
     width: u32,
@@ -391,78 +410,20 @@ pub export fn xy_host_render_rgba8(
     stride: u32,
     theme_id: u8,
 ) callconv(.c) i32 {
-    // SAFETY: a nonnegative render_gpui result initializes the whole descriptor;
-    // the error return above any read prevents use of an incomplete frame.
-    var frame: GpuiFrameDescriptor = undefined;
-    const q_count = xy_host_render_gpui(theme_id, &frame, &g_quads_buf, g_quads_buf.len);
-    if (q_count < 0) return q_count;
-
-    const bg_r: u8 = @truncate(frame.bg_rgba8 >> 24);
-    const bg_g: u8 = @truncate(frame.bg_rgba8 >> 16);
-    const bg_b: u8 = @truncate(frame.bg_rgba8 >> 8);
-
-    // 1. Clear background
-    for (0..height) |y| {
-        const row = rgba_ptr[y * stride .. y * stride + width * 4];
-        var x: usize = 0;
-        while (x < width) : (x += 1) {
-            row[x * 4 + 0] = bg_r;
-            row[x * 4 + 1] = bg_g;
-            row[x * 4 + 2] = bg_b;
-            row[x * 4 + 3] = 255;
-        }
+    const pixel_count = @as(u64, width) * height;
+    if (width == 0 or height == 0 or pixel_count > g_rgb565_transfer.len / 2 or @as(u64, stride) < @as(u64, width) * 4) {
+        g_render_error = "InvalidFramebufferGeometry";
+        return -4;
     }
-
-    // 2. Blend each GpuiGlyphQuad's 8bpp alpha texture
-    const count: usize = @intCast(q_count);
-    for (g_quads_buf[0..count]) |quad| blendRgbaGlyph(rgba_ptr, width, height, stride, quad.glyph, quad.alpha_ptr[0..quad.alpha_len], quad.rgba8_color, g_ws.appearance.linear_blend);
-
-    // 3. Draw caret rectangle
-    const cur_r: u8 = @truncate(frame.cursor_rgba8 >> 24);
-    const cur_g: u8 = @truncate(frame.cursor_rgba8 >> 16);
-    const cur_b: u8 = @truncate(frame.cursor_rgba8 >> 8);
-    var cy: i32 = 0;
-    while (cy < frame.cursor.height_px) : (cy += 1) {
-        const dy = frame.cursor.y_px + cy;
-        if (dy < 0 or dy >= @as(i32, @intCast(height))) continue;
-        var cx: i32 = 0;
-        while (cx < frame.cursor.width_px) : (cx += 1) {
-            const dx = frame.cursor.x_px + cx;
-            if (dx < 0 or dx >= @as(i32, @intCast(width))) continue;
-            const off = @as(usize, @intCast(dy)) * stride + @as(usize, @intCast(dx)) * 4;
-            rgba_ptr[off + 0] = cur_r;
-            rgba_ptr[off + 1] = cur_g;
-            rgba_ptr[off + 2] = cur_b;
-            rgba_ptr[off + 3] = 255;
-        }
-    }
-
-    // Status/minibuffer uses the same typeface, sizing and palette as the body.
-    const a = effectiveAppearance(theme_id);
-    const bar_height = @min(height, @as(u32, g_ws.style.body_px) + 2 * @as(u32, a.status_padding));
-    const top = height - bar_height;
-    for (top..height) |y| for (0..width) |x| {
-        const off = y * stride + x * 4;
-        rgba_ptr[off] = @truncate(a.status_background >> 16);
-        rgba_ptr[off + 1] = @truncate(a.status_background >> 8);
-        rgba_ptr[off + 2] = @truncate(a.status_background);
-        rgba_ptr[off + 3] = 255;
+    const native_stride = width * 2;
+    const count = xy_host_render_rgb565(&g_rgb565_transfer, width, height, native_stride, theme_id);
+    if (count < 0) return count;
+    const length = @as(usize, stride) * height;
+    pixel_transfer.rgba8(&g_rgb565_transfer, width, height, native_stride, rgba_ptr[0..length], stride) catch {
+        g_render_error = "InvalidFramebufferGeometry";
+        return -4;
     };
-    var status_style = g_ws.style;
-    status_style.axis = 0;
-    status_style.ruby_px = 0;
-    status_style.margin_x_px = a.status_padding;
-    status_style.margin_y_px = a.status_padding;
-    const status_line = if (g_mb_view.line().len == 0) "xy / *scratch*" else g_mb_view.line();
-    const status_list = viewport_layout.layoutParagraph(256, 512, 1, HostCacheType, &g_cache, activeFamily(), status_style, status_line, "", &.{}, &g_glyf_scratch, &g_placed_buf) catch return -4;
-    for (status_list) |item| {
-        if (item.cell_y_px > status_style.margin_y_px) break;
-        var g = item;
-        g.bitmap_y_px += @intCast(top);
-        const cached = g_cache.getOrRender(activeFamily(), @intCast(g.style_id), @intCast(g.base_cp), @intCast(g.ivs_cp), g.px_size, false, &g_glyf_scratch) catch return -4;
-        blendRgbaGlyph(rgba_ptr, width, height, stride, g, cached.alpha, a.status_foreground << 8 | 255, a.linear_blend);
-    }
-    return q_count;
+    return count;
 }
 
 fn blendRgbaGlyph(rgba_ptr: [*]u8, width: u32, height: u32, stride: u32, glyph: PlacedGlyph, alpha: []const u8, color: u32, linear: bool) void {

@@ -126,6 +126,10 @@ pub fn build(b: *std.Build) void {
     xy_scheme_bridge_module.addImport("view_config", view_config_module);
     xy_scheme_bridge_module.addImport("viewport_layout", viewport_layout_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_scheme_bridge_module })).step);
+    const code_font_module = b.createModule(.{ .root_source_file = b.path("src/graphics/code_font.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = code_font_module })).step);
+    const pixel_transfer_module = b.createModule(.{ .root_source_file = b.path("src/graphics/pixel_transfer.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = pixel_transfer_module })).step);
     const xy_live_module = b.createModule(.{ .root_source_file = b.path("src/xy/live_workspace.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_live_module })).step);
     const xy_render_adapter_module = b.createModule(.{ .root_source_file = b.path("src/xy/render_adapter.zig"), .target = target, .optimize = optimize });
