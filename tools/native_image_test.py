@@ -29,6 +29,19 @@ class NativeInstructionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.audit_flash_section('.flash.xytext', 1, 6, start - 16, 32, allow_xy=True)
 
+    def test_xy_renderer_aliases_and_expanded_readonly_extent_are_checked(self):
+        start = 0x40060000
+        functions = [('nih_xy_render', start, start + 16),
+                     ('native_render_entry.nih_xy_render', start, start + 16),
+                     ('xy.scheme_runtime.Runtime.evaluate__func_1', start + 16, start + 32),
+                     ('xy.scheme_runtime.Runtime.collect', start + 32, start + 48)]
+        MODULE.audit_xy_functions(functions, (start, start + 48))
+        with self.assertRaises(ValueError):
+            MODULE.audit_xy_functions(functions + [('irq.unapproved', start, start + 16)], (start, start + 48))
+        MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x40080000, 32, allow_xy=True)
+        with self.assertRaises(ValueError):
+            MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x400bfff0, 32, allow_xy=True)
+
     def test_normal_filesystem_sections_require_explicit_profile_and_permissions(self):
         cases = (('.flash.fstext', 0x40020000, 128, 6),
                  ('.flash.fsrodata', 0x40020080, 128, 2),

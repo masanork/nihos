@@ -30,10 +30,10 @@ def main():
         binary = stage / 'host-tests'
         subprocess.run([str(zig), 'test', '-O', 'Debug', '-fllvm',
                         '--test-no-exec', f'-femit-bin={binary}',
-                        '--dep', 'ccid', '--dep', 'surface', '--dep', 'canvas',
+                        '--dep', 'ccid', '--dep', 'surface', '--dep', 'canvas', '--dep', 'view_config',
                         '-Mroot=src/root.zig', '-Mccid=src/usb/ccid.zig',
                         '-Msurface=src/graphics/surface.zig', '--dep', 'surface',
-                        '-Mcanvas=src/graphics/canvas.zig'], cwd=ROOT, check=True)
+                        '-Mcanvas=src/graphics/canvas.zig', '-Mview_config=src/xy/view_config.zig'], cwd=ROOT, check=True)
         # Also execute directly so a collector cannot hide a failing test process.
         subprocess.run([str(binary)], cwd=ROOT, check=True)
         process = subprocess.Popen(
