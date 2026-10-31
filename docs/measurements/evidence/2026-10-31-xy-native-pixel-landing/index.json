@@ -1,5 +1,5 @@
 {
-  "source_commit": "4481be1af26acc3d3b232fbe4fe8f86259d1cdf2",
+  "source_commit": "9443377bdfb8a579691a0a3e1a38dc59ee9d15a1",
   "physical": {
     "passed": true,
     "observations": 56,
@@ -7,7 +7,7 @@
       "seconds": 30,
       "records": 30,
       "render_frames": 32,
-      "scanout_frame_delta": 1747,
+      "scanout_frame_delta": 1751,
       "backing_payload": 2958656,
       "backing_reserved": 4194304,
       "dma_error": 0
@@ -20,27 +20,29 @@
     "post_fix_flicker_free_claim": false
   },
   "files": {
-    "debug-tests.log.gz": "77bb7635e2e38be710e4c1de13223bba63624dbcbb85a9b585604433f1466a6c",
-    "emulator-result.json.gz": "3caf52cb2830da240af62ce15bed78e70efbfdd7ecf1eb68a9161ca04463b80a",
+    "debug-tests.log.gz": "9c8e985c4862dfbb994f923780d8d3275aaf696a515147f976611273ab3ec4bf",
+    "emulator-result.json.gz": "d2a29e78ba7370d2edaf509d9af03e58f8936183fb67d861b7d64f034e401a58",
     "emulator.log.gz": "83ba23ea2c35156d75a35a852c4af88c18ad3151f41dc10278e3f098bb250ca7",
     "long-idle-capture.log.gz": "6a38efa14a6b29a1649c553962045108c709f2c6bce75968eec28cded7b067a8",
     "long-idle-observe.log.gz": "d8f7d323abd645f7359a89836660aef446d39e0bef7824a866926fbd7846bdaf",
     "long-idle-result.json.gz": "9c829ce803161e6cd80ce08d217d02c936b566f4440a544295b4d100f3f14e64",
-    "normal-image-audit.json.gz": "ea70d56ee485133db60b965ce2f89f4e0d8d74374975fbfd69e682b7a85d6f9c",
-    "normal-normal-fs-manifest.json.gz": "16b96b3bc6b2844ce1a4ad117b9ed636ac2c2252216ee12bbefd40deeed616ef",
+    "normal-image-audit.json.gz": "96446e748f6bac4643aa0c431628d9fc65c55be79d5b34361b01b73d099e2cf5",
+    "normal-normal-fs-manifest.json.gz": "19bed84ea6aea12b289e18bc08bf553471769b14cd382df43ebff7a1372d4159",
     "original-worktree.json": "121bfa799d3ef93a091232b956aadfcc6e3848a045f4280dcc1b65c0b5266d3a",
-    "physical-capture.log.gz": "44097612ffc28cce3f4d64012742a89d75b498b7e51172c155fd177e34738361",
-    "physical-observe.log.gz": "c094ac4c8a8e32c822afa8e1f4a1badb9857db762eda9fb3611f028453b22022",
-    "physical-restore-verify_flash.log.gz": "cab793dc5a7028b1ec978eb79256ae3c157f6e902862d418a9f9a3c0386424fc",
-    "physical-result.json.gz": "4dd80a94b3f89a768c607be2ba03181bd88f6124cb1456303df05b30f9b976e7",
-    "physical-verify-after.log.gz": "91b11b1600d1902f0981077af2081d22f2a9e6b073631e2a7f587ea2d4fb5602",
-    "physical-verify-before.log.gz": "91b11b1600d1902f0981077af2081d22f2a9e6b073631e2a7f587ea2d4fb5602",
-    "python-tests.log.gz": "014a60d7105f39f69681586ab1c0d543bb756efbcfa9279f2e1dde71bcb31d6b",
-    "qualification-tool.py.gz": "68da6193375526d6dd7a85449bd00938da79a90c509edce76ea437dfb2c0dcf9",
-    "release-tests.log.gz": "8803c99398c651ee26279cdf34b785a269c522b52e86d99f8e3065a77c3f1cdc",
-    "static.log.gz": "7683e1da2a9136abde3d9a92b4bed137a6fa242143ce1db4d22d2b715466815f",
-    "trace-image-audit.json.gz": "4448f033f6901069c4ae5f59d7a9142ec3e0cdc9c36f0ef8be6eff01522e99c5",
-    "trace-normal-fs-manifest.json.gz": "f6f09cf0a76446f965ac85352794a684bbc4e743e5617bb17664951694ea7eb2",
-    "workspace-tests.log.gz": "98268b633506fad891c613d2e81953d651092c5acafd41614cd2348f59e44b43"
-  }
+    "physical-capture.log.gz": "d47b3f55cca3e0a97bf19e1cf7eebfd6de85be74738db80eb75aa84f2c794f0a",
+    "physical-observe.log.gz": "9adceda36c80f186bf41df00dd34c5ff34bdf4f4487cd5621a9773aa0285df5e",
+    "physical-restore-verify_flash.log.gz": "539ad068274e8f6e768539f6820d3039a6a7a899ad5c7b85723b3fdbed678ef2",
+    "physical-result.json.gz": "3a191a77a699b81d527470e05f632d2390e1268380ebeb351fef583212eb5077",
+    "physical-verify-after.log.gz": "99a11112bc0e54b10289857b4a3d2a712bfcb6d1f56ba4c39b124204f9545758",
+    "physical-verify-before.log.gz": "99a11112bc0e54b10289857b4a3d2a712bfcb6d1f56ba4c39b124204f9545758",
+    "pre-review-physical-result.json.gz": "4dd80a94b3f89a768c607be2ba03181bd88f6124cb1456303df05b30f9b976e7",
+    "python-tests.log.gz": "855a51a0ea3a8c3b2ab73cda5669fd712460f551477de776ed34e83ad52ab8c6",
+    "qualification-tool.py.gz": "d3868a32640a5b49e9b880150385fab97ab3bc1c2827b3966051ceecc5549f75",
+    "release-tests.log.gz": "0e9960d0c08585b3d339c80d1343086f037547a5d624fd6b924beff47e0b6816",
+    "static.log.gz": "c4bcde69fb8cb7970d77bb4a01c0a8d8c2844247c8d4299d6bc8aebd3a28d86f",
+    "trace-image-audit.json.gz": "f69936c17f47d54c8f269c743b32fcb66f3d03b63cb8a7946265177b7e97fb7d",
+    "trace-normal-fs-manifest.json.gz": "afac5a97a66bf5811dfdd14deb0ee3ece729b814afae3f609fd9ab00cbc05809",
+    "workspace-tests.log.gz": "417d2846a950f37bbc26c475aba0d5afd65af412fe070611993adcd7c99e7a19"
+  },
+  "equivalent_runtime_head": "43323d43e89d59312b4cb1c46d9664f50ffc499b"
 }
