@@ -1,0 +1,59 @@
+{
+  "code_commit": "3a222b2c15bf3c7ccd01352417c9cfc4033fab59",
+  "physical_state_checks": 53,
+  "render_observations": [
+    {
+      "name": "view-gothic-36",
+      "frames": 10,
+      "stack_used": 67952,
+      "failed": 0,
+      "font": 1,
+      "size": 36,
+      "axis": 0,
+      "foreground": 2241348,
+      "background": 16447214
+    },
+    {
+      "name": "view-vertical",
+      "frames": 22,
+      "stack_used": 67952,
+      "failed": 0,
+      "font": 1,
+      "size": 36,
+      "axis": 1,
+      "foreground": 2241348,
+      "background": 16447214
+    },
+    {
+      "name": "view-horizontal",
+      "frames": 28,
+      "stack_used": 67952,
+      "failed": 0,
+      "font": 1,
+      "size": 36,
+      "axis": 0,
+      "foreground": 2241348,
+      "background": 16447214
+    }
+  ],
+  "manual_visual_confirmation": "pending",
+  "physical_keyboard_tested": false,
+  "input_transport": "serial UTF-8",
+  "cold_power_cycle_tested": false,
+  "persistence_tested": false,
+  "sd_written": false,
+  "proof_sha256": {
+    "capture.log": "4972b2671eb615fc7be3b64f5cb289d5139cfcdc4406c5d5a8a095373cf5ff76",
+    "identity.log": "88c8e8c32ce3fcb1081f6eb418273ecd16673ed9a0217eae88f29b11d32f4c67",
+    "image-audit.json": "fdb8e04191dfd3aa289fcba7784d5766f6923a6a3d2c26cb6a1c35996f01d10f",
+    "install.log": "43e8fde4ac63f5afa173ebb696fd9e060640fdd5c7bc8027637e81482529e487",
+    "qualification-tool.py": "15a5dc131c4ec7e3a124980e60509bbd85e151650e979765113a4937aa0ea7c7",
+    "result.json": "deef79f0abae4a00217028266757e628fc4d7be4f7d6123d996cc7eada089806",
+    "scheduler-range-failure-capture.log": "92c9f17ef82538bae152034f17d13caed1f1779c1bab3adb734416c115d941ce",
+    "scheduler-range-failure-result.json": "cfa296afb5bfc5fcc1aa4d62dad21d83afb216d75abd541bb9033bfd49bbc147",
+    "scheme-stack-failure-capture.log": "2c19fece2d047918233ad681de44b0e5ce5efb9ca51879ac9eda5b38a508b782",
+    "scheme-stack-failure-result.json": "7e7b848f1bf1c09dece567c8d034c4ee6ad305a12d09828c91a71666f8da57e9",
+    "verify-after.log": "e1ddd5b3e3e9818e539ce731fe2761231721262dcadd1b4842671f9dacd0a010",
+    "verify-before.log": "e1ddd5b3e3e9818e539ce731fe2761231721262dcadd1b4842671f9dacd0a010"
+  }
+}

@@ -1,0 +1,27 @@
+# Tab5: 共通 TrueType 描画と Scheme 表示設定の実機確認
+
+検証コードは `3a222b2`。Tab5 ESP32-P4 revision v1.3、MAC `e8:f6:0a:e2:e8:9c`、16MiB Flashで、所有権ロックと両シリアル名のカーネル排他を取得して実施した。バックアップはユーザー指示どおり省略し、SDへの書込み・フォーマットは行っていない。
+
+[結果と候補識別子](2026-10-31-xy-native-render/result.json)、[イメージ監査](2026-10-31-xy-native-render/image-audit.json)、[シリアル記録](2026-10-31-xy-native-render/capture.log)、[証跡のSHA-256](2026-10-31-xy-native-render/summary.json)を保存した。候補のbootloader・partition table・appを固定し、書込み前後の内容一致を確認した後、日本語サンプルを表示したまま終了した。
+
+## 実機で確認した範囲
+
+53項目の状態照合が成功した。通常起動からxyへの移行、シリアル入力とCRLF、カーソル移動・挿入・undo、IVS単位削除、help復帰、読み取り専用log/mem/tasks、Scheme closure・再帰制限エラー・エラー後の復帰・コマンド登録、warm reset後の空RAM文書を確認した。
+
+続いてS式から36pxゴシック、文字色 `#x223344`、背景色 `#xfaf6ee` を指定し、UTF-8日本語をシリアル投入した。縦書きと横書きの切替も、実際の描画完了後の設定値と文書・カーソル状態で照合した。
+
+| 観測 | 字体ID | size | axis | 描画スタック最大使用 | 描画失敗 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ゴシック36px | 1 | 36 | 0 | 67952 bytes | 0 |
+| 縦書き | 1 | 36 | 1 | 67952 bytes | 0 |
+| 横書きへ復帰 | 1 | 36 | 0 | 67952 bytes | 0 |
+
+描画スタックの確保は131072 bytes。最後は「日本語表示 あいうえお」「青空文庫」「文字サイズ 36」「背景と文字の色を設定」の横書きサンプル（94 UTF-8 bytes、cursor=94）を残した。光学的な確認はユーザーへ依頼している。シリアルによる状態・描画提出の確認を、画素一致や実キーボード操作の証明とは扱わない。IME入力、永続化、候補のcold power cycleは未確認。
+
+## 実機で露見して修正した2点
+
+最初の候補は描画専用スタック中のtimer IRQで停止した。割込み入口の範囲確認に加え、schedulerのbootstrap imageにも実際のスタック範囲を反映する必要があった。SP切替の短い区間だけMIEを停止してscheduler imageを変更し、PSRAM SPへ移ってから割込みを再開する。復帰時も元のSPとimageを揃えてから再開する。描画全体は割込み可能なままで、task handle・priority・allocation ownerは変えない。protected/floating taskはこの経路を使えない。timer capture→別task選択→bootstrap再開→元の範囲復元のhost回帰試験を追加した。
+
+次の候補は32項目を通過した後、Schemeの再帰制限試験でboot stackのガードに達した。表示設定の処理を`applyView`へ分離し、再帰経路の大きなCellの値コピーを参照へ変更した。深さ24・実行step上限は維持し、最終候補では制限エラーを通常のSchemeエラーとして処理し、その後の編集も成功した。
+
+両失敗の候補識別子とシリアル記録も同ディレクトリに残した。修正後はReleaseSafe全体、506 Python tests、static analysisと6 native ELF監査、RV32 xy fixture 39観測、通常版とtrace版のimage監査を再確認した。
