@@ -671,6 +671,10 @@ noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if 
     shown_session_revision = if (xy_workspace) scratch.revision else session.revision;
     return true;
 }
+// Milestone drawing runs only after display/Flash startup, never in an IRQ.
+noinline fn updateSplash(selected: boot.Status) linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
+    return boot.updateLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected);
+}
 pub noinline fn service(log: anytype) bool {
     if (!options.console_live or !runtime.active()) return true;
     if (!clock_ready or rendering) return false;
@@ -748,7 +752,14 @@ pub noinline fn service(log: anytype) bool {
             last_render = now;
         } else if (changed) @atomicStore(u32, &dirty, 1, .release);
     } else if (full) {
-        if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
+        // display_runtime prepared the first splash before enabling DMA.
+        // Milestones change its label/dye, not the static lettering. Clearing
+        // that live buffer on each stage exposes a blank inscription to DMA.
+        const painted = if (shown_details)
+            boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected)
+        else
+            updateSplash(selected);
+        if (!painted or !paintTouchControl() or !present()) return false;
     } else if (progress != old_progress) {
         if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
     }
