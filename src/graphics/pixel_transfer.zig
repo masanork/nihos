@@ -25,6 +25,15 @@ pub fn rgba8(source: []const u8, width: usize, height: usize, source_stride: usi
         }
     }
 }
+/// GPUI RenderImage accepts BGRA bytes. Keep channel conversion in the shared
+/// transfer layer rather than letting the window host reinterpret RGB565.
+pub fn bgra8(source: []const u8, width: usize, height: usize, source_stride: usize, out: []u8, out_stride: usize) Error!void {
+    try rgba8(source, width, height, source_stride, out, out_stride);
+    for (0..height) |y| for (0..width) |x| {
+        const offset = y * out_stride + x * 4;
+        std.mem.swap(u8, &out[offset], &out[offset + 2]);
+    };
+}
 test "all 65536 RGB565 colors round trip exactly through transfer expansion" {
     for (0..65536) |value| {
         const pixel = expand(@intCast(value));
