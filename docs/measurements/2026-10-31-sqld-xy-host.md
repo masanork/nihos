@@ -45,3 +45,12 @@ host objectへcompiler runtimeを明示した。無効なmonotonic clockでtrans
 C analyzerとshellcheck、更新したcore/VFSのRV32 object compileも成功した。
 Zig sourceと通常ELFの関連sourceは先行記録から変更していない。
 追補のhash・ログは同じresult.jsonのfollowupとfollowup-*.log.gzに分けて保存した。
+
+## request slotの所有期間
+
+source `b7eb893922cdb5f71846621c9e79fbec98b3ef7c`。request slotをproducerへ返す前にcompletionのsequence記帳を終える順序にした。
+producerとSQLite ownerを別threadで動かし、送信元bufferを書換えながら256要求のcopyとcompletionを
+確認する試験を追加。sqld 15件、Python discover 540件、C analyzer、RV32 object compileが成功した。
+この追補はqueue_followupとqueue-*.log.gzへ保存した。Linux/Mac CIの初期link修正後の成功は
+[Linux](https://github.com/masanork/nihos/actions/runs/41179535504)、
+[Mac](https://github.com/masanork/nihos/actions/runs/41179535550)にある。これらはqueue追補前のheadの結果である。
