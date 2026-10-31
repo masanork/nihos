@@ -33,7 +33,8 @@ assert r.returncode==0 and 'NIHOS_NATIVE_FAIL' not in r.stdout,(r.returncode,r.s
 rows=re.findall(r'NIHOS_WASM_REPEAT round=([0-9a-f]+) state=([0-9a-f]+) frames=([0-9a-f]+) signature=([0-9a-f]+)',r.stdout)
 rows=[tuple(int(x,16) for x in row) for row in rows]
 assert rows==[(1,5,0,0),(1,1,0,0),(1,2,4,4),(2,5,0,0),(2,4,0,0),(3,5,0,0),(3,1,0,0),(3,2,4,4)],rows
-assert r.stdout.count('nihos> ')>=3,r.stdout
+assert r.stdout.count('Starting Rust sample; q or Esc cancels.')==3,r.stdout
+assert r.stdout.count('Rust sample stopped.\nnihos> ')==3,r.stdout
 assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in hashes.items())
 (out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows]},indent=2)+'\n')
 print('repeat: two active runs and startup cancellation, with shell returns and full recovery passed')
