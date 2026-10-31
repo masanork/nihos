@@ -118,8 +118,8 @@ fn legacySqlHook(_: *anyopaque, request: scheme_bridge.SqlQueryRequest, arena: *
     var output: [1024]u8 = undefined;
     const encoded = storageBridge(null, .{ .operation = .lookup, .text = request.table, .argument = request.where_clause, .count = @min(request.limit, 8) }, &output) catch return error.SqlUnavailable;
     const owned = try arena.allocString(encoded);
-    var reader = scheme_bridge.Reader{ .src = owned, .arena = arena };
-    const result = (try reader.readExpr()) orelse return error.SqlUnavailable;
+    var response_reader = scheme_bridge.Reader{ .src = owned, .arena = arena };
+    const result = (try response_reader.readExpr()) orelse return error.SqlUnavailable;
     return arena.nodes[result];
 }
 pub export fn xy_host_set_storage_callback(context: ?*anyopaque, callback: ?StorageCallback) callconv(.c) void {
