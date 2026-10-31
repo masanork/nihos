@@ -1,6 +1,6 @@
 # xy: 共通 TrueType 描画と S 式の表示設定
 
-実装コミット: `f0812e3`。コードとフォントの SHA-256 は [RV32記録](2026-10-31-xy-render-integration/rv32-report.json)、イメージと証跡の識別子は [summary.json](2026-10-31-xy-render-integration/summary.json) に保存した。後続の証跡追加コミットは実行コードを変更しない。
+実装コミット: `f0812e3`。カメラJPEG対応を含む最新main `3efd1f8` を `22b3a04` で取り込み、検証対象を `1afbc6c` に更新した。コードとフォントの SHA-256 は [RV32記録](2026-10-31-xy-render-integration/rv32-report.json)、イメージと証跡の識別子は [summary.json](2026-10-31-xy-render-integration/summary.json) に保存した。後続の証跡追加コミットは実行コードを変更しない。
 
 通常の Tab5 xy と ESP-EMU fixture を `viewport_layout → TrueType cache/rasterizer → render_adapter → Surface` に接続した。本文、読み取り専用バッファ、help、コマンド行を同じ描画経路で表示する。借用した縦向き framebuffer を回転して使用し、第二 framebuffer を確保しない。macOS の下部バーにも同じ TrueType 処理と配色設定を適用した。
 
@@ -10,8 +10,9 @@
 
 | 確認 | 結果 |
 | --- | --- |
-| `zig build test -Doptimize=ReleaseSafe -j4 --summary all` | 63/63 steps成功。今回実行された822/822 tests成功 |
-| Python unittest discovery | 502件成功 |
+| `zig build test -Doptimize=ReleaseSafe -j4 --summary all` | 63/63 steps成功。描画実装時の822/822 tests成功後、main合成後も全体再確認成功 |
+| Python unittest discovery | 最新main合成後506件成功 |
+| coverage用Debug/LLVMビルド | 計測ツールの共通設定モジュール指定を補い、同じコマンドで750件成功 |
 | static analysis | fmt、zlint、shellcheck、owner/codegen検査、6 native ELF監査成功 |
 | native image | 通常版・XY_TRACE版・devices/storageを除いた版の3構成で独立監査成功 |
 | RV32 ESP-EMU | 39観測。入力、改行、IVS削除、undo、help復帰、読み取り専用バッファ、Scheme、設定変更・拒否・rollback、日本語描画 |

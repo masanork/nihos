@@ -11,7 +11,7 @@
     "transfer_helpers": 0
   },
   "entry": "0x4ff00000",
-  "elf_sha256": "21dbd12467f0284df263b08640966a6a869e18c47a9656322a1ab692e02b5a32",
+  "elf_sha256": "5ad300469ba5e15a53187fac7224196a9fb1087dd939fbf901c59dc1d061da26",
   "memory": {
     "profile": "device",
     "origin": "0x4ff00000",
@@ -264,13 +264,13 @@
       0,
       1
     ],
-    "manifest_sha256": "b9d058efbe297c6e145e8ebb55944af836fd86fca1ecd32265511e52ed286c15",
+    "manifest_sha256": "d58f5dafb36b49b2bb2a7843dc8094242e7ff3bbd33e2c5c5e195e4ebd3641ea",
     "text_start": "0x40020000",
     "text_bytes": 42496,
     "text_sha256": "992b8e3fb39d95b84d7ed092a60994999c61f5626bbfd7fa5e52b27ee4376fc6",
     "rodata_start": "0x4002a600",
     "rodata_bytes": 20488,
-    "rodata_sha256": "ea6a0b2614abe9584f142d364693bfc06368228bba2240253a0538e11e7ab1d3",
+    "rodata_sha256": "2b657b6d305f1be9349d804458772c1ba75101b339e54b38bb0bb69050f65dff",
     "parent_bytes": 65536,
     "worker_stack_bytes": 4096,
     "foreground_only": true,
@@ -903,7 +903,7 @@
     "writable": false,
     "executable": true
   },
-  "image_sha256": "aabda0a037183f7ae975f0cb1bb4e71b081544b263ab7ee375462ae3319e3564",
+  "image_sha256": "d64be0220b30279c4bbea90b60157dbd1fc71d050050557c418af2c21a86c7af",
   "image_bytes": 784272,
   "image_segments": [
     {
