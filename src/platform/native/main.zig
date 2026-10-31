@@ -722,7 +722,7 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
     return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
-fn taskReport(hart: u32) void {
+noinline fn taskReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else ".text") void {
     const report = tasks.report(hart);
     if (report.progress[0] == 0 or report.progress[1] == 0 or
         report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
@@ -753,7 +753,7 @@ fn ipiReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_IPI", hart, .{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued" }, &report);
 }
 
-fn floatingReport(hart: u32) void {
+noinline fn floatingReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else ".text") void {
     const report = tasks.floating.report(hart);
     if (report.confirmed != 1 or report.saves != report.restores or
         report.saves != report.timer + report.calls + report.ipi) fail("FP quiescence");
@@ -1922,7 +1922,7 @@ fn heapReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_HEAP", hart, .{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }, &report);
 }
 
-noinline fn resourceReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
+noinline fn resourceReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
     const report = tasks.memory.reusable.resourceReport(hart);
     logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes", "c_probes" }, &report);
 }
@@ -1933,13 +1933,13 @@ fn flashReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
 }
 
-noinline fn stackReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") void {
+noinline fn stackReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
     logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
 }
 
-export fn nih_sqld_wake(bits: u32) callconv(.c) void {
-    if (native_sqld) tasks.wakeSqld(bits);
+fn nih_sqld_wake(bits: u32) callconv(.c) void {
+    tasks.wakeSqld(bits);
 }
 var sqld_reported_phase: u32 = 0;
 var sqld_progress_time: u64 = 0;
@@ -1959,10 +1959,19 @@ fn serviceSqld() linksection(".flash.sqldtext") void {
         logger.record("NIHOS_NATIVE_SQLD", null, .{ "phase", "error_code", "sectors", "cid_crc", "generation" }, &record);
     }
 }
-export fn nih_sqld_front_pump() linksection(".flash.sqldtext") callconv(.c) void {
+fn nih_sqld_front_pump() linksection(".flash.sqldtext") callconv(.c) void {
     serviceNetwork();
     serviceStorage();
     serviceSqld();
     if (!ui.service(&logger)) fail("sqld foreground display");
     tasks.idleOnce(0);
+}
+comptime {
+    // Graphics and other non-sqld images must not keep this call graph. The
+    // section is only an output region when sqld is linked; an unconditional
+    // export is an orphan SRAM root and drops the heap under 48 KiB.
+    if (native_sqld) {
+        @export(&nih_sqld_wake, .{ .name = "nih_sqld_wake" });
+        @export(&nih_sqld_front_pump, .{ .name = "nih_sqld_front_pump" });
+    }
 }
