@@ -335,8 +335,9 @@ int nih_sqld_step(void *raw) {
  if (r->status) { r->length=0;r->text[0]=0;
   if ((r->sqlite_code&255)==SQLITE_IOERR || r->status==NIH_STORE_IO || r->status==NIH_SQLD_UNKNOWN) { r->outcome=2;s->dead=1; }
  } else if (!r->length) append(r,"#t",2);
- atomic_store_explicit(&s->request_tail,tail+1,memory_order_release);
+ /* No request field may be read after publishing the reusable queue slot. */
  atomic_store_explicit(&s->completed_serial,q->sequence,memory_order_release);
+ atomic_store_explicit(&s->request_tail,tail+1,memory_order_release);
  atomic_store_explicit(&s->response_head,head+1,memory_order_release);return 1;
 }
 int nih_sqld_call(void *raw,uint32_t principal,struct nih_sqld_request *q,struct nih_sqld_response *r) {

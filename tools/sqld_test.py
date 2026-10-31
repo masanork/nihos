@@ -215,6 +215,43 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(LIB.nih_sqld_step(service), 1)
         self.assertEqual(LIB.nih_sqld_take(service, 7, c.byref(Response())), 1)
 
+    def test_concurrent_producer_and_owner_keep_copied_requests_and_completions(self):
+        service = LIB.nih_sqld_host_service(self.h)
+        done = threading.Event()
+        errors = []
+        observed = []
+        def producer():
+            try:
+                sent = 0
+                while len(observed) < 256:
+                    if sent < 256:
+                        q = request(1, f'SELECT {sent + 1}')
+                        q.epoch, q.sequence = 1, sent + 1
+                        rc = LIB.nih_sqld_submit(service, 7, c.byref(q))
+                        if rc == 0: sent += 1
+                        elif rc != -16: raise AssertionError(rc)
+                        # A submitted copy cannot change with this caller buffer.
+                        q.text = b'SELECT -1'
+                    r = Response()
+                    rc = LIB.nih_sqld_take(service, 7, c.byref(r))
+                    if rc == 1:
+                        observed.append((r.sequence, r.status, bytes(r.text)))
+                    elif rc != 0: raise AssertionError(rc)
+                    if time.monotonic() >= deadline: raise AssertionError('producer deadline')
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                done.set()
+        deadline = time.monotonic() + 10
+        thread = threading.Thread(target=producer)
+        thread.start()
+        while not done.is_set() and time.monotonic() < deadline:
+            self.assertIn(LIB.nih_sqld_step(service), (0, 1))
+        thread.join(timeout=1)
+        self.assertFalse(thread.is_alive())
+        self.assertFalse(errors, errors)
+        self.assertEqual(observed, [(i, 0, f'(({i}))'.encode()) for i in range(1, 257)])
+
     def test_exclusive_existing_image_and_no_destructive_fallback(self):
         before = self.path.read_bytes()
         self.assertFalse(LIB.nih_sqld_host_open(bytes(self.path), 1))
