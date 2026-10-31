@@ -28,7 +28,7 @@ pub const Range = struct {
     end: u32,
 };
 
-pub const RubySpan = struct {
+pub const RubySpan = extern struct {
     base_start: u32 = 0,
     base_end: u32 = 0,
     ruby_start: u32 = 0,

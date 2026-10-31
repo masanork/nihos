@@ -168,12 +168,6 @@ pub export fn xy_host_init(
         }
     }
 
-    var dummy: u8 = 0;
-    g_ws.ext_omni_provider = .{
-        .ctx = &dummy,
-        .queryFn = bridgeOmniQuery,
-        .learnFn = null,
-    };
     g_render_session.init(ttf.SliceReader.fromSlice(&rom_mincho), ttf.SliceReader.fromSlice(&rom_gothic)) catch return false;
     g_render_ready = true;
     if (mincho_count == 0) {
@@ -232,6 +226,7 @@ pub export fn xy_host_eval(
 /// Initialize an editor session without requiring fonts (also used by the CLI).
 pub export fn xy_host_live_init() callconv(.c) bool {
     g_ws = .{};
+    g_ws.ext_omni_provider = .{ .ctx = &g_ws, .queryFn = bridgeOmniQuery, .learnFn = null };
     g_live.init();
     g_live_ready = true;
     g_editing_source = false;
@@ -396,7 +391,7 @@ pub export fn xy_host_render_rgb565(
     const total_bytes = @as(usize, stride) * @as(usize, height);
     const config = view_config.Config{ .style = g_ws.style, .appearance = effectiveAppearance(theme_id) };
     g_mb_view = g_ws.ime.formatMinibuffer();
-    const status = if (g_host_status_len > 0) g_host_status[0..g_host_status_len] else if (g_mb_view.line().len > 0) g_mb_view.line() else "xy / *scratch*";
+    const status = if (g_ws.ime.phase != .idle) g_mb_view.line() else if (g_host_status_len > 0) g_host_status[0..g_host_status_len] else g_mb_view.line();
     const request = native_session.protocol.Request{
         .workspace = &g_render_session,
         .frame = fb_ptr,
@@ -408,6 +403,10 @@ pub export fn xy_host_render_rgb565(
         .status = status.ptr,
         .status_length = status.len,
         .show_cursor = 1,
+        .ruby_text = &g_ws.doc.ruby_arena,
+        .ruby_text_length = g_ws.doc.ruby_bytes_used,
+        .ruby_spans = &g_ws.doc.ruby_spans,
+        .ruby_count = g_ws.doc.ruby_count,
     };
     g_render_session.renderLogical(&request, width, height, stride) catch |err| {
         g_render_error = @errorName(err);

@@ -47,6 +47,15 @@ pub const Session = struct {
         const text = request.text[0..request.text_length];
         if (text.len > 4096) return error.Capacity;
         if (!std.unicode.utf8ValidateSlice(text) or request.cursor > text.len or !document.isClusterBoundary(text, request.cursor)) return error.InvalidUtf8;
+        if (request.ruby_text_length > 1024 or request.ruby_count > 64) return error.Capacity;
+        const readings = request.ruby_text[0..request.ruby_text_length];
+        const spans = if (request.ruby_spans) |ptr| ptr[0..request.ruby_count] else if (request.ruby_count == 0) &.{} else return error.Range;
+        for (spans) |span| {
+            if (span.base_start >= span.base_end or span.base_end > text.len or span.ruby_start >= span.ruby_end or span.ruby_end > readings.len) return error.Range;
+            if (!document.isClusterBoundary(text, span.base_start) or !document.isClusterBoundary(text, span.base_end)) return error.InvalidUtf8;
+        }
+        var visible_readings: [1024]u8 = undefined;
+        var annotations: [64]layout.ruby.Annotation = undefined;
         // Size the bounded window to the current typography, then halve it if
         // paragraph breaks consume more lines than the conservative cell budget.
         const inline_px: usize = if (style.axis == 0) @as(usize, screen_width) - 2 * @as(usize, style.margin_x_px) else @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px);
@@ -78,8 +87,42 @@ pub const Session = struct {
             const take_before: usize = @min(total, used_before + remaining);
             start = boundaries[(total - take_before) % boundaries.len];
             cursor = @intCast(request.cursor - start);
-            if (start == end) break;
-            list = layout.layoutParagraph(256, 4096, 1, Cache, &self.cache, family, style, text[start..end], "", &.{}, &self.scratch, &self.placed) catch |err| switch (err) {
+            if (start == end) {
+                if (text.len != 0) return error.Capacity;
+                break;
+            }
+            // Keep a group reading with its complete base when a viewport edge
+            // crosses an annotation. Closure also handles overlapping groups;
+            // the layout layer still validates their semantic compatibility.
+            var extended = true;
+            while (extended) {
+                extended = false;
+                for (spans) |span| {
+                    if (span.base_start < end and span.base_end > start) {
+                        const next_start = @min(start, span.base_start);
+                        const next_end = @max(end, span.base_end);
+                        extended = extended or next_start != start or next_end != end;
+                        start = next_start;
+                        end = next_end;
+                    }
+                }
+            }
+            cursor = @intCast(request.cursor - start);
+            var reading_bytes: usize = 0;
+            var annotation_count: usize = 0;
+            for (spans) |span| {
+                if (span.base_start < start or span.base_end > end) continue;
+                const reading = readings[span.ruby_start..span.ruby_end];
+                if (reading.len > visible_readings.len - reading_bytes) return error.Capacity;
+                @memcpy(visible_readings[reading_bytes..][0..reading.len], reading);
+                annotations[annotation_count] = .{
+                    .base = .{ .start = @intCast(span.base_start - start), .end = @intCast(span.base_end - start) },
+                    .ruby = .{ .start = @intCast(reading_bytes), .end = @intCast(reading_bytes + reading.len) },
+                };
+                annotation_count += 1;
+                reading_bytes += reading.len;
+            }
+            list = layout.layoutParagraph(256, 4096, 1024, Cache, &self.cache, family, style, text[start..end], visible_readings[0..reading_bytes], annotations[0..annotation_count], &self.scratch, &self.placed) catch |err| switch (err) {
                 error.BlockFull, error.Capacity => {
                     before /= 2;
                     after /= 2;
