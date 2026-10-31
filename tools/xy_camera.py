@@ -139,14 +139,22 @@ def verify(directory):
     metadata = None
     reading = False
     data = bytearray()
+    revision = None
+    replied_revision = None
     for line in (directory/'serial.log').read_bytes().splitlines():
         if b'NIHOS_NATIVE_FAIL' in line or b'NIHOS_JPEG_FAIL' in line:
             raise ValueError('firmware failed')
+        if line.startswith(b'NIHOS_NATIVE_XY_STATE '):
+            fields = {k.decode():int(v,16) for k,v in re.findall(rb'(\w+)=([0-9a-f]{8})(?=\s|$)',line)}
+            revision = fields['revision']
         if line.startswith(b'NIHOS_XY_JPEG_READY '):
             if metadata is not None: raise ValueError('duplicate completion')
             metadata = {k.decode():int(v,16) for k,v in re.findall(rb'(\w+)=([0-9a-f]{8})(?=\s|$)',line)}
         if not line.startswith(b'NIHOS_NATIVE_XY_REPLY '): continue
         reply = reply_bytes(line)
+        if revision is None: raise ValueError('Scheme reply has no state revision')
+        if revision == replied_revision: continue
+        replied_revision = revision
         if metadata and reply == f"(ready 1280 720 {metadata['bytes']})".encode():
             if reading: raise ValueError('repeated read session')
             reading = True;continue
