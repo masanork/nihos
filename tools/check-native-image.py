@@ -198,7 +198,7 @@ XY_RENDER_FUNCTIONS = {
     'native_render_entry.nih_xy_render', 'native_render_entry.nih_xy_render_init',
     'native_render_entry.nih_xy_render_bytes', 'rotated_surface.Rotated.blit',
     'rotated_surface.Rotated.paint', 'rotated_surface.Rotated.blitLinear',
-    'rotated_surface.Rotated.fillRect', 'surface.channelLinear',
+    'rotated_surface.Rotated.fillRect', 'surface.channelLinear', 'xy.presentation.publish', 'presentation.publish',
     'ttf.TwoTierCache(24,1024,48,16384).getOrRender', 'ttf.Face.glyphSpan',
     'ttf.decodeSimpleGlyfSlice', 'ttf.Family.resolve', 'ttf.Face.lookupBaseGlyph',
     'ttf.Face.init', 'ttf.SliceReader.fromSlice.Impl.readSlice',
@@ -211,7 +211,7 @@ XY_RENDER_FUNCTIONS = {
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.traceScratch|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun)__func_[0-9]+", name)
     return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 

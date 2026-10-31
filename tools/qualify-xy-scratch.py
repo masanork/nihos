@@ -207,7 +207,8 @@ def main():
                     style('view-monospace-25', b"(view/set! #:size 25 #:line-gap 0 #:ruby-size 6)", 0, 25)
                     line = b'\n(define (stamp) (buffer/insert! "Hello, xy!"))\nASCII: 0123456789 ilMW () []'
                     text += line
-                    send('ascii-monospace-sample', line, text, len(text))
+                    # The previous command ended with CR; send an explicit CRLF line break.
+                    send('ascii-monospace-sample', b'\r\n' + line[1:], text, len(text))
                     receipt.update(view_settings_tested=True, unicode_input_tested=True, monospace_sample_tested=True, input_transport='serial UTF-8', demo_left_visible=True)
                     save()
 
@@ -215,13 +216,25 @@ def main():
             print('DEMO_VISIBLE: common Source Code Pro 25px + Bunsen', flush=True)
             if args.observe_seconds:
                 deadline = time.monotonic() + args.observe_seconds
+                observation = bytearray()
                 while time.monotonic() < deadline:
                     data = port.read(max(1, port.in_waiting))
                     if data:
+                        observation.extend(data)
                         with (out / 'observe.log').open('ab') as observe:
                             observe.write(data)
                     if b'NIHOS_NATIVE_FAIL' in data:
                         raise RuntimeError('native fault during observation')
+                idle = []
+                for line in observation.splitlines():
+                    if line.startswith(b'NIHOS_NATIVE_XY_IDLE '):
+                        idle.append({key.decode(): int(value, 16) for key, value in re.findall(rb'(\w+)=([0-9a-f]{8})(?:\s|$)', line)})
+                if len(idle) < 2 or any(row.get('dma_error') != 0 for row in idle) or idle[-1]['scanout_frames'] <= idle[0]['scanout_frames']:
+                    raise RuntimeError('idle scanout observations incomplete or faulted')
+                if len({row['render_frames'] for row in idle}) != 1:
+                    raise RuntimeError('xy repainted without foreground input during observation')
+                receipt['idle_observation'] = {'seconds': args.observe_seconds, 'records': len(idle), 'render_frames': idle[-1]['render_frames'], 'scanout_frame_delta': idle[-1]['scanout_frames'] - idle[0]['scanout_frames'], 'backing_payload': idle[-1]['backing_payload'], 'backing_reserved': idle[-1]['backing_reserved'], 'dma_error': 0}
+                save()
             print('Physical xy boot/input/undo/help/warm-reset passed; no pixel or persistence claim', flush=True)
     except BaseException as error:
         receipt['failure'] = str(error); save(); raise
