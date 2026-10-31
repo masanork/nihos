@@ -20,6 +20,7 @@
     "post_fix_flicker_free_claim": false
   },
   "files": {
+    "ci-timeout.json": "a92971f67c3ec322a17a482177ebb1c9a8e14891e78ac8d61a2633bd57782f0b",
     "debug-tests.log.gz": "9c8e985c4862dfbb994f923780d8d3275aaf696a515147f976611273ab3ec4bf",
     "emulator-result.json.gz": "d2a29e78ba7370d2edaf509d9af03e58f8936183fb67d861b7d64f034e401a58",
     "emulator.log.gz": "83ba23ea2c35156d75a35a852c4af88c18ad3151f41dc10278e3f098bb250ca7",
