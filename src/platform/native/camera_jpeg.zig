@@ -23,6 +23,8 @@ var encoded_bytes: usize = 0;
 var encode_started: u64 = 0;
 var encode_elapsed: u32 = 0;
 var deadline: u64 = 0;
+var operation_deadline: u64 = 0;
+var reported_phase: Phase = .idle;
 noinline fn write(bytes: []const u8) linksection(".flash.text.devices") void {
     for (bytes) |b| nih_diagnostic_serial_write(b);
 }
@@ -70,6 +72,16 @@ noinline fn fail(code: u32) linksection(".flash.text.devices") void {
 pub noinline fn poll() linksection(".flash.text.devices") void {
     if (!options.camera_jpeg) return;
     const now = board.cameraJpegClock() orelse return;
+    if (xy and phase == .requested) operation_deadline = now + 20_000_000;
+    if (xy and operation_deadline != 0 and now >= operation_deadline and phase != .ready and phase != .failed) return fail(11);
+    if (@hasDecl(options, "xy_trace") and options.xy_trace and phase != reported_phase) {
+        reported_phase = phase;
+        write("\nNIHOS_XY_JPEG_STAGE");
+        field("phase", @backingInt(phase));
+        field("offset", @intCast(offset));
+        field("workspace", @backingInt(workspace.phase()));
+        write("\n");
+    }
     if (phase == .idle or phase == .requested) {
         if (xy and phase == .idle) return;
         if (!xy and now < 10_000_000) return;
