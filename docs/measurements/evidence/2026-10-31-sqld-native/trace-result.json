@@ -1,0 +1,652 @@
+{
+  "passed": true,
+  "source_base": "d04b0a2a5fe371ab8b80e1af4d8cc6d033ada2c2",
+  "candidate": {
+    "partition-table.bin": "fabcbebf733457e9706b46544b2a1cb9672a8e1ce626f5dc7d7e6fb4738d5b0e",
+    "nihos-native.elf": "4cc50be5ca2e1e7a962743a25d6fa0f47ea58a704c9924e34e4445740d831f0c",
+    "normal-fs-manifest.json": "31eddb702ef3ae6c7a7b5eb84ea3ff6c052d741d8f96f15946fd8000028d485b",
+    "nihos-native.bin": "4954497e65002cd6b51fb7c123661836e5ed5b8657bffd301184dbb54a51c508",
+    "sqld-manifest.json": "48171d44098a57be1fae66f20b81f70814eec755aab0ca83730245aaadae2c3d",
+    "image-audit.json": "9be52808981ed2de012c1b1b24bf6d6e76d5c2545598df7b62c0f8cf686cd876",
+    "native_options.zig": "1d99a74aca45538c4bc3a1351307ae6f9e1b555ac908db44273ed06118997c7c",
+    "bootloader.bin": "5961e3249368dbf03fbc6d0b8ecf2d5c064d017f3499985aadab788ced87075f"
+  },
+  "sqld": {
+    "identity": "a612eb1ee1ac8669e6f7560de61ee090494b466d0ece25d17c006190069bea31",
+    "text_bytes": 563280,
+    "rodata_bytes": 89388,
+    "reservation": [
+      1210056704,
+      2097152
+    ],
+    "heap": [
+      1210318848,
+      1048576
+    ],
+    "stack": [
+      1211891712,
+      65536
+    ],
+    "media": [
+      2048,
+      8192
+    ],
+    "provision_cid": 0,
+    "physical_qualified": false
+  },
+  "observations": [
+    {
+      "name": "boot",
+      "phase": 2,
+      "error_code": 0,
+      "sectors": 30867456,
+      "cid_crc": 4111314636,
+      "generation": 24
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/exec! \"CREATE TABLE IF NOT EXISTS native_probe(id PRIMARY KEY,body)\")",
+      "reply": "0",
+      "state": {
+        "revision": 80,
+        "bytes": 0,
+        "cursor": 0,
+        "fnv": 2166136261,
+        "mode": 0,
+        "frames": 233,
+        "input_bytes": 77,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/exec! \"INSERT OR REPLACE INTO native_probe VALUES(1,'before')\")",
+      "reply": "1",
+      "state": {
+        "revision": 152,
+        "bytes": 0,
+        "cursor": 0,
+        "fnv": 2166136261,
+        "mode": 0,
+        "frames": 1346,
+        "input_bytes": 147,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(buffer/insert! \"日本語 source\")",
+      "reply": "#t",
+      "state": {
+        "revision": 185,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 1396,
+        "input_bytes": 184,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(buffer/save! \"native-source.scm\")",
+      "reply": "#t",
+      "state": {
+        "revision": 223,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 1599,
+        "input_bytes": 220,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(define snap (fs/snapshot))",
+      "reply": "()",
+      "state": {
+        "revision": 254,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 1650,
+        "input_bytes": 249,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/exec! \"UPDATE native_probe SET body='after'\")",
+      "reply": "1",
+      "state": {
+        "revision": 308,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 2425,
+        "input_bytes": 301,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/query \"SELECT body FROM native_probe\")",
+      "reply": "((\"after\"))",
+      "state": {
+        "revision": 355,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 2488,
+        "input_bytes": 346,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/restore! snap)",
+      "reply": "#t",
+      "state": {
+        "revision": 377,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 2545,
+        "input_bytes": 366,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/release! snap)",
+      "reply": "#t",
+      "state": {
+        "revision": 399,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 2595,
+        "input_bytes": 386,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/query \"SELECT body FROM native_probe\")",
+      "reply": "((\"before\"))",
+      "state": {
+        "revision": 446,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 2658,
+        "input_bytes": 431,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/begin!)",
+      "reply": "#t",
+      "state": {
+        "revision": 462,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 2696,
+        "input_bytes": 445,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/exec! \"UPDATE native_probe SET body='rollback'\")",
+      "reply": "1",
+      "state": {
+        "revision": 519,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3003,
+        "input_bytes": 500,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/rollback!)",
+      "reply": "#t",
+      "state": {
+        "revision": 538,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3089,
+        "input_bytes": 517,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/query \"SELECT body FROM native_probe\")",
+      "reply": "((\"before\"))",
+      "state": {
+        "revision": 585,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3153,
+        "input_bytes": 562,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/begin!)",
+      "reply": "#t",
+      "state": {
+        "revision": 600,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3190,
+        "input_bytes": 575,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(define f (fs/open \"temporary\" #t))",
+      "reply": "()",
+      "state": {
+        "revision": 639,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3313,
+        "input_bytes": 612,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/write! f 0 (list 0 255 1))",
+      "reply": "3",
+      "state": {
+        "revision": 673,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3427,
+        "input_bytes": 644,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/rollback!)",
+      "reply": "#t",
+      "state": {
+        "revision": 691,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3465,
+        "input_bytes": 660,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/collect!)",
+      "reply": "#t",
+      "state": {
+        "revision": 708,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3523,
+        "input_bytes": 675,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/check)",
+      "reply": "((\"ok\"))",
+      "state": {
+        "revision": 723,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3563,
+        "input_bytes": 688,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/space)",
+      "reply": "(4194304 3866624 2998272 258048)",
+      "state": {
+        "revision": 737,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 3602,
+        "input_bytes": 700,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "boot",
+      "phase": 2,
+      "error_code": 0,
+      "sectors": 30867456,
+      "cid_crc": 4111314636,
+      "generation": 37
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/query \"SELECT body FROM native_probe\")",
+      "reply": "((\"before\"))",
+      "state": {
+        "revision": 49,
+        "bytes": 0,
+        "cursor": 0,
+        "fnv": 2166136261,
+        "mode": 0,
+        "frames": 215,
+        "input_bytes": 46,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(buffer/load! \"native-source.scm\")",
+      "reply": "#t",
+      "state": {
+        "revision": 87,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 325,
+        "input_bytes": 82,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(buffer/text)",
+      "reply": "\"日本語 source\"",
+      "state": {
+        "revision": 104,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 351,
+        "input_bytes": 97,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(define f (fs/open \"native-source.scm\"))",
+      "reply": "()",
+      "state": {
+        "revision": 148,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 413,
+        "input_bytes": 139,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/verify f)",
+      "reply": "#t",
+      "state": {
+        "revision": 165,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 451,
+        "input_bytes": 154,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/close! f)",
+      "reply": "#t",
+      "state": {
+        "revision": 182,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 489,
+        "input_bytes": 169,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(sql/check)",
+      "reply": "((\"ok\"))",
+      "state": {
+        "revision": 197,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 532,
+        "input_bytes": 182,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "scheme",
+      "source": "(fs/generation)",
+      "reply": "37",
+      "state": {
+        "revision": 216,
+        "bytes": 16,
+        "cursor": 16,
+        "fnv": 4181859672,
+        "mode": 0,
+        "frames": 570,
+        "input_bytes": 199,
+        "pending_utf8": 0,
+        "status": 5,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261,
+        "tx_dropped": 0
+      }
+    },
+    {
+      "name": "idle",
+      "render_frames": 31,
+      "scanout_frames": 1139,
+      "published_bytes": 26688,
+      "backing_payload": 3100032,
+      "backing_reserved": 4194304,
+      "dma_error": 0
+    }
+  ],
+  "physical_power_cut_tested": false,
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": "22c2e4014d4fe7cee93d3682cd21273bd09838176147950fd97a308c43a21475",
+  "warm_reboot_readback": true
+}

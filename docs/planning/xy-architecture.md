@@ -1,5 +1,8 @@
 # `xy` アーキテクチャと `src/graphics/ttf.zig` 設計仕様
 
+2026-10-31追記: [sqld・filesystem bindingの現状](sqld-xy-service.md)に、Macで通る
+SQL・本文保存・snapshot復元と、Tab5通常起動へ接続するための残りのgateを記した。
+
 2026年10月30日。統合環境 `xy` を `nihos`（Tab5実機）の専用ユーザーランドの中核としつつ、同じZigコア（`libxy`）をC ABI経由でmacOS/PC上のGPUI（Metal/Vulkan）バックエンドからも駆動できるデュアルターゲット構成として設計する。
 
 関連文書：

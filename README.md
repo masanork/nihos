@@ -68,7 +68,10 @@ The normal device image includes
 and [SNTP-to-UTC RTC synchronization](docs/adr/0053-network-time-to-rtc.md).
 SQLite has a [bounded single-owner memory session](docs/adr/0040-bounded-single-owner-sqlite-session.md)
 and an [opt-in native execution fixture](docs/adr/0042-native-sqlite-flash-execution.md);
-a persistent `sqld` task/RPC and production VFS remain future work.
+the normal xy image now starts a [persistent `sqld` owner and checkpoint VFS](docs/planning/sqld-xy-service.md)
+on a provisioned microSD region. Scheme exposes SQL, file save/load, rollback,
+snapshots and collection. [Native qualification](docs/measurements/2026-10-31-sqld-native.md)
+separates warm-reboot persistence from physical power-loss qualification.
 
 ## Project metrics
 

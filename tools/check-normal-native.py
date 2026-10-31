@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import runpy
 import normal_fs_manifest
+import sqld_native_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,11 +18,15 @@ def main():
     args = parser.parse_args()
     directory = args.directory
     manifest = json.loads((directory / 'normal-fs-manifest.json').read_text())
+    sqld_path = directory / 'sqld-manifest.json'
+    sqld = json.loads(sqld_path.read_text()) if sqld_path.is_file() else None
     elf = (directory / 'nihos-native.elf').read_bytes()
     image = (directory / 'nihos-native.bin').read_bytes()
     normal_fs_manifest.verify_files(directory, manifest)
+    if sqld is not None:
+        sqld_native_manifest.verify(directory, sqld)
     audit = runpy.run_path(str(ROOT / 'tools/check-native-image.py'))['audit']
-    report = audit(elf, image, 'integer', 'device', normal_fs_manifest=manifest)
+    report = audit(elf, image, 'integer', 'device', normal_fs_manifest=manifest, sqld_manifest=sqld)
     cases = []
     changed = copy.deepcopy(manifest)
     changed['sources']['src/platform/native/normal_fs.zig'] = '0' * 64
@@ -40,7 +45,7 @@ def main():
     results = []
     for name, changed, binary in cases:
         try:
-            audit(binary, None, 'integer', 'device', normal_fs_manifest=changed)
+            audit(binary, None, 'integer', 'device', normal_fs_manifest=changed, sqld_manifest=sqld)
         except ValueError as error:
             results.append({'name': name, 'rejected': True, 'reason': str(error)})
         else:

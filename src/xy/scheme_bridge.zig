@@ -27,6 +27,7 @@ pub const EvalError = error{
     TypeMismatch,
     ArityMismatch,
     NoPreviousConfigGeneration,
+    SqlUnavailable,
 } || document.Error;
 
 // ============================================================================
@@ -644,7 +645,7 @@ pub fn XyWorkspace(
                 if (self.sql_query_hook) |hook| {
                     return try hook(self.sql_ctx.?, req, &self.arena);
                 }
-                return .{ .nil = {} };
+                return error.SqlUnavailable;
             }
 
             // 8. SKK Omni-Completion custom prefix registration: `(ime/register-prefix! "#" "expansion")`
