@@ -14,7 +14,7 @@ def main():
     output = ROOT / 'build/xy-scratch-smoke'
     output.mkdir(parents=True, exist_ok=True)
     (output / 'report.json').unlink(missing_ok=True)
-    paths = sorted(p for p in (ROOT / 'src').rglob('*') if p.suffix in ('.zig', '.c', '.h', '.S', '.ld'))
+    paths = sorted(p for p in (ROOT / 'src').rglob('*') if p.suffix in ('.zig', '.c', '.h', '.S', '.ld', '.ttf'))
     paths += [ROOT / p for p in ('tools/build-native.sh', 'tools/build-native-elf.sh', 'tools/run-xy-scratch-smoke.py')]
     sha = lambda data: hashlib.sha256(data).hexdigest()
     sources = {str(p.relative_to(ROOT)): sha(p.read_bytes()) for p in paths}
@@ -126,6 +126,19 @@ def main():
         read_state('scheme-result', True)
         evaluate(b'(buffer/insert! "!")')
         assert read_state('scheme-recovered')['text'] == 'base!'
+        evaluate(b"(view/set! #:size 36 #:font 'gothic #:foreground #x123456)")
+        command(2, 0x06, 1)  # Ctrl-C: leave transient result before comparing pixels.
+        configured = read_state('view-configured', True)
+        assert configured['text'] == 'base!'
+        evaluate(b'(view/set! #:size 48 #:foreground -1)')
+        command(2, 0x06, 1)
+        assert read_state('view-rejected', True)['pixel_sha256'] == configured['pixel_sha256']
+        evaluate(b'(sys/config-rollback!)')
+        command(2, 0x06, 1)
+        read_state('view-rollback', True)
+        command(5)
+        serial('日本語表示 あいうえお\r\n青空文庫'.encode())
+        read_state('japanese', True)
         command(5)
         serial(b'Shared Document / live editing.\r\nRAM scratch / UTF-8 document.')
         read_state('workspace', True)
@@ -133,7 +146,7 @@ def main():
             raise RuntimeError('sources changed during xy capture')
         report = {'passed': True, 'evidence': 'ESP-EMU RV32 offscreen workspace fixture',
             'normal_boot_executed': False, 'physical_device_used': False, 'panel_or_dma_tested': False,
-            'scheme_vm_tested': True, 'persistence_tested': False, 'unicode_raster_tested': False, 'scheme_scope': 'bounded integer subset; no R7RS claim',
+            'scheme_vm_tested': True, 'persistence_tested': False, 'unicode_raster_tested': True, 'scheme_scope': 'bounded integer subset; no R7RS claim',
             'snapshot_prefix_limit_bytes': 80, 'sources': sources, 'observations': observations,
             'image_sha256': sha((OUT / 'nihos-native.bin').read_bytes()),
             'elf_sha256': sha((OUT / 'nihos-native.elf').read_bytes())}

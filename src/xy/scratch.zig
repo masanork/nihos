@@ -1,13 +1,13 @@
-//! RAM workspace over the shared xy Document. The first native presentation
-//! uses the existing fixed-cell raster; non-ASCII clusters are shown as '?'.
-//! Text remains UTF-8. The bounded Scheme runtime has no storage or shell access.
+//! RAM workspace over the shared xy Document and bounded Scheme runtime.
+//! Normal boot uses render_session; render() retains a fixed-cell projection
+//! for console fixtures. The runtime has no storage or shell access.
 const std = @import("std");
 pub const input = @import("../console/session_input.zig");
 pub const scheme = @import("scheme_runtime.zig");
 pub const document = @import("document.zig");
 // Immutable presentation text follows the existing diagnostic font placement;
 // host targets retain their ordinary read-only segment.
-const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
+pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const system = @import("system_buffer.zig");
 pub const Mode = enum { edit, command, help, system };
@@ -269,6 +269,18 @@ pub const Model = struct {
         }
         return end;
     }
+    pub fn statusText(self: *const Model) linksection(scheme.code_section) []const u8 {
+        return switch (self.status) {
+            .none => "",
+            .buffer_full => "Buffer full",
+            .undo_full => "Undo full: Esc, forget-undo releases history",
+            .invalid_input => "Invalid input",
+            .unknown_command => "Unknown command: Esc, help",
+            .scheme_result, .scheme_error => "",
+            .command_full => "Command too long; cancel or edit before evaluating",
+            .read_only => "Read-only system buffer",
+        };
+    }
     pub inline fn render(self: *Model, grid: anytype) void {
         if (self.mode == .system) {
             self.snapshot.render(grid);
@@ -325,16 +337,7 @@ pub const Model = struct {
                 grid.write(&.{if (self.reply[index] >= 32 and self.reply[index] < 127) self.reply[index] else @as(u8, '?')});
                 index = document.nextClusterEnd(self.reply[0..self.reply_length], index) catch self.reply_length;
             }
-        } else grid.write(switch (self.status) {
-            .none => "",
-            .buffer_full => "Buffer full",
-            .undo_full => "Undo full: Esc, forget-undo releases history",
-            .invalid_input => "Invalid input",
-            .unknown_command => "Unknown command: Esc, help",
-            .scheme_result, .scheme_error => "",
-            .command_full => "Command too long; cancel or edit before evaluating",
-            .read_only => "Read-only system buffer",
-        });
+        } else grid.write(self.statusText());
     }
 };
 

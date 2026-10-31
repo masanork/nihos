@@ -4,6 +4,7 @@
 const std = @import("std");
 pub const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 pub const data_section = if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata";
+pub const view_config = @import("view_config");
 pub const Error = error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy };
 pub const Ref = u16;
 pub const cells = 256;
@@ -11,9 +12,9 @@ pub const text_bytes = 64;
 pub const depth_limit = 24;
 pub const step_limit = 1024;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
-const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native };
-const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00".*;
+const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword };
+const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00".*;
 const Cell = struct {
     tag: Tag,
     mark: bool,
@@ -37,9 +38,15 @@ pub const Runtime = struct {
     next: Ref,
     steps: u32,
     running: bool,
+    view: view_config.Config,
+    view_history: [8]struct { config: view_config.Config, generation: u32 },
+    view_history_count: u8,
+    view_generation: u32,
 
     pub fn initInPlace(self: *Runtime) linksection(code_section) void {
         @memset(std.mem.asBytes(self), 0);
+        self.view = .{};
+        self.view_generation = 1;
         self.heap[0].tag = .nil;
         self.yes = 1;
         self.no = 2;
@@ -194,8 +201,13 @@ pub const Runtime = struct {
         const token_start = pos.* - 1;
         while (pos.* < source.len and !delimiter(source[pos.*])) pos.* += 1;
         const token = source[token_start..pos.*];
+        if (token.len >= 2 and token[0] == '#' and token[1] == ':') {
+            if (token.len == 2) return error.Syntax;
+            return self.text(.keyword, token[2..]);
+        }
         if (std.mem.eql(u8, token, "#t")) return self.yes;
         if (std.mem.eql(u8, token, "#f")) return self.no;
+        if (std.mem.startsWith(u8, token, "#x")) return self.number(std.fmt.parseInt(i32, token[2..], 16) catch return error.Overflow);
         if (std.mem.eql(u8, token, ".")) return error.Syntax;
         if ((token[0] >= '0' and token[0] <= '9') or (token.len > 1 and (token[0] == '-' or token[0] == '+') and token[1] >= '0' and token[1] <= '9'))
             return self.number(std.fmt.parseInt(i32, token, 10) catch return error.Overflow);
@@ -421,6 +433,54 @@ pub const Runtime = struct {
                 self.command_count += 1;
                 return self.yes;
             },
+            .view_set => {
+                if (args.len == 0 or args.len % 2 != 0) return error.Arity;
+                var next = self.view;
+                var i: usize = 0;
+                while (i < args.len) : (i += 2) {
+                    const name = try self.viewKey(args[i]);
+                    const val = self.heap[args[i + 1]];
+                    const value: view_config.Value = switch (val.tag) {
+                        .integer => .{ .number = val.integer },
+                        .symbol, .string => .{ .symbol = self.string(args[i + 1]) },
+                        .boolean => .{ .boolean = args[i + 1] == self.yes },
+                        else => return error.Type,
+                    };
+                    next.set(name, value) catch return error.Type;
+                }
+                next.validate() catch return error.Type;
+                // Allocate the result before committing: HeapFull cannot hide a change.
+                const generation = if (self.view_generation == 0x7fffffff) 1 else self.view_generation + 1;
+                const result = try self.number(@intCast(generation));
+                if (self.view_history_count == self.view_history.len) {
+                    std.mem.copyForwards(@TypeOf(self.view_history[0]), self.view_history[0..7], self.view_history[1..8]);
+                    self.view_history_count -= 1;
+                }
+                self.view_history[self.view_history_count] = .{ .config = self.view, .generation = self.view_generation };
+                self.view_history_count += 1;
+                self.view = next;
+                self.view_generation = generation;
+                return result;
+            },
+            .view_get => {
+                if (args.len != 1) return error.Arity;
+                const value = self.view.get(try self.viewKey(args[0])) catch return error.Type;
+                return switch (value) {
+                    .number => |n| self.number(n),
+                    .symbol => |name| self.text(.symbol, name),
+                    .boolean => |b| if (b) self.yes else self.no,
+                };
+            },
+            .view_rollback => {
+                if (args.len != 0) return error.Arity;
+                if (self.view_history_count == 0) return error.EditorFailure;
+                const previous = self.view_history[self.view_history_count - 1];
+                const result = try self.number(@intCast(previous.generation));
+                self.view_history_count -= 1;
+                self.view = previous.config;
+                self.view_generation = previous.generation;
+                return result;
+            },
             .insert => {
                 if (args.len != 1) return error.Arity;
                 if (self.heap[args[0]].tag != .string) return error.Type;
@@ -445,6 +505,10 @@ pub const Runtime = struct {
             },
             else => return error.Type,
         }
+    }
+    fn viewKey(self: *const Runtime, r: Ref) linksection(code_section) Error![]const u8 {
+        if (self.heap[r].tag != .symbol and self.heap[r].tag != .keyword) return error.Type;
+        return self.string(r);
     }
     fn start(self: *Runtime) linksection(code_section) Error!void {
         if (self.running) return error.Busy;
@@ -521,6 +585,10 @@ pub const Runtime = struct {
                 try emit(output, pos, bytes[start_index..]);
             },
             .symbol => try emit(output, pos, self.string(r)),
+            .keyword => {
+                try emit(output, pos, "#:");
+                try emit(output, pos, self.string(r));
+            },
             .string => {
                 try emit(output, pos, "\"");
                 for (self.string(r)) |byte| switch (byte) {
@@ -674,4 +742,25 @@ fn repeat(comptime text_value: []const u8, comptime count: usize) [text_value.le
     var result: [text_value.len * count]u8 = @splat(0);
     for (0..count) |index| @memcpy(result[index * text_value.len ..][0..text_value.len], text_value);
     return result;
+}
+
+test "view options share an atomic typed contract and survive GC" {
+    // SAFETY: initialized before use.
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var output: [128]u8 = @splat(0);
+    try expectValue(&vm, &host, "#:foreground", "#:foreground");
+    try std.testing.expectError(error.Syntax, vm.evaluate("#:", &host, &output));
+    try expectValue(&vm, &host, "(view/set! #:font 'gothic #:size 36 #:foreground #x234567 #:cursor-width 4)", "2");
+    try expectValue(&vm, &host, "(view/get #:foreground)", "2311527");
+    try std.testing.expectEqual(@as(u8, 36), vm.view.style.body_px);
+    try std.testing.expectError(error.Type, vm.evaluate("(view/set! #:size 48 #:foreground -1)", &host, &output));
+    try expectValue(&vm, &host, "(view/get #:size)", "36");
+    try std.testing.expectEqual(@as(u32, 2), vm.view_generation);
+    for (0..12) |_| try expectValue(&vm, &host, "(+ 1 2)", "3");
+    try expectValue(&vm, &host, "(sys/config-rollback!)", "1");
+    try expectValue(&vm, &host, "(view/get #:font)", "bunsen-mincho");
+    try expectValue(&vm, &host, "(view/set! #:linear-blend #t #:margin-x 32)", "2");
+    try expectValue(&vm, &host, "(view/get #:linear-blend)", "#t");
 }

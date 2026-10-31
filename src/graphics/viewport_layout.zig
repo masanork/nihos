@@ -15,22 +15,7 @@ pub const Error = ttf.Error || ruby.Error || error{
 };
 
 /// Live-configurable view parameters controllable from Scheme `(view/set! ...)`.
-pub const ViewStyle = extern struct {
-    style_id: u8 = 0, // 0: mincho, 1: gothic
-    body_px: u8 = 24,
-    ruby_px: u8 = 12,
-    axis: u8 = 0, // 0: horizontal, 1: vertical
-    line_gap_px: u8 = 12,
-    ruby_gap_px: u8 = 2,
-    margin_x_px: u16 = 24,
-    margin_y_px: u16 = 24,
-    viewport_width_px: u16 = 1280,
-    viewport_height_px: u16 = 720,
-
-    pub inline fn layoutAxis(self: ViewStyle) layout.Axis {
-        return if (self.axis == 0) .horizontal else .vertical;
-    }
-};
+pub const ViewStyle = @import("view_config").Style;
 
 /// C-ABI Display List item representing a positioned glyph ready for either
 /// Tab5 RGB565 alpha-blitting or GPUI texture-atlas rendering.
@@ -50,6 +35,8 @@ pub const PlacedGlyph = extern struct {
     bitmap_y_px: i32 = 0,
     bitmap_width: u16 = 0,
     bitmap_height: u16 = 0,
+    /// Inline advance; base_cp=0 identifies an invisible paragraph caret anchor.
+    advance_px: u16 = 0,
 };
 
 /// Internal shaped glyph compatible with `line_layout.zig` and `ruby_layout.zig`.
@@ -257,7 +244,7 @@ pub fn layoutParagraph(
     if (body_text.len == 0 or body_text.len > max_body_bytes or ruby_text.len > max_ruby_bytes)
         return error.Capacity;
 
-    const axis = view.layoutAxis();
+    const axis: layout.Axis = if (view.axis == 0) .horizontal else .vertical;
     const is_vert = axis == .vertical;
     const style_u4: u4 = @intCast(view.style_id & 0x0F);
 
@@ -402,6 +389,7 @@ pub fn layoutParagraph(
                     .bitmap_y_px = baseline_y - g.top_px,
                     .bitmap_width = g.width,
                     .bitmap_height = g.height,
+                    .advance_px = @intCast(@divTrunc((if (is_vert) -g.y_advance else g.x_advance) + 32, 64)),
                 };
                 total_emitted += 1;
             }
@@ -411,11 +399,18 @@ pub fn layoutParagraph(
         }
 
         if (p_end >= body_text.len) break;
-        if (body_text[p_end] == '\r' and p_end + 1 < body_text.len and body_text[p_end + 1] == '\n') {
-            p_start = p_end + 2;
-        } else {
-            p_start = p_end + 1;
-        }
+        const next_start = if (body_text[p_end] == '\r' and p_end + 1 < body_text.len and body_text[p_end + 1] == '\n') p_end + 2 else p_end + 1;
+        if (total_emitted >= out_display_list.len) return error.Capacity;
+        out_display_list[total_emitted] = .{
+            .cluster_byte_offset = @intCast(next_start),
+            .px_size = view.body_px,
+            .style_id = view.style_id,
+            .vertical = @intFromBool(is_vert),
+            .cell_x_px = if (is_vert) @as(i32, view.viewport_width_px) - view.margin_x_px - view.ruby_px - view.body_px - para_block_offset_px else view.margin_x_px,
+            .cell_y_px = if (is_vert) view.margin_y_px else @as(i32, view.margin_y_px) + view.ruby_px + para_block_offset_px,
+        };
+        total_emitted += 1;
+        p_start = next_start;
     }
 
     return out_display_list[0..total_emitted];
