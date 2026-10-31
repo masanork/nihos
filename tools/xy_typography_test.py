@@ -71,8 +71,11 @@ class MacTypography(unittest.TestCase):
     def test_prose_fits_more_source_text_at_the_same_size(self):
         body=reader.PACK['items'][2]['sections'][0]
         self.assertGreaterEqual(self.eval("(view/set! #:size 36 #:direction 'horizontal #:line-gap 18)"),0)
-        before=self.page(body,0)
-        self.assertTrue(self.vm.xy_host_reader_context(2,0,0));after=self.page(body,0)
+        data=body['text'].encode()[:3000]
+        before=self.vm.xy_host_reader_load(data,len(data),b'',0,None,0)
+        self.assertGreater(before,0)
+        self.assertTrue(self.vm.xy_host_reader_context(2,0,0))
+        after=self.vm.xy_host_reader_load(data,len(data),b'',0,None,0)
         self.assertGreater(after,before)
         raw=body['text'].encode();self.assertFalse(chr(raw[after-1]).isalnum() and chr(raw[after]).isalnum())
         stable=self.frame()
