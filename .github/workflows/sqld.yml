@@ -20,5 +20,9 @@ jobs:
         run: sh tools/build-sqld-host.sh
       - name: Owner, queue, policy, restart and torn-write recovery
         run: python3 tools/sqld_test.py -v
+      - name: Native allocator and OS initialization contract
+        run: python3 -m unittest discover -s tools -p sqld_allocator_test.py -v
+      - name: Owned SD capability, request copies and write bounds (modeled MMIO)
+        run: python3 tools/check-sqld-block.py
       - name: RV32 service and store object boundary
         run: sh tools/check-sqld-rv32.sh

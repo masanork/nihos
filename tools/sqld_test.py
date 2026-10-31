@@ -340,7 +340,7 @@ class Device(c.Structure):
 
 
 class Platform(c.Structure):
-    _fields_ = [('context', c.c_void_p), ('identity', Identity), ('random', Random), ('time', Clock), ('sleep', Sleep), ('monotonic', Clock)]
+    _fields_ = [('context', c.c_void_p), ('identity', Identity), ('random', Random), ('time', Clock), ('sleep', Sleep), ('monotonic', Clock), ('transaction_timeout_ms', c.c_uint32)]
 
 
 LIB.nih_store_mount.argtypes = [c.c_void_p, c.c_size_t, c.POINTER(Device), c.c_int]
@@ -352,7 +352,7 @@ LIB.nih_sqld_stop.argtypes = [c.c_void_p]
 class MemoryService:
     """Unfenced writes can disappear, persist, or tear at a failed callback.
     Media barriers flush the entire cache. This is a model, not SD firmware."""
-    def __init__(self, stable=None):
+    def __init__(self, stable=None, timeout_ms=0):
         self.stable = bytearray(stable if stable is not None else b'\xff' * (4 * 1024 * 1024))
         self.cache = self.stable.copy()
         self.events = 0
@@ -384,7 +384,7 @@ class MemoryService:
             self.stable[:] = self.cache
             return 0
         self.device = Device(None, Read(read), Write(write), Sync(sync))
-        self.platform = Platform(None, Identity(lambda _: 1), Random(lambda _, p, n: (c.memset(p, 7, n), n)[1]), Clock(lambda _: 210866760000000), Sleep(lambda _, us: us), Clock(lambda _: self.monotonic_override if self.monotonic_override is not None else int(time.monotonic() * 1000)))
+        self.platform = Platform(None, Identity(lambda _: 1), Random(lambda _, p, n: (c.memset(p, 7, n), n)[1]), Clock(lambda _: 210866760000000), Sleep(lambda _, us: us), Clock(lambda _: self.monotonic_override if self.monotonic_override is not None else int(time.monotonic() * 1000)), timeout_ms)
         rc = LIB.nih_store_mount(self.store, len(self.store), c.byref(self.device), int(stable is None))
         if rc: raise AssertionError(('mount', rc))
         rc = LIB.nih_sqld_start(self.service, len(self.service), self.store, c.byref(self.platform), 7, 1)
@@ -402,6 +402,18 @@ class MemoryService:
 
 
 class CrashTest(unittest.TestCase):
+    def test_slow_media_lease_is_bounded_and_rolls_back_on_expiry(self):
+        live = MemoryService(timeout_ms=30000)
+        self.addCleanup(live.close)
+        self.assertEqual(live.call(2, 'CREATE TABLE slow(x)')[0], 0)
+        live.monotonic_override = 1000
+        self.assertEqual(live.call(3)[0], 0)
+        live.monotonic_override = 6000
+        self.assertEqual(live.call(2, 'INSERT INTO slow VALUES(1)')[0], 0)
+        live.monotonic_override = 31000
+        self.assertEqual(live.call(4)[0], -110)
+        self.assertEqual(live.call(1, 'SELECT count(*) FROM slow')[1].text, b'((0))')
+
     def test_invalid_monotonic_clock_refuses_begin_without_overflow(self):
         live = MemoryService()
         for now in (-1, (1 << 63) - 1):

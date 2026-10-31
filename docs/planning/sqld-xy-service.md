@@ -1,7 +1,7 @@
 # sqld・checkpoint store・xyの接続
 
-2026-10-31。実装済みの共通層とhost adapterの契約。
-Tab5の通常起動でsqldが常駐した、SDへ保存した、電源断に耐えたという記録ではない。
+2026-10-31。共通層・host adapter・Tab5通常起動の実装契約。
+Tab5ではSDへの保存とwarm reboot後の読出しを実測した。物理電断耐性は未認定。
 
 ## 実装した経路
 
@@ -9,6 +9,7 @@ Tab5の通常起動でsqldが常駐した、SDへ保存した、電源断に耐�
 Scheme / xy document -> copy-only provider -> bounded sqld request/completion
     -> single SQLite connection -> SQLite VFS -> checkpoint store
     -> host regular-file read/write/fsync
+    or native CPU0 SD owner (copied block RPC + scheduler parking)
 ```
 
 旧固定フォーム評価器の`q`も同じproviderへ接続した。provider未登録はエラーであり、
@@ -92,7 +93,7 @@ ruby属性の保存は未対応。Scheme評価エラーでVM/文書を戻して�
   float/BLOBや上限超過を拒否する。encoded結果は1024 bytes以内で、部分結果を成功にしない。
 - SQLite heapは2 MiBのhard limit。store状態38,712 B、service状態7,072 Bはhost ABIの値で別枠。
   native常駐予算やRV32の値ではない。
-- progressは100 VM instructionごと、最大1024 callback。明示SQL transactionはmonotonic clockで2秒lease。
+- progressは100 VM instructionごと、最大1024 callback。明示SQL transactionはmonotonic clockでhost 2秒・native 30秒lease（platform指定、最大60秒）。
   期限切れはrollback後にtimeoutを返す。storage callbackの中断期限や実機UI応答時間の保証ではない。
 - Schemeの既存cell/depth/step/text上限は維持する。大きな行結果はVM側でも拒否し得る。
 
@@ -101,21 +102,30 @@ ruby属性の保存は未対応。Scheme評価エラーでVM/文書を戻して�
 既存imageのmount失敗で再初期化しない。開けなくてもeditorは起動し、storage操作はエラーにする。
 `--store PATH --create-store`は新規pathだけ、`--store PATH`は既存imageを使う。
 
-## 残るnative gate
+## Tab5通常起動
 
-Tab5通常イメージのScheme clientにはproviderが未登録なので`Storage unavailable`を返す。
-以下が終わるまで、通常OSのsqld常駐・SD永続化を主張しない。
+公開device buildはxy + normal storage構成でsqldを既定で有効化する。
+`NIHOS_NATIVE_SQLD=0`で従来のread-only FAT構成を選べる。
+SQLite ownerはCPU0の独立task。2 MiBのboot-owned PSRAM予約にstore・service・
+1 MiB memsys5 heap・512 KiB write-through read cache・64 KiB SQL stack・64 KiB Scheme stackを置く。
+一般heapへ渡す範囲から予約分を除外する。SDコントローラは既存CPU0 storage ownerだけが操作し、
+コピー済み512-byte要求で待機する。待機中の表示・入力・C6を継続する。
+Scheme評価中の入力は遅延し、完了後の結果に新しい画面revisionを発行する。
 
-1. 専用SD regionまたはfile containerを、既存データと衝突せずにprovisionする。
-   region grant・shared SDMMC owner・write DMA fence・媒体syncをnative backendへ接続する。
-2. SQLite allocatorとowner task、充分なstack、copied RPCとpark/wakeupを通常起動へ接続する。
-   host mallocや同期in-owner callbackをnativeの証拠にしない。
-3. exact imageでUI/input/C6との共存、再起動読戻し、満杯・抜去・I/O失敗・取消を確認する。
-   clean OFF/ONと物理電断も独立して必要。
+媒体はMBRの`NIHSQLD1` marker、type `0xda`、LBA 2048から8192 sector（4 MiB）の専用store。
+FATハンドルを失効させた後、この範囲だけに書込み権限を渡す。
+通常buildのprovision CIDは0で、未知のカードや壊れたrootを自動初期化しない。
+明示的な試験初期化では`NIHOS_NATIVE_SQLD_PROVISION_CID=0x...`を指定し、実カードCIDのCRC32一致を要求する。
+これは誤操作防止であり暗号学的なカード認証ではない。初期化はpartition mapとroot metadataを作成し、secure eraseは行わない。
+初期化候補を残さず、最後はCID指定なしの通常imageへ戻す。
 
-今回の通常ELFはprimary heap 49,216 Bで、既存49,152 B floorとの差は64 B。
-既存worker stackは4 KiBのまま。新serviceの状態・SQLite heap・stackをここへ無検証で追加できない。
-このELFには新しいsqld core／SQLite VFSをlinkしていない。
+native allocatorは`SQLITE_OS_OTHER`、`SQLITE_ENABLE_MEMSYS5`、`SQLITE_ZERO_MALLOC`、
+`SQLITE_OMIT_DESERIALIZE`を組み合わせ、未登録default VFSに依存せず初期化する。
+SQL壁時計は未公開で、時刻取得callbackは利用不能を返す。snapshot tokenはmount内だけで有効。
+媒体抜去後の無停止再接続、満杯・実媒体I/O故障・取消の全経路、clean OFF/ON、物理電断は別の認定項目。
+
+`tools/qualify-sqld-native.py`は排他write lockとserial kernel exclusionを取り、Flash全体の退避・
+同一候補の書込み前後照合・Scheme操作・warm reboot読戻しを行う。バックアップはprivateに保持する。
 
 SQLite契約の参照: [VFS](https://www.sqlite.org/c3ref/vfs.html)、
 [file methods](https://www.sqlite.org/c3ref/io_methods.html)、

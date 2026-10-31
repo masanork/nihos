@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compile-only portability check. Does not register a native task or SD writer.
+# Compile-only portability check, including the permanent owner and fixed heap.
 set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
@@ -17,4 +17,5 @@ for source in sqld sqlite_store_vfs; do
   -isystem "$headers/riscv-linux-any" -I include -I build/sqlite/sqlite-amalgamation-3540100 \
   "src/services/$source.c" -o "$out/$source.o"
 done
-printf '%s\n' 'sqld/checkpoint VFS RV32 objects compiled; no native service/link/media qualification'
+python3 tools/sqld_native_build.py "$out/native" > "$out/native-build.json"
+printf '%s\n' 'sqld/checkpoint VFS and permanent owner RV32 objects compiled; no media execution in this check'
