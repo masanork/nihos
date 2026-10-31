@@ -240,6 +240,10 @@ explicit fixture profile. See the [normal-profile camera trial](docs/measurement
 for the original tested configuration and remaining limits, and the
 [live capture soak trial](docs/measurements/2026-10-31-camera-live-soak.md) for current measurements, incomplete-frame recovery and memory costs.
 
+An opt-in [hardware JPEG fixture](docs/measurements/2026-10-31-camera-hardware-jpeg.md)
+encodes 1280×720 RGB565 camera frames using the ISP and JPEG/DMA2D hardware.
+It is separate from the default preview and has no filesystem-save or XY API yet.
+
 Normal native Tab5 boot also initializes BMI270 and acquires acceleration and
 gyroscope readings through the shared board I2C owner. See
 [ADR 0048](docs/adr/0048-native-bmi270-acquisition.md) for sensor-frame raw values,
