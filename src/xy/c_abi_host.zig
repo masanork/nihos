@@ -95,6 +95,38 @@ var g_ws: HostWorkspaceType = .{};
 // SAFETY: every live API is guarded by g_live_ready; init writes runtime state.
 var g_live: live_workspace.Session(HostWorkspaceType) = undefined;
 var g_live_ready = false;
+const StorageCallback = *const fn (?*anyopaque, u32, u32, u32, u32, [*]const u8, u32, [*]const u8, u32, [*]u8, u32) callconv(.c) i32;
+var g_storage_callback: ?StorageCallback = null;
+var g_storage_context: ?*anyopaque = null;
+fn storageBridge(_: ?*anyopaque, request: live_workspace.scheme.storage.Request, output: []u8) live_workspace.scheme.storage.Error![]const u8 {
+    const cb = g_storage_callback orelse return error.StorageUnavailable;
+    const n = cb(g_storage_context, @backingInt(request.operation), request.handle, request.offset, request.count, request.text.ptr, @intCast(request.text.len), request.argument.ptr, @intCast(request.argument.len), output.ptr, @intCast(output.len));
+    if (n < 0) return switch (n) {
+        -16 => error.StorageBusy,
+        -13 => error.StorageDenied,
+        -9 => error.StorageStale,
+        -28 => error.StorageFull,
+        -2 => error.StorageNotFound,
+        -7, -22 => error.StorageLimit,
+        -115 => error.StorageOutcomeUnknown,
+        else => error.StorageFailed,
+    };
+    if (n > output.len) return error.StorageFailed;
+    return output[0..@intCast(n)];
+}
+fn legacySqlHook(_: *anyopaque, request: scheme_bridge.SqlQueryRequest, arena: *scheme_bridge.SexpArena) scheme_bridge.EvalError!scheme_bridge.Value {
+    var output: [1024]u8 = undefined;
+    const encoded = storageBridge(null, .{ .operation = .lookup, .text = request.table, .argument = request.where_clause, .count = @min(request.limit, 8) }, &output) catch return error.SqlUnavailable;
+    const owned = try arena.allocString(encoded);
+    var response_reader = scheme_bridge.Reader{ .src = owned, .arena = arena };
+    const result = (try response_reader.readExpr()) orelse return error.SqlUnavailable;
+    return arena.nodes[result];
+}
+pub export fn xy_host_set_storage_callback(context: ?*anyopaque, callback: ?StorageCallback) callconv(.c) void {
+    g_storage_context = context;
+    g_storage_callback = callback;
+    if (g_live_ready) g_live.storage_client.provider = .{ .context = null, .call = storageBridge };
+}
 var g_live_error: []const u8 = "";
 var g_render_error: []const u8 = "";
 var g_saved_doc: HostWorkspaceType.DocType = .{};
@@ -233,8 +265,11 @@ pub export fn xy_host_eval(
 /// Initialize an editor session without requiring fonts (also used by the CLI).
 pub export fn xy_host_live_init() callconv(.c) bool {
     g_ws = .{};
+    g_ws.sql_ctx = &g_ws;
+    g_ws.sql_query_hook = legacySqlHook;
     g_ws.ext_omni_provider = .{ .ctx = &g_ws, .queryFn = bridgeOmniQuery, .learnFn = null };
     g_live.init();
+    g_live.storage_client.provider = .{ .context = null, .call = storageBridge };
     g_live_ready = true;
     g_editing_source = false;
     g_reading = false;

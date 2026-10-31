@@ -939,7 +939,7 @@ fn pollDomainDiagnostic() void {
         else => {},
     }
 }
-pub noinline fn poll() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+pub noinline fn poll() linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (!active) return;
     if (options.camera_id) {
         const sensor_started = clock.counter();
@@ -1118,7 +1118,7 @@ fn startCameraSnapshot() bool {
     first_frame_hardware.keep_configured = !options.camera_diagnostics and !options.camera_jpeg;
     return true;
 }
-pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else ".text") bool {
+pub noinline fn requestDevice(kind: u32) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
     if (!options.devices or !active) return false;
     if (options.camera_jpeg and kind >= 6) return false;
     if (!options.camera_diagnostics and kind >= 6 and kind != 26 and kind != 30) return false;

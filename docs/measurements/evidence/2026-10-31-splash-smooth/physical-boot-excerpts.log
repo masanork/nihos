@@ -1,0 +1,100 @@
+# trace-boot-1.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000301 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=00000067 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000000a4 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000000e0 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+# trace-boot-2.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=00000067 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000000a4 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000000e0 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+# trace-boot-3.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=00000067 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000000a4 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000000e0 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=0000011d published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=0000015a published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=00000196 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=000001d3 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=0000020f published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=0000024b published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=00000288 published_bytes=001c2000 backing_payload=002d2540 backing_reserved=00400000 dma_error=00000000
+# normal-boot-1.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000300 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+# normal-boot-2.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+# normal-boot-3.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+# normal-boot-4.raw.log
+ESP-ROM:esp32p4-eco2-20240710
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_KEYBOARD status=00000001 firmware=00000001 mode=00000001 transactions=00000004 error_code=00000000 sources=00000003
+NIHOS_NATIVE_UI_START frames=00000003 clock_hz=000f4240 sources=00000003 view=00000000 progress=00000003 target=00000055
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=0000000d clock_hz=000f4240 sources=00000003 view=00000000 progress=0000000c target=000000ff
+NIHOS_NATIVE_UI_SETTLED frames=0000005e progress=000000ff target=000000ff
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001

@@ -84,7 +84,7 @@ jobs:
   native-usb:
     name: Host checks and device build configurations
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - name: Check out source
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -157,19 +157,20 @@ jobs:
             NIHOS_NATIVE_CONSOLE_LIVE=1 NIHOS_NATIVE_KEYBOARD_I2C=1 \
             sh tools/build-native.sh device integer
           mkdir -p build/usb-ci/normal-display
-          cp build/native-device-devices-camera/image-audit.json build/native-device-devices-camera/native_options.zig build/usb-ci/normal-display/
+          cp build/native-device-devices-camera-sqld/image-audit.json build/native-device-devices-camera-sqld/native_options.zig build/usb-ci/normal-display/
 
       - name: Compile default connected Tab5 OS
         run: |
           sh tools/build-native.sh device integer
-          grep -Fx 'pub const keyboard_i2c = true;' build/native-device-network-devices-camera/native_options.zig
+          grep -Fx 'pub const keyboard_i2c = true;' build/native-device-network-devices-camera-sqld/native_options.zig
           mkdir -p build/usb-ci/default-connected
-          cp build/native-device-network-devices-camera/nihos-native.elf \
-             build/native-device-network-devices-camera/nihos-native.bin \
-             build/native-device-network-devices-camera/image-audit.json \
-             build/native-device-network-devices-camera/native_options.zig \
-             build/native-device-network-devices-camera/normal-fs-manifest.json \
-             build/native-device-network-devices-camera/network-receipt.json build/usb-ci/default-connected/
+          cp build/native-device-network-devices-camera-sqld/nihos-native.elf \
+             build/native-device-network-devices-camera-sqld/nihos-native.bin \
+             build/native-device-network-devices-camera-sqld/image-audit.json \
+             build/native-device-network-devices-camera-sqld/native_options.zig \
+             build/native-device-network-devices-camera-sqld/normal-fs-manifest.json \
+             build/native-device-network-devices-camera-sqld/sqld-manifest.json \
+             build/native-device-network-devices-camera-sqld/network-receipt.json build/usb-ci/default-connected/
           NIHOS_NATIVE_DEVICES=0 NIHOS_NATIVE_NORMAL_STORAGE=0 sh tools/build-native.sh device integer
           mkdir -p build/usb-ci/drivers-disabled
           cp build/native-device-network/image-audit.json build/native-device-network/native_options.zig build/usb-ci/drivers-disabled/
@@ -177,17 +178,18 @@ jobs:
       - name: Compile ordinary read-only FS with C6 and display, and without networking
         run: |
           NIHOS_NATIVE_NORMAL_STORAGE=1 sh tools/build-native.sh device integer
-          python3 tools/check-normal-native.py build/native-device-network-devices-camera
+          python3 tools/check-normal-native.py build/native-device-network-devices-camera-sqld
           mkdir -p build/usb-ci/normal-fs
-          cp build/native-device-network-devices-camera/nihos-native.elf \
-             build/native-device-network-devices-camera/nihos-native.bin \
-             build/native-device-network-devices-camera/image-audit.json \
-             build/native-device-network-devices-camera/normal-fs-manifest.json \
-             build/native-device-network-devices-camera/normal-fs-negative-controls.json \
-             build/native-device-network-devices-camera/native_options.zig build/usb-ci/normal-fs/
+          cp build/native-device-network-devices-camera-sqld/nihos-native.elf \
+             build/native-device-network-devices-camera-sqld/nihos-native.bin \
+             build/native-device-network-devices-camera-sqld/image-audit.json \
+             build/native-device-network-devices-camera-sqld/normal-fs-manifest.json \
+             build/native-device-network-devices-camera-sqld/normal-fs-negative-controls.json \
+             build/native-device-network-devices-camera-sqld/sqld-manifest.json \
+             build/native-device-network-devices-camera-sqld/native_options.zig build/usb-ci/normal-fs/
           NIHOS_NATIVE_NORMAL_STORAGE=1 NIHOS_NATIVE_NETWORK=0 sh tools/build-native.sh device integer
           mkdir -p build/usb-ci/normal-fs-no-network
-          cp build/native-device-devices-camera/image-audit.json build/native-device-devices-camera/native_options.zig build/usb-ci/normal-fs-no-network/
+          cp build/native-device-devices-camera-sqld/image-audit.json build/native-device-devices-camera-sqld/native_options.zig build/usb-ci/normal-fs-no-network/
 
       - name: Compile opt-in finite native audio probe and reject wrong DMA base
         run: |

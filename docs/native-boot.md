@@ -9,7 +9,7 @@ power-loss and long-duration qualification.
 The normal public device build includes [on-demand speaker, microphone and
 RS485 drivers](adr/0052-default-on-demand-device-drivers.md). It leaves these
 idle until explicitly requested and writes its connected artifacts to
-`build/native-device-network-devices-camera/`. The camera prototype supplies
+`build/native-device-network-devices-camera-sqld/`. The camera prototype supplies
 shell `camera` and `camera-live` commands. Set `NIHOS_NATIVE_CAMERA_ID=0` to
 retain the image without camera in `build/native-device-network-devices/`.
 Set `NIHOS_NATIVE_DEVICES=0` for the

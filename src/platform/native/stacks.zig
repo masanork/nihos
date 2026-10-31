@@ -92,6 +92,20 @@ pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
         for (words) |word| if (word != 0x67726166) return false;
         return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
     }
+    if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld and core == 0 and frame >= 0x48230100 and frame <= 0x48240000 - 128) {
+        if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const words: *const volatile [4]u32 = @ptrFromInt(0x48230000);
+        for (words) |word| if (word != 0xa5a5a5a5) return false;
+        const irq = layout.interrupt(0).?;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
+    if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld and core == 0 and frame >= 0x483c0100 and frame <= 0x483d0000 - 128) {
+        if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const words: *const volatile [4]u32 = @ptrFromInt(0x483c0000);
+        for (words) |word| if (word != 0xa5a5a5a5) return false;
+        const irq = layout.interrupt(0).?;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
     if (core == 0) {
         const high = @atomicLoad(u32, &foreground_high, .acquire);
         const low = foreground_low;
