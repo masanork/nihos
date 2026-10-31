@@ -28,7 +28,7 @@ def main():
     parser.add_argument('build', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--install', action='store_true')
-    parser.add_argument('--demo', action='store_true', help='check Scheme view changes and leave a Japanese sample visible')
+    parser.add_argument('--demo', action='store_true', help='check Scheme view changes and load a Japanese sample into RAM; panel visibility needs manual confirmation')
     args = parser.parse_args()
     build = args.build.resolve()
     manifest = json.loads((build / 'normal-fs-manifest.json').read_text())
@@ -188,7 +188,7 @@ def main():
                     send('japanese-serial-utf8', text, text, len(text))
                     style('view-vertical', b"(view/set! #:direction 'vertical)", 1)
                     style('view-horizontal', b"(view/set! #:direction 'horizontal)", 0)
-                    receipt.update(view_settings_tested=True, unicode_input_tested=True, input_transport='serial UTF-8', demo_left_visible=True)
+                    receipt.update(view_settings_tested=True, unicode_input_tested=True, input_transport='serial UTF-8', demo_state_loaded=True, manual_visual_confirmation='pending')
                     save()
 
             receipt['passed'] = True; save()
