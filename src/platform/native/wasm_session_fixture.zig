@@ -31,6 +31,34 @@ pub var interactive_signature: u32 = 0;
 pub var interactive_frames: u32 = 0;
 var interactive_last_generation: u32 = 0;
 var interactive_start_ticks: [2]u32 = .{ 0, 0 };
+pub var foreground_open: u32 = 0;
+pub var foreground_cancel: u32 = 0;
+pub var foreground_active: u32 = 0;
+pub var foreground_max_gap: u32 = 0;
+var foreground_previous: u64 = 0;
+// Called once per normalReady loop after network/storage service entry and
+// before UI service. Those real services are disabled in this test profile.
+pub fn foregroundProbe() void {
+    const now = clock.counter() orelse return;
+    if (interactive_opening and foreground_previous != 0) {
+        foreground_max_gap = @max(foreground_max_gap, @as(u32, @intCast(@min(now -| foreground_previous, 0xffffffff))));
+    }
+    foreground_previous = now;
+    if (!interactive_opening) return;
+    switch (ui.wasmFixturePhase()) {
+        1 => foreground_open += 1,
+        2 => foreground_cancel += 1,
+        3 => foreground_active += 1,
+        else => {},
+    }
+}
+pub fn foregroundAfterUi() void {
+    const now = clock.counter() orelse return;
+    if (interactive_opening and foreground_previous != 0) {
+        foreground_max_gap = @max(foreground_max_gap, @as(u32, @intCast(@min(now -| foreground_previous, 0xffffffff))));
+    }
+}
+
 fn interactiveFinish(cancelled: bool) bool {
     if (app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
         app.observed.wiped != @intFromBool(!cancelled) or app.observed.detached != 1 or app.observed.guards != 1 or
@@ -55,7 +83,7 @@ pub fn interactiveBegin(log: anytype) bool {
 }
 // 0=waiting, 1=active, 2=completed, 3=invalid, 4=cancelled, 5=opening.
 pub fn interactiveService(log: anytype) u32 {
-    ui.wasmInteractivePoll(log);
+    if (!options.wasm_interactive_repeat) ui.wasmInteractivePoll(log);
     if (app.active() and !interactive_active) {
         interactive_active = true;
         return 1;
@@ -66,6 +94,11 @@ pub fn interactiveService(log: anytype) u32 {
             interactive_round += 1;
             interactive_signature = 0;
             interactive_frames = 0;
+            foreground_open = 0;
+            foreground_cancel = 0;
+            foreground_active = 0;
+            foreground_max_gap = 0;
+            foreground_previous = 0;
             interactive_start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
             ui.wasmFixtureClearDirty();
         }

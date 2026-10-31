@@ -114,6 +114,15 @@ pub fn wasmFixtureReserved() bool {
     if (comptime !options.wasm_session_test) return false;
     return wasm_ui.reservesDisplay();
 }
+pub fn wasmFixturePhase() u32 {
+    if (comptime !options.wasm_session_test) return 0;
+    return switch (wasm_ui.phase) {
+        .idle => 0,
+        .opening => 1,
+        .cancelling => 2,
+        .active => 3,
+    };
+}
 /// Compile the actual key dispatcher in the headless candidate without
 /// touching the hardware-backed UI unless explicitly invoked.
 pub fn wasmFixtureShellStart(log: anytype) bool {
@@ -796,6 +805,12 @@ noinline fn drawSession() linksection(if (options.rust_session) ".flash.text.rus
     return true;
 }
 pub noinline fn service(log: anytype) bool {
+    // Headless repeat uses this same foreground entry and dispatcher; only its
+    // UART and presenter are substituted, and no scanout is implied.
+    if (options.wasm_interactive_repeat) {
+        if (session_active) wasmInteractivePoll(log);
+        return true;
+    }
     if (!options.console_live or !runtime.active()) return true;
     if (!clock_ready or rendering) return false;
     const observed = runtime.snapshot();

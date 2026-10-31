@@ -1614,15 +1614,7 @@ fn normalReady() noreturn {
     }
     var idle_checked = false;
     while (true) {
-        if (options.wasm_interactive_repeat) {
-            const fixture = @import("wasm_session_fixture.zig");
-            const state = fixture.interactiveService(&logger);
-            if (state == 3) fail("Wasm interactive repeat result");
-            if (state != 0) {
-                const event = .{ .round = fixture.interactive_round, .state = state, .frames = fixture.interactive_frames, .signature = fixture.interactive_signature };
-                logger.record("NIHOS_WASM_REPEAT", null, .{ "round", "state", "frames", "signature" }, &event);
-            }
-        } else if (options.wasm_interactive) {
+        if (options.wasm_interactive and !options.wasm_interactive_repeat) {
             switch (@import("wasm_session_fixture.zig").interactiveService(&logger)) {
                 0 => {},
                 1 => print("NIHOS_WASM_INTERACTIVE_ACTIVE\n"),
@@ -1663,7 +1655,22 @@ fn normalReady() noreturn {
         flushDisplayReport();
         serviceNetwork();
         serviceStorage();
+        if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
         if (!ui.service(&logger)) fail("normal console idle");
+        if (options.wasm_interactive_repeat) {
+            const fixture = @import("wasm_session_fixture.zig");
+            fixture.foregroundAfterUi();
+            const state = fixture.interactiveService(&logger);
+            if (state == 3) fail("Wasm interactive repeat result");
+            if (state != 0) {
+                const event = .{ .round = fixture.interactive_round, .state = state, .frames = fixture.interactive_frames, .signature = fixture.interactive_signature };
+                if (state == 2 or state == 4) {
+                    const foreground = .{ .round = fixture.interactive_round, .opening = fixture.foreground_open, .cancelling = fixture.foreground_cancel, .active = fixture.foreground_active, .max_gap_us = fixture.foreground_max_gap };
+                    logger.record("NIHOS_WASM_FOREGROUND", null, .{ "round", "opening", "cancelling", "active", "max_gap_us" }, &foreground);
+                }
+                logger.record("NIHOS_WASM_REPEAT", null, .{ "round", "state", "frames", "signature" }, &event);
+            }
+        }
         tasks.idleOnce(0);
     }
 }

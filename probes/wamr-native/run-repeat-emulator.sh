@@ -33,9 +33,15 @@ assert r.returncode==0 and 'NIHOS_NATIVE_FAIL' not in r.stdout,(r.returncode,r.s
 rows=re.findall(r'NIHOS_WASM_REPEAT round=([0-9a-f]+) state=([0-9a-f]+) frames=([0-9a-f]+) signature=([0-9a-f]+)',r.stdout)
 rows=[tuple(int(x,16) for x in row) for row in rows]
 assert rows==[(1,5,0,0),(1,1,0,0),(1,2,4,4),(2,5,0,0),(2,4,0,0),(3,5,0,0),(3,1,0,0),(3,2,4,4)],rows
+fg=re.findall(r'NIHOS_WASM_FOREGROUND round=([0-9a-f]+) opening=([0-9a-f]+) cancelling=([0-9a-f]+) active=([0-9a-f]+) max_gap_us=([0-9a-f]+)',r.stdout)
+fg=[tuple(int(x,16) for x in row) for row in fg]
+assert len(fg)==3 and [x[0] for x in fg]==[1,2,3],fg
+assert all(row[1]>0 and 0<row[4]<200000 for row in fg),fg
+assert fg[0][1]>1 and fg[2][1]>1,fg
+assert fg[0][3]>0 and fg[1][2]>0 and fg[2][3]>0,fg
 assert r.stdout.count('Starting Rust sample; q or Esc cancels.')==3,r.stdout
 assert r.stdout.count('Rust sample stopped.\nnihos> ')==3,r.stdout
 assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in hashes.items())
-(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows]},indent=2)+'\n')
+(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg]},indent=2)+'\n')
 print('repeat: two active runs and startup cancellation, with shell returns and full recovery passed')
 PYRUN
