@@ -581,7 +581,9 @@ pub const Runtime = struct {
                 const amplitude = try self.integer(args[1]);
                 if (amplitude < 0 or amplitude > 100) return error.Type;
                 const sample: usize = @intCast(@mod(phase, 256));
-                return self.number(@divTrunc(@as(i32, plot_config.sine[sample]) * amplitude, 30_000));
+                // Index the declared Flash object by address. Indexing the
+                // constant array value emits an anonymous copy in SRAM.
+                return self.number(@divTrunc(@as(i32, (&plot_config.sine)[sample]) * amplitude, 30_000));
             },
             else => return error.Type,
         }
