@@ -273,7 +273,7 @@ pub const Runtime = struct {
     }
     fn eval(self: *Runtime, r: Ref, env: Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         try self.tick(depth);
-        const c = self.heap[r];
+        const c = &self.heap[r];
         if (c.tag == .symbol) {
             const found = self.lookup(env, self.string(r));
             if (found != 0) return self.heap[found].b;
@@ -357,7 +357,7 @@ pub const Runtime = struct {
     }
     fn apply(self: *Runtime, procedure: Ref, args: []const Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         try self.tick(depth);
-        const c = self.heap[procedure];
+        const c = &self.heap[procedure];
         if (c.tag == .closure) {
             var storage: [16]Ref = @splat(0);
             const params = try self.arguments(c.a, &storage);
@@ -433,6 +433,34 @@ pub const Runtime = struct {
                 self.command_count += 1;
                 return self.yes;
             },
+            .view_set, .view_get, .view_rollback => return self.applyView(op, args),
+            .insert => {
+                if (args.len != 1) return error.Arity;
+                if (self.heap[args[0]].tag != .string) return error.Type;
+                try host.schemeCall(.insert, self.string(args[0]), 0);
+                return self.yes;
+            },
+            .move => {
+                if (args.len != 1) return error.Arity;
+                try host.schemeCall(.move, "", try self.integer(args[0]));
+                return self.yes;
+            },
+            .undo, .forget, .log, .memory, .tasks => {
+                if (args.len != 0) return error.Arity;
+                try host.schemeCall(switch (op) {
+                    .undo => .undo,
+                    .forget => .forget,
+                    .log => .log,
+                    .memory => .memory,
+                    else => .tasks,
+                }, "", 0);
+                return self.yes;
+            },
+            else => return error.Type,
+        }
+    }
+    noinline fn applyView(self: *Runtime, op: Op, args: []const Ref) linksection(code_section) Error!Ref {
+        switch (op) {
             .view_set => {
                 if (args.len == 0 or args.len % 2 != 0) return error.Arity;
                 var next = self.view;
@@ -480,28 +508,6 @@ pub const Runtime = struct {
                 self.view = previous.config;
                 self.view_generation = previous.generation;
                 return result;
-            },
-            .insert => {
-                if (args.len != 1) return error.Arity;
-                if (self.heap[args[0]].tag != .string) return error.Type;
-                try host.schemeCall(.insert, self.string(args[0]), 0);
-                return self.yes;
-            },
-            .move => {
-                if (args.len != 1) return error.Arity;
-                try host.schemeCall(.move, "", try self.integer(args[0]));
-                return self.yes;
-            },
-            .undo, .forget, .log, .memory, .tasks => {
-                if (args.len != 0) return error.Arity;
-                try host.schemeCall(switch (op) {
-                    .undo => .undo,
-                    .forget => .forget,
-                    .log => .log,
-                    .memory => .memory,
-                    else => .tasks,
-                }, "", 0);
-                return self.yes;
             },
             else => return error.Type,
         }
@@ -564,7 +570,7 @@ pub const Runtime = struct {
     }
     fn print(self: *const Runtime, r: Ref, output: []u8, pos: *usize, depth: usize) linksection(code_section) Error!void {
         if (depth >= depth_limit) return error.Depth;
-        const c = self.heap[r];
+        const c = &self.heap[r];
         switch (c.tag) {
             .nil => try emit(output, pos, "()"),
             .boolean => try emit(output, pos, if (r == self.no) "#f" else "#t"),
