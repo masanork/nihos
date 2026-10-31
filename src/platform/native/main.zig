@@ -1252,7 +1252,7 @@ fn reportPmpProbe() noreturn {
     while (true) asm volatile ("wfi" ::: .{ .memory = true });
 }
 
-fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
+noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (options.card_photo) ".flash.photo" else ".text") noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };
