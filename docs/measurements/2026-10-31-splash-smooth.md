@@ -2,7 +2,7 @@
 
 ## 統合状態と今回の範囲
 
-調査ベースは `origin/main` の `e1cfd0caa2e426c07088c7b33ed77464cbf3d899`。
+初回の調査ベースは `origin/main` の `e1cfd0caa2e426c07088c7b33ed77464cbf3d899`。
 前回の改修 `e0bd5272`（PR #91、merge `de76df02`）はリモートmainに含まれる。
 調査開始時の主checkoutは `1c7935aa` で76 commits遅れており、この改修を含まなかった。
 そのcheckoutからビルドすると前回修正前の経路が残る。本体の現在のFlash識別子は今回照合していないため、
@@ -10,7 +10,9 @@
 
 主checkoutの未コミット4ファイルを保全し、別worktreeで追加修正した。
 今回の実装・ホスト検証・通常deviceイメージ監査と、実機表示確認は別の段階である。
-本体への書込み・リセット・SD操作は今回行っていない。新規修正のmainへの統合も未実施。
+初回調査では本体操作を行わず、継続作業で下記の実機確認まで実施した。
+GPUI統合後のmainとmetrics更新（`19b116b6`）へ追従し、[PR #95](https://github.com/masanork/nihos/pull/95)で統合を進める。
+本書はPR提出時の検証記録であり、最新の統合状態はPRを参照する。
 
 ## mainに残っていた経路
 
@@ -49,9 +51,39 @@
 - ReleaseSafeは69/69 build steps成功。最初の実行は1,008/1,008 tests、最終実行の未cache部分は768/768 tests成功。イメージ監査のPythonテストは39件成功。fmt・ZLint・diff検査も成功。
 - 通常/trace deviceビルドとイメージ監査が成功した。primary SRAM heap spanは通常49,728 bytes、trace49,600 bytesで、両方とも48 KiB（49,152 bytes）基準を維持した。数値は割当て前のheap範囲であり、実機の使用後空き容量ではない。候補識別子・監査・テスト記録は[検証index](evidence/2026-10-31-splash-smooth/index.json)に保持した。
 
+## 継続作業での実機確認
+
+ESP32-P4 revision 1.3 / MAC `e8:f6:0a:e2:e8:9c` / 16 MiB Flashで確認した。
+別セッションのreader試験が書込みleaseを持っていた最初の試行は、本体を開く前に停止した。
+解放後、共有writer leaseとcu/tty両serial名のkernel exclusionを取得した。
+本体のfactory appは4 MiBで候補の1 MiB定義と異なったため、最初の照合は書込み前に停止した。
+実際の3 partitionの開始位置・種別・flagsを確認し、既存factory領域の方が大きく候補を収められることを確認した。
+パーティション表を変更せず、変更対象のbootloader領域24 KiBと既存factory app 4 MiBをバックアップ・照合した。
+
+候補を凍結し、書込み直後と観測後にFlash bytesを照合した。
+trace版3回・通常版4回のUSB warm resetで、native boot/core/display検査、`UI_SETTLED progress=255 target=255`、xy起動がすべて成功した。
+全7回で表示DMAエラー0、割込み・scanout継続、キーボード初期化status=1を確認した。
+trace版の無操作観測では再描画数が増えず、走査frame数だけが増加した。
+ホスト受信でのreset要求からxy起動までは約3.06秒だった。USB reset pulseとbufferingを含むため、cold起動時間や光学的な表示時間ではない。
+
+初回の自動検査は、正規の`NIHOS_NATIVE_CAMERA_BOOT`をgeneric checkerがforeign bootと誤判定して失敗した。
+その試行は元の読書用firmwareを復元・照合した。
+検査を修正し、監査済みdevice codeに`nih_csi_stream_begin`を含む場合だけ、順序・件数・fieldsが正しいカメラ起動記録を認めるようにした。
+無関係な起動、重複、欠落、malformed recordの拒否テストを追加した。修正後に7回の観測を取り直した。
+
+元のapp SHA-256は `ca8aaaab9839eb1063fa4e733fbeadab84d26beeee4f142a7b523f008dbeaa0c`。
+別セッションの凍結済みreader候補の監査と一致した。試験後はこのreader firmwareを復元し、
+bootloader/app全域と未変更のpartition tableを照合してhard resetした。復元後の起動はcaptureしていない。
+本修正候補が本体へ恒久導入済みという記録ではない。SD書込みは行っていない。
+私有backup・binary・生logは公開せず、[実機summary](evidence/2026-10-31-splash-smooth/physical-summary.json)と公開用serial抜粋を保持した。
+
+最終のローカル検査はDebug 1,012 tests、ReleaseSafeの未cache部分789 tests、Python 526件、静的検査・RV32の6 ELF監査が成功した。
+元の主checkoutのHEAD・未コミット4ファイルは保持した。
+
 ## 残る確認
 
 ホストobserverは描画spanの境界を検査するモデルであり、パネルの光学観測ではない。
-本体の現行イメージ識別、修正候補のFlash照合、warm/cold起動時の目視または動画確認が必要。
+修正候補のFlash照合とUSB warm起動は確認した。目視または動画でのちらつき確認、cold power cycle、
+本体を恒久運用する読書用構成への反映・確認は残る。
 通常更新は同じ走査バッファへ書く構成を保つため、VSYNCでの原子的なフレーム切替や全tearingの消失を証明していない。
 今回の修正は、先行消去が露出する経路と不要な全画面同期を除くもの。

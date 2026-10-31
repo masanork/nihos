@@ -29,76 +29,76 @@ MAINTENANCE_CAMPAIGN cancelled_dirty=false events=18 crash_cases=648 acknowledge
 MAINTENANCE_CAMPAIGN cancelled_dirty=true events=42 crash_cases=1512 acknowledged_cases=6
 GATE_MAINTENANCE_CAMPAIGN crash_cases=648 dispatched_before_recovery=0
 SERVICE_CAMPAIGN events=114 crash_cases=4104 acknowledged_cases=6
-failed command: ./.zig-cache/o/debce0f660cb4ce4f081b535d1180f94/test --cache-dir=./.zig-cache --seed=0xa76f72c1 --listen=-
+failed command: ./.zig-cache/o/04bd525f40abb96efa6c0c3162f4ce9b/test --cache-dir=./.zig-cache --seed=0xaf24225d --listen=-
 
-Build Summary: 69/69 steps succeeded; 768/768 tests passed
+Build Summary: 69/69 steps succeeded; 789/789 tests passed
 test success
-+- run test 768 pass (768 total) 22s MaxRSS:35M
++- run test 772 pass (772 total) 18s MaxRSS:35M
 |  +- compile test safe native success 1m MaxRSS:1G
 +- run test cached
-|  +- compile test safe native cached 65ms MaxRSS:31M
+|  +- compile test safe native cached 68ms MaxRSS:31M
 +- run test cached
-|  +- compile test safe native cached 60ms MaxRSS:31M
+|  +- compile test safe native cached 77ms MaxRSS:31M
 +- run test cached
-|  +- compile test safe native cached 65ms MaxRSS:31M
+|  +- compile test safe native cached 64ms MaxRSS:32M
 +- run test cached
-|  +- compile test safe native cached 115ms MaxRSS:31M
+|  +- compile test safe native cached 58ms MaxRSS:31M
 +- run test cached
-|  +- compile test safe native cached 98ms MaxRSS:31M
+|  +- compile test safe native cached 73ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 95ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 103ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 61ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 52ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 101ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 93ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 62ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 96ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 64ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 79ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 91ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 103ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 72ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 93ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 128ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 62ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 63ms MaxRSS:31M
 +- run test cached
 |  +- compile test safe native cached 91ms MaxRSS:31M
 +- run test cached
 |  +- compile test safe native cached 68ms MaxRSS:31M
 +- run test cached
-|  +- compile test safe native cached 105ms MaxRSS:31M
+|  +- compile test safe native cached 68ms MaxRSS:31M
++- run test 15 pass (15 total) 221ms MaxRSS:7M
+|  +- compile test safe native success 18s MaxRSS:396M
 +- run test cached
-|  +- compile test safe native cached 94ms MaxRSS:31M
+|  +- compile test safe native cached 70ms MaxRSS:31M
 +- run test cached
-|  +- compile test safe native cached 64ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 60ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 91ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 66ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 96ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 94ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 107ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 63ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 106ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 87ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 91ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 60ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 60ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 73ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 91ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 91ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 93ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 101ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 62ms MaxRSS:31M
-+- run test cached
-|  +- compile test safe native cached 97ms MaxRSS:32M
-+- run test cached
-|  +- compile test safe native cached 60ms MaxRSS:32M
+|  +- compile test safe native cached 69ms MaxRSS:31M
 +- run test cached
 |  +- compile test safe native cached 89ms MaxRSS:31M
 +- run test cached
-|  +- compile test safe native cached 62ms MaxRSS:31M
+|  +- compile test safe native cached 64ms MaxRSS:31M
++- run test 2 pass (2 total) 197ms MaxRSS:2M
+|  +- compile test safe native success 15s MaxRSS:314M
 +- run test cached
-   +- compile test safe native cached 105ms MaxRSS:32M
+|  +- compile test safe native cached 61ms MaxRSS:31M
++- run test cached
+   +- compile test safe native cached 59ms MaxRSS:32M
 

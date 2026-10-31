@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "base_commit": "e1cfd0caa2e426c07088c7b33ed77464cbf3d899",
+  "base_commit": "19b116b69622b44718cc126e12cb09dd6435500c",
   "branch": "codex/splash-smooth-boot-20261031",
   "previous_fix_commit": "e0bd5272c3a920fdf3c889cbbc111d9ea92b9fc1",
   "previous_fix_main_merge": "de76df02",
@@ -9,19 +9,25 @@
   "source_sha256": {
     "src/graphics/boot_graphics.zig": "b4b824ea33c42c38fbf5caddd56a44a494b8e8ec141000d6f48a2937a24926a7",
     "src/platform/native/diagnostic_ui.zig": "97ec521fbf90821ee0d13b3f2a1ea04c98c2bcaa5085551a5e910b3a14e41458",
-    "tools/check-native-image.py": "378b93ce438d08156b1b8b2a442162fc86001de6c7ff4d2b25cd280986cdc050"
+    "tools/check-native-image.py": "378b93ce438d08156b1b8b2a442162fc86001de6c7ff4d2b25cd280986cdc050",
+    "tools/check-native-log.py": "00f6e1c29dd099ad2619f5b0ef75977f73ea378d95f05de67b98db383c383818",
+    "tools/native_checks_test.py": "9715dafaaaa1028d51a6f4398113f546345e3809291e6001771e2239efa53604"
   },
   "checks": {
     "splash_tests": 10,
     "intermediate_transition_cases": 98,
     "negative_control_invalid_pixel_observations": 744,
     "release_safe_build_steps": "69/69",
-    "release_safe_uncached_tests": "768/768",
+    "release_safe_uncached_tests": "789/789",
     "initial_release_safe_tests": "1008/1008",
     "image_audit_tests": 39,
     "zig_fmt": "passed",
     "zlint": "0 errors, 0 warnings",
-    "git_diff_check": "passed"
+    "git_diff_check": "passed",
+    "debug_build_steps": "69/69",
+    "debug_tests": "1012/1012",
+    "python_tests": 526,
+    "static_analysis": "passed, including six native ELF audits"
   },
   "cache_writeback_bytes": {
     "previous_step": 1843200,
@@ -31,40 +37,50 @@
   },
   "images": {
     "normal": {
-      "image_sha256": "b63226cc8864eeb92005c01ae82c911ca045c73d4d0b87a15220e4a7ca9ad795",
+      "image_sha256": "bd380ae9a37b13d511500392592bc1970e2c70fdfaab19541559c2a52b23eff3",
       "image_bytes": 811776,
-      "elf_sha256": "cb03600e6ed78c6ad64b6ababf3ca8ee3006bf918f85941475b04d2ab390774d",
+      "elf_sha256": "f3c0ce269cbe296cffae26e70002ce4d1749a55e6c5a7d5ef62b769fcec61a7d",
       "primary_heap_span_bytes": 49728,
       "minimum_heap_span_bytes": 49152,
       "audit": "passed",
-      "physical_validation": false,
-      "artifacts": "/private/tmp/nihos-splash-smooth-20261031/build/native-device-network-devices-camera"
+      "physical_validation": true,
+      "artifacts": "/private/tmp/nihos-splash-deployment-20261031-1750/normal"
     },
     "trace": {
-      "image_sha256": "98059299ff91ca9d8fbed45491fc0fbb381fc0e4afb5583798c600ff9244ba1e",
+      "image_sha256": "cfd5f1cdff3646cb5bf442e09f53b9961024a4507acadcd6a71e78344d3415b7",
       "image_bytes": 812800,
-      "elf_sha256": "1f71e95d076d0b9f2ea35028ba9d464e9ab01b749094bfb3fc15940c661a2555",
+      "elf_sha256": "96a20fbe7b2bfc6d5b02d98cb44b65f475af575dcbd9ed996bc16150063043de",
       "primary_heap_span_bytes": 49600,
       "minimum_heap_span_bytes": 49152,
       "audit": "passed",
-      "physical_validation": false,
-      "artifacts": "/private/tmp/nihos-splash-smooth-20261031/build/native-device-network-devices-camera-xy-trace"
+      "physical_validation": true,
+      "artifacts": "/private/tmp/nihos-splash-deployment-20261031-1750/trace"
     }
   },
   "physical_device": {
-    "flash_identity_checked": false,
-    "written": false,
-    "reset": false,
+    "flash_identity_checked": true,
+    "written": true,
+    "usb_warm_reset_runs": 7,
     "optical_confirmation": false,
-    "sd_operations": false
+    "cold_power_cycle": false,
+    "sd_operations": false,
+    "original_reader_restored_and_verified": true,
+    "scope": "USB warm boot and idle scanout; no optical flicker claim"
   },
   "main_merged": false,
   "evidence_sha256": {
-    "host-releasesafe.txt": "a452497c94641dfecef3b8f546b354a50a5bbaf34eeba4c2cd595fe07e740ec2",
+    "host-debug.txt": "7a1411aef85204b1eb62052e067ccabb1cc3762dfbfac407b1b2b711c04b7e92",
+    "host-releasesafe.txt": "1dbc7a225642e02d6869879f8443e4168b27906e84c5720f9acb041ec6887026",
     "image-audit-tests.txt": "2153e1e49b96e7325a70005efce7d6bd6dfcf2e99f1a46a0967549c8a07b28f2",
     "negative-control.txt": "85a7a2a5ed0bebbba147788203971c575139c4d42e3761c67c2310dd83356176",
-    "normal-image-audit.json": "826d459c458266ad3e6f843cd5e6382e432c64dd00d4c84a09aab65ba7f33699",
+    "normal-image-audit.json": "70e5d979468aa80d3c102c34f63935f12500f9d9efdea316f11de0b2290fd235",
+    "physical-boot-excerpts.log": "7cc5b570c8a51617f97a86e53f2c075c0eca06f437d59e770191560d767d596f",
+    "physical-summary.json": "5bacdc378b8ea599544e50c9d35dce01aadfa149186bc2f7c1371cdf068b1f45",
+    "python-tests.txt": "81f580dd40583f7f3498538945c0f6c30ed41d51fdf5c4b6c353b31f164decf3",
     "splash-tests.txt": "09425060e79df3da64269d36e13201adff1cc208459f3c68a0c22f89a8c39adb",
-    "trace-image-audit.json": "a5c44749a43f606b04d3450fffaf5290d3c050777b876c5057318254245791ec"
-  }
+    "static-analysis.txt": "8255183bc17eea5b17e5aa6a6d5287914099fb1441c00f96b7247a5974c5e0ba",
+    "trace-image-audit.json": "182b3175ff2a1e283e157692d69d8c08a08bced35b77cbec5f4df66993dc6754"
+  },
+  "physical_test_source": "1004c716d138384e4c3584bf027ac52d6b7ab652",
+  "pr": "https://github.com/masanork/nihos/pull/95"
 }
