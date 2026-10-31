@@ -93,14 +93,15 @@ Wasm worker. Its frame lease stays alive until the worker acknowledges and the
 engine lease stays pinned through task reap. Normal input, timeout, early quit,
 cancel, metering trap, presenter refusal, partial open and same-boot restart
 pass on RV32. See the [frame bridge report](../measurements/2026-10-31-wasm-session-frame-bridge.md).
-The normal UI backend selector and physical presenter remain open.
+The Wasm UI branch is implemented behind the headless test flag; an interactive
+Wasm/display profile and physical presenter remain open.
 
-1. **Normal UI backend selection and ownership.** The leased-stack registration
-   and bounded Session/worker frame bridge are now verified in the headless
-   normal RV32 emulator. Connect the Wasm backend to the normal shell's backend
-   selector and existing rotated presenter, preserving camera/console ownership,
-   input routing and repaint on stop. Exercise `0 -> 1 -> 0 -> q` through both
-   UI backends. Headless pixel checks do not qualify scanout/cache behavior.
+1. **Interactive emulator profile and ownership.** The leased-stack registration,
+   Session/worker bridge and UI dispatcher branch are verified in the headless
+   RV32 emulator. Establish an interactive emulator profile and connect its
+   actual input/display owner, preserving camera/console ownership and repaint.
+   Exercise `0 -> 1 -> 0 -> q` through both UI backends. Headless pixel checks
+   do not qualify scanout/cache behavior.
    The synchronous frame request yields to the scheduler, but does not service
    the foreground network/camera loop while waiting; measure that latency
    explicitly before allowing a camera/display device profile. In the headless
@@ -115,15 +116,16 @@ The normal UI backend selector and physical presenter remain open.
    The headless fixture now feeds the real launcher/shell model a synthetic
    `Esc → rust-app → Enter`, uses the normal serial key decoder for a
    synthetic `q` during open, and runs `0 → 1 → 0` after a later open. The
-   fixture connects these pieces explicitly; the normal UI dispatcher does not.
+   fixture now invokes the actual normal UI key dispatcher, while using a
+   test-only shell model and pixel presenter.
    A foreground controller now owns opening, cancellation and active-input
-   routing in that fixture. It rejects start when the caller reports camera or
-   display busy, and reserves display until cancellation has completed. Actual
-   camera/display state still has to be connected by the normal UI owner.
+   routing in that fixture and the UI branch. It rejects start when camera or
+   display is busy and reserves display until cancellation has completed.
+   The fixture exercises synthetic camera-live state, not camera DMA.
    If the worker exits before acknowledging close, polling now reaps it and
    reports an error instead of waiting indefinitely. Startup failures retain
    their original status across repeated polls. These paths have headless RV32
-   fault-injection coverage; the normal UI backend remains unconnected.
+   fault-injection coverage; the interactive UI profile remains unavailable.
    Both hart timers continue during the tested requests and cooperative shutdown.
    See the [request latency measurement](../measurements/2026-10-31-wasm-session-latency.md).
 2. **Runtime decision and candidate profile.** Resolve the WAMR alignment
