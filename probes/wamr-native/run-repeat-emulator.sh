@@ -1,0 +1,40 @@
+#!/bin/sh
+# Emulator UART -> normal UI poll/decoder/dispatcher -> WAMR. No LCD scanout.
+set -eu
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+out="$root/build/wasm-interactive-repeat"
+riscv_cc=${NIHOS_RISCV_CC:-riscv32-esp-elf-gcc}
+python=${NIHOS_IDF_PYTHON:-python3}
+loader="$root/build/native-emulator/loader"
+mkdir -p "$out"
+NIHOS_NATIVE_WASM_INTERACTIVE_REPEAT=1 NIHOS_NATIVE_WASM_INTERACTIVE=1 NIHOS_NATIVE_WASM_SESSION_TEST=1 NIHOS_NATIVE_WASM_TASK=1 NIHOS_NATIVE_BOOT_TEST=1 \
+    sh "$root/tools/build-native-elf.sh" emulator "$out" wasm > "$out/build.log" 2>&1 || { cat "$out/build.log"; exit 1; }
+"${riscv_cc%gcc}objcopy" --strip-debug "$out/nihos-native.elf" "$out/nihos-native-image.elf"
+"$python" -m esptool --chip esp32p4 elf2image --use_segments --flash_mode dio --flash_freq 80m --flash_size 16MB \
+    --min-rev-full 300 --max-rev-full 399 --elf-sha256-offset 0xb0 -o "$out/nihos-native.bin" "$out/nihos-native-image.elf" > "$out/image.log" 2>&1
+"$python" -m esptool --chip esp32p4 merge_bin -o "$out/nihos-native-flash.bin" --flash_mode dio --flash_freq 80m --flash_size 16MB \
+    0x2000 "$loader/bootloader/bootloader.bin" 0x8000 "$loader/partition_table/partition-table.bin" 0x10000 "$out/nihos-native.bin" >> "$out/image.log" 2>&1
+python3 "$root/probes/wamr-native/check-image.py" "$out/nihos-native-image.elf" "$out/app.wasm" "$out/app-test-ed25519.nihpkg" "$out/app-update-ed25519.nihpkg" "$out/image-audit.json" --session
+emulator=$(sh "$root/tools/bootstrap-esp-emu.sh")
+python3 - "$emulator" "$out" <<'PYRUN'
+import hashlib,json,re,subprocess,sys
+from pathlib import Path
+emu,out=sys.argv[1],Path(sys.argv[2]); names=('nihos-native-image.elf','nihos-native-flash.bin')
+hashes={name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in names}
+def marker(round,state): return f'NIHOS_WASM_REPEAT round={round:08x} state={state:08x}'
+steps=[('\x1b','NIHOS_WASM_INTERACTIVE_READY'),('rust-app\r','NIHOS_NATIVE_SESSION_VIEW'),
+       ('010q',marker(1,1)),('rust-app\r',marker(1,2)),('q',marker(2,5)),
+       ('rust-app\r',marker(2,4)),('010q',marker(3,1))]
+cmd=[emu,'--chip','esp32p4','--firmware',str(out/names[1]),'--elf',str(out/names[0]),'--psram-size','4M','--timeout','90s','--exit-on',marker(3,2)]
+for payload,trigger in steps: cmd+=['--inject',payload,'--inject-on',trigger]
+r=subprocess.run(cmd,capture_output=True,text=True,timeout=100)
+(out/'repeat.log').write_text(r.stdout); (out/'repeat-stderr.log').write_text(r.stderr)
+assert r.returncode==0 and 'NIHOS_NATIVE_FAIL' not in r.stdout,(r.returncode,r.stdout)
+rows=re.findall(r'NIHOS_WASM_REPEAT round=([0-9a-f]+) state=([0-9a-f]+) frames=([0-9a-f]+) signature=([0-9a-f]+)',r.stdout)
+rows=[tuple(int(x,16) for x in row) for row in rows]
+assert rows==[(1,5,0,0),(1,1,0,0),(1,2,4,4),(2,5,0,0),(2,4,0,0),(3,5,0,0),(3,1,0,0),(3,2,4,4)],rows
+assert r.stdout.count('nihos> ')>=3,r.stdout
+assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in hashes.items())
+(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows]},indent=2)+'\n')
+print('repeat: two active runs and startup cancellation, with shell returns and full recovery passed')
+PYRUN

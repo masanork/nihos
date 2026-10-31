@@ -134,6 +134,7 @@ extern fn nih_keyboard_pads_init() callconv(.c) void;
 extern fn nih_diagnostic_serial_dropped() callconv(.c) u32;
 extern fn nih_diagnostic_serial_read() callconv(.c) i32;
 extern fn nih_rom_rx_one_char(*u8) callconv(.c) i32;
+extern fn nih_rom_putc(u8) callconv(.c) i32;
 fn fixtureSerialRead() i32 {
     var byte: u8 = 0;
     return if (nih_rom_rx_one_char(&byte) == 0) byte else -1;
@@ -218,8 +219,13 @@ var shown_session_revision: u32 = 0;
 var shown_session_view: ?Session.View = null;
 const SerialSink = struct {
     pub fn write(_: @This(), bytes: []const u8) void {
-        if (comptime options.wasm_session_test and !options.console_live) return;
-        for (bytes) |byte| nih_diagnostic_serial_write(byte);
+        if (comptime options.wasm_interactive_repeat) {
+            for (bytes) |byte| _ = nih_rom_putc(byte);
+        } else if (comptime options.wasm_session_test and !options.console_live) {
+            return;
+        } else {
+            for (bytes) |byte| nih_diagnostic_serial_write(byte);
+        }
     }
 };
 /// Single optional CPU0 service reservation after all console objects. The

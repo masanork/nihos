@@ -26,6 +26,24 @@ pub var async_begin_us: u32 = 0;
 var interactive_active = false;
 var interactive_opening = false;
 var interactive_free: usize = 0;
+pub var interactive_round: u32 = 0;
+pub var interactive_signature: u32 = 0;
+pub var interactive_frames: u32 = 0;
+var interactive_last_generation: u32 = 0;
+var interactive_start_ticks: [2]u32 = .{ 0, 0 };
+fn interactiveFinish(cancelled: bool) bool {
+    if (app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+        app.observed.wiped != @intFromBool(!cancelled) or app.observed.detached != 1 or app.observed.guards != 1 or
+        !ui.wasmFixtureDirty() or app.observed.generation <= interactive_last_generation or
+        (tasks.memory.reusable.localUsage() orelse return false).free != interactive_free or
+        tasks.report(0).ticks == interactive_start_ticks[0] or tasks.report(1).ticks == interactive_start_ticks[1]) return false;
+    interactive_last_generation = app.observed.generation;
+    interactive_frames = presentations;
+    interactive_active = false;
+    interactive_opening = false;
+    presentations = 0;
+    return true;
+}
 pub fn interactiveBegin(log: anytype) bool {
     interactive_free = (tasks.memory.reusable.localUsage() orelse return false).free;
     presentations = 0;
@@ -44,15 +62,24 @@ pub fn interactiveService(log: anytype) u32 {
     }
     if (ui.wasmFixtureReserved() and !interactive_opening) {
         interactive_opening = true;
+        if (options.wasm_interactive_repeat) {
+            interactive_round += 1;
+            interactive_signature = 0;
+            interactive_frames = 0;
+            interactive_start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
+            ui.wasmFixtureClearDirty();
+        }
         return 5;
     }
     if (interactive_opening and !interactive_active and !ui.wasmFixtureReserved()) {
+        if (options.wasm_interactive_repeat) return if (presentations == 0 and interactiveFinish(true)) 4 else 3;
         if (app.active() or presentations != 0 or !ui.wasmFixtureDirty() or
             app.observed.reaped != 1 or app.observed.recovered != 1 or
             (tasks.memory.reusable.localUsage() orelse return 3).free != interactive_free) return 3;
         return 4;
     }
     if (interactive_active and !ui.wasmFixtureReserved()) {
+        if (options.wasm_interactive_repeat) return if (presentations > 0 and app.frames() == presentations and interactiveFinish(false)) 2 else 3;
         if (app.active() or app.frames() != 4 or presentations != 4 or selected != 0 or
             !ui.wasmFixtureDirty() or app.observed.reaped != 1 or app.observed.recovered != 1 or
             (tasks.memory.reusable.localUsage() orelse return 3).free != interactive_free) return 3;
@@ -154,7 +181,9 @@ fn present(bytes: [*]const u8, len: u32) callconv(.c) i32 {
     if (fail_present) return -49;
     if (len != 25600) return -1;
     const pressed = bytes[0] == 0x0c;
-    if (options.wasm_interactive) {
+    if (options.wasm_interactive_repeat) {
+        if (presentations < 32 and pressed) interactive_signature |= @as(u32, 1) << @as(u5, @intCast(presentations));
+    } else if (options.wasm_interactive) {
         const expected = [_]bool{ false, false, true, false };
         if (presentations >= expected.len or pressed != expected[presentations]) return -51;
     }

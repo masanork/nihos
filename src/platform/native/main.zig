@@ -1614,7 +1614,15 @@ fn normalReady() noreturn {
     }
     var idle_checked = false;
     while (true) {
-        if (options.wasm_interactive) {
+        if (options.wasm_interactive_repeat) {
+            const fixture = @import("wasm_session_fixture.zig");
+            const state = fixture.interactiveService(&logger);
+            if (state == 3) fail("Wasm interactive repeat result");
+            if (state != 0) {
+                const event = .{ .round = fixture.interactive_round, .state = state, .frames = fixture.interactive_frames, .signature = fixture.interactive_signature };
+                logger.record("NIHOS_WASM_REPEAT", null, .{ "round", "state", "frames", "signature" }, &event);
+            }
+        } else if (options.wasm_interactive) {
             switch (@import("wasm_session_fixture.zig").interactiveService(&logger)) {
                 0 => {},
                 1 => print("NIHOS_WASM_INTERACTIVE_ACTIVE\n"),

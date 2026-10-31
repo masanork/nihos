@@ -84,6 +84,11 @@ case "$wasm_interactive" in 0) wasm_interactive=false ;; 1) wasm_interactive=tru
 if [ "$wasm_interactive" = true ] && [ "$wasm_session_test" != true ]; then
     echo "WASM_INTERACTIVE requires the headless WASM_SESSION_TEST profile" >&2; exit 1
 fi
+wasm_repeat=${NIHOS_NATIVE_WASM_INTERACTIVE_REPEAT:-0}
+case "$wasm_repeat" in 0) wasm_repeat=false ;; 1) wasm_repeat=true ;; *) echo "WASM_INTERACTIVE_REPEAT must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_repeat" = true ] && [ "$wasm_interactive" != true ]; then
+    echo "WASM_INTERACTIVE_REPEAT requires WASM_INTERACTIVE=1" >&2; exit 1
+fi
 if [ "$mode" = integer ] || [ "$wasm_task" = true ]; then normal_mode=true; fi
 abi=ilp32
 qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
@@ -554,6 +559,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_task = %s;\n' "$wasm_task"
     printf 'pub const wasm_session_test = %s;\n' "$wasm_session_test"
     printf 'pub const wasm_interactive = %s;\n' "$wasm_interactive"
+    printf 'pub const wasm_interactive_repeat = %s;\n' "$wasm_repeat"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
