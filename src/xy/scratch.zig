@@ -574,6 +574,10 @@ test "camera handle reads are bounded copies and do not edit the document" {
     try std.testing.expectError(error.InvalidCameraHandle, model.vm.evaluate("(camera/read 0 0 1)", &model, &output));
     try std.testing.expectError(error.Arity, model.vm.evaluate("(camera/capture! 1)", &model, &output));
     try std.testing.expectError(error.Type, model.vm.evaluate("(camera/read image \"0\" 1)", &model, &output));
+    // View configuration and camera access share the rebased builtin table.
+    try std.testing.expectEqualStrings("2", try model.vm.evaluate("(view/set! #:size 36 #:foreground #x234567)", &model, &output));
+    try std.testing.expectEqualStrings("\"ffd8\"", try model.vm.evaluate("(camera/read image 0 2)", &model, &output));
+    try std.testing.expectEqualStrings("36", try model.vm.evaluate("(view/get #:size)", &model, &output));
     model.resetScheme();
     try std.testing.expectEqualStrings("\"ffd8\"", try model.vm.evaluate("(camera/read 7 0 2)", &model, &output));
     Fake.state = .failed;
