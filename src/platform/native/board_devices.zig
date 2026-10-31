@@ -112,10 +112,10 @@ var stream_progress_at: u64 = 0;
 pub fn cameraStreaming() bool {
     return stream_requested;
 }
-pub fn cameraStreamStats() extern struct { completed: u32, dropped: u32, fault: u32 } {
+pub fn cameraStreamStats() extern struct { completed: u32, dropped: u32, fault: u32, incomplete: u32 } {
     const previous = CsiHardware.mask();
     defer CsiHardware.restore(previous);
-    return .{ .completed = nih_csi_stream_state(1), .dropped = nih_csi_stream_state(2), .fault = nih_csi_stream_state(3) };
+    return .{ .completed = nih_csi_stream_state(1), .dropped = nih_csi_stream_state(2), .fault = nih_csi_stream_state(3), .incomplete = nih_csi_stream_state(5) };
 }
 pub fn cameraStopStreaming() void {
     if (!stream_requested or stream_stopping) return;

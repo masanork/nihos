@@ -1,4 +1,4 @@
-/* Single-frame CSI DMA polling experiment; not linked into normal firmware.
+/* Finite and interrupt-rearmed CSI DMA for the native camera service.
  * CPU0's serialized owner must hold channel 1 and the CSI bridge, and perform
  * cache handoff and sensor stream-on/off. No global interrupt clear or reset.
  * LL register facts: ESP-IDF v5.4.4 CSI and DW-GDMA implementations.
@@ -29,6 +29,9 @@
 #ifndef CSI_DMA_FENCE
 #define CSI_DMA_FENCE() __asm__ volatile("fence iorw,iorw" ::: "memory")
 #endif
+#ifndef CSI_BRIDGE_CLEAR
+#define CSI_BRIDGE_CLEAR(events) (MIPI_CSI_BRIDGE.int_clr.val = (events))
+#endif
 
 typedef enum { CSI_RX_IDLE, CSI_RX_ARMED, CSI_RX_RUNNING, CSI_RX_STOPPED, CSI_RX_PINNED } csi_rx_state;
 typedef struct { csi_rx_state state; uint32_t events; } csi_rx;
@@ -37,6 +40,7 @@ static uint32_t stop_status_before_clear;
 extern int32_t nih_csi_dma_configure(uint32_t, uint32_t, uint32_t);
 static camera_dma_pool stream_pool;
 static uint32_t stream_addresses[2], stream_fault, stream_start_generation;
+static uint32_t stream_incomplete, stream_incomplete_streak;
 static bool stream_configured, stream_stop, stream_drained;
 #if defined(__riscv)
 #define STREAM_FOREGROUND __attribute__((section(".flash.text.devices")))
@@ -54,6 +58,7 @@ STREAM_FOREGROUND bool nih_csi_stream_begin(uint32_t a, uint32_t b) {
     stream_start_generation = generation;
     stream_addresses[0] = a; stream_addresses[1] = b;
     stream_fault = 0; stream_stop = false; stream_drained = false;
+    stream_incomplete = 0; stream_incomplete_streak = 0;
     stream_configured = true;
     return true;
 }
@@ -74,6 +79,7 @@ STREAM_FOREGROUND uint32_t nih_csi_stream_state(uint32_t kind) {
     case 2: return stream_pool.dropped;
     case 3: return stream_fault;
     case 4: return stream_drained;
+    case 5: return stream_incomplete;
     default: return 0;
     }
 }
@@ -98,9 +104,21 @@ STREAM_FOREGROUND bool nih_csi_stream_end(void) {
 void nih_csi_stream_irq(uint32_t common) {
     if (!stream_configured || stream_drained) return;
     const uint32_t events = dw_gdma_ll_channel_get_intr_status(&DW_GDMA, 1) & CSI_DMA_EVENTS;
-    const uint32_t bridge = MIPI_CSI_BRIDGE.int_raw.val & 0x1fu;
+    uint32_t bridge = MIPI_CSI_BRIDGE.int_raw.val & 0x1fu;
     if (!events && !common && !bridge) return;
     CSI_DMA_CLEAR(events);
+    /* DISCARD alone marks this completed transfer incomplete. Never publish
+     * it: keep the current DMA slot and acknowledge only that CSI-local bit.
+     * Three consecutive incomplete transfers are tolerated; other bridge/DMA
+     * faults and a fourth consecutive discard still take the pinned path. */
+    const bool incomplete = bridge == 4u && (events & CSI_DMA_DONE) && !(events & CSI_DMA_ERRORS) && !common;
+    if (incomplete) {
+        ++stream_incomplete;
+        if (++stream_incomplete_streak <= 3u) {
+            CSI_BRIDGE_CLEAR(4u);
+            bridge = 0;
+        }
+    } else if ((events & CSI_DMA_DONE) && !bridge && !common && !(events & CSI_DMA_ERRORS)) stream_incomplete_streak = 0;
     if (common || bridge || (events & CSI_DMA_ERRORS)) stream_fault |= common | events | (bridge << 24);
     if (!(events & CSI_DMA_DONE) && !stream_fault) return;
     CSI_DMA_ENABLE(false);
@@ -112,7 +130,7 @@ void nih_csi_stream_irq(uint32_t common) {
         stream_drained = true;
         return;
     }
-    const int next = camera_pool_complete(&stream_pool);
+    const int next = incomplete ? stream_pool.dma : camera_pool_complete(&stream_pool);
     if (next < 0 || nih_csi_dma_configure(stream_addresses[next], stream_addresses[next], 921600) != 0) {
         stream_fault |= 4u;
         mipi_csi_brg_ll_enable(&MIPI_CSI_BRIDGE, false);

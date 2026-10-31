@@ -15,10 +15,15 @@ csi_host_dev_t MIPI_CSI_HOST;
 static bool enabled, stuck;
 static void fake_enable(bool on) { if (on || !stuck) enabled = on; }
 static void fake_clear(uint32_t events) { DW_GDMA.ch[1].int_st0.val &= ~events; }
+static void fake_bridge_clear(uint32_t events) {
+    MIPI_CSI_BRIDGE.int_clr.val = events;
+    MIPI_CSI_BRIDGE.int_raw.val &= ~events;
+}
 #define CSI_DMA_ENABLE(on) fake_enable(on)
 #define CSI_DMA_ENABLED() enabled
 #define CSI_DMA_CLEAR(events) fake_clear(events)
 #define CSI_DMA_FENCE() ((void)0)
+#define CSI_BRIDGE_CLEAR(events) fake_bridge_clear(events)
 #include "../../src/board/tab5/native_csi_dma_config.c"
 #include "../../src/board/tab5/native_csi_dma_run.c"
 int main(void) {
@@ -86,11 +91,26 @@ int main(void) {
     assert(nih_csi_stream_begin(0x48200000u, 0x48400000u));
     rx = (csi_rx){0};
     assert(nih_csi_dma_arm(&rx) && nih_csi_dma_bridge_on(&rx));
+    uint32_t rejected_generation = 0;
+    for (unsigned i = 0; i < 3; ++i) {
+        MIPI_CSI_BRIDGE.int_raw.val = 0x24u;
+        DW_GDMA.ch[1].int_st0.val = CSI_DMA_DONE;
+        nih_csi_stream_irq(0);
+        assert(!nih_csi_stream_state(3) && nih_csi_stream_state(5) == i + 1);
+        assert(nih_csi_stream_state(1) == 0 && nih_csi_stream_borrow(&rejected_generation) == 0);
+        assert(DW_GDMA.ch[1].dar0.dar0 == 0x48200000u);
+        assert(MIPI_CSI_BRIDGE.int_clr.val == 4u && MIPI_CSI_BRIDGE.int_raw.val == 0x20u);
+    }
     DW_GDMA.ch[1].int_st0.val = CSI_DMA_DONE;
     nih_csi_stream_irq(0);
     uint32_t generation = 0;
     assert(nih_csi_stream_borrow(&generation) == 0x48200000u && generation == 1);
     assert(DW_GDMA.ch[1].dar0.dar0 == 0x48400000u);
+    MIPI_CSI_BRIDGE.int_raw.val = 4u;
+    DW_GDMA.ch[1].int_st0.val = CSI_DMA_DONE;
+    nih_csi_stream_irq(0);
+    assert(!nih_csi_stream_state(3) && nih_csi_stream_state(5) == 4u);
+    assert(nih_csi_stream_state(1) == 1 && DW_GDMA.ch[1].dar0.dar0 == 0x48400000u);
     for (unsigned i = 0; i < 10; ++i) {
         DW_GDMA.ch[1].int_st0.val = CSI_DMA_DONE;
         nih_csi_stream_irq(0);
@@ -139,6 +159,21 @@ int main(void) {
     assert(nih_csi_stream_state(4) && !enabled && !MIPI_CSI_BRIDGE.csi_en.csi_brg_en);
     assert(nih_csi_stream_borrow(&next_generation) == 0);
     assert(!nih_csi_stream_begin(0x48200000u, 0x48400000u));
+    assert(nih_csi_stream_end()); /* isolated replay only; production stays pinned */
+    for (unsigned scenario = 0; scenario < 4; ++scenario) {
+        MIPI_CSI_BRIDGE.int_raw.val = 0;
+        assert(nih_csi_stream_begin(0x48200000u, 0x48400000u));
+        rx = (csi_rx){0};
+        assert(nih_csi_dma_arm(&rx) && nih_csi_dma_bridge_on(&rx));
+        for (unsigned i = 0; i < (scenario == 0 ? 4u : 1u); ++i) {
+            MIPI_CSI_BRIDGE.int_raw.val = scenario == 1 ? 0xcu : 4u;
+            DW_GDMA.ch[1].int_st0.val = scenario == 3 ? 0 : CSI_DMA_DONE | (scenario == 2 ? (1u << 5) : 0u);
+            nih_csi_stream_irq(0);
+        }
+        assert(nih_csi_stream_state(3) && nih_csi_stream_state(4) && !enabled);
+        assert(nih_csi_stream_borrow(&next_generation) == 0);
+        assert(nih_csi_stream_end());
+    }
     assert(DW_GDMA.ch[0].int_sig_ena0.val == 0x12345678);
     puts("CSI DMA one-frame control replay passed");
 }
