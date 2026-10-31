@@ -24,8 +24,9 @@ class NativeInstructionTests(unittest.TestCase):
 
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
         self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).render'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).renderInto__func_0'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).render'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).renderInto__func_0'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(512).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
 
