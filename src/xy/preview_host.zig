@@ -31,7 +31,12 @@ pub export fn xy_tab5_init(data: [*]const u8, len: u32) callconv(.c) bool {
 pub export fn xy_tab5_key(key: u8) callconv(.c) void {
     if (!ready) return;
     const event: navigation.Key = switch (key) {
-        13 => .enter,
+        13, 10 => .enter,
+        3 => .cancel,
+        4 => .eof,
+        8, 127 => .backspace,
+        12 => .clear,
+        26 => .undo,
         27 => .escape,
         128 => .up,
         129 => .down,

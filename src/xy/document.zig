@@ -12,7 +12,7 @@
 const std = @import("std");
 // Document mutations are foreground operations, including RAM learning drafts.
 // Keep their shared device implementation out of the resident SRAM heap.
-const mutation_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+pub const mutation_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 
 pub const Error = error{
     InvalidUtf8,
