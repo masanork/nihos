@@ -25,13 +25,14 @@ sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('port');parser.add_argument('build',type=Path);parser.add_argument('output',type=Path)
-    parser.add_argument('--backup-from',type=Path,help='complete expected Flash bytes from a verified prior phase; verify every byte before reusing');parser.add_argument('--install',action='store_true');parser.add_argument('--exercise',action='store_true');parser.add_argument('--readback',action='store_true')
+    parser.add_argument('--backup-from',type=Path,help='complete expected Flash bytes from a verified prior phase; verify every byte before reusing');parser.add_argument('--install',action='store_true');parser.add_argument('--exercise',action='store_true');parser.add_argument('--readback',action='store_true');parser.add_argument('--normal-proof',action='store_true',help='use progress and a conditional durable save to qualify the default build without xy trace')
     a=parser.parse_args();build=a.build.resolve()
     fs=json.loads((build/'normal-fs-manifest.json').read_text());sql=json.loads((build/'sqld-manifest.json').read_text())
     normal_fs_manifest.verify_files(build,fs);sqld_native_manifest.verify(build,sql)
     report=runpy.run_path(str(ROOT/'tools/check-native-image.py'))['audit']((build/'nihos-native.elf').read_bytes(),(build/'nihos-native.bin').read_bytes(),'integer','device',normal_fs_manifest=fs,sqld_manifest=sql)
-    if 'pub const xy_trace = true;' not in (build/'native_options.zig').read_text():raise ValueError('trace candidate required')
-    if (a.exercise or a.readback) and sql['provision_cid']!=0:raise ValueError('exercise requires ordinary image with provisioning disabled')
+    if not a.normal_proof and 'pub const xy_trace = true;' not in (build/'native_options.zig').read_text():raise ValueError('trace candidate required')
+    if a.normal_proof and (a.exercise or a.readback):raise ValueError('normal proof is a separate exact-image check')
+    if (a.exercise or a.readback or a.normal_proof) and sql['provision_cid']!=0:raise ValueError('exercise requires ordinary image with provisioning disabled')
     out=a.output.resolve();out.mkdir(mode=0o700,parents=True,exist_ok=False)
     shutil.copyfile(__file__,out/'qualification-tool.py')
     frozen=out/'candidate';frozen.mkdir(mode=0o700)
@@ -107,6 +108,34 @@ def main():
                     return row
                 row=boot()
                 if sql['provision_cid'] != 0 and row['phase'] != 2:raise RuntimeError('CID provisioning did not produce a ready service')
+                if a.normal_proof:
+                    if row['phase']!=2:raise RuntimeError('default sqld not ready')
+                    initial_generation=row['generation']
+                    # Home -> document. The next progress receipt follows another UI turn.
+                    start=len(raw);port.write(b'n');port.flush()
+                    wait(lambda b:record(b[start:],b'NIHOS_NATIVE_SQLD_PROGRESS'))
+                    source="(begin (if (= (car (car (sql/query \"SELECT count(*) FROM native_probe WHERE body='before'\"))) 1) (buffer/load! \"native-source.scm\") (car '())) (buffer/save! \"normal-proof.scm\"))"
+                    port.write(b'\x1b');port.flush()
+                    for _ in range(2):
+                        start=len(raw)
+                        wait(lambda b:record(b[start:],b'NIHOS_NATIVE_SQLD_PROGRESS'))
+                    start=len(raw);port.write(source.encode()+b'\r');port.flush()
+                    def durable(data):
+                        tail=data[start:];phase=record(tail,b'NIHOS_NATIVE_SQLD')
+                        if phase and phase['phase']!=2:raise RuntimeError('default storage stopped')
+                        progress=record(tail,b'NIHOS_NATIVE_SQLD_PROGRESS')
+                        return progress if progress and progress['requests']==11 and progress['completed']==11 and progress['generation']>initial_generation else None
+                    progress=wait(durable,120)
+                    result['observations'].append({'name':'default-conditional-durable-save','source':source,'required_requests':11,**progress});save()
+                    row=boot()
+                    if row['phase']!=2 or row['generation']!=progress['generation']:raise RuntimeError('default durable generation did not recover')
+                    start=len(raw);deadline=time.monotonic()+10
+                    while time.monotonic()<deadline:
+                        data=port.read(max(1,port.in_waiting));raw.extend(data);capture.write(data)
+                    health=record(raw[start:],b'NIHOS_NATIVE_NETWORK_UI')
+                    if not health or not all(health.get(k,0)>0 for k in ('frames','ticks0','ticks1')):raise RuntimeError('default UI/cores not progressing')
+                    result['observations'].append({'name':'default-idle',**health})
+                    result['normal_default_proof']=True;save();print('Default image: conditional SQL read, UTF8 load/save and durable reboot matched',flush=True)
                 if a.exercise or a.readback:
                     if row['phase']!=2:raise RuntimeError('sqld not ready')
                     def evaluate(source,expected=None):

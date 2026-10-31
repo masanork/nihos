@@ -52,7 +52,10 @@ pub const Model = struct {
     top_row: usize,
     serial: input.Serial,
     hid: input.Hid,
-    deferred_serial: [1024]u8,
+    deferred_serial: [512]u8,
+    deferred_serial_delta: [512]u8,
+    deferred_serial_first: u64,
+    deferred_serial_last: u64,
     deferred_serial_count: u16,
     deferred: [64]input.Key,
     deferred_count: u8,
@@ -91,17 +94,23 @@ pub const Model = struct {
             self.deferred_count = 0;
             self.deferred_serial_count = 0;
             self.deferred_overflow = false;
+            self.serial = .{};
+            self.utf8_length = 0;
             self.command_length = 0;
             self.mode = .edit;
             self.status = .invalid_input;
             self.changed();
             return;
         }
+        var replay_now = self.deferred_serial_first;
         while (self.deferred_serial_count != 0) {
             const byte = self.deferred_serial[0];
+            replay_now +|= @as(u64, self.deferred_serial_delta[0]) * 250;
             self.deferred_serial_count -= 1;
             std.mem.copyForwards(u8, self.deferred_serial[0..self.deferred_serial_count], self.deferred_serial[1..][0..self.deferred_serial_count]);
-            self.feedSerial(byte, 0);
+            std.mem.copyForwards(u8, self.deferred_serial_delta[0..self.deferred_serial_count], self.deferred_serial_delta[1..][0..self.deferred_serial_count]);
+            self.expireSerial(replay_now);
+            self.feedSerial(byte, replay_now);
         }
         while (self.deferred_count != 0) {
             const key = self.deferred[0];
@@ -320,6 +329,12 @@ pub const Model = struct {
                 self.deferred_overflow = true;
                 return;
             }
+            if (self.deferred_serial_count == 0) {
+                self.deferred_serial_first = now;
+                self.deferred_serial_last = now;
+            }
+            self.deferred_serial_delta[self.deferred_serial_count] = @intCast(@min((now -| self.deferred_serial_last) / 250, 255));
+            self.deferred_serial_last = now;
             self.deferred_serial[self.deferred_serial_count] = byte;
             self.deferred_serial_count += 1;
             return;
@@ -364,6 +379,7 @@ pub const Model = struct {
         if (self.serial.feed(byte, now)) |key| self.handle(key);
     }
     pub fn expireSerial(self: *Model, now: u64) linksection(scheme.code_section) void {
+        if (self.vm.running) return;
         if (self.serial.expire(now)) |key| self.handle(key);
     }
     fn advance(text: []const u8, offset: usize, columns: usize, row: *usize, column: *usize) usize {
@@ -724,4 +740,17 @@ test "evaluation publishes a fresh revision after a provider pumps the pending U
     model.evaluate("(sql/check)", false);
     try std.testing.expectEqual(Status.scheme_result, model.status);
     try std.testing.expect(model.revision > provider.observed);
+}
+
+test "storage wait preserves the delayed ESC that opens a queued Scheme command" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.vm.running = true;
+    model.feedSerial(0x1b, 1_000_000);
+    for ("(+ 1 2)\r") |byte| model.feedSerial(byte, 1_100_000);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqualStrings("3", model.reply[0..model.reply_length]);
+    try std.testing.expectEqualStrings("", model.doc.slice());
 }
