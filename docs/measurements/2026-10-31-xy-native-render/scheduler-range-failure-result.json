@@ -1,0 +1,26 @@
+{
+  "passed": false,
+  "evidence": "physical Tab5 RAM workspace",
+  "source_base": "f80adf26a846dcbe59324830cbfea0be48a16040",
+  "installed": true,
+  "physical_pixel_comparison_tested": false,
+  "scheme_vm_tested": false,
+  "persistence_tested": false,
+  "cold_power_cycle_tested": false,
+  "observations": [],
+  "candidate": {
+    "partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+    "nihos-native.elf": "9ba72a7f208193e829cde319852aa4927f014867977109e8c599140a3d9215cf",
+    "normal-fs-manifest.json": "33fed9d997793cf0a0d89023aa0767eec4c560d02e320a5b16e11854ea48d9a4",
+    "nihos-native.bin": "cc095bd048897033d36a64336b2394a8d0612a813f193ba82224ceb279317ac1",
+    "image-audit.json": "46e2d4c3204838435a5802f1b32111e5452a8ab7b61bd3e27002008a019e5924",
+    "native_options.zig": "4f60b6edff378339af3b7800c81de3f3779553bf008eb2897c53eb9098d53196",
+    "bootloader.bin": "e083969569dfa312a1260ed65bf664de28df1c8fd929c490a2ca45d59fe71069"
+  },
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "failure": "native fault; retaining state"
+}

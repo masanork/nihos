@@ -37,7 +37,7 @@ Tab5 は Esc のコマンド行で評価できる。長い設定は本文に書�
 
 ## メモリとフォント供給
 
-Tab5 は CPU0 の所有権付き PSRAM lease にキャッシュ・表示リスト・作業領域を置く。重い組版と TrueType 処理は128KiBの専用スタックで実行し、実行中だけ割込みディスパッチャへ範囲を公開する。先頭ガードと boot/IRQ ガードを確認する。割込みを描画全体にわたって停止しない。キャッシュは配列全体を値でコピーせず、参照で走査する。コードと予備フォントは、独立に監査する384KiBの mapped Flash 領域へ配置し、SRAM の48KiB空き基準を維持する。
+Tab5 は CPU0 の所有権付き PSRAM lease にキャッシュ・表示リスト・作業領域を置く。重い組版と TrueType 処理は128KiBの専用スタックで実行し、実行中だけ割込みディスパッチャへ範囲を公開する。schedulerのbootstrap imageの範囲もSPと同時に切り替え、短い切替区間だけMIEを停止する。先頭ガードと boot/IRQ ガードを確認する。割込みを描画全体にわたって停止しない。キャッシュは配列全体を値でコピーせず、参照で走査する。コードと予備フォントは、独立に監査する384KiBの mapped Flash 領域へ配置し、SRAM の48KiB空き基準を維持する。
 
 起動用には Bunsen（CC0）の小さな明朝・ゴシック subset を同梱する。ASCII、かな・句読点と少数の漢字を対象とし、未収録文字は代替字形で示す。来歴と収録 Unicode は `src/xy/fonts/manifest.json`、ライセンスは同ディレクトリの `CC0.txt` に残す。完全な日本語書体・IVS 対応をこの予備フォントだけで満たしたとは扱わない。
 
@@ -52,4 +52,4 @@ Tab5 の文書は4096 bytes、表示は最大240 graphemeのカーソル周辺�
 - `python3 tools/run-xy-scratch-smoke.py`: 実際のRV32ゲスト上で同じ描画・入力・Schemeを実行。パネル、DMA、実キーボードの証明にはしない。
 - `sh tools/build-xy-mac.sh`: 共通コアと Cocoa host をビルド。`build/xy-mac/xy_mac_host --snapshot build/xy-mac/snapshots` で表示確認。
 
-実機での最終確認は、別用途の書込み所有権が空いてから、候補イメージの一致を確認して行う。
+実機での確認結果は [Tab5検証記録](../measurements/2026-10-31-xy-native-render.md) に残す。入力はシリアル経由であり、実キーボード・光学的画素一致・永続化とは区別する。
