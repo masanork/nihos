@@ -5,7 +5,11 @@ const document = @import("document.zig");
 pub const RubySpan = document.RubySpan;
 
 pub fn validate(text: []const u8, readings: []const u8, spans: []const RubySpan) !void {
-    if (text.len > 4096 or readings.len > 1024 or spans.len > 64) return error.Capacity;
+    return validateBounded(4096, 1024, 64, text, readings, spans);
+}
+
+pub fn validateBounded(comptime body_bytes: usize, comptime ruby_bytes: usize, comptime ruby_spans: usize, text: []const u8, readings: []const u8, spans: []const RubySpan) !void {
+    if (text.len > body_bytes or readings.len > ruby_bytes or spans.len > ruby_spans) return error.Capacity;
     if (!std.unicode.utf8ValidateSlice(text) or !std.unicode.utf8ValidateSlice(readings)) return error.InvalidUtf8;
     var previous: u32 = 0;
     for (spans) |span| {

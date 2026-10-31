@@ -1,0 +1,15 @@
+test_complete_books_resolved_snippets_and_ruby_boundaries (__main__.PackTest) ... ok
+test_pinned_sources_and_book_manuscripts_match_pack (__main__.PackTest) ... ok
+test_portable_reading_fonts_match_pack_and_have_no_missing_characters (__main__.PackTest) ... ok
+test_every_chapter_opens_in_both_axes_at_small_and_large_sizes (__main__.ReaderTest) ... ok
+test_full_first_chapter_has_no_missing_or_repeated_bytes_and_reflows (__main__.ReaderTest) ... ok
+test_horizontal_latin_wraps_by_advance_not_a_full_width_cjk_cell (__main__.ReaderTest) ... ok
+test_malformed_page_is_atomic (__main__.ReaderTest) ... ok
+test_read_only_pages_restore_document_and_undo_exactly (__main__.ReaderTest) ... ok
+test_replacing_document_cancels_pending_reading_and_selected_candidates (__main__.ReaderTest) ... ok
+test_replacing_document_preserves_ime_mode_and_custom_prefixes (__main__.ReaderTest) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 6.742s
+
+OK

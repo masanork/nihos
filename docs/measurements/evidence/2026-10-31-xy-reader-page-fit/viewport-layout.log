@@ -1,0 +1,26 @@
+1/25 viewport_layout.test.sideways words use horizontal advances and wrap together into the next column...OK
+2/25 viewport_layout.test.ClusterIterator groups IVS and composes combining dakuten...OK
+3/25 viewport_layout.test.layoutParagraph switches live between horizontal and vertical with group ruby and IVS...OK
+4/25 viewport_layout.test.long body cannot overwrite ruby glyphs and paragraph readings stay local...OK
+5/25 ttf.test.2-pass IVS resolution across multi-layer Family does not shadow Ext IVS with Base glyph...OK
+6/25 ttf.test.simple and composite glyph contour decoding vertical rotation and 8bpp rasterization...OK
+7/25 ttf.test.TwoTierCache re-rasterizes across size and vertical changes with zero media reads...OK
+8/25 ttf.test.36px em-square scaling retains full coverage without fixed-point overflow...OK
+9/25 ruby_layout.test.group ruby follows its base to the next line and reserves the wider sequence...OK
+10/25 ruby_layout.test.multiple ordered annotations move independently in vertical flow...OK
+11/25 ruby_layout.test.prohibition after a ruby parent joins the following closing mark...OK
+12/25 ruby_layout.test.mid-cluster overlapping uncovered and overflowing annotations publish no plan...OK
+13/25 ruby_layout.test.interleaved runs invalid scalar offsets and insufficient capacity fail before placement...OK
+14/25 japanese_break.test.source boundaries prohibit opening closing punctuation small kana and long marks...OK
+15/25 japanese_break.test.join before greedy placement prevents a closing mark from starting a line...OK
+16/25 japanese_break.test.opening bracket moves with its following cluster and vertical continuation respects punctuation...OK
+17/25 japanese_break.test.multiple glyph clusters and consecutive forbidden boundaries remain indivisible...OK
+18/25 japanese_break.test.bad source and source capacity preserve map and invalid byte cluster is refused...OK
+19/25 japanese_break.test.source map rejects alias before modifying bytes...OK
+20/25 line_layout.test.equal shaping clusters stay together at a line boundary...OK
+21/25 line_layout.test.exact fits zero advance and rejected spans preserve flow...OK
+22/25 line_layout.test.vertical cluster advances and unsupported ordering are explicit...OK
+23/25 code_font.test.shared code face has a genuine monospace advance and rasterizes printable ASCII...OK
+24/25 code_font.test.sideways ASCII rotates ink and preserves horizontal spacing at every book size...OK
+25/25 code_font.test.ASCII recovery subset preserves every rendered pixel of the pinned original...OK
+All 25 tests passed.
