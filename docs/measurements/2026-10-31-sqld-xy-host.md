@@ -25,7 +25,9 @@
 その測定はCIが落とすdefault connected image（network、devices、camera、xy、read-only FS）ではない。
 storage clientの`std.fmt.parseInt`がSRAM `.text`へ入り、同じimageのprimary heapは48,320 Bまで下がって48 KiB floorを割った。
 10進応答、UTF-8、Schemeの10進/16進リテラルはFlashの`.flash.xytext`で解釈する。
-修正後のdefault connected imageはprimary heap 49,344 Bでlinkする。sqld coreは引き続きこのELFに含まれない。
+sqld coreを外した修正imageのprimary heapは49,344 Bだった。
+通常起動はnormal storageとxyが有効なときsqldを同じdefault imageへ入れる。
+Macでlinkしたそのimageは`.flash.sqldtext` 563,184 Bを含み、primary heapは50,624 Bで48 KiB floorを満たし、native image監査を通過した。
 
 Mac GUIは新規の専用imageを一度だけ作成し、次回以降mountする。既存imageを自動でformatし直さない。
 Schemeの`buffer/save!`→別process→`buffer/load!`でUTF-8原文を復元する。
