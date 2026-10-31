@@ -177,8 +177,9 @@ const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
 const Session = console.session;
 const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
-var fixture_session: if (options.wasm_session_test) Session.Model else void = if (options.wasm_session_test) .{} else {};
-const session: *Session.Model = if (options.wasm_session_test) &fixture_session else @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
+const headless_wasm_session = options.wasm_session_test and !options.console_live;
+var fixture_session: if (headless_wasm_session) Session.Model else void = if (headless_wasm_session) .{} else {};
+const session: *Session.Model = if (headless_wasm_session) &fixture_session else @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
 var camera_overlay: camera_preview.Overlay = .{};
 var camera_live: camera_preview.Live = .{};
 pub fn cameraLiveActive() bool {
