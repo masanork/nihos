@@ -31,7 +31,8 @@ class PhotoManifestTests(unittest.TestCase):
                 transport = ['usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut']
                 expected = ([] if automatic else manual) + ['keypad_display.prepare', 'keypad_display.bind',
                             'keypad_display.paintTextures'] + ([] if scene else transport) + [
-                            'display_runtime.start', 'display_runtime.replaceCard', 'main.resourceReport',
+                            'display_runtime.start', 'display_runtime.replaceCard',
+                            'main.taskReport', 'main.floatingReport', 'main.resourceReport',
                             'main.stackReport', 'photo_runtime.prepare', 'photo_runtime.close']
                 self.assertEqual(manifest['allowed_functions'], expected)
 
