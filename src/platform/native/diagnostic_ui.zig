@@ -371,7 +371,9 @@ pub noinline fn report(log: anytype) void {
     };
     log.record("NIHOS_NATIVE_CONSOLE_STYLE", null, .{ "cell_width", "cell_height", "palette", "foreground", "accent", "background", "font" }, &style);
 }
-pub noinline fn input(log: anytype) void {
+// Keyboard setup runs after Flash mapping and display startup. Keep its
+// foreground-only code with the normal camera/device orchestration.
+pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
     model.input_sources = console.keys.capability(.serial); // Independent of USB-A host.
     model.input_available = true;
     input_started = clock.timer().counter() orelse 0;

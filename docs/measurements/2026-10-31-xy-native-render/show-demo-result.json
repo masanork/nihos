@@ -1,0 +1,87 @@
+{
+  "sample_bytes": 94,
+  "retained_after_close_reopen": true,
+  "observations": [
+    {
+      "name": "before",
+      "state": {
+        "revision": 5,
+        "bytes": 0,
+        "cursor": 0,
+        "fnv": 2166136261,
+        "mode": 0,
+        "frames": 55106,
+        "input_bytes": 4,
+        "pending_utf8": 0,
+        "status": 0,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261
+      },
+      "render": {
+        "frames": 345,
+        "stack_used": 67952,
+        "failed": 0,
+        "font": 0,
+        "size": 24,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "sample",
+      "state": {
+        "revision": 132,
+        "bytes": 94,
+        "cursor": 94,
+        "fnv": 341862288,
+        "mode": 0,
+        "frames": 55150,
+        "input_bytes": 182,
+        "pending_utf8": 0,
+        "status": 0,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261
+      },
+      "render": {
+        "frames": 358,
+        "stack_used": 67952,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 0,
+        "foreground": 2241348,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "after-close-reopen",
+      "state": {
+        "revision": 134,
+        "bytes": 94,
+        "cursor": 94,
+        "fnv": 341862288,
+        "mode": 0,
+        "frames": 58758,
+        "input_bytes": 184,
+        "pending_utf8": 0,
+        "status": 0,
+        "buffer_kind": 0,
+        "buffer_bytes": 0,
+        "buffer_hash": 2166136261
+      },
+      "render": {
+        "frames": 385,
+        "stack_used": 67952,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 0,
+        "foreground": 2241348,
+        "background": 16447214
+      }
+    }
+  ]
+}
