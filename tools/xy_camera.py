@@ -61,6 +61,9 @@ def capture(port, output):
                 raise ValueError('firmware failed')
             fields = {k.decode(): int(v, 16) for k,v in re.findall(rb'(\w+)=([0-9a-f]{8})(?=\s|$)',value)}
             if value.startswith(b'NIHOS_NATIVE_XY_STATE '):
+                if not {'mode','revision','bytes','cursor','fnv','status','tx_dropped'} <= fields.keys():
+                    raise ValueError('truncated XY state record')
+                if fields['tx_dropped'] != 0: raise ValueError('native USB trace dropped bytes')
                 state = fields
             if value.startswith(b'NIHOS_XY_JPEG_READY '):
                 if ready is not None:
@@ -147,6 +150,7 @@ def reconstruct(text):
             raise ValueError('firmware failed')
         if line.startswith(b'NIHOS_NATIVE_XY_STATE '):
             fields = {k.decode():int(v,16) for k,v in re.findall(rb'(\w+)=([0-9a-f]{8})(?=\s|$)',line)}
+            if fields.get('tx_dropped',0) != 0: raise ValueError('native USB trace dropped bytes')
             revision = fields['revision']
         if line.startswith(b'NIHOS_XY_JPEG_READY '):
             if metadata is not None: raise ValueError('duplicate completion')

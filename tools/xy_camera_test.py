@@ -25,6 +25,6 @@ class CameraReplyTests(unittest.TestCase):
             reply(index,value);reply(index,value)
         text=b'\n'.join(lines)
         self.assertEqual(reconstruct(text)[1],payload)
-        for changed in [text.replace(b'66666438',b'66666439',1),b'\n'.join(lines[:-4]),text.replace(b'width=00000500',b'width=00000501'),text.replace(b'encode_us=00004aa6',b'encode_us=00000000'),text+b'\n'+lines[0]]:
+        for changed in [text.replace(b'66666438',b'66666439',1),b'\n'.join(lines[:-4]),text.replace(b'width=00000500',b'width=00000501'),text.replace(b'encode_us=00004aa6',b'encode_us=00000000'),text.replace(b'revision=00000001',b'revision=00000001 tx_dropped=00000001',1),text+b'\n'+lines[0]]:
             self.assertNotEqual(changed,text)
             with self.assertRaises(ValueError):reconstruct(changed)
