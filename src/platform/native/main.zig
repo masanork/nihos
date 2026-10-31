@@ -722,7 +722,7 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
     return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
-noinline fn taskReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else ".text") void {
+noinline fn taskReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.report(hart);
     if (report.progress[0] == 0 or report.progress[1] == 0 or
         report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
@@ -753,7 +753,7 @@ fn ipiReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_IPI", hart, .{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued" }, &report);
 }
 
-noinline fn floatingReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else ".text") void {
+noinline fn floatingReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.floating.report(hart);
     if (report.confirmed != 1 or report.saves != report.restores or
         report.saves != report.timer + report.calls + report.ipi) fail("FP quiescence");
@@ -1252,7 +1252,7 @@ fn reportPmpProbe() noreturn {
     while (true) asm volatile ("wfi" ::: .{ .memory = true });
 }
 
-fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
+noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (options.card_photo) ".flash.photo" else ".text") noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };
@@ -1535,7 +1535,7 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
 const native_sqld = @hasDecl(options, "sqld") and options.sqld;
 const sqld = @import("sqld_abi.zig");
 comptime {
-    if (@hasDecl(options, "xy_workspace") and options.xy_workspace) _ = @import("xy_eval_runtime.zig");
+    if ((@hasDecl(options, "xy_workspace") and options.xy_workspace) or options.canvas_interactive) _ = @import("xy_eval_runtime.zig");
 }
 fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") noreturn {
     const started = ui.timer().counter() orelse fail("boot health clock");

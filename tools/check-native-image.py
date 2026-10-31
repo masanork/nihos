@@ -209,7 +209,7 @@ XY_RENDER_FUNCTIONS = {
     'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
-    'document.isClusterBoundary', 'render_session.SizedSession(512).render',
+    'document.isClusterBoundary', 'render_session.SizedSession(2048).render',
     'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
     'catalog.Pack.font', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
     'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
@@ -223,7 +223,7 @@ XY_RENDER_FUNCTIONS = {
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(512\)\.renderInto)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(2048\)\.renderInto)__func_[0-9]+", name)
     return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
@@ -464,7 +464,7 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         if photo_span is not None and photo_span[0] <= address < stop <= photo_span[1]:
             software = (name.startswith(('compiler_rt.addf3.', 'compiler_rt.mulf3.', 'compiler_rt.divf3.', 'compiler_rt.divsf3.', 'compiler_rt.divdf3.', 'compiler_rt.comparef.', 'compiler_rt.float_from_int.', 'compiler_rt.int_from_float.', 'compiler_rt.extendf.', 'compiler_rt.truncf.')) or re.fullmatch(r'__(?:(?:add|sub|mul|div|cmp|eq|ne|ge|gt|le|lt|unord)(?:sf|df)2?3?|float(?:un)?(?:si|di)(?:sf|df)|fix(?:uns)?(?:sf|df)(?:si|di)|extendsfdf2|truncdfsf2)',name))
             automatic = automatic_cards and (name in ('notice_build', 'nih_display_notice_publish', 'nih_display_scanout_begin', 'display_runtime.presentNotice', 'keypad_display.publishNotice') or name.startswith(('card_auto.', 'graphics.card_read_result.automaticText', 'graphics.card_read_result.Glyph(', 'graphics.card_read_result.AutoPainter(', 'graphics.card_read_result.readBits', 'graphics.card_read_result.automaticOverview', 'card.jis0208.Decoder(', 'card.license_trust.lookup', 'card.license.Parser(', 'card.license_record.Parser(', 'card.license_session.Session(', 'card.service.ServiceType(true,', 'card.wire_policy.PolicyType(true)')))
-            require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name in ('photo_runtime.execute', 'keypad_display.stage', 'card_read.abort') or software, 'unapproved photo codec function: ' + name)
+            require(automatic or name in photo_functions or name.startswith('card.surface.Parser') or name in ('photo_runtime.execute', 'keypad_display.stage', 'card_read.abort', 'main.qualificationSoak') or re.fullmatch(r'main\.qualificationSoak__func_[0-9]+', name) or software, 'unapproved photo codec function: ' + name)
             continue
         role = "probe" if name == "psram.probe" else "mapping" if re.fullmatch(r"psram_memory\.prepare__func_[0-9]+", name) else "clock" if re.fullmatch(r"cpu_boot\.run__func_[0-9]+", name) else None
         if sdmmc_span is not None and name == "sdmmc_probe.run":
@@ -1015,7 +1015,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         if exercise:
             require(not any(name.startswith('usb_probe.Device.') for name, _, _ in functions), 'card transport linked into card-free scene exercise')
         diagnostics = keypad_manifest.get('diagnostic_reports', [])
-        require(diagnostics in ([], ['main.resourceReport', 'main.stackReport']), 'unapproved diagnostic Flash functions')
+        require(diagnostics in ([], ['main.resourceReport', 'main.stackReport'], ['main.taskReport', 'main.floatingReport', 'main.resourceReport', 'main.stackReport']), 'unapproved diagnostic Flash functions')
         require(keypad_manifest.get('allowed_functions') == (([] if keypad_manifest.get('automatic_cards') else ['card_read.prepare', 'card_read.run'] + (['card_read.redraw', 'graphics.card_read_result.Canvas.sizedFlash'] if handoff else [])) + ['keypad_display.prepare'] + ((['keypad_display.bind'] if allow_photo else ['keypad_display.stage', 'keypad_display.bind']) if handoff else []) + ['keypad_display.paintTextures'] + ([] if exercise else ['usb_probe.Device.send', 'usb_probe.Device.scrub', 'usb_probe.Device.powerCut']) + ['display_runtime.start'] + (['display_runtime.replaceCard'] if handoff else []) + diagnostics + (['photo_runtime.prepare'] + ([] if keypad_manifest.get('automatic_cards', {}).get('read_enabled') is False else ['photo_runtime.decode']) + ['photo_runtime.close'] if allow_photo else [])), 'unapproved foreground manifest')
         for prefix in keypad_manifest['allowed_functions']:
             require(sum(1 for name, address, stop in functions if card_span[0] <= address < stop <= card_span[1] and (name == prefix or re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name))) == 1, 'missing/duplicate card foreground entry: ' + prefix)
@@ -1067,7 +1067,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
-        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 262144 if 'nih_xy_render' in xy_functions else 0}
+        xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 524288 if 'nih_xy_render' in xy_functions else 0}
     sqld_report = None
     require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
     require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')

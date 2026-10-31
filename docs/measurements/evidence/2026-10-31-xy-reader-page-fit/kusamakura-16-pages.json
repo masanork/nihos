@@ -1,0 +1,2132 @@
+[
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 0,
+    "start": 0,
+    "end": 2857,
+    "characters": 957,
+    "rubies": 66,
+    "ruby_chars": 208
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 1,
+    "start": 2857,
+    "end": 5937,
+    "characters": 1030,
+    "rubies": 76,
+    "ruby_chars": 187
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 2,
+    "start": 5937,
+    "end": 7916,
+    "characters": 769,
+    "rubies": 21,
+    "ruby_chars": 59
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 3,
+    "start": 7916,
+    "end": 10794,
+    "characters": 964,
+    "rubies": 42,
+    "ruby_chars": 110
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 4,
+    "start": 10794,
+    "end": 14076,
+    "characters": 1096,
+    "rubies": 68,
+    "ruby_chars": 269
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 5,
+    "start": 14076,
+    "end": 17447,
+    "characters": 1125,
+    "rubies": 53,
+    "ruby_chars": 164
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 6,
+    "start": 17447,
+    "end": 19932,
+    "characters": 833,
+    "rubies": 46,
+    "ruby_chars": 113
+  },
+  {
+    "axis": 0,
+    "chapter": 0,
+    "page": 7,
+    "start": 19932,
+    "end": 20726,
+    "characters": 266,
+    "rubies": 22,
+    "ruby_chars": 68
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 0,
+    "start": 0,
+    "end": 2684,
+    "characters": 900,
+    "rubies": 45,
+    "ruby_chars": 140
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 1,
+    "start": 2684,
+    "end": 4328,
+    "characters": 558,
+    "rubies": 27,
+    "ruby_chars": 71
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 2,
+    "start": 4328,
+    "end": 6637,
+    "characters": 777,
+    "rubies": 51,
+    "ruby_chars": 153
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 3,
+    "start": 6637,
+    "end": 8347,
+    "characters": 580,
+    "rubies": 21,
+    "ruby_chars": 56
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 4,
+    "start": 8347,
+    "end": 10127,
+    "characters": 602,
+    "rubies": 33,
+    "ruby_chars": 94
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 5,
+    "start": 10127,
+    "end": 12257,
+    "characters": 718,
+    "rubies": 28,
+    "ruby_chars": 85
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 6,
+    "start": 12257,
+    "end": 13850,
+    "characters": 541,
+    "rubies": 22,
+    "ruby_chars": 64
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 7,
+    "start": 13850,
+    "end": 15435,
+    "characters": 539,
+    "rubies": 19,
+    "ruby_chars": 53
+  },
+  {
+    "axis": 0,
+    "chapter": 1,
+    "page": 8,
+    "start": 15435,
+    "end": 17030,
+    "characters": 535,
+    "rubies": 26,
+    "ruby_chars": 76
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 0,
+    "start": 0,
+    "end": 2979,
+    "characters": 997,
+    "rubies": 44,
+    "ruby_chars": 130
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 1,
+    "start": 2979,
+    "end": 5934,
+    "characters": 989,
+    "rubies": 62,
+    "ruby_chars": 216
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 2,
+    "start": 5934,
+    "end": 8879,
+    "characters": 985,
+    "rubies": 46,
+    "ruby_chars": 115
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 3,
+    "start": 8879,
+    "end": 12193,
+    "characters": 1106,
+    "rubies": 63,
+    "ruby_chars": 200
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 4,
+    "start": 12193,
+    "end": 15596,
+    "characters": 1137,
+    "rubies": 55,
+    "ruby_chars": 176
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 5,
+    "start": 15596,
+    "end": 17472,
+    "characters": 632,
+    "rubies": 47,
+    "ruby_chars": 133
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 6,
+    "start": 17472,
+    "end": 20070,
+    "characters": 872,
+    "rubies": 53,
+    "ruby_chars": 154
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 7,
+    "start": 20070,
+    "end": 23301,
+    "characters": 1079,
+    "rubies": 72,
+    "ruby_chars": 242
+  },
+  {
+    "axis": 0,
+    "chapter": 2,
+    "page": 8,
+    "start": 23301,
+    "end": 24197,
+    "characters": 302,
+    "rubies": 23,
+    "ruby_chars": 63
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 0,
+    "start": 0,
+    "end": 2958,
+    "characters": 990,
+    "rubies": 60,
+    "ruby_chars": 200
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 1,
+    "start": 2958,
+    "end": 6177,
+    "characters": 1077,
+    "rubies": 69,
+    "ruby_chars": 203
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 2,
+    "start": 6177,
+    "end": 7567,
+    "characters": 472,
+    "rubies": 13,
+    "ruby_chars": 44
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 3,
+    "start": 7567,
+    "end": 8153,
+    "characters": 206,
+    "rubies": 5,
+    "ruby_chars": 17
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 4,
+    "start": 8153,
+    "end": 9206,
+    "characters": 361,
+    "rubies": 13,
+    "ruby_chars": 47
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 5,
+    "start": 9206,
+    "end": 11348,
+    "characters": 856,
+    "rubies": 34,
+    "ruby_chars": 115
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 6,
+    "start": 11348,
+    "end": 13885,
+    "characters": 851,
+    "rubies": 40,
+    "ruby_chars": 117
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 7,
+    "start": 13885,
+    "end": 15828,
+    "characters": 655,
+    "rubies": 22,
+    "ruby_chars": 71
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 8,
+    "start": 15828,
+    "end": 16978,
+    "characters": 394,
+    "rubies": 7,
+    "ruby_chars": 16
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 9,
+    "start": 16978,
+    "end": 18551,
+    "characters": 533,
+    "rubies": 30,
+    "ruby_chars": 75
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 10,
+    "start": 18551,
+    "end": 20284,
+    "characters": 587,
+    "rubies": 12,
+    "ruby_chars": 36
+  },
+  {
+    "axis": 0,
+    "chapter": 3,
+    "page": 11,
+    "start": 20284,
+    "end": 20537,
+    "characters": 87,
+    "rubies": 4,
+    "ruby_chars": 8
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 0,
+    "start": 0,
+    "end": 1395,
+    "characters": 475,
+    "rubies": 22,
+    "ruby_chars": 80
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 1,
+    "start": 1395,
+    "end": 4487,
+    "characters": 1034,
+    "rubies": 53,
+    "ruby_chars": 159
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 2,
+    "start": 4487,
+    "end": 6690,
+    "characters": 741,
+    "rubies": 33,
+    "ruby_chars": 86
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 3,
+    "start": 6690,
+    "end": 8036,
+    "characters": 458,
+    "rubies": 18,
+    "ruby_chars": 47
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 4,
+    "start": 8036,
+    "end": 9436,
+    "characters": 476,
+    "rubies": 20,
+    "ruby_chars": 57
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 5,
+    "start": 9436,
+    "end": 11146,
+    "characters": 578,
+    "rubies": 21,
+    "ruby_chars": 68
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 6,
+    "start": 11146,
+    "end": 12146,
+    "characters": 344,
+    "rubies": 11,
+    "ruby_chars": 34
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 7,
+    "start": 12146,
+    "end": 15047,
+    "characters": 971,
+    "rubies": 59,
+    "ruby_chars": 174
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 8,
+    "start": 15047,
+    "end": 17069,
+    "characters": 682,
+    "rubies": 37,
+    "ruby_chars": 106
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 9,
+    "start": 17069,
+    "end": 18580,
+    "characters": 513,
+    "rubies": 17,
+    "ruby_chars": 68
+  },
+  {
+    "axis": 0,
+    "chapter": 4,
+    "page": 10,
+    "start": 18580,
+    "end": 19368,
+    "characters": 270,
+    "rubies": 19,
+    "ruby_chars": 53
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 0,
+    "start": 0,
+    "end": 3288,
+    "characters": 1098,
+    "rubies": 101,
+    "ruby_chars": 284
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 1,
+    "start": 3288,
+    "end": 6640,
+    "characters": 1120,
+    "rubies": 71,
+    "ruby_chars": 226
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 2,
+    "start": 6640,
+    "end": 10126,
+    "characters": 1164,
+    "rubies": 58,
+    "ruby_chars": 183
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 3,
+    "start": 10126,
+    "end": 13585,
+    "characters": 1155,
+    "rubies": 37,
+    "ruby_chars": 121
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 4,
+    "start": 13585,
+    "end": 16485,
+    "characters": 972,
+    "rubies": 32,
+    "ruby_chars": 78
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 5,
+    "start": 16485,
+    "end": 19395,
+    "characters": 974,
+    "rubies": 52,
+    "ruby_chars": 165
+  },
+  {
+    "axis": 0,
+    "chapter": 5,
+    "page": 6,
+    "start": 19395,
+    "end": 22371,
+    "characters": 994,
+    "rubies": 48,
+    "ruby_chars": 138
+  },
+  {
+    "axis": 0,
+    "chapter": 6,
+    "page": 0,
+    "start": 0,
+    "end": 2993,
+    "characters": 1001,
+    "rubies": 62,
+    "ruby_chars": 163
+  },
+  {
+    "axis": 0,
+    "chapter": 6,
+    "page": 1,
+    "start": 2993,
+    "end": 5137,
+    "characters": 720,
+    "rubies": 26,
+    "ruby_chars": 76
+  },
+  {
+    "axis": 0,
+    "chapter": 6,
+    "page": 2,
+    "start": 5137,
+    "end": 8220,
+    "characters": 1031,
+    "rubies": 53,
+    "ruby_chars": 141
+  },
+  {
+    "axis": 0,
+    "chapter": 6,
+    "page": 3,
+    "start": 8220,
+    "end": 11554,
+    "characters": 1114,
+    "rubies": 63,
+    "ruby_chars": 188
+  },
+  {
+    "axis": 0,
+    "chapter": 6,
+    "page": 4,
+    "start": 11554,
+    "end": 14895,
+    "characters": 1117,
+    "rubies": 70,
+    "ruby_chars": 227
+  },
+  {
+    "axis": 0,
+    "chapter": 6,
+    "page": 5,
+    "start": 14895,
+    "end": 15633,
+    "characters": 248,
+    "rubies": 22,
+    "ruby_chars": 61
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 0,
+    "start": 0,
+    "end": 2640,
+    "characters": 886,
+    "rubies": 58,
+    "ruby_chars": 176
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 1,
+    "start": 2640,
+    "end": 4915,
+    "characters": 767,
+    "rubies": 29,
+    "ruby_chars": 81
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 2,
+    "start": 4915,
+    "end": 7381,
+    "characters": 830,
+    "rubies": 42,
+    "ruby_chars": 118
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 3,
+    "start": 7381,
+    "end": 8991,
+    "characters": 546,
+    "rubies": 26,
+    "ruby_chars": 81
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 4,
+    "start": 8991,
+    "end": 10806,
+    "characters": 613,
+    "rubies": 47,
+    "ruby_chars": 153
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 5,
+    "start": 10806,
+    "end": 12743,
+    "characters": 655,
+    "rubies": 24,
+    "ruby_chars": 71
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 6,
+    "start": 12743,
+    "end": 15334,
+    "characters": 869,
+    "rubies": 54,
+    "ruby_chars": 162
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 7,
+    "start": 15334,
+    "end": 17136,
+    "characters": 610,
+    "rubies": 27,
+    "ruby_chars": 66
+  },
+  {
+    "axis": 0,
+    "chapter": 7,
+    "page": 8,
+    "start": 17136,
+    "end": 18979,
+    "characters": 621,
+    "rubies": 23,
+    "ruby_chars": 58
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 0,
+    "start": 0,
+    "end": 1080,
+    "characters": 370,
+    "rubies": 10,
+    "ruby_chars": 27
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 1,
+    "start": 1080,
+    "end": 2559,
+    "characters": 503,
+    "rubies": 5,
+    "ruby_chars": 15
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 2,
+    "start": 2559,
+    "end": 4615,
+    "characters": 694,
+    "rubies": 11,
+    "ruby_chars": 32
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 3,
+    "start": 4615,
+    "end": 6343,
+    "characters": 584,
+    "rubies": 16,
+    "ruby_chars": 42
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 4,
+    "start": 6343,
+    "end": 8360,
+    "characters": 681,
+    "rubies": 23,
+    "ruby_chars": 66
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 5,
+    "start": 8360,
+    "end": 10441,
+    "characters": 701,
+    "rubies": 37,
+    "ruby_chars": 87
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 6,
+    "start": 10441,
+    "end": 12100,
+    "characters": 563,
+    "rubies": 20,
+    "ruby_chars": 62
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 7,
+    "start": 12100,
+    "end": 13313,
+    "characters": 415,
+    "rubies": 15,
+    "ruby_chars": 53
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 8,
+    "start": 13313,
+    "end": 14553,
+    "characters": 424,
+    "rubies": 10,
+    "ruby_chars": 28
+  },
+  {
+    "axis": 0,
+    "chapter": 8,
+    "page": 9,
+    "start": 14553,
+    "end": 14705,
+    "characters": 52,
+    "rubies": 3,
+    "ruby_chars": 9
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 0,
+    "start": 0,
+    "end": 2906,
+    "characters": 972,
+    "rubies": 62,
+    "ruby_chars": 186
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 1,
+    "start": 2906,
+    "end": 5940,
+    "characters": 1014,
+    "rubies": 51,
+    "ruby_chars": 154
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 2,
+    "start": 5940,
+    "end": 9398,
+    "characters": 1154,
+    "rubies": 45,
+    "ruby_chars": 119
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 3,
+    "start": 9398,
+    "end": 11961,
+    "characters": 859,
+    "rubies": 51,
+    "ruby_chars": 138
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 4,
+    "start": 11961,
+    "end": 12958,
+    "characters": 343,
+    "rubies": 8,
+    "ruby_chars": 20
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 5,
+    "start": 12958,
+    "end": 14469,
+    "characters": 513,
+    "rubies": 9,
+    "ruby_chars": 31
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 6,
+    "start": 14469,
+    "end": 16069,
+    "characters": 542,
+    "rubies": 35,
+    "ruby_chars": 103
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 7,
+    "start": 16069,
+    "end": 18494,
+    "characters": 813,
+    "rubies": 41,
+    "ruby_chars": 122
+  },
+  {
+    "axis": 0,
+    "chapter": 9,
+    "page": 8,
+    "start": 18494,
+    "end": 18495,
+    "characters": 1,
+    "rubies": 0,
+    "ruby_chars": 0
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 0,
+    "start": 0,
+    "end": 2929,
+    "characters": 979,
+    "rubies": 40,
+    "ruby_chars": 126
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 1,
+    "start": 2929,
+    "end": 5934,
+    "characters": 1005,
+    "rubies": 37,
+    "ruby_chars": 112
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 2,
+    "start": 5934,
+    "end": 9153,
+    "characters": 1075,
+    "rubies": 67,
+    "ruby_chars": 209
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 3,
+    "start": 9153,
+    "end": 10606,
+    "characters": 493,
+    "rubies": 28,
+    "ruby_chars": 84
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 4,
+    "start": 10606,
+    "end": 11812,
+    "characters": 412,
+    "rubies": 18,
+    "ruby_chars": 55
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 5,
+    "start": 11812,
+    "end": 13443,
+    "characters": 553,
+    "rubies": 17,
+    "ruby_chars": 49
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 6,
+    "start": 13443,
+    "end": 14785,
+    "characters": 458,
+    "rubies": 8,
+    "ruby_chars": 23
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 7,
+    "start": 14785,
+    "end": 16028,
+    "characters": 425,
+    "rubies": 14,
+    "ruby_chars": 37
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 8,
+    "start": 16028,
+    "end": 17925,
+    "characters": 641,
+    "rubies": 23,
+    "ruby_chars": 68
+  },
+  {
+    "axis": 0,
+    "chapter": 10,
+    "page": 9,
+    "start": 17925,
+    "end": 19085,
+    "characters": 396,
+    "rubies": 17,
+    "ruby_chars": 60
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 0,
+    "start": 0,
+    "end": 3051,
+    "characters": 1019,
+    "rubies": 57,
+    "ruby_chars": 161
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 1,
+    "start": 3051,
+    "end": 6268,
+    "characters": 1075,
+    "rubies": 57,
+    "ruby_chars": 176
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 2,
+    "start": 6268,
+    "end": 9718,
+    "characters": 1152,
+    "rubies": 60,
+    "ruby_chars": 171
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 3,
+    "start": 9718,
+    "end": 12835,
+    "characters": 1043,
+    "rubies": 41,
+    "ruby_chars": 122
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 4,
+    "start": 12835,
+    "end": 15909,
+    "characters": 1028,
+    "rubies": 62,
+    "ruby_chars": 162
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 5,
+    "start": 15909,
+    "end": 18702,
+    "characters": 937,
+    "rubies": 34,
+    "ruby_chars": 90
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 6,
+    "start": 18702,
+    "end": 21696,
+    "characters": 1004,
+    "rubies": 55,
+    "ruby_chars": 161
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 7,
+    "start": 21696,
+    "end": 22839,
+    "characters": 391,
+    "rubies": 11,
+    "ruby_chars": 37
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 8,
+    "start": 22839,
+    "end": 24118,
+    "characters": 437,
+    "rubies": 9,
+    "ruby_chars": 21
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 9,
+    "start": 24118,
+    "end": 25405,
+    "characters": 439,
+    "rubies": 13,
+    "ruby_chars": 34
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 10,
+    "start": 25405,
+    "end": 27168,
+    "characters": 597,
+    "rubies": 25,
+    "ruby_chars": 68
+  },
+  {
+    "axis": 0,
+    "chapter": 11,
+    "page": 11,
+    "start": 27168,
+    "end": 27686,
+    "characters": 176,
+    "rubies": 12,
+    "ruby_chars": 33
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 0,
+    "start": 0,
+    "end": 2285,
+    "characters": 771,
+    "rubies": 21,
+    "ruby_chars": 63
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 1,
+    "start": 2285,
+    "end": 5172,
+    "characters": 967,
+    "rubies": 49,
+    "ruby_chars": 148
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 2,
+    "start": 5172,
+    "end": 6600,
+    "characters": 486,
+    "rubies": 21,
+    "ruby_chars": 62
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 3,
+    "start": 6600,
+    "end": 7909,
+    "characters": 447,
+    "rubies": 19,
+    "ruby_chars": 46
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 4,
+    "start": 7909,
+    "end": 11081,
+    "characters": 1060,
+    "rubies": 46,
+    "ruby_chars": 153
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 5,
+    "start": 11081,
+    "end": 12770,
+    "characters": 573,
+    "rubies": 25,
+    "ruby_chars": 78
+  },
+  {
+    "axis": 0,
+    "chapter": 12,
+    "page": 6,
+    "start": 12770,
+    "end": 14914,
+    "characters": 720,
+    "rubies": 25,
+    "ruby_chars": 71
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 0,
+    "start": 0,
+    "end": 3107,
+    "characters": 1041,
+    "rubies": 74,
+    "ruby_chars": 226
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 1,
+    "start": 3107,
+    "end": 6553,
+    "characters": 1152,
+    "rubies": 77,
+    "ruby_chars": 192
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 2,
+    "start": 6553,
+    "end": 9452,
+    "characters": 1077,
+    "rubies": 37,
+    "ruby_chars": 105
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 3,
+    "start": 9452,
+    "end": 12668,
+    "characters": 1076,
+    "rubies": 56,
+    "ruby_chars": 208
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 4,
+    "start": 12668,
+    "end": 16148,
+    "characters": 1162,
+    "rubies": 66,
+    "ruby_chars": 221
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 5,
+    "start": 16148,
+    "end": 19499,
+    "characters": 1121,
+    "rubies": 47,
+    "ruby_chars": 111
+  },
+  {
+    "axis": 1,
+    "chapter": 0,
+    "page": 6,
+    "start": 19499,
+    "end": 20726,
+    "characters": 411,
+    "rubies": 37,
+    "ruby_chars": 115
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 0,
+    "start": 0,
+    "end": 2988,
+    "characters": 1004,
+    "rubies": 48,
+    "ruby_chars": 144
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 1,
+    "start": 2988,
+    "end": 5798,
+    "characters": 948,
+    "rubies": 56,
+    "ruby_chars": 168
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 2,
+    "start": 5798,
+    "end": 8387,
+    "characters": 877,
+    "rubies": 42,
+    "ruby_chars": 115
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 3,
+    "start": 8387,
+    "end": 11109,
+    "characters": 920,
+    "rubies": 46,
+    "ruby_chars": 133
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 4,
+    "start": 11109,
+    "end": 13703,
+    "characters": 876,
+    "rubies": 33,
+    "ruby_chars": 97
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 5,
+    "start": 13703,
+    "end": 16363,
+    "characters": 900,
+    "rubies": 33,
+    "ruby_chars": 96
+  },
+  {
+    "axis": 1,
+    "chapter": 1,
+    "page": 6,
+    "start": 16363,
+    "end": 17030,
+    "characters": 225,
+    "rubies": 14,
+    "ruby_chars": 39
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 0,
+    "start": 0,
+    "end": 3174,
+    "characters": 1062,
+    "rubies": 47,
+    "ruby_chars": 141
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 1,
+    "start": 3174,
+    "end": 6277,
+    "characters": 1039,
+    "rubies": 63,
+    "ruby_chars": 213
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 2,
+    "start": 6277,
+    "end": 9848,
+    "characters": 1193,
+    "rubies": 53,
+    "ruby_chars": 145
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 3,
+    "start": 9848,
+    "end": 13268,
+    "characters": 1142,
+    "rubies": 76,
+    "ruby_chars": 246
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 4,
+    "start": 13268,
+    "end": 16268,
+    "characters": 1008,
+    "rubies": 40,
+    "ruby_chars": 121
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 5,
+    "start": 16268,
+    "end": 19580,
+    "characters": 1108,
+    "rubies": 82,
+    "ruby_chars": 229
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 6,
+    "start": 19580,
+    "end": 22925,
+    "characters": 1119,
+    "rubies": 75,
+    "ruby_chars": 256
+  },
+  {
+    "axis": 1,
+    "chapter": 2,
+    "page": 7,
+    "start": 22925,
+    "end": 24197,
+    "characters": 428,
+    "rubies": 29,
+    "ruby_chars": 78
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 0,
+    "start": 0,
+    "end": 3154,
+    "characters": 1056,
+    "rubies": 69,
+    "ruby_chars": 222
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 1,
+    "start": 3154,
+    "end": 6497,
+    "characters": 1119,
+    "rubies": 64,
+    "ruby_chars": 191
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 2,
+    "start": 6497,
+    "end": 8193,
+    "characters": 584,
+    "rubies": 14,
+    "ruby_chars": 51
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 3,
+    "start": 8193,
+    "end": 10515,
+    "characters": 880,
+    "rubies": 39,
+    "ruby_chars": 135
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 4,
+    "start": 10515,
+    "end": 13737,
+    "characters": 1124,
+    "rubies": 46,
+    "ruby_chars": 135
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 5,
+    "start": 13737,
+    "end": 16474,
+    "characters": 925,
+    "rubies": 28,
+    "ruby_chars": 90
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 6,
+    "start": 16474,
+    "end": 18811,
+    "characters": 795,
+    "rubies": 33,
+    "ruby_chars": 81
+  },
+  {
+    "axis": 1,
+    "chapter": 3,
+    "page": 7,
+    "start": 18811,
+    "end": 20537,
+    "characters": 586,
+    "rubies": 16,
+    "ruby_chars": 44
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 0,
+    "start": 0,
+    "end": 2509,
+    "characters": 849,
+    "rubies": 40,
+    "ruby_chars": 130
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 1,
+    "start": 2509,
+    "end": 5983,
+    "characters": 1162,
+    "rubies": 58,
+    "ruby_chars": 166
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 2,
+    "start": 5983,
+    "end": 8265,
+    "characters": 776,
+    "rubies": 31,
+    "ruby_chars": 84
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 3,
+    "start": 8265,
+    "end": 10929,
+    "characters": 900,
+    "rubies": 37,
+    "ruby_chars": 115
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 4,
+    "start": 10929,
+    "end": 13053,
+    "characters": 724,
+    "rubies": 28,
+    "ruby_chars": 78
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 5,
+    "start": 13053,
+    "end": 16404,
+    "characters": 1121,
+    "rubies": 73,
+    "ruby_chars": 223
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 6,
+    "start": 16404,
+    "end": 18711,
+    "characters": 785,
+    "rubies": 26,
+    "ruby_chars": 91
+  },
+  {
+    "axis": 1,
+    "chapter": 4,
+    "page": 7,
+    "start": 18711,
+    "end": 19368,
+    "characters": 225,
+    "rubies": 17,
+    "ruby_chars": 45
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 0,
+    "start": 0,
+    "end": 3399,
+    "characters": 1135,
+    "rubies": 103,
+    "ruby_chars": 297
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 1,
+    "start": 3399,
+    "end": 6853,
+    "characters": 1154,
+    "rubies": 72,
+    "ruby_chars": 223
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 2,
+    "start": 6853,
+    "end": 10336,
+    "characters": 1163,
+    "rubies": 58,
+    "ruby_chars": 186
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 3,
+    "start": 10336,
+    "end": 13837,
+    "characters": 1169,
+    "rubies": 35,
+    "ruby_chars": 110
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 4,
+    "start": 13837,
+    "end": 16894,
+    "characters": 1025,
+    "rubies": 32,
+    "ruby_chars": 83
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 5,
+    "start": 16894,
+    "end": 20134,
+    "characters": 1084,
+    "rubies": 70,
+    "ruby_chars": 217
+  },
+  {
+    "axis": 1,
+    "chapter": 5,
+    "page": 6,
+    "start": 20134,
+    "end": 22371,
+    "characters": 747,
+    "rubies": 29,
+    "ruby_chars": 79
+  },
+  {
+    "axis": 1,
+    "chapter": 6,
+    "page": 0,
+    "start": 0,
+    "end": 3293,
+    "characters": 1101,
+    "rubies": 70,
+    "ruby_chars": 187
+  },
+  {
+    "axis": 1,
+    "chapter": 6,
+    "page": 1,
+    "start": 3293,
+    "end": 6374,
+    "characters": 1033,
+    "rubies": 38,
+    "ruby_chars": 110
+  },
+  {
+    "axis": 1,
+    "chapter": 6,
+    "page": 2,
+    "start": 6374,
+    "end": 9720,
+    "characters": 1120,
+    "rubies": 64,
+    "ruby_chars": 164
+  },
+  {
+    "axis": 1,
+    "chapter": 6,
+    "page": 3,
+    "start": 9720,
+    "end": 13081,
+    "characters": 1123,
+    "rubies": 63,
+    "ruby_chars": 198
+  },
+  {
+    "axis": 1,
+    "chapter": 6,
+    "page": 4,
+    "start": 13081,
+    "end": 15633,
+    "characters": 854,
+    "rubies": 61,
+    "ruby_chars": 197
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 0,
+    "start": 0,
+    "end": 3015,
+    "characters": 1013,
+    "rubies": 64,
+    "ruby_chars": 193
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 1,
+    "start": 3015,
+    "end": 6048,
+    "characters": 1019,
+    "rubies": 51,
+    "ruby_chars": 141
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 2,
+    "start": 6048,
+    "end": 8711,
+    "characters": 899,
+    "rubies": 35,
+    "ruby_chars": 107
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 3,
+    "start": 8711,
+    "end": 11030,
+    "characters": 787,
+    "rubies": 55,
+    "ruby_chars": 176
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 4,
+    "start": 11030,
+    "end": 13884,
+    "characters": 962,
+    "rubies": 47,
+    "ruby_chars": 137
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 5,
+    "start": 13884,
+    "end": 16799,
+    "characters": 981,
+    "rubies": 51,
+    "ruby_chars": 144
+  },
+  {
+    "axis": 1,
+    "chapter": 7,
+    "page": 6,
+    "start": 16799,
+    "end": 18979,
+    "characters": 736,
+    "rubies": 27,
+    "ruby_chars": 68
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 0,
+    "start": 0,
+    "end": 2220,
+    "characters": 758,
+    "rubies": 13,
+    "ruby_chars": 37
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 1,
+    "start": 2220,
+    "end": 4720,
+    "characters": 846,
+    "rubies": 13,
+    "ruby_chars": 37
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 2,
+    "start": 4720,
+    "end": 7517,
+    "characters": 943,
+    "rubies": 31,
+    "ruby_chars": 85
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 3,
+    "start": 7517,
+    "end": 10383,
+    "characters": 966,
+    "rubies": 44,
+    "ruby_chars": 108
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 4,
+    "start": 10383,
+    "end": 12637,
+    "characters": 766,
+    "rubies": 31,
+    "ruby_chars": 98
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 5,
+    "start": 12637,
+    "end": 14658,
+    "characters": 691,
+    "rubies": 16,
+    "ruby_chars": 50
+  },
+  {
+    "axis": 1,
+    "chapter": 8,
+    "page": 6,
+    "start": 14658,
+    "end": 14705,
+    "characters": 17,
+    "rubies": 2,
+    "ruby_chars": 6
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 0,
+    "start": 0,
+    "end": 3212,
+    "characters": 1074,
+    "rubies": 66,
+    "ruby_chars": 203
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 1,
+    "start": 3212,
+    "end": 6714,
+    "characters": 1170,
+    "rubies": 63,
+    "ruby_chars": 180
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 2,
+    "start": 6714,
+    "end": 10274,
+    "characters": 1188,
+    "rubies": 41,
+    "ruby_chars": 110
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 3,
+    "start": 10274,
+    "end": 12860,
+    "characters": 876,
+    "rubies": 47,
+    "ruby_chars": 124
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 4,
+    "start": 12860,
+    "end": 15064,
+    "characters": 752,
+    "rubies": 15,
+    "ruby_chars": 50
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 5,
+    "start": 15064,
+    "end": 18291,
+    "characters": 1081,
+    "rubies": 67,
+    "ruby_chars": 197
+  },
+  {
+    "axis": 1,
+    "chapter": 9,
+    "page": 6,
+    "start": 18291,
+    "end": 18495,
+    "characters": 70,
+    "rubies": 3,
+    "ruby_chars": 9
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 0,
+    "start": 0,
+    "end": 3380,
+    "characters": 1130,
+    "rubies": 45,
+    "ruby_chars": 141
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 1,
+    "start": 3380,
+    "end": 6715,
+    "characters": 1115,
+    "rubies": 53,
+    "ruby_chars": 161
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 2,
+    "start": 6715,
+    "end": 9977,
+    "characters": 1092,
+    "rubies": 64,
+    "ruby_chars": 197
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 3,
+    "start": 9977,
+    "end": 11987,
+    "characters": 688,
+    "rubies": 29,
+    "ruby_chars": 91
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 4,
+    "start": 11987,
+    "end": 14515,
+    "characters": 858,
+    "rubies": 19,
+    "ruby_chars": 51
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 5,
+    "start": 14515,
+    "end": 16781,
+    "characters": 772,
+    "rubies": 24,
+    "ruby_chars": 66
+  },
+  {
+    "axis": 1,
+    "chapter": 10,
+    "page": 6,
+    "start": 16781,
+    "end": 19085,
+    "characters": 782,
+    "rubies": 35,
+    "ruby_chars": 116
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 0,
+    "start": 0,
+    "end": 3444,
+    "characters": 1150,
+    "rubies": 60,
+    "ruby_chars": 172
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 1,
+    "start": 3444,
+    "end": 6995,
+    "characters": 1187,
+    "rubies": 63,
+    "ruby_chars": 203
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 2,
+    "start": 6995,
+    "end": 10478,
+    "characters": 1163,
+    "rubies": 58,
+    "ruby_chars": 152
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 3,
+    "start": 10478,
+    "end": 13709,
+    "characters": 1081,
+    "rubies": 56,
+    "ruby_chars": 157
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 4,
+    "start": 13709,
+    "end": 16993,
+    "characters": 1100,
+    "rubies": 51,
+    "ruby_chars": 136
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 5,
+    "start": 16993,
+    "end": 20333,
+    "characters": 1120,
+    "rubies": 52,
+    "ruby_chars": 143
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 6,
+    "start": 20333,
+    "end": 22897,
+    "characters": 868,
+    "rubies": 37,
+    "ruby_chars": 117
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 7,
+    "start": 22897,
+    "end": 25052,
+    "characters": 735,
+    "rubies": 18,
+    "ruby_chars": 45
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 8,
+    "start": 25052,
+    "end": 27399,
+    "characters": 797,
+    "rubies": 38,
+    "ruby_chars": 103
+  },
+  {
+    "axis": 1,
+    "chapter": 11,
+    "page": 9,
+    "start": 27399,
+    "end": 27686,
+    "characters": 97,
+    "rubies": 3,
+    "ruby_chars": 8
+  },
+  {
+    "axis": 1,
+    "chapter": 12,
+    "page": 0,
+    "start": 0,
+    "end": 2793,
+    "characters": 941,
+    "rubies": 28,
+    "ruby_chars": 84
+  },
+  {
+    "axis": 1,
+    "chapter": 12,
+    "page": 1,
+    "start": 2793,
+    "end": 5815,
+    "characters": 1016,
+    "rubies": 48,
+    "ruby_chars": 145
+  },
+  {
+    "axis": 1,
+    "chapter": 12,
+    "page": 2,
+    "start": 5815,
+    "end": 8288,
+    "characters": 841,
+    "rubies": 42,
+    "ruby_chars": 115
+  },
+  {
+    "axis": 1,
+    "chapter": 12,
+    "page": 3,
+    "start": 8288,
+    "end": 11509,
+    "characters": 1079,
+    "rubies": 46,
+    "ruby_chars": 158
+  },
+  {
+    "axis": 1,
+    "chapter": 12,
+    "page": 4,
+    "start": 11509,
+    "end": 14471,
+    "characters": 996,
+    "rubies": 36,
+    "ruby_chars": 102
+  },
+  {
+    "axis": 1,
+    "chapter": 12,
+    "page": 5,
+    "start": 14471,
+    "end": 14914,
+    "characters": 151,
+    "rubies": 6,
+    "ruby_chars": 17
+  }
+]

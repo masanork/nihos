@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "base_commit": "bbcaf664",
+  "failure": {
+    "native_candidate_clusters": 400,
+    "native_placed_glyphs": 512,
+    "overflow_backoff": "75 percent of candidate before viewport fitting",
+    "uniform_CJK_32_vertical_before": 300,
+    "uniform_CJK_32_vertical_expected": 340
+  },
+  "qualification": {
+    "host_rgb565": "passed",
+    "native_build_and_image_audit": "passed",
+    "physical_device": "not run; Tab5 has another owner",
+    "main_merge": "not performed"
+  },
+  "regressions": {
+    "uniform_cases": 52,
+    "baseline_failures": 27,
+    "tab5_tests": 11,
+    "mac_reader_tests": 10,
+    "native_audit_tests": 41,
+    "kusamakura_16_pages": 213,
+    "kusamakura_chapters": 13,
+    "axes": 2,
+    "max_ruby_groups_per_page": 103,
+    "max_body_plus_ruby_codepoints": 1432,
+    "first_page_characters_before": 400,
+    "first_page_characters_after": {
+      "horizontal": 957,
+      "vertical": 1041
+    },
+    "zig_release_safe_tests": 1032,
+    "zig_build_steps": 73
+  },
+  "native_candidate": {
+    "image_sha256": "669b07ba62407ab38bd8aa642fb5401ab125d5a0842cc5b5a53a1eaa61d73ae0",
+    "image_bytes": 3562272,
+    "primary_heap_bytes": 49344,
+    "primary_heap_floor_bytes": 49152,
+    "render_stack_quota_bytes": 524288,
+    "render_stack_physical_highwater_bytes": null,
+    "session_bytes_from_RV32_size_function": 1056080,
+    "render_payload_calculated_bytes": 3423616,
+    "expected_external_size_class_bytes": 4194304
+  },
+  "bounds": {
+    "native_body_bytes": 4096,
+    "native_ruby_bytes": 2048,
+    "native_ruby_groups": 128,
+    "native_display_glyphs": 2048,
+    "scope": "bounded offline pages at native 1280x720 geometry and supported 16..64 px typography; denser arbitrary ruby may still reach capacity fallback"
+  }
+}
