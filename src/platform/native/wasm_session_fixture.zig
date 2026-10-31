@@ -47,6 +47,14 @@ pub var station_stale: u32 = 0;
 pub var station_errors: u32 = 0;
 pub var station_offers: u32 = 0;
 pub var station_corrupt: u32 = 0;
+pub var station_renewed: u32 = 0;
+pub var station_old_ack: u32 = 0;
+pub var station_expired: u32 = 0;
+pub var station_expire_opening: u32 = 0;
+pub var station_expire_cancelling: u32 = 0;
+pub var station_expire_active: u32 = 0;
+var fixture_renew_at: u64 = 0;
+var fixture_expires_at: u64 = 0;
 pub var station_opening: u32 = 0;
 pub var station_cancelling: u32 = 0;
 pub var station_active: u32 = 0;
@@ -65,6 +73,7 @@ fn stationReply(id: u32, uid: u32, body: []const u8, event: bool) bool {
 fn stationStep(step: u32) bool {
     if (step == 0) {
         fixture_station.begin(.saved, station_now);
+        fixture_station.keep_serving = true;
         fixture_station.uid = 1; // Model one earlier nonzero transaction.
         fixture_station.receive(.{ .interface = 5, .payload = &.{ 0x22, 3, 0x12, 1, 13 } }, station_now) catch return false;
         return fixture_station.capabilities_pending and fixture_station.phase == .handshake;
@@ -141,22 +150,72 @@ fn stationStep(step: u32) bool {
         station_corrupt += 1;
         return true;
     }
-    fixture_station.receive(.{ .interface = 1, .payload = dhcp_fixture.ack }, station_now) catch return false;
-    const lease = if (fixture_station.dhcp_client) |v4| v4.lease orelse return false else return false;
-    if (fixture_station.phase != .done or lease.ip != 0xc000020c or lease.gateway != 0xc0000201 or lease.seconds != 3600 or
-        fixture_station.ignored_rpcs != 1 or fixture_station.malformed_network != 1) return false;
-    station_completed += 1;
-    switch (ui.wasmFixturePhase()) {
-        1 => station_opening += 1,
-        2 => station_cancelling += 1,
-        3 => station_active += 1,
-        else => return false,
+    if (step == 16) {
+        fixture_station.receive(.{ .interface = 1, .payload = dhcp_fixture.ack }, station_now) catch return false;
+        const lease = if (fixture_station.dhcp_client) |v4| v4.lease orelse return false else return false;
+        if (fixture_station.phase != .done or lease.ip != 0xc000020c or lease.gateway != 0xc0000201 or lease.seconds != 3600 or
+            fixture_station.ignored_rpcs != 1 or fixture_station.malformed_network != 1) return false;
+        fixture_renew_at = fixture_station.dhcp_client.?.renew_at;
+        station_completed += 1;
+        switch (ui.wasmFixturePhase()) {
+            1 => station_opening += 1,
+            2 => station_cancelling += 1,
+            3 => station_active += 1,
+            else => return false,
+        }
+        return true;
     }
-    return true;
+    if (step == 17) {
+        const bytes = fixture_station.tx(fixture_renew_at - 1) catch return false;
+        return bytes.len == 0 and fixture_station.dhcp_client != null and fixture_station.dhcp_client.?.phase == .bound;
+    }
+    if (step == 18) {
+        const bytes = fixture_station.tx(fixture_renew_at) catch return false;
+        if (bytes.len < 12 + 342 or bytes[0] != 1 or
+            hosted_station.dhcp.get32(bytes[12 + 30 ..][0..4]) != 0xc0000201 or
+            fixture_station.dhcp_client == null or fixture_station.dhcp_client.?.phase != .renewing or
+            fixture_station.dhcp_client.?.xid != 0xb06bd031) return false;
+        fixture_station.sent(fixture_renew_at);
+        return true;
+    }
+    if (step == 19) {
+        fixture_station.receive(.{ .interface = 1, .payload = dhcp_fixture.ack }, fixture_renew_at + 1) catch return false;
+        if (fixture_station.dhcp_client == null or fixture_station.dhcp_client.?.phase != .renewing or
+            fixture_station.dhcp_client.?.renewals != 0 or fixture_station.dhcp_client.?.lease == null) return false;
+        station_old_ack += 1;
+        return true;
+    }
+    if (step == 20) {
+        fixture_station.receive(.{ .interface = 1, .payload = dhcp_fixture.renew_ack }, fixture_renew_at + 2) catch return false;
+        if (fixture_station.dhcp_client == null or fixture_station.dhcp_client.?.phase != .bound or
+            fixture_station.dhcp_client.?.renewals != 1 or fixture_station.dhcp_client.?.bound_at != fixture_renew_at) return false;
+        fixture_expires_at = fixture_station.dhcp_client.?.expires_at;
+        if (fixture_expires_at != fixture_renew_at + 3_600_000_000) return false;
+        station_renewed += 1;
+        return true;
+    }
+    if (step == 21) {
+        const bytes = fixture_station.tx(fixture_expires_at - 1) catch return false;
+        return bytes.len > 0 and fixture_station.output_len != 0 and fixture_station.dhcp_client != null and
+            fixture_station.dhcp_client.?.lease != null;
+    }
+    _ = fixture_station.tx(fixture_expires_at) catch |err| {
+        if (err != error.LeaseExpired or fixture_station.phase != .failed or fixture_station.output_len != 0 or
+            fixture_station.dhcp_client != null or fixture_station.ipv6_client != null) return false;
+        station_expired += 1;
+        switch (ui.wasmFixturePhase()) {
+            1 => station_expire_opening += 1,
+            2 => station_expire_cancelling += 1,
+            3 => station_expire_active += 1,
+            else => return false,
+        }
+        return true;
+    };
+    return false;
 }
 // The bounded synthetic exchange advances at most once per foreground turn.
 fn stationService() void {
-    if (!stationStep((mock_items - 1) % 17)) station_errors += 1;
+    if (!stationStep((mock_items - 1) % 23)) station_errors += 1;
 }
 
 var fixture_decoder: if (options.wasm_interactive_repeat) hosted_wire.Decoder else void = if (options.wasm_interactive_repeat) .{} else {};
@@ -284,6 +343,14 @@ pub fn interactiveService(log: anytype) u32 {
             station_errors = 0;
             station_offers = 0;
             station_corrupt = 0;
+            station_renewed = 0;
+            station_old_ack = 0;
+            station_expired = 0;
+            station_expire_opening = 0;
+            station_expire_cancelling = 0;
+            station_expire_active = 0;
+            fixture_renew_at = 0;
+            fixture_expires_at = 0;
             station_opening = 0;
             station_cancelling = 0;
             station_active = 0;

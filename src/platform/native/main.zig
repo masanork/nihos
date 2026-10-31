@@ -1677,6 +1677,8 @@ fn normalReady() noreturn {
                     logger.record("NIHOS_WASM_HOSTED_FIXTURE", null, .{ "round", "accepted", "rejected", "errors", "active_events" }, &hosted);
                     const station = .{ .round = fixture.interactive_round, .completed = fixture.station_completed, .stale = fixture.station_stale, .errors = fixture.station_errors, .offers = fixture.station_offers, .corrupt = fixture.station_corrupt, .opening = fixture.station_opening, .cancelling = fixture.station_cancelling, .active = fixture.station_active };
                     logger.record("NIHOS_WASM_STATION_FIXTURE", null, .{ "round", "completed", "stale", "errors", "offers", "corrupt", "opening", "cancelling", "active" }, &station);
+                    const renewal = .{ .round = fixture.interactive_round, .renewed = fixture.station_renewed, .old_ack = fixture.station_old_ack, .expired = fixture.station_expired, .opening = fixture.station_expire_opening, .cancelling = fixture.station_expire_cancelling, .active = fixture.station_expire_active };
+                    logger.record("NIHOS_WASM_DHCP_LIFETIME", null, .{ "round", "renewed", "old_ack", "expired", "opening", "cancelling", "active" }, &renewal);
                     const timings = @import("wasm_session.zig").observed;
                     const latency = .{ .round = fixture.interactive_round, .render_us = timings.render_max_us, .close_us = timings.close_us };
                     logger.record("NIHOS_WASM_REQUEST_LATENCY", null, .{ "round", "render_us", "close_us" }, &latency);

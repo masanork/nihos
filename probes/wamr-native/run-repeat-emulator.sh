@@ -60,8 +60,14 @@ station=re.findall(r'NIHOS_WASM_STATION_FIXTURE round=([0-9a-f]+) completed=([0-
 station=[tuple(int(x,16) for x in row) for row in station]
 assert len(station)==3 and [v[0] for v in station]==[1,2,3],station
 for v,w in zip(station,work):
-    n=w[1]; assert v[1]==n//17 and v[2]==(n+13)//17 and v[3]==0 and v[4]==(n+3)//17 and v[5]==(n+1)//17 and sum(v[6:])==v[1],(v,w)
+    n=w[1]; assert v[1]==(n+6)//23 and v[2]==(n+19)//23 and v[3]==0 and v[4]==(n+9)//23 and v[5]==(n+7)//23 and sum(v[6:])==v[1],(v,w)
 assert station[0][6]>0 and station[0][8]>0 and station[1][7]>0 and station[2][6]>0 and station[2][8]>0,station
+lifetime=re.findall(r'NIHOS_WASM_DHCP_LIFETIME round=([0-9a-f]+) renewed=([0-9a-f]+) old_ack=([0-9a-f]+) expired=([0-9a-f]+) opening=([0-9a-f]+) cancelling=([0-9a-f]+) active=([0-9a-f]+)',r.stdout)
+lifetime=[tuple(int(x,16) for x in row) for row in lifetime]
+assert len(lifetime)==3 and [v[0] for v in lifetime]==[1,2,3],lifetime
+for v,w in zip(lifetime,work):
+    n=w[1]; assert v[1]==(n+2)//23 and v[2]==(n+3)//23 and v[3]==n//23 and sum(v[4:])==v[3],(v,w)
+assert lifetime[0][4]>0 and lifetime[0][6]>0 and lifetime[1][5]>0 and lifetime[2][4]>0 and lifetime[2][6]>0,lifetime
 latency=re.findall(r'NIHOS_WASM_REQUEST_LATENCY round=([0-9a-f]+) render_us=([0-9a-f]+) close_us=([0-9a-f]+)',r.stdout)
 latency=[tuple(int(x,16) for x in row) for row in latency]
 assert len(latency)==3 and [x[0] for x in latency]==[1,2,3],latency
@@ -70,6 +76,6 @@ assert latency[1][1:]==(0,0),latency
 assert r.stdout.count('Starting Rust sample; q or Esc cancels.')==3,r.stdout
 assert r.stdout.count('Rust sample stopped.\nnihos> ')==3,r.stdout
 assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in hashes.items())
-(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg], 'mock_work':[dict(zip(('round','items','digest','sensor'),row)) for row in work], 'hosted_decoder':[dict(zip(('round','accepted','rejected','errors','active_events'),row)) for row in hosted], 'request_latency':[dict(zip(('round','render_us','close_us'),row)) for row in latency], 'hosted_station':[dict(zip(('round','completed','stale','errors','offers','corrupt','opening','cancelling','active'),row)) for row in station]},indent=2)+'\n')
+(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg], 'mock_work':[dict(zip(('round','items','digest','sensor'),row)) for row in work], 'hosted_decoder':[dict(zip(('round','accepted','rejected','errors','active_events'),row)) for row in hosted], 'request_latency':[dict(zip(('round','render_us','close_us'),row)) for row in latency], 'hosted_station':[dict(zip(('round','completed','stale','errors','offers','corrupt','opening','cancelling','active'),row)) for row in station], 'dhcp_lifetime':[dict(zip(('round','renewed','old_ack','expired','opening','cancelling','active'),row)) for row in lifetime]},indent=2)+'\n')
 print('repeat: two active runs and startup cancellation, with shell returns and full recovery passed')
 PYRUN
