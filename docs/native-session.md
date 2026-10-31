@@ -1,26 +1,32 @@
-# Native launcher and shell
+# Native xy workspace and diagnostic launcher
 
-The live integer normal-boot profile enters a small launcher after core health
+The normal `sh tools/build-native.sh device integer` profile starts the xy
+RAM workspace. It supports UTF-8 text, grapheme editing, undo and a bounded
+Scheme minibuffer; see [the xy overview](../README.md). The I2C Tab5 Keyboard is
+enabled by default with the existing US HID mapping; set
+`NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. This does not provide an SD save
+operation. The older single-row ASCII editor and terminal-first startup from
+PRs #71 and #79 are superseded by this workspace.
+
+The following launcher and shell describe the diagnostic fallback used when
+`NIHOS_NATIVE_XY_WORKSPACE=0`, including explicit camera qualification profiles.
+
+The live integer diagnostic profile enters a small launcher after core health
 checks complete and the milestone-driven boot graphic reaches its final colour.
 The ESP-IDF backend and native qualification profiles retain their existing
 behaviour. This work builds on `codex/native-console` (`8cd0076`).
 
-The launcher lists Shell, Boot log, Memory, Tasks and an unsaved ASCII editor.
-Up/Down or 1–5 selects a tool; Enter opens it. Escape opens the shell directly.
+The launcher lists only implemented tools: Shell, Boot log, Memory and Tasks.
+Up/Down or 1–4 selects a tool; Enter opens it. Escape opens the shell directly.
 During initialisation, Escape still opens boot diagnostics and does not abort a
 driver. After handoff, Escape in the log viewer returns to the launcher. Escape
 or Ctrl-C in the shell cancels the current input; `exit`, `launcher`, or Ctrl-D
 on an empty line returns to the launcher.
 
-The shell implements `shell`, `help`, `clear`, `log`, `mem`, `tasks`, `launcher`,
-`exit`, and `edit`. Menu actions and command names share the same dispatch. There are
+The shell implements `shell`, `help`, `clear`, `log`, `mem`, `tasks`, `launcher`
+and `exit`. Menu actions and command names share the same dispatch. There are
 no executable files, background jobs, pipes, filesystem commands, interpreter,
 or external apps in this first version.
-
-The editor holds one ASCII line of up to 64 bytes in RAM, supports Left/Right
-and Backspace, and returns to the launcher with Escape. Its text is not saved
-to the device. The normal device build enables the I2C Tab5 Keyboard by default;
-set `NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it.
 
 Input is ASCII, with a 64-byte command limit, Backspace, Shift, Caps Lock and
 Ctrl-L. Characters beyond the limit are ignored. The I2C Tab5 Keyboard uses a
