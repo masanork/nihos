@@ -1,0 +1,9 @@
+{
+  "width": 1280,
+  "height": 720,
+  "rgb565_sha256": "944f042b27fb1cf7e0fef7bf58e474e028fb040b85759d0022039941a2496b96",
+  "rgba_sha256": "fff1b6b2736197bae93975ae019c6b31b41b85f251a7e3a18fe066cfbcd9c7a3",
+  "pixels_compared": 921600,
+  "mismatched_pixels": 0,
+  "source": "(define (stamp) (buffer/insert! \"Hello, xy!\"))\n日本語 ABC 0123"
+}

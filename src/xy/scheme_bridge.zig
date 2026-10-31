@@ -742,6 +742,10 @@ pub fn XyWorkspace(
             glyph_scratch: []u8,
             out_placed: []PlacedGlyph,
         ) viewport_layout.Error![]const PlacedGlyph {
+            if (self.doc.len == 0) {
+                self.layout_dirty = false;
+                return out_placed[0..0];
+            }
             var ann_buf: [max_ruby_spans]viewport_layout.ruby.Annotation = undefined;
             for (self.doc.ruby_spans[0..self.doc.ruby_count], 0..) |s, idx| {
                 ann_buf[idx] = .{

@@ -548,10 +548,12 @@ static void eval_sexp_checked(const char *sexp) {
     char cmd[256];
     snprintf(
         cmd, sizeof(cmd),
-        "(view/set! #:font '%s #:size %u #:direction '%s #:line-gap 18)",
+        "(view/set! #:font '%s #:size %u #:direction '%s #:line-gap %u #:ruby-size %u)",
         _is_gothic ? "bunsen-gothic" : "bunsen-mincho",
         _font_size,
-        _is_vertical ? "vertical" : "horizontal"
+        _is_vertical ? "vertical" : "horizontal",
+        _editingSource ? 0 : 18,
+        _editingSource ? 6 : _font_size / 2
     );
     eval_sexp_checked(cmd);
     [self setNeedsDisplay:YES];
@@ -651,7 +653,7 @@ static void eval_sexp_checked(const char *sexp) {
         _savedVertical = _is_vertical;
         _savedFontSize = _font_size;
         _is_vertical = false;
-        _font_size = 20;
+        _font_size = 25;
         [self applyViewSettings];
     }
     _selectAll = false;
@@ -705,6 +707,24 @@ static void eval_sexp_checked(const char *sexp) {
     if (![self confirmDiscardSource]) return NO;
     [NSApp stop:nil];
     return YES;
+}
+- (void)windowDidChangeBackingProperties:(NSNotification *)notification {
+    (void)notification;
+    NSWindow *window = [self window];
+    CGFloat scale = [window backingScaleFactor];
+    if (scale <= 0) return;
+    CGFloat viewHeight = _fb_height / scale + 32;
+    CGFloat delta = viewHeight - NSHeight([self frame]);
+    CGFloat width = MAX(960, _fb_width / scale);
+    NSView *root = [window contentView];
+    [window setContentSize:NSMakeSize(width, viewHeight + 76)];
+    [root setFrameSize:NSMakeSize(width, viewHeight + 76)];
+    for (NSView *child in [root subviews]) {
+        if (child == self) continue;
+        NSRect frame = [child frame]; frame.origin.y += delta; [child setFrame:frame];
+    }
+    [self setFrameSize:NSMakeSize(width, viewHeight)];
+    [self setNeedsDisplay:YES];
 }
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     (void)sender;
@@ -854,7 +874,18 @@ static void eval_sexp_checked(const char *sexp) {
     );
     CGImageRef img = CGBitmapContextCreateImage(bmp);
     CGContextRef viewCtx = [[NSGraphicsContext currentContext] CGContext];
-    NSRect canvasRect = NSMakeRect(0, 32, _fb_width, _fb_height);
+    // A target pixel maps to exactly one backing pixel, including Retina.
+    // Only the native host chrome uses point units and platform text rendering.
+    const CGFloat pointWidth = NSWidth([self bounds]);
+    NSRect backingBounds = [self convertRectToBacking:[self bounds]];
+    NSRect backingStatus = [self convertRectToBacking:NSMakeRect(0, 0, pointWidth, 32)];
+    NSRect targetPixels = NSMakeRect(floor((NSWidth(backingBounds) - _fb_width) / 2),
+        NSHeight(backingStatus), _fb_width, _fb_height);
+    NSRect canvasRect = [self convertRectFromBacking:targetPixels];
+    [[NSColor colorWithCalibratedWhite:0.12 alpha:1] setFill];
+    NSRectFill(NSMakeRect(0, 32, pointWidth, NSHeight([self bounds]) - 32));
+    CGContextSetInterpolationQuality(viewCtx, kCGInterpolationNone);
+    CGContextSetShouldAntialias(viewCtx, false);
     CGContextDrawImage(viewCtx, canvasRect, img);
 
     CGImageRelease(img);
@@ -936,8 +967,8 @@ int main(int argc, const char **argv) {
         (unsigned long long)(g_pread_bytes - init_bytes_before)
     );
 
-    const uint32_t W = 960;
-    const uint32_t H = 540;
+    const uint32_t W = 1280;
+    const uint32_t H = 720;
     xy_host_set_viewport(W, H);
 
     // Check for `--snapshot <dir>` mode
@@ -1047,16 +1078,20 @@ int main(int argc, const char **argv) {
 
         const CGFloat toolbarH = 76.0;
         const CGFloat statusH = 32.0;
-        NSRect winRect = NSMakeRect(120, 120, W, H + toolbarH + statusH);
+        CGFloat backingScale = [[NSScreen mainScreen] backingScaleFactor];
+        if (backingScale <= 0) backingScale = 1;
+        const CGFloat canvasH = H / backingScale;
+        const CGFloat windowW = MAX(960, W / backingScale);
+        NSRect winRect = NSMakeRect(120, 120, windowW, canvasH + toolbarH + statusH);
         NSWindow *window = [[NSWindow alloc]
             initWithContentRect:winRect
                       styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable)
                         backing:NSBackingStoreBuffered
                           defer:NO];
-        [window setTitle:@"xy — Convivial Machine Host (⌘1:縦/横  ⌘2:明朝/ゴシック  ⌘-/⌘+:サイズ  ⌘5:テーマ  ⌘Z:Undo)"];
+        [window setTitle:@"xy — 1280×720 pixel host · Source Code Pro / Bunsen"];
 
-        NSView *root = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, W, H + toolbarH + statusH)];
-        XyCanvasView *view = [[XyCanvasView alloc] initWithFrame:NSMakeRect(0, 0, W, H + statusH) width:W height:H];
+        NSView *root = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, windowW, canvasH + toolbarH + statusH)];
+        XyCanvasView *view = [[XyCanvasView alloc] initWithFrame:NSMakeRect(0, 0, windowW, canvasH + statusH) width:W height:H];
         [root addSubview:view];
         struct { NSString *title; SEL action; CGFloat width; } workspaceBtns[] = {
             { @"Source (⌘E)", @selector(editSource:), 140 },
@@ -1067,7 +1102,7 @@ int main(int argc, const char **argv) {
         };
         CGFloat wx = 10;
         for (size_t i = 0; i < sizeof(workspaceBtns) / sizeof(workspaceBtns[0]); i++) {
-            NSButton *button = [[NSButton alloc] initWithFrame:NSMakeRect(wx, H + statusH + 43, workspaceBtns[i].width, 28)];
+            NSButton *button = [[NSButton alloc] initWithFrame:NSMakeRect(wx, canvasH + statusH + 43, workspaceBtns[i].width, 28)];
             [button setTitle:workspaceBtns[i].title]; [button setBezelStyle:NSBezelStyleRounded];
             [button setTarget:view]; [button setAction:workspaceBtns[i].action];
             [root addSubview:button]; wx += workspaceBtns[i].width + 6;
@@ -1090,7 +1125,7 @@ int main(int argc, const char **argv) {
         };
         CGFloat bx = 10.0;
         for (size_t i = 0; i < sizeof(btns) / sizeof(btns[0]); i++) {
-            NSButton *b = [[NSButton alloc] initWithFrame:NSMakeRect(bx, H + statusH + 5.0, btns[i].width, 28.0)];
+            NSButton *b = [[NSButton alloc] initWithFrame:NSMakeRect(bx, canvasH + statusH + 5.0, btns[i].width, 28.0)];
             [b setTitle:btns[i].title];
             [b setBezelStyle:NSBezelStyleRounded];
             [b setTarget:view];
