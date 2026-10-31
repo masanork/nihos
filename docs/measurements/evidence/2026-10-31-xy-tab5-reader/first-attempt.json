@@ -1,0 +1,24 @@
+{
+  "passed": false,
+  "evidence": "physical Tab5 ROM reader; serial input and completed framebuffer publications",
+  "hardware_pixels_observed": false,
+  "physical_touch_tested": false,
+  "sd_modified": false,
+  "backup_private": true,
+  "installed": true,
+  "candidate": {
+    "partition-table.bin": "fd8026bff850ca0dee41c41305160317fffe604dda30a9bd5a701ac82d96fa17",
+    "nihos-native.bin": "efc16b09d5e5edb1472a24b45ca5b9f14cb8c8cd6dae7b43bb7dd30804d59990",
+    "image-audit.json": "5d9f7b2383bf0b421ea8920642d18162093ffb11449c71e679d00b93c457a33d",
+    "bootloader.bin": "e79ce6268539e51687f59b78c8988ca802d384c9de0e086cf7c5a5d5b88c26a3"
+  },
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": "c0542eb0bfc9e9061ce1517d3bf577db95928aebbe67fd454f2ad88ca1cae593",
+  "write_started": true,
+  "outside_written_sectors_preserved": true,
+  "restored_original": true
+}

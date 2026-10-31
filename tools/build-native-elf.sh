@@ -862,6 +862,18 @@ fi
 # An empty expansion must not become a zig argument. Quoting it always would
 # pass that empty word; leaving it unquoted fails ShellCheck SC2086.
 if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then
+    python3 "$repo_root/tools/build-xy-reading-pack.py" "$build_dir/xy-reading.pack" > "$build_dir/xy-reading-build.json"
+    cat > "$build_dir/xy_reading_assets.S" <<EOF
+.section .flash.xyrodata.assets,"a",@progbits
+.balign 16
+.global nih_xy_reading_start
+nih_xy_reading_start:
+.incbin "$build_dir/xy-reading.pack"
+.global nih_xy_reading_end
+nih_xy_reading_end:
+EOF
+    "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$build_dir/xy_reading_assets.S" -o "$build_dir/xy_reading_assets.o"
+    set -- "$@" "$build_dir/xy_reading_assets.o"
     "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm -fno-strip -ffunction-sections -fno-stack-check -fno-stack-protector \
         --dep view_config --dep surface --dep viewport_layout --dep rotated_surface -Mroot="$repo_root/src/xy/native_render_entry.zig" \
         --dep view_config -Mviewport_layout="$repo_root/src/graphics/viewport_layout.zig" \

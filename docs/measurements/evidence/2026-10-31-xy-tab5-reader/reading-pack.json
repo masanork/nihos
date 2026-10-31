@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "bytes": 2894774,
+  "sha256": "f41c6c94682861a4d3974eed40a479c4a8fc0cfd1cc118e0708329400828f9f4",
+  "library_sha256": "1274ee105af8b5165865631ab163fc2b31ea7b8e79dc264e081e16cad95e537b",
+  "sections": [
+    3,
+    13,
+    3,
+    32
+  ],
+  "fonts": [
+    {
+      "offset": 1900,
+      "bytes": 1146288
+    },
+    {
+      "offset": 1148188,
+      "bytes": 1064060
+    }
+  ]
+}

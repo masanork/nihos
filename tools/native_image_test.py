@@ -11,10 +11,21 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_reader_rom_can_expand_without_expanding_executable_flash_window(self):
+        MODULE.audit_flash_section('.flash.xyrodata',1,2,0x40080000,0x280000,allow_xy=True)
+        for name, flags, address, size in [
+            ('.flash.xyrodata',6,0x40080000,32),
+            ('.flash.xyrodata',3,0x40080000,32),
+            ('.flash.xyrodata',2,0x403ffff0,32),
+            ('.flash.xytext',6,0x40060000,0x60010),
+        ]:
+            with self.subTest(name=name,flags=flags), self.assertRaises(ValueError):
+                MODULE.audit_flash_section(name,1,flags,address,size,allow_xy=True)
+
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
         self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(256).render'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(256).renderInto__func_0'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).render'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).renderInto__func_0'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
 
@@ -52,7 +63,7 @@ class NativeInstructionTests(unittest.TestCase):
             MODULE.audit_xy_functions(functions + [('irq.unapproved', start, start + 16)], (start, start + 48))
         MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x40080000, 32, allow_xy=True)
         with self.assertRaises(ValueError):
-            MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x400bfff0, 32, allow_xy=True)
+            MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x403ffff0, 32, allow_xy=True)
 
     def test_normal_filesystem_sections_require_explicit_profile_and_permissions(self):
         cases = (('.flash.fstext', 0x40020000, 128, 6),
