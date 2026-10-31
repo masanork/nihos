@@ -134,6 +134,9 @@ Wasm/display profile and physical presenter remain open.
    those foreground turns with independent result checking; see the
    [mock-work report](../measurements/2026-11-01-wasm-foreground-mock-work.md).
    It does not exercise real service drivers or run during synchronous UI calls.
+   The existing ESP-Hosted frame decoder now also processes valid and corrupt
+   synthetic fragments between UI calls; the [decoder report](../measurements/2026-11-01-wasm-hosted-decoder-foreground.md)
+   records request timing and distinguishes parser execution from C6/network work.
    A foreground controller now owns opening, cancellation and active-input
    routing in that fixture and the UI branch. It rejects start when camera or
    display is busy and reserves display until cancellation has completed.
