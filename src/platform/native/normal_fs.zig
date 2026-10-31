@@ -152,7 +152,7 @@ const Bus = struct {
     pub const shared_host = true;
     lease: host.Lease = .{},
     pub fn ownsSlot(self: @This(), slot: u32) bool {
-        return slot == 0 and host.owns(self.lease);
+        return slot == 0 and self.lease.slot == 0 and host.owns(self.lease);
     }
     pub fn read(self: @This(), register: usize) u32 {
         return host.read(self.lease, register);
@@ -183,6 +183,32 @@ const Bus = struct {
             nih_rom_cache_writeback(1 << 4, physical(&s.dma_descriptor), 64) != 0) return null;
         barrier();
         return physical(&s.dma_descriptor);
+    }
+    // Write staging is not registered as a native storage operation. The
+    // shared host lease must remain held until DMA is stopped and fenced.
+    pub fn prepareWriteDma(self: @This(), source: *const [512]u8) ?u32 {
+        if (!self.ownsSlot(0)) return null;
+        const s = state() orelse return null;
+        const previous = mask();
+        defer restore(previous);
+        @memcpy(&s.dma_data, source);
+        s.dma_descriptor = @splat(0);
+        s.dma_descriptor[0] = (1 << 31) | (1 << 4) | (1 << 3) | (1 << 2);
+        s.dma_descriptor[1] = 512;
+        s.dma_descriptor[2] = physical(&s.dma_data);
+        if (nih_rom_cache_writeback(1 << 4, physical(&s.dma_data), 512) != 0 or
+            nih_rom_cache_writeback(1 << 4, physical(&s.dma_descriptor), 64) != 0) return null;
+        barrier();
+        return physical(&s.dma_descriptor);
+    }
+    pub fn finishWriteDma(self: @This()) bool {
+        if (!self.ownsSlot(0)) return false;
+        const s = state() orelse return false;
+        const previous = mask();
+        defer restore(previous);
+        barrier();
+        if (nih_rom_cache_invalidate(1 << 4, physical(&s.dma_descriptor), 64) != 0) return false;
+        return @as(*volatile u32, &s.dma_descriptor[0]).* & ((1 << 31) | (1 << 30)) == 0;
     }
     pub fn finishDma(_: @This(), destination: *[512]u8, length: u32) bool {
         const s = state() orelse return false;
@@ -405,8 +431,62 @@ fn stepOnce() callconv(.c) u32 {
     }
     return @intFromBool(worked);
 }
+// Hosted-only controller wiring for the production staging and host lease.
+// No write-capable Bus is registered in the freestanding normal service.
+const TestWriteBus = struct {
+    pub const shared_host = true;
+    pub const experimental_sd_write = true;
+    inner: Bus,
+    pub fn ownsSlot(self: @This(), slot: u32) bool {
+        return self.inner.ownsSlot(slot);
+    }
+    pub fn read(self: @This(), reg: usize) u32 {
+        return self.inner.read(reg);
+    }
+    pub fn write(self: @This(), reg: usize, value: u32) void {
+        self.inner.write(reg, value);
+    }
+    pub fn delay(self: @This(), us: u32) void {
+        self.inner.delay(us);
+    }
+    pub fn prepareWriteDma(self: @This(), source: *const [512]u8) ?u32 {
+        return self.inner.prepareWriteDma(source);
+    }
+    pub fn finishWriteDma(self: @This()) bool {
+        return self.inner.finishWriteDma();
+    }
+    pub fn releaseDma(self: @This()) bool {
+        return self.inner.releaseDma();
+    }
+};
+const TestProceed = struct {
+    pub fn stopReason(_: @This()) sd.StopReason {
+        return .none;
+    }
+};
+fn testWriteSector(lease: *const host.Lease, source: *const [512]u8, lba: u32) callconv(.c) u32 {
+    const s = state() orelse return 0;
+    var controller = sd.Controller(TestWriteBus){
+        .io = .{ .inner = .{ .lease = lease.* } },
+        .rca = s.card_controller.rca,
+        .sectors = s.card_controller.sectors,
+    };
+    controller.writeSectorControlled(lba, source, TestProceed{}) catch return 0;
+    return 1;
+}
+fn testWritePrepare(lease: *const host.Lease, source: *const [512]u8) callconv(.c) u32 {
+    return (Bus{ .lease = lease.* }).prepareWriteDma(source) orelse 0;
+}
+fn testWriteFinish(lease: *const host.Lease) callconv(.c) u32 {
+    return @intFromBool((Bus{ .lease = lease.* }).finishWriteDma());
+}
 comptime {
-    if (test_hooks.enabled) @export(&stepOnce, .{ .name = "nih_fs_test_step" });
+    if (test_hooks.enabled) {
+        @export(&stepOnce, .{ .name = "nih_fs_test_step" });
+        @export(&testWritePrepare, .{ .name = "nih_fs_test_write_prepare" });
+        @export(&testWriteFinish, .{ .name = "nih_fs_test_write_finish" });
+        @export(&testWriteSector, .{ .name = "nih_fs_test_write_sector" });
+    }
 }
 export fn nih_normal_fs_task(_: u32) callconv(.c) i32 {
     while (true) if (stepOnce() == 0) {
