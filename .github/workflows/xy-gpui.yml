@@ -1,0 +1,47 @@
+name: xy GPUI shared graphics
+on:
+  pull_request:
+    paths:
+      - 'apps/xy-gpui/**'
+      - 'src/app/**'
+      - 'src/gpui_host.zig'
+      - 'src/graphics/**'
+      - 'src/xy/**'
+      - 'include/xy_animation.h'
+      - 'tools/*xy*gpui*'
+      - 'tools/check-xy-animation.sh'
+      - 'tools/probes/animation.zig'
+      - '.github/workflows/xy-gpui.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xy-gpui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  gpui:
+    name: Shared animation and GPUI host
+    runs-on: macos-14
+    timeout-minutes: 25
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - name: Install the validated Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component clippy --component rustfmt
+      - name: Pure clock and RV32 soft-float link
+        run: sh tools/check-xy-animation.sh
+      - name: Build GPUI over the common Zig renderer
+        run: sh tools/build-xy-gpui.sh
+      - name: Rust formatting and lints
+        run: |
+          cargo fmt --manifest-path apps/xy-gpui/Cargo.toml --check
+          cargo clippy --locked --manifest-path apps/xy-gpui/Cargo.toml --no-deps -- -D warnings
+      - name: Canonical pixels, pause, input and editor undo
+        run: build/xy-gpui/xy-gpui.app/Contents/MacOS/xy-gpui --snapshot-dir build/xy-gpui/snapshots
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        if: always()
+        with:
+          name: xy-gpui-common-core
+          path: build/xy-gpui/snapshots
+          if-no-files-found: ignore

@@ -50,14 +50,14 @@ macroによる拡張、実機のScheme VM、永続 `sqld` とU-mode隔離の接�
 | 部分 | Tab5の通常 `*scratch*` | macOS Cocoa / C ABI | 共有状況 |
 | --- | --- | --- | --- |
 | UTF-8正本・書記素移動・undo | `scratch.Model.doc` | `scheme_bridge.XyWorkspace.doc` | 同じ `document.zig` の型を容量違いで利用 |
-| Scheme評価・コマンド登録 | `scheme_runtime.zig` | `scheme_bridge.zig` の固定フォーム評価 | 評価器の一本化は未実施 |
-| 組版・OpenType・ルビ | 通常画面には未接続 | `viewport_layout.zig` / `ttf.zig` | 共通コアとRGB565側adapterは存在するが、実機frontendの接続が残る |
-| 通常画面の描画 | `ascii_console.zig` / Canvas | Display List / RGBA compositor | 異なるfrontend。Tab5は固定ラスタの暫定表示 |
+| Scheme評価・コマンド登録 | `scheme_runtime.zig` | `live_workspace`から同じbounded runtime | VMを共有。host固有の保存・辞書bindingは別途接続 |
+| 組版・OpenType・ルビ | `render_session` / `viewport_layout` / `ttf` | 同じ共通sessionと字体 | native通常画面へ接続済み。全日本語収録を意味しない |
+| 通常画面の描画 | 完成RGB565から差分公開 | 完成RGB565からRGBA/BGRAへ展開 | 内容の画素を共有。GPUI実証ホストも同じ完成画素を受け取る |
 | 入力とウィンドウ | serial / HID / タッチ入口 | Cocoa / C ABI | OSごとのadapter |
 
-次の共通化ではmacOSの評価入口を同じScheme実行系へ接続し、既存の表示設定・辞書hookを
-型付きbindingとして保った上で評価器を一本化する。続いてTab5の通常画面を共通の組版・
-OpenType表示へ接続する。今回のmain統合は、その共通化が既に完了したという意味ではない。
+共通VM・native TrueType・完成フレーム転送はPR #87/#89で接続した。
+次は[アプリ更新・描画契約](xy-animation-runtime.md)とScheme callbackを接続し、
+hostの保存・辞書hookをnative側にも段階的に提供する。GPUI実証はCocoa版の全機能置換ではない。
 
 実装の直近の順序は、(1) 共通Documentを使うRAM上の `*scratch*` と入力・描画を
 通常起動へ接続、(2) ログ・メモリ・タスク観察をバッファとして公開、(3) 本格的な
@@ -111,7 +111,9 @@ flowchart TD
   alpha合成、補間拡大を対象画面へ適用しない。英数字は共通のSource Code Pro、
   日本語はBunsenのフォールバックを利用する。Retinaでも1 target pixelを
   1 backing pixelへ対応させる。GPUIは将来この完成フレームを受け取る側とする。
-  現在の操作ホストはCocoaであり、GPUIランタイムへの接続は未実装。
+  既存の操作ホストはCocoa。追加の[GPUI実証ホスト](../../apps/xy-gpui/README.md)では、
+  共通描画によるRAM編集ペインと動くグラフを実ウィンドウへ接続した。
+  Cocoa版のSQLite/source編集機能をすべて移したという意味ではない。
   配置・glyph maskのC ABIは観測用に残すが、それだけでは合成結果の一致を保証しない。
   [Macでの実装と検証](../measurements/2026-10-31-xy-pixel-host.md)を参照。
 

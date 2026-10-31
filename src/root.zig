@@ -79,6 +79,8 @@ pub const esp_at = @import("net/esp_at.zig");
 pub const at_controller = @import("net/at_controller.zig");
 pub const c6_sdio = @import("net/c6_sdio.zig");
 pub const esp32p4_sdio = @import("soc/esp32p4/sdio.zig");
+pub const animation = @import("app/animation.zig");
+pub const animated_plot = @import("graphics/animated_plot.zig");
 
 test {
     _ = experimental_storage;
@@ -169,6 +171,8 @@ test {
     _ = @import("kernel/task_control_test.zig");
     _ = test_pattern;
     _ = boot_graphics;
+    _ = animation;
+    _ = animated_plot;
     _ = font_protocol;
     _ = raster_lease;
     _ = surface;
