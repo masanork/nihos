@@ -66,7 +66,8 @@
     },
     "sram_heap_span_bytes": 75584,
     "maximum_tx_dropped": 0,
-    "tx_drop_observations": 6770
+    "tx_drop_observations": 6770,
+    "source_scope": "pre-rebase frozen physical candidate"
   },
   "default_xy": {
     "directory": "/private/tmp/nihos-camera-xy-default-reliable-20261031",
@@ -129,11 +130,15 @@
     ],
     "scheme_vm_tested": true,
     "camera_unavailable_tested": true,
-    "restore_pending": true,
-    "restore_marker_sha256": "3fae1ea3980cf97de8ec365686536ead06855acd56703e9360176e7c13f0cb95"
+    "restore_pending": false,
+    "restore_marker_sha256": "3fae1ea3980cf97de8ec365686536ead06855acd56703e9360176e7c13f0cb95",
+    "restoration_complete": false,
+    "restoration_requested": false,
+    "restoration_requirement_waived_by_user": "2026-10-31"
   },
   "scene_data_committed": false,
   "resource_retirement_tested": false,
   "continuous_jpeg_tested": false,
-  "cold_power_tested": false
+  "cold_power_tested": false,
+  "rebased_physical_validation": false
 }
