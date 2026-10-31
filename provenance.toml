@@ -267,3 +267,27 @@ revision = "803b7e23ec97ae58b6232ea76519a76d428ba268"
 license = "OFL-1.1; src/graphics/ascii/SourceCodePro-LICENSE.md"
 status = "generated-font-subset"
 use = "Reproducible tools/console/subset-xy-code-font.py output, internally renamed for Reserved Font Name compliance; 10184 bytes; SHA256 ee39fa00b97ff67bf445bd8b4629ebfb313f53d13e6b85583ae77779413d6324; all printable ASCII masks/metrics checked against original at four sizes in both axes"
+
+[[source]]
+name = "Natsume Soseki: Kusamakura (Aozora Bunko)"
+url = "https://www.aozora.gr.jp/cards/000148/files/776_14941.html"
+revision = "2011-05-21; SHA256 in third_party/xy-reading/sources.json"
+license = "Text public domain in Japan; Aozora transcription and bibliography retained"
+status = "vendored-reading-text"
+use = "All 13 chapters in the offline xy reading pack. HTML ruby becomes UTF-8 byte spans; JIS X 0213 gaiji become Unicode. Attribution is in the app and third_party/xy-reading/NOTICE.md."
+
+[[source]]
+name = "SICP Second Edition: Scheme excerpts via Source Academy"
+url = "https://github.com/source-academy/sicp"
+revision = "35b1a2274eec60046772dd0a4ea80021369226fc"
+license = "CC-BY-SA-4.0; third_party/xy-reading/CC-BY-SA-4.0.txt"
+status = "vendored-reading-excerpts"
+use = "Sections 1.1, 1.1.1, 1.2.1, attributed to Harold Abelson, Gerald Jay Sussman with Julie Sussman. Scheme-side XML is converted to text with code preserved and formulas flattened. Derived SICP text retains CC BY-SA 4.0; it is not relicensed as MIT."
+
+[[source]]
+name = "Bunsen Mincho and Gothic xy reading subsets"
+url = "https://github.com/masanork/gjs"
+revision = "Input and output SHA256 in assets/xy/fonts/manifest.json"
+license = "CC0-1.0; assets/xy/fonts/CC0.txt"
+status = "generated-host-reading-fonts"
+use = "tools/fonts/build-xy-reader.py creates offline sample coverage from the original regular Bunsen faces. The app uses these paged readers with the common Zig rasterizer. The native ROM recovery fonts remain unchanged."

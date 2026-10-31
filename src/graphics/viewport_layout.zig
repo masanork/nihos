@@ -242,6 +242,24 @@ pub fn layoutParagraph(
     glyf_scratch: []u8,
     out_display_list: []PlacedGlyph,
 ) Error![]PlacedGlyph {
+    return layoutParagraphWithWordWrap(max_glyphs, max_body_bytes, max_ruby_bytes, CacheType, cache, family, view, body_text, ruby_text, annotations, glyf_scratch, out_display_list, false);
+}
+
+pub fn layoutParagraphWithWordWrap(
+    comptime max_glyphs: usize,
+    comptime max_body_bytes: usize,
+    comptime max_ruby_bytes: usize,
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    view: ViewStyle,
+    body_text: []const u8,
+    ruby_text: []const u8,
+    annotations: []const ruby.Annotation,
+    glyf_scratch: []u8,
+    out_display_list: []PlacedGlyph,
+    comptime wrap_words: bool,
+) Error![]PlacedGlyph {
     if (body_text.len == 0 or body_text.len > max_body_bytes or ruby_text.len > max_ruby_bytes)
         return error.Capacity;
 
@@ -266,7 +284,7 @@ pub fn layoutParagraph(
     var body_map: [max_body_bytes + 1]policy.Boundary = undefined;
     var shaped: [max_glyphs]ShapedGlyph = undefined;
     // Body shaping must not overwrite ruby glyphs stored in the same array.
-    var ruby_shaped: [@min(max_glyphs / 2, 128)]ShapedGlyph = undefined;
+    var ruby_shaped: [@min(max_glyphs / 2, 512)]ShapedGlyph = undefined;
 
     const ruby_count = try shapeRun(
         CacheType,
@@ -306,6 +324,8 @@ pub fn layoutParagraph(
                 shaped[0 .. max_glyphs - ruby_count],
             );
 
+            if (wrap_words) keepWords(shaped[0..body_count], body_map[0 .. para_slice.len + 1], inline_limit_26_6, is_vert);
+
             // Copy only ruby annotations belonging to `[p_start, p_end)`
             var local_anns: [64]ruby.Annotation = undefined;
             var local_ann_count: usize = 0;
@@ -323,8 +343,10 @@ pub fn layoutParagraph(
             // Append ruby glyphs after `shaped[0..body_count]` when annotations exist in this paragraph
             var para_total = body_count;
             var para_ruby_bytes: usize = 0;
+            var para_ruby_start: u32 = 0;
             if (local_ann_count > 0) {
                 const ruby_start = local_anns[0].ruby.start;
+                para_ruby_start = ruby_start;
                 const ruby_end = local_anns[local_ann_count - 1].ruby.end;
                 if (ruby_end < ruby_start or ruby_end > ruby_text.len) return error.Range;
                 para_ruby_bytes = ruby_end - ruby_start;
@@ -398,7 +420,7 @@ pub fn layoutParagraph(
                 out_display_list[total_emitted] = .{
                     .base_cp = g.base_cp,
                     .ivs_cp = g.ivs_cp,
-                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster,
+                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster + para_ruby_start,
                     .run = @intCast(g.run),
                     .style_id = view.style_id,
                     .px_size = g.px_size,
@@ -436,9 +458,55 @@ pub fn layoutParagraph(
     return out_display_list[0..total_emitted];
 }
 
+// Keep Latin words together in prose, including attached sideways punctuation
+// in vertical text. Overlong identifiers retain grapheme-level emergency breaks.
+fn keepWords(glyphs: []const ShapedGlyph, boundaries: []policy.Boundary, limit: i32, vertical: bool) void {
+    var start: usize = 0;
+    while (start < glyphs.len) {
+        const cp = glyphs[start].base_cp;
+        if (!(if (vertical) ttf.isSideways(cp) else cp < 128 and std.ascii.isAlphanumeric(@intCast(cp)))) {
+            start += 1;
+            continue;
+        }
+        var end = start + 1;
+        var advance: i64 = if (vertical) -glyphs[start].y_advance else glyphs[start].x_advance;
+        while (end < glyphs.len) : (end += 1) {
+            const next = glyphs[end].base_cp;
+            if (vertical) {
+                if (!ttf.isSideways(next)) break;
+            } else if (next >= 128 or !(std.ascii.isAlphanumeric(@intCast(next)) or next == '\'' or next == '_')) break;
+            advance += if (vertical) -glyphs[end].y_advance else glyphs[end].x_advance;
+        }
+        if (advance <= limit) {
+            for (glyphs[start + 1 .. end]) |g| boundaries[g.cluster].allowed = false;
+        }
+        start = end;
+    }
+}
+
 // ============================================================================
 // Unit Tests
 // ============================================================================
+
+test "sideways words use horizontal advances and wrap together into the next column" {
+    const face = try code_font.face();
+    const family = ttf.Family{ .faces = &.{face} };
+    const Cache = ttf.TwoTierCache(8, 1024, 16, 64 * 64);
+    var cache: Cache = .{};
+    var scratch: [16384]u8 = undefined;
+    var placed: [32]PlacedGlyph = undefined;
+    const style = ViewStyle{ .body_px = 20, .ruby_px = 10, .axis = 1, .viewport_width_px = 256, .viewport_height_px = 140 };
+    const list = try layoutParagraphWithWordWrap(32, 128, 0, Cache, &cache, family, style, "abc defghij", "", &.{}, &scratch, &placed, true);
+    try std.testing.expectEqual(@as(usize, 11), list.len);
+    try std.testing.expectEqual(@as(u16, 12), list[0].advance_px);
+    try std.testing.expectEqual(list[0].cell_y_px + 12, list[1].cell_y_px);
+    try std.testing.expect(list[4].cell_x_px < list[0].cell_x_px);
+    try std.testing.expectEqual(@as(i32, style.margin_y_px), list[4].cell_y_px);
+    for (list[5..], 5..) |g, i| {
+        try std.testing.expectEqual(list[4].cell_x_px, g.cell_x_px);
+        try std.testing.expectEqual(list[i - 1].cell_y_px + 12, g.cell_y_px);
+    }
+}
 
 test "ClusterIterator groups IVS and composes combining dakuten" {
     // "か" (U+304B) + U+3099 -> "が" (U+304C), followed by "葛" (U+845B) + IVS U+E0100

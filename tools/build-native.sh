@@ -80,10 +80,28 @@ defaults="$repo_root/ports/esp32p4-native/sdkconfig.defaults"
 if [ "$profile" = emulator ]; then
     defaults="$defaults;$repo_root/sdkconfig.emulator.defaults"
 fi
+if [ "$mode" = integer ] && { [ "${NIHOS_NATIVE_XY_WORKSPACE:-0}" = 1 ] || [ "${NIHOS_NATIVE_CANVAS_INTERACTIVE:-0}" = 1 ]; }; then
+    printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
+        "$repo_root/ports/esp32p4-native/partitions-xy.csv" > "$build_dir/xy.defaults"
+    defaults="$defaults;$build_dir/xy.defaults"
+fi
 if [ "$mode" = graphics ]; then
     printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
         "$repo_root/ports/esp32p4-native/partitions-graphics.csv" > "$build_dir/graphics.defaults"
     defaults="$defaults;$build_dir/graphics.defaults"
+fi
+# SDKCONFIG_DEFAULTS does not replace an existing generated configuration.
+# Select the same bounded factory profile on incremental builds as clean builds.
+if [ -f "$boot_dir/sdkconfig" ] && [ -f "$build_dir/xy.defaults" ] && { [ "${NIHOS_NATIVE_XY_WORKSPACE:-0}" = 1 ] || [ "${NIHOS_NATIVE_CANVAS_INTERACTIVE:-0}" = 1 ]; }; then
+    "$python" - "$boot_dir/sdkconfig" "$repo_root/ports/esp32p4-native/partitions-xy.csv" <<'PYCONFIG'
+import sys
+from pathlib import Path
+path=Path(sys.argv[1])
+keys=('CONFIG_PARTITION_TABLE_SINGLE_APP','CONFIG_PARTITION_TABLE_CUSTOM','CONFIG_PARTITION_TABLE_CUSTOM_FILENAME')
+lines=[line for line in path.read_text().splitlines() if not any(line.startswith(key+'=') or line.startswith('# '+key+' ') for key in keys)]
+lines+=['# CONFIG_PARTITION_TABLE_SINGLE_APP is not set','CONFIG_PARTITION_TABLE_CUSTOM=y','CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="'+sys.argv[2]+'"']
+path.write_text('\n'.join(lines)+'\n')
+PYCONFIG
 fi
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \

@@ -11,6 +11,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import <ImageIO/ImageIO.h>
+#import <WebKit/WebKit.h>
 #include <fcntl.h>
 #include <sqlite3.h>
 #include "nihos_xy_workspace.h"
@@ -280,6 +281,12 @@ static int workspace_cli(int argc, const char **argv) {
     return ok ? 0 : 1;
 }
 
+typedef struct { uint32_t base_start, base_end, ruby_start, ruby_end; } XyReaderRuby;
+extern bool xy_host_reader_enter(void);
+extern bool xy_host_document_load(const uint8_t *, uint32_t);
+extern void xy_host_reader_leave(void);
+extern int32_t xy_host_reader_load(const uint8_t *, uint32_t, const uint8_t *, uint32_t, const XyReaderRuby *, uint32_t);
+
 // ============================================================================
 // Paged POSIX `pread` Font Reader with I/O Accounting
 // ============================================================================
@@ -505,6 +512,20 @@ static void eval_sexp_checked(const char *sexp) {
     bool _selectAll;
     NSData *_sourceDraft;
     NSString *_workspaceMessage;
+    NSView *_home, *_readingBar;
+    NSButton *_resumeReadingButton;
+    NSTextField *_readingTitle;
+    NSArray *_library;
+    NSSegmentedControl *_directionPicker;
+    NSPopUpButton *_sizePicker, *_familyPicker, *_themePicker, *_chapterPicker;
+    BOOL _reading, _documentDirty;
+    NSURL *_documentURL;
+    NSDictionary *_readingItem;
+    NSData *_readingText;
+    NSArray *_readingRuby;
+    NSInteger _chapterIndex;
+    NSUInteger _readingStart, _readingEnd;
+    NSMutableArray<NSNumber *> *_pageStarts;
 }
 - (instancetype)initWithFrame:(NSRect)frameRect width:(uint32_t)w height:(uint32_t)h;
 - (IBAction)toggleDirection:(id)sender;
@@ -521,10 +542,32 @@ static void eval_sexp_checked(const char *sexp) {
 - (IBAction)restoreSource:(id)sender;
 - (IBAction)reloadSource:(id)sender;
 - (NSData *)currentBuffer;
+- (void)installHomeIn:(NSView *)root;
+- (void)loadReadingChapter;
+- (BOOL)layoutReadingPage;
+- (void)saveDisplayPreferences;
+- (void)syncHomeSettings;
+- (void)leaveReader;
+- (void)setReadingChrome:(BOOL)reading;
+- (BOOL)saveDocument;
+- (BOOL)confirmDocumentReplacement;
+- (IBAction)showHome:(id)sender;
+- (IBAction)resumeDocument:(id)sender;
+- (IBAction)resumeReading:(id)sender;
+- (IBAction)newDocument:(id)sender;
+- (IBAction)openDocument:(id)sender;
+- (IBAction)selectHomeBook:(id)sender;
+- (IBAction)homeSettingsChanged:(id)sender;
+- (IBAction)nextPage:(id)sender;
+- (IBAction)previousPage:(id)sender;
+- (IBAction)selectChapter:(id)sender;
+- (IBAction)showAttribution:(id)sender;
+- (void)showReadingFigures;
 
 @end
 
 @implementation XyCanvasView
+#include "xy_home.inc"
 
 - (instancetype)initWithFrame:(NSRect)frameRect width:(uint32_t)w height:(uint32_t)h {
     self = [super initWithFrame:frameRect];
@@ -537,6 +580,11 @@ static void eval_sexp_checked(const char *sexp) {
         _is_vertical = true;
         _is_gothic = false;
         _font_size = 32;
+        NSDictionary *prefs=[[NSUserDefaults standardUserDefaults] dictionaryForKey:@"xy.home.display.v1"];
+        if (prefs && [@[@16,@20,@24,@28,@32,@36,@40,@48,@56,@64] containsObject:prefs[@"size"]]) {
+            _font_size=[prefs[@"size"] unsignedCharValue]; _is_vertical=[prefs[@"vertical"] boolValue];
+            _is_gothic=[prefs[@"gothic"] boolValue]; _theme_id=[prefs[@"theme"] boolValue];
+        }
     }
     return self;
 }
@@ -557,6 +605,12 @@ static void eval_sexp_checked(const char *sexp) {
         _editingSource ? 6 : _font_size / 2
     );
     eval_sexp_checked(cmd);
+    for (NSView *child in self.superview.subviews) if ([child isKindOfClass:[NSButton class]]) {
+        NSButton *button=(NSButton *)child;
+        if (button.action==@selector(applySource:)) button.title=_editingSource ? @"Apply & Save (⌘S)" : @"文書を保存 (⌘S)";
+    }
+    if (!_editingSource) { [self saveDisplayPreferences]; [self syncHomeSettings]; }
+    if (_reading) [self layoutReadingPage];
     [self setNeedsDisplay:YES];
     [[self window] makeFirstResponder:self];
 }
@@ -588,6 +642,7 @@ static void eval_sexp_checked(const char *sexp) {
 - (IBAction)toggleTheme:(id)sender {
     (void)sender;
     _theme_id = (_theme_id == 0) ? 1 : 0;
+    [self saveDisplayPreferences]; [self syncHomeSettings];
     eval_sexp_checked(_theme_id ? "(view/set! #:theme 'dark)" : "(view/set! #:theme 'light)");
     [self setNeedsDisplay:YES];
     [[self window] makeFirstResponder:self];
@@ -595,6 +650,7 @@ static void eval_sexp_checked(const char *sexp) {
 
 - (IBAction)demoIvsOmni:(id)sender {
     (void)sender;
+    if (_reading || !_home.hidden) return;
     xy_host_handle_key(0x1B); // Reset any active state
     xy_host_handle_key('~');
     xy_host_feed_utf8_reading((const uint8_t *)"葛", 3);
@@ -605,6 +661,7 @@ static void eval_sexp_checked(const char *sexp) {
 
 - (IBAction)demoIdsOmni:(id)sender {
     (void)sender;
+    if (_reading || !_home.hidden) return;
     xy_host_handle_key(0x1B);
     xy_host_handle_key('&');
     xy_host_feed_utf8_reading((const uint8_t *)"相心", 6);
@@ -615,7 +672,9 @@ static void eval_sexp_checked(const char *sexp) {
 
 - (IBAction)undoEdit:(id)sender {
     (void)sender;
+    if (_reading || !_home.hidden) return;
     eval_sexp_checked("(buffer/undo!)");
+    if (!_editingSource) _documentDirty=YES;
     [self setNeedsDisplay:YES];
     [[self window] makeFirstResponder:self];
 }
@@ -638,6 +697,8 @@ static void eval_sexp_checked(const char *sexp) {
 }
 - (IBAction)editSource:(id)sender {
     (void)sender;
+    if (_reading) [self leaveReader];
+    _home.hidden=YES;
     if (_editingSource) {
         _sourceDraft = [self currentBuffer];
         xy_host_source_leave();
@@ -662,7 +723,8 @@ static void eval_sexp_checked(const char *sexp) {
 }
 - (IBAction)applySource:(id)sender {
     (void)sender;
-    NSData *source = _editingSource ? [self currentBuffer] : _sourceDraft;
+    if (!_editingSource) { [self saveDocument]; return; }
+    NSData *source = [self currentBuffer];
     if (!source) { [self workspaceNotice:@"Open Source (⌘E) to edit user/init.scm first." error:NO]; return; }
     bool ok = workspace_apply([source bytes], (uint32_t)[source length]);
     if (ok) _sourceDraft = source;
@@ -681,11 +743,13 @@ static void eval_sexp_checked(const char *sexp) {
     [[alert window] setInitialFirstResponder:input];
     if ([alert runModal] != NSAlertFirstButtonReturn) return;
     // Preserve an unfinished source draft and run commands against the document.
+    if (_reading) [self resumeDocument:nil];
     if (_editingSource) [self editSource:nil];
     const char *name = [[input stringValue] UTF8String];
     uint8_t out[256];
     int32_t n = xy_host_live_run((const uint8_t *)name, (uint32_t)strlen(name), true, out, sizeof(out));
     if (n < 0) workspace_scheme_error();
+    else _documentDirty=YES;
     NSString *message = n < 0 ? [NSString stringWithUTF8String:g_workspace_status] :
         [NSString stringWithFormat:@"%@: %@", [input stringValue], [[NSString alloc] initWithBytes:out length:(NSUInteger)n encoding:NSUTF8StringEncoding]];
     [self workspaceNotice:message error:n < 0];
@@ -706,6 +770,9 @@ static void eval_sexp_checked(const char *sexp) {
 - (BOOL)windowShouldClose:(NSWindow *)sender {
     (void)sender;
     if (![self confirmDiscardSource]) return NO;
+    if (_reading) [self leaveReader];
+    if (_editingSource) [self editSource:nil];
+    if (![self confirmDocumentReplacement]) return NO;
     [NSApp stop:nil];
     return YES;
 }
@@ -714,14 +781,14 @@ static void eval_sexp_checked(const char *sexp) {
     NSWindow *window = [self window];
     CGFloat scale = [window backingScaleFactor];
     if (scale <= 0) return;
-    CGFloat viewHeight = _fb_height / scale;
+    CGFloat viewHeight = MAX(500, _fb_height / scale);
     CGFloat delta = viewHeight - NSHeight([self frame]);
-    CGFloat width = MAX(960, _fb_width / scale);
+    CGFloat width = MAX(1040, _fb_width / scale);
     NSView *root = [window contentView];
     [window setContentSize:NSMakeSize(width, viewHeight + 76)];
     [root setFrameSize:NSMakeSize(width, viewHeight + 76)];
     for (NSView *child in [root subviews]) {
-        if (child == self) continue;
+        if (child == self || child == _home || child == _readingBar) continue;
         NSRect frame = [child frame]; frame.origin.y += delta; [child setFrame:frame];
     }
     [self setFrameSize:NSMakeSize(width, viewHeight)];
@@ -729,7 +796,10 @@ static void eval_sexp_checked(const char *sexp) {
 }
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     (void)sender;
-    return [self confirmDiscardSource] ? NSTerminateNow : NSTerminateCancel;
+    if (![self confirmDiscardSource]) return NSTerminateCancel;
+    if (_reading) [self leaveReader];
+    if (_editingSource) [self editSource:nil];
+    return [self confirmDocumentReplacement] ? NSTerminateNow : NSTerminateCancel;
 }
 - (IBAction)reloadSource:(id)sender {
     (void)sender;
@@ -771,9 +841,11 @@ static void eval_sexp_checked(const char *sexp) {
     [self workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:!ok];
 }
 - (void)insertRawText:(NSString *)text {
+    if (_reading || !_home.hidden) return;
     NSData *bytes = [text dataUsingEncoding:NSUTF8StringEncoding];
     bool ok = bytes && (_selectAll ? xy_host_buffer_replace([bytes bytes], (uint32_t)[bytes length]) : xy_host_insert_text([bytes bytes], (uint32_t)[bytes length]));
     _selectAll = false;
+    if (ok && !_editingSource) _documentDirty=YES;
     if (ok && _editingSource) _workspaceMessage = @"Source draft changed — Apply & Save (⌘S).";
     if (!ok) [self workspaceNotice:@"Text could not be inserted (invalid input or buffer/undo capacity)." error:YES];
     [self setNeedsDisplay:YES];
@@ -785,16 +857,21 @@ static void eval_sexp_checked(const char *sexp) {
         NSString *chars = [event charactersIgnoringModifiers];
         if ([chars length] > 0) {
             unichar c = [chars characterAtIndex:0];
+            if (c == 'q' || c == 'Q') { [NSApp terminate:nil]; return YES; }
+            if (c == '0') { [self showHome:nil]; return YES; }
+            if (c == 'n' || c == 'N') { [self newDocument:nil]; return YES; }
+            if (c == 'o' || c == 'O') { [self openDocument:nil]; return YES; }
             if (c == 'l' || c == 'L') { [self reloadSource:nil]; return YES; }
             if (c == 'e' || c == 'E') { [self editSource:nil]; return YES; }
             if (c == 's' || c == 'S') { [self applySource:nil]; return YES; }
             if (c == 'r' || c == 'R') { [self runCommand:nil]; return YES; }
             if (c == 'b' || c == 'B') { [self restoreSource:nil]; return YES; }
-            if (c == 'a' || c == 'A') { _selectAll = true; [self workspaceNotice:@"Entire buffer selected — type or paste to replace." error:NO]; return YES; }
+            if (c == 'a' || c == 'A') { if (_reading || !_home.hidden) return YES; _selectAll = true; [self workspaceNotice:@"Entire buffer selected — type or paste to replace." error:NO]; return YES; }
             if (c == 'v' || c == 'V') {
                 NSString *text = [[NSPasteboard generalPasteboard] stringForType:NSPasteboardTypeString];
                 if (text) [self insertRawText:text]; return YES;
             }
+            if (!_home.hidden) return YES;
             if (c == '1') { [self toggleDirection:nil]; return YES; }
             if (c == '2') { [self toggleFontFamily:nil]; return YES; }
             if (c == '3' || c == '-') { [self decreaseFontSize:nil]; return YES; }
@@ -809,6 +886,13 @@ static void eval_sexp_checked(const char *sexp) {
 
 - (void)keyDown:(NSEvent *)event {
     unsigned short keyCode = [event keyCode];
+    if (!_home.hidden) return;
+    if (_reading) {
+        if (keyCode==53) { [self showHome:nil]; return; }
+        if (keyCode==123 || keyCode==126 || keyCode==116) [self previousPage:nil];
+        if (keyCode==124 || keyCode==125 || keyCode==121 || keyCode==49) [self nextPage:nil];
+        return;
+    }
     // F1..F5 also supported if Fn is pressed
     if (keyCode == 122) { [self toggleDirection:nil]; return; }
     if (keyCode == 120) { [self toggleFontFamily:nil]; return; }
@@ -846,7 +930,7 @@ static void eval_sexp_checked(const char *sexp) {
     if (len == 1) {
         uint8_t ch = (uint8_t)utf8[0];
         if (ch == 0x7F) ch = 0x08; // Backspace
-        xy_host_handle_key(ch);
+        if (xy_host_handle_key(ch)) _documentDirty=YES;
     } else {
         // Multi-byte UTF-8 character input (e.g. macOS IME or paste)
         [self insertRawText:chars];
@@ -857,7 +941,7 @@ static void eval_sexp_checked(const char *sexp) {
 - (void)drawRect:(NSRect)dirtyRect {
     (void)dirtyRect;
     if (_workspaceMessage) {
-        NSString *line = [NSString stringWithFormat:@"%@ r%lld: %@", _editingSource ? @"user/init.scm" : @"Document", (long long)g_workspace_revision, _workspaceMessage];
+        NSString *line = _reading ? _workspaceMessage : [NSString stringWithFormat:@"%@ r%lld: %@", _editingSource ? @"user/init.scm" : @"Document", (long long)g_workspace_revision, _workspaceMessage];
         NSData *bytes = [line dataUsingEncoding:NSUTF8StringEncoding];
         if ([bytes length] <= 256) xy_host_set_status([bytes bytes], (uint32_t)[bytes length]);
     }
@@ -885,9 +969,9 @@ static void eval_sexp_checked(const char *sexp) {
     const CGFloat pointWidth = NSWidth([self bounds]);
     NSRect backingBounds = [self convertRectToBacking:[self bounds]];
     NSRect targetPixels = NSMakeRect(floor((NSWidth(backingBounds) - _fb_width) / 2),
-        0, _fb_width, _fb_height);
+        floor((NSHeight(backingBounds) - _fb_height) / 2), _fb_width, _fb_height);
     NSRect canvasRect = [self convertRectFromBacking:targetPixels];
-    [[NSColor colorWithCalibratedWhite:0.12 alpha:1] setFill];
+    [[NSColor colorWithCalibratedWhite:_theme_id ? 0.10 : 0.91 alpha:1] setFill];
     NSRectFill(NSMakeRect(0, 0, pointWidth, NSHeight([self bounds])));
     CGContextSetInterpolationQuality(viewCtx, kCGInterpolationNone);
     CGContextSetShouldAntialias(viewCtx, false);
@@ -930,6 +1014,19 @@ int main(int argc, const char **argv) {
     (void)font_dir;
 
     bool external_fonts = true;
+    NSString *resourceRoot=[[NSBundle mainBundle] resourcePath];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[resourceRoot stringByAppendingPathComponent:@"fonts/BunsenMincho-Regular.ttf"]])
+        resourceRoot=[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent];
+    bool bundled_fonts = [[NSFileManager defaultManager] fileExistsAtPath:[resourceRoot stringByAppendingPathComponent:@"fonts/BunsenMincho-Regular.ttf"]];
+    NSString *bundledMincho[3], *bundledGothic[3];
+    NSArray *layers=@[@"",@"Ext",@"PUP"];
+    for (int i=0;i<3;i++) {
+        bundledMincho[i]=[resourceRoot stringByAppendingPathComponent:[NSString stringWithFormat:@"fonts/BunsenMincho%@-Regular.ttf",layers[i]]];
+        bundledGothic[i]=[resourceRoot stringByAppendingPathComponent:[NSString stringWithFormat:@"fonts/BunsenGothic%@-Regular.ttf",layers[i]]];
+        // Packaged sample coverage makes the app independent of the developer's font directory.
+        if ([[NSFileManager defaultManager] fileExistsAtPath:bundledMincho[i]]) mincho_paths[i]=bundledMincho[i].fileSystemRepresentation;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:bundledGothic[i]]) gothic_paths[i]=bundledGothic[i].fileSystemRepresentation;
+    }
     FontFileCtx mincho_ctxs[3];
     CSliceReaderDesc mincho_descs[3];
     FontFileCtx gothic_ctxs[3];
@@ -960,7 +1057,7 @@ int main(int argc, const char **argv) {
 
     uint64_t init_calls_before = g_pread_calls;
     uint64_t init_bytes_before = g_pread_bytes;
-    if (!xy_host_init(mincho_descs, external_fonts ? 3 : 0, gothic_descs, external_fonts ? 3 : 0)) {
+    if (!xy_host_init(mincho_descs, bundled_fonts ? 1 : (external_fonts ? 3 : 0), gothic_descs, bundled_fonts ? 1 : (external_fonts ? 3 : 0))) {
         fprintf(stderr, "xy_host_init failed!\n");
         return 1;
     }
@@ -1084,21 +1181,22 @@ int main(int argc, const char **argv) {
         const CGFloat statusH = 0.0;
         CGFloat backingScale = [[NSScreen mainScreen] backingScaleFactor];
         if (backingScale <= 0) backingScale = 1;
-        const CGFloat canvasH = H / backingScale;
-        const CGFloat windowW = MAX(960, W / backingScale);
+        const CGFloat canvasH = MAX(500, H / backingScale);
+        const CGFloat windowW = MAX(1040, W / backingScale);
         NSRect winRect = NSMakeRect(120, 120, windowW, canvasH + toolbarH + statusH);
         NSWindow *window = [[NSWindow alloc]
             initWithContentRect:winRect
                       styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable)
                         backing:NSBackingStoreBuffered
                           defer:NO];
-        [window setTitle:@"xy — 1280×720 pixel host · Source Code Pro / Bunsen"];
+        [window setTitle:@"xy — ホーム"];
 
         NSView *root = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, windowW, canvasH + toolbarH + statusH)];
         XyCanvasView *view = [[XyCanvasView alloc] initWithFrame:NSMakeRect(0, 0, windowW, canvasH + statusH) width:W height:H];
         [root addSubview:view];
         struct { NSString *title; SEL action; CGFloat width; } workspaceBtns[] = {
-            { @"Source (⌘E)", @selector(editSource:), 140 },
+            { @"ホーム (⌘0)", @selector(showHome:), 120 },
+            { @"Source (⌘E)", @selector(editSource:), 130 },
             { @"Apply & Save (⌘S)", @selector(applySource:), 180 },
             { @"Run Command (⌘R)", @selector(runCommand:), 190 },
             { @"History (⌘B)", @selector(restoreSource:), 140 },
@@ -1138,6 +1236,9 @@ int main(int argc, const char **argv) {
             bx += btns[i].width + 6.0;
         }
 
+        [view installHomeIn:root];
+        [view applyViewSettings];
+        [view showHome:nil];
         [window setDelegate:view];
         [NSApp setDelegate:view];
         [window setContentView:root];

@@ -1,5 +1,8 @@
 //! ASCII shell/menu input. Boot diagnostic keys keep their separate decoder.
 const std = @import("std");
+pub const ui_section = if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata";
+const shifted_digits linksection(ui_section) = "!@#$%^&*()".*;
+const plain_digits linksection(ui_section) = "1234567890".*;
 pub const Key = union(enum) { text: u8, enter, backspace, left, right, up, down, escape, cancel, eof, clear, undo };
 
 /// C transports return -1 when empty, otherwise a byte. Validate the foreign
@@ -26,7 +29,7 @@ pub const Hid = struct {
         };
         const shift = modifiers & 0x22 != 0;
         if (usage >= 4 and usage <= 29) return .{ .text = (if (shift != self.caps) @as(u8, 'A') else @as(u8, 'a')) + usage - 4 };
-        if (usage >= 30 and usage <= 39) return .{ .text = (if (shift) "!@#$%^&*()" else "1234567890")[usage - 30] };
+        if (usage >= 30 and usage <= 39) return .{ .text = (if (shift) &shifted_digits else &plain_digits)[usage - 30] };
         return switch (usage) {
             0x28, 0x58 => .enter,
             0x29 => .escape,

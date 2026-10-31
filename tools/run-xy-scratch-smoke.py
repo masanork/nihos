@@ -128,13 +128,16 @@ def main():
         assert read_state('scheme-recovered')['text'] == 'base!'
         evaluate(b"(view/set! #:size 36 #:font 'gothic #:foreground #x123456)")
         command(2, 0x06, 1)  # Ctrl-C: leave transient result before comparing pixels.
+        serial(b'n')  # Resume the document from Home.
         configured = read_state('view-configured', True)
         assert configured['text'] == 'base!'
         evaluate(b'(view/set! #:size 48 #:foreground -1)')
         command(2, 0x06, 1)
+        serial(b'n')
         assert read_state('view-rejected', True)['pixel_sha256'] == configured['pixel_sha256']
         evaluate(b'(sys/config-rollback!)')
         command(2, 0x06, 1)
+        serial(b'n')
         read_state('view-rollback', True)
         command(5)
         serial('日本語表示 あいうえお\r\n青空文庫'.encode())
