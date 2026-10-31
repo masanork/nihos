@@ -1,0 +1,27 @@
+{
+  "source_commit": "13ebd63d8fc020239d59db1879e38e40acfd9004",
+  "compiled_code_commit": "6b06e7fec3bb52823f1e368b8710a1488054df6b",
+  "base_main": "980f522a3575c3922b956bf97f46a228b557070d",
+  "qualification": "headless RV32 emulator; simulated polling; no camera/network/physical run",
+  "candidate": {
+    "nihos-native-image.elf": "c16c0e3cf7993a17ed292e8ddd4a188d84be6cd7182e8c579df133a152c28efa",
+    "nihos-native-flash.bin": "58a8594660024f54255313e8e63f582363a38f74fa4c1623db467a99cad75cb3"
+  },
+  "start_gate": "six recorded begin_us values checked against 100000 us after run",
+  "evidence_sha256": {
+    "cancel.log": "1b65eac7523b748c1a53699e6e5a20c458bd14a6e27472cbf98ffc6a7348d1b0",
+    "early-quit.log": "3df2e90a3c65e231ee1deed1fa0cac304966d8e80a152b87ebc9f18202bfcfa2",
+    "image-audit-wamr.json": "711c7d804ff1377632015a4aecd6489910fa2b3a61313134f51e721428e142fd",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "metered-trap.log": "3a4f481927fbb69ff0677130365ce9de277e2960bc7e44ce74fd82dacd2b3531",
+    "native-regression.log": "dd973e1c845fe2ceeed684fe4a3bc13b41d1d283f5b1f125a43c4b15382f5b7d",
+    "noinput.log": "f17e59c8736ddf78e0ddef87443f6c4010232cbf35debb5a5568121feb651126",
+    "normal.log": "0a1b8e2587a4d8390f6d906ac36df58d055ef269718ce36342e229a741cb9d32",
+    "present-failure.log": "85d9f30ba4b9df0ada08a752602852ef00772797a1d19962eb221c92a1c6f564",
+    "python.log": "43e6891a887ecf6345f2fbe72d83a4ee67fc3ddfebad94e9c1aaa77838323871",
+    "report.json": "e6e857817d15b614676a833a59b1be3df462b5a6abff472f4eac10a9139dd5c7",
+    "safe.log": "43b3f069f3bbac68a58424cd4e6701f4f0bb306b436d0273a84a1bc2f24bc8f7",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "unit.log": "71e5028967bd4204560ec10160f81c7991a9aa342b1115b48162c86dd714391b"
+  }
+}

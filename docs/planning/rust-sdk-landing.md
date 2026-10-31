@@ -105,11 +105,13 @@ The normal UI backend selector and physical presenter remain open.
    the foreground network/camera loop while waiting; measure that latency
    explicitly before allowing a camera/display device profile. In the headless
    emulator, synchronous signed-package open takes about 2.17 seconds of
-   emulated timer time, so implement nonblocking startup and exercise foreground
+   emulated timer time, so require nonblocking startup and exercise foreground
    camera/network progress before connecting this backend to the normal UI.
-   The host-tested `src/app/async_start.zig` policy now specifies cancellation,
-   generation matching and reap-before-release; it is not yet connected to the
-   WAMR worker or foreground service loop.
+   The headless RV32 fixture now connects `src/app/async_start.zig` to the
+   real WAMR worker: open is submitted and polled, and cancellation waits for
+   close and reap before releasing the pin. It exercises foreground polling,
+   not the actual camera/network service loop. Initial frame rendering and
+   ordinary session shutdown remain synchronous.
    Both hart timers continue during the tested requests and cooperative shutdown.
    See the [request latency measurement](../measurements/2026-10-31-wasm-session-latency.md).
 2. **Runtime decision and candidate profile.** Resolve the WAMR alignment
