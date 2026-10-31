@@ -62,6 +62,8 @@ export fn nih_wasm_session_receive(command: *mailbox.Command) callconv(.c) i32 {
     }
 }
 export fn nih_wasm_session_complete(id: u32, status: i32) callconv(.c) void {
+    // Emulator fault injection: exercise worker exit before close acknowledgement.
+    if (fault == 5 and box.request.operation == 3) return;
     if (!box.complete(id, status)) @panic("invalid Wasm response");
 }
 fn entry(argument: u32) callconv(.c) i32 {
@@ -171,10 +173,14 @@ pub fn pollAsync() ?i32 {
             const action = async_policy.opened(generation, result) orelse @panic("async open");
             if (action == .publish_ready) {
                 engine_open = true;
-                const status = app.start(&owner);
+                var status = app.start(&owner);
                 // If frame allocation failed before Session opened the backend,
                 // Session could not close the already initialized worker.
-                if (status != 0 and backing != null and close(null) != 0) return -90;
+                if (status != 0 and backing != null and close(null) != 0) status = -90;
+                if (status != 0) {
+                    async_policy.phase = .done;
+                    async_policy.result = status;
+                }
                 return status;
             }
             if (action == .start_close) {
@@ -184,7 +190,10 @@ pub fn pollAsync() ?i32 {
             return null;
         },
         .closing => {
-            const result = box.collect(async_id) orelse return null;
+            const result = box.collect(async_id) orelse blk: {
+                completion = tasks.finishWasm() orelse return null;
+                break :blk -90;
+            };
             _ = async_policy.closed(generation, result) orelse @panic("async close");
             return null;
         },

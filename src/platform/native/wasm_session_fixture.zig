@@ -61,7 +61,7 @@ pub fn asyncProbe() bool {
         }
         tasks.idleOnce(0);
     }
-    if (app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+    if (app.pollAsync() != -41 or app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
         (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
     app.setFault(3);
     if (app.beginAsync(&present) != 0) return false;
@@ -72,7 +72,18 @@ pub fn asyncProbe() bool {
         }
         tasks.idleOnce(0);
     }
-    if (app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+    if (app.pollAsync() != -4 or app.active() or app.observed.reaped != 1 or app.observed.recovered != 1 or
+        (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
+    app.setFault(5);
+    if (app.beginAsync(&present) != 0 or !app.cancelAsync()) return false;
+    while (true) {
+        if (app.pollAsync()) |status| {
+            if (status != -90) return false;
+            break;
+        }
+        tasks.idleOnce(0);
+    }
+    if (app.pollAsync() != -90 or app.observed.reaped != 1 or app.observed.recovered != 1 or
         (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
     app.setFault(0);
     return true;
