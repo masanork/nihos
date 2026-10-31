@@ -41,7 +41,7 @@ pub const Quiescence = struct {
         return self.device_idle and self.descriptors_released and self.cache_handed_back;
     }
 };
-const Proceed = struct {
+pub const Proceed = struct {
     pub fn stopReason(_: @This()) StopReason {
         return .none;
     }
@@ -118,6 +118,7 @@ pub fn Controller(comptime IO: type) type {
         write_issued: bool = false,
         rca: u32 = 0,
         sectors: u64 = 0,
+        cid: [4]u32 = @splat(0),
         faulted: bool = false,
         cleanup_failed: bool = false,
         quiescence: Quiescence = .{},
@@ -257,7 +258,7 @@ pub fn Controller(comptime IO: type) type {
                 self.io.delay(10_000);
             }
             if (!ready) return error.Timeout;
-            _ = try self.command(2, 0);
+            self.cid = try self.command(2, 0);
             const response = try self.command(3, 0);
             self.rca = response[0] & 0xffff_0000;
             if (self.rca == 0 or response[0] & 0xe000 != 0) return error.Response;

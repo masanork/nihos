@@ -62,6 +62,11 @@ const Session = console.session;
 const xy_workspace = @hasDecl(options, "xy_workspace") and options.xy_workspace;
 const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
 var last_xy_trace_revision: u32 = 0;
+var storage_provider: ?*const console.scratch.scheme.storage.Provider = null;
+pub inline fn bindStorage(provider: *const console.scratch.scheme.storage.Provider) void {
+    storage_provider = provider;
+    if (session_active) scratch.storage_client.provider = provider.*;
+}
 var camera_provider: ?*const console.scratch.camera.Provider = null;
 pub inline fn bindCamera(provider: *const console.scratch.camera.Provider) void {
     camera_provider = provider;
@@ -325,7 +330,7 @@ fn status() boot.Status {
         .console => .ready,
     };
 }
-noinline fn drawDetails() bool {
+noinline fn drawDetails() linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
     if (!renderer_ready) {
         // Avoid a multi-kilobyte default-value constant in scarce SRAM.
         @memset(@import("std").mem.asBytes(renderer), 0);
@@ -377,7 +382,7 @@ pub noinline fn report(log: anytype) void {
 }
 // Keyboard setup runs after Flash mapping and display startup. Keep its
 // foreground-only code with the normal camera/device orchestration.
-pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     model.input_sources = console.keys.capability(.serial); // Independent of USB-A host.
     model.input_available = true;
     input_started = clock.timer().counter() orelse 0;
@@ -414,7 +419,7 @@ noinline fn action(value: console.keys.Action, source: console.keys.Source, modi
     log.record("NIHOS_NATIVE_DIAGNOSTIC_KEY", null, .{ "sequence", "source", "action", "modifiers", "usage", "accepted", "view", "stage", "frames" }, &values);
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (now - last_input < 10_000 or !model.input_available) return;
     last_input = now;
     if (options.devices) {
@@ -515,6 +520,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
         scratch.vm.view.style.body_px = 32;
         scratch.vm.view.style.ruby_px = 16;
         scratch.camera.provider = camera_provider;
+        scratch.storage_client.provider = if (storage_provider) |p| p.* else null;
         (SerialSink{}).write("\r\nxy / *scratch* [RAM]\r\n");
     } else session.begin(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
@@ -531,7 +537,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     }
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (xy_workspace) {
         scratch.handle(key);
         captureXySystem();
@@ -616,6 +622,8 @@ const xy_tasks_footer linksection(".flash.rodata.display") = "Bootstrap/idle cou
 // One bounded capture on explicit open/refresh. Published task fields are not
 // an atomic scheduler dump; owner-local heaps do not include stacks/display.
 noinline fn captureXySystem() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") void {
+    if (scratch.vm.running) return;
+    scratch.replayInput();
     switch (scratch.takeSystemRequest()) {
         .none => return,
         .log => {
@@ -635,6 +643,7 @@ noinline fn captureXySystem() linksection(if (xy_workspace) ".flash.xytext" else
     }
 }
 noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
+    if (scratch.vm.running) return;
     if (!xy_trace or (scratch.revision == last_xy_trace_revision and xy_input_bytes == last_xy_input_bytes)) return;
     last_xy_trace_revision = scratch.revision;
     last_xy_input_bytes = xy_input_bytes;
@@ -720,7 +729,7 @@ noinline fn updateSplash(selected: boot.Status, milestone: bool, controls: bool)
     }
     return true;
 }
-pub noinline fn service(log: anytype) bool {
+pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
     if (!options.console_live or !runtime.active()) return true;
     if (!clock_ready or rendering) return false;
     const observed = runtime.snapshot();

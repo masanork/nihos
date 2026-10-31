@@ -107,6 +107,14 @@ unsafe extern "C" {
     ) -> i32;
     fn xy_editor_insert(text: *const u8, len: u32) -> bool;
     fn xy_editor_key(key: u8) -> bool;
+    fn xy_app_scheme_eval(source: *const u8, len: u32, out: *mut u8, cap: u32, now: u64) -> i32;
+    fn xy_app_scheme_eval_buffer(out: *mut u8, cap: u32, now: u64) -> i32;
+    fn xy_app_scheme_error(out: *mut u8, cap: u32) -> u32;
+    fn xy_app_scheme_registered() -> bool;
+    fn xy_app_editor_generation() -> u64;
+    fn xy_host_buffer_copy(out: *mut u8, capacity: u32) -> i32;
+    fn xy_host_reader_enter() -> bool;
+    fn xy_host_reader_leave();
     fn xy_label_render_bgra8(
         out: *mut u8,
         cap: usize,
@@ -194,6 +202,39 @@ impl Core {
     }
     pub fn editor_key(&mut self, key: u8) -> bool {
         unsafe { xy_editor_key(key) }
+    }
+    pub fn eval(&mut self, source: &str, now: u64) -> Result<String, String> {
+        let mut out = [0; 256];
+        let length = unsafe {
+            xy_app_scheme_eval(
+                source.as_ptr(),
+                source.len().try_into().expect("bounded Scheme source"),
+                out.as_mut_ptr(),
+                256,
+                now,
+            )
+        };
+        self.eval_result(length, &out)
+    }
+    pub fn eval_buffer(&mut self, now: u64) -> Result<String, String> {
+        let mut out = [0; 256];
+        let length = unsafe { xy_app_scheme_eval_buffer(out.as_mut_ptr(), 256, now) };
+        self.eval_result(length, &out)
+    }
+    fn eval_result(&self, length: i32, out: &[u8]) -> Result<String, String> {
+        if length < 0 {
+            let mut error = [0; 128];
+            let size = unsafe { xy_app_scheme_error(error.as_mut_ptr(), 128) };
+            Err(String::from_utf8_lossy(&error[..size as usize]).into_owned())
+        } else {
+            Ok(String::from_utf8_lossy(&out[..length as usize]).into_owned())
+        }
+    }
+    pub fn registered(&self) -> bool {
+        unsafe { xy_app_scheme_registered() }
+    }
+    pub fn editor_generation(&self) -> u64 {
+        unsafe { xy_app_editor_generation() }
     }
     fn render(&mut self, editor: bool, w: u32, h: u32, format: u32) -> Vec<u8> {
         assert!((240..=1280).contains(&w) && (180..=720).contains(&h));
@@ -350,7 +391,8 @@ pub fn check_and_snapshot(directory: &std::path::Path) {
     );
     save(directory, "label", &label, 160, 80);
     check_protocol(&mut core);
-    std::fs::write(directory.join("result.json"), "{\"passed\":true,\"canonical_pixels_compared\":737280,\"animation\":true,\"pause_resume\":true,\"held_and_focus\":true,\"editor_undo_pixels\":true,\"invalid_buffer_rejected\":true,\"app_protocol_v1\":true,\"strided_frames\":true,\"cancel_reopen\":true,\"gpui_window_tested\":false,\"physical_device_tested\":false}\n").unwrap();
+    check_scheme(&mut core, directory);
+    std::fs::write(directory.join("result.json"), "{\"passed\":true,\"canonical_pixels_compared\":737280,\"animation\":true,\"pause_resume\":true,\"held_and_focus\":true,\"editor_undo_pixels\":true,\"invalid_buffer_rejected\":true,\"app_protocol_v1\":true,\"strided_frames\":true,\"cancel_reopen\":true,\"scheme_frames\":true,\"scheme_gc\":true,\"scheme_fault_recovery\":true,\"gpui_window_tested\":false,\"physical_device_tested\":false}\n").unwrap();
     println!(
         "Shared Zig animation/frame/keyboard checks passed; GPUI window not exercised by this check"
     );
@@ -604,6 +646,152 @@ fn check_protocol(core: &mut Core) {
         assert!(core.event(2, code, 0) >= 0);
         assert_eq!((core.state().held, core.state().released), (0, 1 << code));
     }
+}
+fn document_text() -> Vec<u8> {
+    let mut bytes = vec![0; 16384];
+    let length = unsafe { xy_host_buffer_copy(bytes.as_mut_ptr(), 16384) };
+    assert!(length >= 0);
+    bytes.truncate(length as usize);
+    bytes
+}
+fn check_scheme(core: &mut Core, directory: &std::path::Path) {
+    assert_eq!(unsafe { xy_app_open(ABI_VERSION) }, 0);
+    assert!(!core.registered());
+    let mut now = 0;
+    core.tick(now);
+    core.eval_buffer(now)
+        .expect("run the editable Scheme example");
+    assert!(core.registered());
+    now += 16_667;
+    core.tick(now);
+    assert_eq!(core.eval("(plot/get #:amplitude)", now).unwrap(), "50");
+    let image = core.bgra(false, 1024, 720);
+    save(directory, "scheme-moving", &image, 1024, 720);
+    core.eval("(plot/set! #:amplitude 0) (app/on-frame! #f)", now)
+        .unwrap();
+    assert!(!core.registered());
+    assert_ne!(
+        image,
+        core.bgra(false, 1024, 720),
+        "Scheme settings affect actual pixels"
+    );
+    core.eval("(define frames 0) (app/on-frame! (let ((n 0)) (lambda (ticks) (set! n (+ n 1)) (set! frames n))))", now).unwrap();
+    for _ in 0..600 {
+        now += 16_667;
+        core.tick(now);
+    }
+    assert_eq!(
+        core.eval("frames", now).unwrap(),
+        "600",
+        "captured state survives request GC"
+    );
+    core.press(Key::Pause, now);
+    core.tick(now + 1_000_000);
+    assert_eq!(core.eval("frames", now).unwrap(), "600");
+    assert!(core.registered(), "pause retains callback");
+    now += 1_000_000;
+    core.eval("(app/resume!)", now).unwrap();
+    let before_ticks = core.state().ticks;
+    now += 1_000_000;
+    core.tick(now);
+    assert_eq!(core.state().ticks, before_ticks + 4);
+    assert_eq!(
+        core.eval("frames", now).unwrap(),
+        "601",
+        "one coalesced callback per accepted update"
+    );
+    core.eval("(app/on-frame! (lambda (t) (buffer/insert! \"x\")))", now)
+        .unwrap();
+    let document_before = document_text();
+    let editor_generation = core.editor_generation();
+    now += 16_667;
+    core.tick(now);
+    assert!(core.editor_generation() > editor_generation);
+    let mut expected = document_before.clone();
+    expected.extend_from_slice(b"x");
+    assert_eq!(document_text(), expected);
+    assert!(core.editor_key(3));
+    assert_eq!(document_text(), document_before);
+    core.eval("(define keep 7) (app/on-frame! (lambda (t) (set! keep 9) (plot/set! #:amplitude 5) (buffer/insert! \"bad\") missing))", now).unwrap();
+    now += 16_667;
+    core.tick(now);
+    assert_eq!(core.state().paused, 1);
+    assert!(!core.registered());
+    assert_eq!(core.eval_result(-1, &[]).unwrap_err(), "Unbound name");
+    save(
+        directory,
+        "scheme-error",
+        &core.bgra(true, 1024, 720),
+        1024,
+        720,
+    );
+    assert_eq!(
+        document_text(),
+        document_before,
+        "failed callback rolls back editor"
+    );
+    assert_eq!(
+        core.eval("keep", now).unwrap(),
+        "7",
+        "failed callback rolls back VM"
+    );
+    assert_eq!(
+        core.eval("(plot/get #:amplitude)", now).unwrap(),
+        "0",
+        "failed callback rolls back plot"
+    );
+    assert!(core.editor_insert("good"));
+    assert!(core.editor_key(3));
+    assert_eq!(document_text(), document_before);
+    let work = format!(
+        "(define (work) {}) (app/on-frame! (lambda (t) {})) (app/resume!)",
+        "(if #t #t #t) ".repeat(12),
+        "(work) ".repeat(6)
+    );
+    core.eval(&work, now).unwrap();
+    now += 16_667;
+    core.tick(now);
+    assert!(!core.registered());
+    assert_eq!(core.state().paused, 1);
+    assert_eq!(core.eval_result(-1, &[]).unwrap_err(), "Evaluation budget");
+    core.eval(
+        "(app/on-frame! (lambda (t) (set! frames (+ frames 1)))) (app/resume!)",
+        now,
+    )
+    .unwrap();
+    core.eval("(app/stop!)", now).unwrap();
+    let count = core.eval("frames", now).unwrap();
+    now += 1_000_000;
+    assert!(!core.tick(now));
+    assert_eq!(core.eval("frames", now).unwrap(), count);
+    assert!(!core.registered());
+    core.eval_buffer(now).unwrap();
+    assert!(core.registered());
+    core.cancel(now);
+    assert!(!core.registered());
+    assert!(core.eval_buffer(now).is_err());
+    assert_eq!(unsafe { xy_app_open(ABI_VERSION) }, 0);
+    assert!(!core.registered(), "reopen has no stale callback");
+    core.tick(0);
+    core.eval("(app/on-frame! (lambda (t) (buffer/insert! \"bad\")))", 0)
+        .unwrap();
+    let before_reading = document_text();
+    assert!(unsafe { xy_host_reader_enter() });
+    core.tick(16_667);
+    assert_eq!(core.state().paused, 1);
+    assert!(
+        !core.registered(),
+        "reader mode must stop pending app callbacks"
+    );
+    assert_eq!(core.eval_result(-1, &[]).unwrap_err(), "App unavailable");
+    assert!(core.eval("(buffer/insert! \"bad\")", 16_667).is_err());
+    assert_eq!(
+        document_text(),
+        before_reading,
+        "Scheme helpers cannot bypass read-only reader mode"
+    );
+    unsafe { xy_host_reader_leave() };
+    assert_eq!(core.eval("(+ 20 22)", 16_667).unwrap(), "42");
 }
 fn save(directory: &std::path::Path, name: &str, bgra: &[u8], w: u32, h: u32) {
     let mut rgba = bgra.to_vec();

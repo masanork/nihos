@@ -95,6 +95,67 @@ class DeviceReader(unittest.TestCase):
         self.assertEqual(b''.join(chunks),body)
         self.key(130);previous=self.state(3);self.key('s');self.key('v');self.key(13);self.render()
         self.assertEqual(self.state(3),previous)
+    def test_pages_fill_the_available_cells_at_every_font_size_and_axis(self):
+        # A long, unbroken paragraph exercises both the old 400-cluster cap
+        # and BlockFull's 25% backoff. Independently compute the cell capacity,
+        # including the status row, ruby band, margins and line spacing.
+        row_index=next(i for i,r in enumerate(self.entries) if r[0]==1)
+        for char in ('山','a'):
+            data=bytearray(self.data);text=(char*4096).encode();start=len(data)
+            data.extend(text)
+            struct.pack_into('<I',data,12,len(data))
+            struct.pack_into('<4I',data,64+36*row_index+12,start,len(text),0,0)
+            owner=c.create_string_buffer(bytes(data))
+            for axis in range(2):
+                for size in range(16,65,4):
+                    with self.subTest(char=char,axis=axis,size=size):
+                        self.assertTrue(self.vm.xy_tab5_init(owner,len(data)))
+                        self.key('s')
+                        for _ in range(abs(size-32)//4):self.key('+' if size>32 else '-')
+                        if axis:self.key('v')
+                        self.key(13);self.open(1)
+                        ruby=size//2;step=size+ruby+12;height=648-size-8
+                        # Source Code Pro advances by 0.6 em. Preserve 26.6
+                        # precision until division, as the line flow does.
+                        advance=size*64 if char=='山' else (size*3*64+2)//5
+                        if axis:
+                            lines=(1280-48-ruby-size)//step+1
+                            cells=(height-48)*64//advance
+                        else:
+                            lines=(height-48-ruby-size)//step+1
+                            cells=(1280-48)*64//advance
+                        expected=lines*cells*len(char.encode())
+                        self.assertEqual(self.state(4),expected)
+                        # Next begins at exactly the first unpainted cell.
+                        self.key(131);self.render();self.assertEqual(self.state(3),expected)
+                        self.assertEqual(self.state(4),2*expected)
+    def test_smallest_kusamakura_pages_keep_all_thirteen_chapters_and_ruby(self):
+        rows=[r for r in self.entries if r[0]==1]
+        for axis in range(2):
+            if axis:self.key('h')
+            self.key('s')
+            for _ in range(4 if axis==0 else 0):self.key('-')
+            if axis:self.key('v')
+            self.key(13)
+            for chapter,row in enumerate(rows):
+                with self.subTest(axis=axis,chapter=chapter):
+                    self.open(1,chapter)
+                    body=self.data[row[3]:row[3]+row[4]]
+                    rubies=[struct.unpack_from('<4I',self.data,row[5]+16*j) for j in range(row[6])]
+                    at=0;pages=0
+                    while True:
+                        self.assertEqual(self.state(3),at)
+                        end=self.state(4);self.assertGreater(end,at)
+                        body[at:end].decode() # Every page closes at a UTF-8 boundary.
+                        spans=[r for r in rubies if at<=r[0]<end]
+                        self.assertTrue(all(r[1]<=end for r in spans))
+                        self.assertLess(len(spans),128) # Page end must precede the buffer limit.
+                        if chapter==0 and pages==0:
+                            self.assertEqual(len(body[:end].decode()),(957,1041)[axis])
+                            self.assertGreater(len(spans),64)
+                        at=end;pages+=1
+                        if at==len(body):break
+                        self.key(131);self.render();self.assertLess(pages,500)
     def test_touch_paginates_contents_beyond_first_eight_chapters(self):
         self.key('4');self.render();self.vm.xy_tab5_touch(600,680)
         self.render();self.vm.xy_tab5_touch(300,150);self.render()

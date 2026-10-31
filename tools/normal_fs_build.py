@@ -17,7 +17,8 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def build(work, native=True, runtime_source=None):
+def build(work, native=True, runtime_source=None, sqld_host_test=False):
+    if native and sqld_host_test: raise ValueError("host capability fixture cannot enable a native image")
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=True)
     upstream = runpy.run_path(str(ROOT / 'tools/bootstrap-fatfs.py'))
@@ -41,8 +42,11 @@ def build(work, native=True, runtime_source=None):
     module = [*target, '-O', 'safe']
     command = [str(zig), 'build-obj' if native else 'build-lib']
     command += ['-fllvm', '-fno-strip', '-fno-stack-check', '-fno-stack-protector', '-fno-unwind-tables'] if native else ['-fcompiler-rt']
-    command += [*module, '--dep', 'storage_vfs', '--dep', 'task_calls', '--dep', 'task_control', '--dep', 'sdmmc', '--dep', 'timer_group', '--dep', 'sdmmc_host',
+    profile = work / 'sqld_profile.zig'
+    profile.write_text('pub const enabled = ' + ('true' if (native and os.environ.get('NIHOS_NATIVE_SQLD') == '1') or sqld_host_test else 'false') + ';\npub const provision_cid: u32 = ' + str(int(os.environ.get('NIHOS_NATIVE_SQLD_PROVISION_CID', '0'), 0)) + ';\n')
+    command += [*module, '--dep', 'sqld_profile', '--dep', 'storage_vfs', '--dep', 'task_calls', '--dep', 'task_control', '--dep', 'sdmmc', '--dep', 'timer_group', '--dep', 'sdmmc_host',
                 '-Mroot=' + str(runtime_source or ROOT / 'src/platform/native/normal_fs.zig'),
+                *module, '-Msqld_profile=' + str(profile),
                 *module, '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'),
                 *module, '--dep', 'task_control', '-Mtask_calls=' + str(ROOT / 'src/arch/riscv32/task_calls.zig'),
                 *module, '-Mtask_control=' + str(ROOT / 'src/kernel/task_control.zig'),

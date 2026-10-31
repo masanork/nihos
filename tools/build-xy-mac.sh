@@ -5,6 +5,8 @@ cd "$repo_root"
 zig_bin=${ZIG:-$(tools/bootstrap-zig.sh)}
 out="$repo_root/build/xy-mac"
 mkdir -p "$out"
+python3 tools/xy_sicp.py --check
+python3 tools/xy_learning_pack.py "$out/learning.pack"
 ZIG="$zig_bin" tools/build-sqld-host.sh >/dev/null
 cp build/sqld/libsqld.dylib "$out/"
 "$zig_bin" build-lib -dynamic -O ReleaseSafe -fPIC -install_name @rpath/libxy_host.dylib -femit-bin="$out/libxy_host.dylib" \
@@ -18,15 +20,16 @@ clang -std=c11 -Wall -Wextra -Werror -dynamiclib -I include \
 clang -fobjc-arc -Wall -Wextra -Werror -I include tools/xy_mac_host.m \
     -L "$out" -lxy_host -lxy_workspace -lsqld -lsqlite3 \
     -framework Cocoa -framework ImageIO -framework WebKit -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks -o "$out/xy-mac-host"
-cp assets/xy/library.json "$out/library.json"
+cp assets/xy/library.json assets/xy/sicp-learning.json "$out/"
 mkdir -p "$out/fonts" "$out/figures"
 cp docs/book/figures/generated/*.svg "$out/figures/"
 cp assets/xy/fonts/* "$out/fonts/"
 mkdir -p "$out/licenses"
+cp third_party/xy-typography/GUST-FONT-LICENSE.txt third_party/xy-typography/LPPL-1.3c.txt third_party/xy-typography/MANIFEST-TeX-Gyre-Schola.txt src/graphics/serif/manifest.json "$out/licenses/"
 cp LICENSE src/graphics/ascii/SourceCodePro-LICENSE.md third_party/xy-reading/NOTICE.md third_party/xy-reading/CC-BY-SA-4.0.txt "$out/licenses/"
 app="$out/xy.app/Contents"
 mkdir -p "$app/MacOS" "$app/Frameworks" "$app/Resources"
-cp assets/xy/library.json "$app/Resources/library.json"
+cp assets/xy/library.json assets/xy/sicp-learning.json "$out/learning.pack" "$app/Resources/"
 mkdir -p "$app/Resources/fonts" "$app/Resources/figures"
 cp docs/book/figures/generated/*.svg "$app/Resources/figures/"
 cp assets/xy/fonts/* "$app/Resources/fonts/"

@@ -61,7 +61,7 @@ pub noinline fn begin(core: u32) bool {
 
 // CPU0's owner retains this lease across frames. Publication is limited to the
 // synchronous render call; an IRQ may then validate its interrupted PSRAM SP.
-pub const foreground_bytes = 256 * 1024;
+pub const foreground_bytes = 512 * 1024;
 var foreground_low: u32 = 0;
 var foreground_high: u32 = 0;
 pub inline fn beginForeground(stack: []u8) bool {
@@ -90,6 +90,20 @@ pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
         const irq = layout.interrupt(0).?;
         const words: *const volatile [4]u32 = @ptrFromInt(low);
         for (words) |word| if (word != 0x67726166) return false;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
+    if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld and core == 0 and frame >= 0x48230100 and frame <= 0x48240000 - 128) {
+        if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const words: *const volatile [4]u32 = @ptrFromInt(0x48230000);
+        for (words) |word| if (word != 0xa5a5a5a5) return false;
+        const irq = layout.interrupt(0).?;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
+    if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld and core == 0 and frame >= 0x483c0100 and frame <= 0x483d0000 - 128) {
+        if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const words: *const volatile [4]u32 = @ptrFromInt(0x483c0000);
+        for (words) |word| if (word != 0xa5a5a5a5) return false;
+        const irq = layout.interrupt(0).?;
         return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
     }
     if (core == 0) {

@@ -38,7 +38,7 @@ backend差を測定し、互換範囲を定める。
 | --- | --- | --- |
 | 1 | GPUI pane・時計・停止/再開・キー | 今回実装。単体/画素比較と実ウィンドウを分けて記録 |
 | 2 | versioned app event/frame API | native v1を実装。GPUI接続、32キーのpress/release/held、focus/cancel、呼出側所有frame、サイズ/時間/転送メモリ上限。Wasm linear memoryの検査は次のadapterで実装 |
-| 3 | Scheme callbackとplot library | `(nihos app)`と`(nihos graphics)`を標準言語から分離。評価中断後も編集可能、停止後にcallbackが残らない |
+| 3 | Scheme callbackとplot library | `app/*`・`plot/*`のGPUI接続、GC root、256step予算・64cell予約、失敗時rollback・解除・停止を実装。R7RS library/importと中断後の継続再開は未実装 |
 | 4 | WAMR実験の通常サービス接続 | 別worktreeの実験を監査して統合。MeOSのSnake等をadapter経由で起動→入力→終了→xy復帰。trap/中断でも資源回収 |
 | 5 | Tab5で同じモデルを描画 | 実候補で入力遅延・frame時間・転送量・PSRAM/SRAM・tearingを測定。host/RV32 linkを実機成功と扱わない |
 
@@ -56,8 +56,18 @@ RGB565LE/BGRA8、240..1280×180..720、stride最大8192byte、1要求最大5,898
 既存のGPUI画像copyとframe後のatlas退役はhost側に残す。frame generationはpane単位かつ
 session内の比較用で、サイズ・format・openをまたぐcache identityではない。
 native pointer/size_tを含む関数をWasmから直接呼ぶ設計ではなく、Wasm adapterではoffset、
-length、上限、所有とtrap時回収を改めて検査する。Scheme callbackのGC root・予算・cancelも
-次段階の責務であり、この契約の実装だけで対応済みとはしない。
+length、上限、所有とtrap時回収を改めて検査する。
+
+第3段階では同じeditor VMにScheme closureを登録し、更新eventから同期的に呼び出す。
+GC rootはcallbackとそのlexical環境まで辿り、登録置換・解除・cancel・再openを検証する。
+callbackに渡すticksは固定step数の下位31bit。1eventに最大4stepをまとめてもcallbackは
+1回とし、描画からは呼ばない。`app/pause!`は保持、`app/stop!`とCtrl-Cは解除して停止する。
+F5/Run/Ctrl-Enterで現RAM bufferを評価する。callbackの失敗は文書・定義・view・plotを戻して
+callbackを解除する。同期評価の途中を強制停止する仕組みではなく、callback間の停止と
+256評価step・深さ24未満・ヒープの64cell予約による中断である。256cellのGCや文書操作の
+時間も含め、実機のwall-clock deadlineを保証する測定はまだない。
+この段階の名前空間は独自VMのextensionで、将来の`(nihos app)`/`(nihos graphics)`へ分離する。
+標準library、proper tail calls、継続、WASM接続は完了していない。
 
 MeOSの手元ソースは`apps/wasm/{snake,tetris,shooter}.c`と`apps/wasm/meos.h`を参考にした。
 時刻・キー・矩形/画像/文字・sleep/presentで動いている。nihosではフレーム公開を
@@ -68,7 +78,8 @@ device側入力との接続には追加実装が必要である。
 ## R7RS-smallの差分
 
 現行`scheme_runtime.zig`は256 cells、64-byte token、深さ24、1024stepの限定処理系。
-closureと要求間GCはあるが、R7RS準拠ではない。今回その意味論は変更していない。
+closureと要求間GCはあるが、R7RS準拠ではない。app extensionとcallback budgetを追加したが、
+標準言語の差分は次表の通り残っている。
 
 | 整備対象 | 実装上の要点 |
 | --- | --- |
