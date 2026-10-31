@@ -18,10 +18,13 @@ pub fn Session(comptime Workspace: type) type {
         candidate: scheme.Runtime,
         backup_doc: Workspace.DocType = .{},
         prepared: bool = false,
+        storage_client: scheme.storage.Client = .{},
+        load_scratch: @FieldType(Workspace.DocType, "bytes") = @splat(0),
 
         pub fn init(self: *Self) void {
             self.active.initInPlace();
             self.prepared = false;
+            self.storage_client = .{};
         }
         pub fn prepare(self: *Self, source: []const u8, output: []u8) scheme.Error![]const u8 {
             self.prepared = false;
@@ -42,6 +45,22 @@ pub fn Session(comptime Workspace: type) type {
         }
         const Adapter = struct {
             ws: *Workspace,
+            storage_client: scheme.storage.Client,
+            load_scratch: []u8,
+            pub fn documentText(self: *@This()) []const u8 {
+                return self.ws.doc.slice();
+            }
+            pub fn saveDocument(self: *@This(), name: []const u8) scheme.Error!void {
+                try self.storage_client.save(name, self.ws.doc.slice());
+            }
+            pub fn loadDocument(self: *@This(), name: []const u8) scheme.Error!void {
+                const text = try self.storage_client.load(name, self.load_scratch);
+                self.ws.doc.clear();
+                self.ws.doc.insertUtf8(text) catch return error.EditorFailure;
+            }
+            pub fn storageCall(self: *@This(), request: scheme.storage.Request, output: []u8) scheme.Error![]const u8 {
+                return self.storage_client.call(request, output);
+            }
             pub fn schemeCall(self: *@This(), op: scheme.EditorOp, text: []const u8, number: i32) scheme.Error!void {
                 switch (op) {
                     .insert => self.ws.doc.insertUtf8(text) catch return error.EditorFailure,
@@ -90,7 +109,7 @@ pub fn Session(comptime Workspace: type) type {
             self.backup_doc = ws.doc;
             const old_dirty = ws.layout_dirty;
             _ = ws.doc.beginUndoGroup();
-            var adapter = Adapter{ .ws = ws };
+            var adapter = Adapter{ .ws = ws, .storage_client = self.storage_client, .load_scratch = &self.load_scratch };
             const result = (switch (mode) {
                 .expression => self.active.evaluate(source, &adapter, output),
                 .command => self.active.runCommand(source, &adapter, output),

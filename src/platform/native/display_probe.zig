@@ -52,7 +52,7 @@ pub const Pins = struct {
     }
 };
 
-pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) Report {
+pub noinline fn run(clock: timer_group.Timer, selected: board.Layout) linksection(if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld) ".flash.sqldtext" else ".text") Report {
     var report = Report{ .status = 2, .frame_start = selected.frame_start, .frame_bytes = selected.frame_bytes, .reserve_bytes = board.reserve_bytes };
     clock.start();
     clock.disarm();

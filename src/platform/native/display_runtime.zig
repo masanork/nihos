@@ -230,7 +230,7 @@ fn initialize(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, 
 }
 
 /// Caller routes CLIC18 only after success. No framebuffer or DMA reuse on error.
-pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) linksection(if (options.card_read) ".flash.text.card" else ".text") Report {
+pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern: bool, sram: bool) linksection(if (options.card_read) ".flash.text.card" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") Report {
     if (attempted) return .{ .error_code = 8 };
     attempted = true;
     var report = Report{};
@@ -274,7 +274,7 @@ pub noinline fn start(clock: timer_group.Timer, panel: u32, white: bool, pattern
 /// Foreground-only scene replacement. Retire DMA before clearing any retained
 /// result pixels, then rebuild under masked local IRQs. No personal framebuffer
 /// is modified while the display DMA borrows it.
-pub noinline fn replace(clock: timer_group.Timer, panel: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") Report {
+pub noinline fn replace(clock: timer_group.Timer, panel: u32) linksection(if (options.card_read) ".flash.text.card" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") Report {
     if ((options.card_read or options.keypad_demo) and running) return replaceCard(clock, panel) catch |err| {
         scene_error = switch (err) {
             error.Timer => 1,

@@ -53,6 +53,14 @@ the standard I2C keyboard or diagnostic serial controls. Its
 normal boot, injected failure, serial controls and pending optical/physical-key
 confirmation. Do not infer native boot order from the hosted sequence above.
 
+The normal native splash now replaces status pixels directly instead of
+clearing the label before drawing. Same-status boot revisions leave that label
+alone; colour updates flush bounded rotated regions rather than the entire
+framebuffer. The [residual-flicker investigation](measurements/2026-10-31-splash-smooth.md)
+records integration state, intermediate-drawing regression tests, cache traffic
+and the remaining physical observation gate. This remains a shared scanout
+buffer, without an atomic VSYNC swap.
+
 ## Preview and checks
 
 The opt-in USB/card fixtures are separate from normal splash/console boot.

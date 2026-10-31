@@ -250,6 +250,26 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.in_transaction = false;
         }
 
+        /// Publish a pinned volume as a NEW generation. Pins remain live and
+        /// allocator reachability still protects current, retained and readers.
+        /// This is an owner operation; it does not create durable history names.
+        pub fn restore(self: *Self, reader: Reader) Error!void {
+            try self.usable();
+            if (self.in_transaction) return error.Busy;
+            if (reader.slot >= self.readers.len) return error.InvalidReader;
+            const pinned = self.readers[reader.slot];
+            if (reader.token == 0 or pinned.token != reader.token) return error.InvalidReader;
+            const root = switch (pinned.view) {
+                .volume => |root| root,
+                .object => return error.InvalidReader,
+            };
+            try self.begin();
+            const next = self.staged.generation;
+            self.staged = root;
+            self.staged.generation = next;
+            try self.commit();
+        }
+
         /// Instance-scoped host handle, not an isolated public capability ABI.
         pub fn pin(self: *Self) Error!Reader {
             try self.usable();

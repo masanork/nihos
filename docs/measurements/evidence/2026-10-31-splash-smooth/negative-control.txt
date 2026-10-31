@@ -1,0 +1,6 @@
+Reintroduced the original milestone clear before drawing the selected status.
+The completed-image result would still agree. The intermediate scanout observer rejects it.
+
+1/1 boot_graphics.test.scanout never observes a third colour during any milestone transition...expected 0, found 744
+FAIL (TestExpectedEqual)
+/Users/masanork/repo/nihos/.tools/zig-0.17.0/lib/std/testing.zig:93:17: 0x104657483 in expectEqualInner__func_1001 (root)

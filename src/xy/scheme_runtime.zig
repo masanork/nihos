@@ -9,7 +9,8 @@ pub const plot_config = @import("plot_config.zig");
 pub const frame_step_limit = 256;
 pub const frame_cell_reserve = 64;
 pub const camera = @import("camera.zig");
-pub const Error = camera.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable };
+pub const storage = @import("storage.zig");
+pub const Error = storage.Error || camera.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable };
 pub const Ref = u16;
 pub const cells = 256;
 pub const text_bytes = 64;
@@ -17,8 +18,8 @@ pub const depth_limit = 24;
 pub const step_limit = 1024;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword };
-const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00".*;
+const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
 const Cell = struct {
     tag: Tag,
@@ -224,10 +225,10 @@ pub const Runtime = struct {
         }
         if (std.mem.eql(u8, token, "#t")) return self.yes;
         if (std.mem.eql(u8, token, "#f")) return self.no;
-        if (std.mem.startsWith(u8, token, "#x")) return self.number(std.fmt.parseInt(i32, token[2..], 16) catch return error.Overflow);
+        if (token.len >= 2 and token[0] == '#' and token[1] == 'x') return self.number(parseHex(token[2..]) catch return error.Overflow);
         if (std.mem.eql(u8, token, ".")) return error.Syntax;
         if ((token[0] >= '0' and token[0] <= '9') or (token.len > 1 and (token[0] == '-' or token[0] == '+') and token[1] >= '0' and token[1] <= '9'))
-            return self.number(std.fmt.parseInt(i32, token, 10) catch return error.Overflow);
+            return self.number(parseDecimal(token) catch return error.Overflow);
         return self.text(.symbol, token);
     }
     fn arguments(self: *const Runtime, list: Ref, out: *[16]Ref) linksection(code_section) Error![]Ref {
@@ -267,8 +268,8 @@ pub const Runtime = struct {
     }
     fn closure(self: *Runtime, params: Ref, body: Ref, env: Ref) linksection(code_section) Error!Ref {
         if (body == 0) return error.Arity;
-        var storage: [16]Ref = @splat(0);
-        const args = try self.arguments(params, &storage);
+        var argument_storage: [16]Ref = @splat(0);
+        const args = try self.arguments(params, &argument_storage);
         for (args, 0..) |arg, index| {
             if (self.heap[arg].tag != .symbol) return error.Type;
             for (args[0..index]) |old| if (std.mem.eql(u8, self.string(arg), self.string(old))) return error.Syntax;
@@ -301,8 +302,8 @@ pub const Runtime = struct {
             return native;
         }
         if (c.tag != .pair) return r;
-        var storage: [16]Ref = @splat(0);
-        const args = try self.arguments(c.b, &storage);
+        var argument_storage: [16]Ref = @splat(0);
+        const args = try self.arguments(c.b, &argument_storage);
         const special = if (self.heap[c.a].tag == .symbol) opcode(self.string(c.a)) else null;
         if (special) |op| switch (op) {
             .quote => {
@@ -376,8 +377,8 @@ pub const Runtime = struct {
         try self.tick(depth);
         const c = &self.heap[procedure];
         if (c.tag == .closure) {
-            var storage: [16]Ref = @splat(0);
-            const params = try self.arguments(c.a, &storage);
+            var argument_storage: [16]Ref = @splat(0);
+            const params = try self.arguments(c.a, &argument_storage);
             if (params.len != args.len) return error.Arity;
             const local = try self.pair(0, c.env);
             for (params, args) |name, value| try self.define(local, name, value);
@@ -450,8 +451,32 @@ pub const Runtime = struct {
                 self.command_count += 1;
                 return self.yes;
             },
+            .buffer_text => {
+                if (args.len != 0) return error.Arity;
+                if (comptime @hasDecl(@TypeOf(host.*), "documentText")) return self.text(.string, host.documentText());
+                return error.EditorFailure;
+            },
+            .buffer_save => {
+                if (args.len != 1) return error.Arity;
+                const name = try self.storageText(args[0]);
+                if (comptime @hasDecl(@TypeOf(host.*), "saveDocument")) {
+                    try host.saveDocument(name);
+                    return self.yes;
+                }
+                return error.StorageUnavailable;
+            },
+            .buffer_load => {
+                if (args.len != 1) return error.Arity;
+                const name = try self.storageText(args[0]);
+                if (comptime @hasDecl(@TypeOf(host.*), "loadDocument")) {
+                    try host.loadDocument(name);
+                    return self.yes;
+                }
+                return error.StorageUnavailable;
+            },
             .app_frame, .app_pause, .app_resume, .app_stop, .app_speed, .app_ticks, .plot_set, .plot_get, .plot_sine => return self.applyApp(op, args),
             .view_set, .view_get, .view_rollback => return self.applyView(op, args),
+            .sql_query, .sql_exec, .sql_begin, .sql_commit, .sql_rollback, .fs_open, .fs_read, .fs_write, .fs_resize, .fs_remove, .fs_sync, .fs_rollback, .fs_snapshot, .fs_restore, .fs_release, .fs_collect, .fs_generation, .fs_list, .fs_close, .fs_stat, .fs_begin, .sql_lookup, .sql_check, .fs_space, .fs_verify => return self.applyStorage(op, args, host),
             .insert => {
                 if (args.len != 1) return error.Arity;
                 if (self.heap[args[0]].tag != .string) return error.Type;
@@ -517,8 +542,8 @@ pub const Runtime = struct {
                     return self.yes;
                 }
                 if (self.heap[callback].tag != .closure) return error.Type;
-                var storage: [16]Ref = @splat(0);
-                if ((try self.arguments(self.heap[callback].a, &storage)).len != 1) return error.Arity;
+                var parameters: [16]Ref = @splat(0);
+                if ((try self.arguments(self.heap[callback].a, &parameters)).len != 1) return error.Arity;
                 self.frame_callback = callback;
                 return self.yes;
             },
@@ -548,9 +573,11 @@ pub const Runtime = struct {
                     var offset: usize = 0;
                     var index: usize = 0;
                     while (true) : (index += 1) {
-                        if (offset == plot_names.len) return error.Type;
-                        const end = offset + (std.mem.indexOfScalar(u8, plot_names[offset..], 0) orelse return error.Type);
-                        if (std.mem.eql(u8, key, plot_names[offset..end])) break;
+                        if (offset >= plot_names.len) return error.Type;
+                        var end = offset;
+                        while (end < plot_names.len and plot_names[end] != 0) end += 1;
+                        if (end == plot_names.len) return error.Type;
+                        if (sameText(key, plot_names[offset..end])) break;
                         offset = end + 1;
                     }
                     if (op == .plot_get) return self.number(switch (index) {
@@ -585,6 +612,134 @@ pub const Runtime = struct {
             },
             else => return error.Type,
         }
+    }
+    fn nonnegative(self: *Runtime, r: Ref) linksection(code_section) Error!u32 {
+        const n = try self.integer(r);
+        if (n < 0) return error.Type;
+        return @intCast(n);
+    }
+    fn storageText(self: *Runtime, r: Ref) linksection(code_section) Error![]const u8 {
+        if (self.heap[r].tag != .string) return error.Type;
+        return self.string(r);
+    }
+    fn sameText(left: []const u8, right: []const u8) linksection(code_section) bool {
+        if (left.len != right.len) return false;
+        for (left, right) |a, b| if (a != b) return false;
+        return true;
+    }
+    fn parseDecimal(token: []const u8) linksection(code_section) error{Overflow}!i32 {
+        if (token.len == 0) return error.Overflow;
+        var index: usize = 0;
+        var negative = false;
+        if (token[0] == '+' or token[0] == '-') {
+            negative = token[0] == '-';
+            index = 1;
+        }
+        if (index == token.len) return error.Overflow;
+        var magnitude: u32 = 0;
+        while (index < token.len) : (index += 1) {
+            const c = token[index];
+            if (c < '0' or c > '9') return error.Overflow;
+            const digit: u32 = c - '0';
+            if (magnitude > (std.math.maxInt(u32) - digit) / 10) return error.Overflow;
+            magnitude = magnitude * 10 + digit;
+        }
+        if (!negative) {
+            if (magnitude > std.math.maxInt(i32)) return error.Overflow;
+            return @intCast(magnitude);
+        }
+        if (magnitude > @as(u32, std.math.maxInt(i32)) + 1) return error.Overflow;
+        if (magnitude == @as(u32, std.math.maxInt(i32)) + 1) return std.math.minInt(i32);
+        return -@as(i32, @intCast(magnitude));
+    }
+
+    fn parseHex(token: []const u8) linksection(code_section) error{Overflow}!i32 {
+        if (token.len == 0) return error.Overflow;
+        var magnitude: u32 = 0;
+        for (token) |c| {
+            const digit: u32 = if (c >= '0' and c <= '9') c - '0' else if (c >= 'a' and c <= 'f') c - 'a' + 10 else if (c >= 'A' and c <= 'F') c - 'A' + 10 else return error.Overflow;
+            if (magnitude > 0x0FFFFFFF) return error.Overflow;
+            magnitude = (magnitude << 4) | digit;
+        }
+        if (magnitude > std.math.maxInt(i32)) return error.Overflow;
+        return @intCast(magnitude);
+    }
+    noinline fn applyStorage(self: *Runtime, op: Op, args: []const Ref, host: anytype) linksection(code_section) Error!Ref {
+        var request = storage.Request{ .operation = @fromBackingInt(@intCast(@backingInt(op) - @backingInt(Op.sql_query) + 1)) };
+        var binary: [64]u8 = undefined;
+        switch (op) {
+            .sql_query, .sql_exec => {
+                if (args.len != 1) return error.Arity;
+                request.text = try self.storageText(args[0]);
+            },
+            .fs_open => {
+                if (args.len < 1 or args.len > 2) return error.Arity;
+                request.text = try self.storageText(args[0]);
+                if (args.len == 2) {
+                    if (args[1] != self.yes and args[1] != self.no) return error.Type;
+                    request.offset = if (args[1] == self.yes) 1 else 0;
+                }
+            },
+            .fs_read, .fs_write => {
+                if (args.len != 3) return error.Arity;
+                request.handle = try self.nonnegative(args[0]);
+                request.offset = try self.nonnegative(args[1]);
+                if (op == .fs_read) {
+                    request.count = try self.nonnegative(args[2]);
+                    if (request.count > 64) return error.StorageLimit;
+                } else if (self.heap[args[2]].tag == .string) {
+                    request.text = self.string(args[2]);
+                } else {
+                    var p = args[2];
+                    var n: usize = 0;
+                    while (p != 0) {
+                        if (self.heap[p].tag != .pair) return error.Type;
+                        if (n == binary.len) return error.StorageLimit;
+                        const b = try self.nonnegative(self.heap[p].a);
+                        if (b > 255) return error.Type;
+                        binary[n] = @intCast(b);
+                        n += 1;
+                        p = self.heap[p].b;
+                    }
+                    request.text = binary[0..n];
+                }
+            },
+            .fs_resize => {
+                if (args.len != 2) return error.Arity;
+                request.handle = try self.nonnegative(args[0]);
+                request.offset = try self.nonnegative(args[1]);
+            },
+            .fs_remove, .fs_restore, .fs_release, .fs_close, .fs_stat, .fs_verify => {
+                if (args.len != 1) return error.Arity;
+                request.handle = try self.nonnegative(args[0]);
+            },
+            .sql_lookup => {
+                if (args.len == 0 or args.len % 2 == 0) return error.Arity;
+                if (self.heap[args[0]].tag != .symbol) return error.Type;
+                request.text = self.string(args[0]);
+                request.count = 8;
+                var i: usize = 1;
+                while (i < args.len) : (i += 2) {
+                    if (self.heap[args[i]].tag != .keyword) return error.Type;
+                    const name = self.string(args[i]);
+                    if (sameText(name, "where")) request.argument = try self.storageText(args[i + 1]) else if (sameText(name, "limit")) request.count = try self.nonnegative(args[i + 1]) else return error.Type;
+                }
+            },
+            else => if (args.len != 0) return error.Arity,
+        }
+        // Parse returned DATA without evaluating it. No arbitrary Scheme code
+        // can run from a DB cell. Providers must return one bounded expression.
+        if (comptime @hasDecl(@TypeOf(host.*), "storageCall")) {
+            var buffer: [1024]u8 = undefined;
+            const source = try host.storageCall(request, &buffer);
+            if (!storage.validUtf8(source)) return error.StorageFailed;
+            var pos: usize = 0;
+            const result = try self.read(source, &pos, 0);
+            space(source, &pos);
+            if (pos != source.len) return error.StorageFailed;
+            return result;
+        }
+        return error.StorageUnavailable;
     }
     noinline fn applyView(self: *Runtime, op: Op, args: []const Ref) linksection(code_section) Error!Ref {
         switch (op) {
@@ -668,7 +823,7 @@ pub const Runtime = struct {
     pub fn evaluate(self: *Runtime, source: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
         try self.start();
         defer self.running = false;
-        if (source.len > 4096 or std.mem.indexOfScalar(u8, source, 0) != null or !std.unicode.utf8ValidateSlice(source)) return error.Syntax;
+        if (source.len > 4096 or std.mem.indexOfScalar(u8, source, 0) != null or !storage.validUtf8(source)) return error.Syntax;
         // Copy every token into the heap before host callbacks can edit source.
         var pos: usize = 0;
         var forms: Ref = 0;
@@ -817,6 +972,52 @@ test "lexical closures mutation recursion and GC persist across requests" {
     try expectValue(&vm, &host, "(define x 5) (let ((x 2) (y x)) (+ x y))", "7");
     try expectValue(&vm, &host, "(if '() 42 0)", "42");
 }
+
+test "buffer persistence dispatches save and load separately" {
+    try std.testing.expectEqual(Op.buffer_save, Runtime.opcode("buffer/save!").?);
+    try std.testing.expectEqual(Op.buffer_load, Runtime.opcode("buffer/load!").?);
+    const Host = struct {
+        saved: bool = false,
+        loaded: bool = false,
+        pub fn saveDocument(self: *@This(), _: []const u8) Error!void {
+            self.saved = true;
+        }
+        pub fn loadDocument(self: *@This(), _: []const u8) Error!void {
+            self.loaded = true;
+        }
+        pub fn schemeCall(_: *@This(), _: EditorOp, _: []const u8, _: i32) Error!void {
+            return error.EditorFailure;
+        }
+    };
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = Host{};
+    var output: [64]u8 = undefined;
+    _ = try vm.evaluate("(buffer/save! \"draft\")", &host, &output);
+    try std.testing.expect(host.saved and !host.loaded);
+    _ = try vm.evaluate("(buffer/load! \"draft\")", &host, &output);
+    try std.testing.expect(host.saved and host.loaded);
+}
+
+test "unbound storage reports unavailable and provider responses are data" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var output: [128]u8 = undefined;
+    try std.testing.expectError(error.StorageUnavailable, vm.evaluate("(fs/list)", &host, &output));
+    const ProviderHost = struct {
+        pub fn storageCall(_: *@This(), _: storage.Request, bytes: []u8) Error![]const u8 {
+            const encoded = "(buffer/insert! \"must stay data\")";
+            @memcpy(bytes[0..encoded.len], encoded);
+            return bytes[0..encoded.len];
+        }
+        pub fn schemeCall(_: *@This(), _: EditorOp, _: []const u8, _: i32) Error!void {
+            return error.EditorFailure;
+        }
+    };
+    var provider = ProviderHost{};
+    try std.testing.expectEqualStrings("(buffer/insert! \"must stay data\")", try vm.evaluate("(fs/list)", &provider, &output));
+}
 test "registered closures survive GC and command replacement is live" {
     // SAFETY: initialized before use.
     var vm: Runtime = undefined;
@@ -867,7 +1068,7 @@ test "bounded malformed requests do not trap or retain ephemeral garbage" {
     try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
-const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00".*;
+const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00".*;
 pub fn message(err: Error) linksection(code_section) []const u8 {
     const wanted: usize = switch (err) {
         error.Depth => 0,
@@ -889,6 +1090,15 @@ pub fn message(err: Error) linksection(code_section) []const u8 {
         error.InvalidCameraRange => 16,
         error.CameraFailed => 17,
         error.AppUnavailable => 18,
+        error.StorageUnavailable => 19,
+        error.StorageBusy => 20,
+        error.StorageDenied => 21,
+        error.StorageStale => 22,
+        error.StorageFull => 23,
+        error.StorageNotFound => 24,
+        error.StorageLimit => 25,
+        error.StorageOutcomeUnknown => 26,
+        error.StorageFailed => 27,
     };
     var pos: usize = 0;
     var index: usize = 0;
