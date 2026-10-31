@@ -139,7 +139,9 @@ Wasm/display profile and physical presenter remain open.
    records request timing and distinguishes parser execution from C6/network work.
    The [station report](../measurements/2026-11-01-wasm-hosted-station-foreground.md)
    exercises the existing disabled-join Hosted client and stale UID handling
-   with a synthetic peer; association, DHCP and real transport remain open.
+   with a synthetic peer. The [DHCP report](../measurements/2026-11-01-wasm-hosted-dhcp-foreground.md)
+   extends this to a synthetic association and independent Offer/ACK packets,
+   including corrupt ACK rejection. Real transport and association remain open.
    A foreground controller now owns opening, cancellation and active-input
    routing in that fixture and the UI branch. It rejects start when camera or
    display is busy and reserves display until cancellation has completed.

@@ -1,0 +1,51 @@
+{
+  "source_commit": "92ee090e3dc9d5672cdae7e39093cbfd695768c2",
+  "scope": "headless emulator synthetic Hosted peer and DHCP fixtures; no C6, SDIO, Wi-Fi, server or physical device",
+  "candidates": {
+    "dhcp": {
+      "nihos-native-image.elf": "ccb911bb44f41aa557e11e3d0b12bd914e51f505fa1fced7cdc72b3c6d8b77e3",
+      "nihos-native-flash.bin": "371425cedf6d356ab65ad1eb25d8e85a8e02336e8c7c0de96b8ad2bdce0d9e1a"
+    },
+    "previous_ui": {
+      "nihos-native-image.elf": "1243cc4ce92ecc8890caea4f804e47a79776f45ee462a17ad38807e82a47030c",
+      "nihos-native-flash.bin": "94883e7a57a6ca049c3f8236c3d9ccf7be65f1d0526b449ba53ff40b2696a48a"
+    },
+    "matrix": {
+      "nihos-native-image.elf": "59b48cb2cae0fa9007d0a97ad6d176122c0a74941943cf4aa0d5834f27a67429",
+      "nihos-native-flash.bin": "dba72ad79d6e6fa2f0fbd6234591fe35dd1e615c789f1500e11a12a8c6a1d4ba"
+    },
+    "native": {
+      "nihos-native.elf": "0de3a03e81cc1c4e91936d13e9d0a97dd7d062405a30bf40b6eb9db427db6556",
+      "nihos-native-flash.bin": "32a59fb7051716a860c44e1f6840536367f5a42a16deea27da846f69dfd819b4"
+    }
+  },
+  "fixture_sha256": {
+    "src/net/fixtures/dhcp-offer.bin": "6486ad93e86f14f2ddc712bf6e8a72c0b82bfb5d8f82b29aa47cb222e7e9d7b6",
+    "src/net/fixtures/dhcp-ack.bin": "f73b7a15d30bc284f6eda3be4b3c4f40d05f328610bd3f9c8ef2a3d972994ee0"
+  },
+  "evidence_sha256": {
+    "build.log": "061ddcd91ae2dc18c87d567cc0427d87d5f9a747369b4bc93d4a448c61eba05d",
+    "debug.log": "88ece2429351da80b99e1d69015bfa59bbbe9f625ccd9b64d6ce1efdd6837a6d",
+    "dhcp-report.json": "189627c13238a96062415d825e59eb17c351df1d778e2852a8d4f456eaef25a7",
+    "image-audit.json": "4dfabaee2eaa5428ea7ba3e100507838c99be3b96b22585b388ec5cf0cd4a115",
+    "image.log": "c843c9f6349db5ed6046e9ad65e55bb9d53038ed13cbf787c259e88ea1580477",
+    "matrix-cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "matrix-early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "matrix-metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "matrix-noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "matrix-normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "matrix-present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "matrix-report.json": "add39a8d3640ed1c17d0d0b5fdcdf30c87a9cd67b0a379001947fc6e2dd1b8fa",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "native-report.json": "6ad70350a52f78b6964cc0b37992ce20c0088c57a96fbdacac66bc9647d0a9a7",
+    "native-runner.log": "dd973e1c845fe2ceeed684fe4a3bc13b41d1d283f5b1f125a43c4b15382f5b7d",
+    "previous-ui-runner.log": "aa21e27eca068c8cad72ce1140d36ea2bb9a230455e0ad2b48c9304124af82fb",
+    "previous_ui-report.json": "cd16ed080e21913b314946759ac4fb25d08793dcfbd73ea82467332616bab05e",
+    "python.log": "c462df0445c63619ade9d69b18562e66a0774956acfaba53906cc6f0805712b9",
+    "release-safe.log": "a481194b8795c6afd680a627830a8ab96f12f87f69d9153a949d4821cb3c0aab",
+    "repeat.log": "34ed6e618305097dd731d61fd5e4061bebdc3919cb85c4d021dfdc7aa09bb7ec",
+    "report.json": "189627c13238a96062415d825e59eb17c351df1d778e2852a8d4f456eaef25a7",
+    "runner.log": "3b0030b473f40b0c4ebefc387333ee2afb8fc9a87581d3a4f8455906dbededf7",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570"
+  }
+}
