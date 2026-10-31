@@ -230,6 +230,16 @@ jobs:
             cp build/native-device-network-rs485/licenses/BMI270.txt "$destination/licenses/"
           done
 
+      - name: Compile opt-in RGB565 and hardware JPEG fixture
+        run: |
+          NIHOS_NATIVE_NETWORK=0 NIHOS_NATIVE_NORMAL_STORAGE=0 NIHOS_NATIVE_DEVICES=1 \
+            NIHOS_NATIVE_CAMERA_ID=1 NIHOS_NATIVE_CAMERA_DIAGNOSTICS=0 NIHOS_NATIVE_CAMERA_JPEG=1 NIHOS_NATIVE_XY_WORKSPACE=0 \
+            NIHOS_NATIVE_USB=0 NIHOS_NATIVE_AUDIO=0 NIHOS_NATIVE_MICROPHONE=0 NIHOS_NATIVE_RS485=0 \
+            NIHOS_NATIVE_DISPLAY=2 sh tools/build-native.sh device integer
+          mkdir -p build/usb-ci/camera-jpeg
+          cp build/native-device-devices-camera-jpeg/image-audit.json \
+            build/native-device-devices-camera-jpeg/native_options.zig build/usb-ci/camera-jpeg/
+
       - name: Retain source-bound compile evidence
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
