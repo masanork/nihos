@@ -51,24 +51,32 @@ pub fn paintRgb565Le(framebuffer: []u8, surface_width: usize, surface_height: us
 /// The native linker can keep immutable lettering in its existing Flash span.
 /// The section is a compile-time choice; it never accepts runtime mask data.
 pub fn paintPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .portrait, false);
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .portrait, .full);
 }
 
 /// Recolour only 丹穂 and the marker after the complete first frame exists.
 pub fn recolorPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .portrait, true);
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .portrait, .dye);
 }
 
 /// Compose in logical 1280x720 coordinates, then rotate into the panel's buffer.
 /// No second framebuffer, panel command changes, or filesystem access is needed.
 pub fn paintLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, false);
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .full);
 }
 pub fn recolorLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, true);
+    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .dye);
 }
 
-fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, layout: Layout, recolor_only: bool) bool {
+/// Update a prepared splash after a milestone changes. Keep the title and
+/// inscription intact while DMA reads the same buffer; erase only the old
+/// status label, then redraw the dye, new label and marker.
+pub inline fn updateLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return @call(.always_inline, paint, .{ section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .milestone });
+}
+
+const Paint = enum { full, dye, milestone };
+fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, layout: Layout, kind: Paint) bool {
     const MaskStore = if (section) |name| struct {
         const data linksection(name) = assets.masks.*;
     } else struct {
@@ -82,10 +90,28 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
     const left = (surface_width - width) / 2;
     const top = (surface_height - height) / 2;
     const bg = rgb565(background);
-    if (!recolor_only) canvas.fillRect(.{ .x = 0, .y = 0, .width = @intCast(surface_width), .height = @intCast(surface_height) }, bg);
+    if (kind == .full) canvas.fillRect(.{ .x = 0, .y = 0, .width = @intCast(surface_width), .height = @intCast(surface_height) }, bg);
+    if (kind == .milestone) {
+        var x0: usize = std.math.maxInt(usize);
+        var y0: usize = std.math.maxInt(usize);
+        var x1: usize = 0;
+        var y1: usize = 0;
+        for (assets.sprites) |sprite| {
+            if (sprite.layout != layout or sprite.status == 0) continue;
+            x0 = @min(x0, sprite.x);
+            y0 = @min(y0, sprite.y);
+            x1 = @max(x1, @as(usize, sprite.x) + sprite.width);
+            y1 = @max(y1, @as(usize, sprite.y) + sprite.height);
+        }
+        if (x1 > x0 and y1 > y0) {
+            const point = physical(layout, if (layout == .landscape) x1 - 1 else x0, y0);
+            canvas.fillRect(.{ .x = @intCast(left + point.x), .y = @intCast(top + point.y), .width = @intCast(if (layout == .landscape) y1 - y0 else x1 - x0), .height = @intCast(if (layout == .landscape) x1 - x0 else y1 - y0) }, bg);
+        }
+    }
     for (assets.sprites) |sprite| {
         if (sprite.layout != layout) continue;
-        if (recolor_only and sprite.ink != .dye) continue;
+        if (kind == .dye and sprite.ink != .dye) continue;
+        if (kind == .milestone and sprite.ink != .dye and sprite.status == 0) continue;
         if (sprite.status != 0 and sprite.status != @backingInt(status)) continue;
         const ink = switch (sprite.ink) {
             .normal => paper,
@@ -222,4 +248,33 @@ test "landscape partial dye matches full repaint and preserves stride and guards
     var small: [32]u8 = @splat(0xab);
     try std.testing.expect(!paintLandscapePlacedRgb565Le(null, &small, width, height, width * 2, 0, .ready));
     for (small) |byte| try std.testing.expectEqual(@as(u8, 0xab), byte);
+}
+
+test "live milestones match full frames without clearing the static splash" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const frame = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(frame);
+    const expected = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(expected);
+    @memset(frame, 0xab);
+    @memset(expected, 0xab);
+    try std.testing.expect(paintLandscapePlacedRgb565Le(null, frame, width, height, stride, 0, .display));
+    for ([_]Status{ .memory, .cores, .input, .storage, .failed, .ready, .display }) |status| {
+        try std.testing.expect(updateLandscapePlacedRgb565Le(null, frame, width, height, stride, 173, status));
+        try std.testing.expect(paintLandscapePlacedRgb565Le(null, expected, width, height, stride, 173, status));
+        try std.testing.expectEqualSlices(u8, expected, frame);
+    }
+    // A sentinel inside the static title must survive a milestone update.
+    // Final-image equality alone would also pass after a clear-and-redraw.
+    const title = physical(.landscape, 100, 220);
+    const offset = title.y * stride + title.x * 2;
+    frame[offset] = 0xa5;
+    frame[offset + 1] = 0x5a;
+    try std.testing.expect(updateLandscapePlacedRgb565Le(null, frame, width, height, stride, 255, .ready));
+    try std.testing.expectEqualSlices(u8, &.{ 0xa5, 0x5a }, frame[offset..][0..2]);
+    for (0..height) |y| try std.testing.expect(std.mem.allEqual(u8, frame[y * stride + width * 2 ..][0..8], 0xab));
+    var invalid: [32]u8 = @splat(0xab);
+    try std.testing.expect(!updateLandscapePlacedRgb565Le(null, &invalid, width, height, width * 2, 255, .ready));
+    try std.testing.expect(std.mem.allEqual(u8, &invalid, 0xab));
 }

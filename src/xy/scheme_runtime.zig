@@ -5,7 +5,8 @@ const std = @import("std");
 pub const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 pub const data_section = if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata";
 pub const view_config = @import("view_config");
-pub const Error = error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy };
+pub const camera = @import("camera.zig");
+pub const Error = camera.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy };
 pub const Ref = u16;
 pub const cells = 256;
 pub const text_bytes = 64;
@@ -13,8 +14,8 @@ pub const depth_limit = 24;
 pub const step_limit = 1024;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword };
-const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00".*;
+const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00".*;
 const Cell = struct {
     tag: Tag,
     mark: bool,
@@ -445,6 +446,35 @@ pub const Runtime = struct {
                 try host.schemeCall(.move, "", try self.integer(args[0]));
                 return self.yes;
             },
+            .camera_capture => {
+                if (args.len != 0) return error.Arity;
+                if (comptime @hasDecl(@TypeOf(host.*), "cameraCapture")) return self.number(try host.cameraCapture());
+                return error.CameraUnavailable;
+            },
+            .camera_info => {
+                if (args.len != 1) return error.Arity;
+                const handle = try self.integer(args[0]);
+                if (comptime @hasDecl(@TypeOf(host.*), "cameraInfo")) {
+                    const info = try host.cameraInfo(handle);
+                    const state = try self.text(.symbol, @tagName(info.state));
+                    const w = try self.number(@intCast(info.width));
+                    const h = try self.number(@intCast(info.height));
+                    const bytes = try self.number(@intCast(info.bytes));
+                    return self.pair(state, try self.pair(w, try self.pair(h, try self.pair(bytes, 0))));
+                }
+                return error.CameraUnavailable;
+            },
+            .camera_read => {
+                if (args.len != 3) return error.Arity;
+                const handle = try self.integer(args[0]);
+                const offset = try self.integer(args[1]);
+                const count = try self.integer(args[2]);
+                if (offset < 0 or count < 0 or count > camera.max_read) return error.InvalidCameraRange;
+                if (comptime @hasDecl(@TypeOf(host.*), "cameraRead")) {
+                    return self.cameraRead(host, handle, @intCast(offset), @intCast(count));
+                }
+                return error.CameraUnavailable;
+            },
             .undo, .forget, .log, .memory, .tasks => {
                 if (args.len != 0) return error.Arity;
                 try host.schemeCall(switch (op) {
@@ -515,6 +545,17 @@ pub const Runtime = struct {
     fn viewKey(self: *const Runtime, r: Ref) linksection(code_section) Error![]const u8 {
         if (self.heap[r].tag != .symbol and self.heap[r].tag != .keyword) return error.Type;
         return self.string(r);
+    }
+    noinline fn cameraRead(self: *Runtime, host: anytype, camera_handle: i32, offset: u32, count: usize) linksection(code_section) Error!Ref {
+        var bytes: [camera.max_read]u8 = @splat(0);
+        try host.cameraRead(camera_handle, offset, bytes[0..count]);
+        var encoded: [camera.max_read * 2]u8 = @splat(0);
+        const digits = "0123456789abcdef";
+        for (bytes[0..count], 0..) |byte, index| {
+            encoded[index * 2] = digits[byte >> 4];
+            encoded[index * 2 + 1] = digits[byte & 15];
+        }
+        return self.text(.string, encoded[0 .. count * 2]);
     }
     fn start(self: *Runtime) linksection(code_section) Error!void {
         if (self.running) return error.Busy;
@@ -707,7 +748,7 @@ test "bounded malformed requests do not trap or retain ephemeral garbage" {
     try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
-const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00".*;
+const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00".*;
 pub fn message(err: Error) linksection(code_section) []const u8 {
     const wanted: usize = switch (err) {
         error.Depth => 0,
@@ -723,6 +764,11 @@ pub fn message(err: Error) linksection(code_section) []const u8 {
         error.CommandFull => 10,
         error.EditorFailure => 11,
         error.Busy => 12,
+        error.CameraUnavailable => 13,
+        error.CameraBusy => 14,
+        error.InvalidCameraHandle => 15,
+        error.InvalidCameraRange => 16,
+        error.CameraFailed => 17,
     };
     var pos: usize = 0;
     var index: usize = 0;
