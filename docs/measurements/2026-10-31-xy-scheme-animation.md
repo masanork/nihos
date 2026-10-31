@@ -1,6 +1,9 @@
 # xy: Schemeで動くplotと評価失敗からの復帰
 
 基準はPR #96のmerge `d287bc9c66f8796aaf7a9ea7ccf893355be11567`。
+作業中に入ったhome/readerのPR #92もmerge `0cb0ee4f`まで取り込み、共通描画とC ABIの
+現mainに対して検証した。reader modeでは新しいapp helperも評価・callback実行を拒否し、
+read-only guardを迂回できないことをC ABI経由で検証する。
 独立worktreeで、GPUIの共通app v1へScheme callbackを接続した。
 別のVMを増設せず、`c_abi_host`のlive editor VMとrollback境界を使う。
 新しいC helperはprototype用で、app v1のrecord layoutは変更していない。

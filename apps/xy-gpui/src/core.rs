@@ -113,6 +113,8 @@ unsafe extern "C" {
     fn xy_app_scheme_registered() -> bool;
     fn xy_app_editor_generation() -> u64;
     fn xy_host_buffer_copy(out: *mut u8, capacity: u32) -> i32;
+    fn xy_host_reader_enter() -> bool;
+    fn xy_host_reader_leave();
     fn xy_label_render_bgra8(
         out: *mut u8,
         cap: usize,
@@ -770,6 +772,26 @@ fn check_scheme(core: &mut Core, directory: &std::path::Path) {
     assert!(core.eval_buffer(now).is_err());
     assert_eq!(unsafe { xy_app_open(ABI_VERSION) }, 0);
     assert!(!core.registered(), "reopen has no stale callback");
+    core.tick(0);
+    core.eval("(app/on-frame! (lambda (t) (buffer/insert! \"bad\")))", 0)
+        .unwrap();
+    let before_reading = document_text();
+    assert!(unsafe { xy_host_reader_enter() });
+    core.tick(16_667);
+    assert_eq!(core.state().paused, 1);
+    assert!(
+        !core.registered(),
+        "reader mode must stop pending app callbacks"
+    );
+    assert_eq!(core.eval_result(-1, &[]).unwrap_err(), "App unavailable");
+    assert!(core.eval("(buffer/insert! \"bad\")", 16_667).is_err());
+    assert_eq!(
+        document_text(),
+        before_reading,
+        "Scheme helpers cannot bypass read-only reader mode"
+    );
+    unsafe { xy_host_reader_leave() };
+    assert_eq!(core.eval("(+ 20 22)", 16_667).unwrap(), "42");
 }
 fn save(directory: &std::path::Path, name: &str, bgra: &[u8], w: u32, h: u32) {
     let mut rgba = bgra.to_vec();
