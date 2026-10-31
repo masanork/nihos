@@ -7,50 +7,48 @@ const rotated = @import("rotated_surface");
 const catalog = @import("catalog.zig");
 const reader = @import("reader.zig");
 const protocol = @import("render_protocol.zig");
-pub const Session = session_module.SizedSession(1024);
+pub const page_glyphs = 2048;
+pub const Session = session_module.SizedSession(page_glyphs);
 
 pub const Page = struct {
     text: []const u8,
-    readings: [1024]u8,
+    readings: [2048]u8,
     reading_len: usize = 0,
-    spans: [64]protocol.RubySpan,
+    spans: [128]protocol.RubySpan,
     count: usize = 0,
-    codes: [64]layout.CodeSpan,
-    code_count: usize = 0,
-    book_prose: bool = false,
 };
 
-pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, offset: u32, config: protocol.Config, page: *Page, chapter: u32) !void {
+pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, offset: u32, config: protocol.Config, page: *Page) !void {
     if (offset >= entry.text.len or !@import("document.zig").isClusterBoundary(entry.text, offset)) return error.Range;
     var end: usize = offset;
     var clusters: usize = 0;
-    while (end < entry.text.len and end - offset < 3000 and clusters < 960) : (clusters += 1) end = try @import("document.zig").nextClusterEnd(entry.text, end);
+    while (end < entry.text.len and clusters < page_glyphs) : (clusters += 1) {
+        const next = try @import("document.zig").nextClusterEnd(entry.text, end);
+        if (next - offset > 4096) break;
+        end = next;
+    }
     var ruby_count: usize = 0;
+    var ruby_bytes: usize = 0;
     var at: usize = 0;
     while (at < entry.ruby.len) : (at += 16) {
         const a = catalog.read(entry.ruby, at);
         const b = catalog.read(entry.ruby, at + 4);
         if (a < offset or a >= end) continue;
         ruby_count += 1;
-        if (b > end or ruby_count > 64) end = a;
+        const n = catalog.read(entry.ruby, at + 12);
+        if (b > end or ruby_count > page.spans.len or n > page.readings.len - ruby_bytes) {
+            end = a;
+            break;
+        }
+        ruby_bytes += n;
     }
     var style = config.style;
     style.viewport_width_px = 1280;
     style.viewport_height_px = 648 - @as(u16, style.body_px) - 2 * @as(u16, config.appearance.status_padding);
-    const normal_faces = [_]layout.ttf.Face{ instance.faces[0], instance.faces[1 + @as(usize, style.style_id)] };
-    const book_faces = [_]layout.ttf.Face{ instance.book_face, normal_faces[1] };
-    const learning = if (try pack.learningBytes()) |bytes| try @import("learning_catalog.zig").Pack.init(bytes) else null;
-    const styled = entry.book == 2 and learning != null and learning.?.style_count != 0;
-    const family = layout.ttf.Family{ .faces = if (styled) &book_faces else &normal_faces, .code_faces = &normal_faces };
-    if (styled) {
-        style.style_id = 2 + style.style_id * 2;
-        style.ruby_px = 0;
-        style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
-    }
+    const family = layout.ttf.Family{ .faces = &.{ instance.faces[0], instance.faces[1 + @as(usize, style.style_id)] } };
     while (end > offset) {
-        if (styled) end = offset + reader.closeWord(entry.text[offset..], end - offset);
         // SAFETY: only the populated prefixes below are consumed; lengths start at zero.
-        page.* = .{ .text = entry.text[offset..end], .readings = undefined, .spans = undefined, .codes = undefined, .book_prose = styled };
+        page.* = .{ .text = entry.text[offset..end], .readings = undefined, .spans = undefined };
         at = 0;
         while (at < entry.ruby.len) : (at += 16) {
             const a = catalog.read(entry.ruby, at);
@@ -63,21 +61,10 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
             page.count += 1;
             page.reading_len += text.len;
         }
-        try reader.validate(page.text, page.readings[0..page.reading_len], page.spans[0..page.count]);
-        var anns: [64]layout.ruby.Annotation = undefined;
+        try reader.validateBounded(4096, 2048, 128, page.text, page.readings[0..page.reading_len], page.spans[0..page.count]);
+        var anns: [128]layout.ruby.Annotation = undefined;
         for (page.spans[0..page.count], 0..) |span, i| anns[i] = .{ .base = .{ .start = span.base_start, .end = span.base_end }, .ruby = .{ .start = span.ruby_start, .end = span.ruby_end } };
-        if (styled) if (learning) |l| {
-            while (try l.styleOnPage(chapter, offset, @intCast(end), @intCast(page.code_count))) |span| {
-                if (page.code_count == page.codes.len) break;
-                page.codes[page.code_count] = .{ .start = span.start, .end = span.end };
-                page.code_count += 1;
-            }
-            if (try l.styleOnPage(chapter, offset, @intCast(end), @intCast(page.code_count)) != null) {
-                end = offset + try reader.shorter(page.text, page.text.len, page.spans[0..page.count]);
-                continue;
-            }
-        };
-        const list = layout.layoutStyledParagraph(1024, 4096, 1024, session_module.Cache, &instance.cache, family, style, page.text, page.readings[0..page.reading_len], anns[0..page.count], &instance.scratch, &instance.placed, true, page.codes[0..page.code_count]) catch |err| switch (err) {
+        const list = layout.layoutParagraphWithWordWrap(page_glyphs, 4096, 2048, session_module.Cache, &instance.cache, family, style, page.text, page.readings[0..page.reading_len], anns[0..page.count], &instance.scratch, &instance.placed, true) catch |err| switch (err) {
             error.BlockFull, error.Capacity, error.SpanTooWide => {
                 end = offset + try reader.shorter(page.text, page.text.len, page.spans[0..page.count]);
                 continue;
@@ -111,7 +98,6 @@ fn footer(instance: *Session, target: anytype, reading: bool) !void {
         try label(instance, target, 24, 670, "ホーム", 24, 0xffff);
         try label(instance, target, 232, 670, "前へ", 24, 0xffff);
         try label(instance, target, 512, 670, "次へ", 24, 0xffff);
-        try label(instance, target, 680, 670, "Try", 20, 0xffff);
         try label(instance, target, 792, 670, "目次", 24, 0xffff);
         try label(instance, target, 1060, 670, "設定", 24, 0xffff);
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
@@ -126,10 +112,6 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
     const config = request.config.*;
     _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
     switch (nav.screen) {
-        .examples, .exercise => {
-            const l = request.learning orelse return error.Range;
-            try @import("learning_view.zig").render(instance, request, l, nav.screen == .examples, false);
-        },
         .home => {
             try label(instance, target, 48, 36, "xy", 48, 0x2147);
             try label(instance, target, 180, 54, "読む。書く。試す。", 32, 0x2147);
@@ -173,7 +155,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             nav.text_length = @intCast(e.text.len);
             // SAFETY: prepare fills every field and all published prefixes before use.
             var page: Page = undefined;
-            try prepare(instance, pack, e, nav.offset, config, &page, nav.chapter);
+            try prepare(instance, pack, e, nav.offset, config, &page);
             var status: [256]u8 = undefined;
             const percent = @as(u64, nav.offset) * 100 / @max(1, e.text.len);
             const line = try std.fmt.bufPrint(&status, "{s} / {d}%  [h:Home c:Contents s:Settings i:Source]", .{ e.title, percent });
@@ -185,9 +167,6 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             read_request.cursor = 0;
             read_request.show_cursor = 0;
             read_request.page_mode = 1;
-            read_request.book_prose = @intFromBool(page.book_prose);
-            read_request.code_spans = &page.codes;
-            read_request.code_count = page.code_count;
             read_request.status = line.ptr;
             read_request.status_length = line.len;
             read_request.ruby_text = &page.readings;
@@ -196,9 +175,6 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             read_request.ruby_count = page.count;
             try instance.render(&read_request);
             nav.end = nav.offset + @as(u32, @intCast(page.text.len));
-            if (request.learning) |l| {
-                if (nav.book == 2) try l.setPage(nav.chapter, nav.offset, nav.end) else l.page_valid = false;
-            }
             try footer(instance, target, true);
         },
         .credits => {
