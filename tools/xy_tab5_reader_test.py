@@ -92,6 +92,19 @@ class DeviceReader(unittest.TestCase):
         self.key('4');self.render();self.vm.xy_tab5_touch(600,680)
         self.render();self.vm.xy_tab5_touch(300,150);self.render()
         self.assertEqual(self.state(2),8)
+    def test_sideways_sicp_sections_page_without_missing_or_repeated_bytes(self):
+        self.key('s');self.key('v');self.key(13)
+        sections=[r for r in self.entries if r[0]==2]
+        for chapter,row in enumerate(sections):
+            self.open(2,chapter)
+            body=self.data[row[3]:row[3]+row[4]];at=0;chunks=[];pages=0
+            while at<len(body):
+                self.assertEqual(self.state(3),at)
+                end=self.state(4);self.assertGreater(end,at)
+                chunks.append(body[at:end]);at=end;pages+=1
+                if at<len(body):self.key(131);self.render()
+                self.assertLess(pages,500)
+            self.assertEqual(b''.join(chunks),body)
     def test_returning_home_and_book_preserves_current_page(self):
         self.open(1);self.key(131);self.render();at=self.state(3)
         self.key('h');self.render();self.key('r');self.render()

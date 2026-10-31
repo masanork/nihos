@@ -14,6 +14,7 @@ SHA=lambda data:hashlib.sha256(data).hexdigest()
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('port');ap.add_argument('build',type=Path);ap.add_argument('output',type=Path)
+    ap.add_argument('--leave-book',choices=('grass','sicp'),default='grass',help='Book to leave open in vertical writing after qualification')
     ap.add_argument('--install',action='store_true');ap.add_argument('--backup-from',type=Path,help='Reuse a private full backup only after whole-Flash verification');args=ap.parse_args()
     if not args.install:ap.error('--install is required; this command replaces firmware after backup')
     import serial,esptool
@@ -125,8 +126,9 @@ def main():
                 # Leave a clean, fresh reader ready for the user, in light Mincho vertical.
                 raw.clear();port.reset_input_buffer();port.dtr=False;HardReset(port,uses_usb=True)()
                 wait('final-fresh-home',lambda s,r:s['screen']==1)
-                send('final-grass-contents',b'2',lambda s,r:s['screen']==2 and s['book']==1)
-                send('final-grass',b'\r',lambda s,r:s['screen']==3 and s['end']>0)
+                final_book=1 if args.leave_book=='grass' else 2
+                send('final-'+args.leave_book+'-contents',str(final_book+1).encode(),lambda s,r:s['screen']==2 and s['book']==final_book)
+                send('final-'+args.leave_book,b'\r',lambda s,r:s['screen']==3 and s['end']>0)
                 send('final-settings',b's',lambda s,r:s['screen']==4)
                 send('final-vertical',b'v',lambda s,r:r['axis']==1)
                 send('final-book-visible',b'\r',lambda s,r:s['screen']==3 and r['axis']==1 and s['end']>0)
