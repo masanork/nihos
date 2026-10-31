@@ -1513,24 +1513,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-10-31",
-    "measuredAt": "2026-10-31T09:08:27.787216+00:00",
+    "measuredAt": "2026-10-31T11:04:24.158076+00:00",
     "project": "nihos",
-    "commit": "d287bc9c66f8796aaf7a9ea7ccf893355be11567",
+    "commit": "6c594ea202939d5d842c408a06d69dc551d9392a",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "4403d9f5401c321196ffa2756189f45873a3627f3da28eb0e0fac401779f1d47",
+    "sourceTreeSha256": "e0f18566bd31f2e91a59532b41c848659c34af092a4a3057c086e96941b13a29",
     "code": {
-      "implementation": 57524,
-      "tests": 29263,
-      "tooling": 18685,
+      "implementation": 58458,
+      "tests": 29893,
+      "tooling": 19540,
       "probes": 9156,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 50956,
-        "tests": 22043,
-        "tooling": 898,
+        "implementation": 51890,
+        "tests": 22220,
+        "tooling": 902,
         "probes": 1237,
         "vendored": 0,
         "generated": 0
@@ -1561,8 +1561,8 @@
       },
       "Python": {
         "implementation": 0,
-        "tests": 7061,
-        "tooling": 14858,
+        "tests": 7514,
+        "tooling": 15348,
         "probes": 1798,
         "vendored": 0,
         "generated": 0
@@ -1578,7 +1578,7 @@
       "Include/data": {
         "implementation": 44,
         "tests": 0,
-        "tooling": 0,
+        "tooling": 305,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1586,7 +1586,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 2737,
+        "tooling": 2793,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1596,7 +1596,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 141,
+        "tooling": 145,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1626,8 +1626,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 55892,
-        "tests": 22169,
+        "implementation": 56826,
+        "tests": 22346,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -1643,8 +1643,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 7094,
-        "tooling": 18544,
+        "tests": 7547,
+        "tooling": 19395,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1760,8 +1760,8 @@
         "src/console/camera_input.zig": "cd6fa79d13a589fadd2410b89da42155047e2002605bfbdd05e5696ec2b40532",
         "src/console/diagnostic_keys.zig": "96099cc09f00bc3cceb1b5453821514e7907ed09f8444d9b7f217243bee4a6d0",
         "src/console/session.zig": "700cd35ce5a83414078fd55336f1e8a8da7c916441da4367caeaed5af956acc8",
-        "src/console/session_input.zig": "92d6b6427a95bc0134ad4cac392aacf695ca4295bc3cf59b9a86b006fb57c0e0",
-        "src/console/snapshot.zig": "de63e46ec4ce917aec7663fdd2837057af3f7b414be9963cb14de2e654358f5a",
+        "src/console/session_input.zig": "c42be46cd6aafd56b4264b8e4dcbff945806aea1ef6f854dca31b337f95f436d",
+        "src/console/snapshot.zig": "0d506b09144648ccf29cbc497047c7fe73575fc45bcd9ddc5a0d26ca49d630e4",
         "src/device/camera_contract.zig": "ba972ba37c0c4753dca42a2ebc047a2895f7fbc841ca3fb6e6d3a7b080e14cee",
         "src/device/camera_stream_model.zig": "6023875e91a82270ddd2710ba82294f3ae1a85b0adce7f1cb368d219af5d3fce",
         "src/device/control.zig": "ee0054e0876338b44e5c4c898c58c19a7d03e735e4108c1ab3a378b5ac3e9f32",
@@ -1786,7 +1786,7 @@
         "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
         "src/graphics/ascii_console.zig": "c94adc6ed19b3740d91b73153e3120e9903859d7a8988842929a03907cd5c80c",
         "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
-        "src/graphics/boot_graphics.zig": "e50fa8c720db0c4c797f8af9e6b0d5593504721179c51754a6e4aeb46b27aaae",
+        "src/graphics/boot_graphics.zig": "b4b824ea33c42c38fbf5caddd56a44a494b8e8ec141000d6f48a2937a24926a7",
         "src/graphics/canvas.zig": "0a1b02139ed579c42a4978902c8722d4ec4e639fc7a1f5ad0476ad061aef8b62",
         "src/graphics/canvas_compile_probe.zig": "800c462939b4afb1c19693ac39aab443e9de8255557765a74d90d69c2c5d2909",
         "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
@@ -1795,7 +1795,7 @@
         "src/graphics/card_pin_assets.zig": "db433ed895eca1ba8218eb3506aec7e9897574047ac98a2dbc248ecbd6816c85",
         "src/graphics/card_read_result.zig": "f7e47e6c0fab3af4d3aa6e7dec7c37ef1b1a02b8f56ab0e51f940664ce39d16f",
         "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
-        "src/graphics/code_font.zig": "d7a577c7e2d52ecb8cad8bcb08e469d4bc182082885a9707d375b24fd54d7232",
+        "src/graphics/code_font.zig": "e76a32da958c6db001b1e2879c3d981f2a976eb2ba3d691eac66fc75a286e4ad",
         "src/graphics/console_canvas_scroll_test.zig": "ef5d5f7c1a41651d45b49ce2e82fa944e70e6a7454af876d810d8dde3dac95cd",
         "src/graphics/font_protocol.zig": "a7fa154cfafebcc48c8abdaf997227f66cab4cbd70f658e718a9f6c75fad3cfe",
         "src/graphics/font_stack_lifetime.zig": "9e3239d87b7c4172addafcd1fc04e75447b142ae6bcd0f060a6b84e28c775f69",
@@ -1808,12 +1808,12 @@
         "src/graphics/pixel_transfer.zig": "bd28ca20244b6305f2afe59b1099dc667d33c0ca8b120403c21754b34dc19bff",
         "src/graphics/raster_lease.zig": "c3f94beb94dfce2d0f2103f5f1b40c1822d984ad021d169dc3e1b79c78f22a48",
         "src/graphics/rotated_surface.zig": "a356824f9a40d47c25cc555e175ec19356e80dedbe72f1cf58b310fc35b9f8e3",
-        "src/graphics/ruby_layout.zig": "cd314e2153f3eeb7e5005cba3b042bb7b8d5b80a6e3878e763d98b7124984430",
+        "src/graphics/ruby_layout.zig": "96e4c0272a8e5d922d515725c7064f3856fc6680b40f96c4f334e016d1defb9f",
         "src/graphics/surface.zig": "1276fe3768d744bc919408bff435c6c2d08861dcda17feede916fcb466c7264e",
         "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
         "src/graphics/text_context.zig": "a55f50aa03a68f5fe2ead4575929223342045033fecf8e32b6e671d7ab5d82cc",
-        "src/graphics/ttf.zig": "fa005420461beb0441d110e210bf5468c0191a76f8fcbec4289c38a48261de46",
-        "src/graphics/viewport_layout.zig": "54072a0b9711e8c35a1f608729a5b6e47c15aa774296853e463809986de15d32",
+        "src/graphics/ttf.zig": "cf8b57dbc99b86c7f86127154eefb91f5f072d13aaf68eec319be4a5da152837",
+        "src/graphics/viewport_layout.zig": "4e376a0384a87870c46a9c5b758c0bffc208723269d18ab295ca7283124cae2f",
         "src/input/pointer.zig": "b41098302814b3b77a843474e8c0a85a6ad0025f9f9edb18d974ff41e7aed5e4",
         "src/input/touch_service.zig": "dbe261836dab4d89c75c270997f48d123032e55d6974f18f2e660dae311fc8d4",
         "src/io/sdmmc_host.zig": "b0cfea5f68cfa38a9ab74ee6afe9057b52ab29520e77d6f83f341a1e06559ce0",
@@ -1895,7 +1895,7 @@
         "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
         "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
         "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
-        "src/platform/native/diagnostic_ui.zig": "a7a8685bd01e3462c5b4c4a5a2c288d46b27b2b0b004862282bbba05f63453b6",
+        "src/platform/native/diagnostic_ui.zig": "7b4a68dc6f5041aa7b69300181460c8c8f018b9258c09ef3437883b0f8bb75ec",
         "src/platform/native/display_probe.zig": "3385df69e5e477732cc13dda0d8f56c6bf24c0a818e4e04aef0f9e0be4629049",
         "src/platform/native/display_runtime.zig": "e1276574c1591e022dc2c037b35a23ef40d612adf2f53501ae0b597bd883c35d",
         "src/platform/native/display_service.zig": "5cca357d10533650d7530a214dcf2cf64ac0021f2e5640a7289ad22affea0d5b",
@@ -1935,13 +1935,13 @@
         "src/platform/native/sqlite_probe.zig": "5b1baac96ea2587a899ec42d42afe870079ba19a15a7df4aa0be83e6c99a6dbd",
         "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
         "src/platform/native/stack_layout.zig": "89277ab57dbaa5f5d4a51f056ef54b5d2f298b1a5178b45cc844deb6d2e49806",
-        "src/platform/native/stacks.zig": "1155ef6637deaed2c51ecfdc8b68078f4cdced034c477069444cb853ecfe70f6",
+        "src/platform/native/stacks.zig": "621483d857c332035cccf4708ef40f523e3ffac08b724cd7dc8ff1f6cff4598f",
         "src/platform/native/start.S": "670d6bcad40406c9d86be4e9a01250678de5b7cfb256d9c023da631d5ffa1376",
         "src/platform/native/storage_runtime.zig": "a514783874fc6513ff70c8dec447d04ca6eefc965641bd2c0ad731ae3b39dd27",
         "src/platform/native/storage_service_abi.zig": "74fa28ad88ce71cc916370f56930c0eae1c4c31b94c577ee3d21f157ab440b17",
         "src/platform/native/touch_probe.zig": "5fbffe3e87ba19f9597d372ec1469a976d9106e97fe57b426554f013f8f847ef",
         "src/platform/native/usb_probe.zig": "1312b09e392a6d70b460344fa2eaf223bf0518a8c17b0643f7bf6fcd70c0cf0f",
-        "src/platform/native/xy_render_runtime.zig": "aeef2001924666b55452349f2be14dd06d56628f2c2f163b219dbfe22d5198ce",
+        "src/platform/native/xy_render_runtime.zig": "58b3a1b9af59313562a7029a8cf06acb861dafda122f55e3eacec3d561ccf4f8",
         "src/platform/native/xy_scratch_live.zig": "8ad5a9d48c50f983eda8f04dca09ecd9d884e6d8f086a408a7101465166f1393",
         "src/protected_fault_test.zig": "ecb1d37d47991d93d45a8acd3ef435d7512ba01b211b82e4cee1aacb4971d318",
         "src/root.zig": "eef90117baa66fcead6d80c7b8334cc985f74be5f75461094bd7101d19bd9d8e",
@@ -2008,26 +2008,31 @@
         "src/usb/ccid.zig": "f4cd8986d6429e7e77c007551ffe91da48f43e30d6bcdb6e7421ba651e322dd2",
         "src/usb/descriptors.zig": "a069c782000da795815c437b0cf2672357239c233fc7c061320c83e59d0bb9d4",
         "src/usb/jpki.zig": "72c73be16bea70893a71faaa8e01312b27f8aa0be8bb0f15b39ac899343ba976",
-        "src/xy/c_abi_host.zig": "6c4453d05b47c9d2cda56b5596842957777b2f35862b2f0cee3bd913108cfbf7",
+        "src/xy/c_abi_host.zig": "3a9a3305f7cea66db8f81f820decaf0e4744f58d7a087879c007f5a9fd98cab4",
         "src/xy/camera.zig": "3804074e1cbda8642b36b38050d15ac7b73f7e8dedb0c4eda13e1c16f9f1d4d3",
+        "src/xy/catalog.zig": "5e6bc394c32ef5d94aa7ce00d9f8ab7f8cd3ec1cc2e88fbc34373eddba017bd7",
         "src/xy/document.zig": "a6f0303c38b7bb91e5fffd94d73cf64f7bea28463546db8df5f5d54f370bfa3f",
         "src/xy/ime_omni.zig": "d01560e7981d8abaf2bf670bc6246c323250ac2a99a986cb4362cb83d1fd5912",
         "src/xy/live_workspace.zig": "2528178d50785df72019feb501b311bf42c128753c98725a53fafa68f8dd8edc",
-        "src/xy/native_render_entry.zig": "9f8f64136a9ffcf938d19e25658d504ba97508fdc3590e2276ce787716a65d1e",
+        "src/xy/native_reading.zig": "9ab04d65144b07f832f7c46f26e428bfe56121e594d4afad44af236693bb3fa8",
+        "src/xy/native_render_entry.zig": "72a71910e026e0247eb8574e1ca9d004ac500accf3e01782beefc028de4bc529",
+        "src/xy/navigation.zig": "347d75a9a391c95cea0db55d2b43f6884349a446df52b73508106865b50c3f98",
         "src/xy/presentation.zig": "bb8ee97b794e3fbf3083ee39a907654b12c5716872270eda3778ad41f1efa268",
+        "src/xy/preview_host.zig": "abaef372b8aff90e34d984cf4fc94da1e9ee4226a17b884cf3e86c22e62d9a98",
+        "src/xy/reader.zig": "a77eba736b61b4e76a11dbb7fc97229cc629476de1cf7ccd53f7e6f40568ea7d",
         "src/xy/render_adapter.zig": "651ce747bc4383a376513e2565758c9aeb611bd185b8841b5c6c40395a34efeb",
-        "src/xy/render_protocol.zig": "f33a24bd5b76cdb163e0595dd883719b99cc5012c9c5596481fc5bf0a6c1450b",
-        "src/xy/render_session.zig": "582dfb5a31b43328ed25812fa4844bdc24c83279bcd853ff3a15008acb591a7f",
+        "src/xy/render_protocol.zig": "64032c939712ccaa155bfaadb17f99ff5d790de5bf01426c0d2355fcfb3bd335",
+        "src/xy/render_session.zig": "a642fc0c1ca6de01b31e9af4dba943c19cd61d9ce193dae00b3e1b43835b4337",
         "src/xy/scheme_bridge.zig": "469b476fb1ffcff17ba1eb3d34844a2e932d9fabd9846e3ec713b9e3de0a0f07",
         "src/xy/scheme_runtime.zig": "3bd6c8be7ea0b7ea6d0e95dbe0b758102f7683689d8edf2103a1853e26df1de0",
-        "src/xy/scratch.zig": "1e536877e43ffdbb08cc7cec03d262201b1180e9be292409a1fa9f34c4568412",
+        "src/xy/scratch.zig": "9f2693df8a2ab8982b5e2ce2b79cd4594a388d125b99daa358845facc84f3c4b",
         "src/xy/system_buffer.zig": "2e9e8838cd2c16427bafea051d816165ffb24947a66070b7261da2e20cc0a80f",
         "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7"
       },
       "lines": {
-        "covered": 12480,
-        "count": 12899,
-        "percent": 96.75168617722304
+        "covered": 12567,
+        "count": 13038,
+        "percent": 96.38748274275196
       },
       "files": {
         "src/app/animation.zig": {
@@ -2243,8 +2248,8 @@
           "count": 161
         },
         "src/graphics/boot_graphics.zig": {
-          "covered": 79,
-          "count": 79
+          "covered": 86,
+          "count": 86
         },
         "src/graphics/canvas.zig": {
           "covered": 142,
@@ -2582,6 +2587,10 @@
           "covered": 207,
           "count": 219
         },
+        "src/xy/navigation.zig": {
+          "covered": 76,
+          "count": 124
+        },
         "src/xy/presentation.zig": {
           "covered": 14,
           "count": 14
@@ -2591,8 +2600,8 @@
           "count": 508
         },
         "src/xy/scratch.zig": {
-          "covered": 190,
-          "count": 217
+          "covered": 194,
+          "count": 225
         },
         "src/xy/system_buffer.zig": {
           "covered": 55,
@@ -2823,9 +2832,13 @@
         "src/storage_vfs.zig",
         "src/touch_sim.zig",
         "src/xy/c_abi_host.zig",
+        "src/xy/catalog.zig",
         "src/xy/ime_omni.zig",
         "src/xy/live_workspace.zig",
+        "src/xy/native_reading.zig",
         "src/xy/native_render_entry.zig",
+        "src/xy/preview_host.zig",
+        "src/xy/reader.zig",
         "src/xy/render_adapter.zig",
         "src/xy/render_protocol.zig",
         "src/xy/render_session.zig",

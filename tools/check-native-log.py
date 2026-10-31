@@ -221,13 +221,15 @@ def check_storage(record, sectors):
     return record
 
 
-def check_boot_headers(log, automatic_cards=False, card_boot=False):
+def check_boot_headers(log, automatic_cards=False, card_boot=False, camera_boot=False):
     headers = re.findall(r"^NIHOS_[A-Z0-9_]*_BOOT(?= |$)", log, re.MULTILINE)
-    expected = (["NIHOS_NATIVE_BOOT"] + (["NIHOS_NATIVE_CARD_BOOT"] * 2 if card_boot else []) +
+    expected = (["NIHOS_NATIVE_BOOT"] + (["NIHOS_NATIVE_CAMERA_BOOT"] if camera_boot else []) + (["NIHOS_NATIVE_CARD_BOOT"] * 2 if card_boot else []) +
                 (["NIHOS_NATIVE_CARD_AUTO_BOOT"] if automatic_cards else []))
     if (log.count("NIHOS_NATIVE_BOOT backend=zig-sram rtos=none") != 1 or
             headers != expected or log.count("ESP-ROM:esp32p4") > 1):
         raise ValueError("missing boot, unexpected reboot or mixed firmware capture")
+    if camera_boot:
+        fixed_record(log, "NIHOS_NATIVE_CAMERA_BOOT", ("flags", "reason"))
 
 
 def repeated_records(log, marker, names):
@@ -505,7 +507,8 @@ def check(log, expected_mode=None, expected_psram_bytes=0, image=None, evidence=
     if require_normal != normal_boot or (normal_boot and (require_qualification or require_sdmmc or require_sdmmc_fast or require_storage or (profile != 'device' and not headless))):
         raise ValueError('normal boot must be explicitly requested and cannot qualify a soak/storage run')
     check_boot_headers(log, bool(image and image.get('automatic_cards')),
-                       bool(image and image.get('keypad_storage', {}).get('card_boot')))
+                       bool(image and image.get('keypad_storage', {}).get('card_boot')),
+                       bool(image and 'nih_csi_stream_begin' in image.get('device_text', {}).get('functions', {})))
     if "NIHOS_NATIVE_FAIL" in log or "NIHOS_NATIVE_TRAP" in log:
         raise ValueError("native failure/trap")
     modes = re.findall(r"NIHOS_NATIVE_MODE floating=([01])", log)
