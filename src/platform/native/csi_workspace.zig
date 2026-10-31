@@ -4,7 +4,7 @@
 const memory = @import("native_tasks").memory;
 const workspace = @import("camera_workspace");
 const preview = @import("camera_preview");
-const frame_bytes = 1280 * 720;
+pub const frame_bytes: usize = 1280 * 720 * (if (@import("native_options").camera_jpeg) 2 else 1);
 const cache_chunk = 1024;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
