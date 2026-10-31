@@ -1,15 +1,11 @@
 //! Emulator offscreen adapter for the same Document/input/presentation used by
-//! normal boot. No panel, DMA, storage or Scheme VM is exercised here.
+//! normal boot, including Scheme and TrueType rendering. No panel or DMA.
 const std = @import("std");
 const console = @import("text_console");
-const Layout = console.raster.Layout(.jetbrains);
-const Text = console.Grid(Layout.columns, Layout.rows);
-pub fn Live(comptime section: ?[]const u8) type {
+pub fn Live(comptime _: ?[]const u8) type {
     return struct {
         const Self = @This();
         model: console.scratch.Model,
-        text: Text,
-        renderer: console.raster.Renderer(section, .jetbrains),
         pub fn start(self: *Self, frame: []u8) bool {
             @memset(std.mem.asBytes(self), 0);
             self.model.initInPlace();
@@ -34,8 +30,7 @@ pub fn Live(comptime section: ?[]const u8) type {
                     self.model.snapshot.counters(0, .{ .ticks = 42, .switches = 7, .calls = 3 });
                 },
             }
-            self.model.render(&self.text);
-            return self.renderer.submit(frame, 1440, &self.text, .neutral);
+            return @import("display_service").xy_render_runtime.draw(&self.model, frame);
         }
         pub fn press(self: *Self, frame: []u8, modifiers: u8, usage: u8) error{InvalidFrame}!bool {
             const before = self.model.doc.revision;

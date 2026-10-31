@@ -506,7 +506,7 @@ fn beginSession(log: anytype) void {
     session_active = true;
     session_pending = false;
     if (comptime xy_workspace) {
-        const values: extern struct { document_bytes: u32, undo_ops: u32, workspace_bytes: u32, persistent: u32, unicode_raster: u32 } = .{ .document_bytes = 4096, .undo_ops = 256, .workspace_bytes = @sizeOf(console.scratch.Model), .persistent = 0, .unicode_raster = 0 };
+        const values: extern struct { document_bytes: u32, undo_ops: u32, workspace_bytes: u32, persistent: u32, unicode_raster: u32 } = .{ .document_bytes = 4096, .undo_ops = 256, .workspace_bytes = @sizeOf(console.scratch.Model), .persistent = 0, .unicode_raster = 1 };
         log.record("NIHOS_NATIVE_XY_READY", null, .{ "document_bytes", "undo_ops", "workspace_bytes", "persistent", "unicode_raster" }, &values);
     } else {
         const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
@@ -617,7 +617,7 @@ noinline fn captureXySystem() linksection(if (xy_workspace) ".flash.xytext" else
         },
     }
 }
-noinline fn traceScratch(log: anytype) void {
+noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
     if (!xy_trace or (scratch.revision == last_xy_trace_revision and xy_input_bytes == last_xy_input_bytes)) return;
     last_xy_trace_revision = scratch.revision;
     last_xy_input_bytes = xy_input_bytes;
@@ -629,6 +629,9 @@ noinline fn traceScratch(log: anytype) void {
     };
     const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash };
     log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash" }, &values);
+    const graphics = @import("xy_render_runtime.zig");
+    const render_values: extern struct { frames: u32, stack_used: u32, failed: u32, font: u32, size: u32, axis: u32, foreground: u32, background: u32 } = .{ .frames = graphics.frames, .stack_used = graphics.stack_used, .failed = graphics.failed, .font = scratch.vm.view.style.style_id, .size = scratch.vm.view.style.body_px, .axis = scratch.vm.view.style.axis, .foreground = scratch.vm.view.appearance.foreground, .background = scratch.vm.view.appearance.background };
+    log.record("NIHOS_NATIVE_XY_RENDER", null, .{ "frames", "stack_used", "failed", "font", "size", "axis", "foreground", "background" }, &render_values);
 }
 noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!renderer_ready) {
@@ -637,7 +640,13 @@ noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if 
     }
     if (renderer.moving() and !renderer.finish(frame(), 1440, palette())) return false;
     if (shown_session_view != session.view) renderer.invalidate();
-    if (xy_workspace) scratch.render(live_text) else if (session.view == .logs) {
+    if (xy_workspace) {
+        if (!@import("xy_render_runtime.zig").draw(scratch, frame()) or !present()) return false;
+        shown_session_view = session.view;
+        shown_session_revision = scratch.revision;
+        return true;
+    }
+    if (session.view == .logs) {
         console.snapshot.fill(live_text, &model, journal.spans(), journal.dropped);
         // The boot snapshot's controls no longer apply after session handoff.
         @memset(live_text.cells[5 * geometry.columns .. 6 * geometry.columns], ' ');

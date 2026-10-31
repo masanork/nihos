@@ -94,9 +94,9 @@ def main():
                     '--dep', 'fixture', '--dep', 'fixture_options', f'-Mroot={ROOT / "tools/probes/console_workload_host.zig"}',
                     '--dep', 'text_console', f'-Mfixture={ROOT / "src/platform/native/console_workload.zig"}',
                     f'-Mfixture_options={host_options}',
-                    '--dep', 'canvas', f'-Mtext_console={ROOT / "src/console.zig"}',
+                    '--dep', 'view_config', '--dep', 'canvas', f'-Mtext_console={ROOT / "src/console.zig"}',
                     '--dep', 'surface', f'-Mcanvas={ROOT / "src/graphics/canvas.zig"}',
-                    f'-Msurface={ROOT / "src/graphics/surface.zig"}', f'-femit-bin={library}'], cwd=ROOT, check=True)
+                    f'-Mview_config={ROOT / "src/xy/view_config.zig"}', f'-Msurface={ROOT / "src/graphics/surface.zig"}', f'-femit-bin={library}'], cwd=ROOT, check=True)
     render = ctypes.CDLL(str(library)).render
     render.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
     render.restype = ctypes.c_bool

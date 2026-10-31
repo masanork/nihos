@@ -1,0 +1,51 @@
+{
+  "code_commit": "1afbc6c65b23a9e01e60836db4431bf96904f21f",
+  "main_integration": "3efd1f80d78db8f95bef4c8dc8280b66fe0ac584",
+  "physical_device_used": false,
+  "sd_written": false,
+  "native_profiles": {
+    "normal": {
+      "image_sha256": "d64be0220b30279c4bbea90b60157dbd1fc71d050050557c418af2c21a86c7af",
+      "elf_sha256": "5ad300469ba5e15a53187fac7224196a9fb1087dd939fbf901c59dc1d061da26",
+      "image_bytes": 784272,
+      "primary_heap_bytes": 49472,
+      "xy_code_bytes": 37088,
+      "xy_rodata_bytes": 253460
+    },
+    "trace": {
+      "image_sha256": "cc095bd048897033d36a64336b2394a8d0612a813f193ba82224ceb279317ac1",
+      "elf_sha256": "9ba72a7f208193e829cde319852aa4927f014867977109e8c599140a3d9215cf",
+      "image_bytes": 784736,
+      "primary_heap_bytes": 49472,
+      "xy_code_bytes": 37456,
+      "xy_rodata_bytes": 253460
+    },
+    "minimal": {
+      "image_sha256": "531d9a651d0e01346170228a33f8fcd10b2468f815e90574bb6ea7fe0493cfcc",
+      "elf_sha256": "a34ede096d9102df765751f5957368fe5e6f44dfa9772d11d12d5407ad16bb2a",
+      "image_bytes": 744320,
+      "primary_heap_bytes": 68544,
+      "xy_code_bytes": 37024,
+      "xy_rodata_bytes": 263284
+    }
+  },
+  "rv32_observations": 39,
+  "proof_sha256": {
+    "mac-vertical-gothic-dark.png": "148aaf4b86bbdabe72b5880f7e362ae172836bee4314c13823424a98f2568aa3",
+    "minimal-image-audit.json": "5b4e5468c7386319719014c2f3f3065ee4a9eaf8c32044049579ebda0da2fc1f",
+    "normal-image-audit.json": "e87ef7fd9dee27360bb269dc2c9edf635795095f211986bf3a9d125a1c7498df",
+    "rv32-japanese.png": "36c83e2d9295bd1d0e2cd9b246001981672812b031878f975d8fa93f65e9e65a",
+    "rv32-report.json": "1c527b74f883f877a63c8dd9d6feb2bc978cd8509862b61db9473a51ed2db710",
+    "rv32-view-configured.png": "fa950eb4ca50a772ee07e37c917ca7449cc009824e80ebc913024eb157cefcd8",
+    "trace-image-audit.json": "46e2d4c3204838435a5802f1b32111e5452a8ab7b61bd3e27002008a019e5924"
+  },
+  "logs_sha256": {
+    "host": "769cf7af5b49a4740feec07896283a48cc42325f5c8def52dc8ee0c20dcf0214",
+    "python": "61b3fa616faa3f1f50dbaaaf2022f19686b4cf1b44c8c6599340e54a3a2d2605",
+    "static": "2e9e281de3e1ed9cd9f443051b4fc8bfe6408d8c0c8fb86934b33090c7f84774",
+    "native": "3c03be2005bcdabf65c98bc933a26fe01bb8de6e1359e88e87baf5f86d1d35d3",
+    "emulator": "d2f11402654e1546097454ab161ddc955cc95ca3db5d8035e4e3e3ae2f5c49c3",
+    "coverage_command_tests": "3d3daff7706e74e5a516be7492a845833267dffa0b60ee43fd388a88bda8c206",
+    "desktop": "584bd35d807f9a68bd78a2d67c0b8f136267ee4dff8d0ff39a1aa14f72327b6c"
+  }
+}

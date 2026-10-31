@@ -288,6 +288,21 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     return true;
 }
 
+// CPU0 bootstrap's synchronous renderer. Both calls require MIE=0; the
+// assembly bridge enables interrupts only after moving to the admitted stack.
+pub inline fn beginForegroundStack(low: u32, high: u32) ?runtime_module.Image {
+    if (asm volatile ("csrr %[v], mstatus"
+        : [v] "=r" (-> u32),
+    ) & 8 != 0 or !owners[0].ready) return null;
+    return owners[0].runtime.beginStackSwitch(owners[0].bootstrap, low, high);
+}
+pub inline fn endForegroundStack(original: runtime_module.Image) bool {
+    if (asm volatile ("csrr %[v], mstatus"
+        : [v] "=r" (-> u32),
+    ) & 8 != 0) return false;
+    return owners[0].runtime.endStackSwitch(owners[0].bootstrap, original);
+}
+
 pub fn ready(hart: u32) bool {
     return owners[hart].ready;
 }

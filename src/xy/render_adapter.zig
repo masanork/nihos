@@ -25,34 +25,27 @@ pub inline fn rgb565(r: u8, g: u8, b: u8) u16 {
 
 /// Color palette shared between Tab5 RGB565LE framebuffer and desktop GPUI RGBA8888.
 pub const ThemePalette = extern struct {
-    bg_rgb565: u16 = rgb565(250, 246, 238),
-    body_rgb565: u16 = rgb565(28, 28, 30),
-    ruby_rgb565: u16 = rgb565(92, 64, 51),
-    cursor_rgb565: u16 = rgb565(204, 51, 34),
-    minibuf_bg_rgb565: u16 = rgb565(234, 228, 214),
-    minibuf_fg_rgb565: u16 = rgb565(40, 56, 72),
+    bg_rgb565: u16,
+    body_rgb565: u16,
+    ruby_rgb565: u16,
+    cursor_rgb565: u16,
+    minibuf_bg_rgb565: u16,
+    minibuf_fg_rgb565: u16,
+    bg_rgba8: u32,
+    body_rgba8: u32,
+    ruby_rgba8: u32,
+    cursor_rgba8: u32,
+    cursor_width: u8 = 2,
+    status_padding: u8 = 4,
 
-    bg_rgba8: u32 = 0xFAF6EEFF,
-    body_rgba8: u32 = 0x1C1C1EFF,
-    ruby_rgba8: u32 = 0x5C4033FF,
-    cursor_rgba8: u32 = 0xCC3322FF,
-
-    /// Warm Washi paper & Sumi ink preset (default for Aozora Bunko & notes).
-    pub const washi_light: ThemePalette = .{};
-
-    /// High-contrast dark theme preset for night hacking.
-    pub const hacker_dark: ThemePalette = .{
-        .bg_rgb565 = rgb565(18, 20, 24),
-        .body_rgb565 = rgb565(230, 234, 240),
-        .ruby_rgb565 = rgb565(138, 180, 248),
-        .cursor_rgb565 = rgb565(255, 166, 87),
-        .minibuf_bg_rgb565 = rgb565(30, 34, 42),
-        .minibuf_fg_rgb565 = rgb565(168, 218, 181),
-        .bg_rgba8 = 0x121418FF,
-        .body_rgba8 = 0xE6EAEFFF,
-        .ruby_rgba8 = 0x8AB4F8FF,
-        .cursor_rgba8 = 0xFFA657FF,
-    };
+    pub fn fromAppearance(a: @import("view_config").Appearance) ThemePalette {
+        return .{ .bg_rgb565 = color565(a.background), .body_rgb565 = color565(a.foreground), .ruby_rgb565 = color565(a.ruby_color), .cursor_rgb565 = color565(a.cursor_color), .minibuf_bg_rgb565 = color565(a.status_background), .minibuf_fg_rgb565 = color565(a.status_foreground), .bg_rgba8 = a.background << 8 | 255, .body_rgba8 = a.foreground << 8 | 255, .ruby_rgba8 = a.ruby_color << 8 | 255, .cursor_rgba8 = a.cursor_color << 8 | 255, .cursor_width = a.cursor_width, .status_padding = a.status_padding };
+    }
+    fn color565(rgb: u32) u16 {
+        return rgb565(@truncate(rgb >> 16), @truncate(rgb >> 8), @truncate(rgb));
+    }
+    pub const washi_light = fromAppearance(.{});
+    pub const hacker_dark = fromAppearance(.{ .background = 0x121418, .foreground = 0xe6eaf0, .ruby_color = 0x8ab4f8, .cursor_color = 0xffa657, .status_background = 0x1e222a, .status_foreground = 0xa8dab5 });
 };
 
 pub const CursorRect = extern struct {
@@ -74,10 +67,10 @@ pub fn computeCursorRect(
 
     // Default origin if buffer is empty
     var cx: i32 = if (is_vertical)
-        @as(i32, view.viewport_width_px) - @as(i32, view.margin_x_px) - @as(i32, body_px)
+        @as(i32, view.viewport_width_px) - @as(i32, view.margin_x_px) - @as(i32, view.ruby_px) - @as(i32, body_px)
     else
         @as(i32, view.margin_x_px);
-    var cy: i32 = view.margin_y_px;
+    var cy: i32 = @as(i32, view.margin_y_px) + if (is_vertical) @as(i32, 0) else @as(i32, view.ruby_px);
 
     for (placed_list) |g| {
         if (g.run != 0) continue; // Only track body run for cursor placement
@@ -87,11 +80,12 @@ pub fn computeCursorRect(
             break;
         }
         if (g.cluster_byte_offset < cursor_byte_offset) {
+            const advance = if (g.base_cp == 0) @as(i32, 0) else if (g.advance_px != 0) @as(i32, g.advance_px) else @as(i32, g.px_size);
             if (is_vertical) {
                 cx = g.cell_x_px;
-                cy = g.cell_y_px + @as(i32, g.px_size);
+                cy = g.cell_y_px + advance;
             } else {
-                cx = g.cell_x_px + @as(i32, g.px_size);
+                cx = g.cell_x_px + advance;
                 cy = g.cell_y_px;
             }
         }
@@ -124,17 +118,17 @@ pub const PaintStats = struct {
 /// onto a borrowed RGB565LE `surface.Surface`.
 pub fn paintSurfaceRgb565(
     comptime CacheType: type,
-    target: surface.Surface,
+    target: anytype,
     cache: *CacheType,
     family: ttf.Family,
     view: ViewStyle,
     theme: ThemePalette,
     placed_list: []const PlacedGlyph,
-    cursor_byte_offset: u32,
+    cursor_byte_offset: ?u32,
     linear_blend: bool,
     glyf_scratch: []u8,
 ) ttf.Error!PaintStats {
-    const minibuf_height: u32 = @as(u32, view.body_px) + 8;
+    const minibuf_height: u32 = @as(u32, view.body_px) + 2 * @as(u32, theme.status_padding);
     const total_h: u32 = @intCast(target.height);
     const total_w: u32 = @intCast(target.width);
     const minibuf_y: i32 = if (total_h > minibuf_height)
@@ -151,6 +145,7 @@ pub fn paintSurfaceRgb565(
     // 2. Blit each PlacedGlyph's 8bpp alpha mask from TwoTierCache
     var blitted: usize = 0;
     for (placed_list) |g| {
+        if (g.base_cp == 0) continue;
         const cached = try cache.getOrRender(
             family,
             @intCast(g.style_id & 0x0F),
@@ -177,7 +172,10 @@ pub fn paintSurfaceRgb565(
     }
 
     // 3. Draw cursor caret (vertical bar in horizontal mode, horizontal bar in vertical mode)
-    const caret = computeCursorRect(view, placed_list, cursor_byte_offset);
+    var caret = if (cursor_byte_offset) |offset| computeCursorRect(view, placed_list, offset) else CursorRect{ .x_px = 0, .y_px = 0, .width_px = 0, .height_px = 0 };
+    if (cursor_byte_offset != null) {
+        if (view.axis == 0) caret.width_px = theme.cursor_width else caret.height_px = theme.cursor_width;
+    }
     _ = target.fillRect(caret.x_px, caret.y_px, caret.width_px, caret.height_px, theme.cursor_rgb565);
 
     return .{
@@ -231,6 +229,7 @@ pub fn buildGpuiFrame(
 ) ttf.Error!GpuiFrameDescriptor {
     var q_count: usize = 0;
     for (placed_list) |g| {
+        if (g.base_cp == 0) continue;
         if (q_count >= out_quads.len) break;
         const cached = try cache.getOrRender(
             family,
@@ -250,7 +249,8 @@ pub fn buildGpuiFrame(
         q_count += 1;
     }
 
-    const caret = computeCursorRect(view, placed_list, cursor_byte_offset);
+    var caret = computeCursorRect(view, placed_list, cursor_byte_offset);
+    if (view.axis == 0) caret.width_px = theme.cursor_width else caret.height_px = theme.cursor_width;
     return .{
         .viewport_width_px = view.viewport_width_px,
         .viewport_height_px = view.viewport_height_px,
@@ -348,4 +348,16 @@ test "Target A (RGB565 Surface) and Target B (GPUI C-ABI) render live horizontal
     try std.testing.expectEqual(@as(u16, 28), gpui_frame.cursor.width_px);
     try std.testing.expectEqual(@as(u16, 2), gpui_frame.cursor.height_px);
     try std.testing.expect(quads[0].alpha_len > 0);
+}
+
+test "caret follows shaped spaces and trailing paragraph breaks" {
+    const glyphs = [_]PlacedGlyph{
+        .{ .base_cp = ' ', .cluster_byte_offset = 0, .px_size = 24, .cell_x_px = 24, .cell_y_px = 36, .advance_px = 12 },
+        .{ .cluster_byte_offset = 2, .px_size = 24, .cell_x_px = 24, .cell_y_px = 84 },
+    };
+    const space = computeCursorRect(.{}, glyphs[0..1], 1);
+    try std.testing.expectEqual(@as(i32, 36), space.x_px);
+    const newline = computeCursorRect(.{}, &glyphs, 2);
+    try std.testing.expectEqual(@as(i32, 24), newline.x_px);
+    try std.testing.expectEqual(@as(i32, 84), newline.y_px);
 }
