@@ -37,7 +37,14 @@ impl Workspace {
                 this.core.focus_lost(this.now());
                 this.refresh_graph(window);
                 cx.notify();
+            } else {
+                this.core.focus_gained(this.now());
             }
+        })
+        .detach();
+        cx.on_app_quit(|this, _| {
+            this.core.cancel(this.now());
+            async {}
         })
         .detach();
         let labels = Labels::new(&mut core, scale);
@@ -95,12 +102,15 @@ impl Workspace {
         cx.notify();
     }
     fn schedule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.tick_pending || self.core.state().paused != 0 {
+        if self.tick_pending || self.core.state().paused != 0 || self.core.state().stopped != 0 {
             return;
         }
         self.tick_pending = true;
         cx.on_next_frame(window, |this, window, cx| {
             this.tick_pending = false;
+            if this.core.state().stopped != 0 {
+                return;
+            }
             if this.core.tick(this.now()) {
                 this.refresh_graph(window);
                 cx.notify();

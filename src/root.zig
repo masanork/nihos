@@ -80,6 +80,8 @@ pub const at_controller = @import("net/at_controller.zig");
 pub const c6_sdio = @import("net/c6_sdio.zig");
 pub const esp32p4_sdio = @import("soc/esp32p4/sdio.zig");
 pub const animation = @import("app/animation.zig");
+pub const app_protocol = @import("app/protocol.zig");
+pub const plot_app = @import("app/plot_app.zig");
 pub const animated_plot = @import("graphics/animated_plot.zig");
 
 test {
@@ -172,6 +174,8 @@ test {
     _ = test_pattern;
     _ = boot_graphics;
     _ = animation;
+    _ = app_protocol;
+    _ = plot_app;
     _ = animated_plot;
     _ = font_protocol;
     _ = raster_lease;
