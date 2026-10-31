@@ -1,13 +1,13 @@
 //! RAM workspace over the shared xy Document and bounded Scheme runtime.
 //! Normal boot uses render_session; render() retains a fixed-cell projection
-//! for console fixtures. The runtime has no storage or shell access.
+//! for console fixtures. Storage uses copied provider requests; no shell access is exposed.
 const std = @import("std");
 pub const input = @import("../console/session_input.zig");
 pub const scheme = @import("scheme_runtime.zig");
 pub const document = @import("document.zig");
 // Immutable presentation text follows the existing diagnostic font placement;
 // host targets retain their ordinary read-only segment.
-pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nRAM only: this buffer is not saved.\n\nEnter or Esc: return to *scratch*".*;
+pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const camera = @import("camera.zig");
 pub const system = @import("system_buffer.zig");
@@ -33,12 +33,11 @@ const status_4 linksection(scheme.data_section) = "Command too long; cancel or e
 
 const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
 
-pub const LearningSession = @import("learning_session.zig").Session;
 pub const Model = struct {
     camera: camera.Client,
+    storage_client: scheme.storage.Client,
     doc: Doc,
     nav: navigation.State,
-    learning: ?*@import("learning_session.zig").Session,
     vm: scheme.Runtime,
     reply: [128]u8,
     reply_length: usize,
@@ -53,6 +52,14 @@ pub const Model = struct {
     top_row: usize,
     serial: input.Serial,
     hid: input.Hid,
+    deferred_serial: [512]u8,
+    deferred_serial_delta: [512]u8,
+    deferred_serial_first: u64,
+    deferred_serial_last: u64,
+    deferred_serial_count: u16,
+    deferred: [64]input.Key,
+    deferred_count: u8,
+    deferred_overflow: bool,
     utf8: [4]u8,
     utf8_length: u3,
     utf8_needed: u3,
@@ -81,12 +88,38 @@ pub const Model = struct {
             return;
         };
     }
-    pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
-        if (self.nav.screen == .exercise) {
-            if (self.learning) |l| l.insert(text) catch |err| l.notice(err);
+    pub fn replayInput(self: *Model) linksection(scheme.code_section) void {
+        if (self.vm.running) return;
+        if (self.deferred_overflow) {
+            self.deferred_count = 0;
+            self.deferred_serial_count = 0;
+            self.deferred_overflow = false;
+            self.serial = .{};
+            self.utf8_length = 0;
+            self.command_length = 0;
+            self.mode = .edit;
+            self.status = .invalid_input;
             self.changed();
             return;
         }
+        var replay_now = self.deferred_serial_first;
+        while (self.deferred_serial_count != 0) {
+            const byte = self.deferred_serial[0];
+            replay_now +|= @as(u64, self.deferred_serial_delta[0]) * 250;
+            self.deferred_serial_count -= 1;
+            std.mem.copyForwards(u8, self.deferred_serial[0..self.deferred_serial_count], self.deferred_serial[1..][0..self.deferred_serial_count]);
+            std.mem.copyForwards(u8, self.deferred_serial_delta[0..self.deferred_serial_count], self.deferred_serial_delta[1..][0..self.deferred_serial_count]);
+            self.expireSerial(replay_now);
+            self.feedSerial(byte, replay_now);
+        }
+        while (self.deferred_count != 0) {
+            const key = self.deferred[0];
+            self.deferred_count -= 1;
+            std.mem.copyForwards(input.Key, self.deferred[0..self.deferred_count], self.deferred[1..][0..self.deferred_count]);
+            self.handle(key);
+        }
+    }
+    pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
         if (self.mode == .system or self.nav.screen != .document) {
             self.status = .read_only;
             self.changed();
@@ -97,15 +130,22 @@ pub const Model = struct {
         self.changed();
     }
     pub fn handle(self: *Model, key: input.Key) linksection(scheme.code_section) void {
+        if (self.vm.running) {
+            if (self.deferred_count == self.deferred.len) {
+                self.deferred_overflow = true;
+                return;
+            }
+            self.deferred[self.deferred_count] = key;
+            self.deferred_count += 1;
+            return;
+        }
         self.status = .none;
         self.changed();
         if (self.nav.screen != .document) {
             const nav_key: navigation.Key = switch (key) {
                 inline else => |value, tag| @unionInit(navigation.Key, @tagName(tag), value),
             };
-            if (self.nav.screen == .examples or self.nav.screen == .exercise) {
-                if (self.learning) |l| l.handle(&self.nav, nav_key) else self.nav.screen = .reading;
-            } else self.nav.handle(nav_key, &self.vm.view);
+            self.nav.handle(nav_key, &self.vm.view);
             return;
         }
         if (key == .cancel and self.mode == .edit) {
@@ -191,12 +231,6 @@ pub const Model = struct {
         @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
         self.command_length += bytes.len;
     }
-    pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
-        if (self.nav.screen == .examples or self.nav.screen == .exercise) {
-            if (self.learning) |l| l.touch(&self.nav, x, y);
-        } else self.nav.touch(x, y, &self.vm.view);
-        self.changed();
-    }
     pub fn resetScheme(self: *Model) linksection(scheme.code_section) void {
         self.vm.initInPlace();
         const result = self.vm.evaluate(&default_commands, self, &self.reply) catch |err| {
@@ -212,6 +246,13 @@ pub const Model = struct {
         self.status = if (err == error.UnknownCommand) .unknown_command else .scheme_error;
     }
     pub fn evaluate(self: *Model, source: []const u8, named: bool) linksection(scheme.code_section) void {
+        if (comptime @import("builtin").os.tag == .freestanding) return nih_xy_evaluate(self, source.ptr, source.len, named);
+        self.evaluateOnStack(source, named);
+    }
+    extern fn nih_xy_evaluate(*Model, [*]const u8, usize, bool) void;
+    pub fn evaluateOnStack(self: *Model, source: []const u8, named: bool) linksection(scheme.code_section) void {
+        // A storage wait may present the initial revision before the reply arrives.
+        defer self.changed();
         _ = self.doc.beginUndoGroup();
         defer self.doc.endUndoGroup();
         self.changed();
@@ -224,6 +265,24 @@ pub const Model = struct {
     }
     pub fn cameraCapture(self: *Model) linksection(scheme.code_section) scheme.Error!i32 {
         return self.camera.capture();
+    }
+    pub fn storageCall(self: *Model, request: scheme.storage.Request, output: []u8) linksection(scheme.code_section) scheme.Error![]const u8 {
+        return self.storage_client.call(request, output);
+    }
+    pub fn saveDocument(self: *Model, name: []const u8) linksection(scheme.code_section) scheme.Error!void {
+        if (self.mode == .system) return error.EditorFailure;
+        try self.storage_client.save(name, self.doc.slice());
+    }
+    pub fn documentText(self: *Model) linksection(scheme.code_section) []const u8 {
+        return self.doc.slice();
+    }
+    pub fn loadDocument(self: *Model, name: []const u8) linksection(scheme.code_section) scheme.Error!void {
+        if (self.mode == .system) return error.EditorFailure;
+        // This foreground-only buffer is already reserved for system snapshots.
+        const text = try self.storage_client.load(name, &self.snapshot.bytes);
+        self.doc.clear();
+        self.doc.insertUtf8(text) catch return error.EditorFailure;
+        self.top_row = 0;
     }
     pub fn cameraInfo(self: *Model, camera_handle: i32) linksection(scheme.code_section) scheme.Error!camera.Info {
         return self.camera.info(camera_handle);
@@ -265,6 +324,21 @@ pub const Model = struct {
         if (self.hid.feed(modifiers, usage)) |key| self.handle(key);
     }
     pub fn feedSerial(self: *Model, byte: u8, now: u64) linksection(scheme.code_section) void {
+        if (self.vm.running) {
+            if (self.deferred_serial_count == self.deferred_serial.len) {
+                self.deferred_overflow = true;
+                return;
+            }
+            if (self.deferred_serial_count == 0) {
+                self.deferred_serial_first = now;
+                self.deferred_serial_last = now;
+            }
+            self.deferred_serial_delta[self.deferred_serial_count] = @intCast(@min((now -| self.deferred_serial_last) / 250, 255));
+            self.deferred_serial_last = now;
+            self.deferred_serial[self.deferred_serial_count] = byte;
+            self.deferred_serial_count += 1;
+            return;
+        }
         if (self.utf8_length != 0 or byte >= 128) {
             if (self.utf8_length == 0) {
                 self.serial.cr = false;
@@ -305,6 +379,7 @@ pub const Model = struct {
         if (self.serial.feed(byte, now)) |key| self.handle(key);
     }
     pub fn expireSerial(self: *Model, now: u64) linksection(scheme.code_section) void {
+        if (self.vm.running) return;
         if (self.serial.expire(now)) |key| self.handle(key);
     }
     fn advance(text: []const u8, offset: usize, columns: usize, row: *usize, column: *usize) usize {
@@ -626,37 +701,56 @@ test "camera handle reads are bounded copies and do not edit the document" {
     try std.testing.expectEqualStrings("notes", model.doc.slice());
 }
 
-test "learning input owns separate draft and notes without changing editor undo or settings" {
-    const l = try std.testing.allocator.create(LearningSession);
-    defer std.testing.allocator.destroy(l);
-    l.initInPlace();
-    l.active_slot = 0;
-    l.slots[0].used = true;
-    l.slots[0].code.revision = 1;
-    l.slots[0].code.next_group_id = 1;
-    l.slots[0].notes.revision = 1;
-    l.slots[0].notes.next_group_id = 1;
+// A provider may pump native UI while an evaluation awaits SD completion.
+test "storage wait defers UTF8 and rejects an overflowing command as a whole" {
     var model: Model = undefined;
     model.initInPlace();
-    model.learning = l;
-    model.insert("ordinary document");
-    model.vm.view.style.axis = 1;
-    model.nav.screen = .exercise;
-    model.handle(.{ .text = 'A' });
-    model.handle(.enter);
-    for ("日本語") |b| model.feedSerial(b, 0);
-    try std.testing.expectEqualStrings("A\n日本語", l.slots[0].code.slice());
+    model.insert("before");
+    model.vm.running = true;
+    for ("日本語") |byte| model.feedSerial(byte, 0);
     model.handle(.backspace);
-    try std.testing.expectEqualStrings("A\n日本", l.slots[0].code.slice());
-    model.handle(.undo);
-    try std.testing.expectEqualStrings("A\n日本語", l.slots[0].code.slice());
-    model.touch(1100, 680);
-    for ("メモ") |b| model.feedSerial(b, 0);
-    try std.testing.expectEqualStrings("メモ", l.slots[0].notes.slice());
-    model.handle(.escape);
-    try std.testing.expectEqual(navigation.Screen.reading, model.nav.screen);
-    try std.testing.expectEqual(@as(u8, 1), model.vm.view.style.axis);
-    try std.testing.expectEqualStrings("ordinary document", model.doc.slice());
-    try std.testing.expect(try model.doc.undo());
+    try std.testing.expectEqualStrings("before", model.doc.slice());
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqualStrings("before日本", model.doc.slice());
+    model.vm.running = true;
+    for (0..1100) |_| model.feedSerial('x', 0);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqualStrings("before日本", model.doc.slice());
+    try std.testing.expectEqual(Status.invalid_input, model.status);
+}
+
+test "evaluation publishes a fresh revision after a provider pumps the pending UI" {
+    const Provider = struct {
+        model: *Model,
+        observed: u32 = 0,
+        fn call(context: ?*anyopaque, _: scheme.storage.Request, output: []u8) scheme.storage.Error![]const u8 {
+            const self: *@This() = @ptrCast(@alignCast(context.?));
+            if (!self.model.vm.running) return error.StorageFailed;
+            self.observed = self.model.revision;
+            @memcpy(output[0..2], "#t");
+            return output[0..2];
+        }
+    };
+    var model: Model = undefined;
+    model.initInPlace();
+    var provider = Provider{ .model = &model };
+    model.storage_client.provider = .{ .context = &provider, .call = Provider.call };
+    model.evaluate("(sql/check)", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expect(model.revision > provider.observed);
+}
+
+test "storage wait preserves the delayed ESC that opens a queued Scheme command" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.vm.running = true;
+    model.feedSerial(0x1b, 1_000_000);
+    for ("(+ 1 2)\r") |byte| model.feedSerial(byte, 1_100_000);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqualStrings("3", model.reply[0..model.reply_length]);
     try std.testing.expectEqualStrings("", model.doc.slice());
 }
