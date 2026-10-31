@@ -1,0 +1,71 @@
+Build Summary: 69/69 steps succeeded; 15/15 tests passed
+test success
++- run test cached
+|  +- compile test safe native cached 151ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 118ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 116ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 116ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 131ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 117ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 114ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 103ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 117ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 100ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 108ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 115ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 100ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 146ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 147ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 143ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 93ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 138ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 140ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 116ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 93ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 92ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 128ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 138ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 101ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 106ms MaxRSS:32M
++- run test 15 pass (15 total) 255ms MaxRSS:7M
+|  +- compile test safe native success 20s MaxRSS:447M
++- run test cached
+|  +- compile test safe native cached 115ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 101ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 116ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 130ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 140ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 114ms MaxRSS:32M
++- run test cached
+   +- compile test safe native cached 115ms MaxRSS:32M
+

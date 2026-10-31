@@ -1,0 +1,21 @@
+Memory broker RV32 compilation and profile generation: ok (not target execution)
+Checkpoint RV32 / 16 GiB / u64 media-address compilation: ok (not target execution)
+Checkpoint service RV32 / owned mailbox / u64 offsets: compile-only ok
+.......................................
+----------------------------------------------------------------------
+Ran 39 tests in 0.013s
+
+OK
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK
+Native network owner codegen (normal and diagnostic): ok
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+RV32 architecture contract and six audited native ELF links: ok
