@@ -23,8 +23,8 @@ emu,out=sys.argv[1],Path(sys.argv[2]); names=('nihos-native-image.elf','nihos-na
 hashes={name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in names}
 def marker(round,state): return f'NIHOS_WASM_REPEAT round={round:08x} state={state:08x}'
 steps=[('\x1b','NIHOS_WASM_INTERACTIVE_READY'),('rust-app\r','NIHOS_NATIVE_SESSION_VIEW'),
-       ('010q',marker(1,1)),('rust-app\r',marker(1,2)),('q',marker(2,5)),
-       ('rust-app\r',marker(2,4)),('010q',marker(3,1))]
+       ('010',marker(1,1)),('q','NIHOS_WASM_WORK_ACTIVE round=00000001'),('rust-app\r',marker(1,2)),('q',marker(2,5)),
+       ('rust-app\r',marker(2,4)),('010',marker(3,1)),('q','NIHOS_WASM_WORK_ACTIVE round=00000003')]
 cmd=[emu,'--chip','esp32p4','--firmware',str(out/names[1]),'--elf',str(out/names[0]),'--psram-size','4M','--timeout','90s','--exit-on',marker(3,2)]
 for payload,trigger in steps: cmd+=['--inject',payload,'--inject-on',trigger]
 r=subprocess.run(cmd,capture_output=True,text=True,timeout=100)
@@ -38,10 +38,21 @@ fg=[tuple(int(x,16) for x in row) for row in fg]
 assert len(fg)==3 and [x[0] for x in fg]==[1,2,3],fg
 assert all(row[1]>0 and 0<row[4]<200000 for row in fg),fg
 assert fg[0][1]>1 and fg[2][1]>1,fg
-assert fg[0][3]>0 and fg[1][2]>0 and fg[2][3]>0,fg
+assert fg[0][3]>=5 and fg[1][2]>0 and fg[2][3]>=5,fg
+work=re.findall(r'NIHOS_WASM_WORK round=([0-9a-f]+) items=([0-9a-f]+) digest=([0-9a-f]+) sensor=([0-9a-f]+)',r.stdout)
+work=[tuple(int(x,16) for x in row) for row in work]
+def expected(round,items):
+    digest=2166136261; sensor=0
+    for seq in range(1,items+1):
+        for i in range(64): digest=((digest ^ ((seq*17+i*29+round*7)&255))*16777619)&0xffffffff
+        sensor=(sensor+sum((seq*31+i*7+round*11)&1023 for i in range(16)))&0xffffffff
+    return digest,sensor
+assert len(work)==3 and [w[0] for w in work]==[1,2,3],work
+for row,phase in zip(work,fg):
+    assert row[1]==sum(phase[1:4]) and row[1]>0 and row[2:]==expected(row[0],row[1]),(row,phase)
 assert r.stdout.count('Starting Rust sample; q or Esc cancels.')==3,r.stdout
 assert r.stdout.count('Rust sample stopped.\nnihos> ')==3,r.stdout
 assert all(hashlib.sha256((out/f).read_bytes()).hexdigest()==h for f,h in hashes.items())
-(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg]},indent=2)+'\n')
+(out/'report.json').write_text(json.dumps({'scope':'single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout','candidate':hashes,'events':[dict(zip(('round','state','frames','signature'),row)) for row in rows], 'foreground':[dict(zip(('round','opening','cancelling','active','max_gap_us'),row)) for row in fg], 'mock_work':[dict(zip(('round','items','digest','sensor'),row)) for row in work]},indent=2)+'\n')
 print('repeat: two active runs and startup cancellation, with shell returns and full recovery passed')
 PYRUN

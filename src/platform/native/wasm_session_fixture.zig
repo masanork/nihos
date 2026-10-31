@@ -35,7 +35,22 @@ pub var foreground_open: u32 = 0;
 pub var foreground_cancel: u32 = 0;
 pub var foreground_active: u32 = 0;
 pub var foreground_max_gap: u32 = 0;
+pub var mock_items: u32 = 0;
+pub var mock_digest: u32 = 2166136261;
+pub var mock_sensor_sum: u32 = 0;
 var foreground_previous: u64 = 0;
+// Bounded deterministic work, not a camera, network, or storage driver.
+fn mockService() void {
+    mock_items += 1;
+    for (0..64) |index| {
+        const byte: u8 = @truncate(mock_items *% 17 +% @as(u32, @intCast(index)) *% 29 +% interactive_round *% 7);
+        mock_digest = (mock_digest ^ byte) *% 16777619;
+    }
+    for (0..16) |index| {
+        const sample = (mock_items *% 31 +% @as(u32, @intCast(index)) *% 7 +% interactive_round *% 11) & 1023;
+        mock_sensor_sum +%= sample;
+    }
+}
 // Called once per normalReady loop after network/storage service entry and
 // before UI service. Those real services are disabled in this test profile.
 pub fn foregroundProbe() void {
@@ -45,6 +60,7 @@ pub fn foregroundProbe() void {
     }
     foreground_previous = now;
     if (!interactive_opening) return;
+    mockService();
     switch (ui.wasmFixturePhase()) {
         1 => foreground_open += 1,
         2 => foreground_cancel += 1,
@@ -99,6 +115,9 @@ pub fn interactiveService(log: anytype) u32 {
             foreground_active = 0;
             foreground_max_gap = 0;
             foreground_previous = 0;
+            mock_items = 0;
+            mock_digest = 2166136261;
+            mock_sensor_sum = 0;
             interactive_start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
             ui.wasmFixtureClearDirty();
         }

@@ -1662,11 +1662,17 @@ fn normalReady() noreturn {
             fixture.foregroundAfterUi();
             const state = fixture.interactiveService(&logger);
             if (state == 3) fail("Wasm interactive repeat result");
+            if (state == 0 and fixture.foreground_active == 5) {
+                const active = .{ .round = fixture.interactive_round };
+                logger.record("NIHOS_WASM_WORK_ACTIVE", null, .{"round"}, &active);
+            }
             if (state != 0) {
                 const event = .{ .round = fixture.interactive_round, .state = state, .frames = fixture.interactive_frames, .signature = fixture.interactive_signature };
                 if (state == 2 or state == 4) {
                     const foreground = .{ .round = fixture.interactive_round, .opening = fixture.foreground_open, .cancelling = fixture.foreground_cancel, .active = fixture.foreground_active, .max_gap_us = fixture.foreground_max_gap };
                     logger.record("NIHOS_WASM_FOREGROUND", null, .{ "round", "opening", "cancelling", "active", "max_gap_us" }, &foreground);
+                    const work = .{ .round = fixture.interactive_round, .items = fixture.mock_items, .digest = fixture.mock_digest, .sensor = fixture.mock_sensor_sum };
+                    logger.record("NIHOS_WASM_WORK", null, .{ "round", "items", "digest", "sensor" }, &work);
                 }
                 logger.record("NIHOS_WASM_REPEAT", null, .{ "round", "state", "frames", "signature" }, &event);
             }
