@@ -1,5 +1,6 @@
 # sqld・xy・checkpoint storeのhost結合検証
 
+後続の通常起動・SD永続化の実機結果は[こちら](2026-10-31-sqld-native.md)。以下はhost段階の記録。
 対象source: `f4d3604b8e9beb067ff0cd27d99ec61a1bef37e4`、base: `e1cfd0caa2e426c07088c7b33ed77464cbf3d899`。全体のnative導入は未完了。
 実装とbinding一覧は[契約](../planning/sqld-xy-service.md)、hashと実行ログは
 [evidence/result.json](evidence/2026-10-31-sqld-xy-host/result.json)に保存した。

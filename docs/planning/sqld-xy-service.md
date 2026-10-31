@@ -1,7 +1,7 @@
 # sqld・checkpoint store・xyの接続
 
 2026-10-31。共通層・host adapter・Tab5通常起動の実装契約。
-Tab5ではSDへの保存とwarm reboot後の読出しを実測した。物理電断耐性は未認定。
+Tab5ではSDへの保存とwarm reboot後の読出しを実測した。物理電断耐性は未認定。[実機報告](../measurements/2026-10-31-sqld-native.md)に候補・ログ・認定範囲を記録した。
 
 ## 実装した経路
 
