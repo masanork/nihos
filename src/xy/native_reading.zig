@@ -7,13 +7,14 @@ const rotated = @import("rotated_surface");
 const catalog = @import("catalog.zig");
 const reader = @import("reader.zig");
 const protocol = @import("render_protocol.zig");
-pub const Session = session_module.SizedSession(512);
+pub const page_glyphs = 2048;
+pub const Session = session_module.SizedSession(page_glyphs);
 
 pub const Page = struct {
     text: []const u8,
-    readings: [1024]u8,
+    readings: [2048]u8,
     reading_len: usize = 0,
-    spans: [64]protocol.RubySpan,
+    spans: [128]protocol.RubySpan,
     count: usize = 0,
 };
 
@@ -21,15 +22,25 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
     if (offset >= entry.text.len or !@import("document.zig").isClusterBoundary(entry.text, offset)) return error.Range;
     var end: usize = offset;
     var clusters: usize = 0;
-    while (end < entry.text.len and end - offset < 3000 and clusters < 400) : (clusters += 1) end = try @import("document.zig").nextClusterEnd(entry.text, end);
+    while (end < entry.text.len and clusters < page_glyphs) : (clusters += 1) {
+        const next = try @import("document.zig").nextClusterEnd(entry.text, end);
+        if (next - offset > 4096) break;
+        end = next;
+    }
     var ruby_count: usize = 0;
+    var ruby_bytes: usize = 0;
     var at: usize = 0;
     while (at < entry.ruby.len) : (at += 16) {
         const a = catalog.read(entry.ruby, at);
         const b = catalog.read(entry.ruby, at + 4);
         if (a < offset or a >= end) continue;
         ruby_count += 1;
-        if (b > end or ruby_count > 64) end = a;
+        const n = catalog.read(entry.ruby, at + 12);
+        if (b > end or ruby_count > page.spans.len or n > page.readings.len - ruby_bytes) {
+            end = a;
+            break;
+        }
+        ruby_bytes += n;
     }
     var style = config.style;
     style.viewport_width_px = 1280;
@@ -50,10 +61,10 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
             page.count += 1;
             page.reading_len += text.len;
         }
-        try reader.validate(page.text, page.readings[0..page.reading_len], page.spans[0..page.count]);
-        var anns: [64]layout.ruby.Annotation = undefined;
+        try reader.validateBounded(4096, 2048, 128, page.text, page.readings[0..page.reading_len], page.spans[0..page.count]);
+        var anns: [128]layout.ruby.Annotation = undefined;
         for (page.spans[0..page.count], 0..) |span, i| anns[i] = .{ .base = .{ .start = span.base_start, .end = span.base_end }, .ruby = .{ .start = span.ruby_start, .end = span.ruby_end } };
-        const list = layout.layoutParagraphWithWordWrap(512, 4096, 1024, session_module.Cache, &instance.cache, family, style, page.text, page.readings[0..page.reading_len], anns[0..page.count], &instance.scratch, &instance.placed, true) catch |err| switch (err) {
+        const list = layout.layoutParagraphWithWordWrap(page_glyphs, 4096, 2048, session_module.Cache, &instance.cache, family, style, page.text, page.readings[0..page.reading_len], anns[0..page.count], &instance.scratch, &instance.placed, true) catch |err| switch (err) {
             error.BlockFull, error.Capacity, error.SpanTooWide => {
                 end = offset + try reader.shorter(page.text, page.text.len, page.spans[0..page.count]);
                 continue;
