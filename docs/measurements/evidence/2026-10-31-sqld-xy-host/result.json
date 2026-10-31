@@ -95,5 +95,29 @@
       "78\t9\ttools/xy_mac_host.m"
     ],
     "edited_by_this_work": false
+  },
+  "followup": {
+    "source_commit": "f5dee0a5df57c42e7a5910320324d8685a7fff92",
+    "source_hashes": {
+      "src/services/sqld.c": "25540dba5c293f8b6e92e6d303b046331753c6551f560b92f6b1cf20d386281c",
+      "src/services/sqlite_store_vfs.c": "d2611f9b11aa3a241f5d5ee4f6a16f362705fcdd1e3bacd049a95433aac3fb66",
+      "tools/build-sqld-host.sh": "ae214d9bdff6b19fa8ffea51607e5091e851993ff92f278507670895ea45f130",
+      "tools/sqld_test.py": "36300ad3cde7660880ef915f3f7845656aedecb58b1a91a24c0db458ce8cef04"
+    },
+    "reason": "Linux clang link needed Zig compiler runtime; validate failed monotonic clock and NOMEM/time reporting",
+    "sqld_tests": 14,
+    "python_discovery": 539,
+    "workspace_tests": 16,
+    "zig_sources_unchanged": true,
+    "prior_zig_and_normal_elf_evidence_still_scoped_to_identical_sources": true,
+    "rv32_objects": "compile only, passed",
+    "clang_analyzer_diagnostics": 0,
+    "artifact_sha256": {
+      "build/sqld/libsqld.dylib": "eb764f06f2d546c1376f8e3fc39094e0b6d45babc7717b89ceed88a890c177d7",
+      "build/sqld/sqld-host": "6fb82ee583529b72179355a17065bcef3912a474fb1e5f13adf016448c0081b7",
+      "build/xy-mac/libxy_host.dylib": "45cadc34f7ec9d2ae002aa4561d85cb31cc1850e6eed4f4d56ea589f01a57d30",
+      "build/xy-mac/xy-mac-host": "57abd6ebd2543ca13e9ecfc8d441c1663505815349cc135d5b8b49ce3931a6a9"
+    },
+    "initial_linux_ci_failure": "https://github.com/masanork/nihos/actions/runs/41179126095"
   }
 }
