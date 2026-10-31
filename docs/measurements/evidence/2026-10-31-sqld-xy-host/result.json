@@ -119,5 +119,26 @@
       "build/xy-mac/xy-mac-host": "57abd6ebd2543ca13e9ecfc8d441c1663505815349cc135d5b8b49ce3931a6a9"
     },
     "initial_linux_ci_failure": "https://github.com/masanork/nihos/actions/runs/41179126095"
+  },
+  "queue_followup": {
+    "source_commit": "b7eb893922cdb5f71846621c9e79fbec98b3ef7c",
+    "source_hashes": {
+      "src/services/sqld.c": "23441d49bcb576851c994e6cec775562b4c4f28681457c16684f65330f908768",
+      "tools/sqld_test.py": "6ce73c00e4d20fdccf5b734de790c593d6e338bb5cd3ac2a52fd8de746798cbc"
+    },
+    "reason": "Finish completed-sequence bookkeeping before releasing the reusable request slot",
+    "tests": {
+      "sqld": 15,
+      "python_discovery": 540,
+      "concurrent_copied_requests": 256,
+      "clang_analyzer_diagnostics": 0,
+      "rv32_objects": "compile only, passed"
+    },
+    "artifact_sha256": {
+      "build/sqld/libsqld.dylib": "84ec2d2bb541959f5ec8a1bee84275c70fa797c5615018aecbb130ecc1edf87f",
+      "build/sqld/sqld-host": "a1a7dac10390a5af3b88a5bb4ab4c44fca5dee8be6cad0ba832a11d8178db5fe",
+      "build/xy-mac/libsqld.dylib": "84ec2d2bb541959f5ec8a1bee84275c70fa797c5615018aecbb130ecc1edf87f"
+    },
+    "prior_zig_source_unchanged": true
   }
 }
