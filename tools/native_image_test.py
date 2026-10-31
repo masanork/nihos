@@ -11,6 +11,24 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_xy_sine_table_requires_flash_storage_without_anonymous_sram_copy(self):
+        name, start = 'xy.plot_config.sine', 0x40070000
+        table = bytes(range(256)) * 2
+        result = MODULE.audit_xy_plot_table({name:start}, {name:512}, start, table, b'', True)
+        self.assertTrue(result['readonly_flash'])
+        self.assertIsNone(MODULE.audit_xy_plot_table({}, {}, start, b'', b''))
+        for symbols, sizes, data, resident in [
+            ({}, {}, table, b''),
+            ({name:0x4ff10000}, {name:512}, table, b''),
+            ({name:start+1}, {name:512}, table+b'x', b''),
+            ({name:start}, {name:510}, table, b''),
+            ({name:start}, {name:512}, table[:-1], b''),
+            ({name:start}, {name:512}, table, b'prefix'+table+b'suffix'),
+            ({name:start,'plot_config.sine':start}, {name:512}, table, b''),
+        ]:
+            with self.subTest(symbols=symbols,sizes=sizes), self.assertRaises(ValueError):
+                MODULE.audit_xy_plot_table(symbols, sizes, start, data, resident, True)
+
     def test_reader_rom_can_expand_without_expanding_executable_flash_window(self):
         MODULE.audit_flash_section('.flash.xyrodata',1,2,0x40080000,0x280000,allow_xy=True)
         for name, flags, address, size in [
