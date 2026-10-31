@@ -8,6 +8,33 @@ enabled by default with the existing US HID mapping; set
 operation. The older single-row ASCII editor and terminal-first startup from
 PRs #71 and #79 are superseded by this workspace.
 
+## Normal xy input connections
+
+The standard device profile polls the Tab5 I2C keyboard at address `0x6d`
+outside interrupts. `Keyboard.poll` supplies bounded HID press events to
+`session_input.Hid`, then `diagnostic_ui.sessionKey` calls the shared xy
+`scratch.Model.handle`. Serial UTF-8 uses `scratch.Model.feedSerial` and the
+same document/controller. The physical-keyboard path is active in xy mode;
+it does not depend on entering the diagnostic launcher.
+
+| Input | Normal xy action |
+| --- | --- |
+| Letters, digits, Shift, Caps Lock | US HID text mapping |
+| Arrows, Enter, Backspace | Move, newline, delete before cursor |
+| Ctrl-D, Ctrl-Z | Delete after cursor, undo |
+| Esc, Ctrl-C | Open minibuffer, cancel/return |
+| Ctrl-L | Refresh the current view |
+| Top-right touch control | Esc action; no touch caret placement |
+
+The minibuffer evaluates Scheme or opens `help`, `log`, `mem` and `tasks`.
+Those system views are read-only. USB/Bluetooth keyboard adapters, native IME,
+SD saving and startup restoration of RAM text/settings are not connected by
+this profile. Japanese display and serial UTF-8 input are separate from IME.
+The [boot/input physical report](measurements/2026-10-31-xy-boot-input.md)
+records the current candidate and user confirmation.
+
+## Diagnostic launcher fallback
+
 The following launcher and shell describe the diagnostic fallback used when
 `NIHOS_NATIVE_XY_WORKSPACE=0`, including explicit camera qualification profiles.
 
