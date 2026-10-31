@@ -25,6 +25,10 @@ if `xcrun -f metal` reports a missing toolchain, install Apple's component with
 - Cmd-Q or closing the window exits. Paused animation requests no further frames.
 
 The fixed-step model is independent of GPUI, supplied clocks and input devices.
+The host now uses the native v1 [event/frame contract](../../include/nihos_app.h)
+for version/limit discovery, open, input, snapshots and frame delivery. The
+previous unversioned animation exports have been removed. Editor insertion and
+label rendering remain prototype helpers, outside the common app contract.
 It bounds catch-up to four steps and drops excess elapsed time. Speed changes
 preserve phase. Rendering reuses cached axes/labels, and old GPUI atlas images
 are retired after the current frame instead of accumulating frame history.
@@ -44,6 +48,11 @@ cargo clippy --locked --manifest-path apps/xy-gpui/Cargo.toml --no-deps -- -D wa
 The snapshot check compares all 737,280 pixels of a 1024x720 RGB565/BGRA frame,
 checks motion, paused pixels, resume without catch-up, held input/focus loss,
 editor undo pixel restoration, label visibility and invalid buffer rejection.
+It also checks version/size/reserved-field rejection without state/output writes,
+all 32 key slots, terminal/idempotent cancellation and fresh reopen, both panes
+in both formats with odd row padding, and caller-owned frame lifetime. Native
+C, Rust and Zig record layouts are checked; the Zig layouts also compile for
+RV32. See [the API report](../../docs/measurements/2026-10-31-xy-app-protocol.md).
 It does not create a GPUI window. The RV32 command links the pure clock/Canvas
 probe with the integer soft-float ABI; it does not execute a device image.
 Actual GPUI window/keyboard checks are recorded in the
