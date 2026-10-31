@@ -22,6 +22,7 @@ const default_commands linksection(scheme.data_section) = ("(command/register! \
 
 pub const Model = struct {
     camera: camera.Client,
+    storage_client: scheme.storage.Client,
     doc: Doc,
     vm: scheme.Runtime,
     reply: [128]u8,
@@ -183,6 +184,24 @@ pub const Model = struct {
     }
     pub fn cameraCapture(self: *Model) linksection(scheme.code_section) scheme.Error!i32 {
         return self.camera.capture();
+    }
+    pub fn storageCall(self: *Model, request: scheme.storage.Request, output: []u8) linksection(scheme.code_section) scheme.Error![]const u8 {
+        return self.storage_client.call(request, output);
+    }
+    pub fn saveDocument(self: *Model, name: []const u8) linksection(scheme.code_section) scheme.Error!void {
+        if (self.mode == .system) return error.EditorFailure;
+        try self.storage_client.save(name, self.doc.slice());
+    }
+    pub fn documentText(self: *Model) linksection(scheme.code_section) []const u8 {
+        return self.doc.slice();
+    }
+    pub fn loadDocument(self: *Model, name: []const u8) linksection(scheme.code_section) scheme.Error!void {
+        if (self.mode == .system) return error.EditorFailure;
+        // This foreground-only buffer is already reserved for system snapshots.
+        const text = try self.storage_client.load(name, &self.snapshot.bytes);
+        self.doc.clear();
+        self.doc.insertUtf8(text) catch return error.EditorFailure;
+        self.top_row = 0;
     }
     pub fn cameraInfo(self: *Model, camera_handle: i32) linksection(scheme.code_section) scheme.Error!camera.Info {
         return self.camera.info(camera_handle);

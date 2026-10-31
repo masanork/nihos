@@ -188,8 +188,9 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
-              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead'}
+              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead',
+              'applyStorage', 'nonnegative', 'storageText'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -202,6 +203,7 @@ XY_RENDER_FUNCTIONS = {
     'ttf.TwoTierCache(24,1024,48,16384).getOrRender', 'ttf.Face.glyphSpan',
     'ttf.decodeSimpleGlyfSlice', 'ttf.Family.resolve', 'ttf.Face.lookupBaseGlyph',
     'ttf.Face.init', 'ttf.SliceReader.fromSlice.Impl.readSlice',
+    'xy.storage.Client.save', 'xy.storage.Client.load', 'xy.storage.Client.saveStaged', 'xy.storage.Client.loadOpened',
     'unicode.utf8ByteSequenceLength', 'unicode.utf8Decode4', 'unicode.utf8Decode3',
     'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
