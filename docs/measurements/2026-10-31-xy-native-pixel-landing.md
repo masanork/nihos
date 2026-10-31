@@ -114,3 +114,6 @@ Macでの操作は[ワークスペース手順](2026-10-31-xy-mac-workspace.md)�
 画素転送の初期記録は[Mac pixel host](2026-10-31-xy-pixel-host.md)を参照。
 それらの初期版にある外部font依存・512 glyph上限・別runtimeの記述は、
 本統合ではbundled recovery faces・cursor追従240 glyph viewport・共通runtimeへ更新されている。
+
+CIのhost品質ジョブは最終SQLite RV32 linkの途中で15分上限に達して打ち切られた。
+先行工程の成功を保持し、検証内容を削らず、このジョブの時間枠だけを25分へ変更した。
