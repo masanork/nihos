@@ -64,19 +64,56 @@ pub fn recolorPlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, s
 pub fn paintLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
     return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .full);
 }
-pub fn recolorLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
-    return paint(section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .dye);
+pub inline fn recolorLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
+    return @call(.always_inline, paint, .{ section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .dye });
 }
 
 /// Update a prepared splash after a milestone changes. Keep the title and
-/// inscription intact while DMA reads the same buffer; erase only the old
-/// status label, then redraw the dye, new label and marker.
+/// inscription intact while DMA reads the same buffer. Replace each status
+/// pixel with its final colour, then clear only the obsolete tail. No
+/// clear-and-redraw interval is exposed to scanout.
 pub inline fn updateLandscapePlacedRgb565Le(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status) bool {
     return @call(.always_inline, paint, .{ section, framebuffer, surface_width, surface_height, stride, progress, status, .landscape, .milestone });
 }
 
+const Region = struct { x: usize, y: usize, width: usize, height: usize };
+fn statusBounds(comptime layout: Layout) Region {
+    var result: ?Region = null;
+    for (assets.sprites) |sprite| {
+        if (sprite.layout != layout or sprite.status == 0) continue;
+        if (result) |*r| {
+            if (r.x != sprite.x or r.y != sprite.y or r.height != sprite.height)
+                @compileError("status masks must share origin and height");
+            r.width = @max(r.width, sprite.width);
+        } else result = .{ .x = sprite.x, .y = sprite.y, .width = sprite.width, .height = sprite.height };
+    }
+    return result.?;
+}
+fn dyeBounds() Region {
+    var x0: usize = landscape_width;
+    var y0: usize = landscape_height;
+    var x1: usize = 0;
+    var y1: usize = 0;
+    for (assets.sprites) |sprite| {
+        if (sprite.layout != .landscape or sprite.ink != .dye) continue;
+        x0 = @min(x0, sprite.x);
+        y0 = @min(y0, sprite.y);
+        x1 = @max(x1, @as(usize, sprite.x) + sprite.width);
+        y1 = @max(y1, @as(usize, sprite.y) + sprite.height);
+    }
+    return .{ .x = x0, .y = y0, .width = x1 - x0, .height = y1 - y0 };
+}
+/// Logical rectangles to flush after live landscape updates. The first two
+/// cover dye/marker; only a real status change needs the third rectangle.
+pub const landscape_damage = [_]Region{
+    dyeBounds(), .{ .x = 102, .y = 647, .width = 6, .height = 6 }, statusBounds(.landscape),
+};
+
 const Paint = enum { full, dye, milestone };
 fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, layout: Layout, kind: Paint) bool {
+    return @call(.always_inline, paintTo, .{ Canvas, section, framebuffer, surface_width, surface_height, stride, progress, status, layout, kind });
+}
+fn paintTo(comptime Target: type, comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, layout: Layout, kind: Paint) bool {
     const MaskStore = if (section) |name| struct {
         const data linksection(name) = assets.masks.*;
     } else struct {
@@ -86,28 +123,11 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
     const row_bytes = std.math.mul(usize, surface_width, 2) catch return false;
     const required = std.math.mul(usize, stride, surface_height) catch return false;
     if (stride < row_bytes or framebuffer.len < required) return false;
-    const canvas = Canvas.init(framebuffer, surface_width, surface_height, stride) orelse return false;
+    const canvas = Target.init(framebuffer, surface_width, surface_height, stride) orelse return false;
     const left = (surface_width - width) / 2;
     const top = (surface_height - height) / 2;
     const bg = rgb565(background);
     if (kind == .full) canvas.fillRect(.{ .x = 0, .y = 0, .width = @intCast(surface_width), .height = @intCast(surface_height) }, bg);
-    if (kind == .milestone) {
-        var x0: usize = std.math.maxInt(usize);
-        var y0: usize = std.math.maxInt(usize);
-        var x1: usize = 0;
-        var y1: usize = 0;
-        for (assets.sprites) |sprite| {
-            if (sprite.layout != layout or sprite.status == 0) continue;
-            x0 = @min(x0, sprite.x);
-            y0 = @min(y0, sprite.y);
-            x1 = @max(x1, @as(usize, sprite.x) + sprite.width);
-            y1 = @max(y1, @as(usize, sprite.y) + sprite.height);
-        }
-        if (x1 > x0 and y1 > y0) {
-            const point = physical(layout, if (layout == .landscape) x1 - 1 else x0, y0);
-            canvas.fillRect(.{ .x = @intCast(left + point.x), .y = @intCast(top + point.y), .width = @intCast(if (layout == .landscape) y1 - y0 else x1 - x0), .height = @intCast(if (layout == .landscape) x1 - x0 else y1 - y0) }, bg);
-        }
-    }
     for (assets.sprites) |sprite| {
         if (sprite.layout != layout) continue;
         if (kind == .dye and sprite.ink != .dye) continue;
@@ -123,7 +143,7 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
         for (MaskStore.data[sprite.offset..][0..sprite.length]) |run| {
             const alpha = @as(u8, run >> 4) * 17;
             const count = @as(usize, run & 15) + 1;
-            if (alpha != 0) {
+            if (alpha != 0 or (kind == .milestone and sprite.status != 0)) {
                 const color = rgb565(mix(background, ink, alpha));
                 var index = pixel;
                 const end = pixel + count;
@@ -138,6 +158,20 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
                 }
             }
             pixel += count;
+        }
+    }
+    if (kind == .milestone) {
+        // Status masks share an origin/height. Every pixel inside the new
+        // mask was written directly, including transparent background runs.
+        // Erase only columns outside it, where the final image is background.
+        for (assets.sprites) |sprite| {
+            if (sprite.layout != layout or sprite.status != @backingInt(status)) continue;
+            const label = if (layout == .landscape) comptime statusBounds(.landscape) else comptime statusBounds(.portrait);
+            const tail = label.width - sprite.width;
+            if (tail != 0) {
+                const point = physical(layout, if (layout == .landscape) label.x + label.width - 1 else label.x + sprite.width, label.y);
+                canvas.fillRect(.{ .x = @intCast(left + point.x), .y = @intCast(top + point.y), .width = @intCast(if (layout == .landscape) label.height else tail), .height = @intCast(if (layout == .landscape) tail else label.height) }, bg);
+            }
         }
     }
     // A small state marker, not a fictitious percentage or a looping spinner.
@@ -277,4 +311,92 @@ test "live milestones match full frames without clearing the static splash" {
     var invalid: [32]u8 = @splat(0xab);
     try std.testing.expect(!updateLandscapePlacedRgb565Le(null, &invalid, width, height, width * 2, 255, .ready));
     try std.testing.expect(std.mem.allEqual(u8, &invalid, 0xab));
+}
+
+// A scanout observer sees every drawing span, not only the final screenshot.
+// A pixel may retain its old value or acquire its final value; a third colour
+// exposes a destructive intermediate frame even if the end result is correct.
+const ScanoutObserver = struct {
+    canvas: Canvas,
+    var before: []const u8 = &.{};
+    var after: []const u8 = &.{};
+    var invalid_pixels: usize = 0;
+    pub fn init(bytes: []u8, w: usize, h: usize, stride: usize) ?ScanoutObserver {
+        return .{ .canvas = Canvas.init(bytes, w, h, stride) orelse return null };
+    }
+    pub fn fillRect(self: ScanoutObserver, rect: @import("canvas").Rect, color: u16) void {
+        self.canvas.fillRect(rect, color);
+        const stride = self.canvas.target.stride;
+        const left: usize = @intCast(rect.x);
+        const top: usize = @intCast(rect.y);
+        for (top..top + rect.height) |y| for (left..left + rect.width) |x| {
+            const offset = y * stride + x * 2;
+            const pixel = self.canvas.target.bytes[offset..][0..2];
+            if (!std.mem.eql(u8, pixel, before[offset..][0..2]) and !std.mem.eql(u8, pixel, after[offset..][0..2])) invalid_pixels += 1;
+        };
+    }
+};
+test "scanout never observes a third colour during any milestone transition" {
+    const stride = width * 2 + 8;
+    const size = stride * height;
+    const before = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(before);
+    const after = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(after);
+    const visible = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(visible);
+    ScanoutObserver.before = before;
+    ScanoutObserver.after = after;
+    defer {
+        ScanoutObserver.before = &.{};
+        ScanoutObserver.after = &.{};
+    }
+    for ([_]Layout{ .portrait, .landscape }) |layout| {
+        for (1..8) |from| for (1..8) |to| {
+            @memset(before, 0xab);
+            @memset(after, 0xab);
+            try std.testing.expect(paint(null, before, width, height, stride, 89, @fromBackingInt(@intCast(from)), layout, .full));
+            try std.testing.expect(paint(null, after, width, height, stride, 173, @fromBackingInt(@intCast(to)), layout, .full));
+            @memcpy(visible, before);
+            ScanoutObserver.invalid_pixels = 0;
+            try std.testing.expect(paintTo(ScanoutObserver, null, visible, width, height, stride, 173, @fromBackingInt(@intCast(to)), layout, .milestone));
+            try std.testing.expectEqual(@as(usize, 0), ScanoutObserver.invalid_pixels);
+            try std.testing.expectEqualSlices(u8, after, visible);
+        };
+    }
+}
+test "bounded landscape flush spans cover every modified pixel" {
+    const size = width * height * 2;
+    const before = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(before);
+    const after = try std.testing.allocator.alloc(u8, size);
+    defer std.testing.allocator.free(after);
+    for ([_]Paint{ .dye, .milestone }) |kind| {
+        try std.testing.expect(paint(null, before, width, height, width * 2, 0, .failed, .landscape, .full));
+        @memcpy(after, before);
+        try std.testing.expect(paint(null, after, width, height, width * 2, 255, if (kind == .dye) .failed else .ready, .landscape, kind));
+        var flushed: usize = 0;
+        for (landscape_damage, 0..) |box, index| {
+            if (kind == .dye and index == 2) continue;
+            for (landscape_width - box.x - box.width..landscape_width - box.x) |y| {
+                const start = (y * width * 2 + box.y * 2) & ~@as(usize, 63);
+                const end = (y * width * 2 + (box.y + box.height) * 2 + 63) & ~@as(usize, 63);
+                try std.testing.expect(end <= size);
+                flushed += end - start;
+            }
+        }
+        try std.testing.expect(flushed < size / 20);
+        for (0..height) |y| for (0..width) |x| {
+            const offset = (y * width + x) * 2;
+            if (std.mem.eql(u8, before[offset..][0..2], after[offset..][0..2])) continue;
+            const logical_x = landscape_width - 1 - y;
+            const logical_y = x;
+            var covered = false;
+            for (landscape_damage, 0..) |box, index| {
+                if (kind == .dye and index == 2) continue;
+                covered = covered or (logical_x >= box.x and logical_x < box.x + box.width and logical_y >= box.y and logical_y < box.y + box.height);
+            }
+            try std.testing.expect(covered);
+        };
+    }
 }
