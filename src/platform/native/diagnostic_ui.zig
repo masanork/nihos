@@ -64,6 +64,7 @@ const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
 var last_xy_trace_revision: u32 = 0;
 var xy_input_bytes: u32 = 0;
 var last_xy_input_bytes: u32 = 0;
+var last_xy_idle_report: u64 = 0;
 const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
 const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
 const scratch_offset = (session_offset + @sizeOf(Session.Model) + @alignOf(console.scratch.Model) - 1) & ~@as(usize, @alignOf(console.scratch.Model) - 1);
@@ -633,6 +634,13 @@ noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
     const render_values: extern struct { frames: u32, stack_used: u32, failed: u32, font: u32, size: u32, axis: u32, foreground: u32, background: u32 } = .{ .frames = graphics.frames, .stack_used = graphics.stack_used, .failed = graphics.failed, .font = scratch.vm.view.style.style_id, .size = scratch.vm.view.style.body_px, .axis = scratch.vm.view.style.axis, .foreground = scratch.vm.view.appearance.foreground, .background = scratch.vm.view.appearance.background };
     log.record("NIHOS_NATIVE_XY_RENDER", null, .{ "frames", "stack_used", "failed", "font", "size", "axis", "foreground", "background" }, &render_values);
 }
+noinline fn traceIdle(log: anytype, now: u64, scanout: u32, dma_error: u32) linksection(".flash.xytext") void {
+    if (now - last_xy_idle_report < 1_000_000) return;
+    last_xy_idle_report = now;
+    const graphics = @import("xy_render_runtime.zig");
+    const values: extern struct { render_frames: u32, scanout_frames: u32, published_bytes: u32, backing_payload: u32, backing_reserved: u32, dma_error: u32 } = .{ .render_frames = graphics.frames, .scanout_frames = scanout, .published_bytes = graphics.published_bytes, .backing_payload = graphics.backing_payload, .backing_reserved = graphics.backing_reserved, .dma_error = dma_error };
+    log.record("NIHOS_NATIVE_XY_IDLE", null, .{ "render_frames", "scanout_frames", "published_bytes", "backing_payload", "backing_reserved", "dma_error" }, &values);
+}
 noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!renderer_ready) {
         @memset(@import("std").mem.asBytes(renderer), 0);
@@ -641,7 +649,9 @@ noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if 
     if (renderer.moving() and !renderer.finish(frame(), 1440, palette())) return false;
     if (shown_session_view != session.view) renderer.invalidate();
     if (xy_workspace) {
-        if (!@import("xy_render_runtime.zig").draw(scratch, frame()) or !present()) return false;
+        const graphics = @import("xy_render_runtime.zig");
+        if (!graphics.draw(scratch, frame())) return false;
+        if (graphics.published_bytes != 0 and !present()) return false;
         shown_session_view = session.view;
         shown_session_revision = scratch.revision;
         return true;
@@ -676,7 +686,14 @@ pub noinline fn service(log: anytype) bool {
     last_frame = observed.frames;
     const changed = @atomicRmw(u32, &dirty, .Xchg, 0, .acquire) != 0;
     if (session_active) {
-        if (changed or shown_session_view != session.view or shown_session_revision != (if (xy_workspace) scratch.revision else session.revision) or renderer.moving()) {
+        const repaint = if (xy_workspace) console.xy_presentation.needed(.{
+            .content = shown_session_revision != scratch.revision,
+            .view = shown_session_view != session.view,
+            .overwritten = camera_overlay.state == .repaint_pending or camera_overlay.state == .recovery_pending,
+            .background = changed,
+        }) else changed or shown_session_view != session.view or shown_session_revision != session.revision or renderer.moving();
+        if (comptime xy_trace) traceIdle(log, now, observed.frames, observed.dma_error);
+        if (repaint) {
             rendering = true;
             defer rendering = false;
             if (!drawSession()) return false;
@@ -693,6 +710,8 @@ pub noinline fn service(log: anytype) bool {
             }
             return true;
         }
+        // Serial/no-op/read-only input still needs a state receipt, not a repaint.
+        if (comptime xy_trace) traceScratch(log);
         return true;
     }
     const selected = status();
