@@ -1,6 +1,5 @@
 //! Foreground publication policy. Background logs never invalidate a frozen xy view.
 const std = @import("std");
-const section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 pub const Reasons = struct { content: bool, view: bool, overwritten: bool, background: bool };
 pub inline fn needed(reasons: Reasons) bool {
     return reasons.content or reasons.view or reasons.overwritten;
@@ -9,7 +8,7 @@ pub const Stats = struct { bytes: usize = 0, chunks: usize = 0 };
 pub const Error = error{InvalidFrame};
 /// Publish only a completed frame. Unchanged cache lines remain untouched; no
 /// intermediate background clear reaches scanout. This is not a VSYNC swap.
-pub noinline fn publish(completed: []const u8, visible: []u8) linksection(section) Error!Stats {
+pub noinline fn publish(completed: []const u8, visible: []u8) linksection(if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text") Error!Stats {
     if (completed.len == 0 or completed.len != visible.len or completed.len % 2 != 0) return error.InvalidFrame;
     var stats = Stats{};
     var start: usize = 0;
