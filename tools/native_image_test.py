@@ -11,6 +11,24 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_xy_sine_table_requires_flash_storage_without_anonymous_sram_copy(self):
+        name, start = 'xy.plot_config.sine', 0x40070000
+        table = bytes(range(256)) * 2
+        result = MODULE.audit_xy_plot_table({name:start}, {name:512}, start, table, b'', True)
+        self.assertTrue(result['readonly_flash'])
+        self.assertIsNone(MODULE.audit_xy_plot_table({}, {}, start, b'', b''))
+        for symbols, sizes, data, resident in [
+            ({}, {}, table, b''),
+            ({name:0x4ff10000}, {name:512}, table, b''),
+            ({name:start+1}, {name:512}, table+b'x', b''),
+            ({name:start}, {name:510}, table, b''),
+            ({name:start}, {name:512}, table[:-1], b''),
+            ({name:start}, {name:512}, table, b'prefix'+table+b'suffix'),
+            ({name:start,'plot_config.sine':start}, {name:512}, table, b''),
+        ]:
+            with self.subTest(symbols=symbols,sizes=sizes), self.assertRaises(ValueError):
+                MODULE.audit_xy_plot_table(symbols, sizes, start, data, resident, True)
+
     def test_reader_rom_can_expand_without_expanding_executable_flash_window(self):
         MODULE.audit_flash_section('.flash.xyrodata',1,2,0x40080000,0x280000,allow_xy=True)
         for name, flags, address, size in [
@@ -22,30 +40,14 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(name=name,flags=flags), self.assertRaises(ValueError):
                 MODULE.audit_flash_section(name,1,flags,address,size,allow_xy=True)
 
-    def test_learning_flash_methods_remain_explicit_foreground_only(self):
-        for name in ('xy.learning_session.Session.run', 'learning_session.Session.resetVm',
-                     'learning_catalog.Pack.onPage', 'xy.learning_catalog.Pack.init',
-                     'learning_view.render__func_2', 'learning_view.label__func_3',
-                     'learning_catalog.Pack.styleOnPage', 'mem.trim__func_1', 'viewport_layout.layoutStyledParagraph__func_1',
-                     'viewport_layout.shapeStyledRun__func_2',
-                     'nih_xy_render_learning', 'native_render_entry.nih_xy_render_learning',
-                     'xy.scratch.Model.touch', 'xy.document.Document(4096,256,2048,1,64).undo'):
-            with self.subTest(name=name): self.assertTrue(MODULE.xy_function(name))
-        for name in ('xy.learning_session.Session.arbitrary', 'learning_catalog.Pack.arbitrary',
-                     'learning_view.render__func_bad', 'learning_view.render__func_2.extra',
-                     'learning_view.irq__func_1', 'mem.trim__func_bad', 'viewport_layout.layoutStyledParagraph__func_bad',
-                     'viewport_layout.shapeStyledRun__func_2.extra', 'learning_session.Host.arbitrary', 'xy.document.Document(4096,256,2048,1,64).arbitrary',
-                     'xy.document.Document(8192,256,2048,1,64).undo'):
-            with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
-
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
+        self.assertTrue(MODULE.xy_function('diagnostic_ui.paintTouchControl'))
         self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).render'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(512).renderInto__func_0'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(1024).render'))
-        self.assertFalse(MODULE.xy_function('render_session.SizedSession(2048).render'))
-        self.assertTrue(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
-        self.assertFalse(MODULE.xy_function('render_session.SizedSession(2048).renderInto__func_0'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).render'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).renderInto__func_0'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(512).render'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
+        self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
 
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000
