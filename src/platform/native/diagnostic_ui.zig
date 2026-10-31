@@ -564,10 +564,11 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
                     const byte = nih_diagnostic_serial_read();
                     if (byte >= 0) break;
                     if (nih_touch_available()) {
-                        var ev: pointer.Event = undefined;
+                        var ev: pointer.Event = .{};
                         if (nih_touch_pop(&ev)) break;
                     }
                     if (options.keyboard_i2c and (model.input_sources & console.keys.capability(.tab5_keyboard) != 0)) {
+                        // SAFETY: Destination buffer populated by keyboard.poll
                         var events: [4]console.keyboard.Event = undefined;
                         if (keyboard.poll(&events)) |count| {
                             if (count > 0) break;
