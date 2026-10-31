@@ -1513,24 +1513,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-10-31",
-    "measuredAt": "2026-10-31T12:24:45.710582+00:00",
+    "measuredAt": "2026-10-31T13:40:39.532501+00:00",
     "project": "nihos",
-    "commit": "21ad5a13b1f43d71a26185daff848e9fc9b9890f",
+    "commit": "77139489c3ba9080c9443cd46cda8db02dcffda5",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "efe92b86822e082fdcb5edf596feeb870a4a5673f5f3871b1863910899c53e55",
+    "sourceTreeSha256": "80fbe9f366d59e1696dff25e0a81dc9d631eaae05bae190ca7deeca15b9d0690",
     "code": {
-      "implementation": 60799,
-      "tests": 30746,
-      "tooling": 20119,
+      "implementation": 61740,
+      "tests": 31330,
+      "tooling": 20825,
       "probes": 9194,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 53538,
-        "tests": 22525,
-        "tooling": 924,
+        "implementation": 54461,
+        "tests": 22598,
+        "tooling": 1041,
         "probes": 1237,
         "vendored": 0,
         "generated": 0
@@ -1544,7 +1544,7 @@
         "generated": 0
       },
       "C/header": {
-        "implementation": 1551,
+        "implementation": 1569,
         "tests": 0,
         "tooling": 0,
         "probes": 524,
@@ -1561,8 +1561,8 @@
       },
       "Python": {
         "implementation": 0,
-        "tests": 8062,
-        "tooling": 15705,
+        "tests": 8573,
+        "tooling": 16221,
         "probes": 1798,
         "vendored": 0,
         "generated": 0
@@ -1578,7 +1578,7 @@
       "Include/data": {
         "implementation": 44,
         "tests": 0,
-        "tooling": 305,
+        "tooling": 375,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1586,7 +1586,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 2894,
+        "tooling": 2897,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1596,7 +1596,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 145,
+        "tooling": 147,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1610,7 +1610,7 @@
         "generated": 0
       },
       "include": {
-        "implementation": 757,
+        "implementation": 775,
         "tests": 0,
         "tooling": 0,
         "probes": 0,
@@ -1626,8 +1626,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 59046,
-        "tests": 22651,
+        "implementation": 59969,
+        "tests": 22724,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -1643,8 +1643,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 8095,
-        "tooling": 19974,
+        "tests": 8606,
+        "tooling": 20678,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -1785,6 +1785,7 @@
         "src/graphics/ascii/jetbrains.zig": "53d12db9291edc0b523ff325c7bacea96006480d8d18b34061be6adf192c4832",
         "src/graphics/ascii/source_code.zig": "bad50fd2336b55600517cac6a2f94517f2b271cd8662388e43a19939ec1b0899",
         "src/graphics/ascii_console.zig": "c94adc6ed19b3740d91b73153e3120e9903859d7a8988842929a03907cd5c80c",
+        "src/graphics/book_font.zig": "c072ee7587e149973aaffc2a8fca623b06713dc33dd337e781fce27e3741c20b",
         "src/graphics/boot/assets.zig": "25c1a6be3a622d5dad984bf350b4c43fd6879a958a6f2cdcc9c250fd0948d0fe",
         "src/graphics/boot_graphics.zig": "b4b824ea33c42c38fbf5caddd56a44a494b8e8ec141000d6f48a2937a24926a7",
         "src/graphics/canvas.zig": "0a1b02139ed579c42a4978902c8722d4ec4e639fc7a1f5ad0476ad061aef8b62",
@@ -1812,8 +1813,8 @@
         "src/graphics/surface.zig": "1276fe3768d744bc919408bff435c6c2d08861dcda17feede916fcb466c7264e",
         "src/graphics/test_pattern.zig": "a3251090f79d1f6d895827bcdb707e4eb0cec8fdc34f5f256c1062a9ec3ca49b",
         "src/graphics/text_context.zig": "a55f50aa03a68f5fe2ead4575929223342045033fecf8e32b6e671d7ab5d82cc",
-        "src/graphics/ttf.zig": "cf8b57dbc99b86c7f86127154eefb91f5f072d13aaf68eec319be4a5da152837",
-        "src/graphics/viewport_layout.zig": "4e376a0384a87870c46a9c5b758c0bffc208723269d18ab295ca7283124cae2f",
+        "src/graphics/ttf.zig": "c449ad7bfe50009949da75fa19e862ab9f2eda7fdad26b056a9658f7736979d3",
+        "src/graphics/viewport_layout.zig": "b7c8b3fe5f68b34be94c14073b5f68847450c33f795e11d29b10f5efacf3d775",
         "src/input/pointer.zig": "b41098302814b3b77a843474e8c0a85a6ad0025f9f9edb18d974ff41e7aed5e4",
         "src/input/touch_service.zig": "dbe261836dab4d89c75c270997f48d123032e55d6974f18f2e660dae311fc8d4",
         "src/io/sdmmc_host.zig": "b0cfea5f68cfa38a9ab74ee6afe9057b52ab29520e77d6f83f341a1e06559ce0",
@@ -1895,7 +1896,7 @@
         "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
         "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
         "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
-        "src/platform/native/diagnostic_ui.zig": "6ac56b7ce3ce49a257e725a492933882da9662629eefa3c1cd0b73846771b36c",
+        "src/platform/native/diagnostic_ui.zig": "b90df3a52627b924fd23dd595766a839a5374c2237c6be69f447abd24d3b70b0",
         "src/platform/native/display_probe.zig": "b6c40d449630b0f302a9e3a835524062e40c74f791975f40e49ca1c9c708fa35",
         "src/platform/native/display_runtime.zig": "2bbae189dd2baa46b6ce9558f0af5da90fdffcf19903558fd2eab8063a664207",
         "src/platform/native/display_service.zig": "5cca357d10533650d7530a214dcf2cf64ac0021f2e5640a7289ad22affea0d5b",
@@ -1947,7 +1948,7 @@
         "src/platform/native/touch_probe.zig": "5fbffe3e87ba19f9597d372ec1469a976d9106e97fe57b426554f013f8f847ef",
         "src/platform/native/usb_probe.zig": "1312b09e392a6d70b460344fa2eaf223bf0518a8c17b0643f7bf6fcd70c0cf0f",
         "src/platform/native/xy_eval_runtime.zig": "b2cf975806ec6257ea8f45c4014bdf2f729160d1f63211b9bb6795e5c8061ea9",
-        "src/platform/native/xy_render_runtime.zig": "58b3a1b9af59313562a7029a8cf06acb861dafda122f55e3eacec3d561ccf4f8",
+        "src/platform/native/xy_render_runtime.zig": "a6fa2f588126a7a87c397f1d9e253ff5a3af0e0b0f40223050ff6261254fa820",
         "src/platform/native/xy_scratch_live.zig": "8ad5a9d48c50f983eda8f04dca09ecd9d884e6d8f086a408a7101465166f1393",
         "src/protected_fault_test.zig": "ecb1d37d47991d93d45a8acd3ef435d7512ba01b211b82e4cee1aacb4971d318",
         "src/root.zig": "2dd137ba264d35ed6d9a6515441f1bd4884263def2db8a3d84533f7dde188856",
@@ -2019,33 +2020,36 @@
         "src/usb/ccid.zig": "f4cd8986d6429e7e77c007551ffe91da48f43e30d6bcdb6e7421ba651e322dd2",
         "src/usb/descriptors.zig": "a069c782000da795815c437b0cf2672357239c233fc7c061320c83e59d0bb9d4",
         "src/usb/jpki.zig": "72c73be16bea70893a71faaa8e01312b27f8aa0be8bb0f15b39ac899343ba976",
-        "src/xy/c_abi_host.zig": "25831142a84f391eff66e7e9e40115b12b48000979035992c11867dfc1bc69e2",
+        "src/xy/c_abi_host.zig": "82135887ee1ae0af43ad937e8559c48f16d29a473268e24dc963707688e6af7a",
         "src/xy/camera.zig": "3804074e1cbda8642b36b38050d15ac7b73f7e8dedb0c4eda13e1c16f9f1d4d3",
-        "src/xy/catalog.zig": "5e6bc394c32ef5d94aa7ce00d9f8ab7f8cd3ec1cc2e88fbc34373eddba017bd7",
-        "src/xy/document.zig": "a6f0303c38b7bb91e5fffd94d73cf64f7bea28463546db8df5f5d54f370bfa3f",
+        "src/xy/catalog.zig": "e76d48e19d8d14442f70f0f2f23fd998a59b92de0b69b90c4e8bbf95d088a24e",
+        "src/xy/document.zig": "2f2fa2b6ff8e1810e4700ed517d84b8b4570f0f49eddc7ef8977405ba331f219",
         "src/xy/ime_omni.zig": "d01560e7981d8abaf2bf670bc6246c323250ac2a99a986cb4362cb83d1fd5912",
+        "src/xy/learning_catalog.zig": "a417ddd59259acf6123ce07cca2b122c6984f00bc6e5963b21acdf17ac8b26f6",
+        "src/xy/learning_session.zig": "3d8be7e6ba063f73ab57ba5dd1737b4b8795486e08addcd8b0902354f65c04fe",
+        "src/xy/learning_view.zig": "e3f30fce27d15fccfbedf3b46abfde3fe038e740190c4581c5dbf6002f0c59f2",
         "src/xy/live_workspace.zig": "2b39f8561a3e1ef19baa7eabf2a4648b968efc66a774d02e946dcc79be5e0a25",
-        "src/xy/native_reading.zig": "9ab04d65144b07f832f7c46f26e428bfe56121e594d4afad44af236693bb3fa8",
-        "src/xy/native_render_entry.zig": "72a71910e026e0247eb8574e1ca9d004ac500accf3e01782beefc028de4bc529",
-        "src/xy/navigation.zig": "347d75a9a391c95cea0db55d2b43f6884349a446df52b73508106865b50c3f98",
+        "src/xy/native_reading.zig": "22fa957d16e7de3432db40a047da4b37fb7c016a8294f57c76bbd98566ab41f4",
+        "src/xy/native_render_entry.zig": "f6459e7beee2ead5d81481dd77cfd4de5e823bfd8ca763ed2265c76d8eedd011",
+        "src/xy/navigation.zig": "e87bb0a12d69f502166728a12c90355631ba870631ff87cb6cbb1e6944350eb5",
         "src/xy/plot_config.zig": "a0390b078127139a6bf7b94ee726116ed42a6f7926442e97a2399fda9d66bbce",
         "src/xy/presentation.zig": "bb8ee97b794e3fbf3083ee39a907654b12c5716872270eda3778ad41f1efa268",
-        "src/xy/preview_host.zig": "abaef372b8aff90e34d984cf4fc94da1e9ee4226a17b884cf3e86c22e62d9a98",
-        "src/xy/reader.zig": "a77eba736b61b4e76a11dbb7fc97229cc629476de1cf7ccd53f7e6f40568ea7d",
+        "src/xy/preview_host.zig": "c7da109aedfbaca4c1e74ea80ca6b26f2cccd05f5588daa9cf2df6acdcc8a11d",
+        "src/xy/reader.zig": "8733f2c6babd51db8c77a186183f9e13f5caea3e235b57ac2bff972b198ff210",
         "src/xy/render_adapter.zig": "651ce747bc4383a376513e2565758c9aeb611bd185b8841b5c6c40395a34efeb",
-        "src/xy/render_protocol.zig": "64032c939712ccaa155bfaadb17f99ff5d790de5bf01426c0d2355fcfb3bd335",
-        "src/xy/render_session.zig": "a642fc0c1ca6de01b31e9af4dba943c19cd61d9ce193dae00b3e1b43835b4337",
+        "src/xy/render_protocol.zig": "b0bdce254ea1796f2cd827c0d09aa80ec7cc0f8cdc50c07460abacbe3e181a73",
+        "src/xy/render_session.zig": "7a65b6ba7f867d80ba335774217c30ab59e36368627c50b0ce159e46ea94da65",
         "src/xy/scheme_bridge.zig": "106e994621b33c2cc5d709e9bb2bdb479bd3069d71ca4fa71ea1b233c1b103d7",
         "src/xy/scheme_runtime.zig": "c248190ae1489c7aa656b5c6de42eb65e464841bafb9e55c22450e9be341d6a0",
-        "src/xy/scratch.zig": "3d27f566727ac17783b66122bb8d7fd5d392cb619182aada9bbc4c38c37eaa24",
+        "src/xy/scratch.zig": "ecbcbfe7c649fb7604bfc34f334f5f3301809a42bcd2406a8c8d3a64d3d014eb",
         "src/xy/storage.zig": "6bcbddf0275bf072588b3197ac0616c12b6ae5f2d5f2d335e7eb8aa67fc810de",
         "src/xy/system_buffer.zig": "2e9e8838cd2c16427bafea051d816165ffb24947a66070b7261da2e20cc0a80f",
-        "src/xy/view_config.zig": "8f0fdb2b3416457580e95446004d04793f5cf8481e45b444aeb8cd55ed149ec7"
+        "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 12871,
-        "count": 13449,
-        "percent": 95.70228269759833
+        "covered": 12920,
+        "count": 13705,
+        "percent": 94.27216344399854
       },
       "files": {
         "src/app/animation.zig": {
@@ -2608,9 +2612,17 @@
           "covered": 207,
           "count": 230
         },
+        "src/xy/learning_catalog.zig": {
+          "covered": 4,
+          "count": 104
+        },
+        "src/xy/learning_session.zig": {
+          "covered": 34,
+          "count": 140
+        },
         "src/xy/navigation.zig": {
           "covered": 76,
-          "count": 124
+          "count": 125
         },
         "src/xy/presentation.zig": {
           "covered": 14,
@@ -2621,8 +2633,8 @@
           "count": 705
         },
         "src/xy/scratch.zig": {
-          "covered": 246,
-          "count": 290
+          "covered": 257,
+          "count": 301
         },
         "src/xy/storage.zig": {
           "covered": 76,
@@ -2716,6 +2728,7 @@
         "src/gpui_host.zig",
         "src/graphics/ascii/jetbrains.zig",
         "src/graphics/ascii/source_code.zig",
+        "src/graphics/book_font.zig",
         "src/graphics/boot/assets.zig",
         "src/graphics/canvas_compile_probe.zig",
         "src/graphics/card_boot/assets.zig",
@@ -2868,6 +2881,7 @@
         "src/xy/c_abi_host.zig",
         "src/xy/catalog.zig",
         "src/xy/ime_omni.zig",
+        "src/xy/learning_view.zig",
         "src/xy/live_workspace.zig",
         "src/xy/native_reading.zig",
         "src/xy/native_render_entry.zig",
