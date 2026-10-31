@@ -458,13 +458,13 @@ pub fn layoutParagraphWithWordWrap(
     return out_display_list[0..total_emitted];
 }
 
-// Keep ordinary Latin words together in prose. Long identifiers retain the
-// grapheme-level emergency breaks used by code and narrow vertical pages.
+// Keep Latin words together in prose, including attached sideways punctuation
+// in vertical text. Overlong identifiers retain grapheme-level emergency breaks.
 fn keepWords(glyphs: []const ShapedGlyph, boundaries: []policy.Boundary, limit: i32, vertical: bool) void {
     var start: usize = 0;
     while (start < glyphs.len) {
         const cp = glyphs[start].base_cp;
-        if (!(cp < 128 and std.ascii.isAlphanumeric(@intCast(cp)))) {
+        if (!(if (vertical) ttf.isSideways(cp) else cp < 128 and std.ascii.isAlphanumeric(@intCast(cp)))) {
             start += 1;
             continue;
         }
@@ -472,7 +472,9 @@ fn keepWords(glyphs: []const ShapedGlyph, boundaries: []policy.Boundary, limit: 
         var advance: i64 = if (vertical) -glyphs[start].y_advance else glyphs[start].x_advance;
         while (end < glyphs.len) : (end += 1) {
             const next = glyphs[end].base_cp;
-            if (next >= 128 or !(std.ascii.isAlphanumeric(@intCast(next)) or next == '\'' or next == '_')) break;
+            if (vertical) {
+                if (!ttf.isSideways(next)) break;
+            } else if (next >= 128 or !(std.ascii.isAlphanumeric(@intCast(next)) or next == '\'' or next == '_')) break;
             advance += if (vertical) -glyphs[end].y_advance else glyphs[end].x_advance;
         }
         if (advance <= limit) {
@@ -485,6 +487,26 @@ fn keepWords(glyphs: []const ShapedGlyph, boundaries: []policy.Boundary, limit: 
 // ============================================================================
 // Unit Tests
 // ============================================================================
+
+test "sideways words use horizontal advances and wrap together into the next column" {
+    const face = try code_font.face();
+    const family = ttf.Family{ .faces = &.{face} };
+    const Cache = ttf.TwoTierCache(8, 1024, 16, 64 * 64);
+    var cache: Cache = .{};
+    var scratch: [16384]u8 = undefined;
+    var placed: [32]PlacedGlyph = undefined;
+    const style = ViewStyle{ .body_px = 20, .ruby_px = 10, .axis = 1, .viewport_width_px = 256, .viewport_height_px = 140 };
+    const list = try layoutParagraphWithWordWrap(32, 128, 0, Cache, &cache, family, style, "abc defghij", "", &.{}, &scratch, &placed, true);
+    try std.testing.expectEqual(@as(usize, 11), list.len);
+    try std.testing.expectEqual(@as(u16, 12), list[0].advance_px);
+    try std.testing.expectEqual(list[0].cell_y_px + 12, list[1].cell_y_px);
+    try std.testing.expect(list[4].cell_x_px < list[0].cell_x_px);
+    try std.testing.expectEqual(@as(i32, style.margin_y_px), list[4].cell_y_px);
+    for (list[5..], 5..) |g, i| {
+        try std.testing.expectEqual(list[4].cell_x_px, g.cell_x_px);
+        try std.testing.expectEqual(list[i - 1].cell_y_px + 12, g.cell_y_px);
+    }
+}
 
 test "ClusterIterator groups IVS and composes combining dakuten" {
     // "か" (U+304B) + U+3099 -> "が" (U+304C), followed by "葛" (U+845B) + IVS U+E0100
