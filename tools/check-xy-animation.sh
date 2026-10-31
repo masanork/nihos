@@ -6,6 +6,8 @@ zig=$(sh tools/bootstrap-zig.sh)
 out="$repo_root/build/xy-animation"
 mkdir -p "$out"
 "$zig" test src/app/animation.zig -O ReleaseSafe
+"$zig" test src/app/plot_app.zig -O ReleaseSafe
+cc -std=c11 -Wall -Wextra -Werror -I include -fsyntax-only tools/probes/app_protocol.c
 "$zig" build-exe -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei \
     -O ReleaseSafe -fentry=nih_animation_frame -fcompiler-rt -fno-strip \
     -femit-bin="$out/frame-rv32.elf" \
