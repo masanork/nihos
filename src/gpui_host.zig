@@ -7,6 +7,12 @@ const canvas = @import("canvas");
 const transfer = @import("pixel_transfer");
 const app = @import("app/plot_app.zig");
 const protocol = app.protocol;
+const scheme = xy.live_workspace.scheme;
+const plot_config = scheme.plot_config;
+const demo = @embedFile("app/plot_demo.scm");
+var plot_style = plot_config.Config{};
+var script_error: []const u8 = "";
+var source_copy: [4096]u8 = undefined;
 const max_bytes = 1280 * 720 * 2;
 var session = app.Session{};
 var editor_generation: u64 = 1;
@@ -25,14 +31,19 @@ fn initialize() bool {
     prepared = false;
     const unused: [1]xy.CSliceReaderDesc = undefined;
     if (!xy.xy_host_init(&unused, 0, null, 0)) return false;
+    var reply: [64]u8 = undefined;
+    const style = "(view/set! #:line-gap 6 #:margin-x 12 #:margin-y 12)";
+    if (xy.xy_host_live_run(style, style.len, false, &reply, reply.len) < 0) return false;
     labels.init(xy.ttf.SliceReader.fromSlice(&mincho), xy.ttf.SliceReader.fromSlice(&gothic)) catch return false;
     session = .{};
     editor_generation = 1;
+    plot_style = .{};
+    script_error = "";
     cached_width = 0;
     cached_height = 0;
-    const source = "xy / GPUI\n\n日本語表示 あいうえお\n青空文庫\n\nShared TrueType / RGB565\n";
+    const source = demo;
     if (!xy.xy_host_buffer_replace(source, source.len)) return false;
-    const status = "RAM buffer / Ctrl-Z undo";
+    const status = "RAM Scheme buffer";
     if (!xy.xy_host_set_status(status, status.len)) return false;
     prepared = true;
     return true;
@@ -55,7 +66,23 @@ pub export fn xy_app_event(event: ?*const protocol.Event) callconv(.c) i32 {
     const valid = value.validate();
     if (valid != .ok) return @backingInt(valid);
     if (!prepared) return @backingInt(protocol.Status.closed);
-    return @backingInt(session.dispatch(value.*));
+    const previous = session.model.state.ticks;
+    const status = session.dispatch(value.*);
+    if (@backingInt(status) < 0) return @backingInt(status);
+    if (session.stopped) {
+        xy.appStop();
+    } else if (session.model.state.paused == 0 and session.model.state.ticks != previous and xy.appHasFrame()) {
+        var state = appState();
+        const revision = xy.documentRevision();
+        const view_generation = xy.editorViewGeneration();
+        xy.appFrame(&state) catch |err| {
+            failScript(err);
+            return @backingInt(protocol.Status.changed);
+        };
+        applyState(state, value.monotonic_us);
+        if (xy.documentRevision() != revision or xy.editorViewGeneration() != view_generation) editor_generation +%= 1;
+    }
+    return @backingInt(status);
 }
 pub export fn xy_app_state(version: u32, out: ?*protocol.Snapshot, size: u32) callconv(.c) i32 {
     if (version != protocol.version) return @backingInt(protocol.Status.unsupported_version);
@@ -105,8 +132,66 @@ fn paint(width: u32, height: u32) bool {
         cached_height = height;
     }
     @memcpy(completed[0..length], background[0..length]);
-    plot.curves(canvas.Canvas.init(completed[0..length], width, height, width * 2).?, area(width, height), session.model.state);
+    plot.curvesConfigured(canvas.Canvas.init(completed[0..length], width, height, width * 2).?, area(width, height), session.model.state, plot_style);
     return true;
+}
+fn appState() plot_config.State {
+    return .{ .enabled = true, .ticks = @intCast(session.model.state.ticks & 0x7fffffff), .paused = session.model.state.paused != 0, .speed = @intCast(session.model.state.speed), .plot = plot_style };
+}
+fn applyState(state: plot_config.State, now_us: u64) void {
+    if (session.model.state.paused != @intFromBool(state.paused)) {
+        session.model.last_us = now_us;
+        session.model.remainder_us = 0;
+    }
+    session.model.state.paused = @intFromBool(state.paused);
+    session.model.state.speed = state.speed;
+    plot_style = state.plot;
+    session.model.state.generation +%= 1;
+}
+fn failScript(err: scheme.Error) void {
+    script_error = scheme.message(err);
+    xy.appStop();
+    session.model.state.paused = 1;
+    session.model.remainder_us = 0;
+    session.model.state.generation +%= 1;
+    _ = xy.xy_host_set_status(script_error.ptr, @intCast(script_error.len));
+    editor_generation +%= 1;
+}
+/// Prototype helper: app v1 frame/event records are unchanged.
+pub export fn xy_app_scheme_eval(source: [*]const u8, length: u32, out: [*]u8, capacity: u32, now_us: u64) callconv(.c) i32 {
+    if (!ready()) return @backingInt(protocol.Status.closed);
+    if (length > source_copy.len or capacity == 0 or capacity > 256) return @backingInt(protocol.Status.invalid);
+    var state = appState();
+    const result = xy.appEvaluate(&state, source[0..length], out[0..capacity]) catch |err| {
+        failScript(err);
+        return -1;
+    };
+    applyState(state, now_us);
+    script_error = "";
+    const status = "Scheme OK";
+    _ = xy.xy_host_set_status(status, status.len);
+    editor_generation +%= 1;
+    return @intCast(result.len);
+}
+pub export fn xy_app_scheme_eval_buffer(out: [*]u8, capacity: u32, now_us: u64) callconv(.c) i32 {
+    if (!ready()) return @backingInt(protocol.Status.closed);
+    const length = xy.xy_host_buffer_copy(&source_copy, source_copy.len);
+    if (length < 0) {
+        failScript(error.TextFull);
+        return -1;
+    }
+    return xy_app_scheme_eval(&source_copy, @intCast(length), out, capacity, now_us);
+}
+pub export fn xy_app_scheme_error(out: [*]u8, capacity: u32) callconv(.c) u32 {
+    const length = @min(capacity, script_error.len);
+    @memcpy(out[0..length], script_error[0..length]);
+    return @intCast(length);
+}
+pub export fn xy_app_scheme_registered() callconv(.c) bool {
+    return ready() and xy.appHasFrame();
+}
+pub export fn xy_app_editor_generation() callconv(.c) u64 {
+    return editor_generation;
 }
 pub export fn xy_editor_insert(text: [*]const u8, length: u32) callconv(.c) bool {
     if (!ready() or !xy.xy_host_insert_text(text, length)) return false;

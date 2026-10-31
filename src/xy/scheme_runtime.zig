@@ -5,9 +5,12 @@ const std = @import("std");
 pub const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 pub const data_section = if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata";
 pub const view_config = @import("view_config");
+pub const plot_config = @import("plot_config.zig");
+pub const frame_step_limit = 256;
+pub const frame_cell_reserve = 64;
 pub const camera = @import("camera.zig");
 pub const storage = @import("storage.zig");
-pub const Error = storage.Error || camera.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy };
+pub const Error = storage.Error || camera.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable };
 pub const Ref = u16;
 pub const cells = 256;
 pub const text_bytes = 64;
@@ -15,8 +18,9 @@ pub const depth_limit = 24;
 pub const step_limit = 1024;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword };
-const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00".*;
+const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00".*;
+const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
 const Cell = struct {
     tag: Tag,
     mark: bool,
@@ -40,6 +44,11 @@ pub const Runtime = struct {
     next: Ref,
     steps: u32,
     running: bool,
+    step_budget: u32,
+    app: plot_config.State,
+    frame_callback: Ref,
+    free_cells: u16,
+    cell_reserve: u16,
     view: view_config.Config,
     view_history: [8]struct { config: view_config.Config, generation: u32 },
     view_history_count: u8,
@@ -48,12 +57,14 @@ pub const Runtime = struct {
     pub fn initInPlace(self: *Runtime) linksection(code_section) void {
         @memset(std.mem.asBytes(self), 0);
         self.view = .{};
+        self.app = .{};
         self.view_generation = 1;
         self.heap[0].tag = .nil;
         self.yes = 1;
         self.no = 2;
         self.global = 3;
         self.next = 4;
+        self.free_cells = cells - 4;
         self.heap[1].tag = .boolean;
         self.heap[1].integer = 1;
         self.heap[2].tag = .boolean;
@@ -61,16 +72,18 @@ pub const Runtime = struct {
     }
     fn tick(self: *Runtime, depth: usize) linksection(code_section) Error!void {
         if (depth >= depth_limit) return error.Depth;
-        if (self.steps >= step_limit) return error.Budget;
+        if (self.steps >= self.step_budget) return error.Budget;
         self.steps += 1;
     }
     fn alloc(self: *Runtime, tag: Tag) linksection(code_section) Error!Ref {
+        if (self.free_cells <= self.cell_reserve) return error.HeapFull;
         for (1..cells) |_| {
             const r = self.next;
             self.next = if (r + 1 == cells) 1 else r + 1;
             if (self.heap[r].tag != .free) continue;
             @memset(std.mem.asBytes(&self.heap[r]), 0);
             self.heap[r].tag = tag;
+            self.free_cells -= 1;
             return r;
         }
         return error.HeapFull;
@@ -112,6 +125,7 @@ pub const Runtime = struct {
         self.mark(self.global, &tail);
         self.mark(self.yes, &tail);
         self.mark(self.no, &tail);
+        self.mark(self.frame_callback, &tail);
         for (self.commands[0..self.command_count]) |command| {
             self.mark(command.name, &tail);
             self.mark(command.procedure, &tail);
@@ -124,9 +138,11 @@ pub const Runtime = struct {
                 self.mark(c.env, &tail);
             }
         }
+        self.free_cells = 0;
         for (self.heap[1..]) |*c| {
             if (!c.mark) c.tag = .free;
             c.mark = false;
+            if (c.tag == .free) self.free_cells += 1;
         }
     }
     fn mark(self: *Runtime, r: Ref, tail: *usize) linksection(code_section) void {
@@ -458,6 +474,7 @@ pub const Runtime = struct {
                 }
                 return error.StorageUnavailable;
             },
+            .app_frame, .app_pause, .app_resume, .app_stop, .app_speed, .app_ticks, .plot_set, .plot_get, .plot_sine => return self.applyApp(op, args),
             .view_set, .view_get, .view_rollback => return self.applyView(op, args),
             .sql_query, .sql_exec, .sql_begin, .sql_commit, .sql_rollback, .fs_open, .fs_read, .fs_write, .fs_resize, .fs_remove, .fs_sync, .fs_rollback, .fs_snapshot, .fs_restore, .fs_release, .fs_collect, .fs_generation, .fs_list, .fs_close, .fs_stat, .fs_begin, .sql_lookup, .sql_check, .fs_space, .fs_verify => return self.applyStorage(op, args, host),
             .insert => {
@@ -510,6 +527,90 @@ pub const Runtime = struct {
                     else => .tasks,
                 }, "", 0);
                 return self.yes;
+            },
+            else => return error.Type,
+        }
+    }
+    noinline fn applyApp(self: *Runtime, op: Op, args: []const Ref) linksection(code_section) Error!Ref {
+        if (!self.app.enabled) return error.AppUnavailable;
+        switch (op) {
+            .app_frame => {
+                if (args.len != 1) return error.Arity;
+                const callback = args[0];
+                if (callback == self.no) {
+                    self.frame_callback = 0;
+                    return self.yes;
+                }
+                if (self.heap[callback].tag != .closure) return error.Type;
+                var parameters: [16]Ref = @splat(0);
+                if ((try self.arguments(self.heap[callback].a, &parameters)).len != 1) return error.Arity;
+                self.frame_callback = callback;
+                return self.yes;
+            },
+            .app_pause, .app_resume, .app_stop => {
+                if (args.len != 0) return error.Arity;
+                self.app.paused = op != .app_resume;
+                if (op == .app_stop) self.frame_callback = 0;
+                return self.yes;
+            },
+            .app_speed => {
+                if (args.len != 1) return error.Arity;
+                const speed = try self.integer(args[0]);
+                if (speed < 1 or speed > 8) return error.Type;
+                self.app.speed = @intCast(speed);
+                return self.yes;
+            },
+            .app_ticks => {
+                if (args.len != 0) return error.Arity;
+                return self.number(self.app.ticks);
+            },
+            .plot_set, .plot_get => {
+                if (args.len == 0 or (op == .plot_set and args.len % 2 != 0) or (op == .plot_get and args.len != 1)) return error.Arity;
+                var next = self.app.plot;
+                var i: usize = 0;
+                while (i < args.len) : (i += 2) {
+                    const key = try self.viewKey(args[i]);
+                    var offset: usize = 0;
+                    var index: usize = 0;
+                    while (true) : (index += 1) {
+                        if (offset >= plot_names.len) return error.Type;
+                        var end = offset;
+                        while (end < plot_names.len and plot_names[end] != 0) end += 1;
+                        if (end == plot_names.len) return error.Type;
+                        if (sameText(key, plot_names[offset..end])) break;
+                        offset = end + 1;
+                    }
+                    if (op == .plot_get) return self.number(switch (index) {
+                        0 => next.amplitude,
+                        1 => next.phase,
+                        2 => @intCast(next.color1),
+                        else => @intCast(next.color2),
+                    });
+                    const value = try self.integer(args[i + 1]);
+                    if (value < 0 or value > switch (index) {
+                        0 => @as(i32, 100),
+                        1 => 255,
+                        else => 0xffffff,
+                    }) return error.Type;
+                    switch (index) {
+                        0 => next.amplitude = @intCast(value),
+                        1 => next.phase = @intCast(value),
+                        2 => next.color1 = @intCast(value),
+                        else => next.color2 = @intCast(value),
+                    }
+                }
+                self.app.plot = next;
+                return self.yes;
+            },
+            .plot_sine => {
+                if (args.len != 2) return error.Arity;
+                const phase = try self.integer(args[0]);
+                const amplitude = try self.integer(args[1]);
+                if (amplitude < 0 or amplitude > 100) return error.Type;
+                const sample: usize = @intCast(@mod(phase, 256));
+                // Index the declared Flash object by address. Indexing the
+                // constant array value emits an anonymous copy in SRAM.
+                return self.number(@divTrunc(@as(i32, (&plot_config.sine)[sample]) * amplitude, 30_000));
             },
             else => return error.Type,
         }
@@ -711,7 +812,12 @@ pub const Runtime = struct {
         return self.text(.string, encoded[0 .. count * 2]);
     }
     fn start(self: *Runtime) linksection(code_section) Error!void {
+        return self.startBudget(step_limit);
+    }
+    fn startBudget(self: *Runtime, budget: u32) linksection(code_section) Error!void {
         if (self.running) return error.Busy;
+        self.step_budget = budget;
+        self.cell_reserve = 0;
         self.collect();
         self.steps = 0;
         self.running = true;
@@ -751,6 +857,23 @@ pub const Runtime = struct {
         }
         const result = try self.apply(procedure, &.{}, 0, host);
         return self.format(result, output);
+    }
+    /// One coalesced frame, no parsing or output formatting. GC roots include
+    /// the callback and lexical environment; no GC runs during evaluation.
+    pub fn runFrame(self: *Runtime, ticks: i32, host: anytype) linksection(code_section) Error!void {
+        if (!self.app.enabled) return error.AppUnavailable;
+        if (self.frame_callback == 0) return;
+        try self.startBudget(frame_step_limit);
+        defer self.running = false;
+        self.cell_reserve = frame_cell_reserve;
+        defer self.cell_reserve = 0;
+        self.app.ticks = ticks;
+        const argument = try self.number(ticks);
+        _ = try self.apply(self.frame_callback, &.{argument}, 0, host);
+    }
+    pub fn clearFrame(self: *Runtime) linksection(code_section) void {
+        self.frame_callback = 0;
+        self.app.paused = true;
     }
     fn format(self: *const Runtime, r: Ref, output: []u8) linksection(code_section) Error![]const u8 {
         var pos: usize = 0;
@@ -947,7 +1070,7 @@ test "bounded malformed requests do not trap or retain ephemeral garbage" {
     try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
-const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00".*;
+const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00".*;
 pub fn message(err: Error) linksection(code_section) []const u8 {
     const wanted: usize = switch (err) {
         error.Depth => 0,
@@ -968,15 +1091,16 @@ pub fn message(err: Error) linksection(code_section) []const u8 {
         error.InvalidCameraHandle => 15,
         error.InvalidCameraRange => 16,
         error.CameraFailed => 17,
-        error.StorageUnavailable => 18,
-        error.StorageBusy => 19,
-        error.StorageDenied => 20,
-        error.StorageStale => 21,
-        error.StorageFull => 22,
-        error.StorageNotFound => 23,
-        error.StorageLimit => 24,
-        error.StorageOutcomeUnknown => 25,
-        error.StorageFailed => 26,
+        error.AppUnavailable => 18,
+        error.StorageUnavailable => 19,
+        error.StorageBusy => 20,
+        error.StorageDenied => 21,
+        error.StorageStale => 22,
+        error.StorageFull => 23,
+        error.StorageNotFound => 24,
+        error.StorageLimit => 25,
+        error.StorageOutcomeUnknown => 26,
+        error.StorageFailed => 27,
     };
     var pos: usize = 0;
     var index: usize = 0;
@@ -1023,4 +1147,34 @@ test "view options share an atomic typed contract and survive GC" {
     try expectValue(&vm, &host, "(view/get #:font)", "bunsen-mincho");
     try expectValue(&vm, &host, "(view/set! #:linear-blend #t #:margin-x 32)", "2");
     try expectValue(&vm, &host, "(view/get #:linear-blend)", "#t");
+}
+
+test "app capability, callback roots, replacement and atomic plot options" {
+    // SAFETY: initialized before use.
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var output: [128]u8 = undefined;
+    try std.testing.expectError(error.AppUnavailable, vm.evaluate("(app/on-frame! (lambda (t) t))", &host, &output));
+    vm.app.enabled = true;
+    try expectValue(&vm, &host, "(app/on-frame! (let ((n 0)) (lambda (t) (set! n (+ n 1)) (plot/set! #:phase n))))", "#t");
+    for (1..201) |n| {
+        try vm.runFrame(@intCast(n), &host);
+        try std.testing.expectEqual(@as(u8, @intCast(n)), vm.app.plot.phase);
+        try expectValue(&vm, &host, "(+ 1 2)", "3");
+    }
+    try expectValue(&vm, &host, "(app/on-frame! (lambda (t) (plot/set! #:phase 7)))", "#t");
+    try vm.runFrame(200, &host);
+    try std.testing.expectEqual(@as(u8, 7), vm.app.plot.phase);
+    try expectValue(&vm, &host, "(app/ticks)", "200");
+    try std.testing.expectError(error.Arity, vm.evaluate("(app/on-frame! (lambda () #t))", &host, &output));
+    try std.testing.expectError(error.Type, vm.evaluate("(plot/set! #:phase 9 #:amplitude 101)", &host, &output));
+    try std.testing.expectEqual(@as(u8, 7), vm.app.plot.phase);
+    try expectValue(&vm, &host, "(plot/sine -64 25)", "-25");
+    try expectValue(&vm, &host, "(plot/sine 64 25)", "25");
+    try expectValue(&vm, &host, "(app/on-frame! #f)", "#t");
+    try vm.runFrame(201, &host);
+    try std.testing.expectEqual(@as(u8, 7), vm.app.plot.phase);
+    try expectValue(&vm, &host, "(app/stop!)", "#t");
+    try std.testing.expect(vm.app.paused and vm.frame_callback == 0);
 }
