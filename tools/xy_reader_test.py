@@ -108,6 +108,45 @@ class ReaderTest(unittest.TestCase):
         n=self.vm.xy_host_buffer_copy(out,len(out)); self.assertGreaterEqual(n,0)
         return out.raw[:n]
 
+    def ime_provider(self):
+        callback_type=c.CFUNCTYPE(None,c.c_void_p,c.c_uint8,c.c_uint8,c.c_void_p,c.c_uint32)
+        self.vm.xy_host_add_candidate.argtypes=[c.c_char_p,c.c_uint32,c.c_char_p,c.c_uint32]
+        self.vm.xy_host_add_candidate.restype=c.c_bool
+        def query(context,kind,prefix,key,length):
+            value=b'kept' if prefix==ord('#') else b'OLD'
+            self.assertTrue(self.vm.xy_host_add_candidate(value,len(value),b'',0))
+        callback=callback_type(query)
+        self.vm.xy_host_set_omni_callback.argtypes=[c.c_void_p,callback_type]
+        self.vm.xy_host_set_omni_callback(None,callback)
+        self.addCleanup(self.vm.xy_host_set_omni_callback,None,callback_type())
+        self.vm.xy_host_handle_key.argtypes=[c.c_uint8]
+        self.vm.xy_host_handle_key.restype=c.c_bool
+        return callback
+
+    def keys(self,data):
+        for key in data:self.assertTrue(self.vm.xy_host_handle_key(key))
+
+    def test_replacing_document_cancels_pending_reading_and_selected_candidates(self):
+        callback=self.ime_provider()
+        for pending in (b';?old',b';?old '):
+            for replacement in (b'',b'opened'):
+                with self.subTest(pending=pending,replacement=replacement):
+                    self.assertTrue(self.vm.xy_host_document_load(b'prior',5))
+                    self.keys(pending)
+                    self.assertTrue(self.vm.xy_host_document_load(replacement,len(replacement)))
+                    self.keys(b'\r')
+                    self.assertEqual(self.buffer(),replacement)
+
+    def test_replacing_document_preserves_ime_mode_and_custom_prefixes(self):
+        callback=self.ime_provider()
+        self.assertGreaterEqual(self.eval('(ime/register-prefix! "#" "kept")'),0)
+        self.keys(b'q;?old ') # Katakana input with a selected pending candidate.
+        self.assertTrue(self.vm.xy_host_document_load(b'new',3))
+        self.keys(b'ka')
+        self.assertEqual(self.buffer(),'newカ'.encode())
+        self.keys(b';#x \r')
+        self.assertEqual(self.buffer(),'newカkept'.encode())
+
     def page(self, section, start=0):
         text=section['text']; data=text.encode()
         end=start+len(data[start:].decode()[:700].encode())
