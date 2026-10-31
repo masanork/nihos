@@ -212,7 +212,6 @@ def main():
                     receipt.update(view_settings_tested=True, unicode_input_tested=True, monospace_sample_tested=True, input_transport='serial UTF-8', demo_left_visible=True)
                     save()
 
-            receipt['passed'] = True; save()
             print('DEMO_VISIBLE: common Source Code Pro 25px + Bunsen', flush=True)
             if args.observe_seconds:
                 deadline = time.monotonic() + args.observe_seconds
@@ -223,7 +222,7 @@ def main():
                         observation.extend(data)
                         with (out / 'observe.log').open('ab') as observe:
                             observe.write(data)
-                    if b'NIHOS_NATIVE_FAIL' in data:
+                    if b'NIHOS_NATIVE_FAIL' in observation:
                         raise RuntimeError('native fault during observation')
                 idle = []
                 for line in observation.splitlines():
@@ -235,9 +234,10 @@ def main():
                     raise RuntimeError('xy repainted without foreground input during observation')
                 receipt['idle_observation'] = {'seconds': args.observe_seconds, 'records': len(idle), 'render_frames': idle[-1]['render_frames'], 'scanout_frame_delta': idle[-1]['scanout_frames'] - idle[0]['scanout_frames'], 'backing_payload': idle[-1]['backing_payload'], 'backing_reserved': idle[-1]['backing_reserved'], 'dma_error': 0}
                 save()
+            receipt['passed'] = True; save()
             print('Physical xy boot/input/undo/help/warm-reset passed; no pixel or persistence claim', flush=True)
     except BaseException as error:
-        receipt['failure'] = str(error); save(); raise
+        receipt['passed'] = False; receipt['failure'] = str(error); save(); raise
     finally:
         try:
             if write_started and backup is not None:
@@ -266,6 +266,7 @@ def main():
                     save()
                     print('Original Flash spans restored and verified', flush=True)
                 except BaseException as error:
+                    receipt['passed'] = False
                     receipt['restoration']['error'] = str(error)
                     save()
                     raise
