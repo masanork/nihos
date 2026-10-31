@@ -1,6 +1,17 @@
-# Native launcher and shell
+# Native xy workspace and diagnostic launcher
 
-The live integer normal-boot profile enters a small launcher after core health
+The normal `sh tools/build-native.sh device integer` profile starts the xy
+RAM workspace. It supports UTF-8 text, grapheme editing, undo and a bounded
+Scheme minibuffer; see [the xy overview](../README.md). The I2C Tab5 Keyboard is
+enabled by default with the existing US HID mapping; set
+`NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. This does not provide an SD save
+operation. The older single-row ASCII editor and terminal-first startup from
+PRs #71 and #79 are superseded by this workspace.
+
+The following launcher and shell describe the diagnostic fallback used when
+`NIHOS_NATIVE_XY_WORKSPACE=0`, including explicit camera qualification profiles.
+
+The live integer diagnostic profile enters a small launcher after core health
 checks complete and the milestone-driven boot graphic reaches its final colour.
 The ESP-IDF backend and native qualification profiles retain their existing
 behaviour. This work builds on `codex/native-console` (`8cd0076`).

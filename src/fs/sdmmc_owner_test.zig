@@ -5,6 +5,14 @@ const Model = struct {
     quiescence: sd.Quiescence = .{},
     launches: u32 = 0,
     fail_read: bool = false,
+    fail_write: bool = false,
+    fail_before_launch: bool = false,
+    write_issued: bool = false,
+    pub fn writeSectorControlled(self: *@This(), _: u32, _: *const [512]u8, _: anytype) sd.Error!void {
+        self.launches += 1;
+        self.write_issued = !self.fail_before_launch;
+        if (self.fail_write) return error.Timeout;
+    }
     pub fn readSectorControlled(self: *@This(), _: u32, _: *[512]u8, _: anytype) sd.Error!void {
         self.launches += 1;
         if (self.fail_read) return error.Timeout;
@@ -17,6 +25,7 @@ const Control = struct {
     }
 };
 const FaultBus = struct {
+    pub const experimental_sd_write = true;
     stall_stop: bool,
     stall_fsm: bool,
     descriptor_stuck: bool,
@@ -36,13 +45,19 @@ const FaultBus = struct {
     }
     pub fn write(self: *@This(), offset: usize, value: u32) void {
         if (offset == sd.regs.dma_mode and value == 0) self.stopped += 1;
-        if (offset == sd.regs.command and value & 63 == 17) self.issued = true;
+        if (offset == sd.regs.command and (value & 63 == 17 or value & 63 == 24)) self.issued = true;
     }
     pub fn delay(_: *@This(), _: u32) void {}
     pub fn prepareDma(_: *@This(), _: u32) ?u32 {
         return 0x4ff1_0000;
     }
     pub fn finishDma(_: *@This(), _: *[512]u8, _: u32) bool {
+        return true;
+    }
+    pub fn prepareWriteDma(_: *@This(), _: *const [512]u8) ?u32 {
+        return 0x4ff1_0000;
+    }
+    pub fn finishWriteDma(_: *@This()) bool {
         return true;
     }
     pub fn releaseDma(self: *@This()) bool {
@@ -125,4 +140,103 @@ test "unproved reset idle descriptor or cache handback quarantines the actual bl
             if (fault < 2) try std.testing.expectEqual(@as(u32, 0), model.releases);
         }
     }
+}
+
+test "write owner distinguishes prelaunch failure from unknown publication" {
+    const bytes: [512]u8 = @splat(0x5a);
+    for ([_]bool{ false, true }) |launched| {
+        var controller = Model{ .fail_write = true, .fail_before_launch = !launched };
+        var owner = bridge.ReadOwner{};
+        const result = owner.write(&controller, 0, &bytes, 1, Control{});
+        if (launched) {
+            try std.testing.expectError(error.PublicationUnknown, result);
+            try std.testing.expect(owner.recovery_required);
+            try std.testing.expectError(error.RecoveryRequired, owner.write(&controller, 0, &bytes, 2, Control{}));
+            var out: [512]u8 = undefined;
+            try std.testing.expectError(error.RecoveryRequired, owner.read(&controller, 0, &out, 2, Control{}));
+            try std.testing.expectEqual(@as(u32, 1), controller.launches);
+        } else {
+            try std.testing.expectError(error.WriteFailed, result);
+            try std.testing.expect(!owner.recovery_required);
+        }
+        try std.testing.expect(!owner.busy());
+    }
+}
+
+test "late cancellation or removal after launched write requires recovery" {
+    const bytes: [512]u8 = @splat(0);
+    for ([_]sd.StopReason{ .none, .cancelled, .removed }) |reason| {
+        var controller = Model{};
+        var owner = bridge.ReadOwner{};
+        const result = owner.write(&controller, 0, &bytes, 1, Control{ .reason = reason });
+        if (reason == .none) {
+            try result;
+            try std.testing.expect(!owner.recovery_required);
+        } else {
+            try std.testing.expectError(error.PublicationUnknown, result);
+            try std.testing.expect(owner.recovery_required);
+        }
+        try std.testing.expect(!owner.busy());
+    }
+}
+
+test "write owner retains the source lease when DMA quiescence is unproved" {
+    const bytes: [512]u8 = @splat(0);
+    for (0..3) |missing| {
+        var controller = Model{ .fail_write = true };
+        if (missing == 0) controller.quiescence.device_idle = false;
+        if (missing == 1) controller.quiescence.descriptors_released = false;
+        if (missing == 2) controller.quiescence.cache_handed_back = false;
+        var owner = bridge.ReadOwner{};
+        try std.testing.expectError(error.Quarantined, owner.write(&controller, 0, &bytes, 1, Control{}));
+        try std.testing.expect(owner.busy() and owner.recovery_required);
+        try std.testing.expectError(error.Busy, owner.write(&controller, 0, &bytes, 2, Control{}));
+        try std.testing.expectEqual(@as(u32, 1), controller.launches);
+    }
+}
+
+test "actual write controller marks launch and owner gates cancellation after CMD24" {
+    const Source = struct {
+        bus: *FaultBus,
+        pub fn cancelled(self: @This()) bool {
+            return self.bus.issued;
+        }
+    };
+    const bytes: [512]u8 = @splat(0x42);
+    for ([_]bool{ false, true }) |cancel| {
+        var bus = FaultBus{ .stall_stop = false, .stall_fsm = false, .descriptor_stuck = false, .fail_release = false };
+        var controller = sd.Controller(*FaultBus){ .io = &bus, .poll_limit = 4, .ready_poll_limit = 2, .rca = 1 << 16, .sectors = 8 };
+        var owner = bridge.ReadOwner{};
+        var signal = bridge.Signal{};
+        const control = signal.begin().?;
+        if (cancel) {
+            const relay = bridge.CancelRelay(Source){ .target = control, .source = .{ .bus = &bus } };
+            try std.testing.expectError(error.PublicationUnknown, owner.write(&controller, 0, &bytes, control.ticket, relay));
+            try std.testing.expect(owner.recovery_required);
+        } else {
+            try owner.write(&controller, 0, &bytes, control.ticket, control);
+            try std.testing.expect(!owner.recovery_required);
+        }
+        try std.testing.expect(controller.write_issued and bus.issued);
+        try std.testing.expect(controller.quiescence.complete() and !owner.busy());
+    }
+}
+
+test "rejected owner requests close their own stop ticket" {
+    var owner = bridge.ReadOwner{ .recovery_required = true };
+    var controller: Model = .{};
+    var signal: bridge.Signal = .{};
+    const bytes: [512]u8 = @splat(0);
+    var out: [512]u8 = undefined;
+    const first = signal.begin().?;
+    try std.testing.expectError(error.RecoveryRequired, owner.write(&controller, 0, &bytes, first.ticket, first));
+    try std.testing.expectEqual(@as(u32, 0), signal.active());
+    const second = signal.begin().?;
+    try std.testing.expectError(error.RecoveryRequired, owner.read(&controller, 0, &out, second.ticket, second));
+    try std.testing.expectEqual(@as(u32, 0), signal.active());
+    owner.recovery_required = false;
+    const third = signal.begin().?;
+    try std.testing.expectError(error.Exhausted, owner.write(&controller, 0, &bytes, 0, third));
+    try std.testing.expectEqual(@as(u32, 0), signal.active());
+    try std.testing.expectEqual(@as(u32, 0), controller.launches);
 }

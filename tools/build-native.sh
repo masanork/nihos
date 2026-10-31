@@ -16,6 +16,7 @@ if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFI
     export NIHOS_NATIVE_PSRAM_200="${NIHOS_NATIVE_PSRAM_200:-1}"
     export NIHOS_NATIVE_CONSOLE="${NIHOS_NATIVE_CONSOLE:-1}"
     export NIHOS_NATIVE_CONSOLE_LIVE="${NIHOS_NATIVE_CONSOLE_LIVE:-1}"
+    export NIHOS_NATIVE_KEYBOARD_I2C="${NIHOS_NATIVE_KEYBOARD_I2C:-1}"
     export NIHOS_NATIVE_NETWORK="${NIHOS_NATIVE_NETWORK:-1}"
     # The ordinary device starts xy. Explicit camera qualification profiles
     # keep their existing diagnostic UI unless xy is explicitly requested.
