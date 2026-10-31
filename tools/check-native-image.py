@@ -206,13 +206,13 @@ XY_RENDER_FUNCTIONS = {
     'unicode.utf8Decode', 'unicode.utf8Decode2', 'unicode.utf8ValidateSlice',
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
-    'document.isClusterBoundary', 'render_session.Session.render',
+    'document.isClusterBoundary', 'render_session.SizedSession(256).render',
 }
 
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun|render_session\.Session\.renderInto)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.(?:shapeRun|layoutParagraph|layoutParagraphWithWordWrap)|render_session\.SizedSession\(256\)\.renderInto)__func_[0-9]+", name)
     return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 

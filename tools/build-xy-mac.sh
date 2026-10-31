@@ -15,9 +15,21 @@ clang -std=c11 -Wall -Wextra -Werror -dynamiclib -I include \
     -Wl,-install_name,@rpath/libxy_workspace.dylib -o "$out/libxy_workspace.dylib"
 clang -fobjc-arc -Wall -Wextra -Werror -I include tools/xy_mac_host.m \
     -L "$out" -lxy_host -lxy_workspace -lsqlite3 \
-    -framework Cocoa -framework ImageIO -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks -o "$out/xy-mac-host"
+    -framework Cocoa -framework ImageIO -framework WebKit -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks -o "$out/xy-mac-host"
+cp assets/xy/library.json "$out/library.json"
+mkdir -p "$out/fonts" "$out/figures"
+cp docs/book/figures/generated/*.svg "$out/figures/"
+cp assets/xy/fonts/* "$out/fonts/"
+mkdir -p "$out/licenses"
+cp LICENSE src/graphics/ascii/SourceCodePro-LICENSE.md third_party/xy-reading/NOTICE.md third_party/xy-reading/CC-BY-SA-4.0.txt "$out/licenses/"
 app="$out/xy.app/Contents"
-mkdir -p "$app/MacOS" "$app/Frameworks"
+mkdir -p "$app/MacOS" "$app/Frameworks" "$app/Resources"
+cp assets/xy/library.json "$app/Resources/library.json"
+mkdir -p "$app/Resources/fonts" "$app/Resources/figures"
+cp docs/book/figures/generated/*.svg "$app/Resources/figures/"
+cp assets/xy/fonts/* "$app/Resources/fonts/"
+mkdir -p "$app/Resources/licenses"
+cp "$out/licenses/"* "$app/Resources/licenses/"
 cp "$out/xy-mac-host" "$app/MacOS/xy-mac-host"
 cp "$out/libxy_host.dylib" "$out/libxy_workspace.dylib" "$app/Frameworks/"
 cat > "$app/Info.plist" <<'PLIST'

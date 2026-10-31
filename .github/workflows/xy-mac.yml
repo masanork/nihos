@@ -18,3 +18,5 @@ jobs:
         run: sh tools/build-xy-mac.sh
       - name: SQLite lifecycle and canonical framebuffer parity
         run: python3 tools/xy_workspace_test.py -v
+      - name: Offline reading pack and shared-core pagination
+        run: python3 tools/xy_reader_test.py -v

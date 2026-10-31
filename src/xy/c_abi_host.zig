@@ -20,7 +20,7 @@ const view_config = @import("view_config");
 const rom_mincho: []const u8 = @embedFile("fonts/mincho.ttf");
 const rom_gothic: []const u8 = @embedFile("fonts/gothic.ttf");
 // SAFETY: render APIs check readiness; init writes the whole owner-held cache.
-var g_render_session: native_session.Session = undefined;
+var g_render_session: native_session.SizedSession(1024) = undefined;
 var g_render_ready = false;
 var g_host_status: [256]u8 = @splat(0);
 var g_host_status_len: usize = 0;
@@ -77,10 +77,10 @@ const ReaderAdapter = struct {
 // Bounded static instance for the C-ABI host session:
 // - 256 outline cache slots × 1024 CurvePoints
 // - 256 bitmap cache slots × (96 × 96) 8bpp pixels
-// - 16 KiB UTF-8 document buffer
+// - 4 KiB UTF-8 document buffer (same bound as canonical rendering)
 const HostCacheType = ttf.TwoTierCache(256, 1024, 256, 96 * 96);
 pub const live_workspace = @import("live_workspace.zig");
-const HostWorkspaceType = scheme_bridge.XyWorkspace(16384, 64, 4096, 64, 1024);
+const HostWorkspaceType = scheme_bridge.XyWorkspace(4096, 64, 4096, 64, 1024);
 
 var g_mincho_adapters: [4]ReaderAdapter = undefined;
 var g_mincho_faces: [5]ttf.Face = undefined;
@@ -99,6 +99,10 @@ var g_live_error: []const u8 = "";
 var g_render_error: []const u8 = "";
 var g_saved_doc: HostWorkspaceType.DocType = .{};
 var g_editing_source = false;
+const reader = @import("reader.zig");
+var g_reading = false;
+var g_reader_saved_doc: HostWorkspaceType.DocType = .{};
+var g_reader_saved_ime: ime_omni.OmniIme = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
 var g_placed_buf: [512]PlacedGlyph = undefined;
 var g_quads_buf: [512]GpuiGlyphQuad = undefined;
@@ -170,6 +174,8 @@ pub export fn xy_host_init(
 
     g_render_session.init(ttf.SliceReader.fromSlice(&rom_mincho), ttf.SliceReader.fromSlice(&rom_gothic)) catch return false;
     g_render_ready = true;
+    if (mincho_count > 0) g_render_session.external_mincho = .{ .faces = g_mincho_faces[0..g_mincho_count] };
+    if (gothic_count > 0) g_render_session.external_gothic = .{ .faces = g_gothic_faces[0..g_gothic_count] };
     if (mincho_count == 0) {
         g_mincho_faces[1] = ttf.Face.init(ttf.SliceReader.fromSlice(&rom_mincho)) catch return false;
         g_mincho_count = 2;
@@ -218,6 +224,7 @@ pub export fn xy_host_eval(
     out_buf: [*]u8,
     out_cap: u32,
 ) callconv(.c) i32 {
+    if (g_reading and !@import("std").mem.startsWith(u8, sexp_ptr[0..sexp_len], "(view/set! ")) return -1;
     const val = g_ws.evalStr(sexp_ptr[0..sexp_len]) catch return -1;
     const formatted = g_ws.arena.formatValue(val, out_buf[0..out_cap]);
     return @intCast(formatted.len);
@@ -230,6 +237,7 @@ pub export fn xy_host_live_init() callconv(.c) bool {
     g_live.init();
     g_live_ready = true;
     g_editing_source = false;
+    g_reading = false;
     var out: [256]u8 = undefined;
     _ = g_live.prepare(live_workspace.default_source, &out) catch return false;
     g_live_error = "";
@@ -267,7 +275,7 @@ pub export fn xy_host_live_discard() callconv(.c) void {
     if (g_live_ready) g_live.discard();
 }
 pub export fn xy_host_live_run(source: [*]const u8, len: u32, named: bool, out: [*]u8, cap: u32) callconv(.c) i32 {
-    if (!g_live_ready) return -1;
+    if (!g_live_ready or g_reading) return -1;
     const result = g_live.run(&g_ws, source[0..len], named, out[0..cap]) catch |err| {
         g_live_error = live_workspace.scheme.message(err);
         return -1;
@@ -282,17 +290,19 @@ pub export fn xy_host_buffer_copy(out: [*]u8, cap: u32) callconv(.c) i32 {
     return @intCast(text.len);
 }
 pub export fn xy_host_insert_text(text: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_reading) return false;
     g_ws.doc.insertUtf8(text[0..len]) catch return false;
     g_ws.layout_dirty = true;
     return true;
 }
 pub export fn xy_host_buffer_replace(text: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_reading) return false;
     _ = g_ws.doc.replaceRange(.{ .revision = g_ws.doc.revision, .start = 0, .end = g_ws.doc.len }, text[0..len]) catch return false;
     g_ws.layout_dirty = true;
     return true;
 }
 pub export fn xy_host_source_enter(source: [*]const u8, len: u32) callconv(.c) bool {
-    if (g_editing_source or len > 16384) return false;
+    if (g_editing_source or g_reading or len > 4096) return false;
     var doc: HostWorkspaceType.DocType = .{};
     doc.insertUtf8(source[0..len]) catch return false;
     doc.cursor = 0;
@@ -312,11 +322,13 @@ pub export fn xy_host_source_leave() callconv(.c) void {
 }
 
 pub export fn xy_host_handle_key(key: u8) callconv(.c) bool {
+    if (g_reading) return false;
     g_ws.handleKey(key) catch return false;
     return true;
 }
 
 pub export fn xy_host_feed_utf8_reading(utf8_ptr: [*]const u8, utf8_len: u32) callconv(.c) bool {
+    if (g_reading) return false;
     g_ws.ime.feedUtf8ToReading(&g_ws.doc, utf8_ptr[0..utf8_len]) catch return false;
     return true;
 }
@@ -402,7 +414,8 @@ pub export fn xy_host_render_rgb565(
         .cursor = g_ws.doc.cursor,
         .status = status.ptr,
         .status_length = status.len,
-        .show_cursor = 1,
+        .show_cursor = @intFromBool(!g_reading),
+        .page_mode = @intFromBool(g_reading),
         .ruby_text = &g_ws.doc.ruby_arena,
         .ruby_text_length = g_ws.doc.ruby_bytes_used,
         .ruby_spans = &g_ws.doc.ruby_spans,
@@ -439,4 +452,83 @@ pub export fn xy_host_render_rgba8(
         return -4;
     };
     return count;
+}
+
+/// Preserve the entire editable document, including its undo and ruby tables.
+pub export fn xy_host_reader_enter() callconv(.c) bool {
+    if (g_reading or g_editing_source or !g_render_ready) return false;
+    g_reader_saved_doc = g_ws.doc;
+    g_reader_saved_ime = g_ws.ime;
+    g_ws.ime = .{};
+    g_reading = true;
+    return true;
+}
+pub export fn xy_host_reader_leave() callconv(.c) void {
+    if (!g_reading) return;
+    g_ws.doc = g_reader_saved_doc;
+    g_ws.ime = g_reader_saved_ime;
+    g_reading = false;
+}
+/// Candidate is bounded by the caller. Return exact consumed UTF-8 bytes.
+/// Validate and fit before replacing the current page; failure leaves it intact.
+pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]const u8, reading_len: u32, spans: [*]const reader.RubySpan, span_count: u32) callconv(.c) i32 {
+    if (!g_reading or len == 0) return -1;
+    const body = text[0..len];
+    const ruby_text = readings[0..reading_len];
+    const annotations = spans[0..span_count];
+    reader.validate(body, ruby_text, annotations) catch return -2;
+    var style = g_ws.style;
+    const bar: u16 = @as(u16, style.body_px) + 2 * @as(u16, g_ws.appearance.status_padding);
+    if (style.viewport_height_px <= bar) return -3;
+    style.viewport_height_px -= bar;
+    var config = view_config.Config{ .style = style, .appearance = g_ws.appearance };
+    config.validate() catch return -3;
+    var end: usize = len;
+    var ann_buf: [64]viewport_layout.ruby.Annotation = undefined;
+    while (end > 0) {
+        var count: usize = 0;
+        var r_end: usize = 0;
+        for (annotations) |span| {
+            if (span.base_end > end) break;
+            ann_buf[count] = .{ .base = .{ .start = span.base_start, .end = span.base_end }, .ruby = .{ .start = span.ruby_start, .end = span.ruby_end } };
+            count += 1;
+            r_end = @max(r_end, span.ruby_end);
+        }
+        const list = viewport_layout.layoutParagraphWithWordWrap(1024, 4096, 1024, native_session.Cache, &g_render_session.cache, activeFamily(), style, body[0..end], ruby_text[0..r_end], ann_buf[0..count], &g_render_session.scratch, &g_render_session.placed, true) catch |err| switch (err) {
+            error.BlockFull, error.Capacity, error.SpanTooWide => {
+                end = reader.shorter(body, end, annotations) catch return -4;
+                continue;
+            },
+            else => {
+                g_render_error = @errorName(err);
+                return -4;
+            },
+        };
+        const fit = reader.visibleEnd(end, annotations, list, style);
+        if (fit < end) {
+            end = fit;
+            continue;
+        }
+        var doc: HostWorkspaceType.DocType = .{};
+        doc.insertUtf8(body[0..end]) catch return -5;
+        for (annotations[0..count]) |span| {
+            doc.addRuby(span.base_start, span.base_end, ruby_text[span.ruby_start..span.ruby_end]) catch return -5;
+        }
+        doc.cursor = 0;
+        doc.forgetUndoHistory();
+        g_ws.doc = doc;
+        g_ws.layout_dirty = true;
+        return @intCast(end);
+    }
+    return -6;
+}
+
+/// A host file load starts a fresh undo history and never consumes the old one.
+pub export fn xy_host_document_load(text: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_reading or g_editing_source or len > 4096) return false;
+    var doc: HostWorkspaceType.DocType = .{};
+    doc.insertUtf8(text[0..len]) catch return false;
+    doc.forgetUndoHistory();
+    g_ws.doc = doc;
+    return true;
 }
