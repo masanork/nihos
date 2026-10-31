@@ -2,7 +2,7 @@
 
 検証コードは `3a222b2`。Tab5 ESP32-P4 revision v1.3、MAC `e8:f6:0a:e2:e8:9c`、16MiB Flashで、所有権ロックと両シリアル名のカーネル排他を取得して実施した。バックアップはユーザー指示どおり省略し、SDへの書込み・フォーマットは行っていない。
 
-[結果と候補識別子](2026-10-31-xy-native-render/result.json)、[イメージ監査](2026-10-31-xy-native-render/image-audit.json)、[シリアル記録](2026-10-31-xy-native-render/capture.log)、[証跡のSHA-256](2026-10-31-xy-native-render/summary.json)を保存した。候補のbootloader・partition table・appを固定し、書込み前後の内容一致を確認した後、日本語サンプルを表示したまま終了した。
+[結果と候補識別子](2026-10-31-xy-native-render/result.json)、[イメージ監査](2026-10-31-xy-native-render/image-audit.json)、[シリアル記録](2026-10-31-xy-native-render/capture.log)、[証跡のSHA-256](2026-10-31-xy-native-render/summary.json)を保存した。候補のbootloader・partition table・appを固定し、書込み後と基本動作試験後にFlash内容一致を確認し、その後、日本語サンプルを表示したまま終了した。
 
 ## 実機で確認した範囲
 
