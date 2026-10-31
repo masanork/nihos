@@ -1,7 +1,8 @@
 //! CPU0-only foreground render owner. One retained PSRAM lease and guarded stack.
 const std = @import("std");
 const console = @import("text_console");
-const memory = @import("native_tasks").memory;
+const tasks = @import("native_tasks");
+const memory = tasks.memory;
 const protocol = console.xy_render_protocol;
 pub const section = console.scratch.scheme.code_section;
 const stack_bytes = 128 * 1024;
@@ -10,9 +11,10 @@ var workspace_bytes: usize = 0;
 pub var frames: u32 = 0;
 pub var stack_used: u32 = 0;
 pub var failed: u32 = 0;
+extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_xy_render_bytes() callconv(.c) usize;
 extern fn nih_xy_render_init([*]u8, usize) callconv(.c) bool;
-extern fn nih_xy_render_call(*const protocol.Request, usize) callconv(.c) bool;
+extern fn nih_xy_render_call(*const protocol.Request, usize, u32) callconv(.c) bool;
 const label_0 linksection(console.scratch.scheme.data_section) = ": ".*;
 const label_1 linksection(console.scratch.scheme.data_section) = "Scheme error: ".*;
 const label_2 linksection(console.scratch.scheme.data_section) = "Scheme: ".*;
@@ -51,9 +53,25 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         text = text[offset..];
     }
     const request = protocol.Request{ .workspace = bytes.ptr, .frame = frame.ptr, .frame_length = frame.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0 };
-    if (!memory.stacks.beginForeground(stack)) return false;
-    defer memory.stacks.endForeground();
-    const ok = nih_xy_render_call(&request, @intFromPtr(stack.ptr) + stack.len);
+    const previous = asm volatile ("csrrci %[v], mstatus, 8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    if (!memory.stacks.beginForeground(stack)) {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+        return false;
+    }
+    const original = tasks.beginForegroundStack(@intCast(@intFromPtr(stack.ptr) + 256), @intCast(@intFromPtr(stack.ptr) + stack.len)) orelse {
+        memory.stacks.endForeground();
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
+        return false;
+    };
+    const ok = nih_xy_render_call(&request, @intFromPtr(stack.ptr) + stack.len, previous & 8);
+    // The bridge returned on the boot SP with MIE clear. Restore the scheduler
+    // image before another timer can capture that original stack.
+    if (!tasks.endForegroundStack(original)) nih_native_task_failed();
+    memory.stacks.endForeground();
+    if (previous & 8 != 0) asm volatile ("csrsi mstatus, 8" ::: .{ .memory = true });
     var first: usize = 0;
     while (first < stack.len and stack[first] == 0xa5) : (first += 1) {}
     stack_used = @max(stack_used, @as(u32, @intCast(stack.len - first)));

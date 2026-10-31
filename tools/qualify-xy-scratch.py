@@ -28,6 +28,7 @@ def main():
     parser.add_argument('build', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--install', action='store_true')
+    parser.add_argument('--demo', action='store_true', help='check Scheme view changes and leave a Japanese sample visible')
     args = parser.parse_args()
     build = args.build.resolve()
     manifest = json.loads((build / 'normal-fs-manifest.json').read_text())
@@ -167,7 +168,29 @@ def main():
                 receipt['scheme_vm_tested'] = True
                 save()
                 boot('warm-reset-empty-ram')
-            usb.tool(port, out / 'verify-after.log', 'verify_flash', paths)
+                usb.tool(port, out / 'verify-after.log', 'verify_flash', paths)
+                if args.demo:
+                    boot('verified-demo-boot')
+                    text = b''
+                    def style(label, source, axis):
+                        send(label + '-minibuffer', b'\x1b', text, len(text), 1)
+                        start = len(raw)
+                        send(label, source + b'\r', text, len(text))
+                        def rendered(data):
+                            row = record(data[start:], b'NIHOS_NATIVE_XY_RENDER')
+                            return row if row and row['font'] == 1 and row['size'] == 36 and row['axis'] == axis and row['foreground'] == 0x223344 and row['background'] == 0xfaf6ee else None
+                        row = wait(rendered)
+                        if row['failed'] != 0 or not 0 < row['stack_used'] < 131072 - 256:
+                            raise RuntimeError('render stack or repaint failure')
+                        receipt.setdefault('render_observations', []).append({'name': label, **row}); save()
+                    style('view-gothic-36', b"(view/set! #:font 'gothic #:size 36 #:foreground #x223344 #:background #xfaf6ee)", 0)
+                    text = '日本語表示 あいうえお\n青空文庫\n文字サイズ 36\n背景と文字の色を設定'.encode()
+                    send('japanese-serial-utf8', text, text, len(text))
+                    style('view-vertical', b"(view/set! #:direction 'vertical)", 1)
+                    style('view-horizontal', b"(view/set! #:direction 'horizontal)", 0)
+                    receipt.update(view_settings_tested=True, unicode_input_tested=True, input_transport='serial UTF-8', demo_left_visible=True)
+                    save()
+
             receipt['passed'] = True; save()
             print('Physical xy boot/input/undo/help/warm-reset passed; no pixel or persistence claim', flush=True)
     except BaseException as error:
