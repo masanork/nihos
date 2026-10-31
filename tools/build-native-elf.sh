@@ -1047,9 +1047,10 @@ fi
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
-    --dep frame_mailbox --dep async_start --dep wasm_ui_controller --dep hosted_station \
+    --dep frame_mailbox --dep async_start --dep wasm_ui_controller --dep hosted_station --dep dhcp_fixture \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
     --dep app_session --dep app_presenter --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    -Mdhcp_fixture="$repo_root/src/net/fixtures/wasm_fixture.zig" \
     -Mframe_mailbox="$repo_root/src/app/frame_mailbox.zig" \
     -Masync_start="$repo_root/src/app/async_start.zig" \
     -Mwasm_ui_controller="$repo_root/src/app/wasm_ui_controller.zig" \

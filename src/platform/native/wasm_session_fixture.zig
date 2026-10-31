@@ -45,97 +45,120 @@ var fixture_station: if (options.wasm_interactive_repeat) hosted_station.Client 
 pub var station_completed: u32 = 0;
 pub var station_stale: u32 = 0;
 pub var station_errors: u32 = 0;
+pub var station_offers: u32 = 0;
+pub var station_corrupt: u32 = 0;
 pub var station_opening: u32 = 0;
 pub var station_cancelling: u32 = 0;
 pub var station_active: u32 = 0;
-// One deterministic station step per foreground turn. The synthetic peer
-// returns a wrong-UID version reply before the matching response.
-fn stationService() void {
-    const step = (mock_items - 1) % 5;
+// Synthetic peer uses the real client and independently generated DHCP bytes.
+const station_now: u64 = 0x5c7d1e37; // yields XID 0x12345678
+const test_mac = [_]u8{ 2, 3, 4, 5, 6, 7 };
+const dhcp_fixture = @import("dhcp_fixture");
+fn stationReply(id: u32, uid: u32, body: []const u8, event: bool) bool {
+    var payload: [128]u8 = undefined;
+    const response = hosted_wire.request(&payload, id, uid, body) catch return false;
+    payload[13] = if (event) 3 else 2;
+    if (event) @memcpy(payload[3..9], "RPCEvt");
+    fixture_station.receive(.{ .interface = 3, .payload = response }, station_now) catch return false;
+    return true;
+}
+fn stationStep(step: u32) bool {
     if (step == 0) {
-        fixture_station.begin(.disabled, 0);
-        // Model a prior transaction so the stale UID is nonzero and valid.
-        fixture_station.uid = 1;
-        fixture_station.receive(.{ .interface = 5, .payload = &.{ 0x22, 3, 0x12, 1, 13 } }, 1) catch {
-            station_errors += 1;
-            return;
-        };
-        if (!fixture_station.capabilities_pending or fixture_station.phase != .handshake) station_errors += 1;
-    } else if (step == 1) {
-        const bytes = fixture_station.tx(2) catch {
-            station_errors += 1;
-            return;
-        };
-        if (bytes.len <= 12 or bytes[0] != 5) {
-            station_errors += 1;
-            return;
-        }
-        fixture_station.sent(2);
-        if (fixture_station.phase != .version) station_errors += 1;
-    } else if (step == 2) {
-        const bytes = fixture_station.tx(3) catch {
-            station_errors += 1;
-            return;
-        };
-        if (bytes.len <= 12 or bytes[0] != 3 or fixture_station.active_id != 350) {
-            station_errors += 1;
-            return;
-        }
-        fixture_station.sent(3);
-    } else {
+        fixture_station.begin(.saved, station_now);
+        fixture_station.uid = 1; // Model one earlier nonzero transaction.
+        fixture_station.receive(.{ .interface = 5, .payload = &.{ 0x22, 3, 0x12, 1, 13 } }, station_now) catch return false;
+        return fixture_station.capabilities_pending and fixture_station.phase == .handshake;
+    }
+    if (step == 1) {
+        const bytes = fixture_station.tx(station_now) catch return false;
+        if (bytes.len <= 12 or bytes[0] != 5) return false;
+        fixture_station.sent(station_now);
+        return fixture_station.phase == .version;
+    }
+    if (step == 2) {
+        const bytes = fixture_station.tx(station_now) catch return false;
+        if (bytes.len <= 12 or bytes[0] != 3 or fixture_station.active_id != 350) return false;
+        fixture_station.sent(station_now);
+        return true;
+    }
+    if (step == 3 or step == 4) {
         var body_buffer: [32]u8 = undefined;
         var body = hosted_wire.Writer{ .out = &body_buffer };
-        body.uint(2, 1) catch {
-            station_errors += 1;
-            return;
-        };
-        body.uint(3, 4) catch {
-            station_errors += 1;
-            return;
-        };
-        body.uint(4, 1) catch {
-            station_errors += 1;
-            return;
-        };
-        var payload: [128]u8 = undefined;
-        const uid = fixture_station.uid - @as(u32, @intFromBool(step == 3));
-        const response = hosted_wire.request(&payload, 606, uid, body.slice()) catch {
-            station_errors += 1;
-            return;
-        };
-        payload[13] = 2;
-        fixture_station.receive(.{ .interface = 3, .payload = response }, 4) catch {
-            station_errors += 1;
-            return;
-        };
+        body.uint(2, 1) catch return false;
+        body.uint(3, 4) catch return false;
+        body.uint(4, 1) catch return false;
+        if (!stationReply(606, fixture_station.uid - @as(u32, @intFromBool(step == 3)), body.slice(), false)) return false;
         if (step == 3) {
-            if (fixture_station.phase != .version or fixture_station.ignored_rpcs != 1 or fixture_station.version_known) {
-                station_errors += 1;
-                return;
-            }
+            if (fixture_station.phase != .version or fixture_station.ignored_rpcs != 1 or fixture_station.version_known) return false;
             station_stale += 1;
-        } else {
-            const pending = fixture_station.tx(5) catch {
-                station_errors += 1;
-                return;
-            };
-            if (fixture_station.phase != .done or !fixture_station.version_known or
-                !@import("std").mem.eql(u32, &fixture_station.version, &.{ 1, 4, 1 }) or fixture_station.ignored_rpcs != 1 or
-                fixture_station.dhcp_client != null or fixture_station.connected or pending.len != 0)
-            {
-                station_errors += 1;
-                return;
-            }
-            station_completed += 1;
-            switch (ui.wasmFixturePhase()) {
-                1 => station_opening += 1,
-                2 => station_cancelling += 1,
-                3 => station_active += 1,
-                else => station_errors += 1,
-            }
+            return true;
         }
+        return fixture_station.phase == .init_wifi and fixture_station.version_known and
+            @import("std").mem.eql(u32, &fixture_station.version, &.{ 1, 4, 1 });
     }
+    if (step >= 5 and step <= 10) {
+        const ids = [_]u32{ 278, 313, 260, 280, 270, 257 };
+        const id = ids[step - 5];
+        const bytes = fixture_station.tx(station_now) catch return false;
+        if (bytes.len <= 12 or bytes[0] != 3 or fixture_station.active_id != id) return false;
+        fixture_station.sent(station_now);
+        var body_buffer: [32]u8 = undefined;
+        var body = hosted_wire.Writer{ .out = &body_buffer };
+        if (id == 257) body.data(1, &test_mac) catch return false;
+        return stationReply(id + 256, fixture_station.uid, body.slice(), false);
+    }
+    if (step == 11) {
+        const bytes = fixture_station.tx(station_now) catch return false;
+        if (bytes.len <= 12 or fixture_station.active_id != 282) return false;
+        fixture_station.sent(station_now);
+        if (!stationReply(775, 77, &.{}, true) or !stationReply(538, fixture_station.uid, &.{}, false)) return false;
+        return fixture_station.phase == .link and fixture_station.connected;
+    }
+    if (step == 12) {
+        const bytes = fixture_station.tx(station_now) catch return false;
+        if (bytes.len < 12 + 342 or bytes[0] != 1 or bytes[12 + 42 + 242] != 1 or fixture_station.phase != .lease or
+            fixture_station.dhcp_client == null or fixture_station.dhcp_client.?.xid != 0x12345678) return false;
+        fixture_station.sent(station_now);
+        return true;
+    }
+    if (step == 13) {
+        fixture_station.receive(.{ .interface = 1, .payload = dhcp_fixture.offer }, station_now) catch return false;
+        if (fixture_station.dhcp_client == null or fixture_station.dhcp_client.?.phase != .request or fixture_station.dhcp_client.?.lease != null) return false;
+        station_offers += 1;
+        return true;
+    }
+    if (step == 14) {
+        const bytes = fixture_station.tx(station_now) catch return false;
+        if (bytes.len < 12 + 342 or bytes[0] != 1 or bytes[12 + 42 + 242] != 3) return false;
+        fixture_station.sent(station_now);
+        return true;
+    }
+    if (step == 15) {
+        var corrupt: [dhcp_fixture.ack.len]u8 = dhcp_fixture.ack.*;
+        corrupt[corrupt.len - 2] ^= 1;
+        fixture_station.receive(.{ .interface = 1, .payload = &corrupt }, station_now) catch return false;
+        if (fixture_station.phase != .lease or fixture_station.dhcp_client == null or fixture_station.dhcp_client.?.lease != null or fixture_station.malformed_network != 1) return false;
+        station_corrupt += 1;
+        return true;
+    }
+    fixture_station.receive(.{ .interface = 1, .payload = dhcp_fixture.ack }, station_now) catch return false;
+    const lease = if (fixture_station.dhcp_client) |v4| v4.lease orelse return false else return false;
+    if (fixture_station.phase != .done or lease.ip != 0xc000020c or lease.gateway != 0xc0000201 or lease.seconds != 3600 or
+        fixture_station.ignored_rpcs != 1 or fixture_station.malformed_network != 1) return false;
+    station_completed += 1;
+    switch (ui.wasmFixturePhase()) {
+        1 => station_opening += 1,
+        2 => station_cancelling += 1,
+        3 => station_active += 1,
+        else => return false,
+    }
+    return true;
 }
+// The bounded synthetic exchange advances at most once per foreground turn.
+fn stationService() void {
+    if (!stationStep((mock_items - 1) % 17)) station_errors += 1;
+}
+
 var fixture_decoder: if (options.wasm_interactive_repeat) hosted_wire.Decoder else void = if (options.wasm_interactive_repeat) .{} else {};
 pub var network_accepted: u32 = 0;
 pub var network_rejected: u32 = 0;
@@ -259,6 +282,8 @@ pub fn interactiveService(log: anytype) u32 {
             station_completed = 0;
             station_stale = 0;
             station_errors = 0;
+            station_offers = 0;
+            station_corrupt = 0;
             station_opening = 0;
             station_cancelling = 0;
             station_active = 0;

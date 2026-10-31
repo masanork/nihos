@@ -1662,7 +1662,7 @@ fn normalReady() noreturn {
             fixture.foregroundAfterUi();
             const state = fixture.interactiveService(&logger);
             if (state == 3) fail("Wasm interactive repeat result");
-            if (state == 0 and fixture.foreground_active == 5) {
+            if (state == 0 and fixture.foreground_active == 25) {
                 const active = .{ .round = fixture.interactive_round };
                 logger.record("NIHOS_WASM_WORK_ACTIVE", null, .{"round"}, &active);
             }
@@ -1675,8 +1675,8 @@ fn normalReady() noreturn {
                     logger.record("NIHOS_WASM_WORK", null, .{ "round", "items", "digest", "sensor" }, &work);
                     const hosted = .{ .round = fixture.interactive_round, .accepted = fixture.network_accepted, .rejected = fixture.network_rejected, .errors = fixture.network_errors, .active_events = fixture.network_active_events };
                     logger.record("NIHOS_WASM_HOSTED_FIXTURE", null, .{ "round", "accepted", "rejected", "errors", "active_events" }, &hosted);
-                    const station = .{ .round = fixture.interactive_round, .completed = fixture.station_completed, .stale = fixture.station_stale, .errors = fixture.station_errors, .opening = fixture.station_opening, .cancelling = fixture.station_cancelling, .active = fixture.station_active };
-                    logger.record("NIHOS_WASM_STATION_FIXTURE", null, .{ "round", "completed", "stale", "errors", "opening", "cancelling", "active" }, &station);
+                    const station = .{ .round = fixture.interactive_round, .completed = fixture.station_completed, .stale = fixture.station_stale, .errors = fixture.station_errors, .offers = fixture.station_offers, .corrupt = fixture.station_corrupt, .opening = fixture.station_opening, .cancelling = fixture.station_cancelling, .active = fixture.station_active };
+                    logger.record("NIHOS_WASM_STATION_FIXTURE", null, .{ "round", "completed", "stale", "errors", "offers", "corrupt", "opening", "cancelling", "active" }, &station);
                     const timings = @import("wasm_session.zig").observed;
                     const latency = .{ .round = fixture.interactive_round, .render_us = timings.render_max_us, .close_us = timings.close_us };
                     logger.record("NIHOS_WASM_REQUEST_LATENCY", null, .{ "round", "render_us", "close_us" }, &latency);
