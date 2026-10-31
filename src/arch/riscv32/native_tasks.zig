@@ -50,6 +50,7 @@ extern fn nih_user_probe_trampoline() callconv(.c) void;
 extern fn nih_user_probe_body() callconv(.c) void;
 
 const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
+const native_sqld = @hasDecl(options, "sqld") and options.sqld;
 const normal_boot = @import("native_options").boot_fast;
 const Phase = enum { normal, pmp_probe, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete, graphics };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol, normal_storage };
@@ -72,7 +73,7 @@ const Owner = struct {
     worker_reaped: [2]bool = .{ false, false },
     timer_interrupts: u32 = 0,
     graphics_task: ?scheduler.TaskHandle = null,
-    sqld_task: ?scheduler.TaskHandle = null,
+    sqld_task: if (native_sqld) ?scheduler.TaskHandle else void = if (native_sqld) null else {},
     /// Protected task exited by a contained fault. Bootstrap reaps it after
     /// the ledger drain. This is not an extra scheduler slot.
     faulted: ?scheduler.TaskHandle = null,
@@ -466,7 +467,7 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     for ([_]scheduler.TaskHandle{ owner.bootstrap, owner.workers[0], owner.workers[1], owner.lifecycle }) |handle| {
         if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
     }
-    if (owner.sqld_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
+    if (native_sqld) if (owner.sqld_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
         total += snapshot.runtime_ticks;
     };
     if (owner.graphics_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
