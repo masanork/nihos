@@ -71,7 +71,7 @@ DEVICE_FUNCTIONS = {
 CAMERA_FOREGROUND_FUNCTIONS = {'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.captureXySystem', 'board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
     'nih_csi_stream_begin', 'nih_csi_stream_stop', 'nih_csi_stream_state', 'nih_csi_stream_borrow',
     'nih_csi_stream_release', 'nih_csi_stream_end', 'nih_csi_stream_abort',
-    'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail'}
+    'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail', 'camera_jpeg.request', 'camera_jpeg.info', 'camera_jpeg.read'}
 
 def device_function(name):
     return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
@@ -188,8 +188,8 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
-              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand'}
+              'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O

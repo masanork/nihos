@@ -94,6 +94,13 @@ int32_t nih_diagnostic_serial_read(void) {
     uint8_t byte;
     return usb_serial_jtag_ll_read_rxfifo(&byte, 1) == 1 ? byte : -1;
 }
+#ifndef NIH_NATIVE_XY_TRACE
+#define NIH_NATIVE_XY_TRACE 0
+#endif
+/* Full-frame XY qualification consumes many bounded replies. Allow a host
+ * scheduling pause without silently dropping the rest of a record. Normal
+ * builds retain their existing short best-effort budget. Neither is unbounded.
+ */
 static bool diagnostic_tx_stalled;
 static uint32_t diagnostic_tx_dropped;
 extern void nih_diagnostic_serial_idle(void);
@@ -104,7 +111,7 @@ void nih_diagnostic_serial_write(uint8_t byte) {
     }
     for (uint32_t spins = 0; !usb_serial_jtag_ll_txfifo_writable(); ++spins) {
         if ((spins & 255u) == 0) nih_diagnostic_serial_idle();
-        if (spins == 199999u) {
+        if (spins == (NIH_NATIVE_XY_TRACE ? 19999999u : 199999u)) {
             diagnostic_tx_stalled = true;
             if (diagnostic_tx_dropped != UINT32_MAX) ++diagnostic_tx_dropped;
             return;

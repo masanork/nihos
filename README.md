@@ -242,7 +242,7 @@ for the original tested configuration and remaining limits, and the
 
 An opt-in [hardware JPEG fixture](docs/measurements/2026-10-31-camera-hardware-jpeg.md)
 encodes 1280×720 RGB565 camera frames using the ISP and JPEG/DMA2D hardware.
-It is separate from the default preview and has no filesystem-save or XY API yet.
+It is separate from the default preview. The opt-in [XY camera API](docs/measurements/2026-10-31-xy-camera-jpeg.md) provides one boot-retained JPEG handle and bounded copied reads; filesystem saving remains separate.
 
 Normal native Tab5 boot also initializes BMI270 and acquires acceleration and
 gyroscope readings through the shared board I2C owner. See

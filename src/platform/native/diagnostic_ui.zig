@@ -62,6 +62,10 @@ const Session = console.session;
 const xy_workspace = @hasDecl(options, "xy_workspace") and options.xy_workspace;
 const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
 var last_xy_trace_revision: u32 = 0;
+var camera_provider: ?*const console.scratch.camera.Provider = null;
+pub inline fn bindCamera(provider: *const console.scratch.camera.Provider) void {
+    camera_provider = provider;
+}
 var xy_input_bytes: u32 = 0;
 var last_xy_input_bytes: u32 = 0;
 var last_xy_idle_report: u64 = 0;
@@ -502,6 +506,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();
+        scratch.camera.provider = camera_provider;
         (SerialSink{}).write("\r\nxy / *scratch* [RAM]\r\n");
     } else session.begin(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
@@ -631,8 +636,14 @@ noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
     if (scratch.mode == .system) for (scratch.snapshot.slice()) |byte| {
         buffer_hash = (buffer_hash ^ byte) *% 0x01000193;
     };
-    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash };
-    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash" }, &values);
+    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32, tx_dropped: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash, .tx_dropped = nih_diagnostic_serial_dropped() };
+    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash", "tx_dropped" }, &values);
+    if (scratch.status == .scheme_result or scratch.status == .scheme_error) {
+        (SerialSink{}).write("\nNIHOS_NATIVE_XY_REPLY data=");
+        const digits = "0123456789abcdef";
+        for (scratch.reply[0..scratch.reply_length]) |b| (SerialSink{}).write(&.{ digits[b >> 4], digits[b & 15] });
+        (SerialSink{}).write("\n");
+    }
     const graphics = @import("xy_render_runtime.zig");
     const render_values: extern struct { frames: u32, stack_used: u32, failed: u32, font: u32, size: u32, axis: u32, foreground: u32, background: u32 } = .{ .frames = graphics.frames, .stack_used = graphics.stack_used, .failed = graphics.failed, .font = scratch.vm.view.style.style_id, .size = scratch.vm.view.style.body_px, .axis = scratch.vm.view.style.axis, .foreground = scratch.vm.view.appearance.foreground, .background = scratch.vm.view.appearance.background };
     log.record("NIHOS_NATIVE_XY_RENDER", null, .{ "frames", "stack_used", "failed", "font", "size", "axis", "foreground", "background" }, &render_values);

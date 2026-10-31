@@ -190,7 +190,7 @@ case "$console_fault" in 0) console_fault=false ;; 1) console_fault=true ;; *) e
 console_live=${NIHOS_NATIVE_CONSOLE_LIVE:-0}
 xy_workspace=${NIHOS_NATIVE_XY_WORKSPACE:-0}
 xy_trace=${NIHOS_NATIVE_XY_TRACE:-0}
-case "$xy_trace" in 0) xy_trace=false ;; 1) xy_trace=true ;; *) echo "XY_TRACE must be 0 or 1" >&2; exit 1 ;; esac
+case "$xy_trace" in 0) xy_trace=false; xy_trace_cpp=0 ;; 1) xy_trace=true; xy_trace_cpp=1 ;; *) echo "XY_TRACE must be 0 or 1" >&2; exit 1 ;; esac
 case "$xy_workspace" in 0) xy_workspace=false ;; 1) xy_workspace=true ;; *) echo "XY_WORKSPACE must be 0 or 1" >&2; exit 1 ;; esac
 keyboard_i2c=${NIHOS_NATIVE_KEYBOARD_I2C:-0}
 case "$console_live" in 0) console_live=false ;; 1) console_live=true ;; *) echo "CONSOLE_LIVE must be 0 or 1" >&2; exit 1 ;; esac
@@ -579,7 +579,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     if [ "$sdmmc" = true ] || [ "$normal_storage" = true ]; then sdmmc_pads=1; fi
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
         -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
-        -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SDMMC_PADS="$sdmmc_pads" \
+        -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SDMMC_PADS="$sdmmc_pads" -DNIH_NATIVE_XY_TRACE="$xy_trace_cpp" \
         -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
         -isystem "$headers/riscv-linux-any" \
         -I "$native_boot_dir/loader/config" \
