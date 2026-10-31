@@ -72,6 +72,9 @@ jobs:
           path: build/fatfs-disk/run-*/*results.json
           if-no-files-found: ignore
 
+      - name: Build the portable Tab5 reader preview
+        run: sh tools/build-xy-tab5-preview.sh
+
       - name: Native evidence checker regressions
         run: python3 -m unittest discover -s tools -p '*test.py'
 

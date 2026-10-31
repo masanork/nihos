@@ -37,7 +37,7 @@ def build(work):
     for source in inputs:
         out = work/('sqld_'+source.stem+'.o');subprocess.run([*flags,'-c',str(source),'-o',str(out)], check=True);objects.append(out)
     sources = inputs + list((ROOT/'src').rglob('*.zig')) + list((ROOT/'include').glob('*.h')) + [Path(__file__),ROOT/'tools/build-native-elf.sh',ROOT/'src/platform/native/esp32p4.ld']
-    manifest={'kind':'normal-sqld','transaction_timeout_ms':30000,'defines':defines,'provision_cid':int(os.environ.get('NIHOS_NATIVE_SQLD_PROVISION_CID','0'),0),'cache':[0x48340000,524288],'eval_stack':[0x48230000,65536],'reservation':[0x48200000,2097152],'heap':[0x48240000,1048576],'stack':[0x483c0000,65536],'media':[2048,8192],'sources':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},'objects':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in objects}}
+    manifest={'kind':'normal-sqld','transaction_timeout_ms':30000,'flash':[0x40400000,786432],'defines':defines,'provision_cid':int(os.environ.get('NIHOS_NATIVE_SQLD_PROVISION_CID','0'),0),'cache':[0x48340000,524288],'eval_stack':[0x48230000,65536],'reservation':[0x48200000,2097152],'heap':[0x48240000,1048576],'stack':[0x483c0000,65536],'media':[2048,8192],'sources':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},'objects':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in objects}}
     functions=runpy.run_path(str(ROOT/'tools/native-sqlite-manifest.py'))['functions']
     manifest['allowed_functions']=sorted(set().union(*(set(functions(p)) for p in objects)))
     identity=hashlib.sha256(json.dumps(manifest,sort_keys=True).encode()).hexdigest();manifest['identity']=identity

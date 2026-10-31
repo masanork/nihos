@@ -1,21 +1,40 @@
 //! Separately linked foreground renderer: code and boot faces stay in mapped Flash.
 const session = @import("render_session.zig");
+const reading = @import("native_reading.zig");
+const catalog = @import("catalog.zig");
+extern var nih_xy_reading_start: u8;
+extern var nih_xy_reading_end: u8;
+fn readingPack() catalog.Error!catalog.Pack {
+    if (@import("builtin").is_test) return error.InvalidPack;
+    const start: [*]const u8 = @ptrCast(&nih_xy_reading_start);
+    const length = @intFromPtr(&nih_xy_reading_end) - @intFromPtr(&nih_xy_reading_start);
+    return catalog.Pack.init(start[0..length]);
+}
 const protocol = @import("render_protocol.zig");
 const ttf = @import("viewport_layout").ttf;
 const mincho: []const u8 = @embedFile("fonts/mincho.ttf");
 const gothic: []const u8 = @embedFile("fonts/gothic.ttf");
 pub export fn nih_xy_render_bytes() callconv(.c) usize {
-    return @sizeOf(session.Session);
+    return @sizeOf(reading.Session);
 }
 pub export fn nih_xy_render_init(bytes: [*]u8, length: usize) callconv(.c) bool {
-    if (length < @sizeOf(session.Session) or @intFromPtr(bytes) % @alignOf(session.Session) != 0) return false;
-    const instance: *session.Session = @ptrCast(@alignCast(bytes));
-    instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic)) catch return false;
+    if (length < @sizeOf(reading.Session) or @intFromPtr(bytes) % @alignOf(reading.Session) != 0) return false;
+    const instance: *reading.Session = @ptrCast(@alignCast(bytes));
+    const pack = readingPack() catch return false;
+    const mincho_font = pack.font(0) catch return false;
+    const gothic_font = pack.font(1) catch return false;
+    instance.initSlices(mincho_font, gothic_font) catch return false;
     return true;
 }
 pub export fn nih_xy_render(request: *const protocol.Request) callconv(.c) bool {
-    const instance: *session.Session = @ptrCast(@alignCast(request.workspace));
-    instance.render(request) catch return false;
+    const instance: *reading.Session = @ptrCast(@alignCast(request.workspace));
+    if (request.navigation) |nav| {
+        const pack = readingPack() catch return false;
+        reading.render(instance, request, pack) catch |err| {
+            nav.error_code = @intFromError(err);
+            return false;
+        };
+    } else instance.render(request) catch return false;
     return true;
 }
 

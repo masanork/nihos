@@ -1,0 +1,607 @@
+{
+  "passed": true,
+  "evidence": "physical Tab5 ROM reader; serial input and completed framebuffer publications",
+  "hardware_pixels_observed": false,
+  "physical_touch_tested": false,
+  "sd_modified": false,
+  "backup_private": true,
+  "installed": true,
+  "candidate": {
+    "partition-table.bin": "fd8026bff850ca0dee41c41305160317fffe604dda30a9bd5a701ac82d96fa17",
+    "nihos-native.bin": "d8c818e308f85524fd1e33f9c142597785324dd0ccc0f9f306f2182e4321e1db",
+    "image-audit.json": "b772386ff0081cc7efae5e2fe22b7d58149852ccce03602afdf3a7d96fdc4953",
+    "bootloader.bin": "adbaed201ee62d8bebe14f827a90f7a9814fbdd0ffce72783cf97bffd78bedd2"
+  },
+  "observations": [
+    {
+      "name": "home-boot",
+      "screen": 1,
+      "book": 0,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 0,
+      "error_code": 0,
+      "render": {
+        "frames": 1,
+        "stack_used": 45392,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "grass-contents",
+      "screen": 2,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 0,
+      "error_code": 0,
+      "render": {
+        "frames": 2,
+        "stack_used": 45392,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "grass-first",
+      "screen": 3,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 3,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "grass-next",
+      "screen": 3,
+      "book": 1,
+      "chapter": 0,
+      "offset": 697,
+      "end": 1530,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 4,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "grass-previous",
+      "screen": 3,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 5,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "settings",
+      "screen": 4,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 6,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "vertical",
+      "screen": 4,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 7,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 1,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "larger",
+      "screen": 4,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 8,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 0,
+        "size": 36,
+        "axis": 1,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "gothic",
+      "screen": 4,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 9,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "dark",
+      "screen": 4,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 697,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 10,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "grass-reflow",
+      "screen": 3,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 667,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 11,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "home-from-book",
+      "screen": 1,
+      "book": 1,
+      "chapter": 0,
+      "offset": 0,
+      "end": 667,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 12,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "sicp-contents",
+      "screen": 2,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 20726,
+      "error_code": 0,
+      "render": {
+        "frames": 13,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "sicp-read",
+      "screen": 3,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 363,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 14,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "home-from-sicp",
+      "screen": 1,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 363,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 15,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "nihos-contents",
+      "screen": 2,
+      "book": 3,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 16,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "nihos-chapter-select",
+      "screen": 2,
+      "book": 3,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 17,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "nihos-read",
+      "screen": 3,
+      "book": 3,
+      "chapter": 4,
+      "offset": 0,
+      "end": 587,
+      "total": 8001,
+      "error_code": 0,
+      "render": {
+        "frames": 18,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "home-for-document",
+      "screen": 1,
+      "book": 3,
+      "chapter": 4,
+      "offset": 0,
+      "end": 587,
+      "total": 8001,
+      "error_code": 0,
+      "render": {
+        "frames": 19,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "document-open",
+      "screen": 0,
+      "book": 3,
+      "chapter": 4,
+      "offset": 0,
+      "end": 587,
+      "total": 8001,
+      "error_code": 0,
+      "render": {
+        "frames": 20,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "document-edit",
+      "screen": 0,
+      "book": 3,
+      "chapter": 4,
+      "offset": 0,
+      "end": 587,
+      "total": 8001,
+      "error_code": 0,
+      "render": {
+        "frames": 21,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "home-keeps-document",
+      "screen": 1,
+      "book": 3,
+      "chapter": 4,
+      "offset": 0,
+      "end": 587,
+      "total": 8001,
+      "error_code": 0,
+      "render": {
+        "frames": 22,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "document-return",
+      "screen": 0,
+      "book": 3,
+      "chapter": 4,
+      "offset": 0,
+      "end": 587,
+      "total": 8001,
+      "error_code": 0,
+      "render": {
+        "frames": 23,
+        "stack_used": 142368,
+        "failed": 0,
+        "font": 1,
+        "size": 36,
+        "axis": 1,
+        "foreground": 15133424,
+        "background": 1184792
+      }
+    },
+    {
+      "name": "final-fresh-home",
+      "screen": 1,
+      "book": 0,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 0,
+      "error_code": 0,
+      "render": {
+        "frames": 1,
+        "stack_used": 45536,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "final-sicp-contents",
+      "screen": 2,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 0,
+      "total": 0,
+      "error_code": 0,
+      "render": {
+        "frames": 2,
+        "stack_used": 45536,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "final-sicp",
+      "screen": 3,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 400,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 3,
+        "stack_used": 139712,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "final-settings",
+      "screen": 4,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 400,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 4,
+        "stack_used": 139712,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 0,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "final-vertical",
+      "screen": 4,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 400,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 5,
+        "stack_used": 139712,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 1,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    },
+    {
+      "name": "final-book-visible",
+      "screen": 3,
+      "book": 2,
+      "chapter": 0,
+      "offset": 0,
+      "end": 400,
+      "total": 2576,
+      "error_code": 0,
+      "render": {
+        "frames": 6,
+        "stack_used": 139712,
+        "failed": 0,
+        "font": 0,
+        "size": 32,
+        "axis": 1,
+        "foreground": 1842206,
+        "background": 16447214
+      }
+    }
+  ],
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": "d153452e3fa9c37e03835ea73a8edb938d89e2d42befcc17bc908d632cb8d49c",
+  "write_started": true,
+  "outside_written_sectors_preserved": true,
+  "document_preserved": true,
+  "boot_count": 1
+}

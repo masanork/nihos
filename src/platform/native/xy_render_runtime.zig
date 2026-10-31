@@ -5,7 +5,7 @@ const tasks = @import("native_tasks");
 const memory = tasks.memory;
 const protocol = console.xy_render_protocol;
 pub const section = console.scratch.scheme.code_section;
-const stack_bytes = 128 * 1024;
+const stack_bytes = memory.stacks.foreground_bytes;
 const frame_bytes = 1280 * 720 * 2;
 var lease: ?memory.reusable.Allocation = null;
 var workspace_bytes: usize = 0;
@@ -63,7 +63,7 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         text = text[offset..];
     }
     const annotated = model.mode != .help and model.mode != .system;
-    const request = protocol.Request{ .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
+    const request = protocol.Request{ .navigation = if (model.nav.screen != .document) &model.nav else null, .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
     const previous = asm volatile ("csrrci %[v], mstatus, 8"
         : [v] "=r" (-> u32),
         :

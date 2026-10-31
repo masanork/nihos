@@ -14,9 +14,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
       - name: Build the shared-core Mac app
         run: sh tools/build-xy-mac.sh
       - name: SQLite lifecycle and canonical framebuffer parity
         run: python3 tools/xy_workspace_test.py -v
       - name: Scheme, sqld, filesystem snapshots and real SQLite crash recovery
         run: python3 tools/sqld_test.py -v
+      - name: Offline reading pack and shared-core pagination
+        run: python3 tools/xy_reader_test.py -v
+      - name: Build the Tab5 reader preview
+        run: sh tools/build-xy-tab5-preview.sh
+      - name: Tab5 navigation, touch, and offline pagination
+        run: python3 tools/xy_tab5_reader_test.py -v

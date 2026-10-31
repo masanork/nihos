@@ -101,6 +101,9 @@ def main():
                     raw.clear();port.reset_input_buffer();port.dtr=False;HardReset(port,uses_usb=True)()
                     row=wait(lambda b:(r if r and r['phase'] in (2,3,4) else None) if (r:=record(b,b'NIHOS_NATIVE_SQLD')) else None,90)
                     result['observations'].append({'name':'boot',**row});save();print('sqld boot '+str(row),flush=True)
+                    if a.exercise or a.readback:
+                        start=len(raw);port.write(b'n');port.flush()
+                        wait(lambda b:(r if r and r['screen']==0 else None) if (r:=record(b[start:],b'NIHOS_NATIVE_XY_READER')) else None)
                     return row
                 row=boot()
                 if sql['provision_cid'] != 0 and row['phase'] != 2:raise RuntimeError('CID provisioning did not produce a ready service')
