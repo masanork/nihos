@@ -43,7 +43,7 @@ MEMORY {
 #if NIH_NATIVE_XY
     flash_xy_gap (r) : ORIGIN = 0x40010020, LENGTH = 320K - 0x20
     /* Foreground xy evaluator; no ISR/cache-off entry points. */
-    flash_xy (rx) : ORIGIN = 0x40060000, LENGTH = 128K
+    flash_xy (rx) : ORIGIN = 0x40060000, LENGTH = 384K
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
@@ -298,12 +298,14 @@ SECTIONS
     } > flash_xy_gap
     .flash.xytext : ALIGN(16) {
         __flash_xy_start = .;
+        *xy_render.o(.text .text.*)
         *(.flash.xytext)
         . = ALIGN(16);
         __flash_xy_text_end = .;
     } > flash_xy
     .flash.xyrodata : ALIGN(16) {
         __flash_xy_rodata_start = .;
+        *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
         *(.flash.xyrodata)
         . = ALIGN(4);
         __flash_xy_end = .;

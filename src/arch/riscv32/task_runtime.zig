@@ -82,6 +82,26 @@ pub fn Runtime(comptime capacity: usize, comptime priority_levels: u8) type {
             return handle;
         }
 
+        /// Trusted kernel caller only, with interrupts masked across the actual
+        /// SP transition. No scheduler slot, priority or allocation owner changes.
+        pub inline fn beginStackSwitch(self: *Self, expected: scheduler.TaskHandle, low: u32, high: u32) ?Image {
+            const current = self.policy.current() orelse return null;
+            if (!std.meta.eql(current, expected) or low % context.stack_alignment != 0 or
+                high % context.stack_alignment != 0 or low >= high or high - low < context.integer_context_size) return null;
+            const original = self.images[current.slot] orelse return null;
+            if (original.protection != null or original.floating_context != 0 or !original.privilegeAccepted(original.state)) return null;
+            self.images[current.slot].?.stack_min = low;
+            self.images[current.slot].?.stack_max = high;
+            self.images[current.slot].?.frame = null;
+            return original;
+        }
+        pub inline fn endStackSwitch(self: *Self, expected: scheduler.TaskHandle, original: Image) bool {
+            const current = self.policy.current() orelse return false;
+            if (!std.meta.eql(current, expected) or original.protection != null or original.floating_context != 0) return false;
+            self.images[current.slot] = original;
+            return true;
+        }
+
         pub fn capture(self: *Self, frame: *context.IntegerContext, state: context.ReturnState) bool {
             const current = self.policy.current() orelse return false;
             const image = self.images[current.slot] orelse return false;
@@ -280,4 +300,29 @@ test "ordinary runtime refuses protected tasks before allocating a slot" {
     try std.testing.expectEqual(@as(u16, 0), kernel.slot);
     runtime.protected_admission = .diagnostic;
     try std.testing.expect(runtime.add(0, user) != null);
+}
+
+test "kernel stack switch admits timer capture and round robin then restores bootstrap bounds" {
+    var rt = Runtime(2, 1){};
+    const state = context.ReturnState{ .mstatus = 0x1880, .mcause = 0x80000010 };
+    const boot_frame: *context.IntegerContext = @ptrFromInt(0x1100);
+    const work_frame: *context.IntegerContext = @ptrFromInt(0x3100);
+    const borrowed_frame: *context.IntegerContext = @ptrFromInt(0x5100);
+    const boot = rt.add(0, .{ .stack_min = 0x1000, .stack_max = 0x1800, .frame = boot_frame, .state = state }).?;
+    _ = rt.add(0, .{ .stack_min = 0x3000, .stack_max = 0x3800, .frame = work_frame, .state = state }).?;
+    try std.testing.expectEqual(boot, rt.policy.schedule().?);
+    try std.testing.expect(!rt.capture(borrowed_frame, state));
+    const saved = rt.beginStackSwitch(boot, 0x5000, 0x5800).?;
+    try std.testing.expect(rt.capture(borrowed_frame, state));
+    try std.testing.expectEqual(work_frame, rt.select().?.frame);
+    try std.testing.expect(!rt.endStackSwitch(boot, saved));
+    try std.testing.expect(rt.capture(work_frame, state));
+    const resumed = rt.select().?;
+    try std.testing.expectEqual(borrowed_frame, resumed.frame);
+    try std.testing.expectEqual(@as(u32, 0x5000), resumed.stack_min);
+    try std.testing.expect(rt.endStackSwitch(boot, saved));
+    try std.testing.expect(rt.capture(boot_frame, state));
+    try std.testing.expect(!rt.capture(borrowed_frame, state));
+    rt.images[boot.slot].?.protection = user_region;
+    try std.testing.expect(rt.beginStackSwitch(boot, 0x5000, 0x5800) == null);
 }

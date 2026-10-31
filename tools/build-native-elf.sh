@@ -860,6 +860,16 @@ if [ "$normal_storage" = true ]; then
 fi
 # An empty expansion must not become a zig argument. Quoting it always would
 # pass that empty word; leaving it unquoted fails ShellCheck SC2086.
+if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm -fno-strip -ffunction-sections -fno-stack-check -fno-stack-protector \
+        --dep view_config --dep surface --dep viewport_layout --dep rotated_surface -Mroot="$repo_root/src/xy/native_render_entry.zig" \
+        --dep view_config -Mviewport_layout="$repo_root/src/graphics/viewport_layout.zig" \
+        --dep surface -Mrotated_surface="$repo_root/src/graphics/rotated_surface.zig" \
+        -Mview_config="$repo_root/src/xy/view_config.zig" -Msurface="$repo_root/src/graphics/surface.zig" \
+        -femit-bin="$build_dir/xy_render.o"
+    "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/xy_render_stack.o"
+    set -- "$@" "$build_dir/xy_render.o" "$build_dir/xy_render_stack.o"
+fi
 if [ -n "$pmp_user_object" ]; then
     set -- "$pmp_user_object" "$@"
 fi
@@ -938,7 +948,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mtab5_display="$repo_root/src/board/tab5/display.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep canvas -Mtext_console="$repo_root/src/console.zig" \
+    --dep view_config --dep canvas -Mtext_console="$repo_root/src/console.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep canvas -Mboot_graphics="$repo_root/src/graphics/boot_graphics.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -976,6 +986,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mraster_lease="$repo_root/src/graphics/raster_lease.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mview_config="$repo_root/src/xy/view_config.zig" \
     -Msurface="$repo_root/src/graphics/surface.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfont_stack_lifetime="$repo_root/src/graphics/font_stack_lifetime.zig" \
