@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sqld_native_manifest as sqld_profile
 """Audit the native ELF/image boundary without requiring a target toolchain.
 
 Require SRAM runtime/mutable data, bounded Flash boot code and read-only tables,
@@ -74,7 +75,7 @@ CAMERA_FOREGROUND_FUNCTIONS = {'diagnostic_ui.drawSession', 'diagnostic_ui.updat
     'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail', 'camera_jpeg.request', 'camera_jpeg.info', 'camera_jpeg.read'}
 
 def device_function(name):
-    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
+    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey|service)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
 
 
 PMP_FLASH_FUNCTIONS = {
@@ -190,7 +191,7 @@ XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string'
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'cameraRead',
               'applyStorage', 'nonnegative', 'storageText'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'cameraCapture', 'cameraInfo', 'cameraRead', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput','evaluateOnStack'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -215,7 +216,7 @@ def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
     render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny)|line_layout\.cluster|viewport_layout\.shapeRun|render_session\.Session\.renderInto)__func_[0-9]+", name)
-    return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
@@ -263,7 +264,14 @@ def audit_ui_assets(start, data, symbols, manifest):
             require(hashlib.sha256(decoded).hexdigest()==manifest.get('font_raw_sha256') and len(decoded)==manifest.get('glyphs',0)*36,'compressed glyph pixels differ from pinned raw font')
 
 
-def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END, allow_fs=False, allow_graphics=False, allow_xy=False):
+def audit_flash_section(name, kind, flags, address, size, allow_sql=False, allow_ui=False, allow_photo=False, allow_devices=False, allow_time=False, sql_end=SQL_END, allow_fs=False, allow_graphics=False, allow_xy=False, allow_sqld=False):
+    if name in sqld_profile.SECTIONS:
+        require(allow_sqld and kind == 1, 'unapproved permanent sqld section')
+        if name == '.flash.sqldpad':
+            require(flags == 2 and 0x40060000 < address < address + size == 0x400c0000, 'invalid sqld padding')
+        else:
+            require((flags == 6 if name == '.flash.sqldtext' else flags & 7 == 2 and flags & ~50 == 0) and 0x400c0000 <= address < address + size <= 0x40180000 and address % 16 == 0, 'invalid sqld extent/permissions')
+        return
     if name == '.flash.xypad':
         require(allow_xy and kind == 1 and flags == 2 and 0x40010020 < address < 0x40060000 and address + size == 0x40060000 and address % 4 == size % 4 == 0, 'invalid xy Flash padding')
         return
@@ -676,7 +684,7 @@ def decode_stack_sizes(data, functions):
             "recursive_or_Zig_call_graph_bound": False}
 
 
-def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None, normal_fs_manifest=None):
+def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None, normal_fs_manifest=None, sqld_manifest=None):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
     require(high <= STACK_LOW, "stack bank overlaps primary SRAM")
@@ -719,6 +727,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     xy_sections = {}
     allow_xy = any(string(names, section[0]) in XY_SECTIONS and section[5] for section in sections)
     require(not allow_xy or (mode == 'integer' and sqlite_manifest is None and keypad_manifest is None), 'invalid xy evaluator image profile')
+    sqld_sections = {}
+    allow_sqld = sqld_manifest is not None
+    require(not allow_sqld or (allow_xy and normal_fs_manifest is not None), "sqld requires xy and normal SD owner")
     fs_sections = {}
     allow_fs = normal_fs_manifest is not None
     has_fs = any(string(names, section[0]) in normal_fs_profile.SECTIONS and section[5] for section in sections)
@@ -770,9 +781,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 audit_graphics_sram(name, section_type, flags, address, size)
                 graph_sections[name] = (address, elf[offset:offset+size] if section_type == 1 else b"", size)
             if not in_sram and not in_stacks and not in_ui and not in_high and not in_graphics_ram:
-                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end, allow_fs=allow_fs, allow_graphics=allow_graphics, allow_xy=allow_xy)
+                audit_flash_section(name, section_type, flags, address, size, allow_sql, allow_ui, allow_photo, allow_devices, allow_time, sql_end=sql_end, allow_fs=allow_fs, allow_graphics=allow_graphics, allow_xy=allow_xy, allow_sqld=allow_sqld)
                 require(name not in flash_found, "duplicate mapped Flash section")
                 flash_found.add(name)
+                if name in sqld_profile.SECTIONS:
+                    sqld_sections[name] = (address, elf[offset:offset + size])
                 if name in XY_SECTIONS:
                     xy_sections[name] = (address, elf[offset:offset + size])
                 if name in normal_fs_profile.SECTIONS:
@@ -823,7 +836,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                 symbols[symbol] = value
                 symbol_sizes[symbol] = symbol_size
     require((user_start is not None) == ("__user_probe_start" in symbols) == ("__user_probe_end" in symbols), "user probe section/symbol mismatch")
-    require(flash_found == set(FLASH_SECTIONS) | {".flash.pmp"} | ({".flash.user"} if user_start is not None else set()) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()) | (XY_SECTIONS if allow_xy else set()), "missing mapped Flash sections")
+    require(flash_found == set(FLASH_SECTIONS) | {".flash.pmp"} | ({".flash.user"} if user_start is not None else set()) | (GRAPH_SECTIONS if allow_graphics else set()) | (SQL_SECTIONS if allow_sql else set()) | (UI_SECTIONS if allow_ui else set()) | (PHOTO_SECTIONS if allow_photo else set()) | ({".flash.card"} if allow_ui and keypad_manifest.get("ui_mode") == "runtime" else set()) | ({".flash.devices"} if allow_devices else set()) | ({".flash.time"} if allow_time else set()) | (normal_fs_profile.SECTIONS if allow_fs else set()) | (XY_SECTIONS if allow_xy else set()) | (sqld_profile.SECTIONS if allow_sqld else set()), "missing mapped Flash sections")
     service_sram = audit_service_sram(symbols, high, allocated)
     ui_report = None
     ui_payload = None
@@ -1047,6 +1060,26 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
         xy_payload += bytes((-len(xy_payload)) % 4)
         xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 131072 if 'nih_xy_render' in xy_functions else 0}
+    sqld_report = None
+    require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
+    require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')
+    if allow_sqld:
+        require(set(sqld_sections) == sqld_profile.SECTIONS, 'missing sqld sections')
+        pad_start, pad = sqld_sections['.flash.sqldpad']
+        text_start, code = sqld_sections['.flash.sqldtext']
+        ro_start, data = sqld_sections['.flash.sqldrodata']
+        require(pad_start == flash_start + len(xy_payload) and pad_start + len(pad) == text_start == 0x400c0000 and not any(pad), 'sqld padding differs')
+        require(text_start == symbols.get('__flash_sqld_start') and text_start + len(code) == symbols.get('__flash_sqld_text_end') and ro_start == symbols.get('__flash_sqld_rodata_start') and ro_start + len(data) == symbols.get('__flash_sqld_end'), 'sqld linker bounds differ')
+        identity = b'NIHOS_SQLD1:' + sqld_manifest['identity'].encode() + b'\0'
+        at = symbols.get('nih_sqld_identity', 0) - ro_start
+        require(0 <= at <= len(data) - len(identity) and data[at:at + len(identity)] == identity, 'sqld linked identity differs')
+        allowed_sql = set(sqld_manifest['allowed_functions']) | sqld_profile.FOREGROUND
+        allowed_sql |= {n for n,a,b in functions if n.startswith(('compiler_rt.addf3.', 'compiler_rt.mulf3.', 'compiler_rt.divf3.', 'compiler_rt.divsf3.', 'compiler_rt.divdf3.', 'compiler_rt.comparef.', 'compiler_rt.float_from_int.', 'compiler_rt.int_from_float.', 'compiler_rt.extendf.', 'compiler_rt.truncf.')) or n in {'__cmpdf2','__adddf3','__subdf3','__muldf3','__divdf3','__eqdf2','__nedf2','__ltdf2','__ledf2','__gtdf2','__gedf2','__unorddf2','__fixdfsi','__fixdfdi','__fixunsdfsi','__fixunsdfdi','__floatsidf','__floatunsidf','__floatdidf','__floatundidf','__extendsfdf2','__truncdfsf2'} }
+        allowed_sql |= {n for n,a,b in functions if re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey|service)__func_[0-9]+',n)}
+        sql_span = (text_start, text_start + len(code))
+        require(not {'malloc','calloc','realloc','free','fopen','f_write','f_mkfs'}.intersection(symbols), 'libc heap or FAT writer linked in sqld')
+        xy_payload += pad + code + bytes(ro_start - text_start - len(code)) + data
+        sqld_report = {'identity': sqld_manifest['identity'], 'text_bytes':len(code), 'rodata_bytes':len(data), 'reservation':sqld_manifest['reservation'], 'heap':sqld_manifest['heap'], 'stack':sqld_manifest['stack'], 'media':sqld_manifest['media'], 'provision_cid':sqld_manifest['provision_cid'], 'physical_qualified':False}
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span)
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
@@ -1101,7 +1134,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
     high_sram = audit_high_layout(symbols, allocated)
     report = {"schema": 1, "backend": "native-sram", "rtos_linked": False,
               "fp_assembly_linked": fp_linked, "riscv_flags": hex(header[6]), "fp_instructions": fp_counts,
-              "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(),
+              "entry": hex(entry), "elf_sha256": hashlib.sha256(elf).hexdigest(), "sqld": sqld_report,
               "memory": {"profile": profile, "origin": hex(low), "end": hex(high), "bytes": high - low,
                          "total_bytes": high - low + stacks["bytes"],
                          "regions": [{"name": "resident", "origin": hex(low), "end": hex(high), "bytes": high - low},
@@ -1308,6 +1341,12 @@ def audit_loader_config(text, profile, report=None):
 
 
 def main():
+    sqld_manifest = None
+    if '--sqld' in sys.argv:
+        i = sys.argv.index('--sqld')
+        path = Path(sys.argv[i+1]);sqld_manifest = json.loads(path.read_text())
+        sqld_profile.verify(path.parent, sqld_manifest)
+        del sys.argv[i:i+2]
     normal_manifest = None
     if '--normal-fs' in sys.argv:
         i = sys.argv.index('--normal-fs')
@@ -1324,7 +1363,7 @@ def main():
                        sys.argv[5] if len(sys.argv) >= 6 else "device",
                        json.loads(Path(sys.argv[8]).read_text()) if len(sys.argv) >= 9 and sys.argv[8] != '--none' else None,
                        json.loads(Path(sys.argv[9]).read_text()) if len(sys.argv) == 10 else None,
-                       normal_fs_manifest=normal_manifest)
+                       normal_fs_manifest=normal_manifest, sqld_manifest=sqld_manifest)
         if len(sys.argv) == 10:
             manifest = json.loads(Path(sys.argv[9]).read_text())
             root = Path(sys.argv[9]).resolve().parents[2]

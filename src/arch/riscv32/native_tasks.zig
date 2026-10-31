@@ -72,6 +72,7 @@ const Owner = struct {
     worker_reaped: [2]bool = .{ false, false },
     timer_interrupts: u32 = 0,
     graphics_task: ?scheduler.TaskHandle = null,
+    sqld_task: ?scheduler.TaskHandle = null,
     /// Protected task exited by a contained fault. Bootstrap reaps it after
     /// the ledger drain. This is not an extra scheduler slot.
     faulted: ?scheduler.TaskHandle = null,
@@ -465,6 +466,9 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     for ([_]scheduler.TaskHandle{ owner.bootstrap, owner.workers[0], owner.workers[1], owner.lifecycle }) |handle| {
         if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
     }
+    if (owner.sqld_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
+        total += snapshot.runtime_ticks;
+    };
     if (owner.graphics_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
         total += snapshot.runtime_ticks;
     };
@@ -893,4 +897,40 @@ fn admitProbe(hart: u32, case_id: u32) ?scheduler.TaskHandle {
     if (!memory.reusable.openTask(hart, key(handle))) return null;
     owner.protected_task = handle;
     return handle;
+}
+
+extern fn nih_sqld_native_task(u32) callconv(.c) i32;
+extern fn nih_sqld_native_prepare(u32, u32) callconv(.c) void;
+pub noinline fn startSqld() linksection(".flash.sqldtext") bool {
+    const owner = &owners[0];
+    const bottom: u32 = 0x483c0000;
+    const top: u32 = bottom + 65536;
+    @memset(@as([*]u8, @ptrFromInt(bottom))[0..65536], 0xa5);
+    const frame: *context.IntegerContext = @ptrFromInt(top - 128);
+    context.initialize(frame, .{ .entry = @intFromPtr(&nih_sqld_native_task), .argument = 0, .trampoline = @intFromPtr(&nih_native_task_trampoline), .global_pointer = owner.gp });
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    }
+    const handle = owner.runtime.add(0, .{ .frame = frame, .state = initial_state, .stack_min = bottom + 256, .stack_max = top }) orelse return false;
+    if (!memory.reusable.openTask(0, key(handle))) return false;
+    owner.sqld_task = handle;
+    nih_sqld_native_prepare(control.encodeHandle(owner.bootstrap), control.encodeHandle(handle));
+    return true;
+}
+pub fn wakeSqld(bits: u32) void {
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    }
+    if (bits & 3 != 0) if (owners[0].sqld_task) |handle| {
+        _ = owners[0].runtime.policy.notify(handle, bits & 3);
+    };
+    if (bits & 4 != 0) _ = owners[0].runtime.policy.notify(owners[0].bootstrap, 4);
 }

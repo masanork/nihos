@@ -49,7 +49,7 @@ void *nih_sqld_host_open(const char *path,int create) {
  if (posix_memalign(&h->service,align,nih_sqld_size())) goto failed;
  struct nih_store_device media={h,read_media,write_media,sync_media};
  if (nih_store_mount(h->store,nih_store_size(),&media,create)) goto failed;
- struct nih_sqld_platform platform={h,identity,random_bytes,time_ms,sleep_us,monotonic_ms};
+ struct nih_sqld_platform platform={h,identity,random_bytes,time_ms,sleep_us,monotonic_ms,2000};
  if (nih_sqld_start(h->service,nih_sqld_size(),h->store,&platform,7,1)) goto failed;
  return h;
 failed:

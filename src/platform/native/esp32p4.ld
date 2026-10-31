@@ -12,6 +12,7 @@ __native_profile = 0;
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
 __native_network = NIH_NATIVE_NETWORK;
+__native_sqld = NIH_NATIVE_SQLD;
 __native_normal_storage = NIH_NATIVE_NORMAL_STORAGE;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
@@ -44,6 +45,9 @@ MEMORY {
     flash_xy_gap (r) : ORIGIN = 0x40010020, LENGTH = 320K - 0x20
     /* Foreground xy evaluator; no ISR/cache-off entry points. */
     flash_xy (rx) : ORIGIN = 0x40060000, LENGTH = 384K
+#endif
+#if NIH_NATIVE_SQLD
+    flash_sqld (rx) : ORIGIN = 0x400c0000, LENGTH = 768K
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
@@ -299,7 +303,7 @@ SECTIONS
     .flash.xytext : ALIGN(16) {
         __flash_xy_start = .;
         *xy_render.o(.text .text.*)
-        *(.flash.xytext)
+        *(.flash.xytext .flash.xytext.*)
         . = ALIGN(16);
         __flash_xy_text_end = .;
     } > flash_xy
@@ -310,6 +314,24 @@ SECTIONS
         . = ALIGN(4);
         __flash_xy_end = .;
     } > flash_xy
+#endif
+#if NIH_NATIVE_SQLD
+    .flash.sqldpad ADDR(.flash.xyrodata) + SIZEOF(.flash.xyrodata) : { BYTE(0) . = ORIGIN(flash_xy) + LENGTH(flash_xy); } > flash_xy
+    .flash.sqldtext : ALIGN(16) {
+        __flash_sqld_start = .;
+        *sqld_*.o(.text .text.*)
+        *(.flash.sqldtext)
+        *(.text.compiler_rt.addf3.* .text.compiler_rt.mulf3.* .text.compiler_rt.divf3.* .text.compiler_rt.divsf3.* .text.compiler_rt.divdf3.* .text.compiler_rt.comparef.* .text.compiler_rt.float_from_int.* .text.compiler_rt.int_from_float.* .text.compiler_rt.extendf.* .text.compiler_rt.truncf.*)
+        . = ALIGN(16);
+        __flash_sqld_text_end = .;
+    } > flash_sqld
+    .flash.sqldrodata : ALIGN(16) {
+        __flash_sqld_rodata_start = .;
+        KEEP(*(.sqld.identity))
+        *sqld_*.o(.rodata .rodata.* .srodata .srodata.*)
+        . = ALIGN(4);
+        __flash_sqld_end = .;
+    } > flash_sqld
 #endif
 #if NIH_NATIVE_NORMAL_STORAGE
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }

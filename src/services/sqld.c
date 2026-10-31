@@ -45,7 +45,7 @@ static int open_db(struct nih_sqld *s) {
  return rc;
 }
 int nih_sqld_start(void *raw,size_t bytes,void *store,const struct nih_sqld_platform *p,uint32_t principal,uint32_t epoch) {
- if (!raw || (uintptr_t)raw%_Alignof(struct nih_sqld) || bytes<sizeof(struct nih_sqld) || !store || !p || !p->identity || !p->random || !p->time_ms || !p->sleep_us || !p->monotonic_ms || !principal || !epoch) return NIH_STORE_INVALID;
+ if (!raw || (uintptr_t)raw%_Alignof(struct nih_sqld) || bytes<sizeof(struct nih_sqld) || !store || !p || !p->identity || !p->random || !p->time_ms || !p->sleep_us || !p->monotonic_ms || !principal || !epoch || p->transaction_timeout_ms>60000 || (p->transaction_timeout_ms && p->transaction_timeout_ms<1000)) return NIH_STORE_INVALID;
  uint32_t owner=p->identity(p->context);if (!owner) return NIH_SQLD_DENIED;
  struct nih_sqld *expected=NULL;
  if (!atomic_compare_exchange_strong(&registered,&expected,(struct nih_sqld *)raw)) return NIH_STORE_BUSY;
@@ -265,8 +265,9 @@ static int execute(struct nih_sqld *s,const struct nih_sqld_request *q,struct ni
   int64_t deadline=0;
   if (q->operation==NIH_SQL_BEGIN) {
    int64_t now=s->platform.monotonic_ms(s->platform.context);
-   if (now<0 || now>INT64_MAX-2000) return -110;
-   deadline=now+2000;
+   uint32_t lease=s->platform.transaction_timeout_ms ? s->platform.transaction_timeout_ms : 2000;
+   if (now<0 || now>INT64_MAX-lease) return -110;
+   deadline=now+lease;
   }
   sqlite3_set_authorizer(s->db,NULL,NULL);
   int rc=sqlite3_exec(s->db,q->operation==NIH_SQL_BEGIN ? "BEGIN IMMEDIATE" : q->operation==NIH_SQL_COMMIT ? "COMMIT" : "ROLLBACK",NULL,NULL,NULL);
@@ -309,6 +310,7 @@ static int execute(struct nih_sqld *s,const struct nih_sqld_request *q,struct ni
  }
  return file_request(s,q,r);
 }
+int nih_sqld_failed(void *raw) { return atomic_load(&((struct nih_sqld *)raw)->dead); }
 int nih_sqld_step(void *raw) {
  struct nih_sqld *s=raw;if (!nih_sqld_is_owner(s)) return NIH_SQLD_DENIED;
  if (!s->dead && s->transaction_deadline && s->platform.monotonic_ms(s->platform.context)>=s->transaction_deadline) {

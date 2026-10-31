@@ -32,6 +32,7 @@ struct nih_sqld_platform {
  int64_t (*time_ms)(void *); /* Julian epoch, as required by SQLite */
  int (*sleep_us)(void *, int);
  int64_t (*monotonic_ms)(void *);
+ uint32_t transaction_timeout_ms; /* 0=2000; otherwise 1000..60000, chosen by platform */
 };
 size_t nih_sqld_size(void);
 size_t nih_sqld_alignment(void);
@@ -39,6 +40,7 @@ int nih_sqld_start(void *, size_t, void *store, const struct nih_sqld_platform *
 int nih_sqld_submit(void *, uint32_t authenticated_principal, const struct nih_sqld_request *);
 int nih_sqld_take(void *, uint32_t authenticated_principal, struct nih_sqld_response *);
 int nih_sqld_step(void *);
+int nih_sqld_failed(void *);
 int nih_sqld_cancel(void *, uint32_t authenticated_principal, uint32_t epoch, uint32_t sequence);
 int nih_sqld_stop(void *);
 /* In-owner convenience adapter for Scheme/frontends. A target waiting on a
