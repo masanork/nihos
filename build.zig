@@ -4,6 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const view_config_module = b.createModule(.{ .root_source_file = b.path("src/xy/view_config.zig"), .target = target, .optimize = optimize });
     const module = b.addModule("nihos", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -15,6 +16,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     module.addImport("ccid", ccid_module);
+    module.addImport("view_config", view_config_module);
     const surface_module = b.createModule(.{
         .root_source_file = b.path("src/graphics/surface.zig"),
         .target = target,
@@ -75,6 +77,7 @@ pub fn build(b: *std.Build) void {
     const console_scroll_probe = b.createModule(.{ .root_source_file = b.path("src/graphics/console_canvas_scroll_test.zig"), .target = target, .optimize = optimize });
     console_scroll_probe.addImport("canvas", canvas_module);
     const console_probe_module = b.createModule(.{ .root_source_file = b.path("src/console.zig"), .target = target, .optimize = optimize });
+    console_probe_module.addImport("view_config", view_config_module);
     console_probe_module.addImport("canvas", canvas_module);
     const camera_input = b.createModule(.{ .root_source_file = b.path("src/console/camera_input.zig"), .target = target, .optimize = optimize });
     camera_input.addImport("text_console", console_probe_module);
@@ -105,15 +108,26 @@ pub fn build(b: *std.Build) void {
     const ttf_module = b.createModule(.{ .root_source_file = b.path("src/graphics/ttf.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ttf_module })).step);
     const viewport_layout_module = b.createModule(.{ .root_source_file = b.path("src/graphics/viewport_layout.zig"), .target = target, .optimize = optimize });
+    viewport_layout_module.addImport("view_config", view_config_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = viewport_layout_module })).step);
+    const rotated_surface_module = b.createModule(.{ .root_source_file = b.path("src/graphics/rotated_surface.zig"), .target = target, .optimize = optimize });
+    rotated_surface_module.addImport("surface", surface_module);
+    const xy_native_render_module = b.createModule(.{ .root_source_file = b.path("src/xy/native_render_entry.zig"), .target = target, .optimize = optimize });
+    xy_native_render_module.addImport("view_config", view_config_module);
+    xy_native_render_module.addImport("surface", surface_module);
+    xy_native_render_module.addImport("viewport_layout", viewport_layout_module);
+    xy_native_render_module.addImport("rotated_surface", rotated_surface_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_native_render_module })).step);
     const xy_document_module = b.createModule(.{ .root_source_file = b.path("src/xy/document.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_document_module })).step);
     const xy_ime_omni_module = b.createModule(.{ .root_source_file = b.path("src/xy/ime_omni.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_ime_omni_module })).step);
     const xy_scheme_bridge_module = b.createModule(.{ .root_source_file = b.path("src/xy/scheme_bridge.zig"), .target = target, .optimize = optimize });
+    xy_scheme_bridge_module.addImport("view_config", view_config_module);
     xy_scheme_bridge_module.addImport("viewport_layout", viewport_layout_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_scheme_bridge_module })).step);
     const xy_render_adapter_module = b.createModule(.{ .root_source_file = b.path("src/xy/render_adapter.zig"), .target = target, .optimize = optimize });
+    xy_render_adapter_module.addImport("view_config", view_config_module);
     xy_render_adapter_module.addImport("surface", surface_module);
     xy_render_adapter_module.addImport("viewport_layout", viewport_layout_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_render_adapter_module })).step);

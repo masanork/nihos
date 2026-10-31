@@ -59,6 +59,7 @@ typedef struct {
     int32_t bitmap_y_px;
     uint16_t bitmap_width;
     uint16_t bitmap_height;
+    uint16_t advance_px;
 } PlacedGlyph;
 
 typedef struct {
@@ -420,6 +421,7 @@ static void eval_sexp_checked(const char *sexp) {
 - (IBAction)toggleTheme:(id)sender {
     (void)sender;
     _theme_id = (_theme_id == 0) ? 1 : 0;
+    eval_sexp_checked(_theme_id ? "(view/set! #:theme 'dark)" : "(view/set! #:theme 'light)");
     [self setNeedsDisplay:YES];
     [[self window] makeFirstResponder:self];
 }
@@ -513,10 +515,6 @@ static void eval_sexp_checked(const char *sexp) {
     (void)dirtyRect;
     xy_host_render_rgba8(_rgba_buf, _fb_width, _fb_height, _fb_width * 4, _theme_id);
 
-    GpuiFrameDescriptor frame;
-    memset(&frame, 0, sizeof(frame));
-    xy_host_render_gpui(_theme_id, &frame, _quads_buf, 512);
-
     CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
     CGContextRef bmp = CGBitmapContextCreate(
         _rgba_buf,
@@ -536,42 +534,7 @@ static void eval_sexp_checked(const char *sexp) {
     CGContextRelease(bmp);
     CGColorSpaceRelease(cs);
 
-    // Draw bottom status & minibuffer bar (0..32px)
-    NSColor *barBg = (_theme_id == 1)
-        ? [NSColor colorWithCalibratedRed:0.06 green:0.07 blue:0.09 alpha:1.0]
-        : [NSColor colorWithCalibratedRed:0.92 green:0.90 blue:0.85 alpha:1.0];
-    [barBg setFill];
-    NSRectFill(NSMakeRect(0, 0, _fb_width, 32));
 
-    uint32_t om = 0, bm = 0;
-    xy_host_cache_stats(&om, &bm);
-
-    NSString *mbStr = @"";
-    if (frame.minibuffer_ptr && frame.minibuffer_len > 0) {
-        mbStr = [[NSString alloc] initWithBytes:frame.minibuffer_ptr
-                                         length:frame.minibuffer_len
-                                       encoding:NSUTF8StringEncoding];
-    }
-    if (!mbStr || [mbStr length] == 0) {
-        mbStr = @"SKK/Omni待機中 (ローマ字入力 / ~異体字 / &IDS / ?辞書 / (S式) / Spaceで変換)";
-    }
-
-    NSString *statusLine = [NSString stringWithFormat:
-        @" %@   |   %@ %upx (%@)   |   Outlines:%u Bitmaps:%u pread:%.1f KiB",
-        mbStr,
-        _is_gothic ? @"BunsenGothic" : @"BunsenMincho",
-        _font_size,
-        _is_vertical ? @"縦組" : @"横組",
-        om, bm, (double)g_pread_bytes / 1024.0];
-
-    NSColor *barFg = (_theme_id == 1)
-        ? [NSColor colorWithCalibratedRed:0.85 green:0.88 blue:0.92 alpha:1.0]
-        : [NSColor colorWithCalibratedRed:0.15 green:0.14 blue:0.12 alpha:1.0];
-    NSDictionary *attrs = @{
-        NSFontAttributeName: [NSFont monospacedSystemFontOfSize:12.0 weight:NSFontWeightMedium],
-        NSForegroundColorAttributeName: barFg
-    };
-    [statusLine drawInRect:NSMakeRect(8, 7, _fb_width - 16, 20) withAttributes:attrs];
 }
 
 @end
@@ -646,6 +609,12 @@ int main(int argc, const char **argv) {
     // Check for `--snapshot <dir>` mode
     if (argc >= 3 && strcmp(argv[1], "--snapshot") == 0) {
         const char *out_dir = argv[2];
+        NSError *directoryError = nil;
+        if (![[NSFileManager defaultManager] createDirectoryAtPath:[NSString stringWithUTF8String:out_dir]
+                                      withIntermediateDirectories:YES attributes:nil error:&directoryError]) {
+            fprintf(stderr, "Snapshot directory: %s\n", [[directoryError description] UTF8String]);
+            return 1;
+        }
         uint8_t *rgba = (uint8_t *)calloc((size_t)W * (size_t)H * 4, 1);
 
         // Construct UTF-8 showcase text directly via raw UTF-8 bytes
@@ -680,7 +649,7 @@ int main(int argc, const char **argv) {
         xy_host_cache_stats(&om1, &bm1);
         char path1[512];
         snprintf(path1, sizeof(path1), "%s/xy_scene1_horizontal_mincho.png", out_dir);
-        save_rgba_png(path1, rgba, W, H);
+        if (!save_rgba_png(path1, rgba, W, H)) { free(rgba); return 1; }
         printf(
             "[Scene 1: Horizontal Mincho 32px] quads=%d, outline_misses=%u, bitmap_misses=%u, pread_bytes=%llu -> %s\n",
             q1, om1, bm1, (unsigned long long)(g_pread_bytes - bytes_before_s1), path1
@@ -694,21 +663,21 @@ int main(int argc, const char **argv) {
         xy_host_cache_stats(&om2, &bm2);
         char path2[512];
         snprintf(path2, sizeof(path2), "%s/xy_scene2_vertical_mincho.png", out_dir);
-        save_rgba_png(path2, rgba, W, H);
+        if (!save_rgba_png(path2, rgba, W, H)) { free(rgba); return 1; }
         printf(
             "[Scene 2: Vertical Mincho 36px]   quads=%d, outline_misses=%u (+%u!), bitmap_misses=%u, pread_bytes=%llu -> %s\n",
             q2, om2, om2 - om1, bm2, (unsigned long long)(g_pread_bytes - bytes_before_s2), path2
         );
 
         // Scene 3: Live S-expression switch to Bunsen Gothic 34px Vertical (Hacker Dark theme)
-        eval_sexp_checked("(view/set! #:font 'bunsen-gothic #:size 34 #:direction 'vertical #:line-gap 20)");
+        eval_sexp_checked("(view/set! #:font 'bunsen-gothic #:size 34 #:direction 'vertical #:line-gap 20 #:theme 'dark)");
         uint64_t bytes_before_s3 = g_pread_bytes;
         int32_t q3 = xy_host_render_rgba8(rgba, W, H, W * 4, 1);
         uint32_t om3 = 0, bm3 = 0;
         xy_host_cache_stats(&om3, &bm3);
         char path3[512];
         snprintf(path3, sizeof(path3), "%s/xy_scene3_vertical_gothic_dark.png", out_dir);
-        save_rgba_png(path3, rgba, W, H);
+        if (!save_rgba_png(path3, rgba, W, H)) { free(rgba); return 1; }
         printf(
             "[Scene 3: Vertical Gothic 34px]   quads=%d, outline_misses=%u, bitmap_misses=%u, pread_bytes=%llu -> %s\n",
             q3, om3, bm3, (unsigned long long)(g_pread_bytes - bytes_before_s3), path3

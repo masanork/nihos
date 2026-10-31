@@ -227,6 +227,7 @@ pub const Reader = struct {
             if (tok.len <= 2) return error.SyntaxError;
             return try self.arena.allocNode(.{ .keyword = tok[2..] });
         }
+        if (std.mem.startsWith(u8, tok, "#x")) return try self.arena.allocNode(.{ .int = std.fmt.parseInt(i64, tok[2..], 16) catch return error.SyntaxError });
         if (std.fmt.parseInt(i64, tok, 10)) |num| {
             return try self.arena.allocNode(.{ .int = num });
         } else |_| {}
@@ -301,7 +302,9 @@ pub const Reader = struct {
 // Versioned `sys_config` + `sqld` Declarative Query Bridge
 // ============================================================================
 
+pub const view_config = @import("view_config");
 pub const ConfigSnapshot = struct {
+    appearance: view_config.Appearance = .{},
     generation: u32 = 1,
     style: ViewStyle = .{},
 };
@@ -348,6 +351,7 @@ pub fn XyWorkspace(
 
         doc: DocType = .{},
         style: ViewStyle = .{},
+        appearance: view_config.Appearance = .{},
         ime: ime_omni.OmniIme = .{},
         arena: SexpArena = .{},
 
@@ -372,6 +376,7 @@ pub fn XyWorkspace(
                 self.config_history[self.config_history_count] = .{
                     .generation = self.config_generation,
                     .style = self.style,
+                    .appearance = self.appearance,
                 };
                 self.config_history_count += 1;
             } else {
@@ -383,6 +388,7 @@ pub fn XyWorkspace(
                 self.config_history[self.config_history.len - 1] = .{
                     .generation = self.config_generation,
                     .style = self.style,
+                    .appearance = self.appearance,
                 };
             }
             self.config_generation +%= 1;
@@ -395,6 +401,7 @@ pub fn XyWorkspace(
             self.config_history_count -= 1;
             const snap = self.config_history[self.config_history_count];
             self.style = snap.style;
+            self.appearance = snap.appearance;
             self.config_generation = snap.generation;
             self.layout_dirty = true;
             return self.config_generation;
@@ -525,48 +532,24 @@ pub fn XyWorkspace(
 
             // 4. Live Viewport & Typography control: `(view/set! #:font ... #:size ... #:direction ... #:line-gap ...)`
             if (std.mem.eql(u8, op, "view/set!")) {
-                if (args.len % 2 != 0) return error.ArityMismatch;
-                self.pushConfigSnapshot();
+                if (args.len == 0 or args.len % 2 != 0) return error.ArityMismatch;
+                var next = view_config.Config{ .style = self.style, .appearance = self.appearance };
                 var i: usize = 0;
                 while (i < args.len) : (i += 2) {
-                    const kw_val = self.arena.nodes[args[i]];
-                    const key_name = switch (kw_val) {
-                        .keyword, .symbol => |k| k,
+                    const key_name = try self.evalSymbolOrSelf(args[i]);
+                    const val = try self.evalNode(args[i + 1]);
+                    const value: view_config.Value = switch (val) {
+                        .int => |n| .{ .number = std.math.cast(i32, n) orelse return error.TypeMismatch },
+                        .symbol, .string => |name| .{ .symbol = name },
+                        .boolean => |yes| .{ .boolean = yes },
                         else => return error.TypeMismatch,
                     };
-                    if (std.mem.eql(u8, key_name, "font")) {
-                        const font_name = try self.evalSymbolOrSelf(args[i + 1]);
-                        if (std.mem.eql(u8, font_name, "bunsen-mincho") or std.mem.eql(u8, font_name, "mincho")) {
-                            self.style.style_id = 0;
-                        } else if (std.mem.eql(u8, font_name, "bunsen-gothic") or std.mem.eql(u8, font_name, "gothic")) {
-                            self.style.style_id = 1;
-                        } else {
-                            return error.TypeMismatch;
-                        }
-                    } else if (std.mem.eql(u8, key_name, "size")) {
-                        const px = try self.evalInt(args[i + 1]);
-                        const clamped: u8 = @intCast(std.math.clamp(px, 8, 96));
-                        self.style.body_px = clamped;
-                        self.style.ruby_px = @max(6, clamped / 2);
-                    } else if (std.mem.eql(u8, key_name, "ruby-size")) {
-                        const rpx = try self.evalInt(args[i + 1]);
-                        self.style.ruby_px = @intCast(std.math.clamp(rpx, 6, 48));
-                    } else if (std.mem.eql(u8, key_name, "direction")) {
-                        const dir_name = try self.evalSymbolOrSelf(args[i + 1]);
-                        if (std.mem.eql(u8, dir_name, "horizontal")) {
-                            self.style.axis = 0;
-                        } else if (std.mem.eql(u8, dir_name, "vertical")) {
-                            self.style.axis = 1;
-                        } else {
-                            return error.TypeMismatch;
-                        }
-                    } else if (std.mem.eql(u8, key_name, "line-gap")) {
-                        const gap = try self.evalInt(args[i + 1]);
-                        self.style.line_gap_px = @intCast(std.math.clamp(gap, 0, 64));
-                    } else {
-                        return error.UnknownForm;
-                    }
+                    next.set(key_name, value) catch return error.TypeMismatch;
                 }
+                next.validate() catch return error.TypeMismatch;
+                self.pushConfigSnapshot();
+                self.style = next.style;
+                self.appearance = next.appearance;
                 self.layout_dirty = true;
                 return .{ .int = @intCast(self.config_generation) };
             }
@@ -574,18 +557,13 @@ pub fn XyWorkspace(
             if (std.mem.eql(u8, op, "view/get")) {
                 if (args.len != 1) return error.ArityMismatch;
                 const key_name = try self.evalSymbolOrSelf(args[0]);
-                if (std.mem.eql(u8, key_name, "font")) {
-                    return .{ .symbol = if (self.style.style_id == 0) "bunsen-mincho" else "bunsen-gothic" };
-                } else if (std.mem.eql(u8, key_name, "size")) {
-                    return .{ .int = self.style.body_px };
-                } else if (std.mem.eql(u8, key_name, "ruby-size")) {
-                    return .{ .int = self.style.ruby_px };
-                } else if (std.mem.eql(u8, key_name, "direction")) {
-                    return .{ .symbol = if (self.style.axis == 0) "horizontal" else "vertical" };
-                } else if (std.mem.eql(u8, key_name, "line-gap")) {
-                    return .{ .int = self.style.line_gap_px };
-                }
-                return error.UnknownForm;
+                const config = view_config.Config{ .style = self.style, .appearance = self.appearance };
+                const value = config.get(key_name) catch return error.UnknownForm;
+                return switch (value) {
+                    .number => |n| .{ .int = n },
+                    .symbol => |name| .{ .symbol = name },
+                    .boolean => |yes| .{ .boolean = yes },
+                };
             }
 
             // 5. Transactional OS Config rollback: `(sys/config-rollback!)`
@@ -925,4 +903,16 @@ test "End-to-end 5-module integration: Scheme live-switches horizontal to vertic
     try std.testing.expectEqual(misses_after_h, cache.outline_misses); // Zero new SD/outline fetches!
     try std.testing.expect(list_v[1].cell_y_px > list_v[0].cell_y_px); // Vertical downward flow
     try std.testing.expect(list_v[2].cell_x_px > list_v[0].cell_x_px); // Ruby on the right side
+}
+
+test "appearance changes and rollback are atomic with typography" {
+    var ws: XyWorkspace(256, 8, 128, 2, 64) = .{};
+    _ = try ws.evalStr("(view/set! #:foreground #x234567 #:size 36 #:cursor-width 4)");
+    try std.testing.expectEqual(@as(u32, 0x234567), ws.appearance.foreground);
+    try std.testing.expectError(error.TypeMismatch, ws.evalStr("(view/set! #:background 0 #:size 0)"));
+    try std.testing.expectEqual(@as(u32, 0xfaf6ee), ws.appearance.background);
+    try std.testing.expectEqual(@as(u32, 2), ws.config_generation);
+    _ = try ws.evalStr("(sys/config-rollback!)");
+    try std.testing.expectEqual(@as(u8, 24), ws.style.body_px);
+    try std.testing.expectEqual(@as(u32, 0x1c1c1e), ws.appearance.foreground);
 }
