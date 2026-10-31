@@ -13,6 +13,7 @@
 #import <ImageIO/ImageIO.h>
 #include <fcntl.h>
 #include <sqlite3.h>
+#include "nihos_xy_workspace.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,6 +128,157 @@ extern int32_t xy_host_render_rgba8(
     uint32_t stride,
     uint8_t theme_id
 );
+
+extern bool xy_host_set_status(const uint8_t *, uint32_t);
+extern bool xy_host_live_init(void);
+extern int32_t xy_host_default_source(uint8_t *, uint32_t);
+extern uint32_t xy_host_render_error(uint8_t *, uint32_t);
+extern uint32_t xy_host_live_error(uint8_t *, uint32_t);
+extern bool xy_host_live_prepare(const uint8_t *, uint32_t);
+extern bool xy_host_live_activate(void);
+extern void xy_host_live_discard(void);
+extern int32_t xy_host_live_run(const uint8_t *, uint32_t, bool, uint8_t *, uint32_t);
+extern int32_t xy_host_buffer_copy(uint8_t *, uint32_t);
+extern bool xy_host_insert_text(const uint8_t *, uint32_t);
+extern bool xy_host_buffer_replace(const uint8_t *, uint32_t);
+extern bool xy_host_source_enter(const uint8_t *, uint32_t);
+extern void xy_host_source_leave(void);
+
+// The GUI and process-restart verifier use this same lifecycle coordinator.
+static XyWorkspaceStore *g_workspace = NULL;
+static int64_t g_workspace_revision = 0;
+static uint8_t g_workspace_source[XY_SOURCE_LIMIT];
+static uint32_t g_workspace_source_len = 0;
+static char g_workspace_status[512] = "";
+static bool g_workspace_fallback = false;
+
+static bool workspace_scheme_error(void) {
+    uint8_t error[256];
+    uint32_t n = xy_host_live_error(error, sizeof(error));
+    snprintf(g_workspace_status, sizeof(g_workspace_status), "Scheme: %.*s", (int)n, error);
+    return false;
+}
+static bool workspace_db_error(void) {
+    snprintf(g_workspace_status, sizeof(g_workspace_status), "%s", xy_workspace_error(g_workspace));
+    return false;
+}
+static bool workspace_start(const char *path, bool safe) {
+    if (!xy_host_live_init()) return workspace_scheme_error();
+    g_workspace_source_len = (uint32_t)xy_host_default_source(g_workspace_source, sizeof(g_workspace_source));
+    g_workspace_revision = 0;
+    g_workspace_fallback = true;
+    g_workspace = xy_workspace_open(path);
+    if (!g_workspace || *xy_workspace_error(g_workspace)) return workspace_db_error();
+    int32_t n = xy_workspace_load(g_workspace, 0, g_workspace_source, sizeof(g_workspace_source), &g_workspace_revision);
+    if (n < 0) return workspace_db_error();
+    if (g_workspace_revision) g_workspace_source_len = (uint32_t)n;
+    if (safe) {
+        snprintf(g_workspace_status, sizeof(g_workspace_status), "Safe mode: built-in commands; stored source is available for repair");
+        return true;
+    }
+    if (g_workspace_revision) {
+        if (!xy_host_live_prepare(g_workspace_source, g_workspace_source_len)) {
+            workspace_scheme_error();
+            size_t used = strlen(g_workspace_status);
+            snprintf(g_workspace_status + used, sizeof(g_workspace_status) - used, "; using built-in commands");
+            return true;
+        }
+        if (!xy_host_live_activate()) return workspace_scheme_error();
+        g_workspace_fallback = false;
+    }
+    snprintf(g_workspace_status, sizeof(g_workspace_status), "Source revision %lld", (long long)g_workspace_revision);
+    return true;
+}
+static bool workspace_apply(const uint8_t *source, uint32_t length) {
+    if (!g_workspace) return workspace_db_error();
+    if (!xy_host_live_prepare(source, length)) return workspace_scheme_error();
+    int64_t revision = 0;
+    if (xy_workspace_save(g_workspace, source, length, g_workspace_revision, &revision)) {
+        xy_host_live_discard();
+        return workspace_db_error();
+    }
+    // No event-loop yield between commit receipt and this infallible prepared swap.
+    if (!xy_host_live_activate()) abort();
+    memcpy(g_workspace_source, source, length);
+    g_workspace_source_len = length;
+    g_workspace_revision = revision;
+    g_workspace_fallback = false;
+    snprintf(g_workspace_status, sizeof(g_workspace_status), "Applied and saved revision %lld", (long long)revision);
+    return true;
+}
+static bool workspace_select(int64_t revision) {
+    uint8_t source[XY_SOURCE_LIMIT];
+    int64_t loaded = 0;
+    int32_t n = xy_workspace_load(g_workspace, revision, source, sizeof(source), &loaded);
+    if (n < 0) return workspace_db_error();
+    if (!xy_host_live_prepare(source, (uint32_t)n)) return workspace_scheme_error();
+    if (xy_workspace_select(g_workspace, loaded, g_workspace_revision)) {
+        xy_host_live_discard(); return workspace_db_error();
+    }
+    if (!xy_host_live_activate()) abort();
+    memcpy(g_workspace_source, source, (size_t)n);
+    g_workspace_source_len = (uint32_t)n;
+    g_workspace_revision = loaded;
+    g_workspace_fallback = false;
+    snprintf(g_workspace_status, sizeof(g_workspace_status), "Restored revision %lld", (long long)loaded);
+    return true;
+}
+static bool workspace_reload(void) {
+    uint8_t source[XY_SOURCE_LIMIT];
+    int64_t revision = 0;
+    int32_t n = xy_workspace_load(g_workspace, 0, source, sizeof(source), &revision);
+    if (n < 0) return workspace_db_error();
+    if (!revision) n = xy_host_default_source(source, sizeof(source));
+    if (!xy_host_live_prepare(source, (uint32_t)n)) return workspace_scheme_error();
+    if (!xy_host_live_activate()) abort();
+    memcpy(g_workspace_source, source, (size_t)n);
+    g_workspace_source_len = (uint32_t)n;
+    g_workspace_revision = revision;
+    g_workspace_fallback = !revision;
+    snprintf(g_workspace_status, sizeof(g_workspace_status), "Reloaded revision %lld", (long long)revision);
+    return true;
+}
+static int workspace_cli(int argc, const char **argv) {
+    if (argc < 4 || !workspace_start(argv[2], argc > 5 && strcmp(argv[5], "--safe") == 0)) {
+        fprintf(stderr, "%s\n", g_workspace_status); return 1;
+    }
+    const char *action = argv[3];
+    bool ok = true;
+    uint8_t out[16384];
+    if (strcmp(action, "source") == 0) fwrite(g_workspace_source, 1, g_workspace_source_len, stdout);
+    else if (strcmp(action, "status") == 0) puts(g_workspace_status);
+    else if (strcmp(action, "history") == 0) {
+        int64_t revisions[XY_HISTORY_LIMIT];
+        int32_t count = xy_workspace_history(g_workspace, revisions, XY_HISTORY_LIMIT);
+        if (count < 0) ok = workspace_db_error();
+        else for (int32_t i = 0; i < count; i++) printf("%lld\n", (long long)revisions[i]);
+    } else if (strcmp(action, "apply-file") == 0 && argc >= 5) {
+        FILE *file = fopen(argv[4], "rb");
+        if (!file) { perror(argv[4]); return 1; }
+        size_t length = fread(out, 1, XY_SOURCE_LIMIT + 1, file);
+        int error = ferror(file);
+        fclose(file);
+        if (error || length > XY_SOURCE_LIMIT) { fprintf(stderr, "Source exceeds 4096 bytes or cannot be read\n"); return 1; }
+        ok = workspace_apply(out, (uint32_t)length);
+        if (ok) printf("revision=%lld\n", (long long)g_workspace_revision);
+    } else if (strcmp(action, "select") == 0 && argc >= 5) {
+        char *end = NULL;
+        int64_t revision = strtoll(argv[4], &end, 10);
+        ok = end != argv[4] && *end == 0 && revision > 0 && workspace_select(revision);
+    } else if ((strcmp(action, "run") == 0 || strcmp(action, "eval") == 0) && argc >= 5) {
+        bool named = strcmp(action, "run") == 0;
+        int32_t n = xy_host_live_run((const uint8_t *)argv[4], (uint32_t)strlen(argv[4]), named, out, sizeof(out));
+        if (n < 0) ok = workspace_scheme_error();
+        else {
+            if (named) n = xy_host_buffer_copy(out, sizeof(out));
+            if (n < 0) ok = false;
+            else fwrite(out, 1, (size_t)n, stdout);
+        }
+    } else { snprintf(g_workspace_status, sizeof(g_workspace_status), "Unknown workspace action"); ok = false; }
+    if (!ok) fprintf(stderr, "%s\n", g_workspace_status);
+    xy_workspace_close(g_workspace);
+    return ok ? 0 : 1;
+}
 
 // ============================================================================
 // Paged POSIX `pread` Font Reader with I/O Accounting
@@ -338,7 +490,7 @@ static void eval_sexp_checked(const char *sexp) {
 // Interactive macOS Cocoa Retina Window View
 // ============================================================================
 
-@interface XyCanvasView : NSView {
+@interface XyCanvasView : NSView <NSWindowDelegate, NSApplicationDelegate> {
     uint8_t *_rgba_buf;
     GpuiGlyphQuad *_quads_buf;
     uint32_t _fb_width;
@@ -347,6 +499,12 @@ static void eval_sexp_checked(const char *sexp) {
     bool _is_vertical;
     bool _is_gothic;
     uint8_t _font_size;
+    bool _editingSource;
+    bool _savedVertical;
+    uint8_t _savedFontSize;
+    bool _selectAll;
+    NSData *_sourceDraft;
+    NSString *_workspaceMessage;
 }
 - (instancetype)initWithFrame:(NSRect)frameRect width:(uint32_t)w height:(uint32_t)h;
 - (IBAction)toggleDirection:(id)sender;
@@ -357,6 +515,13 @@ static void eval_sexp_checked(const char *sexp) {
 - (IBAction)demoIvsOmni:(id)sender;
 - (IBAction)demoIdsOmni:(id)sender;
 - (IBAction)undoEdit:(id)sender;
+- (IBAction)editSource:(id)sender;
+- (IBAction)applySource:(id)sender;
+- (IBAction)runCommand:(id)sender;
+- (IBAction)restoreSource:(id)sender;
+- (IBAction)reloadSource:(id)sender;
+- (NSData *)currentBuffer;
+
 @end
 
 @implementation XyCanvasView
@@ -384,10 +549,12 @@ static void eval_sexp_checked(const char *sexp) {
     char cmd[256];
     snprintf(
         cmd, sizeof(cmd),
-        "(view/set! #:font '%s #:size %u #:direction '%s #:line-gap 18)",
+        "(view/set! #:font '%s #:size %u #:direction '%s #:line-gap %u #:ruby-size %u)",
         _is_gothic ? "bunsen-gothic" : "bunsen-mincho",
         _font_size,
-        _is_vertical ? "vertical" : "horizontal"
+        _is_vertical ? "vertical" : "horizontal",
+        _editingSource ? 0 : 18,
+        _editingSource ? 6 : _font_size / 2
     );
     eval_sexp_checked(cmd);
     [self setNeedsDisplay:YES];
@@ -453,12 +620,181 @@ static void eval_sexp_checked(const char *sexp) {
     [[self window] makeFirstResponder:self];
 }
 
+- (void)workspaceNotice:(NSString *)message error:(BOOL)error {
+    _workspaceMessage = message;
+    [self setNeedsDisplay:YES];
+    if (error) {
+        NSAlert *alert = [[NSAlert alloc] init];
+        [alert setMessageText:@"xy Workspace"];
+        [alert setInformativeText:message];
+        [alert runModal];
+    }
+    [[self window] makeFirstResponder:self];
+}
+- (NSData *)currentBuffer {
+    uint8_t bytes[16384];
+    int32_t n = xy_host_buffer_copy(bytes, sizeof(bytes));
+    return n >= 0 ? [NSData dataWithBytes:bytes length:(NSUInteger)n] : nil;
+}
+- (IBAction)editSource:(id)sender {
+    (void)sender;
+    if (_editingSource) {
+        _sourceDraft = [self currentBuffer];
+        xy_host_source_leave();
+        _editingSource = false;
+        _is_vertical = _savedVertical;
+        _font_size = _savedFontSize;
+        [self applyViewSettings];
+    } else {
+        NSData *source = _sourceDraft ?: [NSData dataWithBytes:g_workspace_source length:g_workspace_source_len];
+        if (!xy_host_source_enter([source bytes], (uint32_t)[source length])) {
+            [self workspaceNotice:@"Cannot open source buffer" error:YES]; return;
+        }
+        _editingSource = true;
+        _savedVertical = _is_vertical;
+        _savedFontSize = _font_size;
+        _is_vertical = false;
+        _font_size = 25;
+        [self applyViewSettings];
+    }
+    _selectAll = false;
+    [self workspaceNotice:_editingSource ? @"user/init.scm — edit, then Apply & Save (⌘S). ⌘A / ⌘V supported." : @"Document — Run Command (⌘R) invokes the active Scheme definition." error:NO];
+}
+- (IBAction)applySource:(id)sender {
+    (void)sender;
+    NSData *source = _editingSource ? [self currentBuffer] : _sourceDraft;
+    if (!source) { [self workspaceNotice:@"Open Source (⌘E) to edit user/init.scm first." error:NO]; return; }
+    bool ok = workspace_apply([source bytes], (uint32_t)[source length]);
+    if (ok) _sourceDraft = source;
+    [self workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:!ok];
+}
+- (IBAction)runCommand:(id)sender {
+    (void)sender;
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:@"Run Scheme Command"];
+    [alert setInformativeText:@"Enter a registered command or a zero-argument function name. The default is stamp."];
+    NSTextField *input = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 360, 24)];
+    [input setStringValue:@"stamp"];
+    [alert setAccessoryView:input];
+    [alert addButtonWithTitle:@"Run"];
+    [alert addButtonWithTitle:@"Cancel"];
+    [[alert window] setInitialFirstResponder:input];
+    if ([alert runModal] != NSAlertFirstButtonReturn) return;
+    // Preserve an unfinished source draft and run commands against the document.
+    if (_editingSource) [self editSource:nil];
+    const char *name = [[input stringValue] UTF8String];
+    uint8_t out[256];
+    int32_t n = xy_host_live_run((const uint8_t *)name, (uint32_t)strlen(name), true, out, sizeof(out));
+    if (n < 0) workspace_scheme_error();
+    NSString *message = n < 0 ? [NSString stringWithUTF8String:g_workspace_status] :
+        [NSString stringWithFormat:@"%@: %@", [input stringValue], [[NSString alloc] initWithBytes:out length:(NSUInteger)n encoding:NSUTF8StringEncoding]];
+    [self workspaceNotice:message error:n < 0];
+}
+- (BOOL)hasSourceChanges {
+    NSData *draft = _editingSource ? [self currentBuffer] : _sourceDraft;
+    return draft && ![draft isEqualToData:[NSData dataWithBytes:g_workspace_source length:g_workspace_source_len]];
+}
+- (BOOL)confirmDiscardSource {
+    if (![self hasSourceChanges]) return YES;
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:@"Discard unapplied source edits?"];
+    [alert setInformativeText:@"The saved revision remains available. Choose Keep Editing to return to your draft."];
+    [alert addButtonWithTitle:@"Keep Editing"];
+    [alert addButtonWithTitle:@"Discard Draft"];
+    return [alert runModal] == NSAlertSecondButtonReturn;
+}
+- (BOOL)windowShouldClose:(NSWindow *)sender {
+    (void)sender;
+    if (![self confirmDiscardSource]) return NO;
+    [NSApp stop:nil];
+    return YES;
+}
+- (void)windowDidChangeBackingProperties:(NSNotification *)notification {
+    (void)notification;
+    NSWindow *window = [self window];
+    CGFloat scale = [window backingScaleFactor];
+    if (scale <= 0) return;
+    CGFloat viewHeight = _fb_height / scale;
+    CGFloat delta = viewHeight - NSHeight([self frame]);
+    CGFloat width = MAX(960, _fb_width / scale);
+    NSView *root = [window contentView];
+    [window setContentSize:NSMakeSize(width, viewHeight + 76)];
+    [root setFrameSize:NSMakeSize(width, viewHeight + 76)];
+    for (NSView *child in [root subviews]) {
+        if (child == self) continue;
+        NSRect frame = [child frame]; frame.origin.y += delta; [child setFrame:frame];
+    }
+    [self setFrameSize:NSMakeSize(width, viewHeight)];
+    [self setNeedsDisplay:YES];
+}
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
+    (void)sender;
+    return [self confirmDiscardSource] ? NSTerminateNow : NSTerminateCancel;
+}
+- (IBAction)reloadSource:(id)sender {
+    (void)sender;
+    if (![self confirmDiscardSource]) return;
+    bool ok = workspace_reload();
+    if (ok) {
+        bool editing = _editingSource;
+        if (editing) [self editSource:nil];
+        _sourceDraft = nil;
+        if (editing) [self editSource:nil];
+    }
+    [self workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:!ok];
+}
+- (IBAction)restoreSource:(id)sender {
+    (void)sender;
+    if (![self confirmDiscardSource]) return;
+    int64_t revisions[XY_HISTORY_LIMIT];
+    int32_t count = xy_workspace_history(g_workspace, revisions, XY_HISTORY_LIMIT);
+    if (count < 0) { workspace_db_error(); [self workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:YES]; return; }
+    if (!count) { [self workspaceNotice:@"No saved revisions yet." error:NO]; return; }
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert setMessageText:@"Restore Source Revision"];
+    [alert setInformativeText:@"Select a saved revision. It becomes active now and on the next launch. All saved revisions remain in history."];
+    NSPopUpButton *picker = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 360, 28) pullsDown:NO];
+    for (int32_t i = 0; i < count; i++) {
+        [picker addItemWithTitle:[NSString stringWithFormat:@"Revision %lld%@", (long long)revisions[i], revisions[i] == g_workspace_revision ? @" (current)" : @""]];
+    }
+    [alert setAccessoryView:picker];
+    [alert addButtonWithTitle:@"Restore"];
+    [alert addButtonWithTitle:@"Cancel"];
+    if ([alert runModal] != NSAlertFirstButtonReturn) return;
+    bool ok = workspace_select(revisions[[picker indexOfSelectedItem]]);
+    if (ok) {
+        bool wasEditing = _editingSource;
+        if (wasEditing) [self editSource:nil];
+        _sourceDraft = nil;
+        if (wasEditing) [self editSource:nil];
+    }
+    [self workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:!ok];
+}
+- (void)insertRawText:(NSString *)text {
+    NSData *bytes = [text dataUsingEncoding:NSUTF8StringEncoding];
+    bool ok = bytes && (_selectAll ? xy_host_buffer_replace([bytes bytes], (uint32_t)[bytes length]) : xy_host_insert_text([bytes bytes], (uint32_t)[bytes length]));
+    _selectAll = false;
+    if (ok && _editingSource) _workspaceMessage = @"Source draft changed — Apply & Save (⌘S).";
+    if (!ok) [self workspaceNotice:@"Text could not be inserted (invalid input or buffer/undo capacity)." error:YES];
+    [self setNeedsDisplay:YES];
+}
+
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
     NSEventModifierFlags flags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
     if ((flags & NSEventModifierFlagCommand) != 0 || (flags & NSEventModifierFlagControl) != 0) {
         NSString *chars = [event charactersIgnoringModifiers];
         if ([chars length] > 0) {
             unichar c = [chars characterAtIndex:0];
+            if (c == 'l' || c == 'L') { [self reloadSource:nil]; return YES; }
+            if (c == 'e' || c == 'E') { [self editSource:nil]; return YES; }
+            if (c == 's' || c == 'S') { [self applySource:nil]; return YES; }
+            if (c == 'r' || c == 'R') { [self runCommand:nil]; return YES; }
+            if (c == 'b' || c == 'B') { [self restoreSource:nil]; return YES; }
+            if (c == 'a' || c == 'A') { _selectAll = true; [self workspaceNotice:@"Entire buffer selected — type or paste to replace." error:NO]; return YES; }
+            if (c == 'v' || c == 'V') {
+                NSString *text = [[NSPasteboard generalPasteboard] stringForType:NSPasteboardTypeString];
+                if (text) [self insertRawText:text]; return YES;
+            }
             if (c == '1') { [self toggleDirection:nil]; return YES; }
             if (c == '2') { [self toggleFontFamily:nil]; return YES; }
             if (c == '3' || c == '-') { [self decreaseFontSize:nil]; return YES; }
@@ -498,22 +834,39 @@ static void eval_sexp_checked(const char *sexp) {
     if (!utf8) return;
 
     size_t len = strlen(utf8);
+    if (_editingSource || _selectAll) {
+        if (len == 1 && (utf8[0] == 0x7F || utf8[0] == 0x08)) {
+            if (_selectAll) [self insertRawText:@""];
+            else eval_sexp_checked("(buffer/delete-backward!)");
+        } else if (len == 1 && (utf8[0] == '\r' || utf8[0] == '\n')) [self insertRawText:@"\n"];
+        else if (len == 1 && utf8[0] == 0x1B) { _selectAll = false; }
+        else [self insertRawText:chars];
+        [self setNeedsDisplay:YES]; return;
+    }
     if (len == 1) {
         uint8_t ch = (uint8_t)utf8[0];
         if (ch == 0x7F) ch = 0x08; // Backspace
         xy_host_handle_key(ch);
     } else {
         // Multi-byte UTF-8 character input (e.g. macOS IME or paste)
-        char expr[512];
-        snprintf(expr, sizeof(expr), "(buffer/insert! \"%s\")", utf8);
-        eval_sexp_checked(expr);
+        [self insertRawText:chars];
     }
     [self setNeedsDisplay:YES];
 }
 
 - (void)drawRect:(NSRect)dirtyRect {
     (void)dirtyRect;
-    xy_host_render_rgba8(_rgba_buf, _fb_width, _fb_height, _fb_width * 4, _theme_id);
+    if (_workspaceMessage) {
+        NSString *line = [NSString stringWithFormat:@"%@ r%lld: %@", _editingSource ? @"user/init.scm" : @"Document", (long long)g_workspace_revision, _workspaceMessage];
+        NSData *bytes = [line dataUsingEncoding:NSUTF8StringEncoding];
+        if ([bytes length] <= 256) xy_host_set_status([bytes bytes], (uint32_t)[bytes length]);
+    }
+    int32_t rendered = xy_host_render_rgba8(_rgba_buf, _fb_width, _fb_height, _fb_width * 4, _theme_id);
+    if (rendered < 0) {
+        uint8_t error[128];
+        uint32_t n = xy_host_render_error(error, sizeof(error));
+        _workspaceMessage = [NSString stringWithFormat:@"Display error: %.*s", (int)n, error];
+    }
 
     CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
     CGContextRef bmp = CGBitmapContextCreate(
@@ -527,7 +880,17 @@ static void eval_sexp_checked(const char *sexp) {
     );
     CGImageRef img = CGBitmapContextCreateImage(bmp);
     CGContextRef viewCtx = [[NSGraphicsContext currentContext] CGContext];
-    NSRect canvasRect = NSMakeRect(0, 32, _fb_width, _fb_height);
+    // A target pixel maps to exactly one backing pixel, including Retina.
+    // Only the native host chrome uses point units and platform text rendering.
+    const CGFloat pointWidth = NSWidth([self bounds]);
+    NSRect backingBounds = [self convertRectToBacking:[self bounds]];
+    NSRect targetPixels = NSMakeRect(floor((NSWidth(backingBounds) - _fb_width) / 2),
+        0, _fb_width, _fb_height);
+    NSRect canvasRect = [self convertRectFromBacking:targetPixels];
+    [[NSColor colorWithCalibratedWhite:0.12 alpha:1] setFill];
+    NSRectFill(NSMakeRect(0, 0, pointWidth, NSHeight([self bounds])));
+    CGContextSetInterpolationQuality(viewCtx, kCGInterpolationNone);
+    CGContextSetShouldAntialias(viewCtx, false);
     CGContextDrawImage(viewCtx, canvasRect, img);
 
     CGImageRelease(img);
@@ -544,6 +907,13 @@ static void eval_sexp_checked(const char *sexp) {
 // ============================================================================
 
 int main(int argc, const char **argv) {
+    if (argc >= 2 && strcmp(argv[1], "--workspace-cli") == 0) return workspace_cli(argc, argv);
+    const char *workspace_path = NULL;
+    bool safe_workspace = false;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--workspace") == 0 && i + 1 < argc) workspace_path = argv[++i];
+        else if (strcmp(argv[i], "--safe") == 0) safe_workspace = true;
+    }
     const char *font_dir = "/Users/masanork/repo/gjs/data/output/bunsen-build";
     const char *db_path = "/Users/masanork/repo/gjs/data/output/gjs.db";
 
@@ -559,6 +929,7 @@ int main(int argc, const char **argv) {
     };
     (void)font_dir;
 
+    bool external_fonts = true;
     FontFileCtx mincho_ctxs[3];
     CSliceReaderDesc mincho_descs[3];
     FontFileCtx gothic_ctxs[3];
@@ -568,8 +939,7 @@ int main(int argc, const char **argv) {
         mincho_ctxs[i].path = mincho_paths[i];
         mincho_ctxs[i].fd = open(mincho_paths[i], O_RDONLY);
         if (mincho_ctxs[i].fd < 0) {
-            fprintf(stderr, "Failed to open %s\n", mincho_paths[i]);
-            return 1;
+            external_fonts = false;
         }
         mincho_descs[i].ctx = &mincho_ctxs[i];
         mincho_descs[i].read_fn = posix_pread_callback;
@@ -577,8 +947,7 @@ int main(int argc, const char **argv) {
         gothic_ctxs[i].path = gothic_paths[i];
         gothic_ctxs[i].fd = open(gothic_paths[i], O_RDONLY);
         if (gothic_ctxs[i].fd < 0) {
-            fprintf(stderr, "Failed to open %s\n", gothic_paths[i]);
-            return 1;
+            external_fonts = false;
         }
         gothic_descs[i].ctx = &gothic_ctxs[i];
         gothic_descs[i].read_fn = posix_pread_callback;
@@ -591,7 +960,7 @@ int main(int argc, const char **argv) {
 
     uint64_t init_calls_before = g_pread_calls;
     uint64_t init_bytes_before = g_pread_bytes;
-    if (!xy_host_init(mincho_descs, 3, gothic_descs, 3)) {
+    if (!xy_host_init(mincho_descs, external_fonts ? 3 : 0, gothic_descs, external_fonts ? 3 : 0)) {
         fprintf(stderr, "xy_host_init failed!\n");
         return 1;
     }
@@ -602,8 +971,8 @@ int main(int argc, const char **argv) {
         (unsigned long long)(g_pread_bytes - init_bytes_before)
     );
 
-    const uint32_t W = 960;
-    const uint32_t H = 540;
+    const uint32_t W = 1280;
+    const uint32_t H = 720;
     xy_host_set_viewport(W, H);
 
     // Check for `--snapshot <dir>` mode
@@ -690,34 +1059,59 @@ int main(int argc, const char **argv) {
 
     // Interactive Cocoa Window Mode
     @autoreleasepool {
+        if (!workspace_path) {
+            NSString *dir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support/nihos/xy"];
+            NSError *error = nil;
+            if (![[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:&error]) {
+                fprintf(stderr, "%s\n", [[error localizedDescription] UTF8String]); return 1;
+            }
+            workspace_path = [[dir stringByAppendingPathComponent:@"workspace.db"] fileSystemRepresentation];
+        }
+        if (!workspace_start(workspace_path, safe_workspace)) {
+            fprintf(stderr, "Workspace: %s\n", g_workspace_status);
+            // Native editing remains available; writes report the database error.
+        }
+
+        // workspace_start resets editor defaults; restore the actual host viewport.
+        xy_host_set_viewport(W, H);
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-        const char *init_sexp =
-            "(buffer/with-undo-group "
-            "  (buffer/clear!) "
-            "  (buffer/insert! \"吾輩は猫である。名前はまだ無い。\\n\") "
-            "  (buffer/insert! \"「葛\xF3\xA0\x84\x80飾・葛\xF3\xA0\x84\x81城・葛\xF3\xA0\x84\x82・葛\xF3\xA0\x84\x84」\\n\") "
-            "  (buffer/insert! \"戸籍PUA：\xF4\x80\x80\x80・\xF4\x80\x80\x81（Bunsen三層統合）\\n\") "
-            "  (buffer/add-ruby! 0 6 \"わがはい\") "
-            "  (buffer/add-ruby! 9 12 \"ねこ\") "
-            "  (buffer/add-ruby! 24 30 \"なまえ\"))";
-        eval_sexp_checked(init_sexp);
+        // The live workspace opens an empty document; source has its own buffer.
         eval_sexp_checked("(view/set! #:font 'bunsen-mincho #:size 32 #:direction 'vertical #:line-gap 18)");
 
-        const CGFloat toolbarH = 38.0;
-        const CGFloat statusH = 32.0;
-        NSRect winRect = NSMakeRect(120, 120, W, H + toolbarH + statusH);
+        const CGFloat toolbarH = 76.0;
+        const CGFloat statusH = 0.0;
+        CGFloat backingScale = [[NSScreen mainScreen] backingScaleFactor];
+        if (backingScale <= 0) backingScale = 1;
+        const CGFloat canvasH = H / backingScale;
+        const CGFloat windowW = MAX(960, W / backingScale);
+        NSRect winRect = NSMakeRect(120, 120, windowW, canvasH + toolbarH + statusH);
         NSWindow *window = [[NSWindow alloc]
             initWithContentRect:winRect
                       styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable)
                         backing:NSBackingStoreBuffered
                           defer:NO];
-        [window setTitle:@"xy — Convivial Machine Host (⌘1:縦/横  ⌘2:明朝/ゴシック  ⌘-/⌘+:サイズ  ⌘5:テーマ  ⌘Z:Undo)"];
+        [window setTitle:@"xy — 1280×720 pixel host · Source Code Pro / Bunsen"];
 
-        NSView *root = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, W, H + toolbarH + statusH)];
-        XyCanvasView *view = [[XyCanvasView alloc] initWithFrame:NSMakeRect(0, 0, W, H + statusH) width:W height:H];
+        NSView *root = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, windowW, canvasH + toolbarH + statusH)];
+        XyCanvasView *view = [[XyCanvasView alloc] initWithFrame:NSMakeRect(0, 0, windowW, canvasH + statusH) width:W height:H];
         [root addSubview:view];
+        struct { NSString *title; SEL action; CGFloat width; } workspaceBtns[] = {
+            { @"Source (⌘E)", @selector(editSource:), 140 },
+            { @"Apply & Save (⌘S)", @selector(applySource:), 180 },
+            { @"Run Command (⌘R)", @selector(runCommand:), 190 },
+            { @"History (⌘B)", @selector(restoreSource:), 140 },
+            { @"Reload (⌘L)", @selector(reloadSource:), 130 },
+        };
+        CGFloat wx = 10;
+        for (size_t i = 0; i < sizeof(workspaceBtns) / sizeof(workspaceBtns[0]); i++) {
+            NSButton *button = [[NSButton alloc] initWithFrame:NSMakeRect(wx, canvasH + statusH + 43, workspaceBtns[i].width, 28)];
+            [button setTitle:workspaceBtns[i].title]; [button setBezelStyle:NSBezelStyleRounded];
+            [button setTarget:view]; [button setAction:workspaceBtns[i].action];
+            [root addSubview:button]; wx += workspaceBtns[i].width + 6;
+        }
+        [view workspaceNotice:[NSString stringWithUTF8String:g_workspace_status] error:NO];
 
         struct {
             NSString *title;
@@ -735,7 +1129,7 @@ int main(int argc, const char **argv) {
         };
         CGFloat bx = 10.0;
         for (size_t i = 0; i < sizeof(btns) / sizeof(btns[0]); i++) {
-            NSButton *b = [[NSButton alloc] initWithFrame:NSMakeRect(bx, H + statusH + 5.0, btns[i].width, 28.0)];
+            NSButton *b = [[NSButton alloc] initWithFrame:NSMakeRect(bx, canvasH + statusH + 5.0, btns[i].width, 28.0)];
             [b setTitle:btns[i].title];
             [b setBezelStyle:NSBezelStyleRounded];
             [b setTarget:view];
@@ -744,11 +1138,15 @@ int main(int argc, const char **argv) {
             bx += btns[i].width + 6.0;
         }
 
+        [window setDelegate:view];
+        [NSApp setDelegate:view];
         [window setContentView:root];
         [window makeFirstResponder:view];
         [window makeKeyAndOrderFront:nil];
         [NSApp activateIgnoringOtherApps:YES];
         [NSApp run];
+        xy_workspace_close(g_workspace);
+        if (g_db) sqlite3_close(g_db);
     }
     return 0;
 }

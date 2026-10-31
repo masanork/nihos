@@ -1,0 +1,11 @@
+{
+  "source_sha256": "f9dbc746f60c83f5cb1503b19f90729d8195cab6bb67f2b861d4eb257ed86536",
+  "sha256": "ee39fa00b97ff67bf445bd8b4629ebfb313f53d13e6b85583ae77779413d6324",
+  "bytes": 10184,
+  "codepoints": [
+    32,
+    126
+  ],
+  "license": "OFL-1.1; SourceCodePro-LICENSE.md",
+  "scope": "ASCII recovery subset; shared renderer output compared to the original for every printable ASCII glyph"
+}

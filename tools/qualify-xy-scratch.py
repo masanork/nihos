@@ -28,8 +28,15 @@ def main():
     parser.add_argument('build', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--install', action='store_true')
+    parser.add_argument('--restore-from', type=Path, help='private complete 16 MiB backup; restore every modified Flash span')
+    parser.add_argument('--observe-seconds', type=int, default=0)
     parser.add_argument('--demo', action='store_true', help='check Scheme view changes and load a Japanese sample into RAM; panel visibility needs manual confirmation')
     args = parser.parse_args()
+    if not 0 <= args.observe_seconds <= 180:
+        parser.error('observe-seconds must be 0..180')
+    backup = args.restore_from.read_bytes() if args.restore_from else None
+    if backup is not None and len(backup) != 16 * 1024 * 1024:
+        parser.error('restore backup must be exactly 16 MiB')
     build = args.build.resolve()
     manifest = json.loads((build / 'normal-fs-manifest.json').read_text())
     normal_fs_manifest.verify_files(build, manifest)
@@ -67,6 +74,7 @@ def main():
     spec = importlib.util.spec_from_file_location('usb_capture', ROOT / 'tools/capture-native-usb.py')
     usb = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(usb)
+    write_started = False
     lock = os.open('/tmp/nihos-tab5-e8f60ae2e89c-write.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -84,6 +92,13 @@ def main():
             if mac != 'e8:f6:0a:e2:e8:9c' or not chip.startswith('ESP32-P4') or flash >> 16 != 0x18:
                 raise RuntimeError('unexpected device; no writes permitted')
             if args.install:
+                if backup is not None:
+                    partition = paths['0x8000'].read_bytes()
+                    if backup[0x8000:0x8000 + len(partition)] != partition:
+                        raise RuntimeError('partition table differs from backup; refusing write')
+                write_started = True
+                receipt['write_started'] = True
+                save()
                 usb.tool(port, out / 'install.log', 'write_flash', paths)
                 receipt['installed'] = True
                 save()
@@ -172,13 +187,13 @@ def main():
                 if args.demo:
                     boot('verified-demo-boot')
                     text = b''
-                    def style(label, source, axis):
+                    def style(label, source, axis, size=36):
                         send(label + '-minibuffer', b'\x1b', text, len(text), 1)
                         start = len(raw)
                         send(label, source + b'\r', text, len(text))
                         def rendered(data):
                             row = record(data[start:], b'NIHOS_NATIVE_XY_RENDER')
-                            return row if row and row['font'] == 1 and row['size'] == 36 and row['axis'] == axis and row['foreground'] == 0x223344 and row['background'] == 0xfaf6ee else None
+                            return row if row and row['font'] == 1 and row['size'] == size and row['axis'] == axis and row['foreground'] == 0x223344 and row['background'] == 0xfaf6ee else None
                         row = wait(rendered)
                         if row['failed'] != 0 or not 0 < row['stack_used'] < 131072 - 256:
                             raise RuntimeError('render stack or repaint failure')
@@ -188,15 +203,74 @@ def main():
                     send('japanese-serial-utf8', text, text, len(text))
                     style('view-vertical', b"(view/set! #:direction 'vertical)", 1)
                     style('view-horizontal', b"(view/set! #:direction 'horizontal)", 0)
-                    receipt.update(view_settings_tested=True, unicode_input_tested=True, input_transport='serial UTF-8', demo_state_loaded=True, manual_visual_confirmation='pending')
+                    style('view-monospace-25', b"(view/set! #:size 25 #:line-gap 0 #:ruby-size 6)", 0, 25)
+                    line = b'\n(define (stamp) (buffer/insert! "Hello, xy!"))\nASCII: 0123456789 ilMW () []'
+                    text += line
+                    # The previous command ended with CR; send an explicit CRLF line break.
+                    send('ascii-monospace-sample', b'\r\n' + line[1:], text, len(text))
+                    receipt.update(view_settings_tested=True, unicode_input_tested=True, monospace_sample_tested=True, input_transport='serial UTF-8', demo_state_loaded=True, manual_visual_confirmation='pending')
                     save()
 
+            print('DEMO_STATE_LOADED: common Source Code Pro 25px + Bunsen; panel confirmation pending', flush=True)
+            if args.observe_seconds:
+                deadline = time.monotonic() + args.observe_seconds
+                observation = bytearray()
+                while time.monotonic() < deadline:
+                    data = port.read(max(1, port.in_waiting))
+                    if data:
+                        observation.extend(data)
+                        with (out / 'observe.log').open('ab') as observe:
+                            observe.write(data)
+                    if b'NIHOS_NATIVE_FAIL' in observation:
+                        raise RuntimeError('native fault during observation')
+                idle = []
+                for line in observation.splitlines():
+                    if line.startswith(b'NIHOS_NATIVE_XY_IDLE '):
+                        idle.append({key.decode(): int(value, 16) for key, value in re.findall(rb'(\w+)=([0-9a-f]{8})(?:\s|$)', line)})
+                if len(idle) < 2 or any(row.get('dma_error') != 0 for row in idle) or idle[-1]['scanout_frames'] <= idle[0]['scanout_frames']:
+                    raise RuntimeError('idle scanout observations incomplete or faulted')
+                if len({row['render_frames'] for row in idle}) != 1:
+                    raise RuntimeError('xy repainted without foreground input during observation')
+                receipt['idle_observation'] = {'seconds': args.observe_seconds, 'records': len(idle), 'render_frames': idle[-1]['render_frames'], 'scanout_frame_delta': idle[-1]['scanout_frames'] - idle[0]['scanout_frames'], 'backing_payload': idle[-1]['backing_payload'], 'backing_reserved': idle[-1]['backing_reserved'], 'dma_error': 0}
+                save()
             receipt['passed'] = True; save()
             print('Physical xy boot/input/undo/help/warm-reset passed; no pixel or persistence claim', flush=True)
     except BaseException as error:
-        receipt['failure'] = str(error); save(); raise
+        receipt['passed'] = False; receipt['failure'] = str(error); save(); raise
     finally:
-        os.close(lock)
+        try:
+            if write_started and backup is not None:
+                application_bytes = paths['0x10000'].stat().st_size
+                application_end = 0x10000 + ((application_bytes + 4095) & ~4095)
+                if application_end > 0x110000:
+                    raise RuntimeError('candidate exceeded restoration app bounds')
+                restore_dir = out / 'restore'
+                restore_dir.mkdir(mode=0o700)
+                restore_paths = {}
+                for address, end, name in ((0x2000, 0x8000, 'bootloader.bin'), (0x8000, 0x9000, 'partitions.bin'), (0x10000, application_end, 'application.bin')):
+                    target = restore_dir / name
+                    target.write_bytes(backup[address:end])
+                    restore_paths[hex(address)] = str(target)
+                python = __import__('sys').executable
+                command = [python, '-m', 'esptool', '--chip', 'esp32p4', '--port', args.port, '--baud', '460800', '--connect-attempts', '1']
+                receipt['restoration'] = {'attempted': True, 'backup_sha256': sha(args.restore_from), 'verified': False}
+                save()
+                try:
+                    for operation in ('write_flash', 'verify_flash'):
+                        arguments = [part for address, name in restore_paths.items() for part in (address, name)]
+                        with (out / ('restore-' + operation + '.log')).open('wb') as log:
+                            subprocess.run(command + [operation] + arguments, stdout=log, stderr=subprocess.STDOUT, timeout=120, check=True)
+                    receipt['restoration']['verified'] = True
+                    receipt['demo_left_visible'] = False
+                    save()
+                    print('Original Flash spans restored and verified', flush=True)
+                except BaseException as error:
+                    receipt['passed'] = False
+                    receipt['restoration']['error'] = str(error)
+                    save()
+                    raise
+        finally:
+            os.close(lock)
 
 
 if __name__ == '__main__':

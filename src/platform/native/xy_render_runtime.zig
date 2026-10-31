@@ -6,11 +6,15 @@ const memory = tasks.memory;
 const protocol = console.xy_render_protocol;
 pub const section = console.scratch.scheme.code_section;
 const stack_bytes = 128 * 1024;
+const frame_bytes = 1280 * 720 * 2;
 var lease: ?memory.reusable.Allocation = null;
 var workspace_bytes: usize = 0;
 pub var frames: u32 = 0;
 pub var stack_used: u32 = 0;
 pub var failed: u32 = 0;
+pub var published_bytes: u32 = 0;
+pub var backing_payload: u32 = 0;
+pub var backing_reserved: u32 = 0;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_xy_render_bytes() callconv(.c) usize;
 extern fn nih_xy_render_init([*]u8, usize) callconv(.c) bool;
@@ -22,10 +26,15 @@ const label_3 linksection(console.scratch.scheme.data_section) = "xy / *help*".*
 const label_4 linksection(console.scratch.scheme.data_section) = "xy / *scratch* [RAM]".*;
 const label_5 linksection(console.scratch.scheme.data_section) = "xy / system [read-only]".*;
 pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(section) bool {
+    if (frame.len != frame_bytes) return false;
     if (lease == null) {
         workspace_bytes = std.mem.alignForward(usize, nih_xy_render_bytes(), 64);
         if (workspace_bytes > 2 * 1024 * 1024) return false;
-        const allocation = memory.allocExternal(workspace_bytes + stack_bytes, 64) catch return false;
+        const before = memory.reusable.localUsage() orelse return false;
+        const allocation = memory.allocExternal(workspace_bytes + stack_bytes + frame_bytes, 64) catch return false;
+        const after = memory.reusable.localUsage() orelse return false;
+        backing_payload = @intCast(allocation.bytes.len);
+        backing_reserved = before.free - after.free;
         if (!nih_xy_render_init(allocation.bytes.ptr, workspace_bytes)) {
             memory.freeExternal(allocation) catch return false;
             return false;
@@ -35,6 +44,7 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
     }
     const bytes = lease.?.bytes;
     const stack = bytes[workspace_bytes..][0..stack_bytes];
+    const completed = bytes[workspace_bytes + stack_bytes ..][0..frame_bytes];
     var status: [384]u8 = @splat(0);
     var length: usize = 0;
     const prefix = if (model.mode == .system) &label_5 else if (model.mode == .help) &label_3 else if (model.mode == .command) &label_0 else if (model.status == .scheme_error) &label_1 else if (model.status == .scheme_result) &label_2 else &label_4;
@@ -52,7 +62,8 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         };
         text = text[offset..];
     }
-    const request = protocol.Request{ .workspace = bytes.ptr, .frame = frame.ptr, .frame_length = frame.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0 };
+    const annotated = model.mode != .help and model.mode != .system;
+    const request = protocol.Request{ .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
     const previous = asm volatile ("csrrci %[v], mstatus, 8"
         : [v] "=r" (-> u32),
         :
@@ -79,6 +90,8 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         failed +%= 1;
         return false;
     }
+    const publication = console.xy_presentation.publish(completed, frame) catch return false;
+    published_bytes = @intCast(publication.bytes);
     frames +%= 1;
     return true;
 }
