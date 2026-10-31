@@ -45,6 +45,20 @@
     "gpui-headless.log": "4dec7d227c8c416366dee891600163d0ea611053ebcb73d1211df8bf9af2e2f6",
     "headless-result.json": "f99a5f4447018af271ee4f8569670301ba31354e6a65bba9d564ea2b380d463f",
     "normal-fs-check.log": "95a14413bb0a35283a6ad9b428e04240ceaad793e1a4c200e036d625bf277594",
-    "static-analysis.log": "7d790be24c5c1a97003fc5e49a2db0e61884e41ca59969c7488bf348b01bd09b"
+    "static-analysis.log": "7d790be24c5c1a97003fc5e49a2db0e61884e41ca59969c7488bf348b01bd09b",
+    "manifest-refresh.json": "957656d732819d91860768d091de9c5f87e8db8803bbbe553761fae5208c3c0b",
+    "python-regressions.log": "2b603875c107a8f4a996fc82a8d65d503c24a0f4be7fceb9b85fdf76c8bbe7eb",
+    "elf-negative-controls.json": "5f5f8316e62d6b0211cdb32aa90e9852372685efaedc7acb5d89ce2e8524c6e9"
+  },
+  "manifest_refresh": {
+    "source_sha256": {
+      "src/graphics/keypad_atlas.json": "9584dd1be3de48c97c087d828568b856792a41721f3824da16657d54390f81b1",
+      "src/graphics/card_read_font.json": "08f6a7a7d46b274c0efe46891b62cf0690153914b43178ab9049330827214ae4",
+      "src/graphics/card_auto_font.json": "9cb69bf4522829bae0bc0279de234482b773877e551309af048f057fd239df05"
+    },
+    "payloads_unchanged": true,
+    "non_xy_preprocessed_linker_unchanged": true,
+    "python_regression_tests_passed": 547,
+    "previous_failure_job": "https://github.com/masanork/nihos/actions/runs/41193925134/job/124516154791"
   }
 }
