@@ -91,7 +91,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             const text = request.text[0..request.text_length];
             if (text.len > 4096) return error.Capacity;
             if (!std.unicode.utf8ValidateSlice(text) or request.cursor > text.len or !document.isClusterBoundary(text, request.cursor)) return error.InvalidUtf8;
-            if (request.ruby_text_length > 1024 or request.ruby_count > 64) return error.Capacity;
+            if (request.ruby_text_length > (if (request.page_mode != 0) @as(usize, 2048) else 1024) or request.ruby_count > (if (request.page_mode != 0) @as(usize, 128) else 64)) return error.Capacity;
             const readings = request.ruby_text[0..request.ruby_text_length];
             const spans = if (request.ruby_spans) |ptr| ptr[0..request.ruby_count] else if (request.ruby_count == 0) &.{} else return error.Range;
             for (spans) |span| {
@@ -99,7 +99,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                 if (!document.isClusterBoundary(text, span.base_start) or !document.isClusterBoundary(text, span.base_end)) return error.InvalidUtf8;
             }
             var visible_readings: [1024]u8 = undefined;
-            var annotations: [64]layout.ruby.Annotation = undefined;
+            var annotations: [128]layout.ruby.Annotation = undefined;
             // Size the bounded window to the current typography, then halve it if
             // paragraph breaks consume more lines than the conservative cell budget.
             const inline_px: usize = if (style.axis == 0) @as(usize, screen_width) - 2 * @as(usize, style.margin_x_px) else @as(usize, style.viewport_height_px) - 2 * @as(usize, style.margin_y_px);
@@ -126,7 +126,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                     .base = .{ .start = span.base_start, .end = span.base_end },
                     .ruby = .{ .start = span.ruby_start, .end = span.ruby_end },
                 };
-                if (text.len > 0) list = try layout.layoutParagraphWithWordWrap(page_capacity, 4096, 1024, Cache, &self.cache, family, style, text, readings, annotations[0..spans.len], &self.scratch, &self.placed, true);
+                if (text.len > 0) list = try layout.layoutParagraphWithWordWrap(page_capacity, 4096, 2048, Cache, &self.cache, family, style, text, readings, annotations[0..spans.len], &self.scratch, &self.placed, true);
             } else while (true) {
                 const used_before: usize = @min(before, total);
                 var start: usize = boundaries[(total - used_before) % boundaries.len];
