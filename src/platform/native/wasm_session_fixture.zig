@@ -1,6 +1,7 @@
 //! Same common Session as native; actual WAMR renders on its leased task stack.
 const app = @import("wasm_session.zig");
 const tasks = @import("native_tasks");
+const console = @import("text_console");
 const clock = @import("timer_group").Timer.fromGroup(0x500c2000, 0).?;
 extern fn nih_rom_rx_one_char(*u8) callconv(.c) i32;
 var began: u64 = 0;
@@ -20,13 +21,34 @@ var fail_present = false;
 var previous_generation: u32 = 0;
 pub var async_turns: u32 = 0;
 pub var async_begin_us: u32 = 0;
+const QuietSink = struct {
+    pub fn write(_: QuietSink, _: []const u8) void {}
+};
+var shell: console.session.Model = .{};
+
+fn shellRustCommand() bool {
+    shell = .{};
+    shell.begin(QuietSink{});
+    _ = shell.handle(.escape, QuietSink{});
+    for ("rust-app") |byte| {
+        if (shell.handle(.{ .text = byte }, QuietSink{}) != null) return false;
+    }
+    return shell.handle(.enter, QuietSink{}) == .rust_app;
+}
 
 pub fn asyncProbe() bool {
     const before = (tasks.memory.reusable.localUsage() orelse return false).free;
     const start_ticks = .{ tasks.report(0).ticks, tasks.report(1).ticks };
     app.setFault(0);
+    if (!shellRustCommand()) return false;
     const started = clock.counter() orelse return false;
-    if (app.beginAsync(&present) != 0 or app.start(&present) != -3 or !app.cancelAsync()) return false;
+    if (app.beginAsync(&present) != 0 or app.start(&present) != -3) return false;
+    var serial: console.session.input.Serial = .{};
+    const key = serial.feed('q', started) orelse return false;
+    switch (key) {
+        .text => |byte| if (byte != 'q' or !app.cancelAsync()) return false,
+        else => return false,
+    }
     async_begin_us = @intCast((clock.counter() orelse return false) -| started);
     if ((tasks.memory.reusable.localUsage() orelse return false).free >= before) return false;
     var turns: u32 = 0;
@@ -50,6 +72,7 @@ pub fn asyncProbe() bool {
         }
         tasks.idleOnce(0);
     }
+    if (app.input('0') != 0 or app.input('1') != 0 or app.input('0') != 0 or app.frames() != 4) return false;
     if (app.cancel() != 0 or app.active() or
         (tasks.memory.reusable.localUsage() orelse return false).free != before) return false;
     app.setFault(1);
