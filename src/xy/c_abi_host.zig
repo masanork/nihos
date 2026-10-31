@@ -285,9 +285,11 @@ pub export fn xy_host_live_run(source: [*]const u8, len: u32, named: bool, out: 
 }
 /// Foreground app bridge: shares the live editor VM and its rollback boundary.
 pub fn appEvaluate(state: *live_workspace.scheme.plot_config.State, source: []const u8, output: []u8) live_workspace.scheme.Error![]const u8 {
+    if (!g_live_ready or g_reading) return error.AppUnavailable;
     return g_live.runApp(&g_ws, state, source, output);
 }
 pub fn appFrame(state: *live_workspace.scheme.plot_config.State) live_workspace.scheme.Error!void {
+    if (!g_live_ready or g_reading) return error.AppUnavailable;
     try g_live.frame(&g_ws, state);
 }
 pub fn appHasFrame() bool {
