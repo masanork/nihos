@@ -69,6 +69,7 @@ const ReaderAdapter = struct {
 // - 256 bitmap cache slots × (96 × 96) 8bpp pixels
 // - 16 KiB UTF-8 document buffer
 const HostCacheType = ttf.TwoTierCache(256, 1024, 256, 96 * 96);
+pub const live_workspace = @import("live_workspace.zig");
 const HostWorkspaceType = scheme_bridge.XyWorkspace(16384, 64, 4096, 64, 1024);
 
 var g_mincho_adapters: [4]ReaderAdapter = undefined;
@@ -81,6 +82,13 @@ var g_gothic_count: usize = 0;
 
 var g_cache: HostCacheType = .{};
 var g_ws: HostWorkspaceType = .{};
+// SAFETY: every live API is guarded by g_live_ready; init writes runtime state.
+var g_live: live_workspace.Session(HostWorkspaceType) = undefined;
+var g_live_ready = false;
+var g_live_error: []const u8 = "";
+var g_render_error: []const u8 = "";
+var g_saved_doc: HostWorkspaceType.DocType = .{};
+var g_editing_source = false;
 var g_glyf_scratch: [16384]u8 = undefined;
 var g_placed_buf: [512]PlacedGlyph = undefined;
 var g_quads_buf: [512]GpuiGlyphQuad = undefined;
@@ -120,7 +128,7 @@ pub export fn xy_host_init(
     gothic_count: u32,
 ) callconv(.c) bool {
     if (mincho_count == 0 or mincho_count > 4 or gothic_count > 4) return false;
-    g_ws = .{};
+    if (!xy_host_live_init()) return false;
     g_cache = .{};
     g_mincho_count = 0;
     g_gothic_count = 0;
@@ -182,6 +190,93 @@ pub export fn xy_host_eval(
     return @intCast(formatted.len);
 }
 
+/// Initialize an editor session without requiring fonts (also used by the CLI).
+pub export fn xy_host_live_init() callconv(.c) bool {
+    g_ws = .{};
+    g_live.init();
+    g_live_ready = true;
+    g_editing_source = false;
+    var out: [256]u8 = undefined;
+    _ = g_live.prepare(live_workspace.default_source, &out) catch return false;
+    g_live_error = "";
+    return g_live.activate();
+}
+pub export fn xy_host_default_source(out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (cap < live_workspace.default_source.len) return -1;
+    @memcpy(out[0..live_workspace.default_source.len], live_workspace.default_source);
+    return @intCast(live_workspace.default_source.len);
+}
+pub export fn xy_host_render_error(out: [*]u8, cap: u32) callconv(.c) u32 {
+    const n = @min(cap, g_render_error.len);
+    @memcpy(out[0..n], g_render_error[0..n]);
+    return @intCast(n);
+}
+pub export fn xy_host_live_error(out: [*]u8, cap: u32) callconv(.c) u32 {
+    const n = @min(cap, g_live_error.len);
+    @memcpy(out[0..n], g_live_error[0..n]);
+    return @intCast(n);
+}
+pub export fn xy_host_live_prepare(source: [*]const u8, len: u32) callconv(.c) bool {
+    if (!g_live_ready) return false;
+    var out: [256]u8 = undefined;
+    _ = g_live.prepare(source[0..len], &out) catch |err| {
+        g_live_error = live_workspace.scheme.message(err);
+        return false;
+    };
+    g_live_error = "";
+    return true;
+}
+pub export fn xy_host_live_activate() callconv(.c) bool {
+    return g_live_ready and g_live.activate();
+}
+pub export fn xy_host_live_discard() callconv(.c) void {
+    if (g_live_ready) g_live.discard();
+}
+pub export fn xy_host_live_run(source: [*]const u8, len: u32, named: bool, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const result = g_live.run(&g_ws, source[0..len], named, out[0..cap]) catch |err| {
+        g_live_error = live_workspace.scheme.message(err);
+        return -1;
+    };
+    g_live_error = "";
+    return @intCast(result.len);
+}
+pub export fn xy_host_buffer_copy(out: [*]u8, cap: u32) callconv(.c) i32 {
+    const text = g_ws.doc.slice();
+    if (cap < text.len) return -1;
+    @memcpy(out[0..text.len], text);
+    return @intCast(text.len);
+}
+pub export fn xy_host_insert_text(text: [*]const u8, len: u32) callconv(.c) bool {
+    g_ws.doc.insertUtf8(text[0..len]) catch return false;
+    g_ws.layout_dirty = true;
+    return true;
+}
+pub export fn xy_host_buffer_replace(text: [*]const u8, len: u32) callconv(.c) bool {
+    _ = g_ws.doc.replaceRange(.{ .revision = g_ws.doc.revision, .start = 0, .end = g_ws.doc.len }, text[0..len]) catch return false;
+    g_ws.layout_dirty = true;
+    return true;
+}
+pub export fn xy_host_source_enter(source: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_editing_source or len > 16384) return false;
+    var doc: HostWorkspaceType.DocType = .{};
+    doc.insertUtf8(source[0..len]) catch return false;
+    doc.cursor = 0;
+    doc.undo_count = 0;
+    doc.undo_bytes_used = 0;
+    g_saved_doc = g_ws.doc;
+    g_ws.doc = doc;
+    g_ws.layout_dirty = true;
+    g_editing_source = true;
+    return true;
+}
+pub export fn xy_host_source_leave() callconv(.c) void {
+    if (!g_editing_source) return;
+    g_ws.doc = g_saved_doc;
+    g_ws.layout_dirty = true;
+    g_editing_source = false;
+}
+
 pub export fn xy_host_handle_key(key: u8) callconv(.c) bool {
     g_ws.handleKey(key) catch return false;
     return true;
@@ -220,7 +315,10 @@ pub export fn xy_host_render_gpui(
         fam,
         &g_glyf_scratch,
         &g_placed_buf,
-    ) catch return -1;
+    ) catch |err| {
+        g_render_error = @errorName(err);
+        return -1;
+    };
 
     g_mb_view = g_ws.ime.formatMinibuffer();
     const theme = ThemePalette.fromAppearance(effectiveAppearance(theme_id));
@@ -236,8 +334,11 @@ pub export fn xy_host_render_gpui(
         g_mb_view.line(),
         &g_glyf_scratch,
         out_quads[0..cap],
-    ) catch return -2;
-
+    ) catch |err| {
+        g_render_error = @errorName(err);
+        return -2;
+    };
+    g_render_error = "";
     out_frame.* = frame;
     const count: usize = @intCast(frame.quad_count);
     return @intCast(count);
