@@ -118,6 +118,10 @@ Wasm/display profile and physical presenter remain open.
    synthetic `q` during open, and runs `0 → 1 → 0` after a later open. The
    fixture now invokes the actual normal UI key dispatcher, while using a
    test-only shell model and pixel presenter.
+   A subsequent UART-driven emulator fixture exercises the UI's foreground
+   polling and serial decoder through the same dispatcher, including cancellation
+   during open. Its shell storage and presenter remain substitutes, and it stops
+   after one verified session. See the [UART polling report](../measurements/2026-11-01-wasm-ui-uart-poll.md).
    A foreground controller now owns opening, cancellation and active-input
    routing in that fixture and the UI branch. It rejects start when camera or
    display is busy and reserves display until cancellation has completed.

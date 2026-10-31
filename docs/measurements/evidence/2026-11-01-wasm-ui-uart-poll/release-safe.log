@@ -1,0 +1,92 @@
+Build Summary: 90/90 steps succeeded
+test success
++- run test cached
+|  +- compile test safe native cached 78ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 79ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 87ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 72ms MaxRSS:31M
++- test-app success
+|  +- run test cached
+|  |  +- compile test safe native cached 63ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test safe native cached 60ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test safe native cached 63ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test safe native cached 62ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test safe native cached 61ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test safe native cached 63ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test safe native cached 64ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test safe native cached 75ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test safe native cached 71ms MaxRSS:31M
+|  +- run test cached
+|     +- compile test safe native cached 59ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 75ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 75ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 82ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 59ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 92ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 58ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 74ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 58ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 86ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 77ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 70ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 84ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 79ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 70ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 60ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 72ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 75ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 88ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 47ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 67ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 76ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 59ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 69ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 91ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 82ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 91ms MaxRSS:32M
++- run test cached
+|  +- compile test safe native cached 76ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 69ms MaxRSS:31M
++- run test cached
+|  +- compile test safe native cached 65ms MaxRSS:32M
++- run test cached
+   +- compile test safe native cached 82ms MaxRSS:32M
+

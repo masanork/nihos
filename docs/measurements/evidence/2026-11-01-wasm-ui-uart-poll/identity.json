@@ -1,0 +1,37 @@
+{
+  "candidate_source_commit": "7894773",
+  "metadata_source_commit": "412d2031d884b7f1392e7d4b57b566f814fe998b",
+  "metadata_change": "Three UI source identity manifest hashes updated; assets and executable source unchanged.",
+  "scope": "RV32 emulator UART and actual UI polling with substitute shell and pixel presenter; no USB JTAG or physical scanout",
+  "candidate": {
+    "nihos-native-image.elf": "f820153827904cba1175deb04a130d0568bf4487dae0afce6d36c765d240762a",
+    "nihos-native-flash.bin": "1f6f203486b68b3dbff7992f3ca692be67b120cb10116b2e9a8e8a7c3650e781"
+  },
+  "matrix_candidate": {
+    "nihos-native-image.elf": "927748f9dbfe5762ede52256139ceb5f1aac60ce86840d00f5a6a48169e85dcb",
+    "nihos-native-flash.bin": "48a412faac20cfe6a320b23473bb975a2d5ffb1dc000882a4b449ea9334071cd"
+  },
+  "evidence_sha256": {
+    "active.log": "21f2eaea05939305763398cb946c5160e32a70bb6400b30855b46c384e1a1144",
+    "build.log": "061ddcd91ae2dc18c87d567cc0427d87d5f9a747369b4bc93d4a448c61eba05d",
+    "cancel.log": "60bcc33684787235c5d4ae0ab14641d52cc3c08bf7b2afaafb89deb615cef32b",
+    "debug.log": "c7baf9208f4b85f8672655b5dcdb2f742b83a1812481ff3f8317a0e161491d11",
+    "guard.log": "f7883dc0697a4b6438c994f40c9a28ee64d6ccc0e115499f93ff5682b3076bdc",
+    "image-audit.json": "763d8ee759215538c206c5e03f08df18f7c013d644c3143d56b9ff5b572bc156",
+    "image.log": "36b93de92300aa16bae708a99f07ed6767ac08efc14866831e4acd39300bfa37",
+    "matrix-cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "matrix-early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "matrix-metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "matrix-noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "matrix-normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "matrix-present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "matrix-report.json": "7d4f325cde83836840558aa8056418dfcfcbb602a08a5587d17c14fa9c6fa24b",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "python-before-manifest-refresh.log": "cd4222b684596d53652a0577ab01328a78783ef1a353fb2884ec420e3f972c6d",
+    "python.log": "b76a9d95d8bf5c9d0fdc911b4cf7e78db020bd2438f5e824ee9db1c397406e87",
+    "release-safe.log": "eb17bcce75e21798f61af2675d394c424c609b05e2939f0da53e91a37acd8be5",
+    "report.json": "3e3190da43862c4e9d36383704079ca4d2db4cd60259ae1617b6e13b35c6598c",
+    "runner.log": "aa21e27eca068c8cad72ce1140d36ea2bb9a230455e0ad2b48c9304124af82fb",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570"
+  }
+}
