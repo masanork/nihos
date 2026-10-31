@@ -51,7 +51,8 @@ for name,injected,status,received,frames,presentations,rejected in (
     assert 'NIHOS_NATIVE_FAIL' not in result.stdout,result.stdout
     assert len(re.findall(r'^NIHOS_WASM_ASYNC_PASS$',result.stdout,re.M))==1,result.stdout
     async_rows=re.findall(r'^NIHOS_WASM_ASYNC turns=([0-9a-f]+) begin_us=([0-9a-f]+)$',result.stdout,re.M)
-    assert len(async_rows)==1 and int(async_rows[0][0],16)>1 and int(async_rows[0][1],16)>0,async_rows
+    # Emulator-only guard against returning to the seconds-long synchronous open.
+    assert len(async_rows)==1 and int(async_rows[0][0],16)>1 and 0<int(async_rows[0][1],16)<100000,async_rows
     rows=re.findall(r'^NIHOS_WASM_SESSION (.+)$',result.stdout,re.M)
     assert len(rows)==2,rows
     records=[{k:int(v,16) for k,v in (field.split('=') for field in row.split())} for row in rows]
