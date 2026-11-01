@@ -211,6 +211,22 @@ pub const State = struct {
             else => {},
         }
     }
+    /// Portrait Home cards share this geometry with the portrait renderer.
+    pub const portrait_home_x: u32 = 36;
+    pub const portrait_home_width: u32 = 648;
+    pub const portrait_home_top: u32 = 170;
+    pub const portrait_home_pitch: u32 = 156;
+    pub const portrait_home_card_height: u32 = 132;
+
+    /// Handles only the portrait Home screen until the other scenes are adapted.
+    pub fn touchPortraitHome(self: *State, x: u32, y: u32) linksection(section) void {
+        if (self.screen != .home or x < portrait_home_x or x >= portrait_home_x + portrait_home_width or y < portrait_home_top) return;
+        const offset = y - portrait_home_top;
+        const index = offset / portrait_home_pitch;
+        if (index >= 6 or offset % portrait_home_pitch >= portrait_home_card_height) return;
+        self.home_selection = @intCast(index);
+        self.activateHome();
+    }
     /// Validated logical landscape coordinates from the pointer service.
     pub fn touch(self: *State, x: u32, y: u32, view: *config.Config) linksection(section) void {
         if (x >= 1280 or y >= 720) return;
@@ -312,4 +328,20 @@ test "device navigation preserves reading position through home and settings" {
     state.home();
     state.touch(880, 220, &view); // upper right card
     try std.testing.expectEqual(@as(u8, 0), state.book);
+}
+
+test "portrait home cards select every destination and gaps do nothing" {
+    for (0..6) |i| {
+        var state = State{};
+        state.home();
+        state.touchPortraitHome(State.portrait_home_x + 5, State.portrait_home_top + @as(u32, @intCast(i)) * State.portrait_home_pitch + 10);
+        try std.testing.expectEqual(@as(u8, @intCast(i)), state.home_selection);
+        try std.testing.expectEqual(if (i == 0) Screen.document else if (i == 5) Screen.settings else Screen.reading, state.screen);
+        if (i > 0 and i < 5) try std.testing.expectEqual(@as(u8, @intCast(i - 1)), state.book);
+    }
+    var state = State{};
+    state.home();
+    state.touchPortraitHome(State.portrait_home_x, State.portrait_home_top + State.portrait_home_card_height);
+    state.touchPortraitHome(0, State.portrait_home_top);
+    try std.testing.expectEqual(Screen.home, state.screen);
 }

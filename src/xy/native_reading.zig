@@ -128,6 +128,28 @@ fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !vo
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
 }
 
+/// Portrait Home uses the panel's physical coordinates and shared card geometry.
+/// Other navigation scenes remain landscape until explicitly adapted.
+pub fn renderPortraitHome(instance: *Session, request: *const protocol.Request) !void {
+    const nav = request.navigation orelse return error.Range;
+    if (nav.screen != .home) return error.UnsupportedOrientation;
+    const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
+    const N = @import("navigation.zig").State;
+    _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
+    try label(instance, target, 36, 36, "xy", 48, 0x2147);
+    try label(instance, target, 155, 54, "読む。書く。試す。", 28, 0x2147);
+    try label(instance, target, 36, 112, "本を選んで、考えを広げる。", 24, 0x528a);
+    const titles = [_][]const u8{ "n  文書を書く・再開", "1  xyを使ってみる", "2  草枕", "3  SICP", "4  小さなOSを育てる", "s  表示設定" };
+    for (titles, 0..) |title, i| {
+        const y: u32 = N.portrait_home_top + @as(u32, @intCast(i)) * N.portrait_home_pitch;
+        _ = target.fillRect(@intCast(N.portrait_home_x), @intCast(y), N.portrait_home_width, N.portrait_home_card_height, if (nav.home_selection == i) 0x2147 else 0xffff);
+        try label(instance, target, @intCast(N.portrait_home_x + 24), @intCast(y + 49), title, 28, if (nav.home_selection == i) 0xffff else 0x2147);
+    }
+    try label(instance, target, 36, 1130, "本はオフラインで読めます。", 24, 0x528a);
+    _ = target.fillRect(0, 1208, 720, 72, 0x2147);
+    try label(instance, target, 36, 1230, "タッチで選択 / 矢印・Enter", 24, 0xffff);
+}
+
 pub fn render(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {
     const nav = request.navigation orelse return error.Range;
     const physical = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
