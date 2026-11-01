@@ -398,6 +398,7 @@ pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.t
         };
         if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
     }
+    if (xy_workspace) scratch.setPhysicalKeyboard(hardware_ready);
     const values: extern struct { status: u32, firmware: u32, mode: u32, transactions: u32, error_code: u32, sources: u32 } = .{
         .status = if (hardware_ready) 1 else 2,
         .firmware = keyboard.report.firmware,
@@ -441,6 +442,10 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
             if (!available or model.failure_latched or event.at < input_started) continue;
+            if (xy_workspace and session_active and event.kind == .down) {
+                scratch.touchDown(event.x, event.y);
+                continue;
+            }
             if (xy_workspace and session_active and event.kind == .up) {
                 scratch.touch(event.x, event.y);
                 scratch.revision +%= 1;
@@ -621,7 +626,7 @@ noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (opt
                     const byte = nih_diagnostic_serial_read();
                     if (byte >= 0) break;
                     if (nih_touch_available()) {
-                        var ev: pointer.Event = .{};
+                        var ev: pointer.Event = .{ .kind = .cancel };
                         if (nih_touch_pop(&ev)) break;
                     }
                     if (options.keyboard_i2c and (model.input_sources & console.keys.capability(.tab5_keyboard) != 0)) {
