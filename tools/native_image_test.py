@@ -26,6 +26,11 @@ class NativeInstructionTests(unittest.TestCase):
         app = [('session.nih_app_session_start', 0x40000a00, 0x40000b00)]
         args = (0x40000120, 0x40000b00, 0x4ff00000, 0x4ff28000)
         MODULE.audit_boot_functions(boot + app, *args, rust_session_span=(0x40000a00, 0x40000b00))
+        MODULE.audit_boot_functions(boot + [('diagnostic_ui.sessionKey__func_1', 0x40000a00, 0x40000b00)],
+                                    *args, rust_session_span=(0x40000a00, 0x40000b00))
+        with self.assertRaisesRegex(ValueError, 'unapproved Rust session'):
+            MODULE.audit_boot_functions(boot + [('diagnostic_ui.unapproved__func_1', 0x40000a00, 0x40000b00)],
+                                        *args, rust_session_span=(0x40000a00, 0x40000b00))
         with self.assertRaisesRegex(ValueError, 'unapproved Rust session'):
             MODULE.audit_boot_functions(boot + [('nih_native_dispatch', 0x40000a00, 0x40000b00)],
                                        *args, rust_session_span=(0x40000a00, 0x40000b00))
