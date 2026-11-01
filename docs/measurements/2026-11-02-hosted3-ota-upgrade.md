@@ -40,3 +40,25 @@ parser. Thus this run does not establish time synchronization. Raw logs and
 the P4 backup are private under `/private/tmp/nihos-hosted3-real-upgrade-20261102/`.
 The restored P4 app is the user's original app; this run does not deploy the
 3.x P4 integration to the user's normal firmware.
+
+## Time retest after the P4 DHCP fix
+
+The P4 Network Split decoder was changed to accept the observed link-up,
+DHCP/DNS-down, zero-interface-address snapshot as not ready, invalidating an
+old address rather than adopting a partial one. Unit tests cover the exact
+observed wire response and the address-generation revocation. Hosted split
+and time exchange tests passed (10 and 19 tests respectively).
+
+In a separate lock-held run, P4 fixture source commit
+`7488bd6b1331c2d60c422d764086c519fed3b3fa` and app SHA-256
+`7aeece2aa82fb6bfcb073840c8e5e1cb7992d12d1a8ee66aa7af1a67556a6860`
+were used. The fixture reported C6 3.0.10, station connected, a complete
+split address, an acknowledged request, and a synchronized C6 result. The
+reported sample was Unix time `1793547026` (2026-11-01 15:30:26 UTC), with
+reported age zero. This is unauthenticated SNTP and was not independently
+compared with a reference clock; it does not establish P4 RTC persistence.
+The [redacted result](evidence/2026-11-02-hosted3-time-fixed.json) includes
+the exact report and capture SHA-256. The P4's full 16 MiB was backed up,
+restored and verified again against the same digest; its restored boot was not
+captured. This run sent no C6 OTA request. Raw evidence remains in
+`/private/tmp/nihos-hosted3-time-fixed-20261102/`.
