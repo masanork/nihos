@@ -14,7 +14,7 @@ pub const Error = transport.Error || SocketError || error{ StaleConnection, Inva
 pub const Pump = struct {
     wire: *transport.Transport,
     epoch: u64,
-    input: [1024]u8 = undefined,
+    input: [1024]u8 = @splat(0),
     input_start: usize = 0,
     input_end: usize = 0,
     dead: bool = false,

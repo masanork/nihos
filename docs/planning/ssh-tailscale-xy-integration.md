@@ -1,5 +1,7 @@
 # SSH Terminal & Tailscale Integration into nihos (`xy`)
 
+> **実装状況（2026-11-02）:** この文書は設計案であり、接続機能の完成を示さない。SSHとTCPの実験部品はホスト上でOpenSSHとの相互接続を検証しているが、通常のTab5ネットワーク、xy、資格情報とホスト鍵の保存には接続されていない。`nih_ssh_*` は宣言のみであり、`(ssh/connect ...)` は接続を開始せず `SshUnavailable` を返す。Tailscaleのログインとトンネルも未実装である。実機での利用にはネットワークサービス、乱数・鍵管理、端末表示と入力、切断・障害処理、物理Tab5検証が必要。
+
 2026年11月1日。MeOS（[`/Users/masanork/repo/MeOS`](file:///Users/masanork/repo/MeOS)）で実証された軽量ベアメタルネットワーク技術（ESP32-C6 SDIO、自前マイクロTCP/IP、Tailscale ts2021/WireGuard、SSH-2クライアント）をnihosへ移植・統合し、nihosの中核環境である統合環境 `xy` からシームレスに操作できる端末・ネットワーク環境を構築する設計仕様。
 
 関連文書：

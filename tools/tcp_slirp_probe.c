@@ -121,7 +121,7 @@ int main(void) {
             closing=tcp_probe_close(now); if (!closing) break;
         }
         if (closing && tcp_probe_closed(now)) { ok=true; break; }
-        ctx.nfds=0; uint32_t timeout=10; slirp_pollfds_fill_socket(slirp,&timeout,add_fd,&ctx);
+        ctx.nfds=0; uint32_t timeout=10; slirp_pollfds_fill(slirp,&timeout,add_fd,&ctx);
         int rc=poll(ctx.fds,ctx.nfds,(int)timeout); slirp_pollfds_poll(slirp,rc<0,revents,&ctx);
         while (ctx.count) {
             struct frame f=ctx.frames[0]; memmove(ctx.frames,ctx.frames+1,(--ctx.count)*sizeof(ctx.frames[0]));

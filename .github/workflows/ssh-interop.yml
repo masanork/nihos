@@ -1,0 +1,34 @@
+name: SSH host interoperability
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  openssh-slirp:
+    name: OpenSSH over experimental TCP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Install host test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libslirp-dev openssh-server pkg-config
+          sudo mkdir -p /run/sshd
+      - name: Install pinned Zig
+        run: sh tools/bootstrap-zig.sh
+      - name: TCP loss and FIN interoperability
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            sh tools/run-tcp-slirp-probe.sh
+      - name: OpenSSH interactive PTY over experimental TCP
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 python3 tools/ssh_openssh_probe.py

@@ -30,7 +30,7 @@ bool bridge_poll(void) {
         slirp_input(bridge_slirp,frame,(int)(n+14));
     }
     bridge_ctx.nfds=0; uint32_t timeout=0;
-    slirp_pollfds_fill_socket(bridge_slirp,&timeout,add_fd,&bridge_ctx);
+    slirp_pollfds_fill(bridge_slirp,&timeout,add_fd,&bridge_ctx);
     int rc=poll(bridge_ctx.fds,bridge_ctx.nfds,0);
     slirp_pollfds_poll(bridge_slirp,rc<0,revents,&bridge_ctx);
     while (bridge_ctx.count) {

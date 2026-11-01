@@ -5,7 +5,7 @@ const ssh = @import("ssh.zig");
 pub const Error = ssh.PacketError || error{ Failed, PacketPending };
 
 pub const Decoder = struct {
-    buffer: [ssh.SSH_MAX_PKT + 4 + 32]u8 = undefined,
+    buffer: [ssh.SSH_MAX_PKT + 4 + 32]u8 = @splat(0),
     used: usize = 0,
     expected: ?usize = null,
     payload_start: usize = 0,

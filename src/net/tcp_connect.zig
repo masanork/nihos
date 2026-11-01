@@ -8,8 +8,8 @@ pub const Established = struct { local: Endpoint, remote: Endpoint, send_next: u
 pub const Connect = struct {
     const State = enum { idle, syn_pending, syn_wait, ack_pending, established, failed };
     state: State = .idle,
-    local: Endpoint = undefined,
-    remote: Endpoint = undefined,
+    local: Endpoint = .{ .address = @splat(0), .port = 0 },
+    remote: Endpoint = .{ .address = @splat(0), .port = 0 },
     initial_seq: u32 = 0,
     peer_seq: u32 = 0,
     remote_window: u16 = 0,
@@ -17,7 +17,7 @@ pub const Connect = struct {
     deadline: u64 = 0,
     retry_at: u64 = 0,
     retries: u8 = 0,
-    packet: [40]u8 = undefined,
+    packet: [40]u8 = @splat(0),
     packet_len: usize = 0,
 
     /// now/deadline use caller's monotonic milliseconds. initial_seq and the
