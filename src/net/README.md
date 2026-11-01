@@ -12,6 +12,12 @@ ACK; its result is only the handoff state for a future data-plane TCP client.
 It has no ARP/routing adapter, socket service, data transfer, close handling,
 or physical/real-network qualification and is not connected to SSH.
 
+`tcp_stream.zig` is a separate host-tested experimental data plane with one
+segment in flight, bounded receive buffering and retransmission. It is not a
+complete TCP implementation: among other gaps it lacks a persist timer,
+congestion control, local FIN/TIME_WAIT, routing and integration with the
+normal network service. It must not yet be exposed as an application socket.
+
 `esp_at.zig` decodes the bounded passive-socket/BLE receive profile.
 `at_commands.zig` encodes a closed set of typed commands, escaping quoted
 strings and rejecting control-character injection. `at_controller.zig`
