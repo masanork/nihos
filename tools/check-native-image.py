@@ -219,6 +219,7 @@ XY_RENDER_FUNCTIONS = {
     'xy.navigation.State.selectChapter', 'xy.navigation.State.handle',
     'xy.navigation.State.activateHome', 'xy.navigation.State.next',
     'xy.navigation.State.back', 'xy.navigation.State.touch',
+    'xy_scratch_live.Live(".flash.rodata.display"[0..21]).render',
 }
 
 

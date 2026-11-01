@@ -81,6 +81,8 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('xy.document.Document(4096,256,2048,1,64).commitPreedit'))
         self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.formatMinibuffer'))
         self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.feedUtf8ToReading'))
+        self.assertTrue(MODULE.xy_function('xy_scratch_live.Live(".flash.rodata.display"[0..21]).render'))
+        self.assertFalse(MODULE.xy_function('xy_scratch_live.Live(".flash.rodata.display"[0..21]).press'))
 
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000
