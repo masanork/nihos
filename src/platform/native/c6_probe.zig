@@ -507,3 +507,55 @@ pub fn runHosted(clock: timers.Timer, join: hosted.Join, enable_ipv6: bool) Repo
     }
     return snapshot(report);
 }
+
+/// Explicit OTA preflight: reset/identify factory C6 and complete the 1.4.1
+/// version handshake, then stop before the Session's first OTA Begin step.
+/// This path does not update C6 or send any persistent-write RPC.
+pub const OtaPreflight = struct { status: u32 = 0, stage: u32 = 0, last_command: u32 = 0, last_interrupts: u32 = 0, error_code: u32 = 0, peer_chip: u32 = 0, version_known: u32 = 0, major: u32 = 0, minor: u32 = 0, patch: u32 = 0 };
+var ota_preflight_session: hosted.ota_session.Session = undefined;
+var ota_preflight_stage: u32 = 0;
+noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) !OtaPreflight {
+    const started = clock.counter() orelse return error.Clock;
+    try ota_preflight_session.initInPlace(image, hash, started, started + 30_000_000);
+    ota_preflight_stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(300_000);
+    if (clock_failed) return error.Clock;
+    ota_preflight_stage = 2;
+    try host.prepare(true);
+    ota_preflight_stage = 3;
+    try host.identify();
+    ota_preflight_stage = 4;
+    try host.enableFunction();
+    ota_preflight_stage = 5;
+    try host.writeDoorbell(1, 0x8c, 1);
+    ota_preflight_stage = 6;
+    while (true) {
+        const session = &ota_preflight_session;
+        const now = clock.counter() orelse return error.Clock;
+        try session.step(&hosted_stream, now);
+        if (session.state == .transfer) {
+            return .{ .status = 1, .stage = ota_preflight_stage, .last_command = host.last_command, .last_interrupts = host.last_interrupts, .peer_chip = session.client.peer_chip, .version_known = @intFromBool(session.client.version_known), .major = session.client.version[0], .minor = session.client.version[1], .patch = session.client.version[2] };
+        }
+        if (clock_failed) return error.Clock;
+        host.io.delay(100);
+    }
+}
+pub fn runOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) OtaPreflight {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    clock_failed = false;
+    ota_preflight_stage = 0;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    return exerciseOtaPreflight(clock, image, hash) catch |err| blk: {
+        for ("NIHOS_C6_PREFLIGHT_ERROR ") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        break :blk .{ .error_code = @intFromError(err), .stage = ota_preflight_stage, .last_command = host.last_command, .last_interrupts = host.last_interrupts };
+    };
+}

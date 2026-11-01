@@ -1,6 +1,7 @@
 //! Compile-only freestanding probe. No physical device operations.
 const pump = @import("hosted_ota_pump.zig");
 const ota = @import("hosted_ota.zig");
+const session = @import("hosted_ota_session.zig");
 const Stream = struct {
     pub fn send(_: *@This(), _: []const u8) error{Transport}!usize {
         return 0;
@@ -18,6 +19,19 @@ export fn nih_ota_probe_init(bytes: [*]const u8, length: usize, hash: *const [32
 }
 export fn nih_ota_probe_step(now: u64) bool {
     if (driver) |*d| {
+        d.step(&stream, now) catch return false;
+        return true;
+    }
+    return false;
+}
+
+var session_driver: ?session.Session = null;
+export fn nih_ota_session_probe_init(bytes: [*]const u8, length: usize, hash: *const [32]u8) bool {
+    session_driver = session.Session.init(bytes[0..length], hash.*, 0, 100) catch return false;
+    return true;
+}
+export fn nih_ota_session_probe_step(now: u64) bool {
+    if (session_driver) |*d| {
         d.step(&stream, now) catch return false;
         return true;
     }
