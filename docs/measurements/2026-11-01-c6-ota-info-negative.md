@@ -23,7 +23,7 @@ candidate adds bounded progress markers to distinguish power, SDIO setup and
 RPC exchange; it needs its own identity-matched physical run.
 
 The marker-enabled candidate at commit `eda044d5`, app SHA-256
-`6949d4e6b30f5415dc62fbddbb056dd176a126419a7419efeaf637c2a2c07`, was
+`6949d4e6b30f5415dc62fbddbb056dd176a126419a7419efeaf637a67c2a2c07`, was
 retried with the same full-flash backup verified against the current device.
 It printed stages `0` and `1` but did not reach stage `2` or produce a result
 before the 60-second limit. Its capture SHA-256 was
@@ -31,6 +31,23 @@ before the 60-second limit. Its capture SHA-256 was
 The current timer API's `configureOneShot` leaves the timer stopped, and the
 probe was missing `clock.start()`. The stage evidence is consistent with the
 resulting stopped-clock delay in power setup; it does not independently prove
-that no other issue exists. Several other C6 fixture entry points also call
-`configureOneShot` without `start`; this experiment fixes the new info probe
-only, and the other entry points need separate correction and validation.
+that no other issue exists. Several other C6 fixture entry points also called
+`configureOneShot` without `start`; they were corrected separately but have
+not been physically requalified by this run.
+
+The corrected candidate from commit `fc3fb9e5`, app SHA-256
+`2da6b37ec538b89f48b924b3cdf561bbe8340f55a3cc3313f3592e8555035e01`,
+successfully completed the transport setup. It reported C6 chip 13, Hosted
+version 2.13.1, and a correlated CustomRpc response `0x105`
+(`ESP_ERR_NOT_FOUND`); no OTA-info result was claimed. This matches the
+unregistered callback behavior in the 2.13.1 source. The guarded stream
+rejected OTA update and activation commands in host tests; the physical
+capture itself was not a packet-level proof of the exact command list.
+Capture SHA-256:
+`502ee2e09c90b5ecd07463e8014a8b73c0ccc599fd03d9466fcd30762e486737`.
+The P4 flash was again fully restored and verified against the same backup.
+The physical capture and redacted machine-checked result are under
+`/private/tmp/nihos-c6-ota-info-timer-20261101-run2/`. A printed zero for a
+partition or security field with `result_known=0` is only a placeholder, not
+an observation. Neither this negative test nor the source fix proves 3.x C6
+interoperability, installed C6 image bytes, partition layout, or recovery.
