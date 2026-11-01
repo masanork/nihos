@@ -156,7 +156,9 @@ Wasm/display profile and physical presenter remain open.
    See the [request latency measurement](../measurements/2026-10-31-wasm-session-latency.md).
 2. **Runtime decision and candidate profile.** Resolve the WAMR alignment
    adoption question for the exact RV32 configuration before permitting a
-   Wasm device image. The AArch64 UBSan finding and narrow experimental patch
+   Wasm device image. The [RV32 sanitizer report](../measurements/2026-11-01-wamr-rv32-alignment-sanitizer.md)
+   adds a checked negative control and instrumented emulator paths; it is not
+   an arbitrary-module or device safety proof. The AArch64 UBSan finding and narrow experimental patch
    remain open; neither a host pass nor RV32 compilation proves engine safety.
    Build and audit one bounded native/Wasm device candidate with explicit
    memory, stack, execution budget and shutdown behavior.
