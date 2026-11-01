@@ -36,6 +36,55 @@ def buffer(data):
     return c.create_string_buffer(data, len(data))
 
 
+class BridgeSocket:
+    """Socket-shaped host fixture backed by nihos TCP and libslirp."""
+    def __init__(self, bridge, port):
+        self.bridge = bridge
+        self.blocking = True
+        self.timeout = 20
+        if not bridge.bridge_open(port): raise RuntimeError("TCP bridge initialization failed")
+        self.wait(lambda: bridge.bridge_ready())
+    def wait(self, condition):
+        until = time.monotonic() + self.timeout
+        while not condition():
+            if not self.bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
+            if time.monotonic() >= until: raise TimeoutError("TCP bridge timeout")
+            time.sleep(0.001)
+    def settimeout(self, value): self.timeout = value
+    def setblocking(self, value): self.blocking = value
+    def recv(self, size):
+        result = c.create_string_buffer(size)
+        until = time.monotonic() + self.timeout
+        while True:
+            if not self.bridge.bridge_poll(): raise OSError("TCP bridge failed")
+            n = self.bridge.bridge_read(result, size)
+            if n >= 0: return result.raw[:n]
+            if not self.blocking: raise BlockingIOError()
+            if time.monotonic() >= until: raise TimeoutError("TCP receive timeout")
+            time.sleep(0.001)
+    def send(self, data):
+        if not self.bridge.bridge_poll(): raise OSError("TCP bridge failed")
+        n = self.bridge.bridge_write(buffer(data), len(data))
+        if n < 0: raise BlockingIOError()
+        return n
+    def sendall(self, data):
+        at = 0
+        until = time.monotonic() + self.timeout
+        while at < len(data):
+            try: at += self.send(data[at:])
+            except BlockingIOError:
+                if time.monotonic() >= until: raise TimeoutError("TCP send timeout")
+                time.sleep(0.001)
+    def __enter__(self): return self
+    def __exit__(self, exc_type, unused_value, unused_traceback):
+        try:
+            if exc_type is None:
+                if not self.bridge.bridge_close_write(): raise RuntimeError("TCP close failed")
+                self.wait(lambda: self.bridge.bridge_closed())
+        finally:
+            self.bridge.bridge_destroy()
+
+
 def run():
     with tempfile.TemporaryDirectory(prefix="nihos-ssh-test-") as tmp:
         tmp = Path(tmp)
@@ -60,6 +109,22 @@ def run():
         p.probe_release.argtypes = []
         p.probe_channel_action.argtypes = [c.c_uint8, c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_channel_action.restype = c.c_size_t
         p.probe_channel_receive.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_channel_receive.restype = c.c_ssize_t
+        bridge = None
+        if os.environ.get("NIHOS_SSH_SLIRP") == "1":
+            prefix = Path(os.environ["SLIRP_PREFIX"])
+            ext = "dylib" if sys.platform == "darwin" else "so"
+            tcp_lib = tmp / ("libtcp_probe." + ext)
+            bridge_lib = tmp / ("libbridge." + ext)
+            subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(tcp_lib), "src/net/tcp_host_probe.zig"], cwd=ROOT, check=True)
+            subprocess.run([os.environ.get("CC", "cc"), "-shared", "-Wall", "-Wextra", "-Werror", "-Wno-deprecated-declarations", "-I" + str(prefix / "include"), "tools/tcp_slirp_bridge.c", str(prefix / "lib" / ("libslirp." + ext)), str(tcp_lib), "-Wl,-rpath," + str(prefix / "lib"), "-Wl,-rpath," + str(tmp), "-o", str(bridge_lib)], cwd=ROOT, check=True)
+            bridge = c.CDLL(str(bridge_lib))
+            bridge.bridge_open.argtypes = [c.c_uint16]; bridge.bridge_open.restype = c.c_bool
+            bridge.bridge_poll.restype = c.c_bool
+            bridge.bridge_ready.restype = c.c_bool
+            bridge.bridge_read.argtypes = [c.c_void_p, c.c_size_t]; bridge.bridge_read.restype = c.c_ssize_t
+            bridge.bridge_write.argtypes = [c.c_void_p, c.c_size_t]; bridge.bridge_write.restype = c.c_ssize_t
+            bridge.bridge_close_write.restype = c.c_bool
+            bridge.bridge_closed.restype = c.c_bool
         key = tmp / "host"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
@@ -78,13 +143,16 @@ def run():
             deadline = time.monotonic() + 5
             while True:
                 try:
-                    sock = socket.create_connection(("127.0.0.1", port), timeout=1); break
+                    sock = socket.create_connection(("127.0.0.1", port), timeout=1)
+                    if bridge:
+                        sock.close(); sock = BridgeSocket(bridge, port)
+                    break
                 except OSError:
                     if time.monotonic() >= deadline or server.poll() is not None:
                         log.flush(); raise RuntimeError((tmp / "sshd.log").read_text())
                     time.sleep(0.05)
             with sock:
-                sock.settimeout(5)
+                sock.settimeout(20 if bridge else 5)
                 client_banner = b"SSH-2.0-nihos_1.0"
                 sock.sendall(client_banner + b"\r\n")
                 banner = b""
@@ -105,18 +173,19 @@ def run():
                 @callback
                 def socket_write(src, length):
                     try:
-                        return sock.send(c.string_at(src, min(length, 3)))
+                        return sock.send(c.string_at(src, min(length, 512 if bridge else 3)))
                     except BlockingIOError:
                         return -1
                     except OSError:
                         return -2
                 p.probe_socket(socket_read, socket_write)
                 def poll_until(predicate):
-                    deadline = time.monotonic() + 5
+                    deadline = time.monotonic() + (20 if bridge else 5)
                     while not predicate():
                         assert p.probe_poll(), "socket pump failed"
                         if time.monotonic() > deadline: raise TimeoutError("socket pump timeout")
-                        select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
                 def send(payload):
                     assert p.probe_pack(buffer(payload), len(payload), buffer(os.urandom(32)))
                     poll_until(lambda: p.probe_pending() == 0)
@@ -212,7 +281,7 @@ def run():
                         break
                 else:
                     raise RuntimeError("channel close not received")
-                print("OpenSSH KEX, host pin, public-key authentication and interactive PTY: OK")
+            print("OpenSSH KEX, host pin, public-key authentication and interactive PTY: OK" + (" (nihos TCP via libslirp, TCP FIN confirmed)" if bridge else ""))
         finally:
             server.terminate()
             try: server.wait(timeout=3)
