@@ -5,6 +5,10 @@ const Fake = struct {
     sent: usize = 0,
     response: [128]u8 = @splat(0),
     used: usize = 0,
+    version: [3]u32 = .{ 1, 4, 1 },
+    ids: [16]u32 = @splat(0),
+    id_count: usize = 0,
+    bt_requests: u8 = 0,
     pub fn send(self: *@This(), frame: []const u8) !usize {
         self.sent += 1;
         if (frame[0] == 5) return frame.len;
@@ -15,13 +19,20 @@ const Fake = struct {
             if (f.number == 2) id = @intCast(f.value);
             if (f.number == 3) uid = @intCast(f.value);
         }
+        if (self.id_count >= self.ids.len) return error.Capacity;
+        self.ids[self.id_count] = id;
+        self.id_count += 1;
         var buf: [64]u8 = undefined;
         var body_buf: [16]u8 = undefined;
         var body: wire.Writer = .{ .out = &body_buf };
         if (id == 350) {
+            try body.uint(2, self.version[0]);
+            try body.uint(3, self.version[1]);
+            try body.uint(4, self.version[2]);
+        } else if (id == 387) {
+            self.bt_requests += 1;
             try body.uint(2, 1);
-            try body.uint(3, 4);
-            try body.uint(4, 1);
+            try body.uint(3, if (self.bt_requests == 1) 1 else 3);
         }
         const payload = try wire.request(&buf, id + 256, uid, body.slice());
         buf[13] = 2;
@@ -124,6 +135,45 @@ test "2.13 activation is opt-in and version mismatch cannot send Begin" {
     while (s.state != .complete) : (now += 1) try s.step(&f, now);
     try std.testing.expectEqual(@as(usize, 4), f.sent);
 }
+test "3.0.10 OTA requires opt-in and negotiated streaming RPC v2" {
+    var b: [384]u8 = @splat(0);
+    @memcpy(b[0..40], &candidate());
+    for (0..3) |scenario| {
+        var s = try start(&b);
+        var f: Fake = .{};
+        s.client.phase = .done;
+        s.client.peer_chip = 13;
+        s.client.version_known = true;
+        s.client.version = .{ 3, 0, 10 };
+        s.client.peer_rpc_version = 2;
+        s.client.peer_mode = 1;
+        s.client.peer_sdio_buffer_blocks = .{ 7, 7 };
+        s.allow_310 = scenario != 0;
+        if (scenario == 1) s.client.peer_rpc_version = null;
+        if (scenario < 2) {
+            try std.testing.expectError(error.UnsupportedPeer, s.step(&f, 1));
+            try std.testing.expectEqual(@as(usize, 0), f.sent);
+        } else {
+            try s.step(&f, 1);
+            try std.testing.expectEqual(@import("hosted_ota.zig").Activation.explicit_rpc, s.transfer.?.client.activation);
+            var now: u64 = 2;
+            while (s.state != .complete) : (now += 1) try s.step(&f, now);
+            try std.testing.expectEqual(@as(usize, 4), f.sent);
+        }
+    }
+}
+test "3.0.10 handshake reaches explicit OTA activation in order" {
+    var bytes: [384]u8 = @splat(0);
+    @memcpy(bytes[0..40], &candidate());
+    var s = try start(&bytes);
+    s.allow_310 = true;
+    var f: Fake = .{ .version = .{ 3, 0, 10 } };
+    f.used = (try wire.frame(&f.response, 5, 0, @embedFile("fixtures/hosted-3.0.10-init.bin"))).len;
+    var now: u64 = 1;
+    while (s.state != .complete and now < 60) : (now += 1) try s.step(&f, now);
+    try std.testing.expectEqual(session.State.complete, s.state);
+    try std.testing.expectEqualSlices(u32, &.{ 350, 387, 387, 272, 273, 274, 266 }, f.ids[0..f.id_count]);
+}
 test "required origin version rejects both downgrade and upgrade mismatches before Begin" {
     var bytes: [384]u8 = @splat(0);
     @memcpy(bytes[0..40], &candidate());
@@ -150,6 +200,8 @@ test "required origin is reset on reinitialization" {
     std.crypto.hash.sha2.Sha256.hash(&bytes, &digest_bytes, .{});
     var s = try start(&bytes);
     s.required_peer = .{ 2, 13, 1 };
+    s.allow_310 = true;
     try s.initInPlace(&bytes, digest_bytes, 0, 100);
     try std.testing.expect(s.required_peer == null);
+    try std.testing.expect(!s.allow_310);
 }

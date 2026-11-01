@@ -5,6 +5,11 @@ repo=$(CDPATH='' cd -- "$here/../.." && pwd)
 hosted=${1:?pass clean ESP-Hosted 3.0.10 checkout path}
 expected=4e029441bc0322b368c19767d91d84c6de197ba1
 [ "$(git -C "$hosted" rev-parse HEAD)" = "$expected" ] || { echo 'wrong upstream revision' >&2; exit 1; }
+git -C "$hosted" diff --quiet HEAD -- common/eh_tlv/include/eh_tlv.h \
+    common/eh_tlv/include/eh_tlv_v2.h common/eh_tlv/include/eh_tlv_defs.h \
+    common/eh_tlv/include/eh_tlv_tags.h common/eh_common/include/eh_common_sdio_cfg.h || {
+    echo 'upstream TLV headers have local changes' >&2; exit 1;
+}
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/hosted3-init.XXXXXXXX")
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 ${CC:-cc} -std=c11 -Wall -Wextra -Werror \
