@@ -2,8 +2,36 @@
 const std = @import("std");
 const handshake = @import("ssh_handshake.zig");
 const transport = @import("ssh_transport.zig");
+const socket_pump = @import("ssh_socket_pump.zig");
 const session = @import("ssh_session.zig");
 var wire: transport.Transport = .{};
+var pump = socket_pump.Pump{ .wire = &wire, .epoch = 1 };
+const ReadFn = *const fn ([*]u8, usize) callconv(.c) isize;
+const WriteFn = *const fn ([*]const u8, usize) callconv(.c) isize;
+var read_fn: ?ReadFn = null;
+var write_fn: ?WriteFn = null;
+fn socketRead(_: ?*anyopaque, dst: []u8) socket_pump.SocketError!socket_pump.Result {
+    const n = (read_fn orelse return error.SocketFailed)(dst.ptr, dst.len);
+    return if (n > 0) .{ .progress = @intCast(n) } else if (n == -1) .would_block else if (n == 0) .eof else error.SocketFailed;
+}
+fn socketWrite(_: ?*anyopaque, src: []const u8) socket_pump.SocketError!socket_pump.Result {
+    const n = (write_fn orelse return error.SocketFailed)(src.ptr, src.len);
+    return if (n > 0) .{ .progress = @intCast(n) } else if (n == -1) .would_block else if (n == 0) .eof else error.SocketFailed;
+}
+export fn probe_socket(read: ReadFn, write: WriteFn) void {
+    read_fn = read;
+    write_fn = write;
+}
+export fn probe_poll() bool {
+    pump.poll(.{ .context = null, .read = socketRead, .write = socketWrite }, 1) catch return false;
+    return true;
+}
+export fn probe_pending() usize {
+    return wire.pending().len;
+}
+export fn probe_pause(paused: bool) void {
+    pump.receive_paused = paused;
+}
 var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
 
@@ -42,22 +70,9 @@ export fn probe_activate(input: [*]const u8, len: usize) bool {
     wire.enableEncryption(&keys) catch return false;
     return true;
 }
-export fn probe_pack(payload: [*]const u8, len: usize, random: *const [32]u8, out: [*]u8, cap: usize) usize {
-    wire.prepare(payload[0..len], random) catch return 0;
-    const bytes = wire.pending();
-    if (bytes.len > cap) {
-        wire.abort();
-        return 0;
-    }
-    @memcpy(out[0..bytes.len], bytes);
-    return bytes.len;
-}
-export fn probe_sent(count: usize) bool {
-    wire.consume(count) catch return false;
+export fn probe_pack(payload: [*]const u8, len: usize, random: *const [32]u8) bool {
+    wire.prepare(payload[0..len], random) catch return false;
     return true;
-}
-export fn probe_feed(input: [*]const u8, len: usize) isize {
-    return @intCast(wire.feed(input[0..len]) catch return -1);
 }
 export fn probe_payload(out: [*]u8, cap: usize) usize {
     const payload = wire.rx.payload() orelse return 0;

@@ -5,6 +5,7 @@ import ctypes as c
 import hashlib
 import getpass
 import os
+import select
 from pathlib import Path
 import socket
 import struct
@@ -46,9 +47,12 @@ def run():
         p.probe_reply.argtypes = [c.c_void_p, c.c_size_t]; p.probe_reply.restype = c.c_bool
         p.probe_newkeys.argtypes = [c.c_void_p, c.c_size_t]; p.probe_newkeys.restype = c.c_size_t
         p.probe_activate.argtypes = [c.c_void_p, c.c_size_t]; p.probe_activate.restype = c.c_bool
-        p.probe_pack.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_pack.restype = c.c_size_t
-        p.probe_sent.argtypes = [c.c_size_t]; p.probe_sent.restype = c.c_bool
-        p.probe_feed.argtypes = [c.c_void_p, c.c_size_t]; p.probe_feed.restype = c.c_ssize_t
+        callback = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_size_t)
+        p.probe_socket.argtypes = [callback, callback]
+        p.probe_poll.restype = c.c_bool
+        p.probe_pending.restype = c.c_size_t
+        p.probe_pause.argtypes = [c.c_bool]
+        p.probe_pack.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p]; p.probe_pack.restype = c.c_bool
         p.probe_payload.argtypes = [c.c_void_p, c.c_size_t]; p.probe_payload.restype = c.c_size_t
         p.probe_auth_public.argtypes = [c.c_void_p, c.c_void_p]; p.probe_auth_public.restype = c.c_bool
         p.probe_auth.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_auth.restype = c.c_size_t
@@ -87,23 +91,41 @@ def run():
                 while not banner.endswith(b"\n"):
                     banner += exact(sock, 1)
                 server_banner = banner.rstrip(b"\r\n")
+                sock.setblocking(False)
+                @callback
+                def socket_read(dst, cap):
+                    try:
+                        data = sock.recv(min(cap, 31))
+                        c.memmove(dst, data, len(data))
+                        return len(data)
+                    except BlockingIOError:
+                        return -1
+                    except OSError:
+                        return -2
+                @callback
+                def socket_write(src, length):
+                    try:
+                        return sock.send(c.string_at(src, min(length, 3)))
+                    except BlockingIOError:
+                        return -1
+                    except OSError:
+                        return -2
+                p.probe_socket(socket_read, socket_write)
+                def poll_until(predicate):
+                    deadline = time.monotonic() + 5
+                    while not predicate():
+                        assert p.probe_poll(), "socket pump failed"
+                        if time.monotonic() > deadline: raise TimeoutError("socket pump timeout")
+                        select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
                 def send(payload):
-                    data = c.create_string_buffer(len(payload) + 128)
-                    n = p.probe_pack(buffer(payload), len(payload), buffer(os.urandom(32)), data, len(data))
-                    assert n
-                    first = min(3, n)
-                    sock.sendall(data.raw[:first])
-                    assert p.probe_sent(first)
-                    sock.sendall(data.raw[first:n])
-                    assert p.probe_sent(n - first)
-                def raw_receive():
+                    assert p.probe_pack(buffer(payload), len(payload), buffer(os.urandom(32)))
+                    poll_until(lambda: p.probe_pending() == 0)
+                def raw_receive(pause=False):
                     data = c.create_string_buffer(35000)
-                    while not p.probe_payload(data, len(data)):
-                        b = exact(sock, 1)
-                        if p.probe_feed(buffer(b), 1) != 1:
-                            raise RuntimeError("server packet rejected")
+                    poll_until(lambda: p.probe_payload(data, len(data)) != 0)
                     size = p.probe_payload(data, len(data))
                     result = data.raw[:size]
+                    if pause: p.probe_pause(True)
                     p.probe_release()
                     return result
                 out = c.create_string_buffer(512)
@@ -120,12 +142,13 @@ def run():
                 send(ecdh.raw[:size])
                 reply = raw_receive()
                 assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
-                newkeys = raw_receive()
+                newkeys = raw_receive(pause=True)
                 key_message = c.create_string_buffer(8)
                 size = p.probe_newkeys(key_message, len(key_message))
                 assert size
                 send(key_message.raw[:size])
                 assert p.probe_activate(buffer(newkeys), len(newkeys))
+                p.probe_pause(False)
                 request_buffer = c.create_string_buffer(64)
                 request_len = p.probe_service(request_buffer, len(request_buffer))
                 assert request_len
