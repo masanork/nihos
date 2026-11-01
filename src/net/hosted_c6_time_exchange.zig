@@ -1,6 +1,11 @@
 //! Experimental one-shot Hosted 2.13.1 station -> C6-owned DHCP -> SNTP query.
 //! Exclusive owner of station/stream until completion; no factory-path changes.
 const std = @import("std");
+fn timeSection() []const u8 {
+    const root = @import("root");
+    if (@hasDecl(root, "C6TimeFlash") and root.C6TimeFlash) return ".flash.text.time";
+    return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+}
 const station = @import("hosted_station.zig");
 const wire = @import("hosted.zig");
 const split = @import("hosted_network_split.zig");
@@ -34,24 +39,24 @@ pub const Exchange = struct {
 
     /// generation_base must exceed every generation previously used on this
     /// stream, including generations invalidated on reset or reconnect.
-    pub fn begin(self: *Exchange, join: station.Join, generation_base: u64, now: u64, deadline: u64) Error!void {
+    pub noinline fn begin(self: *Exchange, join: station.Join, generation_base: u64, now: u64, deadline: u64) linksection(timeSection()) Error!void {
         if (join == .disabled or generation_base == 0 or generation_base == std.math.maxInt(u64) or deadline <= now)
             return error.InvalidArgument;
         self.* = .{ .deadline = deadline, .last_now = now };
         self.addresses.generation = generation_base;
         self.station.begin(join, now);
     }
-    fn tick(self: *Exchange, now: u64) Error!void {
+    noinline fn tick(self: *Exchange, now: u64) linksection(timeSection()) Error!void {
         if (self.phase == .done or self.phase == .failed) return error.WrongState;
         if (now < self.last_now or now >= self.deadline) return error.Deadline;
         self.last_now = now;
     }
-    fn checkPeer(self: *const Exchange) Error!void {
+    noinline fn checkPeer(self: *const Exchange) linksection(timeSection()) Error!void {
         if (self.station.phase != .handshake and self.station.phase != .version and
             (self.station.peer_chip != 13 or !self.station.version_known or
                 !std.mem.eql(u32, &self.station.version, &.{ 2, 13, 1 }))) return error.UnsupportedPeer;
     }
-    fn adopt(self: *Exchange) void {
+    noinline fn adopt(self: *Exchange) linksection(timeSection()) void {
         if (self.phase != .station and self.phase != .address) return;
         if (self.station.phase != .link or !self.station.connected) return;
         if (self.address_pending or self.owner == .address) return;
@@ -64,7 +69,7 @@ pub const Exchange = struct {
         self.clock.reset(self.addresses.generation);
         self.phase = .ready;
     }
-    pub fn receive(self: *Exchange, frame: wire.Frame, now: u64) Error!void {
+    pub noinline fn receive(self: *Exchange, frame: wire.Frame, now: u64) linksection(timeSection()) Error!void {
         errdefer self.invalidate();
         try self.tick(now);
         if (frame.interface >> 4 == 0 and frame.interface & 15 == 3) {
@@ -111,7 +116,7 @@ pub const Exchange = struct {
     }
     /// Begin another one-shot query on the same live address after both the
     /// acknowledgement and prior result completed. Never reuse request IDs.
-    pub fn nextSnapshot(self: *Exchange, now: u64) Error!void {
+    pub noinline fn nextSnapshot(self: *Exchange, now: u64) linksection(timeSection()) Error!void {
         if (self.phase != .done) return error.WrongState;
         if (now < self.last_now or now >= self.deadline) {
             self.invalidate();
@@ -128,7 +133,7 @@ pub const Exchange = struct {
         self.phase = .ready;
     }
     /// Returned frame is owned by this object until sent() or invalidation.
-    pub fn tx(self: *Exchange, now: u64) Error![]const u8 {
+    pub noinline fn tx(self: *Exchange, now: u64) linksection(timeSection()) Error![]const u8 {
         errdefer self.invalidate();
         try self.tick(now);
         try self.checkPeer();
@@ -171,7 +176,7 @@ pub const Exchange = struct {
         return &.{};
     }
     /// Zero means no credit/no write. A partial frame is uncertain: fail closed.
-    pub fn sent(self: *Exchange, count: usize, now: u64) Error!void {
+    pub noinline fn sent(self: *Exchange, count: usize, now: u64) linksection(timeSection()) Error!void {
         errdefer self.invalidate();
         try self.tick(now);
         if (self.owner == .none or self.pending_len == 0) return error.WrongState;
@@ -189,7 +194,7 @@ pub const Exchange = struct {
         self.owner = .none;
         self.pending_len = 0;
     }
-    pub fn invalidate(self: *Exchange) void {
+    pub noinline fn invalidate(self: *Exchange) linksection(timeSection()) void {
         _ = self.addresses.invalidate();
         self.clock.reset(self.addresses.generation);
         self.sample = null;
@@ -197,7 +202,7 @@ pub const Exchange = struct {
         self.pending_len = 0;
         self.owner = .none;
     }
-    fn finish(self: *Exchange) void {
+    noinline fn finish(self: *Exchange) linksection(timeSection()) void {
         if (self.acknowledged and self.got_result) self.phase = .done;
     }
 };

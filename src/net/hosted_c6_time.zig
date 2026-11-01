@@ -1,5 +1,10 @@
 //! Experimental Hosted 2.13 C6 SNTP snapshot contract. Not authenticated time.
 const std = @import("std");
+fn timeSection() []const u8 {
+    const root = @import("root");
+    if (@hasDecl(root, "C6TimeFlash") and root.C6TimeFlash) return ".flash.text.time";
+    return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+}
 const hosted = @import("hosted.zig");
 const request_message_id: u32 = 0x4e54_5151;
 const result_message_id: u32 = 0x4e54_5152;
@@ -10,11 +15,11 @@ pub const Session = struct {
     next_id: u32 = 1,
     outstanding: ?u32 = null,
     deadline: u64 = 0,
-    pub fn reset(self: *Session, generation: u64) void {
+    pub noinline fn reset(self: *Session, generation: u64) linksection(timeSection()) void {
         self.generation = generation;
         self.outstanding = null;
     }
-    pub fn start(self: *Session, out: []u8, uid: u32, now: u64, deadline: u64) Error![]const u8 {
+    pub noinline fn start(self: *Session, out: []u8, uid: u32, now: u64, deadline: u64) linksection(timeSection()) Error![]const u8 {
         if (self.generation == 0 or self.next_id == 0) return error.Stale;
         if (self.outstanding != null) return error.Busy;
         if (uid == 0 or deadline <= now) return error.InvalidArgument;
@@ -33,17 +38,17 @@ pub const Session = struct {
         return packet;
     }
     /// Retire a request after a rejected acknowledgement or local cancellation.
-    pub fn cancel(self: *Session) void {
+    pub noinline fn cancel(self: *Session) linksection(timeSection()) void {
         self.outstanding = null;
     }
-    pub fn expire(self: *Session, now: u64) bool {
+    pub noinline fn expire(self: *Session, now: u64) linksection(timeSection()) bool {
         if (self.outstanding != null and now >= self.deadline) {
             self.outstanding = null;
             return true;
         }
         return false;
     }
-    pub fn receive(self: *Session, rpc: hosted.Rpc, now: u64) Error!?Sample {
+    pub noinline fn receive(self: *Session, rpc: hosted.Rpc, now: u64) linksection(timeSection()) Error!?Sample {
         if (self.expire(now)) return error.Deadline;
         const id = self.outstanding orelse return error.Stale;
         if (rpc.kind != 3 or rpc.id != 788) return error.Malformed;
@@ -78,7 +83,7 @@ pub const Session = struct {
     }
 };
 /// The CustomRpc transport acknowledgement says nothing about synchronization.
-pub fn acceptAck(rpc: hosted.Rpc, expected_uid: u32) Error!void {
+pub noinline fn acceptAck(rpc: hosted.Rpc, expected_uid: u32) linksection(timeSection()) Error!void {
     if (expected_uid == 0 or rpc.kind != 2 or rpc.id != 644 or rpc.uid != expected_uid) return error.Stale;
     if (try hosted.integer(rpc.body, 1) != 0) return error.Rejected;
 }

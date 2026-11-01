@@ -590,7 +590,14 @@ if [ "$sqld" = true ]; then native_boot_dir="$native_boot_dir-sqld"; fi
 if [ "$camera_jpeg" = true ] && { [ "$camera_id" != true ] || [ "$camera_diagnostics" = true ]; }; then echo "CAMERA_JPEG requires normal CAMERA_ID" >&2; exit 1; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
-NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
+if [ "${NIHOS_C6_TIME_OFFLOAD:-0}" = 1 ]; then
+    if [ "$network" != true ]; then echo "C6_TIME_OFFLOAD requires NETWORK=1" >&2; exit 1; fi
+    NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-0}
+else
+    NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1}
+fi
+export NIHOS_C6_IPV6
+python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
 xy_cpp=0
 if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then xy_cpp=1; fi
 if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$keypad_cpp" != 0 ]; }; then

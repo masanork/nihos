@@ -181,6 +181,18 @@ class NativeInstructionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 MODULE.audit_flash_section('.flash.time', kind, flags, start, 64, allow_time=allowed)
 
+    def test_c6_time_flash_requires_complete_station_and_c6_allowlists(self):
+        start = 0x40004000
+        names = sorted(MODULE.TIME_FUNCTIONS | MODULE.TIME_STATION | MODULE.TIME_C6)
+        names += [prefix + '__func_7' for prefix in sorted(MODULE.TIME_GENERIC)]
+        functions = [(name, start + i*16, start + (i+1)*16) for i, name in enumerate(names)]
+        span = (start, start + len(names)*16)
+        MODULE.audit_time_functions(functions, span)
+        missing = next(i for i, item in enumerate(functions) if item[0] in MODULE.TIME_C6)
+        functions[missing] = ('unapproved.function', *functions[missing][1:])
+        with self.assertRaises(ValueError):
+            MODULE.audit_time_functions(functions, span)
+
     def test_device_code_requires_exact_allowlist_rx_extent_and_explicit_profile(self):
         first = 0x40002000
         names = sorted(MODULE.DEVICE_FUNCTIONS) + ['audio_probe.poll__func_1', 'microphone_probe.poll__func_2', 'rs485_probe.poll__func_3']

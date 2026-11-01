@@ -1,4 +1,5 @@
 //! Independent native boot experiment: no IDF application or FreeRTOS link.
+pub const C6TimeFlash = true;
 const std = @import("std");
 const options = @import("native_options");
 const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
