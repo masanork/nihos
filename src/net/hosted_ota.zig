@@ -21,7 +21,7 @@ pub const Client = struct {
     sequence: u16,
     pending_id: ?u32 = null,
     pending_len: usize = 0,
-    output: [512]u8 = undefined,
+    output: [512]u8 = @splat(0),
     status: u32 = 0,
 
     /// expected_digest must come from the independently reviewed candidate.

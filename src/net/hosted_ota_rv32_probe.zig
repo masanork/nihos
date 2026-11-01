@@ -39,6 +39,7 @@ export fn nih_ota_session_probe_step(now: u64) bool {
     return false;
 }
 
+// SAFETY: the probe caller must initialize the guard before step or feed.
 var guarded_driver: guard.Guard = undefined;
 export fn nih_ota_guard_probe_init(bytes: [*]const u8, length: usize, hash: *const [32]u8) bool {
     guarded_driver.initInPlace(bytes[0..length], hash.*, 0, 100) catch return false;

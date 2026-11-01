@@ -8,7 +8,7 @@ pub const Arm = struct {
     deadline: u64,
     last_now: u64,
     length: usize = 0,
-    bytes: [70]u8 = undefined,
+    bytes: [70]u8 = @splat(0),
     state: enum { waiting, armed, failed } = .waiting,
 
     pub fn init(digest: [32]u8, now: u64, deadline: u64) Error!Arm {

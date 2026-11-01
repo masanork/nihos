@@ -272,11 +272,11 @@ noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.dev
         network_ready = false;
         print("Wi-Fi disconnected; addresses retired, retry scheduled\n");
     }
-    if (!network_ready and state.ip != 0 and state.linklocal != 0) {
+    if (!network_ready and state.ip != 0 and (!network_config.ipv6 or state.linklocal != 0)) {
         network_ready = true;
         var line: [96]u8 = undefined;
-        const message = std.fmt.bufPrint(&line, "Wi-Fi IPv4: {d}.{d}.{d}.{d}; IPv6 link-local ready\n", .{
-            state.ip >> 24, (state.ip >> 16) & 255, (state.ip >> 8) & 255, state.ip & 255,
+        const message = std.fmt.bufPrint(&line, "Wi-Fi IPv4: {d}.{d}.{d}.{d}{s}\n", .{
+            state.ip >> 24, (state.ip >> 16) & 255, (state.ip >> 8) & 255, state.ip & 255, if (network_config.ipv6) "; IPv6 link-local ready" else "",
         }) catch fail("network message");
         print(message);
         print("NIHOS_NATIVE_NETWORK_READY\n");

@@ -77,3 +77,13 @@ local IP addresses and DNS server addresses; handle its serial logs as private.
 
 A pinned source overlay, exact sdkconfig and reconstruction notes are in
 `ports/esp-hosted-c6-time/reproduction/`.
+
+The native P4/RTC integration is opt-in using `NIHOS_C6_TIME_OFFLOAD=1` with
+`NIHOS_NATIVE_NETWORK=1`, devices enabled, and IPv6 disabled. The default
+factory-firmware P4 SNTP path remains unchanged. Select a private saved or
+explicit Wi-Fi configuration as with the existing native network service. The
+C6 owns DHCP/DNS for this profile; generic P4 IP, IPv6 and QUIC remain separate
+and are not demonstrated by clock synchronization. A C6 sample is accepted
+only with a current address generation, a bounded delivery window, a valid
+calendar range, and no more than six hours since C6's last SNTP sync. This
+policy does not authenticate the remote clock.

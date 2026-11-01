@@ -18,10 +18,11 @@ pub const Session = struct {
     last_now: u64,
     allow_213: bool = false,
     required_peer: ?[3]u32 = null,
-    rx: [512]u8 = undefined,
+    rx: [512]u8 = @splat(0),
 
     /// Hash and header are checked before any interaction with the device.
     pub fn init(image: []const u8, digest: [32]u8, now: u64, deadline: u64) !Session {
+        // SAFETY: initInPlace initializes result before it can be returned.
         var result: Session = undefined;
         try result.initInPlace(image, digest, now, deadline);
         return result;

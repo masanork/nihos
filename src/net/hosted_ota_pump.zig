@@ -12,7 +12,7 @@ pub const Pump = struct {
     queued_len: usize = 0,
     deadline: u64,
     last_now: u64,
-    rx: [512]u8 = undefined,
+    rx: [512]u8 = @splat(0),
 
     pub fn init(client: ota.Client, now: u64, deadline: u64) error{InvalidDeadline}!Pump {
         if (deadline <= now) return error.InvalidDeadline;
