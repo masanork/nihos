@@ -28,6 +28,11 @@ TCP instead of using a fixed destination MAC. The host fixture still provides
 the test lease and responds to ARP requests from libslirp; this is not native
 lease ownership, reconnect handling, or physical Ethernet/SDIO qualification.
 
+The current SSH probe uses `tcp_link.zig` to own the outgoing Ethernet frame,
+resolve ARP and progress the TCP connection. The fixture continues to provide
+frame I/O, DHCP-like lease values and serialization; no normal device service
+has adopted this owner.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 

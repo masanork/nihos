@@ -193,6 +193,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tcp_time_wait_module })).step);
     const arp_resolver_module = b.createModule(.{ .root_source_file = b.path("src/net/arp_resolver.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = arp_resolver_module })).step);
+    const tcp_link_module = b.createModule(.{ .root_source_file = b.path("src/net/tcp_link.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tcp_link_module })).step);
     const tailscale_module = b.createModule(.{ .root_source_file = b.path("src/net/tailscale.zig"), .target = target, .optimize = optimize });
     tailscale_module.addImport("terminal_adapter", terminal_adapter_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tailscale_module })).step);

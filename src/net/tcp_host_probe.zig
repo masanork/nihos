@@ -2,13 +2,12 @@
 const connect = @import("tcp_connect.zig");
 const tcp = @import("tcp_stream.zig");
 const wait = @import("tcp_time_wait.zig");
-const arp = @import("arp_resolver.zig");
+const link_core = @import("tcp_link.zig");
 var opening: connect.Connect = .{};
 var stream: ?tcp.Stream = null;
 var time_wait: ?wait.TimeWait = null;
-var resolver: arp.Resolver = .{};
-var link_started = false;
-var link_port: u16 = 0;
+var link: link_core.Link = .{};
+var link_time_wait: ?wait.TimeWait = null;
 const guest_mac = [6]u8{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
 
 export fn tcp_probe_begin(port: u16) bool {
@@ -76,46 +75,41 @@ export fn tcp_probe_closed(now: u64) bool {
 /// Test-only Ethernet adapter. Production must obtain the lease and epoch from
 /// the network owner and route ARP requests, TCP frames and link resets there.
 export fn tcp_link_begin(port: u16) bool {
-    link_port = port;
-    resolver.begin(.{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = guest_mac, .epoch = 1 }, .{ 10, 0, 2, 2 }, 0, 15000) catch return false;
+    link.begin(.{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = guest_mac, .epoch = 1 }, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
     return true;
 }
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
-    if (!link_started) {
-        const frame = resolver.poll(1, now) catch return 0;
-        if (frame) |bytes| {
-            if (cap < bytes.len) return 0;
-            @memcpy(out[0..bytes.len], bytes);
-            return bytes.len;
-        }
-        return 0;
-    }
-    if (cap < 14) return 0;
-    const result = (resolver.result(1, now) catch return 0) orelse return 0;
-    const len = tcp_probe_next(now, out + 14, cap - 14);
-    if (len == 0) return 0;
-    out[0..6].* = result.mac;
-    out[6..12].* = guest_mac;
-    out[12] = 0x08;
-    out[13] = 0;
-    return len + 14;
+    const frame = (link.poll(1, now) catch return 0) orelse return 0;
+    if (cap < frame.len) return 0;
+    @memcpy(out[0..frame.len], frame);
+    return frame.len;
 }
 export fn tcp_link_sent(now: u64) bool {
-    if (!link_started) {
-        resolver.sent(1, now) catch return false;
-        return true;
-    }
-    return tcp_probe_sent(now);
+    link.sent(1, now) catch return false;
+    return true;
 }
 export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
-    if (!link_started) {
-        const found = resolver.receive(1, now, frame[0..len]) catch return false;
-        if (found) {
-            if (!beginAt(link_port, now)) return false;
-            link_started = true;
-        }
-        return true;
+    _ = link.receive(1, now, frame[0..len]) catch return false;
+    return true;
+}
+export fn tcp_link_ready() bool {
+    return link.ready();
+}
+export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) usize {
+    return link.write(1, bytes[0..len], now, now +| 12000) catch 0;
+}
+export fn tcp_link_read(out: [*]u8, cap: usize) isize {
+    return @intCast(link.read(1, out[0..cap]) catch return -1);
+}
+export fn tcp_link_close(now: u64) bool {
+    link.closeWrite(1, now, now +| 12000) catch return false;
+    return true;
+}
+export fn tcp_link_closed(now: u64) bool {
+    if (!link.closeHandshakeComplete()) return false;
+    if (link_time_wait == null) {
+        const s = if (link.stream) |*value| value else return false;
+        link_time_wait = wait.TimeWait.begin(s, now, 2000) catch return false;
     }
-    if (len < 14 or frame[12] != 0x08 or frame[13] != 0) return true;
-    return tcp_probe_receive(frame + 14, len - 14, now);
+    return true;
 }

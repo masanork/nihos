@@ -11,6 +11,12 @@ validates replies, retries under a deadline and invalidates on an epoch change.
 It is exercised through libslirp in the host SSH probe but is not yet owned by
 the normal network service or connected to its DHCP lease lifecycle.
 
+`tcp_link.zig` combines this resolver and the experimental TCP client for one
+connection, with one full Ethernet frame owned until its send is confirmed.
+The owner must queue incoming frames during a send, invalidate on an ambiguous
+handoff or epoch change, and retain the tuple during TIME_WAIT. This has only
+host fixture coverage and is not yet integrated with the native network owner.
+
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
 ACK; its result is only the handoff state for a future data-plane TCP client.
