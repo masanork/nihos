@@ -146,9 +146,10 @@ pub noinline fn decode(body: []const u8) linksection(timeSection()) (hosted.Erro
         status.dhcp_up > 1 or status.dns_up > 1 or status.dns_type != 0)
         return error.InvalidStatus;
 
-    if (status.link_up == 0 and status.dhcp_up == 0 and status.dns_up == 0) {
+    if (status.dhcp_up == 0 and status.dns_up == 0) {
         // GetDhcpDnsStatus formats unset addresses as "0.0.0.0". DNS can
-        // retain a prior server even after the interface drops; ignore it.
+        // retain a prior server. Hosted 3 can report link up before DHCP;
+        // treat this as not ready and revoke any previously adopted address.
         if (try optionalAddress(status.ip) != 0 or try optionalAddress(status.mask) != 0 or
             try optionalAddress(status.gateway) != 0) return error.InvalidStatus;
         _ = try optionalAddress(status.dns);

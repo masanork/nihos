@@ -1,0 +1,6 @@
+{
+  "capture_sha256": "97dfd098cd6761663a803407d7ee61a42fbd8b5fa707e42b58bd2f6b0d76a71d",
+  "candidate_sha256": "04bd14faf943453ccf39075bc61456463b3f362643a3a63dab0f82a53f4dc8fe",
+  "acknowledged_bytes": 1397104,
+  "meaning": "P4-reported OTA and version only; C6 flash identity, health and recovery unverified"
+}
