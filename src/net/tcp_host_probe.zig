@@ -82,6 +82,7 @@ export fn tcp_probe_closed(now: u64) bool {
 /// Test-only Ethernet adapter. Production must obtain the lease and epoch from
 /// the network owner and route ARP requests, TCP frames and link resets there.
 export fn tcp_link_begin(port: u16) bool {
+    host_now_ms = 0;
     // Synthetic bound station state; the fixture does not perform DHCP.
     host_station.phase = .done;
     host_station.keep_serving = true;
@@ -127,14 +128,15 @@ export fn tcp_link_ready() bool {
     const handle = owner.handle orelse return false;
     return owner.service.ready(handle) catch false;
 }
-export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) usize {
-    if (!refreshStation(now)) return 0;
-    const adapter = if (socket_adapter) |*value| value else return 0;
-    adapter.advance(now *| 1000) catch return 0;
+export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) isize {
+    if (!refreshStation(now)) return -2;
+    const adapter = if (socket_adapter) |*value| value else return -2;
+    adapter.advance(now *| 1000) catch return -2;
     const io = adapter.io();
-    return switch (io.write(io.context, bytes[0..len]) catch return 0) {
-        .progress => |n| n,
-        .would_block, .eof => 0,
+    return switch (io.write(io.context, bytes[0..len]) catch return -2) {
+        .progress => |n| @intCast(n),
+        .would_block => -1,
+        .eof => 0,
     };
 }
 export fn tcp_link_read(out: [*]u8, cap: usize) isize {

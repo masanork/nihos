@@ -12,7 +12,7 @@ extern size_t tcp_link_next(uint64_t, uint8_t *, size_t);
 extern bool tcp_link_sent(uint64_t);
 extern bool tcp_link_receive(const uint8_t *, size_t, uint64_t);
 extern bool tcp_link_ready(void);
-extern size_t tcp_link_write(const uint8_t *, size_t, uint64_t);
+extern ssize_t tcp_link_write(const uint8_t *, size_t, uint64_t);
 extern ssize_t tcp_link_read(uint8_t *, size_t);
 extern bool tcp_link_close(uint64_t);
 extern bool tcp_link_closed(uint64_t);
@@ -50,7 +50,7 @@ bool bridge_poll(void) {
 bool bridge_ready(void) { return tcp_link_ready(); }
 ssize_t bridge_read(uint8_t *out, size_t cap) { return tcp_link_read(out,cap); }
 ssize_t bridge_write(const uint8_t *data, size_t len) {
-    size_t n=tcp_link_write(data,len,elapsed()); return n ? (ssize_t)n : -1;
+    return tcp_link_write(data,len,elapsed());
 }
 bool bridge_close_write(void) { return tcp_link_close(elapsed()); }
 bool bridge_closed(void) { return tcp_link_closed(elapsed()); }

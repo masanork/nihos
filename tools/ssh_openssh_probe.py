@@ -59,13 +59,15 @@ class BridgeSocket:
             if not self.bridge.bridge_poll(): raise OSError("TCP bridge failed")
             n = self.bridge.bridge_read(result, size)
             if n >= 0: return result.raw[:n]
+            if n != -1: raise OSError("TCP bridge read failed")
             if not self.blocking: raise BlockingIOError()
             if time.monotonic() >= until: raise TimeoutError("TCP receive timeout")
             time.sleep(0.001)
     def send(self, data):
         if not self.bridge.bridge_poll(): raise OSError("TCP bridge failed")
         n = self.bridge.bridge_write(buffer(data), len(data))
-        if n < 0: raise BlockingIOError()
+        if n == -1: raise BlockingIOError()
+        if n < 0: raise OSError("TCP bridge write failed")
         return n
     def sendall(self, data):
         at = 0
@@ -126,6 +128,9 @@ def run():
             bridge.bridge_write.argtypes = [c.c_void_p, c.c_size_t]; bridge.bridge_write.restype = c.c_ssize_t
             bridge.bridge_close_write.restype = c.c_bool
             bridge.bridge_closed.restype = c.c_bool
+            # A missing TCP connection is fatal, not nonblocking backpressure.
+            assert bridge.bridge_read(c.create_string_buffer(1), 1) == -2
+            assert bridge.bridge_write(buffer(b"x"), 1) == -2
         key = tmp / "host"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
