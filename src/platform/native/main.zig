@@ -18,6 +18,9 @@ const ui = display_service.ui;
 const cpu_boot = @import("cpu_boot");
 const network = @import("network_service");
 const network_config = @import("network_config");
+// Foreground Hosted station handling may share the mapped XY code window in
+// the full C6-offload profile; boot and non-XY profiles retain the boot page.
+pub const HostedStationSection = if (options.xy_workspace and network_config.c6_time_offload) ".flash.xytext" else ".flash.text.time";
 const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;

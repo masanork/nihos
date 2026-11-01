@@ -1,6 +1,11 @@
 //! Bounded IPv6 boot probe: one link-local address, one SLAAC /64, one router.
 //! RFC 4861/4862/4443. No sockets, forwarding, DHCPv6, fragmentation or NUD cache.
 const std = @import("std");
+fn foregroundSection() []const u8 {
+    const root = @import("root");
+    if (@hasDecl(root, "HostedStationSection") and std.mem.eql(u8, root.HostedStationSection, ".flash.xytext")) return ".flash.xytext";
+    return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+}
 pub const Address = [16]u8;
 pub const zero: Address = @splat(0);
 pub const all_nodes: Address = .{ 0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
@@ -74,7 +79,7 @@ pub const Client = struct {
     pub fn complete(self: *const Client) bool {
         return self.ll_valid and self.slaac_valid and self.ping_replies != 0 and self.stage == .done;
     }
-    pub fn tick(self: *Client, now: u64) Error!void {
+    pub noinline fn tick(self: *Client, now: u64) linksection(foregroundSection()) Error!void {
         if (now < self.started) return error.Clock;
         if (self.stage == .duplicate) return error.Duplicate;
         // Lifetimes remain active after the bounded boot probe finishes.
@@ -129,7 +134,7 @@ pub const Client = struct {
     }
     /// Retains an entire Ethernet packet until sent(). Zero transport credits
     /// never advance DAD, retry counters or the ping acknowledgement window.
-    pub fn tx(self: *Client, now: u64) Error![]const u8 {
+    pub noinline fn tx(self: *Client, now: u64) linksection(foregroundSection()) Error![]const u8 {
         try self.tick(now);
         if (self.output_len != 0) return self.output[0..self.output_len];
         if (self.response_len != 0) {
@@ -388,7 +393,7 @@ const Options = struct {
         return result;
     }
 };
-pub fn packet(out: []u8, source_mac: [6]u8, destination_mac: [6]u8, source: Address, destination: Address, hop: u8, message: []const u8, hbh: bool) Error![]const u8 {
+pub noinline fn packet(out: []u8, source_mac: [6]u8, destination_mac: [6]u8, source: Address, destination: Address, hop: u8, message: []const u8, hbh: bool) linksection(foregroundSection()) Error![]const u8 {
     const extra: usize = if (hbh) 8 else 0;
     if (message.len < 4 or message.len + extra > 65535 or out.len < 54 + extra + message.len) return error.Capacity;
     const result = out[0 .. 54 + extra + message.len];
