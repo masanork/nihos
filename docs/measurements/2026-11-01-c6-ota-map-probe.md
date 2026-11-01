@@ -134,3 +134,20 @@ resolve; its known-frame sum is therefore not an upper bound. In particular,
 the transfer branch after a valid token has not been exercised on hardware and
 its complete call-chain stack consumption remains unqualified. Private report:
 `/private/tmp/nihos-c6-ota-stack-inventory.json`.
+
+## Physical P4 transfer simulation without C6 OTA writes
+
+A distinct P4 simulation image SHA-256
+`2fdfcadec78a371080c1322fccdbf08401521ece003e6382dd138ad0de8c72e5`
+was verified and booted under the writer lock and exclusive serial lease. It
+hash-checked the mapped C6 candidate, performed a real 1.4.1 Hosted handshake,
+then after a serial start token routed all OTA requests to an in-memory peer.
+That peer checked every chunk against the mapped candidate, and responded with
+matching request/response IDs and UIDs. The physical SDIO transport was wrapped
+in a guard that rejects OTA Begin/Write/End IDs. The run printed the explicit
+simulation marker, acknowledged 1,079,120 bytes, and then re-established a real
+Hosted 1.4.1 handshake with `diag_known=0` on the unchanged C6. This is a P4
+execution of the simulated transfer, not a real C6 flash write or OTA proof.
+The full P4 flash was restored and verified against backup SHA-256
+`0a21266492da4c6f3e643ce481de3b723948a3871d59216b5d3c53c4e3c80ee0`.
+Private evidence: `/private/tmp/nihos-c6-ota-simulation-physical-20261101/`.

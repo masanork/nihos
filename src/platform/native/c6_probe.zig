@@ -568,10 +568,18 @@ pub fn runOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) Ota
 /// normal network boot. The guard will not send Begin before the serial token.
 pub const OtaUpdate = struct { status: u32 = 0, stage: u32 = 0, error_code: u32 = 0, acknowledged_bytes: u32 = 0 };
 var ota_update_guard: hosted.ota_guard.Guard = undefined;
+var ota_fake: hosted.ota_fake.Fake = undefined;
+var ota_safe: hosted.ota_fake.NoOtaStream(@TypeOf(hosted_stream)) = undefined;
 var ota_update_stage: u32 = 0;
 noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]u8) !OtaUpdate {
     const started = clock.counter() orelse return error.Clock;
     try ota_update_guard.initInPlace(image, hash, started, started + 600_000_000);
+    const root = @import("root");
+    const simulation = @hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation;
+    if (simulation) {
+        ota_fake = .{ .image = image };
+        ota_safe = .{ .inner = &hosted_stream };
+    }
     ota_update_stage = 1;
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
@@ -592,11 +600,22 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
     var progress: usize = 0;
     while (true) {
         const now = clock.counter() orelse return error.Clock;
-        try ota_update_guard.step(&hosted_stream, now);
+        if (simulation) {
+            if (ota_update_guard.state == .transfer) {
+                try ota_update_guard.step(&ota_fake, now);
+            } else {
+                try ota_update_guard.step(&ota_safe, now);
+            }
+        } else {
+            try ota_update_guard.step(&hosted_stream, now);
+        }
         if (ota_update_guard.state == .awaiting_start) {
             if (!announced) {
                 // Discard bounded stale input before advertising readiness.
                 for (0..1024) |_| if (nih_c6_serial_read() < 0) break else {};
+                if (simulation) for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| {
+                    _ = nih_rom_putc(byte);
+                };
                 for ("NIHOS_C6_OTA_READY\r\n") |byte| _ = nih_rom_putc(byte);
                 announced = true;
             }
@@ -615,7 +634,8 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
         if (ota_update_guard.state == .complete) {
             ota_update_stage = 8;
             // Hosted 1.4.1 schedules reboot five seconds after accepted End.
-            for (0..70) |_| {
+            if (simulation and (ota_fake.phase != .complete or ota_fake.offset != image.len)) return error.Malformed;
+            for (0..if (simulation) @as(usize, 0) else 70) |_| {
                 host.io.delay(100_000);
                 if (clock_failed) return error.Clock;
             }
