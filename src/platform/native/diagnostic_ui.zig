@@ -63,6 +63,7 @@ const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
 const Session = console.session;
 const xy_workspace = @hasDecl(options, "xy_workspace") and options.xy_workspace;
+const xy_portrait = @hasDecl(options, "xy_portrait") and options.xy_portrait;
 const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
 var last_xy_trace_revision: u32 = 0;
 var storage_provider: ?*const console.scratch.scheme.storage.Provider = null;
@@ -446,14 +447,19 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
             if (!available or model.failure_latched or event.at < input_started) continue;
-            if (xy_workspace and session_active and event.kind == .down) {
-                scratch.touchDown(event.x, event.y);
-                continue;
-            }
-            if (xy_workspace and session_active and event.kind == .up) {
-                scratch.touch(event.x, event.y);
-                scratch.revision +%= 1;
-                continue;
+            if (xy_workspace and session_active) {
+                if (event.kind == .cancel) {
+                    scratch.touchCancel();
+                    continue;
+                }
+                if (event.kind == .down or event.kind == .move or event.kind == .up) {
+                    const point = if (xy_portrait) pointer.portraitFromLandscape(event.x, event.y) orelse continue else pointer.Point{ .x = event.x, .y = event.y };
+                    if (event.kind == .down) scratch.touchDown(point.x, point.y) else if (event.kind == .move) scratch.touchMove(point.x, point.y) else {
+                        scratch.touch(point.x, point.y);
+                        scratch.revision +%= 1;
+                    }
+                    continue;
+                }
             }
             if (view_button.observe(event, pointer.view_button)) {
                 if (xy_workspace and session_active) {
@@ -528,6 +534,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();
+        scratch.portrait_touch = xy_portrait;
         scratch.setPhysicalKeyboard(hardware_ready);
         scratch.nav.home();
         scratch.vm.view.style.body_px = 32;

@@ -247,6 +247,27 @@ pub const Session = struct {
             .escape, .cancel => unreachable,
         }
     }
+    pub fn touchPortrait(self: *Session, nav: *navigation.State, x: u32, y: u32, keyboard_visible: bool) linksection(scheme.code_section) void {
+        if (x >= 720 or y >= 1280) return;
+        if (nav.screen == .examples) {
+            if (y >= 1208) {
+                nav.screen = .reading;
+                return;
+            }
+            if (y < 132) return;
+            const offset = y - 132;
+            const row = offset / 120;
+            if (row < 6 and offset % 120 < 104) {
+                self.selected = self.selected / 6 * 6 + row;
+                self.handle(nav, .enter);
+            }
+            return;
+        }
+        const bottom: u32 = if (keyboard_visible) 960 else 1280;
+        if (y < bottom - 72 or y >= bottom) return;
+        self.message_len = 0;
+        if (x < 144) nav.screen = .reading else if (x < 288) self.run() catch |err| self.notice(err) else if (x < 432) self.resetVm() else if (x < 576) self.restore() catch |err| self.notice(err) else self.editing_notes = !self.editing_notes;
+    }
     pub fn touch(self: *Session, nav: *navigation.State, x: u32, y: u32) linksection(scheme.code_section) void {
         if (x >= 1280 or y >= 720) return;
         if (nav.screen == .examples) {

@@ -192,7 +192,7 @@ XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string'
               'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'softKeyboardVisible', 'touchDown'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -224,12 +224,13 @@ XY_RENDER_FUNCTIONS = {
     'xy.navigation.State.selectChapter', 'xy.navigation.State.handle',
     'xy.navigation.State.activateHome', 'xy.navigation.State.next',
     'xy.navigation.State.back', 'xy.navigation.State.touch',
+    'xy.navigation.State.touchPortrait', 'xy.navigation.State.touchPortraitHome',
 }
 
 
 # Explicit lesson foreground methods; catalogue parsing never enables I/O.
 XY_LEARNING_METHODS = {
-    'initInPlace', 'bind', 'setPage', 'choice', 'count', 'slot', 'doc', 'supported',
+    'initInPlace', 'bind', 'setPage', 'choice', 'count', 'slot', 'doc', 'supported', 'touchPortrait',
     'open', 'replace', 'insert', 'resetVm', 'restore', 'run', 'notice', 'handle', 'touch',
 }
 XY_CATALOG_METHODS = {

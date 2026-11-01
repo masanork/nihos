@@ -269,6 +269,7 @@ pub const State = struct {
                 if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 360) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 640) self.screen = self.return_screen;
             },
             .credits => self.screen = .reading,
+            .card_view => self.screen = self.return_screen,
             .document => self.home(),
             else => {},
         }
