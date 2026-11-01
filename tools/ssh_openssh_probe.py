@@ -21,13 +21,6 @@ def string(value):
     return struct.pack(">I", len(value)) + value
 
 
-def clear_packet(payload):
-    padding = 8 - ((5 + len(payload)) % 8)
-    if padding < 4:
-        padding += 8
-    return struct.pack(">IB", len(payload) + padding + 1, padding) + payload + os.urandom(padding)
-
-
 def exact(sock, size):
     data = b""
     while len(data) < size:
@@ -36,14 +29,6 @@ def exact(sock, size):
             raise RuntimeError("server closed connection")
         data += part
     return data
-
-
-def read_packet(sock):
-    length = struct.unpack(">I", exact(sock, 4))[0]
-    if length < 12 or length > 35000:
-        raise RuntimeError("invalid packet length")
-    data = exact(sock, length)
-    return data[1:len(data) - data[0]]
 
 
 def buffer(data):
@@ -60,8 +45,9 @@ def run():
         p.probe_server_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_server_init.restype = c.c_size_t
         p.probe_reply.argtypes = [c.c_void_p, c.c_size_t]; p.probe_reply.restype = c.c_bool
         p.probe_newkeys.argtypes = [c.c_void_p, c.c_size_t]; p.probe_newkeys.restype = c.c_size_t
-        p.probe_activate.argtypes = [c.c_void_p, c.c_size_t, c.c_uint32]; p.probe_activate.restype = c.c_bool
-        p.probe_pack.argtypes = [c.c_void_p, c.c_size_t, c.c_uint32, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_pack.restype = c.c_size_t
+        p.probe_activate.argtypes = [c.c_void_p, c.c_size_t]; p.probe_activate.restype = c.c_bool
+        p.probe_pack.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_pack.restype = c.c_size_t
+        p.probe_sent.argtypes = [c.c_size_t]; p.probe_sent.restype = c.c_bool
         p.probe_feed.argtypes = [c.c_void_p, c.c_size_t]; p.probe_feed.restype = c.c_ssize_t
         p.probe_payload.argtypes = [c.c_void_p, c.c_size_t]; p.probe_payload.restype = c.c_size_t
         p.probe_auth_public.argtypes = [c.c_void_p, c.c_void_p]; p.probe_auth_public.restype = c.c_bool
@@ -101,59 +87,55 @@ def run():
                 while not banner.endswith(b"\n"):
                     banner += exact(sock, 1)
                 server_banner = banner.rstrip(b"\r\n")
+                def send(payload):
+                    data = c.create_string_buffer(len(payload) + 128)
+                    n = p.probe_pack(buffer(payload), len(payload), buffer(os.urandom(32)), data, len(data))
+                    assert n
+                    first = min(3, n)
+                    sock.sendall(data.raw[:first])
+                    assert p.probe_sent(first)
+                    sock.sendall(data.raw[first:n])
+                    assert p.probe_sent(n - first)
+                def raw_receive():
+                    data = c.create_string_buffer(35000)
+                    while not p.probe_payload(data, len(data)):
+                        b = exact(sock, 1)
+                        if p.probe_feed(buffer(b), 1) != 1:
+                            raise RuntimeError("server packet rejected")
+                    size = p.probe_payload(data, len(data))
+                    result = data.raw[:size]
+                    p.probe_release()
+                    return result
                 out = c.create_string_buffer(512)
                 secret = buffer(os.urandom(32))
                 size = p.probe_init(out, len(out), buffer(os.urandom(16)), secret, buffer(pin), buffer(server_banner), len(server_banner))
                 assert size
                 client_init = out.raw[:size]
-                sock.sendall(clear_packet(client_init))
-                server_init = read_packet(sock)
+                send(client_init)
+                server_init = raw_receive()
                 assert server_init[0] == 20
                 ecdh = c.create_string_buffer(64)
                 size = p.probe_server_init(buffer(server_init), len(server_init), ecdh, len(ecdh))
                 assert size
-                sock.sendall(clear_packet(ecdh.raw[:size]))
-                reply = read_packet(sock)
+                send(ecdh.raw[:size])
+                reply = raw_receive()
                 assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
-                newkeys = read_packet(sock)
+                newkeys = raw_receive()
                 key_message = c.create_string_buffer(8)
                 size = p.probe_newkeys(key_message, len(key_message))
                 assert size
-                sock.sendall(clear_packet(key_message.raw[:size]))
-                assert p.probe_activate(buffer(newkeys), len(newkeys), 3)
+                send(key_message.raw[:size])
+                assert p.probe_activate(buffer(newkeys), len(newkeys))
                 request_buffer = c.create_string_buffer(64)
                 request_len = p.probe_service(request_buffer, len(request_buffer))
                 assert request_len
                 request = request_buffer.raw[:request_len]
-                packed = c.create_string_buffer(256)
-                size = p.probe_pack(buffer(request), len(request), 3, buffer(os.urandom(32)), packed, len(packed))
-                assert size
-                sock.sendall(packed.raw[:size])
-                plaintext = c.create_string_buffer(1024)
-                while not p.probe_payload(plaintext, len(plaintext)):
-                    b = exact(sock, 1)
-                    assert p.probe_feed(buffer(b), 1) == 1, "encrypted server packet rejected"
-                length = p.probe_payload(plaintext, len(plaintext))
-                assert p.probe_channel_receive(plaintext, length, c.create_string_buffer(1), 1) == 7
-                p.probe_release()
-                seq = 4
-                def send(payload):
-                    nonlocal seq
-                    data = c.create_string_buffer(len(payload) + 128)
-                    n = p.probe_pack(buffer(payload), len(payload), seq, buffer(os.urandom(32)), data, len(data))
-                    assert n
-                    seq += 1
-                    sock.sendall(data.raw[:n])
+                send(request)
+                accepted = raw_receive()
+                assert p.probe_channel_receive(buffer(accepted), len(accepted), c.create_string_buffer(1), 1) == 7
                 def receive():
                     while True:
-                        data = c.create_string_buffer(35000)
-                        while not p.probe_payload(data, len(data)):
-                            b = exact(sock, 1)
-                            if p.probe_feed(buffer(b), 1) != 1:
-                                raise RuntimeError("encrypted server packet rejected")
-                        size = p.probe_payload(data, len(data))
-                        result = data.raw[:size]
-                        p.probe_release()
+                        result = raw_receive()
                         if result[0] in (2, 4): continue
                         if result[0] == 80:
                             name_len = struct.unpack(">I", result[1:5])[0]

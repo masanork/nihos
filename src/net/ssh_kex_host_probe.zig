@@ -1,12 +1,9 @@
 //! Host-only C ABI used by the local OpenSSH interoperability probe.
 const std = @import("std");
 const handshake = @import("ssh_handshake.zig");
-const ssh = @import("ssh.zig");
-const stream = @import("ssh_stream.zig");
+const transport = @import("ssh_transport.zig");
 const session = @import("ssh_session.zig");
-var tx: ?ssh.Aes128Ctr = null;
-var tx_mac: [32]u8 = @splat(0);
-var rx: stream.Decoder = .{};
+var wire: transport.Transport = .{};
 var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
 
@@ -36,34 +33,40 @@ export fn probe_newkeys(out: [*]u8, cap: usize) usize {
     const payload = h.newKeys(out[0..cap]) catch return 0;
     return payload.len;
 }
-export fn probe_activate(input: [*]const u8, len: usize, rx_sequence: u32) bool {
+export fn probe_activate(input: [*]const u8, len: usize) bool {
     const h = if (hs) |*v| v else return false;
     h.receiveNewKeys(input[0..len]) catch return false;
     var keys = h.takeKeys() catch return false;
     defer std.crypto.secureZero(u8, std.mem.asBytes(&keys));
     ssh_session = .{ .session_id = keys.exchange_hash };
-    tx = ssh.Aes128Ctr.init(keys.key_client, keys.iv_client);
-    tx_mac = keys.mac_client;
-    rx = .{};
-    rx.sequence = rx_sequence;
-    rx.enableEncryption(ssh.Aes128Ctr.init(keys.key_server, keys.iv_server), keys.mac_server) catch return false;
+    wire.enableEncryption(&keys) catch return false;
     return true;
 }
-export fn probe_pack(payload: [*]const u8, len: usize, seq: u32, random: *const [32]u8, out: [*]u8, cap: usize) usize {
-    const cipher = if (tx) |*v| v else return 0;
-    return ssh.packPacket(payload[0..len], seq, true, cipher, &tx_mac, random, out[0..cap]) catch 0;
+export fn probe_pack(payload: [*]const u8, len: usize, random: *const [32]u8, out: [*]u8, cap: usize) usize {
+    wire.prepare(payload[0..len], random) catch return 0;
+    const bytes = wire.pending();
+    if (bytes.len > cap) {
+        wire.abort();
+        return 0;
+    }
+    @memcpy(out[0..bytes.len], bytes);
+    return bytes.len;
+}
+export fn probe_sent(count: usize) bool {
+    wire.consume(count) catch return false;
+    return true;
 }
 export fn probe_feed(input: [*]const u8, len: usize) isize {
-    return @intCast(rx.feed(input[0..len]) catch return -1);
+    return @intCast(wire.feed(input[0..len]) catch return -1);
 }
 export fn probe_payload(out: [*]u8, cap: usize) usize {
-    const payload = rx.payload() orelse return 0;
+    const payload = wire.rx.payload() orelse return 0;
     if (payload.len > cap) return 0;
     @memcpy(out[0..payload.len], payload);
     return payload.len;
 }
 export fn probe_release() void {
-    rx.release();
+    wire.rx.release();
 }
 export fn probe_auth_public(seed: *const [32]u8, out: *[32]u8) bool {
     var pair = std.crypto.sign.Ed25519.KeyPair.generateDeterministic(seed.*) catch return false;
