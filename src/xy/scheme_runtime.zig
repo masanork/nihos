@@ -294,46 +294,34 @@ pub const Runtime = struct {
                 }
             }
         }
+        // Reuse the completed mark queue as an ordered list of live text cells.
+        // Sorting bounded references avoids rescanning the whole heap for each
+        // string while preserving source order for overlap-safe compaction.
+        var text_count: usize = 0;
         for (1..cells) |idx| {
             const c = &self.heap[idx];
-            if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length == 0) {
+            if (!c.mark or (c.tag != .symbol and c.tag != .keyword and c.tag != .string)) continue;
+            if (c.length == 0) {
                 c.text_offset = 0;
+                continue;
             }
+            var at = text_count;
+            while (at > 0 and self.heap[self.queue[at - 1]].text_offset > c.text_offset) : (at -= 1) {
+                self.queue[at] = self.queue[at - 1];
+            }
+            self.queue[at] = @intCast(idx);
+            text_count += 1;
         }
         var new_offset: u16 = 0;
-        while (true) {
-            var best_offset: u16 = std.math.maxInt(u16);
-            for (1..cells) |idx| {
-                const c = &self.heap[idx];
-                if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length > 0) {
-                    if (c.text_offset >= new_offset and c.text_offset < best_offset) {
-                        best_offset = c.text_offset;
-                    }
-                }
+        for (self.queue[0..text_count]) |r| {
+            const c = &self.heap[r];
+            const old_offset = c.text_offset;
+            const len = c.length;
+            if (old_offset != new_offset) {
+                std.mem.copyForwards(u8, self.text_storage[new_offset..][0..len], self.text_storage[old_offset..][0..len]);
+                c.text_offset = new_offset;
             }
-            if (best_offset == std.math.maxInt(u16)) break;
-            var best_len: u8 = 0;
-            for (1..cells) |idx| {
-                const c = &self.heap[idx];
-                if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length > 0) {
-                    if (c.text_offset == best_offset) {
-                        best_len = c.length;
-                        break;
-                    }
-                }
-            }
-            if (best_offset != new_offset) {
-                std.mem.copyForwards(u8, self.text_storage[new_offset..][0..best_len], self.text_storage[best_offset..][0..best_len]);
-                for (1..cells) |idx| {
-                    const c = &self.heap[idx];
-                    if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string)) {
-                        if (c.text_offset == best_offset) {
-                            c.text_offset = new_offset;
-                        }
-                    }
-                }
-            }
-            new_offset += best_len;
+            new_offset += len;
         }
         self.text_used = new_offset;
         self.free_cells = 0;
@@ -1725,10 +1713,11 @@ pub const Runtime = struct {
         if (self.running) return error.Busy;
         self.step_budget = budget;
         self.cell_reserve = 0;
-        self.collect();
-        self.steps = 0;
+        // Previous request stacks are dead before the between-request GC.
         self.eval_sp = 0;
         self.call_sp = 0;
+        self.collect();
+        self.steps = 0;
         self.running = true;
     }
     pub fn evaluate(self: *Runtime, source: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
@@ -1747,30 +1736,57 @@ pub const Runtime = struct {
             if (tail == 0) forms = p else self.heap[tail].b = p;
             tail = p;
         }
-        const saved_bytecode_len = self.bytecode_len;
-        const saved_eval_sp = self.eval_sp;
-        const saved_call_sp = self.call_sp;
-        if (self.compileSequence(forms)) |start_ip| {
-            if (self.runVm(start_ip, host)) |result| {
-                return self.format(result, output);
-            } else |err| switch (err) {
-                error.CannotCompile => {
-                    self.bytecode_len = saved_bytecode_len;
-                    self.eval_sp = saved_eval_sp;
-                    self.call_sp = saved_call_sp;
-                },
-                else => return err,
-            }
-        } else |err| switch (err) {
-            error.CannotCompile => {
+        // Only closed, side-effect-free arithmetic is eligible for compilation.
+        // The experimental compiler cannot yet preserve arbitrary lexical
+        // bindings, mutation, or persistent function lifetimes. Keep those
+        // forms on the interpreter until it can do so.
+        if (self.safeArithmeticSequence(forms)) {
+            const saved_bytecode_len = self.bytecode_len;
+            const saved_eval_sp = self.eval_sp;
+            const saved_call_sp = self.call_sp;
+            if (self.compileSequence(forms)) |start_ip| {
+                const result = self.runVm(start_ip, host);
                 self.bytecode_len = saved_bytecode_len;
                 self.eval_sp = saved_eval_sp;
                 self.call_sp = saved_call_sp;
-            },
-            else => {},
+                return self.format(try result, output);
+            } else |_| {
+                self.bytecode_len = saved_bytecode_len;
+                self.eval_sp = saved_eval_sp;
+                self.call_sp = saved_call_sp;
+            }
         }
         const result = try self.sequence(forms, self.global, 0, host);
         return self.format(result, output);
+    }
+    fn safeArithmeticSequence(self: *const Runtime, forms: Ref) bool {
+        var cursor = forms;
+        while (cursor != 0) : (cursor = self.heap[cursor].b) {
+            if (!self.safeArithmetic(self.heap[cursor].a, 0)) return false;
+        }
+        return true;
+    }
+    fn safeArithmetic(self: *const Runtime, expr: Ref, depth: usize) bool {
+        if (depth >= depth_limit) return false;
+        if (isImmediateInt(expr) or expr == self.yes or expr == self.no) return true;
+        if (self.tagOf(expr) == .integer) return true;
+        if (self.tagOf(expr) != .pair) return false;
+        const head = self.heap[expr].a;
+        if (self.tagOf(head) != .symbol) return false;
+        const op = opcode(self.string(head)) orelse return false;
+        switch (op) {
+            .add, .sub, .mul, .equal, .less, .not => {
+                // These names are ordinary, rebindable procedures.
+                if (self.lookup(self.global, head) != 0) return false;
+            },
+            .if_, .begin => {},
+            else => return false,
+        }
+        var p = self.heap[expr].b;
+        while (p != 0) : (p = self.heap[p].b) {
+            if (self.tagOf(p) != .pair or !self.safeArithmetic(self.heap[p].a, depth + 1)) return false;
+        }
+        return true;
     }
     pub fn runCommand(self: *Runtime, name: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
         try self.start();
@@ -2349,148 +2365,31 @@ test "compiler and bytecode VM execution: transparent evaluate" {
     try std.testing.expectEqual(initial_free, vm.free_cells);
 }
 
-fn nowNs() u64 {
-    if (comptime @import("builtin").os.tag == .macos) {
-        const DarwinTime = struct {
-            extern "c" fn mach_absolute_time() u64;
-        };
-        return DarwinTime.mach_absolute_time();
-    }
-    return 0;
-}
-
-test "benchmark Phase 4: AST Interpreter vs Bytecode VM" {
+test "temporary bytecode is reclaimed and compiler respects mutable bindings" {
     var vm: Runtime = undefined;
     vm.initInPlace();
     var host = TestHost{};
-    var out: [128]u8 = @splat(0);
-
-    const sum_fn =
-        \\(define (sum-iter n acc)
-        \\  (if (= n 0)
-        \\      acc
-        \\      (sum-iter (- n 1) (+ acc n))))
-    ;
-
-    // --- Benchmark 1: Recursive loop (50 iterations per call, 5,000 runs = 250,000 steps) ---
-    // 1A: Bytecode VM compiled
-    _ = try vm.evaluate(sum_fn, &host, &out);
-    vm.step_budget = 100_000_000;
-
-    var pos: usize = 0;
-    const call_expr = try vm.read("(sum-iter 50 0)", &pos, 0);
-    const start_ip = try vm.compile(call_expr);
-
-    // Warmup
-    _ = try vm.runVm(start_ip, &host);
-
-    const initial_free_bc = vm.free_cells;
-    const saved_sp = vm.eval_sp;
-    const t0_bc = nowNs();
-    const bc_repeats: usize = 30;
-    var i: usize = 0;
-    var bc_sum: i32 = 0;
-    while (i < bc_repeats) : (i += 1) {
-        vm.steps = 0;
-        const res = try vm.runVm(start_ip, &host);
-        bc_sum += try vm.integer(res);
-        vm.eval_sp = saved_sp;
+    var out: [128]u8 = undefined;
+    for (0..1000) |_| {
+        try std.testing.expectEqualStrings("3", try vm.evaluate("(+ 1 2)", &host, &out));
+        try std.testing.expectEqual(@as(u16, 0), vm.bytecode_len);
     }
-    const t1_bc = nowNs();
-    try std.testing.expectEqual(@as(i32, 1275 * bc_repeats), bc_sum);
-    const bc_time_ns = t1_bc - t0_bc;
-    const cells_used_bc = initial_free_bc - vm.free_cells;
+    try std.testing.expectError(error.Unbound, vm.evaluate("(set! absent 1)", &host, &out));
+    try std.testing.expectEqualStrings("9", try vm.evaluate("(define + (lambda (a b) 9)) (+ 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("9", try vm.evaluate("(+ 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("7", try vm.evaluate("(set! + (lambda (a b) 7)) (+ 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("7", try vm.evaluate("(+ 1 2)", &host, &out));
+    try std.testing.expectEqual(@as(u16, 0), vm.bytecode_len);
+}
 
-    // 1B: AST Interpreter
-    // Define AST closure by clearing VM and eval
+test "collection compacts live text in allocation order" {
+    var vm: Runtime = undefined;
     vm.initInPlace();
-    vm.step_budget = 100_000_000;
-    pos = 0;
-    const def_ast = try vm.read(sum_fn, &pos, 0);
-    _ = try vm.eval(def_ast, vm.global, 0, &host);
-
-    pos = 0;
-    const call_ast = try vm.read("(sum-iter 50 0)", &pos, 0);
-    try vm.pushEval(call_ast);
-
-    // Warmup
-    const res_ast_warmup = try vm.eval(call_ast, vm.global, 0, &host);
-    try std.testing.expectEqual(@as(i32, 1275), try vm.integer(res_ast_warmup));
-
-    vm.collect();
-    const initial_free_ast = vm.free_cells;
-    const t0_ast = nowNs();
-    i = 0;
-    var ast_sum: i32 = 0;
-    while (i < bc_repeats) : (i += 1) {
-        vm.steps = 0;
-        const res = try vm.eval(call_ast, vm.global, 0, &host);
-        ast_sum += try vm.integer(res);
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    _ = try vm.evaluate("(define a \"first\") (define b \"second\")", &host, &out);
+    for (0..200) |_| {
+        _ = try vm.evaluate("(list \"discard\" \"more garbage\")", &host, &out);
+        try std.testing.expectEqualStrings("(\"first\" \"second\")", try vm.evaluate("(list a b)", &host, &out));
     }
-    const t1_ast = nowNs();
-    try std.testing.expectEqual(@as(i32, 1275 * bc_repeats), ast_sum);
-    const ast_time_ns = t1_ast - t0_ast;
-    const cells_used_ast = initial_free_ast - vm.free_cells;
-
-    // --- Benchmark 2: Arithmetic expression (+ (* 12 34) (- 56 78)) x 20,000 runs ---
-    const arith_src = "(+ (* 12 34) (- 56 78))";
-    pos = 0;
-    const arith_expr = try vm.read(arith_src, &pos, 0);
-    const arith_ip = try vm.compile(arith_expr);
-
-    const arith_repeats: usize = 20_000;
-    const arith_saved_sp = vm.eval_sp;
-    const t0_arith_bc = nowNs();
-    i = 0;
-    while (i < arith_repeats) : (i += 1) {
-        vm.steps = 0;
-        _ = try vm.runVm(arith_ip, &host);
-        vm.eval_sp = arith_saved_sp;
-    }
-    const t1_arith_bc = nowNs();
-    const arith_bc_ns = t1_arith_bc - t0_arith_bc;
-
-    const t0_arith_ast = nowNs();
-    i = 0;
-    while (i < arith_repeats) : (i += 1) {
-        vm.steps = 0;
-        _ = try vm.eval(arith_expr, vm.global, 0, &host);
-    }
-    const t1_arith_ast = nowNs();
-    const arith_ast_ns = t1_arith_ast - t0_arith_ast;
-
-    std.debug.print("\n\n================ Phase 4 Performance Benchmark ================\n", .{});
-    std.debug.print("1. Recursive Loop (sum-iter 50 0) x {d} runs (250,000 iterations total):\n", .{bc_repeats});
-    std.debug.print("   - AST Interpreter: {d:.2} ms ({d:.1} ns/step), heap cells: {d}\n", .{
-        @as(f64, @floatFromInt(ast_time_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(ast_time_ns)) / @as(f64, @floatFromInt(bc_repeats * 50)),
-        cells_used_ast,
-    });
-    std.debug.print("   - Bytecode VM:     {d:.2} ms ({d:.1} ns/step), heap cells: {d}\n", .{
-        @as(f64, @floatFromInt(bc_time_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(bc_time_ns)) / @as(f64, @floatFromInt(bc_repeats * 50)),
-        cells_used_bc,
-    });
-    std.debug.print("   => Speedup:        {d:.2}x faster!\n", .{
-        @as(f64, @floatFromInt(ast_time_ns)) / @as(f64, @floatFromInt(bc_time_ns)),
-    });
-
-    std.debug.print("\n2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x {d} runs:\n", .{arith_repeats});
-    std.debug.print("   - AST Interpreter: {d:.2} ms ({d:.1} ns/eval)\n", .{
-        @as(f64, @floatFromInt(arith_ast_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(arith_ast_ns)) / @as(f64, @floatFromInt(arith_repeats)),
-    });
-    std.debug.print("   - Bytecode VM:     {d:.2} ms ({d:.1} ns/eval)\n", .{
-        @as(f64, @floatFromInt(arith_bc_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(arith_bc_ns)) / @as(f64, @floatFromInt(arith_repeats)),
-    });
-    std.debug.print("   => Speedup:        {d:.2}x faster!\n", .{
-        @as(f64, @floatFromInt(arith_ast_ns)) / @as(f64, @floatFromInt(arith_bc_ns)),
-    });
-
-    std.debug.print("\n3. SRAM Footprint:\n", .{});
-    std.debug.print("   - Phase 2 (Tagged Unions Baseline):  8,248 bytes\n", .{});
-    std.debug.print("   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes\n", .{});
-    std.debug.print("   - Phase 4 (Bytecode VM + Compiler):   7,632 bytes (7.45 KiB, < 8.5 KiB floor!)\n", .{});
-    std.debug.print("=================================================================\n\n", .{});
 }

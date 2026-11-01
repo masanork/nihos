@@ -1,0 +1,13 @@
+# xy Scheme review: bounded temporary bytecode and resource use
+
+This is an isolated candidate based on `68079bf9`; native build audit is not a physical-device qualification.
+
+`evaluate` compiles only closed arithmetic/conditionals with unbound primitive names. It restores temporary bytecode and VM stacks after success or compilation failure. Definitions, mutation, calls and other forms use the AST evaluator; in particular, `set!` and rebound primitives no longer pass through the experimental compiler. The low-level compiler/VM remains covered by tests but is not used for compiling persistent Scheme functions in this candidate. Proper semantic equivalence, persistent code reclamation and re-enabling compiled functions remain future work. This is a correctness fallback with a measurable performance and capacity tradeoff, not a completed compiler optimization.
+
+Between requests, dead VM stacks are cleared before marking. Text compaction reuses the mark queue for an allocation-ordered list rather than repeatedly scanning all cells. The learning session keeps two VMs for rollback but switches their roles after success, avoiding the second full VM copy. The native SQL-enabled evaluator still reserves a 64 KiB foreground stack, but writes only the four guard words it checks, rather than filling the entire region on every evaluation. No stack watermark or reduced reservation is claimed.
+
+On the host, `(define (sum-iter n acc) (if (= n 0) acc (sum-iter (- n 1) (+ acc n))))` followed by `(sum-iter 50 0)` returned 1275 both before and after. Evaluation ticks changed from 666 to 916; immediately after the call, free cells were 244 versus 214. These are runtime counters, not elapsed time, and the two execution modes count different operations. The result shows the loss of the compiled path and must not be presented as a speedup. Capacity/budget behavior for larger programs can regress.
+
+Targeted ReleaseSafe runtime tests cover 1,000 repeated arithmetic requests, unbound `set!`, rebinding `+`, and 200 rounds of transient/live text collection. Native build/audit results apply to the exact locally built candidate only. Physical Tab5 timing, stack-watermark and stress qualification remain open.
+
+The desktop live-workspace transaction still snapshots its VM and Document before each frame. It supports rollback after an error and its cost was not measured here; changing it without an equivalent rollback design would trade away behavior. The low-level compiler entry points are experimental and their standalone semantics are not certified by the arithmetic-only admission check in `evaluate`.
