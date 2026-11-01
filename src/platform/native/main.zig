@@ -570,8 +570,9 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
                 : [result] "=r" (-> u32),
             );
             const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
-            const diagnostic = .{ .hart = hart, .cause = cause, .status = status, .current_status = current_status, .frame = @as(u32, @intCast(@intFromPtr(frame))), .saved_sp = frame.sp, .irq_sp = irq_sp, .guard_addr = @as(u32, @intCast(@intFromPtr(guard))), .guard0 = guard[0], .guard1 = guard[1], .guard2 = guard[2], .guard3 = guard[3], .top = @as(u32, @intCast(top)) };
-            logger.record("NIHOS_WAMR_CORPUS_IRQ_FAIL", null, .{ "hart", "cause", "status", "current_status", "frame", "saved_sp", "irq_sp", "guard_addr", "guard0", "guard1", "guard2", "guard3", "top" }, &diagnostic);
+            const wdiag = tasks.wasmTaskDiag();
+            const diagnostic = .{ .hart = hart, .cause = cause, .status = status, .current_status = current_status, .mepc = frame.mepc, .ra = frame.ra, .frame = @as(u32, @intCast(@intFromPtr(frame))), .saved_sp = frame.sp, .irq_sp = irq_sp, .guard_addr = @as(u32, @intCast(@intFromPtr(guard))), .guard0 = guard[0], .guard1 = guard[1], .guard2 = guard[2], .guard3 = guard[3], .top = @as(u32, @intCast(top)), .w_low = wdiag.low, .w_high = wdiag.high, .w_slot = @as(u32, wdiag.slot), .w_gen = @as(u32, wdiag.gen), .w_cur_slot = @as(u32, wdiag.cur_slot), .w_cur_gen = @as(u32, wdiag.cur_gen) };
+            logger.record("NIHOS_WAMR_CORPUS_IRQ_FAIL", null, .{ "hart", "cause", "status", "current_status", "mepc", "ra", "frame", "saved_sp", "irq_sp", "guard_addr", "guard0", "guard1", "guard2", "guard3", "top", "w_low", "w_high", "w_slot", "w_gen", "w_cur_slot", "w_cur_gen" }, &diagnostic);
         }
         fail("interrupt stack/MIE");
     }

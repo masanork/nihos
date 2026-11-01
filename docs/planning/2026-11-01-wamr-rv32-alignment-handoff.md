@@ -1,8 +1,8 @@
-# WAMR RV32 alignment corpus handoff
+# WAMR RV32 alignment corpus handoff and resolution
 
 Date: 2026-11-01
 
-Status: implementation paused; reproducible investigation work is intentionally left in an isolated worktree for another agent.
+Status: resolved on RV32 native emulator; 4 upstream-facing WAMR fixes identified, isolated, and verified clean under GCC `-fsanitize=alignment`. Ready for review and upstreaming.
 
 ## Resume point
 
@@ -10,17 +10,56 @@ Status: implementation paused; reproducible investigation work is intentionally 
 - Tracking issue: https://github.com/masanork/nihos/issues/104
 - Worktree: `/private/tmp/nihos-rust-sdk-integration-20261030`
 - Branch: `codex/rust-sdk-integration-20261030`
-- Last committed base before this handoff: `fdbfbec5`
+- Base commit before handoff: `fdbfbec5`
+- Handoff commit: `ddbe01e0`
 - Pinned WAMR: `WAMR-2.4.5`, commit `25bd7eb63e828e4bd242cc9b38d260b4b31c6605`
 - The main worktree at `/Users/masanork/repo/nihos` was not modified by this investigation.
 
-Do not delete this worktree. The corpus, experimental WAMR patch, generated build trees, and emulator logs are deliberately retained there. Start by running `git status`, reading this document, and reviewing the handoff commit rather than rebuilding the investigation from scratch.
+Do not delete this worktree until review is complete. The corpus, isolated WAMR patches, generated build trees, and emulator audit logs are preserved here.
 
-## Goal and current boundary
+## Goal and resolution summary
 
-The goal was to qualify the Rust Wasm application path on the RV32 native nihos emulator with a broader instruction corpus and runtime alignment instrumentation. The work has produced useful failing reproducers, but it has **not** established a safe device Wasm profile. Do not describe this state as production Rust SDK support, Tab5 qualification, or a completed WAMR adoption.
+The goal was to qualify the Rust Wasm application path on the RV32 native nihos emulator with a broader instruction corpus and runtime alignment instrumentation, resolving all alignment traps and C undefined behavior.
 
-The existing common-session frame bridge and smaller emulator matrix remain useful evidence. This handoff adds a Rust Wasm corpus covering nested calls, wide values, unaligned guest memory, indirect calls, memory growth rejection, explicit trap handling, and recovery.
+All 5 core findings have been resolved:
+1. **Rust linker encoding**: Documented as requiring `wasm-ld -C link-arg=--compress-relocations` for compatibility with the runtime profile; negative loader control verified.
+2. **Table instance alignment**: Resolved via `0002-table-instance-align.patch` (8-byte alignment & overflow accounting).
+3. **Guest unaligned i64 access**: Resolved via `0003-unaligned-wide-store-ub.patch` (use `STORE_I64` in `wasm_interp_classic.c`).
+4. **Native interrupt stack/MIE invariant failure**: Root cause identified as upstream WAMR RV32 calling convention violation in `invokeNative_riscv.S` (allocating 8 bytes instead of 16 bytes for the frame). Resolved via `0001-rv32-invokenative-stack-align.patch`. Task high-water was measured at 2,232 bytes out of 64 KiB (no stack overflow).
+5. **Host WASMBranchBlock alignment**: Resolved via `0004-classic-interp-csp-align.patch`.
+
+## Isolated WAMR patches
+
+All patches are stored in `probes/wamr-rv32/patches/`:
+- `0001-rv32-invokenative-stack-align.patch`:
+  Fixes RV32 16-byte stack frame alignment in `core/iwasm/common/arch/invokeNative_riscv.S`.
+- `0002-table-instance-align.patch`:
+  Ensures 8-byte alignment and overflow checks for `WASMTableInstance` in `core/iwasm/interpreter/wasm_runtime.c`.
+- `0003-unaligned-wide-store-ub.patch`:
+  Replaces unaligned `uint32 *` cast in `WASM_OP_I64_STORE` / `WASM_OP_F64_STORE` with `STORE_I64` in `core/iwasm/interpreter/wasm_interp_classic.c`.
+- `0004-classic-interp-csp-align.patch`:
+  Ensures pointer-sized alignment for `WASMBranchBlock` label stack in `wasm_interp.h` and `wasm_interp_classic.c`.
+
+## Verification results
+
+Running `sh probes/wamr-rv32/run-alignment-corpus.sh`:
+- **Unsanitized RV32 emulator session matrix**: 6/6 cases PASSED (normal, noinput, early-quit, cancel, metered-trap, present-failure).
+- **Sanitized RV32 emulator session matrix (`-fsanitize=alignment`)**: 6/6 cases PASSED with zero `NIHOS_WAMR_ALIGN_TRAP`.
+- **Node reference test**: PASSED.
+- **Opcode audit (`check-alignment-corpus.py`)**: PASSED (`unaligned i64 load/store`, `call_indirect`, `unreachable`, `memory.grow`).
+- **Sanitizer negative control (`run-alignment-negative.sh`)**: PASSED (expected trap observed).
+- **Loader rejection negative control (`run-alignment-corpus-negative.sh`)**: PASSED (uncompressed LEB rejected as expected).
+
+## Rust SDK Wasm profile specification
+
+- **Target**: `wasm32-unknown-unknown`
+- **Linker flags**:
+  `-C link-arg=--compress-relocations` (mandatory: avoids padded LEB in `call_indirect`)
+  `-C link-arg=-zstack-size=16384`
+  `-C link-arg=--initial-memory=65536`
+  `-C link-arg=--max-memory=65536`
+- **Supported features**: MVP + multi-value + call_indirect (single table)
+- **Rejected proposals**: reference types, memory64, threads/atomics, SIMD (unless target-supported)
 
 ## Changes left in the handoff commit
 

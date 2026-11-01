@@ -44,7 +44,10 @@ for label, directory in (('stock', stock), ('sanitized', sanitized)):
         counts[case['case']] = len(re.findall(r'^NIHOS_WAMR_CORPUS_PASS$', log, re.M))
         assert counts[case['case']] >= 2 and 'NIHOS_WAMR_ALIGN_TRAP' not in log
     reports[label] = {'candidate': report['candidate'], 'corpus_passes': counts}
-flags = (root / 'build/wamr-rv32-align-compile/CMakeFiles/wamr-rv32-compile.dir/flags.make').read_text()
+flags_path = root / 'build/wamr-rv32-align-fixes-compile/CMakeFiles/wamr-rv32-compile.dir/flags.make'
+if not flags_path.exists():
+    flags_path = root / 'build/wamr-rv32-align-compile/CMakeFiles/wamr-rv32-compile.dir/flags.make'
+flags = flags_path.read_text()
 assert '-fsanitize=alignment' in flags and '-fno-sanitize-recover=alignment' in flags
 (out / 'report.json').write_text(json.dumps({
     'scope': 'RV32 emulator signed test corpus; no physical device or arbitrary-module proof',

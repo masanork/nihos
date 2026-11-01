@@ -7,7 +7,28 @@ wamr="$root/build/wamr-2.4.5"
 [ -z "$(git -C "$wamr" status --porcelain)" ] || { echo 'WAMR source modified' >&2; exit 1; }
 table_fix=${NIHOS_WAMR_RV32_TABLE_FIX:-0}
 case "$table_fix" in 0|1) ;; *) echo 'NIHOS_WAMR_RV32_TABLE_FIX must be 0 or 1' >&2; exit 1 ;; esac
-if [ "$table_fix" = 1 ]; then
+stack_fix=${NIHOS_WAMR_RV32_STACK_FIX:-0}
+case "$stack_fix" in 0|1) ;; *) echo 'NIHOS_WAMR_RV32_STACK_FIX must be 0 or 1' >&2; exit 1 ;; esac
+fixes=${NIHOS_WAMR_RV32_FIXES:-0}
+case "$fixes" in 0|1) ;; *) echo 'NIHOS_WAMR_RV32_FIXES must be 0 or 1' >&2; exit 1 ;; esac
+
+if [ "$fixes" = 1 ]; then
+    lab="$root/build/wamr-rv32-fixes-lab"
+    rm -rf "$lab"
+    git clone --shared --no-checkout "$wamr" "$lab"
+    git -C "$lab" checkout --detach 25bd7eb63e828e4bd242cc9b38d260b4b31c6605
+    for p in "$root/probes/wamr-rv32/patches"/000[1-4]-*.patch; do
+        git -C "$lab" apply "$p"
+    done
+    wamr="$lab"
+elif [ "$stack_fix" = 1 ]; then
+    lab="$root/build/wamr-rv32-stack-lab"
+    rm -rf "$lab"
+    git clone --shared --no-checkout "$wamr" "$lab"
+    git -C "$lab" checkout --detach 25bd7eb63e828e4bd242cc9b38d260b4b31c6605
+    git -C "$lab" apply "$root/probes/wamr-rv32/patches/0001-rv32-invokenative-stack-align.patch"
+    wamr="$lab"
+elif [ "$table_fix" = 1 ]; then
     lab="$root/build/wamr-rv32-table-lab"
     patch="$root/probes/wamr-rv32/patches/table-instance-align-experiment.patch"
     if [ ! -d "$lab/.git" ]; then
@@ -30,7 +51,11 @@ case "$align_san" in
   1) out="$root/build/wamr-rv32-align-compile"; align_flags='-fsanitize=alignment -fno-sanitize-recover=alignment' ;;
   *) echo 'NIHOS_WAMR_RV32_ALIGN_SAN must be 0 or 1' >&2; exit 1 ;;
 esac
-if [ "$table_fix" = 1 ]; then
+if [ "$fixes" = 1 ]; then
+    if [ "$align_san" = 1 ]; then out="$root/build/wamr-rv32-align-fixes-compile"; else out="$root/build/wamr-rv32-fixes-compile"; fi
+elif [ "$stack_fix" = 1 ]; then
+    if [ "$align_san" = 1 ]; then out="$root/build/wamr-rv32-align-stack-compile"; else out="$root/build/wamr-rv32-stack-compile"; fi
+elif [ "$table_fix" = 1 ]; then
     if [ "$align_san" = 1 ]; then out="$root/build/wamr-rv32-align-table-compile"; else out="$root/build/wamr-rv32-table-compile"; fi
 fi
 cmake -S "$root/probes/wamr-rv32" -B "$out" \

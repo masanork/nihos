@@ -276,6 +276,11 @@ static void *resize(mem_alloc_usage_t usage, bool full_mapped, void *pointer,
 
 static int32_t fill_rect(wasm_exec_env_t env, int32_t x, int32_t y,
                          uint32_t width, uint32_t height, uint32_t rgb) {
+#ifdef __riscv
+    uintptr_t sp;
+    __asm__ volatile ("mv %0, sp" : "=r"(sp));
+    if ((sp & 15) != 0) return -7;
+#endif
     if (!graphics_allowed(env)) return -5;
     if (x != 0 || y != 0 || width != 160 || height != 80 || rgb > 0xffffff)
         return -1;
@@ -286,6 +291,11 @@ static int32_t fill_rect(wasm_exec_env_t env, int32_t x, int32_t y,
 
 static int32_t text(wasm_exec_env_t env, int32_t x, int32_t y,
                     uint32_t offset, uint32_t length, uint32_t rgb) {
+#ifdef __riscv
+    uintptr_t sp;
+    __asm__ volatile ("mv %0, sp" : "=r"(sp));
+    if ((sp & 15) != 0) return -7;
+#endif
     wasm_module_inst_t instance = wasm_runtime_get_module_inst(env);
     const uint8_t *source;
     uint32_t i;

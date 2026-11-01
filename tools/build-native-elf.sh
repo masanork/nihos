@@ -98,7 +98,16 @@ if [ "$wasm_corpus_uncompressed" = true ] && [ "$wasm_align_corpus" != true ]; t
 wasm_table_fix=${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}
 case "$wasm_table_fix" in 0) wasm_table_fix=false ;; 1) wasm_table_fix=true ;; *) echo "WASM_ALIGN_TABLE_FIX must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$wasm_table_fix" = true ] && [ "$wasm_align_corpus" != true ]; then echo "WASM_ALIGN_TABLE_FIX requires headless WASM_ALIGN_CORPUS" >&2; exit 1; fi
-if [ "$wasm_table_fix" = true ]; then
+wasm_stack_fix=${NIHOS_NATIVE_WASM_ALIGN_STACK_FIX:-0}
+case "$wasm_stack_fix" in 0) wasm_stack_fix=false ;; 1) wasm_stack_fix=true ;; *) echo "WASM_ALIGN_STACK_FIX must be 0 or 1" >&2; exit 1 ;; esac
+wasm_fixes=${NIHOS_NATIVE_WASM_ALIGN_FIXES:-0}
+case "$wasm_fixes" in 0) wasm_fixes=false ;; 1) wasm_fixes=true ;; *) echo "WASM_ALIGN_FIXES must be 0 or 1" >&2; exit 1 ;; esac
+
+if [ "$wasm_fixes" = true ]; then
+    if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-fixes-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-fixes-compile"; fi
+elif [ "$wasm_stack_fix" = true ]; then
+    if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-stack-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-stack-compile"; fi
+elif [ "$wasm_table_fix" = true ]; then
     if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-table-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-table-compile"; fi
 fi
 wasm_interactive=${NIHOS_NATIVE_WASM_INTERACTIVE:-0}
@@ -685,7 +694,7 @@ if [ "$wasm" = true ]; then
     riscv_cc_path=$(command -v "$riscv_cc") || { echo "Set NIHOS_RISCV_CC" >&2; exit 1; }
     riscv_prefix=${riscv_cc_path%gcc}
     for tool in ld objcopy; do [ -x "$riscv_prefix$tool" ] || { echo "Missing matching $tool" >&2; exit 1; }; done
-    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" NIHOS_WAMR_RV32_ALIGN_SAN="${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}" NIHOS_WAMR_RV32_TABLE_FIX="${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
+    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" NIHOS_WAMR_RV32_ALIGN_SAN="${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}" NIHOS_WAMR_RV32_TABLE_FIX="${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}" NIHOS_WAMR_RV32_STACK_FIX="${NIHOS_NATIVE_WASM_ALIGN_STACK_FIX:-0}" NIHOS_WAMR_RV32_FIXES="${NIHOS_NATIVE_WASM_ALIGN_FIXES:-0}" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
     NIHOS_ZIG="$zig" sh "$repo_root/probes/wamr-arena/run-rv32.sh"
     "$riscv_prefix"ld -m elf32lriscv -r --whole-archive \
         "$wamr_compile_dir/libwamr-rv32-compile.a" --no-whole-archive \

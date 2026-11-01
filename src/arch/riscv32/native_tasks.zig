@@ -375,6 +375,14 @@ pub fn acceptsWasmFrame(hart: u32, status: u32, address: u32, saved_sp: u32) boo
     wasm_task.captures += 1;
     return true;
 }
+pub const WasmTaskDiag = struct { low: u32, high: u32, slot: u16, gen: u16, cur_slot: u16, cur_gen: u16 };
+pub fn wasmTaskDiag() WasmTaskDiag {
+    if (comptime !wasm_task_enabled) return .{ .low = 0, .high = 0, .slot = 0, .gen = 0, .cur_slot = 0, .cur_gen = 0 };
+    const bound = wasm_task.stack orelse return .{ .low = 0, .high = 0, .slot = 0, .gen = 0, .cur_slot = 0, .cur_gen = 0 };
+    const owner = &owners[0];
+    const current = owner.runtime.policy.current() orelse return .{ .low = bound.low, .high = bound.high, .slot = bound.borrower.slot, .gen = bound.borrower.generation, .cur_slot = 0xffff, .cur_gen = 0xffff };
+    return .{ .low = bound.low, .high = bound.high, .slot = bound.borrower.slot, .gen = bound.borrower.generation, .cur_slot = current.slot, .cur_gen = current.generation };
+}
 pub const WasmCompletion = struct { exit_code: i32, captures: u32, timers: u32, ticks: u64 };
 pub fn finishWasm() ?WasmCompletion {
     if (comptime !wasm_task_enabled) return null;
