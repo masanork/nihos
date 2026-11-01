@@ -51,6 +51,14 @@ pub fn argument53(address: u32, length: usize, writing: bool) Error!u32 {
         (if (blocks) @as(u32, 1) else @as(u32, @intCast(length)));
 }
 
+/// Encode a single CMD53 block-mode transaction. The normal native DMA
+/// provider currently supports at most 512 bytes, regardless of this encoding.
+pub fn argument53Blocks(address: u32, blocks: u16, writing: bool) Error!u32 {
+    if (address > 0x1ffff or blocks < 2 or blocks > 3) return error.InvalidArgument;
+    return (if (writing) @as(u32, 1) << 31 else 0) | (1 << 28) | (1 << 26) |
+        (1 << 27) | (address << 9) | @as(u32, blocks);
+}
+
 pub fn Controller(comptime IO: type) type {
     return struct {
         pub const TransportError = Error;
@@ -257,6 +265,10 @@ pub fn Controller(comptime IO: type) type {
             if (!self.owns()) return error.NoOwnership;
             const length = if (writing) source.len else destination.len;
             const argument = try argument53(address, length, writing);
+            return self.transferDma(argument, length, source, destination, writing, length);
+        }
+
+        fn transferDma(self: *Self, argument: u32, length: usize, source: []const u8, destination: []u8, writing: bool, block_size: usize) Error!void {
             if (self.faulted) return error.Retired;
             if (!self.selected or !self.four_bit) return error.NotReady;
             errdefer {
@@ -273,7 +285,7 @@ pub fn Controller(comptime IO: type) type {
             self.io.write(regs.dma_mode, 1);
             try self.clear(regs.dma_mode, 1);
             const descriptor = self.io.prepareDma(writing, source, length) orelse return error.Dma;
-            self.io.write(regs.block, @intCast(length));
+            self.io.write(regs.block, @intCast(block_size));
             self.io.write(regs.bytes, @intCast(length));
             self.io.write(regs.dma_status, 0xffffffff);
             self.io.write(regs.dma_mask, 0);
@@ -302,6 +314,16 @@ pub fn Controller(comptime IO: type) type {
         }
         pub fn writeBytes(self: *Self, address: u32, source: []const u8) Error!void {
             return self.transfer(address, source, &.{}, true);
+        }
+        /// One write-only multi-block CMD53. Caller supplies the padded DMA
+        /// buffer and owns the peer-buffer/credit contract. The IO provider
+        /// owns DMA storage, descriptor and cache maintenance. Success requires
+        /// stopDma and finishDma to complete before storage reuse. The normal
+        /// network service does not use this; its provider rejects >512.
+        pub fn writeBlocks(self: *Self, address: u32, source: []const u8) Error!void {
+            if (source.len != 1024 and source.len != 1536) return error.InvalidArgument;
+            const argument = try argument53Blocks(address, @intCast(source.len / 512), true);
+            return self.transferDma(argument, source.len, source, &.{}, true, 512);
         }
         pub fn readWord(self: *Self, address: u32) Error!u32 {
             var bytes: [4]u8 = @splat(0);

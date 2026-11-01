@@ -2,6 +2,7 @@
 //! v2.13.1 public header/proto definitions. No OTA or persistent-write RPCs.
 const std = @import("std");
 pub const Error = error{ Malformed, Capacity, Fragmented, Checksum, Stale, Rejected };
+pub const station_interface: u8 = 1;
 pub const Frame = struct { interface: u8, payload: []const u8, packet_type: u8 = 0 };
 pub const Decoder = struct {
     bytes: [4096]u8 = @splat(0),
@@ -48,6 +49,19 @@ fn checksum(bytes: []const u8) u16 {
 }
 pub fn frame(out: []u8, interface: u8, sequence: u16, payload: []const u8) Error![]const u8 {
     return typedFrame(out, interface, sequence, if (interface & 15 == 5) 0x33 else 0, payload);
+}
+/// Frame an Ethernet payload already stored at offset 12, without copying it.
+pub fn frameInPlace(out: []u8, interface: u8, sequence: u16, length: usize) Error![]const u8 {
+    if (length == 0 or length > 1500 or length + 12 > out.len) return error.Capacity;
+    const result = out[0 .. length + 12];
+    @memset(result[0..12], 0);
+    result[0] = interface;
+    result[11] = if (interface & 15 == 5) 0x33 else 0;
+    std.mem.writeInt(u16, result[2..4], @intCast(length), .little);
+    std.mem.writeInt(u16, result[4..6], 12, .little);
+    std.mem.writeInt(u16, result[8..10], sequence, .little);
+    std.mem.writeInt(u16, result[6..8], checksum(result), .little);
+    return result;
 }
 /// ESP-Hosted stores the H4 packet type in header byte 11, outside payload.
 pub fn typedFrame(out: []u8, interface: u8, sequence: u16, packet_type: u8, payload: []const u8) Error![]const u8 {

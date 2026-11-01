@@ -4,6 +4,14 @@ const c6 = @import("c6_probe");
 const timers = @import("timer_group");
 const config = @import("wifi_config");
 pub const panic = std.debug.no_panic;
+const long_dma_enabled = @hasDecl(config, "long_dma") and config.long_dma;
+pub fn C6Bus(comptime Short: type) type {
+    return if (long_dma_enabled) @import("long_dma").C6Bus(Short) else Short;
+}
+pub fn C6LongProbe(stream: anytype, decoder: anytype, client: anytype, mac: [6]u8, ip: u32, sta: u8, frame: anytype, frameInPlace: anytype, clock: anytype, report: anytype) !void {
+    if (long_dma_enabled and config.udp_enabled)
+        try @import("long_dma").probe(stream, decoder, client, mac, ip, config, sta, frame, frameInPlace, clock, report);
+}
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
 extern fn nih_rom_l2_line_size(u32) callconv(.c) u32;
@@ -60,6 +68,13 @@ export fn nih_c6_main() callconv(.c) noreturn {
     reg(0x50116000).* &= ~@as(u32, 1 << 31);
     nih_rom_set_cpu1_entry(0);
     print("\nNIHOS_C6_BOOT backend=zig-sram rtos=none cpu1=parked\n");
+    if (long_dma_enabled) {
+        print("NIHOS_C6_LONG_DMA build=diagnostic data=");
+        hex(@intFromPtr(&@import("long_dma").buffer.data));
+        print(" descriptor=");
+        hex(@intFromPtr(&@import("long_dma").buffer.descriptor));
+        print("\n");
+    }
     // Print the complete pinned ROM ABI address set audited by the shared ELF
     // checker. These addresses are metadata, not claims that all were called.
     print("NIHOS_C6_ROM");
@@ -87,6 +102,42 @@ export fn nih_c6_main() callconv(.c) noreturn {
     else
         .saved;
     const report = if (config.hosted) c6.runHosted(clock, hosted_join, config.ipv6) else c6.run(clock, join);
+    if (long_dma_enabled and config.udp_enabled) {
+        print("NIHOS_C6_CREDIT_TRACE");
+        for (@import("long_dma").trace[0..@min(report.long_attempts, 18)]) |item| {
+            print(" ");
+            hex(item.credit);
+            hex(item.timing);
+        }
+        print("\n");
+        if (config.udp_reverse) print("NIHOS_C6_REVERSE_ATTEMPTS\n");
+        if (config.udp_audit_staging) {
+            print("NIHOS_C6_STAGING checked=");
+            hex(@import("long_dma").staging_checked);
+            print(" matched=");
+            hex(@import("long_dma").staging_matched);
+            print("\n");
+        }
+        if (config.udp_interval_ms != 250) {
+            print("NIHOS_C6_INTERVAL ms=");
+            hex(config.udp_interval_ms);
+            print("\n");
+        }
+        if (config.udp_tail_short) {
+            print("NIHOS_C6_SHORT_TAIL sent=");
+            hex(@import("long_dma").tail_short_sent);
+            print(" ms=");
+            hex(@import("long_dma").tail_short_ms);
+            print("\n");
+        }
+        if (config.udp_pause_after_16) {
+            print("NIHOS_C6_BEFORE_17 mask=");
+            hex(@import("long_dma").before_17_mask);
+            print(" ms=");
+            hex(@import("long_dma").before_17_ms);
+            print("\n");
+        }
+    }
     print("NIHOS_NATIVE_C6");
     inline for (comptime std.meta.fieldNames(c6.Report)) |field| {
         print(" " ++ field ++ "=");
