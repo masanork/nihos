@@ -7,11 +7,12 @@ pub const scheme = @import("scheme_runtime.zig");
 pub const document = @import("document.zig");
 // Immutable presentation text follows the existing diagnostic font placement;
 // host targets retain their ordinary read-only segment.
-pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
+pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nJapanese input: ime toggles SKK (in SKK: l=ASCII, q=katakana)\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const camera = @import("camera.zig");
 pub const card = @import("card.zig");
 pub const soft_keyboard = @import("soft_keyboard.zig");
+pub const ime_omni = @import("ime_omni.zig");
 pub const system = @import("system_buffer.zig");
 pub const navigation = @import("navigation.zig");
 pub const Mode = enum { edit, command, help, system };
@@ -79,9 +80,17 @@ pub const Model = struct {
     touch_start_x: u32,
     touch_start_y: u32,
     touch_tracking: bool,
+    /// SKK composition state for the document screen. Starts in direct
+    /// (ASCII) mode so existing editing is unchanged; the minibuffer
+    /// command `ime` toggles Japanese input.
+    ime: ime_omni.OmniIme,
+    /// Candidate backend for the IME. Hosts may replace it (the sqld
+    /// dictionary provider is a follow-up); null means no candidates.
+    ime_provider: ?ime_omni.OmniProvider,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
+        self.ime = .{ .mode = .direct };
         self.nav.chapter_count = .{ 3, 13, 3, 32 };
         self.doc.revision = 1;
         self.doc.next_group_id = 1;
@@ -150,6 +159,47 @@ pub const Model = struct {
         self.doc.insertUtf8(text) catch |err| self.failed(err);
         self.changed();
     }
+    fn emptyImeQuery(_: *anyopaque, _: ime_omni.PrefixKind, _: u8, _: []const u8, _: *ime_omni.CandidateList) linksection(scheme.code_section) void {}
+
+    fn imeProvider(self: *Model) linksection(scheme.code_section) ime_omni.OmniProvider {
+        if (self.ime_provider) |provider| return provider;
+        return .{ .ctx = self, .queryFn = emptyImeQuery };
+    }
+
+    fn imeKey(self: *Model, byte: u8) linksection(scheme.code_section) void {
+        self.ime.handleKey(&self.doc, self.imeProvider(), byte) catch |err| {
+            self.status = if (err == error.BufferFull) .buffer_full else .invalid_input;
+        };
+    }
+
+    /// Routes one key through the IME while the document is being edited.
+    /// Text and Backspace always go through it (direct mode is a plain
+    /// passthrough, kana modes convert); Enter, Escape and Cancel only
+    /// while a composition is active, so they keep their workspace
+    /// meaning otherwise. Cursor and editing keys first cancel any
+    /// composition, then fall through to their normal handling.
+    fn imeRoute(self: *Model, key: input.Key) linksection(scheme.code_section) bool {
+        if (self.mode != .edit) return false;
+        const composing = self.ime.phase != .idle;
+        switch (key) {
+            .text => |byte| self.imeKey(byte),
+            .backspace => self.imeKey(0x7f),
+            .enter => {
+                if (!composing) return false;
+                self.imeKey('\n');
+            },
+            .escape, .cancel => {
+                if (!composing) return false;
+                self.imeKey(0x07);
+            },
+            else => {
+                if (composing) self.imeKey(0x07);
+                return false;
+            },
+        }
+        return true;
+    }
+
     pub fn handle(self: *Model, key: input.Key) linksection(scheme.code_section) void {
         if (self.vm.running) {
             if (self.deferred_count == self.deferred.len) {
@@ -182,6 +232,7 @@ pub const Model = struct {
             } else self.nav.handle(nav_key, &self.vm.view);
             return;
         }
+        if (self.imeRoute(key)) return;
         if (key == .cancel and self.mode == .edit) {
             self.nav.home();
             return;
@@ -218,7 +269,9 @@ pub const Model = struct {
                         self.status = .command_full;
                         return;
                     }
-                    if (std.mem.eql(u8, text, "home")) self.nav.home() else if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'');
+                    if (std.mem.eql(u8, text, "home")) self.nav.home() else if (std.mem.eql(u8, text, "ime")) {
+                        self.ime.mode = if (self.ime.mode == .direct) .hiragana else .direct;
+                    } else if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'');
                 },
                 else => {},
             }
@@ -1095,4 +1148,94 @@ test "scheme can read card, inspect info, show declarative card view, and insert
     model.evaluate("(card/dismiss! h)", false);
     try std.testing.expectEqual(Status.scheme_result, model.status);
     try std.testing.expect(!test_mock_card.active);
+}
+
+const ImeMock = struct {
+    learned: bool = false,
+    fn query(_: *anyopaque, kind: ime_omni.PrefixKind, _: u8, key: []const u8, out: *ime_omni.CandidateList) void {
+        if (kind == .kanji and std.mem.eql(u8, key, "かんじ")) _ = out.append("漢字", "");
+    }
+    fn learn(ctx: *anyopaque, _: []const u8, _: []const u8) void {
+        const self: *ImeMock = @ptrCast(@alignCast(ctx));
+        self.learned = true;
+    }
+};
+
+fn typeKeys(model: *Model, keys: []const u8) void {
+    for (keys) |byte| model.handle(.{ .text = byte });
+}
+
+fn runMinibuffer(model: *Model, command_text: []const u8) void {
+    model.handle(.escape);
+    typeKeys(model, command_text);
+    model.handle(.enter);
+}
+
+test "IME defaults to direct ASCII and the ime command toggles SKK kana input" {
+    var model: Model = undefined;
+    model.initInPlace();
+    try std.testing.expectEqual(ime_omni.InputMode.direct, model.ime.mode);
+    typeKeys(&model, "abc");
+    try std.testing.expectEqualStrings("abc", model.doc.slice());
+    runMinibuffer(&model, "ime");
+    try std.testing.expectEqual(ime_omni.InputMode.hiragana, model.ime.mode);
+    try std.testing.expectEqual(Mode.edit, model.mode);
+    typeKeys(&model, "kanji");
+    try std.testing.expectEqualStrings("abcかんじ", model.doc.slice());
+    // SKK's own `l` returns to direct input without the minibuffer.
+    typeKeys(&model, "l");
+    try std.testing.expectEqual(ime_omni.InputMode.direct, model.ime.mode);
+    typeKeys(&model, "z");
+    try std.testing.expectEqualStrings("abcかんじz", model.doc.slice());
+}
+
+test "SKK conversion runs through the workspace provider and learns the commit" {
+    var model: Model = undefined;
+    model.initInPlace();
+    var mock = ImeMock{};
+    model.ime_provider = .{ .ctx = &mock, .queryFn = ImeMock.query, .learnFn = ImeMock.learn };
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "Kanji"); // Uppercase starts the ▽ reading.
+    try std.testing.expectEqual(ime_omni.OmniPhase.reading, model.ime.phase);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    typeKeys(&model, " ");
+    try std.testing.expectEqual(ime_omni.OmniPhase.selecting, model.ime.phase);
+    model.handle(.enter); // Commits the selected candidate, not a newline.
+    try std.testing.expectEqualStrings("漢字", model.doc.slice());
+    try std.testing.expectEqual(ime_omni.OmniPhase.idle, model.ime.phase);
+    try std.testing.expect(mock.learned);
+}
+
+test "Escape cancels a composition instead of opening the minibuffer" {
+    var model: Model = undefined;
+    model.initInPlace();
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "Ka");
+    try std.testing.expectEqual(ime_omni.OmniPhase.reading, model.ime.phase);
+    model.handle(.escape);
+    try std.testing.expectEqual(Mode.edit, model.mode);
+    try std.testing.expectEqual(ime_omni.OmniPhase.idle, model.ime.phase);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    // With nothing composing, Escape opens the minibuffer as before.
+    model.handle(.escape);
+    try std.testing.expectEqual(Mode.command, model.mode);
+}
+
+test "SKK conversion powered by NfstDict seamlessly converts and commits" {
+    const dict = @import("dict.zig");
+    const nfst_bytes = @embedFile("fixtures/mini_nfst.bin");
+    const nfst = try dict.NfstDict.init(nfst_bytes);
+
+    var model: Model = undefined;
+    model.initInPlace();
+    model.ime_provider = nfst.omniProvider();
+
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "IKu"); // SKK okuri-ari: reading "い", okuri "く" (key "いk") -> auto-triggers conversion to "▼行く"
+    try std.testing.expectEqual(ime_omni.OmniPhase.selecting, model.ime.phase);
+    try std.testing.expectEqualStrings("▼行く", model.doc.preedit.slice());
+
+    model.handle(.enter); // Commits "行く"
+    try std.testing.expectEqual(ime_omni.OmniPhase.idle, model.ime.phase);
+    try std.testing.expectEqualStrings("行く", model.doc.slice());
 }

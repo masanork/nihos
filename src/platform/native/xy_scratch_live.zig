@@ -11,7 +11,8 @@ pub fn Live(comptime _: ?[]const u8) type {
             self.model.initInPlace();
             return self.render(frame);
         }
-        pub fn render(self: *Self, frame: []u8) bool {
+        // Foreground-only emulator fixture; keep its large renderer out of SRAM.
+        pub fn render(self: *Self, frame: []u8) linksection(".flash.xytext") bool {
             // Deterministic observation fixtures; these are not native counters.
             switch (self.model.takeSystemRequest()) {
                 .none => {},
