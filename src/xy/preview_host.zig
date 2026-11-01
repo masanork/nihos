@@ -62,6 +62,7 @@ pub export fn xy_tab5_state(field: u32) callconv(.c) u32 {
         7 => config.style.axis,
         8 => last_error,
         9 => nav.text_length,
+        10 => @intFromBool(nav.can_try),
         else => 0,
     };
 }
