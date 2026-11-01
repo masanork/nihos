@@ -12,8 +12,8 @@ case "$(uname -s)" in
     *) EXT=so ;;
 esac
 cd "$ROOT"
-"$ZIG" build-lib -dynamic -O ReleaseSafe "-femit-bin=$WORK/libtcp_probe.$EXT" src/net/tcp_host_probe.zig
+"$ZIG" build-lib -dynamic -O ReleaseSafe "-femit-bin=$WORK/libtcp_host_probe.$EXT" src/net/tcp_host_probe.zig
 ${CC:-cc} -Wall -Wextra -Werror -Wno-deprecated-declarations -I"$SLIRP_PREFIX/include" \
-    tools/tcp_slirp_probe.c -L"$SLIRP_LIBDIR" -lslirp "$WORK/libtcp_probe.$EXT" \
+    tools/tcp_slirp_probe.c -L"$SLIRP_LIBDIR" -lslirp "$WORK/libtcp_host_probe.$EXT" \
     -Wl,-rpath,"$SLIRP_LIBDIR" -Wl,-rpath,"$WORK" -o "$WORK/tcp_slirp_probe"
 "$WORK/tcp_slirp_probe"
