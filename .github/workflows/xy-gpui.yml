@@ -76,6 +76,9 @@ jobs:
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_splash -- --ignored
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_xy_ready -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml touch_tap_reaches_xy_home -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml absent_keyboard_selects_portrait -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml portrait_touch_opens_document_and_types -- --ignored
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml two_sessions_boot_edit_and_reset_independently -- --ignored
       - name: Canonical pixels, pause, input and editor undo
         run: build/xy-gpui/xy-gpui.app/Contents/MacOS/xy-gpui --snapshot-dir build/xy-gpui/snapshots

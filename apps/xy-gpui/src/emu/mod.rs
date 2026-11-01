@@ -198,6 +198,18 @@ mod tests {
     }
 
     #[test]
+    fn disconnected_keyboard_bus_has_independent_open_drain_lines() {
+        let mut bus = Bus::new();
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 3);
+        bus.write_u32(0x500e_0024, 1);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 2);
+        bus.write_u32(0x500e_0024, 2);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 0);
+        bus.write_u32(0x500e_0028, 3);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 3);
+    }
+
+    #[test]
     fn usb_fifo_and_timer_capture_have_guest_visible_state() {
         let mut bus = Bus::new();
         assert_eq!(bus.read_u32(0x500d_2004), 2);
@@ -286,7 +298,7 @@ mod tests {
                 let output = String::from_utf8_lossy(&emu.bus.console_output);
                 assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
                 if output.contains("NIHOS_NATIVE_XY_READY") {
-                    emu.step_frame(30_000_000);
+                    emu.step_frame(90_000_000);
                     return emu;
                 }
             }
@@ -308,18 +320,18 @@ mod tests {
         assert_eq!(a.bus.scanout, paused_frame);
         a.paused = false;
         a.send_key(b'n');
-        a.step_frame(30_000_000);
+        a.step_frame(90_000_000);
         a.send_key(b'A');
-        a.step_frame(30_000_000);
+        a.step_frame(90_000_000);
         assert!(a.bus.keyboard_fifo.is_empty());
         assert_eq!(b.bus.scanout.as_ref().unwrap(), &b_home);
         b.send_key(b'n');
-        b.step_frame(30_000_000);
+        b.step_frame(90_000_000);
         b.send_key(b'B');
-        b.step_frame(30_000_000);
+        b.step_frame(90_000_000);
         assert!(b.bus.keyboard_fifo.is_empty());
-        // Keyboard rendering can take longer than one fixed instruction budget.
-        // Wait for both sessions to present their distinct edits, with a bound.
+        // The enabled touch service and editor can repaint at different times.
+        // Wait for both sessions to present distinct edits, with a bound.
         for _ in 0..4 {
             if a.bus.scanout != b.bus.scanout {
                 break;
@@ -340,6 +352,118 @@ mod tests {
         a.step_frame(5_000_000);
         assert_eq!(b.bus.scanout, b_document);
         assert!(a.bus.scanout.is_none());
+    }
+
+    #[test]
+    #[ignore = "requires a touch-enabled NIHOS_EMU_TEST_ELF"]
+    fn touch_tap_reaches_xy_home() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        for _ in 0..2000 {
+            emu.step_frame(500_000);
+            assert!(
+                !emu.paused,
+                "CPU fault: {:?} / {:?}",
+                emu.cpu.fault,
+                emu.cpu1.as_ref().and_then(|cpu| cpu.fault.as_ref())
+            );
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+            if output.contains("NIHOS_NATIVE_XY_READY")
+                && output.contains("NIHOS_NATIVE_TOUCH_UI available=00000001")
+            {
+                emu.step_frame(30_000_000);
+                let home = emu.bus.scanout.clone().expect("home frame");
+                // The first home card uses the same visual point in either
+                // orientation, translated back into physical panel coordinates.
+                let portrait = String::from_utf8_lossy(&emu.bus.console_output)
+                    .lines()
+                    .any(|line| {
+                        line.starts_with("NIHOS_NATIVE_XY_READY ")
+                            && line.contains("portrait=00000001")
+                    });
+                emu.bus
+                    .touch(Some(if portrait { (200, 220) } else { (220, 1079) }));
+                emu.bus.touch(None);
+                emu.step_frame(90_000_000);
+                assert_ne!(
+                    home,
+                    *emu.bus.scanout.as_ref().unwrap(),
+                    "touch did not navigate from home"
+                );
+                return;
+            }
+        }
+        panic!(
+            "touch not ready: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
+    }
+
+    #[test]
+    #[ignore = "requires a keyboard-probing NIHOS_EMU_TEST_ELF with automatic orientation"]
+    fn absent_keyboard_selects_portrait() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        for _ in 0..2000 {
+            emu.step_frame(500_000);
+            assert!(!emu.paused, "guest CPU fault: {:?}", emu.fault());
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+            if let Some(line) = output
+                .lines()
+                .find(|line| line.starts_with("NIHOS_NATIVE_XY_READY "))
+            {
+                assert!(
+                    line.contains("portrait=00000001") && line.contains("keyboard_probe=00000001"),
+                    "{line}"
+                );
+                return;
+            }
+        }
+        panic!(
+            "guest not ready: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
+    }
+
+    // Also exercises a guest built with PR #125's forced-portrait fixture.
+    #[test]
+    #[ignore = "requires a portrait and touch-enabled NIHOS_EMU_TEST_ELF"]
+    fn portrait_touch_opens_document_and_types() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        for _ in 0..2000 {
+            emu.step_frame(500_000);
+            assert!(!emu.paused, "guest CPU fault: {:?}", emu.fault());
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+            if output.lines().any(|line| {
+                line.starts_with("NIHOS_NATIVE_XY_READY ") && line.contains("portrait=00000001")
+            }) && output.contains("NIHOS_NATIVE_TOUCH_UI available=00000001")
+            {
+                emu.step_frame(30_000_000);
+                let home = emu.bus.scanout.clone().expect("home frame");
+                emu.bus.touch(Some((200, 220)));
+                emu.bus.touch(None);
+                emu.step_frame(90_000_000);
+                let document = emu.bus.scanout.clone().expect("document frame");
+                assert!(home != document, "portrait tap did not open document");
+                // q is in the first row of the portrait software keyboard.
+                emu.bus.touch(Some((36, 1000)));
+                emu.bus.touch(None);
+                emu.step_frame(90_000_000);
+                assert!(
+                    document != *emu.bus.scanout.as_ref().unwrap(),
+                    "soft key did not repaint document"
+                );
+                return;
+            }
+        }
+        panic!(
+            "portrait touch not ready: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
     }
 
     #[test]
