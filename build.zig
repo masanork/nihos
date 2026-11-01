@@ -171,6 +171,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_stream_module })).step);
     const ssh_kex_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_kex.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_kex_module })).step);
+    const ssh_auth_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_auth.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_auth_module })).step);
     const tailscale_module = b.createModule(.{ .root_source_file = b.path("src/net/tailscale.zig"), .target = target, .optimize = optimize });
     tailscale_module.addImport("terminal_adapter", terminal_adapter_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tailscale_module })).step);

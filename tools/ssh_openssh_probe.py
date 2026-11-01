@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Local OpenSSH first KEX and encrypted service request; no login or device."""
+"""Local OpenSSH KEX, temporary public-key login, and PTY command probe."""
 import base64
 import ctypes as c
 import hashlib
+import getpass
 import os
 from pathlib import Path
 import socket
@@ -61,13 +62,21 @@ def run():
         p.probe_pack.argtypes = [c.c_void_p, c.c_size_t, c.c_uint32, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_pack.restype = c.c_size_t
         p.probe_feed.argtypes = [c.c_void_p, c.c_size_t]; p.probe_feed.restype = c.c_ssize_t
         p.probe_payload.argtypes = [c.c_void_p, c.c_size_t]; p.probe_payload.restype = c.c_size_t
+        p.probe_auth_public.argtypes = [c.c_void_p, c.c_void_p]; p.probe_auth_public.restype = c.c_bool
+        p.probe_auth.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_auth.restype = c.c_size_t
+        p.probe_release.argtypes = []
         key = tmp / "host"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
         with socket.socket() as picker:
             picker.bind(("127.0.0.1", 0)); port = picker.getsockname()[1]
+        seed = buffer(os.urandom(32)); user_public = c.create_string_buffer(32)
+        assert p.probe_auth_public(seed, user_public)
+        authorized = tmp / "authorized_keys"
+        authorized.write_bytes(b"ssh-ed25519 " + base64.b64encode(string(b"ssh-ed25519") + string(user_public.raw)) + b"\n")
+        tmp.chmod(0o755); authorized.chmod(0o644)
         config = tmp / "sshd_config"
-        config.write_text(f"Port {port}\nListenAddress 127.0.0.1\nHostKey {key}\nPidFile {tmp}/pid\nPasswordAuthentication no\nUsePAM no\n")
+        config.write_text(f"Port {port}\nListenAddress 127.0.0.1\nHostKey {key}\nPidFile {tmp}/pid\nAuthorizedKeysFile {authorized}\nStrictModes no\nPasswordAuthentication no\nUsePAM no\n")
         log = (tmp / "sshd.log").open("wb")
         server = subprocess.Popen(["/usr/sbin/sshd", "-D", "-e", "-f", str(config)], stdout=log, stderr=log)
         try:
@@ -118,7 +127,58 @@ def run():
                     assert p.probe_feed(buffer(b), 1) == 1, "encrypted server packet rejected"
                 length = p.probe_payload(plaintext, len(plaintext))
                 assert plaintext.raw[:length] == b"\x06" + string(b"ssh-userauth")
-                print("OpenSSH KEX, pinned host proof, NEWKEYS and encrypted service accept: OK")
+                p.probe_release()
+                seq = 4
+                def send(payload):
+                    nonlocal seq
+                    data = c.create_string_buffer(len(payload) + 128)
+                    n = p.probe_pack(buffer(payload), len(payload), seq, buffer(os.urandom(32)), data, len(data))
+                    assert n
+                    seq += 1
+                    sock.sendall(data.raw[:n])
+                def receive():
+                    while True:
+                        data = c.create_string_buffer(35000)
+                        while not p.probe_payload(data, len(data)):
+                            b = exact(sock, 1)
+                            if p.probe_feed(buffer(b), 1) != 1:
+                                raise RuntimeError("encrypted server packet rejected")
+                        size = p.probe_payload(data, len(data))
+                        result = data.raw[:size]
+                        p.probe_release()
+                        if result[0] in (2, 4): continue
+                        if result[0] == 80:
+                            name_len = struct.unpack(">I", result[1:5])[0]
+                            if result[5 + name_len] != 0: send(b"\x52")
+                            continue
+                        return result
+                username = getpass.getuser().encode()
+                auth = c.create_string_buffer(512)
+                n = p.probe_auth(buffer(username), len(username), seed, auth, len(auth))
+                assert n
+                send(auth.raw[:n])
+                result = receive()
+                while result[0] == 53: result = receive()
+                if result != b"\x34":
+                    log.flush(); raise RuntimeError(f"authentication failed: {result.hex()}\n{(tmp / 'sshd.log').read_text()}")
+                send(b"\x5a" + string(b"session") + struct.pack(">III", 0, 65536, 32768))
+                result = receive()
+                assert result[0] == 91 and struct.unpack(">I", result[1:5])[0] == 0, result.hex()
+                server_channel = struct.unpack(">I", result[5:9])[0]
+                channel = struct.pack(">I", server_channel)
+                send(b"\x62" + channel + string(b"pty-req") + b"\x01" + string(b"xterm") + struct.pack(">IIII", 80, 24, 0, 0) + string(b"\x00"))
+                result = receive()
+                assert result == b"\x63" + struct.pack(">I", 0), result.hex()
+                send(b"\x62" + channel + string(b"exec") + b"\x01" + string(b"printf nihos_ssh_ok"))
+                output = b""
+                for _ in range(12):
+                    result = receive()
+                    if result[0] == 94:
+                        size = struct.unpack(">I", result[5:9])[0]
+                        output += result[9:9 + size]
+                    if b"nihos_ssh_ok" in output: break
+                assert b"nihos_ssh_ok" in output, output
+                print("OpenSSH KEX, host pin, public-key authentication and PTY command: OK")
         finally:
             server.terminate()
             try: server.wait(timeout=3)
