@@ -1496,7 +1496,7 @@ test "scheme runtime memory footprint and tail call execution" {
         \\      acc
         \\      (sum-iter (- n 1) (+ acc n))))
     , &host, &out);
-    vm.step_budget = 20000;
-    const tco_res = try vm.evaluate("(sum-iter 10 0)", &host, &out);
-    try std.testing.expectEqualStrings("55", tco_res);
+    vm.step_budget = 50000;
+    const tco_res = try vm.evaluate("(sum-iter 50 0)", &host, &out);
+    try std.testing.expectEqualStrings("1275", tco_res);
 }
