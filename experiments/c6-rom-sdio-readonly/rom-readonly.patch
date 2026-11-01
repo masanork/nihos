@@ -1,0 +1,62 @@
+diff --git a/port/esp32_sdio_port.c b/port/esp32_sdio_port.c
+index 42a339e..e59d2a3 100644
+--- a/port/esp32_sdio_port.c
++++ b/port/esp32_sdio_port.c
+@@ -51,9 +51,11 @@ static esp_loader_error_t esp32_sdio_port_init(esp_loader_port_t *port)
+     gpio_set_pull_mode(p->reset_pin, GPIO_PULLUP_ONLY);
+     gpio_set_direction(p->reset_pin, GPIO_MODE_OUTPUT);
+ 
+-    gpio_reset_pin(p->boot_pin);
+-    gpio_set_pull_mode(p->boot_pin, GPIO_PULLUP_ONLY);
+-    gpio_set_direction(p->boot_pin, GPIO_MODE_OUTPUT);
++    if (p->boot_pin != GPIO_NUM_NC) {
++        gpio_reset_pin(p->boot_pin);
++        gpio_set_pull_mode(p->boot_pin, GPIO_PULLUP_ONLY);
++        gpio_set_direction(p->boot_pin, GPIO_MODE_OUTPUT);
++    }
+ 
+     return ESP_LOADER_SUCCESS;
+ }
+@@ -70,7 +72,7 @@ static void esp32_sdio_port_deinit(esp_loader_port_t *port)
+         p->_host_driver_needs_deinit = false;
+     }
+     gpio_reset_pin(p->reset_pin);
+-    gpio_reset_pin(p->boot_pin);
++    if (p->boot_pin != GPIO_NUM_NC) gpio_reset_pin(p->boot_pin);
+ }
+ 
+ static esp_loader_error_t esp32_sdio_write(esp_loader_port_t *port, uint32_t function, uint32_t addr,
+@@ -159,12 +161,12 @@ static void esp32_sdio_reset_target(esp_loader_port_t *port)
+ static void esp32_sdio_enter_bootloader(esp_loader_port_t *port)
+ {
+     esp32_sdio_port_t *p = container_of(port, esp32_sdio_port_t, port);
+-    gpio_set_level(p->boot_pin, 0);
++    if (p->boot_pin != GPIO_NUM_NC) gpio_set_level(p->boot_pin, 0);
+     gpio_set_level(p->reset_pin, 0);
+     usleep(SERIAL_FLASHER_RESET_HOLD_TIME_MS * 1000);
+     gpio_set_level(p->reset_pin, 1);
+     usleep(SERIAL_FLASHER_BOOT_HOLD_TIME_MS * 1000);
+-    gpio_set_level(p->boot_pin, 1);
++    if (p->boot_pin != GPIO_NUM_NC) gpio_set_level(p->boot_pin, 1);
+ }
+ 
+ esp_loader_error_t loader_port_wait_int(esp32_sdio_port_t *port, uint32_t timeout)
+diff --git a/src/esp_loader.c b/src/esp_loader.c
+index 4a7816c..72d517e 100644
+--- a/src/esp_loader.c
++++ b/src/esp_loader.c
+@@ -815,11 +815,9 @@ esp_loader_error_t esp_loader_get_security_info(esp_loader_t *loader,
+         (resp.flags & GET_SECURITY_INFO_HARD_DIS_JTAG) != 0;
+     security_info->usb_disabled = (resp.flags & GET_SECURITY_INFO_DIS_USB) != 0;
+ 
+-    uint32_t key_purposes_bit_cnt = 0;
+-    for (size_t byte = 0; byte < sizeof(resp.key_purposes); byte++) {
+-        key_purposes_bit_cnt += byte_popcnt(resp.key_purposes[byte]);
+-    }
+-    security_info->flash_encryption_enabled = key_purposes_bit_cnt % 2;
++    /* GET_SECURITY_INFO reports the flash encryption counter separately
++     * from key-purpose identifiers; encryption is active for odd parity. */
++    security_info->flash_encryption_enabled = byte_popcnt(resp.flash_crypt_cnt) % 2;
+ 
+     security_info->dcache_in_uart_download_disabled =
+         (resp.flags & GET_SECURITY_INFO_DIS_DOWNLOAD_DCACHE) != 0;

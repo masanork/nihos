@@ -2904,33 +2904,33 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-01",
-    "measuredAt": "2026-11-01T13:11:23.706539+00:00",
+    "measuredAt": "2026-11-01T14:36:19.356254+00:00",
     "project": "nihos",
-    "commit": "fd4fc389b4acf8caa67df8882a3e43e5c6cae54d",
+    "commit": "a1005798c006fb5ad8729f1b625377dec812f843",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "e1d16320022ba9a51b03bd7acdfde8e80e78ba6c2ceff111bdd6d16755cc2216",
+    "sourceTreeSha256": "86f4484d46b64ceea42477ec27c44de9a2ddc35e43818a3eaa4a3304c76f3684",
     "code": {
-      "implementation": 71793,
-      "tests": 34559,
-      "tooling": 22461,
-      "probes": 16121,
+      "implementation": 73342,
+      "tests": 36220,
+      "tooling": 23645,
+      "probes": 16807,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 64096,
-        "tests": 25246,
-        "tooling": 1420,
-        "probes": 4383,
+        "implementation": 65645,
+        "tests": 26693,
+        "tooling": 1440,
+        "probes": 5061,
         "vendored": 0,
         "generated": 0
       },
       "C": {
         "implementation": 4457,
         "tests": 126,
-        "tooling": 291,
-        "probes": 7219,
+        "tooling": 339,
+        "probes": 7227,
         "vendored": 0,
         "generated": 0
       },
@@ -2952,8 +2952,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 9154,
-        "tooling": 17122,
+        "tests": 9368,
+        "tooling": 17607,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -2969,7 +2969,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 3253,
+        "tooling": 3884,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -2987,7 +2987,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 224,
+        "tooling": 244,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -3012,13 +3012,13 @@
         "implementation": 0,
         "tests": 0,
         "tooling": 0,
-        "probes": 16121,
+        "probes": 16807,
         "vendored": 0,
         "generated": 0
       },
       "src": {
-        "implementation": 69856,
-        "tests": 25372,
+        "implementation": 71405,
+        "tests": 26819,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -3034,8 +3034,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 9187,
-        "tooling": 22237,
+        "tests": 9401,
+        "tooling": 23401,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -3277,6 +3277,15 @@
         "src/net/fixtures/generate-dhcp-renew.py": "dfe11dca7f6e90f2975b538163c56ef9ce1e34f0f01d391867cc063175083d2c",
         "src/net/fixtures/wasm_fixture.zig": "a76e7f97167890ce7bd9033b78c91445c63ea4620793a23d35c75e8c58577050",
         "src/net/hosted.zig": "0d20968a750fd613d6d1ca6e46bc8dacc79e3593c15b2e0f99d4437a62d489a0",
+        "src/net/hosted_c6_time.zig": "bad103d1c309270e2a97eda41858a927a9862777b5ae92d7f7d97b84c8549904",
+        "src/net/hosted_c6_time_exchange.zig": "dde1af4068b19083b78d9635337bf6f1ac5dcc320ba6680135cdbb756a2d6656",
+        "src/net/hosted_c6_time_exchange_test.zig": "6b0d9588ce7e8e152ebb6f3846303ac2c1104866bc66a6cf3e43772cd8bff689",
+        "src/net/hosted_c6_time_policy.zig": "c4fedcf93bb29f5d683306fda90642c30f32440b8d32501947be0ab8148b6b56",
+        "src/net/hosted_c6_time_policy_test.zig": "c71d09eda7391810f400d8e3c75bd40524e9c87401c5efd2ecfe43ec48b2e44e",
+        "src/net/hosted_c6_time_rv32_probe.zig": "2b27b19c15c046cc56465267e8dcc5d9a15158d956f48693ded03f89a2b420eb",
+        "src/net/hosted_c6_time_test.zig": "b1e611d8ead1c1119f2ce1a928c1ba72740bbc5ffd2ad143ce84e8052d57f8fd",
+        "src/net/hosted_diagnostics.zig": "490d82b6f73ef81f2b8dfe73c25076e3c5a1c302f2396e355f7c1dd3165bfc22",
+        "src/net/hosted_diagnostics_test.zig": "0fc0d84cc5ab5ac53d18e16623123b49f86775a278384b78802e89e459ef7454",
         "src/net/hosted_dma_bus.zig": "4117809f73662ce2de29c639bf6336d31466055e4c7534908edfdd3b7c4ad4d1",
         "src/net/hosted_dma_bus_test.zig": "5203937ea9b1210c3426fe114b87602f27cf1455843b2307bb9ea561ccd70cd4",
         "src/net/hosted_long_dma.zig": "423c4a0ca08ad74e9de4c66ece30c08a5acf8f96311ee22771065ab8bfd314ac",
@@ -3285,8 +3294,23 @@
         "src/net/hosted_long_integration_test.zig": "3d27f6210db155b54429c18dc9de462b69bfcef97683164dedcc69d53472b110",
         "src/net/hosted_long_sender.zig": "3ab8c95d123d3aff444a9357267fb0985f907115089ce0dd33dc1a6e9e388963",
         "src/net/hosted_long_sender_test.zig": "d8d82a6b919442ea6e33a0a91c17b6a7764265f55ed85d631044f52a769827dc",
-        "src/net/hosted_station.zig": "cf4631c4388864f0589a7e30899d9ed582bd481f4a89e5bd432d5e5fc48b31f3",
-        "src/net/hosted_test.zig": "68714b25b3322b2fb7e986892e0f5ca607bc4b279d3803169507aada56b49d57",
+        "src/net/hosted_network_split.zig": "bbaf5f4917b8c8fe0dda566626ce84a5ca508444ae4c25d64ff6b442f31af50d",
+        "src/net/hosted_network_split_test.zig": "148473bf167763b41cd2270d19b740b2356a6505074cabff45d6b14cc2add7ec",
+        "src/net/hosted_ota.zig": "ba214ab9fa08c79027bc78988cbb0d4f2fb900da89724aa3fec5ff7f44c4bc8a",
+        "src/net/hosted_ota_arm.zig": "1a3417d33cd2f816daa81b8a3e91ebd03e4067075c487a7d9408e88fe393584c",
+        "src/net/hosted_ota_arm_test.zig": "2ae3b667e25eea5936a035acf998e7603ee055bcdf355c925b07fead02719eaa",
+        "src/net/hosted_ota_fake.zig": "98e2ebdb7fe16ce055e2d06b8a7f7f7b9108dd33c69b0d202dd429bf394b9cf4",
+        "src/net/hosted_ota_fake_test.zig": "d8a46dce67a23227beefb0236040e29acbb30bdce5970bd46a6517ebc2edd963",
+        "src/net/hosted_ota_guard.zig": "49853ddbf2ddd058964fc04a421301b218060cc81d2f9f82bfa3814f01032b0e",
+        "src/net/hosted_ota_guard_test.zig": "4f57ab28a809fe212051c1db0fd43e0f2a515d8417b67b13917742858a367fc4",
+        "src/net/hosted_ota_pump.zig": "704b47a517ab0de78e44cb7dd7919056c5b51762501d758b6527ba2828867213",
+        "src/net/hosted_ota_pump_test.zig": "f270d6f4c0a6b5bee1bdee856103d9359bec35ca3354c138ec75aa8abd73d040",
+        "src/net/hosted_ota_rv32_probe.zig": "d7ab69061cf7b68396e16a582621cbdc2dd4c787ac6012c5f06c2530ed085414",
+        "src/net/hosted_ota_session.zig": "e8ca853c9fe084bc1b69e21f6b1a5ebcefa4c75c23424bf872d10e38ec05a5f6",
+        "src/net/hosted_ota_session_test.zig": "17120d4561edce461d9d42c6925e3f61e8708ccecd75f99398701ed7eb1451cc",
+        "src/net/hosted_ota_test.zig": "9c1e6bb1f390c0c8dac015cf8055834f2c25b1a59ce29be535eaf1ccbb8ebaa0",
+        "src/net/hosted_station.zig": "f34672e2e8d0eaa99dd50569b51e161b02bd1bc10aecbc1e9e3dafcc2da59ec1",
+        "src/net/hosted_test.zig": "8b7662d1ea01ad71686c8fd34f5152befc8302316a00092714f6efe6ccd751f0",
         "src/net/hosted_tx_plan.zig": "5631ab82c6a69859b817ea3ad40751c1b43fa665cdd513aa4863966ac98e5037",
         "src/net/hosted_tx_plan_test.zig": "1ca2cee6c3484417c3849815517d8e858b3ddf3415b92cc2aee648dad20b456a",
         "src/net/hosted_tx_staging.zig": "4ac9fa6d1bfe613dcd270e1cc243ad2dbf1fb680a2d05bae7029f7866a11e1c3",
@@ -3311,7 +3335,7 @@
         "src/platform/native/board_devices.zig": "a2962ed666192cfb6ed131245fb5fe40ee5a155185d39baa839eb624d9f56e48",
         "src/platform/native/broker_abi.zig": "221d693de6b33cb5c29a2d9385ebc7abb2e9e959d1c6297e7b928e34b4a470aa",
         "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
-        "src/platform/native/c6_probe.zig": "f2ca284cb519aef9550042f5e047747a0ad8ff24c5b25b130a4864ff58d499cf",
+        "src/platform/native/c6_probe.zig": "f6b953c1591221d3ccf89cadf601382c3a5b08ef769430ac68fa958ff2c04124",
         "src/platform/native/camera_jpeg.zig": "570e4c29e5f176be2b00f6dbc00346883b7c8715692799a21ad435e2d36699ef",
         "src/platform/native/canvas_demo_app.zig": "802f210b533bdaf238e7b3d4b6d45ecf25cac13dd6d0a30faab9a91f826d8f8b",
         "src/platform/native/canvas_pattern.zig": "955af251b733d0229673b3f29894b65d8a7cdebdbdfc115f68fbab27d91125f7",
@@ -3325,7 +3349,7 @@
         "src/platform/native/csi_workspace.zig": "df0e43154bcedb9dd8e8980fed2d505bd9c4ce300c3582ffff3fd5f90b698038",
         "src/platform/native/device_workspace.zig": "3e6a037e29d1ddb20a803df858445298311d2cd593a60cdaf2939c0e1d9f5e18",
         "src/platform/native/diagnostic_clock.zig": "a920f73019d65567b6a24941808187a10f3c0300ad79053af310e4944bcb59ce",
-        "src/platform/native/diagnostic_ui.zig": "804cecd6f336d1cbc820765a95246bbd6473068f34200d142f4e213f40648088",
+        "src/platform/native/diagnostic_ui.zig": "f25ab08190acf86462ec567b93663cb0ce92ebae96ff53be303b7426abb86054",
         "src/platform/native/display_probe.zig": "b6c40d449630b0f302a9e3a835524062e40c74f791975f40e49ca1c9c708fa35",
         "src/platform/native/display_runtime.zig": "2bbae189dd2baa46b6ce9558f0af5da90fdffcf19903558fd2eab8063a664207",
         "src/platform/native/display_service.zig": "5cca357d10533650d7530a214dcf2cf64ac0021f2e5640a7289ad22affea0d5b",
@@ -3349,10 +3373,10 @@
         "src/platform/native/hosted_long_cache_test.zig": "9beeaa39caec919a8ff30dc981fd0a94b967b3dc81c0367418f773608624307c",
         "src/platform/native/keypad_display.zig": "085f097f397fbe1eece8b85ff24bd74450f5c059fae861de1e4ca9bc3e053017",
         "src/platform/native/keypad_probe.zig": "c565fe8d6a96166de4d372f537f2e053e1b50a2ac8b4b90d762221889a309f7e",
-        "src/platform/native/main.zig": "24d9f5200578a1afd2dac946a1b3baaf492ec18c0cf929b0c2d905a1dc711902",
+        "src/platform/native/main.zig": "970e16aad0fe5eb433146537a7409ea5a5ad101ee1bfa1d74a4724946b6bc8d3",
         "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
         "src/platform/native/microphone_probe.zig": "e9f67b35914b9863aaaac4cbca1d29f3ced895c97b58acfc554ca49d09db913f",
-        "src/platform/native/network_service.zig": "9a81c6424e7af08c839ec906b588d23d7afde96d37f07c18d260d25490d80dae",
+        "src/platform/native/network_service.zig": "4d7a5cf7b7eb0172878e76a7e4ca69b8d9b16cfcd3ed4486ff73cd6558c137c6",
         "src/platform/native/normal_fs.zig": "c2348a86b0f39d70f13eec92653dda9bddab94bbfda0a27abcd4ff99db0623eb",
         "src/platform/native/normal_fs_abi.zig": "debb0c25261589277d0bdf551ba822f4bd4ba5286cbb132f2d7e33a0d212003a",
         "src/platform/native/normal_fs_test_hooks.zig": "1878f547baeb912849944b2c938bfb9b912d83c6a6b2872eee9882d274230c31",
@@ -3492,9 +3516,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 14534,
-        "count": 15508,
-        "percent": 93.71937064740779
+        "covered": 14549,
+        "count": 15522,
+        "percent": 93.73147790233217
       },
       "files": {
         "src/app/animation.zig": {
@@ -3893,6 +3917,10 @@
           "covered": 143,
           "count": 145
         },
+        "src/net/hosted_diagnostics.zig": {
+          "covered": 13,
+          "count": 13
+        },
         "src/net/hosted_dma_bus.zig": {
           "covered": 21,
           "count": 22
@@ -3910,8 +3938,8 @@
           "count": 9
         },
         "src/net/hosted_station.zig": {
-          "covered": 249,
-          "count": 267
+          "covered": 251,
+          "count": 268
         },
         "src/net/hosted_tx_plan.zig": {
           "covered": 6,
@@ -4284,10 +4312,33 @@
         "src/net/esp_at_test.zig",
         "src/net/fixtures/generate-dhcp-renew.py",
         "src/net/fixtures/wasm_fixture.zig",
+        "src/net/hosted_c6_time.zig",
+        "src/net/hosted_c6_time_exchange.zig",
+        "src/net/hosted_c6_time_exchange_test.zig",
+        "src/net/hosted_c6_time_policy.zig",
+        "src/net/hosted_c6_time_policy_test.zig",
+        "src/net/hosted_c6_time_rv32_probe.zig",
+        "src/net/hosted_c6_time_test.zig",
+        "src/net/hosted_diagnostics_test.zig",
         "src/net/hosted_dma_bus_test.zig",
         "src/net/hosted_long_dma_test.zig",
         "src/net/hosted_long_integration_test.zig",
         "src/net/hosted_long_sender_test.zig",
+        "src/net/hosted_network_split.zig",
+        "src/net/hosted_network_split_test.zig",
+        "src/net/hosted_ota.zig",
+        "src/net/hosted_ota_arm.zig",
+        "src/net/hosted_ota_arm_test.zig",
+        "src/net/hosted_ota_fake.zig",
+        "src/net/hosted_ota_fake_test.zig",
+        "src/net/hosted_ota_guard.zig",
+        "src/net/hosted_ota_guard_test.zig",
+        "src/net/hosted_ota_pump.zig",
+        "src/net/hosted_ota_pump_test.zig",
+        "src/net/hosted_ota_rv32_probe.zig",
+        "src/net/hosted_ota_session.zig",
+        "src/net/hosted_ota_session_test.zig",
+        "src/net/hosted_ota_test.zig",
         "src/net/hosted_test.zig",
         "src/net/hosted_tx_plan_test.zig",
         "src/net/hosted_tx_staging_test.zig",

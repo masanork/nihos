@@ -20,6 +20,27 @@ outside interrupts. `Keyboard.poll` supplies bounded HID press events to
 same document/controller. The physical-keyboard path is active in xy mode;
 it does not depend on entering the diagnostic launcher.
 
+At startup, a confirmed address NACK for the Tab5 keyboard selects portrait;
+a working physical keyboard selects landscape. An I2C error, unsupported device
+or disabled probe leaves the orientation unknown and uses landscape. The
+driver retries a failed or absent keyboard probe in the foreground at 500 ms
+intervals. Two matching presence observations select landscape on attachment
+or portrait on confirmed absence; other I2C errors preserve the last confirmed
+orientation. A rotation waits for an active touch and running VM to finish.
+Reader reflow retains the current byte offset and clears old page history. In the document, a touch keyboard appears below the text and
+status when the physical keyboard is unavailable. It provides QWERTY,
+one-shot Shift, 123/ABC and shifted symbols, Space, Enter, Backspace, left and
+right, Esc and Hide. Hide is reversible by flicking up from the bottom edge;
+a downward flick dismisses it. The keyboard supports printable ASCII and the
+existing document/minibuffer input path. The `ime` minibuffer command toggles
+the workspace SKK romaji-to-kana input path for both physical and touch keys.
+The native session does not yet bind a dictionary provider or render IME
+preedit/candidates, so kana-to-kanji interaction is not yet complete. A touch
+caret and hold-to-repeat are also pending. The portrait and input
+paths have host coverage. One physical attach/detach and touch cycle was
+observed in the [hot-plug checkpoint](measurements/2026-11-01-xy-keyboard-hotplug.md);
+repeat, fault, cold-boot and broader physical qualification remain open.
+
 | Input | Normal xy action |
 | --- | --- |
 | Home: touch, arrows / Enter, `1`–`4`, `n`, `s` | Choose a book, document or settings |
@@ -32,8 +53,9 @@ it does not depend on entering the diagnostic launcher.
 | Document: touch body | Return Home; no touch caret placement |
 
 The minibuffer evaluates Scheme or opens `help`, `log`, `mem` and `tasks`.
-Those system views are read-only. USB/Bluetooth keyboard adapters, native IME,
-and automatic startup restoration of RAM text/settings remain separate work.
+Those system views are read-only. USB/Bluetooth keyboard adapters, native IME
+candidate presentation/provider integration, and automatic startup restoration
+of RAM text/settings remain separate work.
 [Persistent storage bindings](planning/sqld-xy-service.md) are available through
 the normal sqld owner; unknown media are never automatically initialized. Japanese display and serial UTF-8 input are separate from IME.
 The [Tab5 reader report](measurements/2026-10-31-xy-tab5-reader.md) and

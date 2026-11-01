@@ -186,8 +186,12 @@ extern fn nih_fs_command([*]const u8, u32) callconv(.c) void;
 extern fn nih_device_request(u32) callconv(.c) bool;
 extern fn nih_app_display_available() callconv(.c) bool;
 var bus = i2c.Master(Pins){ .pins = .{ .clock = clock.timer() }, .data_pin = 0, .clock_pin = 1 };
-var keyboard = console.keyboard.Keyboard(@TypeOf(bus)){ .bus = &bus };
+var keyboard = console.keyboard.KeyboardIn(@TypeOf(bus), if (xy_workspace) ".flash.xytext" else ".text"){ .bus = &bus };
 var hardware_ready = false;
+var keyboard_probe_failed = false;
+var keyboard_presence: console.scratch.soft_keyboard.PresenceTracker = .{};
+var keyboard_next_probe: u64 = 0;
+const keyboard_probe_interval_us: u64 = 500_000;
 var revision: u32 = 0;
 var shown_revision: u32 = 0;
 const face: console.raster.Face = @fromBackingInt(options.console_font);
@@ -202,6 +206,7 @@ const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
 const Session = console.session;
 const xy_workspace = @hasDecl(options, "xy_workspace") and options.xy_workspace;
+const xy_portrait = @hasDecl(options, "xy_portrait") and options.xy_portrait;
 const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
 var last_xy_trace_revision: u32 = 0;
 var storage_provider: ?*const console.scratch.scheme.storage.Provider = null;
@@ -547,12 +552,16 @@ pub noinline fn input(log: anytype) linksection(if (options.rust_session and @ha
     if (options.keyboard_i2c) {
         nih_keyboard_pads_init();
         hardware_ready = keyboard.begin() catch blk: {
+            keyboard_probe_failed = true;
             error_code = 1;
             break :blk false;
         };
         if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
     }
-    if (xy_workspace) scratch.setPhysicalKeyboard(hardware_ready);
+    if (xy_workspace) {
+        keyboard_presence = .{ .stable = console.scratch.soft_keyboard.probeFromResult(options.keyboard_i2c, hardware_ready, keyboard.report.status, keyboard_probe_failed) };
+        keyboard_next_probe = input_started +| keyboard_probe_interval_us;
+    }
     const values: extern struct { status: u32, firmware: u32, mode: u32, transactions: u32, error_code: u32, sources: u32 } = .{
         .status = if (hardware_ready) 1 else 2,
         .firmware = keyboard.report.firmware,
@@ -598,14 +607,19 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             if (!nih_touch_pop(&event)) break;
             if ((options.rust_session and rust_session.active()) or (options.wasm_session_test and wasmFixtureReserved())) continue;
             if (!available or model.failure_latched or event.at < input_started) continue;
-            if (xy_workspace and session_active and event.kind == .down) {
-                scratch.touchDown(event.x, event.y);
-                continue;
-            }
-            if (xy_workspace and session_active and event.kind == .up) {
-                scratch.touch(event.x, event.y);
-                scratch.revision +%= 1;
-                continue;
+            if (xy_workspace and session_active) {
+                if (event.kind == .cancel) {
+                    scratch.touchCancel();
+                    continue;
+                }
+                if (event.kind == .down or event.kind == .move or event.kind == .up) {
+                    const point = if (scratch.portrait_touch) pointer.portraitFromLandscape(event.x, event.y) orelse continue else pointer.Point{ .x = event.x, .y = event.y };
+                    if (event.kind == .down) scratch.touchDown(point.x, point.y) else if (event.kind == .move) scratch.touchMove(point.x, point.y) else {
+                        scratch.touch(point.x, point.y);
+                        scratch.revision +%= 1;
+                    }
+                    continue;
+                }
             }
             if (view_button.observe(event, pointer.view_button)) {
                 if (xy_workspace and session_active) {
@@ -670,7 +684,9 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
     } else if (!options.wasm_interactive) {
         if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
     }
-    if (hardware_ready) {
+    if (xy_workspace and session_active and options.keyboard_i2c) {
+        serviceXyKeyboard(now, log);
+    } else if (hardware_ready) {
         var events: [4]console.keyboard.Event = undefined;
         const count = keyboard.poll(&events) catch blk: {
             hardware_ready = false;
@@ -685,6 +701,44 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             }
         }
     }
+}
+
+// Retry only in foreground, and wait for confirmed observations before
+// changing the xy viewport. Non-NACK bus faults preserve the previous view.
+noinline fn serviceXyKeyboard(now: u64, log: anytype) linksection(if (xy_workspace) ".flash.xytext" else ".text") void {
+    if (hardware_ready) {
+        var events: [4]console.keyboard.Event = undefined;
+        const count = keyboard.poll(&events) catch |err| blk: {
+            hardware_ready = false;
+            keyboard_probe_failed = err != error.AddressNack;
+            model.input_sources &= ~console.keys.capability(.tab5_keyboard);
+            session_hid = .{};
+            keyboard_presence.observe(if (err == error.AddressNack) .absent else .unknown);
+            keyboard_next_probe = now +| keyboard_probe_interval_us;
+            break :blk 0;
+        };
+        for (events[0..count]) |event| if (session_hid.feed(event.modifiers, event.usage)) |key| sessionKey(key, log);
+    }
+    if (now >= keyboard_next_probe) {
+        keyboard_next_probe = now +| keyboard_probe_interval_us;
+        if (!hardware_ready) {
+            keyboard_probe_failed = false;
+            hardware_ready = keyboard.begin() catch blk: {
+                keyboard_probe_failed = true;
+                break :blk false;
+            };
+            if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
+        }
+        const observed = console.scratch.soft_keyboard.probeFromResult(true, hardware_ready, keyboard.report.status, keyboard_probe_failed);
+        keyboard_presence.observe(observed);
+    }
+    if (keyboard_presence.stable == .unknown or camera_overlay.state != .idle or cameraLiveActive() or (options.rust_session and rust_session.active()) or (options.wasm_session_test and wasmFixtureReserved())) return;
+    const attached = keyboard_presence.stable == .present;
+    const changed = scratch.physical_keyboard != attached or scratch.portrait_touch == attached;
+    if (!changed or !scratch.applyKeyboardPresence(attached)) return;
+    const event: extern struct { present: u32, portrait: u32 } = .{ .present = @intFromBool(attached), .portrait = @intFromBool(scratch.portrait_touch) };
+    log.record("NIHOS_NATIVE_KEYBOARD_CHANGE", null, .{ "present", "portrait" }, &event);
+    @atomicStore(u32, &dirty, 1, .release);
 }
 
 // Emulator-only transport substitution: retain the normal serial decoder and
@@ -715,6 +769,9 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();
+        const keyboard_probe = console.scratch.soft_keyboard.probeFromResult(options.keyboard_i2c, hardware_ready, keyboard.report.status, keyboard_probe_failed);
+        scratch.portrait_touch = console.scratch.soft_keyboard.startupOrientation(keyboard_probe, xy_portrait) == .portrait;
+        scratch.setPhysicalKeyboard(hardware_ready);
         scratch.nav.home();
         scratch.vm.view.style.body_px = 32;
         scratch.vm.view.style.ruby_px = 16;
@@ -729,8 +786,8 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     session_active = true;
     session_pending = false;
     if (comptime xy_workspace) {
-        const values: extern struct { document_bytes: u32, undo_ops: u32, workspace_bytes: u32, persistent: u32, unicode_raster: u32 } = .{ .document_bytes = 4096, .undo_ops = 256, .workspace_bytes = @sizeOf(console.scratch.Model), .persistent = 0, .unicode_raster = 1 };
-        log.record("NIHOS_NATIVE_XY_READY", null, .{ "document_bytes", "undo_ops", "workspace_bytes", "persistent", "unicode_raster" }, &values);
+        const values: extern struct { document_bytes: u32, undo_ops: u32, workspace_bytes: u32, persistent: u32, unicode_raster: u32, portrait: u32, keyboard_probe: u32 } = .{ .document_bytes = 4096, .undo_ops = 256, .workspace_bytes = @sizeOf(console.scratch.Model), .persistent = 0, .unicode_raster = 1, .portrait = @intFromBool(scratch.portrait_touch), .keyboard_probe = @backingInt(console.scratch.soft_keyboard.probeFromResult(options.keyboard_i2c, hardware_ready, keyboard.report.status, keyboard_probe_failed)) };
+        log.record("NIHOS_NATIVE_XY_READY", null, .{ "document_bytes", "undo_ops", "workspace_bytes", "persistent", "unicode_raster", "portrait", "keyboard_probe" }, &values);
     } else {
         const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
         log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);

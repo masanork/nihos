@@ -94,7 +94,25 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.setPhysicalKeyboard'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.softKeyboardVisible'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.touchCancel'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.touchMove'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.applyKeyboardPresence'))
+        self.assertTrue(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".flash.xytext"[0..13]).poll'))
+        self.assertFalse(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".other"[0..6]).poll'))
+        self.assertTrue(MODULE.xy_function('xy.navigation.State.touchPortrait'))
+        self.assertTrue(MODULE.xy_function('xy.learning_session.Session.touchPortrait'))
         self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAt'))
+        self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAtState'))
+        self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAtIn'))
+        self.assertTrue(MODULE.xy_function('xy.soft_keyboard.layoutIn'))
+        self.assertTrue(MODULE.xy_function('xy.soft_keyboard.startupOrientation'))
+        self.assertTrue(MODULE.xy_function('surface.Surface.blit'))
+        self.assertTrue(MODULE.xy_function('surface.Surface.fillRect'))
+        self.assertTrue(MODULE.xy_function('native_reading.prepareViewport'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).renderPortrait'))
+        self.assertTrue(MODULE.xy_function('fmt.bufPrint__func_3'))
+        self.assertFalse(MODULE.xy_function('surface.Surface.unexpected'))
+        self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).renderKeyboard__func_12'))
         self.assertTrue(MODULE.xy_function('soft_keyboard.visible'))
         self.assertFalse(MODULE.xy_function('xy.soft_keyboard.calibrate'))
         self.assertTrue(MODULE.xy_function('xy.ime_omni.OmniIme.handleKey'))
@@ -185,6 +203,18 @@ class NativeInstructionTests(unittest.TestCase):
         for kind, flags, allowed in ((1, 6, False), (8, 6, True), (1, 7, True), (1, 2, True)):
             with self.assertRaises(ValueError):
                 MODULE.audit_flash_section('.flash.time', kind, flags, start, 64, allow_time=allowed)
+
+    def test_c6_time_flash_requires_complete_station_and_c6_allowlists(self):
+        start = 0x40004000
+        names = sorted(MODULE.TIME_FUNCTIONS | MODULE.TIME_STATION | MODULE.TIME_C6)
+        names += [prefix + '__func_7' for prefix in sorted(MODULE.TIME_GENERIC)]
+        functions = [(name, start + i*16, start + (i+1)*16) for i, name in enumerate(names)]
+        span = (start, start + len(names)*16)
+        MODULE.audit_time_functions(functions, span)
+        missing = next(i for i, item in enumerate(functions) if item[0] in MODULE.TIME_C6)
+        functions[missing] = ('unapproved.function', *functions[missing][1:])
+        with self.assertRaises(ValueError):
+            MODULE.audit_time_functions(functions, span)
 
     def test_device_code_requires_exact_allowlist_rx_extent_and_explicit_profile(self):
         first = 0x40002000

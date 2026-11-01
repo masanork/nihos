@@ -330,9 +330,22 @@ mod tests {
         b.send_key(b'B');
         b.step_frame(90_000_000);
         assert!(b.bus.keyboard_fifo.is_empty());
+        // The enabled touch service and editor can repaint at different times.
+        // Wait for both sessions to present distinct edits, with a bound.
+        for _ in 0..4 {
+            if a.bus.scanout != b.bus.scanout {
+                break;
+            }
+            a.step_frame(30_000_000);
+            b.step_frame(30_000_000);
+            assert!(
+                !a.paused && !b.paused,
+                "guest fault while waiting for edits"
+            );
+        }
         assert!(
             a.bus.scanout != b.bus.scanout,
-            "independently edited sessions must differ"
+            "independent inputs did not produce distinct frames"
         );
         let b_document = b.bus.scanout.clone();
         a.reset().unwrap();

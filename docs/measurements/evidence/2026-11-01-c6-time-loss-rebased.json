@@ -1,0 +1,19 @@
+{
+  "capture_sha256": "f3a1498984fbb5a9e2e61278d6445bd22780860ddfb4c9b5fb43a8109ac9d1c1",
+  "fault": {
+    "stage": 2,
+    "dropped": 2,
+    "expired": 1
+  },
+  "time_attempts": 6,
+  "time_failures": 1,
+  "time_replies": 1,
+  "rtc_applied": 1,
+  "network_reconnects": 0,
+  "ble_phase": 4,
+  "ui_frames_delta": 2102,
+  "rtc_advance_seconds": 10,
+  "p4_source_commit": "6cf8074dc3c7940216ca59bf2d2edf127b35ba3b",
+  "p4_app_sha256": "eabaecf7bb85b91cc301322ebf78bafa07ab012febb959f4bd2aa98bdb10f351",
+  "p4_full_flash_restored_and_verified": true
+}

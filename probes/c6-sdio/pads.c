@@ -163,3 +163,11 @@ unsigned nih_c6_power_enable(void) {
     }
     return ok;
 }
+
+/* Optional OTA fixture input. Existing serial/JTAG configuration is retained. */
+#include "hal/usb_serial_jtag_ll.h"
+__asm__(".global USB_SERIAL_JTAG\n.set USB_SERIAL_JTAG,0x500d2000\n");
+int nih_c6_serial_read(void) {
+    uint8_t byte;
+    return usb_serial_jtag_ll_read_rxfifo(&byte, 1) == 1 ? byte : -1;
+}
