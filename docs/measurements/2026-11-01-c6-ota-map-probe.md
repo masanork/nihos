@@ -126,3 +126,11 @@ The host pump exercised a synthetic image of exactly 1,079,120 bytes, checking
 all bytes and acknowledgements across every 384-byte chunk; it also checked a
 lost Write response causes terminal timeout with no retry. This is a transport
 model, not device transfer evidence. The C6 firmware has still not been updated.
+
+An offline structural stack inventory of the exact gate-tested P4 ELF found
+62 reachable functions, with 27 missing local bounds and 9 functions with
+unresolved transfers. The inventory omits stack contributions it cannot
+resolve; its known-frame sum is therefore not an upper bound. In particular,
+the transfer branch after a valid token has not been exercised on hardware and
+its complete call-chain stack consumption remains unqualified. Private report:
+`/private/tmp/nihos-c6-ota-stack-inventory.json`.
