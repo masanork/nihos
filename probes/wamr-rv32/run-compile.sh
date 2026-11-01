@@ -5,6 +5,23 @@ sh "$root/probes/wamr-rv32/run-platform-model.sh"
 wamr="$root/build/wamr-2.4.5"
 [ "$(git -C "$wamr" rev-parse HEAD)" = 25bd7eb63e828e4bd242cc9b38d260b4b31c6605 ] || { echo 'Run probes/wamr-host/run.sh first' >&2; exit 1; }
 [ -z "$(git -C "$wamr" status --porcelain)" ] || { echo 'WAMR source modified' >&2; exit 1; }
+table_fix=${NIHOS_WAMR_RV32_TABLE_FIX:-0}
+case "$table_fix" in 0|1) ;; *) echo 'NIHOS_WAMR_RV32_TABLE_FIX must be 0 or 1' >&2; exit 1 ;; esac
+if [ "$table_fix" = 1 ]; then
+    lab="$root/build/wamr-rv32-table-lab"
+    patch="$root/probes/wamr-rv32/patches/table-instance-align-experiment.patch"
+    if [ ! -d "$lab/.git" ]; then
+        git clone --shared --no-checkout "$wamr" "$lab"
+        git -C "$lab" checkout --detach 25bd7eb63e828e4bd242cc9b38d260b4b31c6605
+        git -C "$lab" apply "$patch"
+    fi
+    [ "$(git -C "$lab" rev-parse HEAD)" = 25bd7eb63e828e4bd242cc9b38d260b4b31c6605 ] || exit 1
+    git -C "$lab" diff --binary | sed '/^diff --git /d; /^index /d' > "$root/build/wamr-rv32-table-lab.diff"
+    cmp -s "$patch" "$root/build/wamr-rv32-table-lab.diff" || { echo 'Table lab patch mismatch' >&2; exit 1; }
+    git -C "$lab" diff --cached --quiet || exit 1
+    [ -z "$(git -C "$lab" ls-files --others --exclude-standard)" ] || exit 1
+    wamr="$lab"
+fi
 cc=${NIHOS_RISCV_CC:-riscv32-esp-elf-gcc}
 command -v "$cc" >/dev/null 2>&1 || { echo 'Set NIHOS_RISCV_CC to riscv32-esp-elf-gcc' >&2; exit 1; }
 align_san=${NIHOS_WAMR_RV32_ALIGN_SAN:-0}
@@ -13,6 +30,9 @@ case "$align_san" in
   1) out="$root/build/wamr-rv32-align-compile"; align_flags='-fsanitize=alignment -fno-sanitize-recover=alignment' ;;
   *) echo 'NIHOS_WAMR_RV32_ALIGN_SAN must be 0 or 1' >&2; exit 1 ;;
 esac
+if [ "$table_fix" = 1 ]; then
+    if [ "$align_san" = 1 ]; then out="$root/build/wamr-rv32-align-table-compile"; else out="$root/build/wamr-rv32-table-compile"; fi
+fi
 cmake -S "$root/probes/wamr-rv32" -B "$out" \
  -DWAMR_ROOT_DIR="$wamr" -DCMAKE_SYSTEM_NAME=Generic -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
  -DCMAKE_C_COMPILER="$cc" -DCMAKE_ASM_COMPILER="$cc" -DCMAKE_BUILD_TYPE=Release \

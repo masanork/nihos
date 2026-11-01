@@ -609,6 +609,56 @@ struct session_report { uint32_t recovered, calls, denied, frames; };
 extern int32_t nih_wasm_session_receive(struct session_command *);
 extern void nih_wasm_session_complete(uint32_t, int32_t);
 
+#ifdef NIHOS_WAMR_ALIGNMENT_CORPUS
+/* No graphics imports: bounded checks on the worker before publishing open. */
+static void corpus_failure(const char *stage, const char *detail) {
+    const char *prefix = "NIHOS_WAMR_CORPUS_FAIL stage=";
+    while (*prefix) (void)nih_rom_putc((uint8_t)*prefix++);
+    while (*stage) (void)nih_rom_putc((uint8_t)*stage++);
+    if (detail) {
+        const char *separator = " detail=";
+        while (*separator) (void)nih_rom_putc((uint8_t)*separator++);
+        while (*detail) (void)nih_rom_putc((uint8_t)*detail++);
+    }
+    (void)nih_rom_putc(13); (void)nih_rom_putc(10);
+}
+#define CORPUS_REQUIRE(condition, stage) do { if (!(condition)) { \
+    corpus_failure(stage, wasm_runtime_get_exception(instance)); return false; \
+} } while (0)
+static bool run_alignment_corpus(wasm_exec_env_t env, wasm_module_inst_t instance) {
+    wasm_function_inst_t f;
+    uint32_t a[2];
+    wasm_runtime_set_instruction_count_limit(env, 10000);
+    f = wasm_runtime_lookup_function(instance, "nih_probe_nested");
+    a[0] = 47;
+    CORPUS_REQUIRE(f && wasm_runtime_call_wasm(env, f, 1, a) && a[0] == 48, "nested");
+    f = wasm_runtime_lookup_function(instance, "nih_probe_wide");
+    a[0] = 0x89abcdefu; a[1] = 0x01234567u;
+    CORPUS_REQUIRE(f && wasm_runtime_call_wasm(env, f, 2, a) && a[0] == 0 && a[1] == 0, "wide");
+    f = wasm_runtime_lookup_function(instance, "nih_probe_unaligned");
+    a[0] = 0x76543210u; a[1] = 0xfedcba98u;
+    CORPUS_REQUIRE(f && wasm_runtime_call_wasm(env, f, 2, a) && a[0] == 0x76543210u && a[1] == 0xfedcba98u, "unaligned");
+    f = wasm_runtime_lookup_function(instance, "nih_probe_indirect");
+    a[0] = 0; a[1] = 11;
+    CORPUS_REQUIRE(f && wasm_runtime_call_wasm(env, f, 2, a) && a[0] == 18, "indirect0");
+    a[0] = 1; a[1] = 0x12345678u;
+    CORPUS_REQUIRE(wasm_runtime_call_wasm(env, f, 2, a) && a[0] == (0x12345678u ^ 0xa5a55a5au), "indirect1");
+    f = wasm_runtime_lookup_function(instance, "nih_probe_grow");
+    a[0] = 1;
+    CORPUS_REQUIRE(f && wasm_runtime_call_wasm(env, f, 1, a) && a[0] == UINT32_MAX, "grow");
+    f = wasm_runtime_lookup_function(instance, "nih_probe_corpus_trap");
+    CORPUS_REQUIRE(f && !wasm_runtime_call_wasm(env, f, 0, NULL) && wasm_runtime_get_exception(instance), "trap");
+    wasm_runtime_clear_exception(instance);
+    f = wasm_runtime_lookup_function(instance, "nih_probe_nested");
+    a[0] = 1;
+    CORPUS_REQUIRE(f && wasm_runtime_call_wasm(env, f, 1, a) && a[0] == 2, "recovery");
+    wasm_runtime_set_instruction_count_limit(env, -1);
+    const char *marker = "NIHOS_WAMR_CORPUS_PASS\r\n";
+    while (*marker) (void)nih_rom_putc((uint8_t)*marker++);
+    return true;
+}
+#endif
+
 int nih_wamr_session_run(void *runtime, void *linear, uint8_t *first,
                          uint8_t *second, struct session_report *report) {
     RuntimeInitArgs init = {0};
@@ -643,14 +693,27 @@ int nih_wamr_session_run(void *runtime, void *linear, uint8_t *first,
     initialized = wasm_runtime_full_init(&init);
     if (!initialized || !wasm_runtime_register_natives("nihos", imports, 2)) goto stopped;
     module = wasm_runtime_load(second, admission.wasm_length, error, sizeof(error));
-    if (!module) goto stopped;
+    if (!module) {
+#ifdef NIHOS_WAMR_ALIGNMENT_CORPUS
+        corpus_failure("load", error);
+#endif
+        goto stopped;
+    }
     if (command.selected == 1) { status = -41; goto stopped; } /* partial open */
     instance = wasm_runtime_instantiate(module, 16384, 0, error, sizeof(error));
-    if (!instance) goto stopped;
+    if (!instance) {
+#ifdef NIHOS_WAMR_ALIGNMENT_CORPUS
+        corpus_failure("instantiate", error);
+#endif
+        goto stopped;
+    }
     env = wasm_runtime_create_exec_env(instance, 16384);
     if (!env) goto stopped;
     owner.instance = instance; owner.services = admission.services; owner.active = true;
     wasm_runtime_set_custom_data(instance, &owner);
+#ifdef NIHOS_WAMR_ALIGNMENT_CORPUS
+    if (!run_alignment_corpus(env, instance)) goto stopped;
+#endif
     status = 0;
     nih_wasm_session_complete(command.id, status);
     reply = false;

@@ -560,7 +560,21 @@ fn enableTimer(hart: u32) void {
 export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, hart: u32, status: u32) callconv(.c) *tasks.context.IntegerContext {
     const probe_dispatch_begin = if (options.pmp_probe) cycle() else 0;
     if (hart >= 2) fail("invalid hart");
-    if (!interruptStackValid(hart, frame, status)) fail("interrupt stack/MIE");
+    if (!interruptStackValid(hart, frame, status)) {
+        if (options.wasm_alignment_corpus) {
+            const guard = interruptGuard(hart);
+            const irq_sp = asm volatile ("mv %[result], sp"
+                : [result] "=r" (-> u32),
+            );
+            const current_status = asm volatile ("csrr %[result], mstatus"
+                : [result] "=r" (-> u32),
+            );
+            const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
+            const diagnostic = .{ .hart = hart, .cause = cause, .status = status, .current_status = current_status, .frame = @as(u32, @intCast(@intFromPtr(frame))), .saved_sp = frame.sp, .irq_sp = irq_sp, .guard_addr = @as(u32, @intCast(@intFromPtr(guard))), .guard0 = guard[0], .guard1 = guard[1], .guard2 = guard[2], .guard3 = guard[3], .top = @as(u32, @intCast(top)) };
+            logger.record("NIHOS_WAMR_CORPUS_IRQ_FAIL", null, .{ "hart", "cause", "status", "current_status", "frame", "saved_sp", "irq_sp", "guard_addr", "guard0", "guard1", "guard2", "guard3", "top" }, &diagnostic);
+        }
+        fail("interrupt stack/MIE");
+    }
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
     // A rejected user SP was saved in the kernel fault frame. Do not resume it
     // from the display or boot paths; the ready path ends that task.

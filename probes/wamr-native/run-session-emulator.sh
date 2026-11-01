@@ -30,7 +30,7 @@ if grep -q ' nih_wamr_call$' "$out/symbols.txt"; then
 fi
 emulator=$(sh "$root/tools/bootstrap-esp-emu.sh")
 python3 - "$emulator" "$out" <<'PY'
-import hashlib,json,re,subprocess,sys
+import hashlib,json,os,re,subprocess,sys
 from pathlib import Path
 emulator,out=sys.argv[1],Path(sys.argv[2])
 files=('nihos-native-image.elf','nihos-native-flash.bin')
@@ -50,6 +50,8 @@ for name,injected,status,received,frames,presentations,rejected in (
     assert result.returncode==0,(name,result.returncode)
     assert 'NIHOS_NATIVE_FAIL' not in result.stdout,result.stdout
     assert len(re.findall(r'^NIHOS_WASM_ASYNC_PASS$',result.stdout,re.M))==1,result.stdout
+    if os.environ.get('NIHOS_NATIVE_WASM_ALIGN_CORPUS') == '1':
+        assert len(re.findall(r'^NIHOS_WAMR_CORPUS_PASS$',result.stdout,re.M)) >= 2,result.stdout
     async_rows=re.findall(r'^NIHOS_WASM_ASYNC turns=([0-9a-f]+) begin_us=([0-9a-f]+)$',result.stdout,re.M)
     # Emulator-only guard against returning to the seconds-long synchronous open.
     assert len(async_rows)==1 and int(async_rows[0][0],16)>1 and 0<int(async_rows[0][1],16)<100000,async_rows

@@ -85,6 +85,22 @@ if [ "$wasm_align_san" = true ] && [ "$wasm_session_test" != true ]; then echo "
 wasm_align_negative=${NIHOS_NATIVE_WASM_ALIGN_NEGATIVE:-0}
 case "$wasm_align_negative" in 0) wasm_align_negative=false ;; 1) wasm_align_negative=true ;; *) echo "WASM_ALIGN_NEGATIVE must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$wasm_align_negative" = true ] && [ "$wasm_align_san" != true ]; then echo "WASM_ALIGN_NEGATIVE requires WASM_ALIGN_SAN" >&2; exit 1; fi
+wasm_align_corpus=${NIHOS_NATIVE_WASM_ALIGN_CORPUS:-0}
+case "$wasm_align_corpus" in
+    0) wasm_align_corpus=false; wasm_corpus_define=; wasm_corpus_features= ;;
+    1) wasm_align_corpus=true; wasm_corpus_define=-DNIHOS_WAMR_ALIGNMENT_CORPUS=1; wasm_corpus_features=alignment-corpus ;;
+    *) echo "WASM_ALIGN_CORPUS must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$wasm_align_corpus" = true ] && [ "$wasm_session_test" != true ]; then echo "WASM_ALIGN_CORPUS requires headless WASM_SESSION_TEST" >&2; exit 1; fi
+wasm_corpus_uncompressed=${NIHOS_NATIVE_WASM_ALIGN_CORPUS_UNCOMPRESSED:-0}
+case "$wasm_corpus_uncompressed" in 0) wasm_corpus_uncompressed=false ;; 1) wasm_corpus_uncompressed=true ;; *) echo "WASM_ALIGN_CORPUS_UNCOMPRESSED must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_corpus_uncompressed" = true ] && [ "$wasm_align_corpus" != true ]; then echo "WASM_ALIGN_CORPUS_UNCOMPRESSED requires WASM_ALIGN_CORPUS" >&2; exit 1; fi
+wasm_table_fix=${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}
+case "$wasm_table_fix" in 0) wasm_table_fix=false ;; 1) wasm_table_fix=true ;; *) echo "WASM_ALIGN_TABLE_FIX must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_table_fix" = true ] && [ "$wasm_align_corpus" != true ]; then echo "WASM_ALIGN_TABLE_FIX requires headless WASM_ALIGN_CORPUS" >&2; exit 1; fi
+if [ "$wasm_table_fix" = true ]; then
+    if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-table-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-table-compile"; fi
+fi
 wasm_interactive=${NIHOS_NATIVE_WASM_INTERACTIVE:-0}
 case "$wasm_interactive" in 0) wasm_interactive=false ;; 1) wasm_interactive=true ;; *) echo "WASM_INTERACTIVE must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$wasm_interactive" = true ] && [ "$wasm_session_test" != true ]; then
@@ -567,6 +583,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_interactive = %s;\n' "$wasm_interactive"
     printf 'pub const wasm_interactive_repeat = %s;\n' "$wasm_repeat"
     printf 'pub const wasm_alignment_negative = %s;\n' "$wasm_align_negative"
+    printf 'pub const wasm_alignment_corpus = %s;\n' "$wasm_align_corpus"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
@@ -668,7 +685,7 @@ if [ "$wasm" = true ]; then
     riscv_cc_path=$(command -v "$riscv_cc") || { echo "Set NIHOS_RISCV_CC" >&2; exit 1; }
     riscv_prefix=${riscv_cc_path%gcc}
     for tool in ld objcopy; do [ -x "$riscv_prefix$tool" ] || { echo "Missing matching $tool" >&2; exit 1; }; done
-    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" NIHOS_WAMR_RV32_ALIGN_SAN="${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
+    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" NIHOS_WAMR_RV32_ALIGN_SAN="${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}" NIHOS_WAMR_RV32_TABLE_FIX="${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
     NIHOS_ZIG="$zig" sh "$repo_root/probes/wamr-arena/run-rv32.sh"
     "$riscv_prefix"ld -m elf32lriscv -r --whole-archive \
         "$wamr_compile_dir/libwamr-rv32-compile.a" --no-whole-archive \
@@ -686,9 +703,12 @@ if [ "$wasm" = true ]; then
             set -- "$@" "$build_dir/wamr_c_align_negative.o"
         fi
     fi
-    RUSTFLAGS='-C link-arg=-zstack-size=16384 -C link-arg=--initial-memory=65536 -C link-arg=--max-memory=65536' \
-        CARGO_TARGET_DIR="$build_dir/rust-wasm-target" cargo build --locked --release \
-        --target wasm32-unknown-unknown --manifest-path "$repo_root/probes/rust-wasm/Cargo.toml"
+    wasm_rustflags='-C link-arg=-zstack-size=16384 -C link-arg=--initial-memory=65536 -C link-arg=--max-memory=65536'
+    if [ "$wasm_align_corpus" = true ] && [ "$wasm_corpus_uncompressed" = false ]; then
+        wasm_rustflags="$wasm_rustflags -C link-arg=--compress-relocations"
+    fi
+    RUSTFLAGS="$wasm_rustflags" CARGO_TARGET_DIR="$build_dir/rust-wasm-target" cargo build --locked --release \
+        --target wasm32-unknown-unknown --features "$wasm_corpus_features" --manifest-path "$repo_root/probes/rust-wasm/Cargo.toml"
     cp "$build_dir/rust-wasm-target/wasm32-unknown-unknown/release/nihos_rust_wasm_probe.wasm" "$build_dir/app.wasm"
     "$zig" build-exe -O ReleaseSmall -femit-bin="$build_dir/package-ed25519-pack" \
         --dep app_package --dep package_ed25519 --dep app_policy \
@@ -752,7 +772,7 @@ if [ "$wasm" = true ]; then
     "$riscv_cc_path" -c -Os -std=c11 -Wall -Wextra -Wconversion -Werror \
         -ffreestanding -fno-builtin -fno-unwind-tables \
         -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections \
-        $wasm_task_define $wasm_session_define -I "$wamr/core/iwasm/include" "$repo_root/probes/wamr-native/runner.c" \
+        $wasm_task_define $wasm_session_define $wasm_corpus_define -I "$wamr/core/iwasm/include" "$repo_root/probes/wamr-native/runner.c" \
         -o "$build_dir/wamr_runner.o"
     set -- "$@" "$build_dir/wamr-combined.o" "$build_dir/wamr_arena.o" \
         "$build_dir/boot_trust.o" "$build_dir/boot_package.o" \
