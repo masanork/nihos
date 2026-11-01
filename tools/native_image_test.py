@@ -64,6 +64,11 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(512).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.setPhysicalKeyboard'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.softKeyboardVisible'))
+        self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAt'))
+        self.assertTrue(MODULE.xy_function('soft_keyboard.visible'))
+        self.assertFalse(MODULE.xy_function('xy.soft_keyboard.calibrate'))
 
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000
