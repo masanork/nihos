@@ -1,0 +1,7 @@
+NIHOS_NATIVE_KEYBOARD status=00000002 firmware=00000000 mode=00000000 transactions=00000000 error_code=00000000 sources=00000001
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=00007198 persistent=00000000 unicode_raster=00000001 portrait=00000001 keyboard_probe=00000001
+NIHOS_NATIVE_XY_STATE revision=00000022 bytes=00000001 cursor=00000001 fnv=f40c425c mode=00000000 frames=00000af0 input_bytes=00000001 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5 tx_dropped=00000000
+NIHOS_NATIVE_KEYBOARD_CHANGE present=00000001 portrait=00000000
+NIHOS_NATIVE_XY_STATE revision=00000025 bytes=00000002 cursor=00000002 fnv=5a4c29b1 mode=00000000 frames=00001077 input_bytes=00000001 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5 tx_dropped=00000000
+NIHOS_NATIVE_KEYBOARD_CHANGE present=00000000 portrait=00000001
+NIHOS_NATIVE_XY_STATE revision=00000029 bytes=00000003 cursor=00000003 fnv=f9e5d8bc mode=00000000 frames=00001b89 input_bytes=00000001 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5 tx_dropped=00000000
