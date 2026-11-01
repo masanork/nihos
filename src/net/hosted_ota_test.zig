@@ -97,3 +97,18 @@ test "image changed during transfer cannot be committed" {
     try std.testing.expectError(error.DigestMismatch, client.next());
     try std.testing.expectEqual(ota.Phase.failed, client.phase);
 }
+
+test "OTA request protobuf bytes match independent Hosted 1.4.1 protobuf-c" {
+    // Reproduced by tools/hosted_ota_proto_reference.c against the upstream
+    // 1.4.1 generated descriptors. Compare after the 12-byte Hosted RPC TLV.
+    const vectors = .{
+        .{ 272, 9, &[_]u8{}, &[_]u8{ 0x08, 0x01, 0x10, 0x90, 0x02, 0x18, 0x09, 0x82, 0x11, 0x00 } },
+        .{ 273, 10, &[_]u8{ 0x0a, 0x04, 0xe9, 0x00, 0x80, 0xff }, &[_]u8{ 0x08, 0x01, 0x10, 0x91, 0x02, 0x18, 0x0a, 0x8a, 0x11, 0x06, 0x0a, 0x04, 0xe9, 0x00, 0x80, 0xff } },
+        .{ 274, 11, &[_]u8{}, &[_]u8{ 0x08, 0x01, 0x10, 0x92, 0x02, 0x18, 0x0b, 0x92, 0x11, 0x00 } },
+    };
+    inline for (vectors) |vector| {
+        var out: [128]u8 = undefined;
+        const result = try wire.request(&out, vector[0], vector[1], vector[2]);
+        try std.testing.expectEqualSlices(u8, vector[3], result[12..]);
+    }
+}

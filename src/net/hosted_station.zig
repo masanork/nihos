@@ -4,6 +4,7 @@ const std = @import("std");
 pub const wire = @import("hosted.zig");
 pub const diagnostics = @import("hosted_diagnostics.zig");
 pub const ota_session = @import("hosted_ota_session.zig");
+pub const ota_guard = @import("hosted_ota_guard.zig");
 pub const ble = @import("ble_hci.zig");
 pub const dhcp = @import("dhcp.zig");
 pub const sntp = @import("sntp.zig");

@@ -77,3 +77,31 @@ three initialization failures and three successes, but the candidates differed
 and causality remains unresolved. The adjusted preflight has not run on the
 board. The user confirmed the board is being used by another task; continue
 host-only work until explicitly available.
+
+## Explicit OTA fixture and evidence checks
+
+`tools/build-c6-ota-update-probe.sh` builds the separate P4 OTA fixture. It
+embeds a digest-pinned C6 application, checks its hash, performs the Hosted
+preflight, waits for an exact one-shot `OTA1 <sha256>\n` serial token, then
+uses the bounded single-flight OTA session. It emits completion only after an
+End response; after the 1.4.1 scheduled reboot delay it performs a second
+version query with optional C6 diagnostics. The normal Hosted fixture continues
+to build independently. This is not yet a general-purpose updater, and the
+physical valid-token path has not been executed.
+
+`tools/run-hosted-ota-proto-reference.sh` uses the upstream 1.4.1 protobuf-c
+generated code to independently reproduce Begin/Write/End golden protobuf
+bytes; the Zig tests compare their encoded bytes to the same vectors. The pump
+host model also checks all 1,079,120 bytes across bounded chunks and tests loss
+of a Write acknowledgement without replay. The separate `c6_ota_evidence.py`
+rejects incomplete, repeated, incorrect-size, wrong-token and missing
+post-reboot diagnostic output. Its acceptance represents a P4-reported OTA
+and post-boot exchange, not C6 flash readback, recovery capability or proof
+that an unrecorded serial token was transmitted.
+
+A physical invalid-token test reached `OTA_READY` and stopped before Begin;
+P4 flash was completely restored and verified. C6 OTA and successful new-C6
+boot remain unobserved. Before any later valid-token run, device write ownership,
+current P4 baseline and candidate identities must be freshly checked; a timeout
+after a request means the C6 operation's state is unknown and must not be
+blindly retried. Readback/recovery of this C6 remains unproven.
