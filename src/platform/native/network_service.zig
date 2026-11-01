@@ -18,6 +18,12 @@ var transport = stream.ProfileStream(@TypeOf(host), 64){ .host = &host };
 const TimeClient = hosted.sntp.Engine(".flash.text.time");
 const c6_offload = @hasDecl(network_config, "c6_time_offload") and network_config.c6_time_offload;
 const time_fault_test = @hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test;
+// Codegen-only experiment until TCP RX/TX and application ownership are wired.
+const experimental_tcp = @hasDecl(options, "experimental_tcp") and options.experimental_tcp;
+const TcpState = if (experimental_tcp) hosted.tcp_owner.Owner else void;
+comptime {
+    if (@alignOf(TcpState) > 64) @compileError("TCP owner exceeds network backing alignment");
+}
 const Offload = if (c6_offload) hosted.c6_time_exchange.Exchange else void;
 const State = struct {
     time: TimeClient = .{},
@@ -29,7 +35,8 @@ const State = struct {
     ble_length: usize = 0,
     decoder: hosted.wire.Decoder = .{},
 };
-pub const storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
+const station_storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
+pub const storage_bytes = station_storage_bytes + if (experimental_tcp) ((@sizeOf(TcpState) + 63) & ~@as(usize, 63)) else 0;
 // SAFETY: begin binds these exclusively reserved CPU0 PSRAM objects before poll.
 var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
@@ -49,6 +56,8 @@ const InitialTemplate = struct {
 const initial_state linksection(".flash.rodata.display") = InitialTemplate{};
 // SAFETY: begin binds this before any foreground state access.
 var state_storage: *State = undefined;
+// SAFETY: experimental builds bind this CPU0-only tail before startAttempt.
+var tcp_state: *TcpState = undefined;
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
 var clock: timers.Timer = undefined;
@@ -102,6 +111,10 @@ pub const Report = extern struct {
 pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storage_bytes]u8) void {
     const state: *State = @ptrCast(backing);
     state_storage = state;
+    if (experimental_tcp) {
+        tcp_state = @ptrFromInt(@intFromPtr(backing) + station_storage_bytes);
+        tcp_state.init();
+    }
     @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
     state.decoder.reset();
     client = if (c6_offload) &state.offload.station else &state.client;
@@ -124,6 +137,10 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     startAttempt(now);
 }
 fn startAttempt(now: u64) void {
+    if (experimental_tcp) tcp_state.reset() catch {
+        phase = .failed;
+        return;
+    };
     state_storage.time.disconnect();
     pads.useClock(clock);
     nih_c6_pads_init();
@@ -160,6 +177,10 @@ fn collectRenewals() void {
     }
 }
 fn stop(err: anyerror, now: ?u64) void {
+    const tcp_reset_failed = if (experimental_tcp) blk: {
+        tcp_state.reset() catch break :blk true;
+        break :blk false;
+    } else false;
     state_storage.time.disconnect();
     offload_sample = null;
     if (c6_offload and offload_active) state_storage.offload.invalidate();
@@ -174,7 +195,7 @@ fn stop(err: anyerror, now: ?u64) void {
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     nih_c6_reset(0);
-    if (now == null or err == error.Clock or pads.clockFailed()) {
+    if (tcp_reset_failed or now == null or err == error.Clock or pads.clockFailed()) {
         phase = .failed;
         return;
     }

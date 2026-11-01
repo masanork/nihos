@@ -60,6 +60,13 @@ the native service and instantiates TCP open, RX, TX completion and reset.
 This checks module compatibility and a 24 KiB owner size ceiling, not a linked
 image, PSRAM placement, or execution on a device.
 
+The native network service has a codegen-only `experimental_tcp` option that
+reserves a separate aligned tail for the TCP owner and retires it on network
+stop/retry. The architecture probe compiles both settings. Production build
+configuration does not enable the option, and no TCP RX, TX, or application
+entry point is connected through this option yet. The existing image audits
+therefore do not qualify a TCP-enabled image or its PSRAM reservation.
+
 The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream
 reads and writes. Its station lease remains synthetic; this is not a live
 native network-service or device test.

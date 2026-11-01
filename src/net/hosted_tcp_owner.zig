@@ -17,6 +17,12 @@ pub const Owner = struct {
     reset_required: bool = false,
     exhausted: bool = false,
 
+    /// Initialize caller-owned storage in place without a large stack object.
+    pub fn init(self: *Owner) void {
+        @memset(std.mem.asBytes(self), 0);
+        self.epoch = 1;
+    }
+
     /// The caller resets station/transport separately before using a new epoch.
     pub fn reset(self: *Owner) Error!void {
         self.queue.clear();
@@ -118,6 +124,12 @@ pub const Owner = struct {
         }
     }
 };
+
+test "in-place initialization matches owner defaults" {
+    var owner: Owner = undefined;
+    owner.init();
+    try std.testing.expect(std.meta.eql(Owner{}, owner));
+}
 
 test "owner preserves pending send and revokes handles on reset" {
     var owner: Owner = .{};

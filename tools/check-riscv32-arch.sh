@@ -69,10 +69,11 @@ sh "$repo_root/tools/build-hosted-long-link.sh" "$out_dir/hosted-long-link"
 # owner, which the SDK-free qualification images intentionally eliminate.
 for diagnostic in false true; do
   for ipv6 in false true; do
+    for tcp in false true; do
     printf 'pub const ipv6 = %s;\n' "$ipv6" > "$out_dir/network-config.zig"
-    printf 'pub const network_test = %s;\n' "$diagnostic" > "$out_dir/network-options.zig"
+    printf 'pub const network_test = %s;\npub const experimental_tcp = %s;\n' "$diagnostic" "$tcp" > "$out_dir/network-options.zig"
     "$zig" build-obj -target "$target" -mcpu="$cpu" \
-        -femit-bin="$out_dir/network-$diagnostic-$ipv6.o" --dep network_service --dep timer_group \
+        -femit-bin="$out_dir/network-$diagnostic-$ipv6-$tcp.o" --dep network_service --dep timer_group \
         "-Mroot=$repo_root/tools/probes/network-service.zig" \
         --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
         "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
@@ -85,6 +86,7 @@ for diagnostic in false true; do
         "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
         "-Mnative_options=$out_dir/network-options.zig" \
         "-Mnetwork_config=$out_dir/network-config.zig"
+    done
   done
 done
 echo "Native network owner codegen (normal and diagnostic): ok"
