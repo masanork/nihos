@@ -44,8 +44,8 @@ CPU0 network service and SDIO transport are not yet connected to it.
 `ssh_hosted_tcp_io.zig` maps the owner's TCP stream to SSH pump partial I/O,
 backpressure, EOF and failure. It requires the serialized caller to advance
 the monotonic clock before each poll and revalidates the lease and handle for
-each operation. This adapter has host unit coverage; it is not yet used by
-the OpenSSH fixture or the native xy application.
+each operation. The OpenSSH/libslirp host fixture uses this adapter; the
+native xy application does not yet use it.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final

@@ -55,6 +55,10 @@ over 512 bytes, matching the normal C6 short-send size bound. A host test
 checks a maximum-sized data frame against the SDIO transfer planner; it does
 not execute a physical SDIO transaction.
 
+The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream
+reads and writes. Its station lease remains synthetic; this is not a live
+native network-service or device test.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 

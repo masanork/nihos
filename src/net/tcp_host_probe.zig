@@ -6,11 +6,13 @@ const hosted = @import("hosted.zig");
 const owner_core = @import("hosted_tcp_owner.zig");
 const station_core = @import("hosted_station.zig");
 const station_tcp = @import("hosted_tcp_station.zig");
+const ssh_tcp = @import("ssh_hosted_tcp_io.zig");
 var opening: connect.Connect = .{};
 var stream: ?tcp.Stream = null;
 var time_wait: ?wait.TimeWait = null;
 var owner: owner_core.Owner = .{};
 var host_station: station_core.Client = .{};
+var socket_adapter: ?ssh_tcp.Adapter = null;
 var host_now_ms: u64 = 0;
 var link_time_wait: ?wait.TimeWait = null;
 const guest_mac = [6]u8{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
@@ -86,7 +88,8 @@ export fn tcp_link_begin(port: u16) bool {
     host_station.connected = true;
     host_station.mac_address = guest_mac;
     host_station.dhcp_client = .{ .mac = guest_mac, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 30_000_000, .rebind_at = 50_000_000, .expires_at = 60_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 60 } };
-    _ = owner.open(&host_station, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
+    const handle = owner.open(&host_station, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
+    socket_adapter = .{ .owner = &owner, .client = &host_station, .handle = handle, .epoch = owner.epoch, .now_us = 0, .write_timeout_ms = 12000 };
     return true;
 }
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
@@ -126,13 +129,24 @@ export fn tcp_link_ready() bool {
 }
 export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) usize {
     if (!refreshStation(now)) return 0;
-    const handle = owner.handle orelse return 0;
-    return owner.service.write(handle, bytes[0..len], now, now +| 12000) catch 0;
+    const adapter = if (socket_adapter) |*value| value else return 0;
+    adapter.advance(now *| 1000) catch return 0;
+    const io = adapter.io();
+    return switch (io.write(io.context, bytes[0..len]) catch return 0) {
+        .progress => |n| n,
+        .would_block, .eof => 0,
+    };
 }
 export fn tcp_link_read(out: [*]u8, cap: usize) isize {
     if (!refreshStation(host_now_ms)) return -1;
-    const handle = owner.handle orelse return -1;
-    return @intCast(owner.service.read(handle, out[0..cap]) catch return -1);
+    const adapter = if (socket_adapter) |*value| value else return -2;
+    adapter.advance(host_now_ms *| 1000) catch return -2;
+    const io = adapter.io();
+    return switch (io.read(io.context, out[0..cap]) catch return -2) {
+        .progress => |n| @intCast(n),
+        .would_block => -1,
+        .eof => 0,
+    };
 }
 export fn tcp_link_close(now: u64) bool {
     if (!refreshStation(now)) return false;
