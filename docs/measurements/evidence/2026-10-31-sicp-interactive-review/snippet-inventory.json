@@ -1,0 +1,266 @@
+[
+  {
+    "source": "sicp-expressions.xml",
+    "index": 0,
+    "name": null,
+    "code": "486",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 3,
+    "name": null,
+    "code": "(+ 137 349)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 4,
+    "name": null,
+    "code": "(- 1000 334)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 5,
+    "name": null,
+    "code": "(* 5 99)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 6,
+    "name": null,
+    "code": "(/ 10 5)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 7,
+    "name": null,
+    "code": "(+ 2.7 10)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 13,
+    "name": null,
+    "code": "(+ 21 35 12 7)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 14,
+    "name": null,
+    "code": "(* 25 4 12)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 15,
+    "name": null,
+    "code": "(+ (* 3 5) (- 10 6))",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 21,
+    "name": null,
+    "code": "(+ (* 3 (+ (* 2 4) (+ 3 5))) (+ (- 10 7) 6))",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-expressions.xml",
+    "index": 22,
+    "name": null,
+    "code": "(+ (* 3\n      (+ (* 2 4)\n         (+ 3 5)))\n   (+ (- 10 7)\n      6))",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 0,
+    "name": "factorial_definition",
+    "code": "(define (factorial n)\n  (if (= n 1)\n      1\n      (* n (factorial (- n 1)))))",
+    "requires": [],
+    "expected": "120",
+    "example": "factorial_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 1,
+    "name": "factorial_example",
+    "code": "(factorial 5)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": "yes"
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 2,
+    "name": null,
+    "code": "(define (factorial n)\n  (define (iter product counter)\n    (if (> counter n)\n        product\n        (iter (* counter product)\n              (+ counter 1))))\n  (iter 1 1))",
+    "requires": [],
+    "expected": "120",
+    "example": "factorial_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 3,
+    "name": "factorial_iterative_definition",
+    "code": "(define (factorial n)\n  (fact-iter 1 1 n))\n\n(define (fact-iter product counter max-count)\n  (if (> counter max-count)\n      product\n      (fact-iter (* counter product)\n                 (+ counter 1)\n                 max-count)))",
+    "requires": [],
+    "expected": null,
+    "example": "factorial_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 4,
+    "name": "inc_dec_definition",
+    "code": "(define (inc x)\n  (- x -1))\n(define (dec x)\n  (- x 1))",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": "yes"
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 5,
+    "name": "plus_example",
+    "code": "(+ 4 5)",
+    "requires": [],
+    "expected": null,
+    "example": null,
+    "hidden": "yes"
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 6,
+    "name": null,
+    "code": "(define (+ a b)\n  (if (= a 0)\n      b\n      (inc (+ (dec a) b))))",
+    "requires": [
+      "inc_dec_definition"
+    ],
+    "expected": "9",
+    "example": "plus_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 7,
+    "name": null,
+    "code": "(define (+ a b)\n  (if (= a 0)\n      b\n      (+ (dec a) (inc b))))",
+    "requires": [
+      "inc_dec_definition"
+    ],
+    "expected": "9",
+    "example": "plus_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 10,
+    "name": "ackermann_definition",
+    "code": "(define (A x y)\n  (cond ((= y 0) 0)\n        ((= x 0) (* 2 y))\n        ((= y 1) 2)\n        (else (A (- x 1)\n                 (A x (- y 1))))))",
+    "requires": [],
+    "expected": null,
+    "example": "ackermann_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 11,
+    "name": "ackermann_example",
+    "code": "(A 1 10)",
+    "requires": [
+      "ackermann_definition"
+    ],
+    "expected": "1024",
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 12,
+    "name": null,
+    "code": "(A 2 4)",
+    "requires": [
+      "ackermann_definition"
+    ],
+    "expected": "65536",
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 13,
+    "name": null,
+    "code": "(A 3 3)",
+    "requires": [
+      "ackermann_definition"
+    ],
+    "expected": "65536",
+    "example": null,
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 14,
+    "name": "fghk_definition",
+    "code": "(define (f n) (A 0 n))\n\n(define (g n) (A 1 n))\n\n(define (h n) (A 2 n))\n\n(define (k n) (* 5 n n))",
+    "requires": [
+      "ackermann_definition"
+    ],
+    "expected": null,
+    "example": "fghk_example",
+    "hidden": null
+  },
+  {
+    "source": "sicp-recursion.xml",
+    "index": 15,
+    "name": "fghk_example",
+    "code": "(k 4)",
+    "requires": [
+      "fghk_definition"
+    ],
+    "expected": "80",
+    "example": null,
+    "hidden": "yes"
+  }
+]

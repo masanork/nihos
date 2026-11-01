@@ -1,0 +1,21 @@
+test_bad_source_never_advances_head (__main__.WorkspaceTest) ... ok
+test_broken_saved_source_falls_back_without_erasing_history (__main__.WorkspaceTest) ... ok
+test_busy_writer_preserves_active_revision (__main__.WorkspaceTest) ... ok
+test_concurrent_sessions_use_compare_and_swap (__main__.WorkspaceTest) ... ok
+test_dictionary_callback_and_active_ime_survive_workspace_restart (__main__.WorkspaceTest) ... ok
+test_empty_source_is_a_real_revision (__main__.WorkspaceTest) ... ok
+test_foreign_database_rejected_without_schema_mutation (__main__.WorkspaceTest) ... ok
+test_process_restart_retains_original_source_and_changed_command (__main__.WorkspaceTest) ... ok
+test_real_font_render_of_restored_command_and_source (__main__.WorkspaceTest) ... ok
+test_restore_and_branch_keep_all_history (__main__.WorkspaceTest) ... ok
+test_rgb565_rgba8_full_frame_parity_including_caret_and_padding (__main__.WorkspaceTest) ... ok
+test_ruby_survives_cursor_following_viewport (__main__.WorkspaceTest) ... ok
+test_safe_mode_skips_valid_user_commands (__main__.WorkspaceTest) ... ok
+test_same_process_vm_swap_and_failed_editor_effects_are_atomic (__main__.WorkspaceTest) ... ok
+test_sqlite_abort_rolls_back_revision_and_head (__main__.WorkspaceTest) ... ok
+test_unknown_revision_and_undersized_reads_leave_head_unchanged (__main__.WorkspaceTest) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 4.355s
+
+OK
