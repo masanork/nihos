@@ -84,6 +84,10 @@ void nih_c6_fourbit_pins(void) {
  * PI4IOE5V6408: 0x03 direction (1=output), 0x05 output, 0x07 output high-Z.
  * Only expander 0x44 P0 (WLAN_PWR_EN) is modified; no chip reset is issued. */
 extern void nih_c6_delay_us(unsigned);
+/* Snapshot only; no extra I2C traffic. reason: 1=SCL timeout, 2=SDA low at
+ * START, 3=NACK, 4=readback mismatch/other. stage is the operation index. */
+static unsigned power_reason, power_failure;
+unsigned nih_c6_power_failure_detail(void) { return power_failure; }
 static void i2c_delay(void) { nih_c6_delay_us(5); }
 static void i2c_sda(unsigned high) { gpio_ll_set_level(&GPIO, 31, high); i2c_delay(); }
 static int i2c_scl(unsigned high) {
@@ -91,12 +95,13 @@ static int i2c_scl(unsigned high) {
     if (high) {
         unsigned tries = 100;
         while (!gpio_ll_get_level(&GPIO, 32) && --tries) i2c_delay();
-        if (!tries) return 0;
+        if (!tries) { if (!power_reason) power_reason = 1; return 0; }
     }
     i2c_delay(); return 1;
 }
 static int i2c_start(void) {
-    i2c_sda(1); if (!i2c_scl(1) || !gpio_ll_get_level(&GPIO, 31)) return 0;
+    i2c_sda(1); if (!i2c_scl(1)) return 0;
+    if (!gpio_ll_get_level(&GPIO, 31)) { if (!power_reason) power_reason = 2; return 0; }
     i2c_sda(0); return i2c_scl(0);
 }
 static void i2c_stop(void) { i2c_sda(0); (void)i2c_scl(1); i2c_sda(1); }
@@ -105,7 +110,9 @@ static int i2c_put(unsigned byte) {
         i2c_sda((byte >> bit) & 1); if (!i2c_scl(1)) return 0; (void)i2c_scl(0);
     }
     i2c_sda(1); if (!i2c_scl(1)) return 0;
-    int ack = !gpio_ll_get_level(&GPIO, 31); (void)i2c_scl(0); return ack;
+    int ack = !gpio_ll_get_level(&GPIO, 31); (void)i2c_scl(0);
+    if (!ack && !power_reason) power_reason = 3;
+    return ack;
 }
 static int i2c_get(unsigned *value) {
     *value = 0; i2c_sda(1);
@@ -125,6 +132,7 @@ static int exp_write(unsigned reg, unsigned value) {
     i2c_stop(); return ok;
 }
 unsigned nih_c6_power_enable(void) {
+    power_reason = 0; power_failure = 0;
     for (unsigned pin = 31; pin <= 32; ++pin) {
         IO_MUX.gpio[pin].mcu_sel = 1;
         GPIO.func_out_sel_cfg[pin].out_sel = SIG_GPIO_OUT_IDX;
@@ -134,11 +142,17 @@ unsigned nih_c6_power_enable(void) {
         gpio_ll_set_level(&GPIO, pin, 1); gpio_ll_output_enable(&GPIO, pin);
     }
     unsigned out = 0, dir = 0, hiz = 0, check = 0;
-    int ok = exp_read(5, &out) && exp_read(3, &dir) && exp_read(7, &hiz) &&
-             exp_write(5, out | 1) && exp_write(7, hiz & ~1u) && exp_write(3, dir | 1) &&
-             exp_read(5, &check) && check == (out | 1) &&
-             exp_read(7, &check) && check == (hiz & ~1u) &&
-             exp_read(3, &check) && check == (dir | 1);
+    unsigned stage = 0;
+    #define POWER_STEP(n, expr) ((stage = (n)), (expr))
+    int ok = POWER_STEP(1, exp_read(5, &out)) && POWER_STEP(2, exp_read(3, &dir)) &&
+             POWER_STEP(3, exp_read(7, &hiz)) && POWER_STEP(4, exp_write(5, out | 1)) &&
+             POWER_STEP(5, exp_write(7, hiz & ~1u)) && POWER_STEP(6, exp_write(3, dir | 1)) &&
+             POWER_STEP(7, exp_read(5, &check) && check == (out | 1)) &&
+             POWER_STEP(8, exp_read(7, &check) && check == (hiz & ~1u)) &&
+             POWER_STEP(9, exp_read(3, &check) && check == (dir | 1));
+    #undef POWER_STEP
+    if (!ok) power_failure = stage | ((power_reason ? power_reason : 4u) << 8) |
+        ((unsigned)gpio_ll_get_level(&GPIO, 31) << 16) | ((unsigned)gpio_ll_get_level(&GPIO, 32) << 17);
     /* Hand back the shared bus to the Zig master: its open-drain primitive
      * toggles output-enable around a LOW latch. Retaining this shim's HIGH
      * latch makes every subsequent RTC/sensor transfer unable to drive low. */

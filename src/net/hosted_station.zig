@@ -248,13 +248,13 @@ pub const Client = struct {
             if (self.dhcp_client) |*v4| if (v4.due(now)) {
                 var buffer: [342]u8 = undefined;
                 self.tx_ipv6 = false;
-                return self.encodeFrame(1, try v4.packet(&buffer));
+                return self.encodeFrame(wire.station_interface, try v4.packet(&buffer));
             };
             if (self.ipv6_client) |*client| {
                 const packet = try client.tx(now);
                 if (packet.len != 0) {
                     self.tx_ipv6 = true;
-                    return self.encodeFrame(1, packet);
+                    return self.encodeFrame(wire.station_interface, packet);
                 }
             }
             return &.{};
@@ -293,7 +293,7 @@ pub const Client = struct {
                 const packet = try client.tx(now);
                 if (packet.len != 0) {
                     self.tx_ipv6 = true;
-                    return self.encodeFrame(1, packet);
+                    return self.encodeFrame(wire.station_interface, packet);
                 }
                 self.finishIfReady();
                 if (self.phase == .done) return &.{};
@@ -301,7 +301,7 @@ pub const Client = struct {
             if (!self.dhcp_client.?.due(now)) return &.{};
             var buffer: [342]u8 = undefined;
             self.tx_ipv6 = false;
-            return self.encodeFrame(1, try self.dhcp_client.?.packet(&buffer));
+            return self.encodeFrame(wire.station_interface, try self.dhcp_client.?.packet(&buffer));
         }
         var body_buffer: [320]u8 = undefined;
         var body = wire.Writer{ .out = &body_buffer };

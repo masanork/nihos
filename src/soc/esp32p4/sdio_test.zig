@@ -18,7 +18,7 @@ const Model = struct {
     stall_stop: bool = false,
     stopped: u32 = 0,
     prepared: usize = 0,
-    tx: [512]u8 = @splat(0),
+    tx: [1536]u8 = @splat(0),
     tx_len: usize = 0,
     pins: bool = false,
 
@@ -77,6 +77,41 @@ const Model = struct {
         return true;
     }
 };
+
+const UnownedShared = struct {
+    pub const shared_host = true;
+    model: Model = .{},
+    pub fn ownsSlot(_: *@This(), _: u32) bool {
+        return false;
+    }
+    pub fn read(self: *@This(), offset: usize) u32 {
+        return self.model.read(offset);
+    }
+    pub fn write(self: *@This(), offset: usize, value: u32) void {
+        self.model.write(offset, value);
+    }
+    pub fn delay(self: *@This(), us: u32) void {
+        self.model.delay(us);
+    }
+    pub fn prepareDma(self: *@This(), writing: bool, source: []const u8, length: usize) ?u32 {
+        return self.model.prepareDma(writing, source, length);
+    }
+    pub fn finishDma(self: *@This(), writing: bool, destination: []u8) bool {
+        return self.model.finishDma(writing, destination);
+    }
+    pub fn releaseDma(_: *@This()) bool {
+        return true;
+    }
+};
+
+test "multi-block write rejects an unowned shared controller before MMIO" {
+    var io: UnownedShared = .{};
+    var host = sd.Controller(*UnownedShared){ .io = &io, .prepared = true, .selected = true, .four_bit = true };
+    const data: [1024]u8 = @splat(0);
+    try std.testing.expectError(error.NoOwnership, host.writeBlocks(0x1f400, &data));
+    try std.testing.expectEqual(@as(usize, 0), io.model.touches);
+    try std.testing.expect(!host.faulted);
+}
 
 fn setup(model: *Model) !sd.Controller(*Model) {
     var host = sd.Controller(*Model){ .io = model, .poll_limit = 3 };
@@ -178,4 +213,33 @@ test "DMA errors, timeout, retained ownership and failed cleanup retire the cont
         try std.testing.expectError(error.Retired, host.readBytes(0x60, &bytes));
         try std.testing.expectEqual(touches, model.touches);
     }
+}
+
+test "multi-block write uses one CMD53 and retires after ambiguous DMA failure" {
+    for ([_]usize{ 1024, 1536 }) |length| {
+        var model: Model = .{};
+        var host = try setup(&model);
+        var bytes: [1536]u8 = @splat(0);
+        for (bytes[0..length], 0..) |*byte, i| byte.* = @truncate(i);
+        const before = model.trace_len;
+        try host.writeBlocks(0x1f31a, bytes[0..length]);
+        try std.testing.expectEqual(before + 1, model.trace_len);
+        try std.testing.expectEqual(@as(u32, 53), model.trace[before] & 63);
+        try std.testing.expectEqual(@as(u32, 512), model.registers[r.block / 4]);
+        try std.testing.expectEqual(@as(u32, @intCast(length)), model.registers[r.bytes / 4]);
+        try std.testing.expectEqual(@as(u32, @intCast(length / 512)), model.registers[r.argument / 4] & 511);
+        try std.testing.expectEqualSlices(u8, bytes[0..length], model.tx[0..model.tx_len]);
+    }
+    var model: Model = .{};
+    var host = try setup(&model);
+    const bytes: [1024]u8 = @splat(0);
+    const touches = model.touches;
+    try std.testing.expectError(error.InvalidArgument, host.writeBlocks(0, bytes[0..512]));
+    try std.testing.expectEqual(touches, model.touches);
+    model.no_data = true;
+    try std.testing.expectError(error.Timeout, host.writeBlocks(0x1f400, &bytes));
+    try std.testing.expect(host.faulted);
+    const after_failure = model.touches;
+    try std.testing.expectError(error.Retired, host.writeBlocks(0x1f400, &bytes));
+    try std.testing.expectEqual(after_failure, model.touches);
 }

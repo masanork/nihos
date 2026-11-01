@@ -1,0 +1,958 @@
+{
+  "scope": "Three warm boots; reverse packet identifiers; macOS UDP counters are systemwide, not attributable to this flow",
+  "candidate_sha256": "f929beb68c15442e69ca230428b6286ec50b524446a99580ae5e2d62cbe42070",
+  "build_base_commit": "fb0bbc02d0ccbf2137908126bda001033c1c9096",
+  "source_sha256": {
+    "probes/c6-sdio/start.S": "56f0fd829f9354b45b5fc964241f7247d30aaec99edda5a863751121a1658cd3",
+    "probes/c6-sdio/main.zig": "a3db94da985f052a9fb9c6871f33a7b7de0fde6e24a99b35e5d4cc8672b19088",
+    "probes/c6-sdio/pads.c": "449d64e2c8a7c704a6e5424a14ef7a4feab26667c18565d842d29eb8e3dac12d",
+    "src/platform/native/c6_probe.zig": "1260ebbfb2aa5d3935d34bdfb8c74108f80545d1fd2f06108dbeaa9c427f84fa",
+    "probes/c6-sdio/esp32p4.ld": "17b824d7f23091ffb0f43b0c498528702fe49257ef76f7d5427006261c015137",
+    "src/soc/esp32p4/sdio.zig": "cda54d09e3b583cc86953f6b612ce7dc9bcbd13fb74850df23bc86f4826f6f60",
+    "src/soc/esp32p4/timer_group.zig": "24a821031bde77b15ca366760be29a47edb9dda58dc9907f9e7a987aae3ff07f",
+    "src/net/c6_sdio.zig": "42e59a840b36ce439f7240fe65861e2ae88074b4687866790a1c21b01ff65fef",
+    "src/net/esp_at.zig": "76b134c1c9a3bd78e7a7cbb43081e098607709420c643482cae7ed481aa42389",
+    "src/net/at_commands.zig": "7c0647c37a34e865a5146546d170b6d092bb8d60bb32579b341e5e3c3cae9104",
+    "src/net/at_controller.zig": "368867d2a987d218a5c139141dbf568a20d209fd33fa5dda9f80e072a07fd3ad",
+    "tools/build-c6-sdio-probe.sh": "d49583266b30a8fef20b2bf5c5ee2747f69effe219fd936508d3260f788c058d",
+    "src/net/wifi_station.zig": "5b01b2469ac044767086d67555c231c8f2bf0d03b11223c166d41406ff3370ac",
+    "tools/c6-wifi-config.py": "e3083ed8520a55aaba5580f3664023a7266517e9f37dd5f2070fb5b47c83efe4",
+    "src/net/hosted.zig": "4811836265a82156d9afbc694f4b1899fe715ed25eb43733e5b4ddc76faa900f",
+    "src/net/hosted_station.zig": "187e09c0db918695d23f5737fd4acfe1c233c1d7b921b6ad4ce850ba9c331977",
+    "src/net/dhcp.zig": "94a5f0d2579b0d4ea1e198a089c6c37c51ed3a84346a6ad29b0311e853f4794f",
+    "src/net/ipv6.zig": "c2eb92e39ee083f3294a15262e74fb16bed8ae18286d082782efc43931edc4b0",
+    "probes/hosted-long-send/boot-bus.zig": "e41109f345ac10a116c3d0d55dd253f057d15cd735df0b9954890a7fe02e7004",
+    "src/net/hosted_dma_bus.zig": "4117809f73662ce2de29c639bf6336d31466055e4c7534908edfdd3b7c4ad4d1",
+    "src/net/hosted_long_dma.zig": "423c4a0ca08ad74e9de4c66ece30c08a5acf8f96311ee22771065ab8bfd314ac",
+    "src/platform/native/hosted_long_cache.zig": "5dc4472b3732cda2ddc7ba7e7a7ca9fa567c7e8a89756ea6f82993d9c46162a7",
+    "src/net/hosted_tx_plan.zig": "5631ab82c6a69859b817ea3ad40751c1b43fa665cdd513aa4863966ac98e5037",
+    "src/net/long_udp_probe.zig": "e2d8d33d1ea615704a10f19a1c658f86f24ca38a987bb1e2de06464b7aaa734a",
+    "probes/experimental/c6-custom-firmware/net/network_split.zig": "5aea139f9c5ff92e38e95a641d2425d52b26a07924008656f5384fae67e3f962",
+    "probes/experimental/c6-custom-firmware/net/c6_https.zig": "f6c7277ffc32a9399b1a5075fd9ced3f1c4edb59025354749d4b4f75dcec4442",
+    "probes/experimental/c6-custom-firmware/net/hosted_station.zig": "929e413c9eab28eaa4ee8280606a2c93ae8f5b0db8ed303870c722e154008bae",
+    "probes/experimental/c6-custom-firmware/native/c6_probe.zig": "e491d88cf22ae203001b13d9fc52efeab81d5fe403efbabbd0ec11f7a3974874",
+    "tools/check-c6-sdio-image.py": "c73a3f1e3a443ee3296ba32146aaf1bf06b8aec09c2fe50099d89f0464acc86b",
+    "tools/check-c6-sram-boundary.py": "22210f7e25fbcd20c8594af53f87653f9ffbc28a8eda40e271119c18989b0117",
+    "tools/c6_image_test.py": "8b9bbbe7cf0da607f9274ec58c5b11c6c3dc39444a2e55e99e4b7855e0f3e475"
+  },
+  "receiver_sha256": "319855c3efd8922bc438260baf726e842475f8b80305158c286d274c7af01e63",
+  "runner_sha256": "cd920bc42a8b3adc50dfb5cc5945a1e7f00eb617b44c81b58af9edec6a3a11e5",
+  "diagnostic_heap_bytes": 16960,
+  "runs": [
+    {
+      "scope": "one bounded run; flash verification and transport reliability are separate",
+      "sent": 16,
+      "send_order": [
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "configured_settle_ms": 8000,
+      "actual_final_wait_ms": 8000,
+      "peer_arrival_order": [
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "peer_unique": 16,
+      "not_observed_by_peer": [],
+      "peer_echo_send_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "device_echo_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "echo_not_observed_by_device": [],
+      "peer_arrival_us_from_first": [
+        {
+          "attempt": 16,
+          "elapsed_us": 0
+        },
+        {
+          "attempt": 15,
+          "elapsed_us": 255962
+        },
+        {
+          "attempt": 14,
+          "elapsed_us": 509749
+        },
+        {
+          "attempt": 13,
+          "elapsed_us": 754885
+        },
+        {
+          "attempt": 12,
+          "elapsed_us": 1004547
+        },
+        {
+          "attempt": 11,
+          "elapsed_us": 1256554
+        },
+        {
+          "attempt": 10,
+          "elapsed_us": 1511126
+        },
+        {
+          "attempt": 9,
+          "elapsed_us": 1758065
+        },
+        {
+          "attempt": 8,
+          "elapsed_us": 2003084
+        },
+        {
+          "attempt": 7,
+          "elapsed_us": 2252972
+        },
+        {
+          "attempt": 6,
+          "elapsed_us": 2502485
+        },
+        {
+          "attempt": 5,
+          "elapsed_us": 2751218
+        },
+        {
+          "attempt": 4,
+          "elapsed_us": 3001406
+        },
+        {
+          "attempt": 3,
+          "elapsed_us": 3255666
+        },
+        {
+          "attempt": 2,
+          "elapsed_us": 3507738
+        },
+        {
+          "attempt": 1,
+          "elapsed_us": 3756740
+        }
+      ],
+      "device_tx_trace": [
+        {
+          "attempt": 16,
+          "credit_total": 33,
+          "credit_available": 20,
+          "sent_counter_before": 13,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 10,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 15,
+          "credit_total": 34,
+          "credit_available": 20,
+          "sent_counter_before": 14,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 269,
+          "write_and_credit_us_capped": 8769
+        },
+        {
+          "attempt": 14,
+          "credit_total": 35,
+          "credit_available": 20,
+          "sent_counter_before": 15,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 520,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 13,
+          "credit_total": 36,
+          "credit_available": 20,
+          "sent_counter_before": 16,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 770,
+          "write_and_credit_us_capped": 8769
+        },
+        {
+          "attempt": 12,
+          "credit_total": 37,
+          "credit_available": 20,
+          "sent_counter_before": 17,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1020,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 11,
+          "credit_total": 38,
+          "credit_available": 20,
+          "sent_counter_before": 18,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1270,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 10,
+          "credit_total": 39,
+          "credit_available": 20,
+          "sent_counter_before": 19,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1520,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 9,
+          "credit_total": 40,
+          "credit_available": 20,
+          "sent_counter_before": 20,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1770,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 8,
+          "credit_total": 41,
+          "credit_available": 20,
+          "sent_counter_before": 21,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2021,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 7,
+          "credit_total": 42,
+          "credit_available": 20,
+          "sent_counter_before": 22,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2271,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 6,
+          "credit_total": 43,
+          "credit_available": 20,
+          "sent_counter_before": 23,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2521,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 5,
+          "credit_total": 44,
+          "credit_available": 20,
+          "sent_counter_before": 24,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2771,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 4,
+          "credit_total": 45,
+          "credit_available": 20,
+          "sent_counter_before": 25,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3022,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 3,
+          "credit_total": 46,
+          "credit_available": 20,
+          "sent_counter_before": 26,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3272,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 2,
+          "credit_total": 47,
+          "credit_available": 20,
+          "sent_counter_before": 27,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3522,
+          "write_and_credit_us_capped": 8763
+        },
+        {
+          "attempt": 1,
+          "credit_total": 48,
+          "credit_available": 20,
+          "sent_counter_before": 28,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3772,
+          "write_and_credit_us_capped": 8766
+        }
+      ],
+      "boot_log_sha256": "eed297cdbf9bd3e5ca0d8fb81c6204d4aa9db7e296a71aed084d99aa9e267f65",
+      "peer_log_sha256": "4e2f38ea6069ad59a58e14f514664ab82e3e389abb4f8cdc0e5b5b89b2c17700",
+      "candidate_verify_log_sha256": "6d4836bc42fab57bdf6ff61b79532941dadc8c620840e1b36b2f1055c4d9d2d8",
+      "mac_systemwide_udp_counter_delta": {
+        "with bad checksum": 0,
+        "with bad data length field": 0,
+        "with incomplete header": 0,
+        "dropped due to full socket buffers": 0,
+        "dropped due to no socket": 1
+      },
+      "udp_before_sha256": "1f05ca3b0af954f78f57dd0900023df2918e0e44f7d5fd42b3ef3e5eb4e4a358",
+      "udp_after_sha256": "811a0196a78820502cf50572f19b1e4092ded6d82dc3e915a7995689748f263e"
+    },
+    {
+      "scope": "one bounded run; flash verification and transport reliability are separate",
+      "sent": 16,
+      "send_order": [
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "configured_settle_ms": 8000,
+      "actual_final_wait_ms": 8000,
+      "peer_arrival_order": [
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2
+      ],
+      "peer_unique": 15,
+      "not_observed_by_peer": [
+        1
+      ],
+      "peer_echo_send_ids": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "device_echo_ids": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "echo_not_observed_by_device": [],
+      "peer_arrival_us_from_first": [
+        {
+          "attempt": 16,
+          "elapsed_us": 0
+        },
+        {
+          "attempt": 15,
+          "elapsed_us": 255658
+        },
+        {
+          "attempt": 14,
+          "elapsed_us": 505452
+        },
+        {
+          "attempt": 13,
+          "elapsed_us": 759272
+        },
+        {
+          "attempt": 12,
+          "elapsed_us": 1010060
+        },
+        {
+          "attempt": 11,
+          "elapsed_us": 1257802
+        },
+        {
+          "attempt": 10,
+          "elapsed_us": 1515433
+        },
+        {
+          "attempt": 9,
+          "elapsed_us": 1754592
+        },
+        {
+          "attempt": 8,
+          "elapsed_us": 2006841
+        },
+        {
+          "attempt": 7,
+          "elapsed_us": 2252776
+        },
+        {
+          "attempt": 6,
+          "elapsed_us": 2503054
+        },
+        {
+          "attempt": 5,
+          "elapsed_us": 2751757
+        },
+        {
+          "attempt": 4,
+          "elapsed_us": 3002466
+        },
+        {
+          "attempt": 3,
+          "elapsed_us": 3256679
+        },
+        {
+          "attempt": 2,
+          "elapsed_us": 3503806
+        }
+      ],
+      "device_tx_trace": [
+        {
+          "attempt": 16,
+          "credit_total": 33,
+          "credit_available": 20,
+          "sent_counter_before": 13,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 10,
+          "write_and_credit_us_capped": 8770
+        },
+        {
+          "attempt": 15,
+          "credit_total": 34,
+          "credit_available": 20,
+          "sent_counter_before": 14,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 269,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 14,
+          "credit_total": 35,
+          "credit_available": 20,
+          "sent_counter_before": 15,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 520,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 13,
+          "credit_total": 36,
+          "credit_available": 20,
+          "sent_counter_before": 16,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 770,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 12,
+          "credit_total": 37,
+          "credit_available": 20,
+          "sent_counter_before": 17,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1020,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 11,
+          "credit_total": 38,
+          "credit_available": 20,
+          "sent_counter_before": 18,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1271,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 10,
+          "credit_total": 39,
+          "credit_available": 20,
+          "sent_counter_before": 19,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1521,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 9,
+          "credit_total": 40,
+          "credit_available": 20,
+          "sent_counter_before": 20,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1771,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 8,
+          "credit_total": 41,
+          "credit_available": 20,
+          "sent_counter_before": 21,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2021,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 7,
+          "credit_total": 42,
+          "credit_available": 20,
+          "sent_counter_before": 22,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2271,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 6,
+          "credit_total": 43,
+          "credit_available": 20,
+          "sent_counter_before": 23,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2521,
+          "write_and_credit_us_capped": 8769
+        },
+        {
+          "attempt": 5,
+          "credit_total": 44,
+          "credit_available": 20,
+          "sent_counter_before": 24,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2772,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 4,
+          "credit_total": 45,
+          "credit_available": 20,
+          "sent_counter_before": 25,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3022,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 3,
+          "credit_total": 46,
+          "credit_available": 20,
+          "sent_counter_before": 26,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3272,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 2,
+          "credit_total": 47,
+          "credit_available": 20,
+          "sent_counter_before": 27,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3522,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 1,
+          "credit_total": 48,
+          "credit_available": 20,
+          "sent_counter_before": 28,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3772,
+          "write_and_credit_us_capped": 8764
+        }
+      ],
+      "boot_log_sha256": "9e96f80832d7bada0e35fe059c1fc8dc96ed2567d3d8a7149ab2700ca370313d",
+      "peer_log_sha256": "446903a0b34f0138d8efe20c7a7f0e7d827cc376c84421c70fbc4256b9310b0d",
+      "candidate_verify_log_sha256": "6d4836bc42fab57bdf6ff61b79532941dadc8c620840e1b36b2f1055c4d9d2d8",
+      "mac_systemwide_udp_counter_delta": {
+        "with bad checksum": 0,
+        "with bad data length field": 0,
+        "with incomplete header": 0,
+        "dropped due to full socket buffers": 0,
+        "dropped due to no socket": 0
+      },
+      "udp_before_sha256": "811a0196a78820502cf50572f19b1e4092ded6d82dc3e915a7995689748f263e",
+      "udp_after_sha256": "deefde2030574fbce484e84f2022d03f5f47ed4f4c429849ec21afea4943febf"
+    },
+    {
+      "scope": "one bounded run; flash verification and transport reliability are separate",
+      "sent": 16,
+      "send_order": [
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "configured_settle_ms": 8000,
+      "actual_final_wait_ms": 8000,
+      "peer_arrival_order": [
+        16,
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2
+      ],
+      "peer_unique": 15,
+      "not_observed_by_peer": [
+        1
+      ],
+      "peer_echo_send_ids": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "device_echo_ids": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "echo_not_observed_by_device": [],
+      "peer_arrival_us_from_first": [
+        {
+          "attempt": 16,
+          "elapsed_us": 0
+        },
+        {
+          "attempt": 15,
+          "elapsed_us": 257700
+        },
+        {
+          "attempt": 14,
+          "elapsed_us": 504783
+        },
+        {
+          "attempt": 13,
+          "elapsed_us": 756961
+        },
+        {
+          "attempt": 12,
+          "elapsed_us": 1005391
+        },
+        {
+          "attempt": 11,
+          "elapsed_us": 1258312
+        },
+        {
+          "attempt": 10,
+          "elapsed_us": 1511300
+        },
+        {
+          "attempt": 9,
+          "elapsed_us": 1754753
+        },
+        {
+          "attempt": 8,
+          "elapsed_us": 2003454
+        },
+        {
+          "attempt": 7,
+          "elapsed_us": 2253444
+        },
+        {
+          "attempt": 6,
+          "elapsed_us": 2504593
+        },
+        {
+          "attempt": 5,
+          "elapsed_us": 2753389
+        },
+        {
+          "attempt": 4,
+          "elapsed_us": 3002701
+        },
+        {
+          "attempt": 3,
+          "elapsed_us": 3254513
+        },
+        {
+          "attempt": 2,
+          "elapsed_us": 3507379
+        }
+      ],
+      "device_tx_trace": [
+        {
+          "attempt": 16,
+          "credit_total": 32,
+          "credit_available": 20,
+          "sent_counter_before": 12,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 10,
+          "write_and_credit_us_capped": 8769
+        },
+        {
+          "attempt": 15,
+          "credit_total": 33,
+          "credit_available": 20,
+          "sent_counter_before": 13,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 270,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 14,
+          "credit_total": 34,
+          "credit_available": 20,
+          "sent_counter_before": 14,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 520,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 13,
+          "credit_total": 35,
+          "credit_available": 20,
+          "sent_counter_before": 15,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 770,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 12,
+          "credit_total": 36,
+          "credit_available": 20,
+          "sent_counter_before": 16,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1020,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 11,
+          "credit_total": 37,
+          "credit_available": 20,
+          "sent_counter_before": 17,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1270,
+          "write_and_credit_us_capped": 8764
+        },
+        {
+          "attempt": 10,
+          "credit_total": 38,
+          "credit_available": 20,
+          "sent_counter_before": 18,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1520,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 9,
+          "credit_total": 39,
+          "credit_available": 20,
+          "sent_counter_before": 19,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 1771,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 8,
+          "credit_total": 40,
+          "credit_available": 20,
+          "sent_counter_before": 20,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2021,
+          "write_and_credit_us_capped": 8768
+        },
+        {
+          "attempt": 7,
+          "credit_total": 41,
+          "credit_available": 20,
+          "sent_counter_before": 21,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2271,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 6,
+          "credit_total": 42,
+          "credit_available": 20,
+          "sent_counter_before": 22,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2521,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 5,
+          "credit_total": 43,
+          "credit_available": 20,
+          "sent_counter_before": 23,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 2772,
+          "write_and_credit_us_capped": 8766
+        },
+        {
+          "attempt": 4,
+          "credit_total": 44,
+          "credit_available": 20,
+          "sent_counter_before": 24,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3022,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 3,
+          "credit_total": 45,
+          "credit_available": 20,
+          "sent_counter_before": 25,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3272,
+          "write_and_credit_us_capped": 8767
+        },
+        {
+          "attempt": 2,
+          "credit_total": 46,
+          "credit_available": 20,
+          "sent_counter_before": 26,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3522,
+          "write_and_credit_us_capped": 8765
+        },
+        {
+          "attempt": 1,
+          "credit_total": 47,
+          "credit_available": 20,
+          "sent_counter_before": 27,
+          "zero_credit_polls_capped": 0,
+          "sent_ms_from_control_capped": 3773,
+          "write_and_credit_us_capped": 8767
+        }
+      ],
+      "boot_log_sha256": "3b12f87cc2d8f0b4b25e68b512f865b241745693e76b8d81bb2ca133788a347f",
+      "peer_log_sha256": "db4473f499ef9bd2b0061f350bccc419e8a1e4af340aa5e202643a4af76d8861",
+      "candidate_verify_log_sha256": "6d4836bc42fab57bdf6ff61b79532941dadc8c620840e1b36b2f1055c4d9d2d8",
+      "mac_systemwide_udp_counter_delta": {
+        "with bad checksum": 0,
+        "with bad data length field": 0,
+        "with incomplete header": 0,
+        "dropped due to full socket buffers": 0,
+        "dropped due to no socket": 1
+      },
+      "udp_before_sha256": "deefde2030574fbce484e84f2022d03f5f47ed4f4c429849ec21afea4943febf",
+      "udp_after_sha256": "535b945d83fd901807a2e67a6d5ed466b6a2658cf4d19f4247ae9c2a19700008"
+    }
+  ],
+  "restore": {
+    "verified_full_flash": true,
+    "backup_sha256": "d238f083ba89a2654668642d43099c8f249b5ec2162b2dd374095806cca2e092"
+  },
+  "backup_verify_log_sha256": "c8cf70b0cfa788292e30059e5b65c59c9a5fd01bc717f91ff70a5d6f265e2ea4",
+  "restore_verify_log_sha256": "c8cf70b0cfa788292e30059e5b65c59c9a5fd01bc717f91ff70a5d6f265e2ea4",
+  "bpf_capture": "unavailable: permission denied opening /dev/bpf0",
+  "original_firmware_boot_log_captured": false,
+  "raw_evidence_private_directory": "/private/tmp/nihos-hosted-udp-reverse-20261101",
+  "timing_note": "Device and peer clocks are independent; peer times include userspace scheduling."
+}

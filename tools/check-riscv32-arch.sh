@@ -29,6 +29,41 @@ printf 'pub const normal_storage = false;\n' > "$out_dir/network-options.zig"
     "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
     "-Mnative_options=$out_dir/network-options.zig"
 
+# Compile coordinator, quarantine guard, controller, and DMA buffer together.
+# Credit and register operations are inert; cache uses the CPU0 ROM adapter.
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/hosted-long-send.o" --dep hosted_long_sender --dep sdio --dep hosted_long_dma_guard --dep hosted_long_cache \
+    "-Mroot=$repo_root/tools/probes/hosted-long-send.zig" \
+    "-Mhosted_long_sender=$repo_root/src/net/hosted_long_sender.zig" \
+    "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
+    "-Mhosted_long_dma_guard=$repo_root/src/net/hosted_long_dma_guard.zig" \
+    "-Mhosted_long_cache=$repo_root/src/platform/native/hosted_long_cache.zig"
+
+# Link the integrated fixture and audit ROM ABI and SRAM placement.
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/hosted-long-bus.o" --dep c6_probe --dep hosted_dma_bus --dep hosted_long_cache --dep sdio --dep hosted_long_sender \
+    "-Mroot=$repo_root/tools/probes/hosted-long-bus.zig" \
+    --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
+    "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
+    "-Mhosted_dma_bus=$repo_root/src/net/hosted_dma_bus.zig" \
+    "-Mhosted_long_cache=$repo_root/src/platform/native/hosted_long_cache.zig" \
+    "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
+    "-Mhosted_long_sender=$repo_root/src/net/hosted_long_sender.zig" \
+    --dep hosted_long_sender "-Mc6_sdio=$repo_root/tools/probes/hosted-long-pipe.zig" \
+    "-Mat_controller=$repo_root/src/net/at_controller.zig" \
+    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
+    "-Mnative_options=$out_dir/network-options.zig"
+
+# Link the standalone fixture (stub MMIO/credits) and audit its SRAM layout.
+sh "$repo_root/tools/build-hosted-long-link.sh" "$out_dir/hosted-long-link"
+
+# Compile the experimental storage and descriptor path with inert cache ops.
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/hosted-long-dma.o" --dep hosted_long_dma \
+    "-Mroot=$repo_root/tools/probes/hosted-long-dma.zig" \
+    "-Mhosted_long_dma=$repo_root/src/net/hosted_long_dma.zig"
+
 # Generate both owner paths without SDK headers, credentials or device access.
 # Exporting begin/poll/snapshot through the probe forces codegen of the live
 # owner, which the SDK-free qualification images intentionally eliminate.
