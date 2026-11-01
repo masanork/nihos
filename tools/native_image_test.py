@@ -69,6 +69,14 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAt'))
         self.assertTrue(MODULE.xy_function('soft_keyboard.visible'))
         self.assertFalse(MODULE.xy_function('xy.soft_keyboard.calibrate'))
+        self.assertTrue(MODULE.xy_function('xy.ime_omni.OmniIme.handleKey'))
+        self.assertTrue(MODULE.xy_function('ime_omni.RomajiAutomaton.feed'))
+        self.assertTrue(MODULE.xy_function('xy.ime_omni.CandidateList.append'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.imeRoute'))
+        self.assertTrue(MODULE.xy_function('xy.document.Document(4096,256,2048,1,64).setPreedit'))
+        self.assertTrue(MODULE.xy_function('xy.document.Document(4096,256,2048,1,64).commitPreedit'))
+        self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.formatMinibuffer'))
+        self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.feedUtf8ToReading'))
 
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000
