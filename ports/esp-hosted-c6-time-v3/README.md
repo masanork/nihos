@@ -25,7 +25,7 @@ Its clock wire format is unchanged from 2.13.1. The stock example erases NVS
 when IDF reports no free pages or an incompatible version; this behavior must
 be considered in the physical migration plan.
 
-One local build produced a 1,395,264-byte app (SHA-256
+The earlier time-only build produced a 1,395,264-byte app (SHA-256
 `c76f2127d2dc182893c3f15b8bbce6cfc9f36f9653c76fdcd7989cf8ed65bb9b`),
 leaving 177,600 bytes in a 1,572,864-byte OTA slot. The generated partition
 table SHA-256 was
@@ -34,6 +34,33 @@ matching the previously reconstructed table. This is not a readback of the
 installed device's partition table. The ELF map contains the time-service
 auto-init descriptor. The build is evidence of compilation and slot sizing only;
 it has not been flashed or exercised on C6.
+
+The newer candidate also adds a bounded, read-only CustomRpc snapshot for the
+running, configured boot, and next OTA partitions; flash size; running OTA
+image state if available; and secure-boot/flash-encryption flags. It runs the
+query in a separate worker with a one-entry queue and reports results with the
+request nonce. It does not expose flash contents, inspect bootloader rollback
+configuration, or modify partitions. The fields are queried sequentially and
+are not an atomic snapshot; the caller must exclude concurrent OTA and reset.
+A full queue drops requests, so the P4
+must time out. A successful 3.x build with this addition produced 1,397,104
+bytes, SHA-256
+`04bd14faf943453ccf39075bc61456463b3f362643a3a63dab0f82a53f4dc8fe`,
+and left 175,760 bytes in the nominal slot. This candidate is also unflashed.
+The link map contains the service feature descriptor; the service object's
+undefined OTA/flash references are limited to read-only queries.
+
+`src/net/hosted_c6_ota_info.zig` provides a bounded P4 query session and checks
+nonce, acknowledgement, deadlines, partition bounds and non-overlap. The
+caller must own the stream, choose a fresh nonce, and discard the result on
+reset. `sh ports/esp-hosted-c6-time-v3/check-ota-info-wire.sh` verifies the
+C-generated fixture consumed by its Zig tests. This is an API and wire test;
+the request and decoder also compiled for the P4 RV32 target. There is not yet
+a device UI or physical capture using it. Values are
+self-reported by the running C6 application; this service is absent from the
+currently installed 2.13.1 image and cannot establish its actual partition
+layout before the first update. Neither a reported layout nor a security flag
+proves an independent ROM recovery path.
 
 The P4 recognizes the 3.0.10 MCU RPC-v2 advertisement, echoes it only when
 advertised, rejects unsupported SDIO modes and accepts the time path only for
