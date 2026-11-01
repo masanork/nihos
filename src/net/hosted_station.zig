@@ -9,6 +9,7 @@ fn timeSection() []const u8 {
 pub const wire = @import("hosted.zig");
 pub const c6_time_exchange = @import("hosted_c6_time_exchange.zig");
 pub const c6_time_policy = @import("hosted_c6_time_policy.zig");
+pub const c6_ota_info_exchange = @import("hosted_c6_ota_info_exchange.zig");
 pub const diagnostics = @import("hosted_diagnostics.zig");
 pub const ota_session = @import("hosted_ota_session.zig");
 pub const ota_guard = @import("hosted_ota_guard.zig");

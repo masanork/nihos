@@ -649,6 +649,101 @@ pub fn runHostedTime(clock: timers.Timer, join: hosted.Join) TimeReport {
     return report;
 }
 
+pub const OtaInfoReport = struct {
+    status: u32 = 0,
+    stage: u32 = 0,
+    error_code: u32 = 0,
+    peer_chip: u32 = 0,
+    fw_known: u32 = 0,
+    major: u32 = 0,
+    minor: u32 = 0,
+    patch: u32 = 0,
+    ack_known: u32 = 0,
+    ack_status: u32 = 0,
+    result_known: u32 = 0,
+    flash_size: u32 = 0,
+    running_offset: u32 = 0,
+    running_size: u32 = 0,
+    boot_offset: u32 = 0,
+    boot_size: u32 = 0,
+    next_offset: u32 = 0,
+    next_size: u32 = 0,
+    state_known: u32 = 0,
+    running_state: u32 = 0,
+    secure_boot: u32 = 0,
+    flash_encrypted: u32 = 0,
+};
+var ota_info_exchange: hosted.c6_ota_info_exchange.Exchange = undefined;
+var ota_info_guard: hosted.c6_ota_info_exchange.ReadOnlyStream(@TypeOf(hosted_stream)) = undefined;
+noinline fn exerciseOtaInfo(clock: timers.Timer, report: *OtaInfoReport) !void {
+    report.stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    report.stage = 2;
+    try host.prepare(true);
+    report.stage = 3;
+    try host.identify();
+    report.stage = 4;
+    try host.enableFunction();
+    try host.writeDoorbell(1, 0x8c, 1);
+    report.stage = 5;
+    const start = clock.counter() orelse return error.Clock;
+    // The fixture creates one exchange after reset, so the nonce is never
+    // reused on a live stream. A longer-lived owner must allocate fresh nonces.
+    ota_info_exchange = try hosted.c6_ota_info_exchange.Exchange.init(0x12345678, start, start + 30_000_000);
+    while (true) {
+        const now = clock.counter() orelse return error.Clock;
+        try ota_info_exchange.step(&ota_info_guard, now);
+        if (ota_info_exchange.state == .complete) {
+            report.status = 1;
+            report.stage = 6;
+            return;
+        }
+        if (clock_failed) return error.Clock;
+        host.io.delay(100);
+    }
+}
+pub fn runOtaInfo(clock: timers.Timer) OtaInfoReport {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    ota_info_guard = .{ .inner = &hosted_stream };
+    clock_failed = false;
+    // Safe default even if power or transport setup fails before init().
+    ota_info_exchange = hosted.c6_ota_info_exchange.Exchange.init(1, 0, 1) catch unreachable;
+    var report: OtaInfoReport = .{};
+    exerciseOtaInfo(clock, &report) catch |err| {
+        report.error_code = @intFromError(err);
+        hosted_stream.invalidate();
+    };
+    const peer = &ota_info_exchange.client;
+    report.peer_chip = peer.peer_chip;
+    report.fw_known = @intFromBool(peer.version_known);
+    report.major = peer.version[0];
+    report.minor = peer.version[1];
+    report.patch = peer.version[2];
+    report.ack_known = @intFromBool(ota_info_exchange.ack_status != null);
+    report.ack_status = ota_info_exchange.ack_status orelse 0;
+    if (ota_info_exchange.state == .complete) if (ota_info_exchange.query.result) |value| {
+        report.result_known = 1;
+        report.flash_size = value.flash_size;
+        report.running_offset = value.running.offset;
+        report.running_size = value.running.size;
+        report.boot_offset = value.boot.offset;
+        report.boot_size = value.boot.size;
+        report.next_offset = value.next.offset;
+        report.next_size = value.next.size;
+        report.state_known = @intFromBool(value.running_state != null);
+        report.running_state = value.running_state orelse 0;
+        report.secure_boot = @intFromBool(value.secure_boot);
+        report.flash_encrypted = @intFromBool(value.flash_encrypted);
+    };
+    return report;
+}
+
 /// OTA preflight: complete the version handshake, then stop before OTA Begin.
 /// This path does not update C6 or send any persistent-write RPC.
 pub const OtaPreflight = struct { status: u32 = 0, stage: u32 = 0, last_command: u32 = 0, last_interrupts: u32 = 0, error_code: u32 = 0, peer_chip: u32 = 0, version_known: u32 = 0, major: u32 = 0, minor: u32 = 0, patch: u32 = 0, diag_known: u32 = 0, diag_uptime: u32 = 0, diag_heap: u32 = 0 };
