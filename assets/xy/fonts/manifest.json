@@ -2,7 +2,7 @@
   "license": "CC0-1.0",
   "upstream": "https://github.com/masanork/gjs",
   "fonttools": "4.60.2",
-  "library_sha256": "4b1321b807d96b425dc9133154db2968a3c64b0aea628e9cd69e34671f030128",
+  "library_sha256": "b880baf129ec4f36c1791d55aafb42b2a7e9f067c67874baae20e4641ce2b19f",
   "faces": {
     "BunsenMincho-Regular.ttf": {
       "sha256": "2c813d32f9bbc4db062c31ad144d95a6aec4f25e30896242842e0e74ed92b730",
