@@ -14,6 +14,8 @@
 const std = @import("std");
 const document = @import("document.zig");
 
+pub const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+
 pub const InputMode = enum(u8) {
     /// Direct ASCII input (`a` -> `"a"`).
     direct = 0,
@@ -63,9 +65,9 @@ pub const Candidate = struct {
 
 /// Bounded candidate list populated by `OmniProvider.queryFn` without heap allocation.
 pub const CandidateList = struct {
-    items: [16]Candidate = @splat(.{ .insert_text = "" }),
+    items: [8]Candidate = @splat(.{ .insert_text = "" }),
     count: u8 = 0,
-    arena: [1024]u8 = @splat(0),
+    arena: [512]u8 = @splat(0),
     arena_used: u16 = 0,
 
     pub fn clear(self: *CandidateList) void {
@@ -427,7 +429,7 @@ pub const OmniIme = struct {
     selected_index: u8 = 0,
 
     /// Custom prefixes registered via `(ime/register-prefix! prefix handler)`.
-    custom_prefixes: [8]CustomPrefixHandler = @splat(.{}),
+    custom_prefixes: [4]CustomPrefixHandler = @splat(.{}),
 
     pub fn registerCustomPrefix(self: *OmniIme, prefix_char: u8) bool {
         for (&self.custom_prefixes) |*slot| {

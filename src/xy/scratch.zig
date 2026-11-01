@@ -159,14 +159,14 @@ pub const Model = struct {
         self.doc.insertUtf8(text) catch |err| self.failed(err);
         self.changed();
     }
-    fn emptyImeQuery(_: *anyopaque, _: ime_omni.PrefixKind, _: u8, _: []const u8, _: *ime_omni.CandidateList) void {}
+    fn emptyImeQuery(_: *anyopaque, _: ime_omni.PrefixKind, _: u8, _: []const u8, _: *ime_omni.CandidateList) linksection(scheme.code_section) void {}
 
-    fn imeProvider(self: *Model) ime_omni.OmniProvider {
+    fn imeProvider(self: *Model) linksection(scheme.code_section) ime_omni.OmniProvider {
         if (self.ime_provider) |provider| return provider;
         return .{ .ctx = self, .queryFn = emptyImeQuery };
     }
 
-    fn imeKey(self: *Model, byte: u8) void {
+    fn imeKey(self: *Model, byte: u8) linksection(scheme.code_section) void {
         self.ime.handleKey(&self.doc, self.imeProvider(), byte) catch |err| {
             self.status = if (err == error.BufferFull) .buffer_full else .invalid_input;
         };
@@ -178,7 +178,7 @@ pub const Model = struct {
     /// while a composition is active, so they keep their workspace
     /// meaning otherwise. Cursor and editing keys first cancel any
     /// composition, then fall through to their normal handling.
-    fn imeRoute(self: *Model, key: input.Key) bool {
+    fn imeRoute(self: *Model, key: input.Key) linksection(scheme.code_section) bool {
         if (self.mode != .edit) return false;
         const composing = self.ime.phase != .idle;
         switch (key) {
@@ -1219,4 +1219,23 @@ test "Escape cancels a composition instead of opening the minibuffer" {
     // With nothing composing, Escape opens the minibuffer as before.
     model.handle(.escape);
     try std.testing.expectEqual(Mode.command, model.mode);
+}
+
+test "SKK conversion powered by NfstDict seamlessly converts and commits" {
+    const dict = @import("dict.zig");
+    const nfst_bytes = @embedFile("fixtures/mini_nfst.bin");
+    const nfst = try dict.NfstDict.init(nfst_bytes);
+
+    var model: Model = undefined;
+    model.initInPlace();
+    model.ime_provider = nfst.omniProvider();
+
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "IKu"); // SKK okuri-ari: reading "い", okuri "く" (key "いk") -> auto-triggers conversion to "▼行く"
+    try std.testing.expectEqual(ime_omni.OmniPhase.selecting, model.ime.phase);
+    try std.testing.expectEqualStrings("▼行く", model.doc.preedit.slice());
+
+    model.handle(.enter); // Commits "行く"
+    try std.testing.expectEqual(ime_omni.OmniPhase.idle, model.ime.phase);
+    try std.testing.expectEqualStrings("行く", model.doc.slice());
 }

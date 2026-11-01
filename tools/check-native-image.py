@@ -231,6 +231,7 @@ XY_LEARNING_METHODS = {
 # minibuffer formatter is deliberately not approved: the device renderer
 # does not draw candidates yet, so it must not be linked into the image.
 XY_IME_METHODS = {'handleKey', 'syncDocumentOverlay', 'commitSelected', 'classifyPrefix', 'appendReading', 'isCustomPrefixTrigger', 'feed', 'clear', 'flushTrailingN', 'append'}
+XY_DICT_METHODS = {'init', 'lookup', 'commonPrefixSearch', 'omniProvider', 'omniQuery'}
 XY_CATALOG_METHODS = {
     'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
     'section', 'snippet', 'experiment', 'findSnippet', 'onPage', 'styleOnPage',
@@ -247,15 +248,17 @@ def xy_function(name):
     soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|layout|contains|visible|defaultOrientation)(?:__func_[0-9]+)?', name)
     ime = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:OmniIme|RomajiAutomaton|CandidateList)\.(\w+)(?:__func_[0-9]+)?', name)
     ime_helper = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:isBuiltinPrefixTrigger|isRawPrefixKind)(?:__func_[0-9]+)?', name)
+    dict_match = re.fullmatch(r'(?:xy\.)?dict\.(?:NfstDict|MeosDict)\.(\w+)(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
-    return bool(document or learning_allowed or soft_keyboard or ime_helper or (ime and ime[1] in XY_IME_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(document or learning_allowed or soft_keyboard or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
     start, end = span
     require(start == 0x40060000 and start < end <= 0x400c0000, 'invalid xy code extent')
     selected = sorted((a, b, n) for n, a, b in functions if start <= a < end)
-    require(selected and selected[0][0] == start and all(a < b <= end and xy_function(n) for a, b, n in selected), 'unapproved xy Flash function')
+    unapproved = [n for a, b, n in selected if not xy_function(n)]
+    require(selected and selected[0][0] == start and not unapproved and all(a < b <= end for a, b, n in selected), 'unapproved xy Flash function: ' + ', '.join(unapproved))
     # Export and Zig debug aliases may describe the same bytes. Every name above
     # must still be approved; only the byte-coverage walk collapses exact aliases.
     ranges = sorted(set((a, b) for a, b, _ in selected))
