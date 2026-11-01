@@ -38,6 +38,13 @@ and the Hosted encoder/decoder before handing Ethernet to libslirp. Separate
 tests cover lease-epoch invalidation, staged TX, backpressure and ambiguous
 partial sends. This does not exercise an SDIO transport or live DHCP client.
 
+The next host fixture uses an actual `hosted_station.Client` in a **synthetic
+bound state** and calls the station lease/scheduling adapter before TCP sends.
+OpenSSH PTY/FIN passes through this path. Host tests also cover renewal,
+expiry, disconnect, reset and station/TCP priority. DHCP packet acquisition,
+normal native owner scheduling, bounded RX queueing and device SDIO remain
+unverified by this fixture.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 

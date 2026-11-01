@@ -24,6 +24,12 @@ frame is staged. The OpenSSH/libslirp host fixture exercises this boundary;
 normal `network_service.zig` does not yet call it. It is not a socket table or
 a qualified DMA, Wi-Fi, reconnect, or device implementation.
 
+`hosted_tcp_station.zig` maps the Hosted station's live DHCP lease and an
+owner-supplied reset epoch into that service. Its experimental scheduling
+helper runs station maintenance first, gives station/other priority traffic
+precedence, and retains already-staged TCP frames. The owner must queue RX
+when TCP is busy and serialize completions; normal boot does not call it yet.
+
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
 ACK; its result is only the handoff state for a future data-plane TCP client.
