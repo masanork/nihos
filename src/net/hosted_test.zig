@@ -385,6 +385,17 @@ test "Hosted 3 MCU handshake negotiates RPC v2 and rejects incompatible SDIO" {
     try std.testing.expectError(error.Malformed, client.receive(.{ .interface = 5, .payload = &invalid }, 1));
 }
 
+test "Hosted 3 upstream TLV builder fixture is accepted" {
+    const payload = @embedFile("fixtures/hosted-3.0.10-init.bin");
+    var client: station.Client = .{};
+    client.begin(.saved, 0);
+    try client.receive(.{ .interface = 5, .payload = payload }, 1);
+    try std.testing.expectEqual(@as(u32, 0x03000a), client.peer_version);
+    try std.testing.expectEqual(@as(?u8, 2), client.peer_rpc_version);
+    try std.testing.expectEqual(@as(?[2]u8, .{ 7, 7 }), client.peer_sdio_buffer_blocks);
+    try std.testing.expect((try client.tx(1)).len > 0);
+}
+
 test "dual stack waits beyond IPv4 ACK and can also finish on IPv6-only networking" {
     const ip6 = station.ipv6;
     const peer_mac = [_]u8{ 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee };
