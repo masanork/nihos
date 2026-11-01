@@ -342,6 +342,23 @@ pub const Model = struct {
         self.changed();
     }
 
+    /// Defer an orientation switch until the active contact and VM work end.
+    /// A reflow preserves the current reading offset but discards old page
+    /// boundaries, which were fitted to the previous viewport.
+    pub fn applyKeyboardPresence(self: *Model, present: bool) linksection(scheme.code_section) bool {
+        const portrait = !present;
+        if (self.physical_keyboard == present and self.portrait_touch == portrait) return true;
+        if (self.touch_tracking or self.vm.running) return false;
+        self.setPhysicalKeyboard(present);
+        if (self.portrait_touch != portrait) {
+            self.portrait_touch = portrait;
+            self.nav.end = 0;
+            self.nav.previous_count = 0;
+            self.changed();
+        }
+        return true;
+    }
+
     pub fn softKeyboardVisible(self: *const Model) bool {
         const context = self.softKeyboardContext();
         const dismissed = self.soft_keyboard_dismissed and self.soft_keyboard_context == context;
@@ -1425,4 +1442,27 @@ test "soft keyboard drives SKK composition and commits a candidate" {
     tapSoftKey(&model, soft_keyboard.label_enter);
     try std.testing.expectEqualStrings("漢字", model.doc.slice());
     try std.testing.expect(mock.learned);
+}
+
+test "keyboard orientation switch waits for release and preserves the reading location" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .reading;
+    model.nav.offset = 123;
+    model.nav.end = 456;
+    model.nav.previous_count = 1;
+    model.portrait_touch = true;
+    model.touchDown(100, 100);
+    try std.testing.expect(!model.applyKeyboardPresence(true));
+    try std.testing.expect(model.portrait_touch);
+    model.touchCancel();
+    const rev = model.revision;
+    try std.testing.expect(model.applyKeyboardPresence(true));
+    try std.testing.expect(!model.portrait_touch and model.physical_keyboard);
+    try std.testing.expectEqual(@as(u32, 123), model.nav.offset);
+    try std.testing.expectEqual(@as(u32, 0), model.nav.end);
+    try std.testing.expectEqual(@as(u16, 0), model.nav.previous_count);
+    try std.testing.expect(model.revision != rev);
+    try std.testing.expect(model.applyKeyboardPresence(false));
+    try std.testing.expect(model.portrait_touch and !model.physical_keyboard);
 }

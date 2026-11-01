@@ -23,8 +23,11 @@ it does not depend on entering the diagnostic launcher.
 At startup, a confirmed address NACK for the Tab5 keyboard selects portrait;
 a working physical keyboard selects landscape. An I2C error, unsupported device
 or disabled probe leaves the orientation unknown and uses landscape. The
-choice is fixed for the session; hot-plug and automatic retry are not yet
-implemented. In the document, a touch keyboard appears below the text and
+driver retries a failed or absent keyboard probe in the foreground at 500 ms
+intervals. Two matching presence observations select landscape on attachment
+or portrait on confirmed absence; other I2C errors preserve the last confirmed
+orientation. A rotation waits for an active touch and running VM to finish.
+Reader reflow retains the current byte offset and clears old page history. In the document, a touch keyboard appears below the text and
 status when the physical keyboard is unavailable. It provides QWERTY,
 one-shot Shift, 123/ABC and shifted symbols, Space, Enter, Backspace, left and
 right, Esc and Hide. Hide is reversible by flicking up from the bottom edge;
@@ -33,7 +36,7 @@ existing document/minibuffer input path. The `ime` minibuffer command toggles
 the workspace SKK romaji-to-kana input path for both physical and touch keys.
 The native session does not yet bind a dictionary provider or render IME
 preedit/candidates, so kana-to-kanji interaction is not yet complete. A touch
-caret, hold-to-repeat, and hot-plug detection are also pending. The portrait and input
+caret and hold-to-repeat are also pending. The portrait and input
 paths have host coverage; physical touch, optical review and real
 keyboard-present/absent startup verification of this candidate remain
 outstanding.

@@ -186,9 +186,12 @@ extern fn nih_fs_command([*]const u8, u32) callconv(.c) void;
 extern fn nih_device_request(u32) callconv(.c) bool;
 extern fn nih_app_display_available() callconv(.c) bool;
 var bus = i2c.Master(Pins){ .pins = .{ .clock = clock.timer() }, .data_pin = 0, .clock_pin = 1 };
-var keyboard = console.keyboard.Keyboard(@TypeOf(bus)){ .bus = &bus };
+var keyboard = console.keyboard.KeyboardIn(@TypeOf(bus), if (xy_workspace) ".flash.xytext" else ".text"){ .bus = &bus };
 var hardware_ready = false;
 var keyboard_probe_failed = false;
+var keyboard_presence: console.scratch.soft_keyboard.PresenceTracker = .{};
+var keyboard_next_probe: u64 = 0;
+const keyboard_probe_interval_us: u64 = 500_000;
 var revision: u32 = 0;
 var shown_revision: u32 = 0;
 const face: console.raster.Face = @fromBackingInt(options.console_font);
@@ -555,6 +558,10 @@ pub noinline fn input(log: anytype) linksection(if (@hasDecl(options, "sqld") an
         };
         if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
     }
+    if (xy_workspace) {
+        keyboard_presence = .{ .stable = console.scratch.soft_keyboard.probeFromResult(options.keyboard_i2c, hardware_ready, keyboard.report.status, keyboard_probe_failed) };
+        keyboard_next_probe = input_started +| keyboard_probe_interval_us;
+    }
     const values: extern struct { status: u32, firmware: u32, mode: u32, transactions: u32, error_code: u32, sources: u32 } = .{
         .status = if (hardware_ready) 1 else 2,
         .firmware = keyboard.report.firmware,
@@ -677,7 +684,9 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
     } else if (!options.wasm_interactive) {
         if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
     }
-    if (hardware_ready) {
+    if (xy_workspace and session_active and options.keyboard_i2c) {
+        serviceXyKeyboard(now, log);
+    } else if (hardware_ready) {
         var events: [4]console.keyboard.Event = undefined;
         const count = keyboard.poll(&events) catch blk: {
             hardware_ready = false;
@@ -692,6 +701,44 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             }
         }
     }
+}
+
+// Retry only in foreground, and wait for confirmed observations before
+// changing the xy viewport. Non-NACK bus faults preserve the previous view.
+noinline fn serviceXyKeyboard(now: u64, log: anytype) linksection(if (xy_workspace) ".flash.xytext" else ".text") void {
+    if (hardware_ready) {
+        var events: [4]console.keyboard.Event = undefined;
+        const count = keyboard.poll(&events) catch |err| blk: {
+            hardware_ready = false;
+            keyboard_probe_failed = err != error.AddressNack;
+            model.input_sources &= ~console.keys.capability(.tab5_keyboard);
+            session_hid = .{};
+            keyboard_presence.observe(if (err == error.AddressNack) .absent else .unknown);
+            keyboard_next_probe = now +| keyboard_probe_interval_us;
+            break :blk 0;
+        };
+        for (events[0..count]) |event| if (session_hid.feed(event.modifiers, event.usage)) |key| sessionKey(key, log);
+    }
+    if (now >= keyboard_next_probe) {
+        keyboard_next_probe = now +| keyboard_probe_interval_us;
+        if (!hardware_ready) {
+            keyboard_probe_failed = false;
+            hardware_ready = keyboard.begin() catch blk: {
+                keyboard_probe_failed = true;
+                break :blk false;
+            };
+            if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
+        }
+        const observed = console.scratch.soft_keyboard.probeFromResult(true, hardware_ready, keyboard.report.status, keyboard_probe_failed);
+        keyboard_presence.observe(observed);
+    }
+    if (keyboard_presence.stable == .unknown or camera_overlay.state != .idle or cameraLiveActive() or (options.rust_session and rust_session.active()) or (options.wasm_session_test and wasmFixtureReserved())) return;
+    const attached = keyboard_presence.stable == .present;
+    const changed = scratch.physical_keyboard != attached or scratch.portrait_touch == attached;
+    if (!changed or !scratch.applyKeyboardPresence(attached)) return;
+    const event: extern struct { present: u32, portrait: u32 } = .{ .present = @intFromBool(attached), .portrait = @intFromBool(scratch.portrait_touch) };
+    log.record("NIHOS_NATIVE_KEYBOARD_CHANGE", null, .{ "present", "portrait" }, &event);
+    @atomicStore(u32, &dirty, 1, .release);
 }
 
 // Emulator-only transport substitution: retain the normal serial decoder and
