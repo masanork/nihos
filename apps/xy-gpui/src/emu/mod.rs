@@ -286,7 +286,7 @@ mod tests {
                 let output = String::from_utf8_lossy(&emu.bus.console_output);
                 assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
                 if output.contains("NIHOS_NATIVE_XY_READY") {
-                    emu.step_frame(30_000_000);
+                    emu.step_frame(90_000_000);
                     return emu;
                 }
             }
@@ -308,22 +308,63 @@ mod tests {
         assert_eq!(a.bus.scanout, paused_frame);
         a.paused = false;
         a.send_key(b'n');
-        a.step_frame(30_000_000);
+        a.step_frame(90_000_000);
         a.send_key(b'A');
-        a.step_frame(30_000_000);
+        a.step_frame(90_000_000);
         assert!(a.bus.keyboard_fifo.is_empty());
         assert_eq!(b.bus.scanout.as_ref().unwrap(), &b_home);
         b.send_key(b'n');
-        b.step_frame(30_000_000);
+        b.step_frame(90_000_000);
         b.send_key(b'B');
-        b.step_frame(30_000_000);
+        b.step_frame(90_000_000);
         assert!(b.bus.keyboard_fifo.is_empty());
-        assert_ne!(a.bus.scanout, b.bus.scanout);
+        assert!(
+            a.bus.scanout != b.bus.scanout,
+            "independently edited sessions must differ"
+        );
         let b_document = b.bus.scanout.clone();
         a.reset().unwrap();
         a.step_frame(5_000_000);
         assert_eq!(b.bus.scanout, b_document);
         assert!(a.bus.scanout.is_none());
+    }
+
+    #[test]
+    #[ignore = "requires a touch-enabled NIHOS_EMU_TEST_ELF"]
+    fn touch_tap_reaches_xy_home() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        for _ in 0..2000 {
+            emu.step_frame(500_000);
+            assert!(
+                !emu.paused,
+                "CPU fault: {:?} / {:?}",
+                emu.cpu.fault,
+                emu.cpu1.as_ref().and_then(|cpu| cpu.fault.as_ref())
+            );
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+            if output.contains("NIHOS_NATIVE_XY_READY")
+                && output.contains("NIHOS_NATIVE_TOUCH_UI available=00000001")
+            {
+                emu.step_frame(30_000_000);
+                let home = emu.bus.scanout.clone().expect("home frame");
+                // Home's first card at logical (200, 220), panel (220, 1079).
+                emu.bus.touch(Some((220, 1079)));
+                emu.bus.touch(None);
+                emu.step_frame(90_000_000);
+                assert_ne!(
+                    home,
+                    *emu.bus.scanout.as_ref().unwrap(),
+                    "touch did not navigate from home"
+                );
+                return;
+            }
+        }
+        panic!(
+            "touch not ready: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
     }
 
     #[test]
