@@ -1,5 +1,5 @@
-pub mod emu;
 mod core;
+pub mod emu;
 use core::{Core, Key};
 use gpui::{prelude::*, *};
 use std::{sync::Arc, time::Instant};
@@ -55,17 +55,23 @@ impl Workspace {
         ];
         let mut emulator = None;
         let mut emu_image = None;
-        let found_elf = elf_candidates.iter().find(|p| std::path::Path::new(p).exists());
-        let found_dict = dict_candidates.iter().find(|p| std::path::Path::new(p).exists());
-        if let Some(elf_p) = found_elf {
-            if let Ok(mut emu) = emu::Emulator::new(elf_p, found_dict) {
-                // Pre-run 1,000,000 instructions to initialize hardware
-                emu.step_frame(1_000_000);
-                let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
-                emu.render_to_bgra(&mut bgra);
-                emu_image = Some(frame(bgra, emu::bus::FB_WIDTH as u32, emu::bus::FB_HEIGHT as u32));
-                emulator = Some(emu);
-            }
+        let found_elf = elf_candidates
+            .iter()
+            .find(|p| std::path::Path::new(p).exists());
+        let found_dict = dict_candidates
+            .iter()
+            .find(|p| std::path::Path::new(p).exists());
+        if let Some(mut emu) = found_elf.and_then(|p| emu::Emulator::new(p, found_dict).ok()) {
+            // Pre-run 1,000,000 instructions to initialize hardware
+            emu.step_frame(1_000_000);
+            let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
+            emu.render_to_bgra(&mut bgra);
+            emu_image = Some(frame(
+                bgra,
+                emu::bus::FB_WIDTH as u32,
+                emu::bus::FB_HEIGHT as u32,
+            ));
+            emulator = Some(emu);
         }
         cx.observe_window_activation(window, |this, window, cx| {
             if !window.is_window_active() {
@@ -165,7 +171,9 @@ impl Workspace {
         cx.notify();
     }
     fn schedule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.tick_pending || (!self.emu_mode && (self.core.state().paused != 0 || self.core.state().stopped != 0)) {
+        if self.tick_pending
+            || (!self.emu_mode && (self.core.state().paused != 0 || self.core.state().stopped != 0))
+        {
             return;
         }
         self.tick_pending = true;

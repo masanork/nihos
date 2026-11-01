@@ -16,7 +16,7 @@ pub const PSRAM_BASE: u32 = 0x4800_0000;
 pub const PSRAM_SIZE: usize = 32 * 1024 * 1024;
 
 pub const SRAM_BASE: u32 = 0x4ff0_0000;
-pub const SRAM_SIZE: usize = 1 * 1024 * 1024;
+pub const SRAM_SIZE: usize = 1024 * 1024;
 
 pub const FB_WIDTH: usize = 1280;
 pub const FB_HEIGHT: usize = 720;
@@ -36,11 +36,17 @@ pub struct Bus {
     pub console_output: Vec<u8>,
 }
 
+impl Default for Bus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Bus {
     pub fn new() -> Self {
         let mut mmu_table = [0u16; 1024];
-        for i in 0..1024 {
-            mmu_table[i] = i as u16;
+        for (i, entry) in mmu_table.iter_mut().enumerate() {
+            *entry = i as u16;
         }
 
         let mut bus = Self {
@@ -81,7 +87,11 @@ impl Bus {
         match addr {
             FLASH_BASE..=0x40ff_ffff => {
                 let off = (addr - FLASH_BASE) as usize;
-                if off < self.flash.len() { self.flash[off] } else { 0 }
+                if off < self.flash.len() {
+                    self.flash[off]
+                } else {
+                    0
+                }
             }
             PSRAM_BASE..=0x49ff_ffff => {
                 let off = self.translate_psram(addr);
@@ -89,7 +99,11 @@ impl Bus {
             }
             SRAM_BASE..=0x4fff_ffff => {
                 let off = (addr - SRAM_BASE) as usize;
-                if off < self.sram.len() { self.sram[off] } else { 0 }
+                if off < self.sram.len() {
+                    self.sram[off]
+                } else {
+                    0
+                }
             }
             0x5000_0000..=0x5fff_ffff => {
                 let word_addr = addr & !3;
@@ -122,7 +136,9 @@ impl Bus {
         match addr {
             FLASH_BASE..=0x40ff_ffff => {
                 let off = (addr - FLASH_BASE) as usize;
-                if off < self.flash.len() { self.flash[off] = val; }
+                if off < self.flash.len() {
+                    self.flash[off] = val;
+                }
             }
             PSRAM_BASE..=0x49ff_ffff => {
                 let off = self.translate_psram(addr);
@@ -130,7 +146,9 @@ impl Bus {
             }
             SRAM_BASE..=0x4fff_ffff => {
                 let off = (addr - SRAM_BASE) as usize;
-                if off < self.sram.len() { self.sram[off] = val; }
+                if off < self.sram.len() {
+                    self.sram[off] = val;
+                }
             }
             0x5000_0000..=0x5fff_ffff => {
                 let word_addr = addr & !3;
@@ -172,7 +190,11 @@ impl Bus {
             }
             // UART status: bit 0 = RX FIFO not empty
             0x5008_4004 => {
-                if !self.keyboard_fifo.is_empty() { 0x01 } else { 0x00 }
+                if !self.keyboard_fifo.is_empty() {
+                    0x01
+                } else {
+                    0x00
+                }
             }
             // Timer Group 0 Counter Low/High (Base: 0x500c_2000)
             0x500c_2004 => (self.timer_ticks & 0xffff_ffff) as u32,
@@ -222,8 +244,8 @@ impl Bus {
                         0x8080 => {
                             let psram_off = (spi_addr as usize) % PSRAM_SIZE;
                             let bytes = fifo_val.to_le_bytes();
-                            for b in 0..4 {
-                                self.psram[(psram_off + b) % PSRAM_SIZE] = bytes[b];
+                            for (b, &byte) in bytes.iter().enumerate() {
+                                self.psram[(psram_off + b) % PSRAM_SIZE] = byte;
                             }
                         }
                         // read_data (0x0000) or default

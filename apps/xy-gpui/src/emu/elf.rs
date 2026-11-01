@@ -1,9 +1,9 @@
 //! 32-bit RISC-V ELF loader for nihos firmware.
 
+use super::bus::{Bus, FLASH_BASE};
 use std::fs::File;
 use std::io::{Read, Result};
 use std::path::Path;
-use super::bus::{Bus, FLASH_BASE};
 
 pub struct ElfLoader;
 
@@ -41,7 +41,8 @@ impl ElfLoader {
             let p_type = u32::from_le_bytes(data[off..off + 4].try_into().unwrap());
             let p_offset = u32::from_le_bytes(data[off + 4..off + 8].try_into().unwrap()) as usize;
             let p_vaddr = u32::from_le_bytes(data[off + 8..off + 12].try_into().unwrap());
-            let p_filesz = u32::from_le_bytes(data[off + 16..off + 20].try_into().unwrap()) as usize;
+            let p_filesz =
+                u32::from_le_bytes(data[off + 16..off + 20].try_into().unwrap()) as usize;
             let p_memsz = u32::from_le_bytes(data[off + 20..off + 24].try_into().unwrap()) as usize;
 
             // PT_LOAD = 1
@@ -65,7 +66,11 @@ impl ElfLoader {
     }
 
     /// Load the standalone Japanese dictionary blob into the flash partition area.
-    pub fn load_dictionary(bus: &mut Bus, path: impl AsRef<Path>, flash_offset: u32) -> Result<usize> {
+    pub fn load_dictionary(
+        bus: &mut Bus,
+        path: impl AsRef<Path>,
+        flash_offset: u32,
+    ) -> Result<usize> {
         let mut file = File::open(path)?;
         let mut data = Vec::new();
         file.read_to_end(&mut data)?;

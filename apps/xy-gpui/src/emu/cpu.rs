@@ -128,12 +128,12 @@ impl Cpu {
                 let v1 = self.reg(rs1);
                 let v2 = self.reg(rs2);
                 let take = match funct3 {
-                    0x0 => v1 == v2,                      // BEQ
-                    0x1 => v1 != v2,                      // BNE
-                    0x4 => (v1 as i32) < (v2 as i32),     // BLT
-                    0x5 => (v1 as i32) >= (v2 as i32),    // BGE
-                    0x6 => v1 < v2,                       // BLTU
-                    0x7 => v1 >= v2,                      // BGEU
+                    0x0 => v1 == v2,                   // BEQ
+                    0x1 => v1 != v2,                   // BNE
+                    0x4 => (v1 as i32) < (v2 as i32),  // BLT
+                    0x5 => (v1 as i32) >= (v2 as i32), // BGE
+                    0x6 => v1 < v2,                    // BLTU
+                    0x7 => v1 >= v2,                   // BGEU
                     _ => false,
                 };
                 if take {
@@ -145,11 +145,11 @@ impl Cpu {
                 let imm = ((inst as i32) >> 20) as u32;
                 let addr = self.reg(rs1).wrapping_add(imm);
                 let val = match funct3 {
-                    0x0 => (bus.read_u8(addr) as i8 as i32) as u32,    // LB
-                    0x1 => (bus.read_u16(addr) as i16 as i32) as u32,  // LH
-                    0x2 => bus.read_u32(addr),                         // LW
-                    0x4 => bus.read_u8(addr) as u32,                   // LBU
-                    0x5 => bus.read_u16(addr) as u32,                  // LHU
+                    0x0 => (bus.read_u8(addr) as i8 as i32) as u32, // LB
+                    0x1 => (bus.read_u16(addr) as i16 as i32) as u32, // LH
+                    0x2 => bus.read_u32(addr),                      // LW
+                    0x4 => bus.read_u8(addr) as u32,                // LBU
+                    0x5 => bus.read_u16(addr) as u32,               // LHU
                     _ => 0,
                 };
                 self.set_reg(rd, val);
@@ -173,18 +173,32 @@ impl Cpu {
                 let v = self.reg(rs1);
                 let shamt = (inst >> 20) & 0x1f;
                 let res = match funct3 {
-                    0x0 => v.wrapping_add(imm),                        // ADDI
-                    0x1 => v << shamt,                                 // SLLI
-                    0x2 => if (v as i32) < (imm as i32) { 1 } else { 0 }, // SLTI
-                    0x3 => if v < imm { 1 } else { 0 },                // SLTIU
-                    0x4 => v ^ imm,                                    // XORI
-                    0x5 => if (funct7 & 0x20) != 0 {
-                        ((v as i32) >> shamt) as u32                   // SRAI
-                    } else {
-                        v >> shamt                                     // SRLI
-                    },
-                    0x6 => v | imm,                                    // ORI
-                    0x7 => v & imm,                                    // ANDI
+                    0x0 => v.wrapping_add(imm), // ADDI
+                    0x1 => v << shamt,          // SLLI
+                    0x2 => {
+                        if (v as i32) < (imm as i32) {
+                            1
+                        } else {
+                            0
+                        }
+                    } // SLTI
+                    0x3 => {
+                        if v < imm {
+                            1
+                        } else {
+                            0
+                        }
+                    } // SLTIU
+                    0x4 => v ^ imm,             // XORI
+                    0x5 => {
+                        if (funct7 & 0x20) != 0 {
+                            ((v as i32) >> shamt) as u32 // SRAI
+                        } else {
+                            v >> shamt // SRLI
+                        }
+                    }
+                    0x6 => v | imm, // ORI
+                    0x7 => v & imm, // ANDI
                     _ => 0,
                 };
                 self.set_reg(rd, res);
@@ -196,32 +210,70 @@ impl Cpu {
                 if funct7 == 0x01 {
                     // RV32M Extension
                     let res = match funct3 {
-                        0x0 => v1.wrapping_mul(v2),                       // MUL
+                        0x0 => v1.wrapping_mul(v2),                                      // MUL
                         0x1 => (((v1 as i32 as i64) * (v2 as i32 as i64)) >> 32) as u32, // MULH
                         0x2 => (((v1 as i32 as i64) * (v2 as u64 as i64)) >> 32) as u32, // MULHSU
-                        0x3 => (((v1 as u64) * (v2 as u64)) >> 32) as u32, // MULHU
-                        0x4 => if v2 == 0 { u32::MAX } else { ((v1 as i32).wrapping_div(v2 as i32)) as u32 }, // DIV
-                        0x5 => if v2 == 0 { u32::MAX } else { v1 / v2 },  // DIVU
-                        0x6 => if v2 == 0 { v1 } else { ((v1 as i32).wrapping_rem(v2 as i32)) as u32 },       // REM
-                        0x7 => if v2 == 0 { v1 } else { v1 % v2 },        // REMU
+                        0x3 => (((v1 as u64) * (v2 as u64)) >> 32) as u32,               // MULHU
+                        0x4 => {
+                            if v2 == 0 {
+                                u32::MAX
+                            } else {
+                                ((v1 as i32).wrapping_div(v2 as i32)) as u32
+                            }
+                        } // DIV
+                        0x5 => v1.checked_div(v2).unwrap_or(u32::MAX),                   // DIVU
+                        0x6 => {
+                            if v2 == 0 {
+                                v1
+                            } else {
+                                ((v1 as i32).wrapping_rem(v2 as i32)) as u32
+                            }
+                        } // REM
+                        0x7 => {
+                            if v2 == 0 {
+                                v1
+                            } else {
+                                v1 % v2
+                            }
+                        } // REMU
                         _ => 0,
                     };
                     self.set_reg(rd, res);
                 } else {
                     let shamt = v2 & 0x1f;
                     let res = match funct3 {
-                        0x0 => if (funct7 & 0x20) != 0 { v1.wrapping_sub(v2) } else { v1.wrapping_add(v2) }, // SUB / ADD
-                        0x1 => v1 << shamt,                            // SLL
-                        0x2 => if (v1 as i32) < (v2 as i32) { 1 } else { 0 }, // SLT
-                        0x3 => if v1 < v2 { 1 } else { 0 },            // SLTU
-                        0x4 => v1 ^ v2,                                // XOR
-                        0x5 => if (funct7 & 0x20) != 0 {
-                            ((v1 as i32) >> shamt) as u32              // SRA
-                        } else {
-                            v1 >> shamt                                // SRL
-                        },
-                        0x6 => v1 | v2,                                // OR
-                        0x7 => v1 & v2,                                // AND
+                        0x0 => {
+                            if (funct7 & 0x20) != 0 {
+                                v1.wrapping_sub(v2)
+                            } else {
+                                v1.wrapping_add(v2)
+                            }
+                        } // SUB / ADD
+                        0x1 => v1 << shamt, // SLL
+                        0x2 => {
+                            if (v1 as i32) < (v2 as i32) {
+                                1
+                            } else {
+                                0
+                            }
+                        } // SLT
+                        0x3 => {
+                            if v1 < v2 {
+                                1
+                            } else {
+                                0
+                            }
+                        } // SLTU
+                        0x4 => v1 ^ v2,     // XOR
+                        0x5 => {
+                            if (funct7 & 0x20) != 0 {
+                                ((v1 as i32) >> shamt) as u32 // SRA
+                            } else {
+                                v1 >> shamt // SRL
+                            }
+                        }
+                        0x6 => v1 | v2, // OR
+                        0x7 => v1 & v2, // AND
                         _ => 0,
                     };
                     self.set_reg(rd, res);
@@ -234,50 +286,69 @@ impl Cpu {
                 let v2 = self.reg(rs2);
                 let orig = bus.read_u32(addr);
                 let res = match funct5 {
-                    0x00 => { // AMOADD.W
+                    0x00 => {
+                        // AMOADD.W
                         let val = orig.wrapping_add(v2);
                         bus.write_u32(addr, val);
                         orig
                     }
-                    0x01 => { // AMOSWAP.W
+                    0x01 => {
+                        // AMOSWAP.W
                         bus.write_u32(addr, v2);
                         orig
                     }
-                    0x02 => { // LR.W
+                    0x02 => {
+                        // LR.W
                         orig
                     }
-                    0x03 => { // SC.W
+                    0x03 => {
+                        // SC.W
                         bus.write_u32(addr, v2);
                         0 // success
                     }
-                    0x04 => { // AMOXOR.W
+                    0x04 => {
+                        // AMOXOR.W
                         bus.write_u32(addr, orig ^ v2);
                         orig
                     }
-                    0x08 => { // AMOOR.W
+                    0x08 => {
+                        // AMOOR.W
                         bus.write_u32(addr, orig | v2);
                         orig
                     }
-                    0x0c => { // AMOAND.W
+                    0x0c => {
+                        // AMOAND.W
                         bus.write_u32(addr, orig & v2);
                         orig
                     }
-                    0x10 => { // AMOMIN.W
-                        let min_val = if (orig as i32) < (v2 as i32) { orig } else { v2 };
+                    0x10 => {
+                        // AMOMIN.W
+                        let min_val = if (orig as i32) < (v2 as i32) {
+                            orig
+                        } else {
+                            v2
+                        };
                         bus.write_u32(addr, min_val);
                         orig
                     }
-                    0x14 => { // AMOMAX.W
-                        let max_val = if (orig as i32) > (v2 as i32) { orig } else { v2 };
+                    0x14 => {
+                        // AMOMAX.W
+                        let max_val = if (orig as i32) > (v2 as i32) {
+                            orig
+                        } else {
+                            v2
+                        };
                         bus.write_u32(addr, max_val);
                         orig
                     }
-                    0x18 => { // AMOMINU.W
+                    0x18 => {
+                        // AMOMINU.W
                         let min_val = if orig < v2 { orig } else { v2 };
                         bus.write_u32(addr, min_val);
                         orig
                     }
-                    0x1c => { // AMOMAXU.W
+                    0x1c => {
+                        // AMOMAXU.W
                         let max_val = if orig > v2 { orig } else { v2 };
                         bus.write_u32(addr, max_val);
                         orig
@@ -321,11 +392,15 @@ impl Cpu {
                     // CSR instructions
                     let csr = (inst >> 20) & 0xfff;
                     let old_val = self.read_csr(csr, bus);
-                    let operand = if (funct3 & 0x04) != 0 { rs1 } else { self.reg(rs1) };
+                    let operand = if (funct3 & 0x04) != 0 {
+                        rs1
+                    } else {
+                        self.reg(rs1)
+                    };
                     let new_val = match funct3 & 0x03 {
-                        0x1 => operand,                       // CSRRW
-                        0x2 => old_val | operand,             // CSRRS
-                        0x3 => old_val & !operand,            // CSRRC
+                        0x1 => operand,            // CSRRW
+                        0x2 => old_val | operand,  // CSRRS
+                        0x3 => old_val & !operand, // CSRRC
                         _ => old_val,
                     };
                     self.write_csr(csr, new_val);
@@ -354,7 +429,7 @@ impl Cpu {
                         | (((inst >> 6) & 0x1) << 2);
                     let rd = 8 + ((inst >> 2) & 0x7);
                     if imm != 0 {
-                        self.set_reg(rd, self.reg(2).wrapping_add(imm as u32));
+                        self.set_reg(rd, self.reg(2).wrapping_add(imm));
                     }
                 }
                 // C.LW
@@ -364,7 +439,7 @@ impl Cpu {
                         | (((inst >> 6) & 0x1) << 2);
                     let rs1 = 8 + ((inst >> 7) & 0x7);
                     let rd = 8 + ((inst >> 2) & 0x7);
-                    let addr = self.reg(rs1).wrapping_add(imm as u32);
+                    let addr = self.reg(rs1).wrapping_add(imm);
                     self.set_reg(rd, bus.read_u32(addr));
                 }
                 // C.SW
@@ -374,7 +449,7 @@ impl Cpu {
                         | (((inst >> 6) & 0x1) << 2);
                     let rs1 = 8 + ((inst >> 7) & 0x7);
                     let rs2 = 8 + ((inst >> 2) & 0x7);
-                    let addr = self.reg(rs1).wrapping_add(imm as u32);
+                    let addr = self.reg(rs1).wrapping_add(imm);
                     bus.write_u32(addr, self.reg(rs2));
                 }
                 _ => {}
@@ -457,10 +532,12 @@ impl Cpu {
                             let funct2 = (inst >> 5) & 0x3;
                             if bit12 == 0 {
                                 match funct2 {
-                                    0b00 => self.set_reg(rd, self.reg(rd).wrapping_sub(self.reg(rs2))), // C.SUB
-                                    0b01 => self.set_reg(rd, self.reg(rd) ^ self.reg(rs2)),            // C.XOR
-                                    0b10 => self.set_reg(rd, self.reg(rd) | self.reg(rs2)),            // C.OR
-                                    0b11 => self.set_reg(rd, self.reg(rd) & self.reg(rs2)),            // C.AND
+                                    0b00 => {
+                                        self.set_reg(rd, self.reg(rd).wrapping_sub(self.reg(rs2)))
+                                    } // C.SUB
+                                    0b01 => self.set_reg(rd, self.reg(rd) ^ self.reg(rs2)), // C.XOR
+                                    0b10 => self.set_reg(rd, self.reg(rd) | self.reg(rs2)), // C.OR
+                                    0b11 => self.set_reg(rd, self.reg(rd) & self.reg(rs2)), // C.AND
                                     _ => {}
                                 }
                             }
@@ -521,8 +598,10 @@ impl Cpu {
                 // C.LWSP
                 0b010 => {
                     let rd = (inst >> 7) & 0x1f;
-                    let imm = (((inst >> 2) & 3) << 6) | (((inst >> 12) & 1) << 5) | (((inst >> 4) & 7) << 2);
-                    let addr = self.reg(2).wrapping_add(imm as u32);
+                    let imm = (((inst >> 2) & 3) << 6)
+                        | (((inst >> 12) & 1) << 5)
+                        | (((inst >> 4) & 7) << 2);
+                    let addr = self.reg(2).wrapping_add(imm);
                     if rd != 0 {
                         self.set_reg(rd, bus.read_u32(addr));
                     }
@@ -556,7 +635,7 @@ impl Cpu {
                 0b110 => {
                     let rs2 = (inst >> 2) & 0x1f;
                     let imm = (((inst >> 7) & 0x3) << 6) | (((inst >> 9) & 0xf) << 2);
-                    let addr = self.reg(2).wrapping_add(imm as u32);
+                    let addr = self.reg(2).wrapping_add(imm);
                     bus.write_u32(addr, self.reg(rs2));
                 }
                 _ => {}
@@ -580,7 +659,7 @@ impl Cpu {
             0xf14 => self.mhartid,
             0x301 => 0x4014_1125, // misa: RV32IMAFC
             0xc00 => (self.instructions_executed & 0xffff_ffff) as u32, // cycle
-            0xc01 => (bus.timer_ticks & 0xffff_ffff) as u32,            // time
+            0xc01 => (bus.timer_ticks & 0xffff_ffff) as u32, // time
             _ => 0,
         }
     }

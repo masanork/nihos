@@ -4,10 +4,10 @@ pub mod bus;
 pub mod cpu;
 pub mod elf;
 
-use std::path::Path;
-use bus::{Bus, FB_WIDTH, FB_HEIGHT};
+use bus::{Bus, FB_HEIGHT, FB_WIDTH};
 use cpu::Cpu;
 use elf::ElfLoader;
+use std::path::Path;
 
 pub struct Emulator {
     pub bus: Bus,
@@ -15,7 +15,10 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(elf_path: impl AsRef<Path>, dict_path: Option<impl AsRef<Path>>) -> std::io::Result<Self> {
+    pub fn new(
+        elf_path: impl AsRef<Path>,
+        dict_path: Option<impl AsRef<Path>>,
+    ) -> std::io::Result<Self> {
         let mut bus = Bus::new();
         let entry_pc = ElfLoader::load_elf(&mut bus, elf_path)?;
 
@@ -57,7 +60,7 @@ impl Emulator {
             let b8 = (b << 3) | (b >> 2);
 
             // BGRA layout for Apple Silicon Metal
-            bgra[i * 4 + 0] = b8;
+            bgra[i * 4] = b8;
             bgra[i * 4 + 1] = g8;
             bgra[i * 4 + 2] = r8;
             bgra[i * 4 + 3] = 0xff;
@@ -83,7 +86,8 @@ mod tests {
         }
 
         let dict_path = "../../build/dict/jisyo_l_nfst.bin";
-        let mut emu = Emulator::new(elf_path, Some(dict_path)).expect("Failed to initialize emulator");
+        let mut emu =
+            Emulator::new(elf_path, Some(dict_path)).expect("Failed to initialize emulator");
 
         assert_eq!(emu.cpu.pc, 0x4ff2_0000);
         println!("Initial PC: {:#x}", emu.cpu.pc);
@@ -108,7 +112,10 @@ mod tests {
         }
 
         let console = String::from_utf8_lossy(&emu.bus.console_output);
-        println!("--- Console Output ({} bytes) ---", emu.bus.console_output.len());
+        println!(
+            "--- Console Output ({} bytes) ---",
+            emu.bus.console_output.len()
+        );
         print!("{}", console);
         println!("---------------------------------");
 
@@ -118,6 +125,10 @@ mod tests {
                 non_zero_fb += 1;
             }
         }
-        println!("Non-zero framebuffer bytes: {} / {}", non_zero_fb, bus::FB_SIZE);
+        println!(
+            "Non-zero framebuffer bytes: {} / {}",
+            non_zero_fb,
+            bus::FB_SIZE
+        );
     }
 }

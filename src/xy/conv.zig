@@ -21,14 +21,14 @@ pub const TailMask = struct {
 };
 
 pub const ConjClass = struct {
-    pub const a: u16 = 1;      // mizenkei
-    pub const i: u16 = 2;      // renyokei
-    pub const u: u16 = 4;      // shushikei / dictionary form
-    pub const e: u16 = 8;      // kateikei / ichidan stem
-    pub const o: u16 = 16;     // volitional
-    pub const x: u16 = 32;     // sokuon / hatsuon before ta/te
-    pub const late: u16 = 64;  // can chain after another function word
-    pub const adj: u16 = 128;  // adjective stem (kawa-i, etc.)
+    pub const a: u16 = 1; // mizenkei
+    pub const i: u16 = 2; // renyokei
+    pub const u: u16 = 4; // shushikei / dictionary form
+    pub const e: u16 = 8; // kateikei / ichidan stem
+    pub const o: u16 = 16; // volitional
+    pub const x: u16 = 32; // sokuon / hatsuon before ta/te
+    pub const late: u16 = 64; // can chain after another function word
+    pub const adj: u16 = 128; // adjective stem (kawa-i, etc.)
     pub const head: u16 = 0xbf;
 };
 
@@ -111,29 +111,29 @@ pub const TAILS = [_]TailDef{
 };
 
 pub const Segment = struct {
-    start: u8,
-    end: u8,
-    dict_end: u8,
-    is_ari: bool,
-    cand_count: u8,
-    selected: u8,
-    cands: [max_candidates]u16, // offsets into candidate pool
+    start: u8 = 0,
+    end: u8 = 0,
+    dict_end: u8 = 0,
+    is_ari: bool = false,
+    cand_count: u8 = 0,
+    selected: u8 = 0,
+    cands: [max_candidates]u16 = @splat(0), // offsets into candidate pool
 };
 
 pub const Engine = struct {
-    reading_buf: [max_reading]u8 = undefined,
+    reading_buf: [max_reading]u8 = @splat(0),
     reading_len: usize = 0,
 
-    segments: [max_segments]Segment = undefined,
+    segments: [max_segments]Segment = @splat(.{}),
     segment_count: usize = 0,
 
-    cand_pool: [max_cand_pool]u8 = undefined,
+    cand_pool: [max_cand_pool]u8 = @splat(0),
     cand_pool_len: usize = 0,
 
-    dp_cost: [max_reading + 1]i32 = undefined,
-    dp_back: [max_reading + 1]u8 = undefined,
-    dp_dict_end: [max_reading + 1]u8 = undefined,
-    dp_is_ari: [max_reading + 1]bool = undefined,
+    dp_cost: [max_reading + 1]i32 = @splat(0),
+    dp_back: [max_reading + 1]u8 = @splat(0),
+    dp_dict_end: [max_reading + 1]u8 = @splat(0),
+    dp_is_ari: [max_reading + 1]bool = @splat(false),
 
     pub fn init() Engine {
         return .{};
@@ -184,7 +184,7 @@ pub const Engine = struct {
         }
 
         // Backtrack DP path into segments
-        var rev_segs: [max_segments]Segment = undefined;
+        var rev_segs: [max_segments]Segment = @splat(.{});
         var rev_count: usize = 0;
         var curr: usize = len;
 
@@ -197,7 +197,6 @@ pub const Engine = struct {
                 .is_ari = self.dp_is_ari[curr],
                 .cand_count = 0,
                 .selected = 0,
-                .cands = undefined,
             };
             rev_count += 1;
             curr = prev;
