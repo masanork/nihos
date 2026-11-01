@@ -89,6 +89,14 @@ for diagnostic in false true; do
 done
 echo "Native network owner codegen (normal and diagnostic): ok"
 
+# Force TCP owner operations with the exact Hosted station module instance
+# used by the native network service. This is codegen, not a linked image.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/hosted-tcp-owner.o" --dep hosted_station \
+    "-Mroot=$repo_root/tools/probes/hosted-tcp-owner.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig"
+echo "Experimental Hosted TCP owner RV32 codegen: ok"
+
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
     "-Mroot=$repo_root/tools/probes/rtc.zig" \

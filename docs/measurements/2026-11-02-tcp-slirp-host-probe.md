@@ -52,8 +52,13 @@ The host probe does not establish physical SDIO buffering or concurrency safety.
 
 The Hosted TCP service now limits each write to 446 bytes and rejects frames
 over 512 bytes, matching the normal C6 short-send size bound. A host test
-checks a maximum-sized data frame against the SDIO transfer planner; it does
-not execute a physical SDIO transaction.
+checks that a maximum-sized data frame is 512 bytes; it does not execute a
+physical SDIO transaction.
+
+An RV32 code-generation probe imports the same Hosted station module used by
+the native service and instantiates TCP open, RX, TX completion and reset.
+This checks module compatibility and a 24 KiB owner size ceiling, not a linked
+image, PSRAM placement, or execution on a device.
 
 The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream
 reads and writes. Its station lease remains synthetic; this is not a live

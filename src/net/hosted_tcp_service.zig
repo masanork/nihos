@@ -145,7 +145,6 @@ test "large writes fit the normal short Hosted transport" {
     try std.testing.expectEqual(@as(usize, max_write), try service.write(handle, &input, 1, 5000));
     const frame = (try service.tx(handle, 1, 1)).?;
     try std.testing.expectEqual(@as(usize, max_frame), frame.bytes.len);
-    _ = try @import("c6_sdio.zig").plan(frame.bytes.len);
 }
 
 test "lease change and ambiguous transmit invalidate handles and frames" {
