@@ -22,3 +22,6 @@ sdkconfig.old
 # Python measurement tools
 __pycache__/
 *.pyc
+
+# Local dictionary cache
+tools/ime/cache/

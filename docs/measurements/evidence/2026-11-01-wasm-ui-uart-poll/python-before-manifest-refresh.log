@@ -1,0 +1,38 @@
+....................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+======================================================================
+FAIL: test_shipped_ui_manifests_match_current_sources_and_payloads (native_keypad_test.KeypadTests) (manifest='keypad_atlas', source='src/platform/native/main.zig')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/nihos-rust-sdk-integration-20261030/tools/native_keypad_test.py", line 38, in test_shipped_ui_manifests_match_current_sources_and_payloads
+    self.assertEqual(hashlib.sha256((root / source).read_bytes()).hexdigest(), expected)
+AssertionError: '439c7d73bc07840f74d88f5e084c2d998a45e43a77b3ece21df72c28b827a212' != '0bef442335682a4a50f6dd9826976243f693ba6d9894e85608a8c19179410359'
+- 439c7d73bc07840f74d88f5e084c2d998a45e43a77b3ece21df72c28b827a212
++ 0bef442335682a4a50f6dd9826976243f693ba6d9894e85608a8c19179410359
+
+
+======================================================================
+FAIL: test_shipped_ui_manifests_match_current_sources_and_payloads (native_keypad_test.KeypadTests) (manifest='card_read_font', source='src/platform/native/main.zig')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/nihos-rust-sdk-integration-20261030/tools/native_keypad_test.py", line 38, in test_shipped_ui_manifests_match_current_sources_and_payloads
+    self.assertEqual(hashlib.sha256((root / source).read_bytes()).hexdigest(), expected)
+AssertionError: '439c7d73bc07840f74d88f5e084c2d998a45e43a77b3ece21df72c28b827a212' != '0bef442335682a4a50f6dd9826976243f693ba6d9894e85608a8c19179410359'
+- 439c7d73bc07840f74d88f5e084c2d998a45e43a77b3ece21df72c28b827a212
++ 0bef442335682a4a50f6dd9826976243f693ba6d9894e85608a8c19179410359
+
+
+======================================================================
+FAIL: test_shipped_ui_manifests_match_current_sources_and_payloads (native_keypad_test.KeypadTests) (manifest='card_auto_font', source='src/platform/native/main.zig')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/nihos-rust-sdk-integration-20261030/tools/native_keypad_test.py", line 38, in test_shipped_ui_manifests_match_current_sources_and_payloads
+    self.assertEqual(hashlib.sha256((root / source).read_bytes()).hexdigest(), expected)
+AssertionError: '439c7d73bc07840f74d88f5e084c2d998a45e43a77b3ece21df72c28b827a212' != '0bef442335682a4a50f6dd9826976243f693ba6d9894e85608a8c19179410359'
+- 439c7d73bc07840f74d88f5e084c2d998a45e43a77b3ece21df72c28b827a212
++ 0bef442335682a4a50f6dd9826976243f693ba6d9894e85608a8c19179410359
+
+
+----------------------------------------------------------------------
+Ran 501 tests in 20.695s
+
+FAILED (failures=3)

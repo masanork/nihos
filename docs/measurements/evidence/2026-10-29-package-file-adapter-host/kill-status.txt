@@ -1,0 +1,1 @@
+interrupt pid=55342 signal=SIGKILL returncode=-9

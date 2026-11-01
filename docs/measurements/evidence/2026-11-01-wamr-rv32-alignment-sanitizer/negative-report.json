@@ -1,0 +1,10 @@
+{
+  "scope": "RV32 emulator GCC alignment sanitizer negative control",
+  "candidate": {
+    "nihos-native-image.elf": "d6c116c4290769c7cc7951c5ac96cf919646b1f05a65a11c6d81e7d10d43a61c",
+    "nihos-native-flash.bin": "5ad90b577f5e8158c0573e43ca04946feee32f998037922c7efc807a12c12c33"
+  },
+  "source": "/private/tmp/nihos-rust-sdk-integration-20261030/probes/wamr-rv32/ubsan_alignment_negative.c",
+  "line": 5,
+  "address_mod4": 1
+}

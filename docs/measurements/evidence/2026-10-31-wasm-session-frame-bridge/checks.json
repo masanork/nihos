@@ -1,0 +1,69 @@
+{
+  "zig_debug": {
+    "command": "zig build test --summary all",
+    "exit_code": 0,
+    "steps": 86
+  },
+  "zig_release_safe": {
+    "command": "zig build test -Doptimize=ReleaseSafe --summary all",
+    "exit_code": 0,
+    "steps": 86
+  },
+  "static": {
+    "command": "sh tools/run-static-analysis.sh",
+    "exit_code": 0,
+    "audited_rv32_links": 6
+  },
+  "python": {
+    "command": "python3 -m unittest discover -s tools -p *test.py",
+    "exit_code": 0,
+    "tests": 491
+  },
+  "host_sdk": {
+    "command": "sh tools/run-rust-sdk-host.sh",
+    "exit_code": 0
+  },
+  "common_session": {
+    "command": "sh probes/wamr-native/run-session-emulator.sh",
+    "exit_code": 0,
+    "cases": 6,
+    "launches_per_case": 3,
+    "successful_rounds": 2,
+    "restart_input": "synthetic 0x10q"
+  },
+  "previous_scheduled_task": {
+    "command": "sh probes/wamr-native/run-task-emulator.sh",
+    "exit_code": 0,
+    "cases": 3
+  },
+  "boot_wamr": {
+    "command": "sh probes/wamr-native/run-emulator.sh",
+    "exit_code": 0,
+    "negative_cases": 6
+  },
+  "native_session": {
+    "command": "sh probes/rust-session/run-emulator.sh",
+    "exit_code": 0,
+    "cases": 3
+  },
+  "device_native_session": {
+    "command": "NIHOS_NATIVE_RUST_SESSION=1/0 sh tools/build-native.sh device integer",
+    "exit_code": 0,
+    "heap_enabled": 49216,
+    "heap_disabled": 50496,
+    "floor": 49152,
+    "physical_run": false
+  },
+  "workflow_lint": {
+    "command": "actionlint .github/workflows/rust-sdk.yml",
+    "exit_code": 0
+  },
+  "runner_lint": {
+    "command": "shellcheck probes/wamr-native/run-session-emulator.sh",
+    "exit_code": 0
+  },
+  "original_experiment": {
+    "hash_matched_files": 427,
+    "unchanged": true
+  }
+}

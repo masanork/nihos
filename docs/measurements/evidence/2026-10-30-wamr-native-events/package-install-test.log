@@ -1,0 +1,5 @@
+1/3 package_install.test.two-slot update survives every byte and sync cut as old or new...NIHOS_PACKAGE_INSTALL crash_cuts=504 old_or_new=1 partial=0 committed_payload_corruption=fail_closed
+OK
+2/3 package_install.test.committed head payload corruption fails closed instead of rolling back...OK
+3/3 package_install.test.sequence identity trust epoch and retry semantics fail closed...OK
+All 3 tests passed.

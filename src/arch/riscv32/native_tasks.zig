@@ -51,7 +51,23 @@ extern fn nih_user_probe_body() callconv(.c) void;
 
 const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
 const native_sqld = @hasDecl(options, "sqld") and options.sqld;
+extern fn nih_rust_native_fixture() callconv(.c) u32;
+extern fn nih_rust_task_entry(u32) callconv(.c) i32;
+var rust_task_pass: u32 = 0;
+pub fn rustTaskPass() bool {
+    return @atomicLoad(u32, &rust_task_pass, .acquire) == 1;
+}
 const normal_boot = @import("native_options").boot_fast;
+const wasm_task_enabled = @hasDecl(options, "wasm_task") and options.wasm_task;
+const leased_stack = @import("leased_stack.zig");
+const WasmTask = struct {
+    handle: ?scheduler.TaskHandle = null,
+    stack: ?leased_stack.Binding = null,
+    captures: u32 = 0,
+    timer_captures: u32 = 0,
+};
+// No resident descriptor in ordinary profiles.
+var wasm_task: if (wasm_task_enabled) WasmTask else void = if (wasm_task_enabled) .{} else {};
 const Phase = enum { normal, pmp_probe, initial_lifecycle, replacement_lifecycle, forced_lifecycle, preemption, ipi_protocol, complete, storage_service, storage_complete, broker_service, broker_complete, graphics };
 const TaskKind = enum { busy, initial_lifecycle, replacement_lifecycle, forced_lifecycle, ipi_protocol, storage_protocol, broker_protocol, normal_storage };
 
@@ -165,6 +181,25 @@ fn lifecycle(argument: u32) callconv(.c) i32 {
     return @intCast(40 + argument);
 }
 
+// Called only by the opted-in Rust task through its C ABI boundary.
+fn rustTaskBegin(argument: u32) callconv(.c) i32 {
+    var marker = argument;
+    if (argument != 2 or !onTaskStack(0, 2, @intFromPtr(&marker), @sizeOf(u32)) or calls.current() == null) return -1;
+    memory.reusable.lifecycleProbe();
+    return if (nih_rust_native_fixture() == 0) 0 else -1;
+}
+fn rustTaskEnd() callconv(.c) i32 {
+    _ = @atomicRmw(u32, &reports[0].sleeps, .Add, 1, .release);
+    @atomicStore(u32, &rust_task_pass, 1, .release);
+    return 0;
+}
+comptime {
+    if (@import("native_options").rust_probe) {
+        @export(&rustTaskBegin, .{ .name = "nih_rust_task_begin" });
+        @export(&rustTaskEnd, .{ .name = "nih_rust_task_end" });
+    }
+}
+
 fn floatingBusy(argument: u32) callconv(.c) i32 {
     floating.enter(argument / 4, argument % 4, if (floating.compiled) &floating.app.busy else &busy, argument);
 }
@@ -240,7 +275,7 @@ fn add(hart: u32, index: u32, kind: TaskKind) ?scheduler.TaskHandle {
     context.initialize(frame, .{
         .entry = switch (kind) {
             .busy => if (floating.enabled) @intFromPtr(&floatingBusy) else @intFromPtr(&busy),
-            .initial_lifecycle, .replacement_lifecycle => if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
+            .initial_lifecycle, .replacement_lifecycle => if (@import("native_options").rust_probe and hart == 0 and kind == .initial_lifecycle) @intFromPtr(&nih_rust_task_entry) else if (floating.enabled) @intFromPtr(&floatingLifecycle) else @intFromPtr(&lifecycle),
             .ipi_protocol => if (floating.enabled) @intFromPtr(&floatingProtocol) else @intFromPtr(&ipi.run),
             .forced_lifecycle => @intFromPtr(&forced),
             .storage_protocol => if (options.storage_service) @intFromPtr(&nih_storage_task_entry) else 0,
@@ -307,6 +342,81 @@ pub inline fn endForegroundStack(original: runtime_module.Image) bool {
 
 pub fn ready(hart: u32) bool {
     return owners[hart].ready;
+}
+
+/// CPU0 bootstrap lends a pinned extent to exactly one M-mode task.
+/// Keep the pin until finishWasm retires both the image and stack binding.
+pub fn registerWasm(pin: memory.reusable.Pin, offset: u32, entry: *const fn (u32) callconv(.c) i32) ?scheduler.TaskHandle {
+    if (comptime !wasm_task_enabled) return null;
+    const hart = asm volatile ("csrr %[v], mhartid"
+        : [v] "=r" (-> u32),
+    );
+    if (hart != 0) return null;
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    const owner = &owners[0];
+    const current = owner.runtime.policy.current() orelse return null;
+    if (previous & 8 == 0 or owner.phase != .normal or wasm_task.handle != null or
+        current.slot != owner.bootstrap.slot or current.generation != owner.bootstrap.generation or
+        pin.key.slot != current.slot or pin.key.generation != current.generation or pin.allocation.owner != 0) return null;
+    var binding = leased_stack.Binding.admit(@intCast(@intFromPtr(pin.allocation.bytes.ptr)), @intCast(pin.allocation.bytes.len), offset, .{ .slot = 0, .generation = 1 }) orelse return null;
+    const address = context.initialTaskFrameAddress(binding.low - 128, 65536) orelse return null;
+    const frame: *context.IntegerContext = @ptrFromInt(address);
+    context.initialize(frame, .{ .entry = @intFromPtr(entry), .argument = 0, .trampoline = @intFromPtr(&nih_native_task_trampoline), .global_pointer = owner.gp });
+    const handle = owner.runtime.add(0, .{ .frame = frame, .state = initial_state, .stack_min = binding.low, .stack_max = binding.high }) orelse return null;
+    if (!memory.reusable.openTask(0, key(handle))) {
+        if (!owner.runtime.policy.terminate(handle, -90) or !owner.runtime.reap(handle)) nih_native_task_failed();
+        return null;
+    }
+    frame.a1 = control.encodeHandle(handle);
+    binding.borrower = .{ .slot = handle.slot, .generation = handle.generation };
+    wasm_task = .{ .handle = handle, .stack = binding };
+    return handle;
+}
+
+/// Caller checks the SRAM IRQ stack/guard first. Only pointer arithmetic and
+/// current task identity are inspected here, without scanning PSRAM guards.
+pub fn acceptsWasmFrame(hart: u32, status: u32, address: u32, saved_sp: u32) bool {
+    if (comptime !wasm_task_enabled) return false;
+    if (hart != 0) return false;
+    const bound = wasm_task.stack orelse return false;
+    const owner = &owners[0];
+    const current = owner.runtime.policy.current() orelse return false;
+    const image = owner.runtime.images[current.slot] orelse return false;
+    if (image.protection != null or image.floating_context != 0 or image.stack_min != bound.low or image.stack_max != bound.high or
+        !bound.accepts(hart, .{ .slot = current.slot, .generation = current.generation }, status, address, saved_sp)) return false;
+    wasm_task.captures += 1;
+    return true;
+}
+pub const WasmTaskDiag = struct { low: u32, high: u32, slot: u16, gen: u16, cur_slot: u16, cur_gen: u16 };
+pub fn wasmTaskDiag() WasmTaskDiag {
+    if (comptime !wasm_task_enabled) return .{ .low = 0, .high = 0, .slot = 0, .gen = 0, .cur_slot = 0, .cur_gen = 0 };
+    const bound = wasm_task.stack orelse return .{ .low = 0, .high = 0, .slot = 0, .gen = 0, .cur_slot = 0, .cur_gen = 0 };
+    const owner = &owners[0];
+    const current = owner.runtime.policy.current() orelse return .{ .low = bound.low, .high = bound.high, .slot = bound.borrower.slot, .gen = bound.borrower.generation, .cur_slot = 0xffff, .cur_gen = 0xffff };
+    return .{ .low = bound.low, .high = bound.high, .slot = bound.borrower.slot, .gen = bound.borrower.generation, .cur_slot = current.slot, .cur_gen = current.generation };
+}
+pub const WasmCompletion = struct { exit_code: i32, captures: u32, timers: u32, ticks: u64 };
+pub fn finishWasm() ?WasmCompletion {
+    if (comptime !wasm_task_enabled) return null;
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    const owner = &owners[0];
+    const handle = wasm_task.handle orelse return null;
+    const snapshot = owner.runtime.policy.snapshot(handle) orelse return null;
+    if (snapshot.state != .exited or !memory.reusable.taskCleaned(0, key(handle))) return null;
+    if (!owner.runtime.reap(handle)) return null;
+    owner.completed_runtime_ticks += snapshot.runtime_ticks;
+    const result = WasmCompletion{ .exit_code = snapshot.exit_code, .captures = wasm_task.captures, .timers = wasm_task.timer_captures, .ticks = snapshot.runtime_ticks };
+    wasm_task.handle = null;
+    wasm_task.stack = null;
+    return result;
 }
 
 /// Trusted CPU0 foreground wake; no MMIO/FS work occurs on the IRQ stack.
@@ -476,6 +586,9 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     if (owner.protected_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
         total += snapshot.runtime_ticks;
     };
+    if (wasm_task_enabled and hart == 0) if (wasm_task.handle) |handle| {
+        if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
+    };
     if (total != owner.runtime.policy.now()) {
         if (options.broker and owner.phase == .broker_service) nih_broker_task_failed(64);
         nih_native_task_failed();
@@ -509,6 +622,9 @@ pub fn onTimer(hart: u32, frame: *context.IntegerContext, state: context.ReturnS
     owner.timer_interrupts += 1;
     if (!guardsValid(hart) or !owner.runtime.capture(frame, state) or !refresh(hart, device)) return null;
     const current = owner.runtime.policy.current() orelse return null;
+    if (wasm_task_enabled and hart == 0) if (wasm_task.handle) |handle| {
+        if (current.slot == handle.slot and current.generation == handle.generation) wasm_task.timer_captures += 1;
+    };
     if (options.pmp_probe and state.mstatus & pmp.mpp_mask == pmp.user_mpp and
         owner.runtime.images[current.slot].?.protection != null) owner.probe_user_timers += 1;
     if (@import("native_options").graphics and hart == 0) graphics.exchange.composer.captureTimer(frame.mepc);

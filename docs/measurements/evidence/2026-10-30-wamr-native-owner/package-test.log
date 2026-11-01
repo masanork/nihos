@@ -1,0 +1,5 @@
+1/4 package.test.canonical envelope exposes one exact signed region...OK
+2/4 package.test.parser rejects alternate framing and noncanonical bytes...OK
+3/4 package.test.only trust provider success promotes a signed package to verified...OK
+4/4 package.test.key lifecycle rollback signature and app policy reject independently...OK
+All 4 tests passed.

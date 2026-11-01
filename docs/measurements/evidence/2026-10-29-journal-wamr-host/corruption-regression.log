@@ -1,0 +1,4 @@
+NIHOS_BOOT_PROCESS phase=reject-corrupt boot_rejected=ActivePackageInvalid install_rejected=ActivePackageInvalid writes=0 pid=70453
+NIHOS_BOOT_PROCESS phase=recover-new trust_epoch=1 sequence=2 process_reopen=1 pid=70454
+NIHOS_BOOT_PROCESS phase=reject-corrupt boot_rejected=ActivePackageInvalid install_rejected=ActivePackageInvalid writes=0 pid=70455
+NIHOS_BOOT_PROCESS phase=recover-new trust_epoch=1 sequence=2 process_reopen=1 pid=70456

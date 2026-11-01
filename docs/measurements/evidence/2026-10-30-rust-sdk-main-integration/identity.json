@@ -1,0 +1,45 @@
+{
+  "integration_base": "3d21dcb1b798c745c084cb9d1d74fddbd231747f",
+  "native_runtime_code_commit": "dbed2ddb19095e777b3950fe2ae7483c5f7b9b21",
+  "host_code_commit": "e6a0b1f2db4220fec18c2716dbeddd1c2d7d5e1f",
+  "experiment_base": "c0ff17d5ea6802eed4769a5b588da1735dbfbd32",
+  "original_experiment_hashes_preserved": 427,
+  "qualification": "host and ESP32-P4 emulator only; no physical run of integrated candidate",
+  "toolchains": {
+    "zig": "0.17.0",
+    "rust": "1.98.1",
+    "wamr": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+    "esp_emu": "0.50.0",
+    "idf": "5.4.4"
+  },
+  "candidates": {
+    "wasm": {
+      "bytes": 1211,
+      "sha256": "b790c66619c1061af10ea0aa9ae888feec397f4c5d99a4523f2c2031d244abe2"
+    },
+    "wasm_package1": {
+      "bytes": 1419,
+      "sha256": "407f31cdd6fc7976612a61cc622cd63f8d7ab56ce45865a4ec6c393d37142fcf"
+    },
+    "wasm_package2": {
+      "bytes": 1419,
+      "sha256": "e5a47755426183176105b6271cb15e4d12247779f2e1a136d11c37d03dd2adc0"
+    },
+    "wasm_elf": {
+      "bytes": 608928,
+      "sha256": "33cdd84918e38f07246d09b7881784ec6a75cbe5d15c60f90854614995cbe8ae"
+    },
+    "wasm_flash": {
+      "bytes": 502000,
+      "sha256": "4a21e7f08f848d73e8312e186c4ce5101f570536c8d266ca11e78b0402edab0b"
+    },
+    "default_elf": {
+      "bytes": 1565092,
+      "sha256": "f733f6776bb1dd5d842f7ec6f8037106f37c72c95aa923def0b90614872698dc"
+    },
+    "default_flash": {
+      "bytes": 151136,
+      "sha256": "00769fbd443d4e87e7ce59b68b1b0c49589401493b76ce5b46aac0a7237d0cd4"
+    }
+  }
+}

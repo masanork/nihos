@@ -44,6 +44,10 @@ export fn nih_device_request(kind: u32) callconv(.c) bool {
     return accepted;
 }
 
+export fn nih_app_display_available() callconv(.c) bool {
+    return !options.camera_id or !board_devices.cameraPresentationBusy();
+}
+
 fn storageClient() u32 {
     const handle = tasks.calls.current() orelse return 0;
     return (@as(u32, handle.generation) << 16) | handle.slot;
@@ -111,6 +115,10 @@ comptime {
         @compileError("stack observations must use the native integer frame ABI");
 }
 
+// The boot-only Wasm owner finishes before either hart starts its tasks.
+var wasm_boot_complete: u32 = 0;
+
+extern fn nih_rust_native_fixture() callconv(.c) u32;
 extern fn nih_diagnostic_serial_write(u8) callconv(.c) void;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_set_cpu1_entry(u32) callconv(.c) void;
@@ -554,6 +562,19 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
     const probe_dispatch_begin = if (options.pmp_probe) cycle() else 0;
     if (hart >= 2) fail("invalid hart");
     if (!interruptStackValid(hart, frame, status)) {
+        if (options.wasm_alignment_corpus) {
+            const guard = interruptGuard(hart);
+            const irq_sp = asm volatile ("mv %[result], sp"
+                : [result] "=r" (-> u32),
+            );
+            const current_status = asm volatile ("csrr %[result], mstatus"
+                : [result] "=r" (-> u32),
+            );
+            const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
+            const wdiag = tasks.wasmTaskDiag();
+            const diagnostic = .{ .hart = hart, .cause = cause, .status = status, .current_status = current_status, .mepc = frame.mepc, .ra = frame.ra, .frame = @as(u32, @intCast(@intFromPtr(frame))), .saved_sp = frame.sp, .irq_sp = irq_sp, .guard_addr = @as(u32, @intCast(@intFromPtr(guard))), .guard0 = guard[0], .guard1 = guard[1], .guard2 = guard[2], .guard3 = guard[3], .top = @as(u32, @intCast(top)), .w_low = wdiag.low, .w_high = wdiag.high, .w_slot = @as(u32, wdiag.slot), .w_gen = @as(u32, wdiag.gen), .w_cur_slot = @as(u32, wdiag.cur_slot), .w_cur_gen = @as(u32, wdiag.cur_gen) };
+            logger.record("NIHOS_WAMR_CORPUS_IRQ_FAIL", null, .{ "hart", "cause", "status", "current_status", "mepc", "ra", "frame", "saved_sp", "irq_sp", "guard_addr", "guard0", "guard1", "guard2", "guard3", "top", "w_low", "w_high", "w_slot", "w_gen", "w_cur_slot", "w_cur_gen" }, &diagnostic);
+        }
         print("NIHOS_NATIVE_STACK_FAIL frame=");
         hex(@intFromPtr(frame));
         print(" sp=");
@@ -719,11 +740,17 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
     if (status & (8 | 0x6000) != 0 or sp < @intFromPtr(guard) + 16 or sp >= top) return false;
     if (tasks.pmp.acceptsDispatcherFrame(hart, interrupted, @as(u32, @intCast(@intFromPtr(frame))), frame.sp)) return true;
+    if (options.wasm_task and tasks.acceptsWasmFrame(hart, interrupted, @intCast(@intFromPtr(frame)), frame.sp)) return true;
     return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
 noinline fn taskReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.report(hart);
+    if (options.rust_probe and hart == 0) {
+        if (!tasks.rustTaskPass()) fail("Rust task fixture");
+        const result: extern struct { ran: u32, reaped: u32 } = .{ .ran = 1, .reaped = report.reaped };
+        logger.record("NIHOS_NATIVE_RUST_TASK", null, .{ "ran", "reaped" }, &result);
+    }
     if (report.progress[0] == 0 or report.progress[1] == 0 or
         report.captures[0] < 4 or report.captures[1] < 4 or report.switches < 8 or
         report.calls < 12 or report.reaped != 3 or report.sleeps != 2)
@@ -778,6 +805,9 @@ export fn nih_native_cpu1_main() callconv(.c) noreturn {
     native_psram.memory.peer();
     if (!tasks.memory.beginExternal()) fail("CPU1 external memory begin");
     native_psram.memory.ownerReady(1);
+    if (options.wasm_probe and !options.wasm_task) {
+        while (@atomicLoad(u32, &wasm_boot_complete, .acquire) == 0) asm volatile ("nop");
+    }
     prepareTasks(1);
     if (options.boot_test == 2) {
         const started = ui.timer().counter() orelse fail("late CPU1 clock");
@@ -993,6 +1023,12 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
     asm volatile ("ecall" ::: .{ .memory = true });
     if (exceptions[0] != 1) fail("CPU0 exception return");
     printBoot("NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned\n");
+    if (options.rust_probe) {
+        const rust_result = nih_rust_native_fixture();
+        const report: extern struct { result: u32 } = .{ .result = rust_result };
+        logger.record("NIHOS_NATIVE_RUST_APP", null, .{"result"}, &report);
+        if (rust_result != 0) fail("Rust application fixture");
+    }
     stageComplete(.crt);
     stageBegin(.memory);
     if (options.camera_id) cameraResetRecovery(true);
@@ -1095,6 +1131,61 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
     } else if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
+    if (options.wasm_probe and !options.wasm_task) {
+        const wamr = @import("wamr_runtime.zig").run();
+        logger.record("NIHOS_NATIVE_WAMR", null, .{ "status", "calls", "trapped", "metered", "bad_text", "cycles", "cycle_recovered", "recovered", "runtime_peak", "linear_peak", "runtime_free", "linear_free", "export_count", "stack_used", "lease_bytes", "policy_status", "services", "sdk_abi", "origin", "attestation", "module_tag", "digest_tag", "instruction_budget" }, &wamr);
+        const signature = .{
+            .signature_status = wamr.signature_status,
+            .boot_admission_cycles = wamr.boot_admission_cycles,
+            .boot_admission_stack_used = wamr.boot_admission_stack_used,
+            .package_trust = wamr.package_trust,
+            .package_sequence_low = wamr.package_sequence_low,
+            .package_sequence_high = wamr.package_sequence_high,
+            .package_rejected = wamr.package_rejected,
+            .boot_recovered = wamr.boot_recovered,
+            .trust_epoch_low = wamr.trust_epoch_low,
+            .trust_epoch_high = wamr.trust_epoch_high,
+            .initial_sequence_low = wamr.initial_sequence_low,
+            .initial_sequence_high = wamr.initial_sequence_high,
+            .installed_sequence_low = wamr.installed_sequence_low,
+            .installed_sequence_high = wamr.installed_sequence_high,
+            .package_syncs = wamr.package_syncs,
+            .simulated_reboot = wamr.simulated_reboot,
+            .interrupted_update_recovered = wamr.interrupted_update_recovered,
+        };
+        logger.record("NIHOS_NATIVE_PACKAGE", null, .{ "signature_status", "boot_admission_cycles", "boot_admission_stack_used", "package_trust", "initial_sequence_low", "initial_sequence_high", "interrupted_update_recovered", "installed_sequence_low", "installed_sequence_high", "package_sequence_low", "package_sequence_high", "package_syncs", "simulated_reboot", "package_rejected", "boot_recovered", "trust_epoch_low", "trust_epoch_high" }, &signature);
+        const owner = .{ .checks = wamr.owner_checks, .released = wamr.owners_released, .services = wamr.services };
+        logger.record("NIHOS_NATIVE_WAMR_OWNER", null, .{ "checks", "released", "services" }, &owner);
+        const surface = .{ .checks = wamr.surface_checks, .width = wamr.surface_width, .height = wamr.surface_height, .stride = wamr.surface_stride, .bytes = wamr.surface_bytes, .capacity = wamr.surface_capacity };
+        logger.record("NIHOS_NATIVE_WAMR_SURFACE", null, .{ "checks", "width", "height", "stride", "bytes", "capacity" }, &surface);
+        const events = .{ .checks = wamr.event_checks, .frames = wamr.event_frames };
+        logger.record("NIHOS_NATIVE_WAMR_EVENTS", null, .{ "checks", "frames" }, &events);
+        const uart = .{ .status = wamr.uart_status, .bytes = wamr.uart_bytes, .frames = wamr.uart_frames, .rejected = wamr.uart_rejected };
+        logger.record("NIHOS_NATIVE_WAMR_UART", null, .{ "status", "bytes", "frames", "rejected" }, &uart);
+        if (wamr.status != 0 or wamr.calls != 17 or wamr.export_count != 8 or wamr.cycles != 2 or
+            wamr.cycle_recovered != 1 or wamr.trapped != 1 or wamr.metered != 1 or
+            wamr.bad_text != 1 or wamr.recovered != 1 or wamr.policy_status != 0 or
+            wamr.owner_checks != 15 or wamr.owners_released != 1 or
+            wamr.surface_checks != 127 or
+            wamr.surface_width != 160 or wamr.surface_height != 80 or wamr.surface_stride != 324 or
+            wamr.surface_bytes != 25920 or wamr.surface_capacity != 32768 or
+            wamr.event_checks != 31 or wamr.event_frames != 3 or
+            wamr.uart_status != 1 or wamr.uart_bytes != 5 or wamr.uart_frames != 3 or wamr.uart_rejected != 1 or
+            wamr.services != 1 or wamr.sdk_abi != 1 or wamr.origin != 1 or
+            wamr.attestation != 2 or wamr.instruction_budget != 10_000 or
+            wamr.signature_status != 1 or wamr.boot_admission_cycles == 0 or
+            wamr.boot_admission_stack_used == 0 or wamr.boot_admission_stack_used > 64 * 1024 or
+            wamr.package_trust != 0 or wamr.initial_sequence_low != 1 or
+            wamr.initial_sequence_high != 0 or wamr.interrupted_update_recovered != 1 or
+            wamr.installed_sequence_low != 2 or
+            wamr.installed_sequence_high != 0 or wamr.package_sequence_low != 2 or
+            wamr.package_sequence_high != 0 or wamr.package_rejected != 1 or
+            wamr.package_syncs != 3 or wamr.simulated_reboot != 1 or
+            wamr.boot_recovered != 1 or wamr.trust_epoch_low != 1 or
+            wamr.trust_epoch_high != 0)
+            fail("WAMR fixture");
+        @atomicStore(u32, &wasm_boot_complete, 1, .release);
+    }
     enableTimer(0);
     if (options.boot_fast) normalReady();
     if (options.pmp_probe) reportPmpProbe() else qualificationSoak(sd_crc, display_panel);
@@ -1532,6 +1623,7 @@ noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (o
     }
 }
 
+extern fn nih_wamr_alignment_negative() callconv(.c) u32;
 const native_sqld = @hasDecl(options, "sqld") and options.sqld;
 const sqld = @import("sqld_abi.zig");
 comptime {
@@ -1572,12 +1664,64 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
     if (normal_storage) normal_fs.begin(storageClient());
+    if (options.wasm_alignment_negative) {
+        print("NIHOS_WAMR_ALIGN_NEGATIVE_BEGIN\n");
+        _ = nih_wamr_alignment_negative();
+        fail("alignment negative did not trap");
+    }
+    if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").start()) fail("Wasm task start");
+    if (options.wasm_interactive) {
+        if (!@import("wasm_session_fixture.zig").interactiveBegin(&logger)) fail("Wasm interactive init");
+        print("NIHOS_WASM_INTERACTIVE_READY\n");
+    } else if (options.wasm_session_test) {
+        if (!@import("wasm_session_fixture.zig").asyncProbe(&logger)) fail("Wasm async startup");
+        const async_report: extern struct { turns: u32, begin_us: u32 } = .{
+            .turns = @import("wasm_session_fixture.zig").async_turns,
+            .begin_us = @import("wasm_session_fixture.zig").async_begin_us,
+        };
+        logger.record("NIHOS_WASM_ASYNC", null, .{ "turns", "begin_us" }, &async_report);
+        print("NIHOS_WASM_ASYNC_PASS\n");
+        if (!@import("wasm_session_fixture.zig").start()) fail("Wasm session start");
+        print("NIHOS_WASM_SESSION_READY\n");
+    }
+    if (options.rust_session_test) {
+        if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
+        print("NIHOS_RUST_SESSION_READY\n");
+    }
     if (native_sqld) {
         if (!tasks.startSqld()) fail("sqld task start");
         ui.bindStorage(&sqld.provider);
     }
     var idle_checked = false;
     while (true) {
+        if (options.wasm_interactive and !options.wasm_interactive_repeat) {
+            switch (@import("wasm_session_fixture.zig").interactiveService(&logger)) {
+                0 => {},
+                1 => print("NIHOS_WASM_INTERACTIVE_ACTIVE\n"),
+                2 => {
+                    print("NIHOS_WASM_INTERACTIVE_PASS\n");
+                    while (true) tasks.idleOnce(0);
+                },
+                4 => {
+                    print("NIHOS_WASM_INTERACTIVE_CANCEL_PASS\n");
+                    while (true) tasks.idleOnce(0);
+                },
+                5 => print("NIHOS_WASM_INTERACTIVE_OPENING\n"),
+                else => fail("Wasm interactive result"),
+            }
+        }
+        if (options.wasm_session_test and !options.wasm_interactive and !@import("wasm_session_fixture.zig").service(&logger)) {
+            print("NIHOS_WASM_SESSION_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
+        if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").service(&logger)) {
+            print("NIHOS_WASM_TASK_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
+        if (options.rust_session_test and !@import("rust_session_fixture.zig").service(&logger)) {
+            print("NIHOS_RUST_SESSION_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
         if (options.boot_test != 0 and !idle_checked and (ui.timer().counter() orelse fail("idle clock")) - started >= 200_000) {
             for (0..2) |core| {
                 const hart: u32 = @intCast(core);
@@ -1591,8 +1735,38 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         flushDisplayReport();
         serviceNetwork();
         serviceStorage();
+        if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
         if (native_sqld) serviceSqld();
         if (!ui.service(&logger)) fail("normal console idle");
+        if (options.wasm_interactive_repeat) {
+            const fixture = @import("wasm_session_fixture.zig");
+            fixture.foregroundAfterUi();
+            const state = fixture.interactiveService(&logger);
+            if (state == 3) fail("Wasm interactive repeat result");
+            if (state == 0 and fixture.foreground_active == 25) {
+                const active = .{ .round = fixture.interactive_round };
+                logger.record("NIHOS_WASM_WORK_ACTIVE", null, .{"round"}, &active);
+            }
+            if (state != 0) {
+                const event = .{ .round = fixture.interactive_round, .state = state, .frames = fixture.interactive_frames, .signature = fixture.interactive_signature };
+                if (state == 2 or state == 4) {
+                    const foreground = .{ .round = fixture.interactive_round, .opening = fixture.foreground_open, .cancelling = fixture.foreground_cancel, .active = fixture.foreground_active, .max_gap_us = fixture.foreground_max_gap };
+                    logger.record("NIHOS_WASM_FOREGROUND", null, .{ "round", "opening", "cancelling", "active", "max_gap_us" }, &foreground);
+                    const work = .{ .round = fixture.interactive_round, .items = fixture.mock_items, .digest = fixture.mock_digest, .sensor = fixture.mock_sensor_sum };
+                    logger.record("NIHOS_WASM_WORK", null, .{ "round", "items", "digest", "sensor" }, &work);
+                    const hosted = .{ .round = fixture.interactive_round, .accepted = fixture.network_accepted, .rejected = fixture.network_rejected, .errors = fixture.network_errors, .active_events = fixture.network_active_events };
+                    logger.record("NIHOS_WASM_HOSTED_FIXTURE", null, .{ "round", "accepted", "rejected", "errors", "active_events" }, &hosted);
+                    const station = .{ .round = fixture.interactive_round, .completed = fixture.station_completed, .stale = fixture.station_stale, .errors = fixture.station_errors, .offers = fixture.station_offers, .corrupt = fixture.station_corrupt, .opening = fixture.station_opening, .cancelling = fixture.station_cancelling, .active = fixture.station_active };
+                    logger.record("NIHOS_WASM_STATION_FIXTURE", null, .{ "round", "completed", "stale", "errors", "offers", "corrupt", "opening", "cancelling", "active" }, &station);
+                    const renewal = .{ .round = fixture.interactive_round, .renewed = fixture.station_renewed, .old_ack = fixture.station_old_ack, .expired = fixture.station_expired, .opening = fixture.station_expire_opening, .cancelling = fixture.station_expire_cancelling, .active = fixture.station_expire_active };
+                    logger.record("NIHOS_WASM_DHCP_LIFETIME", null, .{ "round", "renewed", "old_ack", "expired", "opening", "cancelling", "active" }, &renewal);
+                    const timings = @import("wasm_session.zig").observed;
+                    const latency = .{ .round = fixture.interactive_round, .render_us = timings.render_max_us, .close_us = timings.close_us };
+                    logger.record("NIHOS_WASM_REQUEST_LATENCY", null, .{ "round", "render_us", "close_us" }, &latency);
+                }
+                logger.record("NIHOS_WASM_REPEAT", null, .{ "round", "state", "frames", "signature" }, &event);
+            }
+        }
         tasks.idleOnce(0);
     }
 }

@@ -1,0 +1,38 @@
+ESP-ROM:esp32p4-eco5-20250430
+Build:Apr 30 2025
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ffb60d0,len:0x1214
+load:0x4ffac2c0,len:0xbd8
+load:0x4ffaefc0,len:0x30d4
+entry 0x4ffac2c0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_BOOT_TEST case=00000001
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001748 probe=4000019a mapping=40000ea8 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00000d00 identity=000000c9 bytes=00400000 transactions=00000004 mapped=00400000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000028 mr4=00000040 mr8=0000000b addresses=00000016 passes=00000002 reads=0000002c writes=0000002c transactions=00000065
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=00400000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_BOOT_TIME stage=00000001 elapsed_us=0000071a
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000001 owner_checks=00000030 peer_checks=00000030 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_BOOT_HEALTH cpu0_ticks=00000001 cpu1_ticks=00000001 ipi0=00000001 ipi1=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000004 elapsed_us=0000c94c
+NIHOS_NATIVE_BOOT_TIME stage=00000006 elapsed_us=0000c955
+NIHOS_NATIVE_NORMAL_READY wait_us=0000273f
+NIHOS_WASM_ASYNC turns=00000070 begin_us=000010c0
+NIHOS_WASM_ASYNC_PASS
+NIHOS_WASM_SESSION_READY
+NIHOS_NATIVE_NORMAL_IDLE hart=00000000 ticks=00000520 work0=00000000 work1=00000000 switches=00000530 calls=0000002e reaped=00000000 sleeps=00000000
+NIHOS_NATIVE_NORMAL_IDLE hart=00000001 ticks=00000520 work0=00000000 work1=00000000 switches=00000000 calls=00000000 reaped=00000000 sleeps=00000000
+NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator
+NIHOS_WASM_SESSION round=00000001 status=ffffffd3 bytes=00000001 frames=00000000 presentations=00000001 rejected=00000000 requested=00082000 charged=00090000 recovered=00000001 reaped=00000001 wiped=00000001 detached=00000001 guards=00000001 stack_used=00005c50 captures=00000071 timers=0000006c waits=00000003 calls=00000002 denied=00000001 generation=00000006 ticks0=000000dd ticks1=000000dd open_us=002118ae render_max_us=00000314 close_us=000005a4
+NIHOS_WASM_SESSION_PARTIAL recovered=00000001 generation=00000007
+NIHOS_WASM_SESSION round=00000002 status=00000000 bytes=00000005 frames=00000003 presentations=00000004 rejected=00000001 requested=00082000 charged=00090000 recovered=00000001 reaped=00000001 wiped=00000001 detached=00000001 guards=00000001 stack_used=00005c50 captures=00000074 timers=0000006c waits=00000006 calls=00000008 denied=00000004 generation=00000008 ticks0=000000e0 ticks1=000000e0 open_us=00210bbb render_max_us=00000331 close_us=000005a3
+NIHOS_WASM_SESSION_DONE

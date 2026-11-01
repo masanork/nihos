@@ -1,0 +1,40 @@
+{
+  "source_commit": "8bee540353742b029998f97f3f0cb818c399a530",
+  "scope": "single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout",
+  "repeat_candidate": {
+    "nihos-native-image.elf": "f8cd645e592ec1e7dbb7c567588632fdd2d20095d0407b0d1924ad9ad4a7f4c6",
+    "nihos-native-flash.bin": "cc4ab5963d64522594fe3f96e34c9676fed31e9be37b932515fd7b9670bb04c7"
+  },
+  "previous_ui_candidate": {
+    "nihos-native-image.elf": "1243cc4ce92ecc8890caea4f804e47a79776f45ee462a17ad38807e82a47030c",
+    "nihos-native-flash.bin": "94883e7a57a6ca049c3f8236c3d9ccf7be65f1d0526b449ba53ff40b2696a48a"
+  },
+  "matrix_candidate": {
+    "nihos-native-image.elf": "34d12ba118ed74b4067b4193a40cc4e7ff1c8487361b825917a4818a891b64cb",
+    "nihos-native-flash.bin": "609c0aa3f30d630553dfe52b677fa0b37ed3c6f66484323b03f7f6ae0a48e8ae"
+  },
+  "evidence_sha256": {
+    "build.log": "061ddcd91ae2dc18c87d567cc0427d87d5f9a747369b4bc93d4a448c61eba05d",
+    "debug.log": "76c86cfcc74f0c39b1e556ab165363b5603dd8a3da59689e17d9125c93b98c1c",
+    "guard.log": "ca1413e996dbe01eba2a3d4118efce314678240cbb5a27121d91de018aca6515",
+    "image-audit.json": "a30ea46d3d14d5a8a230543408df25c7a921107b8bb0a8513c5f04ebad368741",
+    "image.log": "84034d0cef7fef19e19b6611229d79756a5d0cb48d63dbdd067f2e57c133a07b",
+    "initial-cancel-assertion.log": "72b3913191fc9c9a9cafdec7024799840baa8f875ff7c9cbf00d1ecd8c3cd74e",
+    "matrix-cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "matrix-early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "matrix-metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "matrix-noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "matrix-normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "matrix-present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "matrix-report.json": "776b3bd517bd771f8362518b3e4a4be51c7dc486b0616e0c2258a2bf23874099",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "previous-ui-report.json": "cd16ed080e21913b314946759ac4fb25d08793dcfbd73ea82467332616bab05e",
+    "previous-ui-runner.log": "aa21e27eca068c8cad72ce1140d36ea2bb9a230455e0ad2b48c9304124af82fb",
+    "python.log": "378b47226d008aedc22e313ecb5bf61557c35beadda845c31e895dd491ee5d11",
+    "release-safe.log": "630d27aa5ada7d82ebefd68a9b81b1ebc8237e39d7f3222c83e549ef950c8a6e",
+    "repeat.log": "deec8d3389425f4bb11e39d38e6351717c62afbdefcbdc238bfa9e55a9218755",
+    "report.json": "4e9f8fb3dc748995f35161e882a5cd80435c949d57fed17ab9a3ef6dad708c3f",
+    "runner.log": "3b0030b473f40b0c4ebefc387333ee2afb8fc9a87581d3a4f8455906dbededf7",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570"
+  }
+}

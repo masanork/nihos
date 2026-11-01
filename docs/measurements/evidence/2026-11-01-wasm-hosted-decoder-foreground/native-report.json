@@ -1,0 +1,54 @@
+{
+  "evidence": "headless emulator; no scanout",
+  "candidate": {
+    "nihos-native.elf": "647e5501ee42e6442be62393e31f7f33a229a579ea212793997f184c3c9eeaff",
+    "nihos-native-flash.bin": "74aa6c2f135b789a97b30f2a69006634b969624f1d4cae66ba2e0763b66086ab"
+  },
+  "cases": [
+    {
+      "case": "normal",
+      "status": 0,
+      "bytes": 5,
+      "input_frames": 3,
+      "presentations": 4,
+      "rejected": 1,
+      "released": 1,
+      "requested": 32768,
+      "charged": 65536,
+      "free_before": 1801536,
+      "free_after": 1801536,
+      "ticks0": 7,
+      "ticks1": 7
+    },
+    {
+      "case": "noinput",
+      "status": 4294967254,
+      "bytes": 0,
+      "input_frames": 0,
+      "presentations": 1,
+      "rejected": 0,
+      "released": 1,
+      "requested": 32768,
+      "charged": 65536,
+      "free_before": 1801536,
+      "free_after": 1801536,
+      "ticks0": 54,
+      "ticks1": 54
+    },
+    {
+      "case": "early-quit",
+      "status": 4294967252,
+      "bytes": 1,
+      "input_frames": 0,
+      "presentations": 1,
+      "rejected": 0,
+      "released": 1,
+      "requested": 32768,
+      "charged": 65536,
+      "free_before": 1801536,
+      "free_after": 1801536,
+      "ticks0": 3,
+      "ticks1": 3
+    }
+  ]
+}

@@ -1,0 +1,177 @@
+# Experimental Rust SDK landing
+
+The first landing is an opt-in application experiment: the same Rust sample
+must draw through native FFI and Wasm, receive serial `0 -> 1 -> 0`, and release
+its OS-owned resources on `q` or failure. The kernel and native drivers stay
+Zig-first. The SDK and its graphics/task ABIs remain provisional.
+
+## Consolidation boundary
+
+The source experiment is retained unchanged in `/private/tmp/nihos-rust-app-sdk`
+on base `c0ff17d5ea6802eed4769a5b588da1735dbfbd32`. Its historical measurement
+reports and evidence describe those candidates, including the limited native
+display-owner physical check; they do not qualify a later integrated image.
+
+The isolated integration branch is `codex/rust-sdk-integration-20261030`, based
+on main `3d21dcb1b798c745c084cb9d1d74fddbd231747f`, and reconciled through
+`1c7935aa2e50e28ba1d484d700957fa1782bdc13`. It retains main's camera
+overlay, storage, PMP, graphics and xy changes. Review units, in dependency
+order, are:
+
+1. `no_std` SDK, shared Rust application, native graphics adapter and host/RV32
+   fixtures.
+2. Canonical package/trust formats, signature admission, two-slot recovery and
+   host process/file tests. These are OS infrastructure, outside the SDK API.
+3. WAMR host/RV32 port, C compatibility helpers, native boot/task fixtures and
+   emulator UART/cleanup checks. All runtime options default off.
+4. Historical design/measurement reports and exact candidate evidence.
+5. Reproducible host CI, opt-in emulator CI, and this finite landing checklist.
+
+An additional prerequisite commit initializes the new main xy/font buffers and
+removes a redundant cast to satisfy the existing lint gate. It is separate from
+the SDK/runtime changes and does not edit the original main worktree.
+
+WAMR is fetched separately at revision
+`25bd7eb63e828e4bd242cc9b38d260b4b31c6605` (2.4.5). Its Apache-2.0 license with
+LLVM exception remains in the checkout and is copied into the native Wasm build's
+`licenses/WAMR.txt`. The retained alignment experiment patch is research only;
+ordinary runtime builds require the unmodified upstream checkout.
+
+## Verification entry points
+
+Use Zig 0.17.0 and Rust 1.98.1 with `wasm32-unknown-unknown` and
+`riscv32imac-unknown-none-elf`. The latter uses soft-float `ilp32`.
+
+```sh
+sh tools/bootstrap-zig.sh
+rustup toolchain install 1.98.1 --profile minimal --target wasm32-unknown-unknown,riscv32imac-unknown-none-elf
+RUSTUP_TOOLCHAIN=1.98.1 sh tools/run-rust-sdk-host.sh
+.tools/zig-0.17.0/zig build test
+.tools/zig-0.17.0/zig build test -Doptimize=ReleaseSafe
+sh tools/run-static-analysis.sh
+```
+
+`zig build test-app` runs the focused admission/recovery suite, also included in
+`zig build test`. The host runner adds Rust native/Wasm parity, bounds, WAMR
+allocation-fault recovery, signed-journal execution and process termination.
+The `Experimental Rust SDK` workflow runs these host checks on pull requests.
+Its manually dispatched emulator job additionally builds the pinned ESP-IDF
+5.4.4 bootloader and runs:
+
+```sh
+sh probes/rust-app/run-emulator.sh
+sh probes/wamr-host/run.sh
+sh probes/wamr-native/run-emulator.sh
+sh probes/wamr-native/run-task-emulator.sh
+sh probes/wamr-native/run-session-emulator.sh
+```
+
+The Wasm runner requires the bootloader from the first command, the matching
+RISC-V GCC/binutils on PATH (or `NIHOS_RISCV_CC`), and an esptool Python
+environment (`NIHOS_IDF_PYTHON`). It checks the digest of the module built in
+that run; historical module hashes are not used as current evidence.
+
+CI configuration and local passes are separate evidence. A remote CI run is
+still required before merging. Neither is physical qualification.
+
+## Remaining work, in order
+
+Native foreground ownership is now wired behind `NIHOS_NATIVE_RUST_SESSION=1`:
+`rust-app` opens the sample from the normal shell, with a separate PSRAM lease,
+per-input drawing/publication, and quit/cancel/failure cleanup followed by a
+console repaint. The same session and rotated display-copy code run with native
+Rust and signed WAMR on the host. A headless normal-profile RV32 fixture exercises
+the actual native backend while both hart timers run. See the
+[session integration report](../measurements/2026-10-31-rust-session-normal-owner.md).
+The new headless RV32 Wasm fixture also registers a real task on its pinned
+64 KiB stack, takes timer interrupts with both harts running, waits for input
+events, and reaps/unpins before restarting in the same boot. The restart uses
+synthetic input; the first round exercises external UART or timeout. See the
+[scheduled Wasm task report](../measurements/2026-10-31-wasm-scheduled-task.md).
+The common Session now calls bounded open/render/close requests on that real
+Wasm worker. Its frame lease stays alive until the worker acknowledges and the
+engine lease stays pinned through task reap. Normal input, timeout, early quit,
+cancel, metering trap, presenter refusal, partial open and same-boot restart
+pass on RV32. See the [frame bridge report](../measurements/2026-10-31-wasm-session-frame-bridge.md).
+The Wasm UI branch is implemented behind the headless test flag; an interactive
+Wasm/display profile and physical presenter remain open.
+
+1. **Interactive emulator profile and ownership.** The leased-stack registration,
+   Session/worker bridge and UI dispatcher branch are verified in the headless
+   RV32 emulator. Establish an interactive emulator profile and connect its
+   actual input/display owner, preserving camera/console ownership and repaint.
+   Exercise `0 -> 1 -> 0 -> q` through both UI backends. Headless pixel checks
+   do not qualify scanout/cache behavior.
+   The synchronous frame request yields to the scheduler, but does not service
+   the foreground network/camera loop while waiting; measure that latency
+   explicitly before allowing a camera/display device profile. In the headless
+   emulator, synchronous signed-package open takes about 2.17 seconds of
+   emulated timer time, so require nonblocking startup and exercise foreground
+   camera/network progress before connecting this backend to the normal UI.
+   The headless RV32 fixture now connects `src/app/async_start.zig` to the
+   real WAMR worker: open is submitted and polled, and cancellation waits for
+   close and reap before releasing the pin. It exercises foreground polling,
+   not the actual camera/network service loop. Initial frame rendering and
+   ordinary session shutdown remain synchronous.
+   The headless fixture now feeds the real launcher/shell model a synthetic
+   `Esc → rust-app → Enter`, uses the normal serial key decoder for a
+   synthetic `q` during open, and runs `0 → 1 → 0` after a later open. The
+   fixture now invokes the actual normal UI key dispatcher, while using a
+   test-only shell model and pixel presenter.
+   A subsequent UART-driven emulator fixture exercises the UI's foreground
+   polling and serial decoder through the same dispatcher, including cancellation
+   during open. Its shell storage and presenter remain substitutes, and it stops
+   after one verified session. See the [UART polling report](../measurements/2026-11-01-wasm-ui-uart-poll.md).
+   An emulator-only repeat mode now keeps the UART shell available across
+   app exits; a three-round active/cancel/active run is covered in the
+   [repeat report](../measurements/2026-11-01-wasm-ui-uart-repeat.md). Its
+   presenter still verifies logical pixels without real scanout.
+   The repeat fixture now enters the normal foreground UI service entry and
+   samples loop progress across asynchronous open and cancellation; see the
+   [foreground report](../measurements/2026-11-01-wasm-foreground-ui-service.md).
+   Network, storage and camera work are disabled in that profile.
+   A bounded synthetic hashing and sample-aggregation workload now runs on
+   those foreground turns with independent result checking; see the
+   [mock-work report](../measurements/2026-11-01-wasm-foreground-mock-work.md).
+   It does not exercise real service drivers or run during synchronous UI calls.
+   The existing ESP-Hosted frame decoder now also processes valid and corrupt
+   synthetic fragments between UI calls; the [decoder report](../measurements/2026-11-01-wasm-hosted-decoder-foreground.md)
+   records request timing and distinguishes parser execution from C6/network work.
+   The [station report](../measurements/2026-11-01-wasm-hosted-station-foreground.md)
+   exercises the existing disabled-join Hosted client and stale UID handling
+   with a synthetic peer. The [DHCP report](../measurements/2026-11-01-wasm-hosted-dhcp-foreground.md)
+   extends this to a synthetic association and independent Offer/ACK packets,
+   including corrupt ACK rejection. A [lease-lifetime report](../measurements/2026-11-01-wasm-dhcp-lease-lifetime.md)
+   adds T1 renewal, stale ACK rejection and expiry using a synthetic clock.
+   Real transport and association remain open.
+   A foreground controller now owns opening, cancellation and active-input
+   routing in that fixture and the UI branch. It rejects start when camera or
+   display is busy and reserves display until cancellation has completed.
+   The fixture exercises synthetic camera-live state, not camera DMA.
+   If the worker exits before acknowledging close, polling now reaps it and
+   reports an error instead of waiting indefinitely. Startup failures retain
+   their original status across repeated polls. These paths have headless RV32
+   fault-injection coverage; the interactive UI profile remains unavailable.
+   Both hart timers continue during the tested requests and cooperative shutdown.
+   See the [request latency measurement](../measurements/2026-10-31-wasm-session-latency.md).
+2. **Runtime decision and candidate profile.** Resolve the WAMR alignment
+   adoption question for the exact RV32 configuration before permitting a
+   Wasm device image. The [RV32 sanitizer report](../measurements/2026-11-01-wamr-rv32-alignment-sanitizer.md)
+   adds a checked negative control and instrumented emulator paths; it is not
+   an arbitrary-module or device safety proof. The AArch64 UBSan finding and narrow experimental patch
+   remain open; neither a host pass nor RV32 compilation proves engine safety.
+   Build and audit one bounded native/Wasm device candidate with explicit
+   memory, stack, execution budget and shutdown behavior.
+3. **Exact-candidate physical check.** When Tab5 is available, verify candidate
+   identity, boot, visible screen output, serial transitions and quit/error
+   cleanup. Keep emulator, serial-publication and optical observations separate.
+   Record resource use and a bounded repeated-launch run. Retain/verify the
+   previous image when restoring it.
+4. **Review and merge.** Reconcile the final main head, run required CI, review
+   the ABI and evidence, and merge only after the agreed physical gate. Keep
+   the experimental feature disabled in ordinary builds.
+
+Production keys/protected counters, native Flash installation and power-loss
+qualification, touch/keyboard SDK events, concurrent apps and a stable public
+SDK are follow-ups. They do not expand this first landing's acceptance scope.
+Native FFI remains trusted shared-address-space code.

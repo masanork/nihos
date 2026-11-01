@@ -1,0 +1,27 @@
+{
+  "evidence": "host-process-committed-payload-corruption",
+  "cases": [
+    {
+      "case": "corrupt-payload",
+      "rejected": "ActivePackageInvalid",
+      "rejection_pid": 55360,
+      "restoration_pid": 55361,
+      "restored_sequence": 2,
+      "media": "corrupt-payload.bin",
+      "sha256": "f4f0c3ad9df5db1a4eb2424353fc184d9fcd72779af1ca7026b720a045afdc18",
+      "restored_media": "corrupt-payload-restored.bin",
+      "restored_sha256": "1c72c773100be3c0659dde138c68be3c5c47168be47f04af5ff6d1afd583a104"
+    },
+    {
+      "case": "substitute-old",
+      "rejected": "ActivePackageInvalid",
+      "rejection_pid": 55362,
+      "restoration_pid": 55363,
+      "restored_sequence": 2,
+      "media": "substitute-old.bin",
+      "sha256": "5dc84d69ba9eabf7c2b18c9aea74fa3254736081396eac8ca5bbad017cea9ce2",
+      "restored_media": "substitute-old-restored.bin",
+      "restored_sha256": "1c72c773100be3c0659dde138c68be3c5c47168be47f04af5ff6d1afd583a104"
+    }
+  ]
+}

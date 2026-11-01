@@ -1,0 +1,5 @@
+1/2 file-storage-test.test.fsync file adapters reopen exact trust snapshot and package...NIHOS_FILE_ADAPTER trust_epoch=2 package_sequence=1 reopen=1 fsync_trust=6 fsync_counter=2 fsync_package=3
+OK
+2/2 file-storage-test.test.partial writes sync errors and short files never expose partial state...NIHOS_FILE_FAULTS trust_write_cuts=9 package_write_cuts=8 sync_cuts_each=3 exact_old_or_new=1 short_files_rejected=2
+OK
+All 2 tests passed.
