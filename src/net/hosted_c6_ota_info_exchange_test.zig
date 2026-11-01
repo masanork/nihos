@@ -9,6 +9,7 @@ const Fake = struct {
     version: [3]u32 = .{ 3, 0, 10 },
     reject: bool = false,
     silence: bool = false,
+    ack_only: bool = false,
     no_credit: bool = false,
     partial: bool = false,
     custom_count: u32 = 0,
@@ -61,7 +62,7 @@ const Fake = struct {
             else => return error.UnexpectedPersistentOrOtherRpc,
         }
         try self.enqueue(id + 256, uid, 2, w.slice());
-        if (id == 388 and !self.reject) {
+        if (id == 388 and !self.reject and !self.ack_only) {
             w = .{ .out = &bytes };
             try w.uint(2, info.result_id);
             try w.data(3, @embedFile("fixtures/hosted-ota-info-v1.bin"));
@@ -143,4 +144,16 @@ test "silent or partial transport fails without repeating the query" {
     f.partial = true;
     try std.testing.expectError(error.PartialPacket, x.step(&f, 1));
     try std.testing.expectEqual(exchange.State.failed, x.state);
+}
+test "successful acknowledgement without a result still times out" {
+    var f: Fake = .{ .ack_only = true };
+    var x = try setup(&f, true);
+    var t: u64 = 1;
+    while (x.state != .waiting and t < 90) : (t += 1) try x.step(&f, t);
+    try x.step(&f, t);
+    try std.testing.expectEqual(@as(?u32, 0), x.ack_status);
+    try std.testing.expect(x.query.acknowledged);
+    try std.testing.expectError(error.Timeout, x.step(&f, 100));
+    try std.testing.expect(x.query.result == null);
+    try std.testing.expectEqual(@as(u32, 1), f.custom_count);
 }
