@@ -39,7 +39,8 @@ tracks whole-frame completion, and requires a transport reset after an
 ambiguous partial send. On TCP/RX failure it retires the TCP handle and
 reports the error; callers can continue station maintenance on the next poll.
 The OpenSSH host fixture uses this owner; the normal
-CPU0 network service and SDIO transport are not yet connected to it.
+CPU0 network service has a codegen-only experimental RX path; TCP TX and
+application entry points are not connected to it.
 
 `ssh_hosted_tcp_io.zig` maps the owner's TCP stream to SSH pump partial I/O,
 backpressure, EOF and failure. It requires the serialized caller to advance

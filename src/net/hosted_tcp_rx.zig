@@ -24,6 +24,11 @@ pub const Queue = struct {
             try service.sync(null);
             return err;
         };
+        return self.receiveProcessed(service, client, handle, owner_epoch, now_us, frame);
+    }
+    /// The station has already consumed this exact frame. This split lets the
+    /// network owner distinguish station failures from TCP-only failures.
+    pub fn receiveProcessed(self: *Queue, service: *tcp.Service, client: *const station.Client, handle: ?tcp.Handle, owner_epoch: u64, now_us: u64, frame: hosted.Frame) Error!bool {
         binding.refresh(service, client, owner_epoch, now_us) catch |err| {
             self.clear();
             return err;

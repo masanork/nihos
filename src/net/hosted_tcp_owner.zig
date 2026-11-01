@@ -51,6 +51,14 @@ pub const Owner = struct {
             return err;
         };
     }
+    /// Use after the network owner has delivered this frame to the station.
+    pub fn receiveProcessed(self: *Owner, client: *const station.Client, frame: hosted.Frame, now_us: u64) Error!bool {
+        try self.check();
+        return self.queue.receiveProcessed(&self.service, client, self.handle, self.epoch, now_us, frame) catch |err| {
+            self.retireTcp();
+            return err;
+        };
+    }
     /// Call once per owner poll. Other producers must be represented by
     /// other_pending and must not transmit while a frame here is pending.
     pub fn next(self: *Owner, client: *station.Client, now_us: u64, other_pending: bool) Error!binding.Next {
@@ -194,8 +202,13 @@ test "queue overflow retires TCP and station can continue" {
     reply[28..32].* = .{ 10, 0, 2, 2 };
     reply[32..38].* = client.mac_address;
     reply[38..42].* = .{ 10, 0, 2, 15 };
-    for (0..4) |_| try std.testing.expect(try owner.receive(&client, .{ .interface = 1, .payload = &reply }, 1000));
-    try std.testing.expectError(error.RxOverflow, owner.receive(&client, .{ .interface = 1, .payload = &reply }, 1000));
+    const frame = hosted.Frame{ .interface = 1, .payload = &reply };
+    for (0..4) |_| {
+        try client.receive(frame, 1000);
+        try std.testing.expect(try owner.receiveProcessed(&client, frame, 1000));
+    }
+    try client.receive(frame, 1000);
+    try std.testing.expectError(error.RxOverflow, owner.receiveProcessed(&client, frame, 1000));
     try std.testing.expectError(error.StaleHandle, owner.service.ready(h));
     try std.testing.expect(owner.handle == null);
     try std.testing.expect(client.connected);

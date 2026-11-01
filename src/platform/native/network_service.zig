@@ -58,6 +58,12 @@ const initial_state linksection(".flash.rodata.display") = InitialTemplate{};
 var state_storage: *State = undefined;
 // SAFETY: experimental builds bind this CPU0-only tail before startAttempt.
 var tcp_state: *TcpState = undefined;
+var tcp_rx_error: u32 = 0;
+/// Last TCP RX failure for experimental diagnostics; station errors remain
+/// on the existing network report. No application socket API is exposed yet.
+pub fn experimentalTcpRxError() u32 {
+    return if (experimental_tcp) tcp_rx_error else 0;
+}
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
 var clock: timers.Timer = undefined;
@@ -114,6 +120,7 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     if (experimental_tcp) {
         tcp_state = @ptrFromInt(@intFromPtr(backing) + station_storage_bytes);
         tcp_state.init();
+        tcp_rx_error = 0;
     }
     @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
     state.decoder.reset();
@@ -258,6 +265,12 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             try finishC6Time(received);
         } else {
             try client.receive(frame, received);
+            if (experimental_tcp) {
+                _ = tcp_state.receiveProcessed(client, frame, received) catch |err| blk: {
+                    tcp_rx_error = @intFromError(err);
+                    break :blk false;
+                };
+            }
         }
         collectRenewals();
         if (!offload_active and frame.interface == 1) {
