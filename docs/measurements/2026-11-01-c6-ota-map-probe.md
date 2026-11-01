@@ -67,3 +67,21 @@ the lock file's recorded task is not proof of current ownership. Treat the
 board as concurrently used and do not make further device writes until its
 current owner/write coordination is established. The recovered old backup must
 not be used to overwrite the newer baseline.
+
+## Reset-settling hypothesis and build-only revision
+
+The earlier main-integration diagnostic recorded the same `Controller` / CMD52
+response-timeout pattern on all three warm boots with a 300 ms C6 reset delay.
+A later long-DMA diagnostic with a 2 s delay completed Hosted/Wi-Fi startup on
+three warm boots. These were different candidates; the delay is a plausible
+contributing factor, not a proven cause. Sources and physical logs are in
+`/private/tmp/nihos-c6-hosted-diagnostic-main-physical-20261101/` and
+`/private/tmp/nihos-c6-hosted-diagnostic-final-20261101/`.
+
+Only the OTA preflight was changed to wait 2 s after C6 reset. Its new P4 app
+build SHA-256 is
+`c85418524520a316aa2c4d8a858413f3be91d632f14c9e17759cb28aebcc4d4e`;
+the mapped C6 candidate remains the same. The image and SRAM audits passed.
+This candidate has not been booted, and no C6 OTA has been attempted. The user
+confirmed another task is using Tab5, so no further serial or device operation
+is permitted until that work releases the board.
