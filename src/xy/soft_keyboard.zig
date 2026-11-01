@@ -15,7 +15,7 @@
 //! Rendering and hit testing share the same layout and state.
 
 const std = @import("std");
-const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+pub const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 
 /// Logical workspace size this keyboard docks into.
 pub const space_width: u32 = 1280;
