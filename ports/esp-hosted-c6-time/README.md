@@ -1,8 +1,10 @@
 # Experimental C6 time snapshot
 
-This is an opt-in Hosted 2.13.1 / Network Split experiment. It has not been
-flashed or exercised on a device, and it is not wired into the normal NIHOS
-networking path. The P4 contract is `src/net/hosted_c6_time.zig`.
+This is an opt-in Hosted 2.13.1 / Network Split experiment. Its C6 firmware
+has not been flashed or exercised, and it is not wired into the normal NIHOS
+networking path. The P4 probe was physically checked only against a 1.4.1 peer;
+see `docs/measurements/2026-11-01-c6-time-p4-preflight.md`. The P4 contract is `src/net/hosted_c6_time.zig`; the experimental station,
+Network Split and CustomRpc owner is `src/net/hosted_c6_time_exchange.zig`.
 
 The C6 runs ESP-IDF SNTP against `pool.ntp.org` and a worker returns a snapshot
 on CustomRpc. The Hosted RX callback only validates the fixed-size request and
@@ -52,3 +54,17 @@ ports/esp-hosted-c6-time/run-host-test.sh
 The C and Zig tests use matching byte vectors. They do not exercise CustomRpc,
 Wi-Fi, ESP-IDF SNTP or scheduling on the device. The ESP-IDF build, if present,
 only checks compilation/linking and OTA-slot size.
+
+The opt-in P4 diagnostic image is built without device access with
+`tools/build-c6-time-probe.sh`. It uses saved Wi-Fi settings by default; a
+private configuration may instead be supplied using `NIHOS_C6_WIFI_CONFIG`.
+It accepts only an observed C6 2.13.1 peer before issuing Wi-Fi setup and
+never sends OTA commands. The fixture requests snapshots at one-second intervals
+after C6 DHCP/DNS until it observes a synchronization or its overall deadline
+expires. It is diagnostic code, not the normal NIHOS clock or a production
+reconnect loop. The build script and image audit do not qualify a device run.
+
+The address snapshot module and its tests were copied from the existing nihos
+experimental custom-C6 work at commit `0b066228`; that code and this integration
+remain experimental and unqualified on 2.13.1 hardware. Before the first C6
+candidate write, recovery must be independently qualified.

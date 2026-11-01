@@ -2,6 +2,7 @@
 //! volatile, correlates RPC UID + ID, and requires an actual DHCP ACK.
 const std = @import("std");
 pub const wire = @import("hosted.zig");
+pub const c6_time_exchange = @import("hosted_c6_time_exchange.zig");
 pub const diagnostics = @import("hosted_diagnostics.zig");
 pub const ota_session = @import("hosted_ota_session.zig");
 pub const ota_guard = @import("hosted_ota_guard.zig");

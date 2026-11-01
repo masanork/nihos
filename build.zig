@@ -55,6 +55,10 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = leased_stack_tests })).step);
     test_step.dependOn(appTests(b, target, optimize));
     test_step.dependOn(&run_module_tests.step);
+    inline for (.{ "hosted_network_split_test.zig", "hosted_c6_time_exchange_test.zig" }) |name| {
+        const experimental_c6_test = b.createModule(.{ .root_source_file = b.path("src/net/" ++ name), .target = target, .optimize = optimize });
+        test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = experimental_c6_test })).step);
+    }
     const hosted_c6_time_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_c6_time_test.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_c6_time_tests })).step);
     const hosted_ota_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_test.zig"), .target = target, .optimize = optimize });
