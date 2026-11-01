@@ -509,8 +509,112 @@ pub fn runHosted(clock: timers.Timer, join: hosted.Join, enable_ipv6: bool) Repo
     return snapshot(report);
 }
 
-/// Explicit OTA preflight: reset/identify factory C6 and complete the 1.4.1
-/// version handshake, then stop before the Session's first OTA Begin step.
+/// Experimental C6-owned SNTP fixture using the Hosted transport.
+/// Sends no OTA requests.
+pub const TimeReport = struct {
+    status: u32 = 0,
+    stage: u32 = 0,
+    error_code: u32 = 0,
+    tx: u32 = 0,
+    rx: u32 = 0,
+    peer_chip: u32 = 0,
+    fw_known: u32 = 0,
+    major: u32 = 0,
+    minor: u32 = 0,
+    patch: u32 = 0,
+    phase: u32 = 0,
+    attempts: u32 = 0,
+    acknowledged: u32 = 0,
+    got_result: u32 = 0,
+    synced: u32 = 0,
+    seconds_low: u32 = 0,
+    seconds_high: u32 = 0,
+    age_seconds: u32 = 0,
+};
+var hosted_time: hosted.c6_time_exchange.Exchange = .{};
+noinline fn exerciseHostedTime(clock: timers.Timer, report: *TimeReport, join: hosted.Join) !void {
+    report.stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    report.stage = 2;
+    try host.prepare(true);
+    report.stage = 3;
+    try host.identify();
+    report.stage = 4;
+    try host.enableFunction();
+    try host.writeDoorbell(1, 0x8c, 1);
+    report.stage = 5;
+    const started = clock.counter() orelse return error.Clock;
+    try hosted_time.begin(join, 1, started, started + 100_000_000);
+    var next_request_at = started;
+    while (true) {
+        const count = try hosted_stream.receive(&rx);
+        report.rx +|= @intCast(count);
+        for (rx[0..count]) |byte| if (try hosted_decoder.push(byte)) |frame| {
+            try hosted_time.receive(frame, clock.counter() orelse return error.Clock);
+        };
+        const now = clock.counter() orelse return error.Clock;
+        if (clock_failed or now < started) return error.Clock;
+        if (hosted_time.phase == .done and hosted_decoder.used == 0) {
+            report.attempts +|= 1;
+            if (hosted_time.sample != null) {
+                report.status = 1;
+                report.stage = 6;
+                return;
+            }
+            try hosted_time.nextSnapshot(now);
+            next_request_at = now + 1_000_000;
+        }
+        if (hosted_time.phase == .ready and now < next_request_at) {
+            host.io.delay(100);
+            continue;
+        }
+        const bytes = try hosted_time.tx(now);
+        if (bytes.len > 0) {
+            const count_sent = try hosted_stream.send(bytes);
+            try hosted_time.sent(count_sent, clock.counter() orelse return error.Clock);
+            report.tx +|= @intCast(count_sent);
+        }
+        host.io.delay(100);
+    }
+}
+pub fn runHostedTime(clock: timers.Timer, join: hosted.Join) TimeReport {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    hosted_decoder = .{};
+    hosted_time = .{};
+    clock_failed = false;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    var report: TimeReport = .{};
+    exerciseHostedTime(clock, &report, join) catch |err| {
+        report.error_code = @intFromError(err);
+        hosted_stream.invalidate();
+    };
+    const peer = &hosted_time.station;
+    report.peer_chip = peer.peer_chip;
+    report.fw_known = @intFromBool(peer.version_known);
+    report.major = peer.version[0];
+    report.minor = peer.version[1];
+    report.patch = peer.version[2];
+    report.phase = @backingInt(hosted_time.phase) + 1;
+    report.acknowledged = @intFromBool(hosted_time.acknowledged);
+    report.got_result = @intFromBool(hosted_time.got_result);
+    if (hosted_time.sample) |sample| {
+        report.synced = 1;
+        report.seconds_low = @truncate(sample.seconds);
+        report.seconds_high = @truncate(sample.seconds >> 32);
+        report.age_seconds = sample.age_seconds;
+    }
+    return report;
+}
+
+/// OTA preflight: complete the version handshake, then stop before OTA Begin.
 /// This path does not update C6 or send any persistent-write RPC.
 pub const OtaPreflight = struct { status: u32 = 0, stage: u32 = 0, last_command: u32 = 0, last_interrupts: u32 = 0, error_code: u32 = 0, peer_chip: u32 = 0, version_known: u32 = 0, major: u32 = 0, minor: u32 = 0, patch: u32 = 0, diag_known: u32 = 0, diag_uptime: u32 = 0, diag_heap: u32 = 0 };
 var ota_preflight_stage: u32 = 0;

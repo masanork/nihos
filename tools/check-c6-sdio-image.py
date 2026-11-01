@@ -8,9 +8,9 @@ import sys
 
 def main():
     if len(sys.argv) not in (4, 5):
-        raise SystemExit("usage: check-c6-sdio-image.py ELF BIN|--elf-only REPORT.json [at|hosted]")
+        raise SystemExit("usage: check-c6-sdio-image.py ELF BIN|--elf-only REPORT.json [at|hosted|hosted-time]")
     protocol = sys.argv[4] if len(sys.argv) == 5 else 'at'
-    if protocol not in ('at', 'hosted'):
+    if protocol not in ('at', 'hosted', 'hosted-time'):
         raise SystemExit('unknown C6 protocol')
     path = Path(__file__).with_name("check-c6-sram-boundary.py")
     spec = importlib.util.spec_from_file_location("native_image_audit", path)
@@ -22,6 +22,8 @@ def main():
     )
     if protocol == 'hosted':
         required += ('nih_c6_power_enable', 'c6_probe.exerciseHosted')
+    if protocol == 'hosted-time':
+        required += ('nih_c6_power_enable', 'c6_probe.exerciseHostedTime')
     elf = Path(sys.argv[1]).read_bytes()
     report = module.audit(elf, image, "integer", required_functions=required)
     report.update(backend="native-c6-boot-fixture", protocol=protocol, intended_cpu_count=1, execution_qualified=False)
