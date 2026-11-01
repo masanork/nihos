@@ -201,8 +201,19 @@ pub fn edgeGestureIn(start_x: u32, start_y: u32, end_x: u32, end_y: u32, orienta
     return .none;
 }
 
-/// Default orientation for a session: the keyboard accessory holds the
-/// device horizontally, so its presence makes landscape the basis.
+/// A bus error or disabled probe is unknown, not evidence of absence.
+pub const KeyboardProbe = enum { unknown, absent, present };
+pub fn probeFromResult(enabled: bool, ready: bool, report_status: u32, failed: bool) KeyboardProbe {
+    if (!enabled or failed) return .unknown;
+    if (ready) return .present;
+    return if (report_status == 2) .absent else .unknown;
+}
+pub fn startupOrientation(probe: KeyboardProbe, force_portrait_fixture: bool) Orientation {
+    if (force_portrait_fixture or probe == .absent) return .portrait;
+    return .landscape;
+}
+
+/// Historical policy helper retained for consumers with a definitive probe.
 pub fn defaultOrientation(physical_keyboard: bool) Orientation {
     return if (physical_keyboard) .landscape else .portrait;
 }
@@ -282,4 +293,16 @@ test "portrait and landscape layouts stay on screen and match touch hit testing"
         try std.testing.expectEqual(Gesture.hide, edgeGestureIn(g.width / 2, g.top() + 10, g.width / 2, g.top() + 100, orientation));
         try std.testing.expectEqual(Gesture.none, edgeGestureIn(g.width, g.height - 4, 0, g.height - 120, orientation));
     }
+}
+
+test "startup orientation requires confirmed absence and preserves fault fallback" {
+    try std.testing.expectEqual(Orientation.portrait, startupOrientation(.absent, false));
+    try std.testing.expectEqual(Orientation.landscape, startupOrientation(.present, false));
+    try std.testing.expectEqual(Orientation.landscape, startupOrientation(.unknown, false));
+    try std.testing.expectEqual(Orientation.portrait, startupOrientation(.unknown, true));
+    try std.testing.expectEqual(KeyboardProbe.absent, probeFromResult(true, false, 2, false));
+    try std.testing.expectEqual(KeyboardProbe.present, probeFromResult(true, true, 1, false));
+    try std.testing.expectEqual(KeyboardProbe.unknown, probeFromResult(false, false, 2, false));
+    try std.testing.expectEqual(KeyboardProbe.unknown, probeFromResult(true, false, 2, true));
+    try std.testing.expectEqual(KeyboardProbe.unknown, probeFromResult(true, false, 0, false));
 }

@@ -74,6 +74,7 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAtState'))
         self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAtIn'))
         self.assertTrue(MODULE.xy_function('xy.soft_keyboard.layoutIn'))
+        self.assertTrue(MODULE.xy_function('xy.soft_keyboard.startupOrientation'))
         self.assertTrue(MODULE.xy_function('surface.Surface.blit'))
         self.assertTrue(MODULE.xy_function('surface.Surface.fillRect'))
         self.assertTrue(MODULE.xy_function('native_reading.prepareViewport'))
