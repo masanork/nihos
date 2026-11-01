@@ -544,7 +544,7 @@ pub noinline fn report(log: anytype) void {
 }
 // Keyboard setup runs after Flash mapping and display startup. Keep its
 // foreground-only code with the normal camera/device orchestration.
-pub noinline fn input(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else if (options.camera_id) ".flash.text.devices" else ".text") void {
+pub noinline fn input(log: anytype) linksection(if (options.rust_session and @hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     model.input_sources = console.keys.capability(.serial); // Independent of USB-A host.
     model.input_available = true;
     input_started = clock.timer().counter() orelse 0;
@@ -794,7 +794,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     }
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else if (options.rust_session) ".flash.text.rust_app" else ".text") void {
+noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.rust_session) ".flash.text.rust_app" else if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (options.wasm_session_test and wasmFixtureReserved()) {
         const reply = wasmFixtureRoute(key);
         if (!wasmFixtureReserved()) {

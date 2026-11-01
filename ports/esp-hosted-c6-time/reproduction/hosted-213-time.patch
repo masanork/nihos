@@ -1,0 +1,411 @@
+diff --git a/slave/CMakeLists.txt b/slave/CMakeLists.txt
+index 673a75e..c584894 100644
+--- a/slave/CMakeLists.txt
++++ b/slave/CMakeLists.txt
+@@ -22,7 +22,7 @@ endif()
+ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+ list(APPEND EXCLUDE_COMPONENTS lwip esp_netif)
+ 
+-set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning esp_driver_sdio esp_pm openthread app_update)
++set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning esp_driver_sdio esp_pm openthread app_update esp_http_client)
+ 
+ #list(APPEND COMPONENTS esp_gdbstub) # in case gdbstub needed
+ project(network_adapter)
+diff --git a/slave/main/CMakeLists.txt b/slave/main/CMakeLists.txt
+index 830cc8e..ac2cf7d 100644
+--- a/slave/main/CMakeLists.txt
++++ b/slave/main/CMakeLists.txt
+@@ -82,6 +82,15 @@ if(CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER)
+ 	list(APPEND COMPONENT_SRCS example_peer_data_transfer.c)
+ endif()
+ 
++if(CONFIG_NIHOS_TIME_SERVICE)
++	list(APPEND COMPONENT_SRCS nihos_time_wire.c nihos_time_service.c)
++endif()
++
++if(CONFIG_NIHOS_HTTPS_SERVICE)
++	list(APPEND COMPONENT_SRCS nihos_https_wire.c nihos_https_service.c)
++	list(APPEND COMPONENT_PRIV_REQUIRES esp_http_client)
++endif()
++
+ if(CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP)
+ 	list(APPEND COMPONENT_SRCS example_light_sleep.c)
+ endif()
+diff --git a/slave/main/Kconfig.projbuild b/slave/main/Kconfig.projbuild
+index 3f96931..7981301 100644
+--- a/slave/main/Kconfig.projbuild
++++ b/slave/main/Kconfig.projbuild
+@@ -1637,6 +1637,22 @@ endif
+ 			if you don't need many concurrent message types.
+ 
+ 
++	config NIHOS_TIME_SERVICE
++		bool "nihos experimental SNTP snapshot"
++		depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED && ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER && !NIHOS_HTTPS_SERVICE
++		default n
++		help
++			Unauthenticated C6 time snapshot over CustomRpc.
++
++
++	config NIHOS_HTTPS_SERVICE
++		bool "nihos bounded HTTPS service"
++		depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED && ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
++		default n
++		help
++			One verified HTTPS GET at a time over CustomRpc.
++
++
+ 	config ESP_HOSTED_EXTRA_EXAMPLES
+ 		bool "Additional higher layer examples to run"
+ 		default n
+diff --git a/slave/main/esp_hosted_coprocessor.c b/slave/main/esp_hosted_coprocessor.c
+index 850f7f9..27974ac 100644
+--- a/slave/main/esp_hosted_coprocessor.c
++++ b/slave/main/esp_hosted_coprocessor.c
+@@ -54,6 +54,12 @@
+ #ifdef CONFIG_EXAMPLE_PEER_DATA_TRANSFER
+ #include "example_peer_data_transfer.h"
+ #endif
++#ifdef CONFIG_NIHOS_HTTPS_SERVICE
++#include "nihos_https_service.h"
++#endif
++#ifdef CONFIG_NIHOS_TIME_SERVICE
++#include "nihos_time_service.h"
++#endif
+ #ifdef CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
+ #include "example_light_sleep.h"
+ #endif
+@@ -317,6 +323,9 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
+ 
+ 	switch (bridge_to_use) {
+ 		case HOST_LWIP_BRIDGE:
++    #if ESP_PKT_STATS
++			__atomic_fetch_add(&pkt_stats.sta_split_host_route, 1, __ATOMIC_RELAXED);
++    #endif
+ 			/* Send to Host */
+ 			if (!datapath) {
+ 				/* Drop packet */
+@@ -338,6 +347,9 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
+ 			break;
+ 
+ 		case SLAVE_LWIP_BRIDGE:
++    #if ESP_PKT_STATS
++			__atomic_fetch_add(&pkt_stats.sta_split_slave_route, 1, __ATOMIC_RELAXED);
++    #endif
+ 			/* Send to local LWIP */
+ 			ESP_LOGV(TAG, "slave packet");
+ 			if (!slave_sta_netif) {
+@@ -352,6 +364,9 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
+ 			break;
+ 
+ 		case BOTH_LWIP_BRIDGE:
++    #if ESP_PKT_STATS
++			__atomic_fetch_add(&pkt_stats.sta_split_both_route, 1, __ATOMIC_RELAXED);
++    #endif
+ 			ESP_LOGV(TAG, "slave & host packet");
+ 
+ 			void * copy_buff = malloc(len);
+@@ -386,6 +401,9 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
+ 			break;
+ 
+ 		default:
++    #if ESP_PKT_STATS
++			__atomic_fetch_add(&pkt_stats.sta_split_invalid_route, 1, __ATOMIC_RELAXED);
++    #endif
+ 			ESP_LOGV(TAG, "Packet filtering failed, drop packet");
+ 			goto DONE;
+ 	}
+@@ -1352,6 +1370,13 @@ void app_main(void)
+ 	example_peer_data_transfer_init();
+ #endif
+ 
++#ifdef CONFIG_NIHOS_HTTPS_SERVICE
++	ESP_ERROR_CHECK(nihos_https_service_init());
++#endif
++#ifdef CONFIG_NIHOS_TIME_SERVICE
++	ESP_ERROR_CHECK(nihos_time_service_init());
++#endif
++
+ #ifdef CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
+ 	example_light_sleep_init();
+ #endif
+diff --git a/slave/main/nw_split_router.c b/slave/main/nw_split_router.c
+index 218cae1..870a5bc 100644
+--- a/slave/main/nw_split_router.c
++++ b/slave/main/nw_split_router.c
+@@ -112,10 +112,10 @@ static int init_allowed_ports(const char *ports_str, int *ports_count, uint16_t
+ 
+     for (int i = 0; ports_str[i] != '\0' && *ports_count < max_ports; i++) {
+         if (isdigit((unsigned char)ports_str[i])) {  /* Fix: cast to unsigned char */
+-            port_buf[port_buf_idx++] = ports_str[i];
+             if (port_buf_idx >= sizeof(port_buf) - 1) {
+-                port_buf_idx = sizeof(port_buf) - 2; /* Prevent overflow */
++                return -1; /* Reject oversized decimal tokens. */
+             }
++            port_buf[port_buf_idx++] = ports_str[i];
+         } else if (ports_str[i] == ',') {
+             if (port_buf_idx > 0) {
+                 port_buf[port_buf_idx] = '\0';
+@@ -348,6 +348,10 @@ static int is_local_udp_port_open(uint16_t port)
+ 
+ hosted_l2_bridge nw_split_filter_and_route_packet(void *frame_data, uint16_t frame_length)
+ {
++	if (frame_data == NULL || frame_length < SIZEOF_ETH_HDR) {
++		return INVALID_BRIDGE;
++	}
++
+ 	hosted_l2_bridge result = DEFAULT_LWIP_TO_SEND;
+ 
+ 	struct eth_hdr *ethhdr = (struct eth_hdr *)frame_data;
+@@ -364,15 +368,42 @@ hosted_l2_bridge nw_split_filter_and_route_packet(void *frame_data, uint16_t fra
+ 
+ 	/* Check if the frame contains an IP packet */
+ 	if (lwip_ntohs(ethhdr->type) == ETHTYPE_IP) {
++		if (frame_length < SIZEOF_ETH_HDR + IP_HLEN) {
++			return INVALID_BRIDGE;
++		}
++
+ 		ESP_LOGV(TAG, "new ip packet");
+ 
+ 		/* Get the IP header */
+ 		iphdr = (struct ip_hdr *)((u8_t *)frame_data + SIZEOF_ETH_HDR);
++		u16_t ip_header_length = IPH_HL(iphdr) * 4U;
++		u16_t ip_total_length = lwip_ntohs(IPH_LEN(iphdr));
++		if (IPH_V(iphdr) != 4 || ip_header_length < IP_HLEN ||
++				ip_total_length < ip_header_length ||
++				ip_total_length > frame_length - SIZEOF_ETH_HDR) {
++			return INVALID_BRIDGE;
++		}
++
++		/* A non-initial fragment has no transport header. Route no part of a
++		 * fragmented datagram until a reassembly-aware policy exists. */
++		u16_t fragment_offset = lwip_ntohs(IPH_OFFSET(iphdr));
++		if (fragment_offset & (IP_MF | IP_OFFMASK)) {
++			return INVALID_BRIDGE;
++		}
++
++		u16_t ip_payload_length = ip_total_length - ip_header_length;
+ 		/* Get the protocol from the IP header */
+ 		proto = IPH_PROTO(iphdr);
+ 
+ 		if (proto == IP_PROTO_TCP) {
++			if (ip_payload_length < TCP_HLEN) {
++				return INVALID_BRIDGE;
++			}
+ 			struct tcp_hdr *tcphdr = (struct tcp_hdr *)((u8_t *)iphdr + IPH_HL(iphdr) * 4);
++			u16_t tcp_hdr_len = TCPH_HDRLEN_BYTES(tcphdr);
++			if (tcp_hdr_len < TCP_HLEN || tcp_hdr_len > ip_payload_length) {
++				return INVALID_BRIDGE;
++			}
+ 			dst_port = lwip_ntohs(tcphdr->dest);
+ 			src_port = lwip_ntohs(tcphdr->src);
+ 
+@@ -401,10 +432,7 @@ hosted_l2_bridge nw_split_filter_and_route_packet(void *frame_data, uint16_t fra
+ 				if (is_host_power_saving()) {
+ 					/* filter host destined mqtt packet says 'wake-up-host' */
+ 					if (src_port == MQTT_PORT) {
+-					#define TCP_HDR_LEN(tcphdr) ((TCPH_FLAGS(tcphdr) >> 12) * 4)
+-
+-						u16_t tcp_hdr_len = TCP_HDR_LEN(tcphdr);
+-						u16_t mqtt_payload_length = lwip_ntohs(tcphdr->wnd);
++						u16_t mqtt_payload_length = ip_payload_length - tcp_hdr_len;
+ 						u8_t *mqtt_payload = (u8_t *)tcphdr + tcp_hdr_len;
+ 
+ 						if (host_mqtt_wakeup_triggered(mqtt_payload, mqtt_payload_length)) {
+@@ -435,7 +463,15 @@ hosted_l2_bridge nw_split_filter_and_route_packet(void *frame_data, uint16_t fra
+ 
+ 		} else if (proto == IP_PROTO_UDP) {
+ 			ESP_LOGV(TAG, "new udp packet");
++			if (ip_payload_length < UDP_HLEN) {
++				return INVALID_BRIDGE;
++			}
+ 			struct udp_hdr *udphdr = (struct udp_hdr *)((u8_t *)iphdr + IPH_HL(iphdr) * 4);
++			u16_t udp_length = lwip_ntohs(udphdr->len);
++			if (udp_length < UDP_HLEN || udp_length > ip_payload_length) {
++				return INVALID_BRIDGE;
++			}
++
+ 			dst_port = lwip_ntohs(udphdr->dest);
+ 			src_port = lwip_ntohs(udphdr->src);
+ 
+@@ -481,6 +517,9 @@ hosted_l2_bridge nw_split_filter_and_route_packet(void *frame_data, uint16_t fra
+ 
+ 		} else if (proto == IP_PROTO_ICMP) {
+ 			ESP_LOGV(TAG, "new icmp packet");
++			if (ip_payload_length < sizeof(struct icmp_echo_hdr)) {
++				return INVALID_BRIDGE;
++			}
+ 			struct icmp_echo_hdr *icmphdr = (struct icmp_echo_hdr *)((u8_t *)iphdr + IPH_HL(iphdr) * 4);
+ 			if (icmphdr->type == ICMP_ECHO) {
+ 				/* ping request */
+@@ -501,6 +540,9 @@ hosted_l2_bridge nw_split_filter_and_route_packet(void *frame_data, uint16_t fra
+ 
+ 	} else if (lwip_ntohs(ethhdr->type) == ETHTYPE_ARP) {
+ 		ESP_LOGV(TAG, "new arp packet");
++		if (frame_length < SIZEOF_ETH_HDR + sizeof(struct etharp_hdr)) {
++			return INVALID_BRIDGE;
++		}
+ 		struct etharp_hdr *arphdr = (struct etharp_hdr *)((u8_t *)frame_data + SIZEOF_ETH_HDR);
+ 
+ 		if (arphdr->opcode == lwip_htons(ARP_REQUEST)) {
+diff --git a/slave/main/slave_control.c b/slave/main/slave_control.c
+index 5b0934a..1c38f09 100644
+--- a/slave/main/slave_control.c
++++ b/slave/main/slave_control.c
+@@ -324,18 +324,22 @@ static esp_err_t req_ota_activate_handler (Rpc *req,
+ 			break;
+ 		case OTA_IN_PROGRESS:
+ 			ESP_LOGW(TAG, "OTA in progress");
++			ret = ESP_ERR_INVALID_STATE;
+ 			goto err;
+ 			break;
+ 		case OTA_NOT_STARTED:
+ 			ESP_LOGW(TAG, "OTA not started");
++			ret = ESP_ERR_INVALID_STATE;
+ 			goto err;
+ 			break;
+ 		case OTA_FAILED:
+ 			ESP_LOGW(TAG, "OTA failed");
++			ret = ESP_ERR_INVALID_STATE;
+ 			goto err;
+ 			break;
+ 		default:
+ 			ESP_LOGW(TAG, "OTA status unknown");
++			ret = ESP_ERR_INVALID_STATE;
+ 			goto err;
+ 			break;
+ 	}
+diff --git a/slave/main/slave_network_split.c b/slave/main/slave_network_split.c
+index d9a3561..61583aa 100644
+--- a/slave/main/slave_network_split.c
++++ b/slave/main/slave_network_split.c
+@@ -65,7 +65,7 @@ void event_handler_ip(void* arg, esp_event_base_t event_base,
+ 			s2h_dhcp_dns.dns_type = ESP_NETIF_DNS_MAIN;
+ 
+ 
+-			//send_dhcp_dns_info_to_host(1, 0);
++			send_dhcp_dns_info_to_host(1, 0);
+ 			station_got_ip = 1;
+ #ifdef CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT
+ 			example_mqtt_client_resume();
+@@ -80,7 +80,7 @@ void event_handler_ip(void* arg, esp_event_base_t event_base,
+ 			ESP_LOGI(TAG, "Lost IP address");
+ 			station_got_ip = 0;
+ 			memset(&s2h_dhcp_dns, 0, sizeof(s2h_dhcp_dns));
+-			//send_dhcp_dns_info_to_host(0, 0);
++			send_dhcp_dns_info_to_host(0, 0);
+ 			break;
+ 		}
+ 
+@@ -272,6 +272,7 @@ esp_err_t req_get_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data)
+ 	}
+ 	ESP_LOGI(TAG, "static_ip_ret: %d dns_ret: %d", ret1, ret2);
+ 
++	resp_payload->iface = req_payload->iface;
+ 	resp_payload->net_link_up = netlink_up;
+ 	resp_payload->dhcp_up = netlink_up;
+ 	resp_payload->dns_up = netlink_up;
+@@ -282,22 +283,18 @@ esp_err_t req_get_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data)
+ 	char sta_gw[64] = {0};
+ 	char sta_dns_ip[64] = {0};
+ 
+-	if (esp_ip4addr_ntoa(&ip_info.ip, sta_ip, sizeof(sta_ip))) {
+-		strlcpy((char *)resp_payload->dhcp_ip.data, sta_ip, sizeof(resp_payload->dhcp_ip.data));
+-		resp_payload->dhcp_ip.len = strlen(sta_ip);
+-	}
+-	if (esp_ip4addr_ntoa(&ip_info.netmask, sta_nm, sizeof(sta_nm))) {
+-		strlcpy((char *)resp_payload->dhcp_nm.data, sta_nm, sizeof(resp_payload->dhcp_nm.data));
+-		resp_payload->dhcp_nm.len = strlen(sta_nm);
+-	}
+-	if (esp_ip4addr_ntoa(&ip_info.gw, sta_gw, sizeof(sta_gw))) {
+-		strlcpy((char *)resp_payload->dhcp_gw.data, sta_gw, sizeof(resp_payload->dhcp_gw.data));
+-		resp_payload->dhcp_gw.len = strlen(sta_gw);
+-	}
+-	if (esp_ip4addr_ntoa(&dns.ip.u_addr.ip4, sta_dns_ip, sizeof(sta_dns_ip))) {
+-		strlcpy((char *)resp_payload->dns_ip.data, sta_dns_ip, sizeof(resp_payload->dns_ip.data));
+-		resp_payload->dns_ip.len = strlen(sta_dns_ip);
++	if (!esp_ip4addr_ntoa(&ip_info.ip, sta_ip, sizeof(sta_ip)) ||
++			!esp_ip4addr_ntoa(&ip_info.netmask, sta_nm, sizeof(sta_nm)) ||
++			!esp_ip4addr_ntoa(&ip_info.gw, sta_gw, sizeof(sta_gw)) ||
++			!esp_ip4addr_ntoa(&dns.ip.u_addr.ip4, sta_dns_ip, sizeof(sta_dns_ip))) {
++		ESP_LOGE(TAG, "Failed to format DHCP/DNS status");
++		resp_payload->resp = ESP_FAIL;
++		return ESP_OK;
+ 	}
++	RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->dhcp_ip, sta_ip, strlen(sta_ip) + 1);
++	RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->dhcp_nm, sta_nm, strlen(sta_nm) + 1);
++	RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->dhcp_gw, sta_gw, strlen(sta_gw) + 1);
++	RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->dns_ip, sta_dns_ip, strlen(sta_dns_ip) + 1);
+ 
+ 	ESP_LOGI(TAG, "Fetched IP: %s, NM: %s, GW: %s, DNS IP: %s, Type: %"PRId32,
+ 			resp_payload->dhcp_ip.data,
+diff --git a/slave/main/stats.c b/slave/main/stats.c
+index 2c4368a..5b802d3 100644
+--- a/slave/main/stats.c
++++ b/slave/main/stats.c
+@@ -309,6 +309,11 @@ static void stats_timer_func(void* arg)
+ 	ESP_LOGI(TAG, "Lwip: in[%lu] slave_out[%lu] host_out[%lu] both_out[%lu]",
+ 			pkt_stats.sta_lwip_in, pkt_stats.sta_slave_lwip_out,
+ 			pkt_stats.sta_host_lwip_out, pkt_stats.sta_both_lwip_out);
++	ESP_LOGI(TAG, "Split route: host[%" PRIu32 "] slave[%" PRIu32 "] both[%" PRIu32 "] invalid[%" PRIu32 "]",
++			__atomic_load_n(&pkt_stats.sta_split_host_route, __ATOMIC_RELAXED),
++			__atomic_load_n(&pkt_stats.sta_split_slave_route, __ATOMIC_RELAXED),
++			__atomic_load_n(&pkt_stats.sta_split_both_route, __ATOMIC_RELAXED),
++			__atomic_load_n(&pkt_stats.sta_split_invalid_route, __ATOMIC_RELAXED));
+ 
+ #ifdef ESP_FUNCTION_PROFILING
+ 	/* Print timing stats for all active entries */
+diff --git a/slave/main/stats.h b/slave/main/stats.h
+index a8287bb..f654908 100644
+--- a/slave/main/stats.h
++++ b/slave/main/stats.h
+@@ -156,6 +156,10 @@ struct pkt_stats_t {
+ 	uint32_t sta_slave_lwip_out;
+ 	uint32_t sta_host_lwip_out;
+ 	uint32_t sta_both_lwip_out;
++	uint32_t sta_split_host_route;
++	uint32_t sta_split_slave_route;
++	uint32_t sta_split_both_route;
++	uint32_t sta_split_invalid_route;
+ };
+ 
+ extern struct pkt_stats_t pkt_stats;
+diff --git a/slave/sdkconfig.defaults b/slave/sdkconfig.defaults
+index 9f4dafa..7dbc4d7 100644
+--- a/slave/sdkconfig.defaults
++++ b/slave/sdkconfig.defaults
+@@ -40,3 +40,11 @@ CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=n
+ #CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP=y
+ #
+ #CONFIG_ESP_HOST_DEV_BOARD_P4_C5_CORE=y
++
++# nihos C6 HTTPS service overlay
++CONFIG_NIHOS_HTTPS_SERVICE=y
++CONFIG_APP_REPRODUCIBLE_BUILD=y
++CONFIG_MBEDTLS_HAVE_TIME_DATE=y
++CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED=y
++CONFIG_ESP_PKT_STATS=y
++CONFIG_ESP_PKT_STATS_INTERVAL_SEC=5
+diff --git a/slave/sdkconfig.defaults.esp32c6 b/slave/sdkconfig.defaults.esp32c6
+index cf43ab7..3c6eb90 100644
+--- a/slave/sdkconfig.defaults.esp32c6
++++ b/slave/sdkconfig.defaults.esp32c6
+@@ -28,7 +28,7 @@ CONFIG_BT_LE_HCI_INTERFACE_USE_RAM=y
+ # 4. Partition Table
+ #--------------------
+ CONFIG_PARTITION_TABLE_CUSTOM=y
+-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.esp32c6.csv"
++CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.tab5-c6.csv"
+ 
+ # 5. Mempool
+ #------------
+@@ -91,7 +91,8 @@ CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=y
+ 
+ # 10. Optimizations
+ #-------------------
+-CONFIG_COMPILER_OPTIMIZATION_PERF=y
++CONFIG_COMPILER_OPTIMIZATION_SIZE=y
++# CONFIG_COMPILER_OPTIMIZATION_PERF is not set
+ 
+ 
+ # 11. Stats
