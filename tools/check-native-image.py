@@ -517,7 +517,7 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if rust_session_span is not None and rust_session_span[0] <= address < stop <= rust_session_span[1]:
             require(name in RUST_SESSION_FLASH_FUNCTIONS or
-                    re.fullmatch(r'diagnostic_ui\.(?:beginSession|action)__func_[0-9]+', name) is not None,
+                    re.fullmatch(r'diagnostic_ui\.(?:beginSession|action|sessionKey)__func_[0-9]+', name) is not None,
                     'unapproved Rust session Flash function: ' + name)
             if start <= address < stop <= end:
                 app_boot.append({"name": name, "start": hex(address), "end": hex(stop)})
