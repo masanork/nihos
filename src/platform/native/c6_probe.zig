@@ -794,7 +794,11 @@ noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [
     while (true) {
         const session = &ota_update_guard.session;
         const now = clock.counter() orelse return error.Clock;
-        try session.step(&hosted_stream, now);
+        if (@hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation) {
+            try session.step(&ota_safe, now);
+        } else {
+            try session.step(&hosted_stream, now);
+        }
         if (session.state == .transfer) {
             const diag = session.client.c6_diagnostics;
             return .{ .status = 1, .stage = ota_preflight_stage, .last_command = host.last_command, .last_interrupts = host.last_interrupts, .peer_chip = session.client.peer_chip, .version_known = @intFromBool(session.client.version_known), .major = session.client.version[0], .minor = session.client.version[1], .patch = session.client.version[2], .diag_known = @intFromBool(diag != null), .diag_uptime = if (diag) |d| d.uptime_seconds else 0, .diag_heap = if (diag) |d| d.free_heap_bytes else 0 };
@@ -878,9 +882,10 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
             if (!announced) {
                 // Discard bounded stale input before advertising readiness.
                 for (0..1024) |_| if (nih_c6_serial_read() < 0) break else {};
-                if (simulation) for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| {
-                    _ = nih_rom_putc(byte);
-                };
+                if (simulation) {
+                    ota_fake.explicit_activation = ota_update_guard.session.ota_client.activation == .explicit_rpc;
+                    for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| _ = nih_rom_putc(byte);
+                }
                 if (@hasDecl(root, "C6OtaRequiredPeer")) {
                     const peer = &ota_update_guard.session.client;
                     for ("NIHOS_C6_OTA_ORIGIN chip=") |byte| _ = nih_rom_putc(byte);

@@ -96,3 +96,40 @@ test "invalid start token and expired deadline permanently stop writes" {
     try std.testing.expectEqual(guard.State.failed, g.state);
     try std.testing.expectEqual(@as(usize, 0), stream.sends);
 }
+
+test "2.13 origin uses explicit activation in simulated transfer" {
+    const ota = @import("hosted_ota.zig");
+    const simulated = @import("hosted_ota_fake.zig");
+    var image: [384]u8 = @splat(0);
+    image[0] = 0xe9;
+    image[12] = 13;
+    std.mem.writeInt(u32, image[32..36], 0xabcd5432, .little);
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(&image, &digest, .{});
+    var g: guard.Guard = undefined;
+    try g.initInPlace(&image, digest, 0, 100);
+    g.session.allow_213 = true;
+    g.session.client.phase = .done;
+    g.session.client.peer_chip = 13;
+    g.session.client.version_known = true;
+    g.session.client.version = .{ 2, 13, 1 };
+    var peer: simulated.Fake = .{ .image = &image };
+    try g.step(&peer, 1);
+    try std.testing.expectEqual(guard.State.awaiting_start, g.state);
+    try std.testing.expectEqual(ota.Activation.explicit_rpc, g.session.ota_client.activation);
+    peer.explicit_activation = g.session.ota_client.activation == .explicit_rpc;
+    const hex = "0123456789abcdef";
+    var token: [70]u8 = undefined;
+    @memcpy(token[0..5], "OTA1 ");
+    for (digest, 0..) |b, i| {
+        token[5 + i * 2] = hex[b >> 4];
+        token[6 + i * 2] = hex[b & 15];
+    }
+    token[69] = '\n';
+    for (token) |b| _ = try g.feed(b, 2);
+    var now: u64 = 3;
+    while (g.state != .complete and now < 99) : (now += 1) try g.step(&peer, now);
+    try std.testing.expectEqual(guard.State.complete, g.state);
+    try std.testing.expectEqual(@TypeOf(peer.phase).complete, peer.phase);
+    try std.testing.expectEqual(image.len, peer.offset);
+}

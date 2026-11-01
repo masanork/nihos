@@ -88,6 +88,13 @@ OTA session supports 3.0.10 only via explicit `allow_310` opt-in and matching
 RPC-v2/streaming advertisements. Successful Activate response means accepted,
 not that the next firmware booted or that a recovery route is available.
 
+`tools/build-c6-ota-hosted3-simulation-probe.sh` builds a separate, digest-pinned
+P4 simulation for the 1,397,104-byte candidate above. It requires a 2.13.1
+origin, wraps the physical stream to reject every OTA operation, and switches
+to an in-memory responder for the transfer and explicit activation. The same
+write-blocking wrapper is used for the post-simulation physical handshake.
+This is a simulation even if exercised on Tab5; the C6 is not updated.
+
 The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legacy.md)
 ran a byte-identified P4 image against the previously installed C6 application;
 it did not independently read back the C6 version or test the 3.x firmware.
