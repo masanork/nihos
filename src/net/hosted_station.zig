@@ -86,6 +86,8 @@ pub const Client = struct {
     peer_version: u32 = 0,
     peer_capabilities: u8 = 0,
     peer_extended_capabilities: u32 = 0,
+    peer_rpc_version: ?u8 = null,
+    peer_sdio_buffer_blocks: ?[2]u8 = null,
     bluetooth_setup_done: bool = false,
     bluetooth_ready: bool = false,
     bluetooth_status: u32 = 0,
@@ -139,6 +141,19 @@ pub const Client = struct {
                         0x18 => {
                             if (length != 1 or value[0] != 1) return error.Malformed;
                             self.peer_mode = value[0];
+                        },
+                        // Hosted 3.x advertises its MCU RPC wire version. Echo
+                        // it only when present: older firmware has no such TLV.
+                        0x1a => {
+                            if (length != 1 or self.peer_rpc_version != null or value[0] != 2) return error.Malformed;
+                            self.peer_rpc_version = value[0];
+                        },
+                        0x1b => {
+                            // Streaming in both directions, SDIO transport; our
+                            // largest padded host transfer is three 512-byte blocks.
+                            if (length != 5 or self.peer_sdio_buffer_blocks != null or value[0] != 0 or
+                                value[1] != 1 or value[2] == 0 or value[3] != 1 or value[4] < 3) return error.Malformed;
+                            self.peer_sdio_buffer_blocks = .{ value[2], value[4] };
                         },
                         else => {},
                     }
@@ -299,6 +314,13 @@ pub const Client = struct {
         if (self.output_len != 0) return self.output[0..self.output_len];
         if (self.phase == .handshake) {
             if (!self.capabilities_pending) return &.{};
+            if (self.peer_rpc_version) |version| {
+                var caps: [wire.capabilities.len + 3]u8 = undefined;
+                @memcpy(caps[0..wire.capabilities.len], &wire.capabilities);
+                caps[1] += 3;
+                caps[wire.capabilities.len..][0..3].* = .{ 0x1a, 1, version };
+                return self.encodeFrame(5, &caps);
+            }
             return self.encodeFrame(5, &wire.capabilities);
         }
         if (self.phase == .link) return &.{};
