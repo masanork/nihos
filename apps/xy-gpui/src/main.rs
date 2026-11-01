@@ -1,3 +1,4 @@
+pub mod emu;
 mod core;
 use core::{Core, Key};
 use gpui::{prelude::*, *};
@@ -21,6 +22,9 @@ struct Workspace {
     status: Arc<RenderImage>,
     scale: f32,
     status_key: (u32, u32, bool),
+    emulator: Option<emu::Emulator>,
+    emu_image: Option<Arc<RenderImage>>,
+    emu_mode: bool,
 }
 impl Workspace {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -33,6 +37,36 @@ impl Workspace {
         window.focus(&focus);
         let editor = frame(core.bgra(true, width, height), width, height);
         let graph = frame(core.bgra(false, width, height), width, height);
+
+        // Try initializing native emulator if firmware ELF exists
+        let elf_candidates = [
+            "build/native-emulator/nihos-native.elf",
+            "../../build/native-emulator/nihos-native.elf",
+            "build/test-native-elf/nihos-native.elf",
+            "../../build/test-native-elf/nihos-native.elf",
+            "build/native-device/nihos-native.elf",
+            "../../build/native-device/nihos-native.elf",
+        ];
+        let dict_candidates = [
+            "build/dict/jisyo_l_nfst.bin",
+            "../../build/dict/jisyo_l_nfst.bin",
+            "src/xy/fixtures/jisyo_s_nfst.bin",
+            "../../src/xy/fixtures/jisyo_s_nfst.bin",
+        ];
+        let mut emulator = None;
+        let mut emu_image = None;
+        let found_elf = elf_candidates.iter().find(|p| std::path::Path::new(p).exists());
+        let found_dict = dict_candidates.iter().find(|p| std::path::Path::new(p).exists());
+        if let Some(elf_p) = found_elf {
+            if let Ok(mut emu) = emu::Emulator::new(elf_p, found_dict) {
+                // Pre-run 1,000,000 instructions to initialize hardware
+                emu.step_frame(1_000_000);
+                let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
+                emu.render_to_bgra(&mut bgra);
+                emu_image = Some(frame(bgra, emu::bus::FB_WIDTH as u32, emu::bus::FB_HEIGHT as u32));
+                emulator = Some(emu);
+            }
+        }
         cx.observe_window_activation(window, |this, window, cx| {
             if !window.is_window_active() {
                 this.core.focus_lost(this.now());
@@ -66,6 +100,9 @@ impl Workspace {
             editor_generation: 1,
             tick_pending: false,
             frames: 1,
+            emulator,
+            emu_image,
+            emu_mode: false,
         }
     }
     fn now(&self) -> u64 {
@@ -102,6 +139,17 @@ impl Workspace {
         retire(std::mem::replace(&mut self.editor, next), window);
         self.editor_generation = self.core.editor_generation();
     }
+    fn refresh_emulator(&mut self, window: &mut Window) {
+        if let Some(emu) = &mut self.emulator {
+            emu.step_frame(500_000);
+            let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
+            emu.render_to_bgra(&mut bgra);
+            let next = frame(bgra, emu::bus::FB_WIDTH as u32, emu::bus::FB_HEIGHT as u32);
+            if let Some(old) = self.emu_image.replace(next) {
+                retire(old, window);
+            }
+        }
+    }
     fn press(&mut self, key: Key, window: &mut Window, cx: &mut Context<Self>) {
         self.core.press(key, self.now());
         self.refresh_graph(window);
@@ -117,23 +165,26 @@ impl Workspace {
         cx.notify();
     }
     fn schedule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.tick_pending || self.core.state().paused != 0 || self.core.state().stopped != 0 {
+        if self.tick_pending || (!self.emu_mode && (self.core.state().paused != 0 || self.core.state().stopped != 0)) {
             return;
         }
         self.tick_pending = true;
         cx.on_next_frame(window, |this, window, cx| {
             this.tick_pending = false;
-            if this.core.state().stopped != 0 {
-                return;
-            }
-            if this.core.tick(this.now()) {
-                this.refresh_graph(window);
+            if this.emu_mode {
+                this.refresh_emulator(window);
                 cx.notify();
-            }
-            // request_animation_frame needs GPUI's render phase. Notify here;
-            // render() schedules the next frame with the proper view context.
-            if this.core.state().paused == 0 {
-                cx.notify();
+            } else {
+                if this.core.state().stopped != 0 {
+                    return;
+                }
+                if this.core.tick(this.now()) {
+                    this.refresh_graph(window);
+                    cx.notify();
+                }
+                if this.core.state().paused == 0 {
+                    cx.notify();
+                }
             }
         });
         window.request_animation_frame();
@@ -144,6 +195,27 @@ impl Workspace {
             cx.quit();
             return;
         }
+        if self.emu_mode {
+            if let Some(emu) = &mut self.emulator {
+                if let Some(c) = stroke.key_char.as_deref().and_then(|s| s.chars().next()) {
+                    let ascii = match c {
+                        '\r' | '\n' => b'\r',
+                        _ if c.is_ascii() => c as u8,
+                        _ => 0,
+                    };
+                    if ascii != 0 {
+                        emu.send_key(ascii);
+                    }
+                } else if stroke.key == "enter" {
+                    emu.send_key(b'\r');
+                } else if stroke.key == "backspace" {
+                    emu.send_key(8);
+                }
+            }
+            cx.stop_propagation();
+            return;
+        }
+
         if stroke.key == "f5"
             || (stroke.key == "enter" && stroke.modifiers.control)
             || (stroke.key == "c" && stroke.modifiers.control)
@@ -208,6 +280,7 @@ struct Labels {
     reset: Arc<RenderImage>,
     run: Arc<RenderImage>,
     stop: Arc<RenderImage>,
+    emu_toggle: Arc<RenderImage>,
     editor_help: Arc<RenderImage>,
     graph_help: Arc<RenderImage>,
     footer: Arc<RenderImage>,
@@ -219,6 +292,14 @@ impl Labels {
             title: label(core, "xy workspace", [600., 36., 24.], scale, bg, false),
             editor: label(core, "Editor", [512., 28., 16.], scale, bg, false),
             graph: label(core, "Graph", [512., 28., 16.], scale, bg, false),
+            emu_toggle: label(
+                core,
+                "Firmware",
+                [100., 40., 16.],
+                scale,
+                [0xffffff, 0x117733],
+                true,
+            ),
             pause: label(
                 core,
                 "Pause",
@@ -397,9 +478,34 @@ impl Render for Workspace {
                             )
                             .child(shown(&self.labels.reset, 80., 40.)),
                     )
+                    .child(
+                        div()
+                            .id("toggle-emu")
+                            .rounded_md()
+                            .overflow_hidden()
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _window, cx| {
+                                this.emu_mode = !this.emu_mode;
+                                cx.notify();
+                            }))
+                            .child(shown(&self.labels.emu_toggle, 100., 40.)),
+                    )
                     .child(shown(&self.status, 320., 40.)),
             )
-            .child(
+            .child(if self.emu_mode {
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(if let Some(emu_img) = &self.emu_image {
+                        div()
+                            .border_2()
+                            .border_color(rgb(0x117733))
+                            .child(shown(emu_img, 1024., 576.))
+                    } else {
+                        div().child("Firmware ELF not loaded")
+                    })
+            } else {
                 div()
                     .flex()
                     .gap_4()
@@ -452,8 +558,8 @@ impl Render for Workspace {
                                     .child(shown(&self.graph, PANE_W, PANE_H)),
                             )
                             .child(shown(&self.labels.graph_help, 512., 28.)),
-                    ),
-            )
+                    )
+            })
             .child(shown(&self.labels.footer, 600., 28.))
     }
 }
