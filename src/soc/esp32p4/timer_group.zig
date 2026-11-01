@@ -143,6 +143,11 @@ test "one-shot deadlines retain 54-bit precision and disable auto-reload" {
     try std.testing.expectEqual(@as(u32, 0x12), channel.alarm_high);
     try std.testing.expectEqual(@as(u32, 0x3456_789a), channel.alarm_low);
     try std.testing.expect(channel.config & auto_reload == 0);
+    // One-shot configuration arms the alarm but deliberately leaves the
+    // counter stopped; a polling user must explicitly start it.
+    try std.testing.expect(channel.config & counter_enable == 0);
+    timer.start();
+    try std.testing.expect(channel.config & counter_enable != 0);
     try std.testing.expect(!timer.armAt(max_counter + 1));
     try std.testing.expectEqual(@as(u32, 0x12), channel.alarm_high);
     // Plain memory never completes the hardware capture handshake.

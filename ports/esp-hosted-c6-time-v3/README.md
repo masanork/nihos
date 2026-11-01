@@ -61,8 +61,9 @@ Hosted handshake and this one query. Its stream guard admits only the exact
 handshake configuration, version and Bluetooth setup, and this CustomRpc;
 it rejects OTA Begin, Write, End, Activate and other CustomRpc IDs. It does
 not authorize a C6 OTA. There is not yet a device UI or a 3.x physical capture.
-Values are
-self-reported by the running C6 application; this service is absent from the
+In a [physical negative test](../../docs/measurements/2026-11-01-c6-ota-info-negative.md),
+the current 2.13.1 C6 returned `ESP_ERR_NOT_FOUND`; the P4 was restored.
+Values are self-reported by the running C6 application; this service is absent from the
 currently installed 2.13.1 image and cannot establish its actual partition
 layout before the first update. Neither a reported layout nor a security flag
 proves an independent ROM recovery path.
