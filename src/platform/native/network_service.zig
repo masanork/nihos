@@ -209,12 +209,14 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         }
     };
     if (now >= limit and client.phase != .done) return error.Timeout;
+    if (c6_offload and offload_active) try recoverC6TimeTimeout(now);
     const count = try transport.receive(&rx);
     report.rx +|= @intCast(count);
     for (rx[0..count]) |byte| if (try decoder.push(byte)) |frame| {
         if (frame.interface == 4) state_storage.ble.receiveHosted(frame.packet_type, frame.payload, now);
         const received = clock.counter() orelse return error.Clock;
         if (c6_offload and offload_active) {
+            try recoverC6TimeTimeout(received);
             try state_storage.offload.receive(frame, received);
             try finishC6Time(received);
         } else {
@@ -255,6 +257,7 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             }
         }
     };
+    if (c6_offload and offload_active) try recoverC6TimeTimeout(stamp);
     const bytes = if (c6_offload and offload_active)
         if (state_storage.offload.phase == .ready and stamp < offload_due) &.{} else try state_storage.offload.tx(stamp)
     else
@@ -385,6 +388,17 @@ noinline fn timePoll(now: u64) linksection(".flash.text.time") !bool {
         report.tx +|= @intCast(sent);
     }
     return true;
+}
+/// A missing time response must not reset an otherwise healthy station.
+/// Retired IDs remain distinct, so late time frames can be safely ignored.
+noinline fn recoverC6TimeTimeout(now: u64) linksection(".flash.text.time") !void {
+    if (!c6_offload or !offload_active) return;
+    const retry = now +| hosted.c6_time_policy.retry_unavailable;
+    if (try state_storage.offload.retireTimedOutTime(now, retry +| 100_000_000)) {
+        offload_report.failures +|= 1;
+        offload_sample = null;
+        offload_due = retry;
+    }
 }
 /// Publish only a current, correlated C6 sample. SNTP itself is unauthenticated.
 fn finishC6Time(now: u64) !void {
