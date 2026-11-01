@@ -36,7 +36,9 @@ queue failure; normal boot does not call either module yet.
 
 `hosted_tcp_owner.zig` combines these prototypes behind one serialized owner,
 tracks whole-frame completion, and requires a transport reset after an
-ambiguous partial send. The OpenSSH host fixture uses this owner; the normal
+ambiguous partial send. On TCP/RX failure it retires the TCP handle and
+reports the error; callers can continue station maintenance on the next poll.
+The OpenSSH host fixture uses this owner; the normal
 CPU0 network service and SDIO transport are not yet connected to it.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
