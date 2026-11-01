@@ -1,0 +1,34 @@
+{
+  "commit": "5d325335f85debed46ee0391043d994350cebecc",
+  "candidate_sha256": {
+    "0x2000": "f59b0fe2929c0d49bfd61d3c4474b5ac649de90953d72e45656d3d71e4596ce6",
+    "0x8000": "fabcbebf733457e9706b46544b2a1cb9672a8e1ce626f5dc7d7e6fb4738d5b0e",
+    "0x10000": "131dc1d1e443ac1720d4afb9a30471244ffbb3daa03775372db5e2bfd4f7b487"
+  },
+  "installed": true,
+  "restored": true,
+  "boot": true,
+  "document_render": true,
+  "touch_tested": false,
+  "optical_tested": false,
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": {
+    "0x2000": "bbdb5cf52e596868c6e4a56d60b316e2c0ef9d82887e0e3c35b75ed07230e0c8",
+    "0x8000": "ba8b75bd812bd5288090c2691d5cc6efba539455a7c3e2de50e94c18596523ac",
+    "0x10000": "30b95a08dc7554472651a6a6010598ade1f4de4d7ff9b9720e247fee17881e7a"
+  },
+  "install_attempted": true,
+  "portrait": 1,
+  "keyboard_probe": 1,
+  "serial_kana": true,
+  "scope": "I2C keyboard probe enabled; observed address NACK and automatic portrait; synthetic serial romaji to kana; no optical or touch qualification",
+  "backup_lengths": {
+    "0x2000": 24576,
+    "0x8000": 32768,
+    "0x10000": 4952064
+  }
+}
