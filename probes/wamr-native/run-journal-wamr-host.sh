@@ -13,7 +13,7 @@ RUSTFLAGS='-C link-arg=-zstack-size=16384 -C link-arg=--initial-memory=65536 -C 
     --target wasm32-unknown-unknown --manifest-path "$root/probes/rust-wasm/Cargo.toml"
 cp "$out/rust-target/wasm32-unknown-unknown/release/nihos_rust_wasm_probe.wasm" "$out/app.wasm"
 build_fixture() {
-    "$zig" build-exe -O ReleaseSafe -femit-bin="$out/$1" \
+    "$zig" build-exe -lc -O ReleaseSafe -femit-bin="$out/$1" \
         --dep process_adapter --dep app_boot --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
         -Mroot="$root/probes/wamr-native/$2" \
         --dep app_boot --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \

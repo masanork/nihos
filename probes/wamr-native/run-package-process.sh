@@ -6,7 +6,7 @@ out="$root/build/package-process"
 zig=${NIHOS_ZIG:-"$root/.tools/zig-0.17.0/zig"}
 mkdir -p "$out"
 rm -f "$out/trust.bin" "$out/counter.bin" "$out/package.bin" "$out/process.log"
-"$zig" build-exe -O ReleaseSafe -femit-bin="$out/package-process" \
+"$zig" build-exe -lc -O ReleaseSafe -femit-bin="$out/package-process" \
     --dep app_boot --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
     -Mroot="$root/probes/wamr-native/package-process.zig" \
     --dep app_install --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
