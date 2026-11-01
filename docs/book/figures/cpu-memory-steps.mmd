@@ -1,0 +1,12 @@
+sequenceDiagram
+    accTitle: レジスタの計算と、メモリの更新を分ける
+    accDescr: CPUが番地0x1000の値10をレジスタへロードし、レジスタだけを11へ更新した後、ストアしてメモリの値を11にする。レジスタの計算だけではメモリの値は変わらない。
+    participant C as CPU
+    participant M as メモリ
+    Note over M: 番地0x1000の値は10
+    C->>M: 0x1000の1バイトをロード
+    M-->>C: 値10
+    Note over C: レジスタで1を足す<br/>10から11へ
+    Note over M: まだ10のまま
+    C->>M: 1バイトの値11をストア
+    Note over M: 値が11になる
