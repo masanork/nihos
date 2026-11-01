@@ -123,7 +123,8 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     if (nih_c6_power_enable() != 1 or pads.clockFailed()) return stop(error.PowerEnable, now);
     startAttempt(now);
 }
-fn startAttempt(now: u64) void {
+// Foreground only: begin/reconnect run after mapped Flash is available.
+noinline fn startAttempt(now: u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
     state_storage.time.disconnect();
     pads.useClock(clock);
     nih_c6_pads_init();
@@ -159,7 +160,8 @@ fn collectRenewals() void {
         counted_renewals = v4.renewals;
     }
 }
-fn stop(err: anyerror, now: ?u64) void {
+// Foreground failure/retry handling shares the mapped XY code window.
+noinline fn stop(err: anyerror, now: ?u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
     state_storage.time.disconnect();
     offload_sample = null;
     if (c6_offload and offload_active) state_storage.offload.invalidate();

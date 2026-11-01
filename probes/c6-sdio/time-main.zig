@@ -81,6 +81,7 @@ export fn nih_c6_main() callconv(.c) noreturn {
         print("NIHOS_C6_FAIL timer\n");
         halt();
     }
+    clock.start();
     const hosted_join: c6.HostedJoin = if (config.enabled and !config.saved)
         .{ .network = .{ .ssid = &config.ssid, .password = &config.password } }
     else

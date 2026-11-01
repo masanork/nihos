@@ -76,6 +76,7 @@ export fn nih_c6_main() callconv(.c) noreturn {
         print("NIHOS_C6_PREFLIGHT_TIMER_FAIL\r\n");
         halt();
     }
+    clock.start();
     const update = c6.runOtaUpdate(clock, bytes[0 .. end - start], expected);
     print("NIHOS_C6_OTA_RESULT");
     inline for (comptime std.meta.fieldNames(c6.OtaUpdate)) |field| {

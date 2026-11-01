@@ -1,0 +1,11 @@
+{
+  "capture_sha256": "4b7c71bd359d5b795a72e1f2deaa1910468cf782d37157b4086aa1b47653828c",
+  "candidate_sha256": "7f036e616df4d4782015caf30f185f7859af115438f394463600d0f8d69995be",
+  "metadata": {
+    "version": "2.13.1",
+    "project": "network_adapter",
+    "idf": "v5.5.2"
+  },
+  "ota_info_status": 261,
+  "meaning": "self-reported metadata matches candidate; no C6 flash identity or rollback proof"
+}
