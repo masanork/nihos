@@ -712,7 +712,7 @@ pub const Runtime = struct {
                 },
                 .jump => {
                     if (ip + 2 > self.bytecode_len) return error.Syntax;
-                    const offset = @as(i16, @bitCast(std.mem.readInt(u16, self.bytecode[ip..][0..2], .little)));
+                    const offset: i16 = @bitCast(std.mem.readInt(u16, self.bytecode[ip..][0..2], .little));
                     ip += 2;
                     const next = @as(i32, ip) + offset;
                     if (next < 0 or next > self.bytecode_len) return error.Syntax;
@@ -720,7 +720,7 @@ pub const Runtime = struct {
                 },
                 .jump_if_false => {
                     if (ip + 2 > self.bytecode_len) return error.Syntax;
-                    const offset = @as(i16, @bitCast(std.mem.readInt(u16, self.bytecode[ip..][0..2], .little)));
+                    const offset: i16 = @bitCast(std.mem.readInt(u16, self.bytecode[ip..][0..2], .little));
                     ip += 2;
                     if (self.eval_sp <= fp) return error.Syntax;
                     self.eval_sp -= 1;
@@ -902,301 +902,301 @@ pub const Runtime = struct {
         return self.runVm(start_ip, host);
     }
 
-const Compiler = struct {
-    vm: *Runtime,
-    locals: [16]Ref,
-    local_count: u8,
-    fn_name: Ref,
-    fn_entry_ip: u16,
+    const Compiler = struct {
+        vm: *Runtime,
+        locals: [16]Ref,
+        local_count: u8,
+        fn_name: Ref,
+        fn_entry_ip: u16,
 
-    fn init(vm: *Runtime) Compiler {
-        return .{
-            .vm = vm,
-            .locals = @splat(0),
-            .local_count = 0,
-            .fn_name = 0,
-            .fn_entry_ip = 0,
-        };
-    }
-
-    fn emitByte(self: *Compiler, b: u8) Error!void {
-        if (self.vm.bytecode_len >= bytecode_capacity) return error.Syntax;
-        self.vm.bytecode[self.vm.bytecode_len] = b;
-        self.vm.bytecode_len += 1;
-    }
-
-    fn emitOp(self: *Compiler, op: BcOp) Error!void {
-        try self.emitByte(@intFromEnum(op));
-    }
-
-    fn emitU16(self: *Compiler, val: u16) Error!void {
-        if (self.vm.bytecode_len + 2 > bytecode_capacity) return error.Syntax;
-        std.mem.writeInt(u16, self.vm.bytecode[self.vm.bytecode_len..][0..2], val, .little);
-        self.vm.bytecode_len += 2;
-    }
-
-    fn emitI16(self: *Compiler, val: i16) Error!void {
-        try self.emitU16(@as(u16, @bitCast(val)));
-    }
-
-    fn emitJumpPlaceholder(self: *Compiler) Error!u16 {
-        const pos = self.vm.bytecode_len;
-        try self.emitI16(0);
-        return pos;
-    }
-
-    fn patchJump(self: *Compiler, placeholder_pos: u16) Error!void {
-        const target_pos = self.vm.bytecode_len;
-        const diff = @as(i32, target_pos) - @as(i32, placeholder_pos + 2);
-        if (diff < -32768 or diff > 32767) return error.Syntax;
-        std.mem.writeInt(u16, self.vm.bytecode[placeholder_pos..][0..2], @as(u16, @bitCast(@as(i16, @intCast(diff)))), .little);
-    }
-
-    fn resolveLocal(self: *const Compiler, sym: Ref) ?u8 {
-        for (self.locals[0..self.local_count], 0..) |loc, i| {
-            if (loc == sym) return @intCast(i);
+        fn init(vm: *Runtime) Compiler {
+            return .{
+                .vm = vm,
+                .locals = @splat(0),
+                .local_count = 0,
+                .fn_name = 0,
+                .fn_entry_ip = 0,
+            };
         }
-        return null;
-    }
 
-    fn compileExpr(self: *Compiler, expr: Ref, is_tail: bool) Error!void {
-        if (isImmediate(expr)) {
-            try self.emitOp(.const_val);
-            try self.emitU16(expr);
-            return;
+        fn emitByte(self: *Compiler, b: u8) Error!void {
+            if (self.vm.bytecode_len >= bytecode_capacity) return error.Syntax;
+            self.vm.bytecode[self.vm.bytecode_len] = b;
+            self.vm.bytecode_len += 1;
         }
-        const tag = self.vm.tagOf(expr);
-        if (tag == .symbol) {
-            if (self.resolveLocal(expr)) |slot| {
-                try self.emitOp(.load_local);
-                try self.emitByte(slot);
-            } else {
-                try self.emitOp(.load_global);
-                try self.emitU16(expr);
+
+        fn emitOp(self: *Compiler, op: BcOp) Error!void {
+            try self.emitByte(@backingInt(op));
+        }
+
+        fn emitU16(self: *Compiler, val: u16) Error!void {
+            if (self.vm.bytecode_len + 2 > bytecode_capacity) return error.Syntax;
+            std.mem.writeInt(u16, self.vm.bytecode[self.vm.bytecode_len..][0..2], val, .little);
+            self.vm.bytecode_len += 2;
+        }
+
+        fn emitI16(self: *Compiler, val: i16) Error!void {
+            try self.emitU16(@as(u16, @bitCast(val)));
+        }
+
+        fn emitJumpPlaceholder(self: *Compiler) Error!u16 {
+            const pos = self.vm.bytecode_len;
+            try self.emitI16(0);
+            return pos;
+        }
+
+        fn patchJump(self: *Compiler, placeholder_pos: u16) Error!void {
+            const target_pos = self.vm.bytecode_len;
+            const diff = @as(i32, target_pos) - @as(i32, placeholder_pos + 2);
+            if (diff < -32768 or diff > 32767) return error.Syntax;
+            std.mem.writeInt(u16, self.vm.bytecode[placeholder_pos..][0..2], @as(u16, @bitCast(@as(i16, @intCast(diff)))), .little);
+        }
+
+        fn resolveLocal(self: *const Compiler, sym: Ref) ?u8 {
+            for (self.locals[0..self.local_count], 0..) |loc, i| {
+                if (loc == sym) return @intCast(i);
             }
-            return;
-        }
-        if (tag != .pair) {
-            try self.emitOp(.const_val);
-            try self.emitU16(expr);
-            return;
+            return null;
         }
 
-        const head = self.vm.heap[expr].a;
-        const tail = self.vm.heap[expr].b;
-        var argument_storage: [16]Ref = @splat(0);
-        const args = try self.vm.arguments(tail, &argument_storage);
-
-        const special = if (self.vm.tagOf(head) == .symbol) opcode(self.vm.string(head)) else null;
-        if (special) |op| switch (op) {
-            .lambda, .let, .and_, .or_ => return error.CannotCompile,
-            .quote => {
-                if (args.len != 1) return error.Arity;
+        fn compileExpr(self: *Compiler, expr: Ref, is_tail: bool) Error!void {
+            if (isImmediate(expr)) {
                 try self.emitOp(.const_val);
-                try self.emitU16(args[0]);
+                try self.emitU16(expr);
                 return;
-            },
-            .if_ => {
-                if (args.len != 3) return error.Arity;
-                try self.compileExpr(args[0], false);
-                try self.emitOp(.jump_if_false);
-                const else_placeholder = try self.emitJumpPlaceholder();
-                try self.compileExpr(args[1], is_tail);
-                try self.emitOp(.jump);
-                const end_placeholder = try self.emitJumpPlaceholder();
-                try self.patchJump(else_placeholder);
-                try self.compileExpr(args[2], is_tail);
-                try self.patchJump(end_placeholder);
-                return;
-            },
-            .begin => {
-                if (args.len == 0) {
-                    try self.emitOp(.const_val);
-                    try self.emitU16(0);
-                    return;
-                }
-                for (args[0 .. args.len - 1]) |arg| {
-                    try self.compileExpr(arg, false);
-                    try self.emitOp(.pop);
-                }
-                try self.compileExpr(args[args.len - 1], is_tail);
-                return;
-            },
-            .define => {
-                if (args.len < 2) return error.Arity;
-                if (self.vm.tagOf(args[0]) == .pair) {
-                    const sig_name = self.vm.heap[args[0]].a;
-                    const sig_params = self.vm.heap[args[0]].b;
-                    var param_storage: [16]Ref = @splat(0);
-                    const params = try self.vm.arguments(sig_params, &param_storage);
-
-                    try self.emitOp(.jump);
-                    const body_skip = try self.emitJumpPlaceholder();
-
-                    const entry_ip = self.vm.bytecode_len;
-                    var sub_compiler = Compiler.init(self.vm);
-                    sub_compiler.fn_name = sig_name;
-                    sub_compiler.fn_entry_ip = entry_ip;
-                    for (params) |p| {
-                        sub_compiler.locals[sub_compiler.local_count] = p;
-                        sub_compiler.local_count += 1;
-                    }
-
-                    var cur_body = self.vm.heap[tail].b;
-                    while (cur_body != 0) {
-                        const next_body = self.vm.heap[cur_body].b;
-                        const is_last = (next_body == 0);
-                        try sub_compiler.compileExpr(self.vm.heap[cur_body].a, is_last);
-                        if (!is_last) try sub_compiler.emitOp(.pop);
-                        cur_body = next_body;
-                    }
-                    try sub_compiler.emitOp(.ret);
-
-                    try self.patchJump(body_skip);
-
-                    const cl = try self.vm.alloc(.closure);
-                    self.vm.heap[cl].length = 1;
-                    self.vm.heap[cl].a = @intCast(params.len);
-                    self.vm.heap[cl].b = entry_ip;
-                    self.vm.heap[cl].env = self.vm.global;
-
-                    try self.emitOp(.const_val);
-                    try self.emitU16(cl);
-                    try self.emitOp(.def_global);
-                    try self.emitU16(sig_name);
-                    return;
+            }
+            const tag = self.vm.tagOf(expr);
+            if (tag == .symbol) {
+                if (self.resolveLocal(expr)) |slot| {
+                    try self.emitOp(.load_local);
+                    try self.emitByte(slot);
                 } else {
+                    try self.emitOp(.load_global);
+                    try self.emitU16(expr);
+                }
+                return;
+            }
+            if (tag != .pair) {
+                try self.emitOp(.const_val);
+                try self.emitU16(expr);
+                return;
+            }
+
+            const head = self.vm.heap[expr].a;
+            const tail = self.vm.heap[expr].b;
+            var argument_storage: [16]Ref = @splat(0);
+            const args = try self.vm.arguments(tail, &argument_storage);
+
+            const special = if (self.vm.tagOf(head) == .symbol) opcode(self.vm.string(head)) else null;
+            if (special) |op| switch (op) {
+                .lambda, .let, .and_, .or_ => return error.CannotCompile,
+                .quote => {
+                    if (args.len != 1) return error.Arity;
+                    try self.emitOp(.const_val);
+                    try self.emitU16(args[0]);
+                    return;
+                },
+                .if_ => {
+                    if (args.len != 3) return error.Arity;
+                    try self.compileExpr(args[0], false);
+                    try self.emitOp(.jump_if_false);
+                    const else_placeholder = try self.emitJumpPlaceholder();
+                    try self.compileExpr(args[1], is_tail);
+                    try self.emitOp(.jump);
+                    const end_placeholder = try self.emitJumpPlaceholder();
+                    try self.patchJump(else_placeholder);
+                    try self.compileExpr(args[2], is_tail);
+                    try self.patchJump(end_placeholder);
+                    return;
+                },
+                .begin => {
+                    if (args.len == 0) {
+                        try self.emitOp(.const_val);
+                        try self.emitU16(0);
+                        return;
+                    }
+                    for (args[0 .. args.len - 1]) |arg| {
+                        try self.compileExpr(arg, false);
+                        try self.emitOp(.pop);
+                    }
+                    try self.compileExpr(args[args.len - 1], is_tail);
+                    return;
+                },
+                .define => {
+                    if (args.len < 2) return error.Arity;
+                    if (self.vm.tagOf(args[0]) == .pair) {
+                        const sig_name = self.vm.heap[args[0]].a;
+                        const sig_params = self.vm.heap[args[0]].b;
+                        var param_storage: [16]Ref = @splat(0);
+                        const params = try self.vm.arguments(sig_params, &param_storage);
+
+                        try self.emitOp(.jump);
+                        const body_skip = try self.emitJumpPlaceholder();
+
+                        const entry_ip = self.vm.bytecode_len;
+                        var sub_compiler = Compiler.init(self.vm);
+                        sub_compiler.fn_name = sig_name;
+                        sub_compiler.fn_entry_ip = entry_ip;
+                        for (params) |p| {
+                            sub_compiler.locals[sub_compiler.local_count] = p;
+                            sub_compiler.local_count += 1;
+                        }
+
+                        var cur_body = self.vm.heap[tail].b;
+                        while (cur_body != 0) {
+                            const next_body = self.vm.heap[cur_body].b;
+                            const is_last = (next_body == 0);
+                            try sub_compiler.compileExpr(self.vm.heap[cur_body].a, is_last);
+                            if (!is_last) try sub_compiler.emitOp(.pop);
+                            cur_body = next_body;
+                        }
+                        try sub_compiler.emitOp(.ret);
+
+                        try self.patchJump(body_skip);
+
+                        const cl = try self.vm.alloc(.closure);
+                        self.vm.heap[cl].length = 1;
+                        self.vm.heap[cl].a = @intCast(params.len);
+                        self.vm.heap[cl].b = entry_ip;
+                        self.vm.heap[cl].env = self.vm.global;
+
+                        try self.emitOp(.const_val);
+                        try self.emitU16(cl);
+                        try self.emitOp(.def_global);
+                        try self.emitU16(sig_name);
+                        return;
+                    } else {
+                        if (args.len != 2) return error.Arity;
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.def_global);
+                        try self.emitU16(args[0]);
+                        return;
+                    }
+                },
+                .set => {
                     if (args.len != 2) return error.Arity;
                     try self.compileExpr(args[1], false);
-                    try self.emitOp(.def_global);
-                    try self.emitU16(args[0]);
+                    if (self.resolveLocal(args[0])) |slot| {
+                        try self.emitOp(.store_local);
+                        try self.emitByte(slot);
+                        try self.emitOp(.const_val);
+                        try self.emitU16(0);
+                    } else {
+                        try self.emitOp(.def_global);
+                        try self.emitU16(args[0]);
+                    }
                     return;
-                }
-            },
-            .set => {
-                if (args.len != 2) return error.Arity;
-                try self.compileExpr(args[1], false);
-                if (self.resolveLocal(args[0])) |slot| {
-                    try self.emitOp(.store_local);
-                    try self.emitByte(slot);
-                    try self.emitOp(.const_val);
-                    try self.emitU16(0);
-                } else {
-                    try self.emitOp(.def_global);
-                    try self.emitU16(args[0]);
-                }
-                return;
-            },
-            .add => {
-                if (args.len == 2) {
-                    try self.compileExpr(args[0], false);
-                    try self.compileExpr(args[1], false);
-                    try self.emitOp(.add);
-                    return;
-                }
-            },
-            .sub => {
-                if (args.len == 2) {
-                    try self.compileExpr(args[0], false);
-                    try self.compileExpr(args[1], false);
-                    try self.emitOp(.sub);
-                    return;
-                }
-            },
-            .mul => {
-                if (args.len == 2) {
-                    try self.compileExpr(args[0], false);
-                    try self.compileExpr(args[1], false);
-                    try self.emitOp(.mul);
-                    return;
-                }
-            },
-            .equal => {
-                if (args.len == 2) {
-                    try self.compileExpr(args[0], false);
-                    try self.compileExpr(args[1], false);
-                    try self.emitOp(.equal);
-                    return;
-                }
-            },
-            .less => {
-                if (args.len == 2) {
-                    try self.compileExpr(args[0], false);
-                    try self.compileExpr(args[1], false);
-                    try self.emitOp(.less);
-                    return;
-                }
-            },
-            .not => {
-                if (args.len == 1) {
-                    try self.compileExpr(args[0], false);
-                    try self.emitOp(.not);
-                    return;
-                }
-            },
-            .cons => {
-                if (args.len == 2) {
-                    try self.compileExpr(args[0], false);
-                    try self.compileExpr(args[1], false);
-                    try self.emitOp(.cons);
-                    return;
-                }
-            },
-            .car => {
-                if (args.len == 1) {
-                    try self.compileExpr(args[0], false);
-                    try self.emitOp(.car);
-                    return;
-                }
-            },
-            .cdr => {
-                if (args.len == 1) {
-                    try self.compileExpr(args[0], false);
-                    try self.emitOp(.cdr);
-                    return;
-                }
-            },
-            .nullq => {
-                if (args.len == 1) {
-                    try self.compileExpr(args[0], false);
-                    try self.emitOp(.null_p);
-                    return;
-                }
-            },
-            .pairq => {
-                if (args.len == 1) {
-                    try self.compileExpr(args[0], false);
-                    try self.emitOp(.pair_p);
-                    return;
-                }
-            },
-            else => {},
-        };
+                },
+                .add => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.add);
+                        return;
+                    }
+                },
+                .sub => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.sub);
+                        return;
+                    }
+                },
+                .mul => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.mul);
+                        return;
+                    }
+                },
+                .equal => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.equal);
+                        return;
+                    }
+                },
+                .less => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.less);
+                        return;
+                    }
+                },
+                .not => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.not);
+                        return;
+                    }
+                },
+                .cons => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.cons);
+                        return;
+                    }
+                },
+                .car => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.car);
+                        return;
+                    }
+                },
+                .cdr => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.cdr);
+                        return;
+                    }
+                },
+                .nullq => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.null_p);
+                        return;
+                    }
+                },
+                .pairq => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.pair_p);
+                        return;
+                    }
+                },
+                else => {},
+            };
 
-        if (self.fn_name != 0 and head == self.fn_name and is_tail and args.len == self.local_count) {
+            if (self.fn_name != 0 and head == self.fn_name and is_tail and args.len == self.local_count) {
+                for (args) |arg| {
+                    try self.compileExpr(arg, false);
+                }
+                var i: usize = args.len;
+                while (i > 0) {
+                    i -= 1;
+                    try self.emitOp(.store_local);
+                    try self.emitByte(@intCast(i));
+                }
+                try self.emitOp(.jump);
+                const diff = @as(i32, self.fn_entry_ip) - @as(i32, self.vm.bytecode_len + 2);
+                try self.emitI16(@intCast(diff));
+                return;
+            }
+
+            try self.compileExpr(head, false);
             for (args) |arg| {
                 try self.compileExpr(arg, false);
             }
-            var i: usize = args.len;
-            while (i > 0) {
-                i -= 1;
-                try self.emitOp(.store_local);
-                try self.emitByte(@intCast(i));
-            }
-            try self.emitOp(.jump);
-            const diff = @as(i32, self.fn_entry_ip) - @as(i32, self.vm.bytecode_len + 2);
-            try self.emitI16(@intCast(diff));
-            return;
+            try self.emitOp(.call);
+            try self.emitByte(@intCast(args.len));
         }
-
-        try self.compileExpr(head, false);
-        for (args) |arg| {
-            try self.compileExpr(arg, false);
-        }
-        try self.emitOp(.call);
-        try self.emitByte(@intCast(args.len));
-    }
-};
+    };
     fn integer(self: *const Runtime, r: Ref) linksection(code_section) Error!i32 {
         if (isImmediateInt(r)) return toImmediateInt(r);
         if (r >= cells or self.heap[r].tag != .integer) return error.Type;
@@ -2188,20 +2188,20 @@ test "bytecode VM execution: arithmetic, control flow, and local loop" {
     vm.bytecode_len = 0;
     vm.eval_sp = 0;
     var ip: usize = 0;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(10), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(20), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(2), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.mul);
+    vm.bytecode[ip] = @backingInt(BcOp.mul);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.add);
+    vm.bytecode[ip] = @backingInt(BcOp.add);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.halt);
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
     ip += 1;
     vm.bytecode_len = @intCast(ip);
 
@@ -2213,26 +2213,26 @@ test "bytecode VM execution: arithmetic, control flow, and local loop" {
     vm.bytecode_len = 0;
     vm.eval_sp = 0;
     ip = 0;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(15), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(20), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.less);
+    vm.bytecode[ip] = @backingInt(BcOp.less);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.jump_if_false);
+    vm.bytecode[ip] = @backingInt(BcOp.jump_if_false);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], @as(u16, @bitCast(@as(i16, 4))), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(42), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.halt);
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(99), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.halt);
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
     ip += 1;
     vm.bytecode_len = @intCast(ip);
 
@@ -2244,47 +2244,47 @@ test "bytecode VM execution: arithmetic, control flow, and local loop" {
     vm.bytecode_len = 0;
     vm.eval_sp = 0;
     try vm.pushEval(makeImmediateInt(10)); // slot 0
-    try vm.pushEval(makeImmediateInt(0));  // slot 1
+    try vm.pushEval(makeImmediateInt(0)); // slot 1
     ip = 0;
-    vm.bytecode[ip] = @intFromEnum(BcOp.load_local);
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
     vm.bytecode[ip + 1] = 0;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(0), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.equal);
+    vm.bytecode[ip] = @backingInt(BcOp.equal);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.jump_if_false);
+    vm.bytecode[ip] = @backingInt(BcOp.jump_if_false);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], @as(u16, @bitCast(@as(i16, 3))), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.load_local);
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
     vm.bytecode[ip + 1] = 1;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.halt);
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.load_local);
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
     vm.bytecode[ip + 1] = 1;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.load_local);
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
     vm.bytecode[ip + 1] = 0;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.add);
+    vm.bytecode[ip] = @backingInt(BcOp.add);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.store_local);
+    vm.bytecode[ip] = @backingInt(BcOp.store_local);
     vm.bytecode[ip + 1] = 1;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.load_local);
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
     vm.bytecode[ip + 1] = 0;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.const_val);
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(1), .little);
     ip += 3;
-    vm.bytecode[ip] = @intFromEnum(BcOp.sub);
+    vm.bytecode[ip] = @backingInt(BcOp.sub);
     ip += 1;
-    vm.bytecode[ip] = @intFromEnum(BcOp.store_local);
+    vm.bytecode[ip] = @backingInt(BcOp.store_local);
     vm.bytecode[ip + 1] = 0;
     ip += 2;
-    vm.bytecode[ip] = @intFromEnum(BcOp.jump);
+    vm.bytecode[ip] = @backingInt(BcOp.jump);
     const jump_offset: i16 = -@as(i16, @intCast(ip + 3));
     std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], @as(u16, @bitCast(jump_offset)), .little);
     ip += 3;
