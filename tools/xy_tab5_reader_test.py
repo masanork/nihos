@@ -19,6 +19,8 @@ class DeviceReader(unittest.TestCase):
         v.xy_tab5_init.argtypes=[c.c_void_p,c.c_uint32];v.xy_tab5_init.restype=c.c_bool
         v.xy_tab5_render.argtypes=[c.c_void_p,c.c_uint32];v.xy_tab5_render.restype=c.c_bool
         v.xy_tab5_key.argtypes=[c.c_uint8];v.xy_tab5_touch.argtypes=[c.c_uint32,c.c_uint32]
+        v.xy_tab5_set_portrait.argtypes=[c.c_bool]
+        v.xy_tab5_set_portrait_keyboard.argtypes=[c.c_bool]
         v.xy_tab5_state.argtypes=[c.c_uint32];v.xy_tab5_state.restype=c.c_uint32
         cls.entries=[]
         for i in range(struct.unpack_from('<I',cls.data,16)[0]):
@@ -78,6 +80,61 @@ class DeviceReader(unittest.TestCase):
         self.vm.xy_tab5_touch(900,190);self.key('v');self.key(13)
         self.assertEqual(self.state(3),end);self.assertEqual(self.state(6),36)
         self.assertEqual(self.state(7),1);self.render()
+    def test_portrait_home_reader_settings_and_contents_touch(self):
+        self.vm.xy_tab5_set_portrait(True)
+        home=self.render()
+        self.vm.xy_tab5_touch(100,170+2*156+20)
+        self.assertEqual((self.state(0),self.state(1)),(3,1))
+        self.assertNotEqual(home,self.render())
+        end=self.state(4)
+        self.vm.xy_tab5_touch(250,1240);self.render()
+        self.assertEqual(self.state(3),end)
+        self.vm.xy_tab5_touch(620,1240);self.assertEqual(self.state(0),4)
+        self.render();self.vm.xy_tab5_touch(500,190)
+        self.vm.xy_tab5_touch(100,280);self.vm.xy_tab5_touch(100,590)
+        self.assertEqual((self.state(6),self.state(7)),(36,1))
+        self.assertEqual(self.state(3),end);self.render()
+        self.vm.xy_tab5_touch(500,1240);self.assertEqual(self.state(0),2)
+        self.render();self.vm.xy_tab5_touch(100,132+110+5)
+        self.assertEqual((self.state(0),self.state(2)),(3,1));self.render()
+
+    def test_portrait_first_chapter_pages_are_contiguous_in_both_axes(self):
+        row=next(r for r in self.entries if r[0]==1)
+        body=self.data[row[3]:row[3]+row[4]]
+        rubies=[struct.unpack_from('<4I',self.data,row[5]+16*j) for j in range(row[6])]
+        for axis in range(2):
+            self.assertTrue(self.vm.xy_tab5_init(self.owner,len(self.data)))
+            self.vm.xy_tab5_set_portrait(True)
+            if axis:
+                self.key('s');self.key('v');self.key(13)
+            self.key('2');self.render()
+            at=0;pages=0;chunks=[]
+            while True:
+                self.assertEqual(self.state(3),at)
+                end=self.state(4);self.assertGreater(end,at)
+                body[at:end].decode()
+                self.assertTrue(all(r[1] <= end for r in rubies if at <= r[0] < end))
+                chunks.append(body[at:end]);at=end;pages+=1
+                if end==len(body):break
+                self.vm.xy_tab5_touch(250,1240);self.render();self.assertLess(pages,500)
+            self.assertEqual(b''.join(chunks),body)
+
+    def test_portrait_sicp_try_and_lesson_controls(self):
+        self.vm.xy_tab5_set_portrait(True)
+        self.key('3');self.key('c');self.key(129);self.key(13);self.render()
+        for _ in range(30):
+            if self.state(10): break
+            if self.state(4) >= self.state(9): self.fail('SICP example not found')
+            self.key(131);self.render()
+        self.assertTrue(self.state(10))
+        self.vm.xy_tab5_touch(370,1240);self.assertEqual(self.state(0),6);self.render()
+        self.vm.xy_tab5_touch(40,140);self.assertEqual(self.state(0),7);self.render()
+        self.key('x');without_keyboard=self.render()
+        self.vm.xy_tab5_set_portrait_keyboard(True);self.assertNotEqual(without_keyboard,self.render())
+        self.vm.xy_tab5_touch(650,910);self.render()  # notes, above dock
+        self.key('y');self.render()
+        self.vm.xy_tab5_touch(40,910);self.assertEqual(self.state(0),3);self.render()
+
     def test_all_chapter_starts_render_in_both_directions(self):
         for axis in range(2):
             if axis:self.key('s');self.key('v');self.key(13)

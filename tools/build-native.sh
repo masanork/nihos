@@ -59,6 +59,7 @@ fi
 if [ "${NIHOS_NATIVE_CAMERA_JPEG:-0}" = 1 ]; then build_dir="$build_dir-jpeg"; fi
 if [ "${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}" = 1 ]; then build_dir="$build_dir-camera-ui-fixture"; fi
 if [ "${NIHOS_NATIVE_XY_TRACE:-0}" = 1 ]; then build_dir="$build_dir-xy-trace"; fi
+if [ "${NIHOS_NATIVE_XY_PORTRAIT:-0}" = 1 ]; then build_dir="$build_dir-xy-portrait"; fi
 if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then build_dir="$build_dir-sqld"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in

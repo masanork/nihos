@@ -55,6 +55,26 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = leased_stack_tests })).step);
     test_step.dependOn(appTests(b, target, optimize));
     test_step.dependOn(&run_module_tests.step);
+    inline for (.{ "hosted_network_split_test.zig", "hosted_c6_time_exchange_test.zig", "hosted_c6_time_policy_test.zig" }) |name| {
+        const experimental_c6_test = b.createModule(.{ .root_source_file = b.path("src/net/" ++ name), .target = target, .optimize = optimize });
+        test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = experimental_c6_test })).step);
+    }
+    const hosted_c6_time_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_c6_time_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_c6_time_tests })).step);
+    const hosted_ota_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_tests })).step);
+    const hosted_ota_pump_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_pump_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_pump_tests })).step);
+    const hosted_ota_session_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_session_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_session_tests })).step);
+    const hosted_ota_arm_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_arm_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_arm_tests })).step);
+    const hosted_ota_guard_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_guard_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_guard_tests })).step);
+    const hosted_ota_fake_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_fake_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_fake_tests })).step);
+    const hosted_diagnostics_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_diagnostics_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_diagnostics_tests })).step);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = protected_fault })).step);
     // Ownership contracts only: no camera hardware or video driver is wired here.
     const camera_contract = b.createModule(.{ .root_source_file = b.path("src/device/camera_contract.zig"), .target = target, .optimize = optimize });

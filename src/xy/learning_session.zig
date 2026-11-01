@@ -35,8 +35,8 @@ pub const Session = struct {
     slots: [capacity]Slot,
     active_slot: ?u8,
     vm_slot: ?u8,
-    active_vm: scheme.Runtime,
-    candidate_vm: scheme.Runtime,
+    vms: [2]scheme.Runtime,
+    active_vm_index: u1,
     editing_notes: bool,
     message: [256]u8,
     message_len: usize,
@@ -45,7 +45,7 @@ pub const Session = struct {
         @memset(std.mem.asBytes(self), 0);
         self.active_slot = null;
         self.vm_slot = null;
-        self.active_vm.initInPlace();
+        self.vms[self.active_vm_index].initInPlace();
     }
     pub fn bind(self: *Session, bytes: []const u8) linksection(scheme.code_section) Error!void {
         if (self.ready) {
@@ -124,7 +124,7 @@ pub const Session = struct {
         try (self.doc() orelse return error.NotReady).insertUtf8(bytes);
     }
     pub fn resetVm(self: *Session) linksection(scheme.code_section) void {
-        self.active_vm.initInPlace();
+        self.vms[self.active_vm_index].initInPlace();
         self.vm_slot = self.active_slot;
     }
     pub fn restore(self: *Session) linksection(scheme.code_section) Error!void {
@@ -136,17 +136,18 @@ pub const Session = struct {
         const s = self.slot() orelse return error.NotReady;
         if (!try self.supported(s.snippet)) return error.Unsupported;
         if (self.vm_slot != self.active_slot) self.resetVm();
-        self.candidate_vm = self.active_vm;
+        const candidate_index = self.active_vm_index ^ 1;
+        self.vms[candidate_index] = self.vms[self.active_vm_index];
         var host = Host{};
         s.result_revision = s.code.revision;
-        const result = self.candidate_vm.evaluate(s.code.slice(), &host, &s.result) catch |err| {
+        const result = self.vms[candidate_index].evaluate(s.code.slice(), &host, &s.result) catch |err| {
             const text = scheme.message(err);
             @memcpy(s.result[0..text.len], text);
             s.result_len = text.len;
             s.failed = true;
             return;
         };
-        self.active_vm = self.candidate_vm;
+        self.active_vm_index = candidate_index;
         s.result_len = result.len;
         s.failed = false;
     }
@@ -246,6 +247,27 @@ pub const Session = struct {
             },
             .escape, .cancel => unreachable,
         }
+    }
+    pub fn touchPortrait(self: *Session, nav: *navigation.State, x: u32, y: u32, keyboard_visible: bool) linksection(scheme.code_section) void {
+        if (x >= 720 or y >= 1280) return;
+        if (nav.screen == .examples) {
+            if (y >= 1208) {
+                nav.screen = .reading;
+                return;
+            }
+            if (y < 132) return;
+            const offset = y - 132;
+            const row = offset / 120;
+            if (row < 6 and offset % 120 < 104) {
+                self.selected = self.selected / 6 * 6 + row;
+                self.handle(nav, .enter);
+            }
+            return;
+        }
+        const bottom: u32 = if (keyboard_visible) 960 else 1280;
+        if (y < bottom - 72 or y >= bottom) return;
+        self.message_len = 0;
+        if (x < 144) nav.screen = .reading else if (x < 288) self.run() catch |err| self.notice(err) else if (x < 432) self.resetVm() else if (x < 576) self.restore() catch |err| self.notice(err) else self.editing_notes = !self.editing_notes;
     }
     pub fn touch(self: *Session, nav: *navigation.State, x: u32, y: u32) linksection(scheme.code_section) void {
         if (x >= 1280 or y >= 720) return;

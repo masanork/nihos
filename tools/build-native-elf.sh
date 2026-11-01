@@ -258,6 +258,8 @@ case "$console_fault" in 0) console_fault=false ;; 1) console_fault=true ;; *) e
 console_live=${NIHOS_NATIVE_CONSOLE_LIVE:-0}
 xy_workspace=${NIHOS_NATIVE_XY_WORKSPACE:-0}
 xy_trace=${NIHOS_NATIVE_XY_TRACE:-0}
+xy_portrait=${NIHOS_NATIVE_XY_PORTRAIT:-0}
+case "$xy_portrait" in 0) xy_portrait=false ;; 1) xy_portrait=true ;; *) echo "XY_PORTRAIT must be 0 or 1" >&2; exit 1 ;; esac
 case "$xy_trace" in 0) xy_trace=false; xy_trace_cpp=0 ;; 1) xy_trace=true; xy_trace_cpp=1 ;; *) echo "XY_TRACE must be 0 or 1" >&2; exit 1 ;; esac
 case "$xy_workspace" in 0) xy_workspace=false ;; 1) xy_workspace=true ;; *) echo "XY_WORKSPACE must be 0 or 1" >&2; exit 1 ;; esac
 keyboard_i2c=${NIHOS_NATIVE_KEYBOARD_I2C:-0}
@@ -266,6 +268,7 @@ case "$keyboard_i2c" in 0) keyboard_i2c=false ;; 1) keyboard_i2c=true ;; *) echo
 if [ "$console_live" = true ] && [ "$console" != true ]; then echo "Live UI requires CONSOLE=1" >&2; exit 1; fi
 if [ "$xy_workspace" = true ] && [ "$console_live" != true ]; then echo "xy workspace requires CONSOLE_LIVE=1" >&2; exit 1; fi
 if [ "$xy_trace" = true ] && [ "$xy_workspace" != true ]; then echo "XY_TRACE requires XY_WORKSPACE=1" >&2; exit 1; fi
+if [ "$xy_portrait" = true ] && { [ "$xy_workspace" != true ] || [ "$keyboard_i2c" = true ]; }; then echo "XY_PORTRAIT fixture requires XY_WORKSPACE=1 and KEYBOARD_I2C=0" >&2; exit 1; fi
 if [ "$console_fault" = true ] && [ "$console_live" != true ]; then echo "Fault fixture requires CONSOLE_LIVE=1" >&2; exit 1; fi
 if [ "$keyboard_i2c" = true ] && [ "$console_live" != true ]; then echo "Keyboard requires CONSOLE_LIVE=1" >&2; exit 1; fi
 canvas_offscreen=${NIHOS_NATIVE_CANVAS_OFFSCREEN:-0}
@@ -586,11 +589,19 @@ fi
 if [ "$camera_jpeg" = true ]; then native_boot_dir="$native_boot_dir-jpeg"; fi
 if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camera-ui-fixture"; fi
 if [ "$xy_trace" = true ]; then native_boot_dir="$native_boot_dir-xy-trace"; fi
+if [ "$xy_portrait" = true ]; then native_boot_dir="$native_boot_dir-xy-portrait"; fi
 if [ "$sqld" = true ]; then native_boot_dir="$native_boot_dir-sqld"; fi
 if [ "$camera_jpeg" = true ] && { [ "$camera_id" != true ] || [ "$camera_diagnostics" = true ]; }; then echo "CAMERA_JPEG requires normal CAMERA_ID" >&2; exit 1; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
-NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
+if [ "${NIHOS_C6_TIME_OFFLOAD:-0}" = 1 ]; then
+    if [ "$network" != true ]; then echo "C6_TIME_OFFLOAD requires NETWORK=1" >&2; exit 1; fi
+    NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-0}
+else
+    NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1}
+fi
+export NIHOS_C6_IPV6
+python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
 xy_cpp=0
 if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then xy_cpp=1; fi
 if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$keypad_cpp" != 0 ]; }; then
@@ -617,6 +628,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_alignment_corpus = %s;\n' "$wasm_align_corpus"
     printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
     printf 'pub const xy_trace = %s;\n' "$xy_trace"
+    printf 'pub const xy_portrait = %s;\n' "$xy_portrait"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"

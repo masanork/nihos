@@ -155,9 +155,18 @@ TIME_FUNCTIONS = {'main.serviceTime', 'board_devices.applyNetworkTime', 'network
     TIME_ENGINE + name for name in ('disconnect', 'bind', 'fail', 'tx', 'route', 'query', 'udp', 'sent', 'receive', 'datagram', 'acceptTime', 'take', 'snapshot', 'timestamp', 'skipName', 'dnsAnswer', 'validMac', 'unicast', 'sum16')
 } | {TIME_CALENDAR + name for name in ('fromUnix', 'toUnix')}
 TIME_GENERIC = {TIME_CALENDAR + name for name in ('set', 'writeStopped')}
+TIME_STATION = {'hosted_station.Client.' + name for name in ('receive', 'tx', 'sent')}
+TIME_C6 = {
+    'hosted_c6_time_exchange.Exchange.' + name for name in
+    ('begin', 'receive', 'nextSnapshot', 'retireTimedOutTime', 'tx', 'sent', 'invalidate', 'tick', 'adopt', 'checkPeer', 'finish')
+} | {'hosted_c6_time.Session.' + name for name in ('reset', 'start', 'receive', 'expire', 'cancel')} | {
+    'network_service.recoverC6TimeTimeout', 'hosted_c6_time.acceptAck', 'hosted_network_split.statusRequest', 'hosted_network_split.decode',
+    'hosted_network_split.unicast', 'hosted_network_split.ipv4', 'hosted_network_split.text',
+    'hosted_network_split.optionalAddress',
+} | {'hosted_network_split.State.' + name for name in ('receive', 'receiveResponse', 'apply', 'current', 'invalidate')}
 
 def time_function(name):
-    return name in TIME_FUNCTIONS or any(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in TIME_GENERIC)
+    return name in TIME_FUNCTIONS or name in TIME_STATION or name in TIME_C6 or any(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in TIME_GENERIC)
 
 
 def audit_time_functions(functions, span):
@@ -167,6 +176,11 @@ def audit_time_functions(functions, span):
     require(selected and selected[0][0] == start and selected[-1][1] == end and
             all(start <= address < stop <= end and time_function(name) for address, stop, name in selected), 'unapproved network/time Flash function')
     names = [name for _, _, name in selected]
+    present = set(names)
+    station = present & TIME_STATION
+    c6 = present & TIME_C6
+    require(station in (set(), TIME_STATION) and c6 in (set(), TIME_C6) and
+            (not c6 or station == TIME_STATION), 'incomplete C6 time Flash profile')
     require(len(names) == len(set(names)) and TIME_FUNCTIONS.issubset(names) and
             all(sum(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) is not None for name in names) == 1 for prefix in TIME_GENERIC), 'missing/duplicate network/time Flash function')
     # Export and Zig debug aliases may describe the same bytes. Every name above
@@ -204,10 +218,10 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
-              'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
+              'numericCall', 'safeNumericExpr', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'softKeyboardVisible', 'touchDown', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'applyKeyboardPresence', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -217,7 +231,9 @@ XY_RENDER_FUNCTIONS = {
     'native_render_entry.nih_xy_render_bytes', 'native_render_entry.nih_xy_render_learning',
     'nih_xy_render_learning', 'rotated_surface.Rotated.blit',
     'rotated_surface.Rotated.paint', 'rotated_surface.Rotated.blitLinear',
-    'rotated_surface.Rotated.fillRect', 'surface.channelLinear', 'xy.presentation.publish', 'presentation.publish',
+    'rotated_surface.Rotated.fillRect', 'surface.channelLinear',
+    'surface.Surface.blit', 'surface.Surface.blitLinear', 'surface.Surface.fillRect',
+    'render_adapter.ThemePalette.fromAppearance', 'xy.presentation.publish', 'presentation.publish',
     'ttf.TwoTierCache(24,1024,48,16384).getOrRender', 'ttf.Face.glyphSpan',
     'ttf.decodeSimpleGlyfSlice', 'ttf.Family.resolve', 'ttf.Face.lookupBaseGlyph',
     'ttf.Face.init', 'ttf.SliceReader.fromSlice.Impl.readSlice',
@@ -227,7 +243,9 @@ XY_RENDER_FUNCTIONS = {
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
     'document.isClusterBoundary', 'render_session.SizedSession(2048).render',
-    'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
+    'native_render_entry.readingPack', 'native_reading.prepareViewport',
+    'render_session.SizedSession(2048).renderPortrait', 'catalog.Pack.counts',
+    'catalog.Pack.entry', 'catalog.Pack.chapter',
     'catalog.Pack.font', 'catalog.Pack.learningBytes', 'reader.shorter', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
     'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
     'Io.Writer.failingRebase', 'Io.Writer.noopFlush', 'Io.Writer.fixedDrain',
@@ -235,13 +253,14 @@ XY_RENDER_FUNCTIONS = {
     'xy.navigation.State.selectChapter', 'xy.navigation.State.handle',
     'xy.navigation.State.activateHome', 'xy.navigation.State.next',
     'xy.navigation.State.back', 'xy.navigation.State.touch',
+    'xy.navigation.State.touchPortrait', 'xy.navigation.State.touchPortraitHome',
     'xy_scratch_live.Live(".flash.rodata.display"[0..21]).render',
 }
 
 
 # Explicit lesson foreground methods; catalogue parsing never enables I/O.
 XY_LEARNING_METHODS = {
-    'initInPlace', 'bind', 'setPage', 'choice', 'count', 'slot', 'doc', 'supported',
+    'initInPlace', 'bind', 'setPage', 'choice', 'count', 'slot', 'doc', 'supported', 'touchPortrait',
     'open', 'replace', 'insert', 'resetVm', 'restore', 'run', 'notice', 'handle', 'touch',
 }
 # IME entry points the workspace routes keys through. The candidate
@@ -257,18 +276,20 @@ XY_CATALOG_METHODS = {
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.renderInto)__func_[0-9]+", name)
-    document_helper = re.fullmatch(r'xy\.document\.(?:nextClusterEnd|prevClusterStart)', name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|serviceXyKeyboard|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.(?:printIntAny|printValue)|fmt\.bufPrint|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
     document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines|moveGraphemes|setPreedit|commitPreedit|deleteBackwardGrapheme|deleteForwardGrapheme)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)
     lesson_helper = re.fullmatch(r'learning_view\.(?:render|label)__func_[0-9]+', name)
-    soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|layout|contains|visible|defaultOrientation)(?:__func_[0-9]+)?', name)
+    soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|keyAtState|keyAtIn|layout|layoutState|layoutIn|contains|containsIn|edgeGestureIn|geometry|visible|probeFromResult|startupOrientation|defaultOrientation)(?:__func_[0-9]+)?', name)
+    document_helper = re.fullmatch(r'xy\.document\.(?:nextClusterEnd|prevClusterStart)', name)
     ime = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:OmniIme|RomajiAutomaton|CandidateList)\.(\w+?)(?:__func_[0-9]+)?', name)
     ime_helper = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:isBuiltinPrefixTrigger|isRawPrefixKind)(?:__func_[0-9]+)?', name)
     dict_match = re.fullmatch(r'(?:xy\.)?dict\.(?:NfstDict|MeosDict)\.(\w+)(?:__func_[0-9]+)?', name)
+    keyboard_driver = re.fullmatch(r'board\.tab5\.keyboard\.KeyboardIn\(boot_i2c\.Master\(display_probe\.Pins\),"\.flash\.xytext"\[0\.\.13\]\)\.(?:read|begin|poll)(?:__func_[0-9]+)?', name)
+    presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
-    return bool(document or document_helper or learning_allowed or soft_keyboard or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):

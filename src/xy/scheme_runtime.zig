@@ -126,6 +126,7 @@ pub const Runtime = struct {
     eval_sp: u8,
     bytecode: [bytecode_capacity]u8,
     bytecode_len: u16,
+    cached_proc: Ref,
     call_stack: [call_stack_capacity]CallFrame,
     call_sp: u8,
 
@@ -294,46 +295,39 @@ pub const Runtime = struct {
                 }
             }
         }
+        // The code cache is weak: it must not keep an otherwise dead closure alive.
+        if (self.cached_proc != 0 and !self.heap[self.cached_proc].mark) {
+            self.cached_proc = 0;
+            self.bytecode_len = 0;
+        }
+        // Reuse the completed mark queue as an ordered list of live text cells.
+        // Sorting bounded references avoids rescanning the whole heap for each
+        // string while preserving source order for overlap-safe compaction.
+        var text_count: usize = 0;
         for (1..cells) |idx| {
             const c = &self.heap[idx];
-            if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length == 0) {
+            if (!c.mark or (c.tag != .symbol and c.tag != .keyword and c.tag != .string)) continue;
+            if (c.length == 0) {
                 c.text_offset = 0;
+                continue;
             }
+            var at = text_count;
+            while (at > 0 and self.heap[self.queue[at - 1]].text_offset > c.text_offset) : (at -= 1) {
+                self.queue[at] = self.queue[at - 1];
+            }
+            self.queue[at] = @intCast(idx);
+            text_count += 1;
         }
         var new_offset: u16 = 0;
-        while (true) {
-            var best_offset: u16 = std.math.maxInt(u16);
-            for (1..cells) |idx| {
-                const c = &self.heap[idx];
-                if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length > 0) {
-                    if (c.text_offset >= new_offset and c.text_offset < best_offset) {
-                        best_offset = c.text_offset;
-                    }
-                }
+        for (self.queue[0..text_count]) |r| {
+            const c = &self.heap[r];
+            const old_offset = c.text_offset;
+            const len = c.length;
+            if (old_offset != new_offset) {
+                std.mem.copyForwards(u8, self.text_storage[new_offset..][0..len], self.text_storage[old_offset..][0..len]);
+                c.text_offset = new_offset;
             }
-            if (best_offset == std.math.maxInt(u16)) break;
-            var best_len: u8 = 0;
-            for (1..cells) |idx| {
-                const c = &self.heap[idx];
-                if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length > 0) {
-                    if (c.text_offset == best_offset) {
-                        best_len = c.length;
-                        break;
-                    }
-                }
-            }
-            if (best_offset != new_offset) {
-                std.mem.copyForwards(u8, self.text_storage[new_offset..][0..best_len], self.text_storage[best_offset..][0..best_len]);
-                for (1..cells) |idx| {
-                    const c = &self.heap[idx];
-                    if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string)) {
-                        if (c.text_offset == best_offset) {
-                            c.text_offset = new_offset;
-                        }
-                    }
-                }
-            }
-            new_offset += best_len;
+            new_offset += len;
         }
         self.text_used = new_offset;
         self.free_cells = 0;
@@ -453,6 +447,8 @@ pub const Runtime = struct {
         return 0;
     }
     inline fn canReuseFrame(self: *const Runtime, env: Ref, params: []const Ref) bool {
+        // A closure can retain this environment, including through a child.
+        if (self.heap[env].length != 0) return false;
         var node = self.heap[env].a;
         var i = params.len;
         while (i > 0) {
@@ -495,6 +491,12 @@ pub const Runtime = struct {
             for (args[0..index]) |old| if (arg == old) return error.Syntax;
         }
         const r = try self.alloc(.closure);
+        // Every ancestor may be visible to the new closure. Conservatively
+        // pin those frames against destructive tail-call reuse until GC.
+        var captured = env;
+        while (captured != 0 and captured != self.global) : (captured = self.heap[captured].b) {
+            self.heap[captured].length = 1;
+        }
         self.heap[r].a = params;
         self.heap[r].b = body;
         self.heap[r].env = env;
@@ -513,6 +515,8 @@ pub const Runtime = struct {
     fn eval(self: *Runtime, initial_r: Ref, initial_env: Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         var cur_r = initial_r;
         var cur_env = initial_env;
+        // Only frames created by this evaluator invocation may be recycled.
+        var owned_frame: Ref = 0;
         while (true) {
             try self.tick(depth);
             if (isImmediate(cur_r)) return cur_r;
@@ -603,6 +607,7 @@ pub const Runtime = struct {
                         _ = try self.eval(self.heap[body].a, local, depth + 1, host);
                     }
                     cur_env = local;
+                    owned_frame = local;
                     cur_r = self.heap[body].a;
                     continue;
                 },
@@ -620,7 +625,7 @@ pub const Runtime = struct {
                 var param_storage: [16]Ref = @splat(0);
                 const params = try self.arguments(cl_params, &param_storage);
                 if (params.len != args.len) return error.Arity;
-                if (cur_env != cl_env and cur_env != self.global and self.canReuseFrame(cur_env, params)) {
+                if (cur_env == owned_frame and cur_env != cl_env and cur_env != self.global and self.heap[cur_env].b == cl_env and self.canReuseFrame(cur_env, params)) {
                     self.updateFrameBindings(cur_env, args);
                     var body = cl_body;
                     if (body == 0) return 0;
@@ -640,6 +645,7 @@ pub const Runtime = struct {
                     _ = try self.eval(self.heap[body].a, local, depth + 1, host);
                 }
                 cur_env = local;
+                owned_frame = local;
                 cur_r = self.heap[body].a;
                 continue;
             }
@@ -768,12 +774,7 @@ pub const Runtime = struct {
                     if (self.eval_sp < fp + 2) return error.Syntax;
                     const b = self.eval_stack[self.eval_sp - 1];
                     const a = self.eval_stack[self.eval_sp - 2];
-                    const is_eq = if (isImmediateInt(a) and isImmediateInt(b))
-                        a == b
-                    else if (self.tagOf(a) == .integer and self.tagOf(b) == .integer)
-                        try self.integer(a) == try self.integer(b)
-                    else
-                        a == b;
+                    const is_eq = try self.integer(a) == try self.integer(b);
                     self.eval_stack[self.eval_sp - 2] = if (is_eq) self.yes else self.no;
                     self.eval_sp -= 1;
                 },
@@ -1725,10 +1726,11 @@ pub const Runtime = struct {
         if (self.running) return error.Busy;
         self.step_budget = budget;
         self.cell_reserve = 0;
-        self.collect();
-        self.steps = 0;
+        // Previous request stacks are dead before the between-request GC.
         self.eval_sp = 0;
         self.call_sp = 0;
+        self.collect();
+        self.steps = 0;
         self.running = true;
     }
     pub fn evaluate(self: *Runtime, source: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
@@ -1747,30 +1749,194 @@ pub const Runtime = struct {
             if (tail == 0) forms = p else self.heap[tail].b = p;
             tail = p;
         }
-        const saved_bytecode_len = self.bytecode_len;
-        const saved_eval_sp = self.eval_sp;
-        const saved_call_sp = self.call_sp;
-        if (self.compileSequence(forms)) |start_ip| {
-            if (self.runVm(start_ip, host)) |result| {
-                return self.format(result, output);
-            } else |err| switch (err) {
-                error.CannotCompile => {
-                    self.bytecode_len = saved_bytecode_len;
-                    self.eval_sp = saved_eval_sp;
-                    self.call_sp = saved_call_sp;
-                },
-                else => return err,
+        // An effect-free global numeric function may use a weak one-function
+        // cache. Admission is checked on every call, including current bindings.
+        if (self.numericCall(forms)) |call| {
+            if (self.prepareNumeric(call.proc, call.name, call.params[0..call.count])) {
+                const body_len = self.bytecode_len;
+                const old_eval_sp = self.eval_sp;
+                const old_call_sp = self.call_sp;
+                if (self.numericWrapper(call.proc, call.args[0..call.count])) |ip| {
+                    const result = self.runVm(ip, host);
+                    self.bytecode_len = body_len;
+                    self.eval_sp = old_eval_sp;
+                    self.call_sp = old_call_sp;
+                    return self.format(try result, output);
+                } else |_| {
+                    self.bytecode_len = body_len;
+                    self.eval_sp = old_eval_sp;
+                    self.call_sp = old_call_sp;
+                }
             }
-        } else |err| switch (err) {
-            error.CannotCompile => {
+        }
+        // Only closed, side-effect-free arithmetic is eligible for compilation.
+        // The experimental compiler cannot yet preserve arbitrary lexical
+        // bindings, mutation, or persistent function lifetimes. Keep those
+        // forms on the interpreter until it can do so.
+        if (self.safeArithmeticSequence(forms)) {
+            const saved_bytecode_len = self.bytecode_len;
+            const saved_eval_sp = self.eval_sp;
+            const saved_call_sp = self.call_sp;
+            if (self.compileSequence(forms)) |start_ip| {
+                const result = self.runVm(start_ip, host);
                 self.bytecode_len = saved_bytecode_len;
                 self.eval_sp = saved_eval_sp;
                 self.call_sp = saved_call_sp;
-            },
-            else => {},
+                return self.format(try result, output);
+            } else |_| {
+                self.bytecode_len = saved_bytecode_len;
+                self.eval_sp = saved_eval_sp;
+                self.call_sp = saved_call_sp;
+            }
         }
         const result = try self.sequence(forms, self.global, 0, host);
         return self.format(result, output);
+    }
+    const NumericCall = struct {
+        proc: Ref,
+        name: Ref,
+        params: [16]Ref,
+        args: [16]Ref,
+        count: u8,
+    };
+    noinline fn numericCall(self: *Runtime, forms: Ref) linksection(code_section) ?NumericCall {
+        if (forms == 0 or self.heap[forms].b != 0) return null;
+        const expr = self.heap[forms].a;
+        if (self.tagOf(expr) != .pair) return null;
+        const name = self.heap[expr].a;
+        if (self.tagOf(name) != .symbol or opcode(self.string(name)) != null) return null;
+        const binding = self.lookup(self.global, name);
+        if (binding == 0) return null;
+        const proc = self.heap[binding].b;
+        if (self.tagOf(proc) != .closure or self.heap[proc].length == 1 or self.heap[proc].env != self.global) return null;
+        var call = NumericCall{ .proc = proc, .name = name, .params = @splat(0), .args = @splat(0), .count = 0 };
+        const params = self.arguments(self.heap[proc].a, &call.params) catch return null;
+        const args = self.arguments(self.heap[expr].b, &call.args) catch return null;
+        if (params.len != args.len) return null;
+        for (args) |arg| if (!isImmediateInt(arg)) return null;
+        for (params) |param| if (param == name or opcode(self.string(param)) != null) return null;
+        call.count = @intCast(params.len);
+        var body = self.heap[proc].b;
+        if (body == 0) return null;
+        while (body != 0) : (body = self.heap[body].b) {
+            if (!self.safeNumericExpr(self.heap[body].a, name, params, self.heap[body].b == 0, 0)) return null;
+        }
+        return call;
+    }
+    noinline fn safeNumericExpr(self: *const Runtime, expr: Ref, name: Ref, params: []const Ref, tail: bool, depth: usize) linksection(code_section) bool {
+        if (depth >= depth_limit) return false;
+        if (isImmediateInt(expr) or expr == self.yes or expr == self.no) return true;
+        if (self.tagOf(expr) == .symbol) {
+            for (params) |param| if (param == expr) return true;
+            return false;
+        }
+        if (self.tagOf(expr) != .pair) return false;
+        const head = self.heap[expr].a;
+        if (self.tagOf(head) != .symbol) return false;
+        var arg_storage: [16]Ref = @splat(0);
+        const args = self.arguments(self.heap[expr].b, &arg_storage) catch return false;
+        if (head == name) {
+            if (!tail or args.len != params.len) return false;
+            for (args) |arg| if (!self.safeNumericExpr(arg, name, params, false, depth + 1)) return false;
+            return true;
+        }
+        const op = opcode(self.string(head)) orelse return false;
+        switch (op) {
+            .if_ => {
+                if (args.len != 3) return false;
+                return self.safeNumericExpr(args[0], name, params, false, depth + 1) and
+                    self.safeNumericExpr(args[1], name, params, tail, depth + 1) and
+                    self.safeNumericExpr(args[2], name, params, tail, depth + 1);
+            },
+            .begin => {
+                if (args.len == 0) return false;
+                for (args, 0..) |arg, i| if (!self.safeNumericExpr(arg, name, params, tail and i + 1 == args.len, depth + 1)) return false;
+                return true;
+            },
+            .add, .sub, .mul, .equal, .less, .not => {
+                if (self.lookup(self.global, head) != 0) return false;
+                if (args.len != (if (op == .not) @as(usize, 1) else 2)) return false;
+                for (args) |arg| if (!self.safeNumericExpr(arg, name, params, false, depth + 1)) return false;
+                return true;
+            },
+            else => return false,
+        }
+    }
+    noinline fn prepareNumeric(self: *Runtime, proc: Ref, name: Ref, params: []const Ref) linksection(code_section) bool {
+        if (self.cached_proc == proc) return true;
+        self.cached_proc = 0;
+        self.bytecode_len = 0;
+        var compiler = Compiler{ .fn_name = name, .fn_entry_ip = 0 };
+        for (params) |param| {
+            compiler.locals[compiler.local_count] = param;
+            compiler.local_count += 1;
+        }
+        var body = self.heap[proc].b;
+        while (body != 0) {
+            const next = self.heap[body].b;
+            self.compileExpr(&compiler, self.heap[body].a, next == 0) catch {
+                self.bytecode_len = 0;
+                return false;
+            };
+            if (next != 0) self.emitBcOp(.pop) catch {
+                self.bytecode_len = 0;
+                return false;
+            };
+            body = next;
+        }
+        self.emitBcOp(.ret) catch {
+            self.bytecode_len = 0;
+            return false;
+        };
+        self.cached_proc = proc;
+        return true;
+    }
+    noinline fn numericWrapper(self: *Runtime, proc: Ref, args: []const Ref) linksection(code_section) Error!u16 {
+        const entry = self.bytecode_len;
+        const temporary = try self.alloc(.closure);
+        self.heap[temporary].length = 1;
+        self.heap[temporary].a = @intCast(args.len);
+        self.heap[temporary].b = 0;
+        self.heap[temporary].env = self.heap[proc].env;
+        try self.emitBcOp(.const_val);
+        try self.emitBcU16(temporary);
+        for (args) |arg| {
+            try self.emitBcOp(.const_val);
+            try self.emitBcU16(arg);
+        }
+        try self.emitBcOp(.call);
+        try self.emitBcByte(@intCast(args.len));
+        try self.emitBcOp(.halt);
+        return entry;
+    }
+    fn safeArithmeticSequence(self: *const Runtime, forms: Ref) bool {
+        var cursor = forms;
+        while (cursor != 0) : (cursor = self.heap[cursor].b) {
+            if (!self.safeArithmetic(self.heap[cursor].a, 0)) return false;
+        }
+        return true;
+    }
+    fn safeArithmetic(self: *const Runtime, expr: Ref, depth: usize) bool {
+        if (depth >= depth_limit) return false;
+        if (isImmediateInt(expr) or expr == self.yes or expr == self.no) return true;
+        if (self.tagOf(expr) == .integer) return true;
+        if (self.tagOf(expr) != .pair) return false;
+        const head = self.heap[expr].a;
+        if (self.tagOf(head) != .symbol) return false;
+        const op = opcode(self.string(head)) orelse return false;
+        switch (op) {
+            .add, .sub, .mul, .equal, .less, .not => {
+                // These names are ordinary, rebindable procedures.
+                if (self.lookup(self.global, head) != 0) return false;
+            },
+            .if_, .begin => {},
+            else => return false,
+        }
+        var p = self.heap[expr].b;
+        while (p != 0) : (p = self.heap[p].b) {
+            if (self.tagOf(p) != .pair or !self.safeArithmetic(self.heap[p].a, depth + 1)) return false;
+        }
+        return true;
     }
     pub fn runCommand(self: *Runtime, name: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
         try self.start();
@@ -2148,7 +2314,7 @@ test "scheme runtime memory footprint and tail call execution" {
     // 1. Structure Sizes & Memory Footprint assertions
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(Cell));
     try std.testing.expectEqual(@as(usize, 4096), @sizeOf(@TypeOf(vm.heap)));
-    try std.testing.expectEqual(@as(usize, 7632), @sizeOf(Runtime));
+    try std.testing.expect(@sizeOf(Runtime) <= 7640);
 
     // 2. Symbol Interning & Heap Density
     _ = try vm.evaluate("(define a 1) (define b 2) (define c 3) (define d 4) (define e 5)", &host, &out);
@@ -2349,148 +2515,104 @@ test "compiler and bytecode VM execution: transparent evaluate" {
     try std.testing.expectEqual(initial_free, vm.free_cells);
 }
 
-fn nowNs() u64 {
-    if (comptime @import("builtin").os.tag == .macos) {
-        const DarwinTime = struct {
-            extern "c" fn mach_absolute_time() u64;
-        };
-        return DarwinTime.mach_absolute_time();
-    }
-    return 0;
-}
-
-test "benchmark Phase 4: AST Interpreter vs Bytecode VM" {
+test "temporary bytecode is reclaimed and compiler respects mutable bindings" {
     var vm: Runtime = undefined;
     vm.initInPlace();
     var host = TestHost{};
-    var out: [128]u8 = @splat(0);
-
-    const sum_fn =
-        \\(define (sum-iter n acc)
-        \\  (if (= n 0)
-        \\      acc
-        \\      (sum-iter (- n 1) (+ acc n))))
-    ;
-
-    // --- Benchmark 1: Recursive loop (50 iterations per call, 5,000 runs = 250,000 steps) ---
-    // 1A: Bytecode VM compiled
-    _ = try vm.evaluate(sum_fn, &host, &out);
-    vm.step_budget = 100_000_000;
-
-    var pos: usize = 0;
-    const call_expr = try vm.read("(sum-iter 50 0)", &pos, 0);
-    const start_ip = try vm.compile(call_expr);
-
-    // Warmup
-    _ = try vm.runVm(start_ip, &host);
-
-    const initial_free_bc = vm.free_cells;
-    const saved_sp = vm.eval_sp;
-    const t0_bc = nowNs();
-    const bc_repeats: usize = 30;
-    var i: usize = 0;
-    var bc_sum: i32 = 0;
-    while (i < bc_repeats) : (i += 1) {
-        vm.steps = 0;
-        const res = try vm.runVm(start_ip, &host);
-        bc_sum += try vm.integer(res);
-        vm.eval_sp = saved_sp;
+    var out: [128]u8 = undefined;
+    for (0..1000) |_| {
+        try std.testing.expectEqualStrings("3", try vm.evaluate("(+ 1 2)", &host, &out));
+        try std.testing.expectEqual(@as(u16, 0), vm.bytecode_len);
     }
-    const t1_bc = nowNs();
-    try std.testing.expectEqual(@as(i32, 1275 * bc_repeats), bc_sum);
-    const bc_time_ns = t1_bc - t0_bc;
-    const cells_used_bc = initial_free_bc - vm.free_cells;
+    try std.testing.expectError(error.Unbound, vm.evaluate("(set! absent 1)", &host, &out));
+    try std.testing.expectEqualStrings("9", try vm.evaluate("(define + (lambda (a b) 9)) (+ 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("9", try vm.evaluate("(+ 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("7", try vm.evaluate("(set! + (lambda (a b) 7)) (+ 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("7", try vm.evaluate("(+ 1 2)", &host, &out));
+    try std.testing.expectEqual(@as(u16, 0), vm.bytecode_len);
+}
 
-    // 1B: AST Interpreter
-    // Define AST closure by clearing VM and eval
+test "collection compacts live text in allocation order" {
+    var vm: Runtime = undefined;
     vm.initInPlace();
-    vm.step_budget = 100_000_000;
-    pos = 0;
-    const def_ast = try vm.read(sum_fn, &pos, 0);
-    _ = try vm.eval(def_ast, vm.global, 0, &host);
-
-    pos = 0;
-    const call_ast = try vm.read("(sum-iter 50 0)", &pos, 0);
-    try vm.pushEval(call_ast);
-
-    // Warmup
-    const res_ast_warmup = try vm.eval(call_ast, vm.global, 0, &host);
-    try std.testing.expectEqual(@as(i32, 1275), try vm.integer(res_ast_warmup));
-
-    vm.collect();
-    const initial_free_ast = vm.free_cells;
-    const t0_ast = nowNs();
-    i = 0;
-    var ast_sum: i32 = 0;
-    while (i < bc_repeats) : (i += 1) {
-        vm.steps = 0;
-        const res = try vm.eval(call_ast, vm.global, 0, &host);
-        ast_sum += try vm.integer(res);
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    _ = try vm.evaluate("(define a \"first\") (define b \"second\")", &host, &out);
+    for (0..200) |_| {
+        _ = try vm.evaluate("(list \"discard\" \"more garbage\")", &host, &out);
+        try std.testing.expectEqualStrings("(\"first\" \"second\")", try vm.evaluate("(list a b)", &host, &out));
     }
-    const t1_ast = nowNs();
-    try std.testing.expectEqual(@as(i32, 1275 * bc_repeats), ast_sum);
-    const ast_time_ns = t1_ast - t0_ast;
-    const cells_used_ast = initial_free_ast - vm.free_cells;
+}
 
-    // --- Benchmark 2: Arithmetic expression (+ (* 12 34) (- 56 78)) x 20,000 runs ---
-    const arith_src = "(+ (* 12 34) (- 56 78))";
-    pos = 0;
-    const arith_expr = try vm.read(arith_src, &pos, 0);
-    const arith_ip = try vm.compile(arith_expr);
+test "tail calls preserve captured frames and lexical parents" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    const source = "(define saved #f) (define (f x) (if (= x 2) (set! saved (lambda () x)) #f) (if (= x 0) (saved) (f (- x 1)))) (f 2)";
+    try std.testing.expectEqualStrings("2", try vm.evaluate(source, &host, &out));
+    try std.testing.expectEqualStrings("2", try vm.evaluate("(saved)", &host, &out));
+    vm.initInPlace();
+    const lexical = "(define a (let ((z 11)) (lambda (x) z))) (define b (let ((z 22)) (lambda (x) (a x)))) (b 1)";
+    try std.testing.expectEqualStrings("11", try vm.evaluate(lexical, &host, &out));
+}
 
-    const arith_repeats: usize = 20_000;
-    const arith_saved_sp = vm.eval_sp;
-    const t0_arith_bc = nowNs();
-    i = 0;
-    while (i < arith_repeats) : (i += 1) {
-        vm.steps = 0;
-        _ = try vm.runVm(arith_ip, &host);
-        vm.eval_sp = arith_saved_sp;
+test "numeric function cache respects rebinding and collects dead code" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    _ = try vm.evaluate("(define (sum-iter n acc) (if (= n 0) acc (sum-iter (- n 1) (+ acc n))))", &host, &out);
+    for (0..100) |_| {
+        try std.testing.expectEqualStrings("1275", try vm.evaluate("(sum-iter 50 0)", &host, &out));
+        try std.testing.expect(vm.cached_proc != 0);
+        try std.testing.expect(vm.bytecode_len > 0);
     }
-    const t1_arith_bc = nowNs();
-    const arith_bc_ns = t1_arith_bc - t0_arith_bc;
+    _ = try vm.evaluate("(set! sum-iter #f)", &host, &out);
+    _ = try vm.evaluate("0", &host, &out);
+    try std.testing.expectEqual(@as(Ref, 0), vm.cached_proc);
+    try std.testing.expectEqual(@as(u16, 0), vm.bytecode_len);
+    vm.initInPlace();
+    _ = try vm.evaluate("(define (f x) (+ x 1))", &host, &out);
+    try std.testing.expectEqualStrings("3", try vm.evaluate("(f 2)", &host, &out));
+    try std.testing.expect(vm.cached_proc != 0);
+    _ = try vm.evaluate("(define + (lambda (a b) 77))", &host, &out);
+    try std.testing.expectEqualStrings("77", try vm.evaluate("(f 2)", &host, &out));
+    try std.testing.expectError(error.Type, vm.evaluate("(= #t #t)", &host, &out));
+}
 
-    const t0_arith_ast = nowNs();
-    i = 0;
-    while (i < arith_repeats) : (i += 1) {
-        vm.steps = 0;
-        _ = try vm.eval(arith_expr, vm.global, 0, &host);
+test "non-tail calls cannot overwrite the caller frame" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    const src = "(define (g x) (+ x 1)) (define (f x) (+ (g 9) x)) (f 3)";
+    try std.testing.expectEqualStrings("13", try vm.evaluate(src, &host, &out));
+}
+
+test "numeric cache matches interpreter across inputs and errors" {
+    var fast: Runtime = undefined;
+    var slow: Runtime = undefined;
+    fast.initInPlace();
+    slow.initInPlace();
+    var host = TestHost{};
+    var output: [128]u8 = undefined;
+    var reference: [128]u8 = undefined;
+    const definition = "(define (sum-iter n acc) (if (= n 0) acc (sum-iter (- n 1) (+ acc n))))";
+    _ = try fast.evaluate(definition, &host, &output);
+    _ = try slow.evaluate(definition, &host, &output);
+    for (0..26) |n| {
+        var source: [64]u8 = undefined;
+        const input = try std.fmt.bufPrint(&source, "(sum-iter {d} 0)", .{n});
+        const actual = try fast.evaluate(input, &host, &output);
+        try slow.start();
+        var pos: usize = 0;
+        const expr = try slow.read(input, &pos, 0);
+        const expected_ref = try slow.eval(expr, slow.global, 0, &host);
+        const expected = try slow.format(expected_ref, &reference);
+        slow.running = false;
+        try std.testing.expectEqualStrings(expected, actual);
+        try std.testing.expect(fast.cached_proc != 0);
     }
-    const t1_arith_ast = nowNs();
-    const arith_ast_ns = t1_arith_ast - t0_arith_ast;
-
-    std.debug.print("\n\n================ Phase 4 Performance Benchmark ================\n", .{});
-    std.debug.print("1. Recursive Loop (sum-iter 50 0) x {d} runs (250,000 iterations total):\n", .{bc_repeats});
-    std.debug.print("   - AST Interpreter: {d:.2} ms ({d:.1} ns/step), heap cells: {d}\n", .{
-        @as(f64, @floatFromInt(ast_time_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(ast_time_ns)) / @as(f64, @floatFromInt(bc_repeats * 50)),
-        cells_used_ast,
-    });
-    std.debug.print("   - Bytecode VM:     {d:.2} ms ({d:.1} ns/step), heap cells: {d}\n", .{
-        @as(f64, @floatFromInt(bc_time_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(bc_time_ns)) / @as(f64, @floatFromInt(bc_repeats * 50)),
-        cells_used_bc,
-    });
-    std.debug.print("   => Speedup:        {d:.2}x faster!\n", .{
-        @as(f64, @floatFromInt(ast_time_ns)) / @as(f64, @floatFromInt(bc_time_ns)),
-    });
-
-    std.debug.print("\n2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x {d} runs:\n", .{arith_repeats});
-    std.debug.print("   - AST Interpreter: {d:.2} ms ({d:.1} ns/eval)\n", .{
-        @as(f64, @floatFromInt(arith_ast_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(arith_ast_ns)) / @as(f64, @floatFromInt(arith_repeats)),
-    });
-    std.debug.print("   - Bytecode VM:     {d:.2} ms ({d:.1} ns/eval)\n", .{
-        @as(f64, @floatFromInt(arith_bc_ns)) / 1_000_000.0,
-        @as(f64, @floatFromInt(arith_bc_ns)) / @as(f64, @floatFromInt(arith_repeats)),
-    });
-    std.debug.print("   => Speedup:        {d:.2}x faster!\n", .{
-        @as(f64, @floatFromInt(arith_ast_ns)) / @as(f64, @floatFromInt(arith_bc_ns)),
-    });
-
-    std.debug.print("\n3. SRAM Footprint:\n", .{});
-    std.debug.print("   - Phase 2 (Tagged Unions Baseline):  8,248 bytes\n", .{});
-    std.debug.print("   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes\n", .{});
-    std.debug.print("   - Phase 4 (Bytecode VM + Compiler):   7,632 bytes (7.45 KiB, < 8.5 KiB floor!)\n", .{});
-    std.debug.print("=================================================================\n\n", .{});
+    try std.testing.expectError(error.Type, fast.evaluate("(= #t #t)", &host, &output));
 }

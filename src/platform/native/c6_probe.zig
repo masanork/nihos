@@ -18,6 +18,7 @@ extern fn nih_c6_fourbit_pins() callconv(.c) void;
 extern fn nih_c6_power_enable() callconv(.c) u32;
 extern fn nih_c6_power_failure_detail() callconv(.c) u32;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
+extern fn nih_c6_serial_read() callconv(.c) i32;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
@@ -506,4 +507,319 @@ pub fn runHosted(clock: timers.Timer, join: hosted.Join, enable_ipv6: bool) Repo
         }
     }
     return snapshot(report);
+}
+
+/// Experimental C6-owned SNTP fixture using the Hosted transport.
+/// Sends no OTA requests.
+pub const TimeReport = struct {
+    status: u32 = 0,
+    stage: u32 = 0,
+    error_code: u32 = 0,
+    tx: u32 = 0,
+    rx: u32 = 0,
+    peer_chip: u32 = 0,
+    fw_known: u32 = 0,
+    major: u32 = 0,
+    minor: u32 = 0,
+    patch: u32 = 0,
+    phase: u32 = 0,
+    station_phase: u32 = 0,
+    station_active_id: u32 = 0,
+    station_uid: u32 = 0,
+    station_connected: u32 = 0,
+    station_last_response: u32 = 0,
+    station_rpc_status: u32 = 0,
+    last_rpc_id: u32 = 0,
+    last_rpc_kind: u32 = 0,
+    split_generation: u32 = 0,
+    split_address_known: u32 = 0,
+    attempts: u32 = 0,
+    acknowledged: u32 = 0,
+    got_result: u32 = 0,
+    synced: u32 = 0,
+    seconds_low: u32 = 0,
+    seconds_high: u32 = 0,
+    age_seconds: u32 = 0,
+};
+var hosted_time: hosted.c6_time_exchange.Exchange = .{};
+noinline fn exerciseHostedTime(clock: timers.Timer, report: *TimeReport, join: hosted.Join) !void {
+    report.stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    report.stage = 2;
+    try host.prepare(true);
+    report.stage = 3;
+    try host.identify();
+    report.stage = 4;
+    try host.enableFunction();
+    try host.writeDoorbell(1, 0x8c, 1);
+    report.stage = 5;
+    const started = clock.counter() orelse return error.Clock;
+    try hosted_time.begin(join, 1, started, started + 100_000_000);
+    var next_request_at = started;
+    while (true) {
+        const count = try hosted_stream.receive(&rx);
+        report.rx +|= @intCast(count);
+        for (rx[0..count]) |byte| if (try hosted_decoder.push(byte)) |frame| {
+            try hosted_time.receive(frame, clock.counter() orelse return error.Clock);
+        };
+        const now = clock.counter() orelse return error.Clock;
+        if (clock_failed or now < started) return error.Clock;
+        if (hosted_time.phase == .done and hosted_decoder.used == 0) {
+            report.attempts +|= 1;
+            if (hosted_time.sample != null) {
+                report.status = 1;
+                report.stage = 6;
+                return;
+            }
+            try hosted_time.nextSnapshot(now);
+            next_request_at = now + 1_000_000;
+        }
+        if (hosted_time.phase == .ready and now < next_request_at) {
+            host.io.delay(100);
+            continue;
+        }
+        const bytes = try hosted_time.tx(now);
+        if (bytes.len > 0) {
+            const count_sent = try hosted_stream.send(bytes);
+            try hosted_time.sent(count_sent, clock.counter() orelse return error.Clock);
+            report.tx +|= @intCast(count_sent);
+        }
+        host.io.delay(100);
+    }
+}
+pub fn runHostedTime(clock: timers.Timer, join: hosted.Join) TimeReport {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    hosted_decoder = .{};
+    hosted_time = .{};
+    clock_failed = false;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    var report: TimeReport = .{};
+    exerciseHostedTime(clock, &report, join) catch |err| {
+        for ("NIHOS_C6_TIME_ERROR ") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        if (hosted_time.status_body_len != 0) {
+            const digits = "0123456789abcdef";
+            for ("NIHOS_C6_SPLIT_STATUS_HEX ") |byte| _ = nih_rom_putc(byte);
+            for (hosted_time.status_body[0..hosted_time.status_body_len]) |byte| {
+                _ = nih_rom_putc(digits[byte >> 4]);
+                _ = nih_rom_putc(digits[byte & 15]);
+            }
+            if (hosted_time.status_body_truncated) for (" truncated") |byte| {
+                _ = nih_rom_putc(byte);
+            };
+            for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        }
+        report.error_code = @intFromError(err);
+        hosted_stream.invalidate();
+    };
+    const peer = &hosted_time.station;
+    report.peer_chip = peer.peer_chip;
+    report.fw_known = @intFromBool(peer.version_known);
+    report.major = peer.version[0];
+    report.minor = peer.version[1];
+    report.patch = peer.version[2];
+    report.phase = @backingInt(hosted_time.phase) + 1;
+    report.station_phase = @backingInt(peer.phase) + 1;
+    report.station_active_id = peer.active_id orelse 0;
+    report.station_uid = peer.uid;
+    report.station_connected = @intFromBool(peer.connected);
+    report.station_last_response = peer.last_response;
+    report.station_rpc_status = peer.rpc_status;
+    report.last_rpc_id = hosted_time.last_rpc_id;
+    report.last_rpc_kind = hosted_time.last_rpc_kind;
+    report.split_generation = @truncate(hosted_time.addresses.generation);
+    report.split_address_known = @intFromBool(hosted_time.addresses.address != null);
+    report.acknowledged = @intFromBool(hosted_time.acknowledged);
+    report.got_result = @intFromBool(hosted_time.got_result);
+    if (hosted_time.sample) |sample| {
+        report.synced = 1;
+        report.seconds_low = @truncate(sample.seconds);
+        report.seconds_high = @truncate(sample.seconds >> 32);
+        report.age_seconds = sample.age_seconds;
+    }
+    return report;
+}
+
+/// OTA preflight: complete the version handshake, then stop before OTA Begin.
+/// This path does not update C6 or send any persistent-write RPC.
+pub const OtaPreflight = struct { status: u32 = 0, stage: u32 = 0, last_command: u32 = 0, last_interrupts: u32 = 0, error_code: u32 = 0, peer_chip: u32 = 0, version_known: u32 = 0, major: u32 = 0, minor: u32 = 0, patch: u32 = 0, diag_known: u32 = 0, diag_uptime: u32 = 0, diag_heap: u32 = 0 };
+var ota_preflight_stage: u32 = 0;
+noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) !OtaPreflight {
+    const started = clock.counter() orelse return error.Clock;
+    try ota_update_guard.session.initInPlace(image, hash, started, started + 30_000_000);
+    const root = @import("root");
+    ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    ota_preflight_stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    // Prior Tab5 long Hosted diagnostics saw repeated CMD52 response
+    // timeouts at 300 ms and completed initialization after a 2 s settle.
+    // This is a conservative preflight setting, not a proven root cause.
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    ota_preflight_stage = 2;
+    try host.prepare(true);
+    ota_preflight_stage = 3;
+    try host.identify();
+    ota_preflight_stage = 4;
+    try host.enableFunction();
+    ota_preflight_stage = 5;
+    try host.writeDoorbell(1, 0x8c, 1);
+    ota_preflight_stage = 6;
+    while (true) {
+        const session = &ota_update_guard.session;
+        const now = clock.counter() orelse return error.Clock;
+        try session.step(&hosted_stream, now);
+        if (session.state == .transfer) {
+            const diag = session.client.c6_diagnostics;
+            return .{ .status = 1, .stage = ota_preflight_stage, .last_command = host.last_command, .last_interrupts = host.last_interrupts, .peer_chip = session.client.peer_chip, .version_known = @intFromBool(session.client.version_known), .major = session.client.version[0], .minor = session.client.version[1], .patch = session.client.version[2], .diag_known = @intFromBool(diag != null), .diag_uptime = if (diag) |d| d.uptime_seconds else 0, .diag_heap = if (diag) |d| d.free_heap_bytes else 0 };
+        }
+        if (clock_failed) return error.Clock;
+        host.io.delay(100);
+    }
+}
+pub fn runOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) OtaPreflight {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    clock_failed = false;
+    ota_preflight_stage = 0;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    return exerciseOtaPreflight(clock, image, hash) catch |err| blk: {
+        for ("NIHOS_C6_PREFLIGHT_ERROR ") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        break :blk .{ .error_code = @intFromError(err), .stage = ota_preflight_stage, .last_command = host.last_command, .last_interrupts = host.last_interrupts };
+    };
+}
+
+/// Explicit single-use updater for the standalone P4 fixture. Never called by
+/// normal network boot. The guard will not send Begin before the serial token.
+pub const OtaUpdate = struct { status: u32 = 0, stage: u32 = 0, error_code: u32 = 0, acknowledged_bytes: u32 = 0 };
+// SAFETY: the OTA entry points initialize the guard before use.
+var ota_update_guard: hosted.ota_guard.Guard = undefined;
+// SAFETY: the simulation path initializes this before use.
+var ota_fake: hosted.ota_fake.Fake = undefined;
+// SAFETY: the simulation path initializes this before use.
+var ota_safe: hosted.ota_fake.NoOtaStream(@TypeOf(hosted_stream)) = undefined;
+var ota_update_stage: u32 = 0;
+fn printOtaHex(value: u32) void {
+    const digits = "0123456789abcdef";
+    for (0..8) |index| _ = nih_rom_putc(digits[(value >> @as(u5, @intCast(28 - index * 4))) & 15]);
+}
+noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]u8) !OtaUpdate {
+    const started = clock.counter() orelse return error.Clock;
+    try ota_update_guard.initInPlace(image, hash, started, started + 600_000_000);
+    const root = @import("root");
+    const simulation = @hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation;
+    ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    if (@hasDecl(root, "C6OtaRequiredPeer")) ota_update_guard.session.required_peer = root.C6OtaRequiredPeer;
+    if (simulation) {
+        ota_fake = .{ .image = image };
+        ota_safe = .{ .inner = &hosted_stream };
+    }
+    ota_update_stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    ota_update_stage = 2;
+    try host.prepare(true);
+    ota_update_stage = 3;
+    try host.identify();
+    ota_update_stage = 4;
+    try host.enableFunction();
+    ota_update_stage = 5;
+    try host.writeDoorbell(1, 0x8c, 1);
+    ota_update_stage = 6;
+    var announced = false;
+    var progress: usize = 0;
+    while (true) {
+        const now = clock.counter() orelse return error.Clock;
+        if (simulation) {
+            if (ota_update_guard.state == .transfer) {
+                try ota_update_guard.step(&ota_fake, now);
+            } else {
+                try ota_update_guard.step(&ota_safe, now);
+            }
+        } else {
+            try ota_update_guard.step(&hosted_stream, now);
+        }
+        if (ota_update_guard.state == .awaiting_start) {
+            if (!announced) {
+                // Discard bounded stale input before advertising readiness.
+                for (0..1024) |_| if (nih_c6_serial_read() < 0) break else {};
+                if (simulation) for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| {
+                    _ = nih_rom_putc(byte);
+                };
+                if (@hasDecl(root, "C6OtaRequiredPeer")) {
+                    const peer = &ota_update_guard.session.client;
+                    for ("NIHOS_C6_OTA_ORIGIN chip=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.peer_chip);
+                    for (" major=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.version[0]);
+                    for (" minor=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.version[1]);
+                    for (" patch=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.version[2]);
+                    for ("\r\n") |byte| _ = nih_rom_putc(byte);
+                }
+                for ("NIHOS_C6_OTA_READY\r\n") |byte| _ = nih_rom_putc(byte);
+                announced = true;
+            }
+            const byte = nih_c6_serial_read();
+            if (byte >= 0) _ = try ota_update_guard.feed(@intCast(byte), now);
+        }
+        if (ota_update_guard.state == .transfer) {
+            ota_update_stage = 7;
+            if (ota_update_guard.session.transfer) |*transfer| {
+                if (transfer.client.offset >= progress + 262144) {
+                    progress = transfer.client.offset;
+                    for ("NIHOS_C6_OTA_PROGRESS\r\n") |byte| _ = nih_rom_putc(byte);
+                }
+            }
+        }
+        if (ota_update_guard.state == .complete) {
+            ota_update_stage = 8;
+            // Hosted 1.4.1 schedules reboot five seconds after accepted End.
+            if (simulation and (ota_fake.phase != .complete or ota_fake.offset != image.len)) return error.Malformed;
+            for (0..if (simulation) @as(usize, 0) else 70) |_| {
+                host.io.delay(100_000);
+                if (clock_failed) return error.Clock;
+            }
+            return .{ .status = 1, .stage = ota_update_stage, .acknowledged_bytes = @intCast(image.len) };
+        }
+        if (clock_failed) return error.Clock;
+        host.io.delay(100);
+    }
+}
+pub fn runOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]u8) OtaUpdate {
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    clock_failed = false;
+    ota_update_stage = 0;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    return exerciseOtaUpdate(clock, image, hash) catch |err| blk: {
+        for ("NIHOS_C6_OTA_ERROR ") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        const offset: u32 = if (ota_update_stage >= 7) (if (ota_update_guard.session.transfer) |*transfer| @intCast(transfer.client.offset) else 0) else 0;
+        break :blk .{ .stage = ota_update_stage, .error_code = @intFromError(err), .acknowledged_bytes = offset };
+    };
 }

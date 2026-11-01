@@ -4,14 +4,19 @@ const std = @import("std");
 pub const Event = struct { modifiers: u8, usage: u8 };
 pub const Report = struct { status: u32 = 0, firmware: u32 = 0, mode: u32 = 0, presses: u32 = 0, releases: u32 = 0, malformed: u32 = 0 };
 pub fn Keyboard(comptime Bus: type) type {
+    const section = if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+    return KeyboardIn(Bus, section);
+}
+/// Foreground owners may place driver code in an already-mapped Flash span.
+pub fn KeyboardIn(comptime Bus: type, comptime section: []const u8) type {
     return struct {
         bus: *Bus,
         report: Report = .{},
         const Self = @This();
-        fn read(self: *Self, register: u8, bytes: []u8) !void {
+        fn read(self: *Self, register: u8, bytes: []u8) linksection(section) !void {
             try self.bus.transfer(0x6d, &.{register}, bytes);
         }
-        pub fn begin(self: *Self) !bool {
+        pub fn begin(self: *Self) linksection(section) !bool {
             var value: [1]u8 = .{0};
             self.read(0xfe, &value) catch |err| {
                 if (err == error.AddressNack) {
@@ -34,7 +39,7 @@ pub fn Keyboard(comptime Bus: type) type {
             return true;
         }
         /// Caller polls outside interrupts; never drain more than four events.
-        pub fn poll(self: *Self, output: *[4]Event) !usize {
+        pub fn poll(self: *Self, output: *[4]Event) linksection(section) !usize {
             if (self.report.status != 1) return 0;
             var count: [1]u8 = .{0};
             try self.read(0x02, &count);

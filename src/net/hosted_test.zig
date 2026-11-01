@@ -18,6 +18,19 @@ test "in-place Hosted frames equal separate-buffer encoding" {
     try std.testing.expectError(error.Capacity, wire.frameInPlace(&tiny, 1, 0, 1));
 }
 
+test "Hosted framing overwrites the entire transmitted range" {
+    const payload: [128]u8 = @splat(0x37);
+    for ([_]usize{ 1, 64, 128 }) |length| {
+        var zero: [144]u8 = @splat(0);
+        var stale: [144]u8 = @splat(0xa5);
+        const expected = try wire.frame(&zero, wire.station_interface, 17, payload[0..length]);
+        const actual = try wire.frame(&stale, wire.station_interface, 17, payload[0..length]);
+        try std.testing.expectEqual(@as(usize, length + 12), actual.len);
+        try std.testing.expectEqualSlices(u8, expected, actual);
+        try std.testing.expect(std.mem.allEqual(u8, stale[actual.len..], 0xa5));
+    }
+}
+
 test "settings provider owns credentials and validates updates before replacing" {
     var config: station.Configuration = .{};
     var name = [_]u8{ 't', 'e', 's', 't' };
@@ -657,4 +670,26 @@ test "IPv6 disabled keeps acquisition IPv4-only" {
     try client.receive(.{ .interface = 1, .payload = try serverPacket(client.dhcp_client.?, 5, &packet) }, 9);
     try std.testing.expectEqual(station.Phase.done, client.phase);
     try std.testing.expect(client.ipv6_client == null);
+}
+
+test "version RPC exposes optional C6 diagnostics while factory stays compatible" {
+    var client: station.Client = .{};
+    client.begin(.disabled, 0);
+    client.phase = .version;
+    client.active_id = 350;
+    client.uid = 1;
+    client.transmitted = true;
+    var b: [64]u8 = undefined;
+    var body: wire.Writer = .{ .out = &b };
+    try body.uint(2, 1);
+    try body.uint(3, 4);
+    try body.uint(4, 1);
+    try body.uint(100, 1);
+    try body.uint(101, 125);
+    try body.uint(102, 134217);
+    var r: [128]u8 = undefined;
+    try client.receive(.{ .interface = 3, .payload = try reply(&r, 2, 606, 1, body.slice()) }, 1);
+    try std.testing.expectEqual(@as(u32, 125), client.c6_diagnostics.?.uptime_seconds);
+    try std.testing.expectEqual(@as(u32, 134217), client.c6_diagnostics.?.free_heap_bytes);
+    try std.testing.expectEqual(station.Phase.done, client.phase);
 }
