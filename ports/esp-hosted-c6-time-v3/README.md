@@ -55,8 +55,13 @@ nonce, acknowledgement, deadlines, partition bounds and non-overlap. The
 caller must own the stream, choose a fresh nonce, and discard the result on
 reset. `sh ports/esp-hosted-c6-time-v3/check-ota-info-wire.sh` verifies the
 C-generated fixture consumed by its Zig tests. This is an API and wire test;
-the request and decoder also compiled for the P4 RV32 target. There is not yet
-a device UI or physical capture using it. Values are
+the request and decoder also compiled for the P4 RV32 target. A separate
+`tools/build-c6-ota-info-probe.sh` builds a P4 diagnostic that performs the
+Hosted handshake and this one query. Its stream guard admits only the exact
+handshake configuration, version and Bluetooth setup, and this CustomRpc;
+it rejects OTA Begin, Write, End, Activate and other CustomRpc IDs. It does
+not authorize a C6 OTA. There is not yet a device UI or a 3.x physical capture.
+Values are
 self-reported by the running C6 application; this service is absent from the
 currently installed 2.13.1 image and cannot establish its actual partition
 layout before the first update. Neither a reported layout nor a security flag
