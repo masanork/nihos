@@ -1,0 +1,14 @@
+sequenceDiagram
+    accTitle: 候補を構築し、保存の成功後に動作中の定義へ反映する
+    accDescr: Sourceから候補VMを構築し、SQLiteで期待世代を確認して原文と有効世代をcommitした後、RAMの実行環境を差し替える。commit後のプロセス終了には次回起動時の再構築で対応する。
+    participant U as Sourceバッファ
+    participant C as 候補VM
+    participant D as SQLite
+    participant R as 実行中のVM
+    U->>C: 候補を構築
+    C-->>U: 構築成功
+    U->>D: 更新開始・期待世代を確認
+    U->>D: 原文追加・有効世代を更新
+    D-->>U: COMMIT成功
+    U->>R: 準備済み候補へ切替え
+    Note over D,R: COMMIT後の終了<br/>次回、原文から再構築
