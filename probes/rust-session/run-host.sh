@@ -10,9 +10,9 @@ mkdir -p "$out"
 CARGO_TARGET_DIR="$out/rust-target" cargo build --locked --release \
     --manifest-path "$root/probes/rust-app/Cargo.toml"
 cp "$out/rust-target/release/libnihos_rust_app_probe.a" "$out/libnative.a"
-"$zig" build-obj -O ReleaseSafe -femit-bin="$out/session.o" "$root/src/app/session.zig"
-"$zig" build-obj -O ReleaseSafe -femit-bin="$out/presenter.o" "$root/src/graphics/app_presenter.zig"
-"$zig" build-obj -O ReleaseSafe -femit-bin="$out/adapter.o" "$root/src/graphics/rust_app_probe.zig"
+"$zig" build-obj -fPIC -O ReleaseSafe -femit-bin="$out/session.o" "$root/src/app/session.zig"
+"$zig" build-obj -fPIC -O ReleaseSafe -femit-bin="$out/presenter.o" "$root/src/graphics/app_presenter.zig"
+"$zig" build-obj -fPIC -O ReleaseSafe -femit-bin="$out/adapter.o" "$root/src/graphics/rust_app_probe.zig"
 cmake -S "$root/probes/wamr-host" -B "$out/runtime" \
     -DWAMR_ROOT_DIR="$root/build/wamr-2.4.5" \
     -DNIHOS_BOOT_LIBRARY="$root/build/journal-wamr-host/libboot-admission.a" \

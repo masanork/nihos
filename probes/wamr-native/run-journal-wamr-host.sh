@@ -32,20 +32,20 @@ build_fixture() {
 build_fixture package-pack package-ed25519-pack.zig
 build_fixture media-pack boot-media-pack.zig
 build_fixture boot-export boot-file-export.zig
-"$zig" build-lib -static -O ReleaseSafe -lc -fcompiler-rt \
+"$zig" build-lib -static -fPIC -O ReleaseSafe -lc -fcompiler-rt \
     -femit-bin="$out/libboot-admission.a" \
     --dep app_boot --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
     -Mroot="$root/probes/wamr-native/boot-buffer-host.zig" \
     --dep app_install --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
-    -Mapp_boot="$root/src/app/boot_admission.zig" \
-    --dep app_package --dep app_policy -Mapp_install="$root/src/app/package_install.zig" \
-    --dep app_policy -Mapp_package="$root/src/app/package.zig" \
-    -Mapp_policy="$root/src/app/module_policy.zig" \
-    --dep app_package -Mpackage_ed25519="$root/src/app/package_ed25519.zig" \
-    --dep app_package -Mtrust_snapshot="$root/src/app/trust_snapshot.zig" \
+    -fPIC -Mapp_boot="$root/src/app/boot_admission.zig" \
+    --dep app_package --dep app_policy -fPIC -Mapp_install="$root/src/app/package_install.zig" \
+    --dep app_policy -fPIC -Mapp_package="$root/src/app/package.zig" \
+    -fPIC -Mapp_policy="$root/src/app/module_policy.zig" \
+    --dep app_package -fPIC -Mpackage_ed25519="$root/src/app/package_ed25519.zig" \
+    --dep app_package -fPIC -Mtrust_snapshot="$root/src/app/trust_snapshot.zig" \
     --dep app_package --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_store \
-    -Mtrust_snapshot_ed25519="$root/src/app/trust_snapshot_ed25519.zig" \
-    -Mtrust_snapshot_store="$root/src/app/trust_snapshot_store.zig"
+    -fPIC -Mtrust_snapshot_ed25519="$root/src/app/trust_snapshot_ed25519.zig" \
+    -fPIC -Mtrust_snapshot_store="$root/src/app/trust_snapshot_store.zig"
 "$out/package-pack" "$out/app.wasm" "$out/app.nihpkg"
 "$out/media-pack" "$out/app.nihpkg" "$out/trust.bin" "$out/package.bin" \
     "$out/counter.bin" "$out/root.pub"

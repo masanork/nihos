@@ -959,7 +959,7 @@ pub const Runtime = struct {
             return null;
         }
 
-        fn compileExpr(self: *Compiler, expr: Ref, is_tail: bool) Error!void {
+        fn compileExpr(self: *Compiler, expr: Ref, is_tail: bool) linksection(code_section) Error!void {
             if (isImmediate(expr)) {
                 try self.emitOp(.const_val);
                 try self.emitU16(expr);
