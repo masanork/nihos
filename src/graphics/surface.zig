@@ -154,6 +154,29 @@ fn blendLinear(background: u16, color: u16, alpha: u8) u16 {
     return (r << 11) | (g << 5) | b;
 }
 
+// Full 8-bit counterpart for the desktop compositor. Unused tables are omitted
+// from native images; RGB565 retains its channel-specific rounding thresholds.
+const linear8 = linearTable8(false);
+const threshold8 = linearTable8(true);
+fn linearTable8(comptime thresholds: bool) [if (thresholds) 255 else 256]u16 {
+    @setEvalBranchQuota(200000);
+    var out: [if (thresholds) 255 else 256]u16 = @splat(0);
+    for (&out, 0..) |*item, i| {
+        const encoded = (@as(f64, @floatFromInt(i)) + if (thresholds) @as(f64, 0.5) else 0.0) / 255.0;
+        const value = if (encoded <= 0.04045) encoded / 12.92 else std.math.pow(f64, (encoded + 0.055) / 1.055, 2.4);
+        item.* = @intFromFloat(value * 65535.0 + 0.5);
+    }
+    return out;
+}
+pub fn blendChannelLinear8(background: u8, foreground: u8, alpha: u8) u8 {
+    return @intCast(channelLinear(background, foreground, alpha, &linear8, &threshold8));
+}
+
+test "RGBA linear blend shares transfer curve and preserves identical colors" {
+    try std.testing.expectEqual(@as(u8, 188), blendChannelLinear8(0, 255, 128));
+    for (0..256) |v| try std.testing.expectEqual(@as(u8, @intCast(v)), blendChannelLinear8(@intCast(v), @intCast(v), 128));
+}
+
 test "linear light blend has expected midtone and preserves endpoints" {
     var bytes = [_]u8{ 0, 0, 0, 0, 0, 0 };
     const surface = Surface.init(&bytes, 3, 1, 6).?;

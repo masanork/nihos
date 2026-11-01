@@ -1,0 +1,83 @@
+{
+  "physical_input_transport": "Tab5 I2C keyboard",
+  "serial_writes_hex": "0c",
+  "observations": [
+    {
+      "revision": 405,
+      "bytes": 170,
+      "cursor": 170,
+      "fnv": 1494729778,
+      "mode": 0,
+      "frames": 3167,
+      "input_bytes": 376,
+      "pending_utf8": 0,
+      "status": 0,
+      "buffer_kind": 0,
+      "buffer_bytes": 0,
+      "buffer_hash": 2166136261,
+      "elapsed_seconds": 0.264
+    },
+    {
+      "revision": 407,
+      "bytes": 171,
+      "cursor": 171,
+      "fnv": 2154426560,
+      "mode": 0,
+      "frames": 4380,
+      "input_bytes": 376,
+      "pending_utf8": 0,
+      "status": 0,
+      "buffer_kind": 0,
+      "buffer_bytes": 0,
+      "buffer_hash": 2166136261,
+      "elapsed_seconds": 20.498
+    },
+    {
+      "revision": 409,
+      "bytes": 172,
+      "cursor": 172,
+      "fnv": 3636848694,
+      "mode": 0,
+      "frames": 4411,
+      "input_bytes": 376,
+      "pending_utf8": 0,
+      "status": 0,
+      "buffer_kind": 0,
+      "buffer_bytes": 0,
+      "buffer_hash": 2166136261,
+      "elapsed_seconds": 21.01
+    },
+    {
+      "revision": 410,
+      "bytes": 171,
+      "cursor": 171,
+      "fnv": 2154426560,
+      "mode": 0,
+      "frames": 4498,
+      "input_bytes": 376,
+      "pending_utf8": 0,
+      "status": 0,
+      "buffer_kind": 0,
+      "buffer_bytes": 0,
+      "buffer_hash": 2166136261,
+      "elapsed_seconds": 22.465
+    },
+    {
+      "revision": 411,
+      "bytes": 170,
+      "cursor": 170,
+      "fnv": 1494729778,
+      "mode": 0,
+      "frames": 4522,
+      "input_bytes": 376,
+      "pending_utf8": 0,
+      "status": 0,
+      "buffer_kind": 0,
+      "buffer_bytes": 0,
+      "buffer_hash": 2166136261,
+      "elapsed_seconds": 22.854
+    }
+  ],
+  "baseline_captured": true,
+  "native_fault": false
+}

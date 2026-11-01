@@ -1,0 +1,37 @@
+{
+  "base_commit": "c8963e10a7b7d9fb84b71ac49e1d2417e7322115",
+  "source_sha256": {
+    "build.zig": "182701976cea0a8ce76d9d70dc5b531dd7eb81a17026e69adff0b5fe228dd6dd",
+    "src/graphics/code_font.zig": "515c45b2772aa4dc602638020aeb0d9187c30221c4f3bcf9ff2e54137b143617",
+    "src/graphics/ttf.zig": "cd99edc23e69bc2028a610d5441ded3c918f295fbbb3f3a8532d74288324457b",
+    "src/graphics/pixel_transfer.zig": "115a7c06c400da8d022e09bc714eb1d2e28461cd3d44b7691d796e9731ec0121",
+    "src/graphics/viewport_layout.zig": "240ec37564385cfbc283b128c075b4598a8a273d75544065b25c73be6b1910d4",
+    "src/graphics/ascii/SourceCodePro-Medium.ttf": "f9dbc746f60c83f5cb1503b19f90729d8195cab6bb67f2b861d4eb257ed86536",
+    "src/xy/c_abi_host.zig": "d82b11c8b6dd47fdac5adc5b43bc8f6a27bdc0124fa14d41fed17bf561eeeaf2",
+    "src/xy/render_adapter.zig": "02aeaec2a9a9ccb4920c83d3b2f4235a93bfca6b1677428d27a20c22f6b0fd18",
+    "src/xy/scheme_bridge.zig": "2b2807bf9077ff5a3f4329b1fa510bd6212f8bac88542cbaf477077c106a95cf",
+    "tools/xy_mac_host.m": "3cbec495f5c64522f2d369cd29212a6f50a4bb8f93878da2c4a7f346af1c5bb3",
+    "tools/build-xy-mac.sh": "9183d71a0ee5fc7337db4c6f936491af50e6dd0704af8d94943ec8d9687f1e6c",
+    "tools/xy_workspace_test.py": "8d15226da6f67d8713cf95ca661f56a147c23a4fb591f02a69888b0cea181218"
+  },
+  "artifact_sha256": {
+    "build/xy-mac/xy-mac-host": "bb83758ff759f1e87845ad6314d251698189c65ec04203cbb99c6a939f4f3f95",
+    "build/xy-mac/libxy_host.dylib": "d1d4be38b1c726781937fa7c3360794bb92ad3979081a5b159431a318233ae91",
+    "build/xy-mac/libxy_workspace.dylib": "72a462d0295ebfb9a51886f4df0e40fab123a40c8b2b11a23dffc3f48563c3ab"
+  },
+  "workspace_tests": 14,
+  "rgb565_conversion_colors": 65536,
+  "pixel_comparison": {
+    "width": 1280,
+    "height": 720,
+    "scenes": 2,
+    "pixels_compared": 1843200,
+    "mismatched_pixels": 0
+  },
+  "zig_build_test": "67/67 steps succeeded; 49/49 uncached tests passed; other test steps cached",
+  "lint": "0 errors, 0 warnings across 8 changed Zig files",
+  "gui": "Cocoa pixel host observed on 2x Retina, Source Code Pro source view at 25 target pixels with 15-pixel Latin advance; no interpolation; 1280x720 backing-pixel target",
+  "original_checkout_unchanged": true,
+  "previous_workspace_branch_clean": true,
+  "qualification": "Host reference frames only; GPUI runtime and physical Tab5 parity remain unqualified"
+}

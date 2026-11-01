@@ -1,0 +1,47 @@
+{
+  "base_commit": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "source_sha256": {
+    "build.zig": "8cc826b43f499a28673adf5b3b7e2cd7787f91a1f1fbd1469ff8bb3ea55c9433",
+    "src/xy/scheme_runtime.zig": "e91d9ea667472eac1fb8c8d0960955304f474b85b3dd26c8e4135c8afbed8819",
+    "src/xy/live_workspace.zig": "557e820545a8729a92598f237a8929eab7944602a3710df0745baf394546213c",
+    "src/xy/bootstrap.scm": "b942e0d9b30d1f0b818de981e500d44ff3d5ed588c665eb85d778765b1897bab",
+    "src/xy/c_abi_host.zig": "78775ac17a880b46017bc5a0ee0f8b6ddce5c36a9b0f85a41f9309faf1af1a5b",
+    "src/graphics/ttf.zig": "e2b743ab5bc157df8c3f2d143a57bd7ff31533e565b92582a539586c89e07071",
+    "tools/xy_mac_host.m": "0ec718495d38a439162a49dd64d5d481c4ca9f2a92483560d7cd0a0172755c0d",
+    "tools/xy_workspace_sqlite.c": "026acac9b7a3c2ed7c6297be7916bf5f94603ad8e7825b7438a6b0006be51e65",
+    "include/nihos_xy_workspace.h": "3a65a80c07481714498010cc5e074a0c2abf12559107b17889e9962a1d6f8165",
+    "tools/build-xy-mac.sh": "a97a09bd364fd91ffa1cdfc108b276c3fd6a782e45ca51c94b63a4829a5f1ded",
+    "tools/xy_workspace_test.py": "d0fa8562a6e66c1a19966b8236a14ae09395939678d60ae5ad4c9013d10ed08d"
+  },
+  "artifact_sha256": {
+    "build/xy-mac/xy-mac-host": "e51f2559ee24b7c254975968171013907397ad2a756717e8661aaeb8a041b42b",
+    "build/xy-mac/libxy_host.dylib": "6d8113e3cee6e5e9138cd5fc2860f5e2f956eca7ad698b443d74039adc6afe6e",
+    "build/xy-mac/libxy_workspace.dylib": "72a462d0295ebfb9a51886f4df0e40fab123a40c8b2b11a23dffc3f48563c3ab"
+  },
+  "workspace_tests": "13 passed including external Bunsen RGBA render",
+  "zig_build_test": "63/63 steps succeeded; 53/53 uncached tests passed; other test steps cached",
+  "changed_lint": "0 errors, 0 warnings; zig fmt, shellcheck, git diff --check passed",
+  "gui_observations": [
+    "Source buffer replaced through xy canvas using Command-A and paste",
+    "Apply & Save produced revision 1",
+    "New process invoked stamp and visibly inserted xy live edit",
+    "Source edited again and saved as revision 2",
+    "History restored revision 1 and source visibly returned to xy live edit definition"
+  ],
+  "gui_test_database": {
+    "active_revision": 1,
+    "revisions": [
+      [
+        1,
+        "(define (stamp) (buffer/insert! \"xy live edit\"))\n"
+      ],
+      [
+        2,
+        "(define (stamp) (buffer/insert! \"second\"))\n"
+      ]
+    ]
+  },
+  "original_checkout_unchanged": true,
+  "qualification": "Mac host only; no Tab5 sqld/SD/power-loss validation",
+  "python_inspection_sqlite_version": "3.54.0"
+}
