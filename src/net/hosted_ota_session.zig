@@ -17,6 +17,7 @@ pub const Session = struct {
     deadline: u64,
     last_now: u64,
     allow_213: bool = false,
+    required_peer: ?[3]u32 = null,
     rx: [512]u8 = undefined,
 
     /// Hash and header are checked before any interaction with the device.
@@ -38,6 +39,7 @@ pub const Session = struct {
         self.deadline = deadline;
         self.last_now = now;
         self.allow_213 = false;
+        self.required_peer = null;
     }
     pub fn step(self: *Session, stream: anytype, now: u64) !void {
         if (self.state == .failed or self.state == .complete) return error.WrongState;
@@ -56,6 +58,9 @@ pub const Session = struct {
             for (self.rx[0..count]) |byte| if (try self.decoder.push(byte)) |frame| try self.client.receive(frame, now);
             if (self.client.phase == .done and self.decoder.used == 0) {
                 if (self.client.peer_chip != 13 or !self.client.version_known) return error.UnsupportedPeer;
+                if (self.required_peer) |version| {
+                    if (!std.mem.eql(u32, &self.client.version, &version)) return error.UnsupportedPeer;
+                }
                 if (std.mem.eql(u32, &self.client.version, &.{ 1, 4, 1 })) {
                     self.ota_client.activation = .legacy_automatic;
                 } else if (self.allow_213 and std.mem.eql(u32, &self.client.version, &.{ 2, 13, 1 })) {
