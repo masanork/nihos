@@ -4,7 +4,7 @@
     "mermaid": "12.2.0"
   },
   "configSha256": "8d873bd1f3699c4486bfb2a2731baf3e7154414b5a6ada1f2d789312cc36d31a",
-  "browser": "Chrome/156.0.8078.74",
+  "browser": "Chrome/156.0.8078.80",
   "figures": {
     "boot-paths": {
       "sourceSha256": "e93d7a3a31970d4bb7b2b846c316cff173ff04eb79d60df473eaf18a1ce11c15",
@@ -157,6 +157,14 @@
       "title": "文字列から画素へ",
       "description": "文字列と方向、フォント設定からHarfBuzzで字形と位置を決め、FreeTypeでマスクを作り、色と合成する。",
       "viewBox": "4 4 328.875 503.0270080566406"
+    },
+    "image-pipeline": {
+      "sourceSha256": "91269afbfafd8547b805451ed95226d76999af88105f423e258b2ff0664cb547",
+      "svgSha256": "62ae25e8c22117c0a9294727cc1b37b6c5f270fc431a31b6bf0e9033f2fc36d0",
+      "file": "figures/image-pipeline.mmd",
+      "title": "画像から表示までの仕事",
+      "description": "圧縮画像は復号と形式変換を経て画素になる。生画素も描画へ渡り、Canvas、フレームバッファ、DMAを経てパネルへ届く。",
+      "viewBox": "4 4 456 557"
     },
     "interrupt-request-path": {
       "sourceSha256": "f48d063af99e4a9cdda5f1a209c161caf533ec8909adaf96ce33014b924819ce",
@@ -317,6 +325,14 @@
       "title": "文字から表示まで",
       "description": "ログの状態から文字セル、字形と色、フレームバッファを経てDMAと表示回路へ渡る。",
       "viewBox": "4 4 365.53125 411.8999938964844"
+    },
+    "text-layout-path": {
+      "sourceSha256": "139fff3cfe44f1cbea6cca8483879937e0ae01cf2b9e8962cb521d5212190570",
+      "svgSha256": "7fb0a6ebd1f341b5b371d4c1735e5ef40bbae572609f7057ed2514887d8b9d3b",
+      "file": "figures/text-layout-path.mmd",
+      "title": "日本語の文書から画素まで",
+      "description": "UTF-8文書を編集単位に分けて字形と送りを決め、改行とルビを配置する。配置の列をmaskに変換し、画素へ合成する。",
+      "viewBox": "4 4 254 557"
     },
     "vfs-layers": {
       "sourceSha256": "fd060f11a586a77ef56d392b7ac3a56838716077281ae2e8d40981ced979d6af",
