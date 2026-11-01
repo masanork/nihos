@@ -41,3 +41,19 @@ verify security/partition compatibility, exact candidate identity, board write
 ownership, and a recoverable path. Existing ROM downloader documentation is a
 recovery option but has not been proven for this individual device. Do not
 send OTA Begin merely to detect support: it may erase the inactive slot.
+
+## Bounded SDIO pump preparation
+
+`hosted_ota_pump.zig` drives the OTA client over the same `send`/`receive`
+contract as `c6_sdio.ProfileStream`. The frame is retained when a zero send
+means no credits and no bus write. A partial send, error, clock reversal or
+deadline retires the entire transaction; a sent request is never replayed.
+Tests cover a complete simulated transaction, zero-credit, partial write and
+timeout, and `hosted_ota_rv32_probe.zig` instantiates the path for a
+freestanding RV32 compile. This is not yet wired into a real device fixture.
+
+The existing P4 SRAM-only fixture has 128 KiB of SRAM and cannot hold the
+1,079,120-byte image. A tested, bounded image source (such as an audited flash
+mapping or external streaming protocol) must be implemented before its loop
+can drive this pump. C6 ROM recovery has not been verified on this board. No OTA
+Begin, C6 Flash write or P4 fixture flash was performed during this stage.
