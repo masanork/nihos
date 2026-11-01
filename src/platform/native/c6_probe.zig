@@ -391,7 +391,11 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
     }
     host.io.delay(20_000);
     nih_c6_reset(1);
-    host.io.delay(300_000);
+    // Long-DMA boot diagnostics retain the reset settling time used by their
+    // original physical fixture. The normal network owner has its own path.
+    const root = @import("root");
+    const long_probe = @hasDecl(root, "C6LongDmaEnabled") and root.C6LongDmaEnabled;
+    host.io.delay(if (long_probe) 2_000_000 else 300_000);
     if (clock_failed) return error.Clock;
     report.stage = 2;
     try host.prepare(true);

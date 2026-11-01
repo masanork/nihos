@@ -5,6 +5,7 @@ const timers = @import("timer_group");
 const config = @import("wifi_config");
 pub const panic = std.debug.no_panic;
 const long_dma_enabled = @hasDecl(config, "long_dma") and config.long_dma;
+pub const C6LongDmaEnabled = long_dma_enabled;
 pub fn C6Bus(comptime Short: type) type {
     return if (long_dma_enabled) @import("long_dma").C6Bus(Short) else Short;
 }
