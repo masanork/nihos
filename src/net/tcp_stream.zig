@@ -1,11 +1,11 @@
 //! Experimental one-segment-in-flight IPv4 TCP data plane. No routing, socket
-//! table, congestion control, persist timer, local FIN or TIME_WAIT yet.
+//! table, congestion control, persist timer or TIME_WAIT yet.
 const std = @import("std");
 const wire = @import("tcp_wire.zig");
 const connect = @import("tcp_connect.zig");
 pub const Error = wire.Error || error{ InvalidState, WouldBlock, Timeout, Reset, InvalidArgument };
 pub const Stream = struct {
-    const OutKind = enum { none, ack, data };
+    const OutKind = enum { none, ack, data, fin };
     local: connect.Endpoint,
     remote: connect.Endpoint,
     send_unacked: u32,
@@ -22,6 +22,10 @@ pub const Stream = struct {
     attempts: u8 = 0,
     ack_needed: bool = false,
     peer_fin: bool = false,
+    close_requested: bool = false,
+    close_deadline: u64 = 0,
+    fin_sent: bool = false,
+    fin_acked: bool = false,
     failed: bool = false,
     packet: [576]u8 = undefined,
     packet_len: usize = 0,
@@ -35,7 +39,7 @@ pub const Stream = struct {
     /// Accepts one bounded send, copied until acknowledged. The caller must
     /// not treat this as peer acknowledgement or queue the remainder twice.
     pub fn write(self: *Stream, bytes: []const u8, now: u64, deadline: u64) Error!usize {
-        if (self.failed) return error.InvalidState;
+        if (self.failed or self.close_requested) return error.InvalidState;
         if (bytes.len == 0 or deadline <= now) return error.InvalidArgument;
         if (self.tx_len != 0 or self.remote_window == 0) return error.WouldBlock;
         const n = @min(bytes.len, @min(self.tx.len, @min(self.remote_window, self.remote_mss)));
@@ -47,6 +51,14 @@ pub const Stream = struct {
         self.attempts = 0;
         return n;
     }
+    /// Drains already accepted data, then initiates a local half-close.
+    /// Completion still requires the caller to maintain TIME_WAIT separately.
+    pub fn closeWrite(self: *Stream, now: u64, deadline: u64) Error!void {
+        if (self.failed or self.close_requested) return error.InvalidState;
+        if (deadline <= now) return error.InvalidArgument;
+        self.close_requested = true;
+        self.close_deadline = deadline;
+    }
     /// Returns a borrowed full IP datagram, stable until the next mutating
     /// call. sent() is required after successful whole-datagram submission.
     pub fn poll(self: *Stream, now: u64) Error!?[]const u8 {
@@ -55,11 +67,16 @@ pub const Stream = struct {
             self.failed = true;
             return error.Timeout;
         }
+        if (self.close_requested and !self.fin_acked and now >= self.close_deadline) {
+            self.failed = true;
+            return error.Timeout;
+        }
         if (self.out_kind != .none) return self.packet[0..self.packet_len];
-        const kind: OutKind = if (self.ack_needed) .ack else if (self.tx_len != 0 and (!self.tx_sent or now >= self.retry_at)) .data else return null;
+        const kind: OutKind = if (self.ack_needed) .ack else if (self.tx_len != 0 and (!self.tx_sent or now >= self.retry_at)) .data else if (self.close_requested and self.tx_len == 0 and !self.fin_acked and (self.remote_window != 0 or self.fin_sent) and (!self.fin_sent or now >= self.retry_at)) .fin else return null;
         const payload: []const u8 = if (kind == .data) self.tx[0..self.tx_len] else "";
-        const sequence = self.send_unacked +% if (kind == .ack and self.tx_sent) @as(u32, @intCast(self.tx_len)) else @as(u32, 0);
-        const packet = try wire.encode(&self.packet, .{ .src = self.local.address, .dst = self.remote.address, .src_port = self.local.port, .dst_port = self.remote.port, .seq = sequence, .ack = self.receive_next, .flags = wire.Flags.ack | if (kind == .data) wire.Flags.psh else @as(u8, 0), .window = self.window(), .options = "", .payload = payload }, 0);
+        const sequence = self.send_unacked +% if (kind == .ack and self.tx_sent) @as(u32, @intCast(self.tx_len)) else if (kind == .ack and self.fin_sent and !self.fin_acked) @as(u32, 1) else @as(u32, 0);
+        const flags: u8 = wire.Flags.ack | if (kind == .data) wire.Flags.psh else if (kind == .fin) wire.Flags.fin else @as(u8, 0);
+        const packet = try wire.encode(&self.packet, .{ .src = self.local.address, .dst = self.remote.address, .src_port = self.local.port, .dst_port = self.remote.port, .seq = sequence, .ack = self.receive_next, .flags = flags, .window = self.window(), .options = "", .payload = payload }, 0);
         self.packet_len = packet.len;
         self.out_kind = kind;
         self.out_ack = self.receive_next;
@@ -72,11 +89,15 @@ pub const Stream = struct {
             self.failed = true;
             return error.Timeout;
         }
-        if (self.out_kind == .data) {
+        if (self.close_requested and !self.fin_acked and now >= self.close_deadline) {
+            self.failed = true;
+            return error.Timeout;
+        }
+        if (self.out_kind == .data or self.out_kind == .fin) {
             const shift: u6 = @intCast(@min(self.attempts, 4));
             self.retry_at = now +| (@as(u64, 1000) << shift);
             self.attempts +|= 1;
-            self.tx_sent = true;
+            if (self.out_kind == .data) self.tx_sent = true else self.fin_sent = true;
         }
         if (self.out_ack == self.receive_next and self.out_window == self.window()) self.ack_needed = false;
         self.out_kind = .none;
@@ -96,8 +117,17 @@ pub const Stream = struct {
         }
         if ((seg.flags & wire.Flags.syn) != 0 or (seg.flags & wire.Flags.ack) == 0) return false;
         const acknowledged = seg.ack -% self.send_unacked;
-        if (acknowledged > self.tx_len or (acknowledged != 0 and !self.tx_sent)) return false;
-        if (acknowledged > 0) {
+        const fin_ack = self.tx_len == 0 and self.fin_sent and !self.fin_acked and acknowledged == 1;
+        if (!fin_ack and (acknowledged > self.tx_len or (acknowledged != 0 and !self.tx_sent))) return false;
+        if (fin_ack) {
+            self.fin_acked = true;
+            self.send_unacked +%= 1;
+            self.attempts = 0;
+            if (self.out_kind == .fin) {
+                self.out_kind = .none;
+                self.packet_len = 0;
+            }
+        } else if (acknowledged > 0) {
             const n: usize = acknowledged;
             std.mem.copyForwards(u8, self.tx[0 .. self.tx_len - n], self.tx[n..self.tx_len]);
             self.tx_len -= n;
@@ -143,6 +173,10 @@ pub const Stream = struct {
         self.rx_len -= n;
         self.ack_needed = true;
         return n;
+    }
+    /// Handshake completion only; this is not permission to skip TIME_WAIT.
+    pub fn closeHandshakeComplete(self: *const Stream) bool {
+        return !self.failed and self.peer_fin and self.fin_acked and !self.ack_needed and self.out_kind == .none;
     }
     fn window(self: *const Stream) u16 {
         return @intCast(self.rx.len - self.rx_len);
@@ -199,4 +233,60 @@ test "flow control, invalid ACK and send deadline fail safely" {
     try std.testing.expectEqual(@as(usize, 2), s.tx_len);
     try std.testing.expectError(error.Timeout, s.poll(3000));
     try std.testing.expectError(error.InvalidState, s.write("x", 3001, 4000));
+}
+
+test "local FIN is retransmitted, acknowledged and waits for peer FIN" {
+    const local = connect.Endpoint{ .address = .{ 192, 0, 2, 1 }, .port = 50000 };
+    const remote = connect.Endpoint{ .address = .{ 198, 51, 100, 2 }, .port = 22 };
+    var s = Stream.init(.{ .local = local, .remote = remote, .send_next = 0xffffffff, .receive_next = 20, .remote_window = 10, .remote_mss = 536 });
+    try s.closeWrite(0, 5000);
+    try std.testing.expectError(error.InvalidState, s.write("x", 0, 1000));
+    const fin = try wire.parse((try s.poll(0)).?);
+    try std.testing.expectEqual(wire.Flags.fin | wire.Flags.ack, fin.flags);
+    try std.testing.expectEqual(@as(u32, 0xffffffff), fin.seq);
+    try s.sent(0);
+    try std.testing.expect((try s.poll(999)) == null);
+    try std.testing.expectEqual(wire.Flags.fin | wire.Flags.ack, (try wire.parse((try s.poll(1000)).?)).flags);
+    try s.sent(1000);
+    var packet: [64]u8 = undefined;
+    const peer = wire.Segment{ .src = remote.address, .dst = local.address, .src_port = 22, .dst_port = 50000, .seq = 20, .ack = 0, .flags = wire.Flags.ack | wire.Flags.fin, .window = 10, .options = "", .payload = "" };
+    try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expect(!s.closeHandshakeComplete());
+    const ack = try wire.parse((try s.poll(1001)).?);
+    try std.testing.expectEqual(@as(u32, 0), ack.seq);
+    try std.testing.expectEqual(@as(u32, 21), ack.ack);
+    try s.sent(1001);
+    try std.testing.expect(s.closeHandshakeComplete());
+    // A duplicate peer FIN still requires another ACK during TIME_WAIT.
+    try std.testing.expect(!try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expect(!s.closeHandshakeComplete());
+    _ = try s.poll(1002);
+    try s.sent(1002);
+    try std.testing.expect(s.closeHandshakeComplete());
+}
+
+test "unsent FIN cannot be acknowledged and close has a deadline" {
+    const local = connect.Endpoint{ .address = .{ 192, 0, 2, 1 }, .port = 50000 };
+    const remote = connect.Endpoint{ .address = .{ 198, 51, 100, 2 }, .port = 22 };
+    var s = Stream.init(.{ .local = local, .remote = remote, .send_next = 10, .receive_next = 20, .remote_window = 0, .remote_mss = 536 });
+    try s.closeWrite(0, 10);
+    try std.testing.expect((try s.poll(1)) == null);
+    var packet: [64]u8 = undefined;
+    const peer = wire.Segment{ .src = remote.address, .dst = local.address, .src_port = 22, .dst_port = 50000, .seq = 20, .ack = 11, .flags = wire.Flags.ack, .window = 5, .options = "", .payload = "" };
+    try std.testing.expect(!try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expectError(error.Timeout, s.poll(10));
+}
+
+test "a sent FIN can be retransmitted after the peer closes its window" {
+    const local = connect.Endpoint{ .address = .{ 192, 0, 2, 1 }, .port = 50000 };
+    const remote = connect.Endpoint{ .address = .{ 198, 51, 100, 2 }, .port = 22 };
+    var s = Stream.init(.{ .local = local, .remote = remote, .send_next = 10, .receive_next = 20, .remote_window = 10, .remote_mss = 536 });
+    try s.closeWrite(0, 5000);
+    _ = try s.poll(0);
+    try s.sent(0);
+    var packet: [64]u8 = undefined;
+    const peer = wire.Segment{ .src = remote.address, .dst = local.address, .src_port = 22, .dst_port = 50000, .seq = 20, .ack = 10, .flags = wire.Flags.ack, .window = 0, .options = "", .payload = "" };
+    try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
+    const retry = try wire.parse((try s.poll(1000)).?);
+    try std.testing.expectEqual(wire.Flags.ack | wire.Flags.fin, retry.flags);
 }
