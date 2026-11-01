@@ -112,12 +112,12 @@ def run():
         bridge = None
         if os.environ.get("NIHOS_SSH_SLIRP") == "1":
             prefix = Path(os.environ["SLIRP_PREFIX"])
-            libdir = Path(os.environ.get("SLIRP_LIBDIR", prefix / "lib"))
+            libdir = Path(os.environ.get("SLIRP_LIBDIR") or prefix / "lib")
             ext = "dylib" if sys.platform == "darwin" else "so"
             tcp_lib = tmp / ("libtcp_host_probe." + ext)
             bridge_lib = tmp / ("libbridge." + ext)
             subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(tcp_lib), "src/net/tcp_host_probe.zig"], cwd=ROOT, check=True)
-            subprocess.run([os.environ.get("CC", "cc"), "-shared", "-Wall", "-Wextra", "-Werror", "-Wno-deprecated-declarations", "-I" + str(prefix / "include"), "tools/tcp_slirp_bridge.c", "-L" + str(libdir), "-lslirp", str(tcp_lib), "-Wl,-rpath," + str(libdir), "-Wl,-rpath," + str(tmp), "-o", str(bridge_lib)], cwd=ROOT, check=True)
+            subprocess.run([os.environ.get("CC", "cc"), "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", "-Wno-deprecated-declarations", "-I" + str(prefix / "include"), "tools/tcp_slirp_bridge.c", "-L" + str(libdir), "-lslirp", str(tcp_lib), "-Wl,-rpath," + str(libdir), "-Wl,-rpath," + str(tmp), "-o", str(bridge_lib)], cwd=ROOT, check=True)
             bridge = c.CDLL(str(bridge_lib))
             bridge.bridge_open.argtypes = [c.c_uint16]; bridge.bridge_open.restype = c.c_bool
             bridge.bridge_poll.restype = c.c_bool
