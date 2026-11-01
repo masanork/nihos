@@ -321,6 +321,7 @@ pub fn Controller(comptime IO: type) type {
         /// stopDma and finishDma to complete before storage reuse. The normal
         /// network service does not use this; its provider rejects >512.
         pub fn writeBlocks(self: *Self, address: u32, source: []const u8) Error!void {
+            if (!self.owns()) return error.NoOwnership;
             if (source.len != 1024 and source.len != 1536) return error.InvalidArgument;
             const argument = try argument53Blocks(address, @intCast(source.len / 512), true);
             return self.transferDma(argument, source.len, source, &.{}, true, 512);
