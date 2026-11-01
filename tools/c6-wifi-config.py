@@ -13,6 +13,12 @@ def main():
     source = Path(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else None
     protocol = sys.argv[3] if len(sys.argv) > 3 else 'at'
     ipv6 = os.environ.get('NIHOS_C6_IPV6', '0')
+    c6_time_offload = os.environ.get('NIHOS_C6_TIME_OFFLOAD', '0')
+    c6_time_fault = os.environ.get('NIHOS_C6_TIME_FAULT_TEST', '0')
+    if c6_time_fault not in ('0', '1') or (c6_time_fault == '1' and c6_time_offload != '1'):
+        raise ValueError('Time fault test requires C6 time offload')
+    if c6_time_offload not in ('0', '1') or (c6_time_offload == '1' and (protocol != 'hosted' or ipv6 != '0')):
+        raise ValueError('C6 time offload requires Hosted and IPv6 disabled')
     long_dma = os.environ.get('NIHOS_C6_LONG_DMA', '0')
     udp_burst = os.environ.get('NIHOS_C6_UDP_BURST', '0')
     udp_burst_count = int(os.environ.get('NIHOS_C6_UDP_BURST_COUNT', '16'))
@@ -83,6 +89,8 @@ def main():
     text = (f'pub const enabled = {str(enabled).lower()};\n'
             f'pub const hosted = {str(protocol == "hosted").lower()};\n'
             f'pub const ipv6 = {str(ipv6 == "1").lower()};\n'
+            f'pub const c6_time_offload = {str(c6_time_offload == "1").lower()};\n'
+            f'pub const c6_time_fault_test = {str(c6_time_fault == "1").lower()};\n'
             f'pub const long_dma = {str(long_dma == "1").lower()};\n'
             f'pub const udp_enabled = {str(udp_enabled).lower()};\n'
             f'pub const udp_burst = {str(udp_burst == "1").lower()};\n'

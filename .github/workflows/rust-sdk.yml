@@ -54,6 +54,8 @@ jobs:
   native:
     name: Opt-in RV32 Rust and WAMR emulator
     if: github.event_name == 'workflow_dispatch'
+    env:
+      NIHOS_NATIVE_WASM_ALIGN_FIXES: '1'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -77,15 +79,12 @@ jobs:
         run: sh probes/wamr-host/run.sh
       - name: Signed Wasm and UART cleanup matrix
         run: |
-          . "$IDF_PATH/export.sh" >/dev/null
           NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-emulator.sh
       - name: Scheduled Wasm task, wait, reap and same-boot restart
         run: |
-          . "$IDF_PATH/export.sh" >/dev/null
           NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-task-emulator.sh
       - name: Common session frame requests and Wasm task cleanup
         run: |
-          . "$IDF_PATH/export.sh" >/dev/null
           NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-session-emulator.sh
       - name: Retain emulator evidence
         if: always()

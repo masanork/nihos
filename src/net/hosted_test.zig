@@ -658,3 +658,25 @@ test "IPv6 disabled keeps acquisition IPv4-only" {
     try std.testing.expectEqual(station.Phase.done, client.phase);
     try std.testing.expect(client.ipv6_client == null);
 }
+
+test "version RPC exposes optional C6 diagnostics while factory stays compatible" {
+    var client: station.Client = .{};
+    client.begin(.disabled, 0);
+    client.phase = .version;
+    client.active_id = 350;
+    client.uid = 1;
+    client.transmitted = true;
+    var b: [64]u8 = undefined;
+    var body: wire.Writer = .{ .out = &b };
+    try body.uint(2, 1);
+    try body.uint(3, 4);
+    try body.uint(4, 1);
+    try body.uint(100, 1);
+    try body.uint(101, 125);
+    try body.uint(102, 134217);
+    var r: [128]u8 = undefined;
+    try client.receive(.{ .interface = 3, .payload = try reply(&r, 2, 606, 1, body.slice()) }, 1);
+    try std.testing.expectEqual(@as(u32, 125), client.c6_diagnostics.?.uptime_seconds);
+    try std.testing.expectEqual(@as(u32, 134217), client.c6_diagnostics.?.free_heap_bytes);
+    try std.testing.expectEqual(station.Phase.done, client.phase);
+}

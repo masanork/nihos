@@ -155,9 +155,18 @@ TIME_FUNCTIONS = {'main.serviceTime', 'board_devices.applyNetworkTime', 'network
     TIME_ENGINE + name for name in ('disconnect', 'bind', 'fail', 'tx', 'route', 'query', 'udp', 'sent', 'receive', 'datagram', 'acceptTime', 'take', 'snapshot', 'timestamp', 'skipName', 'dnsAnswer', 'validMac', 'unicast', 'sum16')
 } | {TIME_CALENDAR + name for name in ('fromUnix', 'toUnix')}
 TIME_GENERIC = {TIME_CALENDAR + name for name in ('set', 'writeStopped')}
+TIME_STATION = {'hosted_station.Client.' + name for name in ('receive', 'tx', 'sent')}
+TIME_C6 = {
+    'hosted_c6_time_exchange.Exchange.' + name for name in
+    ('begin', 'receive', 'nextSnapshot', 'retireTimedOutTime', 'tx', 'sent', 'invalidate', 'tick', 'adopt', 'checkPeer', 'finish')
+} | {'hosted_c6_time.Session.' + name for name in ('reset', 'start', 'receive', 'expire', 'cancel')} | {
+    'network_service.recoverC6TimeTimeout', 'hosted_c6_time.acceptAck', 'hosted_network_split.statusRequest', 'hosted_network_split.decode',
+    'hosted_network_split.unicast', 'hosted_network_split.ipv4', 'hosted_network_split.text',
+    'hosted_network_split.optionalAddress',
+} | {'hosted_network_split.State.' + name for name in ('receive', 'receiveResponse', 'apply', 'current', 'invalidate')}
 
 def time_function(name):
-    return name in TIME_FUNCTIONS or any(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in TIME_GENERIC)
+    return name in TIME_FUNCTIONS or name in TIME_STATION or name in TIME_C6 or any(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) for prefix in TIME_GENERIC)
 
 
 def audit_time_functions(functions, span):
@@ -167,6 +176,11 @@ def audit_time_functions(functions, span):
     require(selected and selected[0][0] == start and selected[-1][1] == end and
             all(start <= address < stop <= end and time_function(name) for address, stop, name in selected), 'unapproved network/time Flash function')
     names = [name for _, _, name in selected]
+    present = set(names)
+    station = present & TIME_STATION
+    c6 = present & TIME_C6
+    require(station in (set(), TIME_STATION) and c6 in (set(), TIME_C6) and
+            (not c6 or station == TIME_STATION), 'incomplete C6 time Flash profile')
     require(len(names) == len(set(names)) and TIME_FUNCTIONS.issubset(names) and
             all(sum(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) is not None for name in names) == 1 for prefix in TIME_GENERIC), 'missing/duplicate network/time Flash function')
     # Export and Zig debug aliases may describe the same bytes. Every name above
@@ -524,7 +538,7 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
             continue
         if rust_session_span is not None and rust_session_span[0] <= address < stop <= rust_session_span[1]:
             require(name in RUST_SESSION_FLASH_FUNCTIONS or
-                    re.fullmatch(r'diagnostic_ui\.(?:beginSession|action)__func_[0-9]+', name) is not None,
+                    re.fullmatch(r'diagnostic_ui\.(?:beginSession|action|sessionKey)__func_[0-9]+', name) is not None,
                     'unapproved Rust session Flash function: ' + name)
             if start <= address < stop <= end:
                 app_boot.append({"name": name, "start": hex(address), "end": hex(stop)})

@@ -594,7 +594,14 @@ if [ "$sqld" = true ]; then native_boot_dir="$native_boot_dir-sqld"; fi
 if [ "$camera_jpeg" = true ] && { [ "$camera_id" != true ] || [ "$camera_diagnostics" = true ]; }; then echo "CAMERA_JPEG requires normal CAMERA_ID" >&2; exit 1; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
-NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
+if [ "${NIHOS_C6_TIME_OFFLOAD:-0}" = 1 ]; then
+    if [ "$network" != true ]; then echo "C6_TIME_OFFLOAD requires NETWORK=1" >&2; exit 1; fi
+    NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-0}
+else
+    NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1}
+fi
+export NIHOS_C6_IPV6
+python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
 xy_cpp=0
 if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then xy_cpp=1; fi
 if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$keypad_cpp" != 0 ]; }; then
@@ -711,7 +718,19 @@ if [ "$rust_probe" = true ] || [ "$rust_session" = true ]; then
             -femit-bin="$build_dir/rust-session-adapter.o" "$repo_root/src/graphics/rust_app_probe.zig"
         set -- "$@" "$build_dir/rust-session-adapter.o"
     fi
-    set -- "$@" "$build_dir/rust-target/riscv32imac-unknown-none-elf/release/libnihos_rust_app_probe.a"
+    # Link the application code without pulling Rust's bundled compiler_builtins
+    # ahead of Zig's native runtime. The latter is placed and audited for this OS.
+    rust_archive="$build_dir/rust-target/riscv32imac-unknown-none-elf/release/libnihos_rust_app_probe.a"
+    rust_members="$build_dir/rust-app-members.txt"
+    "$zig" ar t "$rust_archive" | grep '^nihos_rust_app_probe-.*\.rcgu\.o$' > "$rust_members"
+    [ -s "$rust_members" ] || { echo "Rust app archive contains no application code" >&2; exit 1; }
+    rust_member_index=0
+    while IFS= read -r rust_member; do
+        rust_member_index=$((rust_member_index + 1))
+        rust_object="$build_dir/rust-app-unit-$rust_member_index.o"
+        "$zig" ar p "$rust_archive" "$rust_member" > "$rust_object"
+        set -- "$@" "$rust_object"
+    done < "$rust_members"
 fi
 if [ "$wasm" = true ]; then
     wamr="$repo_root/build/wamr-2.4.5"
