@@ -21,3 +21,16 @@ backup are private in `/private/tmp/nihos-c6-ota-info-negative-20261101/`.
 The restored P4 was reset but its application boot was not captured. The next
 candidate adds bounded progress markers to distinguish power, SDIO setup and
 RPC exchange; it needs its own identity-matched physical run.
+
+The marker-enabled candidate at commit `eda044d5`, app SHA-256
+`6949d4e6b30f5415dc62fbddbb056dd176a126419a7419efeaf637c2a2c07`, was
+retried with the same full-flash backup verified against the current device.
+It printed stages `0` and `1` but did not reach stage `2` or produce a result
+before the 60-second limit. Its capture SHA-256 was
+`95c7394fa50337899722d54a6c0cfec28b1826088cc188e27a8c5c9c9fe171b5`. The P4 flash was restored and verified again.
+The current timer API's `configureOneShot` leaves the timer stopped, and the
+probe was missing `clock.start()`. The stage evidence is consistent with the
+resulting stopped-clock delay in power setup; it does not independently prove
+that no other issue exists. Several other C6 fixture entry points also call
+`configureOneShot` without `start`; this experiment fixes the new info probe
+only, and the other entry points need separate correction and validation.

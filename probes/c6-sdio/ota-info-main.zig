@@ -80,6 +80,7 @@ export fn nih_c6_main() callconv(.c) noreturn {
         print("NIHOS_C6_FAIL timer\n");
         halt();
     }
+    clock.start();
     const report = c6.runOtaInfo(clock);
     print("NIHOS_C6_OTA_INFO");
     inline for (comptime std.meta.fieldNames(c6.OtaInfoReport)) |field| {
