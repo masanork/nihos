@@ -42,8 +42,14 @@ custom time service is present: absent service must still time out safely.
 Synthetic host tests do not establish device interoperability. The previous
 physical 2.13.1 OTA and RTC results are not evidence for this 3.x candidate.
 
-Remaining qualification: validate exact upstream-generated init frames and
-RPC encodings, a byte-identified P4 image against the currently installed 2.x
+`sh ports/esp-hosted-c6-time-v3/check-init-fixture.sh HOSTED_CHECKOUT`
+rebuilds `src/net/fixtures/hosted-3.0.10-init.bin` using the pinned upstream
+TLV builder and checks its bytes. Its capability bits and 7-block buffer sizes
+are representative inputs, not observations from a running C6. The P4 host
+test parses the resulting complete initialization payload.
+
+Remaining qualification: validate RPC encodings and a full device-generated
+init frame, a byte-identified P4 image against the currently installed 2.x
 firmware, the actual OTA/partition and recovery behavior, then the 3.x boot,
 Wi-Fi, BLE, split address, time/RTC, reconnect, and a tested rollback route.
 Do not infer iroh or QUIC operation from a successful clock exchange.
