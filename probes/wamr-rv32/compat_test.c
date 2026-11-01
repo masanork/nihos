@@ -56,9 +56,10 @@ int main(void) {
     FORMAT_CASE("%jd %zu %td", (intmax_t)INT64_MIN, (size_t)12345, (ptrdiff_t)-33);
     FORMAT_CASE("%*.*s:%c:%%", -9, 3, "abcdef", 'Z');
     char expected[5], actual[5];
-    int a=snprintf(expected,sizeof(expected),"error-%08x",0x1234u);
+    char full[32];
+    int a=snprintf(full,sizeof(full),"error-%08x",0x1234u);
     int b=nih_c_snprintf(actual,sizeof(actual),"error-%08x",0x1234u);
-    assert(a==b && memcmp(expected,actual,sizeof(actual))==0);
+    assert(a==b && memcmp(full,actual,sizeof(actual)-1)==0 && actual[sizeof(actual)-1]=='\0');
     assert(nih_c_snprintf(NULL,0,"%s-%u","length",42u)==9);
     assert(nih_c_snprintf(actual,sizeof(actual),"%f",1.0)==-1);
     const char *unsigned_formats[]={"%u","%08u","%.5u","%#x","%#08x","%-12X","%o"};
