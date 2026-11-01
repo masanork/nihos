@@ -3,7 +3,9 @@
 Home, document, reader, chapter list, settings, card, and SICP lesson scenes
 have portrait rendering and input paths. At session startup, a confirmed Tab5
 keyboard address NACK selects portrait, while a present keyboard or an unknown
-probe result selects landscape. The selection remains fixed for the session.
+probe result selects landscape. During the session, two matching presence
+observations switch the orientation; unknown/fault observations keep the last
+confirmed state.
 The explicit `NIHOS_NATIVE_XY_PORTRAIT=1` fixture also selects portrait, and
 requires `NIHOS_NATIVE_XY_WORKSPACE=1` and `NIHOS_NATIVE_KEYBOARD_I2C=0`; this
 fixture is not a physical keyboard probe.
@@ -23,9 +25,10 @@ input to code and notes. The device fixture requires physical validation;
 host pixel equality and a successful image audit do not establish panel pixels,
 physical touch operation, or usability.
 
-Future hot-plug support must define when orientation may change, cancel any
-active contact, invalidate the retained frame, and preserve the reader position
-across reflow. Decide whether and how to retry attachment without treating an
-error as a clean removal. The ordinary boot, diagnostic controls, camera
+The foreground retries failed or absent probes at 500 ms intervals. It defers
+switching while a touch, VM evaluation, camera overlay or app display is active,
+invalidates the current view on change, and preserves the reader byte offset
+while clearing page boundaries from the old orientation. Unknown errors do not
+count as clean removal. The ordinary boot, diagnostic controls, camera
 overlays, and transitions must be checked alongside xy. Physical optical/touch checks on the exact candidate,
 including both keyboard-present and confirmed-absent boots, remain required.

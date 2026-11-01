@@ -15,6 +15,7 @@
 //! Rendering and hit testing share the same layout and state.
 
 const std = @import("std");
+const code_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 
 /// Logical workspace size this keyboard docks into.
 pub const space_width: u32 = 1280;
@@ -155,7 +156,7 @@ pub fn keyAt(x: u32, y: u32) ?Action {
 pub fn keyAtState(x: u32, y: u32, state: State) ?Action {
     return keyAtIn(x, y, state, .landscape);
 }
-pub fn keyAtIn(x: u32, y: u32, state: State, orientation: Orientation) ?Action {
+pub fn keyAtIn(x: u32, y: u32, state: State, orientation: Orientation) linksection(code_section) ?Action {
     const g = geometry(orientation);
     if (x >= g.width or y < g.top() or y >= g.height) return null;
     var rects: [max_keys]KeyRect = undefined;
@@ -203,6 +204,31 @@ pub fn edgeGestureIn(start_x: u32, start_y: u32, end_x: u32, end_y: u32, orienta
 
 /// A bus error or disabled probe is unknown, not evidence of absence.
 pub const KeyboardProbe = enum { unknown, absent, present };
+/// Require two matching scheduled observations. Unknown faults discard pending
+/// changes but preserve the last confirmed state.
+pub const PresenceTracker = struct {
+    stable: KeyboardProbe = .unknown,
+    pending: KeyboardProbe = .unknown,
+    count: u8 = 0,
+    pub fn observe(self: *PresenceTracker, observed: KeyboardProbe) linksection(code_section) void {
+        if (observed == .unknown or observed == self.stable) {
+            self.pending = .unknown;
+            self.count = 0;
+            return;
+        }
+        if (self.pending != observed) {
+            self.pending = observed;
+            self.count = 1;
+            return;
+        }
+        self.count +|= 1;
+        if (self.count >= 2) {
+            self.stable = observed;
+            self.pending = .unknown;
+            self.count = 0;
+        }
+    }
+};
 pub fn probeFromResult(enabled: bool, ready: bool, report_status: u32, failed: bool) KeyboardProbe {
     if (!enabled or failed) return .unknown;
     if (ready) return .present;
@@ -305,4 +331,21 @@ test "startup orientation requires confirmed absence and preserves fault fallbac
     try std.testing.expectEqual(KeyboardProbe.unknown, probeFromResult(false, false, 2, false));
     try std.testing.expectEqual(KeyboardProbe.unknown, probeFromResult(true, false, 2, true));
     try std.testing.expectEqual(KeyboardProbe.unknown, probeFromResult(true, false, 0, false));
+}
+
+test "presence transitions require two matching observations and faults do not rotate" {
+    var t = PresenceTracker{ .stable = .absent };
+    t.observe(.present);
+    try std.testing.expectEqual(KeyboardProbe.absent, t.stable);
+    t.observe(.unknown);
+    t.observe(.present);
+    try std.testing.expectEqual(KeyboardProbe.absent, t.stable);
+    t.observe(.present);
+    try std.testing.expectEqual(KeyboardProbe.present, t.stable);
+    t.observe(.absent);
+    t.observe(.present);
+    try std.testing.expectEqual(KeyboardProbe.present, t.stable);
+    t.observe(.absent);
+    t.observe(.absent);
+    try std.testing.expectEqual(KeyboardProbe.absent, t.stable);
 }
