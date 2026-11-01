@@ -26,6 +26,12 @@ zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 . "$c6_sdk/export.sh" >/dev/null
 python=${NIHOS_IDF_PYTHON:-python}
 mkdir -p "$build_dir"
+"$python" - "${NIHOS_C6_WIFI_CONFIG}" <<'PY'
+import json, sys
+from pathlib import Path
+if json.loads(Path(sys.argv[1]).read_text()) != {'saved': True}:
+    raise SystemExit('Split UDP fixture requires C6-saved Wi-Fi configuration')
+PY
 "$python" - "$repo_root/probes/c6-sdio/esp32p4.ld" "$build_dir/probe.ld" "${NIHOS_C6_LONG_DMA:-0}" <<'PY'
 from pathlib import Path
 import sys
@@ -120,7 +126,7 @@ report = {
     'p4_sdk': git(sdk, 'rev-parse', 'HEAD'), 'p4_sdk_dirty': bool(git(sdk, 'status', '--porcelain')),
     'sources': {name: sha(root / name) for name in names},
     'artifacts': {name: sha(dest / name) for name in [
-        'nihos-c6-probe.elf', 'nihos-c6-probe.bin', 'image-audit.json', 'loader/sdkconfig', 'probe.ld',
+        'nihos-c6-probe.elf', 'nihos-c6-probe.bin', 'image-audit.json', 'loader/sdkconfig', 'probe.ld', 'wifi-config.zig',
         'loader/bootloader/bootloader.bin', 'loader/partition_table/partition-table.bin',
     ]},
     'peer_assumptions': {'receive_buffer_bytes': 1536 if dest.name in ('c6-split-udp-probe', 'c6-hosted-probe', 'c6-hosted-long-probe', 'c6-ipv6-probe') else 512,

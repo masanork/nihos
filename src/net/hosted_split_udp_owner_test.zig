@@ -29,6 +29,7 @@ const Fake = struct {
     pos: usize = 0,
     max_read: usize = 512,
     send_result: usize = 0,
+    fail_send: bool = false,
     sends: u32 = 0,
     retired: bool = false,
     pub fn receive(self: *@This(), out: []u8) !usize {
@@ -40,6 +41,7 @@ const Fake = struct {
     pub fn sendLong(self: *@This(), data: []const u8, padding: *[1536]u8) !usize {
         _ = padding;
         self.sends += 1;
+        if (self.fail_send) return error.TransportFailure;
         return if (self.send_result == 1) data.len else self.send_result;
     }
     pub fn invalidate(self: *@This()) void {
@@ -101,6 +103,19 @@ test "partial write retires transport and revokes address" {
     try std.testing.expectEqual(mod.Phase.failed, o.phase);
     try std.testing.expect(s.retired and e.addresses.address == null);
     try std.testing.expectError(error.WrongState, o.step(&s, 3));
+}
+
+test "transport error cannot be retried" {
+    var e = exchange();
+    var decoder = wire.Decoder{};
+    // SAFETY: init is called before the owner is read.
+    var o: mod.Owner = undefined;
+    try o.init(&e, &decoder, peer, 1, 1, 50);
+    var s = Fake{ .fail_send = true };
+    try std.testing.expectError(error.TransportFailure, o.step(&s, 2));
+    try std.testing.expect(s.retired and e.addresses.address == null);
+    try std.testing.expectError(error.WrongState, o.step(&s, 3));
+    try std.testing.expectEqual(@as(u32, 1), s.sends);
 }
 
 test "link-down event is processed before any queued send" {
