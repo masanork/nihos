@@ -10,6 +10,12 @@ on:
       - 'include/xy_animation.h'
       - 'include/nihos_app.h'
       - 'tools/*xy*gpui*'
+      - 'tools/build-xy-emulator-fixture.sh'
+      - 'tools/build-native*.sh'
+      - 'src/platform/native/**'
+      - 'src/board/tab5/**'
+      - 'src/soc/esp32p4/**'
+      - 'ports/esp32p4-native/**'
       - 'tools/check-xy-animation.sh'
       - 'tools/probes/animation.zig'
       - 'tools/probes/app_protocol.c'
@@ -22,8 +28,27 @@ concurrency:
   group: xy-gpui-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  firmware:
+    name: Build desktop emulator guest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: espressif/install-esp-idf-action@8fc05d1470d5591417e7a3707a1f2bec178db4ae
+        with:
+          version: v5.4.4
+      - name: Build and audit display-capable xy guest
+        run: sh tools/build-xy-emulator-fixture.sh
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: xy-desktop-emulator-guest
+          path: build/xy-emulator-firmware/nihos-native.elf
+          if-no-files-found: error
   gpui:
     name: Shared animation and GPUI host
+    needs: firmware
     runs-on: macos-14
     timeout-minutes: 25
     env:
@@ -32,6 +57,10 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - name: Install the validated Rust toolchain
         run: rustup toolchain install 1.98.1 --profile minimal --component clippy --component rustfmt
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: xy-desktop-emulator-guest
+          path: build/xy-emulator-firmware
       - name: Pure clock and RV32 soft-float link
         run: sh tools/check-xy-animation.sh
       - name: Build GPUI over the common Zig renderer
@@ -40,6 +69,14 @@ jobs:
         run: |
           cargo fmt --manifest-path apps/xy-gpui/Cargo.toml --check
           cargo clippy --locked --manifest-path apps/xy-gpui/Cargo.toml --no-deps -- -D warnings
+      - name: Emulator unit and boot/session integration tests
+        env:
+          NIHOS_EMU_TEST_ELF: ${{ github.workspace }}/build/xy-emulator-firmware/nihos-native.elf
+        run: |
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_splash -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_xy_ready -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml two_sessions_boot_edit_and_reset_independently -- --ignored
       - name: Canonical pixels, pause, input and editor undo
         run: build/xy-gpui/xy-gpui.app/Contents/MacOS/xy-gpui --snapshot-dir build/xy-gpui/snapshots
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f

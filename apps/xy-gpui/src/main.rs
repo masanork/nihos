@@ -25,7 +25,10 @@ struct Workspace {
     emulator: Option<emu::Emulator>,
     emu_image: Option<Arc<RenderImage>>,
     emu_mode: bool,
-    emu_fit: bool,
+    emu_portrait: bool,
+    emu_powered: bool,
+    emu_error: Option<String>,
+    emu_session_label: Arc<RenderImage>,
 }
 impl Workspace {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -38,45 +41,68 @@ impl Workspace {
         let editor = frame(core.bgra(true, width, height), width, height);
         let graph = frame(core.bgra(false, width, height), width, height);
 
-        // Try initializing native emulator if firmware ELF exists
-        let elf_candidates = [
-            "build/native-emulator/nihos-native.elf",
-            "../../build/native-emulator/nihos-native.elf",
-            "build/test-native-elf/nihos-native.elf",
-            "../../build/test-native-elf/nihos-native.elf",
-            "build/native-device/nihos-native.elf",
-            "../../build/native-device/nihos-native.elf",
-        ];
-        let dict_candidates = [
-            "build/dict/jisyo_l_nfst.bin",
-            "../../build/dict/jisyo_l_nfst.bin",
-            "src/xy/fixtures/jisyo_s_nfst.bin",
-            "../../src/xy/fixtures/jisyo_s_nfst.bin",
-        ];
+        // Prefer an explicit image, then the self-contained app bundle, then
+        // the dedicated development fixture. Never silently boot a diagnostic ELF.
+        let bundle = std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent()?.parent().map(|p| p.join("Resources")));
+        let explicit = std::env::var_os("NIHOS_EMULATOR_ELF").map(std::path::PathBuf::from);
+        let found_elf = explicit
+            .or_else(|| {
+                bundle
+                    .as_ref()
+                    .map(|p| p.join("nihos-native.elf"))
+                    .filter(|p| p.is_file())
+            })
+            .or_else(|| {
+                [
+                    "build/xy-emulator-firmware/nihos-native.elf",
+                    "../../build/xy-emulator-firmware/nihos-native.elf",
+                ]
+                .iter()
+                .map(std::path::PathBuf::from)
+                .find(|p| p.is_file())
+            });
+        let found_dict = bundle
+            .as_ref()
+            .map(|p| p.join("jisyo_s_nfst.bin"))
+            .filter(|p| p.is_file())
+            .or_else(|| {
+                [
+                    "src/xy/fixtures/jisyo_s_nfst.bin",
+                    "../../src/xy/fixtures/jisyo_s_nfst.bin",
+                ]
+                .iter()
+                .map(std::path::PathBuf::from)
+                .find(|p| p.is_file())
+            });
         let mut emulator = None;
         let mut emu_image = None;
-        let found_elf = elf_candidates
-            .iter()
-            .find(|p| std::path::Path::new(p).exists());
-        let found_dict = dict_candidates
-            .iter()
-            .find(|p| std::path::Path::new(p).exists());
-        if let Some(mut emu) = found_elf.and_then(|p| emu::Emulator::new(p, found_dict).ok()) {
-            // Pre-run 1,000,000 instructions to initialize hardware
-            emu.step_frame(1_000_000);
-            let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
-            emu.render_to_bgra(&mut bgra);
-            emu_image = Some(frame(
-                bgra,
-                emu::bus::FB_WIDTH as u32,
-                emu::bus::FB_HEIGHT as u32,
-            ));
-            emulator = Some(emu);
+        let mut emu_error = None;
+        match found_elf {
+            Some(path) => match emu::Emulator::new(&path, found_dict.as_ref()) {
+                Ok(mut emu) => {
+                    emu.step_frame(1_000_000);
+                    if let Some(fault) = emu.fault() {
+                        emu_error = Some(format!("Emulator stopped: {fault}"));
+                    }
+                    let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
+                    emu.render_to_bgra(&mut bgra);
+                    emu_image = Some(frame(
+                        bgra,
+                        emu::bus::FB_WIDTH as u32,
+                        emu::bus::FB_HEIGHT as u32,
+                    ));
+                    emulator = Some(emu);
+                }
+                Err(error) => emu_error = Some(format!("Cannot load firmware: {error}")),
+            },
+            None => emu_error = Some("Firmware not bundled; build the xy fixture first".into()),
         }
 
-        let emu_mode = emulator.is_some();
+        let emu_mode = true;
         if emu_mode {
-            window.set_window_title("nihOS - M5Stack Tab5 Emulator");
+            window.set_window_title(&format!("Tab5 Emulator · Session {}", std::process::id()));
         } else {
             window.set_window_title("xy - GPUI");
         }
@@ -97,6 +123,14 @@ impl Workspace {
         .detach();
         let labels = Labels::new(&mut core, scale);
         let status = status_image(&mut core, scale, false);
+        let emu_session_label = label(
+            &mut core,
+            &format!("Session {}", std::process::id()),
+            [150., 32., 13.],
+            scale,
+            [0x9ca9b9, 0x101216],
+            false,
+        );
         Self {
             labels,
             status,
@@ -116,7 +150,10 @@ impl Workspace {
             emulator,
             emu_image,
             emu_mode,
-            emu_fit: true,
+            emu_portrait: false,
+            emu_powered: true,
+            emu_error,
+            emu_session_label,
         }
     }
     fn now(&self) -> u64 {
@@ -154,16 +191,40 @@ impl Workspace {
         self.editor_generation = self.core.editor_generation();
     }
     fn refresh_emulator(&mut self, window: &mut Window) {
+        if !self.emu_powered || self.emulator.as_ref().is_some_and(|emu| emu.paused) {
+            return;
+        }
         if let Some(emu) = &mut self.emulator {
             emu.step_frame(500_000);
+            if let Some(fault) = emu.fault() {
+                self.emu_error = Some(format!("Emulator stopped: {fault}"));
+                self.emu_powered = false;
+                return;
+            }
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            if let Some(line) = output
+                .lines()
+                .find(|line| line.starts_with("NIHOS_NATIVE_FAIL "))
+            {
+                self.emu_error = Some(format!("Guest stopped: {line}"));
+                self.emu_powered = false;
+                return;
+            }
+        }
+        self.render_emulator_image(window);
+    }
+    fn render_emulator_image(&mut self, window: &mut Window) {
+        if let Some(emu) = &self.emulator {
             let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
             emu.render_to_bgra(&mut bgra);
-            let next = frame(bgra, emu::bus::FB_WIDTH as u32, emu::bus::FB_HEIGHT as u32);
+            let (bgra, w, h) = orient_frame(bgra, self.emu_portrait);
+            let next = frame(bgra, w, h);
             if let Some(old) = self.emu_image.replace(next) {
                 retire(old, window);
             }
         }
     }
+
     fn press(&mut self, key: Key, window: &mut Window, cx: &mut Context<Self>) {
         self.core.press(key, self.now());
         self.refresh_graph(window);
@@ -179,7 +240,9 @@ impl Workspace {
         cx.notify();
     }
     fn schedule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.tick_pending
+        if (self.emu_mode
+            && (!self.emu_powered || self.emulator.as_ref().is_none_or(|emu| emu.paused)))
+            || self.tick_pending
             || (!self.emu_mode && (self.core.state().paused != 0 || self.core.state().stopped != 0))
         {
             return;
@@ -205,6 +268,26 @@ impl Workspace {
         });
         window.request_animation_frame();
     }
+    fn new_session(&mut self, cx: &mut Context<Self>) {
+        let result = std::env::current_exe().and_then(|path| {
+            std::process::Command::new(path)
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+        });
+        match result {
+            Ok(mut child) => {
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
+            }
+            Err(err) => {
+                self.emu_error = Some(format!("Cannot start session: {err}"));
+                cx.notify();
+            }
+        }
+    }
     fn key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         let stroke = &event.keystroke;
         if stroke.modifiers.platform && stroke.key == "q" {
@@ -212,6 +295,17 @@ impl Workspace {
             return;
         }
         if self.emu_mode {
+            if stroke.modifiers.platform && stroke.key == "n" {
+                if !event.is_held {
+                    self.new_session(cx);
+                }
+                cx.stop_propagation();
+                return;
+            }
+            if !self.emu_powered || self.emulator.as_ref().is_some_and(|emu| emu.paused) {
+                cx.stop_propagation();
+                return;
+            }
             if let Some(emu) = &mut self.emulator {
                 match stroke.key.as_str() {
                     "space" => emu.send_key(b' '),
@@ -309,11 +403,83 @@ struct Labels {
     editor_help: Arc<RenderImage>,
     graph_help: Arc<RenderImage>,
     footer: Arc<RenderImage>,
+    emu_portrait: Arc<RenderImage>,
+    emu_landscape: Arc<RenderImage>,
+    emu_on: Arc<RenderImage>,
+    emu_off: Arc<RenderImage>,
+    emu_reset: Arc<RenderImage>,
+    emu_new: Arc<RenderImage>,
+    emu_pause: Arc<RenderImage>,
+    emu_resume: Arc<RenderImage>,
 }
 impl Labels {
     fn new(core: &mut Core, scale: f32) -> Self {
         let bg = [0x1c2733, 0xf4f6f8];
         Self {
+            emu_pause: label(
+                core,
+                "Pause",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
+            emu_resume: label(
+                core,
+                "Resume",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
+            emu_new: label(
+                core,
+                "New session",
+                [110., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x334c70],
+                true,
+            ),
+            emu_portrait: label(
+                core,
+                "Portrait",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
+            emu_landscape: label(
+                core,
+                "Landscape",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
+            emu_on: label(
+                core,
+                "Power on",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
+            emu_off: label(
+                core,
+                "Power off",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
+            emu_reset: label(
+                core,
+                "Reset",
+                [100., 32., 15.],
+                scale,
+                [0xe7e9ed, 0x292d35],
+                true,
+            ),
             title: label(core, "xy workspace", [600., 36., 24.], scale, bg, false),
             editor: label(core, "Editor", [512., 28., 16.], scale, bg, false),
             graph: label(core, "Graph", [512., 28., 16.], scale, bg, false),
@@ -427,219 +593,158 @@ fn status_image(core: &mut Core, scale: f32, editor: bool) -> Arc<RenderImage> {
 fn shown(image: &Arc<RenderImage>, w: f32, h: f32) -> gpui::Img {
     img(image.clone()).w(px(w)).h(px(h))
 }
+// Rotate the displayed framebuffer clockwise; the guest orientation is unchanged.
+fn orient_frame(src: Vec<u8>, portrait: bool) -> (Vec<u8>, u32, u32) {
+    let (w, h) = (emu::bus::FB_WIDTH, emu::bus::FB_HEIGHT);
+    if !portrait {
+        return (src, w as u32, h as u32);
+    }
+    let mut dst = vec![0; src.len()];
+    for y in 0..h {
+        for x in 0..w {
+            let from = (y * w + x) * 4;
+            let to = (x * h + (h - 1 - y)) * 4;
+            dst[to..to + 4].copy_from_slice(&src[from..from + 4]);
+        }
+    }
+    (dst, h as u32, w as u32)
+}
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.schedule(window, cx);
 
         if self.emu_mode {
-            let emu = self.emulator.as_ref();
-            let is_paused = emu.is_some_and(|e| e.paused);
-            let mips = emu.map_or(0.0, |e| e.mips);
-            let (screen_w, screen_h) = if self.emu_fit {
-                (1024., 576.)
+            let viewport = window.viewport_size();
+            let available_w: f32 = viewport.width.into();
+            let available_h: f32 = viewport.height.into();
+            let (native_w, native_h) = if self.emu_portrait {
+                (720., 1280.)
             } else {
                 (1280., 720.)
             };
-
+            let fit = ((available_w - 32.).max(1.) / native_w)
+                .min((available_h - 80.).max(1.) / native_h);
+            let (screen_w, screen_h) = (native_w * fit, native_h * fit);
+            let control = |id: &'static str, image: &Arc<RenderImage>| {
+                div()
+                    .id(id)
+                    .cursor_pointer()
+                    .rounded_md()
+                    .overflow_hidden()
+                    .child(shown(image, 100., 32.))
+            };
             return div()
                 .track_focus(&self.focus)
                 .on_key_down(cx.listener(Self::key_down))
-                .on_key_up(cx.listener(Self::key_up))
                 .size_full()
                 .flex()
                 .flex_col()
-                .bg(rgb(0x0e1015))
-                .text_color(rgb(0xe4e4e7))
+                .bg(rgb(0x101216))
+                .text_color(rgb(0xe7e9ed))
                 .child(
-                    // Minimalist Top Toolbar
                     div()
+                        .h(px(48.))
                         .flex()
-                        .h(px(42.))
-                        .px_4()
                         .items_center()
-                        .justify_between()
-                        .bg(rgb(0x16181f))
-                        .border_b_1()
-                        .border_color(rgb(0x262933))
-                        // Left: Machine Brand & Status Badge
+                        .justify_center()
+                        .gap_2()
+                        .child(shown(&self.emu_session_label, 150., 32.))
                         .child(
                             div()
-                                .flex()
-                                .gap_3()
-                                .items_center()
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .gap_2()
-                                        .child(
-                                            div()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_size(px(14.))
-                                                .text_color(rgb(0xffffff))
-                                                .child("nihOS"),
-                                        )
-                                        .child(
-                                            div()
-                                                .text_size(px(12.))
-                                                .text_color(rgb(0x71717a))
-                                                .child("ESP32-P4"),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .gap_1p5()
-                                        .px_2()
-                                        .py_0p5()
-                                        .rounded_md()
-                                        .bg(if is_paused {
-                                            rgb(0x3f3f46)
-                                        } else {
-                                            rgb(0x143a22)
-                                        })
-                                        .child(div().size(px(6.)).rounded_full().bg(if is_paused {
-                                            rgb(0xeab308)
-                                        } else {
-                                            rgb(0x22c55e)
-                                        }))
-                                        .child(
-                                            div()
-                                                .text_size(px(11.))
-                                                .font_weight(FontWeight::MEDIUM)
-                                                .text_color(if is_paused {
-                                                    rgb(0xfde047)
-                                                } else {
-                                                    rgb(0x4ade80)
-                                                })
-                                                .child(if is_paused {
-                                                    "PAUSED".to_string()
-                                                } else {
-                                                    format!("{:.1} MIPS", mips)
-                                                }),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .text_size(px(11.))
-                                        .text_color(rgb(0x71717a))
-                                        .child("32MB PSRAM • XIP NFST"),
-                                ),
+                                .id("emu-new-session")
+                                .cursor_pointer()
+                                .rounded_md()
+                                .overflow_hidden()
+                                .on_click(cx.listener(|this, _, _, cx| this.new_session(cx)))
+                                .child(shown(&self.labels.emu_new, 110., 32.)),
                         )
-                        // Right: Minimal Controls
                         .child(
-                            div()
-                                .flex()
-                                .gap_2()
-                                .items_center()
-                                .child(
-                                    // Pause / Resume Button
-                                    div()
-                                        .id("emu-pause-btn")
-                                        .cursor_pointer()
-                                        .px_2p5()
-                                        .py_1()
-                                        .rounded_md()
-                                        .bg(rgb(0x27272a))
-                                        .hover(|s| s.bg(rgb(0x3f3f46)))
-                                        .text_size(px(12.))
-                                        .on_click(cx.listener(|this, _, _window, cx| {
-                                            if let Some(emu) = &mut this.emulator {
-                                                emu.paused = !emu.paused;
-                                            }
-                                            cx.notify();
-                                        }))
-                                        .child(if is_paused {
-                                            "▶ Resume"
-                                        } else {
-                                            "❚❚ Pause"
-                                        }),
-                                )
-                                .child(
-                                    // Step Button (single frame)
-                                    div()
-                                        .id("emu-step-btn")
-                                        .cursor_pointer()
-                                        .px_2p5()
-                                        .py_1()
-                                        .rounded_md()
-                                        .bg(rgb(0x27272a))
-                                        .hover(|s| s.bg(rgb(0x3f3f46)))
-                                        .text_size(px(12.))
-                                        .on_click(cx.listener(|this, _, window, cx| {
-                                            let was_paused =
-                                                this.emulator.as_ref().is_some_and(|e| e.paused);
-                                            if let Some(emu) = &mut this.emulator {
+                            control(
+                                "emu-rotate",
+                                if self.emu_portrait {
+                                    &self.labels.emu_landscape
+                                } else {
+                                    &self.labels.emu_portrait
+                                },
+                            )
+                            .on_click(cx.listener(
+                                |this, _, window, cx| {
+                                    this.emu_portrait = !this.emu_portrait;
+                                    this.render_emulator_image(window);
+                                    cx.notify();
+                                },
+                            )),
+                        )
+                        .child(
+                            control(
+                                "emu-pause",
+                                if self.emulator.as_ref().is_some_and(|emu| emu.paused) {
+                                    &self.labels.emu_resume
+                                } else {
+                                    &self.labels.emu_pause
+                                },
+                            )
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                if this.emu_powered
+                                    && let Some(emu) = &mut this.emulator
+                                {
+                                    emu.paused = !emu.paused;
+                                }
+                                cx.notify();
+                            })),
+                        )
+                        .child(
+                            control(
+                                "emu-power",
+                                if self.emu_powered {
+                                    &self.labels.emu_off
+                                } else {
+                                    &self.labels.emu_on
+                                },
+                            )
+                            .on_click(cx.listener(
+                                |this, _, window, cx| {
+                                    if this.emu_powered {
+                                        this.emu_powered = false;
+                                    } else if let Some(emu) = &mut this.emulator {
+                                        match emu.reset() {
+                                            Ok(()) => {
                                                 emu.paused = false;
+                                                this.emu_powered = true;
+                                                this.emu_error = None;
                                             }
-                                            this.refresh_emulator(window);
-                                            if let Some(emu) = &mut this.emulator {
-                                                emu.paused = was_paused;
+                                            Err(err) => {
+                                                this.emu_error =
+                                                    Some(format!("Power on failed: {err}"))
                                             }
-                                            cx.notify();
-                                        }))
-                                        .child("⏭ Step"),
-                                )
-                                .child(
-                                    // Reset Button
-                                    div()
-                                        .id("emu-reset-btn")
-                                        .cursor_pointer()
-                                        .px_2p5()
-                                        .py_1()
-                                        .rounded_md()
-                                        .bg(rgb(0x27272a))
-                                        .hover(|s| s.bg(rgb(0x3f3f46)))
-                                        .text_size(px(12.))
-                                        .on_click(cx.listener(|this, _, window, cx| {
-                                            if let Some(emu) = &mut this.emulator {
-                                                let _ = emu.reset();
-                                                emu.step_frame(1_000_000);
+                                        }
+                                        this.refresh_emulator(window);
+                                    }
+                                    cx.notify();
+                                },
+                            )),
+                        )
+                        .child(
+                            control("emu-reset", &self.labels.emu_reset).on_click(cx.listener(
+                                |this, _, window, cx| {
+                                    if this.emu_powered {
+                                        if let Some(emu) = &mut this.emulator {
+                                            match emu.reset() {
+                                                Ok(()) => this.emu_error = None,
+                                                Err(err) => {
+                                                    this.emu_powered = false;
+                                                    this.emu_error =
+                                                        Some(format!("Reset failed: {err}"));
+                                                }
                                             }
-                                            this.refresh_emulator(window);
-                                            cx.notify();
-                                        }))
-                                        .child("↻ Reset"),
-                                )
-                                .child(
-                                    // Fit / 1x Scale toggle
-                                    div()
-                                        .id("emu-scale-btn")
-                                        .cursor_pointer()
-                                        .px_2p5()
-                                        .py_1()
-                                        .rounded_md()
-                                        .bg(rgb(0x27272a))
-                                        .hover(|s| s.bg(rgb(0x3f3f46)))
-                                        .text_size(px(12.))
-                                        .on_click(cx.listener(|this, _, _window, cx| {
-                                            this.emu_fit = !this.emu_fit;
-                                            cx.notify();
-                                        }))
-                                        .child(if self.emu_fit { "⛶ 1x" } else { "⛶ Fit" }),
-                                )
-                                .child(
-                                    // Toggle to original xy workspace
-                                    div()
-                                        .id("emu-workspace-btn")
-                                        .cursor_pointer()
-                                        .px_2p5()
-                                        .py_1()
-                                        .rounded_md()
-                                        .bg(rgb(0x1e3a5f))
-                                        .hover(|s| s.bg(rgb(0x2563eb)))
-                                        .text_size(px(12.))
-                                        .on_click(cx.listener(|this, _, window, cx| {
-                                            this.emu_mode = false;
-                                            window.set_window_title("xy - GPUI");
-                                            cx.notify();
-                                        }))
-                                        .child("xy IDE ↗"),
-                                ),
+                                        }
+                                        this.render_emulator_image(window);
+                                    }
+                                    cx.notify();
+                                },
+                            )),
                         ),
                 )
-                // Center Screen Display
                 .child(
                     div()
                         .flex_1()
@@ -647,105 +752,34 @@ impl Render for Workspace {
                         .items_center()
                         .justify_center()
                         .p_4()
-                        .child(if let Some(emu_img) = &self.emu_image {
+                        .child(if let Some(error) = &self.emu_error {
+                            let image = label(
+                                &mut self.core,
+                                error,
+                                [720., 48., 16.],
+                                self.scale,
+                                [0xffa8a8, 0x101216],
+                                true,
+                            );
+                            div().child(shown(&image, 720., 48.))
+                        } else if self.emulator.is_none() {
+                            let image = label(
+                                &mut self.core,
+                                "Firmware ELF not found or could not be loaded",
+                                [720., 48., 16.],
+                                self.scale,
+                                [0xaeb5c2, 0x101216],
+                                true,
+                            );
+                            div().child(shown(&image, 720., 48.))
+                        } else if !self.emu_powered {
+                            div().w(px(screen_w)).h(px(screen_h)).bg(rgb(0x000000))
+                        } else if let Some(image) = &self.emu_image {
                             div()
-                                .flex()
-                                .flex_col()
-                                .items_center()
-                                .gap_3()
-                                .child(
-                                    // Bezel around display
-                                    div()
-                                        .border_2()
-                                        .border_color(rgb(0x27272a))
-                                        .rounded_lg()
-                                        .overflow_hidden()
-                                        .shadow_lg()
-                                        .bg(rgb(0x000000))
-                                        .child(shown(emu_img, screen_w, screen_h)),
-                                )
-                                .child(
-                                    // M5 Tab5 Bottom Buttons (A, B, C)
-                                    div()
-                                        .flex()
-                                        .gap_4()
-                                        .items_center()
-                                        .child(
-                                            div()
-                                                .id("btn-m5-a")
-                                                .px_4()
-                                                .py_1()
-                                                .rounded_md()
-                                                .bg(rgb(0x1a1d24))
-                                                .border_1()
-                                                .border_color(rgb(0x27272a))
-                                                .text_color(rgb(0x71717a))
-                                                .text_size(px(11.))
-                                                .cursor_pointer()
-                                                .hover(|s| {
-                                                    s.bg(rgb(0x27272a)).text_color(rgb(0xffffff))
-                                                })
-                                                .on_click(cx.listener(|this, _, _, _| {
-                                                    if let Some(emu) = &mut this.emulator {
-                                                        emu.send_key(b'a');
-                                                    }
-                                                }))
-                                                .child("Button A"),
-                                        )
-                                        .child(
-                                            div()
-                                                .id("btn-m5-b")
-                                                .px_4()
-                                                .py_1()
-                                                .rounded_md()
-                                                .bg(rgb(0x1a1d24))
-                                                .border_1()
-                                                .border_color(rgb(0x27272a))
-                                                .text_color(rgb(0x71717a))
-                                                .text_size(px(11.))
-                                                .cursor_pointer()
-                                                .hover(|s| {
-                                                    s.bg(rgb(0x27272a)).text_color(rgb(0xffffff))
-                                                })
-                                                .on_click(cx.listener(|this, _, _, _| {
-                                                    if let Some(emu) = &mut this.emulator {
-                                                        emu.send_key(b'b');
-                                                    }
-                                                }))
-                                                .child("Button B"),
-                                        )
-                                        .child(
-                                            div()
-                                                .id("btn-m5-c")
-                                                .px_4()
-                                                .py_1()
-                                                .rounded_md()
-                                                .bg(rgb(0x1a1d24))
-                                                .border_1()
-                                                .border_color(rgb(0x27272a))
-                                                .text_color(rgb(0x71717a))
-                                                .text_size(px(11.))
-                                                .cursor_pointer()
-                                                .hover(|s| {
-                                                    s.bg(rgb(0x27272a)).text_color(rgb(0xffffff))
-                                                })
-                                                .on_click(cx.listener(|this, _, _, _| {
-                                                    if let Some(emu) = &mut this.emulator {
-                                                        emu.send_key(b'c');
-                                                    }
-                                                }))
-                                                .child("Button C"),
-                                        ),
-                                )
+                                .bg(rgb(0x000000))
+                                .child(shown(image, screen_w, screen_h))
                         } else {
                             div()
-                                .flex()
-                                .flex_col()
-                                .items_center()
-                                .gap_2()
-                                .text_color(rgb(0x71717a))
-                                .child("Firmware ELF not loaded")
-                                .child("Place nihos-native.elf into build/native-emulator/ to run")
                         }),
                 );
         }
@@ -943,4 +977,24 @@ fn main() {
         .expect("open GPUI workspace");
         cx.activate(true);
     });
+}
+
+#[cfg(test)]
+mod emulator_display_tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn portrait_rotates_clockwise_without_losing_pixels() {
+        let (w, h) = (emu::bus::FB_WIDTH, emu::bus::FB_HEIGHT);
+        let mut pixels = vec![0; w * h * 4];
+        pixels[..4].copy_from_slice(&[1, 2, 3, 4]);
+        pixels[(w * h - 1) * 4..].copy_from_slice(&[5, 6, 7, 8]);
+        let (rotated, rw, rh) = orient_frame(pixels, true);
+        assert_eq!((rw, rh), (h as u32, w as u32));
+        assert_eq!(&rotated[(h - 1) * 4..h * 4], &[1, 2, 3, 4]);
+        assert_eq!(
+            &rotated[((w - 1) * h) * 4..((w - 1) * h + 1) * 4],
+            &[5, 6, 7, 8]
+        );
+    }
 }
