@@ -1,0 +1,216 @@
+Build Summary: 21/21 steps succeeded
+test-app success
++- run test cached
+|  +- compile test debug native cached 44ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 78ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 87ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 83ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 84ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 73ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 73ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 77ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 39ms MaxRSS:31M
++- run test cached
+   +- compile test debug native cached 73ms MaxRSS:32M
+
+   Compiling nihos-app v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/sdk/rust/nihos-app)
+   Compiling nihos-rust-app-probe v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/probes/rust-app)
+    Finished `release` profile [optimized] target(s) in 0.21s
+Rust app C ABI host probe: ok
+    Finished `release` profile [optimized] target(s) in 0.00s
+1/10 surface.test.linear light blend has expected midtone and preserves endpoints...OK
+2/10 surface.test.linear light preserves any identical RGB565 color...OK
+3/10 surface.test.coverage endpoints and half blend preserve stride and guards...OK
+4/10 surface.test.negative placement clips source rows and fully outside masks do nothing...OK
+5/10 surface.test.invalid geometry and aliased masks fail before mutation...OK
+6/10 surface.test.linear light channel matches independent sRGB reference...OK
+7/10 surface.test.linear composition clips and rejects aliased or short masks before writes...OK
+8/10 surface.test.four-bit coverage shares A8 rounding for every channel and alpha...OK
+9/10 surface.test.rectangle fill clips damage and shares row stores for aligned, unaligned and padded buffers...OK
+10/10 surface.test.fillRect clips and preserves stride padding and rejects invalid surfaces...OK
+All 10 tests passed.
+Rust app + Zig RGB565 surface: ok
+Rust app display owner rotation: ok
+   Compiling nihos-app v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/sdk/rust/nihos-app)
+   Compiling nihos-rust-app-probe v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/probes/rust-app)
+    Finished `release` profile [optimized] target(s) in 0.14s
+/private/tmp/nihos-rust-sdk-integration-20261030/build/rust-app-probe/rv32.elf: ELF 32-bit LSB executable, UCB RISC-V, RVC, soft-float ABI, version 1 (SYSV), statically linked, with debug_info, not stripped
+   Compiling nihos-app v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/sdk/rust/nihos-app)
+   Compiling nihos-rust-wasm-probe v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/probes/rust-wasm)
+    Finished `release` profile [optimized] target(s) in 0.31s
+Same Rust app, Wasm imports and range checks: ok
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target AARCH64
+     Build for platform darwin
+     CMAKE_BUILD_TYPE Release
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-host
+[ 90%] Built target wamr
+[ 95%] Building C object CMakeFiles/nihos-wamr-journal.dir/main.c.o
+[ 95%] Building C object CMakeFiles/nihos-wamr-host.dir/main.c.o
+[ 97%] Linking C executable nihos-wamr-host
+[100%] Linking C executable nihos-wamr-journal
+[100%] Built target nihos-wamr-host
+[100%] Built target nihos-wamr-journal
+Wasm linear memory range=0..1114112 bytes
+WAMR pool total=4193888 free=4171400 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok
+WAMR small-pool exec env allocation failure: ok
+WAMR truncated module rejection: ok
+WAMR single-owner platform model: ok
+nihos C sort/format compatibility subset: ok
+   Compiling nihos-app v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/sdk/rust/nihos-app)
+   Compiling nihos-rust-wasm-probe v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/probes/rust-wasm)
+    Finished `release` profile [optimized] target(s) in 0.15s
+Same Rust app, Wasm imports and range checks: ok
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=4193888 free=4171400 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok
+1/1 arena.test.separate arenas reject wrong owner and recover all blocks...OK
+All 1 tests passed.
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target AARCH64
+     Build for platform darwin
+     CMAKE_BUILD_TYPE Release
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-arena
+[ 94%] Built target wamr
+[ 97%] Building C object CMakeFiles/wamr-quota.dir/main.c.o
+[100%] Linking C executable wamr-quota
+[100%] Built target wamr-quota
+success=1 injected=0 attempts=74 runtime_peak=22173 linear_peak=65536 runtime_live=0 linear_live=0 runtime_blocks=0 linear_blocks=0
+buddy_recovered=1 arena_reservation=393216 initial_free_runtime=126848 initial_free_linear=253824 peak_reserved_runtime=38976 peak_reserved_linear=131072
+success=1 injected=0 attempts=74 runtime_peak=22173 linear_peak=65536 runtime_live=0 linear_live=0 runtime_blocks=0 linear_blocks=0
+buddy_recovered=1 arena_reservation=393216 initial_free_runtime=126848 initial_free_linear=253824 peak_reserved_runtime=38976 peak_reserved_linear=131072
+success=0 injected=0 attempts=70 runtime_peak=2332 linear_peak=0 runtime_live=0 linear_live=0 runtime_blocks=0 linear_blocks=0
+buddy_recovered=1 arena_reservation=393216 initial_free_runtime=126848 initial_free_linear=253824 peak_reserved_runtime=5760 peak_reserved_linear=0
+WAMR buddy arena fault injections: 74/74 fully recovered
+package SIGKILL matrix: 4 cuts, 8 distinct processes, exact package recovery
+committed corruption controls: 2 rejections, 2 restored recoveries, no fallback
+boot admission process-boundary fixture: ok
+NIHOS_BOOT_PROCESS phase=provision trust_epoch=1 sequence=1 trust_syncs=3 counter_syncs=1 package_syncs=3 pid=74382
+NIHOS_BOOT_PROCESS phase=interrupt trust_epoch=1 sequence=1 package_syncs=2 await_sigkill=1 pid=74385
+NIHOS_BOOT_PROCESS phase=recover-old trust_epoch=1 sequence=1 process_reopen=1 pid=74386
+NIHOS_BOOT_PROCESS phase=install trust_epoch=1 sequence=2 package_syncs=3 pid=74387
+NIHOS_BOOT_PROCESS phase=recover-new trust_epoch=1 sequence=2 process_reopen=1 pid=74388
+NIHOS_BOOT_PROCESS phase=interrupt-trust trust_epoch=2 counter_floor=1 trust_syncs=3 counter_syncs=0 abrupt_exit=86 pid=74408
+NIHOS_BOOT_PROCESS phase=reject-unsealed trust_epoch=2 counter_floor=1 seal_failed=1 package_reads=0 pid=74411
+NIHOS_BOOT_PROCESS phase=seal-revoked trust_epoch=2 counter_floor=2 counter_syncs=1 boot_rejected=1 pid=74412
+NIHOS_BOOT_PROCESS phase=reject-revoked trust_epoch=2 sequence=2 boot_rejected=1 install_rejected=1 writes=0 pid=74415
+NIHOS_BOOT_PROCESS phase=reject-rollback trust_epoch=1 counter_floor=2 rejected=Rollback writes=0 pid=74418
+   Compiling nihos-app v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/sdk/rust/nihos-app)
+   Compiling nihos-rust-wasm-probe v0.1.0 (/private/tmp/nihos-rust-sdk-integration-20261030/probes/rust-wasm)
+    Finished `release` profile [optimized] target(s) in 0.14s
+NIHOS_BOOT_EXPORT trust_epoch=1 sequence=1 package_bytes=1419 wasm_bytes=1211 pid=74496
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=261728 free=239240 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok
+NIHOS_BOOT_BUFFER status=0 wasm_bytes=1211 services=1
+NIHOS_IMPORT_OWNER denied_service=1 inactive=1 mismatched=1 detached=1 calls=0 effective_services=1
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=261728 free=239240 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok
+Rust journal -> boot admission -> WAMR host: ok; damaged package/wrong root emit no payload

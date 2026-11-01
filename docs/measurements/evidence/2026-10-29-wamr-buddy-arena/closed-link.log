@@ -1,0 +1,10 @@
+artifact: build/wamr-arena-rv32/wamr-closed-link.elf
+classification: symbol-closure probe only; not bootable or emulator-executed
+ABI: ELF32 RISC-V, RVC, soft-float
+text=111658 data=24 bss=418036 total=529718
+undefined symbols before strip-debug: 0
+undefined symbols after strip-debug: 0
+sha256=fdbc5e3b888dcadd58ac3b22c0d87ff75ee0775e36f8cbc75311dd6847a89dde
+second consecutive build sha256=fdbc5e3b888dcadd58ac3b22c0d87ff75ee0775e36f8cbc75311dd6847a89dde
+BSS includes runtime arena=131072, linear arena=262144, placeholder stack=16384, and runtime state
+owner hooks nih_wamr_monotonic_us and nih_wamr_stack_boundary are link-only placeholders

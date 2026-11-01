@@ -1,0 +1,50 @@
+
+/private/tmp/nihos-rust-sdk-integration-20261030/build/wasm-alignment-negative/wamr_c_align_negative.o:     file format elf32-littleriscv
+
+
+Disassembly of section .text.nih_wamr_alignment_negative:
+
+00000000 <nih_wamr_alignment_negative>:
+   0:	000005b7          	lui	a1,0x0
+			0: R_RISCV_HI20	bytes+0x1
+			0: R_RISCV_RELAX	*ABS*+0x1
+   4:	00158793          	addi	a5,a1,1 # 1 <nih_wamr_alignment_negative+0x1>
+			4: R_RISCV_LO12_I	bytes+0x1
+			4: R_RISCV_RELAX	*ABS*+0x1
+   8:	8b8d                	andi	a5,a5,3
+   a:	cf89                	beqz	a5,24 <.L2>
+			a: R_RISCV_RVC_BRANCH	.L2
+   c:	00000537          	lui	a0,0x0
+			c: R_RISCV_HI20	.Lubsan_data0
+			c: R_RISCV_RELAX	*ABS*
+  10:	1141                	addi	sp,sp,-16
+  12:	00158593          	addi	a1,a1,1
+			12: R_RISCV_LO12_I	bytes+0x1
+			12: R_RISCV_RELAX	*ABS*+0x1
+  16:	00050513          	mv	a0,a0
+			16: R_RISCV_LO12_I	.Lubsan_data0
+			16: R_RISCV_RELAX	*ABS*
+  1a:	c606                	sw	ra,12(sp)
+  1c:	00000097          	auipc	ra,0x0
+			1c: R_RISCV_CALL_PLT	__ubsan_handle_type_mismatch_v1_abort
+			1c: R_RISCV_RELAX	*ABS*
+  20:	000080e7          	jalr	ra # 1c <nih_wamr_alignment_negative+0x1c>
+
+00000024 <.L2>:
+  24:	000007b7          	lui	a5,0x0
+			24: R_RISCV_HI20	bytes
+			24: R_RISCV_RELAX	*ABS*
+  28:	00078793          	mv	a5,a5
+			28: R_RISCV_LO12_I	bytes
+			28: R_RISCV_RELAX	*ABS*
+  2c:	0017c703          	lbu	a4,1(a5) # 1 <nih_wamr_alignment_negative+0x1>
+  30:	0027c683          	lbu	a3,2(a5)
+  34:	06a2                	slli	a3,a3,0x8
+  36:	8ed9                	or	a3,a3,a4
+  38:	0037c703          	lbu	a4,3(a5)
+  3c:	0047c503          	lbu	a0,4(a5)
+  40:	0742                	slli	a4,a4,0x10
+  42:	8f55                	or	a4,a4,a3
+  44:	0562                	slli	a0,a0,0x18
+  46:	8d59                	or	a0,a0,a4
+  48:	8082                	ret

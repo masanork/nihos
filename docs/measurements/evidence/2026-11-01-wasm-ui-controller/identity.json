@@ -1,0 +1,23 @@
+{
+  "source_commit": "843fc06533c74835c2f19e49ba99f77e7a752885",
+  "reconciled_main": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "scope": "headless UI controller and RV32 worker; synthetic camera/display state; no production UI or physical run",
+  "candidate": {
+    "nihos-native-image.elf": "dff569a3c283b6ece0e9db5301a5f8e25fcdec59a0efaa468d0a49048478a8a2",
+    "nihos-native-flash.bin": "536036c8636f0f6e3211e4f06634b5402e9af0009b456c90d64af7b7e997326e"
+  },
+  "evidence_sha256": {
+    "cancel.log": "d637015b4f2fe14ef507fd5d5cc7bd779ee358e3034d228750d32aa954688959",
+    "early-quit.log": "b02c0d77f72076d204297dac750686a1beef1fdb268d14312d50fda7cca88270",
+    "image-audit-wamr.json": "0ab2f79be24cd6f917cf6a5c94aeacc2688b5c75b663c36e928552db5113438c",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "metered-trap.log": "af0d6f1df7e42db705b783b9e7c77cdec2eef7ce6ff81dd99e940b66906f4d29",
+    "noinput.log": "096904a218e822b1befbf2ea9ee7d563fdbdefad40a531fce12e0e40b63a2aaf",
+    "normal.log": "e824dd046690ead19a957cdd140e3cae4f9d7c0066b0399e1bb078364e8f6714",
+    "present-failure.log": "d8e936a9e538c4ff4d39cb002aa7078a289e17cacca4ec0f5fdccc5ebd9320fc",
+    "report.json": "a203e93e842aa659e5d42c05dc9fb8de722fa92521bdc2b82925fe773379c517",
+    "safe.log": "f0b58523f288d215c352f488f1836d9d712a0da44b2852fc388c2a749d396a94",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "unit.log": "8dc01a81e53481fb87690281be4ca900de24e502672a5cb90e39e5b7cffb6fbf"
+  }
+}

@@ -1,0 +1,84 @@
+Build Summary: 82/82 steps succeeded; 47/47 tests passed
+test success
++- test-app success
+|  +- run test cached
+|  |  +- compile test debug native cached 74ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 78ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test debug native cached 93ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test debug native cached 76ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 93ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 76ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 85ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 74ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 76ms MaxRSS:32M
+|  +- run test cached
+|     +- compile test debug native cached 92ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 54ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 91ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 54ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 86ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 46ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 74ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 66ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 46ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 61ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 63ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 49ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 74ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 64ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 66ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 70ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 47ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 67ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 48ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 48ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 70ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 51ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 70ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 53ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 88ms MaxRSS:31M
++- run test 3 pass (3 total) 206ms MaxRSS:3M
+|  +- compile test debug native success 1s MaxRSS:267M
++- run test 19 pass (19 total) 220ms MaxRSS:3M
+|  +- compile test debug native success 1s MaxRSS:308M
++- run test cached
+|  +- compile test debug native cached 103ms MaxRSS:32M
++- run test 6 pass (6 total) 206ms MaxRSS:3M
+|  +- compile test debug native success 1s MaxRSS:272M
++- run test 9 pass (9 total) 205ms MaxRSS:3M
+|  +- compile test debug native success 1s MaxRSS:289M
++- run test 10 pass (10 total) 219ms MaxRSS:4M
+   +- compile test debug native success 1s MaxRSS:291M
+

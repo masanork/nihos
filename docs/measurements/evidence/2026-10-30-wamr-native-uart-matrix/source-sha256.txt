@@ -1,0 +1,6 @@
+7e8a728250686f67f6353fd588258dd783ac58ea19f1a6d33e2d484f204d7830  probes/wamr-native/run-uart-matrix.py
+8a02660387001674a4abe982153d545a94216bcef42012b59a4776d14fae1459  probes/wamr-native/run-emulator.sh
+af82efa3e16664e145d0a7bb357db8ef5e74a383821690556a2f556a7aac2171  probes/wamr-native/runner.c
+46bb015b4ee756b2de07fc0761d0391ec1cee88d389a23dc02673e6007df5064  src/platform/native/wamr_runtime.zig
+9b66bd2d47c32ac2dff9472ebde24aa2ef036d7feeecf7a5b06828dac54d44a1  src/platform/native/main.zig
+016ea8a0866463ff7ae14b86cae8c57f5695b65b36346bba7a9f735e94540aef  src/platform/native/esp32p4.ld

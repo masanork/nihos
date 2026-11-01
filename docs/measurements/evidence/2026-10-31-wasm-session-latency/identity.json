@@ -1,0 +1,22 @@
+{
+  "source_commit": "9495811b540ea39e105baf222f430ab867b48ad6",
+  "base_main": "980f522a3575c3922b956bf97f46a228b557070d",
+  "qualification": "headless RV32 emulator; no physical run",
+  "candidate": {
+    "nihos-native-image.elf": "220fb9a219a1ea49b63c62c672d62a2c99f4769ebb6a6781f313eca366a712ed",
+    "nihos-native-flash.bin": "340e374108c4502c56d85fff7e92999856a717327416e20262e2c831d1c59b71"
+  },
+  "evidence_sha256": {
+    "cancel.log": "f4a84bef688a8b33aa13043087271f7ad837fdeccc35ed19ce8d335824f60aa5",
+    "early-quit.log": "4931d7ddd4c9e4a05aaf09029140aa75a8d03437885a934f8124681485d4681a",
+    "image-audit-wamr.json": "abbf7714705e55bdfd0a8d89d1a7c7c739cd96a6b14a6aef17119b3fe237d330",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "metered-trap.log": "3a3a2a54a9b071c54aa4599a393816584aaeaa0d8104d11e591ac328caa9bc98",
+    "noinput.log": "dfb1f54ffc0fcca4e69a74ab6f72124fc070c16ff13ca73dcf2745a13523a617",
+    "normal.log": "cdb8df5bcee729651774ca293bcf9ba0638d43d05308d607d36999edca7812c3",
+    "present-failure.log": "e7504dcc3fe7d0cf620a01fd286781bc7e1dbb06138ceb6bd0d1d2e7d3337933",
+    "report.json": "49fe2b5af61ed7721e99b234771fa18660bce9cc01e4a93b67156d3e9b2b5b62",
+    "static.log": "6cdd247d89d7cf8215a17dd87cb98546a718490f31b761958f2d73544058024e",
+    "unit.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

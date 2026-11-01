@@ -1,0 +1,204 @@
+{
+  "scope": "single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout",
+  "candidate": {
+    "nihos-native-image.elf": "423a7e37b6a4ac2245edbf5e7875d45acd67da1e59112eaea17f2d4bbafd8a1a",
+    "nihos-native-flash.bin": "19cc02685ad7d09ee3e92d28727ed4e187087c86cb6c039a90c2b3668483853f"
+  },
+  "events": [
+    {
+      "round": 1,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    },
+    {
+      "round": 2,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 2,
+      "state": 4,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    }
+  ],
+  "foreground": [
+    {
+      "round": 1,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 27,
+      "max_gap_us": 20054
+    },
+    {
+      "round": 2,
+      "opening": 1,
+      "cancelling": 110,
+      "active": 0,
+      "max_gap_us": 20000
+    },
+    {
+      "round": 3,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 27,
+      "max_gap_us": 20000
+    }
+  ],
+  "mock_work": [
+    {
+      "round": 1,
+      "items": 136,
+      "digest": 2383064389,
+      "sensor": 1089920
+    },
+    {
+      "round": 2,
+      "items": 111,
+      "digest": 3097764037,
+      "sensor": 863320
+    },
+    {
+      "round": 3,
+      "items": 136,
+      "digest": 4271999685,
+      "sensor": 1090688
+    }
+  ],
+  "hosted_decoder": [
+    {
+      "round": 1,
+      "accepted": 34,
+      "rejected": 34,
+      "errors": 0,
+      "active_events": 14
+    },
+    {
+      "round": 2,
+      "accepted": 28,
+      "rejected": 27,
+      "errors": 0,
+      "active_events": 0
+    },
+    {
+      "round": 3,
+      "accepted": 34,
+      "rejected": 34,
+      "errors": 0,
+      "active_events": 14
+    }
+  ],
+  "request_latency": [
+    {
+      "round": 1,
+      "render_us": 817,
+      "close_us": 1447
+    },
+    {
+      "round": 2,
+      "render_us": 0,
+      "close_us": 0
+    },
+    {
+      "round": 3,
+      "render_us": 817,
+      "close_us": 1447
+    }
+  ],
+  "hosted_station": [
+    {
+      "round": 1,
+      "completed": 6,
+      "stale": 6,
+      "errors": 0,
+      "offers": 6,
+      "corrupt": 6,
+      "opening": 5,
+      "cancelling": 0,
+      "active": 1
+    },
+    {
+      "round": 2,
+      "completed": 5,
+      "stale": 5,
+      "errors": 0,
+      "offers": 5,
+      "corrupt": 5,
+      "opening": 0,
+      "cancelling": 5,
+      "active": 0
+    },
+    {
+      "round": 3,
+      "completed": 6,
+      "stale": 6,
+      "errors": 0,
+      "offers": 6,
+      "corrupt": 6,
+      "opening": 5,
+      "cancelling": 0,
+      "active": 1
+    }
+  ],
+  "dhcp_lifetime": [
+    {
+      "round": 1,
+      "renewed": 6,
+      "old_ack": 6,
+      "expired": 5,
+      "opening": 4,
+      "cancelling": 0,
+      "active": 1
+    },
+    {
+      "round": 2,
+      "renewed": 4,
+      "old_ack": 4,
+      "expired": 4,
+      "opening": 0,
+      "cancelling": 4,
+      "active": 0
+    },
+    {
+      "round": 3,
+      "renewed": 6,
+      "old_ack": 6,
+      "expired": 5,
+      "opening": 4,
+      "cancelling": 0,
+      "active": 1
+    }
+  ]
+}

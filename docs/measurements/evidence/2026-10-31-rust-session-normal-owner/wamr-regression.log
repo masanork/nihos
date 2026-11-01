@@ -1,0 +1,70 @@
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target RISCV32_ILP32
+     Build for platform nihos_compile_only
+     CMAKE_BUILD_TYPE Release
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+    Finished `release` profile [optimized] target(s) in 0.04s
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+WAMR Rust app native emulator fixture: ok
+UART noinput: expected status 42, 0 frames, complete cleanup
+UART partial: expected status 42, 1 frames, complete cleanup
+UART early-quit: expected status 44, 0 frames, complete cleanup
+UART overflow: expected status 43, 0 frames, complete cleanup
+UART wrong-order: expected status 44, 0 frames, complete cleanup
+UART extra-frame: expected status 44, 3 frames, complete cleanup
+WAMR native ELF structural audit: ok
+b790c66619c1061af10ea0aa9ae888feec397f4c5d99a4523f2c2031d244abe2  /private/tmp/nihos-rust-sdk-integration-20261030/build/native-emulator-wasm/app.wasm
+407f31cdd6fc7976612a61cc622cd63f8d7ab56ce45865a4ec6c393d37142fcf  /private/tmp/nihos-rust-sdk-integration-20261030/build/native-emulator-wasm/app-test-ed25519.nihpkg
+e5a47755426183176105b6271cb15e4d12247779f2e1a136d11c37d03dd2adc0  /private/tmp/nihos-rust-sdk-integration-20261030/build/native-emulator-wasm/app-update-ed25519.nihpkg
+d87cea0fa9642b2c73948640509dc1f0dfc4c34d673b88d53c1ec001199cb314  /private/tmp/nihos-rust-sdk-integration-20261030/build/native-emulator-wasm/nihos-native-image.elf
+b86ca6d6da28e17fe4921fe1262b50fcf65b8cb0a090fbd6f90d6efff4d8152b  /private/tmp/nihos-rust-sdk-integration-20261030/build/native-emulator-wasm/nihos-native-flash.bin

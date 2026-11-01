@@ -1,0 +1,3 @@
+1/1 trust-snapshot-chain-test.test.root rotation and package revocation survive every persistent cut...NIHOS_TRUST_CHAIN crash_cuts=468 recovery_cuts=468 handoff_cuts=468 roots_overlap=2 retired_root1=1 revoke_package_key=1 rollback_rejected=1 recovery_replace=1 normal_handoff=1
+OK
+All 1 tests passed.

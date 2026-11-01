@@ -1,0 +1,80 @@
+{
+  "scope": "single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout",
+  "candidate": {
+    "nihos-native-image.elf": "757673e09f80115998d3fc78a2893d759642c93cbbfbbf7f2ef8cd3413fb7d96",
+    "nihos-native-flash.bin": "2ae9ebb474109214c4f2eb3be0fa22998c1be2e38f4f449c798870e5914a8144"
+  },
+  "events": [
+    {
+      "round": 1,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    },
+    {
+      "round": 2,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 2,
+      "state": 4,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    }
+  ],
+  "foreground": [
+    {
+      "round": 1,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 2,
+      "max_gap_us": 20054
+    },
+    {
+      "round": 2,
+      "opening": 1,
+      "cancelling": 110,
+      "active": 0,
+      "max_gap_us": 20001
+    },
+    {
+      "round": 3,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 2,
+      "max_gap_us": 20003
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+1/2 boot-admission-test.test.boot admission composes sealed trust and package recovery...NIHOS_BOOT_ADMISSION ready=1 idempotent=1 install_sequence2=1 simulated_reboot=1 revocation=1 gate_released_after_error=1
+OK
+2/2 boot-admission-test.test.boot admission exposes explicit empty maintenance and future-trust states...NIHOS_BOOT_STATES unprovisioned=1 install_without_trust_rejected=1 no_package=1 owner_busy=1 recovery_maintenance=1 recovery_install_rejected=1 future_trust_rejected=1
+OK
+All 2 tests passed.

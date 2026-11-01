@@ -1,0 +1,50 @@
+{
+  "source_commit": "2f3fdfbeaf95a7dc585b7d05506b9b814ce240d1",
+  "scope": "synthetic fragmented frames through actual ESP-Hosted decoder, WAMR UI fixture; no C6/SDIO/network or physical device",
+  "candidates": {
+    "hosted": {
+      "nihos-native-image.elf": "12bae0b20a20bd7b87eb4b9358185b91725de24eac5e7d3ae403d86e61cad5b8",
+      "nihos-native-flash.bin": "53d06ed70ec25eb839e60936df086aa1737560cb1c20f95fd99b04134757d491"
+    },
+    "previous_ui": {
+      "nihos-native-image.elf": "1243cc4ce92ecc8890caea4f804e47a79776f45ee462a17ad38807e82a47030c",
+      "nihos-native-flash.bin": "94883e7a57a6ca049c3f8236c3d9ccf7be65f1d0526b449ba53ff40b2696a48a"
+    },
+    "matrix": {
+      "nihos-native-image.elf": "59b48cb2cae0fa9007d0a97ad6d176122c0a74941943cf4aa0d5834f27a67429",
+      "nihos-native-flash.bin": "dba72ad79d6e6fa2f0fbd6234591fe35dd1e615c789f1500e11a12a8c6a1d4ba"
+    },
+    "native": {
+      "nihos-native.elf": "647e5501ee42e6442be62393e31f7f33a229a579ea212793997f184c3c9eeaff",
+      "nihos-native-flash.bin": "74aa6c2f135b789a97b30f2a69006634b969624f1d4cae66ba2e0763b66086ab"
+    }
+  },
+  "final_source_regression_elf_hashes_match": true,
+  "evidence_sha256": {
+    "build.log": "5057c1a80447117ddfd4fd2fe3c09f26b5fdadbd332e8fda0e244401fc951ddc",
+    "debug.log": "20c46249b72c238a8de6090e244f4d140f5fb737f5ffcd0b5714cc8b35023168",
+    "hosted-report.json": "16ca41ccea3ae7dfbe13252670bc93101d98bc97d2059585a8bf8b74627a6f8d",
+    "image-audit.json": "b0273e0b0a55a515af07a36722132f2a65af0f7a9c41f4f1cc4dd62338caf5c6",
+    "image.log": "fa1212d1475838836bfe7c09e3a3d9622f8e89fc91d41a3893ed7e964773dfdc",
+    "matrix-cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "matrix-early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "matrix-final-build.log": "9d60a9270bbdbe137ad5df5776fc7e2264054f4530f730b930897293a594171c",
+    "matrix-metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "matrix-noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "matrix-normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "matrix-present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "matrix-report.json": "add39a8d3640ed1c17d0d0b5fdcdf30c87a9cd67b0a379001947fc6e2dd1b8fa",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "native-report.json": "374f43590c8f0b9c3993f332ff1a6d34bc18c2d0c6fe1a9302713db9820b8a0e",
+    "native-runner.log": "dd973e1c845fe2ceeed684fe4a3bc13b41d1d283f5b1f125a43c4b15382f5b7d",
+    "previous-ui-runner.log": "aa21e27eca068c8cad72ce1140d36ea2bb9a230455e0ad2b48c9304124af82fb",
+    "previous_ui-report.json": "cd16ed080e21913b314946759ac4fb25d08793dcfbd73ea82467332616bab05e",
+    "python.log": "3cdcfa69cab9147ac46f5d23e35e3e3e4bf9df97d8fea4090024e42b3ecb6779",
+    "release-safe.log": "bddf051f4f1630c5f83e8707e2ac245956dda52fda9daf69a795c25e879ff511",
+    "repeat.log": "d593a6a62b10cc7cdb4804f1bb6cee0cc21818de458bda9e5f371b80c174369c",
+    "report.json": "16ca41ccea3ae7dfbe13252670bc93101d98bc97d2059585a8bf8b74627a6f8d",
+    "runner.log": "3b0030b473f40b0c4ebefc387333ee2afb8fc9a87581d3a4f8455906dbededf7",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "ui-final-build.log": "4f896b8ea6a1331578e0089fa53f92e024e6b821ae367b21ca04ab66a81da464"
+  }
+}

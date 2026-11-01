@@ -1,0 +1,31 @@
+{
+  "source_commit": "a1784eaf8ff86b5a98597e764e74efe38feb946c",
+  "base_main": "3d21dcb1b798c745c084cb9d1d74fddbd231747f",
+  "qualification": "host + headless normal emulator + static device image audits; no physical run",
+  "candidates": {
+    "native-session": {
+      "nihos-native.elf": "9cc6e4c69e11f21992c424317d56783158f4a489e10927c51f035fc683d2a61c",
+      "nihos-native-flash.bin": "789461da8bce419686a2a318be3d30052cf3dc53385a1034ff70b31b42a3a360"
+    },
+    "device-enabled": {
+      "nihos-native.elf": "980d3eceabdeb9e22f13ed9f8e594ae08a26c3e4c7638e485f1f7555c2663477",
+      "nihos-native-flash.bin": "20089a9731844bed1fa3c68e932fe1864a0677ade9bd5f669a2c4c8ccf71567b"
+    },
+    "device-disabled": {
+      "nihos-native.elf": "6bc9736913f28911960d665f92afbce231516b663cc5463b5729d634bd4796e6",
+      "nihos-native-flash.bin": "857ed33aee5bdc537bdce933089f83227f57117c86cc80d90c024bc6e368ea61"
+    },
+    "wasm-boot-regression": {
+      "nihos-native-image.elf": "d87cea0fa9642b2c73948640509dc1f0dfc4c34d673b88d53c1ec001199cb314",
+      "nihos-native-flash.bin": "b86ca6d6da28e17fe4921fe1262b50fcf65b8cb0a090fbd6f90d6efff4d8152b"
+    }
+  },
+  "runtime_gate": "normal RV32 WAMR task and leased-stack registration remains open",
+  "toolchains": {
+    "zig": "0.17.0",
+    "rust": "1.98.1",
+    "wamr": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+    "idf": "5.4.4",
+    "esp_emu": "0.50.0"
+  }
+}

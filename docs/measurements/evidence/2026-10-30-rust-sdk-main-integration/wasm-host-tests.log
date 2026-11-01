@@ -1,0 +1,23 @@
+Build Summary: 21/21 steps succeeded
+test-app success
++- run test cached
+|  +- compile test debug native cached 42ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 52ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 76ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 73ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 60ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 74ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 71ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 70ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 76ms MaxRSS:32M
++- run test cached
+   +- compile test debug native cached 42ms MaxRSS:32M
+

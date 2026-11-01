@@ -1,0 +1,23 @@
+{
+  "counter_fixture_bytes": 8,
+  "elf_sha256": "06ca8d8b5c01e532f17cd08e7b405b59c66f9269bea936e88365e5edb8f8718e",
+  "evidence": "emulator-fixture",
+  "load_source": "boot-journal",
+  "package_bytes": 1419,
+  "package_journal_bytes": 8480,
+  "package_sha256": "5958b4dac8881c0ffd7cc3d820072d66afe0b99bb9ed6c535ccb6a1df7be2801",
+  "padding_bytes": 61216,
+  "raw_wasm_symbols": 0,
+  "rodata_bytes": 35995,
+  "rodata_start": "0x4005dc10",
+  "root_fixture_bytes": 32,
+  "schema": 1,
+  "text_bytes": 252944,
+  "text_start": "0x40020000",
+  "trust_journal_bytes": 1216,
+  "undefined_symbols": 0,
+  "update_package_bytes": 1419,
+  "update_package_sha256": "3cf7221864c758bbe7377a49e208343ecff55c80adeca31063db7d5df4daaa88",
+  "wasm_bytes": 1211,
+  "wasm_sha256": "4b226889e627af9ce64ee0b5529d1418cd60afc80944d315ed2b64026dde1710"
+}

@@ -1,0 +1,17 @@
+{
+  "scope": "RV32 emulator UART and actual UI polling with substitute shell and pixel presenter; no USB JTAG or physical scanout",
+  "candidate": {
+    "nihos-native-image.elf": "f820153827904cba1175deb04a130d0568bf4487dae0afce6d36c765d240762a",
+    "nihos-native-flash.bin": "1f6f203486b68b3dbff7992f3ca692be67b120cb10116b2e9a8e8a7c3650e781"
+  },
+  "cases": [
+    {
+      "case": "active",
+      "result": "pass"
+    },
+    {
+      "case": "cancel",
+      "result": "pass"
+    }
+  ]
+}

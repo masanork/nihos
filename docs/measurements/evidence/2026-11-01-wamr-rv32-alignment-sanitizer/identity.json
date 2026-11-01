@@ -1,0 +1,64 @@
+{
+  "source_commit": "1f9217fa517a36dfe056cc739ef9f919639b4a04",
+  "scope": "emulator-only GCC alignment sanitizer on WAMR C archive and negative control; host patch research only; no hardware",
+  "wamr_commit": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+  "host": "arm64 Apple clang 21.0.0",
+  "rv32_compiler": "riscv32-esp-elf-gcc 14.2.0 esp-14.2.0_20260121",
+  "host_experiment_patch_sha256": "da8b7979c4d7d60eacb9ea85c37889f2f31f8020e975f2794cc87743336e98c9",
+  "candidates": {
+    "instrumented": {
+      "nihos-native-image.elf": "cdd04bc91861862c527a8c9ce3d7c31a5c7b5e7de5de1ce62450bc5ae1c65ce8",
+      "nihos-native-flash.bin": "48276f2aba2901f11dd9aebd1eb09ac6c2b9e73b752d8707e800f9bf20edae65"
+    },
+    "stock": {
+      "nihos-native-image.elf": "b725a8d2cc2f6846738fbc3eac571e114a1bb243084c066f83bd5ef5cc2d152c",
+      "nihos-native-flash.bin": "c96b98ea345930f712ab20b06a26294e0ca5ed8594670a9dd820a2cb76cfbdfe"
+    },
+    "negative": {
+      "nihos-native-image.elf": "d6c116c4290769c7cc7951c5ac96cf919646b1f05a65a11c6d81e7d10d43a61c",
+      "nihos-native-flash.bin": "5ad90b577f5e8158c0573e43ca04946feee32f998037922c7efc807a12c12c33"
+    },
+    "native": {
+      "nihos-native.elf": "3a43444c898f975816ece9c0cca5d33e50ef8c7c7d20fa3d2d9a23b9de8d5c24",
+      "nihos-native-flash.bin": "381e219fd163f743fdb6f2b2720f81fad58eecdbc1b0d999ce210b838309fc5f"
+    }
+  },
+  "evidence_sha256": {
+    "debug.log": "4b63b8fb7d74bf7ad6a5339b21b9d37641e7795073a3415d0f5c7d5cd4125cd8",
+    "device-guard.log": "5ffd256e02d63fd4eef0ccb2dba7a98049fb5cc2893d046aa85e15b041cdef88",
+    "host-lab.log": "2f81a7e470aedc8c6d6840dcb7e242be488879d5992191ecf333a5721ac51055",
+    "host-patched-ubsan.log": "1cff70764a052573207d2647b39aeede45a01fd950b85a8dbbd91bb7d149c597",
+    "host-stock-ubsan.log": "8833da8bd072481be2df347837c66a17ccd60884681f7c8c07625dce3569fd3e",
+    "instrumented-build.log": "e6cdadd64ad45badd5da5d96b2b90693a165f5d08d67507a5e2879c6d2e78e24",
+    "instrumented-cancel.log": "d23edb9d5207c88486c96fd6b219a033151615ecfc525c81e9a48ca350fc78d2",
+    "instrumented-early-quit.log": "e6c6038728485e5d558aa1ce5ac64cc28c2d2e166bb86249595f1f792490a10f",
+    "instrumented-image-audit.json": "65dd35e687b7a5a97691104549a0ad7d4fbbe3895e81fcda970f015022db8ae1",
+    "instrumented-metered-trap.log": "aadb61d8c17143caa8984dbed3978addf513c2984ad1dabf8a1e36a101898103",
+    "instrumented-noinput.log": "bd963ad7f06d507cb1c4d5b603141d349aed773859dcecaf0b4836f9faa40d45",
+    "instrumented-normal.log": "4026406e81d6892830f409da6dbc84a23ebbeddb971b4f3186e8729c2dd25cae",
+    "instrumented-present-failure.log": "89d7b409b5927787000275fac7b81c170f45ac6437b0103e8aef38eb89e96c73",
+    "instrumented-report.json": "f75c972ad31beb77b87a19d3f930b8f157e903e15871c313052741d9d0eb2e46",
+    "instrumented-runner.log": "ab5b4ccb1eaa61baa29ed6c041a6a550acb2610b89e02ee73405d991e09ac167",
+    "native-report.json": "49ad117b10bcffbd1089e945a3f0c48cb41e60c791b5b2fab326674f7e184cbe",
+    "native-runner.log": "dd973e1c845fe2ceeed684fe4a3bc13b41d1d283f5b1f125a43c4b15382f5b7d",
+    "negative-linked-disassembly.log": "124d459776cc511eaafc0c071edc9fec8d42272f378c72a7d26e7e7734fb84d0",
+    "negative-object-disassembly.log": "77b55d52406b6496f83842cc603be72ef2f2ea717f1dccdf5f5c07d5789c3b22",
+    "negative-report.json": "71c4d29a0dc697d20bae00084e5a1a8ee209a2014d5a9ac2e78c3e39d74308a6",
+    "negative.log": "afc3f1485b8336f3ccae591a5820561621ac29d767d3177629282452f89ab91a",
+    "python.log": "5f27eedb7323518d6ef11f9a3eec1e208af3dd76d940c39adc17a027430be632",
+    "release-safe.log": "e8ecf10fd0945de2f0c70466787da3f5e4854a17e20284a49c0fd222ba55f6df",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "stock-cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "stock-early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "stock-image-audit.json": "1b760cd4ef8b7bdf1a3f871e1534c29936dad5dd943a0f25ee9cc850b7306bce",
+    "stock-metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "stock-noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "stock-normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "stock-present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "stock-report.json": "707859d115892e2a5e1b12ca5a688d9401c93dec2c598bedf1f2441dc875135e",
+    "stock-runner.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "ubsan-flags.txt": "a7b7fb013bd61cb105d6d1eb6ed1f7b4293c241642c68f7c79785dfd9ca7fc32",
+    "ubsan-references.txt": "cf8a82c3b31833e1e1c11c6c127ba5b051e89e107ab99a38f8e7a4b3c80bb810",
+    "ubsan-sections.txt": "6d1122f118a6adf1d8015892084f4560ebec10e4aacc0654729df37ef56321b7"
+  }
+}

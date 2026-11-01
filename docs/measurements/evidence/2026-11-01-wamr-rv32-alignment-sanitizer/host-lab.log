@@ -1,0 +1,327 @@
+Cloning into '/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab'...
+HEAD is now at 25bd7eb Upgrade macos runner of CIs to 15 (#4770) (#4969)
+    Finished `release` profile [optimized] target(s) in 0.05s
+Same Rust app, Wasm imports and range checks: ok
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=4193888 free=4171400 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok
+-- The C compiler identification is AppleClang 21.0.0.21000401
+-- The ASM compiler identification is AppleClang
+-- Found assembler: /usr/bin/cc
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target AARCH64
+     Build for platform darwin
+     CMAKE_BUILD_TYPE Debug
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+-- Looking for mremap
+-- Looking for mremap - not found
+-- Configuring done (2.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab-stock
+[  5%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/memory/mremap.c.o
+[  5%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/posix/posix_blocking_op.c.o
+[  7%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/darwin/platform_init.c.o
+[ 10%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/posix/posix_malloc.c.o
+[ 15%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/posix/posix_sleep.c.o
+[ 15%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/posix/posix_memmap.c.o
+[ 17%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/posix/posix_thread.c.o
+[ 20%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/platform/common/posix/posix_time.c.o
+[ 25%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/mem-alloc/ems/ems_alloc.c.o
+[ 25%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/mem-alloc/ems/ems_gc.c.o
+[ 28%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/mem-alloc/ems/ems_hmu.c.o
+[ 30%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/mem-alloc/ems/ems_kfc.c.o
+[ 33%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/mem-alloc/mem_alloc.c.o
+[ 35%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_assert.c.o
+[ 38%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_bitmap.c.o
+[ 41%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_common.c.o
+[ 43%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_hashmap.c.o
+[ 46%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_leb128.c.o
+[ 48%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_list.c.o
+[ 51%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_log.c.o
+[ 53%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_queue.c.o
+[ 56%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/bh_vector.c.o
+[ 58%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/shared/utils/runtime_timer.c.o
+[ 61%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_application.c.o
+[ 64%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_blocking_op.c.o
+[ 66%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_c_api.c.o
+[ 69%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_exec_env.c.o
+[ 71%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_loader_common.c.o
+[ 74%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_memory.c.o
+[ 76%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_native.c.o
+[ 79%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_runtime_common.c.o
+[ 82%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/wasm_shared_memory.c.o
+[ 84%] Building ASM object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/common/arch/invokeNative_aarch64.s.o
+[ 87%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/interpreter/wasm_interp_classic.c.o
+[ 89%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/interpreter/wasm_loader.c.o
+[ 92%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/interpreter/wasm_runtime.c.o
+/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/interpreter/wasm_loader.c:11989:32: warning: unused variable 'frame_ref_before_pop' [-Wunused-variable]
+ 11989 |                         uint8 *frame_ref_before_pop = loader_ctx->frame_ref;
+       |                                ^~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+[ 94%] Linking C static library libwamr.a
+[ 94%] Built target wamr
+[ 97%] Building C object CMakeFiles/nihos-wamr-host.dir/main.c.o
+[100%] Linking C executable nihos-wamr-host
+[100%] Built target nihos-wamr-host
+-- The C compiler identification is AppleClang 21.0.0.21000401
+-- The ASM compiler identification is AppleClang
+-- Found assembler: /usr/bin/cc
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target AARCH64
+     Build for platform darwin
+     CMAKE_BUILD_TYPE Debug
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+-- Looking for mremap
+-- Looking for mremap - not found
+-- Configuring done (0.4s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab-patched
+[  2%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/darwin/platform_init.c.o
+[  7%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_blocking_op.c.o
+[  7%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/memory/mremap.c.o
+[ 10%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_malloc.c.o
+[ 12%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_sleep.c.o
+[ 15%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_memmap.c.o
+[ 17%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_thread.c.o
+[ 20%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_time.c.o
+[ 25%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_gc.c.o
+[ 25%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_alloc.c.o
+[ 28%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_hmu.c.o
+[ 30%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_kfc.c.o
+[ 33%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/mem_alloc.c.o
+[ 35%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_assert.c.o
+[ 38%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_bitmap.c.o
+[ 41%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_common.c.o
+[ 43%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_hashmap.c.o
+[ 46%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_leb128.c.o
+[ 48%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_list.c.o
+[ 51%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_log.c.o
+[ 53%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_queue.c.o
+[ 56%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_vector.c.o
+[ 58%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/runtime_timer.c.o
+[ 61%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_application.c.o
+[ 64%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_blocking_op.c.o
+[ 66%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_c_api.c.o
+[ 69%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_exec_env.c.o
+[ 71%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_loader_common.c.o
+[ 74%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_memory.c.o
+[ 76%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_native.c.o
+[ 79%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_runtime_common.c.o
+[ 82%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_shared_memory.c.o
+[ 84%] Building ASM object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/arch/invokeNative_aarch64.s.o
+[ 87%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_interp_classic.c.o
+[ 89%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_loader.c.o
+[ 92%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_runtime.c.o
+/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_loader.c:11989:32: warning: unused variable 'frame_ref_before_pop' [-Wunused-variable]
+ 11989 |                         uint8 *frame_ref_before_pop = loader_ctx->frame_ref;
+       |                                ^~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+[ 94%] Linking C static library libwamr.a
+[ 94%] Built target wamr
+[ 97%] Building C object CMakeFiles/nihos-wamr-host.dir/main.c.o
+[100%] Linking C executable nihos-wamr-host
+[100%] Built target nihos-wamr-host
+Stock classic: expected WASMBranchBlock UBSan failure reproduced
+Patched classic + split access: ASan/UBSan fixture passed
+-- The C compiler identification is AppleClang 21.0.0.21000401
+-- The ASM compiler identification is AppleClang
+-- Found assembler: /usr/bin/cc
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target AARCH64
+     Build for platform darwin
+     CMAKE_BUILD_TYPE Debug
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+-- Looking for mremap
+-- Looking for mremap - not found
+-- Configuring done (0.4s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab-quota
+[  5%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/memory/mremap.c.o
+[  5%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_blocking_op.c.o
+[  7%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_malloc.c.o
+[ 10%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/darwin/platform_init.c.o
+[ 17%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_sleep.c.o
+[ 17%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_thread.c.o
+[ 17%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_memmap.c.o
+[ 20%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/platform/common/posix/posix_time.c.o
+[ 25%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_alloc.c.o
+[ 28%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_hmu.c.o
+[ 28%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_gc.c.o
+[ 30%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/ems/ems_kfc.c.o
+[ 35%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_assert.c.o
+[ 35%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/mem-alloc/mem_alloc.c.o
+[ 38%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_bitmap.c.o
+[ 41%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_common.c.o
+[ 43%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_hashmap.c.o
+[ 46%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_leb128.c.o
+[ 48%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_list.c.o
+[ 53%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_queue.c.o
+[ 53%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_log.c.o
+[ 56%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/bh_vector.c.o
+[ 58%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/shared/utils/runtime_timer.c.o
+[ 61%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_application.c.o
+[ 64%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_blocking_op.c.o
+[ 66%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_c_api.c.o
+[ 69%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_exec_env.c.o
+[ 71%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_loader_common.c.o
+[ 74%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_memory.c.o
+[ 79%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_native.c.o
+[ 79%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_runtime_common.c.o
+[ 82%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/wasm_shared_memory.c.o
+[ 84%] Building ASM object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/common/arch/invokeNative_aarch64.s.o
+[ 87%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_interp_classic.c.o
+[ 89%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_loader.c.o
+[ 92%] Building C object CMakeFiles/wamr.dir/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_runtime.c.o
+/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-align-lab/core/iwasm/interpreter/wasm_loader.c:11989:32: warning: unused variable 'frame_ref_before_pop' [-Wunused-variable]
+ 11989 |                         uint8 *frame_ref_before_pop = loader_ctx->frame_ref;
+       |                                ^~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+[ 94%] Linking C static library libwamr.a
+[ 94%] Built target wamr
+[ 97%] Building C object CMakeFiles/wamr-quota.dir/main.c.o
+[100%] Linking C executable wamr-quota
+[100%] Built target wamr-quota
+Patched ASan/UBSan allocation failures: 74/74 tracked allocations reclaimed
