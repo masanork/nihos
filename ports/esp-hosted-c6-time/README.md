@@ -1,10 +1,12 @@
 # Experimental C6 time snapshot
 
-This is an opt-in Hosted 2.13.1 / Network Split experiment. Its C6 firmware
-has not been flashed or exercised, and it is not wired into the normal NIHOS
-networking path. The P4 probe was physically checked only against a 1.4.1 peer;
-see `docs/measurements/2026-11-01-c6-time-p4-preflight.md`. The P4 contract is `src/net/hosted_c6_time.zig`; the experimental station,
-Network Split and CustomRpc owner is `src/net/hosted_c6_time_exchange.zig`.
+This is an opt-in Hosted 2.13.1 / Network Split experiment, not wired into the
+normal NIHOS networking path. The C6 OTA and subsequent P4 probe are recorded
+in `docs/measurements/2026-11-01-c6-time-ota-upgrade.md`. A 2.13.1 version
+response by itself is not proof of a working time service. One later physical
+P4 request reported a synchronized time; see the same measurement. The P4
+contract is `src/net/hosted_c6_time.zig`; the experimental station, Network Split and
+CustomRpc owner is `src/net/hosted_c6_time_exchange.zig`.
 
 The C6 runs ESP-IDF SNTP against `pool.ntp.org` and a worker returns a snapshot
 on CustomRpc. The Hosted RX callback only validates the fixed-size request and
@@ -66,5 +68,9 @@ reconnect loop. The build script and image audit do not qualify a device run.
 
 The address snapshot module and its tests were copied from the existing nihos
 experimental custom-C6 work at commit `0b066228`; that code and this integration
-remain experimental and unqualified on 2.13.1 hardware. Before the first C6
-candidate write, recovery must be independently qualified.
+remain experimental; one 2.13.1 happy path has been tested on hardware. A
+2.13.1 -> 1.4.1 OTA has not been exercised, and an independent unbricking path
+is not qualified.
+
+The diagnostic fixture may print a raw DHCP/DNS status on error, including
+local IP addresses and DNS server addresses; handle its serial logs as private.

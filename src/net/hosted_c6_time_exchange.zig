@@ -16,6 +16,11 @@ pub const Exchange = struct {
     deadline: u64 = 0,
     last_now: u64 = 0,
     uid: u32 = 0,
+    last_rpc_id: u32 = 0,
+    last_rpc_kind: u32 = 0,
+    status_body: [320]u8 = @splat(0),
+    status_body_len: usize = 0,
+    status_body_truncated: bool = false,
     address_uid: u32 = 0,
     address_queried: bool = false,
     address_pending: bool = false,
@@ -64,6 +69,8 @@ pub const Exchange = struct {
         try self.tick(now);
         if (frame.interface >> 4 == 0 and frame.interface & 15 == 3) {
             const rpc = try wire.rpc(frame.payload);
+            self.last_rpc_id = rpc.id;
+            self.last_rpc_kind = rpc.kind;
             if (rpc.kind == 3 and rpc.id == split.event_id) {
                 const before = self.addresses.generation;
                 if (self.addresses.receive(rpc) == .rejected) return error.Malformed;
@@ -71,6 +78,9 @@ pub const Exchange = struct {
                 if (before != self.addresses.generation and
                     (self.phase == .ready or self.phase == .queued or self.phase == .waiting)) return error.Stale;
             } else if (rpc.kind == 2 and rpc.id == split.response_id) {
+                self.status_body_len = @min(rpc.body.len, self.status_body.len);
+                self.status_body_truncated = rpc.body.len > self.status_body.len;
+                @memcpy(self.status_body[0..self.status_body_len], rpc.body[0..self.status_body_len]);
                 if (!self.address_pending or rpc.uid != self.address_uid) return error.Stale;
                 // A newer asynchronous event supersedes this potentially old
                 // snapshot; never resurrect an address after link-down.

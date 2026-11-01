@@ -523,6 +523,16 @@ pub const TimeReport = struct {
     minor: u32 = 0,
     patch: u32 = 0,
     phase: u32 = 0,
+    station_phase: u32 = 0,
+    station_active_id: u32 = 0,
+    station_uid: u32 = 0,
+    station_connected: u32 = 0,
+    station_last_response: u32 = 0,
+    station_rpc_status: u32 = 0,
+    last_rpc_id: u32 = 0,
+    last_rpc_kind: u32 = 0,
+    split_generation: u32 = 0,
+    split_address_known: u32 = 0,
     attempts: u32 = 0,
     acknowledged: u32 = 0,
     got_result: u32 = 0,
@@ -593,6 +603,21 @@ pub fn runHostedTime(clock: timers.Timer, join: hosted.Join) TimeReport {
     defer clock.stop();
     var report: TimeReport = .{};
     exerciseHostedTime(clock, &report, join) catch |err| {
+        for ("NIHOS_C6_TIME_ERROR ") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        if (hosted_time.status_body_len != 0) {
+            const digits = "0123456789abcdef";
+            for ("NIHOS_C6_SPLIT_STATUS_HEX ") |byte| _ = nih_rom_putc(byte);
+            for (hosted_time.status_body[0..hosted_time.status_body_len]) |byte| {
+                _ = nih_rom_putc(digits[byte >> 4]);
+                _ = nih_rom_putc(digits[byte & 15]);
+            }
+            if (hosted_time.status_body_truncated) for (" truncated") |byte| {
+                _ = nih_rom_putc(byte);
+            };
+            for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        }
         report.error_code = @intFromError(err);
         hosted_stream.invalidate();
     };
@@ -603,6 +628,16 @@ pub fn runHostedTime(clock: timers.Timer, join: hosted.Join) TimeReport {
     report.minor = peer.version[1];
     report.patch = peer.version[2];
     report.phase = @backingInt(hosted_time.phase) + 1;
+    report.station_phase = @backingInt(peer.phase) + 1;
+    report.station_active_id = peer.active_id orelse 0;
+    report.station_uid = peer.uid;
+    report.station_connected = @intFromBool(peer.connected);
+    report.station_last_response = peer.last_response;
+    report.station_rpc_status = peer.rpc_status;
+    report.last_rpc_id = hosted_time.last_rpc_id;
+    report.last_rpc_kind = hosted_time.last_rpc_kind;
+    report.split_generation = @truncate(hosted_time.addresses.generation);
+    report.split_address_known = @intFromBool(hosted_time.addresses.address != null);
     report.acknowledged = @intFromBool(hosted_time.acknowledged);
     report.got_result = @intFromBool(hosted_time.got_result);
     if (hosted_time.sample) |sample| {

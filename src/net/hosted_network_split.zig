@@ -142,10 +142,11 @@ pub fn decode(body: []const u8) (hosted.Error || Error)!?Address {
         return error.InvalidStatus;
 
     if (status.link_up == 0 and status.dhcp_up == 0 and status.dns_up == 0) {
-        try empty(status.ip);
-        try empty(status.mask);
-        try empty(status.gateway);
-        try empty(status.dns);
+        // GetDhcpDnsStatus formats unset addresses as "0.0.0.0". DNS can
+        // retain a prior server even after the interface drops; ignore it.
+        if (try optionalAddress(status.ip) != 0 or try optionalAddress(status.mask) != 0 or
+            try optionalAddress(status.gateway) != 0) return error.InvalidStatus;
+        _ = try optionalAddress(status.dns);
         return null;
     }
     // The v2.13.1 sender publishes only a full snapshot or an all-down one.
@@ -157,6 +158,9 @@ pub fn decode(body: []const u8) (hosted.Error || Error)!?Address {
         .gateway = try ipv4(try text(status.gateway)),
         .dns = try ipv4(try text(status.dns)),
     };
+    // The netif can be marked up before DHCP and DNS are ready. Never adopt
+    // or expose a partial address; wait for a later complete status event.
+    if (address.ip == 0 or address.mask == 0 or address.gateway == 0 or address.dns == 0) return null;
     const host = ~address.mask;
     if (!unicast(address.ip) or !unicast(address.gateway) or !unicast(address.dns) or
         address.mask == 0 or host < 3 or host & (host +% 1) != 0 or
@@ -175,9 +179,11 @@ fn text(value: ?[]const u8) Error![]const u8 {
     return bytes[0..end];
 }
 
-fn empty(value: ?[]const u8) Error!void {
-    const bytes = value orelse return;
-    if (bytes.len > 64 or !std.mem.allEqual(u8, bytes, 0)) return error.Malformed;
+fn optionalAddress(value: ?[]const u8) Error!u32 {
+    const bytes = value orelse return 0;
+    if (bytes.len > 64) return error.Malformed;
+    if (std.mem.allEqual(u8, bytes, 0)) return 0;
+    return ipv4(try text(bytes));
 }
 
 fn ipv4(bytes: []const u8) Error!u32 {
