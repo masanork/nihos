@@ -13,6 +13,7 @@ temporary server, keys, and files are removed on exit.
 
 Observed locally on macOS with OpenSSH 10.5p1: the probe passed. This validates
 the tested initial key exchange, signed public-key authentication and an
-interactive PTY on the host. Python still drives transport and session
-ordering; it is not a complete nihos SSH client, network service, xy terminal,
+interactive PTY on the host. Zig now validates service and authentication
+ordering and owns the channel state. Python still drives socket I/O, initial
+key-exchange sequencing and transport-level messages; this is not a complete nihos SSH client, network service, xy terminal,
 Tailscale, or Tab5 device validation.

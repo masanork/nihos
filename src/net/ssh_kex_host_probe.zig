@@ -3,13 +3,11 @@ const std = @import("std");
 const kex = @import("ssh_kex.zig");
 const ssh = @import("ssh.zig");
 const stream = @import("ssh_stream.zig");
-const auth = @import("ssh_auth.zig");
-const channel = @import("ssh_channel.zig");
+const session = @import("ssh_session.zig");
 var tx: ?ssh.Aes128Ctr = null;
 var tx_mac: [32]u8 = @splat(0);
 var rx: stream.Decoder = .{};
-var session_id: [32]u8 = @splat(0);
-var terminal: channel.Channel = .{};
+var ssh_session: ?session.Session = null;
 
 export fn probe_init(out: [*]u8, cap: usize, cookie: *const [16]u8) usize {
     const result = kex.clientInit(out[0..cap], cookie.*) catch return 0;
@@ -20,7 +18,7 @@ export fn probe_public(secret: *const [32]u8, out: *[32]u8) void {
 }
 export fn probe_finish(cb: [*]const u8, cb_len: usize, sb: [*]const u8, sb_len: usize, ci: [*]const u8, ci_len: usize, si: [*]const u8, si_len: usize, secret: *const [32]u8, pin: *const [32]u8, reply: [*]const u8, reply_len: usize, rx_sequence: u32) bool {
     const keys = kex.finish(cb[0..cb_len], sb[0..sb_len], ci[0..ci_len], si[0..si_len], secret.*, pin.*, reply[0..reply_len]) catch return false;
-    session_id = keys.exchange_hash;
+    ssh_session = .{ .session_id = keys.exchange_hash };
     tx = ssh.Aes128Ctr.init(keys.key_client, keys.iv_client);
     tx_mac = keys.mac_client;
     rx = .{};
@@ -51,23 +49,37 @@ export fn probe_auth_public(seed: *const [32]u8, out: *[32]u8) bool {
     return true;
 }
 export fn probe_auth(user: [*]const u8, len: usize, seed: *const [32]u8, out: [*]u8, cap: usize) usize {
-    const payload = auth.request(out[0..cap], user[0..len], session_id, seed.*) catch return 0;
+    const s = if (ssh_session) |*v| v else return 0;
+    const payload = s.authenticate(out[0..cap], user[0..len], seed.*) catch return 0;
+    return payload.len;
+}
+export fn probe_service(out: [*]u8, cap: usize) usize {
+    const s = if (ssh_session) |*v| v else return 0;
+    const payload = s.service(out[0..cap]) catch return 0;
     return payload.len;
 }
 export fn probe_channel_action(action: u8, data: [*]const u8, len: usize, out: [*]u8, cap: usize) usize {
+    const s = if (ssh_session) |*v| v else return 0;
     const result = switch (action) {
-        0 => terminal.open(out[0..cap]),
-        1 => terminal.pty(out[0..cap], 80, 24),
-        2 => terminal.start(out[0..cap], data[0..len]),
-        3 => terminal.data(out[0..cap], data[0..len]),
-        4 => terminal.eof(out[0..cap]),
-        5 => terminal.close(out[0..cap]),
+        0 => s.open(out[0..cap]),
+        1 => s.pty(out[0..cap], 80, 24),
+        2 => s.start(out[0..cap], data[0..len]),
+        3 => s.data(out[0..cap], data[0..len]),
+        4 => s.eof(out[0..cap]),
+        5 => s.close(out[0..cap]),
         else => return 0,
     } catch return 0;
     return result.len;
 }
 export fn probe_channel_receive(input: [*]const u8, len: usize, output: [*]u8, capacity: usize) isize {
-    const event = terminal.receive(input[0..len]) catch return -1;
+    const s = if (ssh_session) |*v| v else return -1;
+    const top = s.receive(input[0..len]) catch return -1;
+    const event = switch (top) {
+        .service_ready => return 7,
+        .authenticated => return 8,
+        .banner => return 9,
+        .channel => |value| value,
+    };
     const bytes = switch (event) {
         .opened => return 1,
         .pty_ready => return 2,

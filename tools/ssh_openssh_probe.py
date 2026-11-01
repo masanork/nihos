@@ -64,6 +64,7 @@ def run():
         p.probe_payload.argtypes = [c.c_void_p, c.c_size_t]; p.probe_payload.restype = c.c_size_t
         p.probe_auth_public.argtypes = [c.c_void_p, c.c_void_p]; p.probe_auth_public.restype = c.c_bool
         p.probe_auth.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_auth.restype = c.c_size_t
+        p.probe_service.argtypes = [c.c_void_p, c.c_size_t]; p.probe_service.restype = c.c_size_t
         p.probe_release.argtypes = []
         p.probe_channel_action.argtypes = [c.c_uint8, c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_channel_action.restype = c.c_size_t
         p.probe_channel_receive.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_channel_receive.restype = c.c_ssize_t
@@ -118,7 +119,10 @@ def run():
                 assert not finish(bytes(32)), "wrong host pin accepted"
                 assert finish(pin), "valid server proof rejected"
                 sock.sendall(clear_packet(b"\x15"))
-                request = b"\x05" + string(b"ssh-userauth")
+                request_buffer = c.create_string_buffer(64)
+                request_len = p.probe_service(request_buffer, len(request_buffer))
+                assert request_len
+                request = request_buffer.raw[:request_len]
                 packed = c.create_string_buffer(256)
                 size = p.probe_pack(buffer(request), len(request), 3, buffer(os.urandom(32)), packed, len(packed))
                 assert size
@@ -128,7 +132,7 @@ def run():
                     b = exact(sock, 1)
                     assert p.probe_feed(buffer(b), 1) == 1, "encrypted server packet rejected"
                 length = p.probe_payload(plaintext, len(plaintext))
-                assert plaintext.raw[:length] == b"\x06" + string(b"ssh-userauth")
+                assert p.probe_channel_receive(plaintext, length, c.create_string_buffer(1), 1) == 7
                 p.probe_release()
                 seq = 4
                 def send(payload):
@@ -160,8 +164,11 @@ def run():
                 assert n
                 send(auth.raw[:n])
                 result = receive()
-                while result[0] == 53: result = receive()
-                if result != b"\x34":
+                event = p.probe_channel_receive(buffer(result), len(result), c.create_string_buffer(1), 1)
+                while event == 9:
+                    result = receive()
+                    event = p.probe_channel_receive(buffer(result), len(result), c.create_string_buffer(1), 1)
+                if event != 8:
                     log.flush(); raise RuntimeError(f"authentication failed: {result.hex()}\n{(tmp / 'sshd.log').read_text()}")
                 def action(code, data=b""):
                     out = c.create_string_buffer(1024)
@@ -185,7 +192,7 @@ def run():
                 action(2); wait_event(3)
                 action(3, b"printf ni%s_ssh_ok hos\n")
                 output = b""
-                for _ in range(12):
+                for _ in range(256):
                     event, data = channel_event()
                     if event >= 100: output += data
                     if b"nihos_ssh_ok" in output: break
