@@ -17,6 +17,7 @@ pub const Session = struct {
     deadline: u64,
     last_now: u64,
     allow_213: bool = false,
+    allow_310: bool = false,
     required_peer: ?[3]u32 = null,
     rx: [512]u8 = @splat(0),
 
@@ -40,6 +41,7 @@ pub const Session = struct {
         self.deadline = deadline;
         self.last_now = now;
         self.allow_213 = false;
+        self.allow_310 = false;
         self.required_peer = null;
     }
     pub fn step(self: *Session, stream: anytype, now: u64) !void {
@@ -65,6 +67,10 @@ pub const Session = struct {
                 if (std.mem.eql(u32, &self.client.version, &.{ 1, 4, 1 })) {
                     self.ota_client.activation = .legacy_automatic;
                 } else if (self.allow_213 and std.mem.eql(u32, &self.client.version, &.{ 2, 13, 1 })) {
+                    self.ota_client.activation = .explicit_rpc;
+                } else if (self.allow_310 and std.mem.eql(u32, &self.client.version, &.{ 3, 0, 10 }) and
+                    self.client.peer_rpc_version == 2 and self.client.peer_mode == 1 and self.client.peer_sdio_buffer_blocks != null)
+                {
                     self.ota_client.activation = .explicit_rpc;
                 } else return error.UnsupportedPeer;
                 self.ota_client.uid = self.client.uid;

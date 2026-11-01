@@ -358,6 +358,44 @@ test "INIT identity and SDIO mode are checked before any RPC" {
     try std.testing.expect(client.active_id == null);
 }
 
+test "Hosted 3 MCU handshake negotiates RPC v2 and rejects incompatible SDIO" {
+    const init = [_]u8{ 0x22, 16, 0x12, 1, 13, 0x18, 1, 1, 0x1a, 1, 2, 0x1b, 5, 0, 1, 7, 1, 7 };
+    var client: station.Client = .{};
+    client.begin(.saved, 0);
+    try client.receive(.{ .interface = 5, .payload = &init }, 1);
+    const output = try client.tx(1);
+    var decoder: wire.Decoder = .{};
+    var seen = false;
+    for (output) |byte| if (try decoder.push(byte)) |frame| {
+        try std.testing.expectEqualSlices(u8, &.{ 0x22, 18, 0x44, 1, 0, 0x45, 1, 13, 0x46, 1, 0, 0x47, 1, 80, 0x48, 1, 60, 0x1a, 1, 2 }, frame.payload);
+        seen = true;
+    };
+    try std.testing.expect(seen);
+    var invalid = init;
+    invalid[10] = 3;
+    client.begin(.saved, 0);
+    try std.testing.expectError(error.Malformed, client.receive(.{ .interface = 5, .payload = &invalid }, 1));
+    invalid = init;
+    invalid[14] = 0; // software aggregation is unsupported
+    client.begin(.saved, 0);
+    try std.testing.expectError(error.Malformed, client.receive(.{ .interface = 5, .payload = &invalid }, 1));
+    invalid = init;
+    invalid[17] = 2; // less than one maximum-sized host transfer
+    client.begin(.saved, 0);
+    try std.testing.expectError(error.Malformed, client.receive(.{ .interface = 5, .payload = &invalid }, 1));
+}
+
+test "Hosted 3 upstream TLV builder fixture is accepted" {
+    const payload = @embedFile("fixtures/hosted-3.0.10-init.bin");
+    var client: station.Client = .{};
+    client.begin(.saved, 0);
+    try client.receive(.{ .interface = 5, .payload = payload }, 1);
+    try std.testing.expectEqual(@as(u32, 0x03000a), client.peer_version);
+    try std.testing.expectEqual(@as(?u8, 2), client.peer_rpc_version);
+    try std.testing.expectEqual(@as(?[2]u8, .{ 7, 7 }), client.peer_sdio_buffer_blocks);
+    try std.testing.expect((try client.tx(1)).len > 0);
+}
+
 test "dual stack waits beyond IPv4 ACK and can also finish on IPv6-only networking" {
     const ip6 = station.ipv6;
     const peer_mac = [_]u8{ 2, 0xaa, 0xbb, 0xcc, 0xdd, 0xee };

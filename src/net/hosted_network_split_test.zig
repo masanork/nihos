@@ -202,6 +202,16 @@ test "not-ready 2.13 status does not become an address" {
     try writer.data(8, "0.0.0.0\x00");
     try std.testing.expect((try split.decode(writer.slice())) == null);
 }
+test "observed Hosted 3 link-up before DHCP revokes any prior address" {
+    const pending = [_]u8{ 0x10, 0x01, 0x22, 0x08, '0', '.', '0', '.', '0', '.', '0', 0, 0x2a, 0x08, '0', '.', '0', '.', '0', '.', '0', 0, 0x32, 0x08, '0', '.', '0', '.', '0', '.', '0', 0, 0x42, 0x08, '0', '.', '0', '.', '0', '.', '0', 0 };
+    var good_buffer: [320]u8 = undefined;
+    var state: split.State = .{};
+    _ = state.receive(.{ .kind = 3, .id = split.event_id, .uid = 0, .body = try statusBody(&good_buffer, sample) });
+    const prior = state.generation;
+    try std.testing.expectEqual(split.Outcome.changed, state.receiveResponse(.{ .kind = 2, .id = split.response_id, .uid = 42, .body = &pending }, 42));
+    try std.testing.expect(state.current(prior) == null);
+    try std.testing.expect(state.address == null);
+}
 test "down status with a nonzero interface address is rejected" {
     var bytes: [128]u8 = undefined;
     var writer = hosted.Writer{ .out = &bytes };

@@ -649,6 +649,144 @@ pub fn runHostedTime(clock: timers.Timer, join: hosted.Join) TimeReport {
     return report;
 }
 
+pub const OtaInfoReport = struct {
+    status: u32 = 0,
+    stage: u32 = 0,
+    error_code: u32 = 0,
+    peer_chip: u32 = 0,
+    fw_known: u32 = 0,
+    major: u32 = 0,
+    minor: u32 = 0,
+    patch: u32 = 0,
+    desc_known: u32 = 0,
+    ack_known: u32 = 0,
+    ack_status: u32 = 0,
+    result_known: u32 = 0,
+    flash_size: u32 = 0,
+    running_offset: u32 = 0,
+    running_size: u32 = 0,
+    boot_offset: u32 = 0,
+    boot_size: u32 = 0,
+    next_offset: u32 = 0,
+    next_size: u32 = 0,
+    state_known: u32 = 0,
+    running_state: u32 = 0,
+    secure_boot: u32 = 0,
+    flash_encrypted: u32 = 0,
+};
+// SAFETY: runOtaInfo initializes the exchange before any read or diagnostic step.
+var ota_info_exchange: hosted.c6_ota_info_exchange.Exchange = undefined;
+// SAFETY: runOtaInfo initializes the stream guard before exerciseOtaInfo uses it.
+var ota_info_guard: hosted.c6_ota_info_exchange.ReadOnlyStream(@TypeOf(hosted_stream)) = undefined;
+fn traceOtaInfo(stage: u8) void {
+    for ("NIHOS_C6_OTA_INFO_STAGE ") |byte| _ = nih_rom_putc(byte);
+    _ = nih_rom_putc(stage);
+    _ = nih_rom_putc('\r');
+    _ = nih_rom_putc('\n');
+}
+fn printOtaInfoBytes(bytes: []const u8) void {
+    const digits = "0123456789abcdef";
+    for (bytes) |b| {
+        _ = nih_rom_putc(digits[b >> 4]);
+        _ = nih_rom_putc(digits[b & 15]);
+    }
+}
+noinline fn exerciseOtaInfo(clock: timers.Timer, report: *OtaInfoReport) !void {
+    report.stage = 1;
+    traceOtaInfo('1');
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    report.stage = 2;
+    traceOtaInfo('2');
+    try host.prepare(true);
+    report.stage = 3;
+    traceOtaInfo('3');
+    try host.identify();
+    report.stage = 4;
+    traceOtaInfo('4');
+    try host.enableFunction();
+    try host.writeDoorbell(1, 0x8c, 1);
+    report.stage = 5;
+    traceOtaInfo('5');
+    const start = clock.counter() orelse return error.Clock;
+    // The fixture creates one exchange after reset, so the nonce is never
+    // reused on a live stream. A longer-lived owner must allocate fresh nonces.
+    ota_info_exchange = try hosted.c6_ota_info_exchange.Exchange.init(0x12345678, start, start + 30_000_000);
+    traceOtaInfo('6');
+    var previous_state = ota_info_exchange.state;
+    while (true) {
+        const now = clock.counter() orelse return error.Clock;
+        try ota_info_exchange.step(&ota_info_guard, now);
+        if (ota_info_exchange.state != previous_state) {
+            traceOtaInfo('A' + @as(u8, @intCast(@backingInt(ota_info_exchange.state))));
+            previous_state = ota_info_exchange.state;
+        }
+        if (ota_info_exchange.state == .complete) {
+            report.status = 1;
+            report.stage = 6;
+            return;
+        }
+        if (clock_failed) return error.Clock;
+        host.io.delay(100);
+    }
+}
+pub fn runOtaInfo(clock: timers.Timer) OtaInfoReport {
+    traceOtaInfo('0');
+    host = .{ .io = .{ .clock = clock } };
+    hosted_stream = .{ .host = &host };
+    ota_info_guard = .{ .inner = &hosted_stream };
+    clock_failed = false;
+    var report: OtaInfoReport = .{};
+    // Safe default even if power or transport setup fails before init().
+    ota_info_exchange = hosted.c6_ota_info_exchange.Exchange.init(1, 0, 1) catch |err| {
+        report.error_code = @intFromError(err);
+        return report;
+    };
+    exerciseOtaInfo(clock, &report) catch |err| {
+        report.error_code = @intFromError(err);
+        hosted_stream.invalidate();
+    };
+    const peer = &ota_info_exchange.client;
+    report.peer_chip = peer.peer_chip;
+    report.fw_known = @intFromBool(peer.version_known);
+    report.major = peer.version[0];
+    report.minor = peer.version[1];
+    report.patch = peer.version[2];
+    report.ack_known = @intFromBool(ota_info_exchange.ack_status != null);
+    report.ack_status = ota_info_exchange.ack_status orelse 0;
+    if (ota_info_exchange.description) |value| {
+        report.desc_known = 1;
+        for ("NIHOS_C6_APP_DESC version=") |b| _ = nih_rom_putc(b);
+        printOtaInfoBytes(value.version.slice());
+        for (" project=") |b| _ = nih_rom_putc(b);
+        printOtaInfoBytes(value.project.slice());
+        for (" idf=") |b| _ = nih_rom_putc(b);
+        printOtaInfoBytes(value.idf.slice());
+        for (" elf_sha256=") |b| _ = nih_rom_putc(b);
+        if (value.elf_sha256) |digest| printOtaInfoBytes(&digest) else _ = nih_rom_putc('-');
+        for ("\r\n") |b| _ = nih_rom_putc(b);
+    }
+    if (ota_info_exchange.state == .complete) if (ota_info_exchange.query.result) |value| {
+        report.result_known = 1;
+        report.flash_size = value.flash_size;
+        report.running_offset = value.running.offset;
+        report.running_size = value.running.size;
+        report.boot_offset = value.boot.offset;
+        report.boot_size = value.boot.size;
+        report.next_offset = value.next.offset;
+        report.next_size = value.next.size;
+        report.state_known = @intFromBool(value.running_state != null);
+        report.running_state = value.running_state orelse 0;
+        report.secure_boot = @intFromBool(value.secure_boot);
+        report.flash_encrypted = @intFromBool(value.flash_encrypted);
+    };
+    return report;
+}
+
 /// OTA preflight: complete the version handshake, then stop before OTA Begin.
 /// This path does not update C6 or send any persistent-write RPC.
 pub const OtaPreflight = struct { status: u32 = 0, stage: u32 = 0, last_command: u32 = 0, last_interrupts: u32 = 0, error_code: u32 = 0, peer_chip: u32 = 0, version_known: u32 = 0, major: u32 = 0, minor: u32 = 0, patch: u32 = 0, diag_known: u32 = 0, diag_uptime: u32 = 0, diag_heap: u32 = 0 };
@@ -658,6 +796,7 @@ noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [
     try ota_update_guard.session.initInPlace(image, hash, started, started + 30_000_000);
     const root = @import("root");
     ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    ota_update_guard.session.allow_310 = @hasDecl(root, "C6OtaAllow310") and root.C6OtaAllow310;
     ota_preflight_stage = 1;
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
@@ -680,7 +819,11 @@ noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [
     while (true) {
         const session = &ota_update_guard.session;
         const now = clock.counter() orelse return error.Clock;
-        try session.step(&hosted_stream, now);
+        if (@hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation) {
+            try session.step(&ota_safe, now);
+        } else {
+            try session.step(&hosted_stream, now);
+        }
         if (session.state == .transfer) {
             const diag = session.client.c6_diagnostics;
             return .{ .status = 1, .stage = ota_preflight_stage, .last_command = host.last_command, .last_interrupts = host.last_interrupts, .peer_chip = session.client.peer_chip, .version_known = @intFromBool(session.client.version_known), .major = session.client.version[0], .minor = session.client.version[1], .patch = session.client.version[2], .diag_known = @intFromBool(diag != null), .diag_uptime = if (diag) |d| d.uptime_seconds else 0, .diag_heap = if (diag) |d| d.free_heap_bytes else 0 };
@@ -725,6 +868,7 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
     const root = @import("root");
     const simulation = @hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation;
     ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    ota_update_guard.session.allow_310 = @hasDecl(root, "C6OtaAllow310") and root.C6OtaAllow310;
     if (@hasDecl(root, "C6OtaRequiredPeer")) ota_update_guard.session.required_peer = root.C6OtaRequiredPeer;
     if (simulation) {
         ota_fake = .{ .image = image };
@@ -763,9 +907,10 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
             if (!announced) {
                 // Discard bounded stale input before advertising readiness.
                 for (0..1024) |_| if (nih_c6_serial_read() < 0) break else {};
-                if (simulation) for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| {
-                    _ = nih_rom_putc(byte);
-                };
+                if (simulation) {
+                    ota_fake.explicit_activation = ota_update_guard.session.ota_client.activation == .explicit_rpc;
+                    for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| _ = nih_rom_putc(byte);
+                }
                 if (@hasDecl(root, "C6OtaRequiredPeer")) {
                     const peer = &ota_update_guard.session.client;
                     for ("NIHOS_C6_OTA_ORIGIN chip=") |byte| _ = nih_rom_putc(byte);
