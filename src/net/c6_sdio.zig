@@ -8,6 +8,10 @@ pub const rx_mask: u32 = 0xfffff;
 pub const credit_mask: u32 = 0xfff;
 pub const max_credits = 10; // Pinned C6 CONFIG_AT_SDIO_BUFFER_NUM.
 pub const backlog_limit = 128 * 1024;
+const long_plan = @import("hosted_tx_plan.zig");
+const IgnoreCredit = struct {
+    pub fn record(_: @This(), _: u32, _: u32, _: u32) void {}
+};
 pub const Error = error{ Retired, CounterDiscontinuity, InvalidBuffer };
 
 pub const Plan = struct { address: u32, logical: usize, wire: usize };
@@ -71,6 +75,31 @@ pub fn ProfileStream(comptime Host: type, comptime credit_limit: u32) type {
 
         pub fn invalidate(self: *Self) void {
             self.faulted = true;
+        }
+
+        /// Diagnostic-only long packet. Caller owns persistent CPU padding
+        /// storage, serializes every C6 operation, and guarantees a long-DMA
+        /// provider with one 1536-byte peer buffer per credit.
+        pub fn sendLong(self: *Self, packet: []const u8, padding: *[1536]u8) (StreamError || long_plan.Error)!usize {
+            return self.sendLongObserved(packet, padding, IgnoreCredit{});
+        }
+
+        /// `observer` only sees the token already read by this operation; it
+        /// must not access the transport or change its state.
+        pub fn sendLongObserved(self: *Self, packet: []const u8, padding: *[1536]u8, observer: anytype) (StreamError || long_plan.Error)!usize {
+            if (self.faulted) return error.Retired;
+            const tx = try long_plan.longPacket(packet.len);
+            errdefer self.faulted = true;
+            const total = ((try self.host.readWord(token_register)) >> 16) & credit_mask;
+            const credits = (total -% self.sent_buffers) & credit_mask;
+            observer.record(total, credits, self.sent_buffers);
+            if (credits > credit_limit) return error.CounterDiscontinuity;
+            if (credits == 0) return 0;
+            @memset(padding[0..tx.wire], 0);
+            @memcpy(padding[0..packet.len], packet);
+            try self.host.writeBlocks(tx.fifo_address, padding[0..tx.wire]);
+            self.sent_buffers = (self.sent_buffers + 1) & credit_mask;
+            return tx.logical;
         }
     };
 }
