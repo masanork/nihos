@@ -6,8 +6,47 @@ pub const section = config.section;
 const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
-pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise };
+pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view };
 pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
+
+pub const CardViewData = struct {
+    valid: bool = false,
+    name: [64]u8 = @splat(0),
+    name_len: u8 = 0,
+    address: [128]u8 = @splat(0),
+    address_len: u8 = 0,
+    birth: [16]u8 = @splat(0),
+    birth_len: u8 = 0,
+    gender: [8]u8 = @splat(0),
+    gender_len: u8 = 0,
+    has_photo: bool = false,
+
+    pub fn nameSlice(self: *const CardViewData) []const u8 {
+        return self.name[0..self.name_len];
+    }
+    pub fn addressSlice(self: *const CardViewData) []const u8 {
+        return self.address[0..self.address_len];
+    }
+    pub fn birthSlice(self: *const CardViewData) []const u8 {
+        return self.birth[0..self.birth_len];
+    }
+    pub fn genderSlice(self: *const CardViewData) []const u8 {
+        return self.gender[0..self.gender_len];
+    }
+    pub fn clear(self: *CardViewData) void {
+        @memset(&self.name, 0);
+        @memset(&self.address, 0);
+        @memset(&self.birth, 0);
+        @memset(&self.gender, 0);
+        self.name_len = 0;
+        self.address_len = 0;
+        self.birth_len = 0;
+        self.gender_len = 0;
+        self.valid = false;
+        self.has_photo = false;
+    }
+};
+
 pub const State = struct {
     screen: Screen = .document,
     home_selection: u8 = 0,
@@ -22,6 +61,7 @@ pub const State = struct {
     previous_count: u16 = 0,
     return_screen: Screen = .home,
     error_code: u32 = 0,
+    card: CardViewData = .{},
 
     pub fn home(self: *State) linksection(section) void {
         self.screen = .home;
@@ -147,6 +187,11 @@ pub const State = struct {
             .credits => if (key == .enter) {
                 self.screen = .reading;
             },
+            .card_view => switch (key) {
+                .escape, .cancel => self.screen = self.return_screen,
+                .enter => self.screen = .document,
+                else => {},
+            },
         }
         view.style.ruby_px = @max(8, view.style.body_px / 2);
     }
@@ -202,6 +247,7 @@ pub const State = struct {
                 if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 640) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560) self.screen = self.return_screen;
             },
             .credits => self.screen = .reading,
+            .card_view => self.screen = self.return_screen,
             .examples, .exercise => {},
             .document => self.home(),
         }

@@ -9,17 +9,19 @@ pub const plot_config = @import("plot_config.zig");
 pub const frame_step_limit = 256;
 pub const frame_cell_reserve = 64;
 pub const camera = @import("camera.zig");
+pub const card = @import("card.zig");
 pub const storage = @import("storage.zig");
-pub const Error = storage.Error || camera.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable };
+pub const Error = storage.Error || camera.Error || card.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable };
 pub const Ref = u16;
 pub const cells = 256;
 pub const text_bytes = 64;
+pub const text_storage_bytes = 2048;
 pub const depth_limit = 24;
 pub const step_limit = 1024;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword };
-const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00".*;
+const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
 const Cell = struct {
     tag: Tag,
@@ -29,12 +31,14 @@ const Cell = struct {
     env: Ref,
     integer: i32,
     length: u8,
-    text: [text_bytes]u8,
+    text_offset: u16,
 };
 const Command = struct { name: Ref, procedure: Ref };
 
 pub const Runtime = struct {
     heap: [cells]Cell,
+    text_storage: [text_storage_bytes]u8,
+    text_used: u16,
     queue: [cells]Ref,
     commands: [16]Command,
     command_count: usize,
@@ -101,13 +105,42 @@ pub const Runtime = struct {
     }
     fn text(self: *Runtime, tag: Tag, bytes: []const u8) linksection(code_section) Error!Ref {
         if (bytes.len > text_bytes) return error.TextFull;
+        if (tag == .symbol or tag == .keyword) {
+            for (1..cells) |idx| {
+                const r: Ref = @intCast(idx);
+                const c = &self.heap[r];
+                if (c.tag == tag and c.length == bytes.len) {
+                    if (std.mem.eql(u8, self.text_storage[c.text_offset..][0..c.length], bytes)) {
+                        return r;
+                    }
+                }
+            }
+        }
+        if (@as(usize, self.text_used) + bytes.len > text_storage_bytes) return error.TextFull;
         const r = try self.alloc(tag);
+        const offset = self.text_used;
+        @memcpy(self.text_storage[offset..][0..bytes.len], bytes);
+        self.text_used += @intCast(bytes.len);
         self.heap[r].length = @intCast(bytes.len);
-        @memcpy(self.heap[r].text[0..bytes.len], bytes);
+        self.heap[r].text_offset = offset;
         return r;
     }
     fn string(self: *const Runtime, r: Ref) linksection(code_section) []const u8 {
-        return self.heap[r].text[0..self.heap[r].length];
+        const offset = self.heap[r].text_offset;
+        const len = self.heap[r].length;
+        return self.text_storage[offset..][0..len];
+    }
+    fn findSymbol(self: *const Runtime, bytes: []const u8) linksection(code_section) ?Ref {
+        for (1..cells) |idx| {
+            const r: Ref = @intCast(idx);
+            const c = &self.heap[r];
+            if (c.tag == .symbol and c.length == bytes.len) {
+                if (std.mem.eql(u8, self.text_storage[c.text_offset..][0..c.length], bytes)) {
+                    return r;
+                }
+            }
+        }
+        return null;
     }
     fn opcode(bytes: []const u8) linksection(code_section) ?Op {
         var pos: usize = 0;
@@ -138,6 +171,48 @@ pub const Runtime = struct {
                 self.mark(c.env, &tail);
             }
         }
+        for (1..cells) |idx| {
+            const c = &self.heap[idx];
+            if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length == 0) {
+                c.text_offset = 0;
+            }
+        }
+        var new_offset: u16 = 0;
+        while (true) {
+            var best_offset: u16 = std.math.maxInt(u16);
+            for (1..cells) |idx| {
+                const c = &self.heap[idx];
+                if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length > 0) {
+                    if (c.text_offset >= new_offset and c.text_offset < best_offset) {
+                        best_offset = c.text_offset;
+                    }
+                }
+            }
+            if (best_offset == std.math.maxInt(u16)) break;
+            var best_len: u8 = 0;
+            for (1..cells) |idx| {
+                const c = &self.heap[idx];
+                if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string) and c.length > 0) {
+                    if (c.text_offset == best_offset) {
+                        best_len = c.length;
+                        break;
+                    }
+                }
+            }
+            if (best_offset != new_offset) {
+                std.mem.copyForwards(u8, self.text_storage[new_offset..][0..best_len], self.text_storage[best_offset..][0..best_len]);
+                for (1..cells) |idx| {
+                    const c = &self.heap[idx];
+                    if (c.mark and (c.tag == .symbol or c.tag == .keyword or c.tag == .string)) {
+                        if (c.text_offset == best_offset) {
+                            c.text_offset = new_offset;
+                        }
+                    }
+                }
+            }
+            new_offset += best_len;
+        }
+        self.text_used = new_offset;
         self.free_cells = 0;
         for (self.heap[1..]) |*c| {
             if (!c.mark) c.tag = .free;
@@ -231,7 +306,7 @@ pub const Runtime = struct {
             return self.number(parseDecimal(token) catch return error.Overflow);
         return self.text(.symbol, token);
     }
-    fn arguments(self: *const Runtime, list: Ref, out: *[16]Ref) linksection(code_section) Error![]Ref {
+    fn arguments(self: *const Runtime, list: Ref, out: []Ref) linksection(code_section) Error![]Ref {
         var p = list;
         var len: usize = 0;
         while (p != 0) {
@@ -243,13 +318,13 @@ pub const Runtime = struct {
         }
         return out[0..len];
     }
-    fn lookup(self: *const Runtime, env: Ref, name: []const u8) linksection(code_section) Ref {
+    fn lookup(self: *const Runtime, env: Ref, sym: Ref) linksection(code_section) Ref {
         var e = env;
         while (e != 0) : (e = self.heap[e].b) {
             var p = self.heap[e].a;
             while (p != 0) : (p = self.heap[p].b) {
                 const binding = self.heap[p].a;
-                if (std.mem.eql(u8, self.string(self.heap[binding].a), name)) return binding;
+                if (self.heap[binding].a == sym) return binding;
             }
         }
         return 0;
@@ -259,7 +334,7 @@ pub const Runtime = struct {
         var p = self.heap[env].a;
         while (p != 0) : (p = self.heap[p].b) {
             const binding = self.heap[p].a;
-            if (std.mem.eql(u8, self.string(self.heap[binding].a), self.string(name))) {
+            if (self.heap[binding].a == name) {
                 self.heap[binding].b = value;
                 return;
             }
@@ -272,7 +347,7 @@ pub const Runtime = struct {
         const args = try self.arguments(params, &argument_storage);
         for (args, 0..) |arg, index| {
             if (self.heap[arg].tag != .symbol) return error.Type;
-            for (args[0..index]) |old| if (std.mem.eql(u8, self.string(arg), self.string(old))) return error.Syntax;
+            for (args[0..index]) |old| if (arg == old) return error.Syntax;
         }
         const r = try self.alloc(.closure);
         self.heap[r].a = params;
@@ -282,92 +357,136 @@ pub const Runtime = struct {
     }
     fn sequence(self: *Runtime, list: Ref, env: Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         var p = list;
-        var value: Ref = 0;
-        while (p != 0) : (p = self.heap[p].b) {
+        while (p != 0) {
             try self.tick(depth);
-            value = try self.eval(self.heap[p].a, env, depth + 1, host);
+            if (self.heap[p].b == 0) return self.eval(self.heap[p].a, env, depth, host);
+            _ = try self.eval(self.heap[p].a, env, depth + 1, host);
+            p = self.heap[p].b;
         }
-        return value;
+        return 0;
     }
-    fn eval(self: *Runtime, r: Ref, env: Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
-        try self.tick(depth);
-        const c = &self.heap[r];
-        if (c.tag == .symbol) {
-            const found = self.lookup(env, self.string(r));
-            if (found != 0) return self.heap[found].b;
-            const op = opcode(self.string(r)) orelse return error.Unbound;
-            if (@backingInt(op) < @backingInt(Op.add)) return error.Unbound;
-            const native = try self.alloc(.native);
-            self.heap[native].integer = @backingInt(op);
-            return native;
-        }
-        if (c.tag != .pair) return r;
-        var argument_storage: [16]Ref = @splat(0);
-        const args = try self.arguments(c.b, &argument_storage);
-        const special = if (self.heap[c.a].tag == .symbol) opcode(self.string(c.a)) else null;
-        if (special) |op| switch (op) {
-            .quote => {
-                if (args.len != 1) return error.Arity;
-                return args[0];
-            },
-            .if_ => {
-                if (args.len != 3) return error.Arity;
-                const condition = try self.eval(args[0], env, depth + 1, host);
-                return self.eval(args[if (condition == self.no) 2 else 1], env, depth + 1, host);
-            },
-            .begin => return self.sequence(c.b, env, depth, host),
-            .and_, .or_ => {
-                var value = if (op == .and_) self.yes else self.no;
-                for (args) |arg| {
-                    value = try self.eval(arg, env, depth + 1, host);
-                    if ((value == self.no) == (op == .and_)) break;
-                }
-                return value;
-            },
-            .lambda => {
-                if (args.len < 2) return error.Arity;
-                return self.closure(args[0], self.heap[c.b].b, env);
-            },
-            .define => {
-                if (args.len < 2) return error.Arity;
-                if (self.heap[args[0]].tag == .pair) {
-                    const signature = self.heap[args[0]];
-                    const value = try self.closure(signature.b, self.heap[c.b].b, env);
-                    try self.define(env, signature.a, value);
-                } else {
+    fn eval(self: *Runtime, initial_r: Ref, initial_env: Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
+        var cur_r = initial_r;
+        var cur_env = initial_env;
+        while (true) {
+            try self.tick(depth);
+            const c = &self.heap[cur_r];
+            if (c.tag == .symbol) {
+                const found = self.lookup(cur_env, cur_r);
+                if (found != 0) return self.heap[found].b;
+                const op = opcode(self.string(cur_r)) orelse return error.Unbound;
+                if (@backingInt(op) < @backingInt(Op.add)) return error.Unbound;
+                const native = try self.alloc(.native);
+                self.heap[native].integer = @backingInt(op);
+                return native;
+            }
+            if (c.tag != .pair) return cur_r;
+            var argument_storage: [16]Ref = @splat(0);
+            const args = try self.arguments(c.b, &argument_storage);
+            const special = if (self.heap[c.a].tag == .symbol) opcode(self.string(c.a)) else null;
+            if (special) |op| switch (op) {
+                .quote => {
+                    if (args.len != 1) return error.Arity;
+                    return args[0];
+                },
+                .if_ => {
+                    if (args.len != 3) return error.Arity;
+                    const condition = try self.eval(args[0], cur_env, depth + 1, host);
+                    cur_r = args[if (condition == self.no) 2 else 1];
+                    continue;
+                },
+                .begin => {
+                    if (args.len == 0) return 0;
+                    var p = c.b;
+                    while (self.heap[p].b != 0) : (p = self.heap[p].b) {
+                        try self.tick(depth);
+                        _ = try self.eval(self.heap[p].a, cur_env, depth + 1, host);
+                    }
+                    cur_r = self.heap[p].a;
+                    continue;
+                },
+                .and_, .or_ => {
+                    if (args.len == 0) return if (op == .and_) self.yes else self.no;
+                    var i: usize = 0;
+                    while (i + 1 < args.len) : (i += 1) {
+                        const value = try self.eval(args[i], cur_env, depth + 1, host);
+                        if ((value == self.no) == (op == .and_)) return value;
+                    }
+                    cur_r = args[i];
+                    continue;
+                },
+                .lambda => {
+                    if (args.len < 2) return error.Arity;
+                    return self.closure(args[0], self.heap[c.b].b, cur_env);
+                },
+                .define => {
+                    if (args.len < 2) return error.Arity;
+                    if (self.heap[args[0]].tag == .pair) {
+                        const signature = self.heap[args[0]];
+                        const value = try self.closure(signature.b, self.heap[c.b].b, cur_env);
+                        try self.define(cur_env, signature.a, value);
+                    } else {
+                        if (args.len != 2) return error.Arity;
+                        try self.define(cur_env, args[0], try self.eval(args[1], cur_env, depth + 1, host));
+                    }
+                    return 0;
+                },
+                .set => {
                     if (args.len != 2) return error.Arity;
-                    try self.define(env, args[0], try self.eval(args[1], env, depth + 1, host));
+                    if (self.heap[args[0]].tag != .symbol) return error.Type;
+                    const found = self.lookup(cur_env, args[0]);
+                    if (found == 0) return error.Unbound;
+                    self.heap[found].b = try self.eval(args[1], cur_env, depth + 1, host);
+                    return 0;
+                },
+                .let => {
+                    if (args.len < 2) return error.Arity;
+                    const local = try self.pair(0, cur_env);
+                    var bindings: [16]Ref = @splat(0);
+                    const entries = try self.arguments(args[0], &bindings);
+                    for (entries) |entry| {
+                        var fields: [2]Ref = @splat(0);
+                        const binding = try self.arguments(entry, &fields);
+                        if (binding.len != 2 or self.heap[binding[0]].tag != .symbol) return error.Syntax;
+                        var old = self.heap[local].a;
+                        while (old != 0) : (old = self.heap[old].b) if (self.heap[self.heap[old].a].a == binding[0]) return error.Syntax;
+                        try self.define(local, binding[0], try self.eval(binding[1], cur_env, depth + 1, host));
+                    }
+                    var body = self.heap[c.b].b;
+                    if (body == 0) return 0;
+                    while (self.heap[body].b != 0) : (body = self.heap[body].b) {
+                        try self.tick(depth);
+                        _ = try self.eval(self.heap[body].a, local, depth + 1, host);
+                    }
+                    cur_env = local;
+                    cur_r = self.heap[body].a;
+                    continue;
+                },
+                else => {},
+            };
+            const procedure = try self.eval(c.a, cur_env, depth + 1, host);
+            for (args) |*arg| arg.* = try self.eval(arg.*, cur_env, depth + 1, host);
+            if (self.heap[procedure].tag == .closure) {
+                const cl_params = self.heap[procedure].a;
+                const cl_body = self.heap[procedure].b;
+                const cl_env = self.heap[procedure].env;
+                var param_storage: [16]Ref = @splat(0);
+                const params = try self.arguments(cl_params, &param_storage);
+                if (params.len != args.len) return error.Arity;
+                const local = try self.pair(0, cl_env);
+                for (params, args) |name, value| try self.define(local, name, value);
+                var body = cl_body;
+                if (body == 0) return 0;
+                while (self.heap[body].b != 0) : (body = self.heap[body].b) {
+                    try self.tick(depth);
+                    _ = try self.eval(self.heap[body].a, local, depth + 1, host);
                 }
-                return 0;
-            },
-            .set => {
-                if (args.len != 2) return error.Arity;
-                if (self.heap[args[0]].tag != .symbol) return error.Type;
-                const found = self.lookup(env, self.string(args[0]));
-                if (found == 0) return error.Unbound;
-                self.heap[found].b = try self.eval(args[1], env, depth + 1, host);
-                return 0;
-            },
-            .let => {
-                if (args.len < 2) return error.Arity;
-                const local = try self.pair(0, env);
-                var bindings: [16]Ref = @splat(0);
-                const entries = try self.arguments(args[0], &bindings);
-                for (entries) |entry| {
-                    var fields: [16]Ref = @splat(0);
-                    const binding = try self.arguments(entry, &fields);
-                    if (binding.len != 2 or self.heap[binding[0]].tag != .symbol) return error.Syntax;
-                    var old = self.heap[local].a;
-                    while (old != 0) : (old = self.heap[old].b) if (std.mem.eql(u8, self.string(self.heap[self.heap[old].a].a), self.string(binding[0]))) return error.Syntax;
-                    try self.define(local, binding[0], try self.eval(binding[1], env, depth + 1, host));
-                }
-                return self.sequence(self.heap[c.b].b, local, depth, host);
-            },
-            else => {},
-        };
-        const procedure = try self.eval(c.a, env, depth + 1, host);
-        for (args) |*arg| arg.* = try self.eval(arg.*, env, depth + 1, host);
-        return self.apply(procedure, args, depth + 1, host);
+                cur_env = local;
+                cur_r = self.heap[body].a;
+                continue;
+            }
+            return self.apply(procedure, args, depth + 1, host);
+        }
     }
     fn integer(self: *const Runtime, r: Ref) linksection(code_section) Error!i32 {
         if (self.heap[r].tag != .integer) return error.Type;
@@ -477,6 +596,7 @@ pub const Runtime = struct {
             .app_frame, .app_pause, .app_resume, .app_stop, .app_speed, .app_ticks, .plot_set, .plot_get, .plot_sine => return self.applyApp(op, args),
             .view_set, .view_get, .view_rollback => return self.applyView(op, args),
             .sql_query, .sql_exec, .sql_begin, .sql_commit, .sql_rollback, .fs_open, .fs_read, .fs_write, .fs_resize, .fs_remove, .fs_sync, .fs_rollback, .fs_snapshot, .fs_restore, .fs_release, .fs_collect, .fs_generation, .fs_list, .fs_close, .fs_stat, .fs_begin, .sql_lookup, .sql_check, .fs_space, .fs_verify => return self.applyStorage(op, args, host),
+            .card_read, .card_info, .card_dismiss, .view_card => return self.applyCard(op, args, host),
             .insert => {
                 if (args.len != 1) return error.Arity;
                 if (self.heap[args[0]].tag != .string) return error.Type;
@@ -800,6 +920,71 @@ pub const Runtime = struct {
         if (self.heap[r].tag != .symbol and self.heap[r].tag != .keyword) return error.Type;
         return self.string(r);
     }
+    noinline fn applyCard(self: *Runtime, op: Op, args: []const Ref, host: anytype) linksection(code_section) Error!Ref {
+        switch (op) {
+            .card_read => {
+                if (args.len != 0) return error.Arity;
+                if (comptime @hasDecl(@TypeOf(host.*), "cardRead")) {
+                    const handle = try host.cardRead();
+                    return self.number(handle);
+                }
+                return error.CardUnavailable;
+            },
+            .card_info => {
+                if (args.len != 1) return error.Arity;
+                const handle = try self.integer(args[0]);
+                if (comptime @hasDecl(@TypeOf(host.*), "cardInfo")) {
+                    const info = try host.cardInfo(handle);
+                    const name_len = @min(info.name.len, text_bytes);
+                    const name_sym = try self.text(.symbol, "name");
+                    const name_val = try self.text(.string, info.name[0..name_len]);
+                    const name_pair = try self.pair(name_sym, name_val);
+
+                    const addr_len = @min(info.address.len, text_bytes);
+                    const addr_sym = try self.text(.symbol, "address");
+                    const addr_val = try self.text(.string, info.address[0..addr_len]);
+                    const addr_pair = try self.pair(addr_sym, addr_val);
+
+                    const birth_len = @min(info.birth.len, text_bytes);
+                    const birth_sym = try self.text(.symbol, "birth");
+                    const birth_val = try self.text(.string, info.birth[0..birth_len]);
+                    const birth_pair = try self.pair(birth_sym, birth_val);
+
+                    const gender_len = @min(info.gender.len, text_bytes);
+                    const gender_sym = try self.text(.symbol, "gender");
+                    const gender_val = try self.text(.string, info.gender[0..gender_len]);
+                    const gender_pair = try self.pair(gender_sym, gender_val);
+
+                    var result: Ref = 0;
+                    result = try self.pair(gender_pair, result);
+                    result = try self.pair(birth_pair, result);
+                    result = try self.pair(addr_pair, result);
+                    result = try self.pair(name_pair, result);
+                    return result;
+                }
+                return error.CardUnavailable;
+            },
+            .card_dismiss => {
+                if (args.len != 1) return error.Arity;
+                const handle = try self.integer(args[0]);
+                if (comptime @hasDecl(@TypeOf(host.*), "cardDismiss")) {
+                    try host.cardDismiss(handle);
+                    return self.yes;
+                }
+                return error.CardUnavailable;
+            },
+            .view_card => {
+                if (args.len != 1) return error.Arity;
+                const handle = try self.integer(args[0]);
+                if (comptime @hasDecl(@TypeOf(host.*), "showCardView")) {
+                    try host.showCardView(handle);
+                    return self.yes;
+                }
+                return error.CardUnavailable;
+            },
+            else => return error.Type,
+        }
+    }
     noinline fn cameraRead(self: *Runtime, host: anytype, camera_handle: i32, offset: u32, count: usize) linksection(code_section) Error!Ref {
         var bytes: [camera.max_read]u8 = @splat(0);
         try host.cameraRead(camera_handle, offset, bytes[0..count]);
@@ -850,7 +1035,8 @@ pub const Runtime = struct {
             break;
         };
         if (procedure == 0) {
-            const binding = self.lookup(self.global, name);
+            const sym = self.findSymbol(name) orelse return error.UnknownCommand;
+            const binding = self.lookup(self.global, sym);
             if (binding == 0) return error.UnknownCommand;
             procedure = self.heap[binding].b;
             if (self.heap[procedure].tag != .closure or self.heap[procedure].a != 0) return error.UnknownCommand;
@@ -1046,7 +1232,7 @@ test "reader stages all forms and errors return without destroying definitions" 
     try std.testing.expectEqual(@as(usize, 0), host.length);
     try std.testing.expectError(error.Overflow, vm.evaluate("(+ 2147483647 1)", &host, &out));
     try std.testing.expectError(error.Arity, vm.evaluate("(car)", &host, &out));
-    try std.testing.expectError(error.Depth, vm.evaluate("(define (loop) (loop)) (loop)", &host, &out));
+    try std.testing.expectError(error.Depth, vm.evaluate("(define (loop) (+ 1 (loop))) (loop)", &host, &out));
     try expectValue(&vm, &host, "keep", "17");
     try expectValue(&vm, &host, "; comment\n(list '日本 \"a\\n\\\"b\")", "(日本 \"a\\n\\\"b\")");
     try std.testing.expectError(error.Syntax, vm.evaluate(&.{0xff}, &host, &out));
@@ -1070,7 +1256,7 @@ test "bounded malformed requests do not trap or retain ephemeral garbage" {
     try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
-const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00".*;
+const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00Card unavailable\x00Card busy\x00Invalid card handle\x00Invalid card range\x00Card failed\x00Card locked\x00PIN entry cancelled\x00".*;
 pub fn message(err: Error) linksection(code_section) []const u8 {
     const wanted: usize = switch (err) {
         error.Depth => 0,
@@ -1101,6 +1287,13 @@ pub fn message(err: Error) linksection(code_section) []const u8 {
         error.StorageLimit => 25,
         error.StorageOutcomeUnknown => 26,
         error.StorageFailed => 27,
+        error.CardUnavailable => 28,
+        error.CardBusy => 29,
+        error.InvalidCardHandle => 30,
+        error.InvalidCardRange => 31,
+        error.CardFailed => 32,
+        error.CardLocked => 33,
+        error.PinCancelled => 34,
     };
     var pos: usize = 0;
     var index: usize = 0;
@@ -1177,4 +1370,35 @@ test "app capability, callback roots, replacement and atomic plot options" {
     try std.testing.expectEqual(@as(u8, 7), vm.app.plot.phase);
     try expectValue(&vm, &host, "(app/stop!)", "#t");
     try std.testing.expect(vm.app.paused and vm.frame_callback == 0);
+}
+
+test "scheme runtime memory footprint and tail call execution" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+
+    // 1. Structure Sizes & Memory Footprint assertions
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(Cell));
+    try std.testing.expectEqual(@as(usize, 4096), @sizeOf(@TypeOf(vm.heap)));
+    try std.testing.expectEqual(@as(usize, 7208), @sizeOf(Runtime));
+
+    // 2. Symbol Interning & Heap Density
+    _ = try vm.evaluate("(define a 1) (define b 2) (define c 3) (define d 4) (define e 5)", &host, &out);
+    for (0..30) |_| {
+        _ = try vm.evaluate("(+ a (+ b (+ c (+ d e))))", &host, &out);
+    }
+    try std.testing.expect(vm.free_cells > 200);
+
+    // 3. Tail Call Optimization (TCO)
+    vm.initInPlace();
+    _ = try vm.evaluate(
+        \\(define (sum-iter n acc)
+        \\  (if (= n 0)
+        \\      acc
+        \\      (sum-iter (- n 1) (+ acc n))))
+    , &host, &out);
+    vm.step_budget = 20000;
+    const tco_res = try vm.evaluate("(sum-iter 10 0)", &host, &out);
+    try std.testing.expectEqualStrings("55", tco_res);
 }
