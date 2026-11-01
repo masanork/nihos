@@ -398,7 +398,8 @@ noinline fn timePoll(now: u64) linksection(".flash.text.time") !bool {
     if (ethernet.len == 0) return false;
     // At most 128 Ethernet bytes. This CPU stack packet is copied by the
     // existing bounded transport; it is not lent to a DMA engine.
-    var framed: [144]u8 = @splat(0);
+    // frame() initializes the complete returned header and payload.
+    var framed: [144]u8 = undefined;
     const packet = try hosted.wire.frame(&framed, 1, client.sequence, ethernet);
     const sent = try transport.send(packet);
     if (sent != 0 and sent != packet.len) return error.PartialPacket;
