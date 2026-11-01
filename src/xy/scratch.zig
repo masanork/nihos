@@ -372,8 +372,8 @@ pub const Model = struct {
         }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
             if (self.learning) |l| l.touch(&self.nav, x, y);
-        } else if (self.portrait_touch and self.nav.screen == .home) {
-            self.nav.touchPortraitHome(x, y);
+        } else if (self.portrait_touch) {
+            self.nav.touchPortrait(x, y, &self.vm.view);
         } else self.nav.touch(x, y, &self.vm.view);
         self.changed();
     }

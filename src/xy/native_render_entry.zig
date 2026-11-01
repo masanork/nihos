@@ -43,7 +43,7 @@ pub export fn nih_xy_render(request: *const protocol.Request) callconv(.c) bool 
     const instance = &owner.renderer;
     if (request.navigation) |nav| {
         const pack = readingPack() catch return false;
-        (if (request.portrait != 0) reading.renderPortraitHome(instance, request) else reading.render(instance, request, pack)) catch |err| {
+        (if (request.portrait != 0) reading.renderPortrait(instance, request, pack) else reading.render(instance, request, pack)) catch |err| {
             nav.error_code = @intFromError(err);
             return false;
         };
