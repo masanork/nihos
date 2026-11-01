@@ -15,12 +15,13 @@ Priorities before adding more application services to C6:
    partition behavior, and independently demonstrate recovery from a C6 app
    that cannot serve Hosted RPC before depending on repeated OTA deployments.
    An application-only upgrade cannot itself establish bootloader rollback.
-2. **Failure isolation and reconnection.** In the opt-in native profile, a
-   time exchange error propagates through `network_service.step` to `stop`,
-   invalidating the transport and resetting C6. Test missed acknowledgements,
-   delayed results, disconnect, DHCP changes, and C6 restart separately; design
-   request retirement and late-message handling before isolating time-only
-   failures from an otherwise healthy station. Check BLE and UI continuity.
+2. **Failure isolation and reconnection.** The opt-in native profile now
+   retires timed-out time requests without resetting a live station, and ignores
+   late acknowledgements/results that cannot match the current request. Host
+   tests cover queued and waiting timeouts and stale messages; physical timeout
+   injection and BLE/UI continuity are not yet demonstrated. Invalid responses,
+   partial transfers, disconnect, DHCP changes, and C6 restart still need
+   separate classification and qualification; protocol errors may reset C6.
 3. **Measure the existing offload.** Compare factory/P4-SNTP and C6-SNTP under
    the same P4 feature profile, AP and workload. Record P4 busy time, polling,
    SDIO traffic, heap and responsiveness, and C6 free/minimum heap and stack

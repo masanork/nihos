@@ -97,14 +97,19 @@ pub const Exchange = struct {
                 self.adopt();
                 return;
             } else if (rpc.kind == 2 and rpc.id == 644) {
-                if (self.phase != .waiting or self.acknowledged) return error.Stale;
+                // A retired request can still have an acknowledgement in flight.
+                if (self.phase != .waiting or rpc.uid != self.uid or self.acknowledged) return;
                 try clock.acceptAck(rpc, self.uid);
                 self.acknowledged = true;
                 self.finish();
                 return;
             } else if (rpc.kind == 3 and rpc.id == 788) {
-                if (self.phase != .waiting or self.got_result) return error.Stale;
-                self.sample = try self.clock.receive(rpc, now);
+                // Late or duplicate results must not satisfy a new request.
+                if (self.phase != .waiting or self.got_result) return;
+                self.sample = self.clock.receive(rpc, now) catch |err| switch (err) {
+                    error.Stale => return,
+                    else => return err,
+                };
                 self.got_result = true;
                 self.finish();
                 return;
@@ -113,6 +118,27 @@ pub const Exchange = struct {
         try self.station.receive(frame, now);
         try self.checkPeer();
         self.adopt();
+    }
+    /// Retire a timed-out time request without retiring a live station. The
+    /// caller must schedule the next attempt and provide its absolute deadline.
+    /// Partial writes still fail the transport before this method is called.
+    pub noinline fn retireTimedOutTime(self: *Exchange, now: u64, new_deadline: u64) linksection(timeSection()) Error!bool {
+        if (now < self.last_now or new_deadline <= now) return error.Deadline;
+        if (now < self.deadline or (self.phase != .ready and self.phase != .queued and self.phase != .waiting)) return false;
+        if (self.addresses.current(self.clock.generation) == null) return error.Stale;
+        const was_pending = self.phase == .queued or self.phase == .waiting;
+        self.clock.cancel();
+        if (self.owner == .service) {
+            self.owner = .none;
+            self.pending_len = 0;
+        }
+        self.sample = null;
+        self.acknowledged = false;
+        self.got_result = false;
+        self.phase = .ready;
+        self.last_now = now;
+        self.deadline = new_deadline;
+        return was_pending;
     }
     /// Begin another one-shot query on the same live address after both the
     /// acknowledgement and prior result completed. Never reuse request IDs.

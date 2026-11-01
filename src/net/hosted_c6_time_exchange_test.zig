@@ -236,9 +236,10 @@ test "unsynchronized result can be polled again with a new request ID" {
     try std.testing.expectEqual(@as(u32, 2), e.clock.outstanding.?);
     try std.testing.expectEqual(@as(u32, 388), (try outgoing(frame)).id);
     try e.sent(frame.len, 64);
-    // A delayed event for request 1 cannot satisfy request 2.
-    try std.testing.expectError(error.Stale, event(&e, true, 65));
-    try std.testing.expectEqual(service.Phase.failed, e.phase);
+    // A delayed event for request 1 cannot satisfy or invalidate request 2.
+    try event(&e, true, 65);
+    try std.testing.expectEqual(service.Phase.waiting, e.phase);
+    try std.testing.expectEqual(@as(u32, 2), e.clock.outstanding.?);
 }
 test "rejected acknowledgement discards a previously received sample" {
     var e = service.Exchange{};
@@ -308,4 +309,50 @@ test "next time snapshot after the resync interval uses a fresh request" {
     try std.testing.expectEqual(service.Phase.done, e.phase);
     try std.testing.expect(e.addresses.current(e.clock.generation) != null);
     try std.testing.expectEqual(@as(u64, 1760000000), e.sample.?.seconds);
+}
+
+test "timeout retires only time request and ignores late replies" {
+    var e = service.Exchange{};
+    try connect(&e, 2);
+    try queueTime(&e);
+    const old_uid = e.uid;
+    try std.testing.expect(try e.retireTimedOutTime(200, 400));
+    try std.testing.expectEqual(service.Phase.ready, e.phase);
+    try std.testing.expect(e.addresses.current(e.clock.generation) != null);
+    try rpc(&e, 2, 644, old_uid, &.{}, 201);
+    try event(&e, true, 202);
+    const frame = try e.tx(203);
+    try e.sent(frame.len, 203);
+    try rpc(&e, 2, 644, old_uid, &.{}, 204);
+    try event(&e, true, 205);
+    try std.testing.expectEqual(@as(u32, 2), e.clock.outstanding.?);
+    try rpc(&e, 2, 644, e.uid, &.{}, 206);
+    try eventWithId(&e, 2, true, 207);
+    try std.testing.expectEqual(service.Phase.done, e.phase);
+    try std.testing.expect(e.sample != null);
+}
+test "queued timeout clears unsent frame and preserves generation" {
+    var e = service.Exchange{};
+    try connect(&e, 2);
+    const frame = try e.tx(60);
+    try std.testing.expect(frame.len > 0);
+    const generation = e.clock.generation;
+    try std.testing.expect(try e.retireTimedOutTime(200, 400));
+    try std.testing.expectEqual(service.Phase.ready, e.phase);
+    try std.testing.expectEqual(generation, e.clock.generation);
+    try std.testing.expectEqual(@as(usize, 0), e.pending_len);
+    const next = try e.tx(201);
+    try std.testing.expect(next.len > 0);
+    try std.testing.expectEqual(@as(u32, 2), e.clock.outstanding.?);
+}
+test "timeout discards an unacknowledged sample" {
+    var e = service.Exchange{};
+    try connect(&e, 2);
+    try queueTime(&e);
+    try event(&e, true, 61);
+    try std.testing.expect(e.sample != null and !e.acknowledged);
+    try std.testing.expect(try e.retireTimedOutTime(200, 400));
+    try std.testing.expect(e.sample == null);
+    try std.testing.expectEqual(service.Phase.ready, e.phase);
+    try std.testing.expect(e.addresses.current(e.clock.generation) != null);
 }

@@ -158,9 +158,9 @@ TIME_GENERIC = {TIME_CALENDAR + name for name in ('set', 'writeStopped')}
 TIME_STATION = {'hosted_station.Client.' + name for name in ('receive', 'tx', 'sent')}
 TIME_C6 = {
     'hosted_c6_time_exchange.Exchange.' + name for name in
-    ('begin', 'receive', 'nextSnapshot', 'tx', 'sent', 'invalidate', 'tick', 'adopt', 'checkPeer', 'finish')
-} | {'hosted_c6_time.Session.' + name for name in ('reset', 'start', 'receive', 'expire')} | {
-    'hosted_c6_time.acceptAck', 'hosted_network_split.statusRequest', 'hosted_network_split.decode',
+    ('begin', 'receive', 'nextSnapshot', 'retireTimedOutTime', 'tx', 'sent', 'invalidate', 'tick', 'adopt', 'checkPeer', 'finish')
+} | {'hosted_c6_time.Session.' + name for name in ('reset', 'start', 'receive', 'expire', 'cancel')} | {
+    'network_service.recoverC6TimeTimeout', 'hosted_c6_time.acceptAck', 'hosted_network_split.statusRequest', 'hosted_network_split.decode',
     'hosted_network_split.unicast', 'hosted_network_split.ipv4', 'hosted_network_split.text',
     'hosted_network_split.optionalAddress',
 } | {'hosted_network_split.State.' + name for name in ('receive', 'receiveResponse', 'apply', 'current', 'invalidate')}
