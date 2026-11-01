@@ -42,8 +42,13 @@ The next host fixture uses an actual `hosted_station.Client` in a **synthetic
 bound state** and calls the station lease/scheduling adapter before TCP sends.
 OpenSSH PTY/FIN passes through this path. Host tests also cover renewal,
 expiry, disconnect, reset and station/TCP priority. DHCP packet acquisition,
-normal native owner scheduling, bounded RX queueing and device SDIO remain
+normal native owner scheduling and device SDIO remain
 unverified by this fixture.
+
+The latest host probe also routes received frames through a four-frame
+`hosted_tcp_rx.zig` queue. Targeted tests cover deferral during staged TX,
+station ARP processing, overflow isolation and connection-generation changes.
+The host probe does not establish physical SDIO buffering or concurrency safety.
 
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.

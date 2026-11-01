@@ -6,6 +6,7 @@ const hosted = @import("hosted.zig");
 const service_core = @import("hosted_tcp_service.zig");
 const station_core = @import("hosted_station.zig");
 const station_tcp = @import("hosted_tcp_station.zig");
+const station_rx = @import("hosted_tcp_rx.zig");
 var opening: connect.Connect = .{};
 var stream: ?tcp.Stream = null;
 var time_wait: ?wait.TimeWait = null;
@@ -14,6 +15,7 @@ var service_handle: ?service_core.Handle = null;
 var staged_length: usize = 0;
 var staged_owner: enum { none, station, tcp } = .none;
 var host_station: station_core.Client = .{};
+var host_rx: station_rx.Queue = .{};
 var host_now_ms: u64 = 0;
 var link_time_wait: ?wait.TimeWait = null;
 const guest_mac = [6]u8{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
@@ -96,6 +98,7 @@ export fn tcp_link_begin(port: u16) bool {
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
     if (!refreshStation(now)) return 0;
     const handle = service_handle orelse return 0;
+    _ = host_rx.drain(&service, &host_station, handle, 1, now *| 1000) catch return 0;
     const choice = station_tcp.next(&service, &host_station, handle, 1, now *| 1000, false) catch return 0;
     const bytes = switch (choice) {
         .idle => return 0,
@@ -124,6 +127,7 @@ export fn tcp_link_sent(now: u64) bool {
     }
     staged_length = 0;
     staged_owner = .none;
+    _ = host_rx.drain(&service, &host_station, handle, 1, now *| 1000) catch return false;
     return true;
 }
 export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
@@ -134,12 +138,7 @@ export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
     var decoder: hosted.Decoder = .{};
     for (bytes) |byte| {
         if (decoder.push(byte) catch return false) |decoded| {
-            host_station.receive(decoded, now *| 1000) catch {
-                service.invalidate();
-                return false;
-            };
-            if (!refreshStation(now)) return false;
-            _ = service.receive(handle, decoded, now) catch return false;
+            _ = host_rx.receive(&service, &host_station, handle, 1, now *| 1000, decoded) catch return false;
         }
     }
     return true;

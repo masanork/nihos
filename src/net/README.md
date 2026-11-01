@@ -27,8 +27,10 @@ a qualified DMA, Wi-Fi, reconnect, or device implementation.
 `hosted_tcp_station.zig` maps the Hosted station's live DHCP lease and an
 owner-supplied reset epoch into that service. Its experimental scheduling
 helper runs station maintenance first, gives station/other priority traffic
-precedence, and retains already-staged TCP frames. The owner must queue RX
-when TCP is busy and serialize completions; normal boot does not call it yet.
+precedence, and retains already-staged TCP frames. `hosted_tcp_rx.zig` adds a
+four-frame bounded RX queue, preserving station processing and retiring only
+the TCP handle on overflow. The owner must serialize completions and surface
+queue failure; normal boot does not call either module yet.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
